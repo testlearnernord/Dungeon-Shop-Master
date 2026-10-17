@@ -1,8 +1,5 @@
-import {
-  Engine,
-  Scene,
-  Vector3,
-} from "@babylonjs/core";
+import { Engine } from "@babylonjs/core/Engines/engine";
+import { Scene } from "@babylonjs/core/scene";
 import { createFirstPersonCamera } from "./game/firstPersonController";
 import { Inventory, ITEMS, type ItemId } from "./game/inventory";
 import { InteractionSystem } from "./game/interactionSystem";
@@ -18,6 +15,8 @@ if (!canvas || !inventoryElement || !statusElement) {
   throw new Error("The game canvas and HUD must exist before the game starts.");
 }
 
+const inventoryHud = inventoryElement;
+const statusHud = statusElement;
 const engine = new Engine(canvas, true, { antialias: true, preserveDrawingBuffer: false });
 const scene = new Scene(engine);
 const camera = createFirstPersonCamera(canvas, scene);
@@ -26,28 +25,22 @@ const inventory = new Inventory();
 const shop = new Shop(scene, inventory);
 
 function renderInventory(selectedItem: ItemId): void {
-  inventoryElement.replaceChildren();
+  inventoryHud.replaceChildren();
   for (const item of ITEMS) {
     const row = document.createElement("div");
     row.className = `inventory-row${item.id === selectedItem ? " selected" : ""}`;
     row.innerHTML = `<span class="item-dot" style="--item-color:${item.color}"></span><span>${item.name}</span><strong>${inventory.count(item.id)}</strong>`;
-    inventoryElement.append(row);
+    inventoryHud.append(row);
   }
   const capacity = document.createElement("div");
   capacity.className = "capacity";
   capacity.textContent = `Bag ${inventory.total} / ${inventory.capacity}`;
-  inventoryElement.append(capacity);
+  inventoryHud.append(capacity);
 }
 
 new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
-  statusElement.textContent = message;
+  statusHud.textContent = message;
   renderInventory(selected);
-});
-
-const torchLight = new Vector3(0, 1, 0);
-scene.onBeforeRenderObservable.add(() => {
-  camera.position.y = Math.max(camera.position.y, 0.9);
-  torchLight.y = Math.sin(performance.now() / 160) * 0.025;
 });
 
 engine.runRenderLoop(() => scene.render());

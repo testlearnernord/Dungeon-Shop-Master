@@ -1,16 +1,15 @@
-import {
-  Color3,
-  DynamicTexture,
-  HemisphericLight,
-  Mesh,
-  MeshBuilder,
-  PointLight,
-  Scene,
-  StandardMaterial,
-  Vector3,
-} from "@babylonjs/core";
+import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
+import { PointLight } from "@babylonjs/core/Lights/pointLight";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { Scene } from "@babylonjs/core/scene";
+import type { Interactable } from "./inventory";
 
-export interface WorldInteractable {
+export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
   kind: "register" | "corridor";
 }
@@ -39,7 +38,6 @@ function box(
 function sign(scene: Scene, name: string, text: string, position: Vector3): void {
   const board = MeshBuilder.CreatePlane(name, { width: 1.7, height: 0.72 }, scene);
   board.position.copyFrom(position);
-  board.rotation.y = Math.PI;
   const texture = new DynamicTexture(`${name}-texture`, { width: 512, height: 216 }, scene, false);
   texture.hasAlpha = true;
   texture.drawText(text, null, 150, "bold 76px monospace", "#f2d69a", "#292018", true);
@@ -59,12 +57,12 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   scene.fogColor = new Color3(0.055, 0.045, 0.04);
 
   const ambient = new HemisphericLight("cavern-ambient", new Vector3(0, 1, 0), scene);
-  ambient.intensity = 0.5;
+  ambient.intensity = 0.45;
   const torchColor = new Color3(1, 0.58, 0.25);
   for (const [index, x] of [-5.7, 0, 5.7].entries()) {
     const torch = new PointLight(`torch-${index}`, new Vector3(x, 3.2, index === 1 ? -1 : 3), scene);
     torch.diffuse = torchColor;
-    torch.intensity = 18;
+    torch.intensity = 1.5;
     torch.range = 10;
     const flame = MeshBuilder.CreateSphere(`torch-flame-${index}`, { diameter: 0.18 }, scene);
     flame.position.copyFrom(torch.position);
@@ -102,5 +100,5 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   box(scene, "register-base", { width: 0.62, height: 0.3, depth: 0.5 }, new Vector3(0.9, 1.55, 2.45), new Color3(0.17, 0.2, 0.18), false);
   const register = box(scene, "cash-register", { width: 0.48, height: 0.38, depth: 0.18 }, new Vector3(0.9, 1.87, 2.35), new Color3(0.3, 0.48, 0.36), false);
   register.metadata = { kind: "register" };
-  return [{ mesh: register, kind: "register" }];
+  return [{ id: "checkout-register", mesh: register, kind: "register" }];
 }

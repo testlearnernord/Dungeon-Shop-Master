@@ -1,5 +1,8 @@
-import { Camera, PointerEventTypes, Scene } from "@babylonjs/core";
-import { ITEMS, type ItemId, type Slot } from "./inventory";
+import { Camera } from "@babylonjs/core/Cameras/camera";
+import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { Scene } from "@babylonjs/core/scene";
+import { ITEMS, type ItemId } from "./inventory";
 import { Shop } from "./shop";
 import type { WorldInteractable } from "./world";
 
@@ -65,13 +68,10 @@ export class InteractionSystem {
     const locked = document.pointerLockElement === this.canvas;
     const pickX = locked ? rect.width / 2 : x;
     const pickY = locked ? rect.height / 2 : y;
-    const hit = this.scene.pick(pickX, pickY, (mesh) =>
-      this.shop.slotMeshes.has(mesh as import("@babylonjs/core").Mesh) ||
-      this.worldItems.some(({ mesh: target }) => target === mesh),
-    );
+    const hit = this.scene.pick(pickX, pickY);
     if (!hit?.hit || !hit.pickedMesh) return;
 
-    const slot = this.shop.slotMeshes.get(hit.pickedMesh as import("@babylonjs/core").Mesh);
+    const slot = this.shop.slotMeshes.get(hit.pickedMesh as Mesh);
     if (slot) {
       this.message = button === 0 ? this.shop.stock(slot) : this.shop.remove(slot);
     } else {
@@ -84,9 +84,7 @@ export class InteractionSystem {
   }
 
   private interact(): void {
-    const pick = this.scene.pickWithRay(this.camera.getForwardRay(3), (mesh) =>
-      this.worldItems.some(({ mesh: target }) => target === mesh),
-    );
+    const pick = this.scene.pickWithRay(this.camera.getForwardRay(3));
     const target = this.worldItems.find(({ mesh }) => mesh === pick?.pickedMesh);
     this.message = target?.kind === "register"
       ? "Galvik's register is ready. Transactions aren't available yet."
@@ -98,5 +96,3 @@ export class InteractionSystem {
     this.onUpdate(this.message, ITEMS[this.selectedIndex].id);
   }
 }
-
-export type { Slot };

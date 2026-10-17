@@ -1,11 +1,10 @@
-import {
-  Color3,
-  Mesh,
-  MeshBuilder,
-  Scene,
-  StandardMaterial,
-  Vector3,
-} from "@babylonjs/core";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { Scene } from "@babylonjs/core/scene";
 import { Inventory, ITEMS, type ItemId, type Slot } from "./inventory";
 
 const SLOT_CAPACITY = 5;
@@ -110,9 +109,17 @@ export class Shop {
   }
 
   private createSlotLabel(slot: Slot, position: Vector3): void {
-    const label = MeshBuilder.CreateBox(`${slot.id}-number`, { width: 0.24, height: 0.08, depth: 0.2 }, this.scene);
-    label.position.set(position.x, position.y - 0.12, position.z + 0.38);
-    label.material = this.slotMaterials.get("empty")!;
+    const label = MeshBuilder.CreatePlane(`${slot.id}-number`, { width: 0.24, height: 0.2 }, this.scene);
+    const shelfSide = slot.shelfId === "shelf-1" ? 1 : -1;
+    label.position.set(position.x + shelfSide * 0.4, 1.08, position.z);
+    label.rotation.y = shelfSide * Math.PI / 2;
+    const texture = new DynamicTexture(`${slot.id}-number-texture`, { width: 128, height: 128 }, this.scene, false);
+    texture.drawText(String(slot.index + 1), null, 94, "bold 92px monospace", "#f2d69a", "#292018", true);
+    const labelMaterial = new StandardMaterial(`${slot.id}-number-material`, this.scene);
+    labelMaterial.diffuseTexture = texture;
+    labelMaterial.emissiveColor = new Color3(0.25, 0.18, 0.08);
+    labelMaterial.backFaceCulling = false;
+    label.material = labelMaterial;
     label.isPickable = false;
   }
 
