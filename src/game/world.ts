@@ -81,6 +81,7 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   box(scene, "right-wall", { width: 0.4, height: 4, depth: 14 }, new Vector3(7.5, 2, 0), rock);
   box(scene, "front-left-wall", { width: 5, height: 4, depth: 0.4 }, new Vector3(-5, 2, -7), rock);
   box(scene, "front-right-wall", { width: 5, height: 4, depth: 0.4 }, new Vector3(5, 2, -7), rock);
+  box(scene, "front-middle-wall", { width: 5, height: 4, depth: 0.4 }, new Vector3(0, 2, -7), rock);
   box(scene, "back-left-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(-6.375, 2, 7), rock);
   box(scene, "back-middle-wall", { width: 5.5, height: 4, depth: 0.4 }, new Vector3(0, 2, 7), rock);
   box(scene, "back-right-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(6.375, 2, 7), rock);
