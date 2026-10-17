@@ -40,7 +40,7 @@ function sign(scene: Scene, name: string, text: string, position: Vector3): void
   board.position.copyFrom(position);
   const texture = new DynamicTexture(`${name}-texture`, { width: 512, height: 216 }, scene, false);
   texture.hasAlpha = true;
-  texture.drawText(text, null, 150, "bold 76px monospace", "#f2d69a", "#292018", true);
+  texture.drawText(text, null, 150, "bold 44px monospace", "#f2d69a", "#292018", true);
   const boardMaterial = new StandardMaterial(`${name}-material`, scene);
   boardMaterial.diffuseTexture = texture;
   boardMaterial.emissiveColor = new Color3(0.25, 0.18, 0.08);
