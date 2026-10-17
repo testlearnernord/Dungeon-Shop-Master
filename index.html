@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#120f0d" />
+    <meta name="description" content="A first-person dungeon shop prototype." />
+    <title>Dungeon Shop Master</title>
+  </head>
+  <body>
+    <main id="game">
+      <canvas id="renderCanvas" aria-label="Dungeon shop game scene"></canvas>
+      <section id="hud" aria-live="polite">
+        <div class="shop-title">GALVIK'S SHOP <span>· LEVEL 5</span></div>
+        <div id="inventory" class="inventory"></div>
+        <div id="status" class="status">Click to enter the shop</div>
+        <div class="crosshair" aria-hidden="true"></div>
+        <div class="controls">
+          <strong>WASD</strong> move <span>·</span> <strong>Mouse</strong> look
+          <span>·</span> <strong>Wheel</strong> select
+          <span>·</span> <strong>Left-click</strong> stock
+          <span>·</span> <strong>Right-click</strong> remove
+          <span>·</span> <strong>E</strong> interact
+          <span>·</span> <strong>Esc</strong> release
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
