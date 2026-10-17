@@ -37,6 +37,23 @@ npm run build
 npm run preview
 ```
 
+## Browser regression test
+
+```sh
+npx playwright install --with-deps chromium
+npm test
+```
+
+The test uses headed Chromium for real pointer-lock mouse movement. On a headless Linux machine, run `xvfb-run -a npm test` (also run by CI). It checks actual WASD input on the initial load and after three reloads, mouse look, pointer capture/release, 32 seconds of sustained input with scene-frame progress, gravity, and wall/shelf/counter collisions. Scene inspection lives only in the development test harness, not the production bundle.
+
+### Movement freeze fix
+
+Babylon's modular imports did not register `DefaultCollisionCoordinator`. The first WASD input entered collision handling and threw `DefaultCollisionCoordinator needs to be imported before...`, stopping the game render loop while the browser's own animation callbacks continued. This was reproduced in Chromium with pointer lock and real keyboard input; it was not a main-thread deadlock. Explicitly importing the collision coordinator fixes the failure without disabling collisions or gravity. Picking also required the `Ray` side-effect import. The extra negative ellipsoid offset was removed because Babylon already subtracts the ellipsoid half-height from the camera position; the offset placed the player's feet below the floor.
+
+Verification: the browser regression passed, including three reloads, all four movement directions, 32 seconds of held-key movement, stable standing height, both shelves, both side walls, the front wall, and the counter. Removing the collision-coordinator import makes the regression fail on its first W input with the original exception and zero movement. `npm ci && npm run build` passed. Browser-protocol Escape does not reliably trigger Chromium's pointer-lock default action, so the automated release check uses `document.exitPointerLock()`; the manual walkthrough below covers Escape.
+
+The built production preview was also exercised in Chromium: all WASD directions visibly changed the canvas on the initial load and three reloads, followed by 32 seconds of sustained input with WebGL draw progress checked every second and no captured runtime errors. Software rendering in the runner produced long tasks (up to 2.3 seconds), but rendering continued; this is not a claim of hardware-GPU performance or Windows-specific validation.
+
 ## GitHub Pages
 
 The `Deploy to GitHub Pages` workflow builds and deploys pushes to `main`. In the repository, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. The Vite base path is `/Dungeon-Shop-Master/`.
