@@ -1,4 +1,5 @@
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
+import "@babylonjs/core/Collisions/collisionCoordinator";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
 
@@ -16,7 +17,6 @@ export function createFirstPersonCamera(canvas: HTMLCanvasElement, scene: Scene)
   camera.checkCollisions = true;
   camera.applyGravity = true;
   camera.ellipsoid = new Vector3(0.35, 0.85, 0.35);
-  camera.ellipsoidOffset = new Vector3(0, -0.85, 0);
   scene.gravity = new Vector3(0, -0.22, 0);
   return camera;
 }

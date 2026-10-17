@@ -1,4 +1,5 @@
 import { Camera } from "@babylonjs/core/Cameras/camera";
+import "@babylonjs/core/Culling/ray";
 import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Scene } from "@babylonjs/core/scene";
