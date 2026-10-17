@@ -12,6 +12,18 @@
       <canvas id="renderCanvas" aria-label="Dungeon shop game scene"></canvas>
       <section id="hud" aria-live="polite">
         <div class="shop-title">GALVIK'S SHOP <span>· LEVEL 5</span></div>
+        <section class="day-panel" aria-label="Day clock">
+          <strong id="day">Day 1</strong>
+          <ol id="world-events" aria-label="Recent world events"></ol>
+          <button id="end-day" type="button" aria-expanded="false" aria-controls="day-confirmation">
+            End Day (N)
+          </button>
+          <div id="day-confirmation" hidden>
+            <p>End this day?</p>
+            <button id="confirm-day" type="button">Confirm Next Day (Y)</button>
+            <button id="cancel-day" type="button">Cancel (Esc)</button>
+          </div>
+        </section>
         <div id="inventory" class="inventory"></div>
         <div id="status" class="status">Click to enter the shop</div>
         <div class="crosshair" aria-hidden="true"></div>
@@ -21,6 +33,7 @@
           <span>·</span> <strong>Left-click</strong> stock
           <span>·</span> <strong>Right-click</strong> remove
           <span>·</span> <strong>E</strong> interact
+          <span>·</span> <strong>N / Y</strong> end / confirm day
           <span>·</span> <strong>Esc</strong> release
         </div>
       </section>
