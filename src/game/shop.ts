@@ -82,10 +82,12 @@ export class Shop {
       back.position.set(x, 1.35, 0);
       back.material = bodyMaterial;
       back.checkCollisions = true;
+      back.isPickable = false;
       const plank = MeshBuilder.CreateBox(`${shelfId}-plank`, { width: 1.2, height: 0.18, depth: 5.8 }, this.scene);
       plank.position.set(x + (x < 0 ? 0.48 : -0.48), 0.65, 0);
       plank.material = bodyMaterial;
       plank.checkCollisions = true;
+      plank.isPickable = false;
 
       for (let index = 0; index < 5; index += 1) {
         const slot: Slot = {
@@ -100,6 +102,7 @@ export class Shop {
         slotMesh.position.set(x + (x < 0 ? 0.48 : -0.48), 0.82, index - 2);
         slotMesh.material = this.slotMaterials.get("empty")!;
         slotMesh.checkCollisions = true;
+        slotMesh.isPickable = true;
         slotMesh.metadata = { kind: "shelf-slot", slotId: slot.id };
         this.slots.push(slot);
         this.slotMeshes.set(slotMesh, slot);

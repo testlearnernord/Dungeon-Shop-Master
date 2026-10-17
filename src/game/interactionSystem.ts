@@ -21,6 +21,7 @@ export class InteractionSystem {
     private readonly shop: Shop,
     private readonly worldItems: WorldInteractable[],
     private readonly onUpdate: (message: string, selected: ItemId) => void,
+    private readonly maxInteractionDistance = 3,
   ) {
     this.shop.select(ITEMS[0].id);
     this.registerEvents();
@@ -46,8 +47,13 @@ export class InteractionSystem {
       this.nextRepeatAt = performance.now() + this.clickDelay;
       this.performPointerAction(event.button, event.offsetX, event.offsetY);
     });
-    window.addEventListener("pointerup", () => { this.heldButton = null; });
+    const releaseHeldButton = (): void => { this.heldButton = null; };
+    window.addEventListener("pointerup", releaseHeldButton);
+    window.addEventListener("pointercancel", releaseHeldButton);
     window.addEventListener("blur", () => { this.heldButton = null; });
+    document.addEventListener("pointerlockchange", () => {
+      if (document.pointerLockElement !== this.canvas) this.heldButton = null;
+    });
     window.addEventListener("keydown", (event) => {
       if (event.code !== "KeyE" || event.repeat) return;
       this.interact();
@@ -73,6 +79,11 @@ export class InteractionSystem {
 
     const slot = this.shop.slotMeshes.get(hit.pickedMesh as Mesh);
     if (slot) {
+      if (hit.distance > this.maxInteractionDistance) {
+        this.message = "Move closer to reach that shelf slot.";
+        this.publish();
+        return;
+      }
       this.message = button === 0 ? this.shop.stock(slot) : this.shop.remove(slot);
     } else {
       const target = this.worldItems.find(({ mesh }) => mesh === hit.pickedMesh);
