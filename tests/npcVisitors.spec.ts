@@ -29,11 +29,13 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
   const moving = await inspect();
   expect(moving.frame).toBeGreaterThan(first.frame + 5);
   expect(moving.visitors.some((visitor) => visitor.z < 11.5)).toBe(true);
+  expect(moving.visitors.map(({ id, uniqueId }) => ({ id, uniqueId })))
+    .toEqual(first.visitors.map(({ id, uniqueId }) => ({ id, uniqueId })));
   expect(moving.gateY).toBeGreaterThan(2);
   expect(moving.visitors.every(({ wallClear }) => wallClear)).toBe(true);
   expect(moving.visitors.filter(({ z }) => z < 12.01).every(() => moving.gateY >= 3.4)).toBe(true);
 
-  let stays = 0;
+  let persistentTransitions = 0;
   let departures = 0;
   for (let day = 2; day <= 12; day += 1) {
     const before = await inspect();
@@ -53,7 +55,6 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
       const wasShopping = previousState.adventurers.some((hero) => hero.id === prior.id && hero.status === "at-shop");
       const shopping = state.adventurers.some((hero) => hero.id === prior.id && hero.status === "at-shop");
       if (wasShopping && shopping) {
-        stays += 1;
         expect(current).toBeDefined();
       }
       if (wasShopping && !shopping) {
@@ -65,7 +66,12 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
           expect(current.phase).toBe("leaving");
         }
       }
-      if (current) {
+      if (current && prior.phase === "leaving" && current.uniqueId !== prior.uniqueId) {
+        // A returner may finish exiting between snapshots, then enter anew.
+        expect(wasShopping).toBe(false);
+        expect(shopping).toBe(true);
+      } else if (current) {
+        persistentTransitions += 1;
         expect(current.uniqueId).toBe(prior.uniqueId);
         const elapsed = (after.time - before.time) / 1000;
         expect(Math.hypot(current.x - prior.x, current.z - prior.z)).toBeLessThan(2.1 * elapsed + 0.75);
@@ -74,7 +80,7 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
     await page.waitForTimeout(100);
     expect((await inspect()).visitors.every(({ wallClear }) => wallClear)).toBe(true);
   }
-  expect(stays).toBeGreaterThan(0);
+  expect(persistentTransitions).toBeGreaterThan(0);
   expect(departures).toBeGreaterThan(0);
 
   await page.locator("#renderCanvas").click();
