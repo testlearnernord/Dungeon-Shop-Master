@@ -29,3 +29,27 @@ export function aimAtShelfSlot() {
   camera.setTarget(scene.getMeshByName("shelf-1-slot-1")!.getAbsolutePosition());
   return start.frame;
 }
+
+export function inspectNpcVisuals() {
+  const scene = Engine.LastCreatedScene!;
+  return {
+    frame: scene.getFrameId(),
+    visitors: scene.transformNodes
+      .filter((node) => node.name.startsWith("npc-adventurer-") && node.metadata?.adventurerId)
+      .map((node) => ({
+        id: node.metadata.adventurerId as string,
+        name: node.metadata.name as string,
+        role: node.metadata.role as string,
+        phase: node.metadata.phase as string,
+        status: node.metadata.simulationStatus as string,
+        uniqueId: node.uniqueId,
+        x: node.position.x,
+        y: node.position.y,
+        z: node.position.z,
+        unpickable: node.getChildMeshes(false).every((mesh) => !mesh.isPickable && !mesh.checkCollisions),
+        hasLabel: node.getChildMeshes(false).some((mesh) => mesh.name === `${node.name}-label`),
+      })),
+    gateY: scene.getMeshByName("level-4-barrier")?.position.y,
+    playerBarrierSolid: scene.getMeshByName("level-4-player-barrier")?.checkCollisions ?? false,
+  };
+}
