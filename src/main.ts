@@ -5,6 +5,7 @@ import { Inventory, ITEMS, type ItemId } from "./game/inventory";
 import { InteractionSystem } from "./game/interactionSystem";
 import { Shop } from "./game/shop";
 import { buildWorld } from "./game/world";
+import { setupDayHud } from "./dayHud";
 import "./styles.css";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#renderCanvas");
@@ -23,6 +24,7 @@ const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const inventory = new Inventory();
 const shop = new Shop(scene, inventory);
+setupDayHud(canvas);
 
 function renderInventory(selectedItem: ItemId): void {
   inventoryHud.replaceChildren();

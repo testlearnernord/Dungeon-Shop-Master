@@ -9,6 +9,8 @@ A small browser-based first-person prototype set in Galvik's mineshaft shop on D
 - **Mouse wheel** selects an item from your starter inventory.
 - **Left-click / hold** a shelf slot to stock it; **right-click / hold** to return one item at a time.
 - **E** interacts with Galvik's checkout register when nearby.
+- **N** requests End Day; **Y** confirms Next Day; **Esc** cancels a pending request (and releases the pointer as usual). There is no automatic progression or countdown.
+- Alternatively, release the pointer with **Esc** and click **End Day**, then the separate **Confirm Next Day** button. Buttons also support Tab and Enter/Space. Requests alone never advance time; held shortcut keys and duplicate confirmations are ignored.
 
 Each of the two shelves has five numbered slots. A slot can hold up to five of one item type. The HUD shows selected inventory and total bag capacity. Level 4 and Level 6 corridors are signed and blocked; checkout transactions are not implemented in this prototype.
 
@@ -20,6 +22,15 @@ Each of the two shelves has five numbered slots. A slot can hold up to five of o
 - `src/game/interactionSystem.ts` handles pointer lock, mouse interactions, repeat actions, wheel selection, and E interactions.
 - `src/game/world.ts` builds the mineshaft, corridors, lighting, and checkout.
 - `src/main.ts` connects the scene, game systems, and HUD.
+- `src/game/gameState.ts` owns the pure, typed day simulation and confirmation state transition; `src/dayHud.ts` connects it to the HUD and deliberate input.
+
+### Day simulation foundation
+
+A session starts on **Day 1** with a welcome event. One confirmed action calls `advanceDay(state)` exactly once: one day is one atomic simulation tick. The pure function returns `{ state, events }`, leaving its input unchanged, appending deterministic events to the session's world log, and emitting only the current tick's events separately. The HUD shows the latest three messages. No timestamps, randomness, browser APIs, Babylon objects, frame callbacks, or real-time timers participate in simulation.
+
+`GameState` holds the single global day, simulation version, event history, and typed extension points for adventurers, shop economy, dungeon floor progress, and hunger. These placeholders start empty/null and are not simulated; they do not add NPCs, balance, transactions, or food consumption. State persists across days in memory only; reloading starts a fresh session. Invalid/overflowing days and unsupported simulation versions are rejected before any update.
+
+The existing `Inventory` and `Shop` remain the sole owners of bag contents and shelf slots. Day ticks neither copy nor alter them. Future integration should first move that data into typed simulation state, then adapt `Inventory`/`Shop` and visualization to read/update that same state—never keep synchronized duplicate inventories. Future adventurer persistence (inventory/XP/hunger/traits) and abstract floor 1–4 outcomes versus detailed uncleared floor ≥6 outcomes/event-based cleared floors belong in pure tick systems, not rendering; none are implemented here.
 
 ## Local setup
 
@@ -37,7 +48,15 @@ npm run build
 npm run preview
 ```
 
-## Browser regression test
+## Tests
+
+Pure simulation and confirmation-guard tests use Node's built-in runner (no rendering or added test dependency):
+
+```sh
+npm run test:unit
+```
+
+Browser regressions:
 
 ```sh
 npx playwright install --with-deps chromium
@@ -45,6 +64,8 @@ npm test
 ```
 
 The test uses headed Chromium for real pointer-lock mouse movement. On a headless Linux machine, run `xvfb-run -a npm test` (also run by CI). It checks actual WASD input on the initial load and after three reloads, mouse look, pointer capture/release, 32 seconds of sustained input with scene-frame progress, gravity, and wall/shelf/counter collisions. Scene inspection lives only in the development test harness, not the production bundle.
+
+The day-clock browser regression checks Day 1, confirmation/cancellation, double-click and held-key guards, ten consecutive day advances, recent messages, unchanged inventory, and movement/pointer lock while confirmation is pending. CI runs both the pure unit tests and browser regressions alongside the production build.
 
 ### Movement freeze fix
 
@@ -66,3 +87,4 @@ The `Deploy to GitHub Pages` workflow builds and deploys pushes to `main`. In th
 4. Aim at a slot, left-click to stock, and hold to stock repeatedly; verify the inventory count and bag total decrease.
 5. Right-click and hold to return goods; verify counts rise, and try switching to an incompatible item for an occupied slot.
 6. Use the wheel to change the selected item, press E near the register, then press Esc to release the pointer.
+7. Check Day 1 and the welcome event. Double-click End Day: it must only open confirmation. Cancel, then request and confirm: Day 2 must appear once. Hold N/Y, and repeat ten deliberate advances; verify WASD, pointer lock, stocking, and removal still work and the log shows the last three events.

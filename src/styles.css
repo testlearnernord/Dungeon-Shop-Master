@@ -43,6 +43,51 @@ body,
   font-weight: 600;
 }
 
+.day-panel {
+  position: absolute;
+  top: 56px;
+  left: 24px;
+  width: 240px;
+  max-width: 44vw;
+  padding: 10px 12px;
+  border: 1px solid #9b774b;
+  border-radius: 6px;
+  background: rgb(24 19 15 / 86%);
+  font-size: 12px;
+}
+
+#day {
+  color: #f2d59f;
+  font-size: 18px;
+}
+
+#world-events {
+  padding: 0;
+  list-style: none;
+  color: #c9bda9;
+}
+
+#world-events li + li {
+  margin-top: 4px;
+}
+
+.day-panel button {
+  pointer-events: auto;
+  margin: 2px 0;
+  padding: 6px 8px;
+  border: 1px solid #9b774b;
+  border-radius: 4px;
+  background: #241d15;
+  color: #f2e7d2;
+  font: inherit;
+  cursor: pointer;
+}
+
+.day-panel button:focus-visible {
+  outline: 2px solid #f2d59f;
+  outline-offset: 2px;
+}
+
 .inventory {
   position: absolute;
   top: 20px;
