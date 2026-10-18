@@ -52,9 +52,11 @@ test("day confirmation guards clicks and keyboard repeats without blocking the s
     await page.keyboard.press("y");
     await expect(day).toHaveText(`Day ${nextDay}`);
   }
-  await expect(page.locator("#world-events li")).toHaveText([
-    "Day 9 begins.", "Day 10 begins.", "Day 11 begins.",
-  ]);
+  await expect(page.locator("#world-events li")).toHaveCount(3);
+  const eventIds = await page.locator("#world-events li").evaluateAll((entries) =>
+    entries.map((entry) => (entry as HTMLElement).dataset.eventId));
+  expect(eventIds.every((id) => id?.startsWith("day-11:"))).toBe(true);
+  expect(new Set(eventIds).size).toBe(3);
   await expect(page.locator("#inventory")).toHaveText(inventory, { useInnerText: true });
 
   // Reacquire if Escape released pointer lock, then move while a request is pending.

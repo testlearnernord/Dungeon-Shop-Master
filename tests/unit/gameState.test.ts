@@ -11,13 +11,12 @@ test("a fresh session starts on Day 1 with independent state and a welcome event
   const state = createGameState();
   assert.equal(state.day, 1);
   assert.equal(state.simulationVersion, SIMULATION_VERSION);
-  assert.deepEqual(state.events, [
-    { type: "welcome", day: 1, message: "Welcome to Day 1. The shop is ready." },
-  ]);
-  assert.deepEqual(state.adventurers, []);
+  assert.deepEqual(state.events.at(-1), {
+    id: "day-1:welcome", type: "welcome", day: 1, message: "Welcome to Day 1. The shop is ready.",
+  });
+  assert.equal(state.adventurers.length, 10);
   assert.equal(state.shopEconomy, null);
   assert.deepEqual(state.dungeonFloors, []);
-  assert.deepEqual(state.hunger, []);
   assert.notEqual(state.events, createGameState().events);
 });
 
@@ -25,7 +24,8 @@ test("one tick advances exactly one day and returns only that tick's determinist
   const initial = createGameState();
   const result = advanceDay(initial);
   assert.equal(result.state.day, 2);
-  assert.deepEqual(result.events, [{ type: "day-started", day: 2, message: "Day 2 begins." }]);
+  assert.deepEqual(result.events[0], { id: "day-2:started", type: "day-started", day: 2, message: "Day 2 begins." });
+  assert(result.events.every((event) => event.day === 2));
   assert.deepEqual(result.state.events, [...initial.events, ...result.events]);
   assert.deepEqual(advanceDay(initial), result);
 });
@@ -33,23 +33,22 @@ test("one tick advances exactly one day and returns only that tick's determinist
 test("ticks do not mutate frozen input, history, or future system state", () => {
   const initial = {
     ...createGameState(),
-    adventurers: [{ id: "test-adventurer" }],
     shopEconomy: { balance: 17 },
     dungeonFloors: [{ floor: 1, cleared: false }],
-    hunger: [{ adventurerId: "test-adventurer", hunger: 4 }],
   };
   const snapshot = structuredClone(initial);
-  for (const value of [initial.events, initial.adventurers, initial.dungeonFloors, initial.hunger]) {
-    value.forEach(Object.freeze);
+  const freeze = (value: object): void => {
+    Object.values(value).forEach((child) => {
+      if (child !== null && typeof child === "object") freeze(child);
+    });
     Object.freeze(value);
-  }
-  Object.freeze(initial.shopEconomy);
-  Object.freeze(initial);
+  };
+  freeze(initial);
   const { state } = advanceDay(initial);
   assert.deepEqual(initial, snapshot);
   assert.notEqual(state, initial);
   assert.notEqual(state.events, initial.events);
-  for (const key of ["adventurers", "shopEconomy", "dungeonFloors", "hunger"] as const) {
+  for (const key of ["shopEconomy", "dungeonFloors"] as const) {
     assert.deepEqual(state[key], snapshot[key]);
   }
 });
@@ -57,9 +56,11 @@ test("ticks do not mutate frozen input, history, or future system state", () => 
 test("ten consecutive ticks preserve ordered history and version", () => {
   let state = createGameState();
   for (let tick = 1; tick <= 10; tick += 1) {
-    state = advanceDay(state).state;
+    const previous = state;
+    const result = advanceDay(state);
+    state = result.state;
     assert.equal(state.day, tick + 1);
-    assert.equal(state.events.length, tick + 1);
+    assert.equal(state.events.length, previous.events.length + result.events.length);
     assert.equal(state.simulationVersion, SIMULATION_VERSION);
     assert.equal(state.events.at(-1)?.day, state.day);
   }
