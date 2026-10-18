@@ -1,4 +1,6 @@
 import { SeededRandom } from "./random.ts";
+import { ECONOMY, ITEMS } from "./economy.ts";
+import type { WorldEvent } from "./gameState.ts";
 
 export type AdventurerRole = "tank" | "DPS" | "healer";
 export type AdventurerStatus = "exploring" | "traveling" | "at-shop" | "returning" | "dead";
@@ -24,7 +26,7 @@ export interface AdventurerState {
   readonly health: number;
   readonly gold: number;
   readonly equipment: { readonly weapon: string | null; readonly armor: string | null };
-  readonly inventory: { readonly loot: number; readonly food: number };
+  readonly inventory: { readonly loot: number; readonly food: number; readonly healing: number };
   readonly floor: DungeonFloor;
   readonly status: AdventurerStatus;
   readonly hunger: number;
@@ -60,13 +62,53 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
     health: maxHealth,
     gold: 5 + random.int(11),
     equipment: { weapon: null, armor: null },
-    inventory: { loot: 0, food: 0 },
+    inventory: { loot: 0, food: 0, healing: 0 },
     floor: 1,
     status: "exploring",
     hunger: 0,
     shopStayDays: 0,
   };
   return { adventurer, rngState: random.state };
+}
+
+export function consumeDailySupplies(hero: AdventurerState, day: number): {
+  adventurer: AdventurerState; events: WorldEvent[];
+} {
+  if (hero.status === "dead") return { adventurer: hero, events: [] };
+  const events: WorldEvent[] = [];
+  let health = hero.health;
+  let hunger = hero.hunger;
+  let { food, healing } = hero.inventory;
+  if (food > 0) {
+    food -= 1;
+    hunger = Math.max(0, hunger - ITEMS.find((item) => item.id === "bread")!.hunger);
+    events.push({
+      id: `day-${day}:${hero.id}:ate`, type: "ate", day, adventurerId: hero.id,
+      itemId: "bread", quantity: 1, message: `${hero.name} ate Waybread.`,
+    });
+  } else {
+    hunger += 1;
+  }
+  if (healing > 0 && health < hero.stats.maxHealth) {
+    healing -= 1;
+    health = Math.min(hero.stats.maxHealth, health + ITEMS.find((item) => item.id === "healing-herb")!.healing);
+    events.push({
+      id: `day-${day}:${hero.id}:healed`, type: "healed", day, adventurerId: hero.id,
+      itemId: "healing-herb", quantity: 1, message: `${hero.name} used a Healing Herb.`,
+    });
+  }
+  if (hunger >= ECONOMY.starvationThreshold) {
+    health = Math.max(0, health - ECONOMY.starvationDamage);
+    events.push({
+      id: `day-${day}:${hero.id}:starvation`, type: "starvation", day, adventurerId: hero.id,
+      message: `${hero.name} suffered starvation${health === 0 ? " and died" : ""}.`,
+    });
+  }
+  return {
+    adventurer: { ...hero, health, hunger, status: health === 0 ? "dead" : hero.status,
+      inventory: { ...hero.inventory, food, healing } },
+    events,
+  };
 }
 
 export function generateStartingPopulation(rngState: number): { adventurers: readonly AdventurerState[]; rngState: number } {

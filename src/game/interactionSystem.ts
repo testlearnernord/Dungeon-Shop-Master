@@ -22,6 +22,7 @@ export class InteractionSystem {
     private readonly shop: Shop,
     private readonly worldItems: WorldInteractable[],
     private readonly onUpdate: (message: string, selected: ItemId) => void,
+    private readonly openCatalog: () => void = () => {},
     private readonly maxInteractionDistance = 3,
   ) {
     this.shop.select(ITEMS[0].id);
@@ -32,6 +33,7 @@ export class InteractionSystem {
   private registerEvents(): void {
     this.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
     this.canvas.addEventListener("wheel", (event) => {
+      if (document.querySelector("dialog[open]")) return;
       event.preventDefault();
       const direction = Math.sign(event.deltaY);
       this.selectedIndex = (this.selectedIndex + direction + ITEMS.length) % ITEMS.length;
@@ -40,6 +42,7 @@ export class InteractionSystem {
       this.publish();
     }, { passive: false });
     this.canvas.addEventListener("pointerdown", (event) => {
+      if (document.querySelector("dialog[open]")) return;
       if (event.button !== 0 && event.button !== 2) return;
       if (document.pointerLockElement !== this.canvas) {
         void this.canvas.requestPointerLock();
@@ -56,11 +59,15 @@ export class InteractionSystem {
       if (document.pointerLockElement !== this.canvas) this.heldButton = null;
     });
     window.addEventListener("keydown", (event) => {
-      if (event.code !== "KeyE" || event.repeat) return;
+      if (event.code !== "KeyE" || event.repeat || document.querySelector("dialog[open]")) return;
       this.interact();
     });
     this.scene.onBeforeRenderObservable.add(() => {
       if (this.heldButton === null || performance.now() < this.nextRepeatAt) return;
+      if (document.querySelector("dialog[open]")) {
+        this.heldButton = null;
+        return;
+      }
       this.nextRepeatAt = performance.now() + this.repeatDelay;
       this.performPointerAction(this.heldButton, 0, 0);
     });
@@ -89,7 +96,8 @@ export class InteractionSystem {
     } else {
       const target = this.worldItems.find(({ mesh }) => mesh === hit.pickedMesh);
       if (target?.kind === "register") {
-        this.message = "Galvik's register is ready. Transactions aren't available yet.";
+        this.message = "Wholesale catalog opened. Visitors buy on confirmed End Day.";
+        this.openCatalog();
       }
     }
     this.publish();
@@ -98,9 +106,12 @@ export class InteractionSystem {
   private interact(): void {
     const pick = this.scene.pickWithRay(this.camera.getForwardRay(3));
     const target = this.worldItems.find(({ mesh }) => mesh === pick?.pickedMesh);
-    this.message = target?.kind === "register"
-      ? "Galvik's register is ready. Transactions aren't available yet."
-      : "Nothing nearby to interact with.";
+    if (target?.kind === "register") {
+      this.message = "Wholesale catalog opened. Visitors buy on confirmed End Day.";
+      this.openCatalog();
+    } else {
+      this.message = "Nothing nearby to interact with.";
+    }
     this.publish();
   }
 

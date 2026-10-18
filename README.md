@@ -9,20 +9,23 @@ A small browser-based first-person prototype set in Galvik's mineshaft shop on D
 - **Mouse wheel** selects an item from your starter inventory.
 - **Left-click / hold** a shelf slot to stock it; **right-click / hold** to return one item at a time.
 - **E** interacts with Galvik's checkout register when nearby.
+- **B** opens/closes wholesale (also available from the HUD or register). Opening releases pointer lock and pauses movement controls; **Esc** closes it. Click the scene to capture the pointer again. Catalog input cannot stock shelves or advance days.
 - **N** requests End Day; **Y** confirms Next Day; **Esc** cancels a pending request (and releases the pointer as usual). There is no automatic progression or countdown.
 - Alternatively, release the pointer with **Esc** and click **End Day**, then the separate **Confirm Next Day** button. Buttons also support Tab and Enter/Space. Requests alone never advance time; held shortcut keys and duplicate confirmations are ignored.
 
-Each of the two shelves has five numbered slots. A slot can hold up to five of one item type. The HUD shows selected inventory and total bag capacity. Level 4 and Level 6 corridors are signed and blocked; checkout transactions are not implemented in this prototype.
+Each of the two shelves has five numbered slots. A slot can hold up to five of one item type. The HUD shows selected inventory, bag capacity, merchant gold, shelf totals and the last daily sales result. Level 4 and Level 6 corridors remain signed and blocked.
 
 ## Architecture
 
 - `src/game/firstPersonController.ts` configures first-person movement and collision.
-- `src/game/inventory.ts` defines typed items, stacks, slots, interactables, and safe inventory capacity rules.
-- `src/game/shop.ts` manages shelf slots and stocking/removal.
+- `src/game/economy.ts` defines the typed catalog, balance constants and pure wholesale, stocking and customer transactions; `inventory.ts` re-exports shared item/slot types.
+- `src/game/gameStore.ts` holds the authoritative `GameState` and publishes immutable transaction results. Neither the bag nor shelves have a second owner.
+- `src/game/shop.ts` projects authoritative shelf slots into meshes and delegates stocking/removal to the store.
 - `src/game/interactionSystem.ts` handles pointer lock, mouse interactions, repeat actions, wheel selection, and E interactions.
 - `src/game/world.ts` builds the mineshaft, corridors, lighting, and checkout.
 - `src/main.ts` connects the scene, game systems, and HUD.
 - `src/game/gameState.ts` owns the pure, typed day simulation and confirmation state transition; `src/dayHud.ts` connects it to the HUD and deliberate input.
+- `src/economyHud.ts` connects wholesale controls and compact economic summaries to the same store.
 - `src/game/random.ts` provides a seeded 32-bit RNG; `adventurers.ts` generates persistent hero data, `dungeonSimulation.ts` resolves abstract floors 1–4, and `shopArrivals.ts` schedules shop stays and returns.
 
 ### Persistent adventurers and day simulation
@@ -33,33 +36,55 @@ One confirmed action calls `advanceDay(state)` exactly once: **one day = one ato
 
 The default seed is `7351`. `GameState` stores both the initial seed and current RNG state; `createGameState(seed, config)` supports reproducible alternative worlds. Identical seeds, configuration and confirmed actions reproduce the same multi-day state, including after JSON serialization. Heroes persist across days **in memory only**; reloading starts a fresh session, not a saved campaign. Invalid seeds, configuration, overflowing days and unsupported simulation versions are rejected.
 
-#### Provisional abstract rules (not full combat)
+#### Merchant economy and tick order
+
+Balance lives in `ITEMS` and `ECONOMY` in `src/game/economy.ts`, not in the renderer. Start with **20 gold**, a **24-item bag** containing 5 healing herbs, 3 mana potions, 4 iron ore and 2 Waybread, plus 3 Waybread and 2 herbs already shelved. Each shelf slot holds 5 units.
+
+| Item | Wholesale | Sale | Current use |
+| --- | ---: | ---: | --- |
+| Waybread | 2g | 4g | Consume at most 1/day; reduce hunger by 3 (minimum 0) |
+| Healing Herb | 3g | 6g | Consume at most 1/day when injured; restore 18 HP, capped at max |
+| Mana Potion | 4g | 7g | Reserved for future mana mechanics; visitors do not buy/use it |
+| Iron Ore | 2g | 3g | Nonconsumable material reserved for future use; visitors do not buy it |
+
+Wholesale buttons buy **one unit immediately**, deducting its price and adding it to the bag atomically. Prices and quantity are shown on each button/row. Invalid quantities/items, insufficient gold and full bags reject the entire action. Stocking/removal transfers one item without changing money and never mutates an earlier state snapshot. Purchases are guarded against duplicate order IDs, double-clicks and held activation keys.
+
+Every confirmed End Day executes this order (events are labeled with the resulting day):
+
+1. Apply eligible emergency aid to the **bag**, never directly to a shelf or hero.
+2. Existing `at-shop` visitors buy in persistent roster order; shelf order breaks stock ties. Each buys toward **2 carried food** and, if injured, **1 carried herb**, limited by their gold and available stock. Each sale removes shelf units, adds personal consumables, debits the hero and credits the merchant together. Departing customers can buy; traveling/newly arriving heroes cannot shop until a later tick.
+3. Every living hero consumes at most one food and one healing supply. Without food, hunger increases by 1. At hunger **3 or more**, starvation removes **8 HP/day** after consumption/healing and can kill. Food comes only through merchant sales: neither new heroes nor dungeon loot carry food. Supplies improve survival but cannot prevent all hazards.
+4. Resolve abstract dungeon combat for exploring/returning heroes, then travel, shop stays and departures. There is **no free shop healing**.
+5. Fill living-population vacancies with newcomers, up to the daily and active caps. Newcomers start consuming/exploring on the next tick.
+
+**Bankruptcy fallback:** if gold is below the 2g bread cost and neither bag nor shelves contain bread, the next confirmed day grants up to **2 Waybread**, limited by free bag space, once for that day. It must still be stocked and sold. Clear bag space onto shelves if necessary. There is no rescue button or repeat-event reward; the foodless/poor checks prevent stockpiling aid. Daily aid is deliberately limited, not an unlimited same-day source of items or money.
+
+#### Provisional abstract dungeon rules (not full combat)
 
 - Each exploring/returning hero takes one outcome on floors 1–4 per tick: 4% hazard death, 18% retreat one floor (minimum 1), 48% advance one floor, 30% stay. All outcomes lose `1–6 + current floor` HP; reaching zero HP also causes death. Dead records remain permanently in the pool and never simulate or return.
-- Survivors earn 8–20 XP; every 100 cumulative XP grants a level. Advance/stay outcomes discover 0–4 gold; a positive gold discovery has a 20% chance of adding one abstract loot token. Retreat/death grant no gold or loot. No other outcomes create items, and there are no transactions.
-- Advancing from floor 4 marks travel, then the arrival scheduler places that same hero at the Level 5 shop in the same tick. A visitor has a 35% chance to remain one extra day, otherwise returns to floor 4. A second consecutive stay always ends in a return. Shop rest restores 8 HP, capped at maximum, without creating food. Returners explore again on the following tick and can revisit. No hero enters floor 6; gate authorization remains out of scope.
-- After existing heroes simulate, up to **2 newcomers per day** enter floor 1, subject to **20 living heroes** and a **30-newcomer lifetime budget**. Thus the default session has at most 40 identities including dead records; deaths free active slots but never replenish the budget. Traffic follows floor progression and return visits, not hard-coded day counts. The pool can eventually die out.
-- Configure `dailyInflux` (nonnegative safe integer), `maxActive` (10–100), and `totalInflux` (0–1000) through `createGameState(seed, config)`. For example, `{ dailyInflux: 0 }` disables newcomers. Configuration never changes the initial 10/3 conditions.
-- **Hunger and food are deferred**: both start at zero and remain unchanged. Dungeon outcomes never produce food; future food supplies must come only from the merchant. No hunger penalties or consumption/economy are implied by these placeholder fields.
+- Survivors earn 8–20 XP; every 100 cumulative XP grants a level. Advance/stay outcomes discover 0–4 gold; a positive gold discovery has a 20% chance of adding one nonconsumable abstract loot token. Retreat/death grant no gold or loot. These documented dungeon rewards and newcomer purses are world sources; merchant trades themselves conserve all items and gold.
+- Advancing from floor 4 marks travel, then the arrival scheduler places that same hero at the Level 5 shop in the same tick. A visitor has a 35% chance to remain one extra day, otherwise returns to floor 4. A second consecutive stay always ends in a return. Returners explore again on the following tick and can revisit. No hero enters floor 6; gate authorization remains out of scope.
+- After existing heroes simulate, up to **2 newcomers per day** enter floor 1, subject to **20 living heroes**. There is **no lifetime influx cap**: deaths free active slots, allowing recovery even after day 49 or a complete collapse. IDs increase monotonically; dead records never revive. Only living heroes simulate, while historical records/events remain available in memory (history grows with campaign length).
+- Configure `dailyInflux` (nonnegative safe integer) and `maxActive` (10–100) through `createGameState(seed, config)`. For example, `{ dailyInflux: 0 }` disables newcomers. Configuration never changes the initial 10/3 conditions.
 
-The existing `Inventory` and `Shop` remain the sole owners of player bag contents and shelf slots. Day ticks neither copy nor alter them. Hero loot tokens and food fields are personal inventories, not another player stock system. Future stock integration must migrate ownership into simulation state before adapting the scene—never synchronize duplicate bag/shelf inventories. Shop economy and global floor-clear extension points remain null/empty.
+`GameState.shopEconomy` owns the bag, shelves, merchant balance, daily sales and last aid day. Hero food/healing are individual inventories; loot tokens are never consumables. The scene reads this state and submits pure transactions through `GameStore`; visual animation cannot trigger trades. Plain data and the simulation version support future save/load, which is not implemented in this milestone. Global floor-clear progress remains an empty extension point.
 
 #### Sample loop
 
-Inspect the compact, scrollable **Adventurers** panel for active heroes' names, roles, level, HP, floor and status; the visitor line explicitly names everyone at the shop. Hover a roster row for XP, gold and traits. Collapse the panel to free screen space. Stock shelves as usual, press **N**, then **Y** to confirm End Day, and inspect arrivals, injuries, discoveries and losses in the latest-three-event log. Repeat to see the same named heroes return from floor 4; cancelling never changes the world.
+Inspect the compact, scrollable **Adventurers** panel for HP, hunger, carried food and visitor identities. Hover a roster row for XP, gold and traits; collapse it to free screen space. Buy bread/herbs with **B**, stock shelves, then press **N**, **Y**. Check gold earned and shelf totals. Expand **Full day report** for named sales, eating, healing, starvation and dungeon deaths; only three recent events appear in the main HUD. Repeat to see heroes return; cancelling never changes the world.
 
 ### 3D shop visitors
 
 The Babylon scene renders only persistent GameState heroes whose status is `at-shop`. Day 1's three visitors enter through the Level 4 corridor; each has a name/role label, role-colored low-poly gear, and procedural walk/idle motion between a shelf, checkout queue and waiting area. Visitor IDs reconcile on confirmed day changes: staying heroes keep their meshes and routes, arrivals walk in, and departing heroes walk out before their scene objects are disposed. Larger groups use spaced queue and shelf positions. These are visual-only agents: frame time changes neither RPG state nor day, hunger, inventory or arrivals.
 
-The Level 4 gate panel raises for visitor passage. A separate invisible collider keeps the player blocked by WASD while that visual gate is open; the Level 6 barrier is unchanged. NPC meshes do not collide with the player or participate in picking. Visitors do not transact, consume food or enter Level 6. Their paths and simple animations are visual approximations rather than simulated decisions.
+The Level 4 gate panel raises for visitor passage. A separate invisible collider keeps the player blocked by WASD while that visual gate is open; the Level 6 barrier is unchanged. NPC meshes do not collide with the player or participate in picking. Their animations never transact or consume food, and they never enter Level 6. Paths and animations are visual approximations; authoritative purchases and survival resolve only on confirmed days.
 
 ## Local setup
 
 Requires Node.js 22 or newer.
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
@@ -87,9 +112,9 @@ npm test
 
 The test uses headed Chromium for real pointer-lock mouse movement. On a headless Linux machine, run `xvfb-run -a npm test` (also run by CI). It checks actual WASD input on the initial load and after three reloads, mouse look, pointer capture/release, 32 seconds of sustained input with scene-frame progress, gravity, and wall/shelf/counter collisions. Scene inspection lives only in the development test harness, not the production bundle.
 
-The day-clock browser regression checks Day 1, confirmation/cancellation, double-click and held-key guards, ten consecutive day advances, recent messages, unchanged inventory, and movement/pointer lock while confirmation is pending. The adventurer regression compares the HUD against deterministic tick results across eleven days, checks textual visitors and persistent IDs, then stocks a shelf, advances a day and removes the item. `tests/npcVisitors.spec.ts` checks Day 1 scene IDs/labels, frame-driven movement, mesh-safe persistence across confirmed ticks, departure reconciliation and the still-solid player gate. Unit tests cover visitor reconciliation as well as initial 10/3 conditions, all abstract outcomes, XP/HP/loot bounds, serialized deterministic replay, return visits, unique hero/event IDs, permanent death and finite/configurable influx over 100 days. CI runs the pure unit tests and browser regressions alongside the production build.
+The day-clock browser regression checks confirmation/cancellation, double-click and held-key guards, consecutive days, recent messages and movement/pointer lock. The adventurer regression compares the HUD against deterministic tick results and tests shelf stocking/removal. `tests/npcVisitors.spec.ts` checks scene IDs/labels, frame-driven movement, mesh-safe persistence, departures and the solid player gate. `tests/economy.spec.ts` covers wholesale, double-click/held activation protection, modal input isolation, stocking, next-day sell-out and wholesale replenishment at desktop/laptop sizes. Unit tests cover atomic transactions, limited aid, food/healing survival effects, shopping order, stock competition, serialized multi-day replay, permanent deaths and vacancy-driven recovery beyond day 49. CI runs unit tests, all browser regressions and the production build.
 
-For just the new browser smoke test: `xvfb-run -a npm test -- tests/adventurers.spec.ts`.
+For the economy smoke test: `xvfb-run -a npm test -- tests/economy.spec.ts`.
 
 ### Movement freeze fix
 

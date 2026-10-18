@@ -54,6 +54,8 @@ body,
   border-radius: 6px;
   background: rgb(24 19 15 / 86%);
   font-size: 12px;
+  max-height: calc(100vh - 155px);
+  overflow: auto;
 }
 
 #day {
@@ -86,6 +88,55 @@ body,
 .day-panel button:focus-visible {
   outline: 2px solid #f2d59f;
   outline-offset: 2px;
+}
+
+.day-report {
+  pointer-events: auto;
+  margin-top: 8px;
+}
+
+#day-history {
+  padding-left: 18px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+#day-history li + li {
+  margin-top: 6px;
+}
+
+#wholesale {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border: 1px solid #9b774b;
+  border-radius: 6px;
+  padding: 18px;
+  color: #f2e7d2;
+  background: #18130f;
+  font-size: 14px;
+}
+
+#wholesale::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+#wholesale button {
+  padding: 8px;
+  border: 1px solid #9b774b;
+  border-radius: 4px;
+  background: #302519;
+  color: #f2e7d2;
+  cursor: pointer;
+}
+
+.catalog-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 0;
 }
 
 .inventory {

@@ -31,7 +31,7 @@ test("read-only roster and textual visitors track the persistent simulation on c
     await expect(roster).toHaveCount(active.length);
     for (const hero of active) {
       await expect(page.locator(`[data-adventurer-id="${hero.id}"]`)).toHaveText(
-        `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status}`,
+        `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`,
       );
     }
     const atShop = active.filter((hero) => hero.status === "at-shop");
