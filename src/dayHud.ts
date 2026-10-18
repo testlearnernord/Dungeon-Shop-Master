@@ -1,6 +1,10 @@
 import { advanceDay, createGameState, transitionDayConfirmation, type DayAction } from "./game/gameState";
+import { reconcileVisitors, type VisitorSnapshot } from "./game/npcVisitors";
 
-export function setupDayHud(canvas: HTMLCanvasElement): void {
+export function setupDayHud(
+  canvas: HTMLCanvasElement,
+  onVisitorsChanged: (current: readonly VisitorSnapshot[], previous: readonly VisitorSnapshot[]) => void = () => {},
+): void {
   const day = document.querySelector<HTMLElement>("#day");
   const events = document.querySelector<HTMLOListElement>("#world-events");
   const request = document.querySelector<HTMLButtonElement>("#end-day");
@@ -16,6 +20,10 @@ export function setupDayHud(canvas: HTMLCanvasElement): void {
 
   let state = createGameState();
   let pending = false;
+  const snapshotVisitors = (): readonly VisitorSnapshot[] => state.adventurers.map(({ id, name, role, status }) => ({
+    id, name, role, status,
+  }));
+  let previousVisitors: readonly VisitorSnapshot[] = [];
 
   const render = (): void => {
     day.textContent = `Day ${state.day}`;
@@ -44,7 +52,13 @@ export function setupDayHud(canvas: HTMLCanvasElement): void {
   const act = (action: DayAction): void => {
     const transition = transitionDayConfirmation(pending, action);
     pending = transition.pending;
-    if (transition.advance) state = advanceDay(state).state;
+    if (transition.advance) {
+      previousVisitors = snapshotVisitors();
+      state = advanceDay(state).state;
+      const currentVisitors = snapshotVisitors();
+      onVisitorsChanged(currentVisitors, previousVisitors);
+      previousVisitors = currentVisitors;
+    }
     // Do not leave keyboard focus on a confirmation button that is about to hide.
     if (!pending && (document.activeElement === confirm || document.activeElement === cancel)) {
       canvas.focus();
@@ -69,4 +83,7 @@ export function setupDayHud(canvas: HTMLCanvasElement): void {
     }
   });
   render();
+  const initialVisitors = snapshotVisitors();
+  onVisitorsChanged(initialVisitors, previousVisitors);
+  previousVisitors = initialVisitors;
 }
