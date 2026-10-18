@@ -88,12 +88,19 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   for (const x of [-5.3, -2.7, 2.7, 5.3]) {
     box(scene, `corridor-wall-${x}`, { width: 0.25, height: 4, depth: 5.5 }, new Vector3(x, 2, 9.65), rock);
   }
-  box(scene, "corridor-end-left", { width: 2.7, height: 4, depth: 0.4 }, new Vector3(-4, 2, 12.2), rock);
+  box(scene, "corridor-end-left-outer", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(-5.2, 2, 12.2), rock);
+  box(scene, "corridor-end-left-inner", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(-2.8, 2, 12.2), rock);
   box(scene, "corridor-end-right", { width: 2.7, height: 4, depth: 0.4 }, new Vector3(4, 2, 12.2), rock);
 
   sign(scene, "level-4-sign", "LEVEL 4 · BLOCKED", new Vector3(-4, 2.8, 6.73));
   sign(scene, "level-6-sign", "LEVEL 6 · BLOCKED", new Vector3(4, 2.8, 6.73));
-  box(scene, "level-4-barrier", { width: 2.2, height: 1.8, depth: 0.25 }, new Vector3(-4, 0.9, 11.7), new Color3(0.26, 0.12, 0.1));
+  const level4Door = box(scene, "level-4-barrier", { width: 2.2, height: 1.8, depth: 0.25 },
+    new Vector3(-4, 0.9, 11.7), new Color3(0.26, 0.12, 0.1), false);
+  level4Door.isPickable = false;
+  const playerBarrier = box(scene, "level-4-player-barrier", { width: 2.2, height: 1.8, depth: 0.25 },
+    new Vector3(-4, 0.9, 11.7), new Color3(0.26, 0.12, 0.1));
+  playerBarrier.visibility = 0;
+  playerBarrier.isPickable = false;
   box(scene, "level-6-barrier", { width: 2.2, height: 1.8, depth: 0.25 }, new Vector3(4, 0.9, 11.7), new Color3(0.26, 0.12, 0.1));
 
   box(scene, "checkout-counter", { width: 3.5, height: 1.15, depth: 1.15 }, new Vector3(0, 0.68, 2.45), new Color3(0.32, 0.2, 0.12));

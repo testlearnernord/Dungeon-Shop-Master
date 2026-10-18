@@ -3,6 +3,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { createFirstPersonCamera } from "./game/firstPersonController";
 import { Inventory, ITEMS, type ItemId } from "./game/inventory";
 import { InteractionSystem } from "./game/interactionSystem";
+import { NpcVisualSystem } from "./game/npcVisualSystem";
 import { Shop } from "./game/shop";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
@@ -24,7 +25,8 @@ const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const inventory = new Inventory();
 const shop = new Shop(scene, inventory);
-setupDayHud(canvas);
+const npcVisuals = new NpcVisualSystem(scene);
+setupDayHud(canvas, (current, previous) => npcVisuals.reconcile(current, previous));
 
 function renderInventory(selectedItem: ItemId): void {
   inventoryHud.replaceChildren();
