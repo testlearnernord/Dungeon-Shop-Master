@@ -32,8 +32,11 @@ export function aimAtShelfSlot() {
 
 export function inspectNpcVisuals() {
   const scene = Engine.LastCreatedScene!;
+  const corridorWalls = scene.meshes.filter(({ name }) => name.startsWith("corridor-wall-") || name.startsWith("corridor-end-"));
   return {
     frame: scene.getFrameId(),
+    time: performance.now(),
+    npcMeshes: scene.meshes.filter(({ name }) => name.startsWith("npc-adventurer-")).map(({ name }) => name),
     visitors: scene.transformNodes
       .filter((node) => node.name.startsWith("npc-adventurer-") && node.metadata?.adventurerId)
       .map((node) => ({
@@ -48,6 +51,19 @@ export function inspectNpcVisuals() {
         z: node.position.z,
         unpickable: node.getChildMeshes(false).every((mesh) => !mesh.isPickable && !mesh.checkCollisions),
         hasLabel: node.getChildMeshes(false).some((mesh) => mesh.name === `${node.name}-label`),
+        wallClear: corridorWalls.every((wall) => {
+          const bounds = wall.getBoundingInfo().boundingBox;
+          const radius = 0.31;
+          return node.position.x + radius <= bounds.minimumWorld.x || node.position.x - radius >= bounds.maximumWorld.x ||
+            node.position.z + radius <= bounds.minimumWorld.z || node.position.z - radius >= bounds.maximumWorld.z ||
+            node.position.y + 2.5 <= bounds.minimumWorld.y || node.position.y >= bounds.maximumWorld.y;
+        }),
+        feetY: Math.min(...node.getChildMeshes(false)
+          .filter((mesh) => mesh.name.includes("-leg-"))
+          .map((mesh) => {
+            mesh.computeWorldMatrix(true);
+            return mesh.getBoundingInfo().boundingBox.minimumWorld.y;
+          })),
       })),
     gateY: scene.getMeshByName("level-4-barrier")?.position.y,
     playerBarrierSolid: scene.getMeshByName("level-4-player-barrier")?.checkCollisions ?? false,

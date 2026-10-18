@@ -88,7 +88,8 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   for (const x of [-5.3, -2.7, 2.7, 5.3]) {
     box(scene, `corridor-wall-${x}`, { width: 0.25, height: 4, depth: 5.5 }, new Vector3(x, 2, 9.65), rock);
   }
-  box(scene, "corridor-end-left", { width: 2.7, height: 4, depth: 0.4 }, new Vector3(-4, 2, 12.2), rock);
+  box(scene, "corridor-end-left-outer", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(-5.2, 2, 12.2), rock);
+  box(scene, "corridor-end-left-inner", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(-2.8, 2, 12.2), rock);
   box(scene, "corridor-end-right", { width: 2.7, height: 4, depth: 0.4 }, new Vector3(4, 2, 12.2), rock);
 
   sign(scene, "level-4-sign", "LEVEL 4 · BLOCKED", new Vector3(-4, 2.8, 6.73));

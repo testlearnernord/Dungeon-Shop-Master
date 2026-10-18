@@ -32,6 +32,10 @@ const ROLE_COLORS: Record<VisitorRole, string> = {
 const WALK_SPEED = 2.1;
 const DOOR_CLOSED_Y = 0.9;
 const DOOR_OPEN_Y = 3.8;
+const DOOR_PASSAGE_CLEAR_Y = 3.4;
+const CORRIDOR_X = -4;
+const CORRIDOR_INNER_Z = 6.35;
+const CORRIDOR_OUTER_Z = 13;
 
 function roleColor(role: VisitorRole): Color3 {
   return Color3.FromHexString(ROLE_COLORS[role]);
@@ -95,7 +99,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
   const legs = [-1, 1].map((side) => {
     const pivot = new TransformNode(`npc-${visitor.id}-leg-${side}`, scene);
     pivot.parent = root;
-    pivot.position.set(side * 0.14, 0.78, 0);
+    pivot.position.set(side * 0.14, 0.6, 0);
     createPart(scene, root, `npc-${visitor.id}-leg-${side}-mesh`,
       MeshBuilder.CreateCylinder("", { height: 0.62, diameter: 0.17, tessellation: 5 }, scene),
       new Vector3(0, -0.29, 0), darkMaterial).parent = pivot;
@@ -155,20 +159,23 @@ export class NpcVisualSystem {
   reconcile(current: readonly VisitorSnapshot[], previous: readonly VisitorSnapshot[]): void {
     const changes = reconcileVisitors(previous, current);
     const currentById = new Map(current.map((visitor) => [visitor.id, visitor]));
+    for (const [id, visual] of this.npcs) {
+      if (!currentById.has(id) || currentById.get(id)?.status === "dead") this.dispose(visual);
+    }
     const usedSlots = new Set([...this.npcs.values()].map(({ slot }) => slot));
     for (const visitor of changes.entering) {
-      let slot = 0;
-      while (usedSlots.has(slot)) slot += 1;
-      usedSlots.add(slot);
       const existing = this.npcs.get(visitor.id);
       if (existing) {
         existing.visitor = visitor;
-        this.beginEntering(existing, slot);
+        this.beginEntering(existing, existing.slot, false);
       } else {
+        let slot = 0;
+        while (usedSlots.has(slot)) slot += 1;
+        usedSlots.add(slot);
         const lane = (slot % 3 - 1) * 0.55;
-        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(-4 + lane, 0.08, 12.05));
+        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X + lane, 0, CORRIDOR_OUTER_Z));
         this.npcs.set(visitor.id, visual);
-        this.beginEntering(visual, slot);
+        this.beginEntering(visual, slot, true);
       }
     }
     for (const visitor of changes.staying) {
@@ -176,13 +183,15 @@ export class NpcVisualSystem {
       if (visual) {
         visual.visitor = visitor;
         visual.root.metadata.simulationStatus = visitor.status;
+        if (visual.phase === "leaving") this.beginEntering(visual, visual.slot, false);
       } else {
         let slot = 0;
         while (usedSlots.has(slot)) slot += 1;
         usedSlots.add(slot);
-        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(-4, 0.08, 12.05));
+        const lane = (slot % 3 - 1) * 0.55;
+        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X + lane, 0, CORRIDOR_OUTER_Z));
         this.npcs.set(visitor.id, visual);
-        this.beginEntering(visual, slot);
+        this.beginEntering(visual, slot, true);
       }
     }
     for (const visitor of changes.leaving) {
@@ -204,7 +213,7 @@ export class NpcVisualSystem {
       if (npc.phase === "queueing") {
         npc.wait -= delta;
         if (npc.wait <= 0) this.beginBrowsing(npc);
-      } else {
+      } else if ((npc.phase !== "entering" && npc.phase !== "leaving") || this.doorY >= DOOR_PASSAGE_CLEAR_Y) {
         this.move(npc, delta);
       }
       this.animate(npc);
@@ -216,13 +225,18 @@ export class NpcVisualSystem {
     }
   };
 
-  private beginEntering(npc: NpcVisual, slot: number): void {
+  private beginEntering(npc: NpcVisual, slot: number, fromOutside: boolean): void {
     npc.slot = slot;
     npc.phase = "entering";
-    npc.route = [new Vector3(-4 + (slot % 3 - 1) * 0.55, 0.08, 6.35)];
+    const x = npc.root.position.x;
+    const z = npc.root.position.z;
+    npc.route = fromOutside
+      ? [new Vector3(x, 0, CORRIDOR_INNER_Z)]
+      : z > CORRIDOR_INNER_Z
+        ? [new Vector3(CORRIDOR_X, 0, z), new Vector3(CORRIDOR_X, 0, CORRIDOR_INNER_Z)]
+        : [new Vector3(x, 0, CORRIDOR_INNER_Z), new Vector3(CORRIDOR_X, 0, CORRIDOR_INNER_Z)];
     npc.waypoint = 0;
     npc.wait = 0;
-    npc.root.position.set(-4 + (slot % 3 - 1) * 0.55, 0.08, 12.05);
     npc.root.metadata.phase = npc.phase;
     npc.root.metadata.simulationStatus = npc.visitor.status;
   }
@@ -230,10 +244,9 @@ export class NpcVisualSystem {
   private beginLeaving(npc: NpcVisual): void {
     npc.phase = "leaving";
     npc.route = [
-      new Vector3(npc.root.position.x, 0.08, 6.35),
-      new Vector3(-4.65, 0.08, 3.55),
-      new Vector3(-2.4, 0.08, 3.55),
-      new Vector3(-4, 0.08, 12.05),
+      new Vector3(npc.root.position.x, 0, CORRIDOR_INNER_Z),
+      new Vector3(CORRIDOR_X, 0, CORRIDOR_INNER_Z),
+      new Vector3(CORRIDOR_X, 0, CORRIDOR_OUTER_Z),
     ];
     npc.waypoint = 0;
     npc.root.metadata.phase = npc.phase;
@@ -247,11 +260,11 @@ export class NpcVisualSystem {
     const frontX = side < 0 ? -2.4 : 2.4;
     const shelfZ = ((npc.slot % 3) - 1) * 1.35;
     npc.route = [
-      new Vector3(frontX, 0.08, queue.z),
-      new Vector3(aisleX, 0.08, 3.55),
-      new Vector3(aisleX, 0.08, shelfZ),
-      new Vector3(aisleX, 0.08, 3.55),
-      new Vector3(frontX, 0.08, 3.55),
+      new Vector3(frontX, 0, queue.z),
+      new Vector3(aisleX, 0, 3.55),
+      new Vector3(aisleX, 0, shelfZ),
+      new Vector3(aisleX, 0, 3.55),
+      new Vector3(frontX, 0, 3.55),
       queue,
     ];
     npc.waypoint = 0;
@@ -262,7 +275,7 @@ export class NpcVisualSystem {
   private queuePosition(slot: number): Vector3 {
     const column = slot % 4;
     const row = Math.floor(slot / 4);
-    return new Vector3(-1.05 + column * 0.7, 0.08, 3.65 + row * 0.58);
+    return new Vector3(-1.05 + column * 0.7, 0, 3.65 + row * 0.58);
   }
 
   private move(npc: NpcVisual, delta: number): void {
@@ -275,8 +288,7 @@ export class NpcVisualSystem {
         npc.wait = 1 + (npc.slot % 3) * 0.45;
         npc.root.metadata.phase = npc.phase;
       } else if (npc.phase === "leaving") {
-        npc.root.dispose(false, true);
-        this.npcs.delete(npc.visitor.id);
+        this.dispose(npc);
       }
       return;
     }
@@ -305,5 +317,11 @@ export class NpcVisualSystem {
     npc.arms[0].rotation.x = -swing * 0.7;
     npc.arms[1].rotation.x = swing * 0.7;
     npc.torso.position.y = 1.14 + Math.sin(npc.animationTime * 2) * (walking ? 0.025 : 0.01);
+    npc.root.position.y = 0.6 * Math.cos(swing) - 0.6;
+  }
+
+  private dispose(npc: NpcVisual): void {
+    npc.root.dispose(false, true);
+    this.npcs.delete(npc.visitor.id);
   }
 }
