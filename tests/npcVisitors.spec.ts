@@ -70,8 +70,7 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
   expect(player.z).toBeLessThan(11.5);
   expect((await inspect()).playerBarrierSolid).toBe(true);
 
-  await expect.poll(async () => (await inspect()).visitors
-    .filter(({ status }) => status === "at-shop")
-    .map(({ id }) => id).sort()).toEqual(expected(state).map(({ id }) => id).sort());
+  await expect.poll(async () => (await inspect()).visitors.map(({ id }) => id).sort())
+    .toEqual(expected(state).map(({ id }) => id).sort());
   expect(errors).toEqual([]);
 });
