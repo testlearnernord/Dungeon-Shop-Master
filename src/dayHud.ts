@@ -46,7 +46,7 @@ export function setupDayHud(canvas: HTMLCanvasElement): void {
       return;
     }
     if (event.target instanceof HTMLElement &&
-        event.target.closest("button, input, textarea, select, [contenteditable]")) return;
+        event.target.closest("input, textarea, select, [contenteditable]")) return;
     if (event.code === "KeyN" || event.code === "KeyY") {
       event.preventDefault();
       act(event.code === "KeyN" ? "request" : "confirm");
