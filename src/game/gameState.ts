@@ -57,8 +57,8 @@ function validatePopulation(config: PopulationConfig): void {
 export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationConfig> = {}): GameState {
   const populationConfig = { ...DEFAULT_POPULATION, ...config };
   validatePopulation(populationConfig);
-  const random = new SeededRandom(seed);
-  const adventurers = generateStartingPopulation(random);
+  const generated = generateStartingPopulation(seed);
+  const adventurers = generated.adventurers;
   return {
     day: 1,
     simulationVersion: SIMULATION_VERSION,
@@ -70,7 +70,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     shopEconomy: null,
     dungeonFloors: [],
     seed,
-    rngState: random.state,
+    rngState: generated.rngState,
     populationConfig,
     influxRemaining: populationConfig.totalInflux,
     nextAdventurerId: 11,
@@ -86,11 +86,12 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   }
   const day = state.day + 1;
   validatePopulation(state.populationConfig);
-  const random = new SeededRandom(state.rngState);
+  let rngState = new SeededRandom(state.rngState).state;
   const events: WorldEvent[] = [{ id: `day-${day}:started`, type: "day-started", day, message: `Day ${day} begins.` }];
   const adventurers = state.adventurers.map((hero) => {
-    const dungeon = simulateDungeon(hero, day, random);
-    const shop = scheduleShopVisit(dungeon.adventurer, day, random);
+    const dungeon = simulateDungeon(hero, day, rngState);
+    const shop = scheduleShopVisit(dungeon.adventurer, day, dungeon.rngState);
+    rngState = shop.rngState;
     events.push(...dungeon.events, ...shop.events);
     return shop.adventurer;
   });
@@ -98,7 +99,9 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   const influx = Math.min(state.populationConfig.dailyInflux, state.influxRemaining,
     Math.max(0, state.populationConfig.maxActive - active));
   for (let index = 0; index < influx; index += 1) {
-    const hero = generateAdventurer(state.nextAdventurerId + index, random);
+    const generated = generateAdventurer(state.nextAdventurerId + index, rngState);
+    rngState = generated.rngState;
+    const hero = generated.adventurer;
     adventurers.push(hero);
     events.push({
       id: `day-${day}:${hero.id}:influx`, type: "influx", day, adventurerId: hero.id,
@@ -107,7 +110,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   }
   return {
     state: {
-      ...state, day, adventurers, rngState: random.state,
+      ...state, day, adventurers, rngState,
       influxRemaining: state.influxRemaining - influx,
       nextAdventurerId: state.nextAdventurerId + influx,
       events: [...state.events, ...events],

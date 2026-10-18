@@ -109,6 +109,44 @@ body,
   color: #c9bda9;
 }
 
+.adventurer-panel {
+  position: absolute;
+  top: 225px;
+  right: 22px;
+  width: 240px;
+  max-width: 44vw;
+  max-height: calc(100vh - 310px);
+  overflow: auto;
+  pointer-events: auto;
+  padding: 10px 12px;
+  border: 1px solid #9b774b;
+  border-radius: 6px;
+  background: rgb(24 19 15 / 86%);
+  font-size: 11px;
+}
+
+.adventurer-panel summary {
+  color: #f2d59f;
+  cursor: pointer;
+}
+
+#shop-visitors {
+  color: #f2d59f;
+}
+
+#adventurer-roster {
+  padding: 0;
+  list-style: none;
+}
+
+#adventurer-roster li + li {
+  margin-top: 6px;
+}
+
+.simulation-note {
+  color: #c9bda9;
+}
+
 .inventory-row.selected {
   color: #fff1d1;
   background: rgb(207 157 82 / 20%);

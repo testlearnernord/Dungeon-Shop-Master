@@ -31,7 +31,7 @@ test("Day 1 has ten generated persistent heroes, exactly three distinct Level 5 
 test("generation and RNG are reproducible, including zero seed and resumed streams", () => {
   const first = new SeededRandom(0);
   const second = new SeededRandom(0);
-  assert.deepEqual(generateAdventurer(1, first), generateAdventurer(1, second));
+  assert.deepEqual(generateAdventurer(1, first.state), generateAdventurer(1, second.state));
   assert.notDeepEqual(createGameState(1).adventurers, createGameState(2).adventurers);
   assert.equal(first.next(), new SeededRandom(second.state).next());
   for (const seed of [-1, 1.5, NaN, Infinity, 0x100000000]) {
@@ -40,11 +40,11 @@ test("generation and RNG are reproducible, including zero seed and resumed strea
 });
 
 test("each dungeon outcome preserves bounded stats and only defined outcomes create loot", () => {
-  const hero = { ...generateAdventurer(1, new SeededRandom(42)), floor: 3 as const };
+  const hero = { ...generateAdventurer(1, 42).adventurer, floor: 3 as const };
   const outcomes = new Set<string>();
   let foundLoot = false;
   for (let seed = 0; seed < 3000; seed += 1) {
-    const result = simulateDungeon(hero, 2, new SeededRandom(seed));
+    const result = simulateDungeon(hero, 2, seed);
     const next = result.adventurer;
     const event = result.events[0];
     outcomes.add(event.outcome!);
@@ -76,34 +76,34 @@ test("each dungeon outcome preserves bounded stats and only defined outcomes cre
 });
 
 test("injury can kill, XP levels up, and dead heroes never run dungeon or shop outcomes", () => {
-  const hero = generateAdventurer(1, new SeededRandom(5));
-  const injured = simulateDungeon({ ...hero, health: 1 }, 2, new SeededRandom(1000));
+  const hero = generateAdventurer(1, 5).adventurer;
+  const injured = simulateDungeon({ ...hero, health: 1 }, 2, 1000);
   assert.equal(injured.adventurer.status, "dead");
-  assert.deepEqual(simulateDungeon(injured.adventurer, 3, new SeededRandom(1)), {
-    adventurer: injured.adventurer, events: [],
+  assert.deepEqual(simulateDungeon(injured.adventurer, 3, 1), {
+    adventurer: injured.adventurer, events: [], rngState: 1,
   });
-  assert.deepEqual(scheduleShopVisit(injured.adventurer, 3, new SeededRandom(1)), {
-    adventurer: injured.adventurer, events: [],
+  assert.deepEqual(scheduleShopVisit(injured.adventurer, 3, 1), {
+    adventurer: injured.adventurer, events: [], rngState: 1,
   });
-  const leveled = simulateDungeon({ ...hero, xp: 99 }, 2, new SeededRandom(1000));
+  const leveled = simulateDungeon({ ...hero, xp: 99 }, 2, 1000);
   assert.equal(leveled.adventurer.level, 2);
 });
 
 test("floor 4 travelers arrive, stay briefly, return to floor 4 and can revisit with the same ID", () => {
-  const hero = { ...generateAdventurer(1, new SeededRandom(3)), floor: 4 as const };
-  const dungeon = simulateDungeon(hero, 2, new SeededRandom(1000));
+  const hero = { ...generateAdventurer(1, 3).adventurer, floor: 4 as const };
+  const dungeon = simulateDungeon(hero, 2, 1000);
   assert.equal(dungeon.adventurer.status, "traveling");
-  const arrival = scheduleShopVisit(dungeon.adventurer, 2, new SeededRandom(1));
+  const arrival = scheduleShopVisit(dungeon.adventurer, 2, 1);
   assert.equal(arrival.adventurer.floor, 5);
   assert.equal(arrival.adventurer.status, "at-shop");
   assert.equal(arrival.events[0].type, "shop-arrival");
-  const stay = scheduleShopVisit(arrival.adventurer, 3, new SeededRandom(1));
+  const stay = scheduleShopVisit(arrival.adventurer, 3, 1);
   assert.equal(stay.adventurer.status, "at-shop");
-  const departure = scheduleShopVisit(stay.adventurer, 4, new SeededRandom(1));
+  const departure = scheduleShopVisit(stay.adventurer, 4, 1);
   assert.equal(departure.adventurer.floor, 4);
   assert.equal(departure.adventurer.status, "returning");
-  const returnTrip = simulateDungeon(departure.adventurer, 5, new SeededRandom(1000));
-  const revisit = scheduleShopVisit(returnTrip.adventurer, 5, new SeededRandom(1));
+  const returnTrip = simulateDungeon(departure.adventurer, 5, 1000);
+  const revisit = scheduleShopVisit(returnTrip.adventurer, 5, 1);
   assert.equal(revisit.adventurer.id, hero.id);
   assert.equal(revisit.adventurer.status, "at-shop");
   assert.notEqual(revisit.events[0].id, arrival.events[0].id);

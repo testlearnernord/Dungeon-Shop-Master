@@ -10,6 +10,7 @@ export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
     camera.cameraDirection.setAll(0);
     camera.cameraRotation.setAll(0);
   }
+
   return {
     x: camera.position.x,
     y: camera.position.y,
@@ -19,4 +20,12 @@ export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
     collisions: camera.checkCollisions && scene.collisionsEnabled,
     gravity: camera.applyGravity,
   };
+}
+
+export function aimAtShelfSlot() {
+  const start = inspectPlayer({ x: -1.5, y: 1.7, z: -2 });
+  const scene = Engine.LastCreatedScene!;
+  const camera = scene.activeCamera as UniversalCamera;
+  camera.setTarget(scene.getMeshByName("shelf-1-slot-1")!.getAbsolutePosition());
+  return start.frame;
 }

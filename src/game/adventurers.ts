@@ -35,11 +35,12 @@ const names = ["Ada", "Bram", "Cora", "Dain", "Eira", "Finn", "Gwen", "Hale", "I
 const surnames = ["Flint", "Moss", "Reed", "Vale", "Ash", "Stone"];
 const roles: readonly AdventurerRole[] = ["tank", "DPS", "healer"];
 
-export function generateAdventurer(serial: number, random: SeededRandom): AdventurerState {
+export function generateAdventurer(serial: number, rngState: number): { adventurer: AdventurerState; rngState: number } {
+  const random = new SeededRandom(rngState);
   const name = `${names[random.int(names.length)]} ${surnames[random.int(surnames.length)]}`;
   const role = roles[random.int(roles.length)];
   const maxHealth = (role === "tank" ? 55 : 40) + random.int(11);
-  return {
+  const adventurer: AdventurerState = {
     id: `adventurer-${serial}`,
     name,
     role,
@@ -65,13 +66,18 @@ export function generateAdventurer(serial: number, random: SeededRandom): Advent
     hunger: 0,
     shopStayDays: 0,
   };
+  return { adventurer, rngState: random.state };
 }
 
-export function generateStartingPopulation(random: SeededRandom): readonly AdventurerState[] {
-  return Array.from({ length: 10 }, (_, index) => {
-    const hero = generateAdventurer(index + 1, random);
+export function generateStartingPopulation(rngState: number): { adventurers: readonly AdventurerState[]; rngState: number } {
+  const random = new SeededRandom(rngState);
+  const adventurers = Array.from({ length: 10 }, (_, index) => {
+    const generated = generateAdventurer(index + 1, random.state);
+    random.state = generated.rngState;
+    const hero = generated.adventurer;
     return index < 3
       ? { ...hero, floor: 5 as const, status: "at-shop" as const }
       : { ...hero, floor: (1 + random.int(4)) as DungeonFloor };
   });
+  return { adventurers, rngState: random.state };
 }

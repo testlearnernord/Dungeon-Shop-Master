@@ -7,7 +7,10 @@ export function setupDayHud(canvas: HTMLCanvasElement): void {
   const confirmation = document.querySelector<HTMLElement>("#day-confirmation");
   const confirm = document.querySelector<HTMLButtonElement>("#confirm-day");
   const cancel = document.querySelector<HTMLButtonElement>("#cancel-day");
-  if (!day || !events || !request || !confirmation || !confirm || !cancel) {
+  const roster = document.querySelector<HTMLUListElement>("#adventurer-roster");
+  const visitors = document.querySelector<HTMLElement>("#shop-visitors");
+  const population = document.querySelector<HTMLElement>("#population-summary");
+  if (!day || !events || !request || !confirmation || !confirm || !cancel || !roster || !visitors || !population) {
     throw new Error("The day clock HUD must exist before the game starts.");
   }
 
@@ -18,7 +21,20 @@ export function setupDayHud(canvas: HTMLCanvasElement): void {
     day.textContent = `Day ${state.day}`;
     events.replaceChildren(...state.events.slice(-3).map((event) => {
       const entry = document.createElement("li");
+      entry.dataset.eventId = event.id;
       entry.textContent = event.message;
+      return entry;
+    }));
+    const active = state.adventurers.filter((hero) => hero.status !== "dead");
+    const atShop = active.filter((hero) => hero.status === "at-shop");
+    population.textContent = `Adventurers: ${active.length} active · ${state.adventurers.length - active.length} lost`;
+    visitors.textContent = `Shop visitors (${atShop.length}): ${atShop.map((hero) => hero.name).join(", ") || "none"}`;
+    roster.replaceChildren(...active.map((hero) => {
+      const entry = document.createElement("li");
+      entry.dataset.adventurerId = hero.id;
+      entry.dataset.status = hero.status;
+      entry.textContent = `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status}`;
+      entry.title = `${hero.id} · XP ${hero.xp} · Gold ${hero.gold} · ${hero.traits.positive} / ${hero.traits.neutral} / ${hero.traits.negative} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
       return entry;
     }));
     request.setAttribute("aria-expanded", String(pending));

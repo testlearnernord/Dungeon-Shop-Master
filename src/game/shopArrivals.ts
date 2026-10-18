@@ -13,19 +13,22 @@ export function arrivalEvent(hero: AdventurerState, day: number): WorldEvent {
 }
 
 export function scheduleShopVisit(
-  hero: AdventurerState, day: number, random: SeededRandom,
-): { adventurer: AdventurerState; events: readonly WorldEvent[] } {
+  hero: AdventurerState, day: number, rngState: number,
+): { adventurer: AdventurerState; events: readonly WorldEvent[]; rngState: number } {
   if (hero.status === "traveling") {
     return {
       adventurer: { ...hero, floor: 5, status: "at-shop" },
       events: [arrivalEvent(hero, day)],
+      rngState,
     };
   }
-  if (hero.status !== "at-shop") return { adventurer: hero, events: [] };
+  if (hero.status !== "at-shop") return { adventurer: hero, events: [], rngState };
 
+  const random = new SeededRandom(rngState);
   // At most two consecutive shop days; no transactions or food are created here.
   const stay = hero.shopStayDays === 0 && random.next() < 0.35;
   return {
+    rngState: random.state,
     adventurer: {
       ...hero,
       health: Math.min(hero.stats.maxHealth, hero.health + 8),

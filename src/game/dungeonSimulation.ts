@@ -5,11 +5,12 @@ import { SeededRandom } from "./random.ts";
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
 
 export function simulateDungeon(
-  hero: AdventurerState, day: number, random: SeededRandom,
-): { adventurer: AdventurerState; events: readonly WorldEvent[] } {
+  hero: AdventurerState, day: number, rngState: number,
+): { adventurer: AdventurerState; events: readonly WorldEvent[]; rngState: number } {
   if (hero.status !== "exploring" && hero.status !== "returning") {
-    return { adventurer: hero, events: [] };
+    return { adventurer: hero, events: [], rngState };
   }
+  const random = new SeededRandom(rngState);
   const roll = random.next();
   const damage = 1 + random.int(6) + hero.floor;
   const health = Math.max(0, hero.health - damage);
@@ -34,6 +35,7 @@ export function simulateDungeon(
   };
   return {
     adventurer,
+    rngState: random.state,
     events: [{
       id: `day-${day}:${hero.id}:dungeon`,
       type: "dungeon-outcome",
