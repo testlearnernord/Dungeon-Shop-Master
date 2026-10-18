@@ -11,6 +11,7 @@ export function setupEconomyHud(
   const sales = document.querySelector<HTMLElement>("#daily-sales")!;
   const dialog = document.querySelector<HTMLDialogElement>("#wholesale")!;
   const catalog = document.querySelector<HTMLElement>("#wholesale-catalog")!;
+  const discards = document.querySelector<HTMLElement>("#discard-catalog")!;
   const message = document.querySelector<HTMLElement>("#wholesale-message")!;
   let orderId = 0;
 
@@ -56,6 +57,14 @@ export function setupEconomyHud(
     });
     row.append(description, button);
     catalog.append(row);
+    const discard = document.createElement("button");
+    discard.type = "button";
+    discard.textContent = `Discard 1 ${item.name}`;
+    discard.addEventListener("click", (event) => {
+      if (event.detail > 1) return;
+      message.textContent = store.discard(item.id, ++orderId);
+    });
+    discards.append(discard);
   }
 
   const render = (): void => {

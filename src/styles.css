@@ -130,6 +130,10 @@ body,
   cursor: pointer;
 }
 
+#discard-catalog button {
+  margin: 4px;
+}
+
 .catalog-row {
   display: flex;
   flex-wrap: wrap;

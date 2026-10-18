@@ -46,7 +46,7 @@ function renderInventory(selectedItem: ItemId): void {
   }
   const capacity = document.createElement("div");
   capacity.className = "capacity";
-  capacity.textContent = `Bag ${Object.values(store.state.shopEconomy.bag).reduce((sum, quantity) => sum + quantity, 0)} / ${ECONOMY.capacity}`;
+  capacity.textContent = `Bag ${Object.values(store.state.shopEconomy.bag).reduce((sum, quantity) => sum + quantity, 0)} / ${ECONOMY.bagCapacity}`;
   inventoryHud.append(capacity);
 }
 

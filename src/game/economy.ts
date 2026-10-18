@@ -22,7 +22,6 @@ export interface Slot {
 
 export const ECONOMY = {
   bagCapacity: 24,
-  capacity: 24,
   slotCapacity: 5,
   startingGold: 20,
   foodTarget: 2,
@@ -72,6 +71,20 @@ export function buyWholesale(state: GameState, itemId: ItemId, quantity: number)
       bag: { ...economy.bag, [itemId]: economy.bag[itemId] + quantity },
     } },
     message: `Bought ${quantity} ${item.name} for ${cost} gold.`,
+  };
+}
+
+export function discardBag(state: GameState, itemId: ItemId): { state: GameState; message: string } {
+  const item = ITEMS.find((entry) => entry.id === itemId);
+  if (!item) return { state, message: "Choose a valid item." };
+  const economy = state.shopEconomy;
+  if (economy.bag[itemId] < 1) return { state, message: "You're out of the selected item." };
+  return {
+    state: {
+      ...state,
+      shopEconomy: { ...economy, bag: { ...economy.bag, [itemId]: economy.bag[itemId] - 1 } },
+    },
+    message: `Discarded ${item.name}. No gold refunded.`,
   };
 }
 

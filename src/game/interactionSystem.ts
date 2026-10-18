@@ -44,12 +44,12 @@ export class InteractionSystem {
     this.canvas.addEventListener("pointerdown", (event) => {
       if (document.querySelector("dialog[open]")) return;
       if (event.button !== 0 && event.button !== 2) return;
-      if (document.pointerLockElement !== this.canvas) {
-        void this.canvas.requestPointerLock();
-      }
       this.heldButton = event.button;
       this.nextRepeatAt = performance.now() + this.clickDelay;
       this.performPointerAction(event.button, event.offsetX, event.offsetY);
+      if (document.pointerLockElement !== this.canvas && !document.querySelector("dialog[open]")) {
+        void this.canvas.requestPointerLock();
+      }
     });
     const releaseHeldButton = (): void => { this.heldButton = null; };
     window.addEventListener("pointerup", releaseHeldButton);

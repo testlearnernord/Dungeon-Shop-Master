@@ -57,7 +57,7 @@ Every confirmed End Day executes this order (events are labeled with the resulti
 4. Resolve abstract dungeon combat for exploring/returning heroes, then travel, shop stays and departures. There is **no free shop healing**.
 5. Fill living-population vacancies with newcomers, up to the daily and active caps. Newcomers start consuming/exploring on the next tick.
 
-**Bankruptcy fallback:** if gold is below the 2g bread cost and neither bag nor shelves contain bread, the next confirmed day grants up to **2 Waybread**, limited by free bag space, once for that day. It must still be stocked and sold. Clear bag space onto shelves if necessary. There is no rescue button or repeat-event reward; the foodless/poor checks prevent stockpiling aid. Daily aid is deliberately limited, not an unlimited same-day source of items or money.
+**Bankruptcy fallback:** if gold is below the 2g bread cost and neither bag nor shelves contain bread, the next confirmed day grants up to **2 Waybread**, limited by free bag space, once for that day. It must still be stocked and sold. In the catalog, expand **Free bag space** to discard individual bag items **without any refund**. Even with both bag and shelves full of reserved goods, discard bag items, right-click a shelf's stock into the bag, then discard those items to free shelf and bag space for aid. There is no rescue button or repeat-event reward; the foodless/poor checks prevent stockpiling aid. Daily aid is deliberately limited, not an unlimited same-day source of items or money.
 
 #### Provisional abstract dungeon rules (not full combat)
 

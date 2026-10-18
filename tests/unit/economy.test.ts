@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { consumeDailySupplies, generateAdventurer, type AdventurerState } from "../../src/game/adventurers.ts";
-import { buyWholesale, createEconomy, ECONOMY, ITEMS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
+import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
 import { advanceDay, createGameState, type GameState } from "../../src/game/gameState.ts";
 import { simulateDungeon } from "../../src/game/dungeonSimulation.ts";
 import { scheduleShopVisit } from "../../src/game/shopArrivals.ts";
@@ -103,6 +103,62 @@ test("shelf stock/remove conserves each item and gold, and clears the last unit"
   assert.deepEqual(transferShelf(state, slotId, "healing-herb", "stock").state, placed);
 });
 
+test("discarding removes exactly one bag unit without refund and is pure and deterministic", () => {
+  const state = freeze(createGameState());
+  const snapshot = structuredClone(state);
+  const result = discardBag(state, "iron-ore");
+  assert.match(result.message, /^Discarded/);
+  assert.equal(result.state.shopEconomy.bag["iron-ore"], state.shopEconomy.bag["iron-ore"] - 1);
+  assert.equal(result.state.shopEconomy.balance, state.shopEconomy.balance);
+  assert.equal(result.state.shopEconomy.slots, state.shopEconomy.slots);
+  assert.deepEqual(state, snapshot);
+  assert.deepEqual(discardBag(state, "iron-ore"), result);
+  assert.equal(discardBag(state, "missing" as ItemId).state, state);
+  const empty = freeze({
+    ...state, shopEconomy: { ...state.shopEconomy, bag: { ...state.shopEconomy.bag, "iron-ore": 0 } },
+  });
+  assert.equal(discardBag(empty, "iron-ore").state, empty);
+});
+
+test("saturated nonfood storage can be cleared without refund to receive aid, stock food and resume sales", () => {
+  const base = market([customer()]);
+  const saturated: GameState = freeze({
+    ...base,
+    rngState: 1,
+    shopEconomy: {
+      ...base.shopEconomy,
+      balance: 0,
+      bag: { "iron-ore": ECONOMY.bagCapacity, "healing-herb": 0, "mana-potion": 0, bread: 0 },
+      slots: base.shopEconomy.slots.map((slot) => ({ ...slot, itemId: "iron-ore", quantity: slot.capacity })),
+    },
+  });
+  assert.equal(tradeAtStartOfDay(saturated, 1).events.some((event) => event.type === "rescue"), false);
+  let state = discardBag(saturated, "iron-ore").state;
+  assert.equal(state.shopEconomy.balance, 0);
+  const rescued = advanceDay(freeze(state));
+  state = rescued.state;
+  assert.equal(state.shopEconomy.bag.bread, 1);
+  assert.equal(rescued.events.filter((event) => event.type === "rescue").length, 1);
+  assert.equal(state.shopEconomy.balance, 0);
+  assert.equal(state.adventurers[0].status, "at-shop");
+  // Five bag spaces let the player empty one five-unit shelf slot.
+  for (let count = 0; count < ECONOMY.slotCapacity; count += 1) {
+    state = discardBag(freeze(state), "iron-ore").state;
+  }
+  for (let count = 0; count < ECONOMY.slotCapacity; count += 1) {
+    state = transferShelf(freeze(state), "shelf-1-slot-1", "iron-ore", "remove").state;
+  }
+  assert.equal(state.shopEconomy.slots[0].itemId, null);
+  state = transferShelf(freeze(state), "shelf-1-slot-1", "bread", "stock").state;
+  assert.equal(state.shopEconomy.slots[0].quantity, 1);
+  assert.equal(state.shopEconomy.balance, 0);
+  const recovered = advanceDay(freeze(state));
+  assert.equal(recovered.state.shopEconomy.dailySales.units, 1);
+  assert.equal(recovered.state.shopEconomy.balance, 4);
+  assert(recovered.events.some((event) => event.type === "sale" && event.itemId === "bread"));
+  assert.notEqual(buyWholesale(recovered.state, "bread", 1).state, recovered.state);
+});
+
 test("shelf transactions reject missing, full, wrong-item, empty and invalid operations atomically", () => {
   const state = freeze(createGameState());
   const slotId = state.shopEconomy.slots[0].id;
@@ -191,6 +247,23 @@ test("shop stays grant no free healing, foodless heroes starve, and death is imm
   assert.equal(advanceDay(freeze(result.state)).state.adventurers[0], dead);
 });
 
+test("the same vulnerable hero survives with purchased food but dies without shelf supplies", () => {
+  const hero = customer(1, { health: 7, hunger: 2 });
+  const empty = freeze(market([hero]));
+  const supplied = freeze(stock(empty, "bread", 1));
+  const starved = advanceDay(empty);
+  const fed = advanceDay(supplied);
+  assert.equal(starved.state.adventurers[0].status, "dead");
+  assert.equal(starved.state.adventurers[0].health, 0);
+  assert.notEqual(fed.state.adventurers[0].status, "dead");
+  assert.equal(fed.state.adventurers[0].health, hero.health);
+  assert.equal(fed.state.adventurers[0].hunger, 0);
+  assert.equal(fed.state.adventurers[0].gold, hero.gold - 4);
+  assert.equal(fed.state.shopEconomy.balance, supplied.shopEconomy.balance + 4);
+  assert(fed.events.some((event) => event.type === "ate"));
+  assert(!fed.events.some((event) => event.type === "starvation"));
+});
+
 test("carried supplies are finite, capped effects consume one unit, and hazards remain lethal", () => {
   const hero = customer(1, {
     health: 50, hunger: 1,
@@ -209,6 +282,37 @@ test("carried supplies are finite, capped effects consume one unit, and hazards 
   const dungeon = simulateDungeon(doomed, 5, 1000).adventurer;
   assert.equal(dungeon.status, "dead");
   assert.equal(dungeon.inventory.food, 0);
+});
+
+test("seeded exploring heroes survive with supplies where unsupplied peers die, but hazards can still kill", () => {
+  let survivalDifferences = 0;
+  let suppliedHazardDeaths = 0;
+  for (const seed of [0, 1, 42, 1000, 2000, 12345, 7351]) {
+    const hero = customer(1, { status: "exploring", floor: 3, health: 1, hunger: 2 });
+    const base = { ...market([hero]), rngState: seed };
+    const supplied = {
+      ...base,
+      adventurers: [{ ...hero, inventory: { ...hero.inventory, food: 1, healing: 1 } }],
+    };
+    const starved = advanceDay(freeze(base));
+    const equipped = advanceDay(freeze(supplied));
+    assert.equal(starved.state.adventurers[0].status, "dead");
+    assert(starved.events.some((event) => event.type === "starvation"));
+    assert(equipped.events.some((event) => event.type === "ate"));
+    assert(equipped.events.some((event) => event.type === "healed"));
+    assert(!equipped.events.some((event) => event.type === "starvation"));
+    if (equipped.state.adventurers[0].status !== "dead") {
+      survivalDifferences += 1;
+      assert(equipped.state.adventurers[0].health > 0);
+    } else {
+      suppliedHazardDeaths += 1;
+      assert(equipped.events.some((event) => event.type === "dungeon-outcome" && event.outcome === "death"));
+    }
+    assert.equal(equipped.state.adventurers[0].inventory.food, 0);
+    assert.equal(equipped.state.adventurers[0].inventory.healing, 0);
+  }
+  assert(survivalDifferences > 0);
+  assert(suppliedHazardDeaths > 0);
 });
 
 test("daily sales reset instead of accumulating", () => {
@@ -257,11 +361,39 @@ test("aid never exceeds bag capacity and stock/removal cannot regenerate it on t
   assert.equal(tradeAtStartOfDay(noFoodAgain, 2).events.length, 0);
 });
 
-test("frozen JSON-reloaded merchant sessions are deterministic over 55 days and still admit newcomers after day49", () => {
+test("55-day JSON-reloaded merchant input replay is deterministic and admits newcomers after day49", () => {
   let first = createGameState(2026);
   let second = createGameState(2026);
   let lateArrivals = 0;
+  let purchases = 0;
+  let stocking = 0;
+  let removals = 0;
   for (let day = 2; day <= 56; day += 1) {
+    const actions: Array<(state: GameState) => { state: GameState; message: string }> = [
+      (state) => buyWholesale(state, "bread", 2),
+      (state) => buyWholesale(state, "healing-herb", 1),
+      (state) => transferShelf(state, "shelf-1-slot-1", "bread", "stock"),
+      (state) => transferShelf(state, "shelf-1-slot-1", "bread", "stock"),
+      (state) => transferShelf(state, "shelf-2-slot-1", "healing-herb", "stock"),
+    ];
+    if (day % 3 === 0) {
+      actions.push((state) => transferShelf(state, "shelf-1-slot-1", "bread", "remove"));
+    }
+    for (const action of actions) {
+      const snapshot = structuredClone(first);
+      const original = freeze(first);
+      const one = action(original);
+      const two = action(freeze(JSON.parse(JSON.stringify(second))));
+      assert.deepEqual(original, snapshot);
+      assert.deepEqual(one, two);
+      if (one.state !== original) {
+        if (one.message.startsWith("Bought")) purchases += 1;
+        if (one.message.startsWith("Placed")) stocking += 1;
+        if (one.message.startsWith("Returned")) removals += 1;
+      }
+      first = one.state;
+      second = JSON.parse(JSON.stringify(two.state));
+    }
     const before = structuredClone(first);
     const held = freeze(first);
     const result = advanceDay(held);
@@ -277,4 +409,7 @@ test("frozen JSON-reloaded merchant sessions are deterministic over 55 days and 
   }
   assert(lateArrivals > 0);
   assert(first.adventurers.length > 40);
+  assert(purchases > 0);
+  assert(stocking > 0);
+  assert(removals > 0);
 });

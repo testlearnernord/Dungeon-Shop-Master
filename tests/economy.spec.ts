@@ -62,6 +62,10 @@ test("wholesale, stocking and confirmed sales share stock and gold without modal
   await buy.click();
   await expect(page.locator("#wholesale-message")).toContainText("Bought 1 Waybread");
   await expect(page.locator("#wholesale")).toBeInViewport();
+  await page.getByText("Free bag space (discard, no refund)", { exact: true }).click();
+  await page.getByRole("button", { name: "Discard 1 Iron Ore", exact: true }).dblclick();
+  await expect(page.locator("#wholesale-message")).toContainText("Discarded");
+  await expect(page.locator(".inventory-row").filter({ hasText: "Iron Ore" }).locator("strong")).toHaveText("3");
   await page.getByRole("button", { name: "Close catalog (Esc / B)", exact: true }).click();
   expect(errors).toEqual([]);
 });
