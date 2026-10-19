@@ -1,13 +1,18 @@
-import { generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
+import { consumeDailySupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
+import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
 import { simulateDungeon, type DungeonOutcome } from "./dungeonSimulation.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 2;
+export const SIMULATION_VERSION = 3;
 
 export interface ShopEconomyState {
   readonly balance: number;
+  readonly bag: Record<ItemId, number>;
+  readonly slots: Slot[];
+  readonly dailySales: { readonly day: number; readonly units: number; readonly revenue: number };
+  readonly lastRescueDay: number | null;
 }
 
 export interface DungeonFloorProgress {
@@ -18,16 +23,19 @@ export interface DungeonFloorProgress {
 export interface PopulationConfig {
   readonly dailyInflux: number;
   readonly maxActive: number;
-  readonly totalInflux: number;
 }
 
 export interface WorldEvent {
   readonly id: string;
-  readonly type: "welcome" | "day-started" | "dungeon-outcome" | "shop-arrival" | "shop-stay" | "shop-departure" | "influx";
+  readonly type: "welcome" | "day-started" | "dungeon-outcome" | "shop-arrival" | "shop-stay" | "shop-departure" | "influx" |
+    "sale" | "ate" | "healed" | "starvation" | "rescue";
   readonly day: number;
   readonly message: string;
   readonly adventurerId?: string;
   readonly outcome?: DungeonOutcome;
+  readonly itemId?: ItemId;
+  readonly quantity?: number;
+  readonly revenue?: number;
 }
 
 export interface GameState {
@@ -35,22 +43,20 @@ export interface GameState {
   readonly simulationVersion: number;
   readonly events: readonly WorldEvent[];
   readonly adventurers: readonly AdventurerState[];
-  readonly shopEconomy: ShopEconomyState | null;
+  readonly shopEconomy: ShopEconomyState;
   readonly dungeonFloors: readonly DungeonFloorProgress[];
   readonly seed: number;
   readonly rngState: number;
   readonly populationConfig: PopulationConfig;
-  readonly influxRemaining: number;
   readonly nextAdventurerId: number;
 }
 
-const DEFAULT_POPULATION: PopulationConfig = { dailyInflux: 2, maxActive: 20, totalInflux: 30 };
+const DEFAULT_POPULATION: PopulationConfig = { dailyInflux: 2, maxActive: 20 };
 
 function validatePopulation(config: PopulationConfig): void {
   if (!Number.isSafeInteger(config.dailyInflux) || config.dailyInflux < 0 ||
-      !Number.isSafeInteger(config.maxActive) || config.maxActive < 10 || config.maxActive > 100 ||
-      !Number.isSafeInteger(config.totalInflux) || config.totalInflux < 0 || config.totalInflux > 1000) {
-    throw new RangeError("Population requires nonnegative integer influx, 10–100 active slots and at most 1000 total newcomers.");
+      !Number.isSafeInteger(config.maxActive) || config.maxActive < 10 || config.maxActive > 100) {
+    throw new RangeError("Population requires nonnegative integer daily influx and 10–100 active slots.");
   }
 }
 
@@ -67,12 +73,11 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
       { id: "day-1:welcome", type: "welcome", day: 1, message: "Welcome to Day 1. The shop is ready." },
     ],
     adventurers,
-    shopEconomy: null,
+    shopEconomy: createEconomy(),
     dungeonFloors: [],
     seed,
     rngState: generated.rngState,
     populationConfig,
-    influxRemaining: populationConfig.totalInflux,
     nextAdventurerId: 11,
   };
 }
@@ -88,15 +93,20 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   validatePopulation(state.populationConfig);
   let rngState = new SeededRandom(state.rngState).state;
   const events: WorldEvent[] = [{ id: `day-${day}:started`, type: "day-started", day, message: `Day ${day} begins.` }];
-  const adventurers = state.adventurers.map((hero) => {
-    const dungeon = simulateDungeon(hero, day, rngState);
+  // Rescue/trade for today's existing customers, consume supplies, resolve hazards,
+  // then travel/departures and vacancy-driven newcomers. Dead heroes never change.
+  const trade = tradeAtStartOfDay(state, day);
+  events.push(...trade.events);
+  const adventurers = trade.adventurers.map((hero) => {
+    const supplies = consumeDailySupplies(hero, day);
+    const dungeon = simulateDungeon(supplies.adventurer, day, rngState);
     const shop = scheduleShopVisit(dungeon.adventurer, day, dungeon.rngState);
     rngState = shop.rngState;
-    events.push(...dungeon.events, ...shop.events);
+    events.push(...supplies.events, ...dungeon.events, ...shop.events);
     return shop.adventurer;
   });
   const active = adventurers.filter((hero) => hero.status !== "dead").length;
-  const influx = Math.min(state.populationConfig.dailyInflux, state.influxRemaining,
+  const influx = Math.min(state.populationConfig.dailyInflux,
     Math.max(0, state.populationConfig.maxActive - active));
   for (let index = 0; index < influx; index += 1) {
     const generated = generateAdventurer(state.nextAdventurerId + index, rngState);
@@ -110,8 +120,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   }
   return {
     state: {
-      ...state, day, adventurers, rngState,
-      influxRemaining: state.influxRemaining - influx,
+      ...state, day, adventurers, rngState, shopEconomy: trade.economy,
       nextAdventurerId: state.nextAdventurerId + influx,
       events: [...state.events, ...events],
     },

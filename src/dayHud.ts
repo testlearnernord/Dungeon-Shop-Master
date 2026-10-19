@@ -1,8 +1,10 @@
-import { advanceDay, createGameState, transitionDayConfirmation, type DayAction } from "./game/gameState";
-import { reconcileVisitors, type VisitorSnapshot } from "./game/npcVisitors";
+import { transitionDayConfirmation, type DayAction } from "./game/gameState";
+import { GameStore } from "./game/gameStore";
+import { type VisitorSnapshot } from "./game/npcVisitors";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
+  store: GameStore,
   onVisitorsChanged: (current: readonly VisitorSnapshot[], previous: readonly VisitorSnapshot[]) => void = () => {},
 ): void {
   const day = document.querySelector<HTMLElement>("#day");
@@ -18,18 +20,24 @@ export function setupDayHud(
     throw new Error("The day clock HUD must exist before the game starts.");
   }
 
-  let state = createGameState();
+  const history = document.querySelector<HTMLOListElement>("#day-history")!;
   let pending = false;
-  const snapshotVisitors = (): readonly VisitorSnapshot[] => state.adventurers.map(({ id, name, role, status }) => ({
+  const snapshotVisitors = (): readonly VisitorSnapshot[] => store.state.adventurers.map(({ id, name, role, status }) => ({
     id, name, role, status,
   }));
   let previousVisitors: readonly VisitorSnapshot[] = [];
 
   const render = (): void => {
+    const state = store.state;
     day.textContent = `Day ${state.day}`;
     events.replaceChildren(...state.events.slice(-3).map((event) => {
       const entry = document.createElement("li");
       entry.dataset.eventId = event.id;
+      entry.textContent = event.message;
+      return entry;
+    }));
+    history.replaceChildren(...state.events.filter((event) => event.day === state.day).map((event) => {
+      const entry = document.createElement("li");
       entry.textContent = event.message;
       return entry;
     }));
@@ -41,7 +49,7 @@ export function setupDayHud(
       const entry = document.createElement("li");
       entry.dataset.adventurerId = hero.id;
       entry.dataset.status = hero.status;
-      entry.textContent = `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status}`;
+      entry.textContent = `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
       entry.title = `${hero.id} · XP ${hero.xp} · Gold ${hero.gold} · ${hero.traits.positive} / ${hero.traits.neutral} / ${hero.traits.negative} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
       return entry;
     }));
@@ -54,7 +62,7 @@ export function setupDayHud(
     pending = transition.pending;
     if (transition.advance) {
       previousVisitors = snapshotVisitors();
-      state = advanceDay(state).state;
+      store.endDay();
       const currentVisitors = snapshotVisitors();
       onVisitorsChanged(currentVisitors, previousVisitors);
       previousVisitors = currentVisitors;
@@ -71,6 +79,7 @@ export function setupDayHud(
   cancel.addEventListener("click", () => act("cancel"));
   window.addEventListener("keydown", (event) => {
     if (event.repeat || event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return;
+    if (document.querySelector("dialog[open]")) return;
     if (event.code === "Escape") {
       if (pending) act("cancel");
       return;
@@ -82,6 +91,7 @@ export function setupDayHud(
       act(event.code === "KeyN" ? "request" : "confirm");
     }
   });
+  store.subscribe(render);
   render();
   const initialVisitors = snapshotVisitors();
   onVisitorsChanged(initialVisitors, previousVisitors);

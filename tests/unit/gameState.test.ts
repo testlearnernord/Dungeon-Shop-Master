@@ -15,7 +15,8 @@ test("a fresh session starts on Day 1 with independent state and a welcome event
     id: "day-1:welcome", type: "welcome", day: 1, message: "Welcome to Day 1. The shop is ready.",
   });
   assert.equal(state.adventurers.length, 10);
-  assert.equal(state.shopEconomy, null);
+  assert.equal(state.shopEconomy.balance, 20);
+  assert.equal(state.shopEconomy.slots.length, 10);
   assert.deepEqual(state.dungeonFloors, []);
   assert.notEqual(state.events, createGameState().events);
 });
@@ -33,7 +34,7 @@ test("one tick advances exactly one day and returns only that tick's determinist
 test("ticks do not mutate frozen input, history, or future system state", () => {
   const initial = {
     ...createGameState(),
-    shopEconomy: { balance: 17 },
+    shopEconomy: { ...createGameState().shopEconomy, balance: 17 },
     dungeonFloors: [{ floor: 1, cleared: false }],
   };
   const snapshot = structuredClone(initial);
@@ -48,9 +49,8 @@ test("ticks do not mutate frozen input, history, or future system state", () => 
   assert.deepEqual(initial, snapshot);
   assert.notEqual(state, initial);
   assert.notEqual(state.events, initial.events);
-  for (const key of ["shopEconomy", "dungeonFloors"] as const) {
-    assert.deepEqual(state[key], snapshot[key]);
-  }
+  assert.deepEqual(state.dungeonFloors, snapshot.dungeonFloors);
+  assert(state.shopEconomy.balance >= snapshot.shopEconomy.balance);
 });
 
 test("ten consecutive ticks preserve ordered history and version", () => {

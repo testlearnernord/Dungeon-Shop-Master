@@ -31,7 +31,6 @@ export function scheduleShopVisit(
     rngState: random.state,
     adventurer: {
       ...hero,
-      health: Math.min(hero.stats.maxHealth, hero.health + 8),
       floor: stay ? 5 : 4,
       status: stay ? "at-shop" : "returning",
       shopStayDays: stay ? 1 : 0,

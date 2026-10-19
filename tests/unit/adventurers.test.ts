@@ -22,7 +22,7 @@ test("Day 1 has ten generated persistent heroes, exactly three distinct Level 5 
     assert.equal(hero.health, hero.stats.maxHealth);
     assert.equal(hero.level, 1);
     assert.equal(hero.xp, 0);
-    assert.deepEqual(hero.inventory, { food: 0, loot: 0 });
+    assert.deepEqual(hero.inventory, { food: 0, loot: 0, healing: 0 });
     assert.equal(hero.hunger, 0);
     assert.deepEqual(hero.equipment, { weapon: null, armor: null });
   }
@@ -130,7 +130,7 @@ test("multi-day population is bounded, IDs/events unique, deaths permanent, and 
     const before = state;
     const result = advanceDay(before);
     state = result.state;
-    assert(state.adventurers.length <= 40);
+    assert(state.adventurers.length <= 10 + 2 * (tick + 1));
     assert(state.adventurers.filter((hero) => hero.status !== "dead").length <= 20);
     assert.equal(state.adventurers.length - before.adventurers.length,
       result.events.filter((event) => event.type === "influx").length);
@@ -149,9 +149,9 @@ test("multi-day population is bounded, IDs/events unique, deaths permanent, and 
     for (const hero of state.adventurers) {
       assert(hero.floor >= 1 && hero.floor <= 5);
       assert(hero.health >= 0 && hero.health <= hero.stats.maxHealth);
-      assert.equal(hero.status === "at-shop", hero.floor === 5);
-      assert.equal(hero.inventory.food, 0);
-      assert.equal(hero.hunger, 0);
+      if (hero.status !== "dead") assert.equal(hero.status === "at-shop", hero.floor === 5);
+      assert(hero.inventory.food >= 0 && hero.inventory.food <= 2);
+      assert(hero.hunger >= 0);
       const previous = before.adventurers.find((entry) => entry.id === hero.id);
       if (previous) {
         assert.equal(hero.name, previous.name);
@@ -165,24 +165,23 @@ test("multi-day population is bounded, IDs/events unique, deaths permanent, and 
   }
   assert(dead.size > 0);
   assert(revisits > 0);
-  assert(maxVisitors > 3);
-  assert.equal(state.influxRemaining, 0);
-  assert.equal(state.adventurers.length, 40);
+  assert(maxVisitors >= 3);
+  assert(state.adventurers.length > 40);
+  assert(state.adventurers.some((hero) => hero.status !== "dead"));
 });
 
-test("influx is configurable, capped by living slots and a finite lifetime budget", () => {
-  let state = createGameState(1, { dailyInflux: 50, maxActive: 10, totalInflux: 3 });
+test("influx is configurable, capped by living slots with no lifetime budget", () => {
+  let state = createGameState(1, { dailyInflux: 50, maxActive: 10 });
   state = advanceDay(state).state;
   assert(state.adventurers.filter((hero) => hero.status !== "dead").length <= 10);
-  assert(state.influxRemaining >= 0);
   for (let tick = 0; tick < 60; tick += 1) state = advanceDay(state).state;
-  assert.equal(state.adventurers.length, 13);
-  assert.equal(state.influxRemaining, 0);
+  assert(state.adventurers.length > 40);
+  assert.equal(state.adventurers.filter((hero) => hero.status !== "dead").length, 10);
   let disabled = createGameState(1, { dailyInflux: 0 });
   for (let tick = 0; tick < 10; tick += 1) disabled = advanceDay(disabled).state;
   assert.equal(disabled.adventurers.length, 10);
   for (const config of [{ dailyInflux: -1 }, { dailyInflux: 0.5 }, { maxActive: 9 },
-    { maxActive: 101 }, { totalInflux: Infinity }, { totalInflux: 1001 }]) {
+    { maxActive: 101 }, { dailyInflux: Infinity }, { dailyInflux: Number.MAX_SAFE_INTEGER + 1 }]) {
     assert.throws(() => createGameState(1, config), RangeError);
   }
 });

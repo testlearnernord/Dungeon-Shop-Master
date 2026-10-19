@@ -29,30 +29,17 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
   const moving = await inspect();
   expect(moving.frame).toBeGreaterThan(first.frame + 5);
   expect(moving.visitors.some((visitor) => visitor.z < 11.5)).toBe(true);
+  expect(moving.visitors.map(({ id, uniqueId }) => ({ id, uniqueId })))
+    .toEqual(first.visitors.map(({ id, uniqueId }) => ({ id, uniqueId })));
   expect(moving.gateY).toBeGreaterThan(2);
   expect(moving.visitors.every(({ wallClear }) => wallClear)).toBe(true);
   expect(moving.visitors.filter(({ z }) => z < 12.01).every(() => moving.gateY >= 3.4)).toBe(true);
 
-  let persistentId = "";
-  let persistentUniqueId = 0;
-  let persistentPosition = { x: 0, z: 0 };
-  let returningUniqueId = 0;
-  let returningPosition = { x: 0, z: 0 };
-  let returningTime = 0;
+  let persistentTransitions = 0;
+  let departures = 0;
   for (let day = 2; day <= 12; day += 1) {
     const before = await inspect();
-    if (day === 5) {
-      const returning = before.visitors.find(({ id }) => id === "adventurer-2");
-      expect(returning?.phase).toBe("leaving");
-      expect(returning?.uniqueId).toBe(returningUniqueId);
-    }
-    if (day === 6) {
-      const visitor = before.visitors.find(({ id }) => id === "adventurer-6");
-      expect(visitor).toBeDefined();
-      persistentId = visitor!.id;
-      persistentUniqueId = visitor!.uniqueId;
-      persistentPosition = { x: visitor!.x, z: visitor!.z };
-    }
+    const previousState = state;
     await page.keyboard.press("n");
     await page.keyboard.press("y");
     state = advanceDay(state).state;
@@ -61,34 +48,40 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
     expect(after.visitors.every(({ wallClear }) => wallClear)).toBe(true);
     expect(after.visitors.filter(({ status }) => status === "at-shop").map(({ id }) => id).sort())
       .toEqual(expected(state).map(({ id }) => id).sort());
-    if (day === 5) {
-      const returning = after.visitors.find(({ id }) => id === "adventurer-2");
-      expect(returning?.uniqueId).toBe(returningUniqueId);
-      const elapsed = (after.time - returningTime) / 1000;
-      expect(Math.hypot(returning!.x - returningPosition.x, returning!.z - returningPosition.z)).toBeLessThan(2.1 * elapsed + 0.75);
-    }
-    if (day === 4) {
-      const leaving = after.visitors.find(({ id }) => id === "adventurer-2");
-      expect(leaving?.phase).toBe("leaving");
-      returningUniqueId = leaving!.uniqueId;
-      returningPosition = { x: leaving!.x, z: leaving!.z };
-      returningTime = after.time;
-      for (let sample = 0; sample < 2; sample += 1) {
-        await page.waitForTimeout(100);
-        expect((await inspect()).visitors.every(({ wallClear }) => wallClear)).toBe(true);
+    // Economic survival changes who stays/returns; derive identity assertions
+    // from the authoritative states instead of assuming a particular hero/day.
+    for (const prior of before.visitors) {
+      const current = after.visitors.find(({ id }) => id === prior.id);
+      const wasShopping = previousState.adventurers.some((hero) => hero.id === prior.id && hero.status === "at-shop");
+      const shopping = state.adventurers.some((hero) => hero.id === prior.id && hero.status === "at-shop");
+      if (wasShopping && shopping) {
+        expect(current).toBeDefined();
+      }
+      if (wasShopping && !shopping) {
+        departures += 1;
+        if (state.adventurers.find((hero) => hero.id === prior.id)?.status === "dead") {
+          expect(current).toBeUndefined();
+          expect(after.npcMeshes.some((name) => name.startsWith(`npc-${prior.id}-`))).toBe(false);
+        } else if (current) {
+          expect(current.phase).toBe("leaving");
+        }
+      }
+      if (current && prior.phase === "leaving" && current.uniqueId !== prior.uniqueId) {
+        // A returner may finish exiting between snapshots, then enter anew.
+        expect(wasShopping).toBe(false);
+        expect(shopping).toBe(true);
+      } else if (current) {
+        persistentTransitions += 1;
+        expect(current.uniqueId).toBe(prior.uniqueId);
+        const elapsed = (after.time - before.time) / 1000;
+        expect(Math.hypot(current.x - prior.x, current.z - prior.z)).toBeLessThan(2.1 * elapsed + 0.75);
       }
     }
-    if (day === 12) {
-      expect(state.adventurers.find(({ id }) => id === "adventurer-3")?.status).toBe("dead");
-      expect(after.visitors.some(({ id }) => id === "adventurer-3")).toBe(false);
-      expect(after.npcMeshes.some((name) => name.startsWith("npc-adventurer-3-"))).toBe(false);
-    }
-    if (day === 6) {
-      const staying = after.visitors.find(({ id }) => id === persistentId);
-      expect(staying?.uniqueId).toBe(persistentUniqueId);
-      expect(Math.hypot(staying!.x - persistentPosition.x, staying!.z - persistentPosition.z)).toBeLessThan(3);
-    }
+    await page.waitForTimeout(100);
+    expect((await inspect()).visitors.every(({ wallClear }) => wallClear)).toBe(true);
   }
+  expect(persistentTransitions).toBeGreaterThan(0);
+  expect(departures).toBeGreaterThan(0);
 
   await page.locator("#renderCanvas").click();
   await page.evaluate(async () => {

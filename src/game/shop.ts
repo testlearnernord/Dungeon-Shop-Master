@@ -5,19 +5,17 @@ import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTextur
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
-import { Inventory, ITEMS, type ItemId, type Slot } from "./inventory";
-
-const SLOT_CAPACITY = 5;
+import { ITEMS, type ItemId, type Slot } from "./inventory";
+import { GameStore } from "./gameStore";
 
 export class Shop {
-  readonly slots: Slot[] = [];
   readonly slotMeshes = new Map<Mesh, Slot>();
   private readonly slotMaterials = new Map<ItemId | "empty", StandardMaterial>();
   private readonly itemVisuals = new Map<string, Mesh[]>();
 
   constructor(
     private readonly scene: Scene,
-    private readonly inventory: Inventory,
+    private readonly store: GameStore,
   ) {
     for (const item of ITEMS) {
       const color = Color3.FromHexString(item.color);
@@ -30,41 +28,24 @@ export class Shop {
     empty.diffuseColor = new Color3(0.33, 0.26, 0.19);
     this.slotMaterials.set("empty", empty);
     this.createShelves();
+    this.refresh();
+    this.store.subscribe(() => this.refresh());
   }
 
   stock(slot: Slot): string {
-    const selected = this.selectedItem;
-    if (!selected || this.inventory.count(selected.id) < 1) {
-      return "You're out of the selected item.";
-    }
-    if ((slot.itemId && slot.itemId !== selected.id) || slot.quantity >= slot.capacity) {
-      return "That slot is full or holds a different item.";
-    }
-    this.inventory.remove(selected.id);
-    slot.itemId = selected.id;
-    slot.quantity += 1;
-    this.updateSlot(slot);
-    return `Placed ${selected.name}.`;
+    return this.store.transfer(slot.id, this.selectedItemId, "stock");
   }
 
   remove(slot: Slot): string {
-    if (!slot.itemId || slot.quantity < 1) {
-      return "That slot is empty.";
-    }
-    if (!this.inventory.add(slot.itemId)) {
-      return "Your inventory is full.";
-    }
-    const item = ITEMS.find(({ id }) => id === slot.itemId);
-    slot.quantity -= 1;
-    if (slot.quantity === 0) {
-      slot.itemId = null;
-    }
-    this.updateSlot(slot);
-    return `Returned ${item?.name ?? "item"} to your inventory.`;
+    return this.store.transfer(slot.id, slot.itemId ?? this.selectedItemId, "remove");
   }
 
-  private get selectedItem() {
-    return ITEMS.find(({ id }) => id === this.selectedItemId);
+  private refresh(): void {
+    for (const [mesh, previous] of this.slotMeshes) {
+      const slot = this.store.state.shopEconomy.slots.find(({ id }) => id === mesh.name)!;
+      this.slotMeshes.set(mesh, slot);
+      if (previous.itemId !== slot.itemId || previous.quantity !== slot.quantity) this.updateSlot(slot);
+    }
   }
 
   private selectedItemId: ItemId = ITEMS[0].id;
@@ -90,23 +71,17 @@ export class Shop {
       plank.isPickable = false;
 
       for (let index = 0; index < 5; index += 1) {
-        const slot: Slot = {
-          id: `${shelfId}-slot-${index + 1}`,
-          shelfId,
-          index,
-          itemId: null,
-          quantity: 0,
-          capacity: SLOT_CAPACITY,
-        };
+        const slot = this.store.state.shopEconomy.slots.find(({ id }) =>
+          id === `${shelfId}-slot-${index + 1}`)!;
         const slotMesh = MeshBuilder.CreateBox(slot.id, { width: 0.76, height: 0.14, depth: 0.78 }, this.scene);
         slotMesh.position.set(x + (x < 0 ? 0.48 : -0.48), 0.82, index - 2);
         slotMesh.material = this.slotMaterials.get("empty")!;
         slotMesh.checkCollisions = true;
         slotMesh.isPickable = true;
         slotMesh.metadata = { kind: "shelf-slot", slotId: slot.id };
-        this.slots.push(slot);
         this.slotMeshes.set(slotMesh, slot);
         this.createSlotLabel(slot, slotMesh.position);
+        this.updateSlot(slot);
       }
     }
   }

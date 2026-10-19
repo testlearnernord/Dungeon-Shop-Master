@@ -14,6 +14,9 @@
         <div class="shop-title">GALVIK'S SHOP <span>· LEVEL 5</span></div>
         <section class="day-panel" aria-label="Day clock">
           <strong id="day">Day 1</strong>
+          <p id="merchant-gold"></p>
+          <p id="daily-sales"></p>
+          <button id="open-wholesale" type="button">Wholesale (B)</button>
           <ol id="world-events" aria-label="Recent world events"></ol>
           <button id="end-day" type="button" aria-expanded="false" aria-controls="day-confirmation">
             End Day (N)
@@ -23,13 +26,17 @@
             <button id="confirm-day" type="button">Confirm Next Day (Y)</button>
             <button id="cancel-day" type="button">Cancel (Esc)</button>
           </div>
+          <details class="day-report">
+            <summary>Full day report</summary>
+            <ol id="day-history"></ol>
+          </details>
         </section>
         <div id="inventory" class="inventory"></div>
         <details class="adventurer-panel" open>
           <summary id="population-summary">Adventurers</summary>
           <p id="shop-visitors" aria-label="Shop visitors"></p>
           <ul id="adventurer-roster" aria-label="Active adventurers"></ul>
-          <p class="simulation-note">Read-only · abstract floors 1–4 · no trades yet</p>
+          <p id="shelf-supplies" class="simulation-note"></p>
         </details>
         <div id="status" class="status">Click to enter the shop</div>
         <div class="crosshair" aria-hidden="true"></div>
@@ -40,9 +47,23 @@
           <span>·</span> <strong>Right-click</strong> remove
           <span>·</span> <strong>E</strong> interact
           <span>·</span> <strong>N / Y</strong> end / confirm day
+          <span>·</span> <strong>B</strong> wholesale
           <span>·</span> <strong>Esc</strong> release
         </div>
       </section>
+      <dialog id="wholesale" aria-labelledby="wholesale-title">
+        <h2 id="wholesale-title">Wholesale catalog</h2>
+        <p>Buy into your bag, then stock shelves. Visitors buy only on End Day.</p>
+        <p>Waybread feeds heroes; healing herbs restore HP. Mana potions and ore are reserved for future use.</p>
+        <div id="wholesale-catalog"></div>
+        <details>
+          <summary>Free bag space (discard, no refund)</summary>
+          <p>To clear a full shelf, discard bag goods, then right-click its stock back into the bag. Discard that stock if needed.</p>
+          <div id="discard-catalog"></div>
+        </details>
+        <p id="wholesale-message" role="status">Each order buys one item immediately. Prices are fixed.</p>
+        <button id="close-wholesale" type="button">Close catalog (Esc / B)</button>
+      </dialog>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
