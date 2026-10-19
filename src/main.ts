@@ -10,8 +10,10 @@ import { Shop } from "./game/shop";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupEconomyHud } from "./economyHud";
+import { loadCampaign, setupCampaignHud } from "./campaignHud";
 import "./styles.css";
 
+async function startGame(): Promise<void> {
 const canvas = document.querySelector<HTMLCanvasElement>("#renderCanvas");
 const inventoryElement = document.querySelector<HTMLDivElement>("#inventory");
 const statusElement = document.querySelector<HTMLDivElement>("#status");
@@ -22,11 +24,12 @@ if (!canvas || !inventoryElement || !statusElement) {
 
 const inventoryHud = inventoryElement;
 const statusHud = statusElement;
+const campaign = await loadCampaign();
 const engine = new Engine(canvas, true, { antialias: true, preserveDrawingBuffer: false });
 const scene = new Scene(engine);
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
-const store = new GameStore();
+const store = new GameStore(campaign.state);
 const shop = new Shop(scene, store);
 const npcVisuals = new NpcVisualSystem(scene);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
@@ -35,6 +38,17 @@ const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
 });
 setupDayHud(canvas, store, (current, previous) => npcVisuals.reconcile(current, previous));
 let selectedItemId: ItemId = ITEMS[0].id;
+setupCampaignHud(store, campaign, () => {
+  npcVisuals.reconcile([], []);
+  interactions.reset();
+  camera.position.set(0, 1.7, -4.6);
+  camera.rotation.setAll(0);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+  const catalog = document.querySelector<HTMLDialogElement>("#wholesale")!;
+  if (catalog.open) catalog.close();
+  statusHud.textContent = "Campaign ready. Click to enter the shop.";
+});
 
 function renderInventory(selectedItem: ItemId): void {
   inventoryHud.replaceChildren();
@@ -50,7 +64,7 @@ function renderInventory(selectedItem: ItemId): void {
   inventoryHud.append(capacity);
 }
 
-new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
+const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;
   renderInventory(selected);
@@ -59,3 +73,6 @@ store.subscribe(() => renderInventory(selectedItemId));
 
 engine.runRenderLoop(() => scene.render());
 window.addEventListener("resize", () => engine.resize());
+}
+
+void startGame();
