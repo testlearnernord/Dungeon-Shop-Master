@@ -22,7 +22,7 @@ export function setupDayHud(
 
   const history = document.querySelector<HTMLOListElement>("#day-history")!;
   let pending = false;
-  const snapshotVisitors = (): readonly VisitorSnapshot[] => store.state.adventurers.map(({ id, name, role, status }) => ({
+  const snapshotVisitors = (): readonly VisitorSnapshot[] => store.state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, status }) => ({
     id, name, role, status,
   }));
   let previousVisitors: readonly VisitorSnapshot[] = [];
@@ -36,7 +36,13 @@ export function setupDayHud(
       entry.textContent = event.message;
       return entry;
     }));
-    history.replaceChildren(...state.events.filter((event) => event.day === state.day).map((event) => {
+    const today = [];
+    for (let index = state.events.length - 1; index >= 0 && today.length < 100; index -= 1) {
+      const event = state.events[index];
+      if (event.day !== state.day) break;
+      today.push(event);
+    }
+    history.replaceChildren(...today.reverse().map((event) => {
       const entry = document.createElement("li");
       entry.textContent = event.message;
       return entry;
@@ -61,11 +67,7 @@ export function setupDayHud(
     const transition = transitionDayConfirmation(pending, action);
     pending = transition.pending;
     if (transition.advance) {
-      previousVisitors = snapshotVisitors();
       store.endDay();
-      const currentVisitors = snapshotVisitors();
-      onVisitorsChanged(currentVisitors, previousVisitors);
-      previousVisitors = currentVisitors;
     }
     // Do not leave keyboard focus on a confirmation button that is about to hide.
     if (!pending && (document.activeElement === confirm || document.activeElement === cancel)) {
@@ -91,7 +93,17 @@ export function setupDayHud(
       act(event.code === "KeyN" ? "request" : "confirm");
     }
   });
-  store.subscribe(render);
+  let previousAdventurers = store.state.adventurers;
+  store.subscribe(() => {
+    pending = false;
+    if (store.state.adventurers !== previousAdventurers) {
+      const currentVisitors = snapshotVisitors();
+      onVisitorsChanged(currentVisitors, previousVisitors);
+      previousVisitors = currentVisitors;
+      previousAdventurers = store.state.adventurers;
+    }
+    render();
+  });
   render();
   const initialVisitors = snapshotVisitors();
   onVisitorsChanged(initialVisitors, previousVisitors);

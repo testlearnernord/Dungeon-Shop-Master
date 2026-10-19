@@ -19,6 +19,11 @@ export class GameStore {
     return () => this.listeners.delete(listener);
   }
 
+  restore(state: GameState): void {
+    this.purchases.clear();
+    this.replace(state);
+  }
+
   private replace(state: GameState): void {
     if (state === this.current) return;
     this.current = state;

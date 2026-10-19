@@ -93,3 +93,17 @@ test("store shelf transfers notify only on success and share the authoritative e
   assert.deepEqual(store.state, initial);
   assert.equal(notifications, 2);
 });
+
+test("restoring a campaign publishes once and resets transaction deduplication", () => {
+  const store = new GameStore();
+  store.purchase("bread", 1, 1);
+  store.endDay();
+  const fresh = createGameState();
+  let notifications = 0;
+  store.subscribe(() => { notifications += 1; });
+  store.restore(fresh);
+  assert.equal(store.state, fresh);
+  assert.equal(notifications, 1);
+  assert.match(store.purchase("bread", 1, 1), /^Bought/);
+  assert.equal(notifications, 2);
+});
