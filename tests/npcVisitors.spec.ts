@@ -5,6 +5,7 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
   const inspect = () => page.evaluate(async () => {
     const modulePath = "/Dungeon-Shop-Master/tests/scene.ts";
     return (await import(modulePath)).inspectNpcVisuals();

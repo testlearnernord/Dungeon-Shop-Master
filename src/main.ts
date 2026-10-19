@@ -55,7 +55,14 @@ function renderInventory(selectedItem: ItemId): void {
   for (const item of ITEMS) {
     const row = document.createElement("div");
     row.className = `inventory-row${item.id === selectedItem ? " selected" : ""}`;
-    row.innerHTML = `<span class="item-dot" style="--item-color:${item.color}"></span><span>${item.name}</span><strong>${store.state.shopEconomy.bag[item.id]}</strong>`;
+    const dot = document.createElement("span");
+    dot.className = "item-dot";
+    dot.style.setProperty("--item-color", item.color);
+    const name = document.createElement("span");
+    name.textContent = item.name;
+    const quantity = document.createElement("strong");
+    quantity.textContent = String(store.state.shopEconomy.bag[item.id]);
+    row.append(dot, name, quantity);
     inventoryHud.append(row);
   }
   const capacity = document.createElement("div");
