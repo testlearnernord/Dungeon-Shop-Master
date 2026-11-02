@@ -13,7 +13,16 @@
       <section id="hud" aria-live="polite">
         <div class="shop-title">GALVIK'S SHOP <span>· LEVEL 5</span></div>
         <section class="day-panel" aria-label="Day clock">
-          <strong id="day">Day 1</strong>
+          <strong id="day">Loading…</strong>
+          <p id="save-status" role="status">Loading campaign…</p>
+          <details class="campaign-panel">
+            <summary>Campaign</summary>
+            <button id="export-save" type="button">Export save</button>
+            <button id="import-save" type="button">Import save</button>
+            <input id="save-file" type="file" accept=".json,application/json" hidden />
+            <button id="recover-save" type="button" hidden>Recover previous save</button>
+            <button id="new-game" type="button">New Game</button>
+          </details>
           <p id="merchant-gold"></p>
           <p id="daily-sales"></p>
           <button id="open-wholesale" type="button">Wholesale (B)</button>
@@ -27,7 +36,7 @@
             <button id="cancel-day" type="button">Cancel (Esc)</button>
           </div>
           <details class="day-report">
-            <summary>Full day report</summary>
+            <summary title="Latest 100 events of the current day">Full day report</summary>
             <ol id="day-history"></ol>
           </details>
         </section>
@@ -38,7 +47,7 @@
           <ul id="adventurer-roster" aria-label="Active adventurers"></ul>
           <p id="shelf-supplies" class="simulation-note"></p>
         </details>
-        <div id="status" class="status">Click to enter the shop</div>
+        <div id="status" class="status">Loading campaign…</div>
         <div class="crosshair" aria-hidden="true"></div>
         <div class="controls">
           <strong>WASD</strong> move <span>·</span> <strong>Mouse</strong> look

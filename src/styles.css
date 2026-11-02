@@ -90,7 +90,8 @@ body,
   outline-offset: 2px;
 }
 
-.day-report {
+.day-report,
+.campaign-panel {
   pointer-events: auto;
   margin-top: 8px;
 }

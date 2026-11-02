@@ -34,7 +34,23 @@ A session starts on **Day 1 with exactly 10 generated adventurers**, IDs `advent
 
 One confirmed action calls `advanceDay(state)` exactly once: **one day = one atomic tick**. The pure function returns `{ state, events }`, leaving its input unchanged, appending events to the world log, and emitting only that tick's events separately. Every event has a stable day/hero/kind ID for deduplication by consumers. Repeating a calculation on the same input returns the same result, not an additional day. No browser APIs, Babylon objects, frame callbacks, timestamps, or real-time timers participate in simulation.
 
-The default seed is `7351`. `GameState` stores both the initial seed and current RNG state; `createGameState(seed, config)` supports reproducible alternative worlds. Identical seeds, configuration and confirmed actions reproduce the same multi-day state, including after JSON serialization. Heroes persist across days **in memory only**; reloading starts a fresh session, not a saved campaign. Invalid seeds, configuration, overflowing days and unsupported simulation versions are rejected.
+The default seed is `7351`. `GameState` stores both the initial seed and current RNG state; `createGameState(seed, config)` supports reproducible alternative worlds. Identical seeds, configuration and confirmed actions reproduce the same multi-day state, including after saving and loading. Invalid seeds, configuration, overflowing days and unsupported simulation versions are rejected.
+
+### Campaign saves (MVP 0.6)
+
+The latest valid campaign continues automatically, with its saved day shown in the HUD. Every successful `GameStore` transaction queues an autosave: confirmed End Day, wholesale purchase, stocking/removal and discard. Rejected actions, rendering and NPC walking never save or advance time. There is **no offline progression**.
+
+Expand **Campaign** for **Export save**, **Import save** and **New Game**. Export downloads a JSON snapshot of the current in-memory campaign, even if browser storage failed. Import validates the file before asking permission to replace the campaign. New Game also requires confirmation and resets the economy, visitors, selection, player camera and HUD in place without refreshing.
+
+`src/game/campaignSave.ts` keeps browser persistence separate from the pure simulation. IndexedDB stores one current envelope and a previous-good backup atomically. Writes are ordered, including after errors, so an older pending snapshot cannot overwrite a newer action. The envelope includes schema version, simulation version, UTC save timestamp and the complete authoritative `GameState`; RNG state, heroes (including dead heroes), shelves and events are retained exactly. Scene objects, camera position, menu state and walking routes are cosmetic and are not saved. Lifecycle events retry an unsaved snapshot best-effort; wait for **Saved Day …** before closing a tab for guaranteed completion of a queued write.
+
+Saves belong to this browser profile and site origin; clearing site data, private browsing, quota limits, browser eviction or switching browser/device can lose them. Storage errors leave play available in memory and show a persistent warning rather than repeated dialogs. **Export regularly**, especially before upgrades or clearing browser data. There is no cloud synchronization or multi-tab conflict resolution: play a campaign in one tab at a time.
+
+**Recovery:** an unreadable/corrupted/unsupported save is never automatically replaced. Autosave stays paused while you play the fresh in-memory state, so export any progress you want to keep. Use **Recover previous save** to validate the backup and explicitly confirm recovery, **Import save** to restore an exported file, or explicitly confirm **New Game** to start over. If storage itself is unavailable, export and restore later in a working browser. A backup is only the immediately previous valid snapshot, not a rewind history, and cannot protect against clearing/losing the entire browser database.
+
+Schema version **1** supports simulation version **3** only. Unknown schema/simulation versions are rejected without deletion or pretend migrations. Future releases must implement and test an explicit migration before accepting older formats; retain an export and use a compatible game version otherwise.
+
+The HUD renders only the last 3 world events, the latest 100 events of the current day and the bounded active roster (default 20, configurable maximum 100). Historical events and dead adventurers remain in the payload and exports, not thousands of DOM nodes. Saving/validation scan the snapshot linearly per committed change, never per frame; complete snapshot storage and the underlying simulation's append-only history still grow with campaign length. Unit and browser regressions cover 220 day ticks and deterministic continuation.
 
 #### Merchant economy and tick order
 

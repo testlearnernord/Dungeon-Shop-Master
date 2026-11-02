@@ -30,6 +30,14 @@ export class InteractionSystem {
     this.publish();
   }
 
+  reset(): void {
+    this.heldButton = null;
+    this.selectedIndex = 0;
+    this.shop.select(ITEMS[0].id);
+    this.message = "Campaign ready. Click to enter the shop.";
+    this.publish();
+  }
+
   private registerEvents(): void {
     this.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
     this.canvas.addEventListener("wheel", (event) => {
