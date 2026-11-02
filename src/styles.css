@@ -388,8 +388,14 @@ body,
 
 /* Merchant receipts are a projection of authoritative day-tick sales events. */
 .sales-banner {
-  margin: 5px 0 9px;
+  position: absolute;
+  top: 56px;
+  left: 280px;
+  width: min(285px, calc(100vw - 320px));
+  max-width: 285px;
+  margin: 0;
   padding: 8px;
+  pointer-events: none;
   color: #dacbb2;
   border: 1px solid #584b38;
   border-radius: 4px;
@@ -417,3 +423,11 @@ body,
   border-radius: 50%;
 }
 .sales-hint { color: #afa38f; font-size: 10px; line-height: 1.4; }
+
+@media (max-width: 720px) {
+  .sales-banner {
+    top: auto; bottom: 80px; left: 12px;
+    width: min(265px, calc(100vw - 24px));
+    max-width: none;
+  }
+}
