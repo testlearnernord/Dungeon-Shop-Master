@@ -87,6 +87,23 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
   };
 }
 
+/**
+ * Count a missed opportunity only at a real departure, once per shop visit.
+ * The meal may have been purchased and consumed during this same global tick.
+ */
+function recordFoodShopDeparture(
+  hero: AdventurerState, day: number, hadFood: boolean, events: WorldEvent[],
+): AdventurerState {
+  if (hadFood) return { ...hero, missedFoodShopVisits: 0 };
+  const failures = Math.min(ECONOMY.missedFoodShopsBeforeStarvation, hero.missedFoodShopVisits + 1);
+  events.push({
+    id: `day-${day}:${hero.id}:food-shortage`, type: "food-shortage",
+    day, adventurerId: hero.id,
+    message: `${hero.name} left the shop without food (${failures}/${ECONOMY.missedFoodShopsBeforeStarvation} failed food visits).`,
+  });
+  return { ...hero, missedFoodShopVisits: failures };
+}
+
 export function advanceDay(state: GameState): { state: GameState; events: readonly WorldEvent[] } {
   if (!Number.isSafeInteger(state.day) || state.day < 1 || state.day >= Number.MAX_SAFE_INTEGER) {
     throw new RangeError("The current day must be a positive safe integer with room for one more day.");
@@ -125,7 +142,8 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         id: `day-${day}:${ready.id}:level6-departure`, type: "level6-departure",
         day, adventurerId: ready.id, message: `${ready.name} entered Level 6 with the merchant's permission.`,
       });
-      return { ...ready, status: "expedition" as const, floor: 6 as const, shopStayDays: 0 };
+      const departing = recordFoodShopDeparture(ready, day, hero.inventory.food > 0, events);
+      return { ...departing, status: "expedition" as const, floor: 6 as const, shopStayDays: 0 };
     }
     const dungeon = simulateDungeon(ready, day, rngState);
     const found = dungeon.events.some((event) => event.type === "dungeon-outcome") &&
@@ -139,17 +157,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
     // Purchases are booked before meals and departures; a bought meal consumed
     // on this very day counts as successful access to food.
     if (ready.status === "at-shop" && shop.adventurer.status === "returning") {
-      const supplied = hero.inventory.food > 0;
-      const failures = supplied ? 0 : Math.min(ECONOMY.missedFoodShopsBeforeStarvation,
-        ready.missedFoodShopVisits + 1);
-      if (!supplied) {
-        events.push({
-          id: `day-${day}:${hero.id}:food-shortage`,
-          type: "food-shortage", day, adventurerId: hero.id,
-          message: `${hero.name} left the shop without food (${failures}/${ECONOMY.missedFoodShopsBeforeStarvation} failed food visits).`,
-        });
-      }
-      return { ...shop.adventurer, missedFoodShopVisits: failures };
+      return recordFoodShopDeparture(shop.adventurer, day, hero.inventory.food > 0, events);
     }
     return shop.adventurer;
   });

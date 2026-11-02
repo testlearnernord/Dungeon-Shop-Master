@@ -79,8 +79,11 @@ test("found rations have seeded ~25% chance, no duplicate grants or free food wh
   const hero = { ...generateAdventurer(1, 777).adventurer, status: "exploring" as const, floor: 3 as const };
   let discoveries = 0;
   for (let seed = 0; seed < 1000; seed += 1) {
-    const result = forageAfterEncounter(hero, 2, seed);
-    assert.deepEqual(result, forageAfterEncounter(hero, 2, seed));
+    // Spread deterministic seed values over the 32-bit domain, not the
+    // correlated adjacent states of the first LCG step.
+    const streamSeed = Math.imul(seed, 0x9e3779b9) >>> 0;
+    const result = forageAfterEncounter(hero, 2, streamSeed);
+    assert.deepEqual(result, forageAfterEncounter(hero, 2, streamSeed));
     assert(result.events.length <= 1);
     if (result.events.length) {
       discoveries += 1;

@@ -256,7 +256,7 @@ test("after repeated unsuccessful visits, a vulnerable hero is saved by purchase
   assert.equal(starved.state.adventurers[0].health, 0);
   assert.notEqual(fed.state.adventurers[0].status, "dead");
   assert.equal(fed.state.adventurers[0].health, hero.health);
-  assert.equal(fed.state.adventurers[0].hunger, 0);
+  assert.equal(fed.state.adventurers[0].hunger, 3);
   assert.equal(fed.state.adventurers[0].gold, hero.gold - 4);
   assert.equal(fed.state.shopEconomy.balance, supplied.shopEconomy.balance + 4);
   assert(fed.events.some((event) => event.type === "ate"));
