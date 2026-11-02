@@ -1,4 +1,4 @@
-import { advanceDay, createGameState, type GameState } from "./gameState.ts";
+import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 
 export class GameStore {
@@ -50,6 +50,13 @@ export class GameStore {
     const result = discardBag(this.current, itemId);
     this.replace(result.state);
     return result.message;
+  }
+
+  setLevel6Permit(heroId: string, permitted: boolean): boolean {
+    const result = setLevel6Permit(this.current, heroId, permitted);
+    if (result === this.current) return false;
+    this.replace(result);
+    return true;
   }
 
   endDay(): void {

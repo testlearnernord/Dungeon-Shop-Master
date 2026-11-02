@@ -154,3 +154,10 @@ The `Deploy to GitHub Pages` workflow builds and deploys pushes to `main`. In th
 6. Use the wheel to change the selected item, press E near the register, then press Esc to release the pointer.
 7. Check Day 1 and the welcome event. Double-click End Day: it must only open confirmation. Cancel, then request and confirm: Day 2 must appear once. Hold N/Y, and repeat ten deliberate advances; verify WASD, pointer lock, stocking, and removal still work and the log shows the last three events.
 8. On a fresh load, verify 10 active adventurers and 3 named shop visitors entering with role labels. Advance days and inspect HP/XP, discoveries, arrivals, returners and losses; confirm IDs (in row tooltips) remain stable and no floor exceeds 5. Watch staying visitors retain their paths while departures exit through the Level 4 gate; confirm the player remains blocked by that gate. Collapse/expand the roster, scroll it with the pointer released, and keep moving/stocking with pointer lock.
+
+
+### MVP 0.7a: individual Level 6 permits (preparation)
+
+A **Grant L6 pass** button appears next to each living hero currently at the Level 5 shop. Click to authorize that specific hero, or **Revoke L6 pass** to withdraw permission while they are still visiting. Permissions are independent of one another, do **not** advance the day or consume RNG, and persist across departures and return visits. They are autosaved through the existing GameStore. No hero enters Level 6 yet: combat, gate visuals and expedition transitions remain intentionally deferred to the next MVP 0.7 slice. Players remain blocked by both gates.
+
+**Save compatibility:** simulation version 4 adds the boolean `level6Permit` to each hero. Existing valid v3 campaign envelopes are strictly validated as v3 first, then migrated in memory by assigning `false` for each hero; RNG state, gold, inventories, events, historical heroes and day are preserved exactly. The next committed state change writes the migrated v4 format. Invalid or unknown-future versions are still rejected without overwriting the stored save. Exports always use v4.

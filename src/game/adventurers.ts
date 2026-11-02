@@ -31,6 +31,8 @@ export interface AdventurerState {
   readonly status: AdventurerStatus;
   readonly hunger: number;
   readonly shopStayDays: number;
+  /** Explicit, player-controlled future access to dungeon Level 6. */
+  readonly level6Permit: boolean;
 }
 
 const names = ["Ada", "Bram", "Cora", "Dain", "Eira", "Finn", "Gwen", "Hale", "Iris", "Joss"];
@@ -67,6 +69,7 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
     status: "exploring",
     hunger: 0,
     shopStayDays: 0,
+    level6Permit: false,
   };
   return { adventurer, rngState: random.state };
 }
