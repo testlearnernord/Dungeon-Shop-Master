@@ -12,7 +12,8 @@ export default defineConfig({
     headless: false,
     viewport: { width: 800, height: 600 },
     launchOptions: { args: ["--enable-unsafe-swiftshader"] },
-    trace: "retain-on-failure",
+    // Avoid continuous WebGL readback on software-rendered CI; capture a screenshot on failure instead.
+    trace: { mode: "retain-on-failure", screenshots: false },
     screenshot: "only-on-failure",
   },
   webServer: {
