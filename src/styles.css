@@ -370,3 +370,18 @@ body,
 .roster-card-extended { padding: 9px 6px 0; font-size: 12px; line-height: 1.45; color: #cfc8b8; }
 .roster-items { color: #f0d9a9; }
 @media(max-width: 600px) { #roster-dialog { padding: 12px; } .roster-heading h2 { font-size: 21px; } }
+
+/* Original compressed atlas artwork supplied for this project. */
+.roster-portrait {
+  background-size: 500% 500%;
+  background-repeat: no-repeat;
+  color: transparent;
+}
+.roster-items { display: flex; gap: 8px; flex-wrap: wrap; }
+.roster-item-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; white-space: nowrap; }
+.roster-item-icon {
+  display: inline-block; width: 26px; height: 26px; flex: 0 0 26px;
+  background-size: 700% 500%;
+  background-repeat: no-repeat;
+  border-radius: 50%;
+}

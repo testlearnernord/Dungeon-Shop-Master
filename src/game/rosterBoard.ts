@@ -6,7 +6,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import type { GameStore } from "./gameStore.ts";
-import { locationLabel, rosterEntries } from "./rosterView.ts";
+import { locationLabel, portraitIndex, rosterEntries } from "./rosterView.ts";
 
 /** Read-only projection of the authoritative heroes onto the shop's front wall. */
 export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh } {
@@ -22,6 +22,9 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
   paint.disableLighting = true;
   paint.backFaceCulling = false;
   board.material = paint;
+  const portraits = new Image();
+  portraits.src = import.meta.env.BASE_URL + "assets/hero-portraits.webp";
+  portraits.addEventListener("load", () => draw());
   const wood = new StandardMaterial("roster-board-wood", scene);
   wood.diffuseColor = new Color3(0.38, 0.23, 0.11);
   for (const [name, w, h, x, y] of [
@@ -53,7 +56,14 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       ctx.fillStyle = i % 2 ? "#223027" : "#29372c";
       ctx.fillRect(38, y - 26, 947, 40);
       ctx.fillStyle = "#f0e4c9";
-      ctx.fillText(hero.name.slice(0, 18), 54, y + 1);
+      const portrait = portraitIndex(hero.id);
+      if (portraits.complete && portraits.naturalWidth > 0) {
+        const tileWidth = portraits.naturalWidth / 5;
+        const tileHeight = portraits.naturalHeight / 5;
+        ctx.drawImage(portraits, (portrait % 5) * tileWidth, Math.floor(portrait / 5) * tileHeight,
+          tileWidth, tileHeight, 45, y - 25, 36, 36);
+      }
+      ctx.fillText(hero.name.slice(0, 18), 93, y + 1);
       ctx.fillStyle = hero.status === "at-shop" ? "#a8e1b8" :
         hero.status === "expedition" ? "#e9ae67" : "#c0bcae";
       ctx.fillText(locationLabel(hero), 345, y + 1);

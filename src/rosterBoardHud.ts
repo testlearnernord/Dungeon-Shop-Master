@@ -10,6 +10,7 @@ export function setupRosterBoardHud(
   const totals = document.querySelector<HTMLElement>("#roster-totals")!;
   const filter = document.querySelector<HTMLSelectElement>("#roster-filter")!;
   const close = document.querySelector<HTMLButtonElement>("#close-roster")!;
+  const openButton = document.querySelector<HTMLButtonElement>("#open-roster")!;
   let filterValue: RosterFilter = "active";
 
   function render(): void {
@@ -30,8 +31,10 @@ export function setupRosterBoardHud(
       const summary = document.createElement("summary");
       const portrait = document.createElement("span");
       portrait.className = "roster-portrait roster-role-" + hero.role.toLowerCase();
-      portrait.dataset.portraitId = String(portraitIndex(hero.id));
-      portrait.textContent = hero.name.charAt(0);
+      const index = portraitIndex(hero.id);
+      portrait.dataset.portraitId = String(index);
+      portrait.style.backgroundImage = "url('" + import.meta.env.BASE_URL + "assets/hero-portraits.webp')";
+      portrait.style.backgroundPosition = ((index % 5) * 25) + "% " + (Math.floor(index / 5) * 25) + "%";
       portrait.setAttribute("aria-hidden", "true");
       const primary = document.createElement("span");
       primary.className = "roster-card-primary";
@@ -64,10 +67,27 @@ export function setupRosterBoardHud(
       traits.textContent = "Traits: " + hero.traits.positive + " / " + hero.traits.neutral + " / " + hero.traits.negative;
       const items = document.createElement("p");
       items.className = "roster-items";
-      items.textContent = "⚔ " + (hero.equipment.weapon ?? "None") +
-        " · 🛡 " + (hero.equipment.armor ?? "None") +
-        " · 🥖 " + hero.inventory.food + " · 🌿 " + hero.inventory.healing +
-        " · 💎 " + hero.inventory.loot;
+      const itemChip = (atlasIndex: number, text: string): HTMLElement => {
+        const chip = document.createElement("span");
+        chip.className = "roster-item-chip";
+        const icon = document.createElement("span");
+        icon.className = "roster-item-icon";
+        icon.style.backgroundImage = "url('" + import.meta.env.BASE_URL + "assets/item-icons.webp')";
+        icon.style.backgroundPosition =
+          ((atlasIndex % 7) * (100 / 6)) + "% " + (Math.floor(atlasIndex / 7) * 25) + "%";
+        icon.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.textContent = text;
+        chip.append(icon, label);
+        return chip;
+      };
+      items.append(
+        itemChip(0, hero.equipment.weapon ?? "No weapon"),
+        itemChip(9, hero.equipment.armor ?? "No armor"),
+        itemChip(24, String(hero.inventory.food)),
+        itemChip(31, String(hero.inventory.healing)),
+        itemChip(30, String(hero.inventory.loot)),
+      );
       extended.append(stats, traits, items);
       if (hero.status === "at-shop") {
         const permit = document.createElement("button");
@@ -102,6 +122,7 @@ export function setupRosterBoardHud(
   function closeRoster(): void { if (dialog.open) dialog.close(); }
   dialog.addEventListener("close", () => camera.attachControl(canvas, true));
   close.addEventListener("click", closeRoster);
+  openButton.addEventListener("click", openRoster);
   filter.addEventListener("change", () => {
     filterValue = filter.value === "fallen" ? "fallen" : "active";
     render();

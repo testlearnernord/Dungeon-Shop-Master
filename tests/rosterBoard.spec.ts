@@ -15,7 +15,9 @@ test("adventurer wall board opens by R and nearby E, tracks state and persists p
   await first.locator("summary").click();
   await expect(first.locator(".roster-card-extended")).toBeVisible();
   await expect(first.locator(".roster-hp")).toHaveAttribute("aria-valuenow", /\d+/);
-  await expect(first.locator(".roster-items")).toContainText("🥖");
+  await expect(first.locator(".roster-item-icon")).toHaveCount(5);
+  await expect(first.locator(".roster-items")).toContainText("No weapon");
+  await expect(first.locator(".roster-portrait")).toHaveAttribute("data-portrait-id", "0");
   await first.locator(".roster-permit").click();
   await expect(first.locator(".roster-permit")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#day")).toHaveText("Day 1");
