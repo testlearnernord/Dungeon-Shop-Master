@@ -17,7 +17,7 @@ export function setupExpeditionHud(store: GameStore): void {
       const entry = document.createElement("li");
       entry.dataset.eventId = event.id;
       entry.dataset.outcome = event.combatOutcome ?? "";
-      entry.textContent = "Day " + event.day + " · " + event.message;
+      entry.textContent = event.id + " · Day " + event.day + " · " + event.message;
       return entry;
     }));
     if (!stats.recent.length) {
