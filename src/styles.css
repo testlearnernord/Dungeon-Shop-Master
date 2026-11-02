@@ -385,3 +385,35 @@ body,
   background-repeat: no-repeat;
   border-radius: 50%;
 }
+
+/* Merchant receipts are a projection of authoritative day-tick sales events. */
+.sales-banner {
+  margin: 5px 0 9px;
+  padding: 8px;
+  color: #dacbb2;
+  border: 1px solid #584b38;
+  border-radius: 4px;
+  background: rgb(26 30 25 / 78%);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.sales-banner[data-has-sales="true"] {
+  color: #d0f0c0;
+  border-color: #67824e;
+  background: rgb(29 53 32 / 85%);
+}
+.sales-ledger { pointer-events: auto; margin-bottom: 8px; font-size: 11px; }
+.sales-ledger > summary { color: #edcf95; cursor: pointer; }
+#sales-receipts { list-style: none; margin: 8px 0; padding: 0; }
+.sales-receipt {
+  display: flex; align-items: center; gap: 6px;
+  border-bottom: 1px solid #544739; padding: 4px 0;
+}
+.sales-receipt > span:nth-child(2) { flex: 1; }
+.sales-receipt strong { color: #badd9b; white-space: nowrap; }
+.sales-item-icon {
+  display: inline-block; flex: 0 0 24px; width: 24px; height: 24px;
+  background-size: 700% 500%; background-repeat: no-repeat;
+  border-radius: 50%;
+}
+.sales-hint { color: #afa38f; font-size: 10px; line-height: 1.4; }
