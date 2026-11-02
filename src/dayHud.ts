@@ -1,6 +1,6 @@
 import { transitionDayConfirmation, type DayAction } from "./game/gameState";
 import { GameStore } from "./game/gameStore";
-import { type VisitorSnapshot } from "./game/npcVisitors";
+import { level6ReturnIds, type VisitorSnapshot } from "./game/npcVisitors";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
@@ -22,9 +22,14 @@ export function setupDayHud(
 
   const history = document.querySelector<HTMLOListElement>("#day-history")!;
   let pending = false;
-  const snapshotVisitors = (): readonly VisitorSnapshot[] => store.state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, status }) => ({
-    id, name, role, status,
-  }));
+  const snapshotVisitors = (): readonly VisitorSnapshot[] => {
+    const state = store.state;
+    const fromLevel6 = level6ReturnIds(state.events, state.day);
+    return state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, status }) => ({
+      id, name, role, status,
+      entranceGate: fromLevel6.has(id) ? "level6" as const : "level4" as const,
+    }));
+  };
   let previousVisitors: readonly VisitorSnapshot[] = [];
 
   const render = (): void => {
@@ -66,7 +71,7 @@ export function setupDayHud(
         permission.dataset.adventurerId = hero.id;
         permission.setAttribute("aria-pressed", String(hero.level6Permit));
         permission.textContent = hero.level6Permit ? "Revoke L6 pass" : "Grant L6 pass";
-        permission.title = "Authorize this adventurer individually. Level 6 expeditions are coming in a later update.";
+        permission.title = "Approve this hero's Level 6 departure on the next confirmed day. Combat resolves one day later.";
         permission.addEventListener("click", () => {
           store.setLevel6Permit(hero.id, !hero.level6Permit);
         });

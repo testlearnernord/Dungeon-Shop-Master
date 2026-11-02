@@ -45,6 +45,7 @@ export function inspectNpcVisuals() {
         role: node.metadata.role as string,
         phase: node.metadata.phase as string,
         status: node.metadata.simulationStatus as string,
+        gateSide: node.metadata.gateSide as string,
         uniqueId: node.uniqueId,
         x: node.position.x,
         y: node.position.y,
@@ -66,6 +67,9 @@ export function inspectNpcVisuals() {
           })),
       })),
     gateY: scene.getMeshByName("level-4-barrier")?.position.y,
+    gate6Y: scene.getMeshByName("level-6-barrier")?.position.y,
     playerBarrierSolid: scene.getMeshByName("level-4-player-barrier")?.checkCollisions ?? false,
+    playerBarrier6Solid: scene.getMeshByName("level-6-player-barrier")?.checkCollisions ?? false,
+    playerBarrier6Hidden: scene.getMeshByName("level-6-player-barrier")?.visibility === 0,
   };
 }

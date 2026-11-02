@@ -6,7 +6,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
-import { reconcileVisitors, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
+import { reconcileVisitors, type GateSide, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
 
 interface NpcVisual {
   readonly root: TransformNode;
@@ -22,6 +22,7 @@ interface NpcVisual {
   wait: number;
   browseSide: number;
   animationTime: number;
+  gateSide: GateSide;
 }
 
 const ROLE_COLORS: Record<VisitorRole, string> = {
@@ -33,8 +34,8 @@ const WALK_SPEED = 2.1;
 const DOOR_CLOSED_Y = 0.9;
 const DOOR_OPEN_Y = 3.8;
 const DOOR_PASSAGE_CLEAR_Y = 3.4;
-const CORRIDOR_X = -4;
-const CORRIDOR_INNER_Z = 6.35;
+const CORRIDOR_X: Record<GateSide, number> = { level4: -4, level6: 4 };
+const CORRIDOR_INNER_Z = 6.0;
 const CORRIDOR_OUTER_Z = 13;
 
 function roleColor(role: VisitorRole): Color3 {
@@ -141,18 +142,25 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
   const visual: NpcVisual = {
     root, arms, legs, torso, visitor, phase: "entering", route: [], waypoint: 0, slot,
     elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0,
+    gateSide: visitor.entranceGate ?? "level4",
   };
-  root.metadata = { adventurerId: visitor.id, name: visitor.name, role: visitor.role, phase: visual.phase, simulationStatus: visitor.status };
+  root.metadata = {
+    adventurerId: visitor.id, name: visitor.name, role: visitor.role,
+    phase: visual.phase, simulationStatus: visitor.status, gateSide: visual.gateSide,
+  };
   return visual;
 }
 
 export class NpcVisualSystem {
   private readonly npcs = new Map<string, NpcVisual>();
-  private readonly door: Mesh | null;
-  private doorY = DOOR_CLOSED_Y;
+  private readonly doors: Record<GateSide, Mesh | null>;
+  private readonly doorY: Record<GateSide, number> = { level4: DOOR_CLOSED_Y, level6: DOOR_CLOSED_Y };
 
   constructor(private readonly scene: Scene) {
-    this.door = scene.getMeshByName("level-4-barrier") as Mesh | null;
+    this.doors = {
+      level4: scene.getMeshByName("level-4-barrier") as Mesh | null,
+      level6: scene.getMeshByName("level-6-barrier") as Mesh | null,
+    };
     scene.onBeforeRenderObservable.add(this.update);
   }
 
@@ -173,7 +181,8 @@ export class NpcVisualSystem {
         while (usedSlots.has(slot)) slot += 1;
         usedSlots.add(slot);
         const lane = (slot % 3 - 1) * 0.55;
-        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X + lane, 0, CORRIDOR_OUTER_Z));
+        const gate = visitor.entranceGate ?? "level4";
+        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X[gate] + lane, 0, CORRIDOR_OUTER_Z));
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -189,7 +198,8 @@ export class NpcVisualSystem {
         while (usedSlots.has(slot)) slot += 1;
         usedSlots.add(slot);
         const lane = (slot % 3 - 1) * 0.55;
-        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X + lane, 0, CORRIDOR_OUTER_Z));
+        const gate = visitor.entranceGate ?? "level4";
+        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X[gate] + lane, 0, CORRIDOR_OUTER_Z));
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -206,50 +216,69 @@ export class NpcVisualSystem {
 
   private readonly update = (): void => {
     const delta = Math.min(this.scene.getEngine().getDeltaTime() / 1000, 0.1);
-    let doorOpen = false;
+    const open: Record<GateSide, boolean> = { level4: false, level6: false };
     for (const npc of this.npcs.values()) {
       npc.animationTime += delta;
-      if (npc.phase === "entering" || npc.phase === "leaving") doorOpen = true;
+      if (npc.phase === "entering" || npc.phase === "leaving") {
+        open[npc.gateSide] = true;
+        // A hero switched to an L6 departure while still physically in the
+        // Level 4 approach. Open that gate too until they return to the shop.
+        if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x < 0) open.level4 = true;
+        if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x > 0) open.level6 = true;
+      }
       if (npc.phase === "queueing") {
         npc.wait -= delta;
         if (npc.wait <= 0) this.beginBrowsing(npc);
-      } else if ((npc.phase !== "entering" && npc.phase !== "leaving") || this.doorY >= DOOR_PASSAGE_CLEAR_Y) {
-        this.move(npc, delta);
+      } else {
+        const isMovingThroughGate = (npc.phase === "entering" || npc.phase === "leaving") &&
+          npc.root.position.z > 11.3;
+        const physicalSide: GateSide = npc.root.position.x < 0 ? "level4" : "level6";
+        if (!isMovingThroughGate || this.doorY[physicalSide] >= DOOR_PASSAGE_CLEAR_Y) {
+          this.move(npc, delta);
+        }
       }
       this.animate(npc);
     }
-    if (this.door) {
-      const target = doorOpen ? DOOR_OPEN_Y : DOOR_CLOSED_Y;
-      this.doorY += Math.sign(target - this.doorY) * Math.min(Math.abs(target - this.doorY), delta * 4);
-      this.door.position.y = this.doorY;
+    for (const gate of ["level4", "level6"] as const) {
+      const target = open[gate] ? DOOR_OPEN_Y : DOOR_CLOSED_Y;
+      const y = this.doorY[gate];
+      this.doorY[gate] += Math.sign(target - y) * Math.min(Math.abs(target - y), delta * 4);
+      if (this.doors[gate]) this.doors[gate]!.position.y = this.doorY[gate];
     }
   };
 
   private beginEntering(npc: NpcVisual, slot: number, fromOutside: boolean): void {
     npc.slot = slot;
     npc.phase = "entering";
+    npc.gateSide = npc.visitor.entranceGate ?? "level4";
     const x = npc.root.position.x;
-    const z = npc.root.position.z;
+    const gateX = CORRIDOR_X[npc.gateSide];
+    // Never cut across the physical corridor-end wall if a previous departure
+    // animation is interrupted by a later day tick.
     npc.route = fromOutside
       ? [new Vector3(x, 0, CORRIDOR_INNER_Z)]
-      : z > CORRIDOR_INNER_Z
-        ? [new Vector3(CORRIDOR_X, 0, z), new Vector3(CORRIDOR_X, 0, CORRIDOR_INNER_Z)]
-        : [new Vector3(x, 0, CORRIDOR_INNER_Z), new Vector3(CORRIDOR_X, 0, CORRIDOR_INNER_Z)];
+      : [new Vector3(x, 0, CORRIDOR_INNER_Z), new Vector3(gateX, 0, CORRIDOR_INNER_Z)];
     npc.waypoint = 0;
     npc.wait = 0;
     npc.root.metadata.phase = npc.phase;
+    npc.root.metadata.gateSide = npc.gateSide;
     npc.root.metadata.simulationStatus = npc.visitor.status;
   }
 
   private beginLeaving(npc: NpcVisual): void {
     npc.phase = "leaving";
+    npc.gateSide = npc.visitor.status === "expedition" ? "level6" : "level4";
+    const gateX = CORRIDOR_X[npc.gateSide];
+    // Route through the navigable inner shop (z=6.0) before crossing between
+    // left/right corridors. No lateral travel through end walls at z > 7.
     npc.route = [
       new Vector3(npc.root.position.x, 0, CORRIDOR_INNER_Z),
-      new Vector3(CORRIDOR_X, 0, CORRIDOR_INNER_Z),
-      new Vector3(CORRIDOR_X, 0, CORRIDOR_OUTER_Z),
+      new Vector3(gateX, 0, CORRIDOR_INNER_Z),
+      new Vector3(gateX, 0, CORRIDOR_OUTER_Z),
     ];
     npc.waypoint = 0;
     npc.root.metadata.phase = npc.phase;
+    npc.root.metadata.gateSide = npc.gateSide;
   }
 
   private beginBrowsing(npc: NpcVisual): void {
