@@ -1,6 +1,7 @@
 import { transitionDayConfirmation, type DayAction } from "./game/gameState";
 import { GameStore } from "./game/gameStore";
 import { level6ReturnIds, type VisitorSnapshot } from "./game/npcVisitors";
+import { heroDisplayNames } from "./game/heroIdentity.ts";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
@@ -26,8 +27,9 @@ export function setupDayHud(
   const snapshotVisitors = (): readonly VisitorSnapshot[] => {
     const state = store.state;
     const fromLevel6 = level6ReturnIds(state.events, state.day);
-    return state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, status }) => ({
-      id, name, role, status,
+    const names = heroDisplayNames(state.adventurers);
+    return state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, level, status }) => ({
+      id, name, role, level, status, displayName: names.get(id) ?? name,
       entranceGate: fromLevel6.has(id) ? "level6" as const : "level4" as const,
     }));
   };
@@ -53,17 +55,18 @@ export function setupDayHud(
       entry.textContent = event.message;
       return entry;
     }));
+    const names = heroDisplayNames(state.adventurers);
     const active = state.adventurers.filter((hero) => hero.status !== "dead");
     const atShop = active.filter((hero) => hero.status === "at-shop");
     population.textContent = `Adventurers: ${active.length} active · ${state.adventurers.length - active.length} lost`;
-    visitors.textContent = `Shop visitors (${atShop.length}): ${atShop.map((hero) => hero.name).join(", ") || "none"}`;
+    visitors.textContent = `Shop visitors (${atShop.length}): ${atShop.map((hero) => names.get(hero.id) ?? hero.name).join(", ") || "none"}`;
     roster.replaceChildren(...active.map((hero) => {
       const entry = document.createElement("li");
       entry.dataset.adventurerId = hero.id;
       entry.dataset.status = hero.status;
       const summary = document.createElement("span");
       summary.className = "hero-summary";
-      summary.textContent = `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
+      summary.textContent = `${names.get(hero.id) ?? hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
       entry.append(summary);
       if (hero.status === "at-shop") {
         const permission = document.createElement("button");
