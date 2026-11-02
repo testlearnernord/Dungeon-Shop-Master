@@ -84,9 +84,9 @@ export function setupRosterBoardHud(
       items.append(
         itemChip(0, hero.equipment.weapon ?? "No weapon"),
         itemChip(9, hero.equipment.armor ?? "No armor"),
-        itemChip(24, String(hero.inventory.food)),
-        itemChip(31, String(hero.inventory.healing)),
-        itemChip(30, String(hero.inventory.loot)),
+        itemChip(24, "Food " + hero.inventory.food),
+        itemChip(31, "Healing supplies " + hero.inventory.healing),
+        itemChip(30, "Loot " + hero.inventory.loot),
       );
       extended.append(stats, traits, items);
       if (hero.status === "at-shop") {
@@ -95,7 +95,12 @@ export function setupRosterBoardHud(
         permit.className = "roster-permit";
         permit.setAttribute("aria-pressed", String(hero.level6Permit));
         permit.textContent = hero.level6Permit ? "Revoke Level 6 permit" : "Grant Level 6 permit";
-        permit.addEventListener("click", () => store.setLevel6Permit(hero.id, !hero.level6Permit));
+        permit.addEventListener("click", () => {
+          store.setLevel6Permit(hero.id, !hero.level6Permit);
+          [...list.querySelectorAll<HTMLDetailsElement>("details[data-hero-id]")]
+            .find((entry) => entry.dataset.heroId === hero.id)
+            ?.querySelector<HTMLButtonElement>(".roster-permit")?.focus();
+        });
         extended.append(permit);
       } else if (hero.level6Permit && hero.status !== "dead") {
         const permitted = document.createElement("p");

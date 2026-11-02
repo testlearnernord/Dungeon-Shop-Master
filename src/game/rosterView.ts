@@ -10,7 +10,15 @@ export function portraitIndex(id: string): number {
   return result ? (Number(result[1]) - 1) % 25 : 0;
 }
 export function rosterEntries(state: GameState, filter: RosterFilter): readonly AdventurerState[] {
-  if (filter === "fallen") return state.adventurers.filter((hero) => hero.status === "dead").slice(-40).reverse();
+  if (filter === "fallen") {
+    const lastEventByHero = new Map<string, number>();
+    state.events.forEach((event, index) => {
+      if (event.adventurerId) lastEventByHero.set(event.adventurerId, index);
+    });
+    return state.adventurers.filter((hero) => hero.status === "dead")
+      .sort((a, b) => (lastEventByHero.get(b.id) ?? -1) - (lastEventByHero.get(a.id) ?? -1))
+      .slice(0, 40);
+  }
   return state.adventurers.filter((hero) => hero.status !== "dead")
     .sort((a, b) => PRIORITY[a.status] - PRIORITY[b.status] || a.id.localeCompare(b.id, undefined, { numeric: true }));
 }

@@ -12,6 +12,7 @@ import { locationLabel, portraitIndex, rosterEntries } from "./rosterView.ts";
 export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh } {
   const board = MeshBuilder.CreatePlane("adventurer-roster-board", { width: 4.55, height: 2.75 }, scene);
   board.position = new Vector3(0, 2.17, -6.68);
+  board.rotation.y = Math.PI;
   board.checkCollisions = false;
   board.isPickable = true;
   board.metadata = { kind: "roster-board" };

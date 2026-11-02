@@ -28,3 +28,25 @@ test("roster read views do not mutate campaign state and remain bounded after lo
   assert.deepEqual(state, snapshot);
   assert.deepEqual(rosterEntries(state, "active").map((hero) => hero.id), active.map((hero) => hero.id));
 });
+
+test("fallen roster is ordered by latest event before limiting to 40 heroes", () => {
+  const state = createGameState();
+  const heroes = Array.from({ length: 41 }, (_, index) => ({
+    ...state.adventurers[0],
+    id: `adventurer-${index + 1}`,
+    status: "dead" as const,
+  }));
+  const deaths = [...heroes.slice(1), heroes[0]].map((hero, index) => ({
+    id: `death-${index}`,
+    type: "starvation" as const,
+    day: index + 1,
+    message: `${hero.name} died.`,
+    adventurerId: hero.id,
+  }));
+  const fallen = rosterEntries({ ...state, adventurers: heroes, events: deaths }, "fallen");
+
+  assert.equal(fallen.length, 40);
+  assert.equal(fallen[0].id, "adventurer-1");
+  assert.equal(fallen.at(-1)?.id, "adventurer-3");
+  assert(!fallen.some((hero) => hero.id === "adventurer-2"));
+});
