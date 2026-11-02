@@ -156,7 +156,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
 /**
  * Grant or revoke Level 6 access only while a living hero is visiting the shop.
  * This is an explicit player decision, not a tick or a hidden RNG roll.
- * The Level 6 expedition system will consume this flag in the next slice.
+ * The Level 6 expedition system consumes this flag when a visitor departs.
  */
 export function setLevel6Permit(state: GameState, heroId: string, permitted: boolean): GameState {
   if (typeof permitted !== "boolean") throw new TypeError("Level 6 permission must be boolean.");

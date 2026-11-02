@@ -1,11 +1,30 @@
 export type VisitorStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "dead";
 export type VisitorRole = "tank" | "DPS" | "healer";
+export type GateSide = "level4" | "level6";
+
+/** Derive cosmetic return routes from the authoritative daily event history. */
+export function level6ReturnIds(
+  events: readonly { readonly type: string; readonly day: number; readonly adventurerId?: string }[],
+  currentDay: number,
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i];
+    if (event.day < currentDay - 1) break;
+    if (event.day === currentDay - 1 && event.type === "level6-return" && event.adventurerId) {
+      ids.add(event.adventurerId);
+    }
+  }
+  return ids;
+}
 
 export interface VisitorSnapshot {
   readonly id: string;
   readonly name: string;
   readonly role: VisitorRole;
   readonly status: VisitorStatus;
+  /** Read-only, visual-only route hint. The RPG status remains in GameState. */
+  readonly entranceGate?: GateSide;
 }
 
 export interface VisitorChanges {

@@ -167,4 +167,9 @@ A **Grant L6 pass** button appears next to each living hero currently at the Lev
 
 **Only living heroes at the Level 5 shop who have an individual Level 6 permit** depart on the next confirmed End Day, after that day's purchases and supplies are processed. The departure itself does not fight. At the following day's tick, their persistent hero stats/health and seeded RNG drive a six-round maximum encounter with one of three Level 6 enemies, followed by victory, retreat, or permanent death. Survivors travel back and arrive at the shop on the subsequent tick; no hero can access Level 7. Food and healing supplies are consumed by the existing daily rules before combat. First victories set the persistent `dungeonFloors` entry for Level 6 to cleared. All encounter events appear in the daily log and preserve unique IDs.
 
-This slice is **abstract combat only**: it does not yet render 3D combat or animate the Level 6 gate. NPCs may still use their previous departure path until the gate scene integration is completed in another PR. The player remains unable to leave Level 5. Sim v3 and v4 saves migrate strictly and non-destructively to v5; new v5 saves remain versioned.
+This slice uses **abstract combat only** and does not render 3D combat. The 3D Level 6 exit and entrance animation are added in MVP 0.7c. The player remains unable to leave Level 5. Sim v3 and v4 saves migrate strictly and non-destructively to v5; new v5 saves remain versioned.
+
+
+### MVP 0.7c: 3D expedition gate
+
+Heroes explicitly authorized to enter Level 6 now visibly depart via the **right-hand gate**, with normal floor 4 traffic using the **left-hand gate**. Level 6 survivors return through the right-hand gate on the day following their `level6-return` event. The gates lift independently, and **both player-only collision barriers stay permanently solid**: the curse still prevents the player from escaping the shop. Gameplay is entirely tied to confirmed daily ticks; movement and gate animation are only cosmetic. No 3D combat yet. No save schema change.
