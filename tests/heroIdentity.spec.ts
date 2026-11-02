@@ -27,6 +27,8 @@ test("same hero has consistent original portrait, unique display name and level 
   }
   await page.locator("#close-roster").click();
   await page.reload();
+  // Campaign loading and Babylon scene creation are asynchronous after navigation.
+  await expect(page.locator("#save-status")).toHaveText("Continued saved Day 1.");
   await expect.poll(async () => (await inspect()).visitors.every(v => v.portraitReady)).toBe(true);
   for (const v of (await inspect()).visitors) {
     expect(v.portraitIndex).toBe(heroPortraitIndex(v.id));
