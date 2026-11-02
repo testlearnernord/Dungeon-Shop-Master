@@ -19,13 +19,31 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:unit
+
+  browser:
+    name: Browser tests (shard ${{ matrix.shard }}/3)
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: xvfb-run -a npm test
+      # Playwright shards split all 16 specs, not just a curated subset.
+      # Separate GitHub runners avoid fighting for a single CPU-bound WebGL process.
+      - run: xvfb-run -a npm test -- --shard=${{ matrix.shard }}/3
       - name: Upload browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
