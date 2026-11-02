@@ -3,8 +3,8 @@ import { ECONOMY, ITEMS } from "./economy.ts";
 import type { WorldEvent } from "./gameState.ts";
 
 export type AdventurerRole = "tank" | "DPS" | "healer";
-export type AdventurerStatus = "exploring" | "traveling" | "at-shop" | "returning" | "dead";
-export type DungeonFloor = 1 | 2 | 3 | 4 | 5;
+export type AdventurerStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "dead";
+export type DungeonFloor = 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface AdventurerState {
   readonly id: string;

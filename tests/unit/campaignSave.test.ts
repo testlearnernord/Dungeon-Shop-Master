@@ -106,7 +106,7 @@ const badPayloads: [string, (state: any) => void, RegExp][] = [
   ["negative sales", (s) => { s.shopEconomy.dailySales.revenue = -1; }, /revenue/],
   ["future rescue", (s) => { s.shopEconomy.lastRescueDay = 2; }, /lastRescueDay/],
   ["duplicate floors", (s) => { s.dungeonFloors = [{ floor: 1, cleared: false }, { floor: 1, cleared: true }]; }, /unique/],
-  ["invalid floor progress", (s) => { s.dungeonFloors = [{ floor: 6, cleared: true }]; }, /floor/],
+  ["invalid floor progress", (s) => { s.dungeonFloors = [{ floor: 7, cleared: true }]; }, /floor/],
   ["invalid cleared flag", (s) => { s.dungeonFloors = [{ floor: 1, cleared: 1 }]; }, /cleared/],
   ["missing events", (s) => { s.events = null; }, /events.*array/],
   ["duplicate events", (s) => { s.events.push(s.events[0]); }, /unique/],

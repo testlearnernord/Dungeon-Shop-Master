@@ -1,11 +1,12 @@
 import { consumeDailySupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
 import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
 import { simulateDungeon, type DungeonOutcome } from "./dungeonSimulation.ts";
+import { simulateLevel6Combat } from "./level6Combat.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 4;
+export const SIMULATION_VERSION = 5;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -28,11 +29,13 @@ export interface PopulationConfig {
 export interface WorldEvent {
   readonly id: string;
   readonly type: "welcome" | "day-started" | "dungeon-outcome" | "shop-arrival" | "shop-stay" | "shop-departure" | "influx" |
-    "sale" | "ate" | "healed" | "starvation" | "rescue";
+    "sale" | "ate" | "healed" | "starvation" | "rescue" |
+    "level6-departure" | "level6-combat" | "level6-return";
   readonly day: number;
   readonly message: string;
   readonly adventurerId?: string;
   readonly outcome?: DungeonOutcome;
+  readonly combatOutcome?: "victory" | "retreat" | "death";
   readonly itemId?: ItemId;
   readonly quantity?: number;
   readonly revenue?: number;
@@ -97,12 +100,31 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   // then travel/departures and vacancy-driven newcomers. Dead heroes never change.
   const trade = tradeAtStartOfDay(state, day);
   events.push(...trade.events);
+  let clearedLevel6 = state.dungeonFloors.some((entry) => entry.floor === 6 && entry.cleared);
   const adventurers = trade.adventurers.map((hero) => {
+    // Exactly one action per hero per global tick. Purchases precede supplies,
+    // and newly authorized departures cannot fight on their departure day.
     const supplies = consumeDailySupplies(hero, day);
-    const dungeon = simulateDungeon(supplies.adventurer, day, rngState);
+    events.push(...supplies.events);
+    const ready = supplies.adventurer;
+    if (ready.status === "expedition") {
+      const combat = simulateLevel6Combat(ready, day, rngState);
+      rngState = combat.rngState;
+      events.push(...combat.events);
+      if (combat.victory) clearedLevel6 = true;
+      return combat.adventurer;
+    }
+    if (ready.status === "at-shop" && ready.level6Permit && ready.health > 0) {
+      events.push({
+        id: `day-${day}:${ready.id}:level6-departure`, type: "level6-departure",
+        day, adventurerId: ready.id, message: `${ready.name} entered Level 6 with the merchant's permission.`,
+      });
+      return { ...ready, status: "expedition" as const, floor: 6 as const, shopStayDays: 0 };
+    }
+    const dungeon = simulateDungeon(ready, day, rngState);
     const shop = scheduleShopVisit(dungeon.adventurer, day, dungeon.rngState);
     rngState = shop.rngState;
-    events.push(...supplies.events, ...dungeon.events, ...shop.events);
+    events.push(...dungeon.events, ...shop.events);
     return shop.adventurer;
   });
   const active = adventurers.filter((hero) => hero.status !== "dead").length;
@@ -121,6 +143,9 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   return {
     state: {
       ...state, day, adventurers, rngState, shopEconomy: trade.economy,
+      dungeonFloors: clearedLevel6 && !state.dungeonFloors.some((entry) => entry.floor === 6 && entry.cleared)
+        ? [...state.dungeonFloors.filter((entry) => entry.floor !== 6), { floor: 6, cleared: true }]
+        : state.dungeonFloors,
       nextAdventurerId: state.nextAdventurerId + influx,
       events: [...state.events, ...events],
     },

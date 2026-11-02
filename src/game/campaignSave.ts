@@ -59,15 +59,16 @@ const slotDefinitions = createEconomy().slots;
 const eventTypes = [
   "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure",
   "influx", "sale", "ate", "healed", "starvation", "rescue",
+  "level6-departure", "level6-combat", "level6-return",
 ] as const;
 
-function validateState(value: unknown, legacy = false): asserts value is GameState {
+function validateState(value: unknown, version = SIMULATION_VERSION): asserts value is GameState {
   const state = object(value, "payload", [
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
   ]);
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
-  if (state.simulationVersion !== (legacy ? 3 : SIMULATION_VERSION)) fail("payload.simulationVersion", "is incompatible");
+  if (state.simulationVersion !== version) fail("payload.simulationVersion", "is incompatible");
   integer(state.seed, "payload.seed", 0, 0xffffffff);
   integer(state.rngState, "payload.rngState", 0, 0xffffffff);
   const population = object(state.populationConfig, "payload.populationConfig", ["dailyInflux", "maxActive"]);
@@ -81,7 +82,7 @@ function validateState(value: unknown, legacy = false): asserts value is GameSta
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
       "equipment", "inventory", "floor", "status", "hunger", "shopStayDays",
-      ...(legacy ? [] : ["level6Permit"]),
+      ...(version < 4 ? [] : ["level6Permit"]),
     ]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
@@ -107,19 +108,23 @@ function validateState(value: unknown, legacy = false): asserts value is GameSta
     }
     const inventory = object(hero.inventory, `${path}.inventory`, ["loot", "food", "healing"]);
     for (const key of Object.keys(inventory)) integer(inventory[key], `${path}.inventory.${key}`);
-    const floor = integer(hero.floor, `${path}.floor`, 1, 5);
-    choice(hero.status, ["exploring", "traveling", "at-shop", "returning", "dead"], `${path}.status`);
+    const floor = integer(hero.floor, `${path}.floor`, 1, version < 5 ? 5 : 6);
+    choice(hero.status, version < 5
+      ? ["exploring", "traveling", "at-shop", "returning", "dead"]
+      : ["exploring", "traveling", "at-shop", "returning", "expedition", "dead"], `${path}.status`);
     if ((hero.status === "dead") !== (health === 0)) fail(`${path}.status`, "must agree with health");
     if (hero.status !== "dead") {
       active += 1;
       if ((hero.status === "at-shop" && floor !== 5) ||
           (hero.status === "exploring" && floor > 4) ||
-          ((hero.status === "traveling" || hero.status === "returning") && floor !== 4)) {
+          ((hero.status === "traveling" || hero.status === "returning") && floor !== 4) ||
+          (hero.status === "expedition" && floor !== 6)) {
         fail(`${path}.floor`, "must agree with status");
       }
     }
     integer(hero.hunger, `${path}.hunger`);
-    if (!legacy && typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
+    if (version >= 4 && typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
+    if (hero.status === "expedition" && hero.level6Permit !== true) fail(`${path}.level6Permit`, "is required for Level 6");
     const stay = integer(hero.shopStayDays, `${path}.shopStayDays`, 0, 1);
     if (stay !== 0 && hero.status !== "at-shop" && hero.status !== "dead") {
       fail(`${path}.shopStayDays`, "requires a shop visit");
@@ -162,7 +167,7 @@ function validateState(value: unknown, legacy = false): asserts value is GameSta
   array(state.dungeonFloors, "payload.dungeonFloors").forEach((value, index) => {
     const path = `payload.dungeonFloors[${index}]`;
     const floor = object(value, path, ["floor", "cleared"]);
-    unique(integer(floor.floor, `${path}.floor`, 1, 5), floors, `${path}.floor`);
+    unique(integer(floor.floor, `${path}.floor`, 1, version < 5 ? 5 : 6), floors, `${path}.floor`);
     if (typeof floor.cleared !== "boolean") fail(`${path}.cleared`, "must be a boolean");
   });
 
@@ -171,8 +176,8 @@ function validateState(value: unknown, legacy = false): asserts value is GameSta
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
-      ["adventurerId", "outcome", "itemId", "quantity", "revenue"]);
-    choice(event.type, eventTypes, `${path}.type`);
+      ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome"]);
+    choice(event.type, version < 5 ? eventTypes.filter((type) => !type.startsWith("level6-")) : eventTypes, `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
     lastDay = eventDay;
     text(event.message, `${path}.message`);
@@ -186,6 +191,10 @@ function validateState(value: unknown, legacy = false): asserts value is GameSta
       allowed.push("outcome");
       choice(event.outcome, ["advance", "stay", "retreat", "death"], `${path}.outcome`);
       suffix = "dungeon";
+    }
+    if (event.type === "level6-combat") {
+      allowed.push("combatOutcome");
+      choice(event.combatOutcome, ["victory", "retreat", "death"], `${path}.combatOutcome`);
     }
     if (["sale", "ate", "healed", "rescue"].includes(event.type as string)) {
       allowed.push("itemId", "quantity");
@@ -231,19 +240,21 @@ export function parseSave(text: string): GameState {
   }
   const envelope = object(value, "envelope", ["schemaVersion", "simulationVersion", "savedAt", "payload"]);
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
-  if (envelope.simulationVersion !== 3 && envelope.simulationVersion !== SIMULATION_VERSION) {
+  const version = envelope.simulationVersion;
+  if (version !== 3 && version !== 4 && version !== SIMULATION_VERSION) {
     fail("simulationVersion", "is incompatible; no migrations are available");
   }
   const savedAt = textTimestamp(envelope.savedAt);
   if (!savedAt) fail("savedAt", "must be an ISO UTC timestamp");
-  const legacy = envelope.simulationVersion === 3;
-  // Validate the old schema BEFORE migrating. Invalid saves are never repaired implicitly.
-  validateState(envelope.payload, legacy);
-  if (!legacy) return envelope.payload;
+  // Validate the original strict v3/v4 schema BEFORE migrating it.
+  validateState(envelope.payload, version as number);
+  if (version === SIMULATION_VERSION) return envelope.payload;
   return {
     ...envelope.payload,
     simulationVersion: SIMULATION_VERSION,
-    adventurers: envelope.payload.adventurers.map((hero) => ({ ...hero, level6Permit: false })),
+    adventurers: envelope.payload.adventurers.map((hero) => ({
+      ...hero, level6Permit: version === 3 ? false : hero.level6Permit,
+    })),
   };
 }
 
