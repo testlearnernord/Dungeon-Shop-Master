@@ -60,6 +60,7 @@ const eventTypes = [
   "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure",
   "influx", "sale", "ate", "healed", "starvation", "rescue",
   "level6-departure", "level6-combat", "level6-return",
+  "food-shortage", "found-food",
 ] as const;
 
 function validateState(value: unknown, version = SIMULATION_VERSION): asserts value is GameState {
@@ -83,6 +84,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
       "equipment", "inventory", "floor", "status", "hunger", "shopStayDays",
       ...(version < 4 ? [] : ["level6Permit"]),
+      ...(version < 6 ? [] : ["missedFoodShopVisits"]),
     ]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
@@ -123,6 +125,8 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       }
     }
     integer(hero.hunger, `${path}.hunger`);
+    if (version >= 6) integer(hero.missedFoodShopVisits, `${path}.missedFoodShopVisits`,
+      0, ECONOMY.missedFoodShopsBeforeStarvation);
     if (version >= 4 && typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
     if (hero.status === "expedition" && hero.level6Permit !== true) fail(`${path}.level6Permit`, "is required for Level 6");
     const stay = integer(hero.shopStayDays, `${path}.shopStayDays`, 0, 1);
@@ -177,7 +181,9 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
       ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome"]);
-    choice(event.type, version < 5 ? eventTypes.filter((type) => !type.startsWith("level6-")) : eventTypes, `${path}.type`);
+    choice(event.type, eventTypes.filter((type) =>
+      (version >= 5 || !type.startsWith("level6-")) &&
+      (version >= 6 || (type !== "food-shortage" && type !== "found-food"))), `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
     lastDay = eventDay;
     text(event.message, `${path}.message`);
@@ -196,12 +202,12 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       allowed.push("combatOutcome");
       choice(event.combatOutcome, ["victory", "retreat", "death"], `${path}.combatOutcome`);
     }
-    if (["sale", "ate", "healed", "rescue"].includes(event.type as string)) {
+    if (["sale", "ate", "healed", "rescue", "found-food"].includes(event.type as string)) {
       allowed.push("itemId", "quantity");
       choice(event.itemId, itemIds, `${path}.itemId`);
       integer(event.quantity, `${path}.quantity`, 1,
         event.type === "sale" ? ECONOMY.slotCapacity : event.type === "rescue" ? ECONOMY.rescueQuantity : 1);
-      if ((event.type === "ate" || event.type === "rescue") && event.itemId !== "bread") fail(`${path}.itemId`, "must be bread");
+      if ((event.type === "ate" || event.type === "rescue" || event.type === "found-food") && event.itemId !== "bread") fail(`${path}.itemId`, "must be bread");
       if (event.type === "healed" && event.itemId !== "healing-herb") fail(`${path}.itemId`, "must be healing-herb");
     }
     if (event.type === "sale") {
@@ -241,19 +247,21 @@ export function parseSave(text: string): GameState {
   const envelope = object(value, "envelope", ["schemaVersion", "simulationVersion", "savedAt", "payload"]);
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
   const version = envelope.simulationVersion;
-  if (version !== 3 && version !== 4 && version !== SIMULATION_VERSION) {
+  if (version !== 3 && version !== 4 && version !== 5 && version !== SIMULATION_VERSION) {
     fail("simulationVersion", "is incompatible; no migrations are available");
   }
   const savedAt = textTimestamp(envelope.savedAt);
   if (!savedAt) fail("savedAt", "must be an ISO UTC timestamp");
-  // Validate the original strict v3/v4 schema BEFORE migrating it.
+  // Validate the original strict schema BEFORE migrating it; never repair corruption.
   validateState(envelope.payload, version as number);
   if (version === SIMULATION_VERSION) return envelope.payload;
   return {
     ...envelope.payload,
     simulationVersion: SIMULATION_VERSION,
     adventurers: envelope.payload.adventurers.map((hero) => ({
-      ...hero, level6Permit: version === 3 ? false : hero.level6Permit,
+      ...hero,
+      level6Permit: version === 3 ? false : hero.level6Permit,
+      missedFoodShopVisits: 0,
     })),
   };
 }

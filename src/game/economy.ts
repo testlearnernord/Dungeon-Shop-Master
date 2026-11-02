@@ -26,8 +26,12 @@ export const ECONOMY = {
   startingGold: 20,
   foodTarget: 2,
   healingTarget: 1,
-  starvationThreshold: 3,
-  starvationDamage: 8,
+  starvationThreshold: 6,
+  starvationDamage: 4,
+  missedFoodShopsBeforeStarvation: 3,
+  hungerCeiling: 30,
+  dungeonFoodChance: 0.25,
+  dungeonFoodCarryCap: 2,
   rescueQuantity: 2,
 } as const;
 

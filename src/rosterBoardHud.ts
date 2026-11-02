@@ -1,6 +1,7 @@
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries, type RosterFilter } from "./game/rosterView.ts";
+import { ECONOMY } from "./game/economy.ts";
 
 export function setupRosterBoardHud(
   canvas: HTMLCanvasElement, camera: UniversalCamera, store: GameStore,
@@ -61,7 +62,9 @@ export function setupRosterBoardHud(
       extended.className = "roster-card-extended";
       const stats = document.createElement("p");
       stats.textContent = "F" + hero.floor + " · XP " + hero.xp + " · Gold " + hero.gold +
-        "g · Hunger " + hero.hunger + " · STR " + hero.stats.strength +
+        "g · Hunger " + hero.hunger +
+        " · Missed food shops " + hero.missedFoodShopVisits + "/" + ECONOMY.missedFoodShopsBeforeStarvation +
+        " · STR " + hero.stats.strength +
         " / AGI " + hero.stats.agility + " / INT " + hero.stats.intellect;
       const traits = document.createElement("p");
       traits.textContent = "Traits: " + hero.traits.positive + " / " + hero.traits.neutral + " / " + hero.traits.negative;

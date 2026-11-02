@@ -6,7 +6,7 @@ import { GameStore } from "../../src/game/gameStore.ts";
 
 test("Level 6 permission is explicit, individual, immutable and does not consume a tick", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 5);
+  assert.equal(SIMULATION_VERSION, 6);
   assert(initial.adventurers.every((hero) => !hero.level6Permit));
   const visitor = initial.adventurers[0];
   const granted = setLevel6Permit(initial, visitor.id, true);
@@ -40,17 +40,20 @@ test("permissions survive future days, save roundtrips and GameStore restore", (
 });
 
 test("old v3 save migrates exactly once without modifying RNG, hero history or merchant state", () => {
-  let current = createGameState();
-  for (let i = 0; i < 6; i += 1) current = advanceDay(current).state;
+  // Reconstruct a genuine pre-foraging v3 state, without v6-only events.
+  const current = createGameState();
   const old = structuredClone(current) as any;
   old.simulationVersion = 3;
-  for (const hero of old.adventurers) delete hero.level6Permit;
+  for (const hero of old.adventurers) {
+    delete hero.level6Permit;
+    delete hero.missedFoodShopVisits;
+  }
   const oldEnvelope: any = createSave(current);
   oldEnvelope.simulationVersion = 3;
   oldEnvelope.payload = old;
   const before = JSON.stringify(oldEnvelope);
   const migrated = parseSave(before);
-  assert.equal(migrated.simulationVersion, 5);
+  assert.equal(migrated.simulationVersion, 6);
   assert.equal(migrated.day, current.day);
   assert.equal(migrated.rngState, current.rngState);
   assert.deepEqual(migrated.events, current.events);
@@ -67,7 +70,7 @@ test("old v3 save migrates exactly once without modifying RNG, hero history or m
   assert.throws(() => parseSave(JSON.stringify(future)), /incompatible/);
 });
 
-test("v5 payloads reject missing and wrongly typed permit values", () => {
+test("v6 payloads reject missing and wrongly typed permit values", () => {
   const normal = createSave(createGameState());
   const missing = structuredClone(normal) as any;
   delete missing.payload.adventurers[0].level6Permit;

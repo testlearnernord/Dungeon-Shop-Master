@@ -235,20 +235,19 @@ test("food purchases and daily consumption precede starvation, healing is purcha
     ["sale", "sale", "ate", "healed"]);
 });
 
-test("shop stays grant no free healing, foodless heroes starve, and death is immutable", () => {
-  const hero = customer(1, { health: 7, hunger: 2 });
+test("shop stays provide no free healing and one missing meal cannot start a death spiral", () => {
+  const hero = customer(1, { health: 7, hunger: 5, missedFoodShopVisits: 0 });
   assert.equal(scheduleShopVisit(hero, 2, 1).adventurer.health, 7);
-  const state = freeze(market([hero]));
-  const result = advanceDay(state);
-  const dead = result.state.adventurers[0];
-  assert.equal(dead.status, "dead");
-  assert.equal(dead.health, 0);
-  assert(result.events.some((event) => event.type === "starvation"));
-  assert.equal(advanceDay(freeze(result.state)).state.adventurers[0], dead);
+  const result = advanceDay(freeze(market([hero])));
+  const survivor = result.state.adventurers[0];
+  assert.notEqual(survivor.status, "dead");
+  assert.equal(survivor.health, hero.health);
+  assert(survivor.missedFoodShopVisits <= 1);
+  assert(!result.events.some((event) => event.type === "starvation"));
 });
 
-test("the same vulnerable hero survives with purchased food but dies without shelf supplies", () => {
-  const hero = customer(1, { health: 7, hunger: 2 });
+test("after repeated unsuccessful visits, a vulnerable hero is saved by purchased food", () => {
+  const hero = customer(1, { health: 4, hunger: 6, missedFoodShopVisits: ECONOMY.missedFoodShopsBeforeStarvation });
   const empty = freeze(market([hero]));
   const supplied = freeze(stock(empty, "bread", 1));
   const starved = advanceDay(empty);
@@ -257,7 +256,7 @@ test("the same vulnerable hero survives with purchased food but dies without she
   assert.equal(starved.state.adventurers[0].health, 0);
   assert.notEqual(fed.state.adventurers[0].status, "dead");
   assert.equal(fed.state.adventurers[0].health, hero.health);
-  assert.equal(fed.state.adventurers[0].hunger, 0);
+  assert.equal(fed.state.adventurers[0].hunger, 3);
   assert.equal(fed.state.adventurers[0].gold, hero.gold - 4);
   assert.equal(fed.state.shopEconomy.balance, supplied.shopEconomy.balance + 4);
   assert(fed.events.some((event) => event.type === "ate"));
@@ -288,7 +287,8 @@ test("seeded exploring heroes survive with supplies where unsupplied peers die, 
   let survivalDifferences = 0;
   let suppliedHazardDeaths = 0;
   for (const seed of [0, 1, 42, 1000, 2000, 12345, 7351]) {
-    const hero = customer(1, { status: "exploring", floor: 3, health: 1, hunger: 2 });
+    const hero = customer(1, { status: "exploring", floor: 3, health: 1, hunger: 6,
+      missedFoodShopVisits: ECONOMY.missedFoodShopsBeforeStarvation });
     const base = { ...market([hero]), rngState: seed };
     const supplied = {
       ...base,
@@ -308,7 +308,7 @@ test("seeded exploring heroes survive with supplies where unsupplied peers die, 
       suppliedHazardDeaths += 1;
       assert(equipped.events.some((event) => event.type === "dungeon-outcome" && event.outcome === "death"));
     }
-    assert.equal(equipped.state.adventurers[0].inventory.food, 0);
+    assert(equipped.state.adventurers[0].inventory.food <= 1);
     assert.equal(equipped.state.adventurers[0].inventory.healing, 0);
   }
   assert(survivalDifferences > 0);

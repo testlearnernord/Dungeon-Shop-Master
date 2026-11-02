@@ -24,6 +24,7 @@ test("Day 1 has ten generated persistent heroes, exactly three distinct Level 5 
     assert.equal(hero.xp, 0);
     assert.deepEqual(hero.inventory, { food: 0, loot: 0, healing: 0 });
     assert.equal(hero.hunger, 0);
+    assert.equal(hero.missedFoodShopVisits, 0);
     assert.deepEqual(hero.equipment, { weapon: null, armor: null });
   }
 });
@@ -152,6 +153,7 @@ test("multi-day population is bounded, IDs/events unique, deaths permanent, and 
       if (hero.status !== "dead") assert.equal(hero.status === "at-shop", hero.floor === 5);
       assert(hero.inventory.food >= 0 && hero.inventory.food <= 2);
       assert(hero.hunger >= 0);
+      assert(hero.missedFoodShopVisits >= 0 && hero.missedFoodShopVisits <= 3);
       const previous = before.adventurers.find((entry) => entry.id === hero.id);
       if (previous) {
         assert.equal(hero.name, previous.name);

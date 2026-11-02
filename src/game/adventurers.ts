@@ -30,6 +30,8 @@ export interface AdventurerState {
   readonly floor: DungeonFloor;
   readonly status: AdventurerStatus;
   readonly hunger: number;
+  /** Number of actual foodless shop visits completed since the last meal. */
+  readonly missedFoodShopVisits: number;
   readonly shopStayDays: number;
   /** Explicit, player-controlled future access to dungeon Level 6. */
   readonly level6Permit: boolean;
@@ -68,6 +70,7 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
     floor: 1,
     status: "exploring",
     hunger: 0,
+    missedFoodShopVisits: 0,
     shopStayDays: 0,
     level6Permit: false,
   };
@@ -81,16 +84,20 @@ export function consumeDailySupplies(hero: AdventurerState, day: number): {
   const events: WorldEvent[] = [];
   let health = hero.health;
   let hunger = hero.hunger;
+  let missedFoodShopVisits = hero.missedFoodShopVisits;
   let { food, healing } = hero.inventory;
   if (food > 0) {
     food -= 1;
     hunger = Math.max(0, hunger - ITEMS.find((item) => item.id === "bread")!.hunger);
+    // An actual meal breaks the chain of failed shopping trips, whether
+    // purchased or found in the dungeon. Never reset it merely for entering.
+    missedFoodShopVisits = 0;
     events.push({
       id: `day-${day}:${hero.id}:ate`, type: "ate", day, adventurerId: hero.id,
       itemId: "bread", quantity: 1, message: `${hero.name} ate Waybread.`,
     });
   } else {
-    hunger += 1;
+    hunger = Math.min(ECONOMY.hungerCeiling, hunger + 1);
   }
   if (healing > 0 && health < hero.stats.maxHealth) {
     healing -= 1;
@@ -100,7 +107,8 @@ export function consumeDailySupplies(hero: AdventurerState, day: number): {
       itemId: "healing-herb", quantity: 1, message: `${hero.name} used a Healing Herb.`,
     });
   }
-  if (hunger >= ECONOMY.starvationThreshold) {
+  if (hunger >= ECONOMY.starvationThreshold &&
+      missedFoodShopVisits >= ECONOMY.missedFoodShopsBeforeStarvation) {
     health = Math.max(0, health - ECONOMY.starvationDamage);
     events.push({
       id: `day-${day}:${hero.id}:starvation`, type: "starvation", day, adventurerId: hero.id,
@@ -108,7 +116,8 @@ export function consumeDailySupplies(hero: AdventurerState, day: number): {
     });
   }
   return {
-    adventurer: { ...hero, health, hunger, status: health === 0 ? "dead" : hero.status,
+    adventurer: { ...hero, health, hunger, missedFoodShopVisits,
+      status: health === 0 ? "dead" : hero.status,
       inventory: { ...hero.inventory, food, healing } },
     events,
   };
