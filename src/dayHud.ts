@@ -6,6 +6,7 @@ export function setupDayHud(
   canvas: HTMLCanvasElement,
   store: GameStore,
   onVisitorsChanged: (current: readonly VisitorSnapshot[], previous: readonly VisitorSnapshot[]) => void = () => {},
+  onConfirmedDay: () => void = () => {},
 ): void {
   const day = document.querySelector<HTMLElement>("#day");
   const events = document.querySelector<HTMLOListElement>("#world-events");
@@ -89,6 +90,7 @@ export function setupDayHud(
     pending = transition.pending;
     if (transition.advance) {
       store.endDay();
+      onConfirmedDay();
     }
     // Do not leave keyboard focus on a confirmation button that is about to hide.
     if (!pending && (document.activeElement === confirm || document.activeElement === cancel)) {

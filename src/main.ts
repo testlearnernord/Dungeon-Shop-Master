@@ -43,16 +43,12 @@ const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
   if (open) camera.detachControl();
   else camera.attachControl(canvas, true);
 });
-setupDayHud(canvas, store, (current, previous) => npcVisuals.reconcile(current, previous));
+setupDayHud(
+  canvas, store,
+  (current, previous) => npcVisuals.reconcile(current, previous),
+  () => npcVisuals.showSales(currentDayReceipts(store.state)),
+);
 setupSalesHud(store);
-// On startup, saved receipts appear in the ledger but no fake/replayed NPC sale popups.
-// A sale popup may only be triggered when an actual confirmed day advance occurs.
-let lastPresentedDay = store.state.day;
-store.subscribe(() => {
-  const currentDay = store.state.day;
-  if (currentDay > lastPresentedDay) npcVisuals.showSales(currentDayReceipts(store.state));
-  lastPresentedDay = currentDay;
-});
 let selectedItemId: ItemId = ITEMS[0].id;
 setupCampaignHud(store, campaign, () => {
   npcVisuals.reconcile([], []);

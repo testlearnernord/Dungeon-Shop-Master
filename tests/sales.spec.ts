@@ -28,15 +28,13 @@ test("sales display matches booked gold, shelf stock and named 3D customers afte
   await page.locator("#sales-ledger-summary").click();
   await expect(page.locator(".sales-receipt")).toHaveCount(receipts.length);
   for (const receipt of receipts) {
-    const row = page.locator(".sales-receipt").filter({ has: page.locator('[data-event-id="' + receipt.id + '"]') });
-    // Use the uniquely identified receipt directly, not its text (names need not be unique).
+    // Receipt IDs link UI rows to authoritative event IDs (names need not be unique).
     const exact = page.locator('#sales-receipts li[data-event-id="' + receipt.id + '"]');
     await expect(exact).toContainText(receipt.heroName);
     await expect(exact).toContainText(receipt.itemName);
     await expect(exact).toContainText("+" + receipt.revenue + "g");
     await expect(exact.locator(".sales-item-icon")).toHaveCount(1);
-    void row;
-  }
+   }
 
   const view = () => page.evaluate(async () =>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals());
