@@ -7,6 +7,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import type { GameStore } from "./gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries } from "./rosterView.ts";
+import { heroDisplayNames } from "./heroIdentity.ts";
 
 /** Read-only projection of the authoritative heroes onto the shop's front wall. */
 export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh } {
@@ -51,6 +52,7 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
     ctx.fillStyle = "#7e5e35";
     ctx.fillRect(44, 83, 930, 4);
     const heroes = rosterEntries(state, "active");
+    const labels = heroDisplayNames(state.adventurers);
     ctx.font = "23px sans-serif";
     heroes.slice(0, 9).forEach((hero, i) => {
       const y = 122 + i * 47;
@@ -61,10 +63,13 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       if (portraits.complete && portraits.naturalWidth > 0) {
         const tileWidth = portraits.naturalWidth / 5;
         const tileHeight = portraits.naturalHeight / 5;
-        ctx.drawImage(portraits, (portrait % 5) * tileWidth, Math.floor(portrait / 5) * tileHeight,
-          tileWidth, tileHeight, 45, y - 25, 36, 36);
+        const inset = Math.min(tileWidth, tileHeight) * 0.06;
+        ctx.drawImage(portraits, (portrait % 5) * tileWidth + inset, Math.floor(portrait / 5) * tileHeight + inset,
+          tileWidth - 2 * inset, tileHeight - 2 * inset, 45, y - 25, 36, 36);
       }
-      ctx.fillText(hero.name.slice(0, 18), 93, y + 1);
+      ctx.font = "bold 21px sans-serif";
+      ctx.fillText((labels.get(hero.id) ?? hero.name) + " · Lv" + hero.level + " " + hero.role, 93, y + 1, 238);
+      ctx.font = "23px sans-serif";
       ctx.fillStyle = hero.status === "at-shop" ? "#a8e1b8" :
         hero.status === "expedition" ? "#e9ae67" : "#c0bcae";
       ctx.fillText(locationLabel(hero), 345, y + 1);

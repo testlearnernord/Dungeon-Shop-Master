@@ -1,14 +1,11 @@
 import type { AdventurerState } from "./adventurers.ts";
 import type { GameState } from "./gameState.ts";
+export { heroPortraitIndex as portraitIndex } from "./heroIdentity.ts";
 
 export type RosterFilter = "active" | "fallen";
 const PRIORITY: Record<AdventurerState["status"], number> = {
   "at-shop": 0, expedition: 1, traveling: 2, returning: 3, exploring: 4, dead: 5,
 };
-export function portraitIndex(id: string): number {
-  const result = /^adventurer-([1-9]\d*)$/.exec(id);
-  return result ? (Number(result[1]) - 1) % 25 : 0;
-}
 export function rosterEntries(state: GameState, filter: RosterFilter): readonly AdventurerState[] {
   if (filter === "fallen") {
     const lastEventByHero = new Map<string, number>();

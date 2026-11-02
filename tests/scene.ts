@@ -49,6 +49,10 @@ export function inspectNpcVisuals() {
       .map((node) => ({
         id: node.metadata.adventurerId as string,
         name: node.metadata.name as string,
+        displayName: node.metadata.displayName as string,
+        level: node.metadata.level as number,
+        portraitIndex: node.metadata.portraitIndex as number,
+        portraitReady: node.metadata.portraitReady as boolean,
         role: node.metadata.role as string,
         phase: node.metadata.phase as string,
         status: node.metadata.simulationStatus as string,

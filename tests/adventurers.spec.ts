@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { advanceDay, createGameState } from "../src/game/gameState";
+import { heroDisplayNames } from "../src/game/heroIdentity";
 
 test("read-only roster and textual visitors track the persistent simulation on confirmed days", async ({ page }) => {
   const errors: string[] = [];
@@ -29,17 +30,18 @@ test("read-only roster and textual visitors track the persistent simulation on c
     await page.keyboard.press("y");
     state = advanceDay(state).state;
     await expect(page.locator("#day")).toHaveText(`Day ${nextDay}`);
+    const names = heroDisplayNames(state.adventurers);
     const active = state.adventurers.filter((hero) => hero.status !== "dead");
     await expect(roster).toHaveCount(active.length);
     for (const hero of active) {
       await expect(page.locator(`#adventurer-roster li[data-adventurer-id="${hero.id}"] .hero-summary`)).toHaveText(
-        `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`,
+        `${names.get(hero.id) ?? hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`,
       );
     }
     const atShop = active.filter((hero) => hero.status === "at-shop");
     await expect(page.locator("#adventurer-roster .level6-permit")).toHaveCount(atShop.length);
     await expect(visitors).toHaveText(
-      `Shop visitors (${atShop.length}): ${atShop.map((hero) => hero.name).join(", ") || "none"}`,
+      `Shop visitors (${atShop.length}): ${atShop.map((hero) => names.get(hero.id) ?? hero.name).join(", ") || "none"}`,
     );
   }
   await expect(page.locator("#inventory")).toHaveText(inventory, { useInnerText: true });

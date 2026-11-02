@@ -21,6 +21,9 @@ export function level6ReturnIds(
 export interface VisitorSnapshot {
   readonly id: string;
   readonly name: string;
+  /** Unique, UI-only name derived from full persistent history. */
+  readonly displayName?: string;
+  readonly level?: number;
   readonly role: VisitorRole;
   readonly status: VisitorStatus;
   /** Read-only, visual-only route hint. The RPG status remains in GameState. */
