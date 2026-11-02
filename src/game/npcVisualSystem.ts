@@ -8,6 +8,7 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { reconcileVisitors, type GateSide, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
+import { heroPortraitIndex } from "./heroIdentity.ts";
 
 interface NpcVisual {
   readonly root: TransformNode;
@@ -24,6 +25,7 @@ interface NpcVisual {
   browseSide: number;
   animationTime: number;
   gateSide: GateSide;
+  readonly labelTexture: DynamicTexture;
   saleTag: Mesh | null;
   saleSeconds: number;
 }
@@ -69,7 +71,52 @@ function createPart(
   return mesh;
 }
 
-function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, position: Vector3): NpcVisual {
+/** Draw the original portrait tile beside the persistent hero's name/level. */
+function paintIdentity(npc: NpcVisual, atlas: HTMLImageElement): void {
+  const ctx = npc.labelTexture.getContext();
+  ctx.clearRect(0, 0, 640, 160);
+  ctx.fillStyle = "#211910";
+  ctx.fillRect(0, 0, 640, 160);
+  const index = heroPortraitIndex(npc.visitor.id);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(76, 80, 62, 0, Math.PI * 2);
+  ctx.clip();
+  if (atlas.complete && atlas.naturalWidth > 0) {
+    const w = atlas.naturalWidth / 5;
+    const h = atlas.naturalHeight / 5;
+    const inset = Math.min(w, h) * 0.06;
+    ctx.drawImage(atlas, (index % 5) * w + inset, Math.floor(index / 5) * h + inset,
+      w - 2 * inset, h - 2 * inset, 14, 18, 124, 124);
+  } else {
+    ctx.fillStyle = "#52634d";
+    ctx.fillRect(14, 18, 124, 124);
+    ctx.fillStyle = "#fff0cb";
+    ctx.font = "bold 62px sans-serif";
+    ctx.fillText(npc.visitor.name.charAt(0), 52, 101);
+  }
+  ctx.restore();
+  ctx.strokeStyle = "#d6ae67";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(76, 80, 62, 0, Math.PI * 2);
+  ctx.stroke();
+  const displayName = npc.visitor.displayName ?? npc.visitor.name;
+  const level = npc.visitor.level ?? 1;
+  ctx.fillStyle = "#fff0cb";
+  ctx.font = "bold 39px sans-serif";
+  ctx.fillText(displayName + " · Lv" + level, 155, 76, 475);
+  ctx.fillStyle = "#e0bc88";
+  ctx.font = "29px sans-serif";
+  ctx.fillText(npc.visitor.role, 157, 122);
+  npc.labelTexture.update();
+  npc.root.metadata.displayName = displayName;
+  npc.root.metadata.level = level;
+  npc.root.metadata.portraitIndex = index;
+  npc.root.metadata.portraitReady = atlas.complete && atlas.naturalWidth > 0;
+}
+
+function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, position: Vector3, atlas: HTMLImageElement): NpcVisual {
   const root = new TransformNode(`npc-${visitor.id}`, scene);
   root.position.copyFrom(position);
   const bodyMaterial = material(scene, `npc-${visitor.id}-role`, roleColor(visitor.role));
@@ -126,15 +173,14 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
       new Vector3(-0.43, 1.64, 0.05), bodyMaterial);
   }
 
-  const label = MeshBuilder.CreatePlane(`npc-${visitor.id}-label`, { width: 1.8, height: 0.44 }, scene);
+  const label = MeshBuilder.CreatePlane(`npc-${visitor.id}-label`, { width: 2.25, height: 0.56 }, scene);
   label.parent = root;
-  label.position.y = 2.3;
+  label.position.y = 2.42;
   label.billboardMode = Mesh.BILLBOARDMODE_ALL;
   label.isPickable = false;
   label.checkCollisions = false;
-  const texture = new DynamicTexture(`npc-${visitor.id}-label-texture`, { width: 512, height: 128 }, scene, false);
+  const texture = new DynamicTexture(`npc-${visitor.id}-label-texture`, { width: 640, height: 160 }, scene, false);
   texture.hasAlpha = true;
-  texture.drawText(`${visitor.name} · ${visitor.role}`, null, 86, "bold 38px sans-serif", "#fff1d1", "#211910", true);
   const labelMaterial = material(scene, `npc-${visitor.id}-label-material`, Color3.White());
   labelMaterial.diffuseTexture = texture;
   labelMaterial.emissiveColor = new Color3(0.8, 0.8, 0.8);
@@ -146,21 +192,28 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
     root, arms, legs, torso, visitor, phase: "entering", route: [], waypoint: 0, slot,
     elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0,
     gateSide: visitor.entranceGate ?? "level4",
+    labelTexture: texture,
     saleTag: null, saleSeconds: 0,
   };
   root.metadata = {
     adventurerId: visitor.id, name: visitor.name, role: visitor.role,
     phase: visual.phase, simulationStatus: visitor.status, gateSide: visual.gateSide,
   };
+  paintIdentity(visual, atlas);
   return visual;
 }
 
 export class NpcVisualSystem {
   private readonly npcs = new Map<string, NpcVisual>();
+  private readonly portraits = new Image();
   private readonly doors: Record<GateSide, Mesh | null>;
   private readonly doorY: Record<GateSide, number> = { level4: DOOR_CLOSED_Y, level6: DOOR_CLOSED_Y };
 
   constructor(private readonly scene: Scene) {
+    this.portraits.addEventListener("load", () => {
+      for (const npc of this.npcs.values()) paintIdentity(npc, this.portraits);
+    });
+    this.portraits.src = import.meta.env.BASE_URL + "assets/hero-portraits.webp";
     this.doors = {
       level4: scene.getMeshByName("level-4-barrier") as Mesh | null,
       level6: scene.getMeshByName("level-6-barrier") as Mesh | null,
@@ -179,6 +232,7 @@ export class NpcVisualSystem {
       const existing = this.npcs.get(visitor.id);
       if (existing) {
         existing.visitor = visitor;
+        paintIdentity(existing, this.portraits);
         this.beginEntering(existing, existing.slot, false);
       } else {
         let slot = 0;
@@ -186,7 +240,7 @@ export class NpcVisualSystem {
         usedSlots.add(slot);
         const lane = (slot % 3 - 1) * 0.55;
         const gate = visitor.entranceGate ?? "level4";
-        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X[gate] + lane, 0, CORRIDOR_OUTER_Z));
+        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X[gate] + lane, 0, CORRIDOR_OUTER_Z), this.portraits);
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -195,6 +249,7 @@ export class NpcVisualSystem {
       const visual = this.npcs.get(visitor.id);
       if (visual) {
         visual.visitor = visitor;
+        paintIdentity(visual, this.portraits);
         visual.root.metadata.simulationStatus = visitor.status;
         if (visual.phase === "leaving") this.beginEntering(visual, visual.slot, false);
       } else {
@@ -203,7 +258,7 @@ export class NpcVisualSystem {
         usedSlots.add(slot);
         const lane = (slot % 3 - 1) * 0.55;
         const gate = visitor.entranceGate ?? "level4";
-        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X[gate] + lane, 0, CORRIDOR_OUTER_Z));
+        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X[gate] + lane, 0, CORRIDOR_OUTER_Z), this.portraits);
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -212,6 +267,7 @@ export class NpcVisualSystem {
       const visual = this.npcs.get(visitor.id);
       if (visual) {
         visual.visitor = currentById.get(visitor.id) ?? visitor;
+        paintIdentity(visual, this.portraits);
         visual.root.metadata.simulationStatus = visual.visitor.status;
         this.beginLeaving(visual);
       }
