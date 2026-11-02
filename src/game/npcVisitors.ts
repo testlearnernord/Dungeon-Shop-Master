@@ -1,4 +1,4 @@
-export type VisitorStatus = "exploring" | "traveling" | "at-shop" | "returning" | "dead";
+export type VisitorStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "dead";
 export type VisitorRole = "tank" | "DPS" | "healer";
 
 export interface VisitorSnapshot {
