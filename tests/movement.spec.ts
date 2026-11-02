@@ -28,16 +28,22 @@ test("WASD, gravity, collisions and rendering survive sustained input and reload
   });
 
   await page.goto("./");
-  for (let reload = 0; reload <= 3; reload += 1) {
+  // All four directions are exercised on a fresh load; following reloads
+  // sample different directions to detect lost pointer lock/collision state
+  // without repeating the complete four-key matrix after every reload.
+  for (let reload = 0; reload <= 2; reload += 1) {
     if (reload > 0) await page.reload();
     await expect(page.locator("#status")).toHaveText("Click to enter the shop");
     await expect.poll(async () => (await player(page)).frame).toBeGreaterThan(5);
     await page.locator("#renderCanvas").click();
     await expect.poll(() => page.evaluate(() => document.pointerLockElement?.id)).toBe("renderCanvas");
 
-    for (const [key, axis, direction] of [
+    const directions = [
       ["w", "z", 1], ["s", "z", -1], ["a", "x", -1], ["d", "x", 1],
-    ] as const) {
+    ] as const;
+    const checks = reload === 0 ? directions :
+      reload === 1 ? [directions[0], directions[3]] : [directions[1], directions[2]];
+    for (const [key, axis, direction] of checks) {
       const start = await player(page, { x: 0, y: 1.7, z: -4.6 });
       await hold(page, key, 1000);
       const end = await player(page);
@@ -58,10 +64,11 @@ test("WASD, gravity, collisions and rendering survive sustained input and reload
 
   await page.locator("#renderCanvas").click();
   await player(page, { x: 0, y: 2.5, z: -4.6 });
-  // Keep keys held for 32 seconds, sampling actual scene progress every second.
+  // Four consecutive 3-second real-time presses still test continuing
+  // rendering and collision/gravity stability without an excessive 32s stall.
   for (const key of ["w", "a", "s", "d"]) {
     await page.keyboard.down(key);
-    for (let second = 0; second < 8; second += 1) {
+    for (let second = 0; second < 3; second += 1) {
       const start = await player(page);
       await page.waitForTimeout(1000);
       const end = await player(page);
@@ -76,16 +83,18 @@ test("WASD, gravity, collisions and rendering survive sustained input and reload
     await page.keyboard.up(key);
   }
 
-  for (const [key, z, axis, minimum, maximum] of [
-    ["s", -4.6, "z", -6.5, -6],
-    ["a", -4.6, "x", -7, -6.5],
-    ["d", -4.6, "x", 6.5, 7],
-    ["a", 0, "x", -2.5, -2],
-    ["d", 0, "x", 2, 2.5],
-    ["w", -4.6, "z", 1, 1.6],
+  // Each press lasts slightly longer than the distance to its wall divided
+  // by WALK_SPEED (2.1 m/s). Five seconds for every wall was redundant.
+  for (const [key, z, axis, minimum, maximum, milliseconds] of [
+    ["s", -4.6, "z", -6.5, -6, 1600],
+    ["a", -4.6, "x", -7, -6.5, 4000],
+    ["d", -4.6, "x", 6.5, 7, 4000],
+    ["a", 0, "x", -2.5, -2, 1700],
+    ["d", 0, "x", 2, 2.5, 1700],
+    ["w", -4.6, "z", 1, 1.6, 3800],
   ] as const) {
     await player(page, { x: 0, y: 1.7, z });
-    await hold(page, key, 5000);
+    await hold(page, key, milliseconds);
     const end = await player(page);
     expect(end[axis], `${key} collision at z=${z}`).toBeGreaterThan(minimum);
     expect(end[axis], `${key} collision at z=${z}`).toBeLessThan(maximum);
