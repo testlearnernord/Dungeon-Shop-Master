@@ -2,6 +2,7 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries, type RosterFilter } from "./game/rosterView.ts";
 import { ECONOMY } from "./game/economy.ts";
+import { heroDisplayNames } from "./game/heroIdentity.ts";
 
 export function setupRosterBoardHud(
   canvas: HTMLCanvasElement, camera: UniversalCamera, store: GameStore,
@@ -23,6 +24,7 @@ export function setupRosterBoardHud(
     const expanded = new Set([...list.querySelectorAll<HTMLDetailsElement>("details[open][data-hero-id]")]
       .map((node) => node.dataset.heroId));
     const heroes = rosterEntries(state, filterValue);
+    const names = heroDisplayNames(state.adventurers);
     list.replaceChildren(...heroes.map((hero) => {
       const card = document.createElement("details");
       card.className = "roster-card";
@@ -40,13 +42,13 @@ export function setupRosterBoardHud(
       const primary = document.createElement("span");
       primary.className = "roster-card-primary";
       const name = document.createElement("strong");
-      name.textContent = hero.name + " · Lv " + hero.level + " " + hero.role;
+      name.textContent = (names.get(hero.id) ?? hero.name) + " · Lv " + hero.level + " " + hero.role;
       const location = document.createElement("small");
       location.textContent = locationLabel(hero) + " · " + hero.status;
       const bar = document.createElement("span");
       bar.className = "roster-hp";
       bar.setAttribute("role", "meter");
-      bar.setAttribute("aria-label", hero.name + " hit points");
+      bar.setAttribute("aria-label", (names.get(hero.id) ?? hero.name) + " hit points");
       bar.setAttribute("aria-valuemin", "0");
       bar.setAttribute("aria-valuemax", String(hero.stats.maxHealth));
       bar.setAttribute("aria-valuenow", String(hero.health));
