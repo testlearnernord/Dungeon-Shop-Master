@@ -1,4 +1,38 @@
 import { expect, test, type Page } from "@playwright/test";
+import type { GameState } from "../src/game/gameState";
+
+async function loadSavedGame(page: Page): Promise<GameState | null> {
+  // Reads join the same ordered queue as autosaves, so completion is not a wall-clock guess.
+  return page.evaluate(async () => {
+    const path = "/Dungeon-Shop-Master/src/game/campaignSave.ts";
+    const { CampaignStorage } = await import(path);
+    return new CampaignStorage().loadGame();
+  });
+}
+
+async function expectAuthoritativeVisitors(page: Page, state: GameState) {
+  const expected = state.adventurers.filter(({ status }) => status === "at-shop")
+    .map(({ id, name, role, status }) => ({ id, name, role, status }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const inspect = () => page.evaluate(async () => {
+    const path = "/Dungeon-Shop-Master/tests/scene.ts";
+    return (await import(path)).inspectNpcVisuals();
+  });
+  const assertVisuals = async () => {
+    const visuals = await inspect();
+    expect(visuals.visitors.map(({ id, name, role, status }) => ({ id, name, role, status }))
+      .sort((a, b) => a.id.localeCompare(b.id))).toEqual(expected);
+    expect(new Set(visuals.visitors.map(({ id }) => id)).size).toBe(expected.length);
+    expect(visuals.visitors.every(({ hasLabel, unpickable }) => hasLabel && unpickable)).toBe(true);
+    // Include child meshes to catch orphaned actors left outside the root-node map.
+    expect([...new Set(visuals.npcMeshes.map((name: string) => /^npc-(adventurer-\d+)-/.exec(name)?.[1]))].sort())
+      .toEqual(expected.map(({ id }) => id).sort());
+    return visuals.frame;
+  };
+  const frame = await assertVisuals();
+  await expect.poll(async () => (await inspect()).frame).toBeGreaterThan(frame + 2);
+  await assertVisuals();
+}
 
 async function campaignMenu(page: Page) {
   await page.locator(".campaign-panel").evaluate((element: HTMLDetailsElement) => { element.open = true; });
@@ -50,8 +84,10 @@ test("committed economy and day state autosave, reload exactly and continue dete
       document.querySelector<HTMLButtonElement>("#confirm-day")!.click();
     }
   });
+  const persisted = await loadSavedGame(page);
   await expect(page.locator("#save-status")).toHaveText("Saved Day 12.");
   const saved = await exportSave(page);
+  expect(persisted).toEqual(saved.payload);
   expect(saved.payload.shopEconomy.dailySales.day).toBe(12);
   expect(saved.payload.events.some((event: { type: string }) => event.type === "sale")).toBe(true);
   const expectedNext = await page.evaluate(async (state) => {
@@ -100,19 +136,30 @@ test("imports validate before confirmation; new game and overwrite require confi
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.locator("#new-game").click();
   await expect(page.locator("#day")).toHaveText("Day 2");
+  await page.evaluate(() => {
+    for (let day = 3; day <= 12; day += 1) {
+      document.querySelector<HTMLButtonElement>("#end-day")!.click();
+      document.querySelector<HTMLButtonElement>("#confirm-day")!.click();
+    }
+  });
+  expect((await loadSavedGame(page))?.day).toBe(12);
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 12.");
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator("#new-game").click();
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   await expect(page.locator("#adventurer-roster li")).toHaveCount(10);
   await expect(page.locator("#shop-visitors")).toContainText("Shop visitors (3)");
   expect((await exportSave(page)).payload).toEqual(initial);
+  await expectAuthoritativeVisitors(page, initial);
   await confirmImport(page, JSON.stringify(saved), false);
   await expect(page.locator("#day")).toHaveText("Day 1");
   await confirmImport(page, JSON.stringify(saved));
   await expect(page.locator("#save-status")).toHaveText("Saved Day 2.");
   expect((await exportSave(page)).payload).toEqual(saved.payload);
+  await expectAuthoritativeVisitors(page, saved.payload);
   await page.reload();
   await expect(page.locator("#save-status")).toHaveText("Continued saved Day 2.");
+  await expectAuthoritativeVisitors(page, saved.payload);
 });
 
 test("storage denial remains playable and exportable without destroying data", async ({ page }) => {
@@ -182,12 +229,70 @@ test("corrupt latest stays untouched until explicit backup recovery", async ({ p
   // Fresh in-memory play must not overwrite the corrupt record or its backup.
   await expect(page.locator("#save-status")).toContainText("Save error:");
   await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.evaluate(() => {
+    for (let day = 2; day <= 12; day += 1) {
+      document.querySelector<HTMLButtonElement>("#end-day")!.click();
+      document.querySelector<HTMLButtonElement>("#confirm-day")!.click();
+    }
+  });
+  await expect(page.locator("#day")).toHaveText("Day 12");
   await campaignMenu(page);
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator("#recover-save").click();
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  const recovered = await loadSavedGame(page);
+  expect(recovered).not.toBeNull();
+  await expectAuthoritativeVisitors(page, recovered!);
   await page.reload();
   await expect(page.locator("#save-status")).toHaveText("Continued saved Day 1.");
+  expect(await loadSavedGame(page)).toEqual(recovered);
+  await expectAuthoritativeVisitors(page, recovered!);
+});
+
+test("rapid End Days wait for blocked storage and reload the latest queued snapshot", async ({ page }) => {
+  await page.goto("./");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  const release = await page.evaluateHandle(async () => {
+    return new Promise<() => void>((resolve, reject) => {
+      const open = indexedDB.open("dungeon-shop-master-campaign", 1);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const transaction = db.transaction("saves", "readwrite");
+        let holding = true;
+        // Keep a real transaction ahead of autosaves until the test explicitly releases it.
+        const keepAlive = () => {
+          const get = transaction.objectStore("saves").get("campaign");
+          get.onsuccess = () => { if (holding) keepAlive(); };
+        };
+        transaction.oncomplete = transaction.onabort = () => db.close();
+        keepAlive();
+        resolve(() => { holding = false; });
+      };
+    });
+  });
+  try {
+    await page.evaluate(() => {
+      for (let day = 2; day <= 25; day += 1) {
+        document.querySelector<HTMLButtonElement>("#end-day")!.click();
+        document.querySelector<HTMLButtonElement>("#confirm-day")!.click();
+      }
+    });
+    await expect(page.locator("#day")).toHaveText("Day 25");
+    await expect(page.locator("#save-status")).toHaveText("Saving Day 25…");
+  } finally {
+    await release.evaluate((unlock) => unlock());
+    await release.dispose();
+  }
+  const persisted = await loadSavedGame(page);
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 25.");
+  const saved = await exportSave(page);
+  expect(persisted).toEqual(saved.payload);
+  expect(saved.payload.day).toBe(25);
+  await page.reload();
+  await expect(page.locator("#save-status")).toHaveText("Continued saved Day 25.");
+  expect((await exportSave(page)).payload).toEqual(saved.payload);
+  await expectAuthoritativeVisitors(page, saved.payload);
 });
 
 test("quota failures preserve memory and later writes recover without a stale snapshot", async ({ page }) => {
