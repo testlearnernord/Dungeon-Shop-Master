@@ -55,7 +55,23 @@ export function setupDayHud(
       const entry = document.createElement("li");
       entry.dataset.adventurerId = hero.id;
       entry.dataset.status = hero.status;
-      entry.textContent = `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
+      const summary = document.createElement("span");
+      summary.className = "hero-summary";
+      summary.textContent = `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
+      entry.append(summary);
+      if (hero.status === "at-shop") {
+        const permission = document.createElement("button");
+        permission.type = "button";
+        permission.className = "level6-permit";
+        permission.dataset.adventurerId = hero.id;
+        permission.setAttribute("aria-pressed", String(hero.level6Permit));
+        permission.textContent = hero.level6Permit ? "Revoke L6 pass" : "Grant L6 pass";
+        permission.title = "Authorize this adventurer individually. Level 6 expeditions are coming in a later update.";
+        permission.addEventListener("click", () => {
+          store.setLevel6Permit(hero.id, !hero.level6Permit);
+        });
+        entry.append(" ", permission);
+      }
       entry.title = `${hero.id} · XP ${hero.xp} · Gold ${hero.gold} · ${hero.traits.positive} / ${hero.traits.neutral} / ${hero.traits.negative} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
       return entry;
     }));

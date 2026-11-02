@@ -11,7 +11,9 @@ test("read-only roster and textual visitors track the persistent simulation on c
   await expect(page.locator("#population-summary")).toHaveText("Adventurers: 10 active · 0 lost");
   await expect(page.locator('#adventurer-roster li[data-status="at-shop"]')).toHaveCount(3);
   await expect(visitors).toContainText("Shop visitors (3):");
-  await expect(page.locator("#adventurer-roster button, #adventurer-roster input")).toHaveCount(0);
+  // Roster stats remain read-only; only visiting heroes may receive Level 6 permissions.
+  await expect(page.locator("#adventurer-roster .level6-permit")).toHaveCount(3);
+  await expect(page.locator("#adventurer-roster button:not(.level6-permit), #adventurer-roster input")).toHaveCount(0);
   const initialRows = await roster.allTextContents();
   const inventory = await page.locator("#inventory").innerText();
 
@@ -30,11 +32,12 @@ test("read-only roster and textual visitors track the persistent simulation on c
     const active = state.adventurers.filter((hero) => hero.status !== "dead");
     await expect(roster).toHaveCount(active.length);
     for (const hero of active) {
-      await expect(page.locator(`[data-adventurer-id="${hero.id}"]`)).toHaveText(
+      await expect(page.locator(`#adventurer-roster li[data-adventurer-id="${hero.id}"] .hero-summary`)).toHaveText(
         `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`,
       );
     }
     const atShop = active.filter((hero) => hero.status === "at-shop");
+    await expect(page.locator("#adventurer-roster .level6-permit")).toHaveCount(atShop.length);
     await expect(visitors).toHaveText(
       `Shop visitors (${atShop.length}): ${atShop.map((hero) => hero.name).join(", ") || "none"}`,
     );

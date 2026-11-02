@@ -5,7 +5,7 @@ import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 3;
+export const SIMULATION_VERSION = 4;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -125,6 +125,22 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       events: [...state.events, ...events],
     },
     events,
+  };
+}
+
+/**
+ * Grant or revoke Level 6 access only while a living hero is visiting the shop.
+ * This is an explicit player decision, not a tick or a hidden RNG roll.
+ * The Level 6 expedition system will consume this flag in the next slice.
+ */
+export function setLevel6Permit(state: GameState, heroId: string, permitted: boolean): GameState {
+  if (typeof permitted !== "boolean") throw new TypeError("Level 6 permission must be boolean.");
+  const hero = state.adventurers.find((entry) => entry.id === heroId);
+  if (!hero || hero.status !== "at-shop" || hero.health <= 0 || hero.level6Permit === permitted) return state;
+  return {
+    ...state,
+    adventurers: state.adventurers.map((entry) =>
+      entry.id === heroId ? { ...entry, level6Permit: permitted } : entry),
   };
 }
 

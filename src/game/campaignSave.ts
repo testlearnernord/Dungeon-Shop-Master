@@ -61,13 +61,13 @@ const eventTypes = [
   "influx", "sale", "ate", "healed", "starvation", "rescue",
 ] as const;
 
-function validateState(value: unknown): asserts value is GameState {
+function validateState(value: unknown, legacy = false): asserts value is GameState {
   const state = object(value, "payload", [
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
   ]);
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
-  if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
+  if (state.simulationVersion !== (legacy ? 3 : SIMULATION_VERSION)) fail("payload.simulationVersion", "is incompatible");
   integer(state.seed, "payload.seed", 0, 0xffffffff);
   integer(state.rngState, "payload.rngState", 0, 0xffffffff);
   const population = object(state.populationConfig, "payload.populationConfig", ["dailyInflux", "maxActive"]);
@@ -81,6 +81,7 @@ function validateState(value: unknown): asserts value is GameState {
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
       "equipment", "inventory", "floor", "status", "hunger", "shopStayDays",
+      ...(legacy ? [] : ["level6Permit"]),
     ]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
@@ -118,6 +119,7 @@ function validateState(value: unknown): asserts value is GameState {
       }
     }
     integer(hero.hunger, `${path}.hunger`);
+    if (!legacy && typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
     const stay = integer(hero.shopStayDays, `${path}.shopStayDays`, 0, 1);
     if (stay !== 0 && hero.status !== "at-shop" && hero.status !== "dead") {
       fail(`${path}.shopStayDays`, "requires a shop visit");
@@ -229,11 +231,20 @@ export function parseSave(text: string): GameState {
   }
   const envelope = object(value, "envelope", ["schemaVersion", "simulationVersion", "savedAt", "payload"]);
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
-  if (envelope.simulationVersion !== SIMULATION_VERSION) fail("simulationVersion", "is incompatible; no migrations are available");
+  if (envelope.simulationVersion !== 3 && envelope.simulationVersion !== SIMULATION_VERSION) {
+    fail("simulationVersion", "is incompatible; no migrations are available");
+  }
   const savedAt = textTimestamp(envelope.savedAt);
   if (!savedAt) fail("savedAt", "must be an ISO UTC timestamp");
-  validateState(envelope.payload);
-  return envelope.payload;
+  const legacy = envelope.simulationVersion === 3;
+  // Validate the old schema BEFORE migrating. Invalid saves are never repaired implicitly.
+  validateState(envelope.payload, legacy);
+  if (!legacy) return envelope.payload;
+  return {
+    ...envelope.payload,
+    simulationVersion: SIMULATION_VERSION,
+    adventurers: envelope.payload.adventurers.map((hero) => ({ ...hero, level6Permit: false })),
+  };
 }
 
 function textTimestamp(value: unknown): boolean {
