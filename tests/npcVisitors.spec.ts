@@ -28,8 +28,7 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
   expect(first.playerBarrierSolid).toBe(true);
   expect(first.npcMeshes.length).toBeGreaterThan(0);
 
-  await page.clock.resume();
-  await page.waitForTimeout(2000);
+  await page.clock.runFor(2000);
   const moving = await inspect();
   expect(moving.frame).toBeGreaterThan(first.frame + 5);
   expect(moving.visitors.some((visitor) => visitor.z < 11.5)).toBe(true);
@@ -38,6 +37,7 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
   expect(moving.gateY).toBeGreaterThan(2);
   expect(moving.visitors.every(({ wallClear }) => wallClear)).toBe(true);
   expect(moving.visitors.filter(({ z }) => z < 12.01).every(() => moving.gateY >= 3.4)).toBe(true);
+  await page.clock.resume();
 
   let persistentTransitions = 0;
   let departures = 0;
