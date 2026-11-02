@@ -12,6 +12,8 @@ import { Shop } from "./game/shop";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupEconomyHud } from "./economyHud";
+import { setupSalesHud } from "./salesHud";
+import { currentDayReceipts } from "./game/saleView";
 import { loadCampaign, setupCampaignHud } from "./campaignHud";
 import "./styles.css";
 
@@ -41,7 +43,12 @@ const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
   if (open) camera.detachControl();
   else camera.attachControl(canvas, true);
 });
-setupDayHud(canvas, store, (current, previous) => npcVisuals.reconcile(current, previous));
+setupDayHud(
+  canvas, store,
+  (current, previous) => npcVisuals.reconcile(current, previous),
+  () => npcVisuals.showSales(currentDayReceipts(store.state)),
+);
+setupSalesHud(store);
 let selectedItemId: ItemId = ITEMS[0].id;
 setupCampaignHud(store, campaign, () => {
   npcVisuals.reconcile([], []);

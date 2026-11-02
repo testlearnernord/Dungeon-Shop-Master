@@ -39,7 +39,13 @@
             <summary title="Latest 100 events of the current day">Full day report</summary>
             <ol id="day-history"></ol>
           </details>
+          <details id="sales-ledger" class="sales-ledger">
+            <summary id="sales-ledger-summary">Sales receipts</summary>
+            <ol id="sales-receipts" aria-label="Customer purchase receipts"></ol>
+            <p class="sales-hint">Visitors automatically buy stocked Waybread and Healing Herbs on confirmed End Day. Mana Potions and Iron Ore are not yet demanded.</p>
+          </details>
         </section>
+        <p id="sales-banner" class="sales-banner" role="status"></p>
         <div id="inventory" class="inventory"></div>
         <details class="adventurer-panel" open>
           <summary id="population-summary">Adventurers</summary>

@@ -73,6 +73,7 @@ export function inspectNpcVisuals() {
             return mesh.getBoundingInfo().boundingBox.minimumWorld.y;
           })),
       })),
+    saleTags: scene.meshes.filter(({ name }) => name.startsWith("npc-sale-")).map(({ name }) => name),
     gateY: scene.getMeshByName("level-4-barrier")?.position.y,
     gate6Y: scene.getMeshByName("level-6-barrier")?.position.y,
     playerBarrierSolid: scene.getMeshByName("level-4-player-barrier")?.checkCollisions ?? false,

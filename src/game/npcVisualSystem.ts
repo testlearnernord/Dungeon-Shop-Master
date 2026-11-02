@@ -7,6 +7,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { reconcileVisitors, type GateSide, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
+import { salesByHero, type SaleReceipt } from "./saleView.ts";
 
 interface NpcVisual {
   readonly root: TransformNode;
@@ -23,6 +24,8 @@ interface NpcVisual {
   browseSide: number;
   animationTime: number;
   gateSide: GateSide;
+  saleTag: Mesh | null;
+  saleSeconds: number;
 }
 
 const ROLE_COLORS: Record<VisitorRole, string> = {
@@ -143,6 +146,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
     root, arms, legs, torso, visitor, phase: "entering", route: [], waypoint: 0, slot,
     elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0,
     gateSide: visitor.entranceGate ?? "level4",
+    saleTag: null, saleSeconds: 0,
   };
   root.metadata = {
     adventurerId: visitor.id, name: visitor.name, role: visitor.role,
@@ -214,11 +218,52 @@ export class NpcVisualSystem {
     }
   }
 
+  /** Cosmetic, transient feedback for already-booked purchases. Never writes to GameStore. */
+  showSales(receipts: readonly SaleReceipt[]): void {
+    for (const [heroId, purchase] of salesByHero(receipts)) {
+      const npc = this.npcs.get(heroId);
+      if (!npc) continue;
+      this.clearSaleTag(npc);
+      const tag = MeshBuilder.CreatePlane("npc-sale-" + heroId, { width: 2.1, height: 0.40 }, this.scene);
+      tag.parent = npc.root;
+      tag.position.y = 2.91;
+      tag.billboardMode = Mesh.BILLBOARDMODE_ALL;
+      tag.checkCollisions = false;
+      tag.isPickable = false;
+      const texture = new DynamicTexture("sale-label-" + heroId, { width: 512, height: 120 }, this.scene, false);
+      texture.drawText("SOLD " + purchase.units + "  +" + purchase.gold + "g", null, 82,
+        "bold 46px sans-serif", "#e8ffb6", "#1d3828", true);
+      const saleMaterial = material(this.scene, "sale-material-" + heroId, Color3.White());
+      saleMaterial.diffuseTexture = texture;
+      saleMaterial.disableLighting = true;
+      saleMaterial.emissiveColor = Color3.White();
+      saleMaterial.backFaceCulling = false;
+      tag.material = saleMaterial;
+      npc.saleTag = tag;
+      npc.saleSeconds = 8;
+      npc.root.metadata.lastSaleGold = purchase.gold;
+    }
+  }
+
+  private clearSaleTag(npc: NpcVisual): void {
+    if (npc.saleTag) {
+      const saleMaterial = npc.saleTag.material;
+      npc.saleTag.dispose();
+      saleMaterial?.dispose(true, true);
+      npc.saleTag = null;
+    }
+    npc.saleSeconds = 0;
+  }
+
   private readonly update = (): void => {
     const delta = Math.min(this.scene.getEngine().getDeltaTime() / 1000, 0.1);
     const open: Record<GateSide, boolean> = { level4: false, level6: false };
     for (const npc of this.npcs.values()) {
       npc.animationTime += delta;
+      if (npc.saleSeconds > 0) {
+        npc.saleSeconds -= delta;
+        if (npc.saleSeconds <= 0) this.clearSaleTag(npc);
+      }
       if (npc.phase === "entering" || npc.phase === "leaving") {
         open[npc.gateSide] = true;
         // A hero switched to an L6 departure while still physically in the
@@ -350,6 +395,7 @@ export class NpcVisualSystem {
   }
 
   private dispose(npc: NpcVisual): void {
+    this.clearSaleTag(npc);
     npc.root.dispose(false, true);
     this.npcs.delete(npc.visitor.id);
   }
