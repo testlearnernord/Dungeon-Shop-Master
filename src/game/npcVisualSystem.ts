@@ -35,7 +35,7 @@ const DOOR_CLOSED_Y = 0.9;
 const DOOR_OPEN_Y = 3.8;
 const DOOR_PASSAGE_CLEAR_Y = 3.4;
 const CORRIDOR_X: Record<GateSide, number> = { level4: -4, level6: 4 };
-const CORRIDOR_INNER_Z = 6.35;
+const CORRIDOR_INNER_Z = 6.0;
 const CORRIDOR_OUTER_Z = 13;
 
 function roleColor(role: VisitorRole): Color3 {
@@ -269,7 +269,7 @@ export class NpcVisualSystem {
     npc.phase = "leaving";
     npc.gateSide = npc.visitor.status === "expedition" ? "level6" : "level4";
     const gateX = CORRIDOR_X[npc.gateSide];
-    // Route through the navigable inner shop (z=6.35) before crossing between
+    // Route through the navigable inner shop (z=6.0) before crossing between
     // left/right corridors. No lateral travel through end walls at z > 7.
     npc.route = [
       new Vector3(npc.root.position.x, 0, CORRIDOR_INNER_Z),
