@@ -13,6 +13,7 @@ import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupEconomyHud } from "./economyHud";
 import { setupSalesHud } from "./salesHud";
+import { setupExpeditionHud } from "./expeditionHud";
 import { currentDayReceipts } from "./game/saleView";
 import { loadCampaign, setupCampaignHud } from "./campaignHud";
 import "./styles.css";
@@ -49,6 +50,7 @@ setupDayHud(
   () => npcVisuals.showSales(currentDayReceipts(store.state)),
 );
 setupSalesHud(store);
+setupExpeditionHud(store);
 let selectedItemId: ItemId = ITEMS[0].id;
 setupCampaignHud(store, campaign, () => {
   npcVisuals.reconcile([], []);
