@@ -44,7 +44,8 @@
         <details class="adventurer-panel" open>
           <summary id="population-summary">Adventurers</summary>
           <p id="shop-visitors" aria-label="Shop visitors"></p>
-          <p class="simulation-note">Level 6 passes: grant or revoke per visiting hero. The gate stays locked until expeditions are implemented.</p>
+          <p class="simulation-note">Level 6 expeditions require individual authorization. Use the roster board for details.</p>
+          <button type="button" id="open-roster">Open Roster Board (R)</button>
           <ul id="adventurer-roster" aria-label="Active adventurers"></ul>
           <p id="shelf-supplies" class="simulation-note"></p>
         </details>
@@ -58,9 +59,28 @@
           <span>·</span> <strong>E</strong> interact
           <span>·</span> <strong>N / Y</strong> end / confirm day
           <span>·</span> <strong>B</strong> wholesale
+          <span>·</span> <strong>R</strong> roster board
           <span>·</span> <strong>Esc</strong> release
         </div>
       </section>
+      <dialog id="roster-dialog" aria-labelledby="roster-title">
+        <header class="roster-heading">
+          <div>
+            <h2 id="roster-title">Adventurer Board</h2>
+            <p id="roster-totals"></p>
+          </div>
+          <button type="button" id="close-roster">Close (R / Esc)</button>
+        </header>
+        <div class="roster-toolbar">
+          <label for="roster-filter">Show:</label>
+          <select id="roster-filter">
+            <option value="active">Active heroes</option>
+            <option value="fallen">Fallen heroes</option>
+          </select>
+          <span>Click a hero to view equipment, traits and Level 6 permits.</span>
+        </div>
+        <div id="roster-detail-list" aria-label="Hero roster"></div>
+      </dialog>
       <dialog id="wholesale" aria-labelledby="wholesale-title">
         <h2 id="wholesale-title">Wholesale catalog</h2>
         <p>Buy into your bag, then stock shelves. Visitors buy only on End Day.</p>

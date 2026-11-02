@@ -11,7 +11,7 @@ import type { Interactable } from "./inventory";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
-  kind: "register" | "corridor";
+  kind: "register" | "corridor" | "roster-board";
 }
 
 function material(scene: Scene, name: string, color: Color3): StandardMaterial {

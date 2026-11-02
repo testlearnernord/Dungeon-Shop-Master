@@ -173,3 +173,10 @@ This slice uses **abstract combat only** and does not render 3D combat. The 3D L
 ### MVP 0.7c: 3D expedition gate
 
 Heroes explicitly authorized to enter Level 6 now visibly depart via the **right-hand gate**, with normal floor 4 traffic using the **left-hand gate**. Level 6 survivors return through the right-hand gate on the day following their `level6-return` event. The gates lift independently, and **both player-only collision barriers stay permanently solid**: the curse still prevents the player from escaping the shop. Gameplay is entirely tied to confirmed daily ticks; movement and gate animation are only cosmetic. No 3D combat yet. No save schema change.
+
+
+### MVP 0.8: Adventurer Wall Board
+
+A live **Adventurer Board** is mounted on the stone wall behind the player's starting position (turn around to find it). Stand close and face the board, then press **E** or left-click it. For accessibility, **R** opens the same management window anywhere, as does **Open Roster Board (R)** in the existing adventurer HUD. Esc / R closes it. Opening releases pointer lock and detaches the camera until the dialog closes.
+
+The wall dynamically shows names, dungeon location (including F6 expeditions), HP bars and the current day. The expanded window shows up to 20 active heroes by status with HP, XP, levels, stats, traits, equipment, food/healing/loot and individual Level 6 permit buttons for visiting heroes. A separate Fallen filter lists the last 40 deaths. All views derive directly from GameStore; no additional RPG state, extra daily RNG or save version is introduced. Hero portraits currently use role-colored initial placeholders with stable portrait IDs derived from their persistent IDs; the provided artwork atlas can replace those placeholders in a subsequent art pass without changing saves.
