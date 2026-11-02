@@ -19,6 +19,7 @@ export function setupEconomyHud(
     if (dialog.open) {
       dialog.close();
     } else {
+      if (document.querySelector("dialog[open]")) return;
       document.exitPointerLock();
       onMenuChanged(true);
       dialog.showModal();

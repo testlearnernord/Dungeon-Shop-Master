@@ -6,6 +6,8 @@ import { ECONOMY } from "./game/economy";
 import { GameStore } from "./game/gameStore";
 import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
+import { createRosterBoard } from "./game/rosterBoard";
+import { setupRosterBoardHud } from "./rosterBoardHud";
 import { Shop } from "./game/shop";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
@@ -31,6 +33,9 @@ const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
 const shop = new Shop(scene, store);
+const board = createRosterBoard(scene, store);
+worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
+const openRoster = setupRosterBoardHud(canvas, camera, store);
 const npcVisuals = new NpcVisualSystem(scene);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
   if (open) camera.detachControl();
@@ -75,7 +80,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   selectedItemId = selected;
   statusHud.textContent = message;
   renderInventory(selected);
-}, toggleCatalog);
+}, toggleCatalog, 3, openRoster);
 store.subscribe(() => renderInventory(selectedItemId));
 
 engine.runRenderLoop(() => scene.render());

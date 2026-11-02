@@ -24,6 +24,7 @@ export class InteractionSystem {
     private readonly onUpdate: (message: string, selected: ItemId) => void,
     private readonly openCatalog: () => void = () => {},
     private readonly maxInteractionDistance = 3,
+    private readonly openRoster: () => void = () => {},
   ) {
     this.shop.select(ITEMS[0].id);
     this.registerEvents();
@@ -106,6 +107,12 @@ export class InteractionSystem {
       if (target?.kind === "register") {
         this.message = "Wholesale catalog opened. Visitors buy on confirmed End Day.";
         this.openCatalog();
+      } else if (target?.kind === "roster-board" && button === 0) {
+        if (hit.distance > this.maxInteractionDistance) this.message = "Move closer to the roster board.";
+        else {
+          this.message = "Adventurer roster opened.";
+          this.openRoster();
+        }
       }
     }
     this.publish();
@@ -117,6 +124,9 @@ export class InteractionSystem {
     if (target?.kind === "register") {
       this.message = "Wholesale catalog opened. Visitors buy on confirmed End Day.";
       this.openCatalog();
+    } else if (target?.kind === "roster-board") {
+      this.message = "Adventurer roster opened.";
+      this.openRoster();
     } else {
       this.message = "Nothing nearby to interact with.";
     }
