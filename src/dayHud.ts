@@ -55,7 +55,10 @@ export function setupDayHud(
       const entry = document.createElement("li");
       entry.dataset.adventurerId = hero.id;
       entry.dataset.status = hero.status;
-      entry.textContent = `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
+      const summary = document.createElement("span");
+      summary.className = "hero-summary";
+      summary.textContent = `${hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
+      entry.append(summary);
       if (hero.status === "at-shop") {
         const permission = document.createElement("button");
         permission.type = "button";
