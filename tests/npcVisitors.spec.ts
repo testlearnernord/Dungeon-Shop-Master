@@ -4,6 +4,8 @@ import { advanceDay, createGameState } from "../src/game/gameState";
 test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respect the Level 4 player barrier", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
   const inspect = () => page.evaluate(async () => {
@@ -26,6 +28,7 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
   expect(first.playerBarrierSolid).toBe(true);
   expect(first.npcMeshes.length).toBeGreaterThan(0);
 
+  await page.clock.resume();
   await page.waitForTimeout(2000);
   const moving = await inspect();
   expect(moving.frame).toBeGreaterThan(first.frame + 5);
