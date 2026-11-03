@@ -17,6 +17,7 @@ import { setupSalesHud } from "./salesHud";
 import { setupExpeditionHud } from "./expeditionHud";
 import { currentDayReceipts } from "./game/saleView";
 import { loadCampaign, setupCampaignHud } from "./campaignHud";
+import { setupSoundtrack } from "./soundtrack";
 import "./styles.css";
 
 async function startGame(): Promise<void> {
@@ -92,7 +93,10 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   renderInventory(selected);
 }, toggleCatalog, 3, openRoster);
 store.subscribe(() => renderInventory(selectedItemId));
-const arena = new Level6Arena(engine, canvas, camera, store);
+const soundtrack = setupSoundtrack();
+const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
+  soundtrack.setScene(active ? "boss" : "shop");
+});
 
 engine.runRenderLoop(() => {
   if (arena.isActive) {
