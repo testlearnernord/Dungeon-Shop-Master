@@ -85,3 +85,20 @@ export function inspectNpcVisuals() {
     playerBarrier6Hidden: scene.getMeshByName("level-6-player-barrier")?.visibility === 0,
   };
 }
+
+/** Called via Vite's module URL, avoiding bare-specifier imports from page.evaluate. */
+export function inspectBossArena() {
+  const scene = Engine.LastCreatedScene!;
+  return {
+    camera: {
+      x: scene.activeCamera!.position.x,
+      y: scene.activeCamera!.position.y,
+      z: scene.activeCamera!.position.z,
+    },
+    boss: scene.transformNodes.some(node => node.name === "arena-boss-troll"),
+    hero: scene.transformNodes.some(node => node.name.startsWith("arena-hero-")),
+    lava: !!scene.getMeshByName("lethal-lava"),
+    ring: !!scene.getMeshByName("lava-ring"),
+    spikes: scene.meshes.filter(mesh => mesh.name.startsWith("cavern-stalagmite-")).length,
+  };
+}

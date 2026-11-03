@@ -6,6 +6,7 @@ import { ECONOMY } from "./game/economy";
 import { GameStore } from "./game/gameStore";
 import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
+import { Level6Arena } from "./game/level6Arena";
 import { createRosterBoard } from "./game/rosterBoard";
 import { setupRosterBoardHud } from "./rosterBoardHud";
 import { Shop } from "./game/shop";
@@ -91,8 +92,14 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   renderInventory(selected);
 }, toggleCatalog, 3, openRoster);
 store.subscribe(() => renderInventory(selectedItemId));
+const arena = new Level6Arena(engine, canvas, camera, store);
 
-engine.runRenderLoop(() => scene.render());
+engine.runRenderLoop(() => {
+  if (arena.isActive) {
+    arena.update(engine.getDeltaTime() / 1000);
+    arena.currentScene?.render();
+  } else scene.render();
+});
 window.addEventListener("resize", () => engine.resize());
 }
 
