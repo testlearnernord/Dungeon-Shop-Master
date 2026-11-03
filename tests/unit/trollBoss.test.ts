@@ -70,7 +70,10 @@ test("healer can self-heal and attack at range, tank can parry, DPS can dodge", 
   assert(heal.actions.some(x => x.kind === "ranged"));
   assert(heal.adventurer.inventory.healing <= healer.inventory.healing);
   const tank = { ...original, role: "tank" as const, equipment: { weapon: "Iron Sword", armor: "Leather Vest" } };
-  const dps = { ...original, role: "DPS" as const };
+  // A melee DPS must dodge when the club actually enters range; an unarmed
+  // ranged DPS may sensibly kite instead of rolling under the troll.
+  const dps = { ...original, role: "DPS" as const,
+    equipment: { weapon: "Iron Sword", armor: null } };
   const tankActions = Array.from({length: 30},(_,seed)=>simulateLevel6Combat(tank,3,seed).actions).flat();
   const dpsActions = Array.from({length: 30},(_,seed)=>simulateLevel6Combat(dps,3,seed).actions).flat();
   assert(tankActions.some(x=>x.kind==="parry"));
