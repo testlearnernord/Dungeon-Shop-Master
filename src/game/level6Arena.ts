@@ -19,6 +19,7 @@ import type { AdventurerState } from "./adventurers.ts";
 import type { BossCombatReplay, BossReplayFrame } from "./bossCombatReplay.ts";
 import type { GameStore } from "./gameStore.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
+import { createHeroVisual } from "./heroVisual.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -249,12 +250,9 @@ export class Level6Arena {
     const trollSkin = makeMat("troll-skin", "#59694c");
     const trollDark = makeMat("troll-dark", "#343c36");
     const clubWood = makeMat("club", "#554333");
-    const steel = makeMat("steel", "#98a8b9");
     const visibleRole = this.replay?.role ?? this.fighter?.role;
     const visibleSword = this.replay?.sword ?? (this.fighter?.equipment.weapon === "Iron Sword");
     const visibleArmor = this.replay?.armor ?? (this.fighter?.equipment.armor === "Leather Vest");
-    const heroColor = makeMat("hero-coat", visibleRole === "tank" ? "#536fa1" :
-      visibleRole === "healer" ? "#4f987e" : "#b7523c");
     const platform = MeshBuilder.CreateCylinder("boss-arena-stone", {
       diameter: ROCK_RADIUS * 2, height: 0.65, tessellation: 96,
     }, scene);
@@ -334,36 +332,22 @@ export class Level6Arena {
     this.swing = arm;
     this.boss = { root: boss, hp: BOSS_HP, max: BOSS_HP, alive: true };
 
-    const hero = new TransformNode("arena-hero-" + (this.fighter?.id ?? "preview"), scene);
+    // The same geometry/identity factory is used by shop NPCs and future dungeons.
+    // Recorded battles use their own historical gear snapshot, not today's gear.
+    const heroId = this.replay?.heroId ?? this.fighter?.id ?? "preview";
+    const heroModel = createHeroVisual(scene, {
+      id: heroId,
+      role: visibleRole ?? "tank",
+      equipment: {
+        weapon: visibleSword ? "Iron Sword" : null,
+        armor: visibleArmor ? "Leather Vest" : null,
+      },
+    }, "arena-hero-" + heroId);
+    const hero = heroModel.root;
     hero.position.set(0, 0, -9);
-    hero.metadata = { kind: "hero", adventurerId: this.fighter?.id ?? null };
-    part(hero, "hero-chest", "box", { width: 1.05, height: 1.4, depth: 0.6 }, [0, 1.65, 0], heroColor);
-    part(hero, "hero-head", "sphere", { diameter: 0.65 }, [0, 2.75, 0], bone);
-    for (const side of [-1, 1]) {
-      const leg = new TransformNode("hero-leg-pivot-" + side, scene);
-      leg.parent = hero;
-      leg.position.set(side * 0.28, 1.0, 0);
-      part(leg, "hero-leg-" + side, "cylinder", { diameter: 0.3, height: 1.5 },
-        [0, -0.55, 0], trollDark);
-      this.heroLegs.push(leg);
-      part(hero, "hero-arm-" + side, "cylinder", { diameter: 0.28, height: 1.2 },
-        [side * 0.75, 1.75, 0], heroColor).rotation.z = side * 0.25;
-    }
-    const weaponPivot = new TransformNode("hero-attack-pivot", scene);
-    weaponPivot.parent = hero;
-    weaponPivot.position.set(1.05, 2.25, -0.3);
-    this.heroWeapon = weaponPivot;
-    if (visibleSword) {
-      part(weaponPivot, "equipped-iron-sword", "box",
-        { width: 0.14, height: 1.9, depth: 0.2 }, [0.15, 0.35, -0.1], steel).rotation.z = 0.35;
-    } else {
-      part(weaponPivot, "basic-weapon", "cylinder", { diameter: 0.12, height: 1.15 },
-        [0.15, 0.3, -0.1], clubWood);
-    }
-    if (visibleArmor) {
-      part(hero, "equipped-leather-vest", "box", { width: 1.1, height: 0.8, depth: 0.72 },
-        [0, 1.7, -0.02], clubWood);
-    }
+    hero.metadata = { ...hero.metadata, kind: "hero" };
+    this.heroLegs.push(...heroModel.legs);
+    this.heroWeapon = heroModel.weaponPivot;
     this.hero = { root: hero, hp: this.motion.heroHp,
       max: this.motion.options.maxHealth, alive: true };
     const warningMaterial = makeMat("boss-warning-red", "#b82513", true);

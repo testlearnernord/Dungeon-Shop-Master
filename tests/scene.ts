@@ -112,3 +112,23 @@ export function inspectBossArena() {
     missedHits: boss?.metadata?.missedHits as number | undefined,
   };
 }
+
+/** Shared scene-agnostic visual identity inspection for browser tests. */
+export function inspectHeroModels() {
+  const scene = Engine.LastCreatedScene!;
+  return scene.transformNodes.filter(node =>
+    node.name.startsWith("npc-adventurer-") ||
+    node.name.startsWith("arena-hero-adventurer-")).filter(node =>
+      node.metadata?.appearanceKey).map(node => ({
+      rootName: node.name,
+      id: node.metadata.adventurerId as string,
+      role: node.metadata.role as string,
+      appearanceKey: node.metadata.appearanceKey as string,
+      skinColor: node.metadata.skinColor as string,
+      hairColor: node.metadata.hairColor as string,
+      weapon: node.metadata.weapon as string | null,
+      armor: node.metadata.armor as string | null,
+      swordVisible: node.metadata.swordVisible as boolean,
+      vestVisible: node.metadata.vestVisible as boolean,
+    }));
+}
