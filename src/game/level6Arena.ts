@@ -8,6 +8,11 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
+import {
+  BOSS_MAX_HP, createCombatPreview, stepCombatPreview,
+  type CombatPreviewState, type ArenaCue,
+} from "./arenaCombatMotion.ts";
 import type { AdventurerState } from "./adventurers.ts";
 import type { GameStore } from "./gameStore.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
@@ -15,7 +20,7 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
 const ROCK_RADIUS = 17.5;
-const BOSS_HP = 115;
+const BOSS_HP = BOSS_MAX_HP;
 
 /** A non-authoritative combat demonstration. Never writes to GameStore.
  * A later milestone will animate the actual deterministic combat transcript.
@@ -31,12 +36,14 @@ export class Level6Arena {
   private readonly pressed = new Set<string>();
   private active = false;
   private time = 0;
-  private heroAttack = 0;
-  private bossAttack = 0;
-  private bossTelegraph = -1;
-  private heroRoll = 0;
-  private parryFlash = 0;
-  private healCharges = 0;
+  private motion: CombatPreviewState | null = null;
+  private motionAccumulator = 0;
+  private heroWeapon: TransformNode | null = null;
+  private trollLegs: TransformNode[] = [];
+  private projectiles: AbstractMesh[] = [];
+  private telegraph: AbstractMesh | null = null;
+  private readonly staminaText: HTMLElement;
+  private readonly combatInfo: HTMLElement;
   private result: "fighting" | "victory" | "defeat" = "fighting";
   private swing: TransformNode | null = null;
   private heroLegs: TransformNode[] = [];
@@ -59,6 +66,8 @@ export class Level6Arena {
     this.healthText = document.querySelector<HTMLElement>("#arena-hero-health")!;
     this.bossText = document.querySelector<HTMLElement>("#arena-boss-health")!;
     this.previewText = document.querySelector<HTMLElement>("#arena-preview")!;
+    this.staminaText = document.querySelector<HTMLElement>("#arena-stamina")!;
+    this.combatInfo = document.querySelector<HTMLElement>("#arena-combat-info")!;
     document.querySelector("#open-arena")!.addEventListener("click", () => this.open());
     document.querySelector("#close-arena")!.addEventListener("click", () => this.close());
     document.querySelector("#restart-arena")!.addEventListener("click", () => this.restart());
@@ -127,6 +136,10 @@ export class Level6Arena {
     this.camera = null;
     this.hero = null;
     this.boss = null;
+    this.motion = null;
+    this.projectiles = [];
+    this.telegraph = null;
+    this.heroWeapon = null;
     this.shopCamera.attachControl(this.canvas, true);
     this.canvas.focus();
   }
@@ -135,19 +148,26 @@ export class Level6Arena {
     if (!this.active) return;
     this.scene?.dispose();
     this.heroLegs = [];
+    this.trollLegs = [];
     this.targets = [];
+    this.projectiles = [];
+    this.telegraph = null;
+    this.heroWeapon = null;
+    this.motionAccumulator = 0;
     this.time = 0;
-    this.heroAttack = 0.3;
-    this.bossAttack = 2.4;
-    this.bossTelegraph = -1;
-    this.heroRoll = 0;
-    this.parryFlash = 0;
     this.result = "fighting";
     const state = this.store.state;
     this.fighter = state.adventurers.find(hero => hero.status === "expedition") ??
       state.adventurers.find(hero => hero.status === "at-shop") ??
       state.adventurers.find(hero => hero.status !== "dead") ?? null;
-    this.healCharges = this.fighter?.inventory.healing ?? 0;
+    this.motion = createCombatPreview({
+      role: this.fighter?.role ?? "tank",
+      sword: this.fighter?.equipment.weapon === "Iron Sword",
+      armor: this.fighter?.equipment.armor === "Leather Vest",
+      health: this.fighter?.health ?? 45,
+      maxHealth: this.fighter?.stats.maxHealth ?? 50,
+      healingSupplies: this.fighter?.inventory.healing ?? 0,
+    });
     const realExpedition = this.fighter?.status === "expedition";
     const names = heroDisplayNames(state.adventurers);
     this.previewText.textContent = realExpedition
@@ -244,7 +264,12 @@ export class Level6Arena {
     part(boss, "troll-body", "sphere", { diameter: 4.2 }, [0, 3.2, 0], trollSkin).scaling.set(1, 1.2, 0.7);
     part(boss, "troll-head", "sphere", { diameter: 2.4 }, [0, 6.4, 0.2], trollSkin);
     for (const side of [-1, 1]) {
-      part(boss, "troll-leg-" + side, "cylinder", { diameter: 1.35, height: 3 }, [side * 1.1, 1.2, 0], trollDark);
+      const legPivot = new TransformNode("troll-leg-pivot-" + side, scene);
+      legPivot.parent = boss;
+      legPivot.position.set(side * 1.1, 2.45, 0);
+      part(legPivot, "troll-leg-" + side, "cylinder", { diameter: 1.35, height: 3 },
+        [0, -1.25, 0], trollDark);
+      this.trollLegs.push(legPivot);
       part(boss, "troll-horn-" + side, "cylinder", { diameter: 0.65, height: 1.4 },
         [side * 0.9, 7.65, 0.1], bone).rotation.z = side * 0.6;
       part(boss, "troll-eye-" + side, "sphere", { diameter: 0.35 },
@@ -275,18 +300,29 @@ export class Level6Arena {
       part(hero, "hero-arm-" + side, "cylinder", { diameter: 0.28, height: 1.2 },
         [side * 0.75, 1.75, 0], heroColor).rotation.z = side * 0.25;
     }
+    const weaponPivot = new TransformNode("hero-attack-pivot", scene);
+    weaponPivot.parent = hero;
+    weaponPivot.position.set(1.05, 2.25, -0.3);
+    this.heroWeapon = weaponPivot;
     if (this.fighter?.equipment.weapon === "Iron Sword") {
-      part(hero, "equipped-iron-sword", "box", { width: 0.14, height: 1.9, depth: 0.2 },
-        [1.15, 1.6, -0.4], steel).rotation.z = 0.32;
+      part(weaponPivot, "equipped-iron-sword", "box",
+        { width: 0.14, height: 1.9, depth: 0.2 }, [0.15, 0.35, -0.1], steel).rotation.z = 0.35;
     } else {
-      part(hero, "basic-weapon", "cylinder", { diameter: 0.12, height: 1.15 }, [1.15, 1.7, -0.3], clubWood);
+      part(weaponPivot, "basic-weapon", "cylinder", { diameter: 0.12, height: 1.15 },
+        [0.15, 0.3, -0.1], clubWood);
     }
     if (this.fighter?.equipment.armor === "Leather Vest") {
       part(hero, "equipped-leather-vest", "box", { width: 1.1, height: 0.8, depth: 0.72 },
         [0, 1.7, -0.02], clubWood);
     }
-    this.hero = { root: hero, hp: this.fighter?.health ?? 45,
-      max: this.fighter?.stats.maxHealth ?? 50, alive: true };
+    this.hero = { root: hero, hp: this.motion.heroHp,
+      max: this.motion.options.maxHealth, alive: true };
+    const telegraph = MeshBuilder.CreateBox("boss-active-attack-warning",
+      { width: 7.8, height: 0.035, depth: 5.6 }, scene);
+    telegraph.material = makeMat("boss-warning-red", "#b82513", true);
+    telegraph.visibility = 0;
+    telegraph.isPickable = false;
+    this.telegraph = telegraph;
     const displayName = this.fighter ? names.get(this.fighter.id) ?? this.fighter.name : "Preview Hero";
     this.targets = [
       { label: displayName + " · " + (this.fighter?.role ?? "tank"), node: hero,
