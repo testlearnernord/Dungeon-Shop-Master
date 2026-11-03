@@ -39,7 +39,10 @@ test("wholesale, stocking and confirmed sales share stock and gold without modal
     return (await import(modulePath)).inspectPlayer().frame;
   })).toBeGreaterThan(frame + 2);
   // Select bread without moving the camera or stocking a different item.
-  await page.locator("#renderCanvas").dispatchEvent("wheel", { deltaY: -1 });
+  // The catalog now has six entries; Waybread remains item index 3.
+  for (let index = 0; index < ITEMS.findIndex((item) => item.id === "bread"); index++) {
+    await page.locator("#renderCanvas").dispatchEvent("wheel", { deltaY: 1 });
+  }
   await page.locator("#renderCanvas").click();
   await expect(page.locator("#status")).toContainText("Placed Waybread");
   await expect(page.locator("#shelf-supplies")).toContainText("Waybread 4");
