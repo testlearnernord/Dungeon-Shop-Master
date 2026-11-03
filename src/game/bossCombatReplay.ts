@@ -21,6 +21,8 @@ export interface BossReplayFrame {
   readonly hh: number;
   readonly bh: number;
   readonly lock: number;
+  readonly slam: boolean;
+  readonly travel: number;
   readonly heroHp: number;
   readonly bossHp: number;
   readonly stamina: number;
@@ -40,6 +42,10 @@ export interface BossCombatReplay {
   readonly version: 1;
   readonly day: number;
   readonly heroId: string;
+  readonly role: "tank" | "healer" | "DPS";
+  readonly sword: boolean;
+  readonly armor: boolean;
+  readonly maxHp: number;
   readonly outcome: BossReplayOutcome;
   readonly frames: readonly BossReplayFrame[];
 }
@@ -51,7 +57,8 @@ export function frameFromCombat(s: CombatPreviewState, cues: readonly ArenaCue[]
     hx: rounded(s.hero.x), hz: rounded(s.hero.z),
     bx: rounded(s.boss.x), bz: rounded(s.boss.z),
     hh: rounded(s.heroHeading), bh: rounded(s.bossHeading),
-    lock: rounded(s.lockedBossHeading),
+    lock: rounded(s.lockedBossHeading), slam: s.bossSlam,
+    travel: rounded(s.distanceTraveled),
     heroHp: s.heroHp, bossHp: s.bossHp, stamina: rounded(s.stamina),
     heroPhase: s.heroPhase, heroAge: rounded(s.heroAge),
     bossPhase: s.bossPhase, bossAge: rounded(s.bossAge),
@@ -82,7 +89,9 @@ export function resolveSpatialBoss(
     state.outcome === "defeat" ? "death" : "retreat";
   return {
     final: state,
-    replay: {version: REPLAY_FORMAT, heroId, day, outcome, frames},
+    replay: {version: REPLAY_FORMAT, heroId, day,
+      role: options.role, sword: options.sword, armor: options.armor,
+      maxHp: options.maxHealth, outcome, frames},
   };
 }
 
@@ -104,9 +113,14 @@ export function validateBossReplay(value: unknown, path: string,
       invalid(label + " out of range");
     return n;
   };
-  const replay = rec(value, "replay", ["version","day","heroId","outcome","frames"]);
+  const replay = rec(value, "replay", [
+    "version","day","heroId","role","sword","armor","maxHp","outcome","frames"]);
   if (replay.version !== REPLAY_FORMAT || replay.day !== day ||
       replay.heroId !== heroId || replay.outcome !== outcome) invalid("identity/outcome mismatch");
+  if (!["tank","healer","DPS"].includes(replay.role as string) ||
+      typeof replay.sword !== "boolean" || typeof replay.armor !== "boolean")
+    invalid("role/gear invalid");
+  num(replay.maxHp,"maxHp",1,1000000);
   if (!Array.isArray(replay.frames) || replay.frames.length < 2 ||
       replay.frames.length > REPLAY_MAX_FRAMES) invalid("frame count invalid");
   let previous = -1;
@@ -117,7 +131,8 @@ export function validateBossReplay(value: unknown, path: string,
   for (let i = 0; i < replay.frames.length; i++) {
     const prefix = "frames[" + i + "]";
     const frame = rec(replay.frames[i], prefix, [
-      "t","hx","hz","bx","bz","hh","bh","lock","heroHp","bossHp","stamina",
+      "t","hx","hz","bx","bz","hh","bh","lock","slam","travel",
+      "heroHp","bossHp","stamina",
       "heroPhase","heroAge","bossPhase","bossAge","projectiles",
       "dodgeCount","parryCount","landedHits","missedHits","cues",
     ]);
@@ -126,7 +141,9 @@ export function validateBossReplay(value: unknown, path: string,
     previous=t;
     for (const key of ["hx","hz","bx","bz"] as const) num(frame[key], prefix+"."+key,-30,30);
     for (const key of ["hh","bh","lock"] as const) num(frame[key],prefix+"."+key,-7,7);
-    num(frame.heroHp,prefix+".heroHp",0,1000000);
+    if (typeof frame.slam !== "boolean") invalid(prefix+".slam must be boolean");
+    num(frame.travel,prefix+".travel",0,100000);
+    num(frame.heroHp,prefix+".heroHp",0,replay.maxHp as number);
     num(frame.bossHp,prefix+".bossHp",0,BOSS_MAX_HP);
     num(frame.stamina,prefix+".stamina",0,100);
     num(frame.heroAge,prefix+".heroAge",0,90);
