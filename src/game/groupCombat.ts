@@ -147,7 +147,10 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
   const obstacles = [...(options.obstacles ?? [])];
   const obstacleIds = new Set<string>();
   for (const o of obstacles) {
-    validateBounds({ minX: o.minX, maxX: o.maxX, minZ: o.minZ, maxZ: o.maxZ });
+    for (const [key, val] of Object.entries(o))
+      if (key !== "id") validNumber(val as number, -10000, 10000, "obstacle." + key);
+    if (o.minX >= o.maxX || o.minZ >= o.maxZ)
+      throw new RangeError("Obstacle dimensions must be positive");
     if (!o.id || obstacleIds.has(o.id)) throw new Error("Duplicate/empty obstacle ID");
     obstacleIds.add(o.id);
     if (!within({x:o.minX,z:o.minZ}, options.bounds) ||
