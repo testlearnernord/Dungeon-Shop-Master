@@ -68,6 +68,7 @@ export class Level6Arena {
     private readonly canvas: HTMLCanvasElement,
     private readonly shopCamera: UniversalCamera,
     private readonly store: GameStore,
+    private readonly onActiveChange: (active: boolean) => void = () => {},
   ) {
     this.panel = document.querySelector<HTMLElement>("#arena-hud")!;
     this.status = document.querySelector<HTMLElement>("#arena-status")!;
@@ -137,6 +138,7 @@ export class Level6Arena {
     this.shopCamera.detachControl();
     if (document.pointerLockElement) void document.exitPointerLock();
     this.active = true;
+    this.onActiveChange(true);
     this.forcePreview = false;
     this.pressed.clear();
     this.panel.hidden = false;
@@ -147,6 +149,7 @@ export class Level6Arena {
   close(): void {
     if (!this.active) return;
     this.active = false;
+    this.onActiveChange(false);
     this.pressed.clear();
     if (document.pointerLockElement) void document.exitPointerLock();
     this.panel.hidden = true;

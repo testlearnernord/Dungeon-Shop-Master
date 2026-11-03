@@ -223,3 +223,10 @@ Confirmed End Day now resolves Level-6 encounters using the **same fixed-step sp
 Each new level6-combat world event carries a strictly validated, compact combatReplay of the same real encounter: sampled 3D actor positions, attack phases, HP, stamina, projectiles, telegraphs and hit/dodge/parry/heal cues. The **last three completed replays** remain in saves; older events retain their full textual history, IDs and outcomes. After confirming the combat day, press **V / Watch Level 6** to view the last committed encounter, then use TAB and WASD/Shift as before. The source-toggle button switches between recorded fights and independent uncommitted training. Reload/import restores the same recording; older v3–v7 saves lacking the optional replay field still load unchanged. Invalid replay data is rejected before loading. No extra mutable counter or migration is needed.
 
 A pending expedition has no completed outcome yet; the explicitly labeled training preview is available until End Day confirms the actual combat. Parties and final character models are separate future milestones.
+
+### Scene soundtracks
+
+The original MP3s are served from `public/audio/` as static Vite assets (under the GitHub Pages base path).
+**The Last Warm Light** loops in Galvik's Level-5 shop and **Trial by Iron** loops whenever the player watches Level 6, including the recorded combat replay and the independent training preview. Returning to the shop resumes its previous position, while entering the boss arena starts the boss theme from its beginning. Scene transitions use a 1.1-second volume crossfade and never trigger a game tick, alter the RNG or modify a save.
+
+Browsers forbid unattended audio autoplay: music starts on the first eligible user pointer/key action, not automatically at page load. The always-visible mini-player has a mute toggle and a 0–100% volume slider (35% default); both settings are stored separately in localStorage so campaigns and save versions remain untouched. Disabling music pauses both tracks. If playback is blocked or a media file cannot load, the player reports it without breaking the game.
