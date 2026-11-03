@@ -12,19 +12,8 @@ test("Level 6 is a separate viewable boss cavern, camera focuses hero/boss and n
   await expect(page.locator("#arena-preview")).toContainText("TRAINING PREVIEW");
   await expect(page.locator("#arena-focus")).toContainText("TAB focus:");
   await expect(page.locator("#arena-hero-health")).toContainText("HERO HP");
-  const arena = () => page.evaluate(async () => {
-    const { Engine } = await import("@babylonjs/core/Engines/engine");
-    const scene = Engine.LastCreatedScene!;
-    return {
-      camera: { x: scene.activeCamera!.position.x, y: scene.activeCamera!.position.y,
-        z: scene.activeCamera!.position.z },
-      boss: scene.transformNodes.some(n => n.name === "arena-boss-troll"),
-      hero: scene.transformNodes.some(n => n.name.startsWith("arena-hero-")),
-      lava: !!scene.getMeshByName("lethal-lava"),
-      ring: !!scene.getMeshByName("lava-ring"),
-      spikes: scene.meshes.filter(m => m.name.startsWith("cavern-stalagmite-")).length,
-    };
-  });
+  const arena = () => page.evaluate(async () =>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBossArena());
   const initial = await arena();
   expect(initial.boss).toBe(true);
   expect(initial.hero).toBe(true);
