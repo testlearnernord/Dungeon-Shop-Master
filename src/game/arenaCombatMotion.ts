@@ -1,12 +1,11 @@
+import { inAttackArc, rollInvulnerable, parryActive, type Point2 } from "./combatGeometry.ts";
+export { inAttackArc, rollInvulnerable, parryActive } from "./combatGeometry.ts";
+export type { Point2 } from "./combatGeometry.ts";
+
 /**
- * Pure fixed-step 2D action-combat motor for the Level-6 3D spectator preview.
- * Everything that causes preview damage uses positions, facing, active frames,
- * stamina and collision geometry. No animation timer can create an invisible hit.
- *
- * This is NOT GameState combat resolution: the day-tick TrollBoss remains the
- * authority until its timeline is unified with this spatial action motor.
+ * Existing Level-6 duel motor. It still resolves its authoritative recorded
+ * fights; hit geometry and defense windows are now shared with group combat.
  */
-export type Point2 = { x: number; z: number };
 export type ActorPhase = "move" | "roll" | "parry" | "attack" | "cast" | "heal" | "hurt" | "dead";
 export type BossPhase = "chase" | "windup" | "strike" | "recover" | "stagger" | "dead";
 export type CueKind = "windup" | "dodge" | "parry" | "miss" | "hit" | "hero-hit" |
@@ -75,25 +74,11 @@ const unit = (x: number, z: number): Point2 => {
 };
 const facing = (from: Point2, to: Point2) =>
   Math.atan2(to.x - from.x, to.z - from.z);
-export function inAttackArc(origin: Point2, heading: number, target: Point2,
-  reach: number, halfAngleRadians: number): boolean {
-  const dx = target.x - origin.x, dz = target.z - origin.z;
-  const d = Math.hypot(dx, dz);
-  if (d > reach || d < 0.000001) return false;
-  const alignment = (dx * Math.sin(heading) + dz * Math.cos(heading)) / d;
-  return alignment >= Math.cos(halfAngleRadians);
-}
 export function bossStrikeGeometry(slam: boolean): BossStrikeGeometry {
   return {
     reach: (slam ? 6.2 : 5.2) + HERO_RADIUS,
     halfAngleRadians: slam ? 1.3 : 0.90,
   };
-}
-export function rollInvulnerable(age: number): boolean {
-  return age >= 0.09 && age <= 0.43;
-}
-export function parryActive(age: number): boolean {
-  return age >= 0.10 && age <= 0.36;
 }
 export function createCombatPreview(options: CombatPreviewOptions): CombatPreviewState {
   return {
