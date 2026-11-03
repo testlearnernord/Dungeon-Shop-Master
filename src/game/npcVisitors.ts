@@ -25,6 +25,7 @@ export interface VisitorSnapshot {
   readonly displayName?: string;
   readonly level?: number;
   readonly role: VisitorRole;
+  readonly equipment?: { readonly weapon: string | null; readonly armor: string | null };
   readonly status: VisitorStatus;
   /** Read-only, visual-only route hint. The RPG status remains in GameState. */
   readonly entranceGate?: GateSide;
