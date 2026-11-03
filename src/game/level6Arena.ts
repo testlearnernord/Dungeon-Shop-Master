@@ -5,9 +5,16 @@ import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
+import {
+  BOSS_MAX_HP, bossStrikeGeometry, createCombatPreview, stepCombatPreview,
+  type CombatPreviewState, type ArenaCue,
+} from "./arenaCombatMotion.ts";
 import type { AdventurerState } from "./adventurers.ts";
 import type { GameStore } from "./gameStore.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
@@ -15,7 +22,7 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
 const ROCK_RADIUS = 17.5;
-const BOSS_HP = 115;
+const BOSS_HP = BOSS_MAX_HP;
 
 /** A non-authoritative combat demonstration. Never writes to GameStore.
  * A later milestone will animate the actual deterministic combat transcript.
@@ -30,13 +37,15 @@ export class Level6Arena {
   private focusIndex = 0;
   private readonly pressed = new Set<string>();
   private active = false;
-  private time = 0;
-  private heroAttack = 0;
-  private bossAttack = 0;
-  private bossTelegraph = -1;
-  private heroRoll = 0;
-  private parryFlash = 0;
-  private healCharges = 0;
+  private motion: CombatPreviewState | null = null;
+  private motionAccumulator = 0;
+  private heroWeapon: TransformNode | null = null;
+  private trollLegs: TransformNode[] = [];
+  private projectiles: AbstractMesh[] = [];
+  private telegraph: AbstractMesh | null = null;
+  private slamTelegraph: AbstractMesh | null = null;
+  private readonly staminaText: HTMLElement;
+  private readonly combatInfo: HTMLElement;
   private result: "fighting" | "victory" | "defeat" = "fighting";
   private swing: TransformNode | null = null;
   private heroLegs: TransformNode[] = [];
@@ -59,6 +68,8 @@ export class Level6Arena {
     this.healthText = document.querySelector<HTMLElement>("#arena-hero-health")!;
     this.bossText = document.querySelector<HTMLElement>("#arena-boss-health")!;
     this.previewText = document.querySelector<HTMLElement>("#arena-preview")!;
+    this.staminaText = document.querySelector<HTMLElement>("#arena-stamina")!;
+    this.combatInfo = document.querySelector<HTMLElement>("#arena-combat-info")!;
     document.querySelector("#open-arena")!.addEventListener("click", () => this.open());
     document.querySelector("#close-arena")!.addEventListener("click", () => this.close());
     document.querySelector("#restart-arena")!.addEventListener("click", () => this.restart());
@@ -127,6 +138,11 @@ export class Level6Arena {
     this.camera = null;
     this.hero = null;
     this.boss = null;
+    this.motion = null;
+    this.projectiles = [];
+    this.telegraph = null;
+    this.slamTelegraph = null;
+    this.heroWeapon = null;
     this.shopCamera.attachControl(this.canvas, true);
     this.canvas.focus();
   }
@@ -135,19 +151,26 @@ export class Level6Arena {
     if (!this.active) return;
     this.scene?.dispose();
     this.heroLegs = [];
+    this.trollLegs = [];
     this.targets = [];
-    this.time = 0;
-    this.heroAttack = 0.3;
-    this.bossAttack = 2.4;
-    this.bossTelegraph = -1;
-    this.heroRoll = 0;
-    this.parryFlash = 0;
+    this.projectiles = [];
+    this.telegraph = null;
+    this.slamTelegraph = null;
+    this.heroWeapon = null;
+    this.motionAccumulator = 0;
     this.result = "fighting";
     const state = this.store.state;
     this.fighter = state.adventurers.find(hero => hero.status === "expedition") ??
       state.adventurers.find(hero => hero.status === "at-shop") ??
       state.adventurers.find(hero => hero.status !== "dead") ?? null;
-    this.healCharges = this.fighter?.inventory.healing ?? 0;
+    this.motion = createCombatPreview({
+      role: this.fighter?.role ?? "tank",
+      sword: this.fighter?.equipment.weapon === "Iron Sword",
+      armor: this.fighter?.equipment.armor === "Leather Vest",
+      health: this.fighter?.health ?? 45,
+      maxHealth: this.fighter?.stats.maxHealth ?? 50,
+      healingSupplies: this.fighter?.inventory.healing ?? 0,
+    });
     const realExpedition = this.fighter?.status === "expedition";
     const names = heroDisplayNames(state.adventurers);
     this.previewText.textContent = realExpedition
@@ -244,7 +267,12 @@ export class Level6Arena {
     part(boss, "troll-body", "sphere", { diameter: 4.2 }, [0, 3.2, 0], trollSkin).scaling.set(1, 1.2, 0.7);
     part(boss, "troll-head", "sphere", { diameter: 2.4 }, [0, 6.4, 0.2], trollSkin);
     for (const side of [-1, 1]) {
-      part(boss, "troll-leg-" + side, "cylinder", { diameter: 1.35, height: 3 }, [side * 1.1, 1.2, 0], trollDark);
+      const legPivot = new TransformNode("troll-leg-pivot-" + side, scene);
+      legPivot.parent = boss;
+      legPivot.position.set(side * 1.1, 2.45, 0);
+      part(legPivot, "troll-leg-" + side, "cylinder", { diameter: 1.35, height: 3 },
+        [0, -1.25, 0], trollDark);
+      this.trollLegs.push(legPivot);
       part(boss, "troll-horn-" + side, "cylinder", { diameter: 0.65, height: 1.4 },
         [side * 0.9, 7.65, 0.1], bone).rotation.z = side * 0.6;
       part(boss, "troll-eye-" + side, "sphere", { diameter: 0.35 },
@@ -275,18 +303,49 @@ export class Level6Arena {
       part(hero, "hero-arm-" + side, "cylinder", { diameter: 0.28, height: 1.2 },
         [side * 0.75, 1.75, 0], heroColor).rotation.z = side * 0.25;
     }
+    const weaponPivot = new TransformNode("hero-attack-pivot", scene);
+    weaponPivot.parent = hero;
+    weaponPivot.position.set(1.05, 2.25, -0.3);
+    this.heroWeapon = weaponPivot;
     if (this.fighter?.equipment.weapon === "Iron Sword") {
-      part(hero, "equipped-iron-sword", "box", { width: 0.14, height: 1.9, depth: 0.2 },
-        [1.15, 1.6, -0.4], steel).rotation.z = 0.32;
+      part(weaponPivot, "equipped-iron-sword", "box",
+        { width: 0.14, height: 1.9, depth: 0.2 }, [0.15, 0.35, -0.1], steel).rotation.z = 0.35;
     } else {
-      part(hero, "basic-weapon", "cylinder", { diameter: 0.12, height: 1.15 }, [1.15, 1.7, -0.3], clubWood);
+      part(weaponPivot, "basic-weapon", "cylinder", { diameter: 0.12, height: 1.15 },
+        [0.15, 0.3, -0.1], clubWood);
     }
     if (this.fighter?.equipment.armor === "Leather Vest") {
       part(hero, "equipped-leather-vest", "box", { width: 1.1, height: 0.8, depth: 0.72 },
         [0, 1.7, -0.02], clubWood);
     }
-    this.hero = { root: hero, hp: this.fighter?.health ?? 45,
-      max: this.fighter?.stats.maxHealth ?? 50, alive: true };
+    this.hero = { root: hero, hp: this.motion.heroHp,
+      max: this.motion.options.maxHealth, alive: true };
+    const warningMaterial = makeMat("boss-warning-red", "#b82513", true);
+    const createWarning = (name: string, slam: boolean): Mesh => {
+      const { reach, halfAngleRadians } = bossStrikeGeometry(slam);
+      const segments = 32;
+      const positions = [0, 0.14, 0];
+      const indices: number[] = [];
+      for (let i = 0; i <= segments; i++) {
+        const angle = -halfAngleRadians + (2 * halfAngleRadians * i) / segments;
+        positions.push(Math.sin(angle) * reach, 0.14, Math.cos(angle) * reach);
+        if (i < segments) indices.push(0, i + 1, i + 2);
+      }
+      const normals: number[] = [];
+      VertexData.ComputeNormals(positions, indices, normals);
+      const vertexData = new VertexData();
+      vertexData.positions = positions;
+      vertexData.indices = indices;
+      vertexData.normals = normals;
+      const mesh = new Mesh(name, scene);
+      vertexData.applyToMesh(mesh);
+      mesh.material = warningMaterial;
+      mesh.visibility = 0;
+      mesh.isPickable = false;
+      return mesh;
+    };
+    this.telegraph = createWarning("boss-active-attack-warning", false);
+    this.slamTelegraph = createWarning("boss-slam-attack-warning", true);
     const displayName = this.fighter ? names.get(this.fighter.id) ?? this.fighter.name : "Preview Hero";
     this.targets = [
       { label: displayName + " · " + (this.fighter?.role ?? "tank"), node: hero,
@@ -314,10 +373,11 @@ export class Level6Arena {
     this.focusText.textContent = "TAB focus: " + target.label;
   }
 
+  /** Preview combat advances at a fixed 60 Hz independent of render FPS. */
   update(deltaSeconds: number): void {
-    if (!this.active || !this.scene || !this.camera || !this.hero || !this.boss) return;
-    const dt = Math.min(0.05, Math.max(0, deltaSeconds));
-    const speed = (this.pressed.has("ShiftLeft") || this.pressed.has("ShiftRight") ? 21 : 7) * dt;
+    if (!this.active || !this.scene || !this.camera || !this.hero || !this.boss || !this.motion) return;
+    const frameDt = Math.min(0.1, Math.max(0, deltaSeconds));
+    const speed = (this.pressed.has("ShiftLeft") || this.pressed.has("ShiftRight") ? 21 : 7) * frameDt;
     const yaw = this.camera.rotation.y;
     const forward = new Vector3(Math.sin(yaw), 0, Math.cos(yaw));
     const right = new Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -328,88 +388,117 @@ export class Level6Arena {
     if (this.pressed.has("KeyQ")) this.camera.position.y += speed;
     if (this.pressed.has("KeyE")) this.camera.position.y -= speed;
     this.camera.position.y = Math.max(1.2, Math.min(65, this.camera.position.y));
-    if (this.result !== "fighting") return;
-    this.time += dt;
-    this.heroAttack -= dt;
-    this.bossAttack -= dt;
-    this.heroRoll = Math.max(0, this.heroRoll - dt);
-    this.parryFlash = Math.max(0, this.parryFlash - dt);
-    const hero = this.hero;
-    const boss = this.boss;
-    const hp = hero.root.position;
-    const bp = boss.root.position;
-    const distance = Vector3.Distance(hp, bp);
-    const role = this.fighter?.role ?? "tank";
-    const ranged = role === "healer" || role === "DPS";
-    const desired = ranged ? 7.8 : 3.0;
-    const direction = bp.subtract(hp).normalize();
-    const armored = this.fighter?.equipment.armor === "Leather Vest";
-    const armed = this.fighter?.equipment.weapon === "Iron Sword";
-    if (distance > desired + 0.4) hp.addInPlace(direction.scale(dt * (this.heroRoll > 0 ? 7 : 3.5)));
-    if (distance < desired - 1) hp.subtractInPlace(direction.scale(dt * 3.4));
-    // Continuous enemy AI: the troll hunts, turns and telegraphs heavy club strikes.
-    if (distance > 4.3) bp.subtractInPlace(direction.scale(dt * 1.2));
-    boss.root.rotation.y = Math.atan2(hp.x - bp.x, hp.z - bp.z);
-    hero.root.rotation.y = Math.atan2(bp.x - hp.x, bp.z - hp.z);
+
+    this.motionAccumulator += frameDt;
+    const fixedDt = 1 / 60;
+    let ticks = 0;
+    while (this.motionAccumulator >= fixedDt && ticks++ < 6) {
+      const cues = stepCombatPreview(this.motion, fixedDt);
+      for (const cue of cues) this.displayCue(cue);
+      this.motionAccumulator -= fixedDt;
+    }
+    this.paintCombat();
+  }
+
+  private displayCue(cue: ArenaCue): void {
+    const value = cue.amount === undefined ? "" : " (" + cue.amount + " HP)";
+    const messages: Record<ArenaCue["kind"], string> = {
+      windup: "TROLL WINDUP · Dodge the glowing attack lane!",
+      dodge: "DODGED · Hit avoided during real invulnerability frames.",
+      parry: "PARRY! A timed, facing block staggered the Cave Troll.",
+      miss: "MISSED · Target outside the active strike range or arc.",
+      hit: "TROLL HIT" + value + " · The club made contact.",
+      "hero-hit": "HERO HIT" + value + " · An attack reached its target.",
+      projectile: "Spell fired! Moving projectile must reach the boss.",
+      heal: "HEALED" + value + " · The uninterrupted cast completed.",
+      stagger: "BOSS STAGGERED · Successful parry.",
+      lava: "LAVA · The hero crossed the deadly arena boundary.",
+      victory: "VICTORY · Cave Troll defeated. Preview only.",
+      defeat: "DEFEAT · Hero fell in combat. Preview only.",
+    };
+    this.status.textContent = messages[cue.kind];
+  }
+
+  private paintCombat(): void {
+    const state = this.motion;
+    if (!state || !this.hero || !this.boss || !this.scene) return;
+    const hero = this.hero, boss = this.boss;
+    const oldHeroX = hero.root.position.x, oldHeroZ = hero.root.position.z;
+    const oldBossX = boss.root.position.x, oldBossZ = boss.root.position.z;
+    hero.root.position.set(state.hero.x, 0, state.hero.z);
+    boss.root.position.set(state.boss.x, 0, state.boss.z);
+    hero.root.rotation.y = state.heroHeading;
+    boss.root.rotation.y = state.bossHeading;
+    boss.root.rotation.z = state.outcome === "victory" ? Math.PI / 2 : 0;
+    hero.hp = state.heroHp;
+    boss.hp = state.bossHp;
+    hero.alive = state.outcome !== "defeat";
+    boss.alive = state.outcome !== "victory";
+
+    const movedHero = Math.hypot(state.hero.x - oldHeroX, state.hero.z - oldHeroZ);
+    const movedBoss = Math.hypot(state.boss.x - oldBossX, state.boss.z - oldBossZ);
     for (const [index, leg] of this.heroLegs.entries()) {
-      leg.rotation.x = Math.sin(this.time * 9 + index * Math.PI) * 0.37;
+      leg.rotation.x = movedHero > 0.005 && state.heroPhase === "move"
+        ? Math.sin(state.time * 12 + index * Math.PI) * 0.50 : 0;
     }
-    if (this.bossTelegraph >= 0) {
-      this.bossTelegraph -= dt;
-      if (this.swing) this.swing.rotation.z = -0.95 + (0.9 - Math.max(0, this.bossTelegraph)) * 1.8;
-      if (this.bossTelegraph < 0) {
-        this.swing!.rotation.z = 0;
-        if (Vector3.Distance(hp, bp) < 7) {
-          const dodge = this.heroRoll > 0;
-          const parry = this.parryFlash > 0 && role === "tank";
-          if (dodge) this.status.textContent = "DODGED! The troll's club missed.";
-          else if (parry) this.status.textContent = "PARRIED! The troll staggered.";
-          else {
-            const damage = Math.max(1, 17 - (armored ? 6 : 0) - (role === "tank" ? 3 : 0));
-            hero.hp = Math.max(0, hero.hp - damage);
-            this.status.textContent = "TROLL SMASH! " + damage + " damage.";
-          }
-        }
-      }
-    } else if (this.bossAttack <= 0) {
-      this.bossTelegraph = 0.9; // The visible tell precedes every dangerous hit.
-      this.bossAttack = 3.0;
-      if (role === "DPS" || role === "healer") {
-        this.heroRoll = 1.1;
-        hp.x += (Math.floor(this.time / 3) % 2 ? -1 : 1) * 1.8;
-      } else {
-        this.parryFlash = armed ? 1.2 : 0.55;
-      }
-      this.status.textContent = "The Cave Troll raises its club. DODGE / PARRY!";
+    for (const [index, leg] of this.trollLegs.entries()) {
+      leg.rotation.x = movedBoss > 0.005
+        ? Math.sin(state.time * 5 + index * Math.PI) * 0.25 : 0;
     }
-    if (this.heroAttack <= 0 && distance < (ranged ? 13 : 4.8)) {
-      const damage = role === "DPS" ? (armed ? 17 : 8) :
-        role === "healer" ? (armed ? 11 : 6) : (armed ? 14 : 5);
-      boss.hp = Math.max(0, boss.hp - damage);
-      this.heroAttack = role === "DPS" ? 1.25 : role === "healer" ? 2.0 : 1.6;
-      this.status.textContent = (ranged ? "RANGED HIT" : "MELEE STRIKE") + "! " + damage + " boss damage.";
+    if (this.heroWeapon) {
+      const attacking = state.heroPhase === "attack";
+      const casting = state.heroPhase === "cast" || state.heroPhase === "heal";
+      this.heroWeapon.rotation.z = attacking
+        ? Math.sin(Math.min(1, state.heroAge / 0.6) * Math.PI) * -2.1
+        : state.heroPhase === "parry" ? -1.1 : casting ? -0.9 : 0;
+      this.heroWeapon.rotation.x = attacking ? -0.65 : 0;
     }
-    if (role === "healer" && hero.hp < hero.max * 0.55 && this.healCharges > 0) {
-      this.healCharges--;
-      hero.hp = Math.min(hero.max, hero.hp + 21);
-      this.status.textContent = "HEALER uses a Healing Herb (+21 HP).";
+    // A roll actually translates the hero sideways, then rotates the body.
+    if (state.heroPhase === "roll") {
+      hero.root.rotation.z = Math.sin(Math.min(1, state.heroAge / 0.53) * Math.PI) * 1.0;
+      hero.root.rotation.x = Math.PI * 2 * Math.min(1, state.heroAge / 0.53);
+    } else {
+      hero.root.rotation.x = 0;
+      hero.root.rotation.z = state.outcome === "defeat" ? Math.PI / 2
+        : state.heroPhase === "hurt" ? -0.25 : 0;
     }
-    // Lava is lethal to adventurers, never a harmless invisible map boundary.
-    if (Math.hypot(hp.x, hp.z) > ROCK_RADIUS - 0.5) {
-      hero.hp = 0;
-      this.status.textContent = "The hero fell into the lava.";
+    if (this.swing) {
+      const age = state.bossAge;
+      this.swing.rotation.z = state.bossPhase === "windup"
+        ? -1.0 - Math.min(1, age / 0.85) * 0.4
+        : state.bossPhase === "strike" ? 1.6 * Math.min(1, age / 0.22)
+        : state.bossPhase === "recover" ? 0.4 * (1 - Math.min(1, age / 0.7))
+        : state.bossPhase === "stagger" ? -0.9 : 0;
     }
-    if (hero.hp <= 0) {
-      hero.alive = false;
-      hero.root.rotation.z = Math.PI / 2;
-      this.result = "defeat";
-      this.status.textContent = "DEFEAT · The troll claims another victim. Preview only.";
-    } else if (boss.hp <= 0) {
-      boss.alive = false;
-      boss.root.rotation.z = 1.1;
-      this.result = "victory";
-      this.status.textContent = "VICTORY · The Cave Troll falls! Preview only.";
+    for (const [telegraph, slam] of [[this.telegraph, false], [this.slamTelegraph, true]] as const) {
+      if (!telegraph) continue;
+      telegraph.visibility = state.bossPhase === "windup" && state.bossSlam === slam ? 0.48 : 0;
+      telegraph.position.set(state.boss.x, 0, state.boss.z);
+      telegraph.rotation.y = state.lockedBossHeading;
     }
+    // Moving projectiles visually match collidable projectile positions from the motor.
+    while (this.projectiles.length > state.projectiles.length) this.projectiles.pop()!.dispose();
+    while (this.projectiles.length < state.projectiles.length) {
+      const orb = MeshBuilder.CreateSphere("hero-live-projectile", { diameter: 0.55 }, this.scene);
+      const mat = new StandardMaterial("projectile-aura", this.scene);
+      mat.diffuseColor = new Color3(0.2, 0.65, 1);
+      mat.emissiveColor = new Color3(0.25, 0.8, 1);
+      orb.material = mat;
+      orb.isPickable = false;
+      this.projectiles.push(orb);
+    }
+    state.projectiles.forEach((projectile, index) =>
+      this.projectiles[index].position.set(projectile.x, 1.7, projectile.z));
+    hero.root.metadata.combatPhase = state.heroPhase;
+    hero.root.metadata.stamina = state.stamina;
+    hero.root.metadata.previewHp = state.heroHp;
+    hero.root.metadata.distanceTraveled = state.distanceTraveled;
+    boss.root.metadata.combatPhase = state.bossPhase;
+    boss.root.metadata.previewHp = state.bossHp;
+    boss.root.metadata.missedHits = state.missedHits;
+    boss.root.metadata.dodgeCount = state.dodgeCount;
+    boss.root.metadata.parryCount = state.parryCount;
+    this.result = state.outcome;
     this.updateHud();
   }
 
@@ -417,6 +506,13 @@ export class Level6Arena {
     if (!this.hero || !this.boss) return;
     this.healthText.textContent = "HERO HP " + this.hero.hp + "/" + this.hero.max;
     this.bossText.textContent = "CAVE TROLL HP " + this.boss.hp + "/" + this.boss.max;
+    if (this.motion) {
+      this.staminaText.textContent = "STAMINA " + Math.round(this.motion.stamina) + "/100";
+      this.combatInfo.textContent = "Hero: " + this.motion.heroPhase +
+        " · Troll: " + this.motion.bossPhase +
+        " · Dodges " + this.motion.dodgeCount + " · Parries " + this.motion.parryCount +
+        " · Connected hits " + this.motion.landedHits;
+    }
     this.panel.dataset.result = this.result;
   }
 }
