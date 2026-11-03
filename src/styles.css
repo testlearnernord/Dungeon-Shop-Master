@@ -431,3 +431,12 @@ body,
     max-width: none;
   }
 }
+
+/* Compact Level 6 expedition ledger: no second source of RPG state. */
+.expedition-ledger { pointer-events: auto; margin: 5px 0 9px; font-size: 11px; color: #e5d3ab; }
+.expedition-ledger > summary { cursor: pointer; font-weight: 650; color: #eac88c; }
+#level6-progress-counts { line-height: 1.5; color: #d0c29f; }
+#level6-expedition-events { max-height: 230px; overflow-y: auto; padding-left: 18px; }
+#level6-expedition-events > li { margin: 4px 0; line-height: 1.5; }
+#level6-expedition-events > li[data-outcome="victory"] { color: #a8d69d; }
+#level6-expedition-events > li[data-outcome="death"] { color: #e79c8e; }
