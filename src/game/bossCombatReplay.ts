@@ -157,7 +157,7 @@ export function validateBossReplay(value: unknown, path: string,
     }
     if (!Array.isArray(frame.projectiles) || frame.projectiles.length > 20)
       invalid(prefix+" projectiles invalid");
-    for (const p of frame.projectiles as unknown[]) {
+    for (const p of frame.projectiles as unknown[][]) {
       if (!Array.isArray(p) || p.length !== 2) invalid(prefix+" projectile coords invalid");
       num(p[0],prefix+" projectile.x",-40,40);
       num(p[1],prefix+" projectile.z",-40,40);
