@@ -20,6 +20,11 @@ export type CombatPreviewOptions = {
   health: number;
   maxHealth: number;
   healingSupplies: number;
+  /** Optional campaign stats. Preview fixtures without these retain their original tuning. */
+  strength?: number;
+  agility?: number;
+  intellect?: number;
+  tacticsSeed?: number;
 };
 export type Projectile = { x: number; z: number; dx: number; dz: number; damage: number; ttl: number };
 export type BossStrikeGeometry = { reach: number; halfAngleRadians: number };
@@ -98,7 +103,8 @@ export function createCombatPreview(options: CombatPreviewOptions): CombatPrevie
     heroHp: options.health, bossHp: BOSS_MAX_HP, stamina: 100,
     heroPhase: "move", heroAge: 0, heroCooldown: 0, heroApplied: false,
     rollDirection: v(1, 0),
-    bossPhase: "chase", bossAge: 0, bossCooldown: 1.1,
+    bossPhase: "chase", bossAge: 0,
+    bossCooldown: 1.1 + ((options.tacticsSeed ?? 0) % 7) * 0.06,
     bossDamageApplied: false, bossAttacks: 0, bossSlam: false, bossStamina: 0,
     magicHeals: options.role === "healer" ? 2 : 0,
     healingSupplies: options.healingSupplies,
@@ -128,7 +134,7 @@ function maintainSpacing(s: CombatPreviewState, dt: number): void {
   const gap = dist(s.hero, s.boss);
   const ranged = s.options.role === "healer" || (s.options.role === "DPS" && !s.options.sword);
   const desired = ranged ? 8 : 3.15;
-  const strafeSign = Math.floor(s.time / 5.5) % 2 === 0 ? 1 : -1;
+  const strafeSign = (Math.floor(s.time / 5.5) + ((s.options.tacticsSeed ?? 0) % 2)) % 2 === 0 ? 1 : -1;
   const tangent = v(-toBoss.z * strafeSign, toBoss.x * strafeSign);
   const radial = gap > desired + 0.4 ? 0.95 : gap < desired - 0.35 ? -1 : 0;
   const direction = unit(tangent.x + toBoss.x * radial, tangent.z + toBoss.z * radial);
@@ -188,7 +194,8 @@ function resolveHeroStrike(s: CombatPreviewState): void {
     s.missedHits++; s.cues.push({ kind: "miss" });
     return;
   }
-  const amount = (s.options.sword ? 16 : 6) + (s.options.role === "DPS" ? 5 : 0);
+  const amount = (s.options.sword ? 16 : 6) + (s.options.role === "DPS" ? 5 : 0) +
+    Math.floor(Math.max(0, (s.options.strength ?? 6) - 6) / 3);
   s.bossHp = Math.max(0, s.bossHp - amount);
   s.landedHits++; s.cues.push({ kind: "hero-hit", amount });
 }
@@ -212,7 +219,8 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
     if (s.heroAge >= 0.31 && !s.heroApplied) {
       s.heroApplied = true;
       const toBoss = heroToBoss(s);
-      const dmg = s.options.role === "healer" ? 9 : 12;
+      const dmg = (s.options.role === "healer" ? 9 : 12) + (s.options.sword ? 4 : 0) +
+        Math.floor(Math.max(0, (s.options.intellect ?? 6) - 6) / 3);
       s.projectiles.push({
         x: s.hero.x, z: s.hero.z,
         dx: toBoss.x, dz: toBoss.z, damage: dmg, ttl: 1.9,

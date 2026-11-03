@@ -69,14 +69,26 @@ test("healer can self-heal and attack at range, tank can parry, DPS can dodge", 
   assert(heal.actions.some(x => x.kind === "heal"));
   assert(heal.actions.some(x => x.kind === "ranged"));
   assert(heal.adventurer.inventory.healing <= healer.inventory.healing);
+  const healerWithSword = { ...healer, equipment: { weapon: "Iron Sword", armor: null } };
+  const unarmedHealerHit = heal.actions.find(x => x.kind === "ranged" && x.damage !== undefined)!;
+  const armedHealerHit = simulateLevel6Combat(healerWithSword, 3, 99).actions
+    .find(x => x.kind === "ranged" && x.damage !== undefined)!;
+  assert.equal(armedHealerHit.damage, unarmedHealerHit.damage! + 4);
   const tank = { ...original, role: "tank" as const, equipment: { weapon: "Iron Sword", armor: "Leather Vest" } };
-  const dps = { ...original, role: "DPS" as const };
+  // A melee DPS must dodge when the club actually enters range; an unarmed
+  // ranged DPS may sensibly kite instead of rolling under the troll.
+  const dps = { ...original, role: "DPS" as const,
+    equipment: { weapon: "Iron Sword", armor: null } };
   const tankActions = Array.from({length: 30},(_,seed)=>simulateLevel6Combat(tank,3,seed).actions).flat();
   const dpsActions = Array.from({length: 30},(_,seed)=>simulateLevel6Combat(dps,3,seed).actions).flat();
   assert(tankActions.some(x=>x.kind==="parry"));
   assert(dpsActions.some(x=>x.kind==="dodge"));
   assert(tankActions.filter(x=>x.kind==="smash").every(x=>x.actor==="troll"));
   assert(tankActions.filter(x=>x.kind==="block").every(x=>x.actor==="hero"));
+  const unarmedDpsActions = Array.from({length: 30}, (_, seed) =>
+    simulateLevel6Combat({ ...original, role: "DPS" as const,
+      equipment: { weapon: null, armor: null } }, 3, seed).actions).flat();
+  assert(unarmedDpsActions.some(x => x.kind === "ranged" && x.damage !== undefined));
 
   const lethalParryTank = { ...tank, stats: { ...tank.stats, strength: 1 } };
   const lethalParry = simulateLevel6Combat(lethalParryTank, 3, 7);

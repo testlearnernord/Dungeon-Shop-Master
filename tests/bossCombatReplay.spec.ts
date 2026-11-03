@@ -1,0 +1,46 @@
+import { expect, test } from "@playwright/test";
+
+test("confirmed Level 6 combat becomes an actual saved replay without double resolution", async ({page}) => {
+  const errors: string[] = [];
+  page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.locator('#adventurer-roster button.level6-permit').first().click();
+  await page.locator("#end-day").click();
+  await page.locator("#confirm-day").click();
+  await expect(page.locator("#day")).toHaveText("Day 2");
+  await page.locator("#end-day").click();
+  await page.locator("#confirm-day").click();
+  await expect(page.locator("#day")).toHaveText("Day 3");
+  const balance=await page.locator("#merchant-gold").textContent();
+  await page.locator("#open-arena").click();
+  await expect(page.locator("#arena-preview")).toContainText("RECORDED COMBAT");
+  await expect(page.locator("#arena-preview")).toContainText("Day 3");
+  await expect(page.locator("#arena-hud")).toHaveAttribute("data-replay","recorded");
+  await expect(page.locator("#arena-boss-health")).toContainText("145/145");
+  await expect(page.locator("#arena-source-toggle")).toBeVisible();
+  await page.locator("#restart-arena").click();
+  await expect(page.locator("#arena-preview")).toContainText("RECORDED COMBAT");
+  await page.keyboard.press("c");
+  await expect(page.locator("#arena-hud")).toHaveAttribute("data-replay","preview");
+  await expect(page.locator("#arena-preview")).toContainText("TRAINING PREVIEW");
+  await page.locator("#arena-source-toggle").click();
+  await expect(page.locator("#arena-preview")).toContainText("RECORDED COMBAT");
+  await page.locator("#close-arena").click();
+  await expect(page.locator("#day")).toHaveText("Day 3");
+  await expect(page.locator("#merchant-gold")).toHaveText(balance!);
+  const persisted = await page.evaluate(async () => {
+    const path = "/Dungeon-Shop-Master/src/game/campaignSave.ts";
+    const { CampaignStorage } = await import(path);
+    return new CampaignStorage().loadGame();
+  });
+  expect(persisted?.day).toBe(3);
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 3");
+  await page.locator("#open-arena").click();
+  await expect(page.locator("#arena-preview")).toContainText("RECORDED COMBAT");
+  await expect(page.locator("#arena-preview")).toContainText("Day 3");
+  await page.locator("#close-arena").click();
+  await expect(page.locator("#merchant-gold")).toHaveText(balance!);
+  expect(errors).toEqual([]);
+});

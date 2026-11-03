@@ -2,6 +2,8 @@ import { consumeDailySupplies, generateAdventurer, generateStartingPopulation, t
 import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
 import { simulateDungeon, type DungeonOutcome } from "./dungeonSimulation.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
+import type { BossCombatReplay } from "./bossCombatReplay.ts";
+import { REPLAY_KEEP_RECENT } from "./bossCombatReplay.ts";
 import { forageAfterEncounter } from "./foraging.ts";
 import { ECONOMY } from "./economy.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
@@ -38,6 +40,8 @@ export interface WorldEvent {
   readonly adventurerId?: string;
   readonly outcome?: DungeonOutcome;
   readonly combatOutcome?: "victory" | "retreat" | "death";
+  /** Exact replay of the committed fixed-step combat. Older events omit this. */
+  readonly combatReplay?: BossCombatReplay;
   readonly itemId?: ItemId;
   readonly quantity?: number;
   readonly revenue?: number;
@@ -174,6 +178,17 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       message: `${hero.name} entered the dungeon on floor 1.`,
     });
   }
+  // Keep the full event history, but only a few heavy 3D recordings.
+  // Removing an expired replay never changes its outcome/event/hero/RNG.
+  const allEvents = [...state.events, ...events];
+  const keep = new Set(allEvents.filter(event =>
+    event.type === "level6-combat" && event.combatReplay)
+    .slice(-REPLAY_KEEP_RECENT).map(event => event.id));
+  const compactedEvents = allEvents.map(event => {
+    if (!event.combatReplay || keep.has(event.id)) return event;
+    const { combatReplay: _expired, ...smallEvent } = event;
+    return smallEvent;
+  });
   return {
     state: {
       ...state, day, adventurers, rngState, shopEconomy: trade.economy,
@@ -181,7 +196,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         ? [...state.dungeonFloors.filter((entry) => entry.floor !== 6), { floor: 6, cleared: true }]
         : state.dungeonFloors,
       nextAdventurerId: state.nextAdventurerId + influx,
-      events: [...state.events, ...events],
+      events: compactedEvents,
     },
     events,
   };
