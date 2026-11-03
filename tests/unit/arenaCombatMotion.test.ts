@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  BOSS_MAX_HP, createCombatPreview, inAttackArc,
+  BOSS_MAX_HP, bossStrikeGeometry, createCombatPreview, inAttackArc,
   parryActive, rollInvulnerable, stepCombatPreview, type CombatPreviewOptions,
 } from "../../src/game/arenaCombatMotion.ts";
 
@@ -19,6 +19,13 @@ test("actual strike geometry rejects side, back and out-of-range targets", () =>
   assert(!inAttackArc(origin,0,{x:0,z:-3},5,0.9));
   assert(!inAttackArc(origin,0,{x:4,z:0},5,0.9));
   assert(!inAttackArc(origin,0,{x:0,z:6},5,0.9));
+  const standardStrike = bossStrikeGeometry(false);
+  const slamStrike = bossStrikeGeometry(true);
+  assert.equal(standardStrike.reach, 5.78);
+  assert.equal(standardStrike.halfAngleRadians, 0.90);
+  assert.equal(slamStrike.reach, 6.78);
+  assert.equal(slamStrike.halfAngleRadians, 1.3);
+  assert(inAttackArc(origin, 0, {x:6,z:2}, slamStrike.reach, slamStrike.halfAngleRadians));
   assert(rollInvulnerable(0.2));
   assert(!rollInvulnerable(0.04));
   assert(!rollInvulnerable(0.50));
@@ -74,6 +81,45 @@ test("parry only within timing and facing window and interrupts boss attack", ()
   tick(late);
   assert(late.heroHp<100);
   assert.equal(late.parryCount,0);
+});
+
+test("AI starts parry and roll late enough for their active defense windows to cover impact", () => {
+  const tank = createCombatPreview(options);
+  tank.boss = {x: 0, z: 0};
+  tank.hero = {x: 0, z: 3};
+  tank.bossPhase = "windup";
+  tank.bossAge = 0.68;
+  tank.lockedBossHeading = 0;
+  tick(tank);
+  assert.equal(tank.heroPhase, "parry", "tank AI should initiate its own parry");
+  tick(tank, 20);
+  assert.equal(tank.parryCount, 1);
+  assert.equal(tank.heroHp, 100);
+
+  const slammer = createCombatPreview(options);
+  slammer.boss = {x: 0, z: 0};
+  slammer.hero = {x: 0, z: 3};
+  slammer.bossPhase = "windup";
+  slammer.bossAge = 0.88;
+  slammer.bossSlam = true;
+  slammer.lockedBossHeading = 0;
+  tick(slammer);
+  assert.equal(slammer.heroPhase, "parry", "tank AI should time its parry for a slam");
+  tick(slammer, 20);
+  assert.equal(slammer.parryCount, 1);
+  assert.equal(slammer.heroHp, 100);
+
+  const dodger = createCombatPreview({...options, role: "DPS", sword: false});
+  dodger.boss = {x: 0, z: 0};
+  dodger.hero = {x: 0, z: 3};
+  dodger.bossPhase = "windup";
+  dodger.bossAge = 0.68;
+  dodger.lockedBossHeading = 0;
+  tick(dodger);
+  assert.equal(dodger.heroPhase, "roll", "DPS AI should initiate its own roll");
+  tick(dodger, 20);
+  assert.equal(dodger.dodgeCount, 1);
+  assert.equal(dodger.heroHp, 100);
 });
 
 test("AI physically circles, chases, dodges and attacks at fixed timestep", () => {

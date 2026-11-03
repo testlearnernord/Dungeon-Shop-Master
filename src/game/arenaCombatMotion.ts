@@ -22,6 +22,7 @@ export type CombatPreviewOptions = {
   healingSupplies: number;
 };
 export type Projectile = { x: number; z: number; dx: number; dz: number; damage: number; ttl: number };
+export type BossStrikeGeometry = { reach: number; halfAngleRadians: number };
 export type CombatPreviewState = {
   readonly options: CombatPreviewOptions;
   time: number;
@@ -76,6 +77,12 @@ export function inAttackArc(origin: Point2, heading: number, target: Point2,
   if (d > reach || d < 0.000001) return false;
   const alignment = (dx * Math.sin(heading) + dz * Math.cos(heading)) / d;
   return alignment >= Math.cos(halfAngleRadians);
+}
+export function bossStrikeGeometry(slam: boolean): BossStrikeGeometry {
+  return {
+    reach: (slam ? 6.2 : 5.2) + HERO_RADIUS,
+    halfAngleRadians: slam ? 1.3 : 0.90,
+  };
 }
 export function rollInvulnerable(age: number): boolean {
   return age >= 0.09 && age <= 0.43;
@@ -143,9 +150,8 @@ function startParry(s: CombatPreviewState): void {
   beginHero(s, "parry");
 }
 function resolveBossStrike(s: CombatPreviewState): void {
-  const reach = s.bossSlam ? 6.2 : 5.2;
-  const cone = s.bossSlam ? 1.3 : 0.90;
-  const hit = inAttackArc(s.boss, s.lockedBossHeading, s.hero, reach + HERO_RADIUS, cone);
+  const { reach, halfAngleRadians } = bossStrikeGeometry(s.bossSlam);
+  const hit = inAttackArc(s.boss, s.lockedBossHeading, s.hero, reach, halfAngleRadians);
   if (!hit) {
     s.missedHits++; s.cues.push({ kind: "miss" });
     return;
@@ -292,7 +298,7 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
   s.heroHeading = facing(s.hero, s.boss);
   if (s.heroPhase === "move") {
     const distance = dist(s.hero, s.boss);
-    if (s.bossPhase === "windup" && s.bossAge >= (s.bossSlam ? 0.56 : 0.41) &&
+    if (s.bossPhase === "windup" && s.bossAge >= (s.bossSlam ? 0.88 : 0.68) &&
         distance < 7.2) {
       if (s.options.role === "tank" && s.options.sword && distance < 5.0) startParry(s);
       else startRoll(s);

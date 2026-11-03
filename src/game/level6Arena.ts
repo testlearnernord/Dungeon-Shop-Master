@@ -5,12 +5,14 @@ import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import {
-  BOSS_MAX_HP, createCombatPreview, stepCombatPreview,
+  BOSS_MAX_HP, bossStrikeGeometry, createCombatPreview, stepCombatPreview,
   type CombatPreviewState, type ArenaCue,
 } from "./arenaCombatMotion.ts";
 import type { AdventurerState } from "./adventurers.ts";
@@ -41,6 +43,7 @@ export class Level6Arena {
   private trollLegs: TransformNode[] = [];
   private projectiles: AbstractMesh[] = [];
   private telegraph: AbstractMesh | null = null;
+  private slamTelegraph: AbstractMesh | null = null;
   private readonly staminaText: HTMLElement;
   private readonly combatInfo: HTMLElement;
   private result: "fighting" | "victory" | "defeat" = "fighting";
@@ -138,6 +141,7 @@ export class Level6Arena {
     this.motion = null;
     this.projectiles = [];
     this.telegraph = null;
+    this.slamTelegraph = null;
     this.heroWeapon = null;
     this.shopCamera.attachControl(this.canvas, true);
     this.canvas.focus();
@@ -151,6 +155,7 @@ export class Level6Arena {
     this.targets = [];
     this.projectiles = [];
     this.telegraph = null;
+    this.slamTelegraph = null;
     this.heroWeapon = null;
     this.motionAccumulator = 0;
     this.result = "fighting";
@@ -315,12 +320,32 @@ export class Level6Arena {
     }
     this.hero = { root: hero, hp: this.motion.heroHp,
       max: this.motion.options.maxHealth, alive: true };
-    const telegraph = MeshBuilder.CreateBox("boss-active-attack-warning",
-      { width: 7.8, height: 0.035, depth: 5.6 }, scene);
-    telegraph.material = makeMat("boss-warning-red", "#b82513", true);
-    telegraph.visibility = 0;
-    telegraph.isPickable = false;
-    this.telegraph = telegraph;
+    const warningMaterial = makeMat("boss-warning-red", "#b82513", true);
+    const createWarning = (name: string, slam: boolean): Mesh => {
+      const { reach, halfAngleRadians } = bossStrikeGeometry(slam);
+      const segments = 32;
+      const positions = [0, 0.14, 0];
+      const indices: number[] = [];
+      for (let i = 0; i <= segments; i++) {
+        const angle = -halfAngleRadians + (2 * halfAngleRadians * i) / segments;
+        positions.push(Math.sin(angle) * reach, 0.14, Math.cos(angle) * reach);
+        if (i < segments) indices.push(0, i + 1, i + 2);
+      }
+      const normals: number[] = [];
+      VertexData.ComputeNormals(positions, indices, normals);
+      const vertexData = new VertexData();
+      vertexData.positions = positions;
+      vertexData.indices = indices;
+      vertexData.normals = normals;
+      const mesh = new Mesh(name, scene);
+      vertexData.applyToMesh(mesh);
+      mesh.material = warningMaterial;
+      mesh.visibility = 0;
+      mesh.isPickable = false;
+      return mesh;
+    };
+    this.telegraph = createWarning("boss-active-attack-warning", false);
+    this.slamTelegraph = createWarning("boss-slam-attack-warning", true);
     const displayName = this.fighter ? names.get(this.fighter.id) ?? this.fighter.name : "Preview Hero";
     this.targets = [
       { label: displayName + " · " + (this.fighter?.role ?? "tank"), node: hero,
@@ -404,6 +429,7 @@ export class Level6Arena {
     boss.root.position.set(state.boss.x, 0, state.boss.z);
     hero.root.rotation.y = state.heroHeading;
     boss.root.rotation.y = state.bossHeading;
+    boss.root.rotation.z = state.outcome === "victory" ? Math.PI / 2 : 0;
     hero.hp = state.heroHp;
     boss.hp = state.bossHp;
     hero.alive = state.outcome !== "defeat";
@@ -444,14 +470,11 @@ export class Level6Arena {
         : state.bossPhase === "recover" ? 0.4 * (1 - Math.min(1, age / 0.7))
         : state.bossPhase === "stagger" ? -0.9 : 0;
     }
-    if (this.telegraph) {
-      this.telegraph.visibility = state.bossPhase === "windup" ? 0.48 : 0;
-      this.telegraph.position.set(
-        state.boss.x + Math.sin(state.lockedBossHeading) * 2.9,
-        0.14,
-        state.boss.z + Math.cos(state.lockedBossHeading) * 2.9,
-      );
-      this.telegraph.rotation.y = state.lockedBossHeading;
+    for (const [telegraph, slam] of [[this.telegraph, false], [this.slamTelegraph, true]] as const) {
+      if (!telegraph) continue;
+      telegraph.visibility = state.bossPhase === "windup" && state.bossSlam === slam ? 0.48 : 0;
+      telegraph.position.set(state.boss.x, 0, state.boss.z);
+      telegraph.rotation.y = state.lockedBossHeading;
     }
     // Moving projectiles visually match collidable projectile positions from the motor.
     while (this.projectiles.length > state.projectiles.length) this.projectiles.pop()!.dispose();
