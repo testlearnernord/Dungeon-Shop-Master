@@ -75,6 +75,13 @@ test("healer can self-heal and attack at range, tank can parry, DPS can dodge", 
   const dpsActions = Array.from({length: 30},(_,seed)=>simulateLevel6Combat(dps,3,seed).actions).flat();
   assert(tankActions.some(x=>x.kind==="parry"));
   assert(dpsActions.some(x=>x.kind==="dodge"));
+  assert(tankActions.filter(x=>x.kind==="smash").every(x=>x.actor==="troll"));
+  assert(tankActions.filter(x=>x.kind==="block").every(x=>x.actor==="hero"));
+
+  const lethalParryTank = { ...tank, stats: { ...tank.stats, strength: 1 } };
+  const lethalParry = simulateLevel6Combat(lethalParryTank, 3, 7);
+  assert.equal(lethalParry.actions.at(-1)?.kind, "finish");
+  assert.equal(lethalParry.actions.at(-1)?.actor, "hero");
 });
 
 test("boss fights still obey single confirmed tick and legacy save compatibility", () => {

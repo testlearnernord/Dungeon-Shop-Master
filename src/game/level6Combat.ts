@@ -84,6 +84,7 @@ export function simulateLevel6Combat(
       record("hero", "parry");
       bossHealth = Math.max(0, bossHealth - (armed ? 7 : 2));
       record("troll", "stagger", armed ? 7 : 2);
+      if (bossHealth === 0) record("hero", "finish");
       continue;
     }
     const slam = rounds % 6 === 0;
@@ -92,7 +93,7 @@ export function simulateLevel6Combat(
     const damage = Math.max(1, raw - defense);
     health = Math.max(0, health - damage);
     edgeDistance += slam ? (armored ? 1.5 : 3.5) : 0.8;
-    record("hero", defense ? "block" : "smash", damage);
+    record(defense ? "hero" : "troll", defense ? "block" : "smash", damage);
     if (edgeDistance >= LAVA_EDGE && health > 0) {
       health = 0;
       record("troll", "lava", 999);
