@@ -10,6 +10,8 @@ test("Level 7 renders a deterministic 3D dungeon and spectator camera without mo
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonLayout());
   await page.locator("#open-dungeon").click();
   await expect(page.locator("#dungeon-hud")).toBeVisible();
+  await page.waitForTimeout(250);
+  expect(errors, "The 3D scene construction must not throw").toEqual([]);
   await expect(page.locator("#dungeon-summary")).toContainText("monster spawns");
   await expect(page.locator("#dungeon-focus")).toContainText("Entrance");
   await expect(page.locator("#music-track")).toHaveText("Beneath the Surface");
