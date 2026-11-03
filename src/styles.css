@@ -440,3 +440,42 @@ body,
 #level6-expedition-events > li { margin: 4px 0; line-height: 1.5; }
 #level6-expedition-events > li[data-outcome="victory"] { color: #a8d69d; }
 #level6-expedition-events > li[data-outcome="death"] { color: #e79c8e; }
+
+/* A separate spectator HUD deliberately hides all merchant controls. */
+#arena-hud[hidden] { display: none; }
+#arena-hud {
+  position: fixed; inset: 0; z-index: 25;
+  pointer-events: none; font-size: 14px;
+  color: #f4e2c3; text-shadow: 0 2px 5px #000;
+}
+body.arena-active #hud { display: none; }
+.arena-toolbar {
+  position: absolute; top: 16px; left: 16px; right: 16px;
+  display: flex; justify-content: space-between; gap: 12px;
+  align-items: start; padding: 12px 18px;
+  background: rgb(18 14 16 / 88%);
+  border: 1px solid #a55c38; border-radius: 6px;
+}
+.arena-toolbar strong { font-size: 21px; letter-spacing: 0.08em; color: #ffb472; }
+.arena-toolbar p { margin: 7px 0 0; color: #dbc0a7; font-size: 12px; }
+.arena-actions { display: flex; flex-wrap: wrap; gap: 8px; pointer-events: auto; }
+.arena-actions button {
+  background: #30211d; border: 1px solid #c78e63; border-radius: 5px;
+  color: #f4e2c3; padding: 9px 12px; cursor: pointer;
+}
+.arena-bottom {
+  position: absolute; bottom: 17px; left: 50%; transform: translateX(-50%);
+  width: min(760px, calc(100vw - 24px)); text-align: center;
+  background: rgb(18 14 16 / 90%); border: 1px solid #a55c38;
+  border-radius: 7px; padding: 12px;
+}
+.arena-bottom p { margin: 6px 0; }
+#arena-status { color: #ffbd85; font-weight: 700; font-size: 17px; }
+.arena-vitals { display: flex; justify-content: space-around; gap: 10px; color: #d6e5c7; }
+#arena-boss-health { color: #ff856d; }
+#arena-focus { color: #ffe1b3; font-weight: 650; }
+@media (max-width: 640px) {
+  .arena-toolbar { flex-direction: column; }
+  .arena-toolbar strong { font-size: 16px; }
+  .arena-bottom { font-size: 11px; }
+}
