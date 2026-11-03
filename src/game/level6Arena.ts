@@ -134,6 +134,8 @@ export class Level6Arena {
   restart(): void {
     if (!this.active) return;
     this.scene?.dispose();
+    this.heroLegs = [];
+    this.targets = [];
     this.time = 0;
     this.heroAttack = 0.3;
     this.bossAttack = 2.4;
