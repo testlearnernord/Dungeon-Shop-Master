@@ -350,10 +350,11 @@ export class Level6Arena {
     this.focusText.textContent = "TAB focus: " + target.label;
   }
 
+  /** Preview combat advances at a fixed 60 Hz independent of render FPS. */
   update(deltaSeconds: number): void {
-    if (!this.active || !this.scene || !this.camera || !this.hero || !this.boss) return;
-    const dt = Math.min(0.05, Math.max(0, deltaSeconds));
-    const speed = (this.pressed.has("ShiftLeft") || this.pressed.has("ShiftRight") ? 21 : 7) * dt;
+    if (!this.active || !this.scene || !this.camera || !this.hero || !this.boss || !this.motion) return;
+    const frameDt = Math.min(0.1, Math.max(0, deltaSeconds));
+    const speed = (this.pressed.has("ShiftLeft") || this.pressed.has("ShiftRight") ? 21 : 7) * frameDt;
     const yaw = this.camera.rotation.y;
     const forward = new Vector3(Math.sin(yaw), 0, Math.cos(yaw));
     const right = new Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -364,88 +365,119 @@ export class Level6Arena {
     if (this.pressed.has("KeyQ")) this.camera.position.y += speed;
     if (this.pressed.has("KeyE")) this.camera.position.y -= speed;
     this.camera.position.y = Math.max(1.2, Math.min(65, this.camera.position.y));
-    if (this.result !== "fighting") return;
-    this.time += dt;
-    this.heroAttack -= dt;
-    this.bossAttack -= dt;
-    this.heroRoll = Math.max(0, this.heroRoll - dt);
-    this.parryFlash = Math.max(0, this.parryFlash - dt);
-    const hero = this.hero;
-    const boss = this.boss;
-    const hp = hero.root.position;
-    const bp = boss.root.position;
-    const distance = Vector3.Distance(hp, bp);
-    const role = this.fighter?.role ?? "tank";
-    const ranged = role === "healer" || role === "DPS";
-    const desired = ranged ? 7.8 : 3.0;
-    const direction = bp.subtract(hp).normalize();
-    const armored = this.fighter?.equipment.armor === "Leather Vest";
-    const armed = this.fighter?.equipment.weapon === "Iron Sword";
-    if (distance > desired + 0.4) hp.addInPlace(direction.scale(dt * (this.heroRoll > 0 ? 7 : 3.5)));
-    if (distance < desired - 1) hp.subtractInPlace(direction.scale(dt * 3.4));
-    // Continuous enemy AI: the troll hunts, turns and telegraphs heavy club strikes.
-    if (distance > 4.3) bp.subtractInPlace(direction.scale(dt * 1.2));
-    boss.root.rotation.y = Math.atan2(hp.x - bp.x, hp.z - bp.z);
-    hero.root.rotation.y = Math.atan2(bp.x - hp.x, bp.z - hp.z);
+
+    this.motionAccumulator += frameDt;
+    const fixedDt = 1 / 60;
+    let ticks = 0;
+    while (this.motionAccumulator >= fixedDt && ticks++ < 6) {
+      const cues = stepCombatPreview(this.motion, fixedDt);
+      for (const cue of cues) this.displayCue(cue);
+      this.motionAccumulator -= fixedDt;
+    }
+    this.paintCombat();
+  }
+
+  private displayCue(cue: ArenaCue): void {
+    const value = cue.amount === undefined ? "" : " (" + cue.amount + " HP)";
+    const messages: Record<ArenaCue["kind"], string> = {
+      windup: "TROLL WINDUP · Dodge the glowing attack lane!",
+      dodge: "DODGED · Hit avoided during real invulnerability frames.",
+      parry: "PARRY! A timed, facing block staggered the Cave Troll.",
+      miss: "MISSED · Target outside the active strike range or arc.",
+      hit: "TROLL HIT" + value + " · The club made contact.",
+      "hero-hit": "HERO HIT" + value + " · An attack reached its target.",
+      projectile: "Spell fired! Moving projectile must reach the boss.",
+      heal: "HEALED" + value + " · The uninterrupted cast completed.",
+      stagger: "BOSS STAGGERED · Successful parry.",
+      lava: "LAVA · The hero crossed the deadly arena boundary.",
+      victory: "VICTORY · Cave Troll defeated. Preview only.",
+      defeat: "DEFEAT · Hero fell in combat. Preview only.",
+    };
+    this.status.textContent = messages[cue.kind];
+  }
+
+  private paintCombat(): void {
+    const state = this.motion;
+    if (!state || !this.hero || !this.boss || !this.scene) return;
+    const hero = this.hero, boss = this.boss;
+    const oldHeroX = hero.root.position.x, oldHeroZ = hero.root.position.z;
+    const oldBossX = boss.root.position.x, oldBossZ = boss.root.position.z;
+    hero.root.position.set(state.hero.x, 0, state.hero.z);
+    boss.root.position.set(state.boss.x, 0, state.boss.z);
+    hero.root.rotation.y = state.heroHeading;
+    boss.root.rotation.y = state.bossHeading;
+    hero.hp = state.heroHp;
+    boss.hp = state.bossHp;
+    hero.alive = state.outcome !== "defeat";
+    boss.alive = state.outcome !== "victory";
+
+    const movedHero = Math.hypot(state.hero.x - oldHeroX, state.hero.z - oldHeroZ);
+    const movedBoss = Math.hypot(state.boss.x - oldBossX, state.boss.z - oldBossZ);
     for (const [index, leg] of this.heroLegs.entries()) {
-      leg.rotation.x = Math.sin(this.time * 9 + index * Math.PI) * 0.37;
+      leg.rotation.x = movedHero > 0.005 && state.heroPhase === "move"
+        ? Math.sin(state.time * 12 + index * Math.PI) * 0.50 : 0;
     }
-    if (this.bossTelegraph >= 0) {
-      this.bossTelegraph -= dt;
-      if (this.swing) this.swing.rotation.z = -0.95 + (0.9 - Math.max(0, this.bossTelegraph)) * 1.8;
-      if (this.bossTelegraph < 0) {
-        this.swing!.rotation.z = 0;
-        if (Vector3.Distance(hp, bp) < 7) {
-          const dodge = this.heroRoll > 0;
-          const parry = this.parryFlash > 0 && role === "tank";
-          if (dodge) this.status.textContent = "DODGED! The troll's club missed.";
-          else if (parry) this.status.textContent = "PARRIED! The troll staggered.";
-          else {
-            const damage = Math.max(1, 17 - (armored ? 6 : 0) - (role === "tank" ? 3 : 0));
-            hero.hp = Math.max(0, hero.hp - damage);
-            this.status.textContent = "TROLL SMASH! " + damage + " damage.";
-          }
-        }
-      }
-    } else if (this.bossAttack <= 0) {
-      this.bossTelegraph = 0.9; // The visible tell precedes every dangerous hit.
-      this.bossAttack = 3.0;
-      if (role === "DPS" || role === "healer") {
-        this.heroRoll = 1.1;
-        hp.x += (Math.floor(this.time / 3) % 2 ? -1 : 1) * 1.8;
-      } else {
-        this.parryFlash = armed ? 1.2 : 0.55;
-      }
-      this.status.textContent = "The Cave Troll raises its club. DODGE / PARRY!";
+    for (const [index, leg] of this.trollLegs.entries()) {
+      leg.rotation.x = movedBoss > 0.005
+        ? Math.sin(state.time * 5 + index * Math.PI) * 0.25 : 0;
     }
-    if (this.heroAttack <= 0 && distance < (ranged ? 13 : 4.8)) {
-      const damage = role === "DPS" ? (armed ? 17 : 8) :
-        role === "healer" ? (armed ? 11 : 6) : (armed ? 14 : 5);
-      boss.hp = Math.max(0, boss.hp - damage);
-      this.heroAttack = role === "DPS" ? 1.25 : role === "healer" ? 2.0 : 1.6;
-      this.status.textContent = (ranged ? "RANGED HIT" : "MELEE STRIKE") + "! " + damage + " boss damage.";
+    if (this.heroWeapon) {
+      const attacking = state.heroPhase === "attack";
+      const casting = state.heroPhase === "cast" || state.heroPhase === "heal";
+      this.heroWeapon.rotation.z = attacking
+        ? Math.sin(Math.min(1, state.heroAge / 0.6) * Math.PI) * -2.1
+        : state.heroPhase === "parry" ? -1.1 : casting ? -0.9 : 0;
+      this.heroWeapon.rotation.x = attacking ? -0.65 : 0;
     }
-    if (role === "healer" && hero.hp < hero.max * 0.55 && this.healCharges > 0) {
-      this.healCharges--;
-      hero.hp = Math.min(hero.max, hero.hp + 21);
-      this.status.textContent = "HEALER uses a Healing Herb (+21 HP).";
+    // A roll actually translates the hero sideways, then rotates the body.
+    if (state.heroPhase === "roll") {
+      hero.root.rotation.z = Math.sin(Math.min(1, state.heroAge / 0.53) * Math.PI) * 1.0;
+      hero.root.rotation.x = Math.PI * 2 * Math.min(1, state.heroAge / 0.53);
+    } else {
+      hero.root.rotation.x = 0;
+      hero.root.rotation.z = state.outcome === "defeat" ? Math.PI / 2
+        : state.heroPhase === "hurt" ? -0.25 : 0;
     }
-    // Lava is lethal to adventurers, never a harmless invisible map boundary.
-    if (Math.hypot(hp.x, hp.z) > ROCK_RADIUS - 0.5) {
-      hero.hp = 0;
-      this.status.textContent = "The hero fell into the lava.";
+    if (this.swing) {
+      const age = state.bossAge;
+      this.swing.rotation.z = state.bossPhase === "windup"
+        ? -1.0 - Math.min(1, age / 0.85) * 0.4
+        : state.bossPhase === "strike" ? 1.6 * Math.min(1, age / 0.22)
+        : state.bossPhase === "recover" ? 0.4 * (1 - Math.min(1, age / 0.7))
+        : state.bossPhase === "stagger" ? -0.9 : 0;
     }
-    if (hero.hp <= 0) {
-      hero.alive = false;
-      hero.root.rotation.z = Math.PI / 2;
-      this.result = "defeat";
-      this.status.textContent = "DEFEAT · The troll claims another victim. Preview only.";
-    } else if (boss.hp <= 0) {
-      boss.alive = false;
-      boss.root.rotation.z = 1.1;
-      this.result = "victory";
-      this.status.textContent = "VICTORY · The Cave Troll falls! Preview only.";
+    if (this.telegraph) {
+      this.telegraph.visibility = state.bossPhase === "windup" ? 0.48 : 0;
+      this.telegraph.position.set(
+        state.boss.x + Math.sin(state.lockedBossHeading) * 2.9,
+        0.14,
+        state.boss.z + Math.cos(state.lockedBossHeading) * 2.9,
+      );
+      this.telegraph.rotation.y = state.lockedBossHeading;
     }
+    // Moving projectiles visually match collidable projectile positions from the motor.
+    while (this.projectiles.length > state.projectiles.length) this.projectiles.pop()!.dispose();
+    while (this.projectiles.length < state.projectiles.length) {
+      const orb = MeshBuilder.CreateSphere("hero-live-projectile", { diameter: 0.55 }, this.scene);
+      const mat = new StandardMaterial("projectile-aura", this.scene);
+      mat.diffuseColor = new Color3(0.2, 0.65, 1);
+      mat.emissiveColor = new Color3(0.25, 0.8, 1);
+      orb.material = mat;
+      orb.isPickable = false;
+      this.projectiles.push(orb);
+    }
+    state.projectiles.forEach((projectile, index) =>
+      this.projectiles[index].position.set(projectile.x, 1.7, projectile.z));
+    hero.root.metadata.combatPhase = state.heroPhase;
+    hero.root.metadata.stamina = state.stamina;
+    hero.root.metadata.previewHp = state.heroHp;
+    hero.root.metadata.distanceTraveled = state.distanceTraveled;
+    boss.root.metadata.combatPhase = state.bossPhase;
+    boss.root.metadata.previewHp = state.bossHp;
+    boss.root.metadata.missedHits = state.missedHits;
+    boss.root.metadata.dodgeCount = state.dodgeCount;
+    boss.root.metadata.parryCount = state.parryCount;
+    this.result = state.outcome;
     this.updateHud();
   }
 
@@ -453,6 +485,13 @@ export class Level6Arena {
     if (!this.hero || !this.boss) return;
     this.healthText.textContent = "HERO HP " + this.hero.hp + "/" + this.hero.max;
     this.bossText.textContent = "CAVE TROLL HP " + this.boss.hp + "/" + this.boss.max;
+    if (this.motion) {
+      this.staminaText.textContent = "STAMINA " + Math.round(this.motion.stamina) + "/100";
+      this.combatInfo.textContent = "Hero: " + this.motion.heroPhase +
+        " · Troll: " + this.motion.bossPhase +
+        " · Dodges " + this.motion.dodgeCount + " · Parries " + this.motion.parryCount +
+        " · Connected hits " + this.motion.landedHits;
+    }
     this.panel.dataset.result = this.result;
   }
 }
