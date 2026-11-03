@@ -35,7 +35,6 @@ export class Level6Arena {
   private focusIndex = 0;
   private readonly pressed = new Set<string>();
   private active = false;
-  private time = 0;
   private motion: CombatPreviewState | null = null;
   private motionAccumulator = 0;
   private heroWeapon: TransformNode | null = null;
@@ -154,7 +153,6 @@ export class Level6Arena {
     this.telegraph = null;
     this.heroWeapon = null;
     this.motionAccumulator = 0;
-    this.time = 0;
     this.result = "fighting";
     const state = this.store.state;
     this.fighter = state.adventurers.find(hero => hero.status === "expedition") ??

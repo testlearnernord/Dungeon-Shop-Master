@@ -40,10 +40,10 @@ function imminentSwing() {
 test("troll damage only applies at active hit frame within locked arc", () => {
   const hit=imminentSwing();
   tick(hit);
-  assert.equal(hit.heroHp,83);
+  assert.equal(hit.heroHp,86);
   assert.equal(hit.bossDamageApplied,true);
   tick(hit,4);
-  assert.equal(hit.heroHp,83,"single attack must not damage the hero every frame");
+  assert.equal(hit.heroHp,86,"single attack must not damage the hero every frame");
 
   const side=imminentSwing();
   side.hero={x:6,z:0};

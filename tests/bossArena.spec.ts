@@ -58,3 +58,28 @@ test("an authorized Level 6 adventurer appears in the spectator preview without 
   await expect(page.locator("#day")).toHaveText("Day 2");
   await expect(page.locator("#level6-progress-summary")).toContainText("0 fights");
 });
+
+test("spatial AI visibly moves both actors and tracks stamina, attack phases and actual travel", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", e => errors.push(e.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const initialGold = await page.locator("#merchant-gold").textContent();
+  await page.locator("#open-arena").click();
+  const arena = () => page.evaluate(async () =>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBossArena());
+  const first = await arena();
+  await expect.poll(async () => (await arena()).heroDistanceTraveled ?? 0, {
+    timeout: 25000, intervals: [250, 500, 1000],
+  }).toBeGreaterThan(2);
+  const current = await arena();
+  expect(current.heroPosition).not.toEqual(first.heroPosition);
+  expect(current.bossPosition).not.toEqual(first.bossPosition);
+  await expect(page.locator("#arena-stamina")).toContainText("STAMINA");
+  await expect(page.locator("#arena-combat-info")).toContainText("Troll:");
+  expect(["move","roll","parry","attack","cast","heal","hurt","dead"]).toContain(current.heroPhase);
+  await page.locator("#close-arena").click();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await expect(page.locator("#merchant-gold")).toHaveText(initialGold!);
+  expect(errors).toEqual([]);
+});
