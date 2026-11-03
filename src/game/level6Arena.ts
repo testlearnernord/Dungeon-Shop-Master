@@ -47,6 +47,7 @@ export class Level6Arena {
   private forcePreview = false;
   private readonly sourceToggle: HTMLButtonElement;
   private motionAccumulator = 0;
+  private heroArm: TransformNode | null = null;
   private heroWeapon: TransformNode | null = null;
   private trollLegs: TransformNode[] = [];
   private projectiles: AbstractMesh[] = [];
@@ -170,6 +171,7 @@ export class Level6Arena {
     this.projectiles = [];
     this.telegraph = null;
     this.slamTelegraph = null;
+    this.heroArm = null;
     this.heroWeapon = null;
     this.shopCamera.attachControl(this.canvas, true);
     this.canvas.focus();
@@ -184,6 +186,7 @@ export class Level6Arena {
     this.projectiles = [];
     this.telegraph = null;
     this.slamTelegraph = null;
+    this.heroArm = null;
     this.heroWeapon = null;
     this.motionAccumulator = 0;
     this.replayTime = 0;
@@ -347,6 +350,7 @@ export class Level6Arena {
     hero.position.set(0, 0, -9);
     hero.metadata = { ...hero.metadata, kind: "hero" };
     this.heroLegs.push(...heroModel.legs);
+    this.heroArm = heroModel.arms[1];
     this.heroWeapon = heroModel.weaponPivot;
     this.hero = { root: hero, hp: this.motion.heroHp,
       max: this.motion.options.maxHealth, alive: true };
@@ -555,12 +559,15 @@ export class Level6Arena {
       leg.rotation.x = movedBoss > 0.005
         ? Math.sin(state.time * 5 + index * Math.PI) * 0.25 : 0;
     }
-    if (this.heroWeapon) {
+    if (this.heroArm) {
       const attacking = state.heroPhase === "attack";
       const casting = state.heroPhase === "cast" || state.heroPhase === "heal";
-      this.heroWeapon.rotation.z = attacking
+      this.heroArm.rotation.z = attacking
         ? Math.sin(Math.min(1, state.heroAge / 0.6) * Math.PI) * -2.1
         : state.heroPhase === "parry" ? -1.1 : casting ? -0.9 : 0;
+    }
+    if (this.heroWeapon) {
+      const attacking = state.heroPhase === "attack";
       this.heroWeapon.rotation.x = attacking ? -0.65 : 0;
     }
     // A roll actually translates the hero sideways, then rotates the body.

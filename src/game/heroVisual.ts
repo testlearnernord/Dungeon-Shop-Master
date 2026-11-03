@@ -130,8 +130,8 @@ export function createHeroVisual(
   }) as [TransformNode, TransformNode];
   // A shared animation socket, so future rigged GLBs can replace primitives cleanly.
   const weaponPivot = new TransformNode(prefix + "-weapon-socket", scene);
-  weaponPivot.parent = root;
-  weaponPivot.position.set(0.40, 1.36, -0.12);
+  weaponPivot.parent = arms[1];
+  weaponPivot.position.set(0.09, -0.04, -0.12);
   const swordMesh = attach("equipped-iron-sword",
     MeshBuilder.CreateBox(prefix + "-sword-part",
       { width: 0.09, height: 0.72, depth: 0.12 }, scene),
