@@ -105,6 +105,8 @@ export function inspectBossArena() {
     heroPosition: hero ? { x: hero.position.x, z: hero.position.z } : null,
     bossPosition: boss ? { x: boss.position.x, z: boss.position.z } : null,
     heroPhase: hero?.metadata?.combatPhase as string | undefined,
+    heroArmRotation: scene.transformNodes.find(node => node.name === `${hero?.name}-arm-1`)?.rotation.z,
+    heroSwordEnabled: scene.getMeshByName(`${hero?.name}-equipped-iron-sword`)?.isEnabled() ?? false,
     bossPhase: boss?.metadata?.combatPhase as string | undefined,
     heroDistanceTraveled: hero?.metadata?.distanceTraveled as number | undefined,
     dodgeCount: boss?.metadata?.dodgeCount as number | undefined,
@@ -119,16 +121,20 @@ export function inspectHeroModels() {
   return scene.transformNodes.filter(node =>
     node.name.startsWith("npc-adventurer-") ||
     node.name.startsWith("arena-hero-adventurer-")).filter(node =>
-      node.metadata?.appearanceKey).map(node => ({
-      rootName: node.name,
-      id: node.metadata.adventurerId as string,
-      role: node.metadata.role as string,
-      appearanceKey: node.metadata.appearanceKey as string,
-      skinColor: node.metadata.skinColor as string,
-      hairColor: node.metadata.hairColor as string,
-      weapon: node.metadata.weapon as string | null,
-      armor: node.metadata.armor as string | null,
-      swordVisible: node.metadata.swordVisible as boolean,
-      vestVisible: node.metadata.vestVisible as boolean,
-    }));
+      node.metadata?.appearanceKey).map(node => {
+      const sword = scene.getMeshByName(`${node.name}-equipped-iron-sword`);
+      const vest = scene.getMeshByName(`${node.name}-equipped-leather-vest`);
+      return {
+        rootName: node.name,
+        id: node.metadata.adventurerId as string,
+        role: node.metadata.role as string,
+        appearanceKey: node.metadata.appearanceKey as string,
+        skinColor: node.metadata.skinColor as string,
+        hairColor: node.metadata.hairColor as string,
+        weapon: node.metadata.weapon as string | null,
+        armor: node.metadata.armor as string | null,
+        swordVisible: !!sword && sword.isEnabled() && sword.visibility > 0,
+        vestVisible: !!vest && vest.isEnabled() && vest.visibility > 0,
+      };
+    });
 }

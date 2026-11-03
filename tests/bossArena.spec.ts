@@ -75,6 +75,12 @@ test("spatial AI visibly moves both actors and tracks stamina, attack phases and
   const current = await arena();
   expect(current.heroPosition).not.toEqual(first.heroPosition);
   expect(current.bossPosition).not.toEqual(first.bossPosition);
+  await expect.poll(async () => {
+    const visual = await arena();
+    return !visual.heroSwordEnabled &&
+      ["attack", "parry", "cast", "heal"].includes(visual.heroPhase ?? "") &&
+      Math.abs(visual.heroArmRotation ?? 0) > 0.25;
+  }, { timeout: 25000, intervals: [100, 250, 500] }).toBe(true);
   await expect(page.locator("#arena-stamina")).toContainText("STAMINA");
   await expect(page.locator("#arena-combat-info")).toContainText("Troll:");
   expect(["move","roll","parry","attack","cast","heal","hurt","dead"]).toContain(current.heroPhase);
