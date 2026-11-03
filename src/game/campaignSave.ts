@@ -1,5 +1,6 @@
 import { ECONOMY, ITEMS, createEconomy } from "./economy.ts";
 import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
+import { validateBossReplay } from "./bossCombatReplay.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -182,7 +183,8 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
-      ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome"]);
+      ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
+        ...(version >= 7 ? ["combatReplay"] : [])]);
     choice(event.type, eventTypes.filter((type) =>
       (version >= 5 || !type.startsWith("level6-")) &&
       (version >= 6 || (type !== "food-shortage" && type !== "found-food"))), `${path}.type`);
@@ -203,6 +205,12 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     if (event.type === "level6-combat") {
       allowed.push("combatOutcome");
       choice(event.combatOutcome, ["victory", "retreat", "death"], `${path}.combatOutcome`);
+      if (event.combatReplay !== undefined) {
+        allowed.push("combatReplay");
+        validateBossReplay(event.combatReplay, `${path}.combatReplay`,
+          event.adventurerId as string, eventDay,
+          event.combatOutcome as "victory" | "retreat" | "death");
+      }
     }
     if (["sale", "ate", "healed", "rescue", "found-food"].includes(event.type as string)) {
       allowed.push("itemId", "quantity");

@@ -2,7 +2,6 @@ import type { AdventurerState } from "./adventurers.ts";
 import type { WorldEvent } from "./gameState.ts";
 import { SeededRandom } from "./random.ts";
 import { resolveSpatialBoss } from "./bossCombatReplay.ts";
-import type { BossReplayFrame } from "./bossCombatReplay.ts";
 
 export type Level6CombatOutcome = "victory" | "retreat" | "death";
 export type CombatActionKind = "approach" | "attack" | "ranged" | "windup" |
