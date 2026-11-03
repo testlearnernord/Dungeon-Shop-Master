@@ -1,3 +1,5 @@
+import type { AdventurerRole } from "./adventurers.ts";
+
 /** UI-only, stable across living and fallen hero history. Saved names/RNG are untouched. */
 export function heroDisplayNames(heroes: readonly { readonly id: string; readonly name: string }[]): ReadonlyMap<string, string> {
   const sorted = [...heroes].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
