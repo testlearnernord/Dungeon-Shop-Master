@@ -134,8 +134,8 @@ export class SceneSoundtrack {
     const outgoing = this.tracks[next === "shop" ? "boss" : "shop"];
     const fromIncoming = incoming.paused ? 0 : incoming.volume;
     const fromOutgoing = outgoing.paused ? 0 : outgoing.volume;
+    if (next === "boss") incoming.currentTime = 0;
     if (incoming.paused) {
-      if (next === "boss") incoming.currentTime = 0;
       incoming.volume = 0;
     }
     const fade = () => {
@@ -159,12 +159,14 @@ export class SceneSoundtrack {
       // Start the new track immediately on the event loop so browsers accept it.
       void incoming.play().then(fade).catch(() => {
         if (id !== this.transitionId) return;
+        outgoing.pause();
         this.started = false;
         this.error = "Click to enable audio";
         this.renderUi();
       });
     } catch {
       if (id !== this.transitionId) return;
+      outgoing.pause();
       this.started = false;
       this.error = "Audio playback unavailable";
       this.renderUi();

@@ -62,6 +62,7 @@ export class Level6Arena {
   private readonly healthText: HTMLElement;
   private readonly bossText: HTMLElement;
   private readonly previewText: HTMLElement;
+  private readonly musicToggle: HTMLButtonElement;
 
   constructor(
     private readonly engine: Engine,
@@ -76,6 +77,7 @@ export class Level6Arena {
     this.healthText = document.querySelector<HTMLElement>("#arena-hero-health")!;
     this.bossText = document.querySelector<HTMLElement>("#arena-boss-health")!;
     this.previewText = document.querySelector<HTMLElement>("#arena-preview")!;
+    this.musicToggle = document.querySelector<HTMLButtonElement>("#music-toggle")!;
     this.staminaText = document.querySelector<HTMLElement>("#arena-stamina")!;
     this.combatInfo = document.querySelector<HTMLElement>("#arena-combat-info")!;
     this.sourceToggle = document.querySelector<HTMLButtonElement>("#arena-source-toggle")!;
@@ -96,16 +98,19 @@ export class Level6Arena {
         }
         return;
       }
+      if (event.target instanceof Element && event.target.closest("#music-panel")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.repeat) return;
       if (event.code === "Escape" || event.code === "KeyV") this.close();
       else if (event.code === "Tab") this.nextFocus();
+      else if (event.code === "KeyM") this.musicToggle.focus();
       else if (event.code === "KeyC" && !this.sourceToggle.hidden) this.toggleSource();
       else this.pressed.add(event.code);
     }, true);
     window.addEventListener("keyup", (event) => {
       if (!this.active) return;
+      if (event.target instanceof Element && event.target.closest("#music-panel")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       this.pressed.delete(event.code);
