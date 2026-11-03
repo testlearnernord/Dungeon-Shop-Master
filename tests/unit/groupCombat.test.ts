@@ -45,7 +45,7 @@ test("multi-actor simulation is deterministic regardless of input actor ordering
 function imminentMonsterStrike() {
   const s = createGroupCombat({ bounds, actors: [
     fighter("hero", "heroes", 0, 0, { role:"tank", hp:100,maxHp:100,armor:0 }),
-    fighter("monster", "monsters", 0, 2.1, { damage:18,armor:0 }),
+    fighter("monster", "monsters", 0, 1.7, { damage:18,armor:0 }),
   ]});
   const hero=s.actors.find(x=>x.id==="hero")!;
   const monster=s.actors.find(x=>x.id==="monster")!;
