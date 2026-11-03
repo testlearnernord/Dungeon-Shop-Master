@@ -94,7 +94,7 @@ test("AI physically circles, chases, dodges and attacks at fixed timestep", () =
 
 test("projectiles move until collision, never instantly deliver ranged damage",()=>{
   const s=createCombatPreview({...options,role:"healer",sword:false});
-  s.heroPhase="cast"; s.heroAge=0.28; s.bossPhase="stagger"; s.bossAge=0;
+  s.heroPhase="cast"; s.heroAge=0.305; s.bossPhase="stagger"; s.bossAge=0;
   tick(s);
   assert.equal(s.projectiles.length,1);
   assert.equal(s.bossHp,BOSS_MAX_HP);
