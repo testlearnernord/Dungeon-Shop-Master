@@ -8,7 +8,7 @@ import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 6;
+export const SIMULATION_VERSION = 7;
 
 export interface ShopEconomyState {
   readonly balance: number;

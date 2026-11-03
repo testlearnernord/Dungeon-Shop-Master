@@ -55,6 +55,7 @@ function unique(value: string | number, seen: Set<string | number>, path: string
 }
 
 const itemIds = ITEMS.map((item) => item.id);
+const originalItemIds = itemIds.filter((id) => id !== "iron-sword" && id !== "leather-vest");
 const slotDefinitions = createEconomy().slots;
 const eventTypes = [
   "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure",
@@ -140,9 +141,10 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     "balance", "bag", "slots", "dailySales", "lastRescueDay",
   ]);
   integer(economy.balance, "payload.shopEconomy.balance");
-  const bag = object(economy.bag, "payload.shopEconomy.bag", itemIds);
+  const permittedItems = version < 7 ? originalItemIds : itemIds;
+  const bag = object(economy.bag, "payload.shopEconomy.bag", permittedItems);
   let bagTotal = 0;
-  for (const id of itemIds) bagTotal += integer(bag[id], `payload.shopEconomy.bag.${id}`, 0, ECONOMY.bagCapacity);
+  for (const id of permittedItems) bagTotal += integer(bag[id], `payload.shopEconomy.bag.${id}`, 0, ECONOMY.bagCapacity);
   if (bagTotal > ECONOMY.bagCapacity) fail("payload.shopEconomy.bag", "exceeds bag capacity");
   const slots = array(economy.slots, "payload.shopEconomy.slots");
   if (slots.length !== slotDefinitions.length) fail("payload.shopEconomy.slots", "must contain all ten shelf slots");
@@ -158,7 +160,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     }
     if (slot.capacity !== ECONOMY.slotCapacity) fail(`${path}.capacity`, "is incompatible");
     const quantity = integer(slot.quantity, `${path}.quantity`, 0, ECONOMY.slotCapacity);
-    choice(slot.itemId, [null, ...itemIds], `${path}.itemId`);
+    choice(slot.itemId, [null, ...permittedItems], `${path}.itemId`);
     if ((quantity === 0) !== (slot.itemId === null)) fail(path, "must have an item exactly when stocked");
   });
   const sales = object(economy.dailySales, "payload.shopEconomy.dailySales", ["day", "units", "revenue"]);
@@ -204,7 +206,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     }
     if (["sale", "ate", "healed", "rescue", "found-food"].includes(event.type as string)) {
       allowed.push("itemId", "quantity");
-      choice(event.itemId, itemIds, `${path}.itemId`);
+      choice(event.itemId, permittedItems, `${path}.itemId`);
       integer(event.quantity, `${path}.quantity`, 1,
         event.type === "sale" ? ECONOMY.slotCapacity : event.type === "rescue" ? ECONOMY.rescueQuantity : 1);
       if ((event.type === "ate" || event.type === "rescue" || event.type === "found-food") && event.itemId !== "bread") fail(`${path}.itemId`, "must be bread");
@@ -247,7 +249,7 @@ export function parseSave(text: string): GameState {
   const envelope = object(value, "envelope", ["schemaVersion", "simulationVersion", "savedAt", "payload"]);
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
   const version = envelope.simulationVersion;
-  if (version !== 3 && version !== 4 && version !== 5 && version !== SIMULATION_VERSION) {
+  if (version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== SIMULATION_VERSION) {
     fail("simulationVersion", "is incompatible; no migrations are available");
   }
   const savedAt = textTimestamp(envelope.savedAt);
@@ -258,10 +260,12 @@ export function parseSave(text: string): GameState {
   return {
     ...envelope.payload,
     simulationVersion: SIMULATION_VERSION,
+    shopEconomy: { ...envelope.payload.shopEconomy,
+      bag: { ...envelope.payload.shopEconomy.bag, "iron-sword": 0, "leather-vest": 0 } },
     adventurers: envelope.payload.adventurers.map((hero) => ({
       ...hero,
       level6Permit: version === 3 ? false : hero.level6Permit,
-      missedFoodShopVisits: 0,
+      missedFoodShopVisits: version < 6 ? 0 : hero.missedFoodShopVisits,
     })),
   };
 }

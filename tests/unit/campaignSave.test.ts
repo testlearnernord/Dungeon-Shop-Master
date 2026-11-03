@@ -173,7 +173,7 @@ test("checks event-specific outcome, prices, quantities, links and chronology", 
     ...state,
     shopEconomy: {
       ...state.shopEconomy, balance: 0,
-      bag: { bread: 0, "healing-herb": 0, "mana-potion": 0, "iron-ore": 0 },
+      bag: { bread: 0, "healing-herb": 0, "mana-potion": 0, "iron-ore": 0, "iron-sword": 0, "leather-vest": 0 },
       slots: state.shopEconomy.slots.map((slot) => ({ ...slot, itemId: null, quantity: 0 })),
     },
   };

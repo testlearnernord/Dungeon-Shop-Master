@@ -47,7 +47,9 @@ export function setupEconomyHud(
     const row = document.createElement("div");
     row.className = "catalog-row";
     const description = document.createElement("span");
-    description.textContent = `${item.name} · buy ${item.wholesaleCost}g / sell ${item.salePrice}g`;
+    description.textContent = `${item.name} · buy ${item.wholesaleCost}g / sell ${item.salePrice}g` +
+      (item.kind === "weapon" ? " · +3 attack on F6, improved F1–F4 progress" :
+       item.kind === "armor" ? " · -2 damage, lower F1–F4 danger" : "");
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = `Buy 1 ${item.name}`;

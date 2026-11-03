@@ -6,6 +6,8 @@ export const ITEMS = [
   { id: "mana-potion", name: "Mana Potion", color: "#548bd2", wholesaleCost: 4, salePrice: 7, kind: "supply", healing: 0, hunger: 0 },
   { id: "iron-ore", name: "Iron Ore", color: "#9a9289", wholesaleCost: 2, salePrice: 3, kind: "material", healing: 0, hunger: 0 },
   { id: "bread", name: "Waybread", color: "#c79246", wholesaleCost: 2, salePrice: 4, kind: "food", healing: 0, hunger: 3 },
+  { id: "iron-sword", name: "Iron Sword", color: "#a4b4c3", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0, hunger: 0 },
+  { id: "leather-vest", name: "Leather Vest", color: "#805338", wholesaleCost: 5, salePrice: 8, kind: "armor", healing: 0, hunger: 0 },
 ] as const;
 
 export type ItemId = (typeof ITEMS)[number]["id"];
@@ -49,7 +51,8 @@ export function createEconomy(): ShopEconomyState {
   }
   return {
     balance: ECONOMY.startingGold,
-    bag: { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2 },
+    bag: { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2,
+      "iron-sword": 0, "leather-vest": 0 },
     slots,
     dailySales: { day: 1, units: 0, revenue: 0 },
     lastRescueDay: null,
@@ -151,18 +154,30 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
     let gold = hero.gold;
     let food = hero.inventory.food;
     let healing = hero.inventory.healing;
-    for (const slot of economy.slots) {
+    let weapon = hero.equipment.weapon;
+    let armor = hero.equipment.armor;
+    // Buy life-saving supplies first, irrespective of shelf placement. Only
+    // then spend remaining gold on permanent equipment, one item per empty slot.
+    const prioritized = [...economy.slots.filter((slot) =>
+      !["weapon", "armor"].includes(ITEMS.find((item) => item.id === slot.itemId)?.kind ?? "")),
+      ...economy.slots.filter((slot) =>
+        ["weapon", "armor"].includes(ITEMS.find((item) => item.id === slot.itemId)?.kind ?? ""))];
+    for (const slot of prioritized) {
       const item = ITEMS.find((entry) => entry.id === slot.itemId);
       if (!item || slot.quantity < 1) continue;
       const need = item.kind === "food" ? Math.max(0, ECONOMY.foodTarget - food)
         : item.kind === "healing" && hero.health < hero.stats.maxHealth
-          ? Math.max(0, ECONOMY.healingTarget - healing) : 0;
+          ? Math.max(0, ECONOMY.healingTarget - healing)
+          : item.kind === "weapon" && weapon === null ? 1
+          : item.kind === "armor" && armor === null ? 1 : 0;
       const quantity = Math.min(need, slot.quantity, Math.floor(gold / item.salePrice));
       if (quantity <= 0) continue;
       const revenue = quantity * item.salePrice;
       gold -= revenue;
       if (item.kind === "food") food += quantity;
       if (item.kind === "healing") healing += quantity;
+      if (item.kind === "weapon") weapon = item.name;
+      if (item.kind === "armor") armor = item.name;
       slot.quantity -= quantity;
       if (slot.quantity === 0) slot.itemId = null;
       economy = {
@@ -177,6 +192,7 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
     }
     return gold === hero.gold ? hero : {
       ...hero, gold, inventory: { ...hero.inventory, food, healing },
+      equipment: { ...hero.equipment, weapon, armor },
     };
   });
   return { economy, adventurers, events };

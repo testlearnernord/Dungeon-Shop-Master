@@ -12,10 +12,15 @@ export function simulateDungeon(
   }
   const random = new SeededRandom(rngState);
   const roll = random.next();
-  const damage = 1 + random.int(6) + hero.floor;
+  // No RNG changes for an unequipped hero. Armor mitigates ordinary hits,
+  // while a sword makes withdrawal less likely and progression more likely.
+  const armored = hero.equipment.armor === "Leather Vest";
+  const armed = hero.equipment.weapon === "Iron Sword";
+  const damage = Math.max(1, 1 + random.int(6) + hero.floor - (armored ? 2 : 0));
   const health = Math.max(0, hero.health - damage);
-  const outcome: DungeonOutcome = health === 0 || roll < 0.04 ? "death"
-    : roll < 0.22 ? "retreat" : roll < 0.70 ? "advance" : "stay";
+  const outcome: DungeonOutcome = health === 0 || roll < (armored ? 0.025 : 0.04) ? "death"
+    : roll < (armed ? 0.19 : 0.22) ? "retreat"
+    : roll < (armed ? 0.75 : 0.70) ? "advance" : "stay";
   const survived = outcome !== "death";
   const xp = survived ? 8 + random.int(13) : 0;
   const gold = survived && outcome !== "retreat" ? random.int(5) : 0;

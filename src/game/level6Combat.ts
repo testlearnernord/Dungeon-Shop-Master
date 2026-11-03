@@ -25,11 +25,14 @@ export function simulateLevel6Combat(
     rounds += 1;
     const heroHit = Math.max(1,
       2 + Math.floor((hero.stats.strength + hero.stats.agility) / 5)
-        + (hero.role === "DPS" ? 2 : 0) + rng.int(5) - enemy.defense);
+        + (hero.role === "DPS" ? 2 : 0)
+        + (hero.equipment.weapon === "Iron Sword" ? 3 : 0)
+        + rng.int(5) - enemy.defense);
     enemyHealth = Math.max(0, enemyHealth - heroHit);
     if (enemyHealth === 0) break;
     const enemyHit = Math.max(1, enemy.attack + rng.int(5)
-      - Math.floor(hero.stats.agility / 5) - (hero.role === "tank" ? 1 : 0));
+      - Math.floor(hero.stats.agility / 5) - (hero.role === "tank" ? 1 : 0)
+      - (hero.equipment.armor === "Leather Vest" ? 2 : 0));
     health = Math.max(0, health - enemyHit);
   }
   const victory = enemyHealth === 0 && health > 0;

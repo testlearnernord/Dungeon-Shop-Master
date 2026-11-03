@@ -6,7 +6,7 @@ import { GameStore } from "../../src/game/gameStore.ts";
 
 test("Level 6 permission is explicit, individual, immutable and does not consume a tick", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 6);
+  assert.equal(SIMULATION_VERSION, 7);
   assert(initial.adventurers.every((hero) => !hero.level6Permit));
   const visitor = initial.adventurers[0];
   const granted = setLevel6Permit(initial, visitor.id, true);
@@ -44,6 +44,8 @@ test("old v3 save migrates exactly once without modifying RNG, hero history or m
   const current = createGameState();
   const old = structuredClone(current) as any;
   old.simulationVersion = 3;
+  delete old.shopEconomy.bag["iron-sword"];
+  delete old.shopEconomy.bag["leather-vest"];
   for (const hero of old.adventurers) {
     delete hero.level6Permit;
     delete hero.missedFoodShopVisits;
@@ -53,7 +55,7 @@ test("old v3 save migrates exactly once without modifying RNG, hero history or m
   oldEnvelope.payload = old;
   const before = JSON.stringify(oldEnvelope);
   const migrated = parseSave(before);
-  assert.equal(migrated.simulationVersion, 6);
+  assert.equal(migrated.simulationVersion, 7);
   assert.equal(migrated.day, current.day);
   assert.equal(migrated.rngState, current.rngState);
   assert.deepEqual(migrated.events, current.events);

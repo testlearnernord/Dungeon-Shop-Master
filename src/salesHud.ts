@@ -3,6 +3,7 @@ import { currentDayReceipts } from "./game/saleView.ts";
 
 const ITEM_ATLAS_INDEX: Record<string, number> = {
   bread: 24, "healing-herb": 31, "mana-potion": 22, "iron-ore": 28,
+  "iron-sword": 0, "leather-vest": 8,
 };
 
 /** Live, replay-safe display of sales already booked by the global day tick. */
@@ -19,7 +20,7 @@ export function setupSalesHud(store: GameStore): void {
     banner.dataset.hasSales = String(units > 0);
     banner.textContent = units > 0
       ? "Sales completed: " + units + " items sold · +" + revenue + "g received"
-      : "No sales today. Stock Waybread or Healing Herbs for visiting heroes.";
+      : "No sales today. Stock food, healing, swords or armor for visiting heroes.";
 
     list.replaceChildren(...receipts.slice(-20).map((receipt) => {
       const row = document.createElement("li");

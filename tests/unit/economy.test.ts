@@ -42,7 +42,7 @@ function stock(state: GameState, itemId: ItemId, quantity: number, index = 0): G
 }
 
 test("catalog, starter economy and shelf layout are complete, independent and bounded", () => {
-  assert.deepEqual(ITEMS.map((item) => item.id), ["healing-herb", "mana-potion", "iron-ore", "bread"]);
+  assert.deepEqual(ITEMS.map((item) => item.id), ["healing-herb", "mana-potion", "iron-ore", "bread", "iron-sword", "leather-vest"]);
   for (const item of ITEMS) {
     assert(item.wholesaleCost > 0 && item.salePrice > item.wholesaleCost);
     assert(item.color.startsWith("#") && item.name.length > 0);
@@ -53,7 +53,7 @@ test("catalog, starter economy and shelf layout are complete, independent and bo
   assert.notEqual(first.bag, second.bag);
   assert.notEqual(first.slots, second.slots);
   assert.notEqual(first.slots[0], second.slots[0]);
-  assert.deepEqual(first.bag, { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2 });
+  assert.deepEqual(first.bag, { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2, "iron-sword": 0, "leather-vest": 0 });
   assert.equal(first.slots[0].itemId, null);
   assert(first.slots.some((slot) => slot.itemId === "bread" && slot.quantity > 0));
   assert(first.slots.some((slot) => slot.itemId === "healing-herb" && slot.quantity > 0));
@@ -128,7 +128,7 @@ test("saturated nonfood storage can be cleared without refund to receive aid, st
     shopEconomy: {
       ...base.shopEconomy,
       balance: 0,
-      bag: { "iron-ore": ECONOMY.bagCapacity, "healing-herb": 0, "mana-potion": 0, bread: 0 },
+      bag: { "iron-ore": ECONOMY.bagCapacity, "healing-herb": 0, "mana-potion": 0, bread: 0, "iron-sword": 0, "leather-vest": 0 },
       slots: base.shopEconomy.slots.map((slot) => ({ ...slot, itemId: "iron-ore", quantity: slot.capacity })),
     },
   });
