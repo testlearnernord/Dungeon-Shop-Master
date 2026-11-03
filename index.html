@@ -58,6 +58,7 @@
           <p id="shop-visitors" aria-label="Shop visitors"></p>
           <p class="simulation-note">Level 6 expeditions require individual authorization. Use the roster board for details.</p>
           <button type="button" id="open-roster">Open Roster Board (R)</button>
+          <button type="button" id="open-arena">Watch Level 6 (V)</button>
           <ul id="adventurer-roster" aria-label="Active adventurers"></ul>
           <p id="shelf-supplies" class="simulation-note"></p>
         </details>
@@ -72,7 +73,29 @@
           <span>·</span> <strong>N / Y</strong> end / confirm day
           <span>·</span> <strong>B</strong> wholesale
           <span>·</span> <strong>R</strong> roster board
+          <span>·</span> <strong>V</strong> watch Level 6
           <span>·</span> <strong>Esc</strong> release
+        </div>
+      </section>
+      <section id="arena-hud" hidden aria-label="Level 6 cave troll spectator preview">
+        <header class="arena-toolbar">
+          <div>
+            <strong>LEVEL 6 · CAVE TROLL</strong>
+            <p id="arena-preview">Training preview: no saved gameplay changes.</p>
+          </div>
+          <div class="arena-actions">
+            <button id="restart-arena" type="button">Restart preview</button>
+            <button id="close-arena" type="button">Return to shop (V / Esc)</button>
+          </div>
+        </header>
+        <div class="arena-bottom">
+          <p id="arena-status">The Cave Troll is waiting.</p>
+          <div class="arena-vitals">
+            <strong id="arena-hero-health">HERO HP</strong>
+            <strong id="arena-boss-health">CAVE TROLL HP</strong>
+          </div>
+          <p id="arena-focus">TAB focus: hero</p>
+          <p>WASD free fly · Shift turbo · Q / E up / down · Mouse look (click to capture) · TAB cycle hero / boss · V / Esc return</p>
         </div>
       </section>
       <dialog id="roster-dialog" aria-labelledby="roster-title">
