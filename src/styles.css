@@ -482,3 +482,7 @@ body.arena-active #hud { display: none; }
 
 #arena-stamina { color: #8fd2e8; }
 #arena-combat-info { color: #bce4d2; font-size: 12px; }
+
+/* Fight source changes only the read-only spectator mode, never the day tick. */
+#arena-source-toggle[hidden] { display: none; }
+body.arena-active #arena-source-toggle { border-color: #73a5a3; }

@@ -524,8 +524,10 @@ export class Level6Arena {
       heal: "HEALED" + value + " · The uninterrupted cast completed.",
       stagger: "BOSS STAGGERED · Successful parry.",
       lava: "LAVA · The hero crossed the deadly arena boundary.",
-      victory: "VICTORY · Cave Troll defeated. Preview only.",
-      defeat: "DEFEAT · Hero fell in combat. Preview only.",
+      victory: this.replay ? "SAVED VICTORY · The troll fell in the recorded campaign." :
+        "VICTORY · Cave Troll defeated. Preview only.",
+      defeat: this.replay ? "SAVED DEATH · Hero fell in the recorded campaign." :
+        "DEFEAT · Hero fell in combat. Preview only.",
     };
     this.status.textContent = messages[cue.kind];
   }
