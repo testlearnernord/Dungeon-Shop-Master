@@ -108,10 +108,10 @@ export function validateBossReplay(value: unknown, path: string,
       invalid(label + " has unknown or missing fields");
     return o;
   };
-  const num = (n: unknown, label: string, low: number, high: number) => {
+  const num = (n: unknown, label: string, low: number, high: number): number => {
     if (typeof n !== "number" || !Number.isFinite(n) || n < low || n > high)
       invalid(label + " out of range");
-    return n;
+    return n as number;
   };
   const replay = rec(value, "replay", [
     "version","day","heroId","role","sword","armor","maxHp","outcome","frames"]);
@@ -123,14 +123,15 @@ export function validateBossReplay(value: unknown, path: string,
   num(replay.maxHp,"maxHp",1,1000000);
   if (!Array.isArray(replay.frames) || replay.frames.length < 2 ||
       replay.frames.length > REPLAY_MAX_FRAMES) invalid("frame count invalid");
+  const frames = replay.frames as unknown[];
   let previous = -1;
   const actor = ["move","roll","parry","attack","cast","heal","hurt","dead"];
   const boss = ["chase","windup","strike","recover","stagger","dead"];
   const cueKinds = ["windup","dodge","parry","miss","hit","hero-hit","projectile",
     "heal","stagger","lava","victory","defeat"];
-  for (let i = 0; i < replay.frames.length; i++) {
+  for (let i = 0; i < frames.length; i++) {
     const prefix = "frames[" + i + "]";
-    const frame = rec(replay.frames[i], prefix, [
+    const frame = rec(frames[i], prefix, [
       "t","hx","hz","bx","bz","hh","bh","lock","slam","travel",
       "heroHp","bossHp","stamina",
       "heroPhase","heroAge","bossPhase","bossAge","projectiles",
@@ -156,14 +157,14 @@ export function validateBossReplay(value: unknown, path: string,
     }
     if (!Array.isArray(frame.projectiles) || frame.projectiles.length > 20)
       invalid(prefix+" projectiles invalid");
-    for (const p of frame.projectiles) {
+    for (const p of frame.projectiles as unknown[]) {
       if (!Array.isArray(p) || p.length !== 2) invalid(prefix+" projectile coords invalid");
       num(p[0],prefix+" projectile.x",-40,40);
       num(p[1],prefix+" projectile.z",-40,40);
     }
     if (!Array.isArray(frame.cues) || frame.cues.length > 30)
       invalid(prefix+" cues invalid");
-    for (const c of frame.cues) {
+    for (const c of frame.cues as unknown[]) {
       if (!c || typeof c !== "object" || Array.isArray(c)) invalid(prefix+" cue invalid");
       const o=c as Record<string,unknown>;
       if (!cueKinds.includes(o.kind as string) ||
@@ -171,7 +172,7 @@ export function validateBossReplay(value: unknown, path: string,
       if (o.amount !== undefined) num(o.amount,prefix+" cue.amount",0,100000);
     }
   }
-  const last = replay.frames.at(-1) as BossReplayFrame;
+  const last = frames.at(-1) as BossReplayFrame;
   if (outcome === "victory" && last.bossHp !== 0) invalid("victory without boss death");
   if (outcome === "death" && last.heroHp !== 0) invalid("death without hero death");
   if (outcome === "retreat" && (last.heroHp <= 0 || last.bossHp <= 0))
