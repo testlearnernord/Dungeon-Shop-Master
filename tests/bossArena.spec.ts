@@ -29,7 +29,7 @@ test("Level 6 is a separate viewable boss cavern, camera focuses hero/boss and n
   await page.keyboard.up("w");
   expect((await arena()).camera.z).not.toBe(initial.camera.z);
   await page.locator("#restart-arena").click();
-  await expect(page.locator("#arena-boss-health")).toContainText("115/115");
+  await expect(page.locator("#arena-boss-health")).toContainText("145/145");
   await page.keyboard.press("Escape");
   await expect(page.locator("#arena-hud")).toBeHidden();
   await expect(page.locator("#day")).toHaveText("Day 1");

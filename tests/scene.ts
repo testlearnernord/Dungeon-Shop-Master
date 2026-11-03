@@ -89,6 +89,8 @@ export function inspectNpcVisuals() {
 /** Called via Vite's module URL, avoiding bare-specifier imports from page.evaluate. */
 export function inspectBossArena() {
   const scene = Engine.LastCreatedScene!;
+  const hero = scene.transformNodes.find(node => node.name.startsWith("arena-hero-"));
+  const boss = scene.transformNodes.find(node => node.name === "arena-boss-troll");
   return {
     camera: {
       x: scene.activeCamera!.position.x,
@@ -100,5 +102,13 @@ export function inspectBossArena() {
     lava: !!scene.getMeshByName("lethal-lava"),
     ring: !!scene.getMeshByName("lava-ring"),
     spikes: scene.meshes.filter(mesh => mesh.name.startsWith("cavern-stalagmite-")).length,
+    heroPosition: hero ? { x: hero.position.x, z: hero.position.z } : null,
+    bossPosition: boss ? { x: boss.position.x, z: boss.position.z } : null,
+    heroPhase: hero?.metadata?.combatPhase as string | undefined,
+    bossPhase: boss?.metadata?.combatPhase as string | undefined,
+    heroDistanceTraveled: hero?.metadata?.distanceTraveled as number | undefined,
+    dodgeCount: boss?.metadata?.dodgeCount as number | undefined,
+    parryCount: boss?.metadata?.parryCount as number | undefined,
+    missedHits: boss?.metadata?.missedHits as number | undefined,
   };
 }

@@ -479,3 +479,6 @@ body.arena-active #hud { display: none; }
   .arena-toolbar strong { font-size: 16px; }
   .arena-bottom { font-size: 11px; }
 }
+
+#arena-stamina { color: #8fd2e8; }
+#arena-combat-info { color: #bce4d2; font-size: 12px; }
