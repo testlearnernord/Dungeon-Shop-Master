@@ -531,3 +531,53 @@ body.arena-active #music-panel { top: 113px; }
   .music-heading strong { font-size: 10px; }
   .music-actions { gap: 5px; }
 }
+
+/* Read-only Level 7 layout viewport, intentionally separate from the merchant HUD. */
+#dungeon-hud[hidden] { display: none; }
+body.dungeon-active #hud { display: none; }
+#dungeon-hud {
+  position: fixed; inset: 0; z-index: 25; pointer-events: none;
+  color: #eed8b8; text-shadow: 0 1px 4px #000; font-size: 13px;
+}
+.dungeon-toolbar {
+  position: absolute; top: 16px; left: 16px; right: 16px;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
+  padding: 12px 16px; border: 1px solid #9d8158; border-radius: 6px;
+  background: rgb(15 18 21 / 91%);
+}
+.dungeon-toolbar strong { font-size: 19px; color: #ead09c; letter-spacing: .05em; }
+.dungeon-toolbar p { font-size: 11px; margin: 6px 0 0; color: #d1c3ad; }
+.dungeon-actions { display: flex; gap: 8px; flex-wrap: wrap; pointer-events: auto; }
+.dungeon-actions button {
+  border: 1px solid #a68d60; border-radius: 5px; background: #2c2c2a;
+  color: #f2dfbf; padding: 8px 10px; cursor: pointer;
+}
+.dungeon-minimap-panel {
+  position: absolute; right: 14px; top: 152px;
+  width: 206px; display: grid; gap: 7px; justify-items: center;
+  padding: 10px; background: rgb(14 18 21 / 93%);
+  border: 1px solid #a48b63; border-radius: 6px;
+}
+.dungeon-minimap-panel strong { color: #f0d59c; font-size: 11px; }
+#dungeon-minimap { width: 186px; height: 186px; image-rendering: pixelated; }
+.dungeon-minimap-panel small { color: #c9c1b1; font-size: 10px; line-height: 1.4; }
+.dungeon-bottom {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  width: min(750px,calc(100vw - 24px)); text-align: center;
+  border: 1px solid #9d8158; border-radius: 6px; padding: 10px 14px;
+  background: rgb(15 18 21 / 91%);
+}
+.dungeon-bottom p { margin: 5px 0; }
+#dungeon-focus { color: #f1d29a; font-weight: 700; }
+.dungeon-bottom small { color: #c9b99e; }
+body.dungeon-active #music-panel { top: 119px; }
+@media (max-width: 700px) {
+  .dungeon-toolbar { flex-direction: column; padding: 7px; gap: 5px; }
+  .dungeon-toolbar strong { font-size: 13px; }
+  .dungeon-toolbar p { font-size: 10px; }
+  .dungeon-minimap-panel { top: 188px; right: 6px; width: 124px; padding: 4px; }
+  #dungeon-minimap { width: 114px; height: 114px; }
+  .dungeon-minimap-panel small { font-size: 9px; }
+  .dungeon-bottom { font-size: 10px; }
+  body.dungeon-active #music-panel { top: 112px; left: 12px; right: auto; transform: none; }
+}

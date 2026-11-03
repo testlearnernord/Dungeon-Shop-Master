@@ -244,3 +244,12 @@ The pure `src/game/groupCombat.ts` motor supports up to 24 combatants on two tea
 `src/game/combatGeometry.ts` is the single source for attack arcs and defense windows used by the existing Level-6 boss motor and the multi-actor system. Level 6 itself remains on its original AI/replay path while the new group motor is exercised in isolation; this deliberately avoids rewriting existing boss save data or changing the troll's balancing in this stage.
 
 Next milestones: feed generated dungeon map collision bounds and AI encounters to this motor, extend the replay schema/save boundary and connect the common viewer. Party behavior and pathfinding around complex obstacles need dedicated integration before actual dungeon gameplay.
+
+### MVP 1.2c: Seeded dungeon level 7 and map inspection scene
+
+- `src/game/dungeonLayout.ts` is the canonical level blueprint: a pure seeded DFS labyrinth, connected rooms, branching corridors and dead ends. Every walkable tile is reachable from the level entrance. Loot, traps and eight monster spawn markers are fixed from the campaign seed and floor ID; they are not rerolled by the day tick or camera.
+- The spatial grid exposes bounds, tiles, walkable neighbours and deterministic BFS shortest paths for the later autonomous exploration AI.
+- Press **G** or the **Preview Level 7** button to inspect the real Babylon map in a separate, read-only bird's-eye camera. WASD/Shift moves the camera, Q/E and mouse wheel change height, Tab cycles landmarks, R returns to the entrance and G/Esc returns to the shop. An always-visible *development layout map* shows the full generated map for debugging; it is explicitly not the future hero's fog of war.
+- Wall/floor meshes share GPU geometry via instances; decorative chambers, torches, basic chest/trap/monster spawn markers and a single stationary hero reference model make the layout inspectable. **No live monsters, AI movement, combat, persistent dungeon loot or hero state changes are implied by the preview**. The existing day-tick and level 6 remain authoritative.
+- **Beneath the Surface** loops while watching the dungeon, through the same crossfade/mute/volume mechanism as the shop and troll music. Audio is served as a public Vite asset.
+- Old saves remain compatible because the level map is derived from the stable campaign seed. Dungeon exploration state and fog of war will be introduced in a separately validated save migration when actual navigation arrives.

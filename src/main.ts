@@ -7,6 +7,7 @@ import { GameStore } from "./game/gameStore";
 import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
 import { Level6Arena } from "./game/level6Arena";
+import { DungeonViewer } from "./game/dungeonViewer";
 import { createRosterBoard } from "./game/rosterBoard";
 import { setupRosterBoardHud } from "./rosterBoardHud";
 import { Shop } from "./game/shop";
@@ -97,9 +98,15 @@ const soundtrack = setupSoundtrack();
 const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "boss" : "shop");
 });
+const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
+  soundtrack.setScene(active ? "dungeon" : "shop");
+});
 
 engine.runRenderLoop(() => {
-  if (arena.isActive) {
+  if (dungeon.isActive) {
+    dungeon.update(engine.getDeltaTime() / 1000);
+    dungeon.currentScene?.render();
+  } else if (arena.isActive) {
     arena.update(engine.getDeltaTime() / 1000);
     arena.currentScene?.render();
   } else scene.render();

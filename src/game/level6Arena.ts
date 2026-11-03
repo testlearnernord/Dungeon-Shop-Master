@@ -93,7 +93,9 @@ export class Level6Arena {
     // spends money, confirms End Day, or changes the shop player's movement.
     window.addEventListener("keydown", (event) => {
       if (!this.active) {
-        if (event.code === "KeyV" && !event.repeat && !document.querySelector("dialog[open]")) {
+        if (event.code === "KeyV" && !event.repeat &&
+          !document.querySelector("dialog[open]") &&
+          !document.body.classList.contains("dungeon-active")) {
           event.preventDefault();
           event.stopImmediatePropagation();
           this.open();
@@ -141,7 +143,8 @@ export class Level6Arena {
   }
 
   open(): void {
-    if (this.active || document.querySelector("dialog[open]")) return;
+    if (this.active || document.querySelector("dialog[open]") ||
+      document.body.classList.contains("dungeon-active")) return;
     this.shopCamera.detachControl();
     if (document.pointerLockElement) void document.exitPointerLock();
     this.active = true;
