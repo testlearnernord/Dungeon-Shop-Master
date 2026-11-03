@@ -21,7 +21,7 @@ test("confirmed Level 6 combat becomes an actual saved replay without double res
   await expect(page.locator("#arena-source-toggle")).toBeVisible();
   await page.locator("#restart-arena").click();
   await expect(page.locator("#arena-preview")).toContainText("RECORDED COMBAT");
-  await page.locator("#arena-source-toggle").click();
+  await page.keyboard.press("c");
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-replay","preview");
   await expect(page.locator("#arena-preview")).toContainText("TRAINING PREVIEW");
   await page.locator("#arena-source-toggle").click();
@@ -29,6 +29,12 @@ test("confirmed Level 6 combat becomes an actual saved replay without double res
   await page.locator("#close-arena").click();
   await expect(page.locator("#day")).toHaveText("Day 3");
   await expect(page.locator("#merchant-gold")).toHaveText(balance!);
+  const persisted = await page.evaluate(async () => {
+    const path = "/Dungeon-Shop-Master/src/game/campaignSave.ts";
+    const { CampaignStorage } = await import(path);
+    return new CampaignStorage().loadGame();
+  });
+  expect(persisted?.day).toBe(3);
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 3");
   await page.locator("#open-arena").click();

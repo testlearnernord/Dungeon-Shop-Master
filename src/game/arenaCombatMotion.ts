@@ -219,7 +219,7 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
     if (s.heroAge >= 0.31 && !s.heroApplied) {
       s.heroApplied = true;
       const toBoss = heroToBoss(s);
-      const dmg = (s.options.role === "healer" ? 9 : 12) +
+      const dmg = (s.options.role === "healer" ? 9 : 12) + (s.options.sword ? 4 : 0) +
         Math.floor(Math.max(0, (s.options.intellect ?? 6) - 6) / 3);
       s.projectiles.push({
         x: s.hero.x, z: s.hero.z,

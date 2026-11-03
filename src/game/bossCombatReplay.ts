@@ -173,7 +173,8 @@ export function validateBossReplay(value: unknown, path: string,
     }
   }
   const last = frames.at(-1) as BossReplayFrame;
-  if (outcome === "victory" && last.bossHp !== 0) invalid("victory without boss death");
+  if (outcome === "victory" && (last.bossHp !== 0 || last.heroHp <= 0))
+    invalid("victory requires boss death and a living hero");
   if (outcome === "death" && last.heroHp !== 0) invalid("death without hero death");
   if (outcome === "retreat" && (last.heroHp <= 0 || last.bossHp <= 0))
     invalid("retreat needs two living actors");

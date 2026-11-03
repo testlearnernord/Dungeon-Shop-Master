@@ -79,8 +79,7 @@ export class Level6Arena {
     this.combatInfo = document.querySelector<HTMLElement>("#arena-combat-info")!;
     this.sourceToggle = document.querySelector<HTMLButtonElement>("#arena-source-toggle")!;
     this.sourceToggle.addEventListener("click", () => {
-      this.forcePreview = !this.forcePreview;
-      this.restart();
+      this.toggleSource();
     });
     document.querySelector("#open-arena")!.addEventListener("click", () => this.open());
     document.querySelector("#close-arena")!.addEventListener("click", () => this.close());
@@ -101,6 +100,7 @@ export class Level6Arena {
       if (event.repeat) return;
       if (event.code === "Escape" || event.code === "KeyV") this.close();
       else if (event.code === "Tab") this.nextFocus();
+      else if (event.code === "KeyC" && !this.sourceToggle.hidden) this.toggleSource();
       else this.pressed.add(event.code);
     }, true);
     window.addEventListener("keyup", (event) => {
@@ -126,6 +126,11 @@ export class Level6Arena {
 
   get currentScene(): Scene | null { return this.active ? this.scene : null; }
   get isActive(): boolean { return this.active; }
+
+  private toggleSource(): void {
+    this.forcePreview = !this.forcePreview;
+    this.restart();
+  }
 
   open(): void {
     if (this.active || document.querySelector("dialog[open]")) return;

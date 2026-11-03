@@ -68,6 +68,16 @@ test("rejects forged replay position, outcome, extra fields and invalid combat p
   tamper(e=>e.combatReplay.frames.push(e.combatReplay.frames.at(-1)));
 });
 
+test("a victory replay requires a living hero", () => {
+  const event = recordedFight().events.find(e => e.type === "level6-combat")!;
+  const replay = structuredClone(event.combatReplay!);
+  replay.outcome = "victory";
+  replay.frames.at(-1)!.heroHp = 0;
+  replay.frames.at(-1)!.bossHp = 0;
+  assert.throws(() => validateBossReplay(replay, "replay", replay.heroId, replay.day, "victory"),
+    /victory requires boss death and a living hero/);
+});
+
 test("only the three newest fight recordings remain heavy; full event outcomes remain intact", () => {
   const original = createGameState();
   const party = original.adventurers.slice(0,5).map(h=>({

@@ -68,13 +68,15 @@ export function simulateLevel6Combat(
   for (const frame of replay.frames) {
     round = Math.max(round, Math.floor(frame.t / 2) + 1);
     for (const cue of frame.cues) {
-      const actor: BossCombatAction["actor"] =
-        ["windup","hit","miss","stagger","lava","defeat"].includes(cue.kind) ? "troll" : "hero";
       const kind: CombatActionKind =
-        cue.kind === "hero-hit" ? (hero.role === "healer" ? "ranged" : "attack") :
+        cue.kind === "hero-hit" ? (hero.role === "healer" ||
+          (hero.role === "DPS" && hero.equipment.weapon !== "Iron Sword") ? "ranged" : "attack") :
         cue.kind === "projectile" ? "ranged" :
         cue.kind === "hit" ? (hero.role === "tank" || hero.equipment.armor ? "block" : "smash") :
         cue.kind === "victory" || cue.kind === "defeat" ? "finish" : cue.kind;
+      const actor: BossCombatAction["actor"] =
+        cue.kind === "hit" && kind === "block" ? "hero" :
+          ["windup","hit","miss","stagger","lava","defeat"].includes(cue.kind) ? "troll" : "hero";
       const action: BossCombatAction = {
         round, actor, kind, heroHp: frame.heroHp, bossHp: frame.bossHp,
         edgeDistance: Math.hypot(frame.hx,frame.hz),
