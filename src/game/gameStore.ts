@@ -1,6 +1,7 @@
 import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 import { replaceShelfPlacement, type ShelfPlacement } from "./shopLayout.ts";
+import { checkoutCustomer, quoteCustomerCheckout, type CheckoutQuote } from "./customerCheckout.ts";
 
 export class GameStore {
   private current: GameState;
@@ -57,6 +58,17 @@ export class GameStore {
     const result = replaceShelfPlacement(this.current.shopLayout, placement);
     if (result.layout !== this.current.shopLayout)
       this.replace({ ...this.current, shopLayout: result.layout });
+    return result.message;
+  }
+
+  quoteCheckout(heroId: string): CheckoutQuote | null {
+    return quoteCustomerCheckout(this.current, heroId);
+  }
+
+  /** The only commit point for the future staffed-register UI. */
+  checkout(quote: CheckoutQuote): string {
+    const result = checkoutCustomer(this.current, quote);
+    this.replace(result.state);
     return result.message;
   }
 
