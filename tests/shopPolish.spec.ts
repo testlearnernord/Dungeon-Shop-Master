@@ -32,7 +32,7 @@ test("bulk wholesale purchases, always-readable roster and QWERTZ confirmation",
   await expect(page.locator("#merchant-gold")).toHaveText("Merchant gold: 0g");
   await expect(page.locator("#wholesale-message")).toContainText("Bought 5 Waybread");
   await bread.getByRole("button",{name:"Buy max"}).click();
-  await expect(page.locator("#wholesale-message")).toContainText("Not enough gold");
+  await expect(page.locator("#wholesale-message")).toContainText("Your inventory is full.");
   await page.locator("#close-wholesale").click();
   await page.locator("#open-roster").click();
   const first=page.locator('.roster-card[data-hero-id="adventurer-1"]');
