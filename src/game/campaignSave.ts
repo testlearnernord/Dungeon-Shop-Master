@@ -427,7 +427,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     });
     for(const [slotId,reserved] of reservedBySlot) {
       const source=slots.find(value=>(value as RecordValue).id===slotId) as RecordValue;
-      if(source.quantity as number + reserved.quantity > source.capacity as number)
+      if((source.quantity as number) + reserved.quantity > (source.capacity as number))
         fail("payload.shopCarts","held quantity exceeds shelf capacity");
       if(source.itemId!==null && source.itemId!==reserved.itemId)
         fail("payload.shopCarts","held stock conflicts with the shelf product");
