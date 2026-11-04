@@ -11,7 +11,7 @@ import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
 import type { ShoppingIntent } from "./shopperIntents.ts";
-import { pathToShopGoal } from "./shopperNavigation.ts";
+import { isObstructed, pathToShopGoal } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
 
@@ -340,13 +340,21 @@ export class NpcVisualSystem {
   private beginLeaving(npc: NpcVisual): void {
     npc.phase = "leaving";
     npc.gateSide = npc.visitor.status === "expedition" ? "level6" : "level4";
-    const gateX = CORRIDOR_X[npc.gateSide];
-    // Route through the navigable inner shop (z=6.0) before crossing between
-    // left/right corridors. No lateral travel through end walls at z > 7.
+    const gateX = CORRIDOR_X[npc.gateSide]+((npc.slot%3)-1)*0.62;
+    // Keep the current corridor lane when outside: crossing lateral corridor
+    // walls at z>7 is forbidden. Inside the shop use furniture-aware routing.
+    const mustEnterShop=npc.root.position.z>CORRIDOR_INNER_Z+0.25;
+    const from=mustEnterShop?
+      {x:npc.root.position.x,z:CORRIDOR_INNER_Z}:
+      {x:npc.root.position.x,z:npc.root.position.z};
+    const aisle=this.layout?pathToShopGoal(from,{
+      x:gateX,z:CORRIDOR_INNER_Z,
+    },this.layout):null;
     npc.route = [
-      new Vector3(npc.root.position.x, 0, CORRIDOR_INNER_Z),
-      new Vector3(gateX, 0, CORRIDOR_INNER_Z),
-      new Vector3(gateX, 0, CORRIDOR_OUTER_Z),
+      ...(mustEnterShop?[new Vector3(from.x,0,from.z)]:[]),
+      ...(aisle?.waypoints.map(point=>new Vector3(point.x,0,point.z))??[
+        new Vector3(gateX,0,CORRIDOR_INNER_Z)]),
+      new Vector3(gateX,0,CORRIDOR_OUTER_Z),
     ];
     npc.waypoint = 0;
     npc.root.metadata.phase = npc.phase;
@@ -423,9 +431,26 @@ export class NpcVisualSystem {
     const step = Math.min(distance, WALK_SPEED * delta);
     const x=npc.root.position.x+dx/distance*step;
     const z=npc.root.position.z+dz/distance*step;
-    if([...this.npcs.values()].some(other=>other!==npc &&
-      Math.hypot(x-other.root.position.x,z-other.root.position.z)
-        <PERSONAL_SPACE))return;
+    const blocked=(px:number,pz:number)=>[...this.npcs.values()]
+      .some(other=>other!==npc&&Math.hypot(
+        px-other.root.position.x,pz-other.root.position.z)<PERSONAL_SPACE);
+    if(blocked(x,z)){
+      // Yield sideways rather than deadlock when two autonomous visitors meet.
+      // Keep deviations inside the actual shop's walkable area.
+      const sideStep=Math.max(0.08,step);
+      const preferred=(npc.slot%2===0?1:-1);
+      for(const direction of [preferred,-preferred]){
+        const sx=npc.root.position.x-direction*dz/distance*sideStep;
+        const sz=npc.root.position.z+direction*dx/distance*sideStep;
+        if(!blocked(sx,sz)&&
+          (!this.layout || sz>6.6 || !isObstructed({x:sx,z:sz},this.layout))){
+          npc.root.position.x=sx;
+          npc.root.position.z=sz;
+          return;
+        }
+      }
+      return;
+    }
     npc.root.position.x=x;
     npc.root.position.z=z;
   }
