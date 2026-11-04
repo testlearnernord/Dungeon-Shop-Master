@@ -148,3 +148,28 @@ test("replay snapshots remain bounded; older replays are compacted without chang
   assert(currentRecords.length>=1);
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
 });
+
+test("dungeon healer pays a real supply for each actual fixed-step healing action", () => {
+  const map=generateDungeonLayout(7351,7);
+  const monster=map.features.find(f=>f.kind==="monster")!;
+  const approach=dungeonNeighbors(map,monster)[0];
+  const monsterIndex=monster.z*map.width+monster.x;
+  const visited=map.tiles.map((kind,index)=>kind!=="wall"&&index!==monsterIndex?index:-1)
+    .filter(index=>index>=0);
+  const hero=dungeonHero();
+  const healer:AdventurerState={
+    ...hero,role:"healer",health:Math.floor(hero.stats.maxHealth/2),
+    inventory:{...hero.inventory,healing:3},
+  };
+  const world:Level7World={
+    resolvedFeatureIds:map.features.filter(f=>f.id!==monster.id).map(f=>f.id),
+    heroes:[{heroId:hero.id,x:approach.x,z:approach.z,visited}],
+  };
+  const result=simulateLevel7Day(healer,world,7351,12);
+  assert.equal(result.replay.encounters.length,1);
+  const healingCues=result.replay.encounters[0].combat.cues.filter(
+    cue=>cue.actorId===hero.id&&cue.kind==="heal");
+  assert(healingCues.length>0,"The injured healer should treat themselves");
+  assert.equal(result.adventurer.inventory.healing,3-healingCues.length);
+  assert(healingCues.length<=2,"No more than two charges per encounter");
+});
