@@ -53,6 +53,8 @@ test("bulk wholesale purchases, always-readable roster and QWERTZ confirmation",
   await expect(first.locator("summary")).toContainText("Food");
   await expect(first.locator("summary")).toContainText("No weapon");
   await expect(first.locator("summary")).toContainText("XP");
+  // Mouse-hover intentionally highlights dimmed cards. Check the resting state.
+  await page.mouse.move(2,2);
   await expect(page.locator('.roster-card[data-status="exploring"]').first()).toHaveCSS("opacity","0.62");
   await page.locator("#close-roster").click();
   await page.keyboard.press("n");
