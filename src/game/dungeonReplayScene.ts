@@ -99,6 +99,10 @@ export class DungeonReplayScene {
     }else{
       for(const tile of this.tiles)tile.mesh.isVisible=true;
       for(const marker of this.markers)marker.mesh.setEnabled(true);
+      this.layout.rooms.forEach((_,i)=>{
+        this.scene.getLightByName("dungeon-torchlight-"+i)?.setEnabled(true);
+        this.scene.getMeshByName("dungeon-torch-"+i)?.setEnabled(true);
+      });
       this.drawDevelopmentMap();
     }
   }
@@ -161,6 +165,11 @@ export class DungeonReplayScene {
       marker.mesh.setEnabled(visible.has(id)&&!snapshot.resolved.has(marker.id)&&
         snapshot.encounter?.featureId!==marker.id);
     }
+    this.layout.rooms.forEach((room,i)=>{
+      const lit=visible.has(room.z*this.layout.width+room.x);
+      this.scene.getLightByName("dungeon-torchlight-"+i)?.setEnabled(lit);
+      this.scene.getMeshByName("dungeon-torch-"+i)?.setEnabled(lit);
+    });
     this.drawFogMap(snapshot,visible);
   }
 
