@@ -6,6 +6,7 @@ import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import "@babylonjs/core/Meshes/instancedMesh"; // Registers createInstance for Babylon ES modules.
 import { Scene } from "@babylonjs/core/scene";
 import type { GameStore } from "./gameStore.ts";
 import { createHeroVisual } from "./heroVisual.ts";
