@@ -59,7 +59,7 @@
           <p class="simulation-note">Level 6 expeditions require individual authorization. Use the roster board for details.</p>
           <button type="button" id="open-roster">Open Roster Board (R)</button>
           <button type="button" id="open-arena">Watch Level 6 (V)</button>
-          <button type="button" id="open-dungeon">Preview Level 7 (G)</button>
+          <button type="button" id="open-dungeon">Observe Level 7 (G)</button>
           <ul id="adventurer-roster" aria-label="Active adventurers"></ul>
           <p id="shelf-supplies" class="simulation-note"></p>
         </details>
@@ -75,7 +75,7 @@
           <span>·</span> <strong>B</strong> wholesale
           <span>·</span> <strong>R</strong> roster board
           <span>·</span> <strong>V</strong> watch Level 6
-          <span>·</span> <strong>G</strong> preview Level 7
+          <span>·</span> <strong>G</strong> observe Level 7
           <span>·</span> <strong>Esc</strong> release
         </div>
       </section>
@@ -103,28 +103,48 @@
           <p>WASD free fly · Shift turbo · Q / E up / down · Mouse look (click to capture) · TAB cycle hero / boss · M music controls · C switch replay source · V / Esc return</p>
         </div>
       </section>
-      <section id="dungeon-hud" hidden aria-label="Level 7 dungeon layout spectator preview">
+      <section id="dungeon-hud" hidden aria-label="Level 7 dungeon observation and saved expedition replay">
         <header class="dungeon-toolbar">
           <div>
             <strong>LEVEL 7 · DUNGEON OBSERVATION</strong>
-            <p>Geometry preview only · autonomous exploration, fog of war and combat replay follow in later milestones.</p>
+            <p id="dungeon-mode-description">Loading observation mode...</p>
+            <label class="dungeon-replay-picker" for="dungeon-replay-select">Footage
+              <select id="dungeon-replay-select" aria-label="Select saved expedition">
+                <option value="preview">Layout preview (full development map)</option>
+              </select>
+            </label>
             <p id="dungeon-seed"></p>
           </div>
           <div class="dungeon-actions">
-            <button id="dungeon-reset-camera" type="button">Entrance camera (R)</button>
+            <button id="dungeon-reset-camera" type="button">Reset / Focus (R)</button>
             <button id="close-dungeon" type="button">Return to shop (G / Esc)</button>
           </div>
         </header>
         <aside class="dungeon-minimap-panel" aria-label="Development layout map">
-          <strong>Dungeon layout · developer preview</strong>
+          <strong id="dungeon-minimap-heading">Dungeon layout · developer preview</strong>
           <canvas id="dungeon-minimap" width="186" height="186" aria-label="Full map layout preview, not hero fog of war"></canvas>
-          <small>Green: entrance · Orange: monsters · Gold: chests · Red: traps</small>
+          <small id="dungeon-minimap-note">Green: entrance · Orange: monsters · Gold: chests · Red: traps</small>
         </aside>
         <footer class="dungeon-bottom">
+          <div id="dungeon-playback-controls" class="dungeon-playback-controls" hidden>
+            <button type="button" id="dungeon-play">Pause (Space)</button>
+            <button type="button" id="dungeon-restart">Replay from start</button>
+            <label for="dungeon-speed">Speed</label>
+            <select id="dungeon-speed" aria-label="Replay speed">
+              <option value="0.5">0.5×</option>
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="4">4×</option>
+            </select>
+            <input id="dungeon-timeline" type="range" min="0" max="1000" step="1" value="0"
+              aria-label="Replay timeline" />
+            <output id="dungeon-clock">0.0 / 0.0 s</output>
+            <p id="dungeon-playback-status" aria-live="off">Recorded expedition</p>
+          </div>
           <p id="dungeon-focus">Camera focus: entrance</p>
           <p id="dungeon-summary">Loading dungeon layout...</p>
-          <p>WASD fly · Shift turbo · Q / E zoom height · Wheel zoom · Tab next point of interest · R entrance · G / Esc return</p>
-          <small>Markers are fixed spawn locations. Monsters and heroes do not move or fight in this layout preview.</small>
+          <p>WASD fly · Shift turbo · Q / E camera height · Wheel zoom · Tab focus · R reset camera · Space play/pause · G / Esc return</p>
+          <small>Saved footage never changes outcomes. Full map is available only in the explicit development preview.</small>
         </footer>
       </section>
       <aside id="music-panel" aria-label="Game music">

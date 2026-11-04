@@ -10,6 +10,9 @@ import "@babylonjs/core/Meshes/instancedMesh"; // Registers createInstance for B
 import { Scene } from "@babylonjs/core/scene";
 import type { GameStore } from "./gameStore.ts";
 import { createHeroVisual } from "./heroVisual.ts";
+import type { HeroVisual } from "./heroVisual.ts";
+import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh } from "./dungeonReplayScene.ts";
+import type { Level7Replay } from "./level7Exploration.ts";
 import {
   generateDungeonLayout, tileAt, type DungeonLayout,
   type DungeonFeature, type DungeonPoint,
@@ -40,6 +43,20 @@ export class DungeonViewer {
   private readonly minimap = document.querySelector<HTMLCanvasElement>("#dungeon-minimap")!;
   private landmarks: { name: string; point: DungeonPoint }[] = [];
   private focus = 0;
+  private replayScene: DungeonReplayScene | null = null;
+  private playing = false;
+  private playbackTime = 0;
+  private playbackSpeed = 1;
+  private followActor: "hero" | "monster" | null = null;
+  private readonly replaySelector = document.querySelector<HTMLSelectElement>("#dungeon-replay-select")!;
+  private readonly playbackControls = document.querySelector<HTMLElement>("#dungeon-playback-controls")!;
+  private readonly playbackButton = document.querySelector<HTMLButtonElement>("#dungeon-play")!;
+  private readonly timeSlider = document.querySelector<HTMLInputElement>("#dungeon-timeline")!;
+  private readonly timeLabel = document.querySelector<HTMLElement>("#dungeon-clock")!;
+  private readonly playbackStatus = document.querySelector<HTMLElement>("#dungeon-playback-status")!;
+  private readonly modeDescription = document.querySelector<HTMLElement>("#dungeon-mode-description")!;
+  private readonly minimapTitle = document.querySelector<HTMLElement>("#dungeon-minimap-heading")!;
+  private readonly minimapNote = document.querySelector<HTMLElement>("#dungeon-minimap-note")!;
   private readonly musicToggle = document.querySelector<HTMLButtonElement>("#music-toggle")!;
 
   constructor(
@@ -51,7 +68,19 @@ export class DungeonViewer {
   ) {
     document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
     document.querySelector("#close-dungeon")!.addEventListener("click", () => this.close());
-    document.querySelector("#dungeon-reset-camera")!.addEventListener("click", () => this.centerOn(0));
+    document.querySelector("#dungeon-reset-camera")!.addEventListener("click", () => this.resetCamera());
+    this.replaySelector.addEventListener("change",()=>this.selectReplay(this.replaySelector.value));
+    this.playbackButton.addEventListener("click",()=>this.togglePlayback());
+    document.querySelector("#dungeon-restart")!.addEventListener("click",()=>this.restartReplay());
+    document.querySelector<HTMLSelectElement>("#dungeon-speed")!.addEventListener("change",event=>{
+      const speed=Number((event.target as HTMLSelectElement).value);
+      this.playbackSpeed=[0.5,1,2,4].includes(speed)?speed:1;
+    });
+    this.timeSlider.addEventListener("input",()=>{
+      if(!this.replayScene?.currentReplay)return;
+      this.playbackTime=this.replayScene.duration*Number(this.timeSlider.value)/1000;
+      this.paintPlayback();
+    });
     window.addEventListener("keydown", event => {
       if (!this.active) {
         if (event.code === "KeyG" && !event.repeat &&
@@ -67,10 +96,21 @@ export class DungeonViewer {
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.code === "KeyG" || event.code === "Escape") this.close();
-      else if (event.code === "Tab" && !event.repeat) this.centerOn(this.focus+1);
-      else if (event.code === "KeyR" && !event.repeat) this.centerOn(0);
+      else if (event.code === "Tab" && !event.repeat) {
+        if(this.replayScene?.currentReplay){
+          this.followActor=this.followActor==="hero"?"monster":
+            this.followActor==="monster"?null:"hero";
+          this.paintPlayback();
+        }else this.centerOn(this.focus+1);
+      }
+      else if (event.code === "KeyR" && !event.repeat) this.resetCamera();
+      else if (event.code === "Space" && !event.repeat) this.togglePlayback();
       else if (event.code === "KeyM" && !event.repeat) this.musicToggle.focus();
-      else this.keys.add(event.code);
+      else {
+        this.keys.add(event.code);
+        if(["KeyW","KeyA","KeyS","KeyD","KeyQ","KeyE"].includes(event.code))
+          this.followActor=null;
+      }
     }, true);
     window.addEventListener("keyup", event => {
       if (!this.active) return;
@@ -103,6 +143,7 @@ export class DungeonViewer {
     this.panel.hidden = false;
     this.layout = generateDungeonLayout(this.store.state.seed,7);
     this.createScene(this.layout);
+    this.refreshReplaySelector();
     this.sceneChanged(true);
   }
 
@@ -112,6 +153,10 @@ export class DungeonViewer {
     this.keys.clear();
     document.body.classList.remove("dungeon-active");
     this.panel.hidden = true;
+    this.replayScene?.dispose();
+    this.replayScene=null;
+    this.playing=false;
+    this.followActor=null;
     this.scene?.dispose();
     this.scene = null;
     this.camera = null;
@@ -173,6 +218,8 @@ export class DungeonViewer {
       width:TILE_SIZE,height:0.10,depth:TILE_SIZE,
     },scene);
     roomPrefab.material=roomStone;
+    const replayTiles:DungeonTileMesh[]=[];
+    const replayMarkers:DungeonMarkerMesh[]=[];
     let firstWall=true,firstFloor=true,firstRoom=true;
     let walls=0,corridors=0,roomTiles=0;
     for(let z=0;z<layout.height;z++)for(let x=0;x<layout.width;x++) {
@@ -182,6 +229,7 @@ export class DungeonViewer {
         const mesh=firstWall ? wallPrefab : wallPrefab.createInstance("dungeon-wall-"+x+"-"+z);
         firstWall=false;
         mesh.position.set(pos.x,WALL_HEIGHT/2,pos.z);
+        replayTiles.push({x,z,mesh});
         walls++;
       } else {
         const useRoom=kind==="room";
@@ -192,6 +240,7 @@ export class DungeonViewer {
         if(useRoom) {firstRoom=false;roomTiles++;}
         else {firstFloor=false;corridors++;}
         mesh.position.set(pos.x,0,pos.z);
+        replayTiles.push({x,z,mesh});
       }
     }
     // Room torches are decoration only. No game RNG or hidden knowledge.
@@ -217,24 +266,31 @@ export class DungeonViewer {
           {width:1.25,height:0.85,depth:0.9},scene);
         chest.position.set(pos.x,0.52,pos.z);
         chest.material=gold;
+        replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
+          kind:feature.kind,mesh:chest});
       } else if(feature.kind==="trap"){
         const marker=MeshBuilder.CreateCylinder("dungeon-trap-"+feature.id,
           {height:0.22,diameter:1.4,tessellation:4},scene);
         marker.position.set(pos.x,0.18,pos.z);
         marker.rotation.y=Math.PI/4;
         marker.material=spike;
+        replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
+          kind:feature.kind,mesh:marker});
       } else {
         const enemy=MeshBuilder.CreateSphere("dungeon-monster-"+feature.id,
           {diameter:0.95,segments:8},scene);
         enemy.position.set(pos.x,0.8,pos.z);
         enemy.material=monster;
         enemy.metadata={kind:"spawn-marker",subtype:feature.subtype};
+        replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
+          kind:feature.kind,mesh:enemy});
       }
     }
     // A recognizable hero at the entrance is strictly a static reference model.
     // No AI walking or fake combat is started before the exploration milestone.
     const hero=this.store.state.adventurers.find(h=>h.status==="at-shop"&&h.health>0)
       ?? this.store.state.adventurers.find(h=>h.health>0);
+    let reference:HeroVisual|null=null;
     if(hero) {
       const model=createHeroVisual(scene,{
         id:hero.id,role:hero.role,equipment:hero.equipment,
@@ -242,6 +298,7 @@ export class DungeonViewer {
       const pos=getWorld(layout,layout.entrance);
       model.root.position.set(pos.x,0.10,pos.z);
       model.root.metadata={...model.root.metadata,previewOnly:true};
+      reference=model;
     }
     this.landmarks=[
       {name:"Entrance",point:layout.entrance},
@@ -255,10 +312,93 @@ export class DungeonViewer {
       layout.features.filter(f=>f.kind==="monster").length+" monster spawns · "+
       layout.features.filter(f=>f.kind==="treasure").length+" treasures · "+
       layout.features.filter(f=>f.kind==="trap").length+" traps";
+    this.replayScene=new DungeonReplayScene(scene,camera,layout,
+      replayTiles,replayMarkers,reference,this.minimap);
     this.drawMinimap(layout);
     this.centerOn(0);
   }
 
+  private availableReplays(): {id:string;record:Level7Replay;name:string}[] {
+    return this.store.state.events.filter(e=>e.type==="level7-exploration"&&e.level7Replay)
+      .slice(-3).reverse().map(e=>({
+        id:e.id,record:e.level7Replay!,
+        name:this.store.state.adventurers.find(h=>h.id===e.adventurerId)?.name ??
+          e.adventurerId ?? "Unknown hero",
+      }));
+  }
+  private refreshReplaySelector():void {
+    const replays=this.availableReplays();
+    this.replaySelector.replaceChildren();
+    const preview=new Option("Layout preview (full development map)","preview");
+    this.replaySelector.add(preview);
+    for(const entry of replays){
+      this.replaySelector.add(new Option(
+        "Day "+entry.record.day+" · "+entry.name+" · expedition footage",entry.id));
+    }
+    // Saved recordings take priority; never disclose the ending in the menu.
+    this.selectReplay(replays[0]?.id??"preview");
+  }
+  private selectReplay(id:string):void {
+    const record=this.availableReplays().find(e=>e.id===id)?.record??null;
+    this.replaySelector.value=record?id:"preview";
+    this.replayScene?.setReplay(record);
+    this.playbackTime=0;
+    this.playing=!!record;
+    this.followActor=record?"hero":null;
+    this.playbackControls.hidden=!record;
+    this.modeDescription.textContent=record
+      ?"Recorded expedition · movements, combat and discoveries are historical, not re-simulated."
+      :"Full development map preview · no replay selected.";
+    this.minimapTitle.textContent=record?"Hero knowledge · Fog of War":
+      "Dungeon layout · development preview";
+    this.minimapNote.textContent=record
+      ?"Only this hero's discovered locations are visible. Rewind to inspect earlier knowledge."
+      :"Green: entrance · Orange: monsters · Gold: chests · Red: traps";
+    if(record){
+      this.paintPlayback();
+      this.replayScene?.follow("hero");
+    }else{
+      this.playbackStatus.textContent="No expedition replay selected.";
+      this.centerOn(0);
+    }
+  }
+  private togglePlayback():void {
+    if(!this.replayScene?.currentReplay)return;
+    if(this.playbackTime>=this.replayScene.duration)this.playbackTime=0;
+    this.playing=!this.playing;
+    this.paintPlayback();
+  }
+  private restartReplay():void {
+    if(!this.replayScene?.currentReplay)return;
+    this.playbackTime=0;
+    this.playing=true;
+    this.followActor="hero";
+    this.paintPlayback();
+  }
+  private paintPlayback():void {
+    const scene=this.replayScene;
+    if(!scene?.currentReplay)return;
+    const frame=scene.show(this.playbackTime);
+    if(!frame)return;
+    this.timeSlider.value=String(Math.round(frame.percent*1000));
+    this.timeLabel.textContent=frame.time.toFixed(1)+" / "+frame.duration.toFixed(1)+" s";
+    this.playbackButton.textContent=this.playing?"Pause (Space)":"Play (Space)";
+    const record=scene.currentReplay;
+    const ending=frame.finished?" · Expedition ended: "+record.outcome:"";
+    this.playbackStatus.textContent="Recorded "+frame.action+
+      " · HP "+Math.round(frame.hp)+
+      (frame.encounter?" · Actual monster-combat frames":"")+
+      ending;
+    this.focusLabel.textContent="TAB focus: "+(this.followActor??"free camera")+
+      " · "+(record.heroId);
+    if(this.followActor)scene.follow(this.followActor);
+  }
+  private resetCamera():void {
+    if(this.replayScene?.currentReplay){
+      this.followActor="hero";
+      this.paintPlayback();
+    }else this.centerOn(0);
+  }
   private centerOn(index:number):void {
     if(!this.camera||!this.layout||!this.landmarks.length)return;
     this.focus=((index%this.landmarks.length)+this.landmarks.length)%this.landmarks.length;
@@ -301,5 +441,13 @@ export class DungeonViewer {
     this.camera.position.z=Math.max(-extentZ-18,Math.min(extentZ+18,this.camera.position.z+dz));
     if(this.keys.has("KeyQ")) this.camera.position.y=Math.min(100,this.camera.position.y+speed);
     if(this.keys.has("KeyE")) this.camera.position.y=Math.max(12,this.camera.position.y-speed);
+    if(this.replayScene?.currentReplay){
+      if(this.playing){
+        this.playbackTime=Math.min(this.replayScene.duration,
+          this.playbackTime+dt*this.playbackSpeed);
+        if(this.playbackTime>=this.replayScene.duration)this.playing=false;
+      }
+      this.paintPlayback();
+    }
   }
 }

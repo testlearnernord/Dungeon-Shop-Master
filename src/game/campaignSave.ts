@@ -119,7 +119,7 @@ function validateLevel7Replay(
 ): void {
   const record=object(raw,path,[
     "version","day","heroId","floor","appearance","steps","encounters","outcome",
-  ]);
+  ],["knownAtStart","resolvedAtStart"]);
   if(record.version!==1||record.floor!==7||record.day!==day||record.heroId!==heroId)
     fail(path,"must match event day, hero and Level 7");
   choice(record.outcome,["exploring","retreat","death","completed"],path+".outcome");
@@ -130,6 +130,27 @@ function validateLevel7Replay(
   if(gear.armor!==null && gear.armor!=="Leather Vest")fail(path+".appearance.equipment.armor","is not recognized");
   const map=generateDungeonLayout(campaignSeed,7);
   const features=new Map(map.features.map(feature=>[feature.id,feature]));
+  if(record.knownAtStart!==undefined){
+    const initial=array(record.knownAtStart,path+".knownAtStart");
+    if(initial.length<1||initial.length>map.width*map.height)
+      fail(path+".knownAtStart","must have bounded visible tiles");
+    const visited=new Set<string | number>();
+    initial.forEach((rawIndex,i)=>{
+      const cell=integer(rawIndex,path+".knownAtStart["+i+"]",0,map.tiles.length-1);
+      if(map.tiles[cell]==="wall")fail(path+".knownAtStart["+i+"]","cannot contain a wall");
+      unique(cell,visited,path+".knownAtStart["+i+"]");
+    });
+  }
+  if(record.resolvedAtStart!==undefined){
+    const ids=array(record.resolvedAtStart,path+".resolvedAtStart");
+    if(ids.length>features.size)fail(path+".resolvedAtStart","must be bounded");
+    const seen=new Set<string | number>();
+    ids.forEach((value,i)=>{
+      const id=text(value,path+".resolvedAtStart["+i+"]");
+      if(!features.has(id))fail(path+".resolvedAtStart["+i+"]","must be an existing feature");
+      unique(id,seen,path+".resolvedAtStart["+i+"]");
+    });
+  }
   const steps=array(record.steps,path+".steps");
   if(steps.length<1||steps.length>1+LEVEL7_STEP_BUDGET*3+3)
     fail(path+".steps","must have a bounded length");
