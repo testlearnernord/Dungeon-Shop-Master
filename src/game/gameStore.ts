@@ -2,6 +2,7 @@ import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 import { replaceShelfPlacement, type ShelfPlacement } from "./shopLayout.ts";
 import { checkoutCustomer, quoteCustomerCheckout, type CheckoutQuote } from "./customerCheckout.ts";
+import { pickUpShopItem, returnShopCart } from "./shopCarts.ts";
 
 export class GameStore {
   private current: GameState;
@@ -58,6 +59,18 @@ export class GameStore {
     const result = replaceShelfPlacement(this.current.shopLayout, placement);
     if (result.layout !== this.current.shopLayout)
       this.replace({ ...this.current, shopLayout: result.layout });
+    return result.message;
+  }
+
+  pickUpShopItem(heroId: string, slotId: string): string {
+    const result = pickUpShopItem(this.current, heroId, slotId);
+    this.replace(result.state);
+    return result.message;
+  }
+
+  returnShopCart(heroId: string): string {
+    const result = returnShopCart(this.current, heroId);
+    this.replace(result.state);
     return result.message;
   }
 

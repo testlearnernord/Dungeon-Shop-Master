@@ -33,7 +33,8 @@ export function quoteCustomerCheckout(
 ): CheckoutQuote | null {
   const hero = state.adventurers.find(person => person.id === heroId);
   if (!hero || hero.status !== "at-shop" || hero.health <= 0 ||
-      paidToday(state, heroId)) return null;
+      paidToday(state, heroId) || state.shopCarts.some(cart =>
+        cart.heroId === heroId)) return null;
   // Manual checkout is at most once per hero/day. Remove already-paid
   // customers from THIS projection so they cannot consume a competitor's
   // available stock. The automatic next-day trade algorithm is unchanged.

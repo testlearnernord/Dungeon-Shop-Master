@@ -58,7 +58,13 @@ setupDayHud(
 // The forecast is read-only. It uses exactly the same purchase decisions
 // as the confirmed next-day transaction. Stock changes trigger replanning.
 const refreshShoppingIntents = () => npcVisuals.setShoppingIntents(
-  forecastShoppingIntents(store.state), store.state.shopLayout, shop);
+  forecastShoppingIntents(store.state),
+  store.state.shopLayout, shop, store.state.shopCarts,
+  (heroId,slotId)=>{
+    const previous=store.state;
+    store.pickUpShopItem(heroId,slotId);
+    return store.state!==previous;
+  });
 store.subscribe(refreshShoppingIntents);
 refreshShoppingIntents();
 setupSalesHud(store);

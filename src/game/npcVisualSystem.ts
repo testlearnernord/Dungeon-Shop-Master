@@ -10,7 +10,9 @@ import { reconcileVisitors, type GateSide, type VisitorRole, type VisitorSnapsho
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
-import type { ShoppingIntent } from "./shopperIntents.ts";
+import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
+import { ITEMS } from "./economy.ts";
+import type { ShopCart } from "./shopCarts.ts";
 import { isObstructed, pathToShopGoal } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -27,6 +29,9 @@ interface NpcVisual {
   intentKey:string;
   targetIndex:number;
   toQueue:boolean;
+  heldLines:readonly ShoppingInterest[];
+  heldMeshes:Mesh[];
+  heldKey:string;
   route: Vector3[];
   waypoint: number;
   slot: number;
@@ -98,12 +103,15 @@ function paintIdentity(npc: NpcVisual, atlas: HTMLImageElement): void {
   ctx.fillStyle="#cfdeb7";
   ctx.font="22px sans-serif";
   const interest=npc.intent?.items[npc.targetIndex];
+  const held=npc.heldLines.reduce((sum,line)=>sum+line.quantity,0);
+  const heldTotal=npc.heldLines.reduce((sum,line)=>sum+line.subtotal,0);
   const label=interest?"Interested: "+interest.itemId:
     npc.intent?.reason==="cannot-afford"?"Not enough gold":
     npc.intent?.reason==="unavailable"?"Needs supplies":"";
   ctx.fillText((npc.visitor.gold??0)+"g · Food "+(npc.visitor.food??0)+
     (npc.visitor.hunger!==undefined&&npc.visitor.hunger>=3?" · Hungry":"")+
-    (label?" · "+label:""),155,151,476);
+    (held?" · Carrying "+held+" ("+heldTotal+"g unpaid)":label?" · "+label:""),
+    155,151,476);
   npc.labelTexture.update();
   npc.root.metadata.displayName = displayName;
   npc.root.metadata.level = level;
@@ -139,6 +147,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
     elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0,
     gateSide: visitor.entranceGate ?? "level4",
     intent:null,intentKey:"",targetIndex:0,toQueue:false,
+    heldLines:[],heldMeshes:[],heldKey:"",
     labelTexture: texture,
     saleTag: null, saleSeconds: 0,
   };
@@ -158,6 +167,7 @@ export class NpcVisualSystem {
   private readonly doorY: Record<GateSide, number> = { level4: DOOR_CLOSED_Y, level6: DOOR_CLOSED_Y };
   private layout:ShopLayout|null=null;
   private shop:Shop|null=null;
+  private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
 
   constructor(private readonly scene: Scene) {
     this.portraits.addEventListener("load", () => {
@@ -237,25 +247,80 @@ export class NpcVisualSystem {
    */
   setShoppingIntents(
     plans:ReadonlyMap<string,ShoppingIntent>,layout:ShopLayout,shop:Shop,
+    carts:readonly ShopCart[],
+    onPickUp:(heroId:string,slotId:string)=>boolean,
   ):void {
-    this.layout=layout;this.shop=shop;
+    this.layout=layout;
+    this.shop=shop;
+    this.onPickUp=onPickUp;
+    const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
     for(const npc of this.npcs.values()){
       if(npc.visitor.status!=="at-shop"){
-        // A changed layout may reopen an exit that was temporarily blocked.
         if(npc.phase==="leaving"&&npc.root.metadata.shoppingPhase==="blocked-exit")
           this.beginLeaving(npc);
         continue;
       }
       const plan=plans.get(npc.visitor.id)??null;
-      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves]);
+      const held=cartByHero.get(npc.visitor.id)?.lines??[];
+      this.syncCarriedProducts(npc,held);
+      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,held]);
       if(key===npc.intentKey)continue;
-      npc.intent=plan;npc.intentKey=key;npc.targetIndex=0;
+      npc.intent=plan;
+      npc.intentKey=key;
+      npc.targetIndex=0;
       npc.root.metadata.shoppingReason=plan?.reason??"no-need";
       npc.root.metadata.shoppingTargets=plan?.items.map(x=>x.slotId)??[];
       if(["browsing","queueing","considering"].includes(npc.phase))
         this.beginBrowsing(npc);
       paintIdentity(npc,this.portraits);
     }
+  }
+
+  /** Physically carried items use the same item IDs/colors as shelf goods.
+   * Meshes belong to the right-hand socket of the shared hero model.
+   * This never equips unpaid armor or swords as bought equipment.
+   */
+  private syncCarriedProducts(
+    npc:NpcVisual,lines:readonly ShoppingInterest[],
+  ):void {
+    const key=JSON.stringify(lines);
+    if(key===npc.heldKey)return;
+    for(const mesh of npc.heldMeshes){
+      const mat=mesh.material;
+      mesh.dispose();
+      mat?.dispose();
+    }
+    npc.heldMeshes=[];
+    npc.heldKey=key;
+    npc.heldLines=lines;
+    let position=0;
+    for(const line of lines){
+      const item=ITEMS.find(entry=>entry.id===line.itemId);
+      if(!item)continue;
+      const mesh=item.kind==="healing"||item.id==="mana-potion"
+        ? MeshBuilder.CreateCylinder("npc-carried-"+npc.visitor.id+"-"+position,
+          {height:0.27,diameter:0.2},this.scene)
+        : item.kind==="food"
+        ? MeshBuilder.CreateSphere("npc-carried-"+npc.visitor.id+"-"+position,
+          {diameter:0.27},this.scene)
+        : MeshBuilder.CreateBox("npc-carried-"+npc.visitor.id+"-"+position,
+          {size:0.27},this.scene);
+      mesh.parent=npc.arms[1];
+      mesh.position.set(0.08+0.07*(position%2),-0.50-0.15*Math.floor(position/2),
+        -0.22-0.16*(position%2));
+      mesh.material=material(this.scene,
+        "npc-carried-"+npc.visitor.id+"-"+position+"-mat",
+        Color3.FromHexString(item.color));
+      mesh.isPickable=false;
+      mesh.checkCollisions=false;
+      npc.heldMeshes.push(mesh);
+      position++;
+    }
+    npc.root.metadata.cartUnits=lines.reduce((sum,line)=>sum+line.quantity,0);
+    npc.root.metadata.cartTotal=lines.reduce((sum,line)=>sum+line.subtotal,0);
+    npc.root.metadata.cartPaid=false;
+    npc.root.metadata.cartItemIds=lines.map(line=>line.itemId);
+    npc.root.metadata.carriedMeshes=npc.heldMeshes.length;
   }
 
   /** Cosmetic, transient feedback for already-booked purchases. Never writes to GameStore. */
@@ -313,7 +378,17 @@ export class NpcVisualSystem {
       }
       if(npc.phase==="considering"){
         npc.wait-=delta;
-        if(npc.wait<=0){npc.targetIndex++;this.beginBrowsing(npc);}
+        if(npc.wait<=0){
+          const item=npc.intent?.items[npc.targetIndex];
+          // Commit a reservation only at the shelf, after the inspection pause.
+          // Store notifications synchronously re-plan remaining shopping needs.
+          if(item&&this.onPickUp?.(npc.visitor.id,item.slotId)){
+            npc.root.metadata.shoppingPhase="item-picked-up";
+          }else{
+            npc.targetIndex++;
+            this.beginBrowsing(npc);
+          }
+        }
       }else if(npc.phase!=="queueing"){
         const isMovingThroughGate = (npc.phase === "entering" || npc.phase === "leaving") &&
           npc.root.position.z > 11.3;
@@ -500,6 +575,7 @@ export class NpcVisualSystem {
 
   private dispose(npc: NpcVisual): void {
     this.clearSaleTag(npc);
+    this.syncCarriedProducts(npc, []);
     npc.root.dispose(false, true);
     this.npcs.delete(npc.visitor.id);
   }

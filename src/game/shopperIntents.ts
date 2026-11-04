@@ -18,7 +18,36 @@ export interface ShoppingIntent {
   readonly reason: ShoppingReason;
 }
 export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, ShoppingIntent> {
-  const projected = tradeAtStartOfDay(state, state.day+1);
+  // Treat unpaid carried items as a virtual part of their buyer's inventory
+  // and budget, so the next forecast cannot sell the same need or gold twice.
+  // This projection NEVER changes the authoritative hero or shop inventory.
+  const virtualHeroes = state.adventurers.map(hero => {
+    const cart = state.shopCarts.find(entry => entry.heroId === hero.id);
+    const paid = state.events.some(event => event.type === "sale" &&
+      event.day === state.day && event.adventurerId === hero.id);
+    if (paid) return { ...hero, status: "returning" as const,
+      floor: 4 as const, shopStayDays: 0 };
+    if (!cart) return hero;
+    let food = hero.inventory.food;
+    let healing = hero.inventory.healing;
+    let weapon = hero.equipment.weapon;
+    let armor = hero.equipment.armor;
+    let reservedGold = 0;
+    for (const line of cart.lines) {
+      const item = ITEMS.find(entry => entry.id === line.itemId);
+      if (!item) continue;
+      reservedGold += line.subtotal;
+      if (item.kind === "food") food += line.quantity;
+      if (item.kind === "healing") healing += line.quantity;
+      if (item.kind === "weapon") weapon = item.name;
+      if (item.kind === "armor") armor = item.name;
+    }
+    return { ...hero, gold: hero.gold - reservedGold,
+      inventory: {...hero.inventory, food, healing},
+      equipment: {...hero.equipment, weapon, armor} };
+  });
+  const planningState = { ...state, adventurers: virtualHeroes };
+  const projected = tradeAtStartOfDay(planningState, state.day+1);
   const byHero = new Map<string, ShoppingInterest[]>();
   const slotById = new Map(state.shopEconomy.slots.map(slot=>[slot.id,slot]));
   for(const event of projected.events){
@@ -35,6 +64,8 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
   const results=new Map<string,ShoppingIntent>();
   for(const hero of state.adventurers){
     if(hero.status!=="at-shop"||hero.health<=0)continue;
+    if(state.events.some(event => event.day===state.day &&
+      event.type==="sale" && event.adventurerId===hero.id))continue;
     const items=byHero.get(hero.id)??[];
     let reason:ShoppingReason="interested";
     if(!items.length){

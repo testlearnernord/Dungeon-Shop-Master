@@ -12,10 +12,11 @@ import { forageAfterEncounter } from "./foraging.ts";
 import { ECONOMY } from "./economy.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
+import { settleHeldShopCarts, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 9;
+export const SIMULATION_VERSION = 10;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -62,6 +63,7 @@ export interface GameState {
   readonly adventurers: readonly AdventurerState[];
   readonly shopEconomy: ShopEconomyState;
   readonly shopLayout: ShopLayout;
+  readonly shopCarts: readonly ShopCart[];
   readonly dungeonFloors: readonly DungeonFloorProgress[];
   readonly level7World: Level7World;
   readonly seed: number;
@@ -94,6 +96,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     adventurers,
     shopEconomy: createEconomy(),
     shopLayout: createShopLayout(),
+    shopCarts: [],
     dungeonFloors: [],
     level7World: emptyLevel7World(),
     seed,
@@ -131,15 +134,32 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   validatePopulation(state.populationConfig);
   let rngState = new SeededRandom(state.rngState).state;
   const events: WorldEvent[] = [{ id: `day-${day}:started`, type: "day-started", day, message: `Day ${day} begins.` }];
-  // Rescue/trade for today's existing customers, consume supplies, resolve hazards,
-  // then travel/departures and vacancy-driven newcomers. Dead heroes never change.
-  const trade = tradeAtStartOfDay(state, day);
-  events.push(...trade.events);
+  // Transitional settlement: picked goods were physically reserved during the
+  // previous shop day. Book them once before supplies/departures, but keep
+  // automatic legacy trading for heroes without reserved carts.
+  const settlement = settleHeldShopCarts(state, day);
+  const paidIds = new Set<string>(settlement.settledIds);
+  for (const event of state.events) {
+    if (event.type === "sale" && event.day === state.day && event.adventurerId)
+      paidIds.add(event.adventurerId);
+  }
+  const tradeProjection = {
+    ...settlement.state,
+    adventurers: settlement.state.adventurers.map(hero => paidIds.has(hero.id)
+      ? {...hero, status: "returning" as const, floor: 4 as const,
+          shopStayDays: 0}
+      : hero),
+  };
+  const trade = tradeAtStartOfDay(tradeProjection, day);
+  const settledHeroes = new Map(settlement.state.adventurers.map(hero => [hero.id,hero]));
+  const postTradeHeroes = trade.adventurers.map(hero => paidIds.has(hero.id)
+    ? settledHeroes.get(hero.id)! : hero);
+  events.push(...settlement.events, ...trade.events);
   let clearedLevel6 = state.dungeonFloors.some((entry) => entry.floor === 6 && entry.cleared);
   const level7UnlockedAtStart = clearedLevel6;
   let clearedLevel7 = state.dungeonFloors.some((entry) => entry.floor === 7 && entry.cleared);
   let level7World = state.level7World;
-  const adventurers = trade.adventurers.map((hero) => {
+  const adventurers = postTradeHeroes.map((hero) => {
     // Exactly one action per hero per global tick. Purchases precede supplies,
     // and newly authorized departures cannot fight on their departure day.
     const supplies = consumeDailySupplies(hero, day);
@@ -239,7 +259,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   });
   return {
     state: {
-      ...state, day, adventurers, rngState, shopEconomy: trade.economy,
+      ...settlement.state, day, adventurers, rngState, shopEconomy: trade.economy,
       level7World,
       dungeonFloors: [
         ...state.dungeonFloors,

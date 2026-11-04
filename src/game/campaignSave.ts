@@ -269,6 +269,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     ...(version >= 8 ? ["level7World"] : []),
     ...(version >= 9 ? ["shopLayout"] : []),
+    ...(version >= 10 ? ["shopCarts"] : []),
   ]);
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
   if (state.simulationVersion !== version) fail("payload.simulationVersion", "is incompatible");
@@ -382,6 +383,57 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     choice(slot.itemId, [null, ...permittedItems], `${path}.itemId`);
     if ((quantity === 0) !== (slot.itemId === null)) fail(path, "must have an item exactly when stocked");
   });
+  if (version >= 10) {
+    const reservedBySlot = new Map<string,{itemId:string;quantity:number}>();
+    const cartHeroes = new Set<string | number>();
+    array(state.shopCarts,"payload.shopCarts").forEach((value,i)=>{
+      const path="payload.shopCarts["+i+"]";
+      const cart=object(value,path,["heroId","day","lines"]);
+      const heroId=text(cart.heroId,path+".heroId");
+      unique(heroId,cartHeroes,path+".heroId");
+      const hero=(state.adventurers as RecordValue[]).find(candidate=>
+        candidate.id===heroId);
+      if(!hero || hero.status!=="at-shop" || hero.health===0)
+        fail(path+".heroId","requires a living shop visitor");
+      if(cart.day!==day)fail(path+".day","must equal the current day");
+      const lineSlots=new Set<string | number>();
+      let cartTotal=0;
+      const lines=array(cart.lines,path+".lines");
+      if(!lines.length || lines.length>slotDefinitions.length)
+        fail(path+".lines","must contain 1 to 10 reserved lines");
+      lines.forEach((entry,j)=>{
+        const lp=path+".lines["+j+"]";
+        const line=object(entry,lp,["slotId","itemId","quantity","subtotal"]);
+        const slotId=text(line.slotId,lp+".slotId");
+        unique(slotId,lineSlots,lp+".slotId");
+        if(!slotIds.has(slotId))fail(lp+".slotId","must link to an existing slot");
+        choice(line.itemId,itemIds,lp+".itemId");
+        const quantity=integer(line.quantity,lp+".quantity",1,ECONOMY.slotCapacity);
+        const item=ITEMS.find(candidate=>candidate.id===line.itemId)!;
+        if(integer(line.subtotal,lp+".subtotal")!==quantity*item.salePrice)
+          fail(lp+".subtotal","must agree with item price and quantity");
+        if(!["food","healing","weapon","armor"].includes(item.kind))
+          fail(lp+".itemId","is not supported for purchase");
+        cartTotal+=quantity*item.salePrice;
+        const old=reservedBySlot.get(slotId);
+        if(old && old.itemId!==line.itemId)
+          fail(lp+".itemId","must agree with other held stock for this slot");
+        reservedBySlot.set(slotId,{
+          itemId:line.itemId as string,quantity:(old?.quantity??0)+quantity,
+        });
+      });
+      if(cartTotal>(hero.gold as number))
+        fail(path+".lines","cannot cost more than the visitor's gold");
+    });
+    for(const [slotId,reserved] of reservedBySlot) {
+      const source=slots.find(value=>(value as RecordValue).id===slotId) as RecordValue;
+      if(source.quantity as number + reserved.quantity > source.capacity as number)
+        fail("payload.shopCarts","held quantity exceeds shelf capacity");
+      if(source.itemId!==null && source.itemId!==reserved.itemId)
+        fail("payload.shopCarts","held stock conflicts with the shelf product");
+    }
+  }
+
   const sales = object(economy.dailySales, "payload.shopEconomy.dailySales", ["day", "units", "revenue"]);
   if (sales.day !== day) fail("payload.shopEconomy.dailySales.day", "must match the current day");
   integer(sales.units, "payload.shopEconomy.dailySales.units");
@@ -483,7 +535,7 @@ export function parseSave(text: string): GameState {
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
   const version = envelope.simulationVersion;
   if (version !== 3 && version !== 4 && version !== 5 && version !== 6 &&
-      version !== 7 && version !== 8 && version !== SIMULATION_VERSION) {
+      version !== 7 && version !== 8 && version !== 9 && version !== SIMULATION_VERSION) {
     fail("simulationVersion", "is incompatible; no migrations are available");
   }
   const savedAt = textTimestamp(envelope.savedAt);
@@ -495,7 +547,8 @@ export function parseSave(text: string): GameState {
     ...envelope.payload,
     simulationVersion: SIMULATION_VERSION,
     level7World: version < 8 ? emptyLevel7World() : envelope.payload.level7World,
-    shopLayout: createShopLayout(),
+    shopLayout: version < 9 ? createShopLayout() : envelope.payload.shopLayout,
+    shopCarts: [],
     shopEconomy: version < 7
       ? { ...envelope.payload.shopEconomy,
         bag: { ...envelope.payload.shopEconomy.bag, "iron-sword": 0, "leather-vest": 0 } }
