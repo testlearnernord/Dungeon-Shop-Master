@@ -59,16 +59,23 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   const ambient = new HemisphericLight("cavern-ambient", new Vector3(0, 1, 0), scene);
   ambient.intensity = 0.45;
   const torchColor = new Color3(1, 0.58, 0.25);
-  for (const [index, x] of [-5.7, 0, 5.7].entries()) {
-    const torch = new PointLight(`torch-${index}`, new Vector3(x, 3.2, index === 1 ? -1 : 3), scene);
+  // Wall-mounted fixtures, not hovering globes in the middle of the shop.
+  const sconces = [
+    { flame: new Vector3(-6.82, 2.9, 0.8), bracket: new Vector3(-7.10, 2.83, 0.8), size: { width: 0.42, height: 0.14, depth: 0.24 } },
+    { flame: new Vector3(6.82, 2.9, 0.8), bracket: new Vector3(7.10, 2.83, 0.8), size: { width: 0.42, height: 0.14, depth: 0.24 } },
+    { flame: new Vector3(0, 2.9, -6.62), bracket: new Vector3(0, 2.83, -6.86), size: { width: 0.24, height: 0.14, depth: 0.42 } },
+  ] as const;
+  for (const [index, sconce] of sconces.entries()) {
+    const torch = new PointLight(`torch-${index}`, sconce.flame, scene);
     torch.diffuse = torchColor;
-    torch.intensity = 1.5;
-    torch.range = 10;
+    torch.intensity = 1.25;
+    torch.range = 9;
     const flame = MeshBuilder.CreateSphere(`torch-flame-${index}`, { diameter: 0.18 }, scene);
-    flame.position.copyFrom(torch.position);
+    flame.position.copyFrom(sconce.flame);
     flame.material = material(scene, `torch-flame-${index}-material`, new Color3(1, 0.55, 0.12));
     flame.isPickable = false;
-    box(scene, `torch-bracket-${index}`, { width: 0.12, height: 0.12, depth: 0.42 }, new Vector3(x, 3, index === 1 ? -1.25 : 2.75), new Color3(0.22, 0.16, 0.1), false);
+    box(scene, `torch-bracket-${index}`, sconce.size, sconce.bracket,
+      new Color3(0.22, 0.16, 0.1), false).isPickable = false;
   }
 
   const rock = new Color3(0.2, 0.18, 0.16);

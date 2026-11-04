@@ -55,7 +55,8 @@ export class Shop {
   }
 
   private createShelves(): void {
-    for (const [shelfIndex, x] of [-3.8, 3.8].entries()) {
+    // Keep existing slot IDs while aligning the backs with the side walls.
+    for (const [shelfIndex, x] of [-7.12, 7.12].entries()) {
       const shelfId = `shelf-${shelfIndex + 1}`;
       const bodyMaterial = new StandardMaterial(`${shelfId}-wood`, this.scene);
       bodyMaterial.diffuseColor = new Color3(0.28, 0.18, 0.11);

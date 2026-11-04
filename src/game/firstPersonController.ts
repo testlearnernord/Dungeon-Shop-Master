@@ -7,7 +7,16 @@ export function createFirstPersonCamera(canvas: HTMLCanvasElement, scene: Scene)
   const camera = new UniversalCamera("player-camera", new Vector3(0, 1.7, -4.6), scene);
   camera.setTarget(new Vector3(0, 1.7, 0));
   camera.attachControl(canvas, true);
-  camera.speed = 0.18;
+  const walkSpeed = 0.28;
+  const sprintSpeed = 0.52;
+  camera.speed = walkSpeed;
+  window.addEventListener("keydown", event => {
+    if (event.code === "ShiftLeft" || event.code === "ShiftRight") camera.speed = sprintSpeed;
+  });
+  window.addEventListener("keyup", event => {
+    if (event.code === "ShiftLeft" || event.code === "ShiftRight") camera.speed = walkSpeed;
+  });
+  window.addEventListener("blur", () => { camera.speed = walkSpeed; });
   camera.inertia = 0.72;
   camera.angularSensibility = 2700;
   camera.keysUp.push(87);

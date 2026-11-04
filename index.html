@@ -32,7 +32,7 @@
           </button>
           <div id="day-confirmation" hidden>
             <p>End this day?</p>
-            <button id="confirm-day" type="button">Confirm Next Day (Y)</button>
+            <button id="confirm-day" type="button">Confirm Next Day (Z / Y)</button>
             <button id="cancel-day" type="button">Cancel (Esc)</button>
           </div>
           <details class="day-report">
@@ -66,12 +66,12 @@
         <div id="status" class="status">Loading campaign…</div>
         <div class="crosshair" aria-hidden="true"></div>
         <div class="controls">
-          <strong>WASD</strong> move <span>·</span> <strong>Mouse</strong> look
+          <strong>WASD</strong> move <span>·</span> <strong>Shift</strong> sprint <span>·</span> <strong>Mouse</strong> look
           <span>·</span> <strong>Wheel</strong> select
           <span>·</span> <strong>Left-click</strong> stock
           <span>·</span> <strong>Right-click</strong> remove
           <span>·</span> <strong>E</strong> interact
-          <span>·</span> <strong>N / Y</strong> end / confirm day
+          <span>·</span> <strong>N / Z</strong> end / confirm day
           <span>·</span> <strong>B</strong> wholesale
           <span>·</span> <strong>R</strong> roster board
           <span>·</span> <strong>V</strong> watch Level 6
@@ -186,7 +186,7 @@
           <p>To clear a full shelf, discard bag goods, then right-click its stock back into the bag. Discard that stock if needed.</p>
           <div id="discard-catalog"></div>
         </details>
-        <p id="wholesale-message" role="status">Each order buys one item immediately. Prices are fixed.</p>
+        <p id="wholesale-message" role="status">Bulk orders buy multiple units immediately. Prices are fixed.</p>
         <button id="close-wholesale" type="button">Close catalog (Esc / B)</button>
       </dialog>
     </main>

@@ -1,4 +1,4 @@
-import { ITEMS } from "./game/economy";
+import { ECONOMY, ITEMS } from "./game/economy";
 import { GameStore } from "./game/gameStore";
 
 export function setupEconomyHud(
@@ -58,7 +58,38 @@ export function setupEconomyHud(
       if (event.detail > 1) return;
       message.textContent = store.purchase(item.id, 1, ++orderId);
     });
-    row.append(description, button);
+    const actions = document.createElement("div");
+    actions.className = "catalog-actions";
+    const buyQuantity = (quantity: number): void => {
+      message.textContent = store.purchase(item.id, quantity, ++orderId);
+    };
+    const five = document.createElement("button");
+    five.type = "button";
+    five.textContent = "Buy 5";
+    five.dataset.itemId = item.id;
+    five.addEventListener("click", (event) => {
+      if (event.detail > 1) return;
+      buyQuantity(5);
+    });
+    const max = document.createElement("button");
+    max.type = "button";
+    max.textContent = "Buy max";
+    max.dataset.itemId = item.id;
+    max.addEventListener("click", (event) => {
+      if (event.detail > 1) return;
+      const economy = store.state.shopEconomy;
+      const used = Object.values(economy.bag).reduce((sum, n) => sum + n, 0);
+      const free = ECONOMY.bagCapacity - used;
+      const affordable = Math.floor(economy.balance / item.wholesaleCost);
+      const quantity = Math.min(free, affordable);
+      if (quantity < 1) {
+        message.textContent = free < 1 ? "Your inventory is full." : "Not enough gold.";
+        return;
+      }
+      buyQuantity(quantity);
+    });
+    actions.append(button, five, max);
+    row.append(description, actions);
     catalog.append(row);
     const discard = document.createElement("button");
     discard.type = "button";
