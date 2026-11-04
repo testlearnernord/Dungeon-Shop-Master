@@ -24,7 +24,9 @@ test("Level 7 renders a deterministic 3D dungeon and spectator camera without mo
   expect(before.heroReference).toBe(true);
   expect(before.mapWidth).toBe(186);
   await page.keyboard.down("d");
-  await page.waitForTimeout(500);
+  // Assert actual rendered movement, independent of slow/contended CI GPUs.
+  await expect.poll(async()=>(await inspect()).camera.x,
+    {timeout:15000}).toBeGreaterThan(before.camera.x+1);
   await page.keyboard.up("d");
   const moved=await inspect();
   expect(moved.camera.x).toBeGreaterThan(before.camera.x+1);

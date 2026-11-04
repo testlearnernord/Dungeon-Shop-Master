@@ -275,3 +275,11 @@ The camera supports free WASD/Shift, Q/E, wheel zoom, plus **Tab** cycling hero 
 Personal Fog of War uses the hero's *historically known tiles at the start of that day* plus tiles entered up to the current playback time, revealing immediately adjacent terrain but never the entire maze. The minimap and rendered maze markers use the same visibility; triggered chests, traps and monsters disappear only after their recorded action, rather than using current-world status. Version 8 saves now optionally store `knownAtStart` and `resolvedAtStart` in new replay records with strict validation; older valid v8 recordings lacking these fields still load, with limited historical prior-knowledge reconstruction.
 
 Unit and browser regressions cover chronological fog, rewinding, saved combat frames/HP, replay selection, persistence, version compatibility, camera controls, development map fallback and absence of gameplay mutation.
+
+### MVP 1.2f.2a: persisted shelf placement
+
+Use **P** or **Arrange Shelves** to open the in-world shelf editor. Choose either shelf, move it with the arrow keys/buttons in 0.25m steps and rotate with **Q**. The preview follows the complete shelf, including labels and stocked item models. Green wireframe indicates a valid location; red blocks saving because of walls, doors, the cashier counter, fixed visitor aisles or overlapping furniture. **Enter / Save** commits the new position to the campaign; **Esc / Cancel** restores the original transform. While editing, the game canvas is detached from camera controls and other modal actions are unavailable.
+
+The placement exists in the authoritative, version 9 `GameState.shopLayout` and round-trips through IndexedDB/JSON export. Version 8 and earlier compatible saves migrate to the previous standard shelf positions. Slot IDs, quantities, gold, heroes and RNG remain unchanged. Inventory graphics are local to a shelf root and therefore move together with the furniture. Initial protected walkways remain fixed until the intent-driven NPC navigation milestone is implemented.
+
+**Not yet available:** free placement of the checkout counter, wall order book, AI shopping reservations/payment, physical customer queue and cinematic day recap. Do not treat the placement editor as evidence that NPCs already navigate to movable stock.

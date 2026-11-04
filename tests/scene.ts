@@ -191,8 +191,8 @@ export function inspectShopPolish() {
   const camera=scene.activeCamera as UniversalCamera;
   return {
     speed:camera.speed,
-    shelves:[scene.getMeshByName("shelf-1-back")?.position.x,
-      scene.getMeshByName("shelf-2-back")?.position.x],
+    shelves:[scene.getMeshByName("shelf-1-back")?.getAbsolutePosition().x,
+      scene.getMeshByName("shelf-2-back")?.getAbsolutePosition().x],
     torchFlames:[0,1,2].map(i=>{
       const light=scene.getLightByName("torch-"+i);
       const flame=scene.getMeshByName("torch-flame-"+i);
@@ -201,4 +201,27 @@ export function inspectShopPolish() {
         x:flame?.position.x,z:flame?.position.z};
     }),
   };
+}
+
+/** Test-only world-matrix inspection of the persisted furniture transforms. */
+export function inspectShopPlacement() {
+  const scene=Engine.LastCreatedScene!;
+  const data=(id:"shelf-1"|"shelf-2")=>{
+    const root=scene.getTransformNodeByName(id+"-root");
+    const back=scene.getMeshByName(id+"-back");
+    const slot=scene.getMeshByName(id+"-slot-2");
+    const item=scene.getMeshByName(id+"-slot-2-item-0");
+    root?.computeWorldMatrix(true);
+    back?.computeWorldMatrix(true);
+    slot?.computeWorldMatrix(true);
+    item?.computeWorldMatrix(true);
+    return {
+      root:root?{x:root.position.x,z:root.position.z,rotation:root.rotation.y}:null,
+      back:back?{x:back.getAbsolutePosition().x,z:back.getAbsolutePosition().z}:null,
+      slot:slot?{x:slot.getAbsolutePosition().x,z:slot.getAbsolutePosition().z}:null,
+      item:item?{x:item.getAbsolutePosition().x,z:item.getAbsolutePosition().z}:null,
+      guideEnabled:scene.getMeshByName(id+"-placement-preview")?.isEnabled()??false,
+    };
+  };
+  return {left:data("shelf-1"),right:data("shelf-2")};
 }

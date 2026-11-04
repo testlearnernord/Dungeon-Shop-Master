@@ -1,5 +1,6 @@
 import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
+import { replaceShelfPlacement, type ShelfPlacement } from "./shopLayout.ts";
 
 export class GameStore {
   private current: GameState;
@@ -49,6 +50,13 @@ export class GameStore {
     this.purchases.add(requestId);
     const result = discardBag(this.current, itemId);
     this.replace(result.state);
+    return result.message;
+  }
+
+  placeShelf(placement: ShelfPlacement): string {
+    const result = replaceShelfPlacement(this.current.shopLayout, placement);
+    if (result.layout !== this.current.shopLayout)
+      this.replace({ ...this.current, shopLayout: result.layout });
     return result.message;
   }
 

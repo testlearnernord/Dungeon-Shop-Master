@@ -3,6 +3,7 @@ import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
 import { emptyLevel7World, LEVEL7_STEP_BUDGET } from "./level7Exploration.ts";
 import { generateDungeonLayout, tileAt } from "./dungeonLayout.ts";
+import { createShopLayout, shopLayoutProblem, type ShelfPlacement } from "./shopLayout.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -267,6 +268,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     ...(version >= 8 ? ["level7World"] : []),
+    ...(version >= 9 ? ["shopLayout"] : []),
   ]);
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
   if (state.simulationVersion !== version) fail("payload.simulationVersion", "is incompatible");
@@ -336,6 +338,23 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
   });
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
   if(version >= 8) validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
+  if(version >= 9){
+    const layout=object(state.shopLayout,"payload.shopLayout",["shelves"]);
+    const shelves=array(layout.shelves,"payload.shopLayout.shelves");
+    if(shelves.length!==2)fail("payload.shopLayout.shelves","must contain two shelves");
+    const parsed:ShelfPlacement[]=shelves.map((value,i)=>{
+      const path="payload.shopLayout.shelves["+i+"]";
+      const shelf=object(value,path,["id","x","z","rotation"]);
+      choice(shelf.id,["shelf-1","shelf-2"],path+".id");
+      const x=validNumber(shelf.x,path+".x",-8,8);
+      const z=validNumber(shelf.z,path+".z",-8,8);
+      const rotation=integer(shelf.rotation,path+".rotation",0,3);
+      return {id:shelf.id as ShelfPlacement["id"],x,z,
+        rotation:rotation as ShelfPlacement["rotation"]};
+    });
+    const problem=shopLayoutProblem({shelves:parsed});
+    if(problem)fail("payload.shopLayout",problem);
+  }
 
   const economy = object(state.shopEconomy, "payload.shopEconomy", [
     "balance", "bag", "slots", "dailySales", "lastRescueDay",
@@ -464,7 +483,7 @@ export function parseSave(text: string): GameState {
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
   const version = envelope.simulationVersion;
   if (version !== 3 && version !== 4 && version !== 5 && version !== 6 &&
-      version !== 7 && version !== SIMULATION_VERSION) {
+      version !== 7 && version !== 8 && version !== SIMULATION_VERSION) {
     fail("simulationVersion", "is incompatible; no migrations are available");
   }
   const savedAt = textTimestamp(envelope.savedAt);
@@ -475,7 +494,8 @@ export function parseSave(text: string): GameState {
   return {
     ...envelope.payload,
     simulationVersion: SIMULATION_VERSION,
-    level7World: emptyLevel7World(),
+    level7World: version < 8 ? emptyLevel7World() : envelope.payload.level7World,
+    shopLayout: createShopLayout(),
     shopEconomy: version < 7
       ? { ...envelope.payload.shopEconomy,
         bag: { ...envelope.payload.shopEconomy.bag, "iron-sword": 0, "leather-vest": 0 } }
