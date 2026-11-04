@@ -58,7 +58,13 @@ test("real 3D shelf pickup reserves stock, displays a hand-held item and survive
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
   const reloaded=await read();
-  expect(reloaded!.shopCarts).toEqual(reserved!.shopCarts);
+  const reloadedCart=reloaded!.shopCarts.find(cart=>cart.heroId===heroId);
+  expect(reloadedCart).toBeDefined();
+  // The autonomous hero may continue to another shelf while we inspect
+  // the first item. Reload must preserve everything already collected,
+  // but legitimate additional pickups must not make this test fail.
+  for(const line of held.lines)
+    expect(reloadedCart!.lines).toContainEqual(line);
   await expect.poll(async()=>{
     const visual=(await inspect()).visitors.find(v=>v.id===heroId);
     return visual?.carriedMeshes??0;
