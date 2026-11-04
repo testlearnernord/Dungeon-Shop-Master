@@ -106,7 +106,7 @@ export function chooseLevel7Step(
 function fightAgainst(
   hero: AdventurerState, monster: DungeonFeature, campaignSeed: number,
   layout: DungeonLayout, approach: DungeonPoint,
-): {hp:number;outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay} {
+): {hp:number;healsUsed:number;outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay} {
   const monsterRand=new SeededRandom(
     (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0);
   const sword=hero.equipment.weapon==="Iron Sword";
@@ -149,8 +149,10 @@ function fightAgainst(
     bounds:{minX:-8.75,maxX:8.75,minZ:-8.75,maxZ:8.75},
   },LEVEL7_COMBAT_SECONDS);
   const survivor=encounter.state.actors.find(a=>a.id===hero.id)!;
+  const initialHealCharges=hero.role==="healer"?Math.min(2,hero.inventory.healing):0;
   return {
     hp:Math.max(0,Math.round(survivor.hp)),
+    healsUsed:initialHealCharges-survivor.healCharges,
     outcome:encounter.state.outcome==="fighting"?"draw":encounter.state.outcome,
     combat:encounter.replay,
   };
@@ -187,6 +189,7 @@ export function simulateLevel7Day(
   const encounters:Level7ReplayEncounter[]=[];
   let current={x:progress.x,z:progress.z};
   let hp=hero.health, xp=0, gold=0, loot=0, kills=0;
+  let healingSupplies=hero.inventory.healing;
   let outcome:Level7Outcome="exploring";
   for(let t=1;t<=LEVEL7_STEP_BUDGET;t++){
     const next=chooseLevel7Step(layout,{
@@ -221,7 +224,10 @@ export function simulateLevel7Day(
       steps.push({...current,t:t+0.1,action:"trap",featureId:feature.id,hp});
       if(hp===0){outcome="death";steps.push({...current,t:t+0.2,action:"death",hp});break;}
     }else {
-      const fight=fightAgainst({...hero,health:hp},feature,layout.seed,layout,previous);
+      const fight=fightAgainst({
+        ...hero,health:hp,inventory:{...hero.inventory,healing:healingSupplies},
+      },feature,layout.seed,layout,previous);
+      healingSupplies=Math.max(0,healingSupplies-fight.healsUsed);
       encounters.push({featureId:feature.id,...current,combat:fight.combat});
       hp=fight.hp;
       steps.push({...current,t:t+0.1,action:"combat",featureId:feature.id,hp});
@@ -246,7 +252,7 @@ export function simulateLevel7Day(
     level:1+Math.floor(xpTotal/100),
     floor:(returning?4:7),
     status:dead?"dead":returning?"traveling":"expedition",
-    inventory:{...hero.inventory,loot:hero.inventory.loot+loot},
+    inventory:{...hero.inventory,loot:hero.inventory.loot+loot,healing:healingSupplies},
   };
   // Death leaves the world intact but removes that hero from active progress.
   const updated:Level7HeroProgress={
