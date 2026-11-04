@@ -23,6 +23,7 @@ const failed = (state: GameState, message: string): CartActionResult =>
 
 function alreadyPaid(state: GameState, heroId: string): boolean {
   return state.events.some(event => event.type === "sale" &&
+    event.saleChannel === "manual" &&
     event.day === state.day && event.adventurerId === heroId);
 }
 
@@ -153,7 +154,8 @@ export function settleHeldShopCarts(
       else throw new Error("Unsupported reserved item type.");
       events.push({
         id: "day-" + nextDay + ":" + hero.id + ":sale:" + line.slotId,
-        type: "sale", day: nextDay, adventurerId: hero.id,
+        type: "sale", saleChannel: "reserved",
+        day: nextDay, adventurerId: hero.id,
         itemId: line.itemId, quantity: line.quantity, revenue: line.subtotal,
         message: hero.name + " bought " + line.quantity + " " + item.name +
           " for " + line.subtotal + " gold.",

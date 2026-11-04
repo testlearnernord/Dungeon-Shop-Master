@@ -54,6 +54,8 @@ export interface WorldEvent {
   readonly itemId?: ItemId;
   readonly quantity?: number;
   readonly revenue?: number;
+  /** Manual cash register vs. automated settlement; absent means legacy auto sale. */
+  readonly saleChannel?: "manual" | "reserved";
 }
 
 export interface GameState {
@@ -140,7 +142,8 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   const settlement = settleHeldShopCarts(state, day);
   const paidIds = new Set<string>(settlement.settledIds);
   for (const event of state.events) {
-    if (event.type === "sale" && event.day === state.day && event.adventurerId)
+    if (event.type === "sale" && event.saleChannel === "manual" &&
+        event.day === state.day && event.adventurerId)
       paidIds.add(event.adventurerId);
   }
   const tradeProjection = {

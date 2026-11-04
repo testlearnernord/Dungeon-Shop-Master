@@ -121,8 +121,13 @@ export function setupDayHud(
     }
   });
   let previousAdventurers = store.state.adventurers;
+  let previousEvents = store.state.events;
   store.subscribe(() => {
-    pending = false;
+    // Autonomous pickup only changes shopCarts and shelf stock. It must not
+    // invalidate an End Day confirmation between the N and Z presses.
+    if (store.state.adventurers !== previousAdventurers ||
+        store.state.events !== previousEvents) pending = false;
+    previousEvents = store.state.events;
     if (store.state.adventurers !== previousAdventurers) {
       const currentVisitors = snapshotVisitors();
       onVisitorsChanged(currentVisitors, previousVisitors);

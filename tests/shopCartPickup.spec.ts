@@ -37,8 +37,13 @@ test("real 3D shelf pickup reserves stock, displays a hand-held item and survive
   const held=reserved!.shopCarts.find(cart=>cart.heroId===heroId)!;
   const breadLine=held.lines.find(line=>line.itemId==="bread")!;
   expect(held.day).toBe(1);
+  const totalReserved=reserved!.shopCarts.flatMap(cart=>cart.lines)
+    .filter(line=>line.slotId===breadLine.slotId)
+    .reduce((sum,line)=>sum+line.quantity,0);
+  // Other customers continue to shop autonomously. Verify conservation
+  // across *all* held carts, not only this hero's first bread pickup.
   expect(reserved!.shopEconomy.slots.find(slot=>slot.id===breadLine.slotId)!.quantity)
-    .toBe(startingBread-breadLine.quantity);
+    .toBe(startingBread-totalReserved);
   expect(reserved!.shopEconomy.balance).toBe(original!.shopEconomy.balance);
   expect(reserved!.adventurers[0].gold).toBe(100);
   expect(reserved!.events.filter(event=>event.type==="sale")).toHaveLength(0);

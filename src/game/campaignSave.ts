@@ -455,7 +455,8 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     const event = object(value, path, ["id", "type", "day", "message"],
       ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
         ...(version >= 7 ? ["combatReplay"] : []),
-        ...(version >= 8 ? ["level7Replay"] : [])]);
+        ...(version >= 8 ? ["level7Replay"] : []),
+        ...(version >= 10 ? ["saleChannel"] : [])]);
     choice(event.type, eventTypes.filter((type) =>
       (version >= 5 || !type.startsWith("level6-")) &&
       (version >= 6 || (type !== "food-shortage" && type !== "found-food")) &&
@@ -499,6 +500,10 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     }
     if (event.type === "sale") {
       allowed.push("revenue");
+      if (version >= 10 && event.saleChannel !== undefined) {
+        allowed.push("saleChannel");
+        choice(event.saleChannel,["manual","reserved"],path+".saleChannel");
+      }
       const item = ITEMS.find((entry) => entry.id === event.itemId)!;
       if (event.revenue !== item.salePrice * (event.quantity as number)) fail(`${path}.revenue`, "must match item price and quantity");
       const prefix = `day-${eventDay}:${event.adventurerId}:sale:`;
@@ -511,6 +516,17 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       if (!allowed.includes(key)) fail(`${path}.${key}`, "is not valid for this event type");
     }
   });
+  if(version >= 10) {
+    const manualPaid=new Set(array(state.events,"payload.events")
+      .filter(value=>(value as RecordValue).type==="sale" &&
+        (value as RecordValue).saleChannel==="manual" &&
+        (value as RecordValue).day===day)
+      .map(value=>(value as RecordValue).adventurerId));
+    for(const cart of array(state.shopCarts,"payload.shopCarts")){
+      if(manualPaid.has((cart as RecordValue).heroId))
+        fail("payload.shopCarts","cannot reserve goods for a customer already paid today");
+    }
+  }
 }
 
 export function createSave(state: GameState): SaveEnvelope {

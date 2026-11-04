@@ -25,6 +25,7 @@ export interface CheckoutResult {
 function paidToday(state: GameState, heroId: string): boolean {
   return state.events.some(event =>
     event.day === state.day && event.type === "sale" &&
+    event.saleChannel === "manual" &&
     event.adventurerId === heroId);
 }
 
@@ -121,6 +122,7 @@ export function checkoutCustomer(
     events.push({
       id: "day-" + state.day + ":" + hero.id + ":sale:" + slot.id,
       type: "sale",
+      saleChannel: "manual",
       day: state.day,
       adventurerId: hero.id,
       itemId: item.id,

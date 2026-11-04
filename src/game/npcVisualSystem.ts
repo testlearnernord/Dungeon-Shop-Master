@@ -255,14 +255,18 @@ export class NpcVisualSystem {
     this.onPickUp=onPickUp;
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
     for(const npc of this.npcs.values()){
-      if(npc.visitor.status!=="at-shop"){
+      const isShopping=npc.visitor.status==="at-shop";
+      const held=isShopping?(cartByHero.get(npc.visitor.id)?.lines??[]):[];
+      const changed=this.syncCarriedProducts(npc,held);
+      // A departing visitor has just paid by the confirmed Day Tick. Clear
+      // the unpaid basket immediately, and show their updated true inventory.
+      if(!isShopping){
+        if(changed)paintIdentity(npc,this.portraits);
         if(npc.phase==="leaving"&&npc.root.metadata.shoppingPhase==="blocked-exit")
           this.beginLeaving(npc);
         continue;
       }
       const plan=plans.get(npc.visitor.id)??null;
-      const held=cartByHero.get(npc.visitor.id)?.lines??[];
-      this.syncCarriedProducts(npc,held);
       const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,held]);
       if(key===npc.intentKey)continue;
       npc.intent=plan;
@@ -282,9 +286,9 @@ export class NpcVisualSystem {
    */
   private syncCarriedProducts(
     npc:NpcVisual,lines:readonly ShoppingInterest[],
-  ):void {
+  ):boolean {
     const key=JSON.stringify(lines);
-    if(key===npc.heldKey)return;
+    if(key===npc.heldKey)return false;
     for(const mesh of npc.heldMeshes){
       const mat=mesh.material;
       mesh.dispose();
@@ -321,6 +325,7 @@ export class NpcVisualSystem {
     npc.root.metadata.cartPaid=false;
     npc.root.metadata.cartItemIds=lines.map(line=>line.itemId);
     npc.root.metadata.carriedMeshes=npc.heldMeshes.length;
+    return true;
   }
 
   /** Cosmetic, transient feedback for already-booked purchases. Never writes to GameStore. */
@@ -383,7 +388,8 @@ export class NpcVisualSystem {
           // Commit a reservation only at the shelf, after the inspection pause.
           // Store notifications synchronously re-plan remaining shopping needs.
           if(item&&this.onPickUp?.(npc.visitor.id,item.slotId)){
-            npc.root.metadata.shoppingPhase="item-picked-up";
+            // Store notifications synchronously update cart meshes and route
+            // planning. Do not overwrite their fresh phase metadata here.
           }else{
             npc.targetIndex++;
             this.beginBrowsing(npc);

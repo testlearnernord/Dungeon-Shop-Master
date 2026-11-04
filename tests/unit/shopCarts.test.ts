@@ -162,3 +162,52 @@ test("GameStore emits one update per real pickup and preserves carts over export
   assert.equal(store.state.shopCarts.length,0);
   assert.equal(notifications,2);
 });
+
+test("Copilot regression: previous day's reserved receipt never blocks another shop visit",()=>{
+  const state=customers();
+  const hero=state.adventurers[0];
+  const first=forecastShoppingIntents(state).get(hero.id)!.items[0];
+  const reserved=pickUpShopItem(state,hero.id,first.slotId).state;
+  const day2=advanceDay(reserved).state;
+  const receipt=day2.events.find(event=>event.type==="sale"&&
+    event.saleChannel==="reserved"&&event.adventurerId===hero.id);
+  assert(receipt);
+  assert.equal(receipt.day,2);
+  // Simulate a subsequent shop visit with empty supplies and fresh stock.
+  const visiting={...day2,adventurers:day2.adventurers.map(h=>h.id===hero.id
+    ? {...h,status:"at-shop" as const,floor:5 as const,
+      inventory:{...h.inventory,food:0},shopStayDays:0}
+    :h)};
+  const slot=visiting.shopEconomy.slots.find(x=>x.id===first.slotId)!;
+  const stocked={...visiting,shopEconomy:{...visiting.shopEconomy,
+    slots:visiting.shopEconomy.slots.map(x=>x.id===first.slotId?
+      {...x,itemId:"bread" as const,quantity:Math.max(2,slot.quantity)}:x)}};
+  const next=forecastShoppingIntents(stocked).get(hero.id);
+  assert(next?.items.some(line=>line.itemId==="bread"),
+    "Day 2 shop forecasts should not exclude the previous checkout at start of Day 2");
+  const pick=pickUpShopItem(stocked,hero.id,first.slotId);
+  assert.notStrictEqual(pick.state,stocked);
+});
+test("Copilot regression: imported cart cannot also have a manual same-day receipt",()=>{
+  const state=customers();
+  const hero=state.adventurers[0];
+  const interest=forecastShoppingIntents(state).get(hero.id)!.items[0];
+  const picked=pickUpShopItem(state,hero.id,interest.slotId).state;
+  const forged={
+    ...picked,
+    events:[...picked.events,{
+      id:"day-"+state.day+":"+hero.id+":sale:"+interest.slotId,
+      day:state.day,
+      adventurerId:hero.id,
+      type:"sale" as const,
+      saleChannel:"manual" as const,
+      itemId:interest.itemId,quantity:interest.quantity,
+      revenue:interest.subtotal,message:"Duplicated payment",
+    }],
+  };
+  // construct the envelope without createSave (that should also reject it)
+  const envelope=structuredClone(createSave(picked)) as any;
+  envelope.payload.events=forged.events;
+  assert.throws(()=>parseSave(JSON.stringify(envelope)),/shopCarts.*already paid/);
+  assert.throws(()=>createSave(forged),/shopCarts.*already paid/);
+});

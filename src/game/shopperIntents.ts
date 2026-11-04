@@ -21,10 +21,14 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
   // Treat unpaid carried items as a virtual part of their buyer's inventory
   // and budget, so the next forecast cannot sell the same need or gold twice.
   // This projection NEVER changes the authoritative hero or shop inventory.
+  const paidHeroIds=new Set(state.events.filter(event=>
+    event.type==="sale" && event.saleChannel==="manual" &&
+    event.day===state.day && event.adventurerId)
+    .map(event=>event.adventurerId!));
+  const cartsByHero=new Map(state.shopCarts.map(cart=>[cart.heroId,cart]));
   const virtualHeroes = state.adventurers.map(hero => {
-    const cart = state.shopCarts.find(entry => entry.heroId === hero.id);
-    const paid = state.events.some(event => event.type === "sale" &&
-      event.day === state.day && event.adventurerId === hero.id);
+    const cart = cartsByHero.get(hero.id);
+    const paid = paidHeroIds.has(hero.id);
     if (paid) return { ...hero, status: "returning" as const,
       floor: 4 as const, shopStayDays: 0 };
     if (!cart) return hero;
@@ -64,8 +68,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
   const results=new Map<string,ShoppingIntent>();
   for(const hero of state.adventurers){
     if(hero.status!=="at-shop"||hero.health<=0)continue;
-    if(state.events.some(event => event.day===state.day &&
-      event.type==="sale" && event.adventurerId===hero.id))continue;
+    if(paidHeroIds.has(hero.id))continue;
     const items=byHero.get(hero.id)??[];
     let reason:ShoppingReason="interested";
     if(!items.length){
