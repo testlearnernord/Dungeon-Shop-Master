@@ -1,6 +1,8 @@
 import { ECONOMY, ITEMS, createEconomy } from "./economy.ts";
 import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
+import { emptyLevel7World, LEVEL7_STEP_BUDGET } from "./level7Exploration.ts";
+import { generateDungeonLayout, tileAt } from "./dungeonLayout.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -63,16 +65,191 @@ const eventTypes = [
   "influx", "sale", "ate", "healed", "starvation", "rescue",
   "level6-departure", "level6-combat", "level6-return",
   "food-shortage", "found-food",
+  "level7-departure", "level7-exploration",
 ] as const;
+
+
+/** Strict, bounded validation of the persisted world and read-only expedition records. */
+function validNumber(value: unknown, path: string, low: number, high: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < low || value > high)
+    fail(path,"must be a finite number within bounds");
+  return value as number;
+}
+function validateLevel7World(
+  raw: unknown, path: string, campaignSeed: number, heroIds: Set<string | number>,
+): void {
+  const world=object(raw,path,["resolvedFeatureIds","heroes"]);
+  const map=generateDungeonLayout(campaignSeed,7);
+  const knownFeatures=new Set(map.features.map(f=>f.id));
+  const resolved=new Set<string | number>();
+  const entries=array(world.resolvedFeatureIds,path+".resolvedFeatureIds");
+  if(entries.length>map.features.length)fail(path+".resolvedFeatureIds","is oversized");
+  entries.forEach((value,i)=>{
+    const id=text(value,path+".resolvedFeatureIds["+i+"]");
+    if(!knownFeatures.has(id))fail(path+".resolvedFeatureIds["+i+"]","must refer to a real feature");
+    unique(id,resolved,path+".resolvedFeatureIds["+i+"]");
+  });
+  const progress=array(world.heroes,path+".heroes");
+  if(progress.length>100)fail(path+".heroes","is oversized");
+  const seenHeroes=new Set<string | number>();
+  progress.forEach((value,i)=>{
+    const item=path+".heroes["+i+"]",hero=object(value,item,["heroId","x","z","visited"]);
+    const id=text(hero.heroId,item+".heroId");
+    if(!heroIds.has(id))fail(item+".heroId","is unknown");
+    unique(id,seenHeroes,item+".heroId");
+    const x=integer(hero.x,item+".x",0,map.width-1);
+    const z=integer(hero.z,item+".z",0,map.height-1);
+    if(tileAt(map,x,z)==="wall")fail(item,"must be on a walkable tile");
+    const visited=array(hero.visited,item+".visited");
+    if(visited.length<1||visited.length>map.width*map.height)
+      fail(item+".visited","must have a bounded route");
+    const visitedIds=new Set<string | number>();
+    visited.forEach((value,n)=>{
+      const idx=integer(value,item+".visited["+n+"]",0,map.tiles.length-1);
+      if(map.tiles[idx]==="wall")fail(item+".visited["+n+"]","cannot include a wall");
+      unique(idx,visitedIds,item+".visited["+n+"]");
+    });
+    if(!visitedIds.has(z*map.width+x))fail(item+".visited","must include current location");
+    if(!visitedIds.has(map.entrance.z*map.width+map.entrance.x))
+      fail(item+".visited","must include dungeon entrance");
+  });
+}
+function validateLevel7Replay(
+  raw: unknown, path: string, heroId: string, day: number, campaignSeed: number,
+): void {
+  const record=object(raw,path,[
+    "version","day","heroId","floor","appearance","steps","encounters","outcome",
+  ]);
+  if(record.version!==1||record.floor!==7||record.day!==day||record.heroId!==heroId)
+    fail(path,"must match event day, hero and Level 7");
+  choice(record.outcome,["exploring","retreat","death","completed"],path+".outcome");
+  const appearance=object(record.appearance,path+".appearance",["role","equipment"]);
+  choice(appearance.role,["tank","DPS","healer"],path+".appearance.role");
+  const gear=object(appearance.equipment,path+".appearance.equipment",["weapon","armor"]);
+  if(gear.weapon!==null && gear.weapon!=="Iron Sword")fail(path+".appearance.equipment.weapon","is not recognized");
+  if(gear.armor!==null && gear.armor!=="Leather Vest")fail(path+".appearance.equipment.armor","is not recognized");
+  const map=generateDungeonLayout(campaignSeed,7);
+  const features=new Map(map.features.map(feature=>[feature.id,feature]));
+  const steps=array(record.steps,path+".steps");
+  if(steps.length<1||steps.length>1+LEVEL7_STEP_BUDGET*3+3)
+    fail(path+".steps","must have a bounded length");
+  let lastT=-1,previous:{x:number;z:number}|null=null;
+  steps.forEach((value,i)=>{
+    const item=path+".steps["+i+"]";
+    const step=object(value,item,["x","z","t","action","hp"],["featureId"]);
+    const x=integer(step.x,item+".x",0,map.width-1),z=integer(step.z,item+".z",0,map.height-1);
+    const t=validNumber(step.t,item+".t",0,LEVEL7_STEP_BUDGET+1);
+    if(t<lastT)fail(item+".t","must be chronological");lastT=t;
+    if(tileAt(map,x,z)==="wall")fail(item,"cannot occur on a wall");
+    choice(step.action,["enter","walk","treasure","trap","combat",
+      "defeat-monster","retreat","death","complete"],item+".action");
+    integer(step.hp,item+".hp",0,100000);
+    if(i===0 && step.action!=="enter")fail(item+".action","must begin at a recorded position");
+    if(previous){
+      const d=Math.abs(previous.x-x)+Math.abs(previous.z-z);
+      if(step.action==="walk"?d!==1:d!==0)
+        fail(item,"must reflect a real adjacent walk or an action at the current tile");
+    }
+    if(step.featureId!==undefined){
+      const feature=features.get(text(step.featureId,item+".featureId"));
+      if(!feature||feature.x!==x||feature.z!==z)fail(item+".featureId","must match this location");
+    }
+    previous={x,z};
+  });
+  const encounters=array(record.encounters,path+".encounters");
+  if(encounters.length>1)fail(path+".encounters","must contain at most one encounter per day");
+  encounters.forEach((value,i)=>{
+    const item=path+".encounters["+i+"]";
+    const encounter=object(value,item,["featureId","x","z","combat"]);
+    const feature=features.get(text(encounter.featureId,item+".featureId"));
+    if(!feature||feature.kind!=="monster")fail(item+".featureId","must refer to a monster");
+    if(encounter.x!==feature.x||encounter.z!==feature.z)
+      fail(item,"must match monster spawn position");
+    const combat=object(encounter.combat,item+".combat",[
+      "version","actors","bounds","obstacles","frames","cues","outcome",
+    ]);
+    if(combat.version!==1)fail(item+".combat.version","is incompatible");
+    choice(combat.outcome,["heroes","monsters","draw"],item+".combat.outcome");
+    const actors=array(combat.actors,item+".combat.actors");
+    if(actors.length!==2)fail(item+".combat.actors","must represent the hero and one monster");
+    const actorIds=new Set<string | number>();
+    actors.forEach((rawActor,j)=>{
+      const a=item+".combat.actors["+j+"]",actor=object(rawActor,a,[
+        "id","team","role","style","x","z","hp","maxHp","damage",
+        "armor","speed","reach",
+      ],["radius","healCharges"]);
+      const id=text(actor.id,a+".id");unique(id,actorIds,a+".id");
+      choice(actor.team,["heroes","monsters"],a+".team");
+      choice(actor.role,["tank","DPS","healer","monster"],a+".role");
+      choice(actor.style,["melee","ranged"],a+".style");
+      for(const key of ["x","z","hp","maxHp","damage","armor","speed","reach"])
+        validNumber(actor[key],a+"."+key,-10000,100000);
+      if(actor.radius!==undefined)validNumber(actor.radius,a+".radius",0.1,3);
+      if(actor.healCharges!==undefined)integer(actor.healCharges,a+".healCharges",0,10);
+    });
+    if(!actorIds.has(heroId)||!actorIds.has(feature.id))
+      fail(item+".combat.actors","must contain the real hero and spawn");
+    const bounds=object(combat.bounds,item+".combat.bounds",["minX","maxX","minZ","maxZ"]);
+    for(const key of ["minX","maxX","minZ","maxZ"])
+      validNumber(bounds[key],item+".combat.bounds."+key,-10000,10000);
+    const obstacles=array(combat.obstacles,item+".combat.obstacles");
+    if(obstacles.length>50)fail(item+".combat.obstacles","is oversized");
+    obstacles.forEach((o,j)=>{
+      const ob=object(o,item+".combat.obstacles["+j+"]",["id","minX","maxX","minZ","maxZ"]);
+      text(ob.id,item+".combat.obstacles["+j+"].id");
+    });
+    const frames=array(combat.frames,item+".combat.frames");
+    if(frames.length<1||frames.length>LEVEL7_STEP_BUDGET*20)
+      fail(item+".combat.frames","must contain bounded frames");
+    let lastFrame=-1;
+    frames.forEach((f,j)=>{
+      const fp=item+".combat.frames["+j+"]";
+      const frame=object(f,fp,["t","actors","projectiles"]);
+      const t=validNumber(frame.t,fp+".t",0,26);
+      if(t<lastFrame)fail(fp+".t","must be chronological");lastFrame=t;
+      const snapshots=array(frame.actors,fp+".actors");
+      if(snapshots.length!==2)fail(fp+".actors","must match combat actors");
+      snapshots.forEach((a,k)=>{
+        const ap=fp+".actors["+k+"]";
+        const snapshot=object(a,ap,["id","x","z","hp","stamina","heading","phase"]);
+        if(!actorIds.has(snapshot.id as string))fail(ap+".id","must match a combat actor");
+        for(const key of ["x","z","hp","stamina","heading"])
+          validNumber(snapshot[key],ap+"."+key,-10000,100000);
+        choice(snapshot.phase,["move","windup","strike","recover","cast",
+          "heal","roll","parry","hurt","dead"],ap+".phase");
+      });
+      const projectiles=array(frame.projectiles,fp+".projectiles");
+      if(projectiles.length>30)fail(fp+".projectiles","is oversized");
+      projectiles.forEach((p,k)=>{
+        const pp=fp+".projectiles["+k+"]",proj=object(p,pp,["ownerId","x","z"]);
+        if(!actorIds.has(proj.ownerId as string))fail(pp+".ownerId","is unknown");
+        validNumber(proj.x,pp+".x",-10000,10000);validNumber(proj.z,pp+".z",-10000,10000);
+      });
+    });
+    const cues=array(combat.cues,item+".combat.cues");
+    if(cues.length>2000)fail(item+".combat.cues","is oversized");
+    cues.forEach((c,j)=>{
+      const cp=item+".combat.cues["+j+"]",cue=object(c,cp,["t","actorId","kind"],["targetId","amount"]);
+      if(!actorIds.has(cue.actorId as string))fail(cp+".actorId","is unknown");
+      if(cue.targetId!==undefined && !actorIds.has(cue.targetId as string))
+        fail(cp+".targetId","is unknown");
+      choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
+        "parry","heal","death","blocked"],cp+".kind");
+      validNumber(cue.t,cp+".t",0,26);
+      if(cue.amount!==undefined)validNumber(cue.amount,cp+".amount",0,100000);
+    });
+  });
+}
 
 function validateState(value: unknown, version = SIMULATION_VERSION): asserts value is GameState {
   const state = object(value, "payload", [
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
+    ...(version >= 8 ? ["level7World"] : []),
   ]);
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
   if (state.simulationVersion !== version) fail("payload.simulationVersion", "is incompatible");
-  integer(state.seed, "payload.seed", 0, 0xffffffff);
+  const campaignSeed = integer(state.seed, "payload.seed", 0, 0xffffffff);
   integer(state.rngState, "payload.rngState", 0, 0xffffffff);
   const population = object(state.populationConfig, "payload.populationConfig", ["dailyInflux", "maxActive"]);
   integer(population.dailyInflux, "payload.populationConfig.dailyInflux");
@@ -112,7 +289,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     }
     const inventory = object(hero.inventory, `${path}.inventory`, ["loot", "food", "healing"]);
     for (const key of Object.keys(inventory)) integer(inventory[key], `${path}.inventory.${key}`);
-    const floor = integer(hero.floor, `${path}.floor`, 1, version < 5 ? 5 : 6);
+    const floor = integer(hero.floor, `${path}.floor`, 1, version < 5 ? 5 : version >= 8 ? 7 : 6);
     choice(hero.status, version < 5
       ? ["exploring", "traveling", "at-shop", "returning", "dead"]
       : ["exploring", "traveling", "at-shop", "returning", "expedition", "dead"], `${path}.status`);
@@ -122,7 +299,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       if ((hero.status === "at-shop" && floor !== 5) ||
           (hero.status === "exploring" && floor > 4) ||
           ((hero.status === "traveling" || hero.status === "returning") && floor !== 4) ||
-          (hero.status === "expedition" && floor !== 6)) {
+          (hero.status === "expedition" && floor !== 6 && !(version >= 8 && floor === 7))) {
         fail(`${path}.floor`, "must agree with status");
       }
     }
@@ -137,6 +314,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     }
   });
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
+  if(version >= 8) validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
 
   const economy = object(state.shopEconomy, "payload.shopEconomy", [
     "balance", "bag", "slots", "dailySales", "lastRescueDay",
@@ -174,7 +352,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
   array(state.dungeonFloors, "payload.dungeonFloors").forEach((value, index) => {
     const path = `payload.dungeonFloors[${index}]`;
     const floor = object(value, path, ["floor", "cleared"]);
-    unique(integer(floor.floor, `${path}.floor`, 1, version < 5 ? 5 : 6), floors, `${path}.floor`);
+    unique(integer(floor.floor, `${path}.floor`, 1, version < 5 ? 5 : version >= 8 ? 7 : 6), floors, `${path}.floor`);
     if (typeof floor.cleared !== "boolean") fail(`${path}.cleared`, "must be a boolean");
   });
 
@@ -184,10 +362,12 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
       ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
-        ...(version >= 7 ? ["combatReplay"] : [])]);
+        ...(version >= 7 ? ["combatReplay"] : []),
+        ...(version >= 8 ? ["level7Replay"] : [])]);
     choice(event.type, eventTypes.filter((type) =>
       (version >= 5 || !type.startsWith("level6-")) &&
-      (version >= 6 || (type !== "food-shortage" && type !== "found-food"))), `${path}.type`);
+      (version >= 6 || (type !== "food-shortage" && type !== "found-food")) &&
+      (version >= 8 || !type.startsWith("level7-"))), `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
     lastDay = eventDay;
     text(event.message, `${path}.message`);
@@ -211,6 +391,11 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
           event.adventurerId as string, eventDay,
           event.combatOutcome as "victory" | "retreat" | "death");
       }
+    }
+    if(event.type === "level7-exploration" && event.level7Replay !== undefined) {
+      allowed.push("level7Replay");
+      validateLevel7Replay(event.level7Replay,`${path}.level7Replay`,
+        event.adventurerId as string,eventDay,campaignSeed);
     }
     if (["sale", "ate", "healed", "rescue", "found-food"].includes(event.type as string)) {
       allowed.push("itemId", "quantity");
@@ -257,7 +442,8 @@ export function parseSave(text: string): GameState {
   const envelope = object(value, "envelope", ["schemaVersion", "simulationVersion", "savedAt", "payload"]);
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
   const version = envelope.simulationVersion;
-  if (version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== SIMULATION_VERSION) {
+  if (version !== 3 && version !== 4 && version !== 5 && version !== 6 &&
+      version !== 7 && version !== SIMULATION_VERSION) {
     fail("simulationVersion", "is incompatible; no migrations are available");
   }
   const savedAt = textTimestamp(envelope.savedAt);
@@ -268,8 +454,11 @@ export function parseSave(text: string): GameState {
   return {
     ...envelope.payload,
     simulationVersion: SIMULATION_VERSION,
-    shopEconomy: { ...envelope.payload.shopEconomy,
-      bag: { ...envelope.payload.shopEconomy.bag, "iron-sword": 0, "leather-vest": 0 } },
+    level7World: emptyLevel7World(),
+    shopEconomy: version < 7
+      ? { ...envelope.payload.shopEconomy,
+        bag: { ...envelope.payload.shopEconomy.bag, "iron-sword": 0, "leather-vest": 0 } }
+      : envelope.payload.shopEconomy,
     adventurers: envelope.payload.adventurers.map((hero) => ({
       ...hero,
       level6Permit: version === 3 ? false : hero.level6Permit,
