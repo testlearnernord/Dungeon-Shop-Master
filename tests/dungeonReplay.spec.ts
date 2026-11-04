@@ -30,18 +30,26 @@ test("Level 7 saved expedition is replayed with personal fog, seeking, camera an
   await expect(page.locator("#dungeon-playback-controls")).toBeVisible();
   await expect(page.locator("#dungeon-minimap-heading")).toContainText("Fog of War");
   await expect(page.locator("#dungeon-mode-description")).toContainText("Recorded expedition");
+  await expect(select).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#dungeon-reset-camera")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#dungeon-play")).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(page.locator("#dungeon-play")).toContainText("Play");
   const seek=async(value:number)=>page.locator("#dungeon-timeline").evaluate(
     (node,number)=>{const slider=node as HTMLInputElement;slider.value=String(number);
       slider.dispatchEvent(new Event("input",{bubbles:true}));},value);
   const inspect=()=>page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonPlayback());
-  await page.locator("#dungeon-play").click();
-  await expect(page.locator("#dungeon-play")).toContainText("Play");
   await seek(0);
   const start=await inspect();
   expect(start.replayHero).toBe(true);
   expect(start.hiddenTiles).toBeGreaterThan(500);
   expect(start.shownTiles).toBeGreaterThan(0);
+  expect(start.hiddenTorches).toBeGreaterThan(0);
+  expect(start.disabledTorchLights).toBeGreaterThan(0);
   await expect(page.locator("#dungeon-playback-status")).not.toContainText("Expedition ended");
   await seek(1000);
   await expect(page.locator("#dungeon-playback-status")).toContainText("Expedition ended");
@@ -52,6 +60,7 @@ test("Level 7 saved expedition is replayed with personal fog, seeking, camera an
   expect(later.hiddenTiles).toBeLessThan(start.hiddenTiles);
   await page.locator("#dungeon-speed").selectOption("4");
   await page.locator("#dungeon-restart").click();
+  await page.locator("#renderCanvas").focus();
   await page.keyboard.press("Tab");
   await expect(page.locator("#dungeon-focus")).toContainText("monster");
   await page.keyboard.press("Tab");
@@ -61,6 +70,8 @@ test("Level 7 saved expedition is replayed with personal fog, seeking, camera an
   await expect(page.locator("#dungeon-minimap-heading")).toContainText("development preview");
   const full=await inspect();
   expect(full.hiddenTiles).toBe(0);
+  expect(full.hiddenTorches).toBe(0);
+  expect(full.disabledTorchLights).toBe(0);
   expect(full.replayHero).toBe(false);
   await select.selectOption(selected);
   await expect(page.locator("#dungeon-playback-controls")).toBeVisible();

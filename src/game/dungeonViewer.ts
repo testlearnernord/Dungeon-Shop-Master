@@ -11,7 +11,7 @@ import { Scene } from "@babylonjs/core/scene";
 import type { GameStore } from "./gameStore.ts";
 import { createHeroVisual } from "./heroVisual.ts";
 import type { HeroVisual } from "./heroVisual.ts";
-import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh } from "./dungeonReplayScene.ts";
+import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type DungeonRoomDecoration } from "./dungeonReplayScene.ts";
 import type { Level7Replay } from "./level7Exploration.ts";
 import {
   generateDungeonLayout, tileAt, type DungeonLayout,
@@ -24,6 +24,9 @@ const MONSTER_COLOR = "#ad5b42";
 const getWorld = (map: DungeonLayout, p: DungeonPoint) => new Vector3(
   (p.x-(map.width-1)/2)*TILE_SIZE, 0, (p.z-(map.height-1)/2)*TILE_SIZE,
 );
+const isInteractiveTarget=(target:EventTarget|null):boolean=>
+  target instanceof Element&&(!!target.closest("#music-panel, #dungeon-hud")||
+    target.matches("button,input,select,textarea,a[href],[contenteditable='true']"));
 
 /**
  * A strictly read-only map inspection scene. No fake AI/replay, no merchant
@@ -92,9 +95,7 @@ export class DungeonViewer {
         }
         return;
       }
-      if (event.target instanceof Element &&
-          (event.target.closest("#music-panel") ||
-            event.target.matches("input,select,textarea"))) return;
+      if(isInteractiveTarget(event.target))return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.code === "KeyG" || event.code === "Escape") this.close();
@@ -116,7 +117,7 @@ export class DungeonViewer {
     }, true);
     window.addEventListener("keyup", event => {
       if (!this.active) return;
-      if (event.target instanceof Element && event.target.closest("#music-panel")) return;
+      if(isInteractiveTarget(event.target))return;
       event.preventDefault(); event.stopImmediatePropagation();
       this.keys.delete(event.code);
     }, true);
@@ -146,6 +147,7 @@ export class DungeonViewer {
     this.layout = generateDungeonLayout(this.store.state.seed,7);
     this.createScene(this.layout);
     this.refreshReplaySelector();
+    this.replaySelector.focus();
     this.sceneChanged(true);
   }
 
@@ -222,6 +224,7 @@ export class DungeonViewer {
     roomPrefab.material=roomStone;
     const replayTiles:DungeonTileMesh[]=[];
     const replayMarkers:DungeonMarkerMesh[]=[];
+    const replayDecorations:DungeonRoomDecoration[]=[];
     // Keep source geometry enabled off-map: Babylon instances depend on
     // their source mesh remaining visible even when individual tiles are fogged.
     wallPrefab.position.y=-900;
@@ -260,6 +263,7 @@ export class DungeonViewer {
           {diameter:0.45,segments:8},scene);
         ember.position.set(pos.x,1.2,pos.z);
         ember.material=brazier;
+        replayDecorations.push({x:room.x,z:room.z,mesh:ember,light});
       }
     });
 
@@ -317,7 +321,7 @@ export class DungeonViewer {
       layout.features.filter(f=>f.kind==="treasure").length+" treasures · "+
       layout.features.filter(f=>f.kind==="trap").length+" traps";
     this.replayScene=new DungeonReplayScene(scene,camera,layout,
-      replayTiles,replayMarkers,reference,this.minimap);
+      replayTiles,replayMarkers,replayDecorations,reference,this.minimap);
     this.drawMinimap(layout);
     this.centerOn(0);
   }

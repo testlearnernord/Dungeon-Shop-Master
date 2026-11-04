@@ -1,5 +1,6 @@
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
+import type { Light } from "@babylonjs/core/Lights/light";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
@@ -27,6 +28,10 @@ export interface DungeonMarkerMesh {
   readonly x:number;readonly z:number;readonly id:string;
   readonly kind:string;readonly mesh:AbstractMesh;
 }
+export interface DungeonRoomDecoration {
+  readonly x:number;readonly z:number;
+  readonly mesh:AbstractMesh;readonly light:Light;
+}
 
 /**
  * One-way renderer for persisted movement/fight frames and one hero's vision.
@@ -49,6 +54,7 @@ export class DungeonReplayScene {
     private readonly layout:DungeonLayout,
     private readonly tiles:readonly DungeonTileMesh[],
     private readonly markers:readonly DungeonMarkerMesh[],
+    private readonly decorations:readonly DungeonRoomDecoration[],
     heroPreview:HeroVisual|null,
     minimap:HTMLCanvasElement,
   ){
@@ -99,10 +105,10 @@ export class DungeonReplayScene {
     }else{
       for(const tile of this.tiles)tile.mesh.isVisible=true;
       for(const marker of this.markers)marker.mesh.setEnabled(true);
-      this.layout.rooms.forEach((_,i)=>{
-        this.scene.getLightByName("dungeon-torchlight-"+i)?.setEnabled(true);
-        this.scene.getMeshByName("dungeon-torch-"+i)?.setEnabled(true);
-      });
+      for(const decoration of this.decorations){
+        decoration.light.setEnabled(true);
+        decoration.mesh.setEnabled(true);
+      }
       this.drawDevelopmentMap();
     }
   }
@@ -130,9 +136,9 @@ export class DungeonReplayScene {
 
     if(this.enemy)this.enemy.setEnabled(!!snapshot.encounter&&!!frame);
     if(snapshot.encounter&&frame&&this.enemy){
+      const origin=toWorld(this.layout,snapshot.encounter);
       const monster=frame.actors.find(a=>a.id!==this.replay!.heroId);
       if(monster){
-        const origin=toWorld(this.layout,snapshot.encounter);
         this.enemy.position.set(origin.x+monster.x,0.90,origin.z+monster.z);
         this.enemy.rotation.y=monster.heading;
         this.enemy.scaling.setAll(monster.hp>0?1:0.45);
@@ -155,7 +161,10 @@ export class DungeonReplayScene {
     const visible=dungeonVisibleTiles(this.layout,snapshot.known);
     const key=[...snapshot.known].sort((a,b)=>a-b).join(",")+
       "|"+[...snapshot.resolved].sort().join(",")+"|"+(snapshot.encounter?.featureId??"");
-    if(key===this.lastVisibility)return;
+    if(key===this.lastVisibility){
+      this.drawFogMap(snapshot,visible);
+      return;
+    }
     this.lastVisibility=key;
     for(const tile of this.tiles) {
       tile.mesh.isVisible=visible.has(tile.z*this.layout.width+tile.x);
@@ -165,11 +174,11 @@ export class DungeonReplayScene {
       marker.mesh.setEnabled(visible.has(id)&&!snapshot.resolved.has(marker.id)&&
         snapshot.encounter?.featureId!==marker.id);
     }
-    this.layout.rooms.forEach((room,i)=>{
-      const lit=visible.has(room.z*this.layout.width+room.x);
-      this.scene.getLightByName("dungeon-torchlight-"+i)?.setEnabled(lit);
-      this.scene.getMeshByName("dungeon-torch-"+i)?.setEnabled(lit);
-    });
+    for(const decoration of this.decorations){
+      const lit=visible.has(decoration.z*this.layout.width+decoration.x);
+      decoration.light.setEnabled(lit);
+      decoration.mesh.setEnabled(lit);
+    }
     this.drawFogMap(snapshot,visible);
   }
 
