@@ -1,6 +1,6 @@
 import type { AdventurerState } from "./adventurers.ts";
 import {
-  dungeonNeighbors, dungeonShortestPath, generateDungeonLayout, tileAt,
+  dungeonNeighbors, generateDungeonLayout, tileAt,
   type DungeonFeature, type DungeonLayout, type DungeonPoint,
 } from "./dungeonLayout.ts";
 import { resolveGroupCombat, type CombatantSpec, type GroupCombatReplay } from "./groupCombat.ts";
@@ -80,22 +80,32 @@ export function chooseLevel7Step(
   const adjacent = dungeonNeighbors(layout,current).sort(byPoint);
   const newNeighbor = adjacent.find(p=>!known.has(tileIndex(layout,p)));
   if(newNeighbor)return newNeighbor;
-  const frontier: DungeonPoint[] = [];
-  for(const idx of known){
-    const p={x:idx%layout.width,z:Math.floor(idx/layout.width)};
-    if(dungeonNeighbors(layout,p).some(n=>!known.has(tileIndex(layout,n))))frontier.push(p);
+  // One BFS over visited tiles, not a shortest-path search for each frontier.
+  // The first reached frontier is the nearest known branch needing exploration.
+  const start=tileIndex(layout,current);
+  const queue:[number]=[start];
+  const parent=new Map<number,number>([[start,start]]);
+  for(let i=0;i<queue.length;i++){
+    const idx=queue[i],here={x:idx%layout.width,z:Math.floor(idx/layout.width)};
+    const neighbors=dungeonNeighbors(layout,here).sort(byPoint);
+    if(idx!==start && neighbors.some(n=>!known.has(tileIndex(layout,n)))){
+      let toward=idx;
+      while(parent.get(toward)!==start)toward=parent.get(toward)!;
+      return {x:toward%layout.width,z:Math.floor(toward/layout.width)};
+    }
+    for(const next of neighbors){
+      const key=tileIndex(layout,next);
+      if(!known.has(key)||parent.has(key))continue;
+      parent.set(key,idx);
+      queue.push(key);
+    }
   }
-  let bestPath: DungeonPoint[] = [];
-  for(const target of frontier.sort(byPoint)){
-    const path = dungeonShortestPath(layout,current,target);
-    if(!path.length || path.some(p=>!known.has(tileIndex(layout,p))))continue;
-    if(!bestPath.length||path.length<bestPath.length)bestPath=path;
-  }
-  return bestPath.length>1?bestPath[1]:null;
+  return null;
 }
 
 function fightAgainst(
   hero: AdventurerState, monster: DungeonFeature, campaignSeed: number,
+  layout: DungeonLayout, approach: DungeonPoint,
 ): {hp:number;outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay} {
   const monsterRand=new SeededRandom(
     (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0);
@@ -106,7 +116,8 @@ function fightAgainst(
     {
       id:hero.id,team:"heroes",role:hero.role,
       style:hero.role==="healer"||hero.role==="DPS"&&!sword?"ranged":"melee",
-      x:-2,z:0,hp:hero.health,maxHp:hero.stats.maxHealth,
+      x:(approach.x-monster.x)*2.5,z:(approach.z-monster.z)*2.5,
+      hp:hero.health,maxHp:hero.stats.maxHealth,
       damage:6+Math.floor((hero.role==="healer"?hero.stats.intellect:
         hero.role==="DPS"?hero.stats.agility:hero.stats.strength)/2)+(sword?5:0),
       armor:armored?5:1,
@@ -116,17 +127,27 @@ function fightAgainst(
     },
     {
       id:monster.id,team:"monsters",role:"monster",style:"melee",
-      x:2,z:0,hp:monsterHp,maxHp:monsterHp,
+      x:0,z:0,hp:monsterHp,maxHp:monsterHp,
       damage:8+monsterRand.int(4),armor:monster.subtype==="skeleton"?3:1,
       speed:2.6,reach:1.6,
     },
   ];
+  // Translate the actual 7x7 dungeon cells around the spawn into physical
+  // wall collision. Coordinates remain local to the encounter marker so the
+  // later spectator can place the recorded actors back in the same chamber.
+  const obstacles=[];
+  for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){
+    if(tileAt(layout,monster.x+dx,monster.z+dz)!=="wall")continue;
+    const x=dx*2.5,z=dz*2.5;
+    obstacles.push({
+      id:"wall:"+dx+":"+dz,
+      minX:x-1.2,maxX:x+1.2,minZ:z-1.2,maxZ:z+1.2,
+    });
+  }
   const encounter=resolveGroupCombat({
-    actors:specs,
-    // Encounter coordinates are local to the room. The viewer will offset
-    // them to the actual dungeon tile when replaying this encounter.
-    bounds:{minX:-7,maxX:7,minZ:-6,maxZ:6},
-  }, LEVEL7_COMBAT_SECONDS);
+    actors:specs,obstacles,
+    bounds:{minX:-8.75,maxX:8.75,minZ:-8.75,maxZ:8.75},
+  },LEVEL7_COMBAT_SECONDS);
   const survivor=encounter.state.actors.find(a=>a.id===hero.id)!;
   return {
     hp:Math.max(0,Math.round(survivor.hp)),
@@ -179,6 +200,7 @@ export function simulateLevel7Day(
     // No teleporting through walls. Every actual movement occupies one edge.
     if(!dungeonNeighbors(layout,current).some(p=>p.x===next.x&&p.z===next.z))
       throw new Error("Level 7 navigation tried to cross a wall");
+    const previous=current;
     current=next;
     const idx=tileIndex(layout,current);
     if(!visited.has(idx)){visited.add(idx);orderedVisited.push(idx);}
@@ -199,7 +221,7 @@ export function simulateLevel7Day(
       steps.push({...current,t:t+0.1,action:"trap",featureId:feature.id,hp});
       if(hp===0){outcome="death";steps.push({...current,t:t+0.2,action:"death",hp});break;}
     }else {
-      const fight=fightAgainst({...hero,health:hp},feature,layout.seed);
+      const fight=fightAgainst({...hero,health:hp},feature,layout.seed,layout,previous);
       encounters.push({featureId:feature.id,...current,combat:fight.combat});
       hp=fight.hp;
       steps.push({...current,t:t+0.1,action:"combat",featureId:feature.id,hp});
