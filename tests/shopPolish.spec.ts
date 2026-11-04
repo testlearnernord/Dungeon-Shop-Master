@@ -4,6 +4,7 @@ test("shop fixtures hug the walls, walk is faster and Shift temporarily sprints"
   const errors:string[]=[];
   page.on("pageerror",err=>errors.push(err.message));
   await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
   const inspect=()=>page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectShopPolish());
   const before=await inspect();
@@ -15,6 +16,16 @@ test("shop fixtures hug the walls, walk is faster and Shift temporarily sprints"
   await expect.poll(async()=>(await inspect()).speed).toBe(0.52);
   await page.keyboard.up("Shift");
   await expect.poll(async()=>(await inspect()).speed).toBe(0.28);
+  // Holding either Shift must keep sprint active until both are released.
+  await page.evaluate(()=>{
+    window.dispatchEvent(new KeyboardEvent("keydown",{code:"ShiftLeft",bubbles:true}));
+    window.dispatchEvent(new KeyboardEvent("keydown",{code:"ShiftRight",bubbles:true}));
+    window.dispatchEvent(new KeyboardEvent("keyup",{code:"ShiftLeft",bubbles:true}));
+  });
+  await expect.poll(async()=>(await inspect()).speed).toBe(0.52);
+  await page.evaluate(()=>window.dispatchEvent(
+    new KeyboardEvent("keyup",{code:"ShiftRight",bubbles:true})));
+  await expect.poll(async()=>(await inspect()).speed).toBe(0.28);
   expect(errors).toEqual([]);
 });
 
@@ -22,6 +33,7 @@ test("bulk wholesale purchases, always-readable roster and QWERTZ confirmation",
   const errors:string[]=[];
   page.on("pageerror",err=>errors.push(err.message));
   await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
   await page.locator("#open-wholesale").click();
   await expect(page.locator("#wholesale")).toBeVisible();
   const bread=page.locator('.catalog-row').filter({hasText:"Waybread"});

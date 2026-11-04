@@ -9,14 +9,24 @@ export function createFirstPersonCamera(canvas: HTMLCanvasElement, scene: Scene)
   camera.attachControl(canvas, true);
   const walkSpeed = 0.28;
   const sprintSpeed = 0.52;
+  const shiftsHeld = new Set<string>();
   camera.speed = walkSpeed;
   window.addEventListener("keydown", event => {
-    if (event.code === "ShiftLeft" || event.code === "ShiftRight") camera.speed = sprintSpeed;
+    if (event.code === "ShiftLeft" || event.code === "ShiftRight") {
+      shiftsHeld.add(event.code);
+      camera.speed = sprintSpeed;
+    }
   });
   window.addEventListener("keyup", event => {
-    if (event.code === "ShiftLeft" || event.code === "ShiftRight") camera.speed = walkSpeed;
+    if (event.code === "ShiftLeft" || event.code === "ShiftRight") {
+      shiftsHeld.delete(event.code);
+      camera.speed = shiftsHeld.size ? sprintSpeed : walkSpeed;
+    }
   });
-  window.addEventListener("blur", () => { camera.speed = walkSpeed; });
+  window.addEventListener("blur", () => {
+    shiftsHeld.clear();
+    camera.speed = walkSpeed;
+  });
   camera.inertia = 0.72;
   camera.angularSensibility = 2700;
   camera.keysUp.push(87);
