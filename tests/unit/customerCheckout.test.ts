@@ -161,3 +161,35 @@ test("GameStore exposes a pure preview and commits only once after validation",(
   assert.strictEqual(store.state,now);
   assert.equal(notifies,1);
 });
+
+test("Copilot regression: a customer paid once cannot claim freshly restocked bread twice",()=>{
+  const state=shopState();
+  const people=state.adventurers.map((person,i)=>i<2?{
+    ...person,status:"at-shop" as const,floor:5 as const,
+    gold:100,inventory:{...person.inventory,food:0,healing:1},
+    health:person.stats.maxHealth,equipment:{weapon:null,armor:null},
+  }:person);
+  // Exactly one bread is available before the first transaction.
+  const scarce={...state,adventurers:people,shopEconomy:{
+    ...state.shopEconomy,slots:state.shopEconomy.slots.map(slot=>
+      slot.id==="shelf-1-slot-2"?{...slot,quantity:1}:slot),
+  }};
+  const first=quoteCustomerCheckout(scarce,people[0].id);
+  assert(first);
+  assert.equal(first.lines.find(line=>line.itemId==="bread")?.quantity,1);
+  const paid=checkoutCustomer(scarce,first).state;
+  assert.equal(paid.adventurers[0].inventory.food,1,
+    "Paid hero still needs another meal but cannot pay again this day");
+  assert.equal(quoteCustomerCheckout(paid,people[0].id),null);
+  const restocked=transferShelf(paid,"shelf-1-slot-2","bread","stock").state;
+  const second=quoteCustomerCheckout(restocked,people[1].id);
+  assert(second,"The unpaid buyer can request the newly stocked bread");
+  assert.equal(second.lines.find(line=>line.itemId==="bread")?.quantity,1);
+  const booked=checkoutCustomer(restocked,second);
+  assert.equal(booked.state.adventurers[1].inventory.food,1);
+  assert.equal(booked.state.adventurers[0].inventory.food,1);
+  assert.equal(booked.state.shopEconomy.slots.find(slot=>
+    slot.id==="shelf-1-slot-2")?.quantity,0);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(booked.state))),
+    booked.state);
+});

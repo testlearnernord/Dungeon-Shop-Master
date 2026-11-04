@@ -34,7 +34,17 @@ export function quoteCustomerCheckout(
   const hero = state.adventurers.find(person => person.id === heroId);
   if (!hero || hero.status !== "at-shop" || hero.health <= 0 ||
       paidToday(state, heroId)) return null;
-  const intent = forecastShoppingIntents(state).get(heroId);
+  // Manual checkout is at most once per hero/day. Remove already-paid
+  // customers from THIS projection so they cannot consume a competitor's
+  // available stock. The automatic next-day trade algorithm is unchanged.
+  const eligibleProjection: GameState = {
+    ...state,
+    adventurers: state.adventurers.map(person =>
+      paidToday(state, person.id)
+        ? { ...person, status: "returning", floor: 4, shopStayDays: 0 }
+        : person),
+  };
+  const intent = forecastShoppingIntents(eligibleProjection).get(heroId);
   if (!intent || intent.items.length === 0) return null;
   return {
     heroId,
