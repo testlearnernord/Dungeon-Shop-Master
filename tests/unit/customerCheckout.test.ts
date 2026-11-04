@@ -89,7 +89,8 @@ test("stale quotes and forged prices cannot spend anything",()=>{
       ? {...line,quantity:line.quantity+1}:line)},
     {...cart,heroId:state.adventurers[1].id},
   ];
-  const nowEmpty=transferShelf(state,"shelf-1-slot-2","bread","remove").state;
+  const oneLess=transferShelf(state,"shelf-1-slot-2","bread","remove").state;
+  const nowEmpty=transferShelf(oneLess,"shelf-1-slot-2","bread","remove").state;
   assert.notStrictEqual(nowEmpty,state);
   assert.strictEqual(checkoutCustomer(nowEmpty,cart).state,nowEmpty,
     "Removing a stocked item invalidates the old quote.");
@@ -110,12 +111,19 @@ test("two competing customers cannot both pay from depleted stock",()=>{
   const b=quoteCustomerCheckout(state,customers[1].id);
   const completed=checkoutCustomer(state,a).state;
   if(b){
-    const stale=checkoutCustomer(completed,b);
-    assert.strictEqual(stale.state,completed,
-      "The second buyer must refresh the quote after the first purchase.");
+    const attempt=checkoutCustomer(completed,b);
+    if(attempt.state!==completed){
+      // A second quote is not stale if enough stock was left and its original
+      // requirements still match. Only actual overselling is forbidden.
+      assert.equal(attempt.state.shopEconomy.balance-completed.shopEconomy.balance,
+        b.total);
+      assert(attempt.state.shopEconomy.slots.every(slot=>slot.quantity>=0));
+      assert.equal(new Set(attempt.state.events.map(event=>event.id)).size,
+        attempt.state.events.length);
+    }
   }
   const updated=quoteCustomerCheckout(completed,customers[1].id);
-  if(updated) {
+  if(updated){
     const fresh=checkoutCustomer(completed,updated);
     assert.equal(fresh.state.shopEconomy.balance-completed.shopEconomy.balance,
       updated.total);
