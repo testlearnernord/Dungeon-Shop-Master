@@ -78,6 +78,17 @@ export function shopLayoutProblem(layout:ShopLayout): string|null {
     return "Shelves cannot overlap.";
   return null;
 }
+/** True if a living actor's horizontal capsule overlaps this furniture. */
+export function shelfOverlapsActor(
+  placement:ShelfPlacement,actor: {readonly x:number;readonly z:number;readonly radius:number},
+):boolean {
+  const bounds=shelfBounds(placement);
+  return Number.isFinite(actor.x)&&Number.isFinite(actor.z)&&
+    Number.isFinite(actor.radius)&&actor.radius>=0&&
+    actor.x+actor.radius>bounds.minX&&actor.x-actor.radius<bounds.maxX&&
+    actor.z+actor.radius>bounds.minZ&&actor.z-actor.radius<bounds.maxZ;
+}
+
 export function replaceShelfPlacement(
   layout:ShopLayout,placement:ShelfPlacement,
 ): {layout:ShopLayout;message:string} {

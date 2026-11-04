@@ -71,7 +71,7 @@ export class Shop {
   }
 
   /** Non-authoritative ghost preview; game/save state is only committed by GameStore. */
-  previewPlacement(placement: ShelfPlacement | null): void {
+  previewPlacement(placement: ShelfPlacement | null, occupied = false): void {
     this.syncPlacements();
     for (const group of this.shelves.values()) group.previewOutline.setEnabled(false);
     if (!placement) return;
@@ -81,7 +81,7 @@ export class Shop {
     group.previewOutline.material = shopLayoutProblem({
       shelves:this.store.state.shopLayout.shelves.map(p=>
         p.id===placement.id?placement:p),
-    }) ? this.invalidMaterial : this.validMaterial;
+    }) || occupied ? this.invalidMaterial : this.validMaterial;
     group.previewOutline.setEnabled(true);
   }
 

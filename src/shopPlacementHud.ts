@@ -2,7 +2,7 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import type { Shop } from "./game/shop.ts";
 import {
-  replaceShelfPlacement, type ShelfId, type ShelfPlacement,
+  replaceShelfPlacement, shelfOverlapsActor, type ShelfId, type ShelfPlacement,
 } from "./game/shopLayout.ts";
 
 /** A bounded, undoable visual editor. Drafts never mutate the saved game state. */
@@ -22,14 +22,23 @@ export function setupShopPlacementHud(
   const rotate=document.querySelector<HTMLButtonElement>("#placement-rotate")!;
   let draft:ShelfPlacement|null=null;
 
+  const occupiedBy=(p:ShelfPlacement):string|null=>{
+    if(shelfOverlapsActor(p,{x:camera.position.x,z:camera.position.z,radius:0.45}))
+      return "Move the player away from this furniture first.";
+    const blocked=camera.getScene().transformNodes.some(node=>
+      node.name.startsWith("npc-adventurer-")&&node.metadata?.adventurerId&&
+      shelfOverlapsActor(p,{x:node.position.x,z:node.position.z,radius:0.4}));
+    return blocked?"A visitor currently occupies this space.":null;
+  };
   const update=(p:ShelfPlacement):void=>{
     draft=p;
-    shop.previewPlacement(p);
+    const occupied=occupiedBy(p);
+    shop.previewPlacement(p,!!occupied);
     const check=replaceShelfPlacement(store.state.shopLayout,p);
     const invalid=check.layout===store.state.shopLayout &&
       check.message!=="Shelf placement saved.";
     // A valid placement might be equal to its saved origin and still be legal.
-    const problem=invalid?check.message:null;
+    const problem=invalid?check.message:occupied;
     save.disabled=!!problem;
     info.textContent=p.id+" · X "+p.x.toFixed(2)+
       " · Z "+p.z.toFixed(2)+" · Rotation "+(p.rotation*90)+"°";
@@ -56,6 +65,9 @@ export function setupShopPlacementHud(
   };
   const commit=():void=>{
     if(!draft||save.disabled)return;
+    // An NPC may walk into a preview while the player is editing it.
+    // Revalidate occupancy immediately before mutating the persistent state.
+    if(occupiedBy(draft)){update(draft);return;}
     const message=store.placeShelf(draft);
     if(message==="Shelf placement saved."){
       close();

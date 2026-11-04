@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createShopLayout, replaceShelfPlacement, rotateShelfOffset,
-  shopLayoutProblem, shelfBounds, type ShelfPlacement,
+  shopLayoutProblem, shelfBounds, shelfOverlapsActor, type ShelfPlacement,
 } from "../../src/game/shopLayout.ts";
 import { advanceDay, createGameState, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
@@ -103,4 +103,13 @@ test("strict saves reject injected, incomplete or obstructing furniture geometry
     fn(envelope.payload);
     assert.throws(()=>parseSave(JSON.stringify(envelope)),new RegExp(field));
   }
+});
+
+test("occupied floor space blocks shelf placement even when static geometry is legal",()=>{
+  const placement:ShelfPlacement={id:"shelf-1",x:0,z:-2,rotation:1};
+  assert.equal(shopLayoutProblem(replaceShelfPlacement(createShopLayout(),placement).layout),null);
+  assert.equal(shelfOverlapsActor(placement,{x:0,z:-2,radius:0.45}),true);
+  assert.equal(shelfOverlapsActor(placement,{x:0,z:-4.6,radius:0.45}),false);
+  assert.equal(shelfOverlapsActor(placement,{x:2.5,z:-2.5,radius:0.4}),true);
+  assert.equal(shelfOverlapsActor(placement,{x:4,z:-2,radius:0.4}),false);
 });
