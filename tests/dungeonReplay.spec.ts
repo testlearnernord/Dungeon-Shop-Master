@@ -30,21 +30,24 @@ test("Level 7 saved expedition is replayed with personal fog, seeking, camera an
   await expect(page.locator("#dungeon-playback-controls")).toBeVisible();
   await expect(page.locator("#dungeon-minimap-heading")).toContainText("Fog of War");
   await expect(page.locator("#dungeon-mode-description")).toContainText("Recorded expedition");
+  const seek=async(value:number)=>page.locator("#dungeon-timeline").evaluate(
+    (node,number)=>{const slider=node as HTMLInputElement;slider.value=String(number);
+      slider.dispatchEvent(new Event("input",{bubbles:true}));},value);
   const inspect=()=>page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonPlayback());
   await page.locator("#dungeon-play").click();
   await expect(page.locator("#dungeon-play")).toContainText("Play");
-  await page.locator("#dungeon-timeline").fill("0");
+  await seek(0);
   const start=await inspect();
   expect(start.replayHero).toBe(true);
   expect(start.hiddenTiles).toBeGreaterThan(500);
   expect(start.shownTiles).toBeGreaterThan(0);
   await expect(page.locator("#dungeon-playback-status")).not.toContainText("Expedition ended");
-  await page.locator("#dungeon-timeline").fill("1000");
+  await seek(1000);
   await expect(page.locator("#dungeon-playback-status")).toContainText("Expedition ended");
-  await page.locator("#dungeon-timeline").fill("0");
+  await seek(0);
   await expect(page.locator("#dungeon-playback-status")).not.toContainText("Expedition ended");
-  await page.locator("#dungeon-timeline").fill("900");
+  await seek(900);
   const later=await inspect();
   expect(later.hiddenTiles).toBeLessThan(start.hiddenTiles);
   await page.locator("#dungeon-speed").selectOption("4");

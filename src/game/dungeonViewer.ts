@@ -92,7 +92,9 @@ export class DungeonViewer {
         }
         return;
       }
-      if (event.target instanceof Element && event.target.closest("#music-panel")) return;
+      if (event.target instanceof Element &&
+          (event.target.closest("#music-panel") ||
+            event.target.matches("input,select,textarea"))) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.code === "KeyG" || event.code === "Escape") this.close();
