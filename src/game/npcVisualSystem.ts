@@ -463,7 +463,7 @@ export class NpcVisualSystem {
         const sx=npc.root.position.x-direction*dz/distance*sideStep;
         const sz=npc.root.position.z+direction*dx/distance*sideStep;
         const corridorOkay=sz<=6.6 ||
-          Math.abs(sx-(sx<0?-4:4))<=0.95;
+          Math.abs(sx-(sx<0?-4:4))<=0.78;
         if(!blocked(sx,sz)&&corridorOkay&&
           (!this.layout || sz>6.6 || !isObstructed({x:sx,z:sz},this.layout))){
           npc.root.position.x=sx;
