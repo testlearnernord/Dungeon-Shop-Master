@@ -222,25 +222,27 @@ export class DungeonViewer {
     roomPrefab.material=roomStone;
     const replayTiles:DungeonTileMesh[]=[];
     const replayMarkers:DungeonMarkerMesh[]=[];
-    let firstWall=true,firstFloor=true,firstRoom=true;
+    // Keep source geometry enabled off-map: Babylon instances depend on
+    // their source mesh remaining visible even when individual tiles are fogged.
+    wallPrefab.position.y=-900;
+    floorPrefab.position.y=-900;
+    roomPrefab.position.y=-900;
     let walls=0,corridors=0,roomTiles=0;
     for(let z=0;z<layout.height;z++)for(let x=0;x<layout.width;x++) {
       const kind=tileAt(layout,x,z);
       const pos=getWorld(layout,{x,z});
       if(kind==="wall") {
-        const mesh=firstWall ? wallPrefab : wallPrefab.createInstance("dungeon-wall-"+x+"-"+z);
-        firstWall=false;
+        const mesh=wallPrefab.createInstance("dungeon-wall-"+x+"-"+z);
         mesh.position.set(pos.x,WALL_HEIGHT/2,pos.z);
         replayTiles.push({x,z,mesh});
         walls++;
       } else {
         const useRoom=kind==="room";
         const prefab=useRoom?roomPrefab:floorPrefab;
-        const first=useRoom?firstRoom:firstFloor;
-        const mesh=first?prefab:prefab.createInstance(
+        const mesh=prefab.createInstance(
           "dungeon-"+(useRoom?"room":"corridor")+"-tile-"+x+"-"+z);
-        if(useRoom) {firstRoom=false;roomTiles++;}
-        else {firstFloor=false;corridors++;}
+        if(useRoom)roomTiles++;
+        else corridors++;
         mesh.position.set(pos.x,0,pos.z);
         replayTiles.push({x,z,mesh});
       }
