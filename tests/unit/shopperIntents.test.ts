@@ -3,7 +3,7 @@ import test from "node:test";
 import { createGameState, advanceDay } from "../../src/game/gameState.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
 import { createShopLayout, replaceShelfPlacement, rotateShelfOffset } from "../../src/game/shopLayout.ts";
-import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
+import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
 
 function prepared() {
   const state=createGameState(7351);
@@ -99,4 +99,31 @@ test("shop grid avoids walls and the counter, with stable no-diagonal route choi
   }
   assert.equal(pathToShopGoal({x:Infinity,z:0},{x:0,z:0},layout),null);
   assert.equal(pathToShopGoal({x:100,z:100},{x:0,z:0},layout),null);
+});
+
+test("Copilot regression: a replan mid-segment never cuts across a rotated shelf",()=>{
+  const base=createShopLayout();
+  const result=replaceShelfPlacement(base,{id:"shelf-1",x:0,z:-2,rotation:1});
+  assert.equal(result.message,"Shelf placement saved.");
+  const layout=result.layout;
+  const cases=[
+    [{x:-3.3,z:-1.4},{x:-1,z:-3.75}], // mid-stride pickup destination
+    [{x:-1,z:-3.75},{x:-4,z:6}],       // leave for the Level 4 corridor
+    [{x:-1,z:-3.75},{x:4,z:6}],        // leave for the Level 6 corridor
+  ] as const;
+  for(const [start,goal] of cases){
+    const route=pathToShopGoal(start,goal,layout);
+    assert(route,JSON.stringify({start,goal})+" must be navigable");
+    let previous=start;
+    for(const point of route!.waypoints){
+      assert(shopSegmentClear(previous,point,layout),
+        "A continuous segment crossed furniture: "+JSON.stringify({previous,point}));
+      previous=point;
+    }
+    const final=route!.waypoints.at(-1)!;
+    assert(Math.hypot(final.x-goal.x,final.z-goal.z)<0.6,
+      "Route must actually reach the requested shelf/corridor, not a distant substitute");
+  }
+  assert.equal(shopSegmentClear({x:-3.3,z:-1.4},{x:-1,z:-3.75},layout),false,
+    "The original shortcut must remain rejected");
 });

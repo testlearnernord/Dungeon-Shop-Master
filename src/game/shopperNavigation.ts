@@ -26,6 +26,20 @@ export function isObstructed(p:ShopPoint,layout:ShopLayout):boolean{
   }
   return false;
 }
+/** Sampling a whole segment (not just its endpoints) prevents off-grid
+ * connectors from cutting diagonally through movable furniture.
+ */
+export function shopSegmentClear(a:ShopPoint,b:ShopPoint,layout:ShopLayout):boolean {
+  const distance=Math.hypot(b.x-a.x,b.z-a.z);
+  if(!Number.isFinite(distance))return false;
+  const samples=Math.max(1,Math.ceil(distance/0.1));
+  for(let i=0;i<=samples;i++){
+    const t=i/samples;
+    if(isObstructed({x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t},layout))
+      return false;
+  }
+  return true;
+}
 /** Fast, deterministic grid search with bounds and actual moved shelf footprints.
  * Routes never invent wall-crossing diagonals or mutate any GameState fields.
  */
@@ -45,6 +59,9 @@ export function pathToShopGoal(
         if(!inGrid(x,z)||isObstructed(worldPoint(index(x,z)),layout))continue;
         const candidate=index(x,z);
         const p2=worldPoint(candidate);
+        // For outside a shelf footprint, insist on a true straight connector.
+        // Blocked destinations may use the nearest reachable standing point.
+        if(!isObstructed(p,layout)&&!shopSegmentClear(p,p2,layout))continue;
         const d=(p2.x-p.x)**2+(p2.z-p.z)**2;
         if(d<bestDist){bestDist=d;best=candidate;}
       }
@@ -76,6 +93,11 @@ export function pathToShopGoal(
   path.push(start);path.reverse();
   // Remove collinear intermediary grid points without cutting corners.
   const result:ShopPoint[]=[];
+  const startingGrid=worldPoint(start);
+  // The snapped-start connector must be part of the rendered route. Omitting it
+  // makes the first turn a dangerous diagonal through a moved shelf.
+  if(Math.hypot(from.x-startingGrid.x,from.z-startingGrid.z)>0.01)
+    result.push(startingGrid);
   for(let i=1;i<path.length;i++){
     const p=worldPoint(path[i]);
     const before=worldPoint(path[i-1]);
@@ -87,9 +109,16 @@ export function pathToShopGoal(
   }
   // Append precise target only when it remains within collision-free space.
   // The snap grid cell is the guaranteed reachable fallback for odd angles.
-  if(!isObstructed(to,layout)&&Math.hypot(
-    (result.at(-1)?.x??from.x)-to.x,
-    (result.at(-1)?.z??from.z)-to.z)>0.06)
+  const last=result.at(-1)??(Math.hypot(from.x-startingGrid.x,
+    from.z-startingGrid.z)<=0.01?from:startingGrid);
+  if(!isObstructed(to,layout)&&Math.hypot(last.x-to.x,last.z-to.z)>0.06){
+    if(!shopSegmentClear(last,to,layout))return null;
     result.push(to);
+  }
+  let cursor=from;
+  for(const waypoint of result){
+    if(!shopSegmentClear(cursor,waypoint,layout))return null;
+    cursor=waypoint;
+  }
   return {waypoints:result,length:path.length-1};
 }

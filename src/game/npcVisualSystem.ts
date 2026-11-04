@@ -188,9 +188,13 @@ export class NpcVisualSystem {
         let slot = 0;
         while (usedSlots.has(slot)) slot += 1;
         usedSlots.add(slot);
-        const lane = (slot % 3 - 1) * 0.55;
-        const gate = visitor.entranceGate ?? "level4";
-        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X[gate] + lane, 0, CORRIDOR_OUTER_Z), this.portraits);
+        // Concurrent arrivals have distinct lateral lanes and spawn depth.
+        // Never create two physical models at the same position.
+        const lane=(slot%3-1)*0.66;
+        const gate=visitor.entranceGate??"level4";
+        const spawnZ=CORRIDOR_OUTER_Z+Math.floor(slot/3)*0.92;
+        const visual=createHumanoid(this.scene,visitor,slot,
+          new Vector3(CORRIDOR_X[gate]+lane,0,spawnZ),this.portraits);
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -206,9 +210,13 @@ export class NpcVisualSystem {
         let slot = 0;
         while (usedSlots.has(slot)) slot += 1;
         usedSlots.add(slot);
-        const lane = (slot % 3 - 1) * 0.55;
-        const gate = visitor.entranceGate ?? "level4";
-        const visual = createHumanoid(this.scene, visitor, slot, new Vector3(CORRIDOR_X[gate] + lane, 0, CORRIDOR_OUTER_Z), this.portraits);
+        // Concurrent arrivals have distinct lateral lanes and spawn depth.
+        // Never create two physical models at the same position.
+        const lane=(slot%3-1)*0.66;
+        const gate=visitor.entranceGate??"level4";
+        const spawnZ=CORRIDOR_OUTER_Z+Math.floor(slot/3)*0.92;
+        const visual=createHumanoid(this.scene,visitor,slot,
+          new Vector3(CORRIDOR_X[gate]+lane,0,spawnZ),this.portraits);
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -347,14 +355,26 @@ export class NpcVisualSystem {
     const from=mustEnterShop?
       {x:npc.root.position.x,z:CORRIDOR_INNER_Z}:
       {x:npc.root.position.x,z:npc.root.position.z};
-    const aisle=this.layout?pathToShopGoal(from,{
-      x:gateX,z:CORRIDOR_INNER_Z,
-    },this.layout):null;
-    npc.route = [
+    const possibleLanes=[gateX,CORRIDOR_X[npc.gateSide],
+      CORRIDOR_X[npc.gateSide]-0.62,CORRIDOR_X[npc.gateSide]+0.62];
+    const chosen=possibleLanes.map(x=>({
+      x,route:this.layout?pathToShopGoal(from,{
+        x,z:CORRIDOR_INNER_Z,
+      },this.layout):null,
+    })).find(entry=>entry.route!==null);
+    if(this.layout&&!chosen){
+      // Never fall back to a straight wall-crossing route.
+      npc.route=[];
+      npc.root.metadata.shoppingPhase="blocked-exit";
+      return;
+    }
+    const exitX=chosen?.x??gateX;
+    npc.route=[
       ...(mustEnterShop?[new Vector3(from.x,0,from.z)]:[]),
-      ...(aisle?.waypoints.map(point=>new Vector3(point.x,0,point.z))??[
-        new Vector3(gateX,0,CORRIDOR_INNER_Z)]),
-      new Vector3(gateX,0,CORRIDOR_OUTER_Z),
+      ...(chosen?.route?.waypoints.map(point=>
+        new Vector3(point.x,0,point.z))??[
+          new Vector3(exitX,0,CORRIDOR_INNER_Z)]),
+      new Vector3(exitX,0,CORRIDOR_OUTER_Z),
     ];
     npc.waypoint = 0;
     npc.root.metadata.phase = npc.phase;
@@ -442,7 +462,9 @@ export class NpcVisualSystem {
       for(const direction of [preferred,-preferred]){
         const sx=npc.root.position.x-direction*dz/distance*sideStep;
         const sz=npc.root.position.z+direction*dx/distance*sideStep;
-        if(!blocked(sx,sz)&&
+        const corridorOkay=sz<=6.6 ||
+          Math.abs(sx-(sx<0?-4:4))<=0.95;
+        if(!blocked(sx,sz)&&corridorOkay&&
           (!this.layout || sz>6.6 || !isObstructed({x:sx,z:sz},this.layout))){
           npc.root.position.x=sx;
           npc.root.position.z=sz;
