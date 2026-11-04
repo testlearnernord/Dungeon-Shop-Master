@@ -283,3 +283,14 @@ Use **P** or **Arrange Shelves** to open the in-world shelf editor. Choose eithe
 The placement exists in the authoritative, version 9 `GameState.shopLayout` and round-trips through IndexedDB/JSON export. Version 8 and earlier compatible saves migrate to the previous standard shelf positions. Slot IDs, quantities, gold, heroes and RNG remain unchanged. Inventory graphics are local to a shelf root and therefore move together with the furniture. Initial protected walkways remain fixed until the intent-driven NPC navigation milestone is implemented.
 
 **Not yet available:** free placement of the checkout counter, wall order book, AI shopping reservations/payment, physical customer queue and cinematic day recap. Do not treat the placement editor as evidence that NPCs already navigate to movable stock.
+
+
+### MVP 1.2f.3a: Intent-driven customer routes (pre-checkout)
+
+Visitors no longer pick arbitrary repeated shelf routes. A pure, read-only shopping forecast projects the **existing** next-day purchase algorithm against current hero needs, gold, stocked shelf slots and competing customers. Results map to stable hero and slot IDs. On changing stock, gear, gold or furniture placement, those projected targets are refreshed. Existing Shop/Dungeon/Boss day-tick rules remain untouched.
+
+The NPC viewer follows paths generated from the actual persisted furniture layout, avoiding the fixed counter and shelf bounding boxes. Customers approach the appropriate shelf, inspect it briefly, and wait in distinct positions. Local personal-space checks prevent overlapping 3D NPCs. Compact nameplates show gold, food/hunger and shopping interest.
+
+**Important:** This milestone visualizes *planned interest*, NOT physical checkout. No item is permanently removed, carried, reserved, or paid during the visual animation. Until the cashier/cart milestone, money and inventory change only at **confirmed End Day**. Forecasts are recalculated when stock changes and can be invalidated before End Day. The UI does not label an intent as a completed sale. Existing sale feedback still derives from authoritative committed events.
+
+Next: durable customer carts and stock reservations with a single atomic payment path, cashier E docking and the manual 2×R timing bonus. Moving final settlement away from End Day requires a save migration and full economy regression tests.

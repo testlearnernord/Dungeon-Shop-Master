@@ -6,6 +6,7 @@ import { ECONOMY } from "./game/economy";
 import { GameStore } from "./game/gameStore";
 import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
+import { forecastShoppingIntents } from "./game/shopperIntents.ts";
 import { Level6Arena } from "./game/level6Arena";
 import { DungeonViewer } from "./game/dungeonViewer";
 import { createRosterBoard } from "./game/rosterBoard";
@@ -54,6 +55,12 @@ setupDayHud(
   (current, previous) => npcVisuals.reconcile(current, previous),
   () => npcVisuals.showSales(currentDayReceipts(store.state)),
 );
+// The forecast is read-only. It uses exactly the same purchase decisions
+// as the confirmed next-day transaction. Stock changes trigger replanning.
+const refreshShoppingIntents = () => npcVisuals.setShoppingIntents(
+  forecastShoppingIntents(store.state), store.state.shopLayout, shop);
+store.subscribe(refreshShoppingIntents);
+refreshShoppingIntents();
 setupSalesHud(store);
 setupExpeditionHud(store);
 let selectedItemId: ItemId = ITEMS[0].id;
