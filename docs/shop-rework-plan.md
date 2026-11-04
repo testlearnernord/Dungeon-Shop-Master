@@ -1,5 +1,5 @@
 # Shop Loop Redesign: Merchant Gameplay, Customers, Checkout, End of Day
-Status: IN PROGRESS. MVP 1.2f.1, shelf placement (1.2f.2a) and intent-driven visual customer routes (1.2f.3a) are shipped. Checkout kernel (1.2f.3b) provides atomically validated purchases and receipts without activating a UI. Physical reservations, cashier docking and timing rewards, wall order book, full day recap and checkout-led daily settlement are not implemented yet.
+Status: IN PROGRESS. MVP 1.2f.1, shelf placement (1.2f.2a), autonomous shelf routing (1.2f.3a), and atomic checkout kernel (1.2f.3b) are shipped. MVP 1.2f.3c adds persisted unpaid carts, actual shelf stock reservation on arrival, held 3D goods, and an interim exactly-once automatic End Day settlement. Manual cashier docking, timing rewards, employees, wall order book and cinematic day recap remain planned.
 
 ## Product principles
 

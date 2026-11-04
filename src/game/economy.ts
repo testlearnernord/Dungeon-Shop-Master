@@ -101,6 +101,11 @@ export function transferShelf(
   const item = ITEMS.find((entry) => entry.id === itemId);
   const economy = state.shopEconomy;
   const slot = economy.slots.find((entry) => entry.id === slotId);
+  // Stock already carried in an unpaid cart is allocated to that original
+  // slot. Do not reuse it for a different product or overflow on return.
+  if (state.shopCarts.some(cart => cart.lines.some(line =>
+    line.slotId === slotId)))
+    return {state, message: "This shelf slot contains items held by customers."};
   if (!item || !slot || (direction !== "stock" && direction !== "remove")) {
     return { state, message: "Choose a valid item, slot and transfer direction." };
   }
@@ -132,7 +137,9 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
   let economy: ShopEconomyState = {
     ...state.shopEconomy,
     slots: state.shopEconomy.slots.map((slot) => ({ ...slot })),
-    dailySales: { day, units: 0, revenue: 0 },
+    dailySales: state.shopEconomy.dailySales.day === day
+      ? {...state.shopEconomy.dailySales}
+      : { day, units: 0, revenue: 0 },
   };
   const bread = ITEMS.find((item) => item.id === "bread")!;
   // Emergency aid is bounded, bag-only, and available only once on a bankrupt, foodless day.
