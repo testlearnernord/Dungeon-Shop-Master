@@ -8,7 +8,7 @@ test("shop fixtures hug the walls, walk is faster and Shift temporarily sprints"
   const inspect=()=>page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectShopPolish());
   const before=await inspect();
-  expect(before.shelves).toEqual([-7.12,7.12]);
+  expect(before.shelves).toEqual([-7,7]);
   expect(before.torchFlames.every(s=>s.light&&s.flame&&s.bracket)).toBe(true);
   expect(before.torchFlames.filter(s=>Math.abs(s.x??0)>6)).toHaveLength(2);
   expect(before.speed).toBe(0.28);

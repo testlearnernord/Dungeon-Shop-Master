@@ -11,10 +11,11 @@ import {
 import { forageAfterEncounter } from "./foraging.ts";
 import { ECONOMY } from "./economy.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
+import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 8;
+export const SIMULATION_VERSION = 9;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -60,6 +61,7 @@ export interface GameState {
   readonly events: readonly WorldEvent[];
   readonly adventurers: readonly AdventurerState[];
   readonly shopEconomy: ShopEconomyState;
+  readonly shopLayout: ShopLayout;
   readonly dungeonFloors: readonly DungeonFloorProgress[];
   readonly level7World: Level7World;
   readonly seed: number;
@@ -91,6 +93,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     ],
     adventurers,
     shopEconomy: createEconomy(),
+    shopLayout: createShopLayout(),
     dungeonFloors: [],
     level7World: emptyLevel7World(),
     seed,

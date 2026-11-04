@@ -1,5 +1,5 @@
 # Shop Loop Redesign: Merchant Gameplay, Customers, Checkout, End of Day
-Status: DESIGN ONLY. This document describes upcoming milestones and does not claim these features are implemented.
+Status: IMPLEMENTATION IN PROGRESS. MVP 1.2f.1 shipped. MVP 1.2f.2a supports persistent movable shelves with collision-safe editing and v8 save migration; wall order book and movable checkout remain planned. All later numbered items remain design only.
 
 ## Product principles
 
@@ -13,7 +13,7 @@ Status: DESIGN ONLY. This document describes upcoming milestones and does not cl
 ## Planned work order
 
 1. **1.2f.1 usability patch**: Wall-mounted torches, shelves against actual walls, walk speed and Shift sprint, N/Z keyboard, bulk wholesale buttons, and essential always-visible roster information. No save schema changes. This is the only work implemented by the initial patch.
-2. **1.2f.2 staging + placement**: Move wholesale to a wall order book, replace the center wholesale counter with a cashier desk, support grid-snapped shelf/desk placement with collision checks against walls, doors and aisles. Persist transform data with explicit version migration and identity-preserving shelf slot IDs. Visual placement cannot move inventory or create gold.
+2. **1.2f.2 staging + placement**: (Shelf placement implemented first; movable cashier desk and wall order book still pending.) Move wholesale to a wall order book, replace the center wholesale counter with a cashier desk, support grid-snapped shelf/desk placement with collision checks against walls, doors and aisles. Persist transform data with explicit version migration and identity-preserving shelf slot IDs. Visual placement cannot move inventory or create gold.
 3. **1.2f.3 intent-driven customers**: Introduce individual ShoppingSession with buyer ID, reserved cart, item IDs/slot IDs, affordable subtotal and state machine:
    `enter → consider → navigate-to-shelf → take-item → carry-to-register → queue → await-payment → paid → leave`.
    Uninterested or broke heroes may leave with no purchases. Pathfinding honours placed furniture, doors, queue lanes and NPC personal space. Must avoid teleporting through furniture or standing inside another NPC. Inventory is not permanently transferred until a valid atomic checkout. Pending carts reserve stock to avoid overselling; reservation cancellation returns stock.

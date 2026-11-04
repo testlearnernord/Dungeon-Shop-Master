@@ -629,3 +629,49 @@ body.dungeon-active #music-panel { top: 119px; }
 .roster-card[data-status]:not([data-status="at-shop"]) { opacity: .62; }
 .roster-card[data-status]:not([data-status="at-shop"]):focus-within,
 .roster-card[data-status]:not([data-status="at-shop"]):hover { opacity: 1; }
+
+/* Shelf placement is a modal tool, not a background world simulation. */
+#shelf-placement {
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 35px);
+  overflow: auto;
+  background: #181712;
+  border: 1px solid #b59259;
+  border-radius: 10px;
+  box-shadow: 0 20px 80px rgba(0,0,0,.75);
+  padding: 20px;
+  color: #ead8b7;
+}
+#shelf-placement::backdrop { background: rgba(0,0,0,.55); }
+.placement-heading {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; margin-bottom: 12px;
+}
+.placement-heading h2 { color: #f1d59e; margin: 0; font-size: 22px; }
+.placement-heading p, .placement-note {
+  font-size: 12px; line-height: 1.5; color: #baae97;
+}
+#shelf-placement button, #placement-shelf {
+  background: #33291d; color: #efd7a9; border: 1px solid #89704d;
+  border-radius: 5px; padding: 10px; cursor: pointer;
+}
+#shelf-placement button:hover:not(:disabled) { background: #56402a; }
+#shelf-placement button:disabled { opacity: .42; cursor: not-allowed; }
+#shelf-placement :focus-visible { outline: 2px solid #edc379; outline-offset: 2px; }
+#placement-shelf { display: block; width: 100%; margin: 8px 0 16px; }
+.placement-grid {
+  display: grid; grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 8px; margin-bottom: 14px;
+}
+.placement-grid button { min-height: 46px; }
+#placement-coordinates {
+  font: 600 13px monospace; color: #ead1a2; margin: 10px 0;
+}
+#placement-status {
+  padding: 9px; border-left: 3px solid #e16a60;
+  background: #321c1b; font-size: 13px;
+}
+#placement-status[data-valid="true"] {
+  border-left-color: #76bd87; background: #1a3322;
+}
+#placement-save { width: 100%; font-weight: 700; }

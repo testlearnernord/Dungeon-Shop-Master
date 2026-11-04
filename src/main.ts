@@ -11,6 +11,7 @@ import { DungeonViewer } from "./game/dungeonViewer";
 import { createRosterBoard } from "./game/rosterBoard";
 import { setupRosterBoardHud } from "./rosterBoardHud";
 import { Shop } from "./game/shop";
+import { setupShopPlacementHud } from "./shopPlacementHud.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupEconomyHud } from "./economyHud";
@@ -42,6 +43,7 @@ const shop = new Shop(scene, store);
 const board = createRosterBoard(scene, store);
 worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
 const openRoster = setupRosterBoardHud(canvas, camera, store);
+setupShopPlacementHud(canvas, camera, store, shop);
 const npcVisuals = new NpcVisualSystem(scene);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
   if (open) camera.detachControl();

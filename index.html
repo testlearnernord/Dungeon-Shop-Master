@@ -26,6 +26,7 @@
           <p id="merchant-gold"></p>
           <p id="daily-sales"></p>
           <button id="open-wholesale" type="button">Wholesale (B)</button>
+          <button id="open-placement" type="button">Arrange Shelves (P)</button>
           <ol id="world-events" aria-label="Recent world events"></ol>
           <button id="end-day" type="button" aria-expanded="false" aria-controls="day-confirmation">
             End Day (N)
@@ -73,6 +74,7 @@
           <span>·</span> <strong>E</strong> interact
           <span>·</span> <strong>N / Z</strong> end / confirm day
           <span>·</span> <strong>B</strong> wholesale
+          <span>·</span> <strong>P</strong> arrange shelves
           <span>·</span> <strong>R</strong> roster board
           <span>·</span> <strong>V</strong> watch Level 6
           <span>·</span> <strong>G</strong> observe Level 7
@@ -158,6 +160,32 @@
           <input id="music-volume" type="range" min="0" max="100" step="1" value="35" aria-label="Music volume" />
         </div>
       </aside>
+      <dialog id="shelf-placement" aria-labelledby="placement-title" tabindex="-1">
+        <header class="placement-heading">
+          <div>
+            <h2 id="placement-title">Arrange the Shop</h2>
+            <p>Move an existing shelf. Stock stays attached to its original slots.</p>
+          </div>
+          <button type="button" id="placement-cancel">Cancel (Esc)</button>
+        </header>
+        <label for="placement-shelf">Selected shelf</label>
+        <select id="placement-shelf" aria-label="Select shelf to rearrange">
+          <option value="shelf-1">Left shelf (1)</option>
+          <option value="shelf-2">Right shelf (2)</option>
+        </select>
+        <div class="placement-grid" aria-label="Move shelf with arrow controls">
+          <span></span><button type="button" data-placement-dx="0" data-placement-dz="-0.25">↑ Back</button><span></span>
+          <button type="button" data-placement-dx="-0.25" data-placement-dz="0">← Left</button>
+          <button type="button" id="placement-rotate">Rotate 90° (Q)</button>
+          <button type="button" data-placement-dx="0.25" data-placement-dz="0">Right →</button>
+          <span></span><button type="button" data-placement-dx="0" data-placement-dz="0.25">↓ Forward</button><span></span>
+        </div>
+        <p id="placement-coordinates"></p>
+        <p id="placement-status" role="status"></p>
+        <p class="placement-note">Arrow keys or buttons: move in 0.25m steps. Q: turn. 
+          Red outline: blocked by a wall, another shelf or visitor passage.</p>
+        <button type="button" id="placement-save">Save placement (Enter)</button>
+      </dialog>
       <dialog id="roster-dialog" aria-labelledby="roster-title">
         <header class="roster-heading">
           <div>
