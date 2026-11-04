@@ -30,7 +30,7 @@ export function aimAtRosterBoard() {
 }
 
 export function aimAtShelfSlot() {
-  const start = inspectPlayer({ x: -1.5, y: 1.7, z: -2 });
+  const start = inspectPlayer({ x: -5.05, y: 1.7, z: -2 });
   const scene = Engine.LastCreatedScene!;
   const camera = scene.activeCamera as UniversalCamera;
   camera.setTarget(scene.getMeshByName("shelf-1-slot-1")!.getAbsolutePosition());
@@ -182,5 +182,23 @@ export function inspectDungeonPlayback() {
     disabledTorchLights:scene.lights.filter(light=>
       light.name.startsWith("dungeon-torchlight-")&&!light.isEnabled()).length,
     combatEnemyVisible:scene.getMeshByName("dungeon-combat-creature")?.isEnabled()??false,
+  };
+}
+
+/** Browser regression probe for fixtures and Shift movement. */
+export function inspectShopPolish() {
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  return {
+    speed:camera.speed,
+    shelves:[scene.getMeshByName("shelf-1-back")?.position.x,
+      scene.getMeshByName("shelf-2-back")?.position.x],
+    torchFlames:[0,1,2].map(i=>{
+      const light=scene.getLightByName("torch-"+i);
+      const flame=scene.getMeshByName("torch-flame-"+i);
+      const bracket=scene.getMeshByName("torch-bracket-"+i);
+      return {light:!!light,flame:!!flame,bracket:!!bracket,
+        x:flame?.position.x,z:flame?.position.z};
+    }),
   };
 }

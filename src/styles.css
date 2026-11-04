@@ -136,13 +136,19 @@ body,
 }
 
 .catalog-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 12px 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid #614d35;
+  border-radius: 6px;
+  background: #241d15;
 }
+.catalog-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+#wholesale .catalog-actions button { min-height: 42px; font-size: 12px; white-space: nowrap; }
+#wholesale .catalog-actions button:hover { background: #594027; }
+#wholesale button:focus-visible { outline: 2px solid #e2b779; outline-offset: 2px; }
 
 .inventory {
   position: absolute;
@@ -617,3 +623,9 @@ body.dungeon-active #music-panel { top: 119px; }
   #dungeon-timeline { width: min(200px,45vw); }
   #dungeon-playback-status { font-size: 10px; }
 }
+
+/* Essential roster data is always visible; full details remain optional. */
+.roster-overview { color: #e4cc9e; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.roster-card[data-status]:not([data-status="at-shop"]) { opacity: .62; }
+.roster-card[data-status]:not([data-status="at-shop"]):focus-within,
+.roster-card[data-status]:not([data-status="at-shop"]):hover { opacity: 1; }

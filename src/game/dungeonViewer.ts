@@ -147,7 +147,10 @@ export class DungeonViewer {
     this.layout = generateDungeonLayout(this.store.state.seed,7);
     this.createScene(this.layout);
     this.refreshReplaySelector();
-    this.replaySelector.focus();
+    // A recording opens with accessible footage controls; the full-layout
+    // development preview must instead accept WASD immediately.
+    if (this.replayScene?.currentReplay) this.replaySelector.focus();
+    else this.canvas.focus();
     this.sceneChanged(true);
   }
 

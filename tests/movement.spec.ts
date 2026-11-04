@@ -89,8 +89,9 @@ test("WASD, gravity, collisions and rendering survive sustained input and reload
     ["s", -4.6, "z", -6.5, -6, 1600],
     ["a", -4.6, "x", -7, -6.5, 4000],
     ["d", -4.6, "x", 6.5, 7, 4000],
-    ["a", 0, "x", -2.5, -2, 1700],
-    ["d", 0, "x", 2, 2.5, 1700],
+    // Former mid-room shelves now hug the walls, leaving a wider aisle.
+    ["a", 0, "x", -6.1, -5.0, 1700],
+    ["d", 0, "x", 5.0, 6.1, 1700],
     ["w", -4.6, "z", 1, 1.6, 3800],
   ] as const) {
     await player(page, { x: 0, y: 1.7, z });

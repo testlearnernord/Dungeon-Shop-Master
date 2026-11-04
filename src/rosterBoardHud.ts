@@ -55,7 +55,18 @@ export function setupRosterBoardHud(
       const fill = document.createElement("span");
       fill.style.width = (100 * hero.health / hero.stats.maxHealth) + "%";
       bar.append(fill);
-      primary.append(name, location, bar);
+      const overview = document.createElement("span");
+      overview.className = "roster-overview";
+      overview.textContent =
+        "Gold " + hero.gold + "g · " +
+        (hero.hunger >= 3 ? "Hungry" : "Fed") + " (Hunger " + hero.hunger + ")" +
+        " · Food " + hero.inventory.food +
+        " · Heal " + hero.inventory.healing +
+        " · Loot " + hero.inventory.loot +
+        " · " + (hero.equipment.weapon ?? "No weapon") +
+        " · " + (hero.equipment.armor ?? "No armor") +
+        " · XP " + hero.xp;
+      primary.append(name, location, bar, overview);
       const health = document.createElement("span");
       health.className = "roster-hp-value";
       health.textContent = hero.health + "/" + hero.stats.maxHealth;

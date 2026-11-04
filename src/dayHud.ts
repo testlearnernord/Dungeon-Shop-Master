@@ -114,7 +114,7 @@ export function setupDayHud(
     }
     if (event.target instanceof HTMLElement &&
         event.target.closest("input, textarea, select, [contenteditable]")) return;
-    if (event.code === "KeyN" || event.code === "KeyY") {
+    if (event.code === "KeyN" || event.code === "KeyY" || event.code === "KeyZ") {
       event.preventDefault();
       act(event.code === "KeyN" ? "request" : "confirm");
     }
