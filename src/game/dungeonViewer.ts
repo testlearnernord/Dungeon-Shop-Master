@@ -147,9 +147,10 @@ export class DungeonViewer {
     this.layout = generateDungeonLayout(this.store.state.seed,7);
     this.createScene(this.layout);
     this.refreshReplaySelector();
-    // Start free camera keyboard control immediately; the replay selector remains
-    // reachable by pointer or Tab when the player actually wants to change it.
-    this.canvas.focus();
+    // A recording opens with accessible footage controls; the full-layout
+    // development preview must instead accept WASD immediately.
+    if (this.replayScene?.currentReplay) this.replaySelector.focus();
+    else this.canvas.focus();
     this.sceneChanged(true);
   }
 
