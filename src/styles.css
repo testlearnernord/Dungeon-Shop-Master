@@ -581,3 +581,39 @@ body.dungeon-active #music-panel { top: 119px; }
   .dungeon-bottom { font-size: 10px; }
   body.dungeon-active #music-panel { top: 112px; left: 12px; right: auto; transform: none; }
 }
+
+
+/* Level 7 spectator: choose historical recordings without exposing results. */
+.dungeon-replay-picker {
+  display: flex; align-items: center; gap: 8px; margin-top: 9px;
+  color: #f2d7a3; font-size: 12px; pointer-events: auto;
+}
+.dungeon-replay-picker select,
+.dungeon-playback-controls select {
+  color: #f5e1c0; background: #282a2d; border: 1px solid #927b52;
+  border-radius: 4px; padding: 5px; max-width: min(350px,48vw);
+}
+#dungeon-playback-controls[hidden] { display: none; }
+.dungeon-playback-controls {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; flex-wrap: wrap; margin-bottom: 8px; pointer-events: auto;
+  border-bottom: 1px solid #5c5040; padding-bottom: 9px;
+}
+.dungeon-playback-controls button {
+  background: #2e2d2b; color: #f0d5a8; border: 1px solid #ac8961;
+  padding: 6px 10px; border-radius: 5px; cursor: pointer;
+}
+#dungeon-timeline { width: min(240px,32vw); accent-color: #d9af75; }
+#dungeon-clock { font-variant-numeric: tabular-nums; font-size: 11px; white-space: nowrap; }
+#dungeon-playback-status { flex-basis: 100%; font-weight: 700; color: #b4e6ce; }
+#dungeon-replay-select:focus-visible,
+.dungeon-playback-controls :focus-visible {
+  outline: 2px solid #e3b97f; outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  .dungeon-replay-picker { font-size: 10px; margin-top: 4px; }
+  .dungeon-replay-picker select { max-width: 72vw; font-size: 10px; }
+  .dungeon-playback-controls { gap: 4px; }
+  #dungeon-timeline { width: min(200px,45vw); }
+  #dungeon-playback-status { font-size: 10px; }
+}

@@ -155,3 +155,32 @@ export function inspectDungeonLayout() {
     mapWidth:document.querySelector<HTMLCanvasElement>("#dungeon-minimap")?.width??0,
   };
 }
+
+
+/** Inspect actual Level 7 playback meshes without invoking any simulator. */
+export function inspectDungeonPlayback() {
+  const scene=Engine.LastCreatedScene!;
+  const hero=scene.transformNodes.find(node=>node.name.startsWith("dungeon-replay-")&&
+    node.metadata?.replayOnly);
+  return {
+    replayHero:!!hero,
+    heroId:hero?.metadata?.adventurerId as string|undefined,
+    appearanceKey:hero?.metadata?.appearanceKey as string|undefined,
+    weapon:hero?.metadata?.weapon as string|null|undefined,
+    phase:hero?.metadata?.combatPhase as string|undefined,
+    heroPosition:hero?{x:hero.position.x,z:hero.position.z}:null,
+    hiddenTiles:scene.meshes.filter(mesh=>
+      (mesh.name.startsWith("dungeon-wall-")||
+       mesh.name.startsWith("dungeon-corridor-tile-")||
+       mesh.name.startsWith("dungeon-room-tile-"))&&!mesh.isVisible).length,
+    shownTiles:scene.meshes.filter(mesh=>
+      (mesh.name.startsWith("dungeon-wall-")||
+       mesh.name.startsWith("dungeon-corridor-tile-")||
+       mesh.name.startsWith("dungeon-room-tile-"))&&mesh.isVisible).length,
+    hiddenTorches:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-torch-")&&!mesh.isEnabled()).length,
+    disabledTorchLights:scene.lights.filter(light=>
+      light.name.startsWith("dungeon-torchlight-")&&!light.isEnabled()).length,
+    combatEnemyVisible:scene.getMeshByName("dungeon-combat-creature")?.isEnabled()??false,
+  };
+}

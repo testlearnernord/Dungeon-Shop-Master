@@ -48,6 +48,9 @@ export interface Level7Replay {
     readonly role: AdventurerState["role"];
     readonly equipment: AdventurerState["equipment"];
   };
+  /** Historical knowledge before this day; older v8 recordings may omit it. */
+  readonly knownAtStart?: readonly number[];
+  readonly resolvedAtStart?: readonly string[];
   readonly steps: readonly Level7ReplayStep[];
   readonly encounters: readonly Level7ReplayEncounter[];
   readonly outcome: Level7Outcome;
@@ -263,6 +266,8 @@ export function simulateLevel7Day(
   const replay:Level7Replay={
     version:1,day,heroId:hero.id,floor:7,
     appearance:{role:hero.role,equipment:{...hero.equipment}},
+    knownAtStart:[...progress.visited],
+    resolvedAtStart:[...world.resolvedFeatureIds],
     steps,encounters,outcome,
   };
   return {

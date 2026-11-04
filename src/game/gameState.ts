@@ -150,7 +150,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         id: `day-${day}:${ready.id}:level7-exploration`,
         type: "level7-exploration", day, adventurerId: ready.id,
         level7Replay: exploration.replay,
-        message: `${ready.name} explored Level 7: ${exploration.replay.steps.length} recorded actions, ${exploration.defeatedMonsters} monsters defeated, +${exploration.gainedGold} gold, +${exploration.gainedLoot} loot (${exploration.replay.outcome}).`,
+        message: `${ready.name}'s Level 7 expedition was recorded. Watch the saved footage to discover what happened.`,
       });
       return exploration.adventurer;
     }
