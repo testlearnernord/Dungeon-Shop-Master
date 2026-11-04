@@ -23,7 +23,7 @@ function merchantState(gold: number, stocked: ReadonlyArray<{ itemId: "iron-swor
 
 test("equipment catalog, wholesale and shelf stocking conserve gold and inventory", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 7);
+  assert.equal(SIMULATION_VERSION, 8);
   assert(ITEMS.some(x => x.id === "iron-sword" && x.kind === "weapon"));
   assert(ITEMS.some(x => x.id === "leather-vest" && x.kind === "armor"));
   assert.equal(initial.shopEconomy.bag["iron-sword"], 0);
@@ -112,6 +112,7 @@ test("strict historical v6 saves gain empty equipment stock while preserving ful
   const old: any = structuredClone(createSave(state));
   old.simulationVersion = 6;
   old.payload.simulationVersion = 6;
+  delete old.payload.level7World; // Genuine historical v6 payloads predate the dungeon state.
   delete old.payload.shopEconomy.bag["iron-sword"];
   delete old.payload.shopEconomy.bag["leather-vest"];
   const original=JSON.stringify(old);
