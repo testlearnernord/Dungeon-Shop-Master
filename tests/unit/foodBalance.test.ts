@@ -104,18 +104,19 @@ test("found rations have seeded ~25% chance, no duplicate grants or free food wh
   });
 });
 
-test("version 5 saves migrate strictly to 6 without changing the historical state", () => {
-  assert.equal(SIMULATION_VERSION, 7);
+test("version 5 saves migrate strictly to the current version without changing historical state", () => {
+  assert.equal(SIMULATION_VERSION, 8);
   const state = createGameState();
   const old = structuredClone(createSave(state)) as any;
   old.simulationVersion = 5;
   old.payload.simulationVersion = 5;
+  delete old.payload.level7World;
   for (const hero of old.payload.adventurers) delete hero.missedFoodShopVisits;
   delete old.payload.shopEconomy.bag["iron-sword"];
   delete old.payload.shopEconomy.bag["leather-vest"];
   const input = JSON.stringify(old);
   const migrated = parseSave(input);
-  assert.equal(migrated.simulationVersion, 7);
+  assert.equal(migrated.simulationVersion, 8);
   assert.deepEqual(migrated, state);
   assert.equal(JSON.stringify(old), input);
   assert.deepEqual(parseSave(JSON.stringify(createSave(migrated))), state);

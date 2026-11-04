@@ -68,12 +68,13 @@ test("strict v4 campaign migration retains previous permits and rejects forged o
   const version4: any = createSave(old);
   version4.simulationVersion=4;
   version4.payload.simulationVersion=4;
+  delete version4.payload.level7World;
   version4.payload.adventurers[0].level6Permit=true;
   for (const hero of version4.payload.adventurers) delete hero.missedFoodShopVisits;
   delete version4.payload.shopEconomy.bag["iron-sword"];
   delete version4.payload.shopEconomy.bag["leather-vest"];
   const upgraded=parseSave(JSON.stringify(version4));
-  assert.equal(upgraded.simulationVersion,7);
+  assert.equal(upgraded.simulationVersion,8);
   assert.equal(upgraded.adventurers[0].level6Permit,true);
   assert.equal(upgraded.rngState,old.rngState);
   assert.deepEqual(upgraded.shopEconomy,old.shopEconomy);
