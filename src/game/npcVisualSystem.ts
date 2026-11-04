@@ -240,7 +240,12 @@ export class NpcVisualSystem {
   ):void {
     this.layout=layout;this.shop=shop;
     for(const npc of this.npcs.values()){
-      if(npc.visitor.status!=="at-shop")continue;
+      if(npc.visitor.status!=="at-shop"){
+        // A changed layout may reopen an exit that was temporarily blocked.
+        if(npc.phase==="leaving"&&npc.root.metadata.shoppingPhase==="blocked-exit")
+          this.beginLeaving(npc);
+        continue;
+      }
       const plan=plans.get(npc.visitor.id)??null;
       const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves]);
       if(key===npc.intentKey)continue;
@@ -434,7 +439,10 @@ export class NpcVisualSystem {
         }
         npc.root.metadata.phase=npc.phase;
       }else if(npc.phase==="leaving"){
-        this.dispose(npc);
+        // Only discard a visitor after they have physically passed the gate.
+        // A currently impassable route must not make them vanish in the shop.
+        if(npc.root.position.z>=CORRIDOR_OUTER_Z-0.12)this.dispose(npc);
+        else npc.root.metadata.shoppingPhase="blocked-exit";
       }
       return;
     }
