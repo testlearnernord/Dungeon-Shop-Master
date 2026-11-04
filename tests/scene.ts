@@ -138,3 +138,20 @@ export function inspectHeroModels() {
       };
     });
 }
+
+/** Inspection of the isolated read-only Babylon dungeon-layout preview. */
+export function inspectDungeonLayout() {
+  const scene=Engine.LastCreatedScene!;
+  return {
+    wallCount:scene.meshes.filter(m=>m.name.startsWith("dungeon-wall-")).length,
+    floorCount:scene.meshes.filter(m=>m.name.startsWith("dungeon-corridor-tile-") ||
+      m.name.startsWith("dungeon-room-tile-")).length,
+    monsters:scene.meshes.filter(m=>m.name.startsWith("dungeon-monster-")).length,
+    treasures:scene.meshes.filter(m=>m.name.startsWith("dungeon-treasure-")).length,
+    traps:scene.meshes.filter(m=>m.name.startsWith("dungeon-trap-")).length,
+    heroReference:scene.transformNodes.some(node=>node.name.startsWith("dungeon-reference-")),
+    camera:{x:scene.activeCamera?.position.x??0,y:scene.activeCamera?.position.y??0,
+      z:scene.activeCamera?.position.z??0},
+    mapWidth:document.querySelector<HTMLCanvasElement>("#dungeon-minimap")?.width??0,
+  };
+}
