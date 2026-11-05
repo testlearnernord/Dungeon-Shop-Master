@@ -13,6 +13,7 @@ import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./her
 import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
+import { checkoutQueueIndex, checkoutQueuePoint } from "./checkoutQueue.ts";
 import { isObstructed, pathToShopGoal } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -168,6 +169,7 @@ export class NpcVisualSystem {
   private layout:ShopLayout|null=null;
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
+  private carts:readonly ShopCart[]=[];
 
   constructor(private readonly scene: Scene) {
     this.portraits.addEventListener("load", () => {
@@ -253,6 +255,7 @@ export class NpcVisualSystem {
     this.layout=layout;
     this.shop=shop;
     this.onPickUp=onPickUp;
+    this.carts=carts;
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
     for(const npc of this.npcs.values()){
       const isShopping=npc.visitor.status==="at-shop";
@@ -487,14 +490,17 @@ export class NpcVisualSystem {
       }
       npc.root.metadata.shoppingPhase="unreachable-shelf";
     }
-    const target=this.queuePosition(npc.slot);
+    const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
+    const target=checkoutIndex>=0?checkoutQueuePoint(checkoutIndex):this.queuePosition(npc.slot);
     const route=this.layout?pathToShopGoal(origin,
       {x:target.x,z:target.z},this.layout):null;
     npc.phase="browsing";npc.toQueue=true;
     npc.route=(route?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
     npc.waypoint=0;
     npc.root.metadata.shoppingTargetSlot=null;
-    npc.root.metadata.shoppingPhase="walking-to-wait";
+    npc.root.metadata.shoppingPhase=checkoutIndex>=0
+      ? (route?"walking-to-checkout":"checkout-route-blocked"):"walking-to-wait";
+    npc.root.metadata.checkoutQueueIndex=checkoutIndex;
     npc.root.metadata.phase=npc.phase;
     paintIdentity(npc,this.portraits);
   }
@@ -512,7 +518,8 @@ export class NpcVisualSystem {
       }else if(npc.phase==="browsing"){
         if(npc.toQueue){
           npc.phase="queueing";
-          npc.root.metadata.shoppingPhase="waiting-for-next-day";
+          npc.root.metadata.shoppingPhase=checkoutQueueIndex(this.carts,npc.visitor.id)>=0
+            ? "awaiting-checkout":"waiting-for-next-day";
         }else{
           npc.phase="considering";
           npc.wait=1.1+(npc.slot%3)*0.35;
