@@ -13,7 +13,7 @@ import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./her
 import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
-import { checkoutQueueIndex, checkoutQueuePoint } from "./checkoutQueue.ts";
+import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
 import { isObstructed, pathToShopGoal } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -257,6 +257,8 @@ export class NpcVisualSystem {
     this.onPickUp=onPickUp;
     this.carts=carts;
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
+    const queueIds=carts.filter(cart=>cart.lines.length>0).map(cart=>cart.heroId);
+    const queuePoints=checkoutQueuePoints(layout,{x:0,z:-1},queueIds.length);
     for(const npc of this.npcs.values()){
       const isShopping=npc.visitor.status==="at-shop";
       const held=isShopping?(cartByHero.get(npc.visitor.id)?.lines??[]):[];
@@ -270,7 +272,8 @@ export class NpcVisualSystem {
         continue;
       }
       const plan=plans.get(npc.visitor.id)??null;
-      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,held]);
+      const queueIndex=checkoutQueueIndex(carts,npc.visitor.id);
+      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,held,queueIndex,queuePoints[queueIndex]]);
       if(key===npc.intentKey)continue;
       npc.intent=plan;
       npc.intentKey=key;
@@ -491,7 +494,15 @@ export class NpcVisualSystem {
       npc.root.metadata.shoppingPhase="unreachable-shelf";
     }
     const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
-    const target=checkoutIndex>=0?checkoutQueuePoint(checkoutIndex):this.queuePosition(npc.slot);
+    const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length):[];
+    const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot);
+    if(checkoutIndex>=0&&!target){
+      npc.phase="queueing";npc.route=[];npc.waypoint=0;
+      npc.root.metadata.shoppingPhase="checkout-capacity-full";
+      npc.root.metadata.checkoutQueueIndex=checkoutIndex;
+      npc.root.metadata.phase=npc.phase;
+      return;
+    }
     const route=this.layout?pathToShopGoal(origin,
       {x:target.x,z:target.z},this.layout):null;
     npc.phase="browsing";npc.toQueue=true;
