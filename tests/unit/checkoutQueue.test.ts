@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoint } from "../../src/game/checkoutQueue.ts";
+import { checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoint, checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
 import { createShopLayout } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
 import type { ShopCart } from "../../src/game/shopCarts.ts";
@@ -23,13 +23,17 @@ test("empty carts never occupy checkout spots", () => {
   assert.deepEqual(checkoutQueueIds(carts), ["a", "b"]);
 });
 
-test("queue points are distinct, walkable and never inside counter", () => {
+test("queue positions stay separated with a rotated shelf and high demand", () => {
   const layout = createShopLayout();
-  const points = Array.from({length: 10}, (_, i) => checkoutQueuePoint(i));
-  assert.equal(new Set(points.map(p => p.x + ":" + p.z)).size, 10);
-  for (const point of points) {
-    assert.equal(isObstructed(point, layout), false, JSON.stringify(point));
-    assert.ok(pathToShopGoal({x: 0, z: -1}, point, layout), JSON.stringify(point));
+  const points = checkoutQueuePoints(layout, {x:0,z:-1}, 100);
+  assert.ok(points.length > 0);
+  assert.ok(points.length <= 100);
+  for (const [index, point] of points.entries()) {
+    assert.equal(isObstructed(point, layout), false);
+    assert.ok(pathToShopGoal({x:0,z:-1}, point, layout));
+    for (const other of points.slice(0,index))
+      assert.ok(Math.hypot(point.x-other.x,point.z-other.z)>=0.75);
   }
   assert.throws(() => checkoutQueuePoint(-1), RangeError);
+  assert.throws(() => checkoutQueuePoint(30), RangeError);
 });
