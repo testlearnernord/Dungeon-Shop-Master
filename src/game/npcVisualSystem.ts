@@ -517,6 +517,7 @@ export class NpcVisualSystem {
         this.beginBrowsing(npc);
       }else if(npc.phase==="browsing"){
         if(npc.toQueue){
+          if(npc.root.metadata.shoppingPhase==="checkout-route-blocked")return;
           npc.phase="queueing";
           npc.root.metadata.shoppingPhase=checkoutQueueIndex(this.carts,npc.visitor.id)>=0
             ? "awaiting-checkout":"waiting-for-next-day";
