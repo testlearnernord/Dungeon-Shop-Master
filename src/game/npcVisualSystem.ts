@@ -389,9 +389,12 @@ export class NpcVisualSystem {
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x < 0) open.level4 = true;
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x > 0) open.level6 = true;
       }
-      if(npc.root.metadata.shoppingPhase==="waiting-for-shelf" && npc.visitor.status==="at-shop"){
+      if(npc.phase==="queueing" &&
+        npc.root.metadata.shoppingPhase==="waiting-for-shelf" &&
+        npc.visitor.status==="at-shop"){
         npc.wait-=delta;
-        if(npc.wait<=0)this.beginBrowsing(npc);
+        if(npc.wait<=0&&npc.route[npc.waypoint]===undefined)
+          this.beginBrowsing(npc);
       }
       if(npc.phase==="considering"){
         npc.wait-=delta;
@@ -407,7 +410,9 @@ export class NpcVisualSystem {
             this.beginBrowsing(npc);
           }
         }
-      }else if(npc.phase!=="queueing"){
+      }else if(npc.phase!=="queueing"||
+        (npc.root.metadata.shoppingPhase==="waiting-for-shelf"&&
+          npc.route[npc.waypoint]!==undefined)){
         const isMovingThroughGate = (npc.phase === "entering" || npc.phase === "leaving") &&
           npc.root.position.z > 11.3;
         const physicalSide: GateSide = npc.root.position.x < 0 ? "level4" : "level6";
@@ -495,17 +500,33 @@ export class NpcVisualSystem {
       .find(s=>s.id===item.slotId):undefined;
     const origin={x:npc.root.position.x,z:npc.root.position.z};
     if(item&&slot&&this.layout&&this.shop){
+      const pointForShelf=this.shop.shelfAccessPoint(slot);
       const owner=this.shelfOwners.get(item.slotId);
       if(owner&&owner!==npc.visitor.id){
-        npc.phase="queueing";npc.route=[];npc.waypoint=0;
+        const waitingRoutes=Array.from({length:this.npcs.size+5},(_,slot)=>{
+          const target=this.queuePosition(slot);
+          const route=pathToShopGoal(origin,target,this.layout!);
+          const point=route?.waypoints.at(-1)??target;
+          const clearOfShelf=Math.hypot(point.x-pointForShelf.x,
+            point.z-pointForShelf.z)>=PERSONAL_SPACE*2;
+          const clearOfVisitors=[...this.npcs.values()].every(other=>
+            other===npc||Math.hypot(point.x-other.root.position.x,
+              point.z-other.root.position.z)>=PERSONAL_SPACE*1.5);
+          return route&&clearOfShelf&&clearOfVisitors?{route}:null;
+        }).filter((candidate):candidate is {route:NonNullable<ReturnType<typeof pathToShopGoal>>} =>
+          candidate!==null)
+          .sort((a,b)=>a.route.length-b.route.length);
+        const waitingRoute=waitingRoutes[0]?.route;
+        npc.phase="queueing";
+        npc.route=waitingRoute?.waypoints.map(p=>new Vector3(p.x,0,p.z))??[];
+        npc.waypoint=0;
         npc.wait=0.6+(npc.slot%4)*0.12;
         npc.root.metadata.shoppingPhase="waiting-for-shelf";
         npc.root.metadata.shoppingTargetSlot=item.slotId;
         npc.root.metadata.phase=npc.phase;
         return;
       }
-      const point=this.shop.shelfAccessPoint(slot);
-      const path=pathToShopGoal(origin,{x:point.x,z:point.z},this.layout);
+      const path=pathToShopGoal(origin,{x:pointForShelf.x,z:pointForShelf.z},this.layout);
       if(path){
         this.shelfOwners.set(item.slotId,npc.visitor.id);
         npc.phase="browsing";npc.toQueue=false;
