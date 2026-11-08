@@ -40,6 +40,7 @@ interface NpcVisual {
   wait: number;
   browseSide: number;
   animationTime: number;
+  blockedSeconds:number;
   gateSide: GateSide;
   readonly labelTexture: DynamicTexture;
   saleTag: Mesh | null;
@@ -145,7 +146,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
 
   const visual: NpcVisual = {
     root, arms, legs, torso, model, visitor, phase: "entering", route: [], waypoint: 0, slot,
-    elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0,
+    elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, blockedSeconds:0,
     gateSide: visitor.entranceGate ?? "level4",
     intent:null,intentKey:"",targetIndex:0,toQueue:false,
     heldLines:[],heldMeshes:[],heldKey:"",
@@ -444,6 +445,7 @@ export class NpcVisualSystem {
       : [new Vector3(x, 0, CORRIDOR_INNER_Z), new Vector3(gateX, 0, CORRIDOR_INNER_Z)];
     npc.waypoint = 0;
     npc.wait = 0;
+    npc.blockedSeconds=0;
     npc.root.metadata.phase = npc.phase;
     npc.root.metadata.gateSide = npc.gateSide;
     npc.root.metadata.simulationStatus = npc.visitor.status;
@@ -587,6 +589,13 @@ export class NpcVisualSystem {
       .some(other=>other!==npc&&Math.hypot(
         px-other.root.position.x,pz-other.root.position.z)<PERSONAL_SPACE);
     if(blocked(x,z)){
+      npc.blockedSeconds+=delta;
+      npc.root.metadata.blockedSeconds=npc.blockedSeconds;
+      if(npc.blockedSeconds>3 && npc.phase==="browsing"){
+        npc.blockedSeconds=0;
+        this.beginBrowsing(npc);
+        return;
+      }
       // Yield sideways rather than deadlock when two autonomous visitors meet.
       // Keep deviations inside the actual shop's walkable area.
       const sideStep=Math.max(0.08,step);
@@ -605,6 +614,7 @@ export class NpcVisualSystem {
       }
       return;
     }
+    npc.blockedSeconds=0;
     npc.root.position.x=x;
     npc.root.position.z=z;
   }
