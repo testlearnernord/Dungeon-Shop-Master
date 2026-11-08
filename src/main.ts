@@ -107,7 +107,11 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   selectedItemId = selected;
   statusHud.textContent = message;
   renderInventory(selected);
-}, toggleCatalog, 3, openRoster);
+}, toggleCatalog, 3, openRoster, () => {
+  const next=store.state.shopCarts[0];
+  if(!next)return "No unpaid customer is waiting at the register.";
+  return store.payReservedCart(next.heroId);
+});
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
