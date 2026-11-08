@@ -184,3 +184,30 @@ export function settleHeldShopCarts(
   }
   return {state:{...result, shopCarts: []}, events, settledIds};
 }
+
+/**
+ * Staffed register: settle exactly one physically reserved cart.
+ * Reuses the validated reservation settlement, which never consumes shelf
+ * stock twice (the stock was removed when the hero picked it up).
+ * This is deliberately separate from forecast-only checkoutCustomer.
+ */
+export function payReservedShopCart(state:GameState,heroId:string):CartActionResult {
+  const cart=state.shopCarts.find(entry=>entry.heroId===heroId);
+  const hero=state.adventurers.find(entry=>entry.id===heroId);
+  if(!cart||!hero||hero.status!=="at-shop"||cart.day!==state.day||
+      alreadyPaid(state,heroId))
+    return failed(state,"This customer has no payable cart.");
+  const total=cartTotal(cart);
+  if(total<=0||hero.gold<total)
+    return failed(state,"The customer cannot afford this cart.");
+  // The settlement routine emits reserved receipts, updates the customer,
+  // and transfers the gold. Preserve all other outstanding carts.
+  const isolated={...state,shopCarts:[cart]};
+  const settled=settleHeldShopCarts(isolated,state.day);
+  return {
+    state:{...settled.state,
+      shopCarts:state.shopCarts.filter(entry=>entry.heroId!==heroId),
+      events:[...state.events,...settled.events]},
+    message:hero.name+" paid "+total+"g for "+cart.lines.length+" line(s).",
+  };
+}
