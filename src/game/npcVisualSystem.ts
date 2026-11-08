@@ -169,6 +169,7 @@ export class NpcVisualSystem {
   private layout:ShopLayout|null=null;
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
+  private readonly shelfOwners=new Map<string,string>();
   private carts:readonly ShopCart[]=[];
 
   constructor(private readonly scene: Scene) {
@@ -387,6 +388,10 @@ export class NpcVisualSystem {
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x < 0) open.level4 = true;
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x > 0) open.level6 = true;
       }
+      if(npc.root.metadata.shoppingPhase==="waiting-for-shelf" && npc.visitor.status==="at-shop"){
+        npc.wait-=delta;
+        if(npc.wait<=0)this.beginBrowsing(npc);
+      }
       if(npc.phase==="considering"){
         npc.wait-=delta;
         if(npc.wait<=0){
@@ -419,7 +424,14 @@ export class NpcVisualSystem {
     }
   };
 
+  private releaseShelf(npc:NpcVisual):void {
+    for(const [slot,owner] of this.shelfOwners){
+      if(owner===npc.visitor.id)this.shelfOwners.delete(slot);
+    }
+  }
+
   private beginEntering(npc: NpcVisual, slot: number, fromOutside: boolean): void {
+    this.releaseShelf(npc);
     npc.slot = slot;
     npc.phase = "entering";
     npc.gateSide = npc.visitor.entranceGate ?? "level4";
@@ -438,6 +450,7 @@ export class NpcVisualSystem {
   }
 
   private beginLeaving(npc: NpcVisual): void {
+    this.releaseShelf(npc);
     npc.phase = "leaving";
     npc.gateSide = npc.visitor.status === "expedition" ? "level6" : "level4";
     const gateX = CORRIDOR_X[npc.gateSide]+((npc.slot%3)-1)*0.62;
@@ -474,14 +487,25 @@ export class NpcVisualSystem {
   }
 
   private beginBrowsing(npc:NpcVisual):void {
+    this.releaseShelf(npc);
     const item=npc.intent?.items[npc.targetIndex];
     const slot=item&&this.shop?[...this.shop.slotMeshes.values()]
       .find(s=>s.id===item.slotId):undefined;
     const origin={x:npc.root.position.x,z:npc.root.position.z};
     if(item&&slot&&this.layout&&this.shop){
+      const owner=this.shelfOwners.get(item.slotId);
+      if(owner&&owner!==npc.visitor.id){
+        npc.phase="queueing";npc.route=[];npc.waypoint=0;
+        npc.wait=0.6+(npc.slot%4)*0.12;
+        npc.root.metadata.shoppingPhase="waiting-for-shelf";
+        npc.root.metadata.shoppingTargetSlot=item.slotId;
+        npc.root.metadata.phase=npc.phase;
+        return;
+      }
       const point=this.shop.shelfAccessPoint(slot);
       const path=pathToShopGoal(origin,{x:point.x,z:point.z},this.layout);
       if(path){
+        this.shelfOwners.set(item.slotId,npc.visitor.id);
         npc.phase="browsing";npc.toQueue=false;
         npc.route=path.waypoints.map(p=>new Vector3(p.x,0,p.z));
         npc.waypoint=0;
@@ -599,6 +623,7 @@ export class NpcVisualSystem {
   }
 
   private dispose(npc: NpcVisual): void {
+    this.releaseShelf(npc);
     this.clearSaleTag(npc);
     this.syncCarriedProducts(npc, []);
     npc.root.dispose(false, true);
