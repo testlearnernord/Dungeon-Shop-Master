@@ -25,6 +25,7 @@ export class InteractionSystem {
     private readonly openCatalog: () => void = () => {},
     private readonly maxInteractionDistance = 3,
     private readonly openRoster: () => void = () => {},
+    private readonly checkoutRegister: () => string = () => "No customer is ready.",
   ) {
     this.shop.select(ITEMS[0].id);
     this.registerEvents();
@@ -122,8 +123,7 @@ export class InteractionSystem {
     const pick = this.scene.pickWithRay(this.camera.getForwardRay(3));
     const target = this.worldItems.find(({ mesh }) => mesh === pick?.pickedMesh);
     if (target?.kind === "register") {
-      this.message = "Wholesale catalog opened. Visitors buy on confirmed End Day.";
-      this.openCatalog();
+      this.message = this.checkoutRegister();
     } else if (target?.kind === "roster-board") {
       this.message = "Adventurer roster opened.";
       this.openRoster();
