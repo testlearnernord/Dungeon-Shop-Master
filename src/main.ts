@@ -21,6 +21,7 @@ import { setupExpeditionHud } from "./expeditionHud";
 import { currentDayReceipts } from "./game/saleView";
 import { loadCampaign, setupCampaignHud } from "./campaignHud";
 import { setupSoundtrack } from "./soundtrack";
+import { setupCashierHud } from "./cashierHud.ts";
 import "./styles.css";
 
 async function startGame(): Promise<void> {
@@ -72,6 +73,7 @@ setupExpeditionHud(store);
 let selectedItemId: ItemId = ITEMS[0].id;
 setupCampaignHud(store, campaign, () => {
   npcVisuals.reconcile([], []);
+  cashier?.close();
   interactions.reset();
   camera.position.set(0, 1.7, -4.6);
   camera.rotation.setAll(0);
@@ -104,20 +106,12 @@ function renderInventory(selectedItem: ItemId): void {
 }
 
 let isShopActive = () => true;
+let cashier:ReturnType<typeof setupCashierHud>|null=null;
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;
   renderInventory(selected);
-}, toggleCatalog, 3, openRoster, () => {
-  if(!isShopActive())return "Return to the shop to use the register.";
-  const heroId=npcVisuals.readyCheckoutHeroId();
-  if(!heroId)return "Wait for the first customer to reach the register.";
-  // Revalidate queue arrival and cart at the actual synchronous commit point.
-  if(heroId!==npcVisuals.readyCheckoutHeroId() ||
-      store.state.shopCarts[0]?.heroId!==heroId)
-    return "The checkout queue changed. Try again.";
-  return store.payReservedCart(heroId);
-}, () => isShopActive());
+}, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.", () => isShopActive());
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
@@ -127,6 +121,8 @@ const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
 });
 isShopActive=()=>!arena.isActive&&!dungeon.isActive;
+cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId(),isShopActive,
+  heroId=>store.payReservedCart(heroId),message=>{statusHud.textContent=message;});
 
 engine.runRenderLoop(() => {
   if (dungeon.isActive) {
