@@ -107,6 +107,9 @@ export class SceneSoundtrack {
     this.renderUi();
   }
 
+  get soundEnabled():boolean { return this.enabled; }
+  get soundVolume():number { return this.volume; }
+
   setScene(next: SoundtrackScene): void {
     if (this.scene === next) return;
     this.scene = next;
