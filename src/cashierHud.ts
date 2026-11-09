@@ -10,7 +10,7 @@ export function setupCashierHud(
   store:GameStore,
   readyHero:()=>string|null,
   shopActive:()=>boolean,
-  pay:(heroId:string)=>string,
+  pay:(heroId:string,perfectTiming:boolean)=>string,
   report:(message:string)=>void,
 ):{open:()=>string;close:()=>void} {
   const root=document.createElement("dialog");
@@ -93,7 +93,7 @@ export function setupCashierHud(
     const id=heroId;
     if(readyHero()!==id||!shopActive()){close();report("Checkout canceled: customer moved.");return;}
     close();
-    report(pay(id)+" Timing: 2/2 perfect.");
+    report(pay(id,true)+" Timing: 2/2 perfect.");
   },true);
   store.subscribe(()=>{
     if(heroId&&!store.state.shopCarts.some(cart=>cart.heroId===heroId))close();
