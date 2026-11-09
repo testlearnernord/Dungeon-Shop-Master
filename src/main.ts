@@ -122,7 +122,7 @@ const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
 });
 isShopActive=()=>!arena.isActive&&!dungeon.isActive;
 cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId(),isShopActive,
-  heroId=>store.payReservedCart(heroId),message=>{statusHud.textContent=message;});
+  (heroId,perfectTiming)=>store.payReservedCart(heroId,perfectTiming),message=>{statusHud.textContent=message;});
 
 engine.runRenderLoop(() => {
   if (dungeon.isActive) {
