@@ -39,7 +39,7 @@ export interface PopulationConfig {
 export interface WorldEvent {
   readonly id: string;
   readonly type: "welcome" | "day-started" | "dungeon-outcome" | "shop-arrival" | "shop-stay" | "shop-departure" | "influx" |
-    "sale" | "ate" | "healed" | "starvation" | "rescue" |
+    "sale" | "tip" | "ate" | "healed" | "starvation" | "rescue" |
     "level6-departure" | "level6-combat" | "level6-return" | "food-shortage" | "found-food" |
     "level7-departure" | "level7-exploration";
   readonly day: number;
