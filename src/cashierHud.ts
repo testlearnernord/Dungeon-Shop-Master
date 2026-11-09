@@ -1,20 +1,23 @@
+import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { cartTotal } from "./game/shopCarts.ts";
 import { ITEMS } from "./game/economy.ts";
 import type { GameStore } from "./game/gameStore.ts";
 
 /** UI-only timing session. Never changes GameState until a confirmed checkout. */
 export function setupCashierHud(
+  canvas:HTMLCanvasElement,
+  camera:UniversalCamera,
   store:GameStore,
   readyHero:()=>string|null,
   shopActive:()=>boolean,
   pay:(heroId:string)=>string,
   report:(message:string)=>void,
 ):{open:()=>string;close:()=>void} {
-  const root=document.createElement("section");
+  const root=document.createElement("dialog");
   root.id="cashier-overlay";
-  root.hidden=true;
-  root.setAttribute("aria-label","Cashier timing challenge");
-  root.innerHTML='<div class="cashier-panel"><h2>CHECKOUT</h2><p class="cashier-customer"></p><div class="cashier-lines"></div><p class="cashier-total"></p><div class="cashier-meter"><div class="cashier-target"></div><div class="cashier-needle"></div></div><p class="cashier-hint">Press R twice when the marker crosses the center.</p><button type="button" class="cashier-cancel">Cancel (Esc)</button></div>';
+  root.tabIndex=-1;
+  root.setAttribute("aria-labelledby","cashier-title");
+  root.innerHTML='<div class="cashier-panel"><h2 id="cashier-title">CHECKOUT</h2><p class="cashier-customer"></p><div class="cashier-lines"></div><p class="cashier-total"></p><div class="cashier-meter"><div class="cashier-target"></div><div class="cashier-needle"></div></div><p class="cashier-hint">Press R twice when the marker crosses the center.</p><button type="button" class="cashier-cancel">Cancel (Esc)</button></div>';
   document.body.append(root);
   const customer=root.querySelector<HTMLElement>(".cashier-customer")!;
   const lines=root.querySelector<HTMLElement>(".cashier-lines")!;
@@ -27,10 +30,15 @@ export function setupCashierHud(
   let started=0;
   let frame=0;
   const close=()=>{
+    if(!heroId&&!root.open)return;
     heroId=null;
-    root.hidden=true;
     cancelAnimationFrame(frame);
+    if(root.open)root.close();
   };
+  root.addEventListener("close",()=>{
+    camera.attachControl(canvas,true);
+    canvas.focus();
+  });
   const phase=()=>Math.abs(Math.sin((performance.now()-started)/700));
   const render=()=>{
     if(!heroId)return;
@@ -40,6 +48,7 @@ export function setupCashierHud(
   };
   const open=():string=>{
     if(heroId)return "Finish or cancel the current checkout.";
+    if(document.querySelector("dialog[open]"))return "Close the open dialog first.";
     if(!shopActive())return "Return to the shop first.";
     const id=readyHero();
     const cart=store.state.shopCarts.find(entry=>entry.heroId===id);
@@ -56,20 +65,23 @@ export function setupCashierHud(
     }
     total.textContent="Total: "+cartTotal(cart)+"g";
     hint.textContent="Press R twice near the center. Esc cancels.";
-    root.hidden=false;
+    if(document.pointerLockElement)void document.exitPointerLock();
+    camera.detachControl();
+    root.showModal();
+    root.focus();
     frame=requestAnimationFrame(render);
     return "Cashier challenge started. Press R twice at the center.";
   };
   root.querySelector(".cashier-cancel")!.addEventListener("click",close);
   window.addEventListener("keydown",event=>{
-    if(!heroId||event.repeat)return;
+    if(!root.open||!heroId||event.repeat)return;
     if(event.code==="Escape"){event.preventDefault();close();return;}
     if(event.code!=="KeyR")return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if(performance.now()-lastPress<250)return;
     lastPress=performance.now();
-    const accurate=phase()<=0.18;
+    const accurate=Math.abs(phase()-0.5)<=0.09;
     if(!accurate){
       hint.textContent="Missed! Try again at the center. "+hits+"/2";
       hits=0;
