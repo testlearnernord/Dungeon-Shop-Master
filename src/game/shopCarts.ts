@@ -222,14 +222,18 @@ export function payReservedShopCart(state:GameState,heroId:string,perfectTiming=
   if(tipEvent&&state.events.some(event=>event.id===tipEvent.id))
     return failed(state,"This customer has already tipped today.");
   const paid=settled.state;
+  const balance=paid.shopEconomy.balance+tip;
+  const revenue=paid.shopEconomy.dailySales.revenue+tip;
+  if(!Number.isSafeInteger(balance)||!Number.isSafeInteger(revenue))
+    return failed(state,"This checkout exceeds safe economy limits.");
   return {
     state:{...paid,
       adventurers:tip>0?paid.adventurers.map(person=>person.id===heroId
         ? {...person,gold:person.gold-tip}:person):paid.adventurers,
       shopEconomy:tip>0?{...paid.shopEconomy,
-        balance:paid.shopEconomy.balance+tip,
+        balance,
         dailySales:{...paid.shopEconomy.dailySales,
-          revenue:paid.shopEconomy.dailySales.revenue+tip}}:paid.shopEconomy,
+          revenue}}:paid.shopEconomy,
       shopCarts:state.shopCarts.filter(entry=>entry.heroId!==heroId),
       events:[...state.events,...events,...(tipEvent?[tipEvent]:[])]},
     message:hero.name+" paid "+total+"g"+(tip?" + "+tip+"g tip":"")+

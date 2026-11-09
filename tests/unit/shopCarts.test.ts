@@ -256,12 +256,50 @@ test("perfect cashier timing transfers a real 10% tip and survives save roundtri
 test("insufficient extra gold does not create a tip or overdraw customer",()=>{
   const initial=customers();
   const hero=initial.adventurers[0];
-  const wanted=forecastShoppingIntents(initial).get(hero.id)!.items[0];
-  const reserved=pickUpShopItem(initial,hero.id,wanted.slotId).state;
+  let reserved=initial;
+  for(let i=0;i<2;i++){
+    const wanted=forecastShoppingIntents(reserved).get(hero.id)?.items[0];
+    if(!wanted)break;
+    reserved=pickUpShopItem(reserved,hero.id,wanted.slotId).state;
+  }
+  assert(reserved.shopCarts[0].lines.length>=2);
+  const total=cartTotal(reserved.shopCarts[0]);
+  assert(Math.floor(total/10)>0,"The reserved cart must have a positive potential tip.");
   const constrained={...reserved,adventurers:reserved.adventurers.map(person=>
-    person.id===hero.id?{...person,gold:cartTotal(reserved.shopCarts[0])}:person)};
+    person.id===hero.id?{...person,gold:total}:person)};
   const paid=payReservedShopCart(constrained,hero.id,true).state;
   assert.equal(paid.adventurers[0].gold,0);
   assert.equal(paid.events.filter(event=>event.type==="tip").length,0);
   assert.deepEqual(parseSave(JSON.stringify(createSave(paid))),paid);
+});
+
+test("tip validation caps revenue at 10% of same-day manual sales",()=>{
+  const initial=customers();
+  const hero=initial.adventurers[0];
+  const wanted=forecastShoppingIntents(initial).get(hero.id)!.items[0];
+  const reserved=pickUpShopItem(initial,hero.id,wanted.slotId).state;
+  const paid=payReservedShopCart(reserved,hero.id).state;
+  const forged={...paid,events:[...paid.events,{
+    id:"day-"+paid.day+":"+hero.id+":tip",type:"tip" as const,day:paid.day,
+    adventurerId:hero.id,revenue:1000000,message:"Forged tip.",
+  }]};
+  assert.throws(()=>createSave(forged),/same-day manual sales/);
+});
+
+test("cashier rejects tip totals that exceed safe economy limits atomically",()=>{
+  const initial=customers();
+  const hero=initial.adventurers[0];
+  const cart={heroId:hero.id,day:initial.day,lines:[
+    {slotId:"shelf-1-slot-1",itemId:"bread" as const,quantity:2,subtotal:8},
+    {slotId:"shelf-1-slot-2",itemId:"healing-herb" as const,quantity:1,subtotal:6},
+  ]};
+  for(const shopEconomy of [
+    {...initial.shopEconomy,balance:Number.MAX_SAFE_INTEGER-14},
+    {...initial.shopEconomy,dailySales:{...initial.shopEconomy.dailySales,
+      revenue:Number.MAX_SAFE_INTEGER-14}},
+  ]){
+    const state={...initial,shopEconomy,shopCarts:[cart]};
+    const result=payReservedShopCart(state,hero.id,true);
+    assert.strictEqual(result.state,state);
+  }
 });

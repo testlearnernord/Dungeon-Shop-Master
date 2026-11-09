@@ -502,12 +502,15 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       allowed.push("revenue");
       integer(event.revenue,`${path}.revenue`,1,1000000);
       if(version<10)fail(`${path}.type`,"tip requires current save format");
-      const manualSale=(state.events as unknown[]).some(raw=>{
+      const manualRevenue=(state.events as unknown[]).reduce<number>((total,raw)=>{
         const sale=raw as RecordValue;
         return sale.type==="sale"&&sale.saleChannel==="manual"&&
-          sale.adventurerId===event.adventurerId&&sale.day===eventDay;
-      });
-      if(!manualSale)fail(`${path}.type`,"tip requires a same-day manual sale");
+          sale.adventurerId===event.adventurerId&&sale.day===eventDay
+          ? total+(typeof sale.revenue==="number"?sale.revenue:0):total;
+      },0);
+      if(manualRevenue===0)fail(`${path}.type`,"tip requires a same-day manual sale");
+      if((event.revenue as number)>Math.floor(manualRevenue/10))
+        fail(`${path}.revenue`,"must not exceed 10% of same-day manual sales");
     }
     if (event.type === "sale") {
       allowed.push("revenue");
