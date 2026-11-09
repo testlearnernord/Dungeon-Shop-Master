@@ -63,7 +63,7 @@ const originalItemIds = itemIds.filter((id) => id !== "iron-sword" && id !== "le
 const slotDefinitions = createEconomy().slots;
 const eventTypes = [
   "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure",
-  "influx", "sale", "ate", "healed", "starvation", "rescue",
+  "influx", "sale", "tip", "ate", "healed", "starvation", "rescue",
   "level6-departure", "level6-combat", "level6-return",
   "food-shortage", "found-food",
   "level7-departure", "level7-exploration",
@@ -497,6 +497,17 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
         event.type === "sale" ? ECONOMY.slotCapacity : event.type === "rescue" ? ECONOMY.rescueQuantity : 1);
       if ((event.type === "ate" || event.type === "rescue" || event.type === "found-food") && event.itemId !== "bread") fail(`${path}.itemId`, "must be bread");
       if (event.type === "healed" && event.itemId !== "healing-herb") fail(`${path}.itemId`, "must be healing-herb");
+    }
+    if(event.type==="tip"){
+      allowed.push("revenue");
+      integer(event.revenue,`${path}.revenue`,1,1000000);
+      if(version<10)fail(`${path}.type`,"tip requires current save format");
+      const manualSale=(state.events as unknown[]).some(raw=>{
+        const sale=raw as RecordValue;
+        return sale.type==="sale"&&sale.saleChannel==="manual"&&
+          sale.adventurerId===event.adventurerId&&sale.day===eventDay;
+      });
+      if(!manualSale)fail(`${path}.type`,"tip requires a same-day manual sale");
     }
     if (event.type === "sale") {
       allowed.push("revenue");
