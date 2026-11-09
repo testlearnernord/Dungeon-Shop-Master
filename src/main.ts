@@ -85,12 +85,16 @@ setupCampaignHud(store, campaign, () => {
 });
 
 function renderInventory(selectedItem: ItemId): void {
+  const focusedItemId = document.activeElement instanceof HTMLElement &&
+    inventoryHud.contains(document.activeElement) ? document.activeElement.dataset.itemId : undefined;
   inventoryHud.replaceChildren();
+  const rows = new Map<string, HTMLDivElement>();
   for (const [index,item] of ITEMS.entries()) {
     const row = document.createElement("div");
     row.className = `inventory-row${item.id === selectedItem ? " selected" : ""}${store.state.shopEconomy.bag[item.id]===0?" empty":""}`;
     row.setAttribute("role","button");
     row.setAttribute("tabindex","0");
+    row.dataset.itemId = item.id;
     row.setAttribute("aria-label",`Select ${item.name}, ${store.state.shopEconomy.bag[item.id]} available`);
     row.setAttribute("aria-pressed",String(item.id===selectedItem));
     row.title=`${index+1}: ${item.name}`;
@@ -108,6 +112,7 @@ function renderInventory(selectedItem: ItemId): void {
     quantity.textContent = String(store.state.shopEconomy.bag[item.id]);
     row.append(key,dot, name, quantity);
     inventoryHud.append(row);
+    rows.set(item.id, row);
   }
   const capacity = document.createElement("div");
   capacity.className = "capacity";
@@ -116,6 +121,7 @@ function renderInventory(selectedItem: ItemId): void {
   const hint=document.createElement("span");hint.className="hotbar-hint";
   hint.textContent="Wheel / 1–6 select · Click stock · Right-click remove";
   inventoryHud.append(hint);
+  if (focusedItemId) rows.get(focusedItemId)?.focus({ preventScroll: true });
 }
 
 let isShopActive = () => true;

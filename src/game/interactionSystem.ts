@@ -79,7 +79,8 @@ export class InteractionSystem {
       if (document.pointerLockElement !== this.canvas) this.heldButton = null;
     });
     window.addEventListener("keydown", (event) => {
-      if(!event.repeat && this.isShopActive() && !document.querySelector("dialog[open]") &&
+      if(!event.repeat && !event.defaultPrevented && !event.altKey && !event.ctrlKey &&
+          !event.metaKey && !event.shiftKey && this.isShopActive() && !document.querySelector("dialog[open]") &&
           !(event.target instanceof HTMLElement &&
             (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT","BUTTON"].includes(event.target.tagName))) &&
           /^Digit[1-6]$/.test(event.code)){

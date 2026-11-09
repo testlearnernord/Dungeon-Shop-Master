@@ -63,3 +63,43 @@ test("bulk wholesale purchases, always-readable roster and QWERTZ confirmation",
   await expect(page.locator("#day")).toHaveText("Day 2");
   expect(errors).toEqual([]);
 });
+
+test("hotbar shortcuts respect modifiers and keyboard activation keeps focus", async ({ page }) => {
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const selected = page.locator(".inventory-row[aria-pressed=true]");
+  const initialItemId = await selected.getAttribute("data-item-id");
+  await page.evaluate(() => {
+    document.dispatchEvent(new KeyboardEvent("keydown", {
+      code: "Digit2", ctrlKey: true, bubbles: true, cancelable: true,
+    }));
+    window.addEventListener("keydown", event => event.preventDefault(), { once: true, capture: true });
+    document.dispatchEvent(new KeyboardEvent("keydown", {
+      code: "Digit3", bubbles: true, cancelable: true,
+    }));
+  });
+  await expect(selected).toHaveAttribute("data-item-id", initialItemId!);
+
+  const slot = page.locator(".inventory-row").nth(1);
+  const itemId = await slot.getAttribute("data-item-id");
+  await slot.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".inventory-row[aria-pressed=true]")).toHaveAttribute("data-item-id", itemId!);
+  await expect.poll(() => page.evaluate(() =>
+    (document.activeElement as HTMLElement | null)?.dataset.itemId,
+  )).toBe(itemId);
+});
+
+test("mobile sales banner, hotbar and controls occupy separate vertical space", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const bounds = await page.evaluate(() =>
+    ["#sales-banner", "#inventory", ".controls"].map(selector => {
+      const { top, bottom } = document.querySelector(selector)!.getBoundingClientRect();
+      return { top, bottom };
+    }),
+  );
+  expect(bounds[0].bottom).toBeLessThanOrEqual(bounds[1].top);
+  expect(bounds[1].bottom).toBeLessThanOrEqual(bounds[2].top);
+});

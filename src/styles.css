@@ -429,6 +429,7 @@ body,
   border-radius: 50%;
 }
 .sales-hint { color: #afa38f; font-size: 10px; line-height: 1.4; }
+.mobile-hud-stack { display: contents; }
 
 @media (max-width: 720px) {
   .sales-banner {
@@ -719,7 +720,22 @@ body.dungeon-active #music-panel { top: 119px; }
 #inventory .capacity {border:0;margin:0;padding:0;align-self:center;min-width:58px;text-align:center;font-size:11px}
 #inventory .hotbar-hint {flex-basis:100%;font-size:10px;text-align:center;color:#c9bda9}
 @media(max-width:740px) {
-  #inventory.inventory {bottom:40px;gap:4px;padding:5px}
+  .mobile-hud-stack {
+    position:absolute;right:12px;bottom:12px;left:12px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    pointer-events:none;z-index:5;
+  }
+  .mobile-hud-stack .sales-banner {
+    position:static;left:auto;bottom:auto;width:min(265px,100%);max-width:none;
+  }
+  .mobile-hud-stack #inventory.inventory {
+    position:relative;left:auto;bottom:auto;transform:none;
+    width:max-content;max-width:100%;gap:4px;padding:5px;
+  }
+  .mobile-hud-stack .controls {
+    position:static;left:auto;bottom:auto;width:max-content;max-width:100%;
+    transform:none;
+  }
   #inventory .inventory-row {min-width:64px;min-height:60px;padding:9px 4px 4px}
   #inventory .inventory-row .item-name {font-size:9px}
   #inventory .hotbar-hint {display:none}

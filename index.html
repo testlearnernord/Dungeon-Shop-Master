@@ -52,8 +52,24 @@
             <p class="sales-hint">Heroes reserve goods when they physically reach a shelf. Held goods stay unpaid until End Day, when they settle automatically. Interactive cashier payments are coming next.</p>
           </details>
         </section>
-        <p id="sales-banner" class="sales-banner" role="status"></p>
-        <div id="inventory" class="inventory" aria-label="Stocking hotbar"></div>
+        <div class="mobile-hud-stack">
+          <p id="sales-banner" class="sales-banner" role="status"></p>
+          <div id="inventory" class="inventory" aria-label="Stocking hotbar"></div>
+          <div class="controls">
+            <strong>WASD</strong> move <span>·</span> <strong>Shift</strong> sprint <span>·</span> <strong>Mouse</strong> look
+            <span>·</span> <strong>1–6 / Wheel</strong> select
+            <span>·</span> <strong>Left-click</strong> stock
+            <span>·</span> <strong>Right-click</strong> remove
+            <span>·</span> <strong>E</strong> interact
+            <span>·</span> <strong>N / Z</strong> end / confirm day
+            <span>·</span> <strong>B</strong> wholesale
+            <span>·</span> <strong>P</strong> arrange shelves
+            <span>·</span> <strong>R</strong> roster board
+            <span>·</span> <strong>V</strong> watch Level 6
+            <span>·</span> <strong>G</strong> observe Level 7
+            <span>·</span> <strong>Esc</strong> release
+          </div>
+        </div>
         <details class="adventurer-panel" open>
           <summary id="population-summary">Adventurers</summary>
           <p id="shop-visitors" aria-label="Shop visitors"></p>
@@ -66,20 +82,6 @@
         </details>
         <div id="status" class="status">Loading campaign…</div>
         <div class="crosshair" aria-hidden="true"></div>
-        <div class="controls">
-          <strong>WASD</strong> move <span>·</span> <strong>Shift</strong> sprint <span>·</span> <strong>Mouse</strong> look
-          <span>·</span> <strong>1–6 / Wheel</strong> select
-          <span>·</span> <strong>Left-click</strong> stock
-          <span>·</span> <strong>Right-click</strong> remove
-          <span>·</span> <strong>E</strong> interact
-          <span>·</span> <strong>N / Z</strong> end / confirm day
-          <span>·</span> <strong>B</strong> wholesale
-          <span>·</span> <strong>P</strong> arrange shelves
-          <span>·</span> <strong>R</strong> roster board
-          <span>·</span> <strong>V</strong> watch Level 6
-          <span>·</span> <strong>G</strong> observe Level 7
-          <span>·</span> <strong>Esc</strong> release
-        </div>
       </section>
       <section id="arena-hud" hidden aria-label="Level 6 cave troll spectator preview">
         <header class="arena-toolbar">
