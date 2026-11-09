@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createGameState, advanceDay, SIMULATION_VERSION, type GameState } from "../../src/game/gameState.ts";
-import { pickUpShopItem, returnShopCart, cartTotal, settleHeldShopCarts } from "../../src/game/shopCarts.ts";
+import { pickUpShopItem, returnShopCart, cartTotal, settleHeldShopCarts, payReservedShopCart } from "../../src/game/shopCarts.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { transferShelf } from "../../src/game/economy.ts";
@@ -210,4 +210,24 @@ test("Copilot regression: imported cart cannot also have a manual same-day recei
   envelope.payload.events=forged.events;
   assert.throws(()=>parseSave(JSON.stringify(envelope)),/shopCarts.*already paid/);
   assert.throws(()=>createSave(forged),/shopCarts.*already paid/);
+});
+
+test("staffed checkout produces save-safe manual receipts, pays once and leaves other carts",()=>{
+  const initial=customers();
+  const first=initial.adventurers[0];
+  const wanted=forecastShoppingIntents(initial).get(first.id)!.items[0];
+  const reserved=pickUpShopItem(initial,first.id,wanted.slotId).state;
+  const result=payReservedShopCart(reserved,first.id);
+  assert.notStrictEqual(result.state,reserved);
+  assert.equal(result.state.shopCarts.length,0);
+  assert.equal(result.state.shopEconomy.balance,
+    reserved.shopEconomy.balance+wanted.subtotal);
+  const receipt=result.state.events.find(event=>event.type==="sale" &&
+    event.adventurerId===first.id);
+  assert(receipt);
+  assert.equal(receipt.saleChannel,"manual");
+  assert.match(String(receipt.id),/:manual$/);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(result.state))),result.state);
+  assert.strictEqual(payReservedShopCart(result.state,first.id).state,result.state);
+  assert.strictEqual(pickUpShopItem(result.state,first.id,wanted.slotId).state,result.state);
 });

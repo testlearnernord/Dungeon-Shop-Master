@@ -507,7 +507,11 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       const item = ITEMS.find((entry) => entry.id === event.itemId)!;
       if (event.revenue !== item.salePrice * (event.quantity as number)) fail(`${path}.revenue`, "must match item price and quantity");
       const prefix = `day-${eventDay}:${event.adventurerId}:sale:`;
-      if (!id.startsWith(prefix) || !slotIds.has(id.slice(prefix.length))) fail(`${path}.id`, "must link to the sale's shelf slot");
+      const receiptSlot=id.startsWith(prefix) ? id.slice(prefix.length) : "";
+      const manualSuffix=receiptSlot.endsWith(":manual");
+      const slotId=manualSuffix ? receiptSlot.slice(0,-":manual".length) : receiptSlot;
+      if (!slotIds.has(slotId) || (manualSuffix && event.saleChannel!=="manual"))
+        fail(`${path}.id`, "must link to the sale's shelf slot");
     } else {
       const expected = `day-${eventDay}:${global ? "" : `${event.adventurerId}:`}${suffix}`;
       if (id !== expected) fail(`${path}.id`, "must agree with event day, type and hero");
