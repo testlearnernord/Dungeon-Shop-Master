@@ -231,3 +231,37 @@ test("staffed checkout produces save-safe manual receipts, pays once and leaves 
   assert.strictEqual(payReservedShopCart(result.state,first.id).state,result.state);
   assert.strictEqual(pickUpShopItem(result.state,first.id,wanted.slotId).state,result.state);
 });
+
+test("perfect cashier timing transfers a real 10% tip and survives save roundtrip",()=>{
+  const initial=customers();
+  const hero=initial.adventurers[0];
+  let state=initial;
+  for(let i=0;i<3;i++){
+    const next=forecastShoppingIntents(state).get(hero.id)?.items[0];
+    if(!next)break;
+    const picked=pickUpShopItem(state,hero.id,next.slotId);
+    if(picked.state===state)break;
+    state=picked.state;
+  }
+  const total=cartTotal(state.shopCarts[0]);
+  const tip=Math.floor(total/10);
+  const paid=payReservedShopCart(state,hero.id,true).state;
+  assert.equal(paid.adventurers[0].gold,hero.gold-total-tip);
+  assert.equal(paid.shopEconomy.balance,state.shopEconomy.balance+total+tip);
+  assert.equal(paid.shopEconomy.dailySales.revenue,total+tip);
+  assert.equal(paid.events.filter(event=>event.type==="tip").length,tip>0?1:0);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(paid))),paid);
+  assert.strictEqual(payReservedShopCart(paid,hero.id,true).state,paid);
+});
+test("insufficient extra gold does not create a tip or overdraw customer",()=>{
+  const initial=customers();
+  const hero=initial.adventurers[0];
+  const wanted=forecastShoppingIntents(initial).get(hero.id)!.items[0];
+  const reserved=pickUpShopItem(initial,hero.id,wanted.slotId).state;
+  const constrained={...reserved,adventurers:reserved.adventurers.map(person=>
+    person.id===hero.id?{...person,gold:cartTotal(reserved.shopCarts[0])}:person)};
+  const paid=payReservedShopCart(constrained,hero.id,true).state;
+  assert.equal(paid.adventurers[0].gold,0);
+  assert.equal(paid.events.filter(event=>event.type==="tip").length,0);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(paid))),paid);
+});
