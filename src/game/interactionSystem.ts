@@ -26,6 +26,7 @@ export class InteractionSystem {
     private readonly maxInteractionDistance = 3,
     private readonly openRoster: () => void = () => {},
     private readonly checkoutRegister: () => string = () => "No customer is ready.",
+    private readonly isShopActive: () => boolean = () => true,
   ) {
     this.shop.select(ITEMS[0].id);
     this.registerEvents();
@@ -69,7 +70,10 @@ export class InteractionSystem {
       if (document.pointerLockElement !== this.canvas) this.heldButton = null;
     });
     window.addEventListener("keydown", (event) => {
-      if (event.code !== "KeyE" || event.repeat || document.querySelector("dialog[open]")) return;
+      if (event.code !== "KeyE" || event.repeat || !this.isShopActive() ||
+          document.querySelector("dialog[open]") ||
+          event.target instanceof HTMLElement &&
+          (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT","BUTTON"].includes(event.target.tagName))) return;
       this.interact();
     });
     this.scene.onBeforeRenderObservable.add(() => {
@@ -120,7 +124,8 @@ export class InteractionSystem {
   }
 
   private interact(): void {
-    const pick = this.scene.pickWithRay(this.camera.getForwardRay(3));
+    if(!this.isShopActive())return;
+    const pick = this.scene.pickWithRay(this.camera.getForwardRay(this.maxInteractionDistance));
     const target = this.worldItems.find(({ mesh }) => mesh === pick?.pickedMesh);
     if (target?.kind === "register") {
       this.message = this.checkoutRegister();
