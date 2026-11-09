@@ -630,6 +630,23 @@ export class NpcVisualSystem {
         this.beginBrowsing(npc);
         return;
       }
+      // Congested entrances cannot be solved with lateral movement alone.
+      // Outside the shop, actors in the same direction follow one another;
+      // opposing traffic gets a bounded priority so no visitor waits forever.
+      if(npc.phase==="entering"||npc.phase==="leaving"){
+        const gate= npc.root.position.x<0?"level4":"level6";
+        const peers=[...this.npcs.values()].filter(other=>other!==npc &&
+          (other.phase==="entering"||other.phase==="leaving") &&
+          (other.root.position.x<0?"level4":"level6")===gate &&
+          Math.hypot(other.root.position.x-npc.root.position.x,
+            other.root.position.z-npc.root.position.z)<PERSONAL_SPACE*1.8);
+        const opposing=peers.filter(other=>other.phase!==npc.phase);
+        // Ensure stuck visitors eventually get priority over newer arrivals.
+        // Do not teleport across walls, create sales or modify simulation state.
+        if(npc.blockedSeconds>6 && opposing.length>0){
+          for(const other of opposing)other.root.metadata.yieldingTo=npc.visitor.id;
+        }
+      }
       // Yield sideways rather than deadlock when two autonomous visitors meet.
       // Keep deviations inside the actual shop's walkable area.
       const sideStep=Math.max(0.08,step);
