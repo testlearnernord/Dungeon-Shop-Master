@@ -86,9 +86,18 @@ setupCampaignHud(store, campaign, () => {
 
 function renderInventory(selectedItem: ItemId): void {
   inventoryHud.replaceChildren();
-  for (const item of ITEMS) {
+  for (const [index,item] of ITEMS.entries()) {
     const row = document.createElement("div");
-    row.className = `inventory-row${item.id === selectedItem ? " selected" : ""}`;
+    row.className = `inventory-row${item.id === selectedItem ? " selected" : ""}${store.state.shopEconomy.bag[item.id]===0?" empty":""}`;
+    row.setAttribute("role","button");
+    row.setAttribute("tabindex","0");
+    row.setAttribute("aria-label",`Select ${item.name}, ${store.state.shopEconomy.bag[item.id]} available`);
+    row.setAttribute("aria-pressed",String(item.id===selectedItem));
+    row.title=`${index+1}: ${item.name}`;
+    row.addEventListener("click",()=>interactions.selectItem(item.id));
+    row.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();interactions.selectItem(item.id);}});
+    const key=document.createElement("kbd");
+    key.className="hotbar-key";key.textContent=String(index+1);
     const dot = document.createElement("span");
     dot.className = "item-dot";
     dot.style.setProperty("--item-color", item.color);
@@ -96,13 +105,16 @@ function renderInventory(selectedItem: ItemId): void {
     name.textContent = item.name;
     const quantity = document.createElement("strong");
     quantity.textContent = String(store.state.shopEconomy.bag[item.id]);
-    row.append(dot, name, quantity);
+    row.append(key,dot, name, quantity);
     inventoryHud.append(row);
   }
   const capacity = document.createElement("div");
   capacity.className = "capacity";
   capacity.textContent = `Bag ${Object.values(store.state.shopEconomy.bag).reduce((sum, quantity) => sum + quantity, 0)} / ${ECONOMY.bagCapacity}`;
   inventoryHud.append(capacity);
+  const hint=document.createElement("span");hint.className="hotbar-hint";
+  hint.textContent="Wheel / 1–6 select · Click stock · Right-click remove";
+  inventoryHud.append(hint);
 }
 
 let isShopActive = () => true;
