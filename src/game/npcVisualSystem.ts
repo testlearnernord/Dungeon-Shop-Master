@@ -288,6 +288,19 @@ export class NpcVisualSystem {
     }
   }
 
+  /** Physical register admission, checked immediately before the transaction. */
+  readyCheckoutHeroId():string|null {
+    const head=this.carts.find(cart=>cart.lines.length>0);
+    if(!head||!this.layout)return null;
+    const npc=this.npcs.get(head.heroId);
+    if(!npc||npc.visitor.status!=="at-shop"||npc.phase!=="queueing"||
+       npc.root.metadata.shoppingPhase!=="awaiting-checkout")return null;
+    const point=checkoutQueuePoints(this.layout,{x:0,z:-1},1)[0];
+    if(!point||Math.hypot(npc.root.position.x-point.x,
+       npc.root.position.z-point.z)>0.3)return null;
+    return head.heroId;
+  }
+
   /** Physically carried items use the same item IDs/colors as shelf goods.
    * Meshes belong to the right-hand socket of the shared hero model.
    * This never equips unpaid armor or swords as bought equipment.
