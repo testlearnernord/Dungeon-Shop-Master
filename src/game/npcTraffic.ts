@@ -40,11 +40,14 @@ export function interruptedDepartureRoute(
  * rather than snapping a blocked, hard-coded point onto another visitor.
  * The returned null means idle capacity is exhausted, not an occupied slot.
  */
+const idleCache=new WeakMap<import("./shopLayout.ts").ShopLayout,ShopPoint[]>();
 export function idleShopPositions(
   layout:import("./shopLayout.ts").ShopLayout,count:number,
 ):ShopPoint[] {
   if(!Number.isSafeInteger(count)||count<0||count>1000)
     throw new RangeError("Invalid visitor count");
+  const cached=idleCache.get(layout);
+  if(cached && (cached.length>=count || cached.length===100))return cached.slice(0,count);
   const {isObstructed,pathToShopGoal}=navigation;
   const positions:ShopPoint[]=[];
   const origin={x:gateTravelLane("level4","entering"),z:6};
@@ -63,5 +66,6 @@ export function idleShopPositions(
       positions.push(actual);
     }
   }
+  if(count===100)idleCache.set(layout,positions);
   return positions;
 }
