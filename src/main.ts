@@ -103,6 +103,7 @@ function renderInventory(selectedItem: ItemId): void {
     dot.style.setProperty("--item-color", item.color);
     const name = document.createElement("span");
     name.textContent = item.name;
+    name.className="item-name";
     const quantity = document.createElement("strong");
     quantity.textContent = String(store.state.shopEconomy.bag[item.id]);
     row.append(key,dot, name, quantity);
