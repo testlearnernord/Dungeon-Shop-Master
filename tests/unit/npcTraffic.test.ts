@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createShopLayout } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
-import { gateTravelLane, idleShopPosition, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
+import { gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
   for(const gate of ["level4","level6"] as const){
@@ -28,15 +28,45 @@ test("burst arrivals get non-overlapping spawns, without crossing the corridor w
   assert(occupied[23].z>occupied[0].z);
 });
 
-test("idle guests have distinct walkable standing positions away from both gate approaches",()=>{
+test("interrupted departures change lanes only outside the corridor walls",()=>{
+  for(const gate of ["level4","level6"] as const){
+    const outgoing=gateTravelLane(gate,"leaving");
+    const incoming=gateTravelLane(gate,"entering");
+    const points=interruptedDepartureRoute(gate,{x:outgoing,z:9},6,13);
+    assert.deepEqual(points,[
+      {x:outgoing,z:14},
+      {x:incoming,z:14},
+      {x:incoming,z:6},
+    ]);
+    assert.deepEqual(interruptedDepartureRoute(gate,{x:outgoing,z:5},6,13),[
+      {x:incoming,z:6},
+    ]);
+  }
+});
+
+test("up to 100 idle visitors get unique walkable reachable positions",()=>{
   const layout=createShopLayout();
-  const spots=Array.from({length:36},(_,slot)=>idleShopPosition(slot));
+  const spots=idleShopPositions(layout,100);
+  assert.equal(spots.length,100,"must support the configured 100 active heroes");
   for(let i=0;i<spots.length;i++){
     const point=spots[i];
-    assert(point.z<0,"idle NPCs must not block the doorway");
+    assert(point.z<3,"idle NPCs must not block the doorway");
     assert(!isObstructed(point,layout));
-    for(let j=0;j<i;j++)assert(Math.hypot(point.x-spots[j].x,point.z-spots[j].z)>0.8);
+    for(let j=0;j<i;j++)assert(Math.hypot(point.x-spots[j].x,point.z-spots[j].z)>=0.7);
     const route=pathToShopGoal({x:gateTravelLane("level4","entering"),z:6},point,layout);
     assert(route,"idle location should be reachable from the level 4 entrance");
+  }
+});
+
+test("moved shelf never snaps two waiting visitors onto the same destination",()=>{
+  const layout=createShopLayout();
+  const moved={shelves:layout.shelves.map(shelf=>shelf.id==="shelf-1"
+    ?{...shelf,x:0,z:-2,rotation:1 as const}:shelf)};
+  const spots=idleShopPositions(moved,100);
+  assert(spots.length>=60,"layout should retain useful idle capacity");
+  for(let i=0;i<spots.length;i++){
+    assert(!isObstructed(spots[i],moved));
+    for(let j=0;j<i;j++)
+      assert(Math.hypot(spots[i].x-spots[j].x,spots[i].z-spots[j].z)>=0.7);
   }
 });
