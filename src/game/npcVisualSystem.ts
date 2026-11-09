@@ -585,7 +585,7 @@ export class NpcVisualSystem {
 
   private queuePosition(slot:number):Vector3|null {
     if(!this.layout)return null;
-    const point=idleShopPositions(this.layout,slot+1)[slot];
+    const point=idleShopPositions(this.layout,100)[slot];
     return point?new Vector3(point.x,0,point.z):null;
   }
 
