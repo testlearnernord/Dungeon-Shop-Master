@@ -14,6 +14,7 @@ import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
+import { gateTravelLane, idleShopPosition, nextEntranceSpawnZ } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -204,11 +205,13 @@ export class NpcVisualSystem {
         usedSlots.add(slot);
         // Concurrent arrivals have distinct lateral lanes and spawn depth.
         // Never create two physical models at the same position.
-        const lane=(slot%3-1)*0.66;
         const gate=visitor.entranceGate??"level4";
-        const spawnZ=CORRIDOR_OUTER_Z+Math.floor(slot/3)*0.92;
+        const laneX=gateTravelLane(gate,"entering");
+        const spawnZ=nextEntranceSpawnZ(laneX,[...this.npcs.values()].map(n=>({
+          x:n.root.position.x,z:n.root.position.z,
+        })));
         const visual=createHumanoid(this.scene,visitor,slot,
-          new Vector3(CORRIDOR_X[gate]+lane,0,spawnZ),this.portraits);
+          new Vector3(laneX,0,spawnZ),this.portraits);
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -226,11 +229,13 @@ export class NpcVisualSystem {
         usedSlots.add(slot);
         // Concurrent arrivals have distinct lateral lanes and spawn depth.
         // Never create two physical models at the same position.
-        const lane=(slot%3-1)*0.66;
         const gate=visitor.entranceGate??"level4";
-        const spawnZ=CORRIDOR_OUTER_Z+Math.floor(slot/3)*0.92;
+        const laneX=gateTravelLane(gate,"entering");
+        const spawnZ=nextEntranceSpawnZ(laneX,[...this.npcs.values()].map(n=>({
+          x:n.root.position.x,z:n.root.position.z,
+        })));
         const visual=createHumanoid(this.scene,visitor,slot,
-          new Vector3(CORRIDOR_X[gate]+lane,0,spawnZ),this.portraits);
+          new Vector3(laneX,0,spawnZ),this.portraits);
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -455,11 +460,10 @@ export class NpcVisualSystem {
     npc.phase = "entering";
     npc.gateSide = npc.visitor.entranceGate ?? "level4";
     const x = npc.root.position.x;
-    const gateX = CORRIDOR_X[npc.gateSide];
-    // Never cut across the physical corridor-end wall if a previous departure
-    // animation is interrupted by a later day tick.
+    const gateX = gateTravelLane(npc.gateSide,"entering");
+    // Keep the same x lane until inside the shop; only then shift laterally.
     npc.route = fromOutside
-      ? [new Vector3(x, 0, CORRIDOR_INNER_Z)]
+      ? [new Vector3(gateX, 0, CORRIDOR_INNER_Z)]
       : [new Vector3(x, 0, CORRIDOR_INNER_Z), new Vector3(gateX, 0, CORRIDOR_INNER_Z)];
     npc.waypoint = 0;
     npc.wait = 0;
@@ -473,15 +477,14 @@ export class NpcVisualSystem {
     this.releaseShelf(npc);
     npc.phase = "leaving";
     npc.gateSide = npc.visitor.status === "expedition" ? "level6" : "level4";
-    const gateX = CORRIDOR_X[npc.gateSide]+((npc.slot%3)-1)*0.62;
+    const gateX = gateTravelLane(npc.gateSide,"leaving");
     // Keep the current corridor lane when outside: crossing lateral corridor
     // walls at z>7 is forbidden. Inside the shop use furniture-aware routing.
     const mustEnterShop=npc.root.position.z>CORRIDOR_INNER_Z+0.25;
     const from=mustEnterShop?
       {x:npc.root.position.x,z:CORRIDOR_INNER_Z}:
       {x:npc.root.position.x,z:npc.root.position.z};
-    const possibleLanes=[gateX,CORRIDOR_X[npc.gateSide],
-      CORRIDOR_X[npc.gateSide]-0.62,CORRIDOR_X[npc.gateSide]+0.62];
+    const possibleLanes=[gateX];
     const chosen=possibleLanes.map(x=>({
       x,route:this.layout?pathToShopGoal(from,{
         x,z:CORRIDOR_INNER_Z,
@@ -577,8 +580,8 @@ export class NpcVisualSystem {
   }
 
   private queuePosition(slot:number):Vector3 {
-    return new Vector3(-2.2+(slot%5)*1.1,0,
-      4+Math.floor(slot/5)*0.65);
+    const point=idleShopPosition(slot);
+    return new Vector3(point.x,0,point.z);
   }
 
   private move(npc: NpcVisual, delta: number): void {
@@ -630,23 +633,10 @@ export class NpcVisualSystem {
         this.beginBrowsing(npc);
         return;
       }
-      // Congested entrances cannot be solved with lateral movement alone.
-      // Outside the shop, actors in the same direction follow one another;
-      // opposing traffic gets a bounded priority so no visitor waits forever.
-      if(npc.phase==="entering"||npc.phase==="leaving"){
-        const gate= npc.root.position.x<0?"level4":"level6";
-        const peers=[...this.npcs.values()].filter(other=>other!==npc &&
-          (other.phase==="entering"||other.phase==="leaving") &&
-          (other.root.position.x<0?"level4":"level6")===gate &&
-          Math.hypot(other.root.position.x-npc.root.position.x,
-            other.root.position.z-npc.root.position.z)<PERSONAL_SPACE*1.8);
-        const opposing=peers.filter(other=>other.phase!==npc.phase);
-        // Ensure stuck visitors eventually get priority over newer arrivals.
-        // Do not teleport across walls, create sales or modify simulation state.
-        if(npc.blockedSeconds>6 && opposing.length>0){
-          for(const other of opposing)other.root.metadata.yieldingTo=npc.visitor.id;
-        }
-      }
+      // In the narrow gates, wait behind the visitor ahead. Side-stepping
+      // into the opposite-direction lane would recreate the original jam.
+      if((npc.phase==="entering"||npc.phase==="leaving") &&
+          (npc.root.position.z>6.5||target.z>6.5))return;
       // Yield sideways rather than deadlock when two autonomous visitors meet.
       // Keep deviations inside the actual shop's walkable area.
       const sideStep=Math.max(0.08,step);
