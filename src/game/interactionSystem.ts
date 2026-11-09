@@ -73,7 +73,7 @@ export class InteractionSystem {
       if (event.code !== "KeyE" || event.repeat || !this.isShopActive() ||
           document.querySelector("dialog[open]") ||
           event.target instanceof HTMLElement &&
-          (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT","BUTTON"].includes(event.target.tagName))) return;
+          (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT"].includes(event.target.tagName))) return;
       this.interact();
     });
     this.scene.onBeforeRenderObservable.add(() => {
