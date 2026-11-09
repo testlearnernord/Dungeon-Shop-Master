@@ -74,8 +74,8 @@ export class GameStore {
     return result.message;
   }
 
-  payReservedCart(heroId:string):string {
-    const result=payReservedShopCart(this.current,heroId);
+  payReservedCart(heroId:string,perfectTiming=false):string {
+    const result=payReservedShopCart(this.current,heroId,perfectTiming);
     this.replace(result.state);
     return result.message;
   }
