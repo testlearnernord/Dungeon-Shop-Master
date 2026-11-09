@@ -4,10 +4,11 @@ export function createCashierSfx(isEnabled:()=>boolean,getVolume:()=>number) {
   let context:AudioContext|null=null;
   let lastPulse=-1;
   const play=(cue:CashierCue)=>{
+    if(cue==="open")lastPulse=-1;
     if(!isEnabled()||getVolume()<=0)return;
     try{
       context??=new AudioContext();
-      if(context.state==="suspended")void context.resume();
+      if(context.state==="suspended")void context.resume().catch(()=>{ /* Optional audio startup may be blocked. */ });
       const now=context.currentTime;
       const gain=context.createGain();
       gain.connect(context.destination);
