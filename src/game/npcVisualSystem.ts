@@ -525,9 +525,9 @@ export class NpcVisualSystem {
           const target=this.queuePosition(slot);
           const route=target?pathToShopGoal(origin,target,this.layout!):null;
           const point=route?.waypoints.at(-1)??target;
-          const clearOfShelf=Math.hypot(point.x-pointForShelf.x,
+          const clearOfShelf=!!point&&Math.hypot(point.x-pointForShelf.x,
             point.z-pointForShelf.z)>=PERSONAL_SPACE*2;
-          const clearOfVisitors=[...this.npcs.values()].every(other=>
+          const clearOfVisitors=!!point&&[...this.npcs.values()].every(other=>
             other===npc||Math.hypot(point.x-other.root.position.x,
               point.z-other.root.position.z)>=PERSONAL_SPACE*1.5);
           return route&&clearOfShelf&&clearOfVisitors?{route}:null;
