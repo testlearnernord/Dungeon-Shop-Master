@@ -103,15 +103,21 @@ function renderInventory(selectedItem: ItemId): void {
   inventoryHud.append(capacity);
 }
 
+let isShopActive = () => true;
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;
   renderInventory(selected);
 }, toggleCatalog, 3, openRoster, () => {
-  const next=store.state.shopCarts[0];
-  if(!next)return "No unpaid customer is waiting at the register.";
-  return store.payReservedCart(next.heroId);
-});
+  if(!isShopActive())return "Return to the shop to use the register.";
+  const heroId=npcVisuals.readyCheckoutHeroId();
+  if(!heroId)return "Wait for the first customer to reach the register.";
+  // Revalidate queue arrival and cart at the actual synchronous commit point.
+  if(heroId!==npcVisuals.readyCheckoutHeroId() ||
+      store.state.shopCarts[0]?.heroId!==heroId)
+    return "The checkout queue changed. Try again.";
+  return store.payReservedCart(heroId);
+}, () => isShopActive());
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
@@ -120,6 +126,7 @@ const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
 });
+isShopActive=()=>!arena.isActive&&!dungeon.isActive;
 
 engine.runRenderLoop(() => {
   if (dungeon.isActive) {
