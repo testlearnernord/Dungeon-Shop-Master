@@ -33,6 +33,15 @@ export class InteractionSystem {
     this.publish();
   }
 
+  selectItem(itemId:ItemId):void {
+    const index=ITEMS.findIndex(item=>item.id===itemId);
+    if(index<0)return;
+    this.selectedIndex=index;
+    this.shop.select(itemId);
+    this.message=`Selected ${ITEMS[index].name}.`;
+    this.publish();
+  }
+
   reset(): void {
     this.heldButton = null;
     this.selectedIndex = 0;
@@ -70,6 +79,14 @@ export class InteractionSystem {
       if (document.pointerLockElement !== this.canvas) this.heldButton = null;
     });
     window.addEventListener("keydown", (event) => {
+      if(!event.repeat && this.isShopActive() && !document.querySelector("dialog[open]") &&
+          !(event.target instanceof HTMLElement &&
+            (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT","BUTTON"].includes(event.target.tagName))) &&
+          /^Digit[1-6]$/.test(event.code)){
+        this.selectItem(ITEMS[Number(event.code.slice(-1))-1].id);
+        event.preventDefault();
+        return;
+      }
       if (event.code !== "KeyE" || event.repeat || !this.isShopActive() ||
           document.querySelector("dialog[open]") ||
           event.target instanceof HTMLElement &&
