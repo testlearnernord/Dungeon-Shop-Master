@@ -191,7 +191,7 @@ export function settleHeldShopCarts(
  * stock twice (the stock was removed when the hero picked it up).
  * This is deliberately separate from forecast-only checkoutCustomer.
  */
-export function payReservedShopCart(state:GameState,heroId:string):CartActionResult {
+export function payReservedShopCart(state:GameState,heroId:string,perfectTiming=false):CartActionResult {
   const cart=state.shopCarts.find(entry=>entry.heroId===heroId);
   const hero=state.adventurers.find(entry=>entry.id===heroId);
   if(!cart||!hero||hero.status!=="at-shop"||cart.day!==state.day||
@@ -202,6 +202,10 @@ export function payReservedShopCart(state:GameState,heroId:string):CartActionRes
     return failed(state,"The customer cannot afford this cart.");
   // The settlement routine emits reserved receipts, updates the customer,
   // and transfers the gold. Preserve all other outstanding carts.
+  // The bonus is a real customer-funded tip, not minted shop gold.
+  // For tiny carts, round down to whole gold. Never overdraw the hero.
+  const tip=perfectTiming&&hero.gold>=total+Math.floor(total/10)
+    ? Math.floor(total/10):0;
   const isolated={...state,shopCarts:[cart]};
   const settled=settleHeldShopCarts(isolated,state.day);
   // Manual receipts need their own stable identity. Legacy/End Day receipts
@@ -210,10 +214,25 @@ export function payReservedShopCart(state:GameState,heroId:string):CartActionRes
     id:event.id+":manual",saleChannel:"manual" as const}));
   if(events.some(event=>state.events.some(prior=>prior.id===event.id)))
     return failed(state,"This customer already paid for this shelf today.");
+  const tipEvent:WorldEvent|null=tip>0?{
+    id:"day-"+state.day+":"+heroId+":tip",type:"tip",day:state.day,
+    adventurerId:heroId,revenue:tip,
+    message:hero.name+" tipped "+tip+"g for excellent service.",
+  }:null;
+  if(tipEvent&&state.events.some(event=>event.id===tipEvent.id))
+    return failed(state,"This customer has already tipped today.");
+  const paid=settled.state;
   return {
-    state:{...settled.state,
+    state:{...paid,
+      adventurers:tip>0?paid.adventurers.map(person=>person.id===heroId
+        ? {...person,gold:person.gold-tip}:person):paid.adventurers,
+      shopEconomy:tip>0?{...paid.shopEconomy,
+        balance:paid.shopEconomy.balance+tip,
+        dailySales:{...paid.shopEconomy.dailySales,
+          revenue:paid.shopEconomy.dailySales.revenue+tip}}:paid.shopEconomy,
       shopCarts:state.shopCarts.filter(entry=>entry.heroId!==heroId),
-      events:[...state.events,...events]},
-    message:hero.name+" paid "+total+"g for "+cart.lines.length+" line(s).",
+      events:[...state.events,...events,...(tipEvent?[tipEvent]:[])]},
+    message:hero.name+" paid "+total+"g"+(tip?" + "+tip+"g tip":"")+
+      " for "+cart.lines.length+" line(s).",
   };
 }
