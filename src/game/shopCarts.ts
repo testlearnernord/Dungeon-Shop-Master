@@ -204,10 +204,16 @@ export function payReservedShopCart(state:GameState,heroId:string):CartActionRes
   // and transfers the gold. Preserve all other outstanding carts.
   const isolated={...state,shopCarts:[cart]};
   const settled=settleHeldShopCarts(isolated,state.day);
+  // Manual receipts need their own stable identity. Legacy/End Day receipts
+  // may already exist for this hero and shelf on the same day.
+  const events=settled.events.map(event=>({...event,
+    id:event.id+":manual",saleChannel:"manual" as const}));
+  if(events.some(event=>state.events.some(prior=>prior.id===event.id)))
+    return failed(state,"This customer already paid for this shelf today.");
   return {
     state:{...settled.state,
       shopCarts:state.shopCarts.filter(entry=>entry.heroId!==heroId),
-      events:[...state.events,...settled.events]},
+      events:[...state.events,...events]},
     message:hero.name+" paid "+total+"g for "+cart.lines.length+" line(s).",
   };
 }
