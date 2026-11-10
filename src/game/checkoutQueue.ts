@@ -20,7 +20,7 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   const candidates: ShopPoint[] = [];
   // Derive the front of the queue from the same counter used by rendering and collisions.
   // At the legacy position this starts at z=0.5, preserving existing paths.
-  const queueFrontZ = CHECKOUT_COUNTER.clearanceMinZ - 0.65;
+  const queueFrontZ = Math.round((CHECKOUT_COUNTER.clearanceMinZ - 0.65) * 4) / 4;
   for (let step = 0; step <= 8; step++) {
     const z = queueFrontZ - step * 0.75;
     for (const x of [0, -0.9, 0.9, -1.8, 1.8, -2.7, 2.7, -3.6, 3.6, -4.5, 4.5]) {
