@@ -234,3 +234,16 @@ export function inspectShopPlacement() {
   };
   return {left:data("shelf-1"),right:data("shelf-2")};
 }
+
+/** Integration probe: physical cashier meshes must follow editor previews and saves. */
+export function inspectCheckoutPlacement() {
+  const scene=Engine.LastCreatedScene!;
+  const read=(name:string)=>{
+    const mesh=scene.getMeshByName(name);
+    mesh?.computeWorldMatrix(true);
+    return mesh?{x:mesh.position.x,z:mesh.position.z,rotation:mesh.rotation.y,
+      collides:mesh.checkCollisions,enabled:mesh.isEnabled()}:null;
+  };
+  return {counter:read("checkout-counter"),top:read("counter-top"),
+    register:read("cash-register"),guide:read("counter-placement-preview")};
+}
