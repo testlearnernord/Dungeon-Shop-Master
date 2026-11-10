@@ -31,3 +31,33 @@ test("reconciliation does not create duplicate changes for repeated IDs", () => 
   assert.deepEqual(changes.staying.map(({ id }) => id), ["one"]);
   assert.deepEqual(changes.leaving, []);
 });
+
+test("paid customer exits only when the authoritative visitor status leaves at-shop", () => {
+  const before = [visitor("paid"), visitor("waiting"), visitor("unpaid")];
+  const after = [
+    visitor("paid", "returning"),
+    visitor("waiting"),
+    visitor("unpaid"),
+  ];
+  const changes = reconcileVisitors(before, after);
+  assert.deepEqual(changes.leaving.map(({id})=>id), ["paid"]);
+  assert.deepEqual(changes.staying.map(({id})=>id), ["waiting","unpaid"]);
+  assert.deepEqual(changes.entering, []);
+});
+
+test("clearing a cart alone cannot remove a customer still marked at-shop", () => {
+  // Reconciliation is status-driven, not cart-driven. A completed sale that
+  // leaves a hero at the shop must not despawn the physical NPC prematurely.
+  const previous = [visitor("customer")];
+  const current = [visitor("customer")];
+  const changes = reconcileVisitors(previous,current);
+  assert.deepEqual(changes.leaving,[]);
+  assert.deepEqual(changes.staying.map(({id})=>id),["customer"]);
+});
+
+test("paid customer departing for an expedition exits just once", () => {
+  const previous = [visitor("buyer")];
+  const current = [visitor("buyer","expedition")];
+  assert.deepEqual(reconcileVisitors(previous,current).leaving.map(({id})=>id),["buyer"]);
+  assert.deepEqual(reconcileVisitors(current,current).leaving,[]);
+});
