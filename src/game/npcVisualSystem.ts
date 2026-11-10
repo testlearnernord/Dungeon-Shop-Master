@@ -14,6 +14,7 @@ import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
+import { gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -204,11 +205,13 @@ export class NpcVisualSystem {
         usedSlots.add(slot);
         // Concurrent arrivals have distinct lateral lanes and spawn depth.
         // Never create two physical models at the same position.
-        const lane=(slot%3-1)*0.66;
         const gate=visitor.entranceGate??"level4";
-        const spawnZ=CORRIDOR_OUTER_Z+Math.floor(slot/3)*0.92;
+        const laneX=gateTravelLane(gate,"entering");
+        const spawnZ=nextEntranceSpawnZ(laneX,[...this.npcs.values()].map(n=>({
+          x:n.root.position.x,z:n.root.position.z,
+        })));
         const visual=createHumanoid(this.scene,visitor,slot,
-          new Vector3(CORRIDOR_X[gate]+lane,0,spawnZ),this.portraits);
+          new Vector3(laneX,0,spawnZ),this.portraits);
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -226,11 +229,13 @@ export class NpcVisualSystem {
         usedSlots.add(slot);
         // Concurrent arrivals have distinct lateral lanes and spawn depth.
         // Never create two physical models at the same position.
-        const lane=(slot%3-1)*0.66;
         const gate=visitor.entranceGate??"level4";
-        const spawnZ=CORRIDOR_OUTER_Z+Math.floor(slot/3)*0.92;
+        const laneX=gateTravelLane(gate,"entering");
+        const spawnZ=nextEntranceSpawnZ(laneX,[...this.npcs.values()].map(n=>({
+          x:n.root.position.x,z:n.root.position.z,
+        })));
         const visual=createHumanoid(this.scene,visitor,slot,
-          new Vector3(CORRIDOR_X[gate]+lane,0,spawnZ),this.portraits);
+          new Vector3(laneX,0,spawnZ),this.portraits);
         this.npcs.set(visitor.id, visual);
         this.beginEntering(visual, slot, true);
       }
@@ -455,12 +460,13 @@ export class NpcVisualSystem {
     npc.phase = "entering";
     npc.gateSide = npc.visitor.entranceGate ?? "level4";
     const x = npc.root.position.x;
-    const gateX = CORRIDOR_X[npc.gateSide];
-    // Never cut across the physical corridor-end wall if a previous departure
-    // animation is interrupted by a later day tick.
+    const gateX = gateTravelLane(npc.gateSide,"entering");
+    // Keep the same x lane until inside the shop; only then shift laterally.
     npc.route = fromOutside
-      ? [new Vector3(x, 0, CORRIDOR_INNER_Z)]
-      : [new Vector3(x, 0, CORRIDOR_INNER_Z), new Vector3(gateX, 0, CORRIDOR_INNER_Z)];
+      ? [new Vector3(gateX, 0, CORRIDOR_INNER_Z)]
+      : interruptedDepartureRoute(npc.gateSide,
+          {x,z:npc.root.position.z},CORRIDOR_INNER_Z,CORRIDOR_OUTER_Z)
+          .map(point=>new Vector3(point.x,0,point.z));
     npc.waypoint = 0;
     npc.wait = 0;
     npc.blockedSeconds=0;
@@ -473,15 +479,14 @@ export class NpcVisualSystem {
     this.releaseShelf(npc);
     npc.phase = "leaving";
     npc.gateSide = npc.visitor.status === "expedition" ? "level6" : "level4";
-    const gateX = CORRIDOR_X[npc.gateSide]+((npc.slot%3)-1)*0.62;
+    const gateX = gateTravelLane(npc.gateSide,"leaving");
     // Keep the current corridor lane when outside: crossing lateral corridor
     // walls at z>7 is forbidden. Inside the shop use furniture-aware routing.
     const mustEnterShop=npc.root.position.z>CORRIDOR_INNER_Z+0.25;
     const from=mustEnterShop?
       {x:npc.root.position.x,z:CORRIDOR_INNER_Z}:
       {x:npc.root.position.x,z:npc.root.position.z};
-    const possibleLanes=[gateX,CORRIDOR_X[npc.gateSide],
-      CORRIDOR_X[npc.gateSide]-0.62,CORRIDOR_X[npc.gateSide]+0.62];
+    const possibleLanes=[gateX];
     const chosen=possibleLanes.map(x=>({
       x,route:this.layout?pathToShopGoal(from,{
         x,z:CORRIDOR_INNER_Z,
@@ -518,11 +523,11 @@ export class NpcVisualSystem {
       if(owner&&owner!==npc.visitor.id){
         const waitingRoutes=Array.from({length:this.npcs.size+5},(_,slot)=>{
           const target=this.queuePosition(slot);
-          const route=pathToShopGoal(origin,target,this.layout!);
+          const route=target?pathToShopGoal(origin,target,this.layout!):null;
           const point=route?.waypoints.at(-1)??target;
-          const clearOfShelf=Math.hypot(point.x-pointForShelf.x,
+          const clearOfShelf=!!point&&Math.hypot(point.x-pointForShelf.x,
             point.z-pointForShelf.z)>=PERSONAL_SPACE*2;
-          const clearOfVisitors=[...this.npcs.values()].every(other=>
+          const clearOfVisitors=!!point&&[...this.npcs.values()].every(other=>
             other===npc||Math.hypot(point.x-other.root.position.x,
               point.z-other.root.position.z)>=PERSONAL_SPACE*1.5);
           return route&&clearOfShelf&&clearOfVisitors?{route}:null;
@@ -556,9 +561,10 @@ export class NpcVisualSystem {
     const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
     const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length):[];
     const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot);
-    if(checkoutIndex>=0&&!target){
+    if(!target){
       npc.phase="queueing";npc.route=[];npc.waypoint=0;
-      npc.root.metadata.shoppingPhase="checkout-capacity-full";
+      npc.root.metadata.shoppingPhase=checkoutIndex>=0
+        ?"checkout-capacity-full":"idle-capacity-full";
       npc.root.metadata.checkoutQueueIndex=checkoutIndex;
       npc.root.metadata.phase=npc.phase;
       return;
@@ -570,15 +576,17 @@ export class NpcVisualSystem {
     npc.waypoint=0;
     npc.root.metadata.shoppingTargetSlot=null;
     npc.root.metadata.shoppingPhase=checkoutIndex>=0
-      ? (route?"walking-to-checkout":"checkout-route-blocked"):"walking-to-wait";
+      ? (route?"walking-to-checkout":"checkout-route-blocked")
+      : (route?"walking-to-wait":"idle-route-blocked");
     npc.root.metadata.checkoutQueueIndex=checkoutIndex;
     npc.root.metadata.phase=npc.phase;
     paintIdentity(npc,this.portraits);
   }
 
-  private queuePosition(slot:number):Vector3 {
-    return new Vector3(-2.2+(slot%5)*1.1,0,
-      4+Math.floor(slot/5)*0.65);
+  private queuePosition(slot:number):Vector3|null {
+    if(!this.layout)return null;
+    const point=idleShopPositions(this.layout,100)[slot];
+    return point?new Vector3(point.x,0,point.z):null;
   }
 
   private move(npc: NpcVisual, delta: number): void {
@@ -588,7 +596,8 @@ export class NpcVisualSystem {
         this.beginBrowsing(npc);
       }else if(npc.phase==="browsing"){
         if(npc.toQueue){
-          if(npc.root.metadata.shoppingPhase==="checkout-route-blocked")return;
+          if(npc.root.metadata.shoppingPhase==="checkout-route-blocked"||
+            npc.root.metadata.shoppingPhase==="idle-route-blocked")return;
           npc.phase="queueing";
           npc.root.metadata.shoppingPhase=checkoutQueueIndex(this.carts,npc.visitor.id)>=0
             ? "awaiting-checkout":"waiting-for-next-day";
@@ -630,6 +639,10 @@ export class NpcVisualSystem {
         this.beginBrowsing(npc);
         return;
       }
+      // In the narrow gates, wait behind the visitor ahead. Side-stepping
+      // into the opposite-direction lane would recreate the original jam.
+      if((npc.phase==="entering"||npc.phase==="leaving") &&
+          (npc.root.position.z>6.5||target.z>6.5))return;
       // Yield sideways rather than deadlock when two autonomous visitors meet.
       // Keep deviations inside the actual shop's walkable area.
       const sideStep=Math.max(0.08,step);
