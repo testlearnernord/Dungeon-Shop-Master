@@ -6,7 +6,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
-import { reconcileVisitors, type GateSide, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
+import { reconcileVisitors, shouldLeaveShopVisual, type GateSide, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
@@ -267,7 +267,7 @@ export class NpcVisualSystem {
     const queueIds=carts.filter(cart=>cart.lines.length>0).map(cart=>cart.heroId);
     const queuePoints=checkoutQueuePoints(layout,{x:0,z:-1},queueIds.length);
     for(const npc of this.npcs.values()){
-      const isShopping=npc.visitor.status==="at-shop";
+      const isShopping=!shouldLeaveShopVisual(npc.visitor.status);
       const held=isShopping?(cartByHero.get(npc.visitor.id)?.lines??[]):[];
       const changed=this.syncCarriedProducts(npc,held);
       // A departing visitor has just paid by the confirmed Day Tick. Clear
