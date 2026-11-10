@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  createShopLayout, replaceShelfPlacement, rotateShelfOffset,
+  compactCounterBounds, COMPACT_COUNTER, createShopLayout, replaceShelfPlacement, rotateShelfOffset,
   shopLayoutProblem, shelfBounds, shelfOverlapsActor, type ShelfPlacement,
 } from "../../src/game/shopLayout.ts";
 import { advanceDay, createGameState, SIMULATION_VERSION } from "../../src/game/gameState.ts";
@@ -113,4 +113,21 @@ test("occupied floor space blocks shelf placement even when static geometry is l
   assert.equal(shelfOverlapsActor(placement,{x:0,z:-4.6,radius:0.45}),false);
   assert.equal(shelfOverlapsActor(placement,{x:2.5,z:-2.5,radius:0.4}),true);
   assert.equal(shelfOverlapsActor(placement,{x:4,z:-2,radius:0.4}),false);
+});
+
+
+test("compact checkout candidate has deterministic quarter-turn clearance",()=>{
+  const at={x:1,z:2,rotation:0 as const};
+  assert.deepEqual(compactCounterBounds(at),{
+    minX:1-COMPACT_COUNTER.clearanceWidth/2,
+    maxX:1+COMPACT_COUNTER.clearanceWidth/2,
+    minZ:2-COMPACT_COUNTER.clearanceDepth/2,
+    maxZ:2+COMPACT_COUNTER.clearanceDepth/2,
+  });
+  const rotated=compactCounterBounds({...at,rotation:1 as const});
+  assert.equal(rotated.maxX-rotated.minX,COMPACT_COUNTER.clearanceDepth);
+  assert.equal(rotated.maxZ-rotated.minZ,COMPACT_COUNTER.clearanceWidth);
+  assert.deepEqual(compactCounterBounds({...at,rotation:2 as const}),compactCounterBounds(at));
+  assert.deepEqual(compactCounterBounds({...at,rotation:3 as const}),rotated);
+  assert.deepEqual(createShopLayout().shelves.map(s=>s.id),["shelf-1","shelf-2"]);
 });
