@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoint, checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
-import { createShopLayout, shopLayoutProblem } from "../../src/game/shopLayout.ts";
+import { CHECKOUT_COUNTER, createShopLayout, shopLayoutProblem } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
 import type { ShopCart } from "../../src/game/shopCarts.ts";
 
@@ -61,4 +61,14 @@ test("queue allocation rejects invalid capacities without inventing standing spo
     assert.throws(() => checkoutQueuePoints(layout, from, invalid), RangeError);
   }
   assert.equal(checkoutQueuePoints(layout, from, 1).length, 1);
+});
+
+
+test("checkout queue front remains aligned with shared legacy counter clearance", () => {
+  const frontZ = CHECKOUT_COUNTER.clearanceMinZ - 0.65;
+  assert.equal(frontZ, 0.5);
+  const points = checkoutQueuePoints(createShopLayout(), {x:0,z:-1}, 1);
+  assert.equal(points.length, 1);
+  assert.ok(points[0].z <= frontZ);
+  assert.equal(isObstructed(points[0], createShopLayout()), false);
 });
