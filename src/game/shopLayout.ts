@@ -141,6 +141,18 @@ export function shopLayoutProblem(layout:ShopLayout): string|null {
       overlap(box,gateApproach,0.04)||
       layout.shelves.some(shelf=>overlap(box,shelfBounds(shelf),0.04)))
       return "Keep the counter, entrances and visitor aisles clear.";
+    // Reserve a reachable first customer spot *in front* of the counter.
+    // Counter placement must not push the entire checkout queue beyond walls
+    // or into fixed player/door/roster obstacles.
+    const offset=rotateShelfOffset(0,-COMPACT_COUNTER.clearanceDepth/2-0.65,p.rotation);
+    const front={x:p.x+offset.x,z:p.z+offset.z};
+    const standing={minX:front.x-0.35,maxX:front.x+0.35,
+      minZ:front.z-0.35,maxZ:front.z+0.35};
+    if(standing.minX < -6.5||standing.maxX > 6.5||
+       standing.minZ < -6.5||standing.maxZ > 6.5||
+       barriers.some(zone=>overlap(standing,zone))||
+       layout.shelves.some(shelf=>overlap(standing,shelfBounds(shelf))))
+      return "Leave a reachable checkout queue in front of the counter.";
   }
   return null;
 }
@@ -175,7 +187,9 @@ export function replaceCounterPlacement(layout:ShopLayout,placement:CounterPlace
   const old=getCounterPlacement(layout);
   if(old.x===placement.x&&old.z===placement.z&&old.rotation===placement.rotation)
     return {layout,message:"Counter placement saved."};
-  const next:ShopLayout={...layout,counter:placement};
+  // Editor drafts carry an id: "counter"; never persist that UI-only field.
+  const counter:CounterPlacement={x:placement.x,z:placement.z,rotation:placement.rotation};
+  const next:ShopLayout={...layout,counter};
   const problem=shopLayoutProblem(next);
   return problem?{layout,message:problem}:{layout:next,message:"Counter placement saved."};
 }
