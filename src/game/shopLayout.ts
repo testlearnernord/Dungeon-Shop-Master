@@ -29,6 +29,32 @@ export function checkoutCounterBounds() {
     minZ:c.clearanceMinZ,maxZ:c.clearanceMaxZ};
 }
 
+/** Candidate counter placement is kept separate from persisted layouts until all
+ * consumers (rendering, queue, collision and saves) support moving the counter.
+ * This pure geometry helper makes rotated footprints testable without migrations.
+ */
+export interface CounterPlacement {
+  readonly x: number;
+  readonly z: number;
+  readonly rotation: 0 | 1 | 2 | 3;
+}
+export const COMPACT_COUNTER = Object.freeze({
+  bodyWidth: 1.75,
+  bodyDepth: 1.15,
+  topWidth: 2,
+  topDepth: 1.35,
+  clearanceWidth: 2.5,
+  clearanceDepth: 2.3,
+});
+export function compactCounterBounds(placement: CounterPlacement): {
+  minX:number;maxX:number;minZ:number;maxZ:number
+} {
+  const {x,z,rotation}=placement;
+  const width=rotation%2===0?COMPACT_COUNTER.clearanceWidth:COMPACT_COUNTER.clearanceDepth;
+  const depth=rotation%2===0?COMPACT_COUNTER.clearanceDepth:COMPACT_COUNTER.clearanceWidth;
+  return {minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2};
+}
+
 const IDS: readonly ShelfId[] = ["shelf-1","shelf-2"];
 type Bounds={minX:number;maxX:number;minZ:number;maxZ:number};
 const barriers: readonly Bounds[] = [
