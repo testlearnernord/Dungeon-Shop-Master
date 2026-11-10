@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createShopLayout } from "../../src/game/shopLayout.ts";
+import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
 import { gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
@@ -69,4 +69,20 @@ test("moved shelf never snaps two waiting visitors onto the same destination",()
     for(let j=0;j<i;j++)
       assert(Math.hypot(spots[i].x-spots[j].x,spots[i].z-spots[j].z)>=0.7);
   }
+});
+
+test("shared checkout geometry preserves legacy furniture, collision and save layout",()=>{
+  const c=CHECKOUT_COUNTER;
+  assert.equal(c.x,0);
+  assert.equal(c.z,2.45);
+  assert.equal(c.bodyWidth,3.5);
+  assert.equal(c.bodyDepth,1.15);
+  assert.deepEqual(checkoutCounterBounds(),{
+    minX:-2.25,maxX:2.25,minZ:1.15,maxZ:3.45,
+  });
+  const layout=createShopLayout();
+  assert(isObstructed({x:0,z:2.45},layout));
+  assert(!isObstructed({x:0,z:1.4},layout));
+  assert(!isObstructed({x:0,z:3.4},layout));
+  assert.deepEqual(Object.keys(layout),["shelves"],"existing saves stay unchanged");
 });

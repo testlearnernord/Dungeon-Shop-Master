@@ -11,10 +11,28 @@ export interface ShelfPlacement {
 export interface ShopLayout {
   readonly shelves: readonly ShelfPlacement[];
 }
+/** One source of truth for the checkout furniture and its clearance zone.
+ * The clearance deliberately preserves legacy NPC paths and saved layouts.
+ * Future movable counters must validate this footprint before changing position.
+ */
+export const CHECKOUT_COUNTER = Object.freeze({
+  x:0,z:2.45,
+  bodyWidth:3.5,bodyDepth:1.15,
+  topWidth:3.75,topDepth:1.35,
+  registerOffsetX:0.9,registerOffsetZ:-0.1,
+  clearanceHalfWidth:2.25,
+  clearanceMinZ:1.15,clearanceMaxZ:3.45,
+});
+export function checkoutCounterBounds() {
+  const c=CHECKOUT_COUNTER;
+  return {minX:c.x-c.clearanceHalfWidth,maxX:c.x+c.clearanceHalfWidth,
+    minZ:c.clearanceMinZ,maxZ:c.clearanceMaxZ};
+}
+
 const IDS: readonly ShelfId[] = ["shelf-1","shelf-2"];
 type Bounds={minX:number;maxX:number;minZ:number;maxZ:number};
 const barriers: readonly Bounds[] = [
-  {minX:-2.25,maxX:2.25,minZ:1.15,maxZ:3.45}, // checkout counter
+  checkoutCounterBounds(), // checkout counter
   {minX:-1.35,maxX:1.35,minZ:-5.6,maxZ:-3.55}, // player spawn
   {minX:-2.5,maxX:2.5,minZ:-6.9,maxZ:-5.3}, // roster board viewing
   {minX:-5.7,maxX:-4.0,minZ:-3.15,maxZ:3.15}, // left browsing aisle

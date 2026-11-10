@@ -1,4 +1,4 @@
-import { shelfBounds, type ShopLayout } from "./shopLayout.ts";
+import { checkoutCounterBounds, shelfBounds, type ShopLayout } from "./shopLayout.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
 export interface ShopperRoute {
@@ -18,7 +18,9 @@ export function isObstructed(p:ShopPoint,layout:ShopLayout):boolean{
   // Furniture, counter and wall-adjacent space; entrance lanes z>6.5
   // are handled by the existing level-door route.
   if(Math.abs(p.x)>6.7||Math.abs(p.z)>6.7)return true;
-  if(p.x>=-2.15&&p.x<=2.15&&p.z>=1.5&&p.z<=3.3)return true;
+  const counter=checkoutCounterBounds();
+  if(p.x>=counter.minX+0.1&&p.x<=counter.maxX-0.1&&
+     p.z>=counter.minZ+0.35&&p.z<=counter.maxZ-0.15)return true;
   for(const shelf of layout.shelves){
     const b=shelfBounds(shelf);
     if(p.x>b.minX-pad&&p.x<b.maxX+pad &&

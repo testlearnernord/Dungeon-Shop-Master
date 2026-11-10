@@ -8,6 +8,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import type { Interactable } from "./inventory";
+import { CHECKOUT_COUNTER } from "./shopLayout";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
@@ -118,10 +119,16 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   level6PlayerBarrier.visibility = 0;
   level6PlayerBarrier.isPickable = false;
 
-  box(scene, "checkout-counter", { width: 3.5, height: 1.15, depth: 1.15 }, new Vector3(0, 0.68, 2.45), new Color3(0.32, 0.2, 0.12));
-  box(scene, "counter-top", { width: 3.75, height: 0.14, depth: 1.35 }, new Vector3(0, 1.32, 2.45), new Color3(0.42, 0.29, 0.17));
-  box(scene, "register-base", { width: 0.62, height: 0.3, depth: 0.5 }, new Vector3(0.9, 1.55, 2.45), new Color3(0.17, 0.2, 0.18), false);
-  const register = box(scene, "cash-register", { width: 0.48, height: 0.38, depth: 0.18 }, new Vector3(0.9, 1.87, 2.35), new Color3(0.3, 0.48, 0.36), false);
+  const counter=CHECKOUT_COUNTER;
+  box(scene, "checkout-counter", { width: counter.bodyWidth, height: 1.15, depth: counter.bodyDepth },
+    new Vector3(counter.x, 0.68, counter.z), new Color3(0.32, 0.2, 0.12));
+  box(scene, "counter-top", { width: counter.topWidth, height: 0.14, depth: counter.topDepth },
+    new Vector3(counter.x, 1.32, counter.z), new Color3(0.42, 0.29, 0.17));
+  box(scene, "register-base", { width: 0.62, height: 0.3, depth: 0.5 },
+    new Vector3(counter.x+counter.registerOffsetX, 1.55, counter.z), new Color3(0.17, 0.2, 0.18), false);
+  const register = box(scene, "cash-register", { width: 0.48, height: 0.38, depth: 0.18 },
+    new Vector3(counter.x+counter.registerOffsetX, 1.87, counter.z+counter.registerOffsetZ),
+    new Color3(0.3, 0.48, 0.36), false);
   register.metadata = { kind: "register" };
   return [{ id: "checkout-register", mesh: register, kind: "register" }];
 }
