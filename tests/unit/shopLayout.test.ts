@@ -175,6 +175,7 @@ test("invalid counter moves leave previous game state and saved position unchang
     {x:4.5,z:0,rotation:0},
     {x:4,z:4,rotation:0},
     {x:0,z:4.5,rotation:0},
+    {x:4,z:-5.5,rotation:0},
     {x:Infinity,z:0,rotation:0},
     {x:0,z:0,rotation:9},
   ];
@@ -206,4 +207,14 @@ test("strict save loader rejects corrupt placed checkout transforms",()=>{
     damage(envelope.payload.shopLayout.counter);
     assert.throws(()=>parseSave(JSON.stringify(envelope)),/shopLayout/);
   }
+});
+
+test("editor id never reaches persisted counter transform or autosave",()=>{
+  const store=new GameStore(createGameState(91));
+  const editorDraft={id:"counter" as const,x:0,z:2.25,rotation:1 as const};
+  assert.equal(store.placeCounter(editorDraft),"Counter placement saved.");
+  assert.deepEqual(store.state.shopLayout.counter,{x:0,z:2.25,rotation:1});
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))).shopLayout.counter,
+    {x:0,z:2.25,rotation:1});
+  assert.equal(Object.hasOwn(store.state.shopLayout.counter!,"id"),false);
 });
