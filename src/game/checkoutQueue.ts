@@ -1,6 +1,6 @@
 import type { ShopCart } from "./shopCarts.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
-import { CHECKOUT_COUNTER, type ShopLayout } from "./shopLayout.ts";
+import { CHECKOUT_COUNTER, COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, type ShopLayout } from "./shopLayout.ts";
 
 export function checkoutQueueIds(carts: readonly ShopCart[]): readonly string[] {
   return carts.filter(cart => cart.lines.length > 0).map(cart => cart.heroId);
@@ -20,11 +20,15 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   const candidates: ShopPoint[] = [];
   // Derive the front of the queue from the same counter used by rendering and collisions.
   // At the legacy position this starts at z=0.5, preserving existing paths.
-  const queueFrontZ = Math.round((CHECKOUT_COUNTER.clearanceMinZ - 0.65) * 4) / 4;
+  const legacyFrontZ = Math.round((CHECKOUT_COUNTER.clearanceMinZ - 0.65) * 4) / 4;
+  const counter = getCounterPlacement(layout);
   for (let step = 0; step <= 8; step++) {
-    const z = queueFrontZ - step * 0.75;
     for (const x of [0, -0.9, 0.9, -1.8, 1.8, -2.7, 2.7, -3.6, 3.6, -4.5, 4.5]) {
-      const point = {x, z};
+      const localZ = layout.counter
+        ? -COMPACT_COUNTER.clearanceDepth / 2 - 0.65 - step * 0.75
+        : legacyFrontZ - counter.z - step * 0.75;
+      const rotated = rotateShelfOffset(x, localZ, counter.rotation);
+      const point = {x:counter.x + rotated.x,z:counter.z + rotated.z};
       if (isObstructed(point, layout)) continue;
       candidates.push(point);
     }
