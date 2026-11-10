@@ -9,7 +9,8 @@ import { Scene } from "@babylonjs/core/scene";
 import { ITEMS, type ItemId, type Slot } from "./inventory";
 import { GameStore } from "./gameStore";
 import {
-  rotateShelfOffset, shopLayoutProblem, type ShelfId, type ShelfPlacement,
+  COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, shopLayoutProblem,
+  type CounterPlacement, type ShelfId, type ShelfPlacement,
 } from "./shopLayout.ts";
 
 interface ShelfGroup {
@@ -25,6 +26,7 @@ export class Shop {
   private readonly itemVisuals = new Map<string, Mesh[]>();
   private readonly shelves = new Map<ShelfId, ShelfGroup>();
   private readonly validMaterial: StandardMaterial;
+  private readonly counterOutline: Mesh;
   private readonly invalidMaterial: StandardMaterial;
   private selectedItemId: ItemId = ITEMS[0].id;
 
@@ -54,7 +56,15 @@ export class Shop {
     };
     this.validMaterial = makeGuide("placement-valid", new Color3(0.28, 0.94, 0.52));
     this.invalidMaterial = makeGuide("placement-invalid", new Color3(1, 0.23, 0.22));
+    this.counterOutline=MeshBuilder.CreateBox("counter-placement-preview",{
+      width:COMPACT_COUNTER.clearanceWidth,height:1.8,depth:COMPACT_COUNTER.clearanceDepth,
+    },scene);
+    this.counterOutline.material=this.validMaterial;
+    this.counterOutline.isPickable=false;
+    this.counterOutline.checkCollisions=false;
+    this.counterOutline.setEnabled(false);
     this.createShelves();
+    this.syncPlacements();
     this.refresh();
     this.store.subscribe(() => {
       this.refresh();
@@ -71,14 +81,25 @@ export class Shop {
   }
 
   /** Non-authoritative ghost preview; game/save state is only committed by GameStore. */
-  previewPlacement(placement: ShelfPlacement | null, occupied = false): void {
+  previewPlacement(placement: ShelfPlacement | (CounterPlacement & {readonly id:"counter"}) | null,
+    occupied = false): void {
     this.syncPlacements();
     for (const group of this.shelves.values()) group.previewOutline.setEnabled(false);
+    this.counterOutline.setEnabled(false);
     if (!placement) return;
+    if(placement.id==="counter"){
+      this.positionCounter(placement);
+      this.counterOutline.material=shopLayoutProblem({
+        ...this.store.state.shopLayout,counter:placement,
+      })||occupied?this.invalidMaterial:this.validMaterial;
+      this.counterOutline.setEnabled(true);
+      return;
+    }
     const group = this.shelves.get(placement.id);
     if (!group) return;
     this.positionShelf(group, placement);
     group.previewOutline.material = shopLayoutProblem({
+      ...this.store.state.shopLayout,
       shelves:this.store.state.shopLayout.shelves.map(p=>
         p.id===placement.id?placement:p),
     }) || occupied ? this.invalidMaterial : this.validMaterial;
@@ -97,6 +118,22 @@ export class Shop {
       const group = this.shelves.get(p.id);
       if (group) this.positionShelf(group,p);
     }
+    this.positionCounter(getCounterPlacement(this.store.state.shopLayout));
+  }
+  private positionCounter(p:CounterPlacement):void {
+    const put=(name:string,x:number,y:number,z:number)=>{
+      const mesh=this.scene.getMeshByName(name);
+      if(!mesh)return;
+      const offset=rotateShelfOffset(x,z,p.rotation);
+      mesh.position.set(p.x+offset.x,y,p.z+offset.z);
+      mesh.rotation.y=p.rotation*Math.PI/2;
+    };
+    put("checkout-counter",0,0.68,0);
+    put("counter-top",0,1.32,0);
+    put("register-base",0.35,1.55,0);
+    put("cash-register",0.35,1.87,-0.1);
+    this.counterOutline.position.set(p.x,0.95,p.z);
+    this.counterOutline.rotation.y=p.rotation*Math.PI/2;
   }
   private positionShelf(group: ShelfGroup, p: ShelfPlacement): void {
     group.root.position.set(p.x, 0, p.z);
