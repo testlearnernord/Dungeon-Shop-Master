@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout } from "../../src/game/shopLayout.ts";
-import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
+import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
+import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
 import { gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
@@ -85,4 +85,20 @@ test("shared checkout geometry preserves legacy furniture, collision and save la
   assert(!isObstructed({x:0,z:1.4},layout));
   assert(!isObstructed({x:0,z:3.4},layout));
   assert.deepEqual(Object.keys(layout),["shelves"],"existing saves stay unchanged");
+});
+
+test("departure step detects a newly moved counter before walking through it",()=>{
+  const legacy=createShopLayout();
+  const from={x:0,z:-1.5};
+  const to={x:0,z:-1.0};
+  assert.equal(shopSegmentClear(from,to,legacy),true);
+  const moved=replaceCounterPlacement(legacy,{x:0,z:-1.25,rotation:1});
+  assert.equal(moved.message,"Counter placement saved.");
+  assert.equal(shopSegmentClear(from,to,moved.layout),false);
+  assert.equal(isObstructed(to,moved.layout),true);
+  // A valid alternative exit route must still exist around the new obstacle.
+  const route=pathToShopGoal({x:0,z:-2.5},{x:-3.5,z:3},moved.layout);
+  assert.ok(route);
+  for(let i=1;i<route!.waypoints.length;i++)
+    assert(shopSegmentClear(route!.waypoints[i-1],route!.waypoints[i],moved.layout));
 });
