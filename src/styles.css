@@ -44,6 +44,8 @@ body,
 }
 
 .day-panel {
+  /* Keep scrollable ledger controls clickable above the bottom hotbar. */
+  z-index: 6;
   position: absolute;
   top: 56px;
   left: 24px;
