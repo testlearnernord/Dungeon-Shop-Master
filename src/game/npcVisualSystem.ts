@@ -280,7 +280,7 @@ export class NpcVisualSystem {
       }
       const plan=plans.get(npc.visitor.id)??null;
       const queueIndex=checkoutQueueIndex(carts,npc.visitor.id);
-      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,held,queueIndex,queuePoints[queueIndex]]);
+      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex]]);
       if(key===npc.intentKey)continue;
       npc.intent=plan;
       npc.intentKey=key;
