@@ -22,6 +22,12 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   // At the legacy position this starts at z=0.5, preserving existing paths.
   const legacyFrontZ = Math.round((CHECKOUT_COUNTER.clearanceMinZ - 0.65) * 4) / 4;
   const counter = getCounterPlacement(layout);
+  // A moved counter may cover the legacy planning origin (0,-1). Never
+  // declare the whole queue unreachable merely because that origin is blocked.
+  const safeFront=rotateShelfOffset(0,
+    -COMPACT_COUNTER.clearanceDepth/2-0.95,counter.rotation);
+  const fallback={x:counter.x+safeFront.x,z:counter.z+safeFront.z};
+  const origin=isObstructed(from,layout)?fallback:from;
   for (let step = 0; step <= 8; step++) {
     for (const x of [0, -0.9, 0.9, -1.8, 1.8, -2.7, 2.7, -3.6, 3.6, -4.5, 4.5]) {
       const localZ = layout.counter
@@ -36,9 +42,9 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   const allocated: ShopPoint[] = [];
   for (const candidate of candidates) {
     if (allocated.length >= count) break;
-    const route = pathToShopGoal(from, candidate, layout);
+    const route = pathToShopGoal(origin, candidate, layout);
     if (!route) continue;
-    const endpoint = route.waypoints.at(-1) ?? from;
+    const endpoint = route.waypoints.at(-1) ?? origin;
     if (isObstructed(endpoint, layout)) continue;
     if (allocated.some(point => Math.hypot(point.x-endpoint.x,point.z-endpoint.z) < 0.75)) continue;
     allocated.push(endpoint);
