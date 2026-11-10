@@ -51,3 +51,14 @@ test("queue positions stay separated with a rotated shelf and high demand", () =
   assert.throws(() => checkoutQueuePoint(-1), RangeError);
   assert.throws(() => checkoutQueuePoint(30), RangeError);
 });
+
+
+test("queue allocation rejects invalid capacities without inventing standing spots", () => {
+  const layout = createShopLayout();
+  const from = {x: 0, z: -1};
+  assert.deepEqual(checkoutQueuePoints(layout, from, 0), []);
+  for (const invalid of [-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => checkoutQueuePoints(layout, from, invalid), RangeError);
+  }
+  assert.equal(checkoutQueuePoints(layout, from, 1).length, 1);
+});
