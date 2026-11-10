@@ -34,6 +34,8 @@ test("cashier uses the shelf placement editor: preview, cancel, rotate, save and
   await expect(page.locator("#placement-save")).toBeEnabled();
   await page.locator("#placement-save").click();
   await expect(page.locator("#shelf-placement")).toBeHidden();
+  // Browser saves are asynchronous. Assert persistence only after the save commits.
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   const saved=await read();
   expect(saved?.shopLayout.counter).toEqual({x:0,z:2.25,rotation:1});
   expect(saved?.shopEconomy.slots).toHaveLength(10);
