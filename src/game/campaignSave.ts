@@ -340,7 +340,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
   if(version >= 8) validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
   if(version >= 9){
-    const layout=object(state.shopLayout,"payload.shopLayout",["shelves"]);
+    const layout=object(state.shopLayout,"payload.shopLayout",["shelves"],["counter"]);
     const shelves=array(layout.shelves,"payload.shopLayout.shelves");
     if(shelves.length!==2)fail("payload.shopLayout.shelves","must contain two shelves");
     const parsed:ShelfPlacement[]=shelves.map((value,i)=>{
@@ -353,7 +353,15 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       return {id:shelf.id as ShelfPlacement["id"],x,z,
         rotation:rotation as ShelfPlacement["rotation"]};
     });
-    const problem=shopLayoutProblem({shelves:parsed});
+    let counter;
+    if(layout.counter!==undefined){
+      const p=object(layout.counter,"payload.shopLayout.counter",["x","z","rotation"]);
+      const x=validNumber(p.x,"payload.shopLayout.counter.x",-8,8);
+      const z=validNumber(p.z,"payload.shopLayout.counter.z",-8,8);
+      const rotation=integer(p.rotation,"payload.shopLayout.counter.rotation",0,3);
+      counter={x,z,rotation:rotation as 0|1|2|3};
+    }
+    const problem=shopLayoutProblem({shelves:parsed,...(counter?{counter}:{})});
     if(problem)fail("payload.shopLayout",problem);
   }
 
