@@ -1,6 +1,6 @@
 import type { ShopCart } from "./shopCarts.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
-import type { ShopLayout } from "./shopLayout.ts";
+import { CHECKOUT_COUNTER, type ShopLayout } from "./shopLayout.ts";
 
 export function checkoutQueueIds(carts: readonly ShopCart[]): readonly string[] {
   return carts.filter(cart => cart.lines.length > 0).map(cart => cart.heroId);
@@ -18,7 +18,11 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Invalid queue capacity");
   if (count === 0) return [];
   const candidates: ShopPoint[] = [];
-  for (let z = 0.5; z >= -5.5; z -= 0.75) {
+  // Derive the front of the queue from the same counter used by rendering and collisions.
+  // At the legacy position this starts at z=0.5, preserving existing paths.
+  const queueFrontZ = Math.round((CHECKOUT_COUNTER.clearanceMinZ - 0.65) * 4) / 4;
+  for (let step = 0; step <= 8; step++) {
+    const z = queueFrontZ - step * 0.75;
     for (const x of [0, -0.9, 0.9, -1.8, 1.8, -2.7, 2.7, -3.6, 3.6, -4.5, 4.5]) {
       const point = {x, z};
       if (isObstructed(point, layout)) continue;
