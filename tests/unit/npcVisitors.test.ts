@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { reconcileVisitors, type VisitorSnapshot } from "../../src/game/npcVisitors.ts";
+import { reconcileVisitors, shouldLeaveShopVisual, type VisitorSnapshot } from "../../src/game/npcVisitors.ts";
 
 const visitor = (id: string, status: VisitorSnapshot["status"] = "at-shop"): VisitorSnapshot => ({
   id, name: id, role: "tank", status,
@@ -45,14 +45,19 @@ test("paid customer exits only when the authoritative visitor status leaves at-s
   assert.deepEqual(changes.entering, []);
 });
 
-test("clearing a cart alone cannot remove a customer still marked at-shop", () => {
-  // Reconciliation is status-driven, not cart-driven. A completed sale that
-  // leaves a hero at the shop must not despawn the physical NPC prematurely.
-  const previous = [visitor("customer")];
-  const current = [visitor("customer")];
-  const changes = reconcileVisitors(previous,current);
+test("clearing a nonempty cart while still at-shop never triggers visual departure", () => {
+  const before={visitor:visitor("customer"),cart:{heroId:"customer",lines:[{itemId:"potion",quantity:1,subtotal:12}]}};
+  const after={visitor:visitor("customer"),cart:{heroId:"customer",lines:[]}};
+  assert.equal(before.cart.lines.length,1);
+  assert.equal(after.cart.lines.length,0);
+  // This is the same status-only guard used by NpcVisualSystem.setShoppingIntents.
+  assert.equal(shouldLeaveShopVisual(before.visitor.status),false);
+  assert.equal(shouldLeaveShopVisual(after.visitor.status),false);
+  const changes=reconcileVisitors([before.visitor],[after.visitor]);
   assert.deepEqual(changes.leaving,[]);
   assert.deepEqual(changes.staying.map(({id})=>id),["customer"]);
+  assert.equal(shouldLeaveShopVisual("returning"),true);
+  assert.equal(shouldLeaveShopVisual("expedition"),true);
 });
 
 test("paid customer departing for an expedition exits just once", () => {
