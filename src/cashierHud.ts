@@ -1,3 +1,4 @@
+import type { CashierCue } from "./cashierSfx.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { cartTotal } from "./game/shopCarts.ts";
 import { ITEMS } from "./game/economy.ts";
@@ -12,6 +13,8 @@ export function setupCashierHud(
   shopActive:()=>boolean,
   pay:(heroId:string,perfectTiming:boolean)=>string,
   report:(message:string)=>void,
+  sound:(cue:CashierCue)=>void,
+  pulse:(cycle:number)=>void,
 ):{open:()=>string;close:()=>void} {
   const root=document.createElement("dialog");
   root.id="cashier-overlay";
@@ -44,6 +47,7 @@ export function setupCashierHud(
     if(!heroId)return;
     if(!shopActive()||readyHero()!==heroId){close();report("Customer left the register.");return;}
     needle.style.left=(phase()*100)+"%";
+    pulse(Math.floor((performance.now()-started)/(Math.PI*700)));
     frame=requestAnimationFrame(render);
   };
   const open=():string=>{
@@ -68,6 +72,7 @@ export function setupCashierHud(
     if(document.pointerLockElement)void document.exitPointerLock();
     camera.detachControl();
     root.showModal();
+    sound("open");
     root.focus();
     frame=requestAnimationFrame(render);
     return "Cashier challenge started. Press R twice at the center.";
@@ -85,15 +90,20 @@ export function setupCashierHud(
     if(!accurate){
       hint.textContent="Missed! Try again at the center. "+hits+"/2";
       hits=0;
+      sound("miss");
       return;
     }
     hits++;
+    sound("hit");
     hint.textContent="Perfect! "+hits+"/2";
     if(hits<2)return;
     const id=heroId;
     if(readyHero()!==id||!shopActive()){close();report("Checkout canceled: customer moved.");return;}
     close();
-    report(pay(id,true)+" Timing: 2/2 perfect.");
+    const before=store.state;
+    const result=pay(id,true);
+    if(store.state!==before)sound("coins");
+    report(result+" Timing: 2/2 perfect.");
   },true);
   store.subscribe(()=>{
     if(heroId&&!store.state.shopCarts.some(cart=>cart.heroId===heroId))close();

@@ -1,3 +1,4 @@
+import { createCashierSfx } from "./cashierSfx.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { createFirstPersonCamera } from "./game/firstPersonController";
@@ -133,6 +134,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
 }, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.", () => isShopActive());
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
+const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
 const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "boss" : "shop");
 });
@@ -141,7 +143,7 @@ const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
 });
 isShopActive=()=>!arena.isActive&&!dungeon.isActive;
 cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId(),isShopActive,
-  (heroId,perfectTiming)=>store.payReservedCart(heroId,perfectTiming),message=>{statusHud.textContent=message;});
+  (heroId,perfectTiming)=>store.payReservedCart(heroId,perfectTiming),message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
 
 engine.runRenderLoop(() => {
   if (dungeon.isActive) {
