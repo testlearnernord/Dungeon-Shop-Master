@@ -95,3 +95,16 @@ test("rotated and relocated checkout offers reachable, separated standing spots"
     }
   }
 });
+
+test("checkout navigation blocks rotated countertop and reserves accessible queue",()=>{
+  const base=createShopLayout();
+  const rotated=replaceCounterPlacement(base,{x:0,z:0,rotation:1});
+  assert.equal(rotated.message,"Counter placement saved.");
+  assert.equal(isObstructed({x:0,z:-0.95},rotated.layout),true);
+  assert.equal(isObstructed({x:0,z:0.95},rotated.layout),true);
+  const slots=checkoutQueuePoints(rotated.layout,{x:0,z:-1},3);
+  assert.ok(slots.length>0);
+  assert.ok(slots.every(point=>!isObstructed(point,rotated.layout)));
+  const invalid=replaceCounterPlacement(base,{x:4,z:-5.5,rotation:0});
+  assert.strictEqual(invalid.layout,base,"A counter without a usable queue must be rejected");
+});
