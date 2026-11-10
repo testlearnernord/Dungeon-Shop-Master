@@ -53,3 +53,10 @@ export function reconcileVisitors(
     leaving: [...oldVisitors.values()].filter(({ id }) => !newVisitors.has(id)),
   };
 }
+
+/** Cart contents are cosmetic until the authoritative visitor status changes.
+ * Emptying a basket must not turn an at-shop NPC into a departing NPC.
+ */
+export function shouldLeaveShopVisual(status:VisitorStatus):boolean {
+  return status!=="at-shop";
+}
