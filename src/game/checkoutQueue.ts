@@ -15,6 +15,8 @@ export function checkoutQueueIndex(carts: readonly ShopCart[], heroId: string): 
  * path snapping must never cause two customers to share a position.
  */
 export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: number): readonly ShopPoint[] {
+  if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Invalid queue capacity");
+  if (count === 0) return [];
   const candidates: ShopPoint[] = [];
   for (let z = 0.5; z >= -5.5; z -= 0.75) {
     for (const x of [0, -0.9, 0.9, -1.8, 1.8, -2.7, 2.7, -3.6, 3.6, -4.5, 4.5]) {
