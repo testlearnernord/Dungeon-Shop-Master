@@ -89,8 +89,8 @@ test("shared checkout geometry preserves legacy furniture, collision and save la
 
 test("departure step detects a newly moved counter before walking through it",()=>{
   const legacy=createShopLayout();
-  const from={x:0,z:-1.5};
-  const to={x:0,z:-1.0};
+  const from={x:0,z:-2.5};
+  const to={x:0,z:-2.0};
   assert.equal(shopSegmentClear(from,to,legacy),true);
   const moved=replaceCounterPlacement(legacy,{x:0,z:-1.25,rotation:1});
   assert.equal(moved.message,"Counter placement saved.");
