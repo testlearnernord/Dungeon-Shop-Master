@@ -1,4 +1,4 @@
-import { checkoutCounterBounds, shelfBounds, type ShopLayout } from "./shopLayout.ts";
+import { COMPACT_COUNTER, getCounterPlacement, shelfBounds, type ShopLayout } from "./shopLayout.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
 export interface ShopperRoute {
@@ -18,9 +18,13 @@ export function isObstructed(p:ShopPoint,layout:ShopLayout):boolean{
   // Furniture, counter and wall-adjacent space; entrance lanes z>6.5
   // are handled by the existing level-door route.
   if(Math.abs(p.x)>6.7||Math.abs(p.z)>6.7)return true;
-  const counter=checkoutCounterBounds();
-  if(p.x>=counter.minX+0.1&&p.x<=counter.maxX-0.1&&
-     p.z>=counter.minZ+0.35&&p.z<=counter.maxZ-0.15)return true;
+  const counter=getCounterPlacement(layout);
+  // Use the physical countertop plus walker clearance, not the wider
+  // furniture-editing zone. The Level 4/6 central lane remains passable.
+  const horizontal=counter.rotation%2===0?COMPACT_COUNTER.topWidth:COMPACT_COUNTER.topDepth;
+  const vertical=counter.rotation%2===0?COMPACT_COUNTER.topDepth:COMPACT_COUNTER.topWidth;
+  if(Math.abs(p.x-counter.x)<=horizontal/2+0.18&&
+     Math.abs(p.z-counter.z)<=vertical/2+0.18)return true;
   for(const shelf of layout.shelves){
     const b=shelfBounds(shelf);
     if(p.x>b.minX-pad&&p.x<b.maxX+pad &&

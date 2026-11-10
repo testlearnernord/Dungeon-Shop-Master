@@ -166,14 +166,15 @@
         <header class="placement-heading">
           <div>
             <h2 id="placement-title">Arrange the Shop</h2>
-            <p>Move an existing shelf. Stock stays attached to its original slots.</p>
+            <p>Move shelves or the checkout counter. Stock stays attached to its original slots.</p>
           </div>
           <button type="button" id="placement-cancel">Cancel (Esc)</button>
         </header>
-        <label for="placement-shelf">Selected shelf</label>
-        <select id="placement-shelf" aria-label="Select shelf to rearrange">
+        <label for="placement-shelf">Selected furniture</label>
+        <select id="placement-shelf" aria-label="Select furniture to rearrange">
           <option value="shelf-1">Left shelf (1)</option>
           <option value="shelf-2">Right shelf (2)</option>
+          <option value="counter">Checkout counter</option>
         </select>
         <div class="placement-grid" aria-label="Move shelf with arrow controls">
           <span></span><button type="button" data-placement-dx="0" data-placement-dz="-0.25">↑ Back</button><span></span>
@@ -185,7 +186,7 @@
         <p id="placement-coordinates"></p>
         <p id="placement-status" role="status"></p>
         <p class="placement-note">Arrow keys or buttons: move in 0.25m steps. Q: turn. 
-          Red outline: blocked by a wall, another shelf, visitor passage or occupied space.</p>
+          Red outline: blocked by a wall, another piece of furniture, visitor passage or occupied space.</p>
         <button type="button" id="placement-save">Save placement (Enter)</button>
       </dialog>
       <dialog id="roster-dialog" aria-labelledby="roster-title">

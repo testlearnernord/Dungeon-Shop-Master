@@ -10,6 +10,8 @@ export interface ShelfPlacement {
 }
 export interface ShopLayout {
   readonly shelves: readonly ShelfPlacement[];
+  /** Optional for compatibility with existing version-10 saves. */
+  readonly counter?: CounterPlacement;
 }
 /** One source of truth for the checkout furniture and its clearance zone.
  * The clearance deliberately preserves legacy NPC paths and saved layouts.
@@ -55,10 +57,15 @@ export function compactCounterBounds(placement: CounterPlacement): {
   return {minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2};
 }
 
+/** Older saves omit the placement; the same compact counter appears at the old location. */
+export const DEFAULT_COUNTER_PLACEMENT: CounterPlacement = Object.freeze({x:0,z:2.5,rotation:0});
+export const getCounterPlacement=(layout:ShopLayout):CounterPlacement=>
+  layout.counter??DEFAULT_COUNTER_PLACEMENT;
+export const movableCounterBounds=(layout:ShopLayout)=>compactCounterBounds(getCounterPlacement(layout));
+
 const IDS: readonly ShelfId[] = ["shelf-1","shelf-2"];
 type Bounds={minX:number;maxX:number;minZ:number;maxZ:number};
 const barriers: readonly Bounds[] = [
-  checkoutCounterBounds(), // checkout counter
   {minX:-1.35,maxX:1.35,minZ:-5.6,maxZ:-3.55}, // player spawn
   {minX:-2.5,maxX:2.5,minZ:-6.9,maxZ:-5.3}, // roster board viewing
   {minX:-5.7,maxX:-4.0,minZ:-3.15,maxZ:3.15}, // left browsing aisle
@@ -115,11 +122,38 @@ export function shopLayoutProblem(layout:ShopLayout): string|null {
     const box=shelfBounds(p);
     if(box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
       return "The shelf would intersect a shop wall.";
-    if(barriers.some(zone=>overlap(box,zone,0.04)))
+    if(overlap(box,movableCounterBounds(layout),0.04)||barriers.some(zone=>overlap(box,zone,0.04)))
       return "Keep the counter, entrances and visitor aisles clear.";
   }
   if(overlap(shelfBounds(layout.shelves[0]),shelfBounds(layout.shelves[1]),0.28))
     return "Shelves cannot overlap.";
+  if(layout.counter!==undefined){
+    const p=layout.counter;
+    if(!p||!quarter(p.x)||!quarter(p.z)||!Number.isInteger(p.rotation)||
+      p.rotation<0||p.rotation>3)return "Use 0.25m steps and quarter-turn rotations.";
+    const box=compactCounterBounds(p);
+    if(box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
+      return "The counter would intersect a shop wall.";
+    // The legacy cashier intentionally occupies a little of the central lane.
+    // Block the actual gate approach, but retain that legacy placement.
+    const gateApproach={minX:-1.8,maxX:1.8,minZ:4,maxZ:7};
+    if(barriers.slice(0,-1).some(zone=>overlap(box,zone,0.04))||
+      overlap(box,gateApproach,0.04)||
+      layout.shelves.some(shelf=>overlap(box,shelfBounds(shelf),0.04)))
+      return "Keep the counter, entrances and visitor aisles clear.";
+    // Reserve a reachable first customer spot *in front* of the counter.
+    // Counter placement must not push the entire checkout queue beyond walls
+    // or into fixed player/door/roster obstacles.
+    const offset=rotateShelfOffset(0,-COMPACT_COUNTER.clearanceDepth/2-0.65,p.rotation);
+    const front={x:p.x+offset.x,z:p.z+offset.z};
+    const standing={minX:front.x-0.35,maxX:front.x+0.35,
+      minZ:front.z-0.35,maxZ:front.z+0.35};
+    if(standing.minX < -6.5||standing.maxX > 6.5||
+       standing.minZ < -6.5||standing.maxZ > 6.5||
+       barriers.some(zone=>overlap(standing,zone))||
+       layout.shelves.some(shelf=>overlap(standing,shelfBounds(shelf))))
+      return "Leave a reachable checkout queue in front of the counter.";
+  }
   return null;
 }
 /** True if a living actor's horizontal capsule overlaps this furniture. */
@@ -142,7 +176,30 @@ export function replaceShelfPlacement(
   if(previous&&previous.x===placement.x&&previous.z===placement.z&&
     previous.rotation===placement.rotation)
     return {layout,message:"Shelf placement saved."};
-  const next:ShopLayout={shelves:layout.shelves.map(p=>p.id===placement.id?placement:p)};
+  const next:ShopLayout={...layout,shelves:layout.shelves.map(p=>p.id===placement.id?placement:p)};
   const problem=shopLayoutProblem(next);
   return problem?{layout,message:problem}:{layout:next,message:"Shelf placement saved."};
+}
+
+/** Counter placement shares the shelf editor's immutable commit/validation flow. */
+export function replaceCounterPlacement(layout:ShopLayout,placement:CounterPlacement):
+  {layout:ShopLayout;message:string} {
+  const old=getCounterPlacement(layout);
+  if(old.x===placement.x&&old.z===placement.z&&old.rotation===placement.rotation)
+    return {layout,message:"Counter placement saved."};
+  // Editor drafts carry an id: "counter"; never persist that UI-only field.
+  const counter:CounterPlacement={x:placement.x,z:placement.z,rotation:placement.rotation};
+  const next:ShopLayout={...layout,counter};
+  const problem=shopLayoutProblem(next);
+  return problem?{layout,message:problem}:{layout:next,message:"Counter placement saved."};
+}
+
+export function counterOverlapsActor(
+  placement:CounterPlacement,actor:{readonly x:number;readonly z:number;readonly radius:number},
+):boolean {
+  const b=compactCounterBounds(placement);
+  return Number.isFinite(actor.x)&&Number.isFinite(actor.z)&&
+    Number.isFinite(actor.radius)&&actor.radius>=0&&
+    actor.x+actor.radius>b.minX&&actor.x-actor.radius<b.maxX&&
+    actor.z+actor.radius>b.minZ&&actor.z-actor.radius<b.maxZ;
 }

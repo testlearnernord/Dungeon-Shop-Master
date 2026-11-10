@@ -2,8 +2,11 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import type { Shop } from "./game/shop.ts";
 import {
-  replaceShelfPlacement, shelfOverlapsActor, type ShelfId, type ShelfPlacement,
+  counterOverlapsActor, getCounterPlacement, replaceCounterPlacement, replaceShelfPlacement,
+  shelfOverlapsActor, type CounterPlacement, type ShelfId, type ShelfPlacement,
 } from "./game/shopLayout.ts";
+
+type FurnitureDraft = ShelfPlacement | (CounterPlacement & {readonly id:"counter"});
 
 /** A bounded, undoable visual editor. Drafts never mutate the saved game state. */
 export function setupShopPlacementHud(
@@ -20,23 +23,28 @@ export function setupShopPlacementHud(
   const cancel=document.querySelector<HTMLButtonElement>("#placement-cancel")!;
   const openButton=document.querySelector<HTMLButtonElement>("#open-placement")!;
   const rotate=document.querySelector<HTMLButtonElement>("#placement-rotate")!;
-  let draft:ShelfPlacement|null=null;
+  let draft:FurnitureDraft|null=null;
 
-  const occupiedBy=(p:ShelfPlacement):string|null=>{
-    if(shelfOverlapsActor(p,{x:camera.position.x,z:camera.position.z,radius:0.45}))
+  const occupiedBy=(p:FurnitureDraft):string|null=>{
+    const overlaps=(x:number,z:number,radius:number)=>p.id==="counter"
+      ? counterOverlapsActor(p,{x,z,radius})
+      : shelfOverlapsActor(p,{x,z,radius});
+    if(overlaps(camera.position.x,camera.position.z,0.45))
       return "Move the player away from this furniture first.";
     const blocked=camera.getScene().transformNodes.some(node=>
       node.name.startsWith("npc-adventurer-")&&node.metadata?.adventurerId&&
-      shelfOverlapsActor(p,{x:node.position.x,z:node.position.z,radius:0.4}));
+      overlaps(node.position.x,node.position.z,0.4));
     return blocked?"A visitor currently occupies this space.":null;
   };
-  const update=(p:ShelfPlacement):void=>{
+  const update=(p:FurnitureDraft):void=>{
     draft=p;
     const occupied=occupiedBy(p);
     shop.previewPlacement(p,!!occupied);
-    const check=replaceShelfPlacement(store.state.shopLayout,p);
-    const invalid=check.layout===store.state.shopLayout &&
-      check.message!=="Shelf placement saved.";
+    const check=p.id==="counter"
+      ? replaceCounterPlacement(store.state.shopLayout,p)
+      : replaceShelfPlacement(store.state.shopLayout,p);
+    const expected=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
+    const invalid=check.layout===store.state.shopLayout&&check.message!==expected;
     // A valid placement might be equal to its saved origin and still be legal.
     const problem=invalid?check.message:occupied;
     save.disabled=!!problem;
@@ -45,9 +53,13 @@ export function setupShopPlacementHud(
     status.textContent=problem??"Valid placement. Save to commit, or cancel to restore.";
     status.dataset.valid=String(!problem);
   };
-  const choose=(id:ShelfId):void=>{
-    const placement=store.state.shopLayout.shelves.find(p=>p.id===id)!;
+  const choose=(id:ShelfId|"counter"):void=>{
     selector.value=id;
+    if(id==="counter"){
+      update({...getCounterPlacement(store.state.shopLayout),id:"counter"});
+      return;
+    }
+    const placement=store.state.shopLayout.shelves.find(p=>p.id===id)!;
     update({...placement});
   };
   const nudge=(dx:number,dz:number):void=>{
@@ -57,7 +69,7 @@ export function setupShopPlacementHud(
   };
   const turn=():void=>{
     if(!draft)return;
-    update({...draft,rotation:((draft.rotation+1)%4) as ShelfPlacement["rotation"]});
+    update({...draft,rotation:((draft.rotation+1)%4) as FurnitureDraft["rotation"]});
   };
   const close=():void=>{
     if(!dialog.open)return;
@@ -68,8 +80,8 @@ export function setupShopPlacementHud(
     // An NPC may walk into a preview while the player is editing it.
     // Revalidate occupancy immediately before mutating the persistent state.
     if(occupiedBy(draft)){update(draft);return;}
-    const message=store.placeShelf(draft);
-    if(message==="Shelf placement saved."){
+    const message=draft.id==="counter"?store.placeCounter(draft):store.placeShelf(draft);
+    if(message===(draft.id==="counter"?"Counter placement saved.":"Shelf placement saved.")){
       close();
     }else{
       status.textContent=message;
@@ -82,7 +94,7 @@ export function setupShopPlacementHud(
     if(document.pointerLockElement)void document.exitPointerLock();
     camera.detachControl();
     dialog.showModal();
-    choose(selector.value==="shelf-2"?"shelf-2":"shelf-1");
+    choose(selector.value==="counter"?"counter":selector.value==="shelf-2"?"shelf-2":"shelf-1");
     // Focus the dialog itself: arrow keys immediately control the preview.
     // Tab moves into native selector/buttons without hijacking their activation.
     dialog.focus();
@@ -93,7 +105,7 @@ export function setupShopPlacementHud(
   cancel.addEventListener("click",close);
   rotate.addEventListener("click",turn);
   selector.addEventListener("change",()=>choose(
-    selector.value==="shelf-2"?"shelf-2":"shelf-1"));
+    selector.value==="counter"?"counter":selector.value==="shelf-2"?"shelf-2":"shelf-1"));
   dialog.querySelectorAll<HTMLButtonElement>("[data-placement-dx]").forEach(button=>{
     button.addEventListener("click",()=>nudge(
       Number(button.dataset.placementDx),

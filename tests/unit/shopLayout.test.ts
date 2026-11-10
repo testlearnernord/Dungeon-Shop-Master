@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  compactCounterBounds, COMPACT_COUNTER, createShopLayout, replaceShelfPlacement, rotateShelfOffset,
+  compactCounterBounds, COMPACT_COUNTER, counterOverlapsActor, createShopLayout, getCounterPlacement,
+  replaceCounterPlacement, replaceShelfPlacement, rotateShelfOffset,
   shopLayoutProblem, shelfBounds, shelfOverlapsActor, type ShelfPlacement,
 } from "../../src/game/shopLayout.ts";
 import { advanceDay, createGameState, SIMULATION_VERSION } from "../../src/game/gameState.ts";
@@ -130,4 +131,90 @@ test("compact checkout candidate has deterministic quarter-turn clearance",()=>{
   assert.deepEqual(compactCounterBounds({...at,rotation:2 as const}),compactCounterBounds(at));
   assert.deepEqual(compactCounterBounds({...at,rotation:3 as const}),rotated);
   assert.deepEqual(createShopLayout().shelves.map(s=>s.id),["shelf-1","shelf-2"]);
+});
+
+test("existing saves gain a default counter without mutating their saved schema",()=>{
+  const initial=createGameState(91);
+  const legacy=JSON.stringify(createSave(initial));
+  const loaded=parseSave(legacy);
+  assert.deepEqual(loaded.shopLayout,initial.shopLayout);
+  assert.equal(loaded.shopLayout.counter,undefined);
+  assert.deepEqual(getCounterPlacement(loaded.shopLayout),{x:0,z:2.5,rotation:0});
+  assert.deepEqual(createSave(loaded).payload.shopLayout,initial.shopLayout);
+});
+
+test("counter uses shelf editor commit flow and keeps inventory, sales and RNG intact",()=>{
+  const state=createGameState(91);
+  const store=new GameStore(state);
+  let notifications=0;
+  store.subscribe(()=>notifications++);
+  const proposal={x:0,z:0,rotation:1 as const};
+  assert.equal(store.placeCounter(proposal),"Counter placement saved.");
+  assert.equal(notifications,1);
+  assert.deepEqual(store.state.shopLayout.counter,proposal);
+  assert.deepEqual(store.state.shopLayout.shelves,state.shopLayout.shelves);
+  assert.strictEqual(store.state.shopEconomy,state.shopEconomy);
+  assert.strictEqual(store.state.adventurers,state.adventurers);
+  assert.strictEqual(store.state.events,state.events);
+  assert.equal(store.state.rngState,state.rngState);
+  assert.equal(store.placeCounter(proposal),"Counter placement saved.");
+  assert.equal(notifications,1);
+  const after=parseSave(JSON.stringify(createSave(store.state)));
+  assert.deepEqual(after.shopLayout.counter,proposal);
+  assert.equal(shopLayoutProblem(after.shopLayout),null);
+  assert.equal(counterOverlapsActor(proposal,{x:0,z:0,radius:0.4}),true);
+  assert.equal(counterOverlapsActor(proposal,{x:4,z:0,radius:0.4}),false);
+});
+
+test("invalid counter moves leave previous game state and saved position unchanged",()=>{
+  const original=createShopLayout();
+  const invalid=[
+    {x:0.1,z:0,rotation:0},
+    {x:8,z:0,rotation:0},
+    {x:0,z:-5,rotation:0},
+    {x:4.5,z:0,rotation:0},
+    {x:4,z:4,rotation:0},
+    {x:0,z:4.5,rotation:0},
+    {x:4,z:-5.5,rotation:0},
+    {x:Infinity,z:0,rotation:0},
+    {x:0,z:0,rotation:9},
+  ];
+  for(const candidate of invalid) {
+    const result=replaceCounterPlacement(original,candidate as any);
+    assert.strictEqual(result.layout,original,JSON.stringify(candidate));
+    assert.notEqual(result.message,"Counter placement saved.");
+  }
+  const updated=replaceCounterPlacement(original,{x:0,z:0,rotation:0});
+  assert.equal(updated.message,"Counter placement saved.");
+  const forbiddenShelf=replaceShelfPlacement(updated.layout,{
+    id:"shelf-1",x:0,z:-1,rotation:1,
+  });
+  assert.strictEqual(forbiddenShelf.layout,updated.layout);
+  assert.match(forbiddenShelf.message,/counter/);
+});
+
+test("strict save loader rejects corrupt placed checkout transforms",()=>{
+  const store=new GameStore();
+  store.placeCounter({x:0,z:0,rotation:1});
+  const saved=createSave(store.state);
+  for(const damage of [
+    (p:any)=>{p.x=0.125;},
+    (p:any)=>{p.rotation=4;},
+    (p:any)=>{p.x=100;},
+    (p:any)=>{p.injected=true;},
+  ]) {
+    const envelope=structuredClone(saved) as any;
+    damage(envelope.payload.shopLayout.counter);
+    assert.throws(()=>parseSave(JSON.stringify(envelope)),/shopLayout/);
+  }
+});
+
+test("editor id never reaches persisted counter transform or autosave",()=>{
+  const store=new GameStore(createGameState(91));
+  const editorDraft={id:"counter" as const,x:0,z:2.25,rotation:1 as const};
+  assert.equal(store.placeCounter(editorDraft),"Counter placement saved.");
+  assert.deepEqual(store.state.shopLayout.counter,{x:0,z:2.25,rotation:1});
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))).shopLayout.counter,
+    {x:0,z:2.25,rotation:1});
+  assert.equal(Object.hasOwn(store.state.shopLayout.counter!,"id"),false);
 });

@@ -259,6 +259,9 @@ export class NpcVisualSystem {
     carts:readonly ShopCart[],
     onPickUp:(heroId:string,slotId:string)=>boolean,
   ):void {
+    const furnitureMoved=this.layout!==null&&(
+      JSON.stringify(this.layout.counter)!==JSON.stringify(layout.counter)||
+      JSON.stringify(this.layout.shelves)!==JSON.stringify(layout.shelves));
     this.layout=layout;
     this.shop=shop;
     this.onPickUp=onPickUp;
@@ -274,13 +277,18 @@ export class NpcVisualSystem {
       // the unpaid basket immediately, and show their updated true inventory.
       if(!isShopping){
         if(changed)paintIdentity(npc,this.portraits);
-        if(npc.phase==="leaving"&&npc.root.metadata.shoppingPhase==="blocked-exit")
+        // Leaving visitors keep their route across regular economy refreshes,
+        // but must replan when moved furniture would intersect a cached path.
+        // Past the inner gate they are already beyond any movable furniture.
+        if(npc.phase==="leaving"&&(
+          npc.root.metadata.shoppingPhase==="blocked-exit"||
+          (furnitureMoved&&npc.root.position.z<=CORRIDOR_INNER_Z)))
           this.beginLeaving(npc);
         continue;
       }
       const plan=plans.get(npc.visitor.id)??null;
       const queueIndex=checkoutQueueIndex(carts,npc.visitor.id);
-      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,held,queueIndex,queuePoints[queueIndex]]);
+      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex]]);
       if(key===npc.intentKey)continue;
       npc.intent=plan;
       npc.intentKey=key;
