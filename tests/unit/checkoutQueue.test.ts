@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoint, checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
-import { CHECKOUT_COUNTER, createShopLayout, shopLayoutProblem } from "../../src/game/shopLayout.ts";
+import { CHECKOUT_COUNTER, createShopLayout, replaceCounterPlacement, shopLayoutProblem } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
 import type { ShopCart } from "../../src/game/shopCarts.ts";
 
@@ -72,4 +72,26 @@ test("checkout queue front remains aligned with shared legacy counter clearance"
   // Pathfinding may snap a candidate to a reachable endpoint on either side of the row.
   assert.ok(Math.abs(points[0].z - frontZ) <= 0.75);
   assert.equal(isObstructed(points[0], createShopLayout()), false);
+});
+
+test("rotated and relocated checkout offers reachable, separated standing spots",()=>{
+  const base=createShopLayout();
+  const from={x:0,z:-1};
+  for(const rotation of [0,1,2,3] as const){
+    const counter=replaceCounterPlacement(base,{x:0,z:0,rotation});
+    assert.equal(counter.message,"Counter placement saved.");
+    const layout=counter.layout;
+    const points=checkoutQueuePoints(layout,from,8);
+    assert.ok(points.length>=1,"Must leave at least one checkout slot at rotation "+rotation);
+    assert.equal(isObstructed(points[0],layout),false);
+    for(const [index,point] of points.entries()){
+      const origin=isObstructed(from,layout)
+        ? {x: rotation===1?-2.1:rotation===3?2.1:0,
+           z: rotation===0?-2.1:rotation===2?2.1:0}
+        : from;
+      assert.ok(pathToShopGoal(origin,point,layout),"Reachable checkout "+rotation);
+      for(const previous of points.slice(0,index))
+        assert.ok(Math.hypot(point.x-previous.x,point.z-previous.z)>=0.75);
+    }
+  }
 });
