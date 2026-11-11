@@ -15,7 +15,7 @@ import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
 import { gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "./npcTraffic.ts";
-import { isObstructed, pathToShopGoal } from "./shopperNavigation.ts";
+import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
 
@@ -503,6 +503,7 @@ export class NpcVisualSystem {
     if(this.layout&&!chosen){
       // Never fall back to a straight wall-crossing route.
       npc.route=[];
+      npc.waypoint=0;
       npc.root.metadata.shoppingPhase="blocked-exit";
       return;
     }
@@ -636,6 +637,23 @@ export class NpcVisualSystem {
     const step = Math.min(distance, WALK_SPEED * delta);
     const x=npc.root.position.x+dx/distance*step;
     const z=npc.root.position.z+dz/distance*step;
+    // A counter can be moved while this visitor is walking. Check each actual
+    // movement segment, not only the cached route from the last state refresh.
+    // Replan from the visitor's physical position before crossing new furniture.
+    if(npc.phase==="leaving"&&this.layout&&z<=6.6){
+      // Corridor coordinates are outside the indoor navigation grid. Clip a
+      // crossing step to the shop boundary instead of treating its outside
+      // starting point as an obstacle and trapping the visitor forever.
+      const current={x:npc.root.position.x,z:npc.root.position.z};
+      const fraction=current.z>6.6
+        ?(current.z-6.6)/(current.z-z):0;
+      const indoorStart={x:current.x+(x-current.x)*fraction,
+        z:current.z>6.6?6.6:current.z};
+      if(!shopSegmentClear(indoorStart,{x,z},this.layout)){
+        this.beginLeaving(npc);
+        return;
+      }
+    }
     const blocked=(px:number,pz:number)=>[...this.npcs.values()]
       .some(other=>other!==npc&&Math.hypot(
         px-other.root.position.x,pz-other.root.position.z)<PERSONAL_SPACE);
