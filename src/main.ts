@@ -108,9 +108,13 @@ function renderInventory(selectedItem: ItemId): void {
     row.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();interactions.selectItem(item.id);}});
     const key=document.createElement("kbd");
     key.className="hotbar-key";key.textContent=String(index+1);
-    const dot = document.createElement("span");
-    dot.className = "item-dot";
-    dot.style.setProperty("--item-color", item.color);
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    dot.classList.add("item-pictogram");
+    dot.setAttribute("viewBox", "0 0 48 48");
+    dot.setAttribute("aria-hidden", "true");
+    const symbol = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    symbol.setAttribute("href", import.meta.env.BASE_URL + "assets/ui-item-icons.svg#" + item.id);
+    dot.append(symbol);
     const name = document.createElement("span");
     name.textContent = item.name;
     name.className="item-name";
