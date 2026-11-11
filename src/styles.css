@@ -849,3 +849,30 @@ body.dungeon-active #music-panel { top: 119px; }
 @media (prefers-reduced-motion: reduce) {
   .day-panel button, #open-roster { transition: none; }
 }
+
+/* Shop status disclosure: preserve the live simulation and all event bindings. */
+#shop-status-content[hidden] { display: none; }
+.day-panel .shop-panel-toggle {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: .025em;
+  color: var(--ui-gold);
+}
+#shop-status-content > #day { display: block; margin-top: 12px; }
+#shop-status-content > #save-status { color: var(--ui-muted); }
+#shop-status-content > #merchant-gold,
+#shop-status-content > #daily-sales {
+  margin: 9px 0;
+  font-variant-numeric: tabular-nums;
+}
+#shop-status-content > #world-events {
+  margin: 10px 0;
+  padding: 9px 0 9px 13px;
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
+}
