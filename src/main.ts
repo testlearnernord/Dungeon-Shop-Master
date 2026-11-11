@@ -69,6 +69,12 @@ const dayClock=setupDayHud(
   (current, previous) => npcVisuals.reconcile(current, previous),
   () => npcVisuals.showSales(currentDayReceipts(store.state)),
 );
+/** E2E-only access to the existing authoritative transition.
+ * No player-facing shortcut or production build entry point is created. */
+if(import.meta.env.VITE_E2E==="1"){
+  (window as Window & {__shopTestAdvanceDay?:()=>void}).__shopTestAdvanceDay=
+    ()=>dayClock.endDayFromBed();
+}
 // The forecast is read-only. It uses exactly the same purchase decisions
 // as the confirmed next-day transaction. Stock changes trigger replanning.
 const refreshShoppingIntents = () => npcVisuals.setShoppingIntents(
