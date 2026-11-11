@@ -4,6 +4,7 @@ test("Level 6 is a separate viewable boss cavern, camera focuses hero/boss and n
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(e.message));
   await page.goto("./");
+  await page.locator("#toggle-adventurer-details").click();
   await expect(page.locator("#day")).toHaveText("Day 1");
   const originalGold = await page.locator("#merchant-gold").textContent();
 
