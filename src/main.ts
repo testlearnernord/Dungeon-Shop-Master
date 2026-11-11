@@ -185,6 +185,7 @@ ledger=setupMerchantLedger(()=>{
   }
   return false;
 },()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
+if(ledger.resumePending(store.state))camera.detachControl();
 bedtime=setupBedtime(scene,canvas,camera,
   ()=>!arena.isActive&&!dungeon.isActive,
   ()=>{
