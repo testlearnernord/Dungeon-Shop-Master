@@ -640,10 +640,19 @@ export class NpcVisualSystem {
     // A counter can be moved while this visitor is walking. Check each actual
     // movement segment, not only the cached route from the last state refresh.
     // Replan from the visitor's physical position before crossing new furniture.
-    if(npc.phase==="leaving"&&this.layout&&z<=6.6&&
-      !shopSegmentClear({x:npc.root.position.x,z:npc.root.position.z},{x,z},this.layout)){
-      this.beginLeaving(npc);
-      return;
+    if(npc.phase==="leaving"&&this.layout&&z<=6.6){
+      // Corridor coordinates are outside the indoor navigation grid. Clip a
+      // crossing step to the shop boundary instead of treating its outside
+      // starting point as an obstacle and trapping the visitor forever.
+      const current={x:npc.root.position.x,z:npc.root.position.z};
+      const fraction=current.z>6.6
+        ?(current.z-6.6)/(current.z-z):0;
+      const indoorStart={x:current.x+(x-current.x)*fraction,
+        z:current.z>6.6?6.6:current.z};
+      if(!shopSegmentClear(indoorStart,{x,z},this.layout)){
+        this.beginLeaving(npc);
+        return;
+      }
     }
     const blocked=(px:number,pz:number)=>[...this.npcs.values()]
       .some(other=>other!==npc&&Math.hypot(
