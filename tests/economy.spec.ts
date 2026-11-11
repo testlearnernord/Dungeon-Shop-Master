@@ -55,6 +55,7 @@ test("wholesale, stocking and confirmed sales share stock and gold without modal
   await expect(page.locator("#merchant-gold")).toHaveText(`Merchant gold: ${balanceBeforeSale + 4 * bread.salePrice}g`);
   await expect(page.locator("#shelf-supplies")).toContainText("Waybread 0");
   await page.evaluate(() => document.exitPointerLock());
+  await page.locator(".shop-management-details").evaluate((el: HTMLDetailsElement) => { el.open = true; });
   await page.getByText("Full day report", { exact: true }).click();
   await expect(page.locator("#day-history")).toContainText("bought");
   await expect(page.locator("#day-history")).toContainText("ate");
