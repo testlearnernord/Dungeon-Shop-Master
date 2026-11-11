@@ -185,3 +185,68 @@
   #arena-hud .arena-actions button,
   #dungeon-hud .dungeon-actions button { transition: none; }
 }
+
+
+/* Progressive disclosure for the long keyboard legend.
+   The hotbar remains in its original position and fully interactive. */
+#hud details.controls {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 0;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  overflow: visible;
+  text-align: center;
+}
+#hud details.controls > summary {
+  display: block;
+  padding: 7px 14px;
+  color: var(--ui-gold);
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 650;
+}
+#hud details.controls > summary::-webkit-details-marker { display: none; }
+#hud details.controls > summary span {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border: 1px solid var(--ui-border);
+  border-radius: 50%;
+}
+#hud details.controls > summary:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+#hud details.controls .controls-keys {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  width: min(740px, calc(100vw - 24px));
+  padding: 12px 16px;
+  transform: translateX(-50%);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  box-shadow: var(--ui-shadow);
+  line-height: 1.9;
+  white-space: normal;
+}
+@media (max-width: 740px) {
+  #hud .mobile-hud-stack details.controls {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    width: max-content;
+    transform: none;
+  }
+  #hud .mobile-hud-stack details.controls .controls-keys {
+    width: min(500px, calc(100vw - 24px));
+  }
+}
