@@ -19,14 +19,8 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger",async(
   await page.keyboard.press("n");
   await page.keyboard.press("z");
   await expect(page.locator("#day")).toHaveText("Day 1");
-  const bedroom=await page.evaluate(async()=>{
-    const {Engine}=await import("@babylonjs/core/Engines/engine");
-    const scene=Engine.LastCreatedScene!;
-    const bed=scene.getMeshByName("galvik-bed")!;
-    return {exists:!!bed,collides:bed?.checkCollisions,
-      rearWall:!!scene.getMeshByName("bedroom-rear-wall"),
-      oldWall:!!scene.getMeshByName("front-middle-wall")};
-  });
+  const bedroom=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBedroom());
   expect(bedroom).toEqual({exists:true,collides:true,rearWall:true,oldWall:false});
   await moveToBed(page);
   await page.keyboard.down("e");
