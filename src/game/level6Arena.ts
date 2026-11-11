@@ -41,6 +41,7 @@ export class Level6Arena {
   private active = false;
   private motion: CombatPreviewState | null = null;
   private replay: BossCombatReplay | null = null;
+  private requestedReplayId: string | null = null;
   private replayTime = 0;
   private replayFrameIndex = 0;
   private replayFinished = false;
@@ -142,9 +143,10 @@ export class Level6Arena {
     this.restart();
   }
 
-  open(): void {
+  open(eventId?: string): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("dungeon-active")) return;
+    this.requestedReplayId=eventId??null;
     this.shopCamera.detachControl();
     if (document.pointerLockElement) void document.exitPointerLock();
     this.active = true;
@@ -171,6 +173,7 @@ export class Level6Arena {
     this.boss = null;
     this.motion = null;
     this.replay = null;
+    this.requestedReplayId=null;
     this.projectiles = [];
     this.telegraph = null;
     this.slamTelegraph = null;
@@ -198,7 +201,8 @@ export class Level6Arena {
     this.result = "fighting";
     const state = this.store.state;
     const saved = [...state.events].reverse()
-      .find(event => event.type === "level6-combat" && event.combatReplay)?.combatReplay ?? null;
+      .find(event => event.type === "level6-combat" && event.combatReplay &&
+        (!this.requestedReplayId || event.id===this.requestedReplayId))?.combatReplay ?? null;
     this.replay = this.forcePreview ? null : saved;
     this.sourceToggle.hidden = !saved;
     this.sourceToggle.textContent = this.replay ? "Preview current expedition" : "Watch last saved combat";
