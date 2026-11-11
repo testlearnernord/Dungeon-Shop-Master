@@ -25,6 +25,7 @@ import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
 import { setupShopStatusToggle } from "./shopHudLayout";
 import { setupAdventurerOverview } from "./adventurerOverview";
+import { setupHudMouseMode } from "./hudMouseMode";
 import "./styles.css";
 import "./uiTheme.css";
 
@@ -39,6 +40,7 @@ if (!canvas || !inventoryElement || !statusElement) {
   throw new Error("The game canvas and HUD must exist before the game starts.");
 }
 
+setupHudMouseMode(canvas);
 const inventoryHud = inventoryElement;
 const statusHud = statusElement;
 const campaign = await loadCampaign();
