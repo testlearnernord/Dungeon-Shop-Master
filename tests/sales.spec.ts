@@ -25,6 +25,7 @@ test("sales display matches booked gold, shelf stock and named 3D customers afte
     "Merchant gold: " + expected.shopEconomy.balance + "g");
   await expect(page.locator("#sales-ledger-summary")).toContainText(
     expected.shopEconomy.dailySales.units + " sold / +" + expected.shopEconomy.dailySales.revenue + "g");
+  await page.locator(".shop-management-details").evaluate((el: HTMLDetailsElement) => { el.open = true; });
   await page.locator("#sales-ledger-summary").click();
   await expect(page.locator(".sales-receipt")).toHaveCount(receipts.length);
   for (const receipt of receipts) {
@@ -45,6 +46,7 @@ test("sales display matches booked gold, shelf stock and named 3D customers afte
   expect(visible.visitors.every(({ unpickable }) => unpickable)).toBe(true);
   await expect(page.locator("#save-status")).toHaveText("Saved Day 2.");
   await page.reload();
+  await page.locator(".shop-management-details").evaluate((el: HTMLDetailsElement) => { el.open = true; });
   await expect(page.locator("#day")).toHaveText("Day 2");
   await expect(page.locator("#sales-banner")).toContainText(
     expected.shopEconomy.dailySales.units + " items sold · +" + expected.shopEconomy.dailySales.revenue + "g");
