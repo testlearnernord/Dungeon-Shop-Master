@@ -360,3 +360,31 @@
 #hud .shop-management-content details > summary:hover {
   color: var(--ui-gold);
 }
+
+
+/* First real pictogram pass: recognizable item silhouettes, not color-only dots. */
+#hud #inventory .item-pictogram {
+  display: block;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  overflow: visible;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 55%));
+}
+#hud #inventory .inventory-row {
+  min-width: 76px;
+  gap: 3px;
+  padding-top: 8px;
+}
+#hud #inventory .inventory-row .item-name {
+  max-width: 76px;
+  font-size: 10px;
+  line-height: 1.15;
+}
+#hud #inventory .inventory-row strong {
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 740px) {
+  #hud #inventory .item-pictogram { width: 30px; height: 30px; }
+  #hud #inventory .inventory-row { min-width: 62px; }
+}
