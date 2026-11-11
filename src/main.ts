@@ -23,9 +23,11 @@ import { currentDayReceipts } from "./game/saleView";
 import { loadCampaign, setupCampaignHud } from "./campaignHud";
 import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
+import { setupShopStatusToggle } from "./shopHudLayout";
 import "./styles.css";
 
 async function startGame(): Promise<void> {
+setupShopStatusToggle();
 const canvas = document.querySelector<HTMLCanvasElement>("#renderCanvas");
 const inventoryElement = document.querySelector<HTMLDivElement>("#inventory");
 const statusElement = document.querySelector<HTMLDivElement>("#status");
