@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 import type { GameState } from "../src/game/gameState";
 
 async function loadSavedGame(page: Page): Promise<GameState | null> {
@@ -79,10 +80,9 @@ test("committed economy and day state autosave, reload exactly and continue dete
   await page.locator("#renderCanvas").click();
   await page.mouse.up();
   await page.evaluate(() => document.exitPointerLock());
-  await page.locator("#confirm-day").evaluate(() => {
+  await page.evaluate(() => {
     for (let day = 2; day <= 12; day += 1) {
-      document.querySelector<HTMLButtonElement>("#end-day")!.click();
-      document.querySelector<HTMLButtonElement>("#confirm-day")!.click();
+      (window as Window & {__shopTestAdvanceDay:()=>void}).__shopTestAdvanceDay();
     }
   });
   const persisted = await loadSavedGame(page);
@@ -106,11 +106,10 @@ test("committed economy and day state autosave, reload exactly and continue dete
     .filter((hero: { status: string }) => hero.status === "at-shop")
     .map((hero: { id: string }) => hero.id).sort());
   // Invalid/no-op clicks and cosmetic frames must not enqueue saves.
-  await page.locator("#confirm-day").evaluate((button: HTMLButtonElement) => button.click());
+  await page.keyboard.press("z"); // Confirm alone must not advance.
   await page.waitForTimeout(400);
   await expect(page.locator("#save-status")).toHaveText("Continued saved Day 12.");
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#save-status")).toHaveText("Saved Day 13.");
   expect((await exportSave(page)).payload).toEqual(expectedNext);
   expect(errors).toEqual([]);
@@ -120,8 +119,7 @@ test("imports validate before confirmation; new game and overwrite require confi
   await page.goto("./");
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   const initial = (await exportSave(page)).payload;
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#save-status")).toHaveText("Saved Day 2.");
   const saved = await exportSave(page);
   for (const content of [
@@ -145,8 +143,7 @@ test("imports validate before confirmation; new game and overwrite require confi
   await expect(page.locator("#day")).toHaveText("Day 2");
   await page.evaluate(() => {
     for (let day = 3; day <= 12; day += 1) {
-      document.querySelector<HTMLButtonElement>("#end-day")!.click();
-      document.querySelector<HTMLButtonElement>("#confirm-day")!.click();
+      (window as Window & {__shopTestAdvanceDay:()=>void}).__shopTestAdvanceDay();
     }
   });
   expect((await loadSavedGame(page))?.day).toBe(12);
@@ -175,8 +172,7 @@ test("storage denial remains playable and exportable without destroying data", a
   });
   await page.goto("./");
   await expect(page.locator("#save-status")).toContainText("Save error:");
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   expect((await exportSave(page)).payload.day).toBe(2);
   page.once("dialog", (dialog) => dialog.accept());
@@ -209,8 +205,7 @@ test("220-day campaigns retain history with bounded HUD and survive reload", asy
 test("corrupt latest stays untouched until explicit backup recovery", async ({ page }) => {
   await page.goto("./");
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#save-status")).toHaveText("Saved Day 2.");
   await page.evaluate(async () => {
     await new Promise<void>((resolve, reject) => {
@@ -229,8 +224,7 @@ test("corrupt latest stays untouched until explicit backup recovery", async ({ p
   });
   await page.reload();
   await expect(page.locator("#save-status")).toContainText("Save error:");
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   await page.reload();
   // Fresh in-memory play must not overwrite the corrupt record or its backup.
@@ -238,8 +232,7 @@ test("corrupt latest stays untouched until explicit backup recovery", async ({ p
   await expect(page.locator("#day")).toHaveText("Day 1");
   await page.evaluate(() => {
     for (let day = 2; day <= 12; day += 1) {
-      document.querySelector<HTMLButtonElement>("#end-day")!.click();
-      document.querySelector<HTMLButtonElement>("#confirm-day")!.click();
+      (window as Window & {__shopTestAdvanceDay:()=>void}).__shopTestAdvanceDay();
     }
   });
   await expect(page.locator("#day")).toHaveText("Day 12");
@@ -281,8 +274,7 @@ test("rapid End Days wait for blocked storage and reload the latest queued snaps
   try {
     await page.evaluate(() => {
       for (let day = 2; day <= 25; day += 1) {
-        document.querySelector<HTMLButtonElement>("#end-day")!.click();
-        document.querySelector<HTMLButtonElement>("#confirm-day")!.click();
+        (window as Window & {__shopTestAdvanceDay:()=>void}).__shopTestAdvanceDay();
       }
     });
     await expect(page.locator("#day")).toHaveText("Day 25");
@@ -312,13 +304,11 @@ test("quota failures preserve memory and later writes recover without a stale sn
       throw new DOMException(`Quota exceeded for ${args[1]}`, "QuotaExceededError");
     };
   });
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   await expect(page.locator("#save-status")).toContainText("Save error:");
   expect((await exportSave(page)).payload.day).toBe(2);
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#save-status")).toHaveText("Saved Day 3.");
   await page.reload();
   await expect(page.locator("#save-status")).toHaveText("Continued saved Day 3.");
