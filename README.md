@@ -10,8 +10,8 @@ A small browser-based first-person prototype set in Galvik's mineshaft shop on D
 - **Left-click / hold** a shelf slot to stock it; **right-click / hold** to return one item at a time.
 - **E** interacts with Galvik's checkout register when nearby.
 - **B** opens/closes wholesale (also available from the HUD or register). Opening releases pointer lock and pauses movement controls; **Esc** closes it. Click the scene to capture the pointer again. Catalog input cannot stock shelves or advance days.
-- **N** requests End Day; **Y** confirms Next Day; **Esc** cancels a pending request (and releases the pointer as usual). There is no automatic progression or countdown.
-- Alternatively, release the pointer with **Esc** and click **End Day**, then the separate **Confirm Next Day** button. Buttons also support Tab and Enter/Space. Requests alone never advance time; held shortcut keys and duplicate confirmations are ignored.
+- **Galvik's bedroom:** Behind the shop's rear wall is a cramped side chamber with his bed. Approach it and **hold E for 1.5 seconds** to close the shop and sleep. Releasing early or walking away cancels; tapping E does nothing.
+- Rest fades to black, settles the single authoritative day tick, and opens the four-chapter **Merchant's Ledger**. Inspect revenue, receipts, visitors and sealed expedition recordings. Choose **EXPEDITION · WATCH** to open the saved spectator footage before learning an outcome. **Begin Next Day** closes the book and returns to the shop. The old N/Y/Z shortcuts and HUD End Day button have been removed.
 
 Each of the two shelves has five numbered slots. A slot can hold up to five of one item type. The HUD shows selected inventory, bag capacity, merchant gold, shelf totals and the last daily sales result. Level 4 and Level 6 corridors remain signed and blocked.
 
@@ -88,6 +88,12 @@ Every confirmed End Day executes this order (events are labeled with the resulti
 #### Sample loop
 
 Inspect the compact, scrollable **Adventurers** panel for HP, hunger, carried food and visitor identities. Hover a roster row for XP, gold and traits; collapse it to free screen space. Buy bread/herbs with **B**, stock shelves, then press **N**, **Y**. Check gold earned and shelf totals. Expand **Full day report** for named sales, eating, healing, starvation and dungeon deaths; only three recent events appear in the main HUD. Repeat to see heroes return; cancelling never changes the world.
+
+### Bedroom and merchant's ledger (in-world day closure)
+
+A normal day now ends **at Galvik's bed**, not through the HUD. The extra room is part of the existing Level 5 Babylon scene, not a separate map or simulated day. Holding E continuously for 1.5 seconds near the bed fades out, calls the existing `GameStore.endDay()` exactly once, then presents the new ledger. Neither reading its pages nor watching historical Level 6/7 footage advances the day again. The next-day button dismisses the ledger and returns player control.
+
+The four parchment chapters show a financial reconciliation, itemized receipts, visitor chronicle and sealed expedition recordings. Figures derive from the before/after authoritative `GameState` and recorded sale events; daytime manual payments are explicitly distinguished from nighttime settlement. Expedition outcomes remain hidden from the initial ledger and are viewed through existing spectator replays. Animation and synthesized page/coin sounds follow the soundtrack toggle and reduced-motion preference. The UI has no extra saved simulation fields.
 
 ### 3D shop visitors
 

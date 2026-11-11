@@ -21,14 +21,7 @@
           <p id="daily-sales"></p>
           <button id="open-wholesale" type="button">Wholesale (B)</button>
           <button id="open-placement" type="button">Arrange Shelves (P)</button>
-          <button id="end-day" type="button" aria-expanded="false" aria-controls="day-confirmation">
-            End Day (N)
-          </button>
-          <div id="day-confirmation" hidden>
-            <p>End this day?</p>
-            <button id="confirm-day" type="button">Confirm Next Day (Z / Y)</button>
-            <button id="cancel-day" type="button">Cancel (Esc)</button>
-          </div>
+          <p class="bedtime-tip">✦ To end the day, visit Galvik's sleeping room behind the shop and hold <kbd>E</kbd> at his bed.</p>
           <details class="shop-management-details">
             <summary>Management &amp; reports</summary>
             <div class="shop-management-content">
@@ -47,7 +40,7 @@
           <details id="sales-ledger" class="sales-ledger">
             <summary id="sales-ledger-summary">Sales receipts</summary>
             <ol id="sales-receipts" aria-label="Customer purchase receipts"></ol>
-            <p class="sales-hint">Heroes reserve goods when they physically reach a shelf. Held goods stay unpaid until End Day, when they settle automatically. Interactive cashier payments are coming next.</p>
+            <p class="sales-hint">Heroes reserve goods when they physically reach a shelf. Held goods can be paid at the register. Any outstanding carts settle when Galvik closes the shop and sleeps.</p>
           </details>
           <details class="campaign-panel">
             <summary>Campaign</summary>
@@ -70,7 +63,7 @@
             <span>·</span> <strong>Left-click</strong> stock
             <span>·</span> <strong>Right-click</strong> remove
             <span>·</span> <strong>E</strong> interact
-            <span>·</span> <strong>N / Z</strong> end / confirm day
+            <span>·</span> <strong>Hold E</strong> sleep / finish day at the bed
             <span>·</span> <strong>B</strong> wholesale
             <span>·</span> <strong>P</strong> arrange shelves
             <span>·</span> <strong>R</strong> roster board
@@ -226,7 +219,7 @@
       </dialog>
       <dialog id="wholesale" aria-labelledby="wholesale-title">
         <h2 id="wholesale-title">Wholesale catalog</h2>
-        <p>Buy into your bag, then stock shelves. Visitors buy only on End Day.</p>
+        <p>Buy into your bag, then stock shelves. Unpaid carts settle when Galvik closes the shop and sleeps.</p>
         <p>Waybread feeds heroes; healing herbs restore HP. Mana potions and ore are reserved for future use.</p>
         <div id="wholesale-catalog"></div>
         <details>

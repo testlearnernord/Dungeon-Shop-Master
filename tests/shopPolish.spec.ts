@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 
 test("shop fixtures hug the walls, walk is faster and Shift temporarily sprints", async ({ page }) => {
   const errors:string[]=[];
@@ -29,7 +30,7 @@ test("shop fixtures hug the walls, walk is faster and Shift temporarily sprints"
   expect(errors).toEqual([]);
 });
 
-test("bulk wholesale purchases, always-readable roster and QWERTZ confirmation",async({page})=>{
+test("bulk wholesale purchases, always-readable roster and bed-based day advance",async({page})=>{
   const errors:string[]=[];
   page.on("pageerror",err=>errors.push(err.message));
   await page.goto("./");
@@ -58,8 +59,9 @@ test("bulk wholesale purchases, always-readable roster and QWERTZ confirmation",
   await expect(page.locator('.roster-card[data-status="exploring"]').first()).toHaveCSS("opacity","0.62");
   await page.locator("#close-roster").click();
   await page.keyboard.press("n");
-  await expect(page.locator("#day-confirmation")).toBeVisible();
   await page.keyboard.press("z");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   expect(errors).toEqual([]);
 });

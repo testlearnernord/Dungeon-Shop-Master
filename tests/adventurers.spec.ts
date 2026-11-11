@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 import { advanceDay, createGameState } from "../src/game/gameState";
 import { heroDisplayNames } from "../src/game/heroIdentity";
 
@@ -26,8 +27,7 @@ test("read-only roster and textual visitors track the persistent simulation on c
 
   let state = createGameState();
   for (let nextDay = 2; nextDay <= 12; nextDay += 1) {
-    await page.keyboard.press("n");
-    await page.keyboard.press("y");
+    await advanceTestDay(page);
     state = advanceDay(state).state;
     await expect(page.locator("#day")).toHaveText(`Day ${nextDay}`);
     const names = heroDisplayNames(state.adventurers);
@@ -60,8 +60,7 @@ test("read-only roster and textual visitors track the persistent simulation on c
   await expect(page.locator("#status")).toContainText("Placed");
   const stocked = await page.locator("#inventory").innerText();
   expect(stocked).not.toBe(inventory);
-  await page.keyboard.press("n");
-  await page.keyboard.press("y");
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 13");
   await expect(page.locator("#inventory")).toHaveText(stocked, { useInnerText: true });
   await page.mouse.click(400, 300, { button: "right" });

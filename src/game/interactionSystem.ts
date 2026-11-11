@@ -27,6 +27,7 @@ export class InteractionSystem {
     private readonly openRoster: () => void = () => {},
     private readonly checkoutRegister: () => string = () => "No customer is ready.",
     private readonly isShopActive: () => boolean = () => true,
+    private readonly isNearBed: () => boolean = () => false,
   ) {
     this.shop.select(ITEMS[0].id);
     this.registerEvents();
@@ -92,6 +93,9 @@ export class InteractionSystem {
           document.querySelector("dialog[open]") ||
           event.target instanceof HTMLElement &&
           (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT"].includes(event.target.tagName))) return;
+      // Galvik's bed owns a deliberate 1.5 second hold, never a tap.
+      // Do not also fire a cash register / generic E interaction.
+      if (this.isNearBed()) return;
       this.interact();
     });
     this.scene.onBeforeRenderObservable.add(() => {

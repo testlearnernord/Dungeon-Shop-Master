@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 
 test("Level 6 is a separate viewable boss cavern, camera focuses hero/boss and no saved tick advances", async ({ page }) => {
   const errors: string[] = [];
@@ -48,8 +49,7 @@ test("an authorized Level 6 adventurer appears in the spectator preview without 
   await page.locator("#toggle-adventurer-details").click();
   const selected = page.locator('#adventurer-roster button.level6-permit').first();
   await selected.click();
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   await expect(page.locator('#adventurer-roster li[data-status="expedition"]')).toHaveCount(1);
   await page.locator("#open-arena").click();

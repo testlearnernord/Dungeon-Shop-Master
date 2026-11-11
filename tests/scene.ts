@@ -247,3 +247,15 @@ export function inspectCheckoutPlacement() {
   return {counter:read("checkout-counter"),top:read("counter-top"),
     register:read("cash-register"),guide:read("counter-placement-preview")};
 }
+
+/** Browser-friendly scene probe for Galvik's new sleeping room. */
+export function inspectBedroom() {
+  const scene=Engine.LastCreatedScene!;
+  const bed=scene.getMeshByName("galvik-bed");
+  return {
+    exists:!!bed,
+    collides:bed?.checkCollisions??false,
+    rearWall:!!scene.getMeshByName("bedroom-rear-wall"),
+    oldWall:!!scene.getMeshByName("front-middle-wall"),
+  };
+}

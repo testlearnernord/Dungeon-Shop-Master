@@ -20,5 +20,6 @@ export default defineConfig({
     command: "npm run dev -- --host 127.0.0.1 --port 5174 --strictPort",
     url: "http://127.0.0.1:5174/Dungeon-Shop-Master/",
     reuseExistingServer: !process.env.CI,
+    env: { VITE_E2E: "1" },
   },
 });

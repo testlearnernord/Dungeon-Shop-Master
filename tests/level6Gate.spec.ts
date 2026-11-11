@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 import { advanceDay, createGameState, setLevel6Permit } from "../src/game/gameState";
 
 test("Level 6 visitors use the right gate while the cursed player stays behind its barrier", async ({ page }) => {
@@ -32,8 +33,7 @@ test("Level 6 visitors use the right gate while the cursed player stays behind i
   expect(first.playerBarrier6Hidden).toBe(true);
 
   await page.locator(`#adventurer-roster button.level6-permit[data-adventurer-id="${id}"]`).click();
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
 
   const departing = await inspect();
@@ -57,11 +57,9 @@ test("Level 6 visitors use the right gate while the cursed player stays behind i
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectPlayer());
   expect(player.z).toBeLessThan(11.5);
 
-  await page.keyboard.press("n");
-  await page.keyboard.press("y");
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 3");
-  await page.keyboard.press("n");
-  await page.keyboard.press("y");
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 4");
   const arriving = await inspect();
   const returner = arriving.visitors.find((hero) => hero.id === id);

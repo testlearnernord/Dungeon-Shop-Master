@@ -13,6 +13,7 @@ import { createHeroVisual } from "./heroVisual.ts";
 import type { HeroVisual } from "./heroVisual.ts";
 import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type DungeonRoomDecoration } from "./dungeonReplayScene.ts";
 import type { Level7Replay } from "./level7Exploration.ts";
+import { observeReplay } from "../replayDisclosure.ts";
 import {
   generateDungeonLayout, tileAt, type DungeonLayout,
   type DungeonFeature, type DungeonPoint,
@@ -352,6 +353,7 @@ export class DungeonViewer {
   private selectReplay(id:string):void {
     const record=this.availableReplays().find(e=>e.id===id)?.record??null;
     this.replaySelector.value=record?id:"preview";
+    if(record)observeReplay(id);
     this.replayScene?.setReplay(record);
     this.playbackTime=0;
     this.playing=!!record;

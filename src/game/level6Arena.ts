@@ -17,6 +17,7 @@ import {
 } from "./arenaCombatMotion.ts";
 import type { AdventurerState } from "./adventurers.ts";
 import type { BossCombatReplay, BossReplayFrame } from "./bossCombatReplay.ts";
+import { observeReplay } from "../replayDisclosure.ts";
 import type { GameStore } from "./gameStore.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import { createHeroVisual } from "./heroVisual.ts";
@@ -41,6 +42,7 @@ export class Level6Arena {
   private active = false;
   private motion: CombatPreviewState | null = null;
   private replay: BossCombatReplay | null = null;
+  private requestedReplayId: string | null = null;
   private replayTime = 0;
   private replayFrameIndex = 0;
   private replayFinished = false;
@@ -142,9 +144,10 @@ export class Level6Arena {
     this.restart();
   }
 
-  open(): void {
+  open(eventId?: string): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("dungeon-active")) return;
+    this.requestedReplayId=eventId??null;
     this.shopCamera.detachControl();
     if (document.pointerLockElement) void document.exitPointerLock();
     this.active = true;
@@ -171,6 +174,7 @@ export class Level6Arena {
     this.boss = null;
     this.motion = null;
     this.replay = null;
+    this.requestedReplayId=null;
     this.projectiles = [];
     this.telegraph = null;
     this.slamTelegraph = null;
@@ -197,9 +201,12 @@ export class Level6Arena {
     this.replayFinished = false;
     this.result = "fighting";
     const state = this.store.state;
-    const saved = [...state.events].reverse()
-      .find(event => event.type === "level6-combat" && event.combatReplay)?.combatReplay ?? null;
+    const recorded = [...state.events].reverse()
+      .find(event => event.type === "level6-combat" && event.combatReplay &&
+        (!this.requestedReplayId || event.id===this.requestedReplayId));
+    const saved=recorded?.combatReplay??null;
     this.replay = this.forcePreview ? null : saved;
+    if(this.replay&&recorded)observeReplay(recorded.id);
     this.sourceToggle.hidden = !saved;
     this.sourceToggle.textContent = this.replay ? "Preview current expedition" : "Watch last saved combat";
     this.panel.dataset.replay = this.replay ? "recorded" : "preview";

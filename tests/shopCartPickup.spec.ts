@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 
 test("real 3D shelf pickup reserves stock, displays a hand-held item and survives reload",async({page})=>{
   test.setTimeout(90000);
@@ -75,8 +76,7 @@ test("real 3D shelf pickup reserves stock, displays a hand-held item and survive
     return visual?.carriedMeshes??0;
   },{timeout:15000}).toBeGreaterThan(0);
 
-  await page.keyboard.press("n");
-  await page.keyboard.press("z");
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   const settled=await read();
   expect(settled!.shopCarts).toEqual([]);
