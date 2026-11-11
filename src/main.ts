@@ -18,6 +18,7 @@ import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
 import { setupBedtime, type BedtimeController } from "./bedtime.ts";
+import { resetReplayDisclosure } from "./replayDisclosure.ts";
 import { setupEconomyHud } from "./economyHud";
 import { setupSalesHud } from "./salesHud";
 import { setupExpeditionHud } from "./expeditionHud";
@@ -94,6 +95,7 @@ setupCampaignHud(store, campaign, () => {
   npcVisuals.reconcile([], []);
   bedtime?.reset();
   ledger?.close();
+  resetReplayDisclosure();
   cashier?.close();
   interactions.reset();
   camera.position.set(0, 1.7, -4.6);
