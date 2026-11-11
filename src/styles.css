@@ -742,3 +742,110 @@ body.dungeon-active #music-panel { top: 119px; }
   #inventory .inventory-row .item-name {font-size:9px}
   #inventory .hotbar-hint {display:none}
 }
+
+
+/* UI rehaul foundation: one consistent visual language for the existing HUD.
+   Keep gameplay bindings, panel IDs, and keyboard shortcuts untouched. */
+:root {
+  --ui-bg: rgb(15 18 19 / 92%);
+  --ui-bg-raised: #242725;
+  --ui-border: rgb(192 153 96 / 48%);
+  --ui-border-strong: #c49b60;
+  --ui-text: #f1e9d9;
+  --ui-muted: #c1b9a9;
+  --ui-gold: #e3bd7c;
+  --ui-focus: #f5d397;
+  --ui-radius: 10px;
+  --ui-shadow: 0 12px 34px rgb(0 0 0 / 35%);
+}
+#hud { text-shadow: 0 1px 2px rgb(0 0 0 / 75%); }
+.shop-title {
+  top: 16px;
+  left: 18px;
+  padding: 12px 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  box-shadow: var(--ui-shadow);
+  color: var(--ui-text);
+  font: 700 16px/1.25 Georgia, serif;
+  letter-spacing: .045em;
+}
+.shop-title span { color: var(--ui-gold); font: 600 12px/1.25 Inter, system-ui, sans-serif; }
+.day-panel, .inventory, .adventurer-panel {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  box-shadow: var(--ui-shadow);
+  color: var(--ui-text);
+  scrollbar-color: #8e714c transparent;
+  scrollbar-width: thin;
+}
+.day-panel {
+  top: 76px;
+  left: 18px;
+  width: clamp(236px, 19vw, 310px);
+  max-width: calc(50vw - 24px);
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  max-height: calc(100dvh - 160px);
+}
+.inventory {
+  top: 18px;
+  right: 18px;
+  min-width: 210px;
+  padding: 12px;
+  font-size: 13px;
+}
+.adventurer-panel {
+  top: 224px;
+  right: 18px;
+  width: clamp(230px, 19vw, 310px);
+  max-width: calc(50vw - 24px);
+  max-height: calc(100dvh - 315px);
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+#day { color: var(--ui-gold); font-size: 19px; }
+#world-events, .inventory-row, .simulation-note { color: var(--ui-muted); }
+.day-panel button, #open-roster {
+  min-height: 34px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+  transition: border-color .16s ease, background-color .16s ease;
+}
+.day-panel button:hover, #open-roster:hover { border-color: var(--ui-border-strong); background: #35332b; }
+#hud button:focus-visible, #hud summary:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+.controls {
+  bottom: 14px;
+  padding: 10px 14px;
+  border-color: var(--ui-border);
+  border-radius: 9px;
+  background: var(--ui-bg);
+  box-shadow: var(--ui-shadow);
+  color: var(--ui-muted);
+  line-height: 1.65;
+}
+.controls strong { color: var(--ui-gold); }
+@media (max-width: 1100px) {
+  .day-panel { width: 228px; }
+  .adventurer-panel { width: 228px; }
+  .controls { font-size: 11px; }
+}
+@media (max-width: 760px) {
+  .shop-title { left: 10px; top: 10px; padding: 9px 11px; font-size: 13px; }
+  .day-panel { top: 62px; left: 10px; width: min(215px, calc(50vw - 15px)); max-width: none; padding: 10px; font-size: 12px; }
+  .inventory { right: 10px; top: 62px; min-width: 0; width: min(180px, calc(50vw - 15px)); padding: 9px; }
+  .adventurer-panel { right: 10px; top: 220px; width: min(180px, calc(50vw - 15px)); max-width: none; padding: 9px; }
+  .controls { bottom: 8px; padding: 7px 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .day-panel button, #open-roster { transition: none; }
+}
