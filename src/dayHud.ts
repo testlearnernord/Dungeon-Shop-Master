@@ -1,6 +1,7 @@
 import { GameStore } from "./game/gameStore";
 import { level6ReturnIds, type VisitorSnapshot } from "./game/npcVisitors";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
+import { hasObservedReplay } from "./replayDisclosure.ts";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
@@ -33,10 +34,15 @@ export function setupDayHud(
   const render = (): void => {
     const state = store.state;
     day.textContent = `Day ${state.day}`;
+    const visibleMessage=(event:typeof state.events[number]):string=>
+      (event.type==="level6-combat"||event.type==="level7-exploration") &&
+        !hasObservedReplay(event.id)
+        ? "An expedition recording has been sealed. Watch the saved footage to learn its outcome."
+        : event.message;
     events.replaceChildren(...state.events.slice(-3).map((event) => {
       const entry = document.createElement("li");
       entry.dataset.eventId = event.id;
-      entry.textContent = event.message;
+      entry.textContent = visibleMessage(event);
       return entry;
     }));
     const today = [];
@@ -47,7 +53,7 @@ export function setupDayHud(
     }
     history.replaceChildren(...today.reverse().map((event) => {
       const entry = document.createElement("li");
-      entry.textContent = event.message;
+      entry.textContent = visibleMessage(event);
       return entry;
     }));
     const names = heroDisplayNames(state.adventurers);
@@ -91,6 +97,7 @@ export function setupDayHud(
     }
     render();
   });
+  window.addEventListener("expedition-observed",render);
   render();
   const initialVisitors = snapshotVisitors();
   onVisitorsChanged(initialVisitors, previousVisitors);
