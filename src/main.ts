@@ -16,6 +16,8 @@ import { Shop } from "./game/shop";
 import { setupShopPlacementHud } from "./shopPlacementHud.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
+import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
+import { setupBedtime, type BedtimeController } from "./bedtime.ts";
 import { setupEconomyHud } from "./economyHud";
 import { setupSalesHud } from "./salesHud";
 import { setupExpeditionHud } from "./expeditionHud";
@@ -28,6 +30,7 @@ import { setupAdventurerOverview } from "./adventurerOverview";
 import { setupHudMouseMode } from "./hudMouseMode";
 import "./styles.css";
 import "./uiTheme.css";
+import "./merchantLedger.css";
 
 async function startGame(): Promise<void> {
 setupShopStatusToggle();
@@ -53,13 +56,15 @@ const shop = new Shop(scene, store);
 const board = createRosterBoard(scene, store);
 worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
 const openRoster = setupRosterBoardHud(canvas, camera, store);
+let bedtime:BedtimeController|null=null;
+let ledger:MerchantLedger|null=null;
 setupShopPlacementHud(canvas, camera, store, shop);
 const npcVisuals = new NpcVisualSystem(scene);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
   if (open) camera.detachControl();
   else camera.attachControl(canvas, true);
 });
-setupDayHud(
+const dayClock=setupDayHud(
   canvas, store,
   (current, previous) => npcVisuals.reconcile(current, previous),
   () => npcVisuals.showSales(currentDayReceipts(store.state)),
@@ -81,6 +86,8 @@ setupExpeditionHud(store);
 let selectedItemId: ItemId = ITEMS[0].id;
 setupCampaignHud(store, campaign, () => {
   npcVisuals.reconcile([], []);
+  bedtime?.reset();
+  ledger?.close();
   cashier?.close();
   interactions.reset();
   camera.position.set(0, 1.7, -4.6);
@@ -142,7 +149,8 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   selectedItemId = selected;
   statusHud.textContent = message;
   renderInventory(selected);
-}, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.", () => isShopActive());
+}, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.",
+  () => isShopActive(), () => bedtime?.isNearBed()??false);
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
@@ -152,11 +160,42 @@ const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
 });
-isShopActive=()=>!arena.isActive&&!dungeon.isActive;
+isShopActive=()=>!arena.isActive&&!dungeon.isActive&&!(bedtime?.isBlocking??false);
+ledger=setupMerchantLedger(()=>{
+  camera.attachControl(canvas,true);
+  statusHud.textContent="Morning has come. The shop is open.";
+},(event)=>{
+  if(event.type==="level6-combat"&&event.combatReplay){
+    arena.open(event.id);
+    return arena.isActive;
+  }
+  if(event.type==="level7-exploration"&&event.level7Replay){
+    dungeon.open();
+    if(!dungeon.isActive)return false;
+    const selector=document.querySelector<HTMLSelectElement>("#dungeon-replay-select")!;
+    selector.value=event.id;
+    selector.dispatchEvent(new Event("change",{bubbles:true}));
+    return selector.value===event.id;
+  }
+  return false;
+},()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
+bedtime=setupBedtime(scene,canvas,camera,
+  ()=>!arena.isActive&&!dungeon.isActive,
+  ()=>{
+    const before=store.state;
+    dayClock.endDayFromBed();
+    ledger!.open(before,store.state);
+    statusHud.textContent="Day closed. The merchant's ledger is open.";
+  },
+  ()=>!!ledger&&(ledger.isOpen||ledger.isSuspended));
 cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId(),isShopActive,
   (heroId,perfectTiming)=>store.payReservedCart(heroId,perfectTiming),message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
 
 engine.runRenderLoop(() => {
+  if(ledger?.isSuspended&&!arena.isActive&&!dungeon.isActive){
+    ledger.resumeIfReady();
+    camera.detachControl();
+  }
   if (dungeon.isActive) {
     dungeon.update(engine.getDeltaTime() / 1000);
     dungeon.currentScene?.render();
