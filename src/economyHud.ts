@@ -46,10 +46,21 @@ export function setupEconomyHud(
   for (const item of ITEMS) {
     const row = document.createElement("div");
     row.className = "catalog-row";
+    const header = document.createElement("div");
+    header.className = "catalog-item-header";
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.classList.add("catalog-item-icon");
+    icon.setAttribute("viewBox", "0 0 64 64");
+    icon.setAttribute("aria-hidden", "true");
+    const symbol = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    symbol.setAttribute("href", import.meta.env.BASE_URL + "assets/ui-item-icons.svg#" + item.id);
+    icon.append(symbol);
     const description = document.createElement("span");
+    description.className = "catalog-item-description";
     description.textContent = `${item.name} · buy ${item.wholesaleCost}g / sell ${item.salePrice}g` +
       (item.kind === "weapon" ? " · +3 attack on F6, improved F1–F4 progress" :
        item.kind === "armor" ? " · -2 damage, lower F1–F4 danger" : "");
+    header.append(icon, description);
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = `Buy 1 ${item.name}`;
@@ -89,7 +100,7 @@ export function setupEconomyHud(
       buyQuantity(quantity);
     });
     actions.append(button, five, max);
-    row.append(description, actions);
+    row.append(header, actions);
     catalog.append(row);
     const discard = document.createElement("button");
     discard.type = "button";
