@@ -16,6 +16,7 @@ test("Level 6 expedition ledger tracks a real authorized trip and survives reloa
   await page.locator("#confirm-day").click();
   await expect(page.locator("#day")).toHaveText("Day 3");
   await expect(page.locator("#level6-progress-summary")).toContainText("1 fights");
+  await page.locator(".shop-management-details").evaluate((el: HTMLDetailsElement) => { el.open = true; });
   await page.locator("#level6-expedition-ledger summary").click();
   await expect(page.locator('#level6-expedition-events li[data-outcome]')).toHaveCount(1);
   const entry = page.locator('#level6-expedition-events li[data-outcome]').first();
@@ -23,6 +24,7 @@ test("Level 6 expedition ledger tracks a real authorized trip and survives reloa
   const text = await page.locator("#level6-progress-counts").textContent();
   await expect(page.locator("#save-status")).toHaveText("Saved Day 3.");
   await page.reload();
+  await page.locator(".shop-management-details").evaluate((el: HTMLDetailsElement) => { el.open = true; });
   await expect(page.locator("#level6-progress-counts")).toHaveText(text!);
   await page.locator("#level6-expedition-ledger summary").click();
   await expect(page.locator('#level6-expedition-events li[data-outcome]')).toHaveCount(1);

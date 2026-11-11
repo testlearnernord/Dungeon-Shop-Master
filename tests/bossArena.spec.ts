@@ -45,6 +45,7 @@ test("Level 6 is a separate viewable boss cavern, camera focuses hero/boss and n
 test("an authorized Level 6 adventurer appears in the spectator preview without a double combat resolution", async ({ page }) => {
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.locator("#toggle-adventurer-details").click();
   const selected = page.locator('#adventurer-roster button.level6-permit').first();
   await selected.click();
   await page.locator("#end-day").click();
