@@ -87,3 +87,101 @@
   #hud #inventory .inventory-row,
   #wholesale button, #roster-dialog button, #roster-dialog select { transition: none; }
 }
+
+
+/* Finish the shared theme across placement, checkout and spectator views.
+   Preserve the established spatial layout and semantic combat status colors. */
+#shelf-placement,
+#cashier-overlay .cashier-panel,
+#arena-hud .arena-toolbar,
+#arena-hud .arena-bottom,
+#dungeon-hud .dungeon-toolbar,
+#dungeon-hud .dungeon-minimap-panel,
+#dungeon-hud .dungeon-bottom {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  box-shadow: var(--ui-shadow);
+}
+#shelf-placement::backdrop { background: rgb(0 0 0 / 72%); }
+#shelf-placement .placement-heading h2,
+#cashier-overlay h2,
+#arena-hud .arena-toolbar strong,
+#dungeon-hud .dungeon-toolbar strong,
+#dungeon-hud .dungeon-minimap-panel strong {
+  color: var(--ui-gold);
+}
+#shelf-placement .placement-heading p,
+#shelf-placement .placement-note,
+#dungeon-hud .dungeon-toolbar p,
+#dungeon-hud .dungeon-minimap-panel small,
+#arena-hud .arena-toolbar p {
+  color: var(--ui-muted);
+}
+#shelf-placement button,
+#shelf-placement #placement-shelf,
+#cashier-overlay button,
+#arena-hud .arena-actions button,
+#dungeon-hud .dungeon-actions button,
+#dungeon-hud select {
+  min-height: 36px;
+  border: 1px solid var(--ui-border);
+  border-radius: 7px;
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .16s ease, background-color .16s ease;
+}
+#shelf-placement button:hover:not(:disabled),
+#cashier-overlay button:hover:not(:disabled),
+#arena-hud .arena-actions button:hover:not(:disabled),
+#dungeon-hud .dungeon-actions button:hover:not(:disabled) {
+  border-color: var(--ui-border-strong);
+  background: #35332b;
+}
+#shelf-placement :focus-visible,
+#cashier-overlay :focus-visible,
+#arena-hud button:focus-visible,
+#dungeon-hud button:focus-visible,
+#dungeon-hud select:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+#shelf-placement button:disabled,
+#cashier-overlay button:disabled,
+#arena-hud button:disabled,
+#dungeon-hud button:disabled { opacity: .5; cursor: not-allowed; }
+#cashier-overlay .cashier-meter {
+  border-color: var(--ui-border);
+  background: var(--ui-bg-raised);
+}
+#arena-hud .arena-toolbar,
+#dungeon-hud .dungeon-toolbar {
+  max-height: min(40dvh, 260px);
+  overflow: auto;
+}
+#arena-hud .arena-bottom,
+#dungeon-hud .dungeon-bottom {
+  max-height: min(38dvh, 310px);
+  overflow: auto;
+}
+#dungeon-hud .dungeon-minimap-panel {
+  max-height: calc(100dvh - 340px);
+  overflow: auto;
+}
+@media (max-width: 760px) {
+  #arena-hud .arena-toolbar,
+  #dungeon-hud .dungeon-toolbar { padding: 10px 12px; }
+  #arena-hud .arena-bottom,
+  #dungeon-hud .dungeon-bottom { padding: 9px 11px; }
+  #dungeon-hud .dungeon-minimap-panel { width: 170px; }
+  #dungeon-hud #dungeon-minimap { width: 148px; height: 148px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #shelf-placement button,
+  #cashier-overlay button,
+  #arena-hud .arena-actions button,
+  #dungeon-hud .dungeon-actions button { transition: none; }
+}
