@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 import { advanceDay, createGameState } from "../src/game/gameState";
 import { currentDayReceipts } from "../src/game/saleView";
 
@@ -13,10 +14,10 @@ test("sales display matches booked gold, shelf stock and named 3D customers afte
   const expected = advanceDay(createGameState()).state;
   const receipts = currentDayReceipts(expected);
   expect(receipts.length).toBeGreaterThan(0);
-  await page.keyboard.press("n");
+  await page.keyboard.press("n"); // The obsolete end-day shortcut must do nothing.
   await expect(page.locator("#day")).toHaveText("Day 1");
   await expect(page.locator("#sales-banner")).toContainText("No sales today.");
-  await page.keyboard.press("y");
+  await advanceTestDay(page);
 
   await expect(page.locator("#day")).toHaveText("Day 2");
   await expect(page.locator("#sales-banner")).toContainText(
