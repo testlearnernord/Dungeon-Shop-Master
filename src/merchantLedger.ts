@@ -75,8 +75,11 @@ export interface MerchantLedger {
   /** True while a spectator recording is active and the ledger is suspended. */
   get isSuspended(): boolean;
   resumeIfReady(): void;
+  /** Restore an unfinished book after reload, without another day tick. */
+  resumePending(current:GameState):boolean;
 }
 
+const LEDGER_SESSION_KEY="dungeon-shop:pending-merchant-ledger";
 const labels=["The Reckoning","Goods & Receipts","The Living","Sealed Expeditions"] as const;
 const motifs=["✧","◈","♜","⚔"] as const;
 
@@ -144,6 +147,18 @@ export function setupMerchantLedger(
   let restoreFocus:HTMLElement|null=null;
   let animationSkipped=false;
   let soundContext:AudioContext|null=null;
+  function persistPending(before:GameState,after:GameState):void {
+    try{
+      sessionStorage.setItem(LEDGER_SESSION_KEY,JSON.stringify({
+        seed:after.seed,day:after.day,
+        beforeGold:before.shopEconomy.balance,
+        visitorCount:before.adventurers.filter(h=>h.status==="at-shop").length,
+      }));
+    }catch{ /* Session recovery is best effort if browser storage is denied. */ }
+  }
+  function clearPending():void {
+    try{sessionStorage.removeItem(LEDGER_SESSION_KEY);}catch{ /* storage unavailable */ }
+  }
 
   function sound(kind:"page"|"coin"):void {
     if(!soundEnabled())return;
@@ -318,6 +333,7 @@ export function setupMerchantLedger(
     if(!summary||suspended)return;
     dialog.close();
     summary=null;
+    clearPending();
     onNextMorning();
     restoreFocus?.focus({preventScroll:true});
     restoreFocus=null;
@@ -331,6 +347,7 @@ export function setupMerchantLedger(
   return {
     open(before,after){
       summary=summarizeLedger(before,after);
+      persistPending(before,after);
       page=0;
       suspended=false;
       restoreFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
@@ -341,6 +358,7 @@ export function setupMerchantLedger(
     },
     close(){
       suspended=false;summary=null;
+      clearPending();
       if(dialog.open)dialog.close();
     },
     get isOpen(){return dialog.open;},
@@ -350,6 +368,34 @@ export function setupMerchantLedger(
       suspended=false;
       if(!dialog.open)dialog.showModal();
       heading.focus({preventScroll:true});
+    },
+    resumePending(current){
+      let data:unknown;
+      try{
+        const raw=sessionStorage.getItem(LEDGER_SESSION_KEY);
+        if(!raw)return false;
+        data=JSON.parse(raw);
+      }catch{return false;}
+      if(!data||typeof data!=="object")return false;
+      const pending=data as {seed?:unknown;day?:unknown;beforeGold?:unknown;visitorCount?:unknown};
+      if(pending.seed!==current.seed||pending.day!==current.day||
+         !Number.isSafeInteger(pending.beforeGold)||!Number.isSafeInteger(pending.visitorCount)||
+         current.day<2){
+        clearPending();
+        return false;
+      }
+      // Reconstruct the transaction boundary using the saved events. The
+      // treasury and visitor count before sleeping are in a tiny tab-scoped
+      // marker; nothing here mutates persistent GameState.
+      const prior:GameState={
+        ...current,day:current.day-1,
+        events:current.events.filter(e=>e.day<current.day),
+        shopEconomy:{...current.shopEconomy,balance:pending.beforeGold as number},
+      };
+      this.open(prior,current);
+      summary={...summary!,visited:pending.visitorCount as number};
+      renderPage();
+      return true;
     },
   };
 }
