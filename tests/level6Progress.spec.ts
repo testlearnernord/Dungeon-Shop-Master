@@ -4,6 +4,7 @@ test("Level 6 expedition ledger tracks a real authorized trip and survives reloa
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(e.message));
   await page.goto("./");
+  await page.locator("#toggle-adventurer-details").click();
   await expect(page.locator("#level6-progress-summary")).toContainText("0 victories / 0 fights");
   const visitor = page.locator('#adventurer-roster li[data-status="at-shop"]').first();
   await visitor.locator(".level6-permit").click();
