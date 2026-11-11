@@ -73,16 +73,23 @@
             <span>·</span> <strong>Esc</strong> release
 </div></details>
         </div>
-        <details class="adventurer-panel" open>
-          <summary id="population-summary">Adventurers</summary>
+        <section class="adventurer-panel" aria-label="Adventurer overview">
+          <header class="adventurer-overview-heading">
+            <strong id="population-summary">Adventurers</strong>
+            <button id="toggle-adventurer-details" type="button" aria-expanded="false" aria-controls="adventurer-details">Details</button>
+          </header>
           <p id="shop-visitors" aria-label="Shop visitors"></p>
-          <p class="simulation-note">Level 6 expeditions require individual authorization. Use the roster board for details.</p>
-          <button type="button" id="open-roster">Open Roster Board (R)</button>
-          <button type="button" id="open-arena">Watch Level 6 (V)</button>
-          <button type="button" id="open-dungeon">Observe Level 7 (G)</button>
-          <ul id="adventurer-roster" aria-label="Active adventurers"></ul>
-          <p id="shelf-supplies" class="simulation-note"></p>
-        </details>
+          <div class="adventurer-quick-actions">
+            <button type="button" id="open-roster">Roster (R)</button>
+            <button type="button" id="open-arena">Level 6 (V)</button>
+            <button type="button" id="open-dungeon">Level 7 (G)</button>
+          </div>
+          <div id="adventurer-details" hidden>
+            <p class="simulation-note">Level 6 expeditions require individual authorization. Use the roster board for details.</p>
+            <ul id="adventurer-roster" aria-label="Active adventurers"></ul>
+            <p id="shelf-supplies" class="simulation-note"></p>
+          </div>
+        </section>
         <div id="status" class="status">Loading campaign…</div>
         <div class="crosshair" aria-hidden="true"></div>
       </section>

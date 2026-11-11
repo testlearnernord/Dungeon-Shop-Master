@@ -250,3 +250,60 @@
     width: min(500px, calc(100vw - 24px));
   }
 }
+
+
+/* Compact adventurer overview: show actionable information first. */
+#hud .adventurer-panel { top: 224px; }
+#hud .adventurer-overview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#hud .adventurer-overview-heading strong {
+  color: var(--ui-gold);
+  font-size: 14px;
+  line-height: 1.4;
+}
+#hud .adventurer-overview-heading button {
+  flex-shrink: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+  cursor: pointer;
+}
+#hud #shop-visitors { margin: 10px 0; color: var(--ui-text); }
+#hud .adventurer-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+#hud .adventurer-quick-actions button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 3px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+}
+#hud .adventurer-quick-actions button:hover,
+#hud .adventurer-overview-heading button:hover {
+  border-color: var(--ui-border-strong);
+  background: #35332b;
+}
+#hud #adventurer-details[hidden] { display: none; }
+#hud #adventurer-details {
+  margin-top: 12px;
+  padding-top: 9px;
+  border-top: 1px solid var(--ui-border);
+}
+#hud #adventurer-details #adventurer-roster { max-height: min(30dvh, 300px); overflow: auto; }
+@media (max-width: 760px) {
+  #hud .adventurer-panel { top: 220px; }
+  #hud .adventurer-quick-actions { grid-template-columns: 1fr; }
+}
