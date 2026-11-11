@@ -307,3 +307,56 @@
   #hud .adventurer-panel { top: 220px; }
   #hud .adventurer-quick-actions { grid-template-columns: 1fr; }
 }
+
+
+/* Shop management: primary daily actions visible, secondary records on demand. */
+#hud .shop-management-details {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ui-border);
+}
+#hud .shop-management-details > summary {
+  padding: 8px 4px;
+  color: var(--ui-gold);
+  font-weight: 650;
+  cursor: pointer;
+}
+#hud .shop-management-details > summary:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+#hud .shop-management-content {
+  display: grid;
+  gap: 8px;
+  padding: 6px 0 10px;
+}
+#hud .shop-management-content h3 {
+  margin: 8px 0 0;
+  color: var(--ui-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+#hud .shop-management-content #world-events {
+  max-height: 160px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
+}
+#hud .shop-management-content #world-events li {
+  padding: 3px 0;
+  line-height: 1.5;
+}
+#hud .shop-management-content details {
+  margin: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+#hud .shop-management-content details > summary {
+  color: var(--ui-muted);
+  cursor: pointer;
+}
+#hud .shop-management-content details > summary:hover {
+  color: var(--ui-gold);
+}
