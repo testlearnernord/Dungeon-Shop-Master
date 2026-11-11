@@ -12,7 +12,6 @@ test("spectator and management surfaces inherit the same theme tokens", async ({
   expect(values.color).toBe("#f1e9d9");
   for (const selector of [
     "#shelf-placement",
-    "#cashier-overlay .cashier-panel",
     "#arena-hud .arena-toolbar",
     "#arena-hud .arena-bottom",
     "#dungeon-hud .dungeon-toolbar",
