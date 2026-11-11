@@ -1,4 +1,5 @@
 import { expect,test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 
 test("visitors use exact projected need/stock/gold and travel toward the real shelf",async({page})=>{
   const errors:string[]=[];
@@ -51,8 +52,7 @@ test("visitors use exact projected need/stock/gold and travel toward the real sh
   });
   expect(after).toEqual(before); // Viewing a forecast is not a paid transaction.
   // Real sales still commit exactly once at the confirmed daily tick.
-  await page.keyboard.press("n");
-  await page.keyboard.press("z");
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
