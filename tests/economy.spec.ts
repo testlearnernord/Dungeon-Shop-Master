@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 import { ITEMS } from "../src/game/economy";
 
 test("wholesale, stocking and confirmed sales share stock and gold without modal input leaking", async ({ page }) => {
@@ -47,9 +48,8 @@ test("wholesale, stocking and confirmed sales share stock and gold without modal
   await expect(page.locator("#status")).toContainText("Placed Waybread");
   await expect(page.locator("#shelf-supplies")).toContainText("Waybread 4");
   const balanceBeforeSale = 20 - 2 * bread.wholesaleCost;
-  await page.keyboard.press("n");
   await expect(page.locator("#merchant-gold")).toHaveText(`Merchant gold: ${balanceBeforeSale}g`);
-  await page.keyboard.press("y");
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   await expect(page.locator("#daily-sales")).toHaveText(`Last End Day: 4 sold · earned ${4 * bread.salePrice}g`);
   await expect(page.locator("#merchant-gold")).toHaveText(`Merchant gold: ${balanceBeforeSale + 4 * bread.salePrice}g`);
