@@ -4,6 +4,7 @@ import { checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoint, checkoutQueue
 import { CHECKOUT_COUNTER, createShopLayout, replaceCounterPlacement, shopLayoutProblem } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
 import type { ShopCart } from "../../src/game/shopCarts.ts";
+import { NPC_CENTER_CLEARANCE } from "../../src/game/npcTraffic.ts";
 
 const cart = (heroId: string): ShopCart => ({
   heroId, day: 1,
@@ -45,7 +46,7 @@ test("queue positions stay separated with a rotated shelf and high demand", () =
     assert.ok(route);
     assert.deepEqual(route.waypoints.at(-1) ?? from, point);
     for (const other of points.slice(0,index))
-      assert.ok(Math.hypot(point.x-other.x,point.z-other.z)>=0.75);
+      assert.ok(Math.hypot(point.x-other.x,point.z-other.z)>=NPC_CENTER_CLEARANCE-1e-6);
   }
   assert.ok(points.length < 100);
   assert.throws(() => checkoutQueuePoint(-1), RangeError);
@@ -91,7 +92,7 @@ test("rotated and relocated checkout offers reachable, separated standing spots"
         : from;
       assert.ok(pathToShopGoal(origin,point,layout),"Reachable checkout "+rotation);
       for(const previous of points.slice(0,index))
-        assert.ok(Math.hypot(point.x-previous.x,point.z-previous.z)>=0.75);
+        assert.ok(Math.hypot(point.x-previous.x,point.z-previous.z)>=NPC_CENTER_CLEARANCE-1e-6);
     }
   }
 });

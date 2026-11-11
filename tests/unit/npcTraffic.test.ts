@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, crowdSafeStep, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
   for(const gate of ["level4","level6"] as const){
@@ -21,7 +21,7 @@ test("burst arrivals get non-overlapping spawns, without crossing the corridor w
   for(let i=0;i<24;i++){
     const z=nextEntranceSpawnZ(x,occupied);
     for(const person of occupied)
-      assert(Math.hypot(person.x-x,person.z-z)>=0.7);
+      assert(Math.hypot(person.x-x,person.z-z)>=NPC_CENTER_CLEARANCE-1e-6);
     occupied.push({x,z});
   }
   assert.equal(occupied[0].z,13);
@@ -52,7 +52,7 @@ test("up to 100 idle visitors get unique walkable reachable positions",()=>{
     const point=spots[i];
     assert(point.z<3,"idle NPCs must not block the doorway");
     assert(!isObstructed(point,layout));
-    for(let j=0;j<i;j++)assert(Math.hypot(point.x-spots[j].x,point.z-spots[j].z)>=0.7);
+    for(let j=0;j<i;j++)assert(Math.hypot(point.x-spots[j].x,point.z-spots[j].z)>=NPC_CENTER_CLEARANCE-1e-6);
     const route=pathToShopGoal({x:gateTravelLane("level4","entering"),z:6},point,layout);
     assert(route,"idle location should be reachable from the level 4 entrance");
   }
@@ -67,7 +67,7 @@ test("moved shelf never snaps two waiting visitors onto the same destination",()
   for(let i=0;i<spots.length;i++){
     assert(!isObstructed(spots[i],moved));
     for(let j=0;j<i;j++)
-      assert(Math.hypot(spots[i].x-spots[j].x,spots[i].z-spots[j].z)>=0.7);
+      assert(Math.hypot(spots[i].x-spots[j].x,spots[i].z-spots[j].z)>=NPC_CENTER_CLEARANCE-1e-6);
   }
 });
 
@@ -113,4 +113,23 @@ test("departure collision sampling clips corridor crossing to indoor bounds",()=
   const clipped={x:start.x+(end.x-start.x)*fraction,z:6.6};
   assert.equal(shopSegmentClear(clipped,end,layout),true,
     "crossing into the shop must not trap a departing visitor");
+});
+
+test("crowd steering avoids occupied segments and holds the doorway lane",()=>{
+  const start={x:0,z:0},goal={x:3,z:0},neighbour={x:1.04,z:0};
+  const detour=crowdSafeStep(start,goal,[neighbour],0.2,()=>true);
+  assert.ok(detour,"Indoor shoppers should steer past each other");
+  assert(Math.hypot(detour.x-neighbour.x,detour.z-neighbour.z)>=NPC_CENTER_CLEARANCE-1e-6);
+  assert.equal(crowdSafeStep(start,goal,[neighbour],0.2,()=>true,false),null,
+    "In a narrow gate wait, do not cross lanes");
+  assert.equal(crowdSafeStep(start,goal,[neighbour],0.2,()=>false),null);
+});
+
+test("collision checking covers the entire movement segment",()=>{
+  const from={x:0,z:0},goal={x:4,z:0},other={x:0.6,z:0};
+  assert.equal(crowdSafeStep(from,goal,[other],3,()=>true,false),null,
+    "A long step must not tunnel through another hero");
+  const escape=crowdSafeStep(from,goal,[other],0.2,()=>true);
+  if(escape)assert(Math.hypot(escape.x-other.x,escape.z-other.z)>
+    Math.hypot(from.x-other.x,from.z-other.z));
 });

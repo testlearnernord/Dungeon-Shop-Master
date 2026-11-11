@@ -79,7 +79,7 @@ test("visitors keep personal space while moving and never create gold merely by 
     const visitors=sample.visitors;
     for(let i=0;i<visitors.length;i++)for(let j=i+1;j<visitors.length;j++){
       const distance=Math.hypot(visitors[i].x-visitors[j].x,visitors[i].z-visitors[j].z);
-      expect(distance).toBeGreaterThanOrEqual(0.52);
+      expect(distance).toBeGreaterThanOrEqual(1.0);
     }
   }
 });
