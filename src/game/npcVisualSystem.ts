@@ -44,6 +44,7 @@ interface NpcVisual {
   blockedSeconds:number;
   gateSide: GateSide;
   readonly labelTexture: DynamicTexture;
+  readonly labelMesh: Mesh;
   saleTag: Mesh | null;
   saleSeconds: number;
 }
@@ -98,23 +99,11 @@ function paintIdentity(npc: NpcVisual, atlas: HTMLImageElement): void {
   const displayName = npc.visitor.displayName ?? npc.visitor.name;
   const level = npc.visitor.level ?? 1;
   ctx.fillStyle = "#fff0cb";
-  ctx.font = "bold 39px sans-serif";
+  ctx.font = "bold 35px sans-serif";
   ctx.fillText(displayName + " · Lv" + level, 155, 76, 475);
   ctx.fillStyle = "#e0bc88";
-  ctx.font = "29px sans-serif";
+  ctx.font = "25px sans-serif";
   ctx.fillText(npc.visitor.role, 157, 120);
-  ctx.fillStyle="#cfdeb7";
-  ctx.font="22px sans-serif";
-  const interest=npc.intent?.items[npc.targetIndex];
-  const held=npc.heldLines.reduce((sum,line)=>sum+line.quantity,0);
-  const heldTotal=npc.heldLines.reduce((sum,line)=>sum+line.subtotal,0);
-  const label=interest?"Interested: "+interest.itemId:
-    npc.intent?.reason==="cannot-afford"?"Not enough gold":
-    npc.intent?.reason==="unavailable"?"Needs supplies":"";
-  ctx.fillText((npc.visitor.gold??0)+"g · Food "+(npc.visitor.food??0)+
-    (npc.visitor.hunger!==undefined&&npc.visitor.hunger>=3?" · Hungry":"")+
-    (held?" · Carrying "+held+" ("+heldTotal+"g unpaid)":label?" · "+label:""),
-    155,151,476);
   npc.labelTexture.update();
   npc.root.metadata.displayName = displayName;
   npc.root.metadata.level = level;
@@ -130,9 +119,9 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
   const { root, arms, legs, torso } = model;
   root.position.copyFrom(position);
   
-  const label = MeshBuilder.CreatePlane(`npc-${visitor.id}-label`, { width: 2.25, height: 0.56 }, scene);
+  const label = MeshBuilder.CreatePlane(`npc-${visitor.id}-label`, { width: 1.05, height: 0.263 }, scene);
   label.parent = root;
-  label.position.y = 2.42;
+  label.position.y = 2.22;
   label.billboardMode = Mesh.BILLBOARDMODE_ALL;
   label.isPickable = false;
   label.checkCollisions = false;
@@ -151,7 +140,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
     gateSide: visitor.entranceGate ?? "level4",
     intent:null,intentKey:"",targetIndex:0,toQueue:false,
     heldLines:[],heldMeshes:[],heldKey:"",
-    labelTexture: texture,
+    labelTexture: texture, labelMesh: label,
     saleTag: null, saleSeconds: 0,
   };
   root.metadata = {
@@ -404,6 +393,12 @@ export class NpcVisualSystem {
     const open: Record<GateSide, boolean> = { level4: false, level6: false };
     for (const npc of this.npcs.values()) {
       npc.animationTime += delta;
+      const cameraPosition = this.scene.activeCamera?.globalPosition;
+      if (cameraPosition) {
+        const distance = Vector3.Distance(cameraPosition, npc.root.getAbsolutePosition());
+        npc.labelMesh.isVisible = distance < 9;
+        npc.labelMesh.scaling.setAll(distance > 5 ? 0.78 : 1);
+      }
       if (npc.saleSeconds > 0) {
         npc.saleSeconds -= delta;
         if (npc.saleSeconds <= 0) this.clearSaleTag(npc);

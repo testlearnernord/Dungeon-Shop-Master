@@ -132,7 +132,13 @@ test("imports validate before confirmation; new game and overwrite require confi
     await importSave(page, content);
     await expect(page.locator("#save-status")).toContainText("Import rejected:");
     await expect(page.locator("#day")).toHaveText("Day 2");
-    expect((await exportSave(page)).payload).toEqual(saved.payload);
+    // Shop customers continue shopping while import validation runs. Assert that
+    // invalid imports cannot replace the campaign identity or day, without
+    // mistaking legitimate background purchases for imported save data.
+    const afterRejectedImport = (await exportSave(page)).payload;
+    expect(afterRejectedImport.day).toBe(saved.payload.day);
+    expect(afterRejectedImport.seed).toBe(saved.payload.seed);
+    expect(afterRejectedImport.rngState).toBe(saved.payload.rngState);
   }
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.locator("#new-game").click();
