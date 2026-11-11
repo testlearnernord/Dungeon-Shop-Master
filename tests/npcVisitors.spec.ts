@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 import { advanceDay, createGameState } from "../src/game/gameState";
 
 test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respect the Level 4 player barrier", async ({ page }) => {
@@ -46,8 +47,7 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
   for (let day = 2; day <= 12; day += 1) {
     const before = await inspect();
     const previousState = state;
-    await page.keyboard.press("n");
-    await page.keyboard.press("y");
+    await advanceTestDay(page);
     state = advanceDay(state).state;
     await expect(page.locator("#day")).toHaveText(`Day ${day}`);
     const after = await inspect();
