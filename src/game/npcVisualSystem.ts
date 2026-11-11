@@ -523,8 +523,18 @@ export class NpcVisualSystem {
     const origin={x:npc.root.position.x,z:npc.root.position.z};
     if(item&&slot&&this.layout&&this.shop){
       const pointForShelf=this.shop.shelfAccessPoint(slot);
-      const owner=this.shelfOwners.get(item.slotId);
-      if(owner&&owner!==npc.visitor.id){
+      // Different slots on the same shelf are only 1m apart. Reserving the
+      // exact slot alone lets two customers claim overlapping standing points.
+      // Hold the nearby access zone until the first shopper finishes inspecting.
+      const shelfAccessBusy=[...this.shelfOwners].some(([reservedId,reservedBy])=>{
+        if(reservedBy===npc.visitor.id)return false;
+        const reserved=[...this.shop!.slotMeshes.values()].find(s=>s.id===reservedId);
+        if(!reserved)return false;
+        const point=this.shop!.shelfAccessPoint(reserved);
+        return Math.hypot(point.x-pointForShelf.x,
+          point.z-pointForShelf.z)<PERSONAL_SPACE+0.01;
+      });
+      if(shelfAccessBusy){
         const waitingRoutes=Array.from({length:this.npcs.size+5},(_,slot)=>{
           const target=this.queuePosition(slot);
           const route=target?pathToShopGoal(origin,target,this.layout!):null;
