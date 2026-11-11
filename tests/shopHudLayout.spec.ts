@@ -12,6 +12,6 @@ test("shop status can collapse without losing live day state or actions", async 
   await toggle.click();
   await expect(details).toBeVisible();
   await expect(page.locator("#day")).toHaveText("Day 1");
-  await expect(page.locator("#end-day")).toBeVisible();
+  await expect(page.locator(".bedtime-tip")).toBeVisible();
   await expect(page.locator("#open-wholesale")).toBeVisible();
 });
