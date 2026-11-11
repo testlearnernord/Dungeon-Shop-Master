@@ -102,3 +102,15 @@ test("departure step detects a newly moved counter before walking through it",()
   for(let i=1;i<route!.waypoints.length;i++)
     assert(shopSegmentClear(route!.waypoints[i-1],route!.waypoints[i],moved.layout));
 });
+
+test("departure collision sampling clips corridor crossing to indoor bounds",()=>{
+  const layout=createShopLayout();
+  const start={x:-3.5,z:6.75};
+  const end={x:-3.5,z:6.54};
+  assert.equal(shopSegmentClear(start,end,layout),false,
+    "outdoor start is intentionally outside indoor collision bounds");
+  const fraction=(start.z-6.6)/(start.z-end.z);
+  const clipped={x:start.x+(end.x-start.x)*fraction,z:6.6};
+  assert.equal(shopSegmentClear(clipped,end,layout),true,
+    "crossing into the shop must not trap a departing visitor");
+});
