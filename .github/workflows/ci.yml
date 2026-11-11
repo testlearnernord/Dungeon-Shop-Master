@@ -24,17 +24,18 @@ jobs:
     name: Browser tests (shard ${{ matrix.shard }}/3)
     needs: build
     runs-on: ubuntu-24.04
-    # Browser binaries and Linux dependencies are preinstalled in this image.
-    # Match the version pinned in package.json to prevent browser/driver drift.
-    container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
       # Playwright shards split all 16 specs, not just a curated subset.
       # Separate GitHub runners avoid fighting for a single CPU-bound WebGL process.
       - run: xvfb-run -a npm test -- --shard=${{ matrix.shard }}/3
