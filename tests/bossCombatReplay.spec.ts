@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 
 test("confirmed Level 6 combat becomes an actual saved replay without double resolution", async ({page}) => {
   const errors: string[] = [];
@@ -7,11 +8,9 @@ test("confirmed Level 6 combat becomes an actual saved replay without double res
   await page.locator("#toggle-adventurer-details").click();
   await expect(page.locator("#day")).toHaveText("Day 1");
   await page.locator('#adventurer-roster button.level6-permit').first().click();
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 3");
   const balance=await page.locator("#merchant-gold").textContent();
   await page.locator("#open-arena").click();
