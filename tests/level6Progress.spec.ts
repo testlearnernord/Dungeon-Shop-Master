@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 
 test("Level 6 expedition ledger tracks a real authorized trip and survives reload", async ({ page }) => {
   const errors: string[] = [];
@@ -8,12 +9,10 @@ test("Level 6 expedition ledger tracks a real authorized trip and survives reloa
   await expect(page.locator("#level6-progress-summary")).toContainText("0 victories / 0 fights");
   const visitor = page.locator('#adventurer-roster li[data-status="at-shop"]').first();
   await visitor.locator(".level6-permit").click();
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   await expect(page.locator("#level6-progress-counts")).toContainText("1 departures");
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 3");
   await expect(page.locator("#level6-progress-summary")).toContainText("1 fights");
   await page.locator(".shop-management-details").evaluate((el: HTMLDetailsElement) => { el.open = true; });
