@@ -404,3 +404,15 @@
 }
 #hud .shop-management-details > summary:hover,
 #hud .day-panel summary:hover { color: var(--ui-focus); }
+
+/* Expanded keyboard help must clear the bottom inventory hotbar.
+   The collapsed Controls button stays below it. */
+#hud details.controls[open] .controls-keys {
+  bottom: calc(100% + 108px);
+  z-index: 20;
+}
+@media (max-width: 740px) {
+  #hud .mobile-hud-stack details.controls[open] .controls-keys {
+    bottom: calc(100% + 108px);
+  }
+}
