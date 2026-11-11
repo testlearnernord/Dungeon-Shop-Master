@@ -13,6 +13,8 @@
       <section id="hud" aria-live="polite">
         <div class="shop-title">GALVIK'S SHOP <span>· LEVEL 5</span></div>
         <section class="day-panel" aria-label="Day clock">
+          <button id="toggle-shop-status" class="shop-panel-toggle" type="button" aria-expanded="true" aria-controls="shop-status-content">Hide shop details</button>
+          <div id="shop-status-content">
           <strong id="day">Loading…</strong>
           <p id="save-status" role="status">Loading campaign…</p>
           <details class="campaign-panel">
@@ -51,6 +53,7 @@
             <ol id="sales-receipts" aria-label="Customer purchase receipts"></ol>
             <p class="sales-hint">Heroes reserve goods when they physically reach a shelf. Held goods stay unpaid until End Day, when they settle automatically. Interactive cashier payments are coming next.</p>
           </details>
+          </div>
         </section>
         <div class="mobile-hud-stack">
           <p id="sales-banner" class="sales-banner" role="status"></p>
