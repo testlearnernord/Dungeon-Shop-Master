@@ -14,7 +14,7 @@ import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, crowdSafeStep, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -50,7 +50,7 @@ interface NpcVisual {
 }
 
 const WALK_SPEED = 2.1;
-const PERSONAL_SPACE = 0.54;
+const PERSONAL_SPACE = NPC_CENTER_CLEARANCE;
 const DOOR_CLOSED_Y = 0.9;
 const DOOR_OPEN_Y = 3.8;
 const DOOR_PASSAGE_CLEAR_Y = 3.4;
@@ -530,10 +530,10 @@ export class NpcVisualSystem {
           const route=target?pathToShopGoal(origin,target,this.layout!):null;
           const point=route?.waypoints.at(-1)??target;
           const clearOfShelf=!!point&&Math.hypot(point.x-pointForShelf.x,
-            point.z-pointForShelf.z)>=PERSONAL_SPACE*2;
+            point.z-pointForShelf.z)>=PERSONAL_SPACE*1.25;
           const clearOfVisitors=!!point&&[...this.npcs.values()].every(other=>
             other===npc||Math.hypot(point.x-other.root.position.x,
-              point.z-other.root.position.z)>=PERSONAL_SPACE*1.5);
+              point.z-other.root.position.z)>=PERSONAL_SPACE);
           return route&&clearOfShelf&&clearOfVisitors?{route}:null;
         }).filter((candidate):candidate is {route:NonNullable<ReturnType<typeof pathToShopGoal>>} =>
           candidate!==null)
@@ -594,9 +594,9 @@ export class NpcVisualSystem {
   }
 
   private move(npc: NpcVisual, delta: number): void {
-    const target = npc.route[npc.waypoint];
-    if (!target) {
-      if (npc.phase === "entering") {
+    const target=npc.route[npc.waypoint];
+    if(!target){
+      if(npc.phase==="entering"){
         this.beginBrowsing(npc);
       }else if(npc.phase==="browsing"){
         if(npc.toQueue){
@@ -604,7 +604,7 @@ export class NpcVisualSystem {
             npc.root.metadata.shoppingPhase==="idle-route-blocked")return;
           npc.phase="queueing";
           npc.root.metadata.shoppingPhase=checkoutQueueIndex(this.carts,npc.visitor.id)>=0
-            ? "awaiting-checkout":"waiting-for-next-day";
+            ?"awaiting-checkout":"waiting-for-next-day";
         }else{
           npc.phase="considering";
           npc.wait=1.1+(npc.slot%3)*0.35;
@@ -612,79 +612,67 @@ export class NpcVisualSystem {
         }
         npc.root.metadata.phase=npc.phase;
       }else if(npc.phase==="leaving"){
-        // Only discard a visitor after they have physically passed the gate.
-        // A currently impassable route must not make them vanish in the shop.
         if(npc.root.position.z>=CORRIDOR_OUTER_Z-0.12)this.dispose(npc);
         else npc.root.metadata.shoppingPhase="blocked-exit";
       }
       return;
     }
-    const dx = target.x - npc.root.position.x;
-    const dz = target.z - npc.root.position.z;
-    const distance = Math.hypot(dx, dz);
-    if (distance < 0.04) {
-      npc.root.position.x = target.x;
-      npc.root.position.z = target.z;
-      npc.waypoint += 1;
+    const from={x:npc.root.position.x,z:npc.root.position.z};
+    const dx=target.x-from.x,dz=target.z-from.z,distance=Math.hypot(dx,dz);
+    const occupied=[...this.npcs.values()].filter(other=>other!==npc)
+      .map(other=>({x:other.root.position.x,z:other.root.position.z}));
+    if(distance<0.04){
+      if(occupied.some(other=>Math.hypot(other.x-target.x,other.z-target.z)<PERSONAL_SPACE))
+        return;
+      npc.root.position.x=target.x;
+      npc.root.position.z=target.z;
+      npc.waypoint+=1;
+      npc.blockedSeconds=0;
       return;
     }
-    npc.root.rotation.y = Math.atan2(dx, dz);
-    const step = Math.min(distance, WALK_SPEED * delta);
-    const x=npc.root.position.x+dx/distance*step;
-    const z=npc.root.position.z+dz/distance*step;
-    // A counter can be moved while this visitor is walking. Check each actual
-    // movement segment, not only the cached route from the last state refresh.
-    // Replan from the visitor's physical position before crossing new furniture.
-    if(npc.phase==="leaving"&&this.layout&&z<=6.6){
-      // Corridor coordinates are outside the indoor navigation grid. Clip a
-      // crossing step to the shop boundary instead of treating its outside
-      // starting point as an obstacle and trapping the visitor forever.
-      const current={x:npc.root.position.x,z:npc.root.position.z};
-      const fraction=current.z>6.6
-        ?(current.z-6.6)/(current.z-z):0;
-      const indoorStart={x:current.x+(x-current.x)*fraction,
-        z:current.z>6.6?6.6:current.z};
-      if(!shopSegmentClear(indoorStart,{x,z},this.layout)){
-        this.beginLeaving(npc);
-        return;
+    const walkable=(next:{x:number;z:number}):boolean=>{
+      // Inside the gates, entrance and exit flow each has its own corridor lane.
+      if(next.z>6.6){
+        const center=next.x<0?CORRIDOR_X.level4:CORRIDOR_X.level6;
+        if(Math.abs(next.x-center)>0.68)return false;
       }
-    }
-    const blocked=(px:number,pz:number)=>[...this.npcs.values()]
-      .some(other=>other!==npc&&Math.hypot(
-        px-other.root.position.x,pz-other.root.position.z)<PERSONAL_SPACE);
-    if(blocked(x,z)){
+      if(!this.layout||(from.z>6.6&&next.z>6.6))return true;
+      // Only the portion within the indoor nav grid can be sampled.
+      // Clip either crossing direction at z=6.6, avoiding false wall collisions.
+      let a={...from},b={...next};
+      if(a.z>6.6){
+        const fraction=(a.z-6.6)/(a.z-b.z);
+        a={x:a.x+(b.x-a.x)*fraction,z:6.6};
+      }else if(b.z>6.6){
+        const fraction=(6.6-a.z)/(b.z-a.z);
+        b={x:a.x+(b.x-a.x)*fraction,z:6.6};
+      }
+      return shopSegmentClear(a,b,this.layout);
+    };
+    const proposed=crowdSafeStep(from,{x:target.x,z:target.z},occupied,
+      WALK_SPEED*delta,walkable,from.z<=6.5);
+    if(!proposed){
       npc.blockedSeconds+=delta;
       npc.root.metadata.blockedSeconds=npc.blockedSeconds;
-      if(npc.blockedSeconds>3 && npc.phase==="browsing"){
+      if(npc.blockedSeconds>3&&npc.phase==="browsing"){
         npc.blockedSeconds=0;
         this.beginBrowsing(npc);
-        return;
-      }
-      // In the narrow gates, wait behind the visitor ahead. Side-stepping
-      // into the opposite-direction lane would recreate the original jam.
-      if((npc.phase==="entering"||npc.phase==="leaving") &&
-          (npc.root.position.z>6.5||target.z>6.5))return;
-      // Yield sideways rather than deadlock when two autonomous visitors meet.
-      // Keep deviations inside the actual shop's walkable area.
-      const sideStep=Math.max(0.08,step);
-      const preferred=(npc.slot%2===0?1:-1);
-      for(const direction of [preferred,-preferred]){
-        const sx=npc.root.position.x-direction*dz/distance*sideStep;
-        const sz=npc.root.position.z+direction*dx/distance*sideStep;
-        const corridorOkay=sz<=6.6 ||
-          Math.abs(sx-(sx<0?-4:4))<=0.78;
-        if(!blocked(sx,sz)&&corridorOkay&&
-          (!this.layout || sz>6.6 || !isObstructed({x:sx,z:sz},this.layout))){
-          npc.root.position.x=sx;
-          npc.root.position.z=sz;
-          return;
-        }
       }
       return;
     }
-    npc.blockedSeconds=0;
-    npc.root.position.x=x;
-    npc.root.position.z=z;
+    const step=Math.min(distance,WALK_SPEED*delta);
+    const direct={x:from.x+dx/distance*step,z:from.z+dz/distance*step};
+    const steering=Math.hypot(proposed.x-direct.x,proposed.z-direct.z);
+    npc.blockedSeconds=steering>0.015?npc.blockedSeconds+delta:0;
+    npc.root.metadata.blockedSeconds=npc.blockedSeconds;
+    if(npc.blockedSeconds>3&&npc.phase==="browsing"){
+      npc.blockedSeconds=0;
+      this.beginBrowsing(npc);
+      return;
+    }
+    npc.root.rotation.y=Math.atan2(proposed.x-from.x,proposed.z-from.z);
+    npc.root.position.x=proposed.x;
+    npc.root.position.z=proposed.z;
   }
 
   private animate(npc: NpcVisual): void {

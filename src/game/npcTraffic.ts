@@ -2,18 +2,60 @@ import type { GateSide } from "./npcVisitors.ts";
 import * as navigation from "./shopperNavigation.ts";
 import type { ShopPoint } from "./shopperNavigation.ts";
 
+/** Minimum center-to-center clearance for rendered NPC shoulders, not a radius. */
+export const NPC_CENTER_CLEARANCE=1.02;
+
+/** Closest a neighbour gets to an entire step, not just the step's endpoint. */
+function segmentDistance(p:ShopPoint,a:ShopPoint,b:ShopPoint):number {
+  const vx=b.x-a.x,vz=b.z-a.z,mag2=vx*vx+vz*vz;
+  const t=mag2===0?0:Math.max(0,Math.min(1,((p.x-a.x)*vx+(p.z-a.z)*vz)/mag2));
+  return Math.hypot(p.x-a.x-vx*t,p.z-a.z-vz*t);
+}
+
+/** Deterministic local steering: keep right relative to heading first, yield
+ * when blocked in narrow gates. Static collision is supplied by the caller.
+ * If two models already overlap, permit only movement away from each other. */
+export function crowdSafeStep(
+  from:ShopPoint,goal:ShopPoint,occupied:readonly ShopPoint[],
+  maxDistance:number,canWalk:(next:ShopPoint)=>boolean,allowSidestep=true,
+):ShopPoint|null {
+  const dx=goal.x-from.x,dz=goal.z-from.z,length=Math.hypot(dx,dz);
+  if(!Number.isFinite(length)||length<=0||
+     !Number.isFinite(maxDistance)||maxDistance<=0)return null;
+  const step=Math.min(length,maxDistance),nx=dx/length,nz=dz/length;
+  const angles=allowSidestep
+    ? [0,Math.PI/6,-Math.PI/6,Math.PI/3,-Math.PI/3,Math.PI/2,-Math.PI/2]
+    : [0];
+  for(const angle of angles){
+    const cos=Math.cos(angle),sin=Math.sin(angle);
+    const candidate={x:from.x+(nx*cos-nz*sin)*step,
+      z:from.z+(nx*sin+nz*cos)*step};
+    if(!canWalk(candidate))continue;
+    if(occupied.some(other=>{
+      const before=Math.hypot(other.x-from.x,other.z-from.z);
+      const after=Math.hypot(other.x-candidate.x,other.z-candidate.z);
+      const nearest=segmentDistance(other,from,candidate);
+      return before<NPC_CENTER_CLEARANCE-1e-6
+        ? after<=before+1e-6||nearest<before-1e-6
+        : nearest<NPC_CENTER_CLEARANCE-1e-6;
+    }))continue;
+    return candidate;
+  }
+  return null;
+}
+
 /** Separate inbound and outbound traffic within the 2.4m corridor. */
 export function gateTravelLane(gate:GateSide,phase:"entering"|"leaving"):number {
   const center=gate==="level4"?-4:4;
   const side=gate==="level4"?-1:1;
-  return center+side*(phase==="entering"?0.43:-0.43);
+  return center+side*(phase==="entering"?0.57:-0.57);
 }
 
 /** Stagger new entrants along their lane so a burst never spawns overlapping bodies. */
 export function nextEntranceSpawnZ(laneX:number,occupied:readonly ShopPoint[]):number {
   for(let i=0;i<120;i++){
-    const z=13+i*0.8;
-    if(occupied.every(p=>Math.hypot(p.x-laneX,p.z-z)>=0.7))return z;
+    const z=13+i*1.1;
+    if(occupied.every(p=>Math.hypot(p.x-laneX,p.z-z)>=NPC_CENTER_CLEARANCE))return z;
   }
   return 13+120*0.8;
 }
@@ -51,18 +93,18 @@ export function idleShopPositions(
   const {isObstructed,pathToShopGoal}=navigation;
   const positions:ShopPoint[]=[];
   const origin={x:gateTravelLane("level4","entering"),z:6};
-  for(let row=0;row<10&&positions.length<count;row++){
-    const z=0.6-row*0.72;
-    for(let column=0;column<18&&positions.length<count;column++){
-      const x=-6.3+column*0.74;
+  for(let row=0;row<11&&positions.length<count;row++){
+    const z=3.2-row*1.05;
+    for(let column=0;column<13&&positions.length<count;column++){
+      const x=-6.25+column*1.05;
       const candidate={x,z};
       if(isObstructed(candidate,layout))continue;
-      if(positions.some(p=>Math.hypot(p.x-x,p.z-z)<0.7))continue;
+      if(positions.some(p=>Math.hypot(p.x-x,p.z-z)<NPC_CENTER_CLEARANCE))continue;
       const route=pathToShopGoal(origin,candidate,layout);
       if(!route)continue;
       const actual=route.waypoints.at(-1)??candidate;
       if(isObstructed(actual,layout))continue;
-      if(positions.some(p=>Math.hypot(p.x-actual.x,p.z-actual.z)<0.7))continue;
+      if(positions.some(p=>Math.hypot(p.x-actual.x,p.z-actual.z)<NPC_CENTER_CLEARANCE))continue;
       positions.push(actual);
     }
   }

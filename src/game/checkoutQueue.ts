@@ -1,4 +1,5 @@
 import type { ShopCart } from "./shopCarts.ts";
+import { NPC_CENTER_CLEARANCE } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
 import { CHECKOUT_COUNTER, COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, type ShopLayout } from "./shopLayout.ts";
 
@@ -29,10 +30,10 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   const fallback={x:counter.x+safeFront.x,z:counter.z+safeFront.z};
   const origin=isObstructed(from,layout)?fallback:from;
   for (let step = 0; step <= 8; step++) {
-    for (const x of [0, -0.9, 0.9, -1.8, 1.8, -2.7, 2.7, -3.6, 3.6, -4.5, 4.5]) {
+    for (const x of [0, -1.1, 1.1, -2.2, 2.2, -3.3, 3.3, -4.4, 4.4]) {
       const localZ = layout.counter
-        ? -COMPACT_COUNTER.clearanceDepth / 2 - 0.65 - step * 0.75
-        : legacyFrontZ - counter.z - step * 0.75;
+        ? -COMPACT_COUNTER.clearanceDepth / 2 - 0.65 - step * 1.1
+        : legacyFrontZ - counter.z - step * 1.1;
       const rotated = rotateShelfOffset(x, localZ, counter.rotation);
       const point = {x:counter.x + rotated.x,z:counter.z + rotated.z};
       if (isObstructed(point, layout)) continue;
@@ -46,7 +47,7 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
     if (!route) continue;
     const endpoint = route.waypoints.at(-1) ?? origin;
     if (isObstructed(endpoint, layout)) continue;
-    if (allocated.some(point => Math.hypot(point.x-endpoint.x,point.z-endpoint.z) < 0.75)) continue;
+    if (allocated.some(point => Math.hypot(point.x-endpoint.x,point.z-endpoint.z) < NPC_CENTER_CLEARANCE)) continue;
     allocated.push(endpoint);
   }
   return allocated;
