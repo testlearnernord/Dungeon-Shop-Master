@@ -94,7 +94,7 @@ export function idleShopPositions(
   const positions:ShopPoint[]=[];
   const origin={x:gateTravelLane("level4","entering"),z:6};
   for(let row=0;row<11&&positions.length<count;row++){
-    const z=3.2-row*1.05;
+    const z=2.9-row*1.05;
     for(let column=0;column<13&&positions.length<count;column++){
       const x=-6.25+column*1.05;
       const candidate={x,z};

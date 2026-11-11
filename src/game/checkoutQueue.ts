@@ -29,7 +29,9 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
     -COMPACT_COUNTER.clearanceDepth/2-0.95,counter.rotation);
   const fallback={x:counter.x+safeFront.x,z:counter.z+safeFront.z};
   const origin=isObstructed(from,layout)?fallback:from;
-  for (let step = 0; step <= 8; step++) {
+  // Legacy checkout must not place a queue in the rear player aisle.
+  // A relocated counter keeps its layout-aware search range.
+  for (let step = 0; step <= (layout.counter ? 8 : 5); step++) {
     for (const x of [0, -1.1, 1.1, -2.2, 2.2, -3.3, 3.3, -4.4, 4.4]) {
       const localZ = layout.counter
         ? -COMPACT_COUNTER.clearanceDepth / 2 - 0.65 - step * 1.1
