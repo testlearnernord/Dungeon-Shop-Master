@@ -13,9 +13,7 @@ test("management reports can be opened by pointer without the HUD swallowing cli
 
 test("M releases captured shop mouse for UI interaction", async ({ page }) => {
   await page.goto("./");
-  await page.locator("#renderCanvas").evaluate(async (canvas: HTMLCanvasElement) => {
-    await canvas.requestPointerLock();
-  });
+  await page.locator("#renderCanvas").click({ position: { x: 300, y: 300 } });
   await expect.poll(() => page.evaluate(() => document.pointerLockElement?.id)).toBe("renderCanvas");
   await page.keyboard.press("m");
   await expect.poll(() => page.evaluate(() => document.pointerLockElement)).toBeNull();
