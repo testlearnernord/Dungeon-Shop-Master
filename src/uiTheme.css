@@ -388,3 +388,19 @@
   #hud #inventory .item-pictogram { width: 30px; height: 30px; }
   #hud #inventory .inventory-row { min-width: 62px; }
 }
+
+/* HUD root intentionally ignores pointer input, so every interactive disclosure
+   must explicitly opt in; otherwise summaries appear clickable but never receive clicks. */
+#hud .shop-management-details,
+#hud .shop-management-details > summary,
+#hud .shop-management-content,
+#hud .shop-management-content details,
+#hud .shop-management-content details > summary,
+#hud .adventurer-panel,
+#hud .adventurer-panel button,
+#hud .day-panel,
+#hud .day-panel summary {
+  pointer-events: auto;
+}
+#hud .shop-management-details > summary:hover,
+#hud .day-panel summary:hover { color: var(--ui-focus); }
