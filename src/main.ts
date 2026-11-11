@@ -25,6 +25,7 @@ import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
 import { setupShopStatusToggle } from "./shopHudLayout";
 import "./styles.css";
+import "./uiTheme.css";
 
 async function startGame(): Promise<void> {
 setupShopStatusToggle();

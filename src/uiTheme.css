@@ -1,0 +1,89 @@
+/* Shared shop interface skin. Loaded after legacy layout CSS.
+   Visual changes only: keep every existing layout, action and state binding. */
+#hud #inventory.inventory {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  box-shadow: var(--ui-shadow);
+  color: var(--ui-text);
+}
+#hud #inventory .inventory-row {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--ui-muted);
+  background: var(--ui-bg-raised);
+  transition: border-color .16s ease, background-color .16s ease;
+}
+#hud #inventory .inventory-row.selected {
+  border-color: var(--ui-border-strong);
+  color: var(--ui-text);
+  background: #433728;
+}
+#hud #inventory .inventory-row strong,
+#hud #inventory .hotbar-hint { color: var(--ui-gold); }
+#hud #inventory .capacity { color: var(--ui-muted); }
+#hud #inventory .inventory-row:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+#wholesale, #roster-dialog {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: #171b1b;
+  color: var(--ui-text);
+  box-shadow: var(--ui-shadow);
+  scrollbar-color: #8e714c transparent;
+  scrollbar-width: thin;
+  line-height: 1.5;
+}
+#wholesale::backdrop, #roster-dialog::backdrop {
+  background: rgb(0 0 0 / 72%);
+}
+#wholesale button, #roster-dialog button, #roster-dialog select {
+  min-height: 36px;
+  border: 1px solid var(--ui-border);
+  border-radius: 7px;
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .16s ease, background-color .16s ease;
+}
+#wholesale button:hover:not(:disabled),
+#roster-dialog button:hover:not(:disabled),
+#roster-dialog select:hover:not(:disabled) {
+  border-color: var(--ui-border-strong);
+  background: #35332b;
+}
+#wholesale :focus-visible, #roster-dialog :focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+#wholesale button:disabled, #roster-dialog button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+#wholesale .catalog-row {
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+}
+#wholesale .catalog-actions button { min-height: 42px; }
+#roster-dialog .roster-heading h2 { color: var(--ui-gold); }
+#roster-dialog .roster-heading p,
+#roster-dialog .roster-toolbar > span { color: var(--ui-muted); }
+#roster-dialog .roster-card {
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-bg-raised);
+  color: var(--ui-text);
+}
+#roster-dialog .roster-portrait { border-color: var(--ui-border-strong); }
+#roster-dialog .roster-card[data-status="at-shop"] { border-color: #6c9a73; }
+#roster-dialog .roster-card[data-status="expedition"] { border-color: var(--ui-border-strong); }
+#roster-dialog .roster-card[data-status="dead"] { opacity: .65; }
+@media (prefers-reduced-motion: reduce) {
+  #hud #inventory .inventory-row,
+  #wholesale button, #roster-dialog button, #roster-dialog select { transition: none; }
+}
