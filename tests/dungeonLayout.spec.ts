@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { advanceTestDay } from "./advanceTestDay";
 
 test("Level 7 renders a deterministic 3D dungeon and spectator camera without modifying gameplay", async ({page}) => {
   const errors:string[]=[];
@@ -58,8 +59,7 @@ test("Level 7 map seed survives new days and reloading campaign, and never consu
   const seed=await page.locator("#dungeon-seed").textContent();
   const summary=await page.locator("#dungeon-summary").textContent();
   await page.locator("#close-dungeon").click();
-  await page.locator("#end-day").click();
-  await page.locator("#confirm-day").click();
+  await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   await page.locator("#open-dungeon").click();
   await expect(page.locator("#dungeon-seed")).toHaveText(seed!);
