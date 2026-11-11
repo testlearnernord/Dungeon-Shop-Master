@@ -17,19 +17,10 @@
           <div id="shop-status-content">
           <strong id="day">Loading…</strong>
           <p id="save-status" role="status">Loading campaign…</p>
-          <details class="campaign-panel">
-            <summary>Campaign</summary>
-            <button id="export-save" type="button">Export save</button>
-            <button id="import-save" type="button">Import save</button>
-            <input id="save-file" type="file" accept=".json,application/json" hidden />
-            <button id="recover-save" type="button" hidden>Recover previous save</button>
-            <button id="new-game" type="button">New Game</button>
-          </details>
           <p id="merchant-gold"></p>
           <p id="daily-sales"></p>
           <button id="open-wholesale" type="button">Wholesale (B)</button>
           <button id="open-placement" type="button">Arrange Shelves (P)</button>
-          <ol id="world-events" aria-label="Recent world events"></ol>
           <button id="end-day" type="button" aria-expanded="false" aria-controls="day-confirmation">
             End Day (N)
           </button>
@@ -38,6 +29,11 @@
             <button id="confirm-day" type="button">Confirm Next Day (Z / Y)</button>
             <button id="cancel-day" type="button">Cancel (Esc)</button>
           </div>
+          <details class="shop-management-details">
+            <summary>Management &amp; reports</summary>
+            <div class="shop-management-content">
+              <h3>Recent events</h3>
+          <ol id="world-events" aria-label="Recent world events"></ol>
           <details class="day-report">
             <summary title="Latest 100 events of the current day">Full day report</summary>
             <ol id="day-history"></ol>
@@ -52,6 +48,16 @@
             <summary id="sales-ledger-summary">Sales receipts</summary>
             <ol id="sales-receipts" aria-label="Customer purchase receipts"></ol>
             <p class="sales-hint">Heroes reserve goods when they physically reach a shelf. Held goods stay unpaid until End Day, when they settle automatically. Interactive cashier payments are coming next.</p>
+          </details>
+          <details class="campaign-panel">
+            <summary>Campaign</summary>
+            <button id="export-save" type="button">Export save</button>
+            <button id="import-save" type="button">Import save</button>
+            <input id="save-file" type="file" accept=".json,application/json" hidden />
+            <button id="recover-save" type="button" hidden>Recover previous save</button>
+            <button id="new-game" type="button">New Game</button>
+          </details>
+            </div>
           </details>
           </div>
         </section>
