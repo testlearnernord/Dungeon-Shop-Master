@@ -52,6 +52,11 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger",async(
   await expect(page.locator("#ledger-heading")).toHaveText("The Living");
   await page.locator("#ledger-next").click();
   await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
+  // A reload must reopen the still-unread ledger, not advance another day.
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 2.");
+  await page.reload();
+  await expect(page.locator("#merchant-ledger")).toBeVisible();
+  await expect(page.locator("#day")).toHaveText("Day 2");
   await page.locator("#ledger-begin").click();
   await expect(page.locator("#merchant-ledger")).not.toBeVisible();
   await expect(page.locator("#day")).toHaveText("Day 2");
