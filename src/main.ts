@@ -24,11 +24,13 @@ import { loadCampaign, setupCampaignHud } from "./campaignHud";
 import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
 import { setupShopStatusToggle } from "./shopHudLayout";
+import { setupAdventurerOverview } from "./adventurerOverview";
 import "./styles.css";
 import "./uiTheme.css";
 
 async function startGame(): Promise<void> {
 setupShopStatusToggle();
+setupAdventurerOverview();
 const canvas = document.querySelector<HTMLCanvasElement>("#renderCanvas");
 const inventoryElement = document.querySelector<HTMLDivElement>("#inventory");
 const statusElement = document.querySelector<HTMLDivElement>("#status");
