@@ -5,6 +5,7 @@ test("Level 6 visitors use the right gate while the cursed player stays behind i
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("./");
+  await page.locator("#toggle-adventurer-details").click();
   await expect(page.locator("#day")).toHaveText("Day 1");
 
   const inspect = () => page.evaluate(async () =>
