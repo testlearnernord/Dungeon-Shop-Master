@@ -413,3 +413,14 @@
 #wholesale .catalog-item-description { line-height: 1.45; font-size: 12px; }
 #wholesale .catalog-actions { margin-top: auto; gap: 5px; }
 #wholesale .catalog-actions button { min-height: 36px; padding: 6px 4px; font-size: 11px; }
+/* Expanded keyboard help must clear the bottom inventory hotbar.
+   The collapsed Controls button stays below it. */
+#hud details.controls[open] .controls-keys {
+  bottom: calc(100% + 108px);
+  z-index: 20;
+}
+@media (max-width: 740px) {
+  #hud .mobile-hud-stack details.controls[open] .controls-keys {
+    bottom: calc(100% + 108px);
+  }
+}
