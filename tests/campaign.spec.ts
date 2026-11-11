@@ -35,6 +35,7 @@ async function expectAuthoritativeVisitors(page: Page, state: GameState) {
 }
 
 async function campaignMenu(page: Page) {
+  await page.locator(".shop-management-details").evaluate((element: HTMLDetailsElement) => { element.open = true; });
   await page.locator(".campaign-panel").evaluate((element: HTMLDetailsElement) => { element.open = true; });
 }
 
