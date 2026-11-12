@@ -1,4 +1,5 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
@@ -388,4 +389,16 @@ export function stageReturningNpcVisualsInsideShop():void {
     if(!node)throw new Error("Missing test NPC "+id);
     node.position.set(x,0,z);
   }
+}
+
+/** QA-only FPS camera staging for verifying today's board/bedroom visuals. */
+export function stageBedchamberCleanupFrame(spot:"shop"|"bedroom"){
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(spot==="shop"?0:-0.5,1.72,spot==="shop"?-4.6:-8.15);
+  camera.rotation.setAll(0);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+  camera.setTarget(spot==="shop"?
+    new Vector3(-1.0,2.13,-7.0):new Vector3(0.3,1.0,-10.5));
 }
