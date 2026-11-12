@@ -6,6 +6,7 @@ test("Blueprint editor places a counter by aiming at a real floor surface",async
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtBlueprintFloor());
   await page.keyboard.press("p");
@@ -34,6 +35,7 @@ test("Blueprint editor places a counter by aiming at a real floor surface",async
 test("Right click cancels a blueprint without moving furniture or changing stock",async({page})=>{
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   const original=await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     return (await new CampaignStorage().loadGame())!;
