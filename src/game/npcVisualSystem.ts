@@ -469,6 +469,8 @@ export class NpcVisualSystem {
     };
     for (const npc of this.npcs.values()) {
       npc.animationTime += delta;
+      if(npc.phase==="queueing")npc.root.metadata.movementMode="waiting";
+      if(npc.phase==="considering")npc.root.metadata.movementMode="inspecting";
       const cameraPosition = this.scene.activeCamera?.globalPosition;
       if (cameraPosition) {
         const distance = Vector3.Distance(cameraPosition, npc.root.getAbsolutePosition());
@@ -535,7 +537,7 @@ export class NpcVisualSystem {
           const physicalSide: GateSide = npc.root.position.x < 0 ? "level4" : "level6";
           if(!isMovingThroughGate || this.doorY[physicalSide]>=DOOR_PASSAGE_CLEAR_Y){
             this.move(npc,delta);
-          }
+          }else npc.root.metadata.movementMode="door-opening";
         }
       }
       this.animate(npc);
@@ -895,7 +897,9 @@ export class NpcVisualSystem {
       npc.blockedSeconds+=delta;
       npc.root.metadata.blockedSeconds=npc.blockedSeconds;
       npc.root.metadata.softPassing=false;
-      npc.root.metadata.movementMode="no-step";
+      const nearest={x:from.x+(dx/distance)*Math.min(distance,WALK_SPEED*delta),
+        z:from.z+(dz/distance)*Math.min(distance,WALK_SPEED*delta)};
+      npc.root.metadata.movementMode=walkable(nearest)?"crowd-block":"static-block";
       // A *static* obstruction still requires a new path. NPC traffic alone
       // becomes nonblocking after a short wait via shopCrowdStep above.
       this.recoverTraffic(npc);
