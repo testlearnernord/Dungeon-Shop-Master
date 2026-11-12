@@ -190,3 +190,47 @@ export function mustYieldAtGate(
     actor.z>=GATE_CLEAR_INSIDE_Z &&
     Math.abs(actor.x-center)<1.7;
 }
+
+/** NPC bodies are *presentation-only*. They must never deadlock the shop.
+ * A prolonged neighbour collision temporarily relaxes only NPC clearance;
+ * furniture, shop walls and gate priority are always enforced separately.
+ */
+export const NPC_SOFT_PASS_AFTER_SECONDS = 1.15;
+export const NPC_FINAL_WAYPOINT_RADIUS = 0.16;
+
+export interface ShopCrowdMove {
+  readonly point: ShopPoint | null;
+  readonly softPass: boolean;
+}
+
+/** Prefer natural avoidance while it works. After sustained obstruction use
+ * the same static-world collision test without other NPCs. That preserves
+ * walls/shelves/counter and lets both pedestrians finish their routes.
+ * A running soft pass stays active until its current waypoint is reached,
+ * instead of alternating one movement frame and another full-second stop.
+ */
+export function shopCrowdStep(
+  from: ShopPoint, goal: ShopPoint, occupied: readonly ShopPoint[],
+  maxDistance: number, canWalk:(next: ShopPoint)=>boolean,
+  blockedSeconds: number, allowSidestep=true,
+): ShopCrowdMove {
+  if (blockedSeconds>=NPC_SOFT_PASS_AFTER_SECONDS) {
+    const unobstructed=crowdSafeStep(from,goal,[],maxDistance,canWalk,false);
+    if(unobstructed)return {point:unobstructed,softPass:true};
+  }
+  return {
+    point:crowdSafeStep(from,goal,occupied,maxDistance,canWalk,allowSidestep),
+    softPass:false,
+  };
+}
+
+/** Final approach does not require millimetre-perfect footsteps. If a
+ * neighbour already owns the waypoint, wait briefly then allow arrival; the
+ * shelf and checkout resource locks still govern interactions themselves.
+ */
+export function canFinishShopWaypoint(
+  distance:number,neighborOccupied:boolean,blockedSeconds:number,
+):boolean {
+  return Number.isFinite(distance)&&distance<=NPC_FINAL_WAYPOINT_RADIUS&&
+    (!neighborOccupied||blockedSeconds>=NPC_SOFT_PASS_AFTER_SECONDS);
+}

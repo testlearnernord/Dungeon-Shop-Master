@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { ENTRANCE_STAGING_Z, NPC_CENTER_CLEARANCE, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
+import { ENTRANCE_STAGING_Z, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
   for(const gate of ["level4","level6"] as const){
@@ -211,4 +211,41 @@ test("Level 4 and Level 6 traffic reservations do not block each other",()=>{
   assert.equal(gateFlowDirection("level4",[level4Leaving,level6Entering]),"leaving");
   assert.equal(gateFlowDirection("level6",[level4Leaving,level6Entering]),"entering");
   assert(!mustYieldAtGate(level6Entering,"entering"));
+});
+
+test("neighbour collisions are soft after a short wait, preserving furniture",()=>{
+  const origin={x:0,z:0},goal={x:2,z:0};
+  const people=[{x:0.45,z:0}];
+  const early=shopCrowdStep(origin,goal,people,0.2,()=>true,0,false);
+  assert.equal(early.softPass,false);
+  assert.equal(early.point,null,"two people cannot walk through each other immediately");
+  const released=shopCrowdStep(origin,goal,people,0.2,()=>true,
+    NPC_SOFT_PASS_AFTER_SECONDS,false);
+  assert.equal(released.softPass,true);
+  assert.deepEqual(released.point,{x:0.2,z:0},
+    "a stuck customer continues along the original planned segment");
+  const solidShelf=shopCrowdStep(origin,goal,people,0.2,
+    next=>next.x<=0,NPC_SOFT_PASS_AFTER_SECONDS,false);
+  assert.equal(solidShelf.point,null,"only customers become permeable, never shelving");
+  assert.equal(solidShelf.softPass,false);
+});
+
+test("soft passing stays deterministic, does not skip navigation or force blocked geometry",()=>{
+  const from={x:0.6,z:0.25},goal={x:2,z:0.25};
+  const other=[{x:0.8,z:0.25}];
+  const step=shopCrowdStep(from,goal,other,0.05,point=>point.z>=0.2,
+    NPC_SOFT_PASS_AFTER_SECONDS,false);
+  assert(step.point);
+  assert.equal(step.point!.z,0.25);
+  assert(step.point!.x>from.x&&step.point!.x<=from.x+0.05+1e-9);
+  assert.equal(step.softPass,true);
+  assert.equal(shopCrowdStep(from,goal,other,0.05,()=>false,999,false).point,null);
+});
+
+test("a claimed final waypoint releases after one second, not while still out of reach",()=>{
+  assert.equal(canFinishShopWaypoint(0.1,false,0),true);
+  assert.equal(canFinishShopWaypoint(0.1,true,0),false);
+  assert.equal(canFinishShopWaypoint(0.1,true,NPC_SOFT_PASS_AFTER_SECONDS),true);
+  assert.equal(canFinishShopWaypoint(NPC_FINAL_WAYPOINT_RADIUS+0.01,false,100),false);
+  assert.equal(canFinishShopWaypoint(NaN,false,100),false);
 });
