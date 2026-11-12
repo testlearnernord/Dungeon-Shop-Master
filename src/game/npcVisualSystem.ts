@@ -296,6 +296,28 @@ export class NpcVisualSystem {
     }
   }
 
+  /** Read-only traffic snapshot for the opt-in F9 diagnostic panel.
+   * This never changes shopping state or game saves. */
+  inspectTraffic():readonly {
+    id:string;phase:string;status:string;reason:string;goal:string;
+    target:string;blockedSeconds:number;waypoint:string;cartUnits:number;
+    x:number;z:number;
+  }[] {
+    return [...this.npcs.values()].map(npc=>({
+      id:npc.visitor.displayName??npc.visitor.name,
+      phase:npc.phase,
+      status:String(npc.root.metadata.shoppingPhase??""),
+      reason:String(npc.root.metadata.shoppingReason??""),
+      goal:String(npc.root.metadata.shoppingTargets?.join(",")??""),
+      target:String(npc.root.metadata.shoppingTargetSlot??""),
+      blockedSeconds:Math.round(npc.blockedSeconds*10)/10,
+      waypoint:`${npc.waypoint}/${npc.route.length}`,
+      cartUnits:Number(npc.root.metadata.cartUnits??0),
+      x:Math.round(npc.root.position.x*10)/10,
+      z:Math.round(npc.root.position.z*10)/10,
+    }));
+  }
+
   /** Physical register admission, checked immediately before the transaction. */
   readyCheckoutHeroId():string|null {
     const head=this.carts.find(cart=>cart.lines.length>0);
