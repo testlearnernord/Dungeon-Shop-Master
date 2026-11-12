@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { ENTRANCE_STAGING_Z, NPC_CENTER_CLEARANCE, crowdSafeStep, entranceApproachRoute, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
+import { ENTRANCE_STAGING_Z, NPC_CENTER_CLEARANCE, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
   for(const gate of ["level4","level6"] as const){
@@ -161,4 +161,54 @@ test("new and interrupted outside visitors clear the shop entrance before browsi
   const level6=gateTravelLane("level6","entering");
   assert.deepEqual(entranceApproachRoute("level6",{x:level6,z:13},true,6,13).at(-1),
     {x:level6,z:ENTRANCE_STAGING_Z});
+});
+
+test("an incoming visitor already in the Level 4 corridor holds departing customers inside",()=>{
+  const entering={gate:"level4" as const,phase:"entering" as const,
+    x:gateTravelLane("level4","entering"),z:8};
+  const leaving={gate:"level4" as const,phase:"leaving" as const,
+    x:gateTravelLane("level4","leaving"),z:5.7};
+  const direction=gateFlowDirection("level4",[entering,leaving]);
+  assert.equal(direction,"entering");
+  assert.equal(mustYieldAtGate(leaving,direction),true);
+  assert.equal(mustYieldAtGate(entering,direction),false);
+  // The first visitor has now cleared the entrance into the shop.
+  assert.equal(gateFlowDirection("level4",[
+    {...entering,z:4.2},leaving,
+  ]),"leaving");
+});
+
+test("departing Level 4 heroes in the throat hold new arrivals outside",()=>{
+  const leaving={gate:"level4" as const,phase:"leaving" as const,
+    x:gateTravelLane("level4","leaving"),z:8.2};
+  const entering={gate:"level4" as const,phase:"entering" as const,
+    x:gateTravelLane("level4","entering"),z:13};
+  assert.equal(gateFlowDirection("level4",[leaving,entering]),"leaving");
+  assert(mustYieldAtGate(entering,"leaving"));
+  assert(!mustYieldAtGate(leaving,"leaving"));
+  assert.equal(gateFlowDirection("level4",[
+    {...leaving,z:13.3},entering,
+  ]),"entering","once a departure is past the gate, queued buyers may enter");
+});
+
+test("outbound traffic has priority at a clear gate but cannot stop travellers midway",()=>{
+  const departing={gate:"level4" as const,phase:"leaving" as const,
+    x:gateTravelLane("level4","leaving"),z:5.6};
+  const arriving={gate:"level4" as const,phase:"entering" as const,
+    x:gateTravelLane("level4","entering"),z:13.1};
+  assert.equal(gateFlowDirection("level4",[departing,arriving]),"leaving");
+  assert(mustYieldAtGate(arriving,"leaving"));
+  assert(!mustYieldAtGate({...arriving,z:GATE_OUTER_HOLD_Z-0.05},"leaving"),
+    "an already admitted inbound actor must finish crossing");
+  assert(mustYieldAtGate({...departing,z:GATE_INNER_HOLD_Z},"entering"));
+  assert(!mustYieldAtGate({...departing,z:GATE_INNER_HOLD_Z+0.02},"entering"),
+    "a departing actor past the inner hold line cannot freeze in the doorway");
+});
+
+test("Level 4 and Level 6 traffic reservations do not block each other",()=>{
+  const level4Leaving={gate:"level4" as const,phase:"leaving" as const,x:-3.43,z:8};
+  const level6Entering={gate:"level6" as const,phase:"entering" as const,x:3.43,z:8};
+  assert.equal(gateFlowDirection("level4",[level4Leaving,level6Entering]),"leaving");
+  assert.equal(gateFlowDirection("level6",[level4Leaving,level6Entering]),"entering");
+  assert(!mustYieldAtGate(level6Entering,"entering"));
 });
