@@ -62,7 +62,7 @@ const itemIds = ITEMS.map((item) => item.id);
 const originalItemIds = itemIds.filter((id) => id !== "iron-sword" && id !== "leather-vest");
 const slotDefinitions = createEconomy().slots;
 const eventTypes = [
-  "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure",
+  "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure", "shop-walkout",
   "influx", "sale", "tip", "ate", "healed", "starvation", "rescue",
   "level6-departure", "level6-combat", "level6-return",
   "food-shortage", "found-food",
@@ -468,7 +468,8 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     choice(event.type, eventTypes.filter((type) =>
       (version >= 5 || !type.startsWith("level6-")) &&
       (version >= 6 || (type !== "food-shortage" && type !== "found-food")) &&
-      (version >= 8 || !type.startsWith("level7-"))), `${path}.type`);
+      (version >= 8 || !type.startsWith("level7-")) &&
+      (version >= 10 || type !== "shop-walkout")), `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
     lastDay = eventDay;
     text(event.message, `${path}.message`);

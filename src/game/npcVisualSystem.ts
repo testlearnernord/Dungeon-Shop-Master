@@ -10,7 +10,9 @@ import { reconcileVisitors, shouldLeaveShopVisual, type GateSide, type VisitorRo
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
-import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
+import { RESTOCK_WAIT_SECONDS, restockWaitRemaining, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
+import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble, type NpcWishBubble } from "./npcWishBubble.ts";
+import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
@@ -42,6 +44,9 @@ interface NpcVisual {
   browseSide: number;
   animationTime: number;
   blockedSeconds:number;
+  restockSeconds:number|null;
+  wishItem:ItemId|null;
+  wishBubble:NpcWishBubble|null;
   gateSide: GateSide;
   readonly labelTexture: DynamicTexture;
   readonly labelMesh: Mesh;
@@ -138,6 +143,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
     root, arms, legs, torso, model, visitor, phase: "entering", route: [], waypoint: 0, slot,
     elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, blockedSeconds:0,
     gateSide: visitor.entranceGate ?? "level4",
+    restockSeconds:null,wishItem:null,wishBubble:null,
     intent:null,intentKey:"",targetIndex:0,toQueue:false,
     heldLines:[],heldMeshes:[],heldKey:"",
     labelTexture: texture, labelMesh: label,
@@ -160,8 +166,10 @@ export class NpcVisualSystem {
   private layout:ShopLayout|null=null;
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
+  private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
   private readonly shelfOwners=new Map<string,string>();
   private carts:readonly ShopCart[]=[];
+  private wishBubblesVisible=true;
 
   constructor(private readonly scene: Scene) {
     this.portraits.addEventListener("load", () => {
@@ -248,6 +256,7 @@ export class NpcVisualSystem {
     carts:readonly ShopCart[],
     onPickUp:(heroId:string,slotId:string)=>boolean,
     paidHeroIds:ReadonlySet<string>=new Set(),
+    onWalkout?:((heroId:string,reason:ShoppingIntent["reason"])=>void),
   ):void {
     const furnitureMoved=this.layout!==null&&(
       JSON.stringify(this.layout.counter)!==JSON.stringify(layout.counter)||
@@ -255,6 +264,7 @@ export class NpcVisualSystem {
     this.layout=layout;
     this.shop=shop;
     this.onPickUp=onPickUp;
+    this.onWalkout=onWalkout??null;
     this.carts=carts;
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
     const queueIds=carts.filter(cart=>cart.lines.length>0).map(cart=>cart.heroId);
@@ -270,7 +280,10 @@ export class NpcVisualSystem {
       // A departing visitor has just paid by the confirmed Day Tick. Clear
       // the unpaid basket immediately, and show their updated true inventory.
       if(!isShopping){
-        if(npc.phase!=="leaving")this.beginLeaving(npc);
+        if(npc.phase!=="leaving"){
+          this.clearWish(npc);
+          this.beginLeaving(npc);
+        }
         if(changed)paintIdentity(npc,this.portraits);
         // Leaving visitors keep their route across regular economy refreshes,
         // but must replan when moved furniture would intersect a cached path.
@@ -283,7 +296,7 @@ export class NpcVisualSystem {
       }
       const plan=plans.get(npc.visitor.id)??null;
       const queueIndex=checkoutQueueIndex(carts,npc.visitor.id);
-      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex]]);
+      const key=JSON.stringify([plan?.items,plan?.reason,plan?.wantedItemId,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex]]);
       if(key===npc.intentKey)continue;
       npc.intent=plan;
       npc.intentKey=key;
@@ -294,6 +307,51 @@ export class NpcVisualSystem {
         this.beginBrowsing(npc);
       paintIdentity(npc,this.portraits);
     }
+  }
+
+  /** The 3D shop is paused during boss/dungeon observation. Hide DOM-based
+   * request bubbles while another Babylon scene occupies the viewport. */
+  setWishBubblesVisible(visible:boolean):void {
+    this.wishBubblesVisible=visible;
+    if(!visible)for(const npc of this.npcs.values())
+      if(npc.wishBubble)npc.wishBubble.root.hidden=true;
+  }
+
+  /** Read-only traffic snapshot for the opt-in F9 diagnostic panel.
+   * This never changes shopping state or game saves. */
+  inspectTraffic():readonly {
+    id:string;phase:string;status:string;reason:string;goal:string;
+    target:string;blockedSeconds:number;waypoint:string;cartUnits:number;
+    wish:string;restockSeconds:number|null;
+    x:number;z:number;
+  }[] {
+    return [...this.npcs.values()].map(npc=>({
+      id:npc.visitor.displayName??npc.visitor.name,
+      phase:npc.phase,
+      status:String(npc.root.metadata.shoppingPhase??""),
+      reason:String(npc.root.metadata.shoppingReason??""),
+      goal:String(npc.root.metadata.shoppingTargets?.join(",")??""),
+      target:String(npc.root.metadata.shoppingTargetSlot??""),
+      blockedSeconds:Math.round(npc.blockedSeconds*10)/10,
+      waypoint:`${npc.waypoint}/${npc.route.length}`,
+      cartUnits:Number(npc.root.metadata.cartUnits??0),
+      wish:npc.wishItem??"",
+      restockSeconds:npc.restockSeconds===null?null:
+        Math.ceil(npc.restockSeconds),
+      x:Math.round(npc.root.position.x*10)/10,
+      z:Math.round(npc.root.position.z*10)/10,
+    }));
+  }
+
+  /** E2E-only time compression for the browser expiry regression.
+   * Production play always counts down the full 60 seconds. */
+  setRestockTimeForE2E(heroId:string,seconds:number):void {
+    if(import.meta.env.VITE_E2E!=="1"||!Number.isFinite(seconds)||
+      seconds<0)throw new Error("Restock test hook disabled.");
+    const npc=this.npcs.get(heroId);
+    if(!npc||npc.root.metadata.shoppingPhase!=="waiting-for-restock")
+      throw new Error("Customer is not waiting for a restock.");
+    npc.restockSeconds=seconds;
   }
 
   /** Physical register admission, checked immediately before the transaction. */
@@ -426,6 +484,16 @@ export class NpcVisualSystem {
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x < 0) open.level4 = true;
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x > 0) open.level6 = true;
       }
+      if(npc.wishBubble&&this.wishBubblesVisible){
+        updateNpcWishBubble(npc.wishBubble,this.scene,npc.root.position,
+          npc.restockSeconds??0,npc.root.metadata.shoppingPhase==="leaving-upset");
+      }
+      if(npc.phase==="queueing"&&
+        npc.root.metadata.shoppingPhase==="waiting-for-restock"){
+        npc.restockSeconds=restockWaitRemaining(npc.restockSeconds??RESTOCK_WAIT_SECONDS,delta);
+        npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
+        if(npc.restockSeconds<=0)this.leaveUnserved(npc);
+      }
       if(npc.phase==="queueing" &&
         npc.root.metadata.shoppingPhase==="waiting-for-shelf" &&
         npc.visitor.status==="at-shop"){
@@ -439,7 +507,9 @@ export class NpcVisualSystem {
           const item=npc.intent?.items[npc.targetIndex];
           // Commit a reservation only at the shelf, after the inspection pause.
           // Store notifications synchronously re-plan remaining shopping needs.
-          if(item&&this.onPickUp?.(npc.visitor.id,item.slotId)){
+          if(!item&&checkoutQueueIndex(this.carts,npc.visitor.id)<0){
+            this.leaveUnserved(npc);
+          }else if(item&&this.onPickUp?.(npc.visitor.id,item.slotId)){
             // Store notifications synchronously update cart meshes and route
             // planning. Do not overwrite their fresh phase metadata here.
           }else{
@@ -483,6 +553,7 @@ export class NpcVisualSystem {
 
   private beginEntering(npc: NpcVisual, slot: number, fromOutside: boolean): void {
     this.releaseShelf(npc);
+    this.clearWish(npc);
     npc.slot = slot;
     npc.phase = "entering";
     npc.gateSide = npc.visitor.entranceGate ?? "level4";
@@ -539,12 +610,79 @@ export class NpcVisualSystem {
     npc.root.metadata.gateSide = npc.gateSide;
   }
 
+  /** Each unsatisfied customer owns a single, world-anchored request bubble.
+   * Its SVG symbol matches the stocking hotbar and wholesale UI. */
+  private showWish(npc:NpcVisual,itemId:ItemId):void {
+    if(!npc.wishBubble)npc.wishBubble=createNpcWishBubble(itemId);
+    else if(npc.wishItem!==itemId)setNpcWishItem(npc.wishBubble,itemId);
+    npc.wishItem=itemId;
+    npc.root.metadata.wantedItemId=itemId;
+  }
+
+  private clearWish(npc:NpcVisual):void {
+    npc.wishBubble?.root.remove();
+    npc.wishBubble=null;
+    npc.wishItem=null;
+    npc.restockSeconds=null;
+    npc.root.metadata.wantedItemId=null;
+    npc.root.metadata.restockRemaining=null;
+  }
+
+  private leaveUnserved(npc:NpcVisual):void {
+    const reason=npc.intent?.reason??"no-need";
+    const upset=reason==="unavailable";
+    // Preserve an angry visual bubble during the walk out. Only a real,
+    // guarded GameStore transition makes the visitor ineligible for future
+    // same-day / next-day automatic sales.
+    if(upset&&npc.wishItem&&npc.wishBubble){
+      npc.restockSeconds=0;
+    }else this.clearWish(npc);
+    this.beginLeaving(npc);
+    npc.root.metadata.shoppingPhase=upset?"leaving-upset":"leaving-unserved";
+    npc.root.metadata.checkoutQueueIndex=-1;
+    this.onWalkout?.(npc.visitor.id,reason);
+  }
+
   private beginBrowsing(npc:NpcVisual):void {
     this.releaseShelf(npc);
     const item=npc.intent?.items[npc.targetIndex];
     const slot=item&&this.shop?[...this.shop.slotMeshes.values()]
       .find(s=>s.id===item.slotId):undefined;
     const origin={x:npc.root.position.x,z:npc.root.position.z};
+    const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
+    const action=shopperVisualAction(npc.intent,checkoutIndex>=0);
+    if(!item&&action==="wait-restock"&&npc.intent?.wantedItemId){
+      // Hold a free off-aisle waiting place, not the empty shelf's access
+      // point. The countdown starts when that waiting place is reached.
+      const target=this.queuePosition(npc.slot,npc);
+      const route=target&&this.layout?pathToShopGoal(origin,
+        {x:target.x,z:target.z},this.layout):null;
+      if(npc.restockSeconds===null)npc.restockSeconds=RESTOCK_WAIT_SECONDS;
+      this.showWish(npc,npc.intent.wantedItemId);
+      npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
+      npc.root.metadata.shoppingTargetSlot=null;
+      npc.root.metadata.checkoutQueueIndex=-1;
+      npc.toQueue=true;
+      npc.route=(route?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
+      npc.waypoint=0;
+      npc.phase="browsing";
+      npc.root.metadata.shoppingPhase="walking-to-restock-wait";
+      npc.root.metadata.phase=npc.phase;
+      return;
+    }
+    if(npc.restockSeconds!==null||npc.wishBubble)this.clearWish(npc);
+    if(!item&&action==="leave-unserved"){
+      npc.phase="considering";
+      npc.route=[];
+      npc.waypoint=0;
+      npc.toQueue=false;
+      npc.wait=1.35+(npc.slot%3)*0.22;
+      npc.root.metadata.shoppingPhase="checking-availability";
+      npc.root.metadata.shoppingTargetSlot=null;
+      npc.root.metadata.checkoutQueueIndex=-1;
+      npc.root.metadata.phase=npc.phase;
+      return;
+    }
     if(item&&slot&&this.layout&&this.shop){
       const pointForShelf=this.shop.shelfAccessPoint(slot);
       // Reserve the entire physical shelf, not individual stock slots.
@@ -593,7 +731,6 @@ export class NpcVisualSystem {
       }
       npc.root.metadata.shoppingPhase="unreachable-shelf";
     }
-    const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
     const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length):[];
     const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot,npc);
     if(!target){
@@ -677,8 +814,10 @@ export class NpcVisualSystem {
           if(npc.root.metadata.shoppingPhase==="checkout-route-blocked"||
             npc.root.metadata.shoppingPhase==="idle-route-blocked")return;
           npc.phase="queueing";
-          npc.root.metadata.shoppingPhase=checkoutQueueIndex(this.carts,npc.visitor.id)>=0
-            ?"awaiting-checkout":"waiting-for-next-day";
+          npc.root.metadata.shoppingPhase=npc.root.metadata.shoppingPhase==="walking-to-restock-wait"
+            ?"waiting-for-restock"
+            :checkoutQueueIndex(this.carts,npc.visitor.id)>=0
+              ?"awaiting-checkout":"waiting-for-next-day";
         }else{
           npc.phase="considering";
           npc.wait=1.1+(npc.slot%3)*0.35;
@@ -783,6 +922,7 @@ export class NpcVisualSystem {
 
   private dispose(npc: NpcVisual): void {
     this.releaseShelf(npc);
+    this.clearWish(npc);
     this.clearSaleTag(npc);
     this.syncCarriedProducts(npc, []);
     npc.root.dispose(false, true);

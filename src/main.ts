@@ -9,6 +9,7 @@ import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
 import { manuallyPaidVisitors } from "./game/npcVisitors.ts";
 import { forecastShoppingIntents } from "./game/shopperIntents.ts";
+import { setupNpcTrafficDebug } from "./game/npcTrafficDebug.ts";
 import { Level6Arena } from "./game/level6Arena";
 import { DungeonViewer } from "./game/dungeonViewer";
 import { createRosterBoard } from "./game/rosterBoard";
@@ -62,6 +63,7 @@ let bedtime:BedtimeController|null=null;
 let ledger:MerchantLedger|null=null;
 setupShopPlacementHud(canvas, camera, store, shop);
 const npcVisuals = new NpcVisualSystem(scene);
+setupNpcTrafficDebug(npcVisuals);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
   if (open) camera.detachControl();
   else camera.attachControl(canvas, true);
@@ -74,8 +76,16 @@ const dayClock=setupDayHud(
 /** E2E-only access to the existing authoritative transition.
  * No player-facing shortcut or production build entry point is created. */
 if(import.meta.env.VITE_E2E==="1"){
-  (window as Window & {__shopTestAdvanceDay?:()=>void}).__shopTestAdvanceDay=
-    ()=>dayClock.endDayFromBed();
+  const hooks=window as Window & {
+    __shopTestAdvanceDay?:()=>void;
+    __shopTestStockItem?:(slotId:string,itemId:ItemId)=>string;
+    __shopTestRestockWait?:(heroId:string,seconds:number)=>void;
+  };
+  hooks.__shopTestAdvanceDay=()=>dayClock.endDayFromBed();
+  hooks.__shopTestStockItem=(slotId,itemId)=>
+    store.transfer(slotId,itemId,"stock");
+  hooks.__shopTestRestockWait=(heroId,seconds)=>
+    npcVisuals.setRestockTimeForE2E(heroId,seconds);
 }
 // The forecast is read-only. It uses exactly the same purchase decisions
 // as the confirmed next-day transaction. Stock changes trigger replanning.
@@ -87,7 +97,8 @@ const refreshShoppingIntents = () => npcVisuals.setShoppingIntents(
     store.pickUpShopItem(heroId,slotId);
     return store.state!==previous;
   },
-  manuallyPaidVisitors(store.state.events,store.state.day));
+  manuallyPaidVisitors(store.state.events,store.state.day),
+  (heroId,reason)=>store.walkOutWithoutPurchase(heroId,reason));
 store.subscribe(refreshShoppingIntents);
 refreshShoppingIntents();
 setupSalesHud(store);
@@ -203,6 +214,7 @@ cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId()
   (heroId,perfectTiming)=>store.payReservedCart(heroId,perfectTiming),message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
 
 engine.runRenderLoop(() => {
+  npcVisuals.setWishBubblesVisible(!arena.isActive&&!dungeon.isActive);
   if(ledger?.isSuspended&&!arena.isActive&&!dungeon.isActive){
     ledger.resumeIfReady();
     camera.detachControl();
