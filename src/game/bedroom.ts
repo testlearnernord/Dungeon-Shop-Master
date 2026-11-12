@@ -240,7 +240,7 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
   paper.drawText("DEBTS OUTLIVE", null, 128, "bold 43px monospace",
     "#39251b", "#ac9473", true);
   paper.drawText("THE DEAD", null, 225, "bold 53px monospace",
-    "#39251b", undefined, true);
+    "#39251b", null, true);
   const paperMat = new StandardMaterial("bedroom-debt-note-material", scene);
   paperMat.diffuseTexture = paper;
   paperMat.backFaceCulling = false;
