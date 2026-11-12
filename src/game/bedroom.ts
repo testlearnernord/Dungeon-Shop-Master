@@ -6,20 +6,17 @@ import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTextur
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
+import type { DungeonSurfaces } from "./dungeonSurfaces";
 
 /**
  * The merchant's private cell, built entirely from lightweight procedural
  * geometry.  Its structural walls and bed retain the exact original collision
  * footprint; every piece of decoration is non-colliding and unpickable.
  */
-export function buildBedroom(scene: Scene, stone: Color3): Mesh {
-  const wood = new Color3(0.155, 0.092, 0.051);
-  const woodEdge = new Color3(0.245, 0.145, 0.077);
+export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   const iron = new Color3(0.14, 0.145, 0.14);
   const linen = new Color3(0.36, 0.32, 0.25);
   const fabric = new Color3(0.18, 0.205, 0.17);
-  const rock = new Color3(0.155, 0.14, 0.135);
-  const paleRock = new Color3(0.24, 0.205, 0.175);
 
   const mats = new Map<string, StandardMaterial>();
   function mat(name: string, color: Color3, emissive?: Color3) {
@@ -54,11 +51,11 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
     mesh.isPickable = false;
     return mesh;
   }
-  const wall = mat("masonry", stone);
-  const masonry = mat("rock", rock);
-  const stoneHighlight = mat("rock-highlight", paleRock);
-  const timber = mat("timber", wood);
-  const wornEdges = mat("timber-edges", woodEdge);
+  const wall = surfaces.stone;
+  const masonry = surfaces.stone;
+  const stoneHighlight = surfaces.stoneAccent;
+  const timber = surfaces.wood;
+  const wornEdges = surfaces.woodEdge;
   const metal = mat("black-iron", iron);
   const mattress = mat("mattress", linen);
   const quilt = mat("quilt", fabric);
@@ -74,7 +71,7 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
   cube("bedroom-left-wall", 0.4, 4, 5.55, -3.25, 2, -9.68, wall, true);
   cube("bedroom-right-wall", 0.4, 4, 5.55, 3.25, 2, -9.68, wall, true);
   cube("bedroom-rear-wall", 6.9, 4, 0.4, 0, 2, -12.35, wall, true);
-  const flagstone = mat("floor-stone", new Color3(0.175, 0.155, 0.13));
+  const flagstone = surfaces.floor;
   cube("bedroom-floor-skin", 6.05, 0.025, 5.08, 0, 0.012, -9.68, flagstone);
   // Thin offset slabs interrupt the uninterrupted cube-floor silhouette.
   for (let i = 0; i < 12; i++) {

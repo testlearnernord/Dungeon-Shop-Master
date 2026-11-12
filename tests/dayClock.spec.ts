@@ -1,6 +1,20 @@
 import { expect, test } from "@playwright/test";
 import { advanceTestDay } from "./advanceTestDay";
 
+/** Startup now includes three baked 384px textures; do not inspect the Babylon
+ * scene until the asynchronous shop initialization has finished. */
+async function waitForWorld(page:import("@playwright/test").Page){
+  await expect.poll(async()=>page.evaluate(async()=>{
+    try{
+      const scene=await import("/Dungeon-Shop-Master/tests/scene.ts");
+      const material=scene.inspectDungeonSurfaces();
+      return material.textureCount===3&&
+        material.surfaceCount===material.requestedCount&&
+        scene.inspectBedroom().exists;
+    }catch{return false;}
+  }),{timeout:15000}).toBe(true);
+}
+
 async function moveToBed(page:import("@playwright/test").Page){
   await page.evaluate(async()=>{
     (await import("/Dungeon-Shop-Master/tests/scene.ts"))
@@ -112,6 +126,7 @@ test("bedroom dressing preserves the collision-safe alcove and interactable bed"
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
+  await waitForWorld(page);
   const room=await page.evaluate(async()=>{
     return (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBedroomAtmosphere();
   });
@@ -123,6 +138,31 @@ test("bedroom dressing preserves the collision-safe alcove and interactable bed"
   expect(room.decorInert).toBe(true);
   expect(room.furniture).toBe(true);
   expect(room.practicalLighting).toBe(true);
+  await moveToBed(page);
+  await page.keyboard.down("e");
+  await expect(page.locator("#merchant-ledger")).toBeVisible({timeout:10000});
+  await page.keyboard.up("e");
+  await expect(page.locator("#day")).toHaveText("Day 2");
+  expect(errors).toEqual([]);
+});
+
+test("shop and sleeping cell reuse textured materials without changing collision or stocking",async({page})=>{
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await waitForWorld(page);
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const materials=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonSurfaces());
+  expect(materials.textureCount).toBe(3);
+  expect(materials.floorUVMax).toEqual({u:3,v:5});
+  expect(materials.surfaceCount).toBe(materials.requestedCount);
+  expect(materials.sharedWall).toBe(true);
+  expect(materials.sharedTimber).toBe(true);
+  expect(materials.sharedFloor).toBe(true);
+  expect(materials.semanticShelf).toBe("shelf-slot");
+  expect(materials.solidWalls).toBe(true);
+  expect(materials.idleDecor).toBe(true);
   await moveToBed(page);
   await page.keyboard.down("e");
   await expect(page.locator("#merchant-ledger")).toBeVisible({timeout:10000});
