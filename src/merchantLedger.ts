@@ -14,6 +14,10 @@ export interface LedgerSummary {
   readonly overnightChange: number;
   readonly bookedRevenue: number;
   readonly soldUnits: number;
+  /** Loaned goods are a receivable, NOT sales revenue or gold in the till. */
+  readonly newCreditGold: number;
+  readonly outstandingCreditGold: number;
+  readonly credits: readonly WorldEvent[];
   readonly receipts: readonly SaleReceipt[];
   readonly visited: number;
   readonly arrivals: number;
@@ -31,6 +35,12 @@ export function summarizeLedger(before: GameState, after: GameState): LedgerSumm
   // is committed on the *new* day. Both belong to the same closing ledger.
   const sales = [...before.events.filter(e => e.day === before.day && e.type === "sale"),
     ...newlyBooked.filter(e => e.type === "sale")];
+  const credits = [
+    ...before.events.filter(e=>e.day===before.day&&e.type==="shop-credit"),
+    ...newlyBooked.filter(e=>e.type==="shop-credit"),
+  ];
+  const outstandingCreditGold=after.shopDebts.reduce(
+    (sum,debt)=>sum+debt.outstandingGold,0);
   const names = new Map(after.adventurers.map(h => [h.id,h.name]));
   const receipts = sales.flatMap((event): SaleReceipt[] => {
     if (!event.itemId || !event.adventurerId || event.quantity === undefined ||
@@ -58,7 +68,8 @@ export function summarizeLedger(before: GameState, after: GameState): LedgerSumm
     overnightChange:after.shopEconomy.balance-before.shopEconomy.balance,
     bookedRevenue:receipts.reduce((sum,r)=>sum+r.revenue,0),
     soldUnits:receipts.reduce((sum,r)=>sum+r.quantity,0),
-    receipts,
+    newCreditGold:credits.reduce((sum,event)=>sum+(event.debtGold??0),0),
+    outstandingCreditGold,credits,receipts,
     visited:before.adventurers.filter(h=>h.status==="at-shop").length,
     arrivals:newlyBooked.filter(e=>e.type==="shop-arrival").length,
     departures:newlyBooked.filter(e=>e.type==="shop-departure").length,
@@ -234,6 +245,8 @@ export function setupMerchantLedger(
       content.append(line("Receipts entered",String(summary.receipts.length)));
       content.append(line("Goods sold",String(summary.soldUnits)+" units"));
       content.append(line("Recorded sales",gold(summary.bookedRevenue),"Includes daytime manual sales"));
+      content.append(line("New goods issued on credit",gold(summary.newCreditGold),"No gold received"));
+      content.append(line("Total outstanding hero debt",gold(summary.outstandingCreditGold),"Unpaid receivables"));
       content.append(line("Visitors at closing",String(summary.visited)));
       content.append(node("p","ledger-footnote",
         "Gold at dawn includes only transactions posted during the night. Daytime cashier payments were already in the closing balance. No coin is counted twice."));
@@ -259,6 +272,18 @@ export function setupMerchantLedger(
         content.append(scroll);
         if(summary.receipts.length>40)
           content.append(node("small","ledger-footnote","Showing the latest 40 receipts."));
+      }
+      if(summary.credits.length){
+        content.append(node("h3","ledger-subhead","ITEMS LOANED · GALVIK'S DEBT BOOK"));
+        const creditRows=node("div","ledger-receipts");
+        for(const event of summary.credits.slice(-30)){
+          const item=ITEMS.find(entry=>entry.id===event.itemId);
+          creditRows.append(line(
+            (event.message || event.adventurerId || "Unknown")+" · "+
+              (item?.name??event.itemId??"Item"),
+            gold(event.debtGold??0),"UNPAID"));
+        }
+        content.append(creditRows);
       }
     }else if(page===2){
       content.append(node("p","ledger-page-intro",
