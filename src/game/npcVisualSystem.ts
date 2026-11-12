@@ -539,7 +539,7 @@ export class NpcVisualSystem {
       });
       if(shelfAccessBusy){
         const waitingRoutes=Array.from({length:this.npcs.size+5},(_,slot)=>{
-          const target=this.queuePosition(slot);
+          const target=this.queuePosition(slot,npc);
           const route=target?pathToShopGoal(origin,target,this.layout!):null;
           const point=route?.waypoints.at(-1)??target;
           const clearOfShelf=!!point&&Math.hypot(point.x-pointForShelf.x,
@@ -577,7 +577,7 @@ export class NpcVisualSystem {
     }
     const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
     const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length):[];
-    const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot);
+    const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot,npc);
     if(!target){
       npc.phase="queueing";npc.route=[];npc.waypoint=0;
       npc.root.metadata.shoppingPhase=checkoutIndex>=0
@@ -600,9 +600,24 @@ export class NpcVisualSystem {
     paintIdentity(npc,this.portraits);
   }
 
-  private queuePosition(slot:number):Vector3|null {
+  private queuePosition(slot:number,npc:NpcVisual):Vector3|null {
     if(!this.layout)return null;
-    const point=idleShopPositions(this.layout,100)[slot];
+    const points=idleShopPositions(this.layout,100);
+    const preferred=points[slot];
+    // Assign a distinct *future* standing spot, not merely a position that
+    // happens to be free this frame. Otherwise multiple shoppers all route
+    // to the same empty place and jam when they arrive there together.
+    const reservedByAnother=(point:{x:number;z:number})=>
+      [...this.npcs.values()].some(other=>{
+        if(other===npc)return false;
+        const current=other.root.position;
+        if(Math.hypot(point.x-current.x,point.z-current.z)<PERSONAL_SPACE)return true;
+        const destination=other.route.at(-1);
+        return !!destination&&Math.hypot(point.x-destination.x,
+          point.z-destination.z)<PERSONAL_SPACE;
+      });
+    const candidates=preferred?[preferred,...points.filter(p=>p!==preferred)]:points;
+    const point=candidates.find(p=>!reservedByAnother(p));
     return point?new Vector3(point.x,0,point.z):null;
   }
 
