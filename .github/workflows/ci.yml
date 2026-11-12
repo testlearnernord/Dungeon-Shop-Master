@@ -39,6 +39,16 @@ jobs:
       # Exercise the FPS HUD, management panel, hero roster and shop controls.
       # Full browser regression runs nightly or on demand in full-browser-ci.yml.
       - run: xvfb-run -a npm test -- tests/controlsDisclosure.spec.ts tests/hudMouseMode.spec.ts tests/shopManagement.spec.ts tests/adventurerOverview.spec.ts tests/dayClock.spec.ts
+      - name: Render real bedroom screenshot preview
+        run: xvfb-run -a npm test -- tests/bedroomPreview.spec.ts
+      - name: Upload bedroom screenshot previews
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: galvik-bedroom-visual-qa
+          path: bedroom-preview/*.png
+          if-no-files-found: warn
+          retention-days: 3
       - name: Upload browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
