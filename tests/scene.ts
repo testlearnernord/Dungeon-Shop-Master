@@ -1,4 +1,5 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
@@ -257,5 +258,20 @@ export function inspectBedroom() {
     collides:bed?.checkCollisions??false,
     rearWall:!!scene.getMeshByName("bedroom-rear-wall"),
     oldWall:!!scene.getMeshByName("front-middle-wall"),
+  };
+}
+
+/** Screenshot-only scene staging, no campaign changes. */
+export function stageBedchamberCamera() {
+  const scene = Engine.LastCreatedScene!;
+  const camera = scene.activeCamera as UniversalCamera;
+  camera.position.set(0, 1.72, -7.95);
+  camera.rotation.setAll(0);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+  camera.setTarget(new Vector3(0.7, 0.95, -10.65));
+  return {
+    bed: !!scene.getMeshByName("galvik-bed"),
+    chamber: !!scene.getMeshByName("bedroom-rear-wall"),
   };
 }
