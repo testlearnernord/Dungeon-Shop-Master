@@ -14,7 +14,7 @@ import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -695,19 +695,23 @@ export class NpcVisualSystem {
     const dx=target.x-from.x,dz=target.z-from.z,distance=Math.hypot(dx,dz);
     const occupied=[...this.npcs.values()].filter(other=>other!==npc)
       .map(other=>({x:other.root.position.x,z:other.root.position.z}));
-    if(distance<0.04){
-      if(occupied.some(other=>Math.hypot(other.x-target.x,other.z-target.z)<PERSONAL_SPACE)){
-        // A blocked final waypoint used to return without ticking the stuck
-        // timer. That permanently stranded shoppers and held shelf claims.
+    if(distance<=NPC_FINAL_WAYPOINT_RADIUS){
+      const heldByNeighbor=occupied.some(other=>
+        Math.hypot(other.x-target.x,other.z-target.z)<PERSONAL_SPACE);
+      if(!canFinishShopWaypoint(distance,heldByNeighbor,npc.blockedSeconds)){
+        // Keep waiting for an occupied *visual* waypoint, but never forever.
+        // Shelf and checkout admission have their own exclusive reservations.
         npc.blockedSeconds+=delta;
         npc.root.metadata.blockedSeconds=npc.blockedSeconds;
-        this.recoverTraffic(npc);
+        npc.root.metadata.softPassing=false;
         return;
       }
       npc.root.position.x=target.x;
       npc.root.position.z=target.z;
       npc.waypoint+=1;
       npc.blockedSeconds=0;
+      npc.root.metadata.blockedSeconds=0;
+      npc.root.metadata.softPassing=heldByNeighbor;
       return;
     }
     const walkable=(next:{x:number;z:number}):boolean=>{
@@ -737,22 +741,28 @@ export class NpcVisualSystem {
     // need to steer around shelves and other visitors en route.
     const inGateApproach=(npc.phase==="entering"||npc.phase==="leaving")&&
       from.z>=5.1;
-    const proposed=crowdSafeStep(from,{x:target.x,z:target.z},occupied,
-      WALK_SPEED*delta,walkable,!inGateApproach&&from.z<=6.5);
+    const move=shopCrowdStep(from,{x:target.x,z:target.z},occupied,
+      WALK_SPEED*delta,walkable,npc.blockedSeconds,!inGateApproach&&from.z<=6.5);
+    const proposed=move.point;
     if(!proposed){
       npc.blockedSeconds+=delta;
       npc.root.metadata.blockedSeconds=npc.blockedSeconds;
-      // This also handles entrants and waiting shoppers, not only browsing
-      // or departing heroes. Do not force an entrant through a blocked lane.
+      npc.root.metadata.softPassing=false;
+      // A *static* obstruction still requires a new path. NPC traffic alone
+      // becomes nonblocking after a short wait via shopCrowdStep above.
       this.recoverTraffic(npc);
       return;
     }
     const step=Math.min(distance,WALK_SPEED*delta);
     const direct={x:from.x+dx/distance*step,z:from.z+dz/distance*step};
     const steering=Math.hypot(proposed.x-direct.x,proposed.z-direct.z);
-    npc.blockedSeconds=steering>0.015?npc.blockedSeconds+delta:0;
+    // Keep soft-passing through this waypoint after its first release rather
+    // than flickering between stepping and freezing every other frame.
+    npc.blockedSeconds=move.softPass?NPC_SOFT_PASS_AFTER_SECONDS:
+      steering>0.015?npc.blockedSeconds+delta:0;
     npc.root.metadata.blockedSeconds=npc.blockedSeconds;
-    if(this.recoverTraffic(npc))return;
+    npc.root.metadata.softPassing=move.softPass;
+    if(!move.softPass&&this.recoverTraffic(npc))return;
     npc.root.rotation.y=Math.atan2(proposed.x-from.x,proposed.z-from.z);
     npc.root.position.x=proposed.x;
     npc.root.position.z=proposed.z;
