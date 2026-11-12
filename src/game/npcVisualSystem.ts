@@ -763,7 +763,7 @@ export class NpcVisualSystem {
   }
 
   private offAisleWaitingRoute(npc:NpcVisual):
-    ReturnType<typeof reserveRestockWaitingRoute>["route"]|null {
+    NonNullable<ReturnType<typeof reserveRestockWaitingRoute>>["route"]|null {
     if(!this.layout)return null;
     const others=[...this.npcs.values()].filter(other=>other!==npc);
     const occupied=others.map(other=>({
