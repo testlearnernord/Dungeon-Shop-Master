@@ -113,3 +113,38 @@ test("3D visitors follow confirmed GameState IDs, walk, persist, leave and respe
     .toEqual(expectedVisualIds);
   expect(errors).toEqual([]);
 });
+
+test("a reversing day-tick departure resumes shopping inside rather than walking back to the gate",async({page})=>{
+  const errors:string[]=[];
+  page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  // Only stage visual positions, never inventory or GameState. These are the
+  // actual indoor positions observed on day 3 of the entrance-jam repro.
+  await page.evaluate(async()=>{
+    const {Engine}=await import("@babylonjs/core/Engines/engine");
+    const scene=Engine.LastCreatedScene!;
+    for(const [id,x,z] of [["adventurer-1",-0.6,1],["adventurer-2",-5,-0.37]] as const){
+      const hero=scene.transformNodes.find(node=>node.metadata?.adventurerId===id)!;
+      hero.position.set(x,0,z);
+    }
+  });
+  await advanceTestDay(page);
+  await advanceTestDay(page);
+  await expect(page.locator("#day")).toHaveText("Day 3");
+  const view=async()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals().visitors);
+  const state=await view();
+  const returning=state.filter(v=>["adventurer-1","adventurer-2"].includes(v.id)&&
+    v.status==="at-shop");
+  expect(returning.length).toBeGreaterThan(0);
+  for(const npc of returning){
+    expect(npc.z).toBeLessThan(4.5);
+    if(npc.phase==="entering")expect(npc.shoppingPhase).toBe("resuming-in-shop");
+  }
+  await expect.poll(async()=> (await view()).filter(v=>
+    returning.some(n=>n.id===v.id)).every(v=>v.phase!=="entering"),{timeout:8000}).toBe(true);
+  expect((await view()).filter(v=>returning.some(n=>n.id===v.id))
+    .every(v=>v.z<5.4)).toBe(true);
+  expect(errors).toEqual([]);
+});
