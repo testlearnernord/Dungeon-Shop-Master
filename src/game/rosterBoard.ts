@@ -11,11 +11,14 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 
 /** Read-only projection of the authoritative heroes onto the shop's front wall. */
 export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh } {
-  const board = MeshBuilder.CreatePlane("adventurer-roster-board", { width: 4.55, height: 2.75 }, scene);
-  // Hang the roster entirely on the left front wall, outside the 2.4m
-  // passage into Galvik's sleeping room.
-  const boardX = -5;
-  board.position = new Vector3(boardX, 2.17, -6.68);
+  const board = MeshBuilder.CreatePlane("adventurer-roster-board", { width: 3.25, height: 2.02 }, scene);
+  // The bedroom side wall reaches forward to z=-6.655. Keep the entire
+  // board, including its frame, outside that wall and inside the front-wall
+  // span [-7.5,-2.5]. The former 4.55m board was partly buried in masonry.
+  const boardX = -5.55;
+  const boardY = 2.17;
+  const boardZ = -6.45;
+  board.position = new Vector3(boardX, boardY, boardZ);
   board.rotation.y = Math.PI;
   board.checkCollisions = false;
   board.isPickable = true;
@@ -33,11 +36,11 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
   const wood = new StandardMaterial("roster-board-wood", scene);
   wood.diffuseColor = new Color3(0.38, 0.23, 0.11);
   for (const [name, w, h, x, y] of [
-    ["top", 4.75, 0.12, 0, 3.60], ["bottom", 4.75, 0.12, 0, 0.75],
-    ["left", 0.12, 2.8, -2.37, 2.17], ["right", 0.12, 2.8, 2.37, 2.17],
+    ["top", 3.37, 0.12, 0, 3.22], ["bottom", 3.37, 0.12, 0, 1.12],
+    ["left", 0.12, 2.09, -1.69, boardY], ["right", 0.12, 2.09, 1.69, boardY],
   ] as const) {
     const frame = MeshBuilder.CreateBox("roster-frame-" + name, { width: w, height: h, depth: 0.11 }, scene);
-    frame.position.set(boardX + x, y, -6.64);
+    frame.position.set(boardX + x, y, boardZ + 0.04);
     frame.material = wood;
     frame.isPickable = false;
     frame.checkCollisions = false;

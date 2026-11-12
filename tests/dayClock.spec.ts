@@ -150,8 +150,16 @@ test("bedchamber entrance, sign and bed interaction have separate, solid sightli
   await waitForWorld(page);
   const probes=await page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBedroomSightlines());
-  expect(probes.rosterX).toBe(-5);
-  expect(probes.rightmostFrameX).toBeLessThan(-2.5);
+  expect(probes.rosterX).toBe(-5.55);
+  expect(probes.rightmostFrameX).toBeLessThan(-3.8);
+  expect(probes.boardClearOfWall).toBe(true);
+  expect(probes.signYaw).toBeCloseTo(Math.PI);
+  expect(probes.signZ).toBeGreaterThan(-6.65);
+  expect(probes.furnitureHulls.map(hull=>hull.id)).toEqual([
+    "chest","desk","candle-stool"]);
+  expect(probes.furnitureHulls.every(hull=>
+    hull.exists&&hull.solid&&hull.invisible&&hull.unpickable&&
+    hull.width>=0.65)).toBe(true);
   expect(probes.wallLeftWidth).toBeGreaterThan(0.8);
   expect(probes.wallRightWidth).toBeGreaterThan(0.8);
   expect(probes.jambsSolid).toBe(true);
