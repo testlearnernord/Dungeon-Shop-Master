@@ -12,12 +12,15 @@ export function openCashierHarness() {
   const scene=Engine.LastCreatedScene!;
   const camera=scene.activeCamera as UniversalCamera;
   const canvas=document.querySelector<HTMLCanvasElement>("#renderCanvas")!;
-  const state=createGameState(72541);
-  const hero=state.adventurers.find(person=>person.status==="at-shop")!;
+  const seeded=createGameState(72541);
+  const hero=seeded.adventurers.find(person=>person.status==="at-shop")!;
   if(!hero)throw new Error("Fixture needs a visitor at the shop");
+  // An explicitly funded customer lets the test distinguish tip vs no tip.
+  const state={...seeded,adventurers:seeded.adventurers.map(person=>
+    person.id===hero.id?{...person,gold:100}:person)};
   const store=new GameStore({...state,shopCarts:[{
     heroId:hero.id,day:state.day,
-    lines:[{itemId:"bread",slotId:"shelf-1-slot-2",quantity:1,subtotal:4}],
+    lines:[{itemId:"bread",slotId:"shelf-1-slot-2",quantity:3,subtotal:12}],
   }]});
   // Only the test replaces the inactive production overlay. Its production
   // listener is idle, and the page's real save/game store remains untouched.
@@ -28,7 +31,7 @@ export function openCashierHarness() {
     message=>{if(harness)harness.latestMessage=message},
     ()=>{},()=>{},
   );
-  harness={store,heroId:hero.id,initialGold:hero.gold,
+  harness={store,heroId:hero.id,initialGold:100,
     initialBalance:state.shopEconomy.balance,latestMessage:"",
     open:controller.open,close:controller.close};
   return {openResult:controller.open(),...inspectCashierHarness()};
@@ -45,6 +48,8 @@ export function inspectCashierHarness(){
     carts:state.shopCarts.length,
     manualReceipts:state.events.filter(event=>event.type==="sale"&&
       event.saleChannel==="manual"&&event.adventurerId===harness!.heroId).length,
+    tips:state.events.filter(event=>event.type==="tip"&&
+      event.adventurerId===harness!.heroId).length,
     report:harness.latestMessage,
   };
 }
