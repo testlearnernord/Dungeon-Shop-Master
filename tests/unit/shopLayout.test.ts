@@ -11,7 +11,7 @@ import { GameStore } from "../../src/game/gameStore.ts";
 
 test("shop layout starts with two wall-mounted shelves with stable slot IDs",()=>{
   const state=createGameState(42);
-  assert.equal(SIMULATION_VERSION,10);
+  assert.equal(SIMULATION_VERSION,11);
   assert.deepEqual(state.shopLayout,createShopLayout());
   assert.equal(shopLayoutProblem(state.shopLayout),null);
   assert.equal(state.shopEconomy.slots.length,10);
@@ -79,8 +79,9 @@ test("v8 save migration preserves heroes, RNG, past replays and every shelf slot
   original.payload.simulationVersion=8;
   delete original.payload.shopLayout;
   delete original.payload.shopCarts;
+  delete original.payload.shopDebts;
   const restored=parseSave(JSON.stringify(original));
-  assert.equal(restored.simulationVersion,10);
+  assert.equal(restored.simulationVersion,11);
   assert.deepEqual(restored.shopLayout,createShopLayout());
   assert.deepEqual(restored.shopEconomy,prior.shopEconomy);
   assert.deepEqual(restored.adventurers,prior.adventurers);

@@ -28,6 +28,7 @@ export class InteractionSystem {
     private readonly checkoutRegister: () => string = () => "No customer is ready.",
     private readonly isShopActive: () => boolean = () => true,
     private readonly isNearBed: () => boolean = () => false,
+    private readonly openBeggarRequest: () => boolean = () => false,
   ) {
     this.shop.select(ITEMS[0].id);
     this.registerEvents();
@@ -154,6 +155,8 @@ export class InteractionSystem {
     } else if (target?.kind === "roster-board") {
       this.message = "Adventurer roster opened.";
       this.openRoster();
+    } else if (this.openBeggarRequest()) {
+      this.message = "Review the adventurer's credit plea.";
     } else {
       this.message = "Nothing nearby to interact with.";
     }

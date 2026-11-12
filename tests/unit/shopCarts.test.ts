@@ -21,7 +21,7 @@ function slotQuantity(state:GameState,slotId:string) {
 }
 test("pickup is durable, removes only physical shelf stock and never charges before checkout",()=>{
   const state=customers();
-  assert.equal(SIMULATION_VERSION,10);
+  assert.equal(SIMULATION_VERSION,11);
   const hero=state.adventurers[0];
   const plan=forecastShoppingIntents(state).get(hero.id)!;
   const needed=plan.items[0];
@@ -114,8 +114,9 @@ test("unpaid carts migrate from v9 as empty, preserving furniture, heroes and re
   envelope.simulationVersion=9;
   envelope.payload.simulationVersion=9;
   delete envelope.payload.shopCarts;
+  delete envelope.payload.shopDebts;
   const migrated=parseSave(JSON.stringify(envelope));
-  assert.equal(migrated.simulationVersion,10);
+  assert.equal(migrated.simulationVersion,11);
   assert.deepEqual(migrated.shopCarts,[]);
   assert.deepEqual(migrated.shopLayout,state.shopLayout);
   assert.deepEqual(migrated.shopEconomy,state.shopEconomy);

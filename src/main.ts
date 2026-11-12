@@ -28,12 +28,14 @@ import { currentDayReceipts } from "./game/saleView";
 import { loadCampaign, setupCampaignHud } from "./campaignHud";
 import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
+import { setupBeggarHud } from "./beggarHud.ts";
 import { setupShopStatusToggle } from "./shopHudLayout";
 import { setupAdventurerOverview } from "./adventurerOverview";
 import { setupHudMouseMode } from "./hudMouseMode";
 import "./styles.css";
 import "./uiTheme.css";
 import "./merchantLedger.css";
+import "./beggarHud.css";
 
 async function startGame(): Promise<void> {
 setupShopStatusToggle();
@@ -61,6 +63,7 @@ worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster
 const openRoster = setupRosterBoardHud(canvas, camera, store);
 let bedtime:BedtimeController|null=null;
 let ledger:MerchantLedger|null=null;
+let beggarHud:ReturnType<typeof setupBeggarHud>|null=null;
 setupShopPlacementHud(canvas, camera, store, shop);
 const npcVisuals = new NpcVisualSystem(scene);
 setupNpcTrafficDebug(npcVisuals);
@@ -110,6 +113,7 @@ setupCampaignHud(store, campaign, () => {
   ledger?.close();
   resetReplayDisclosure();
   cashier?.close();
+  beggarHud?.close();
   interactions.reset();
   camera.position.set(0, 1.7, -4.6);
   camera.rotation.setAll(0);
@@ -166,12 +170,15 @@ function renderInventory(selectedItem: ItemId): void {
 
 let isShopActive = () => true;
 let cashier:ReturnType<typeof setupCashierHud>|null=null;
+beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
+  ()=>isShopActive(),message=>{statusHud.textContent=message;});
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;
   renderInventory(selected);
 }, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.",
-  () => isShopActive(), () => bedtime?.isNearBed()??false);
+  () => isShopActive(), () => bedtime?.isNearBed()??false,
+  () => beggarHud?.openNearest()??false);
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);

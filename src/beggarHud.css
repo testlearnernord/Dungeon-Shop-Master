@@ -1,0 +1,89 @@
+#beggar-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(550px, calc(100vw - 28px));
+  max-height: min(80vh, 680px);
+  overflow-y: auto;
+  border: 1px solid #947444;
+  border-radius: 12px;
+  color: #e6d4af;
+  background: #191612;
+  box-shadow: 0 24px 90px #000d, inset 0 0 0 3px #292115;
+  padding: 0;
+  font: 15px/1.5 Inter, system-ui, sans-serif;
+  z-index: 70;
+}
+#beggar-dialog::backdrop { background: #050403c9; }
+#beggar-dialog .beggar-sheet { padding: 28px; }
+#beggar-dialog header small {
+  color: #bb9251;
+  font: 700 11px Inter, sans-serif;
+  letter-spacing: .15em;
+}
+#beggar-dialog h2 {
+  margin: 9px 0 22px;
+  font: 700 26px Georgia, serif;
+  color: #f4e4bd;
+}
+#beggar-dialog .beggar-item {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  border-block: 1px solid #4b3b29;
+  padding: 16px 0;
+}
+#beggar-dialog svg {
+  flex: 0 0 62px;
+  width: 62px;
+  height: 62px;
+  background: #252016;
+  border-radius: 7px;
+  border: 1px solid #6d5533;
+}
+#beggar-dialog .beggar-item strong {
+  font-size: 18px;
+  color: #f1c986;
+}
+#beggar-dialog .beggar-item p { margin: 4px 0; font-style: italic; }
+#beggar-dialog #beggar-balance { color: #ecb974; font-weight: 650; }
+#beggar-dialog #beggar-stock { color: #d5c4a5; }
+#beggar-dialog #beggar-response { min-height: 20px; color: #e4a493; }
+#beggar-dialog footer {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+#beggar-dialog button {
+  background: #29251d;
+  color: #f1e2c5;
+  border: 1px solid #705637;
+  border-radius: 6px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font: 650 13px Inter, sans-serif;
+}
+#beggar-dialog button:hover:not(:disabled),
+#beggar-dialog button:focus-visible {
+  background: #443421;
+  outline: 2px solid #dca85d;
+  outline-offset: 2px;
+}
+#beggar-dialog #beggar-credit {
+  background: #72512b;
+  color: #fff5df;
+  border-color: #c39756;
+}
+#beggar-dialog button:disabled { opacity: .4; cursor: not-allowed; }
+.npc-wish-bubble.is-begging { border-color: #ba8b50; }
+.roster-credit-debt {
+  color: #e8b980;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+@media(max-width: 480px) {
+  #beggar-dialog .beggar-sheet { padding: 18px; }
+  #beggar-dialog footer button { flex: 1 1 auto; }
+}

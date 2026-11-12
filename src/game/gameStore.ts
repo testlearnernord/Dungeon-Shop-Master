@@ -4,6 +4,7 @@ import { replaceCounterPlacement, replaceShelfPlacement, type CounterPlacement, 
 import { checkoutCustomer, quoteCustomerCheckout, type CheckoutQuote } from "./customerCheckout.ts";
 import { pickUpShopItem, returnShopCart, payReservedShopCart } from "./shopCarts.ts";
 import { walkOutWithoutPurchase } from "./shopWalkout.ts";
+import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
 
 export class GameStore {
@@ -73,6 +74,17 @@ export class GameStore {
 
   pickUpShopItem(heroId: string, slotId: string): string {
     const result = pickUpShopItem(this.current, heroId, slotId);
+    this.replace(result.state);
+    return result.message;
+  }
+
+  quoteBeggingRequest(heroId:string) {
+    return quoteBeggingRequest(this.current,heroId);
+  }
+
+  /** Goods are handed over now, at full sticker price as a debt, not income. */
+  issueShopCredit(heroId:string):string {
+    const result=issueShopCredit(this.current,heroId);
     this.replace(result.state);
     return result.message;
   }

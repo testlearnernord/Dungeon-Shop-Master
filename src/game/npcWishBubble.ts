@@ -32,12 +32,13 @@ export function createNpcWishBubble(itemId:ItemId):NpcWishBubble {
   setNpcWishItem(bubble,itemId);
   return bubble;
 }
-export function setNpcWishItem(bubble:NpcWishBubble,itemId:ItemId):void {
+export function setNpcWishItem(bubble:NpcWishBubble,itemId:ItemId,begging=false):void {
   const name=ITEMS.find(item=>item.id===itemId)?.name??itemId;
   bubble.icon.setAttribute("href",import.meta.env.BASE_URL+"assets/ui-item-icons.svg#"+itemId);
-  bubble.root.setAttribute("aria-label","Looking for "+name);
-  bubble.root.title="Looking for "+name;
-  bubble.detail.textContent="NEED: "+name;
+  bubble.root.setAttribute("aria-label",(begging?"Begging for ":"Looking for ")+name);
+  bubble.root.title=begging?"Approach and press E to hear a credit plea for "+name:"Looking for "+name;
+  bubble.root.classList.toggle("is-begging",begging);
+  bubble.detail.textContent=(begging?"PLEASE: ":"NEED: ")+name;
 }
 export function updateNpcWishBubble(
   bubble:NpcWishBubble,scene:Scene,position:Vector3,

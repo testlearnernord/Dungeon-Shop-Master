@@ -16,7 +16,7 @@ import { settleHeldShopCarts, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 10;
+export const SIMULATION_VERSION = 11;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -41,7 +41,7 @@ export interface WorldEvent {
   readonly type: "welcome" | "day-started" | "dungeon-outcome" | "shop-arrival" | "shop-stay" | "shop-departure" | "shop-walkout" | "influx" |
     "sale" | "tip" | "ate" | "healed" | "starvation" | "rescue" |
     "level6-departure" | "level6-combat" | "level6-return" | "food-shortage" | "found-food" |
-    "level7-departure" | "level7-exploration";
+    "level7-departure" | "level7-exploration" | "shop-credit";
   readonly day: number;
   readonly message: string;
   readonly adventurerId?: string;
@@ -56,6 +56,14 @@ export interface WorldEvent {
   readonly revenue?: number;
   /** Manual cash register vs. automated settlement; absent means legacy auto sale. */
   readonly saleChannel?: "manual" | "reserved";
+  /** Face value written to the merchant debt ledger; no cash was earned. */
+  readonly debtGold?: number;
+}
+
+/** Per-hero outstanding credit. Never counted as received cash. */
+export interface ShopDebt {
+  readonly heroId: string;
+  readonly outstandingGold: number;
 }
 
 export interface GameState {
@@ -66,6 +74,7 @@ export interface GameState {
   readonly shopEconomy: ShopEconomyState;
   readonly shopLayout: ShopLayout;
   readonly shopCarts: readonly ShopCart[];
+  readonly shopDebts: readonly ShopDebt[];
   readonly dungeonFloors: readonly DungeonFloorProgress[];
   readonly level7World: Level7World;
   readonly seed: number;
@@ -99,6 +108,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     shopEconomy: createEconomy(),
     shopLayout: createShopLayout(),
     shopCarts: [],
+    shopDebts: [],
     dungeonFloors: [],
     level7World: emptyLevel7World(),
     seed,
