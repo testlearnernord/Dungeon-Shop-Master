@@ -334,6 +334,17 @@ export class NpcVisualSystem {
     }));
   }
 
+  /** E2E-only time compression for the browser expiry regression.
+   * Production play always counts down the full 60 seconds. */
+  setRestockTimeForE2E(heroId:string,seconds:number):void {
+    if(import.meta.env.VITE_E2E!=="1"||!Number.isFinite(seconds)||
+      seconds<0)throw new Error("Restock test hook disabled.");
+    const npc=this.npcs.get(heroId);
+    if(!npc||npc.root.metadata.shoppingPhase!=="waiting-for-restock")
+      throw new Error("Customer is not waiting for a restock.");
+    npc.restockSeconds=seconds;
+  }
+
   /** Physical register admission, checked immediately before the transaction. */
   readyCheckoutHeroId():string|null {
     const head=this.carts.find(cart=>cart.lines.length>0);
