@@ -107,3 +107,26 @@ test("player can walk through former rear wall into the bedchamber",async({page}
   expect(pos.z).toBeGreaterThan(-12.1);
   expect(pos.collisions&&pos.gravity).toBe(true);
 });
+
+test("bedroom dressing preserves the collision-safe alcove and interactable bed",async({page})=>{
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  const room=await page.evaluate(async()=>{
+    return (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBedroomAtmosphere();
+  });
+  expect(room.bed).toEqual({x:0.8,z:-10.6,collides:true,pickable:true,kind:"bed"});
+  expect(room.entryClear).toBe(true);
+  expect(room.entrancePiers).toBe(true);
+  expect(room.wallSolid).toBe(true);
+  expect(room.decorCount).toBe(55);
+  expect(room.decorInert).toBe(true);
+  expect(room.furniture).toBe(true);
+  expect(room.practicalLighting).toBe(true);
+  await moveToBed(page);
+  await page.keyboard.down("e");
+  await expect(page.locator("#merchant-ledger")).toBeVisible({timeout:10000});
+  await page.keyboard.up("e");
+  await expect(page.locator("#day")).toHaveText("Day 2");
+  expect(errors).toEqual([]);
+});
