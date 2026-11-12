@@ -56,8 +56,8 @@ test("affordable sold-out bread is not mistaken for poverty when only expensive 
     hero.id===heroId?{...hero,gold:0}:hero)};
   const noMoney=forecastShoppingIntents(broke).get(heroId)!;
   assert.equal(noMoney.reason,"cannot-afford");
-  assert.equal(noMoney.wantedItemId,undefined);
-  assert.equal(shopperVisualAction(noMoney,false),"leave-unserved");
+  assert.equal(noMoney.wantedItemId,"bread");
+  assert.equal(shopperVisualAction(noMoney,false),"beg");
 });
 
 test("replenishment reactivates the existing forecast before the wait expires",()=>{
@@ -79,7 +79,7 @@ test("unpaid carts ALWAYS go to checkout even when shelves are sold out",()=>{
   assert.equal(shopperVisualAction(null,true),"checkout");
 });
 
-test("customers without needs or money do not demand an out-of-stock wait",()=>{
+test("satisfied heroes leave, penniless hungry heroes beg instead of buying",()=>{
   const {state,heroId}=emptyShop();
   const hero=state.adventurers.find(x=>x.id===heroId)!;
   const satisfied={...state,adventurers:state.adventurers.map(x=>x.id===heroId
@@ -96,7 +96,8 @@ test("customers without needs or money do not demand an out-of-stock wait",()=>{
         ?{...slot,itemId:"bread" as const,quantity:2}:slot)}};
   const broke=forecastShoppingIntents(withStock).get(heroId)!;
   assert.equal(broke.reason,"cannot-afford");
-  assert.equal(shopperVisualAction(broke,false),"leave-unserved");
+  assert.equal(broke.wantedItemId,"bread");
+  assert.equal(shopperVisualAction(broke,false),"beg");
   assert.equal(hero.gold,100);
 });
 
