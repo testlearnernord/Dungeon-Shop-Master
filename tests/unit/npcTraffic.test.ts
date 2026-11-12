@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { NPC_CENTER_CLEARANCE, crowdSafeStep, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
+import { ENTRANCE_STAGING_Z, NPC_CENTER_CLEARANCE, crowdSafeStep, entranceApproachRoute, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
   for(const gate of ["level4","level6"] as const){
@@ -132,4 +132,33 @@ test("collision checking covers the entire movement segment",()=>{
   const escape=crowdSafeStep(from,goal,[other],0.2,()=>true);
   if(escape)assert(Math.hypot(escape.x-other.x,escape.z-other.z)>
     Math.hypot(from.x-other.x,from.z-other.z));
+});
+
+test("an already-indoor returning shopper must never route back through the entrance",()=>{
+  const gate="level4";
+  const from={x:-0.6,z:1.0};
+  assert.deepEqual(entranceApproachRoute(gate,from,false,6,13),[],
+    "day tick must preserve the current indoor position rather than block arrivals");
+  assert.deepEqual(entranceApproachRoute(gate,{x:-5,z:-0.4},false,6,13),[]);
+  assert.deepEqual(entranceApproachRoute(gate,{x:-4.57,z:6.24},false,6,13),[]);
+});
+
+test("new and interrupted outside visitors clear the shop entrance before browsing",()=>{
+  const entering=gateTravelLane("level4","entering");
+  const newRoute=entranceApproachRoute("level4",{x:entering,z:13},true,6,13);
+  assert.deepEqual(newRoute,[
+    {x:entering,z:6},
+    {x:entering,z:ENTRANCE_STAGING_Z},
+  ]);
+  assert(ENTRANCE_STAGING_Z<5.0&&ENTRANCE_STAGING_Z>3.5);
+  const interrupted=entranceApproachRoute("level4",{x:-3.43,z:9},false,6,13);
+  assert.deepEqual(interrupted,[
+    {x:-3.43,z:14},
+    {x:entering,z:14},
+    {x:entering,z:6},
+    {x:entering,z:ENTRANCE_STAGING_Z},
+  ]);
+  const level6=gateTravelLane("level6","entering");
+  assert.deepEqual(entranceApproachRoute("level6",{x:level6,z:13},true,6,13).at(-1),
+    {x:level6,z:ENTRANCE_STAGING_Z});
 });
