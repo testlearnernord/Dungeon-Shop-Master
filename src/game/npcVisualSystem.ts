@@ -16,7 +16,7 @@ import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -889,7 +889,7 @@ export class NpcVisualSystem {
       from.z>=5.1;
     const move=shopCrowdStep(from,{x:target.x,z:target.z},occupied,
       WALK_SPEED*delta,walkable,npc.blockedSeconds,!inGateApproach&&from.z<=6.5,
-      inGateApproach?NPC_GATE_SOFT_PASS_AFTER_SECONDS:NPC_SOFT_PASS_AFTER_SECONDS);
+      inGateTrafficThroat(from)?NPC_GATE_SOFT_PASS_AFTER_SECONDS:NPC_SOFT_PASS_AFTER_SECONDS);
     const proposed=move.point;
     if(!proposed){
       npc.blockedSeconds+=delta;
