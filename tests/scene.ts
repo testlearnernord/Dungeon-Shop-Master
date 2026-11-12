@@ -29,6 +29,13 @@ export function aimAtRosterBoard() {
   return scene.getFrameId();
 }
 
+/** Aim the FPS camera at the actual mattress, not nearby bedroom props. */
+export function aimAtBed() {
+  inspectPlayer({ x: 0.6, y: 1.7, z: -8.95 });
+  const scene = Engine.LastCreatedScene!;
+  (scene.activeCamera as UniversalCamera).setTarget(scene.getMeshByName("galvik-bed")!.getAbsolutePosition());
+}
+
 export function aimAtShelfSlot() {
   const start = inspectPlayer({ x: -5.05, y: 1.7, z: -2 });
   const scene = Engine.LastCreatedScene!;
