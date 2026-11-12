@@ -19,6 +19,7 @@ import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import { reserveRestockWaitingRoute } from "./restockWaitingPlaces.ts";
+import { npcLocomotion } from "./npcLocomotion.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
 
@@ -504,7 +505,7 @@ export class NpcVisualSystem {
       level6:gateFlowDirection("level6",gateActors),
     };
     for (const npc of this.npcs.values()) {
-      npc.animationTime += delta;
+      const beforeMove={x:npc.root.position.x,z:npc.root.position.z};
       if(npc.phase==="queueing")npc.root.metadata.movementMode="waiting";
       if(npc.phase==="considering")npc.root.metadata.movementMode="inspecting";
       const cameraPosition = this.scene.activeCamera?.globalPosition;
@@ -586,7 +587,7 @@ export class NpcVisualSystem {
           }else npc.root.metadata.movementMode="door-opening";
         }
       }
-      this.animate(npc);
+      this.animate(npc,delta,beforeMove);
     }
     for (const gate of ["level4", "level6"] as const) {
       const target = open[gate] ? DOOR_OPEN_Y : DOOR_CLOSED_Y;
@@ -979,17 +980,25 @@ export class NpcVisualSystem {
     npc.root.position.z=proposed.z;
   }
 
-  private animate(npc: NpcVisual): void {
-    const walking = npc.phase === "entering" || npc.phase === "leaving" ||
-      (npc.phase === "browsing" && npc.route[npc.waypoint] !== undefined);
-    const amplitude = walking ? 0.65 : 0.08;
-    const swing = Math.sin(npc.animationTime * (walking ? 8 : 2)) * amplitude;
-    npc.legs[0].rotation.x = swing;
-    npc.legs[1].rotation.x = -swing;
-    npc.arms[0].rotation.x = -swing * 0.7;
-    npc.arms[1].rotation.x = swing * 0.7;
-    npc.torso.position.y = 1.14 + Math.sin(npc.animationTime * 2) * (walking ? 0.025 : 0.01);
-    npc.root.position.y = 0.6 * Math.cos(swing) - 0.6;
+  private animate(npc: NpcVisual,delta:number,beforeMove:{x:number;z:number}): void {
+    const motion=npcLocomotion(beforeMove,{
+      x:npc.root.position.x,z:npc.root.position.z,
+    },delta,WALK_SPEED);
+    // Animation follows actual displacement, even while queueing, seeking
+    // a safe stand, or sidestepping. A blocked character no longer moonwalks.
+    npc.animationTime+=delta*(motion.moving?motion.strideScale:0.3);
+    const swing=motion.moving
+      ?Math.sin(npc.animationTime*8)*0.65
+      :Math.sin(npc.animationTime*2)*0.035;
+    npc.legs[0].rotation.x=swing;
+    npc.legs[1].rotation.x=-swing;
+    npc.arms[0].rotation.x=-swing*0.7;
+    npc.arms[1].rotation.x=swing*0.7;
+    npc.torso.position.y=1.14+Math.sin(npc.animationTime*2)*
+      (motion.moving?0.025:0.01);
+    npc.root.position.y=0.6*Math.cos(swing)-0.6;
+    npc.root.metadata.animatingWalk=motion.moving;
+    npc.root.metadata.actualSpeed=Math.round(motion.speed*100)/100;
   }
 
   private dispose(npc: NpcVisual): void {
