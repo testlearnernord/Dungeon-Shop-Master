@@ -7,6 +7,7 @@ import { ECONOMY } from "./game/economy";
 import { GameStore } from "./game/gameStore";
 import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
+import { manuallyPaidVisitors } from "./game/npcVisitors.ts";
 import { forecastShoppingIntents } from "./game/shopperIntents.ts";
 import { Level6Arena } from "./game/level6Arena";
 import { DungeonViewer } from "./game/dungeonViewer";
@@ -85,7 +86,8 @@ const refreshShoppingIntents = () => npcVisuals.setShoppingIntents(
     const previous=store.state;
     store.pickUpShopItem(heroId,slotId);
     return store.state!==previous;
-  });
+  },
+  manuallyPaidVisitors(store.state.events,store.state.day));
 store.subscribe(refreshShoppingIntents);
 refreshShoppingIntents();
 setupSalesHud(store);
