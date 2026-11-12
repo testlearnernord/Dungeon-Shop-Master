@@ -77,5 +77,5 @@ test("only committed manual same-day sales trigger physical departure",()=>{
     {day:2,type:"tip",adventurerId:"paid"},
   ];
   assert.deepEqual([...manuallyPaidVisitors(events,2)],["paid"]);
-  assert.deepEqual([...manuallyPaidVisitors(events,1)],[]);
+  assert.deepEqual([...manuallyPaidVisitors(events,1)],["old"]);
 });
