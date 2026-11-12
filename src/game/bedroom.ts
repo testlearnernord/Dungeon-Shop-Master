@@ -152,6 +152,23 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
     0.8, 0.753, -11.34, mattress);
   pillow.rotation.y = 0.07;
 
+  // Collision shapes for entire furniture groups, NOT every candlewick,
+  // quill and chest hinge. Invisible solid hulls prevent the player from
+  // walking through books, chest and candle while preserving clean FPS motion.
+  // They must never steal the bed's interaction ray.
+  function furnitureCollider(name: string, width: number, height: number, depth: number,
+    x: number, y: number, z: number): void {
+    const hull = cube("bedroom-furniture-collider-" + name,
+      width, height, depth, x, y, z, timber, true);
+    hull.visibility = 0;
+    hull.isPickable = false;
+  }
+  // The bed itself already owns its physical footprint and E interaction.
+  // Keep a broad 0.9m central aisle between the three furniture groups.
+  furnitureCollider("chest", 1.04, 1.42, 0.72, -2.15, 0.73, -11.30);
+  furnitureCollider("desk", 1.18, 1.60, 0.76, -2.27, 0.82, -9.08);
+  furnitureCollider("candle-stool", 0.66, 1.39, 0.66, 2.27, 0.72, -10.95);
+
   // Battered storage chest, bronze hardware, debt book and ink.
   cube("galvik-bed-chest", 0.95, 0.70, 0.55, -2.15, 0.36, -11.30, timber);
   cube("bed-chest-lid", 1.02, 0.10, 0.63, -2.15, 0.75, -11.30, wornEdges);
