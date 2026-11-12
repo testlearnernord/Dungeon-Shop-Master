@@ -6,13 +6,8 @@ test("Blueprint editor places a counter by aiming at a real floor surface",async
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
-  await page.evaluate(async()=>{
-    const {Engine}=await import("/Dungeon-Shop-Master/node_modules/@babylonjs/core/Engines/engine.js");
-    const {Vector3}=await import("/Dungeon-Shop-Master/node_modules/@babylonjs/core/Maths/math.vector.js");
-    const camera=Engine.LastCreatedScene!.activeCamera!;
-    camera.position.set(0,1.7,-4.6);
-    camera.setTarget(new Vector3(0,0,0));
-  });
+  await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtBlueprintFloor());
   await page.keyboard.press("p");
   await expect(page.locator("#blueprint-panel")).toBeVisible();
   await page.keyboard.press("3");
