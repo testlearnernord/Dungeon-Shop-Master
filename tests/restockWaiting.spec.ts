@@ -13,7 +13,7 @@ async function seedEmptyShop(page:import("@playwright/test").Page) {
       adventurers:initial.adventurers.map((hero,index)=>index===0
         ?{...hero,status:"at-shop" as const,floor:5 as const,gold:100,
           inventory:{...hero.inventory,food:0},equipment:{weapon:null,armor:null}}
-        :{...hero,status:"exploring" as const}),
+        :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...initial.shopEconomy,
         slots:initial.shopEconomy.slots.map(slot=>({
           ...slot,quantity:0,itemId:null,
@@ -87,12 +87,12 @@ test("expired stock request produces angry walkout and no next-day phantom sale"
     {timeout:12000}).toBe("leaving-upset");
   await expect(page.locator(".npc-wish-bubble.is-angry .npc-wish-timer"))
     .toHaveText("NO SALE!");
-  await expect.poll(async()=>page.evaluate(async()=>{
+  await expect.poll(async()=>page.evaluate(async(id)=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const state=await new CampaignStorage().loadGame();
     return state?.events.some(event=>event.type==="shop-walkout"&&
-      event.adventurerId==="adventurer-1")??false;
-  }),{timeout:10000}).toBe(true);
+      event.adventurerId===id)??false;
+  },heroId),{timeout:10000}).toBe(true);
   // The visitor has already abandoned their visit. Restock cannot cause
   // an automatic retroactive sale at the next confirmed day boundary.
   await page.evaluate(()=>{
