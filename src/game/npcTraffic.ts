@@ -185,6 +185,8 @@ export function mustYieldAtGate(
   if(actor.phase===flow)return false;
   if(actor.phase==="entering")
     return actor.z>=GATE_OUTER_HOLD_Z;
+  const center=actor.gate==="level4"?-4:4;
   return actor.z<=GATE_INNER_HOLD_Z &&
-    actor.z>=GATE_CLEAR_INSIDE_Z;
+    actor.z>=GATE_CLEAR_INSIDE_Z &&
+    Math.abs(actor.x-center)<1.7;
 }
