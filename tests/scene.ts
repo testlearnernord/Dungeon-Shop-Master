@@ -1,6 +1,7 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
   const scene = Engine.LastCreatedScene!;
@@ -32,6 +33,15 @@ export function aimAtBeggingVisitor(heroId:string):void {
   const camera=scene.activeCamera as UniversalCamera;
   camera.position.set(node.position.x+1.25,1.7,node.position.z+0.8);
   camera.setTarget(new Vector3(node.position.x,1.5,node.position.z));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
+export function aimAtBlueprintFloor():void {
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(0,1.7,-4.6);
+  camera.setTarget(new Vector3(0,0,0));
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
 }
