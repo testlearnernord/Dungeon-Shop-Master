@@ -3,6 +3,8 @@ import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.
 import { replaceCounterPlacement, replaceShelfPlacement, type CounterPlacement, type ShelfPlacement } from "./shopLayout.ts";
 import { checkoutCustomer, quoteCustomerCheckout, type CheckoutQuote } from "./customerCheckout.ts";
 import { pickUpShopItem, returnShopCart, payReservedShopCart } from "./shopCarts.ts";
+import { walkOutWithoutPurchase } from "./shopWalkout.ts";
+import type { ShoppingReason } from "./shopperIntents.ts";
 
 export class GameStore {
   private current: GameState;
@@ -73,6 +75,10 @@ export class GameStore {
     const result = pickUpShopItem(this.current, heroId, slotId);
     this.replace(result.state);
     return result.message;
+  }
+
+  walkOutWithoutPurchase(heroId:string,reason:ShoppingReason):void {
+    this.replace(walkOutWithoutPurchase(this.current,heroId,reason));
   }
 
   returnShopCart(heroId: string): string {
