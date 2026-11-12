@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { ENTRANCE_STAGING_Z, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
+import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
   for(const gate of ["level4","level6"] as const){
@@ -25,6 +25,10 @@ test("burst arrivals get non-overlapping spawns, without crossing the corridor w
     occupied.push({x,z});
   }
   assert.equal(occupied[0].z,13);
+  for(let i=1;i<occupied.length;i++)
+    assert(occupied[i].z-occupied[i-1].z>=ENTRANCE_SPAWN_HEADWAY-1e-6,
+      "arrival bursts require at least one full NPC gap, not shoulder overlap");
+  assert(ENTRANCE_SPAWN_HEADWAY>NPC_CENTER_CLEARANCE);
   assert(occupied[23].z>occupied[0].z);
 });
 
@@ -248,4 +252,28 @@ test("a claimed final waypoint releases after one second, not while still out of
   assert.equal(canFinishShopWaypoint(0.1,true,NPC_SOFT_PASS_AFTER_SECONDS),true);
   assert.equal(canFinishShopWaypoint(NPC_FINAL_WAYPOINT_RADIUS+0.01,false,100),false);
   assert.equal(canFinishShopWaypoint(NaN,false,100),false);
+});
+
+test("gate chokepoints release blocked NPC bodies sooner but never tunnel through furniture",()=>{
+  const origin={x:-4.57,z:6.05};
+  const goal={x:-4.57,z:4.65};
+  const head={x:-4.57,z:5.75};
+  const blocked=shopCrowdStep(origin,goal,[head],0.15,()=>true,
+    NPC_GATE_SOFT_PASS_AFTER_SECONDS-0.01,false,NPC_GATE_SOFT_PASS_AFTER_SECONDS);
+  assert.equal(blocked.softPass,false);
+  assert.equal(blocked.point,null);
+  const released=shopCrowdStep(origin,goal,[head],0.15,()=>true,
+    NPC_GATE_SOFT_PASS_AFTER_SECONDS,false,NPC_GATE_SOFT_PASS_AFTER_SECONDS);
+  assert.equal(released.softPass,true);
+  assert(released.point&&released.point.z<origin.z);
+  // The same jam on the open shop floor retains the longer 1.15s window.
+  const aisle=shopCrowdStep(origin,goal,[head],0.15,()=>true,
+    NPC_GATE_SOFT_PASS_AFTER_SECONDS,false);
+  assert.equal(aisle.softPass,false);
+  assert.equal(aisle.point,null);
+  // Static colliders are never downgraded to visual NPC bodies.
+  const solid=shopCrowdStep(origin,goal,[head],0.15,()=>false,100,
+    false,NPC_GATE_SOFT_PASS_AFTER_SECONDS);
+  assert.equal(solid.point,null);
+  assert.equal(solid.softPass,false);
 });
