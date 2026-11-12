@@ -138,3 +138,53 @@ export function entranceApproachRoute(
     :interruptedDepartureRoute(gate,position,innerZ,outerZ);
   return [...approach,{x:laneX,z:ENTRANCE_STAGING_Z}];
 }
+
+/** The narrow physical gate can fit two visual lanes, but browser steering
+ * must not let opposing crowds claim the doorway at the same time. All
+ * coordinates are the 3D shop's X/Z metres, not simulated dungeon state. */
+export type GateFlow = "entering" | "leaving";
+export interface GateTrafficActor {
+  readonly gate: GateSide;
+  readonly phase: GateFlow;
+  readonly x: number;
+  readonly z: number;
+}
+export const GATE_INNER_HOLD_Z = 6.16;
+export const GATE_OUTER_HOLD_Z = 12.84;
+export const GATE_CLEAR_INSIDE_Z = 4.45;
+
+/** Existing travellers always finish crossing before new counterflow enters.
+ * When a gate is clear, a departing visitor near its threshold gets priority
+ * over a visitor still waiting outside. The finite departure/arrival streams
+ * prevent one direction from occupying the gate indefinitely. */
+export function gateFlowDirection(
+  gate: GateSide, actors: readonly GateTrafficActor[],
+): GateFlow {
+  const center = gate === "level4" ? -4 : 4;
+  const local = actors.filter(actor=>actor.gate===gate &&
+    Math.abs(actor.x-center)<1.7);
+  const insideEntering = local.some(actor=>actor.phase==="entering" &&
+    actor.z>GATE_CLEAR_INSIDE_Z && actor.z<GATE_OUTER_HOLD_Z);
+  const insideLeaving = local.some(actor=>actor.phase==="leaving" &&
+    actor.z>GATE_INNER_HOLD_Z && actor.z<13.2);
+  if(insideEntering&&!insideLeaving)return "entering";
+  if(insideLeaving)return "leaving";
+  // Both active from an old save: do not admit *more* incoming traffic.
+  if(insideEntering)return "entering";
+  if(local.some(actor=>actor.phase==="leaving"&&
+    actor.z>=GATE_CLEAR_INSIDE_Z && actor.z<=GATE_INNER_HOLD_Z))
+    return "leaving";
+  return "entering";
+}
+
+/** Only the *next* person waiting outside/inside yields. Never freeze someone
+ * already inside the throat; doing so would turn a near miss into a deadlock. */
+export function mustYieldAtGate(
+  actor: GateTrafficActor, flow: GateFlow,
+): boolean {
+  if(actor.phase===flow)return false;
+  if(actor.phase==="entering")
+    return actor.z>=GATE_OUTER_HOLD_Z;
+  return actor.z<=GATE_INNER_HOLD_Z &&
+    actor.z>=GATE_CLEAR_INSIDE_Z;
+}
