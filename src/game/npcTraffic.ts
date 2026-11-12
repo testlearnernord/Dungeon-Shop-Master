@@ -55,10 +55,13 @@ export function gateTravelLane(gate:GateSide,phase:"entering"|"leaving"):number 
   return center+side*(phase==="entering"?0.57:-0.57);
 }
 
+/** An arriving group needs more room than the bare collision radius; exact
+ * 1.1m spawning behind a 1.02m body leaves virtually no headway at corners. */
+export const ENTRANCE_SPAWN_HEADWAY=1.5;
 /** Stagger new entrants along their lane so a burst never spawns overlapping bodies. */
 export function nextEntranceSpawnZ(laneX:number,occupied:readonly ShopPoint[]):number {
   for(let i=0;i<120;i++){
-    const z=13+i*1.1;
+    const z=13+i*ENTRANCE_SPAWN_HEADWAY;
     if(occupied.every(p=>Math.hypot(p.x-laneX,p.z-z)>=NPC_CENTER_CLEARANCE))return z;
   }
   return 13+120*0.8;
@@ -196,6 +199,17 @@ export function mustYieldAtGate(
  * furniture, shop walls and gate priority are always enforced separately.
  */
 export const NPC_SOFT_PASS_AFTER_SECONDS = 1.15;
+/** Chokepoints disable sidesteps, so a shorter body-only grace avoids queues
+ * while furniture, wall and directional right-of-way remain authoritative. */
+export const NPC_GATE_SOFT_PASS_AFTER_SECONDS=0.45;
+
+/** Includes shoppers already walking from the door toward the checkout.
+ * They are not in the "entering" phase anymore, but can still block an
+ * incoming customer at the shared throat on the shop side. */
+export function inGateTrafficThroat(point:ShopPoint):boolean {
+  return point.z>=4.8&&point.z<=13.2&&
+    (Math.abs(point.x+4)<1.45||Math.abs(point.x-4)<1.45);
+}
 export const NPC_FINAL_WAYPOINT_RADIUS = 0.16;
 
 export interface ShopCrowdMove {
@@ -213,8 +227,9 @@ export function shopCrowdStep(
   from: ShopPoint, goal: ShopPoint, occupied: readonly ShopPoint[],
   maxDistance: number, canWalk:(next: ShopPoint)=>boolean,
   blockedSeconds: number, allowSidestep=true,
+  softAfterSeconds=NPC_SOFT_PASS_AFTER_SECONDS,
 ): ShopCrowdMove {
-  if (blockedSeconds>=NPC_SOFT_PASS_AFTER_SECONDS) {
+  if (blockedSeconds>=softAfterSeconds) {
     const unobstructed=crowdSafeStep(from,goal,[],maxDistance,canWalk,false);
     if(unobstructed)return {point:unobstructed,softPass:true};
   }

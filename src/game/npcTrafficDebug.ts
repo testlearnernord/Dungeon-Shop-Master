@@ -10,7 +10,7 @@ export function setupNpcTrafficDebug(visuals: NpcVisualSystem): void {
   const title=document.createElement("strong");
   title.textContent="NPC TRAFFIC · F9 TO HIDE";
   const legend=document.createElement("p");
-  legend.textContent="Name | state | reason | target | route | stalled | position";
+  legend.textContent="Name | state | reason | target | route | avoid | motion | position";
   const contents=document.createElement("pre");
   contents.className="npc-traffic-debug-lines";
   panel.append(title,legend,contents);
@@ -31,6 +31,7 @@ export function setupNpcTrafficDebug(visuals: NpcVisualSystem): void {
           npc.target||npc.goal||"-",
           npc.waypoint,
           npc.blockedSeconds.toFixed(1)+"s",
+          npc.motion,
           npc.x.toFixed(1)+"/"+npc.z.toFixed(1),
           npc.cartUnits?"cart "+npc.cartUnits:"",
         ].filter(Boolean).join(" | ")).join("\n"):

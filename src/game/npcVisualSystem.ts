@@ -16,7 +16,7 @@ import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -322,6 +322,7 @@ export class NpcVisualSystem {
   inspectTraffic():readonly {
     id:string;phase:string;status:string;reason:string;goal:string;
     target:string;blockedSeconds:number;waypoint:string;cartUnits:number;
+    motion:string;
     wish:string;restockSeconds:number|null;
     x:number;z:number;
   }[] {
@@ -333,6 +334,7 @@ export class NpcVisualSystem {
       goal:String(npc.root.metadata.shoppingTargets?.join(",")??""),
       target:String(npc.root.metadata.shoppingTargetSlot??""),
       blockedSeconds:Math.round(npc.blockedSeconds*10)/10,
+      motion:String(npc.root.metadata.movementMode??"idle"),
       waypoint:`${npc.waypoint}/${npc.route.length}`,
       cartUnits:Number(npc.root.metadata.cartUnits??0),
       wish:npc.wishItem??"",
@@ -467,6 +469,8 @@ export class NpcVisualSystem {
     };
     for (const npc of this.npcs.values()) {
       npc.animationTime += delta;
+      if(npc.phase==="queueing")npc.root.metadata.movementMode="waiting";
+      if(npc.phase==="considering")npc.root.metadata.movementMode="inspecting";
       const cameraPosition = this.scene.activeCamera?.globalPosition;
       if (cameraPosition) {
         const distance = Vector3.Distance(cameraPosition, npc.root.getAbsolutePosition());
@@ -527,12 +531,13 @@ export class NpcVisualSystem {
         // Neither waits halfway through the physical gate.
         const yielding=!!transit&&mustYieldAtGate(transit,gateFlow[transit.gate]);
         npc.root.metadata.gateYield=yielding;
+        if(yielding)npc.root.metadata.movementMode="gate-yield";
         if(!yielding){
           const isMovingThroughGate = !!transit && npc.root.position.z > 11.3;
           const physicalSide: GateSide = npc.root.position.x < 0 ? "level4" : "level6";
           if(!isMovingThroughGate || this.doorY[physicalSide]>=DOOR_PASSAGE_CLEAR_Y){
             this.move(npc,delta);
-          }
+          }else npc.root.metadata.movementMode="door-opening";
         }
       }
       this.animate(npc);
@@ -843,6 +848,7 @@ export class NpcVisualSystem {
         npc.blockedSeconds+=delta;
         npc.root.metadata.blockedSeconds=npc.blockedSeconds;
         npc.root.metadata.softPassing=false;
+        npc.root.metadata.movementMode="waypoint-yield";
         return;
       }
       npc.root.position.x=target.x;
@@ -851,6 +857,7 @@ export class NpcVisualSystem {
       npc.blockedSeconds=0;
       npc.root.metadata.blockedSeconds=0;
       npc.root.metadata.softPassing=heldByNeighbor;
+      npc.root.metadata.movementMode=heldByNeighbor?"soft-pass":"waypoint";
       return;
     }
     const walkable=(next:{x:number;z:number}):boolean=>{
@@ -873,6 +880,8 @@ export class NpcVisualSystem {
       return shopSegmentClear(a,b,this.layout);
     };
     // Once a hero approaches the narrow gate, remain in its reserved lane.
+    // NPC bodies yield to each other only briefly here; crossing opposite
+    // directions still obeys gateFlowDirection / mustYieldAtGate.
     // Side-stepping at z≈6 used to push entering and leaving actors back
     // toward one another even though their long-distance lanes were distinct.
     // Restrict only the *physical throat*, not an entire long route whose
@@ -881,12 +890,16 @@ export class NpcVisualSystem {
     const inGateApproach=(npc.phase==="entering"||npc.phase==="leaving")&&
       from.z>=5.1;
     const move=shopCrowdStep(from,{x:target.x,z:target.z},occupied,
-      WALK_SPEED*delta,walkable,npc.blockedSeconds,!inGateApproach&&from.z<=6.5);
+      WALK_SPEED*delta,walkable,npc.blockedSeconds,!inGateApproach&&from.z<=6.5,
+      inGateTrafficThroat(from)?NPC_GATE_SOFT_PASS_AFTER_SECONDS:NPC_SOFT_PASS_AFTER_SECONDS);
     const proposed=move.point;
     if(!proposed){
       npc.blockedSeconds+=delta;
       npc.root.metadata.blockedSeconds=npc.blockedSeconds;
       npc.root.metadata.softPassing=false;
+      const nearest={x:from.x+(dx/distance)*Math.min(distance,WALK_SPEED*delta),
+        z:from.z+(dz/distance)*Math.min(distance,WALK_SPEED*delta)};
+      npc.root.metadata.movementMode=walkable(nearest)?"crowd-block":"static-block";
       // A *static* obstruction still requires a new path. NPC traffic alone
       // becomes nonblocking after a short wait via shopCrowdStep above.
       this.recoverTraffic(npc);
@@ -901,6 +914,7 @@ export class NpcVisualSystem {
       steering>0.015?npc.blockedSeconds+delta:0;
     npc.root.metadata.blockedSeconds=npc.blockedSeconds;
     npc.root.metadata.softPassing=move.softPass;
+    npc.root.metadata.movementMode=move.softPass?"soft-pass":steering>0.015?"sidestep":"moving";
     if(!move.softPass&&this.recoverTraffic(npc))return;
     npc.root.rotation.y=Math.atan2(proposed.x-from.x,proposed.z-from.z);
     npc.root.position.x=proposed.x;
