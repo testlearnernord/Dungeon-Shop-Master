@@ -732,8 +732,11 @@ export class NpcVisualSystem {
     // Once a hero approaches the narrow gate, remain in its reserved lane.
     // Side-stepping at z≈6 used to push entering and leaving actors back
     // toward one another even though their long-distance lanes were distinct.
+    // Restrict only the *physical throat*, not an entire long route whose
+    // far-away destination happens to be the gate; indoor shoppers still
+    // need to steer around shelves and other visitors en route.
     const inGateApproach=(npc.phase==="entering"||npc.phase==="leaving")&&
-      (from.z>=5.25||target.z>=6.0);
+      from.z>=5.1;
     const proposed=crowdSafeStep(from,{x:target.x,z:target.z},occupied,
       WALK_SPEED*delta,walkable,!inGateApproach&&from.z<=6.5);
     if(!proposed){
