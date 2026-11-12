@@ -139,6 +139,7 @@ test("shop and sleeping cell reuse textured materials without changing collision
   const materials=await page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonSurfaces());
   expect(materials.textureCount).toBe(3);
+  expect(materials.floorUVMax).toEqual({u:3,v:5});
   expect(materials.surfaceCount).toBe(materials.requestedCount);
   expect(materials.sharedWall).toBe(true);
   expect(materials.sharedTimber).toBe(true);
