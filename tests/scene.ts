@@ -1,4 +1,5 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
@@ -314,4 +315,17 @@ export function inspectDungeonSurfaces() {
     idleDecor:scene.meshes.filter(m=>m.name.startsWith("bedroom-flagstone-"))
       .every(m=>!m.checkCollisions&&!m.isPickable),
   };
+}
+
+/** Screenshot-only staging, never imported by the production app. */
+export function aimSurfacePreview(room:"shop"|"bedroom") {
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(room==="shop"?-1.5:0,1.72,room==="shop"?-4.1:-7.9);
+  camera.rotation.setAll(0);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+  camera.setTarget(room==="shop"?new Vector3(0,1.15,2):
+    new Vector3(0.3,1.25,-10.7));
+  return scene.textures.filter(t=>t.name.startsWith("dungeon-")).length;
 }
