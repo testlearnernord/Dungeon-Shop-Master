@@ -214,6 +214,7 @@ cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId()
   (heroId,perfectTiming)=>store.payReservedCart(heroId,perfectTiming),message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
 
 engine.runRenderLoop(() => {
+  npcVisuals.setWishBubblesVisible(!arena.isActive&&!dungeon.isActive);
   if(ledger?.isSuspended&&!arena.isActive&&!dungeon.isActive){
     ledger.resumeIfReady();
     camera.detachControl();
