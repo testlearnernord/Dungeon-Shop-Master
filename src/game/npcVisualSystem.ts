@@ -20,6 +20,7 @@ import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SE
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import { reserveRestockWaitingRoute } from "./restockWaitingPlaces.ts";
 import { npcLocomotion } from "./npcLocomotion.ts";
+import { reserveShelfWaitingRoute } from "./shelfWaitingPlaces.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
 
@@ -750,10 +751,12 @@ export class NpcVisualSystem {
         return reserved?.shelfId===slot.shelfId;
       });
       if(shelfAccessBusy){
-        // Busy shelf customers should never gather by the same product or
-        // reserve places in the gate/cashier lane. Use the same off-aisle
-        // standing pockets as restock waiters.
-        const waitingRoute=this.offAisleWaitingRoute(npc);
+        // A shopper briefly queued for a busy shelf stays near that shelf.
+        // Rear-wall waiting pockets are exclusively for sold-out stock and
+        // begging, never for an ordinary purchase in progress.
+        const waitingRoute=this.nearShelfWaitingRoute(npc,{
+          x:pointForShelf.x,z:pointForShelf.z,
+        });
         npc.phase="queueing";
         npc.route=waitingRoute?.waypoints.map(p=>new Vector3(p.x,0,p.z))??[];
         npc.waypoint=0;
@@ -800,6 +803,18 @@ export class NpcVisualSystem {
     npc.root.metadata.checkoutQueueIndex=checkoutIndex;
     npc.root.metadata.phase=npc.phase;
     paintIdentity(npc,this.portraits);
+  }
+
+  private nearShelfWaitingRoute(npc:NpcVisual,target:{x:number;z:number}):
+    NonNullable<ReturnType<typeof reserveShelfWaitingRoute>>["route"]|null {
+    if(!this.layout)return null;
+    const others=[...this.npcs.values()].filter(other=>other!==npc);
+    return reserveShelfWaitingRoute(this.layout,
+      {x:npc.root.position.x,z:npc.root.position.z},target,
+      others.map(other=>({x:other.root.position.x,z:other.root.position.z})),
+      others.map(other=>other.route.at(-1))
+        .filter((point):point is Vector3=>point!==undefined)
+        .map(point=>({x:point.x,z:point.z})))?.route??null;
   }
 
   private offAisleWaitingRoute(npc:NpcVisual):
