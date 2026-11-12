@@ -350,3 +350,21 @@ export function inspectDungeonSurfaces() {
       .every(m=>!m.checkCollisions&&!m.isPickable),
   };
 }
+
+/** QA diagnostics: read only, nothing mutates store or movement. */
+export function inspectNpcTrafficDiagnostics(){
+  const scene=Engine.LastCreatedScene;
+  return (scene?.transformNodes.filter(n=>n.name.startsWith("npc-adventurer-")&&n.metadata?.adventurerId)
+    .map(n=>({
+      id:n.metadata.adventurerId,
+      x:Math.round(n.position.x*100)/100,
+      z:Math.round(n.position.z*100)/100,
+      phase:n.metadata.phase,
+      shopPhase:n.metadata.shoppingPhase,
+      target:n.metadata.shoppingTargetSlot,
+      targets:n.metadata.shoppingTargets,
+      reason:n.metadata.shoppingReason,
+      blocked:Math.round((n.metadata.blockedSeconds??0)*10)/10,
+      gate:n.metadata.gateSide,
+    })) ?? []).sort((a,b)=>a.id.localeCompare(b.id));
+}
