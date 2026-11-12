@@ -279,7 +279,10 @@ export class NpcVisualSystem {
       // A departing visitor has just paid by the confirmed Day Tick. Clear
       // the unpaid basket immediately, and show their updated true inventory.
       if(!isShopping){
-        if(npc.phase!=="leaving")this.beginLeaving(npc);
+        if(npc.phase!=="leaving"){
+          this.clearWish(npc);
+          this.beginLeaving(npc);
+        }
         if(changed)paintIdentity(npc,this.portraits);
         // Leaving visitors keep their route across regular economy refreshes,
         // but must replan when moved furniture would intersect a cached path.
@@ -461,6 +464,16 @@ export class NpcVisualSystem {
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x < 0) open.level4 = true;
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x > 0) open.level6 = true;
       }
+      if(npc.wishBubble){
+        updateNpcWishBubble(npc.wishBubble,this.scene,npc.root.position,
+          npc.restockSeconds??0,npc.root.metadata.shoppingPhase==="leaving-upset");
+      }
+      if(npc.phase==="queueing"&&
+        npc.root.metadata.shoppingPhase==="waiting-for-restock"){
+        npc.restockSeconds=restockWaitRemaining(npc.restockSeconds??RESTOCK_WAIT_SECONDS,delta);
+        npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
+        if(npc.restockSeconds<=0)this.leaveUnserved(npc);
+      }
       if(npc.phase==="queueing" &&
         npc.root.metadata.shoppingPhase==="waiting-for-shelf" &&
         npc.visitor.status==="at-shop"){
@@ -520,6 +533,7 @@ export class NpcVisualSystem {
 
   private beginEntering(npc: NpcVisual, slot: number, fromOutside: boolean): void {
     this.releaseShelf(npc);
+    this.clearWish(npc);
     npc.slot = slot;
     npc.phase = "entering";
     npc.gateSide = npc.visitor.entranceGate ?? "level4";
@@ -888,6 +902,7 @@ export class NpcVisualSystem {
 
   private dispose(npc: NpcVisual): void {
     this.releaseShelf(npc);
+    this.clearWish(npc);
     this.clearSaleTag(npc);
     this.syncCarriedProducts(npc, []);
     npc.root.dispose(false, true);
