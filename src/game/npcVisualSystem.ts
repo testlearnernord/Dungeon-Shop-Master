@@ -18,6 +18,7 @@ import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
+import { reserveRestockWaitingRoute } from "./restockWaitingPlaces.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
 
@@ -492,6 +493,14 @@ export class NpcVisualSystem {
         updateNpcWishBubble(npc.wishBubble,this.scene,npc.root.position,
           npc.restockSeconds??0,npc.root.metadata.shoppingPhase==="leaving-upset");
       }
+      if(npc.phase==="queueing"&&(
+        npc.root.metadata.shoppingPhase==="restock-spot-full"||
+        npc.root.metadata.shoppingPhase==="shelf-waiting-spot-full")){
+        // All safe pockets are reserved. Reattempt allocation, never start
+        // waiting beside a shelf merely because route creation returned null.
+        npc.wait-=delta;
+        if(npc.wait<=0)this.beginBrowsing(npc);
+      }
       if(npc.phase==="queueing"&&
         npc.root.metadata.shoppingPhase==="waiting-for-restock"){
         npc.restockSeconds=restockWaitRemaining(npc.restockSeconds??RESTOCK_WAIT_SECONDS,delta);
@@ -657,21 +666,23 @@ export class NpcVisualSystem {
     const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
     const action=shopperVisualAction(npc.intent,checkoutIndex>=0);
     if(!item&&action==="wait-restock"&&npc.intent?.wantedItemId){
-      // Hold a free off-aisle waiting place, not the empty shelf's access
-      // point. The countdown starts when that waiting place is reached.
-      const target=this.queuePosition(npc.slot,npc);
-      const route=target&&this.layout?pathToShopGoal(origin,
-        {x:target.x,z:target.z},this.layout):null;
+      // The generic idle-grid starts beside the actual shelves. Restock
+      // customers require reserved rear-wall pockets away from both shopping
+      // aisles and the entrance. Never treat an unreachable empty route as
+      // successful arrival and start the 60-second countdown in the doorway.
+      const waitRoute=this.offAisleWaitingRoute(npc);
       if(npc.restockSeconds===null)npc.restockSeconds=RESTOCK_WAIT_SECONDS;
       this.showWish(npc,npc.intent.wantedItemId);
       npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
       npc.root.metadata.shoppingTargetSlot=null;
       npc.root.metadata.checkoutQueueIndex=-1;
       npc.toQueue=true;
-      npc.route=(route?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
+      npc.route=(waitRoute?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
       npc.waypoint=0;
-      npc.phase="browsing";
-      npc.root.metadata.shoppingPhase="walking-to-restock-wait";
+      npc.phase=waitRoute?"browsing":"queueing";
+      npc.wait=0.5;
+      npc.root.metadata.shoppingPhase=waitRoute
+        ?"walking-to-restock-wait":"restock-spot-full";
       npc.root.metadata.phase=npc.phase;
       return;
     }
@@ -699,25 +710,16 @@ export class NpcVisualSystem {
         return reserved?.shelfId===slot.shelfId;
       });
       if(shelfAccessBusy){
-        const waitingRoutes=Array.from({length:this.npcs.size+5},(_,slot)=>{
-          const target=this.queuePosition(slot,npc);
-          const route=target?pathToShopGoal(origin,target,this.layout!):null;
-          const point=route?.waypoints.at(-1)??target;
-          const clearOfShelf=!!point&&Math.hypot(point.x-pointForShelf.x,
-            point.z-pointForShelf.z)>=PERSONAL_SPACE*1.25;
-          const clearOfVisitors=!!point&&[...this.npcs.values()].every(other=>
-            other===npc||Math.hypot(point.x-other.root.position.x,
-              point.z-other.root.position.z)>=PERSONAL_SPACE);
-          return route&&clearOfShelf&&clearOfVisitors?{route}:null;
-        }).filter((candidate):candidate is {route:NonNullable<ReturnType<typeof pathToShopGoal>>} =>
-          candidate!==null)
-          .sort((a,b)=>a.route.length-b.route.length);
-        const waitingRoute=waitingRoutes[0]?.route;
+        // Busy shelf customers should never gather by the same product or
+        // reserve places in the gate/cashier lane. Use the same off-aisle
+        // standing pockets as restock waiters.
+        const waitingRoute=this.offAisleWaitingRoute(npc);
         npc.phase="queueing";
         npc.route=waitingRoute?.waypoints.map(p=>new Vector3(p.x,0,p.z))??[];
         npc.waypoint=0;
         npc.wait=0.6+(npc.slot%4)*0.12;
-        npc.root.metadata.shoppingPhase="waiting-for-shelf";
+        npc.root.metadata.shoppingPhase=waitingRoute
+          ?"waiting-for-shelf":"shelf-waiting-spot-full";
         npc.root.metadata.shoppingTargetSlot=item.slotId;
         npc.root.metadata.phase=npc.phase;
         return;
@@ -758,6 +760,21 @@ export class NpcVisualSystem {
     npc.root.metadata.checkoutQueueIndex=checkoutIndex;
     npc.root.metadata.phase=npc.phase;
     paintIdentity(npc,this.portraits);
+  }
+
+  private offAisleWaitingRoute(npc:NpcVisual):
+    NonNullable<ReturnType<typeof reserveRestockWaitingRoute>>["route"]|null {
+    if(!this.layout)return null;
+    const others=[...this.npcs.values()].filter(other=>other!==npc);
+    const occupied=others.map(other=>({
+      x:other.root.position.x,z:other.root.position.z,
+    }));
+    const destinations=others.map(other=>other.route.at(-1))
+      .filter((point):point is Vector3=>point!==undefined)
+      .map(point=>({x:point.x,z:point.z}));
+    return reserveRestockWaitingRoute(this.layout,
+      {x:npc.root.position.x,z:npc.root.position.z},
+      occupied,destinations,npc.slot)?.route??null;
   }
 
   private queuePosition(slot:number,npc:NpcVisual):Vector3|null {

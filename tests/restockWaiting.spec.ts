@@ -115,3 +115,49 @@ test("expired stock request produces angry walkout and no next-day phantom sale"
   expect(next?.events.some(event=>event.type==="sale"&&event.adventurerId===heroId))
     .toBe(false);
 });
+
+test("three Day-1 sold-out customers wait off-aisle instead of blocking Waybread or checkout",async({page})=>{
+  test.setTimeout(95000);
+  const errors:string[]=[];
+  page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.evaluate(async()=>{
+    const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const initial=createGameState(7351);
+    const state={
+      ...initial,
+      adventurers:initial.adventurers.map((hero,index)=>index<3
+        ?{...hero,status:"at-shop" as const,floor:5 as const,gold:100,
+          inventory:{...hero.inventory,food:0},
+          equipment:{weapon:null,armor:null}}
+        :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
+      shopEconomy:{...initial.shopEconomy,
+        slots:initial.shopEconomy.slots.map(slot=>({
+          ...slot,quantity:0,itemId:null,
+        }))},
+    };
+    await new CampaignStorage().saveGame(state);
+  });
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const read=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals());
+  await expect.poll(async()=>(await read()).visitors.filter(
+    v=>v.shoppingPhase==="waiting-for-restock").length,
+  {timeout:50000,intervals:[500,1000]}).toBe(3);
+  const buyers=(await read()).visitors.filter(v=>v.shoppingPhase==="waiting-for-restock");
+  expect(buyers).toHaveLength(3);
+  for(const [i,shopper] of buyers.entries()){
+    expect(shopper.wantedItemId).toBe("bread");
+    expect(shopper.restockRemaining).toBeGreaterThan(0);
+    expect(shopper.z,"shopper must leave the shelf and entrance aisle").toBeLessThan(-3.1);
+    expect(Math.abs(shopper.x),"waiting zone must be clear of checkout").toBeGreaterThan(2);
+    for(const other of buyers.slice(0,i))
+      expect(Math.hypot(shopper.x-other.x,shopper.z-other.z),
+        "restock waiters must have different standing spots").toBeGreaterThan(1.0);
+  }
+  await expect(page.locator(".npc-wish-bubble")).toHaveCount(3);
+  expect(errors).toEqual([]);
+});
