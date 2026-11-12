@@ -9,6 +9,7 @@ import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
 import { manuallyPaidVisitors } from "./game/npcVisitors.ts";
 import { forecastShoppingIntents } from "./game/shopperIntents.ts";
+import { setupNpcTrafficDebug } from "./game/npcTrafficDebug.ts";
 import { Level6Arena } from "./game/level6Arena";
 import { DungeonViewer } from "./game/dungeonViewer";
 import { createRosterBoard } from "./game/rosterBoard";
@@ -62,6 +63,7 @@ let bedtime:BedtimeController|null=null;
 let ledger:MerchantLedger|null=null;
 setupShopPlacementHud(canvas, camera, store, shop);
 const npcVisuals = new NpcVisualSystem(scene);
+setupNpcTrafficDebug(npcVisuals);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
   if (open) camera.detachControl();
   else camera.attachControl(canvas, true);
