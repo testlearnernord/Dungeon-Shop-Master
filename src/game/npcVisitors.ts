@@ -54,6 +54,25 @@ export function reconcileVisitors(
   };
 }
 
+/** Paid shoppers physically leave immediately, although their expedition
+ * simulation remains governed by the next Day Tick. Only a real, committed
+ * manual sale is enough: an empty or cancelled cart is NOT a payment. */
+export function manuallyPaidVisitors(
+  events:readonly {readonly day:number;readonly type:string;
+    readonly adventurerId?:string;readonly saleChannel?:string}[],
+  day:number,
+):ReadonlySet<string> {
+  const paid=new Set<string>();
+  for(let i=events.length-1;i>=0;i--){
+    const event=events[i];
+    if(event.day<day)break;
+    if(event.day===day&&event.type==="sale"&&
+       event.saleChannel==="manual"&&event.adventurerId)
+      paid.add(event.adventurerId);
+  }
+  return paid;
+}
+
 /** Cart contents are cosmetic until the authoritative visitor status changes.
  * Emptying a basket must not turn an at-shop NPC into a departing NPC.
  */
