@@ -119,12 +119,12 @@ test("cleared level 6 permits lead to Level 7 on later confirmed days only", () 
 test("level 7 save migration preserves former Level 7 absence and catches altered map/records", () => {
   const original=createGameState(99);
   const previous={...original,simulationVersion:7};
-  const {level7World: _ignored,shopLayout: _furniture,shopCarts: _carts,...old}=previous;
+  const {level7World: _ignored,shopLayout: _furniture,shopCarts: _carts,shopDebts: _debts,...old}=previous;
   const prior=JSON.stringify({schemaVersion:1,simulationVersion:7,
     savedAt:"2026-11-04T00:00:00.000Z",payload:old});
   const upgraded=parseSave(prior);
   assert.deepEqual(upgraded.level7World,emptyLevel7World());
-  assert.equal(upgraded.simulationVersion,10);
+  assert.equal(upgraded.simulationVersion,11);
   assert.deepEqual(upgraded.adventurers,original.adventurers);
   assert.deepEqual(parseSave(JSON.stringify(createSave(upgraded))),upgraded);
   const invalid=structuredClone(createSave(upgraded));
