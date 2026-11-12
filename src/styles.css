@@ -679,19 +679,111 @@ body.dungeon-active #music-panel { top: 119px; }
 }
 #placement-save { width: 100%; font-weight: 700; }
 
-/* Staffed checkout: compact overlay above the FPS view. */
-#cashier-overlay[open]{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:rgba(9,8,6,.72);color:#f4e4c3;pointer-events:auto}
+/* Desktop first: a tangible register receipt rather than a placeholder QTE. */
+#cashier-overlay[open]{
+  position:fixed;inset:0;z-index:1000;display:grid;place-items:center;
+  width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;
+  border:0;background:rgba(9,7,5,.79);color:#f3e7d2;pointer-events:auto;
+}
 #cashier-overlay::backdrop{background:transparent}
-#cashier-overlay .cashier-panel{width:min(460px,92vw);padding:24px;background:#241d18;color:#f4e4c3;border:2px solid #98764b;box-shadow:0 12px 50px #000a;font-family:system-ui,sans-serif}
-#cashier-overlay h2{margin:0 0 12px;letter-spacing:.12em}
-#cashier-overlay .cashier-lines{max-height:180px;overflow:auto}
-#cashier-overlay .cashier-lines p{margin:6px 0}
-#cashier-overlay .cashier-total{font-weight:700;font-size:1.2rem}
-#cashier-overlay .cashier-meter{height:24px;position:relative;background:#514238;border:1px solid #c0a06b;margin:20px 0}
-#cashier-overlay .cashier-target{position:absolute;left:41%;width:18%;height:100%;background:#6e9c64}
-#cashier-overlay .cashier-needle{position:absolute;top:-5px;bottom:-5px;width:4px;background:#ffe5a0;left:0}
-#cashier-overlay .cashier-hint{min-height:3em}
-#cashier-overlay button{padding:9px 14px;cursor:pointer}
+#cashier-overlay .cashier-panel{
+  box-sizing:border-box;width:min(560px,calc(100vw - 48px));padding:0;
+  border:1px solid #97744a;outline:4px solid #211911;
+  background:linear-gradient(145deg,#2b221a 0%,#1b1713 72%);
+  box-shadow:0 26px 80px rgba(0,0,0,.8),inset 0 0 42px #0005;
+  font-family:system-ui,-apple-system,sans-serif;
+}
+#cashier-overlay .cashier-panel-header{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  border-bottom:1px solid #765536;padding:12px 24px;
+  color:#e8c78f;background:#1b1511;font-size:11px;letter-spacing:.19em;
+  font-weight:750;
+}
+#cashier-overlay .cashier-serial{font-family:monospace;color:#998268}
+#cashier-overlay .cashier-heading{padding:20px 24px 15px;border-bottom:1px solid #66503b}
+#cashier-overlay .cashier-kicker{margin:0 0 4px;color:#aa8d62;font-size:10px;letter-spacing:.19em}
+#cashier-overlay h2{
+  margin:0;font:700 clamp(24px,3vw,32px) Georgia,serif;
+  letter-spacing:.1em;color:#f4ddb1;text-shadow:0 2px 4px #0009;
+}
+#cashier-overlay .cashier-customer{margin:9px 0 0;color:#e8d9b8;font-size:14px}
+#cashier-overlay .cashier-receipt{
+  margin:19px 24px 14px;padding:14px 18px 11px;background:#c9b48d;
+  color:#312318;box-shadow:0 5px 16px #0006;
+  border-top:3px double #6c4b2e;border-bottom:3px double #6c4b2e;
+  font-family:monospace;
+}
+#cashier-overlay .cashier-receipt-heading{
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px dashed #80684b;padding-bottom:9px;margin-bottom:9px;
+  letter-spacing:.13em;font-size:13px;
+}
+#cashier-overlay .cashier-receipt-heading span{font-size:11px;letter-spacing:0;color:#765b3d}
+#cashier-overlay .cashier-lines{max-height:146px;overflow:auto}
+#cashier-overlay .cashier-line{
+  display:flex;gap:12px;justify-content:space-between;margin:5px 0;
+  padding:3px 0;font-size:13px;
+}
+#cashier-overlay .cashier-line strong{font-variant-numeric:tabular-nums;white-space:nowrap}
+#cashier-overlay .cashier-total{
+  text-align:right;margin:11px 0 0;padding-top:11px;border-top:1px dashed #80684b;
+  font-size:16px;font-weight:800;letter-spacing:.065em;
+}
+#cashier-overlay .cashier-challenge{padding:12px 24px 24px}
+#cashier-overlay .cashier-stage-header{display:flex;align-items:baseline;gap:12px}
+#cashier-overlay .cashier-stage-count{
+  color:#d0a66b;font:700 12px monospace;letter-spacing:.12em;
+}
+#cashier-overlay .cashier-stage-name{font:700 18px Georgia,serif;color:#f2e0ba}
+#cashier-overlay .cashier-stage-detail{margin:8px 0 15px;font-size:12px;color:#baa88f}
+#cashier-overlay .cashier-meter{
+  position:relative;height:31px;margin:12px 0 10px;
+  border:2px solid #9b7449;border-radius:2px;overflow:visible;
+  background:repeating-linear-gradient(90deg,transparent 0,transparent 24px,#ffffff06 25px),
+    linear-gradient(180deg,#0d0c0a,#46382a);box-shadow:inset 0 4px 12px #000a;
+}
+#cashier-overlay .cashier-meter::before{
+  content:"";position:absolute;top:0;bottom:0;left:50%;
+  width:1px;background:#c0a9874d;
+}
+#cashier-overlay .cashier-target{
+  position:absolute;top:0;bottom:0;left:33%;width:18%;
+  background:linear-gradient(180deg,#74936a,#405940);
+  border-left:1px solid #a4d399;border-right:1px solid #a4d399;
+  box-shadow:inset 0 0 10px #0c291c99,0 0 13px #78945d8a;
+}
+#cashier-overlay .cashier-needle{
+  position:absolute;top:-7px;bottom:-7px;width:4px;
+  background:#f9dd97;border:1px solid #332315;box-shadow:0 0 8px #ffdb8c;
+}
+#cashier-overlay .cashier-progress{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#cashier-overlay .cashier-progress span{
+  padding:9px 8px;border:1px solid #4b4034;text-align:center;
+  color:#8f826e;background:#1c1814;font:700 11px monospace;letter-spacing:.1em;
+}
+#cashier-overlay .cashier-progress .is-active{
+  color:#edcf9d;border-color:#a17949;background:#483626;
+}
+#cashier-overlay .cashier-progress .is-complete{
+  color:#bed2b2;border-color:#607553;background:#263020;
+}
+#cashier-overlay .cashier-hint{
+  min-height:2.5em;margin:13px 0;color:#e8cfa5;
+  font-size:13px;line-height:1.45;
+}
+#cashier-overlay .cashier-actions{display:flex;justify-content:space-between;gap:12px}
+#cashier-overlay button{
+  min-height:40px;padding:10px 16px;cursor:pointer;border-radius:3px;
+  font-size:13px;font-weight:700;letter-spacing:.07em;
+}
+#cashier-overlay .cashier-stamp{
+  flex:1;color:#27190d;border:1px solid #dec397;
+  background:linear-gradient(180deg,#e8c58c,#ab7c44);text-shadow:0 1px #ffffff35;
+}
+#cashier-overlay .cashier-stamp:hover{filter:brightness(1.1)}
+#cashier-overlay .cashier-cancel{background:#241d18;color:#dfc8a2;border:1px solid #80623f}
+#cashier-overlay .cashier-cancel:hover{background:#413024}
+#cashier-overlay kbd{font:700 12px monospace;color:inherit;opacity:.78}
 
 /* MVP 1.3: compact FPS stocking hotbar, reusing authoritative bag state. */
 #inventory.inventory {
