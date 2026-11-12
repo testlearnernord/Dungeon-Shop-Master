@@ -1,3 +1,5 @@
+import { VertexBuffer } from "@babylonjs/core/Buffers/buffer";
+import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
@@ -175,4 +177,21 @@ export function getDungeonSurfaces(scene: Scene): DungeonSurfaces {
   };
   cache.set(scene, surfaces);
   return surfaces;
+}
+
+/**
+ * Repeats the already-cached flagstone texture on large horizontal geometry,
+ * instead of stretching five stones across the whole 25-metre shop floor.
+ * UV-only change: no extra meshes, colliders, pick targets or material clones.
+ */
+export function tileLargeFloorUV(mesh: Mesh, width: number, depth: number): void {
+  const uvs = mesh.getVerticesData(VertexBuffer.UVKind);
+  if (!uvs) return;
+  const repeatsU = Math.max(1, Math.round(width / 5));
+  const repeatsV = Math.max(1, Math.round(depth / 5));
+  for (let index = 0; index < uvs.length; index += 2) {
+    uvs[index] *= repeatsU;
+    uvs[index + 1] *= repeatsV;
+  }
+  mesh.setVerticesData(VertexBuffer.UVKind, uvs, false);
 }
