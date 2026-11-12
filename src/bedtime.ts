@@ -1,4 +1,5 @@
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Scene } from "@babylonjs/core/scene";
 
 export const BED_X=0.8;
@@ -9,6 +10,16 @@ export const BED_REACH=2.35;
 export function sleepHoldProgress(startedAt:number,now:number,holding:boolean,inReach:boolean):number {
   if(!holding||!inReach||!Number.isFinite(startedAt)||!Number.isFinite(now))return 0;
   return Math.max(0,Math.min(1,(now-startedAt)/BED_HOLD_MS));
+}
+
+/** Only the mattress, bedding and bed frame can start the hold-to-sleep.
+ * Decor, wall and floor hits must occlude, not impersonate the bed. */
+export function isBedInteractionMesh(name:string):boolean {
+  return name==="galvik-bed" || name==="bed-frame" ||
+    name==="bed-headboard" || name==="bed-footboard" ||
+    name==="bed-pillow" || name==="bed-blanket" ||
+    name==="bed-blanket-fold" || name.startsWith("bed-quilt-seam-") ||
+    name.startsWith("bed-frame-rail-") || name.startsWith("bed-post-");
 }
 
 export interface BedtimeController {
@@ -48,6 +59,15 @@ export function setupBedtime(
   let busy=false;
   let timeout:number|null=null;
   const nearBed=()=>Math.hypot(camera.position.x-BED_X,camera.position.z-BED_Z)<=BED_REACH;
+  const focusedOnBed=()=>{
+    if(!nearBed())return false;
+    const ray=camera.getForwardRay(BED_REACH+1.4);
+    const hit=scene.pickWithRay(ray,(mesh:AbstractMesh)=>mesh.isEnabled() &&
+      (mesh.name==="galvik-bed"||mesh.name.startsWith("bed-")||
+       mesh.name.startsWith("bedroom-")||mesh.name.startsWith("galvik-bed-")||
+       mesh.name.endsWith("-wall")));
+    return !!hit?.hit&&!!hit.pickedMesh&&isBedInteractionMesh(hit.pickedMesh.name);
+  };
   const cancel=()=>{
     holding=false;
     holdStarted=0;
@@ -61,7 +81,7 @@ export function setupBedtime(
     prompt.hidden=true;
     fade.classList.remove("active");
   };
-  const usable=()=>!busy&&!hasLedger()&&isShopAvailable()&&nearBed()&&
+  const usable=()=>!busy&&!hasLedger()&&isShopAvailable()&&focusedOnBed()&&
     !document.querySelector("dialog[open]");
   const validFocus=(event:KeyboardEvent)=>!(event.target instanceof HTMLElement &&
     (event.target.isContentEditable||event.target.closest("input,textarea,select,button,[contenteditable]")));
@@ -121,7 +141,7 @@ export function setupBedtime(
   });
   return {
     get isBlocking(){return busy||hasLedger();},
-    isNearBed:nearBed,
+    isNearBed:focusedOnBed,
     reset,
   };
 }
