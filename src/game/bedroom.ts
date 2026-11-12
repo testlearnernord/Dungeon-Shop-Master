@@ -28,7 +28,8 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
       result = new StandardMaterial("bedroom-" + name + "-material", scene);
       result.diffuseColor = color;
       result.specularColor = new Color3(0.035, 0.03, 0.02);
-      if (emissive) result.emissiveColor = emissive;
+      // Warm, low indirect bounce in a room otherwise swallowed by the cave fog.
+      result.emissiveColor = emissive ?? color.scale(0.12);
       mats.set(name, result);
     }
     return result;
@@ -90,8 +91,8 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
     const offset = Math.floor(i / 2);
     const z = -7.59 - (offset % 11) * 0.40;
     const x = (left ? -1 : 1) * (3.10 - (offset % 3) * 0.025);
-    const mesh = MeshBuilder.CreateSphere("bedroom-rock-rib-" + i,
-      { diameter: 1, segments: 5 }, scene);
+    const mesh = MeshBuilder.CreateIcoSphere("bedroom-rock-rib-" + i,
+      { radius: 0.5, subdivisions: 1, flat: true }, scene);
     mesh.position.set(x, 0.78 + ((offset * 7) % 8) * 0.38, z);
     mesh.scaling.set(0.27, 0.56 + (offset % 3) * 0.09, 0.31);
     mesh.rotation.set(offset * 0.24, offset * 0.48, offset * 0.17);
@@ -101,8 +102,8 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
   }
   for (let i = 0; i < 9; i++) {
     const x = -2.6 + i * 0.65;
-    const mesh = MeshBuilder.CreateSphere("bedroom-rear-rock-" + i,
-      { diameter: 1, segments: 5 }, scene);
+    const mesh = MeshBuilder.CreateIcoSphere("bedroom-rear-rock-" + i,
+      { radius: 0.5, subdivisions: 1, flat: true }, scene);
     mesh.position.set(x, 2.15 + (i % 3) * 0.38, -12.06);
     mesh.scaling.set(0.44, 0.55 + (i % 2) * 0.24, 0.23);
     mesh.rotation.y = i * 0.47;
@@ -188,7 +189,7 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
   flame.isPickable = false;
   const candleLight = new PointLight("galvik-bed-candle", new Vector3(2.25, 1.15, -10.95), scene);
   candleLight.diffuse = new Color3(1, 0.55, 0.26);
-  candleLight.intensity = 1.75;
+  candleLight.intensity = 2.25;
   candleLight.range = 7;
   // Secondary torch by the doorway fills the dark stone without washing the
   // entire shop in uniform ambient light.
@@ -203,14 +204,14 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
   torchTip.isPickable = false;
   const light = new PointLight("bedroom-door-torch-light", torchTip.position, scene);
   light.diffuse = new Color3(1, 0.37, 0.15);
-  light.intensity = 1.1;
+  light.intensity = 1.55;
   light.range = 6.5;
   // A tiny deterministic candle shimmer is cheap and needs no timer.
   scene.onBeforeRenderObservable.add(() => {
     const seconds = performance.now() * 0.001;
-    candleLight.intensity = 1.73 + Math.sin(seconds * 4.7) * 0.09
+    candleLight.intensity = 2.23 + Math.sin(seconds * 4.7) * 0.09
       + Math.sin(seconds * 9.1) * 0.035;
-    light.intensity = 1.07 + Math.sin(seconds * 5.3) * 0.075;
+    light.intensity = 1.52 + Math.sin(seconds * 5.3) * 0.075;
     flame.scaling.y = 1.44 + Math.sin(seconds * 6.8) * 0.12;
   });
 
@@ -235,6 +236,8 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
   const note = MeshBuilder.CreatePlane("bedroom-debt-note",
     { width: 0.91, height: 0.60 }, scene);
   note.position.set(1.93, 2.14, -12.065);
+  // Babylon planes face -Z by default; turn the writing toward the shop door.
+  note.rotation.y = Math.PI;
   const paper = new DynamicTexture("bedroom-debt-note-texture",
     { width: 512, height: 336 }, scene, false);
   paper.drawText("DEBTS OUTLIVE", null, 128, "bold 43px monospace",
@@ -252,8 +255,8 @@ export function buildBedroom(scene: Scene, stone: Color3): Mesh {
   // Scattered rubble stays near the edges and never becomes a collision trap.
   for (let i = 0; i < 12; i++) {
     const left = i % 2 === 0;
-    const r = MeshBuilder.CreateSphere("bedroom-fallen-stone-" + i,
-      { diameter: 0.32, segments: 5 }, scene);
+    const r = MeshBuilder.CreateIcoSphere("bedroom-fallen-stone-" + i,
+      { radius: 0.16, subdivisions: 1, flat: true }, scene);
     r.position.set((left ? -1 : 1) * (2.56 + (i % 3) * 0.12),
       0.11, -7.65 - Math.floor(i / 2) * 0.78);
     r.scaling.set(0.85 + (i % 3) * 0.18, 0.33, 0.65 + (i % 2) * 0.17);
