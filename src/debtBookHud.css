@@ -1,0 +1,34 @@
+#debt-book-dialog{inset:0;margin:auto;width:min(820px,calc(100vw - 24px));max-height:min(85vh,800px);
+  padding:0;border:6px double #786044;border-radius:9px;color:#322319;
+  background:linear-gradient(102deg,#e2ce9f,#f7e9c5 46%,#dec493 50%,#f1dfb3 54%,#e6cf9f);
+  box-shadow:0 20px 100px #000d,inset 0 0 22px #714e2766;font-family:Georgia,serif}
+#debt-book-dialog::backdrop{background:#0b0706cd}
+#debt-book-dialog .debt-book-pages{padding:clamp(18px,4vw,40px);background:linear-gradient(90deg,transparent 49.4%,#78593830 50%,transparent 50.7%)}
+#debt-book-dialog .debt-book-heading{display:flex;align-items:start;justify-content:space-between;border-bottom:2px solid #8e7452;padding-bottom:14px}
+#debt-book-dialog .debt-book-heading small{letter-spacing:.17em;font:700 11px system-ui;color:#755532}
+#debt-book-dialog h2{margin:8px 0;font:bold clamp(28px,4vw,38px) Georgia,serif;color:#513820}
+#debt-book-dialog p{margin:5px 0;line-height:1.5}
+#debt-book-dialog button,#debt-book-dialog select{border:1px solid #8e7550;border-radius:4px;padding:8px;background:#ebd7ab;color:#3c2b20}
+#debt-book-dialog button{cursor:pointer;font-weight:700}
+#debt-book-dialog button:focus-visible,#debt-book-dialog select:focus-visible{outline:3px solid #806334}
+#debt-book-dialog .debt-book-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:18px 0}
+#debt-book-dialog .debt-book-totals>div{display:flex;flex-direction:column;gap:4px}
+#debt-book-dialog .debt-book-totals span{font:700 10px system-ui;text-transform:uppercase;letter-spacing:.08em}
+#debt-book-dialog .debt-book-totals strong{font:bold 26px Georgia,serif;color:#63351e}
+#debt-book-dialog .debt-book-totals small{font:11px system-ui;color:#68543c}
+#debt-book-dialog .debt-book-tools{display:flex;gap:10px;align-items:center;justify-content:end;margin-bottom:12px;font:600 12px system-ui}
+#debt-book-dialog .debt-book-entries{max-height:38vh;overflow:auto;scrollbar-color:#a58b61 transparent}
+#debt-book-dialog .debt-book-account{border-top:1px solid #8e755066}
+#debt-book-dialog .debt-book-account:last-child{border-bottom:1px solid #8e755066}
+#debt-book-dialog .debt-book-account summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 8px;cursor:pointer}
+#debt-book-dialog .debt-book-account summary:hover{background:#95704320}
+#debt-book-dialog .debt-book-account summary span{display:flex;flex-direction:column;gap:4px}
+#debt-book-dialog .debt-book-account summary span strong{font-size:17px}
+#debt-book-dialog .debt-book-account summary small{font:700 10px system-ui;letter-spacing:.06em;color:#5a704e}
+#debt-book-dialog .debt-book-account summary small.debt-book-dead{color:#a04436}
+#debt-book-dialog .debt-book-account summary b{white-space:nowrap;color:#754022}
+#debt-book-dialog .debt-book-account ol{list-style:none;padding:6px 13px 14px 24px;margin:0}
+#debt-book-dialog .debt-book-account li{display:flex;gap:12px;justify-content:space-between;padding:3px 0;font-size:13px}
+#debt-book-dialog .debt-book-footnote{border-top:1px solid #8e755066;padding-top:13px;font:italic 12px/1.5 Georgia,serif;color:#76553b}
+#debt-book-dialog .debt-book-empty{padding:20px;font-style:italic;text-align:center}
+@media(max-width:540px){#debt-book-dialog .debt-book-totals{grid-template-columns:1fr 1fr}#debt-book-dialog .debt-book-totals>div:last-child{grid-column:1/-1}}
