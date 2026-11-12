@@ -49,7 +49,7 @@ test("three shoppers with the same out-of-stock item get distinct destinations",
 test("moving shelves invalidate waiting pockets without allowing overlaps or fake routes",()=>{
   const original=createShopLayout();
   const moved=replaceShelfPlacement(original,{
-    id:"shelf-1",x:-2,z:-1,rotation:1,
+    id:"shelf-1",x:0,z:-2,rotation:1,
   });
   assert.equal(moved.message,"Shelf placement saved.");
   const spots=restockWaitingPositions(moved.layout);
