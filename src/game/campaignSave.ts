@@ -66,7 +66,7 @@ const eventTypes = [
   "influx", "sale", "tip", "ate", "healed", "starvation", "rescue",
   "level6-departure", "level6-combat", "level6-return",
   "food-shortage", "found-food",
-  "level7-departure", "level7-exploration",
+  "level7-departure", "level7-exploration", "shop-credit",
 ] as const;
 
 
@@ -270,6 +270,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     ...(version >= 8 ? ["level7World"] : []),
     ...(version >= 9 ? ["shopLayout"] : []),
     ...(version >= 10 ? ["shopCarts"] : []),
+    ...(version >= 11 ? ["shopDebts"] : []),
   ]);
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
   if (state.simulationVersion !== version) fail("payload.simulationVersion", "is incompatible");
@@ -442,6 +443,21 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     }
   }
 
+  if(version>=11){
+    const seenDebtHeroes=new Set<string|number>();
+    const debts=array(state.shopDebts,"payload.shopDebts");
+    if(debts.length>(state.adventurers as unknown[]).length)
+      fail("payload.shopDebts","cannot exceed the adventurer count");
+    debts.forEach((raw,i)=>{
+      const path="payload.shopDebts["+i+"]";
+      const debt=object(raw,path,["heroId","outstandingGold"]);
+      const heroId=text(debt.heroId,path+".heroId");
+      if(!heroIds.has(heroId))fail(path+".heroId","must identify a known hero");
+      unique(heroId,seenDebtHeroes,path+".heroId");
+      integer(debt.outstandingGold,path+".outstandingGold",1);
+    });
+  }
+
   const sales = object(economy.dailySales, "payload.shopEconomy.dailySales", ["day", "units", "revenue"]);
   if (sales.day !== day) fail("payload.shopEconomy.dailySales.day", "must match the current day");
   integer(sales.units, "payload.shopEconomy.dailySales.units");
@@ -464,12 +480,14 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
         ...(version >= 7 ? ["combatReplay"] : []),
         ...(version >= 8 ? ["level7Replay"] : []),
-        ...(version >= 10 ? ["saleChannel"] : [])]);
+        ...(version >= 10 ? ["saleChannel"] : []),
+        ...(version >= 11 ? ["debtGold"] : [])]);
     choice(event.type, eventTypes.filter((type) =>
       (version >= 5 || !type.startsWith("level6-")) &&
       (version >= 6 || (type !== "food-shortage" && type !== "found-food")) &&
       (version >= 8 || !type.startsWith("level7-")) &&
-      (version >= 10 || type !== "shop-walkout")), `${path}.type`);
+      (version >= 10 || type !== "shop-walkout") &&
+      (version >= 11 || type !== "shop-credit")), `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
     lastDay = eventDay;
     text(event.message, `${path}.message`);
@@ -521,6 +539,17 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       if((event.revenue as number)>Math.floor(manualRevenue/10))
         fail(`${path}.revenue`,"must not exceed 10% of same-day manual sales");
     }
+    if (event.type === "shop-credit") {
+      allowed.push("itemId","quantity","debtGold");
+      choice(event.itemId,itemIds,path+".itemId");
+      if(integer(event.quantity,path+".quantity",1,1)!==1)
+        fail(path+".quantity","must represent one issued item");
+      const item=ITEMS.find(candidate=>candidate.id===event.itemId)!;
+      if(!["food","healing","weapon","armor"].includes(item.kind))
+        fail(path+".itemId","must be a hero need");
+      if(integer(event.debtGold,path+".debtGold",1)!==item.salePrice)
+        fail(path+".debtGold","must match the item's sticker price");
+    }
     if (event.type === "sale") {
       allowed.push("revenue");
       if (version >= 10 && event.saleChannel !== undefined) {
@@ -543,6 +572,22 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       if (!allowed.includes(key)) fail(`${path}.${key}`, "is not valid for this event type");
     }
   });
+  if(version >= 11) {
+    const balances=new Map<string,number>();
+    for(const raw of array(state.events,"payload.events")){
+      const event=raw as RecordValue;
+      if(event.type!=="shop-credit")continue;
+      const id=event.adventurerId as string;
+      const total=(balances.get(id)??0)+(event.debtGold as number);
+      if(!Number.isSafeInteger(total))fail("payload.events","credit total is unsafe");
+      balances.set(id,total);
+    }
+    const owed=new Map((state.shopDebts as RecordValue[]).map(entry=>[
+      entry.heroId as string,entry.outstandingGold as number]));
+    if(balances.size!==owed.size ||
+       [...balances].some(([id,total])=>owed.get(id)!==total))
+      fail("payload.shopDebts","must agree with all credit events");
+  }
   if(version >= 10) {
     const manualPaid=new Set(array(state.events,"payload.events")
       .filter(value=>(value as RecordValue).type==="sale" &&
@@ -578,7 +623,7 @@ export function parseSave(text: string): GameState {
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
   const version = envelope.simulationVersion;
   if (version !== 3 && version !== 4 && version !== 5 && version !== 6 &&
-      version !== 7 && version !== 8 && version !== 9 && version !== SIMULATION_VERSION) {
+      version !== 7 && version !== 8 && version !== 9 && version !== 10 && version !== SIMULATION_VERSION) {
     fail("simulationVersion", "is incompatible; no migrations are available");
   }
   const savedAt = textTimestamp(envelope.savedAt);
@@ -591,7 +636,8 @@ export function parseSave(text: string): GameState {
     simulationVersion: SIMULATION_VERSION,
     level7World: version < 8 ? emptyLevel7World() : envelope.payload.level7World,
     shopLayout: version < 9 ? createShopLayout() : envelope.payload.shopLayout,
-    shopCarts: [],
+    shopCarts: version < 10 ? [] : envelope.payload.shopCarts,
+    shopDebts: [],
     shopEconomy: version < 7
       ? { ...envelope.payload.shopEconomy,
         bag: { ...envelope.payload.shopEconomy.bag, "iron-sword": 0, "leather-vest": 0 } }
