@@ -16,6 +16,8 @@ export interface ShoppingIntent {
   readonly items: readonly ShoppingInterest[];
   readonly total: number;
   readonly reason: ShoppingReason;
+  /** Requested sprite when unmet affordable needs have no stock. */
+  readonly wantedItemId?: ItemId;
 }
 export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, ShoppingIntent> {
   // Treat unpaid carried items as a virtual part of their buyer's inventory
@@ -89,21 +91,42 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
           ?"unavailable":"cannot-afford";
       }else reason="unavailable";
     }
+    // Choose one truthful and affordable unmet need for an out-of-stock
+    // request bubble. Survival goods are more urgent than equipment.
+    const projectedHero=virtualHeroes.find(entry=>entry.id===hero.id)??hero;
+    const priorities:readonly ItemId[]=["bread","healing-herb","iron-sword","leather-vest"];
+    const wantedItemId=reason==="unavailable"?
+      priorities.find(id=>{
+        const item=ITEMS.find(entry=>entry.id===id)!;
+        if(projectedHero.gold<item.salePrice)return false;
+        if(id==="bread")return projectedHero.inventory.food<ECONOMY.foodTarget;
+        if(id==="healing-herb")return projectedHero.health<projectedHero.stats.maxHealth&&
+          projectedHero.inventory.healing<ECONOMY.healingTarget;
+        if(id==="iron-sword")return projectedHero.equipment.weapon===null;
+        return projectedHero.equipment.armor===null;
+      }):undefined;
     results.set(hero.id,{heroId:hero.id,items,total:items.reduce(
-      (sum,item)=>sum+item.subtotal,0),reason});
+      (sum,item)=>sum+item.subtotal,0),reason,wantedItemId});
   }
   return results;
 }
 
-/** Pure presentation policy. A customer with no possible purchase must not
- * occupy a shop-floor idle waypoint forever. A held cart always takes priority:
- * its owner belongs in the checkout queue, even if all shelves are now empty.
- * The authoritative day-tick simulation and customer status are untouched.
- */
-export type ShopperVisualAction = "shop" | "checkout" | "leave-unserved";
+/** Visual-only intent, kept separate from the authoritative day-tick trade. */
+export type ShopperVisualAction = "shop"|"checkout"|"wait-restock"|"leave-unserved";
 export function shopperVisualAction(
   intent: ShoppingIntent | null, hasUnpaidCart: boolean,
 ): ShopperVisualAction {
   if (hasUnpaidCart) return "checkout";
-  return intent?.items.length ? "shop" : "leave-unserved";
+  if (intent?.items.length) return "shop";
+  return intent?.reason==="unavailable"&&intent.wantedItemId
+    ? "wait-restock":"leave-unserved";
+}
+
+/** Real seconds after arriving at the waiting spot; unrelated shop changes
+ * must never renew this window. */
+export const RESTOCK_WAIT_SECONDS=60;
+export function restockWaitRemaining(previous:number,elapsed:number):number {
+  if(!Number.isFinite(previous)||!Number.isFinite(elapsed)||elapsed<0)
+    throw new RangeError("Restock timer must be finite and nonnegative.");
+  return Math.max(0,previous-elapsed);
 }
