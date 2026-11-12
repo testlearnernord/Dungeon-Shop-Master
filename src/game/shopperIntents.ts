@@ -96,10 +96,10 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
     // request bubble. Survival goods are more urgent than equipment.
     const projectedHero=virtualHeroes.find(entry=>entry.id===hero.id)??hero;
     const priorities:readonly ItemId[]=["bread","healing-herb","iron-sword","leather-vest"];
-    const wantedItemId=reason==="unavailable"?
+    const wantedItemId=(reason==="unavailable"||reason==="cannot-afford")?
       priorities.find(id=>{
         const item=ITEMS.find(entry=>entry.id===id)!;
-        if(projectedHero.gold<item.salePrice)return false;
+        if(reason==="unavailable"&&projectedHero.gold<item.salePrice)return false;
         if(id==="bread")return projectedHero.inventory.food<ECONOMY.foodTarget;
         if(id==="healing-herb")return projectedHero.health<projectedHero.stats.maxHealth&&
           projectedHero.inventory.healing<ECONOMY.healingTarget;
@@ -113,12 +113,13 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
 }
 
 /** Visual-only intent, kept separate from the authoritative day-tick trade. */
-export type ShopperVisualAction = "shop"|"checkout"|"wait-restock"|"leave-unserved";
+export type ShopperVisualAction = "shop"|"checkout"|"wait-restock"|"beg"|"leave-unserved";
 export function shopperVisualAction(
   intent: ShoppingIntent | null, hasUnpaidCart: boolean,
 ): ShopperVisualAction {
   if (hasUnpaidCart) return "checkout";
   if (intent?.items.length) return "shop";
+  if (intent?.reason==="cannot-afford"&&intent.wantedItemId)return "beg";
   return intent?.reason==="unavailable"&&intent.wantedItemId
     ? "wait-restock":"leave-unserved";
 }
