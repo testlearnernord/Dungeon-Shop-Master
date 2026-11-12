@@ -9,6 +9,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import type { Interactable } from "./inventory";
 import { CHECKOUT_COUNTER, COMPACT_COUNTER } from "./shopLayout";
+import { buildBedroom } from "./bedroom";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
@@ -89,40 +90,8 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   box(scene, "right-wall", { width: 0.4, height: 4, depth: 14 }, new Vector3(7.5, 2, 0), rock);
   box(scene, "front-left-wall", { width: 5, height: 4, depth: 0.4 }, new Vector3(-5, 2, -7), rock);
   box(scene, "front-right-wall", { width: 5, height: 4, depth: 0.4 }, new Vector3(5, 2, -7), rock);
-  // Galvik's miserable sleeping alcove opens behind the old back wall.
-  // The original central wall becomes two solid piers around a 2.4m door.
-  box(scene, "bedroom-door-left-pier", { width: 1.3, height: 4, depth: 0.4 },
-    new Vector3(-1.85, 2, -7), rock);
-  box(scene, "bedroom-door-right-pier", { width: 1.3, height: 4, depth: 0.4 },
-    new Vector3(1.85, 2, -7), rock);
-  box(scene, "bedroom-left-wall", { width: 0.4, height: 4, depth: 5.55 },
-    new Vector3(-3.25, 2, -9.68), rock);
-  box(scene, "bedroom-right-wall", { width: 0.4, height: 4, depth: 5.55 },
-    new Vector3(3.25, 2, -9.68), rock);
-  box(scene, "bedroom-rear-wall", { width: 6.9, height: 4, depth: 0.4 },
-    new Vector3(0, 2, -12.35), rock);
-  const dustyWood=new Color3(0.22,0.125,0.074);
-  box(scene,"bed-frame",{width:1.7,height:0.38,depth:2.25},
-    new Vector3(0.8,0.35,-10.6),dustyWood);
-  const bed=box(scene,"galvik-bed",{width:1.5,height:0.22,depth:1.95},
-    new Vector3(0.8,0.59,-10.6),new Color3(0.32,0.28,0.25));
-  bed.metadata={kind:"bed"};
-  box(scene,"bed-headboard",{width:1.72,height:0.95,depth:0.22},
-    new Vector3(0.8,0.7,-11.78),dustyWood);
-  box(scene,"bed-blanket",{width:1.44,height:0.07,depth:1.05},
-    new Vector3(0.8,0.74,-10.1),new Color3(0.21,0.23,0.21),false).isPickable=false;
-  box(scene,"bed-pillow",{width:1.1,height:0.14,depth:0.40},
-    new Vector3(0.8,0.75,-11.35),new Color3(0.45,0.42,0.35),false).isPickable=false;
-  box(scene,"galvik-bed-chest",{width:0.95,height:0.7,depth:0.55},
-    new Vector3(-2.1,0.36,-11.3),dustyWood);
-  box(scene,"bed-side-stool",{width:0.48,height:0.55,depth:0.48},
-    new Vector3(2.23,0.29,-10.9),dustyWood);
-  const candle=new PointLight("galvik-bed-candle",new Vector3(-2.1,1.8,-10.45),scene);
-  candle.diffuse=new Color3(1,0.52,0.23);
-  candle.intensity=0.95;
-  candle.range=6;
-  box(scene,"bed-candle",{width:0.12,height:0.20,depth:0.12},
-    new Vector3(-2.1,1.14,-10.45),new Color3(0.9,0.65,0.31),false).isPickable=false;
+  // Keep the first-person room's structure and decoration isolated.
+  const bed=buildBedroom(scene,rock);
   sign(scene,"bedroom-sign","GALVIK'S REST",new Vector3(0,2.8,-6.76));
   box(scene, "back-left-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(-6.375, 2, 7), rock);
   box(scene, "back-middle-wall", { width: 5.5, height: 4, depth: 0.4 }, new Vector3(0, 2, 7), rock);
