@@ -89,3 +89,21 @@ test("book keeps expedition results sealed until the observer watches a replay",
   await page.locator("#ledger-begin").click();
   await expect(page.locator("#day")).toHaveText("Day 3");
 });
+
+test("player can walk through former rear wall into the bedchamber",async({page})=>{
+  await page.goto("./");
+  await page.evaluate(async()=>{
+    (await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .inspectPlayer({x:0,y:1.7,z:-6});
+  });
+  await page.locator("#renderCanvas").click();
+  await page.keyboard.down("s");
+  await page.waitForTimeout(1700);
+  await page.keyboard.up("s");
+  const pos=await page.evaluate(async()=>{
+    return (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectPlayer();
+  });
+  expect(pos.z).toBeLessThan(-7.35);
+  expect(pos.z).toBeGreaterThan(-12.1);
+  expect(pos.collisions&&pos.gravity).toBe(true);
+});

@@ -76,7 +76,8 @@ test("WASD, gravity, collisions and rendering survive sustained input and reload
       expect(end.y).toBeGreaterThan(1.6);
       expect(end.y).toBeLessThan(1.8);
       expect(Math.abs(end.x)).toBeLessThan(7);
-      expect(end.z).toBeGreaterThan(-6.5);
+      // The former rear wall is now an entrance to Galvik\'s bedroom.
+      expect(end.z).toBeGreaterThan(-12.1);
       expect(end.collisions && end.gravity).toBe(true);
       expect(errors).toEqual([]);
     }
@@ -86,7 +87,9 @@ test("WASD, gravity, collisions and rendering survive sustained input and reload
   // Each press lasts slightly longer than the distance to its wall divided
   // by WALK_SPEED (2.1 m/s). Five seconds for every wall was redundant.
   for (const [key, z, axis, minimum, maximum, milliseconds] of [
-    ["s", -4.6, "z", -6.5, -6, 1600],
+    // Walking backward through the old wall enters the bedchamber.
+    // The bed and the new back wall still stop the player.
+    ["s", -4.6, "z", -12.1, -8.2, 5000],
     ["a", -4.6, "x", -7, -6.5, 4000],
     ["d", -4.6, "x", 6.5, 7, 4000],
     // Former mid-room shelves now hug the walls, leaving a wider aisle.
