@@ -39,7 +39,7 @@ function box(
   return mesh;
 }
 
-function sign(scene: Scene, name: string, text: string, position: Vector3): void {
+function sign(scene: Scene, name: string, text: string, position: Vector3): Mesh {
   const board = MeshBuilder.CreatePlane(name, { width: 1.7, height: 0.72 }, scene);
   board.position.copyFrom(position);
   const texture = new DynamicTexture(`${name}-texture`, { width: 512, height: 216 }, scene, false);
@@ -51,6 +51,7 @@ function sign(scene: Scene, name: string, text: string, position: Vector3): void
   boardMaterial.backFaceCulling = false;
   board.material = boardMaterial;
   board.isPickable = false;
+  return board;
 }
 
 export function buildWorld(scene: Scene): WorldInteractable[] {
@@ -96,7 +97,9 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   box(scene, "front-right-wall", { width: 5, height: 4, depth: 0.4 }, new Vector3(5, 2, -7), rock, true, surfaces.stone);
   // Keep the first-person room's structure and decoration isolated.
   const bed=buildBedroom(scene,surfaces);
-  sign(scene,"bedroom-sign","GALVIK'S REST",new Vector3(0,2.8,-6.76));
+  // Babylon plane front faces -Z by default; this sign must face +Z
+  // so visitors in the main shop read the text instead of its mirror.
+  sign(scene,"bedroom-sign","GALVIK'S REST",new Vector3(0,2.8,-6.58)).rotation.y=Math.PI;
   box(scene, "back-left-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(-6.375, 2, 7), rock, true, surfaces.stone);
   box(scene, "back-middle-wall", { width: 5.5, height: 4, depth: 0.4 }, new Vector3(0, 2, 7), rock, true, surfaces.stone);
   box(scene, "back-right-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(6.375, 2, 7), rock, true, surfaces.stone);
