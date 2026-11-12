@@ -202,6 +202,14 @@ export const NPC_SOFT_PASS_AFTER_SECONDS = 1.15;
 /** Chokepoints disable sidesteps, so a shorter body-only grace avoids queues
  * while furniture, wall and directional right-of-way remain authoritative. */
 export const NPC_GATE_SOFT_PASS_AFTER_SECONDS=0.45;
+
+/** Includes shoppers already walking from the door toward the checkout.
+ * They are not in the "entering" phase anymore, but can still block an
+ * incoming customer at the shared throat on the shop side. */
+export function inGateTrafficThroat(point:ShopPoint):boolean {
+  return point.z>=4.8&&point.z<=13.2&&
+    (Math.abs(point.x+4)<1.45||Math.abs(point.x-4)<1.45);
+}
 export const NPC_FINAL_WAYPOINT_RADIUS = 0.16;
 
 export interface ShopCrowdMove {
