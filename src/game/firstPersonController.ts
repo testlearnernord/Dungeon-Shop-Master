@@ -6,6 +6,9 @@ import { Scene } from "@babylonjs/core/scene";
 export function createFirstPersonCamera(canvas: HTMLCanvasElement, scene: Scene): UniversalCamera {
   const camera = new UniversalCamera("player-camera", new Vector3(0, 1.7, -4.6), scene);
   camera.setTarget(new Vector3(0, 1.7, 0));
+  // Keep the near clipping plane inside the camera collision ellipsoid.
+  // The default near clip can expose the void when leaning into rock seams.
+  camera.minZ = 0.04;
   camera.attachControl(canvas, true);
   const walkSpeed = 0.28;
   const sprintSpeed = 0.52;
