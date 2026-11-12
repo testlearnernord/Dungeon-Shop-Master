@@ -10,7 +10,7 @@ import { reconcileVisitors, shouldLeaveShopVisual, type GateSide, type VisitorRo
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
-import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
+import { shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
@@ -439,7 +439,13 @@ export class NpcVisualSystem {
           const item=npc.intent?.items[npc.targetIndex];
           // Commit a reservation only at the shelf, after the inspection pause.
           // Store notifications synchronously re-plan remaining shopping needs.
-          if(item&&this.onPickUp?.(npc.visitor.id,item.slotId)){
+          if(!item&&checkoutQueueIndex(this.carts,npc.visitor.id)<0){
+            // Visual exit only: simulation state changes at the confirmed day
+            // boundary, just like a paid shopper's physical early departure.
+            this.beginLeaving(npc);
+            npc.root.metadata.shoppingPhase="leaving-unserved";
+            npc.root.metadata.checkoutQueueIndex=-1;
+          }else if(item&&this.onPickUp?.(npc.visitor.id,item.slotId)){
             // Store notifications synchronously update cart meshes and route
             // planning. Do not overwrite their fresh phase metadata here.
           }else{
@@ -545,6 +551,23 @@ export class NpcVisualSystem {
     const slot=item&&this.shop?[...this.shop.slotMeshes.values()]
       .find(s=>s.id===item.slotId):undefined;
     const origin={x:npc.root.position.x,z:npc.root.position.z};
+    const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
+    // The previous fallback sent customers with no stock, no need, or no gold
+    // to arbitrary idle grid positions. They could fill the whole aisle while
+    // waiting for a new day. Give empty-handed shoppers a short decision pause
+    // before they head to the Level 4 exit instead.
+    if(!item&&shopperVisualAction(npc.intent,checkoutIndex>=0)==="leave-unserved"){
+      npc.phase="considering";
+      npc.route=[];
+      npc.waypoint=0;
+      npc.toQueue=false;
+      npc.wait=1.35+(npc.slot%3)*0.22;
+      npc.root.metadata.shoppingPhase="checking-availability";
+      npc.root.metadata.shoppingTargetSlot=null;
+      npc.root.metadata.checkoutQueueIndex=-1;
+      npc.root.metadata.phase=npc.phase;
+      return;
+    }
     if(item&&slot&&this.layout&&this.shop){
       const pointForShelf=this.shop.shelfAccessPoint(slot);
       // Reserve the entire physical shelf, not individual stock slots.
@@ -593,7 +616,6 @@ export class NpcVisualSystem {
       }
       npc.root.metadata.shoppingPhase="unreachable-shelf";
     }
-    const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
     const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length):[];
     const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot,npc);
     if(!target){
