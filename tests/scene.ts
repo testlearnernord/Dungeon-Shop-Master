@@ -23,7 +23,7 @@ export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
 }
 
 export function aimAtRosterBoard() {
-  inspectPlayer({ x: 0, y: 1.7, z: -4.2 });
+  inspectPlayer({ x: -5, y: 1.7, z: -4.2 });
   const scene = Engine.LastCreatedScene!;
   (scene.activeCamera as UniversalCamera).setTarget(scene.getMeshByName("adventurer-roster-board")!.getAbsolutePosition());
   return scene.getFrameId();
