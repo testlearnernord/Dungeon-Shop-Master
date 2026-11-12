@@ -1,0 +1,230 @@
+import { Color3 } from "@babylonjs/core/Maths/math.color";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
+import type { GameStore } from "./game/gameStore.ts";
+import {
+  counterOverlapsActor,getCounterPlacement,replaceCounterPlacement,
+  replaceShelfPlacement,rotateShelfOffset,shelfOverlapsActor,
+} from "./game/shopLayout.ts";
+import {
+  blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,
+  type FurnitureId,type FurnitureDraft,
+} from "./game/furnitureBlueprint.ts";
+
+/** FPS-compatible interactive furniture editor.
+ *
+ * Ray targets come from actual world geometry, not typed X/Z coordinates.
+ * Ghosts are independent meshes: they never move real furniture, collide,
+ * block NPC navigation, or mutate a game save until the left-click commit.
+ */
+export function setupBlueprintHud(
+  canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
+):{close:()=>void;open:()=>void}{
+  const scene=camera.getScene();
+  const openButton=document.querySelector<HTMLButtonElement>("#open-blueprint")!;
+  const panel=document.createElement("aside");
+  panel.id="blueprint-panel";
+  panel.hidden=true;
+  panel.setAttribute("aria-label","Furniture blueprint placement");
+  const title=document.createElement("h2");
+  title.textContent="FURNITURE BLUEPRINT";
+  const hint=document.createElement("p");
+  hint.textContent="Move the mouse over the floor or a wall to position the ghost. Left click places it; right click cancels.";
+  const choices=document.createElement("div");
+  choices.className="blueprint-choices";
+  const status=document.createElement("p");
+  status.className="blueprint-status";
+  status.setAttribute("role","status");
+  const controls=document.createElement("p");
+  controls.className="blueprint-controls";
+  controls.textContent="1-3 Select · R Rotate · LMB Place · RMB / Esc Cancel · P Toggle";
+  const cancel=document.createElement("button");
+  cancel.type="button";
+  cancel.textContent="Exit placement";
+  panel.append(title,hint,choices,status,controls,cancel);
+  document.body.append(panel);
+
+  const validMaterial=new StandardMaterial("blueprint-valid",scene);
+  validMaterial.diffuseColor=new Color3(0.23,0.91,0.56);
+  validMaterial.emissiveColor=new Color3(0.1,0.35,0.19);
+  validMaterial.alpha=0.4;
+  validMaterial.wireframe=true;
+  validMaterial.disableLighting=true;
+  const invalidMaterial=new StandardMaterial("blueprint-invalid",scene);
+  invalidMaterial.diffuseColor=new Color3(0.99,0.25,0.22);
+  invalidMaterial.emissiveColor=new Color3(0.4,0.1,0.1);
+  invalidMaterial.alpha=0.4;
+  invalidMaterial.wireframe=true;
+  invalidMaterial.disableLighting=true;
+  const ghost=MeshBuilder.CreateBox("blueprint-preview",{size:1},scene);
+  ghost.material=validMaterial;
+  ghost.isPickable=false;
+  ghost.checkCollisions=false;
+  ghost.renderingGroupId=2;
+  ghost.setEnabled(false);
+
+  let enabled=false;
+  let activeId:FurnitureId="shelf-1";
+  let rotation:0|1|2|3=0;
+  let pointer={x:canvas.clientWidth/2,y:canvas.clientHeight/2};
+  let draft:FurnitureDraft|null=null;
+  let placeable=false;
+  let reason="Aim at a floor or wall to place the blueprint.";
+  const buttons=new Map<FurnitureId,HTMLButtonElement>();
+
+  const updateStatus=(message:string,valid:boolean):void=>{
+    if(status.textContent!==message)status.textContent=message;
+    status.dataset.valid=String(valid);
+  };
+  const getSaved=(id:FurnitureId):FurnitureDraft=>{
+    if(id==="counter")return {id,...getCounterPlacement(store.state.shopLayout)};
+    return store.state.shopLayout.shelves.find(item=>item.id===id)!;
+  };
+  const choose=(id:FurnitureId):void=>{
+    activeId=id;
+    rotation=getSaved(id).rotation;
+    draft=null;
+    for(const [key,button] of buttons){
+      button.setAttribute("aria-pressed",String(key===id));
+    }
+    updateStatus("Aim at a "+(id==="counter"?"floor":"floor or wall")+".",false);
+  };
+  for(const [index,definition] of FURNITURE_CATALOG.entries()){
+    const button=document.createElement("button");
+    button.type="button";
+    button.textContent=(index+1)+". "+definition.label;
+    button.dataset.furnitureId=definition.id;
+    button.addEventListener("click",()=>choose(definition.id));
+    choices.append(button);
+    buttons.set(definition.id,button);
+  }
+
+  const occupiedBy=(p:FurnitureDraft):string|null=>{
+    const hits=(x:number,z:number,radius:number)=>p.id==="counter"
+      ?counterOverlapsActor(p,{x,z,radius})
+      :shelfOverlapsActor(p,{x,z,radius});
+    if(hits(camera.position.x,camera.position.z,0.45))
+      return "Player is standing inside the furniture footprint.";
+    const occupied=scene.transformNodes.some(node=>
+      node.name.startsWith("npc-adventurer-")&&node.metadata?.adventurerId&&
+      hits(node.position.x,node.position.z,0.45));
+    return occupied?"A visitor is standing in the placement area.":null;
+  };
+  const placementError=(p:FurnitureDraft):string|null=>{
+    const check=p.id==="counter"
+      ?replaceCounterPlacement(store.state.shopLayout,p)
+      :replaceShelfPlacement(store.state.shopLayout,p);
+    const good=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
+    return check.layout===store.state.shopLayout&&check.message!==good
+      ?check.message:occupiedBy(p);
+  };
+
+  const updateGhost=():void=>{
+    if(!enabled)return;
+    if(document.querySelector("dialog[open]")){close();return;}
+    const locked=document.pointerLockElement===canvas;
+    const width=canvas.clientWidth,height=canvas.clientHeight;
+    const hit=locked
+      ?scene.pickWithRay(camera.getForwardRay(16),mesh=>surfaceFromMesh(mesh.name)!==null)
+      :scene.pick(pointer.x,pointer.y,mesh=>surfaceFromMesh(mesh.name)!==null,false,camera);
+    const surface=hit?.pickedMesh?surfaceFromMesh(hit.pickedMesh.name):null;
+    if(!surface||!hit?.pickedPoint){
+      draft=null;placeable=false;ghost.setEnabled(false);
+      updateStatus("Aim at the "+(activeId==="counter"?"floor":"floor or a wall")+".",false);
+      return;
+    }
+    const p=blueprintAtSurface(activeId,surface,hit.pickedPoint,rotation);
+    if(!p){
+      draft=null;placeable=false;ghost.setEnabled(false);
+      updateStatus("This furniture cannot be mounted on that surface.",false);
+      return;
+    }
+    draft=p;
+    const definition=FURNITURE_CATALOG.find(item=>item.id===activeId)!;
+    const offset=p.id==="counter"?{x:0,z:0}:rotateShelfOffset(0.48,0,p.rotation);
+    ghost.position.set(p.x+offset.x,p.id==="counter"?0.95:1.27,p.z+offset.z);
+    ghost.rotation.y=p.rotation*Math.PI/2;
+    ghost.scaling.set(definition.width,definition.height,definition.depth);
+    reason=placementError(p)??"Valid placement. Left click to confirm.";
+    placeable=reason==="Valid placement. Left click to confirm.";
+    ghost.material=placeable?validMaterial:invalidMaterial;
+    ghost.setEnabled(true);
+    updateStatus(reason,placeable);
+  };
+
+  const close=():void=>{
+    if(!enabled)return;
+    enabled=false;panel.hidden=true;draft=null;placeable=false;
+    ghost.setEnabled(false);
+    canvas.style.cursor="";
+  };
+  const open=():void=>{
+    if(enabled)return;
+    if(document.querySelector("dialog[open]")||
+       document.body.classList.contains("arena-active")||
+       document.body.classList.contains("dungeon-active"))return;
+    enabled=true;panel.hidden=false;
+    if(document.pointerLockElement===canvas)document.exitPointerLock();
+    canvas.style.cursor="crosshair";
+    choose(activeId);
+    pointer={x:canvas.clientWidth/2,y:canvas.clientHeight/2};
+    updateGhost();
+  };
+  const toggle=():void=>{if(enabled)close();else open();};
+  const commit=():void=>{
+    updateGhost();
+    if(!draft||!placeable)return;
+    // Revalidate on the same input event that changes the authoritative state.
+    const validation=placementError(draft);
+    if(validation){updateStatus(validation,false);return;}
+    const result=draft.id==="counter"?store.placeCounter(draft):store.placeShelf(draft);
+    if(result==="Counter placement saved."||result==="Shelf placement saved."){
+      close();
+    }else updateStatus(result,false);
+  };
+
+  openButton.addEventListener("click",toggle);
+  cancel.addEventListener("click",close);
+  canvas.addEventListener("pointermove",event=>{
+    if(!enabled)return;
+    pointer={x:event.offsetX,y:event.offsetY};
+  },{passive:true});
+  // Capture before ordinary shelf stocking and register interaction handlers.
+  canvas.addEventListener("pointerdown",event=>{
+    if(!enabled)return;
+    if(event.button!==0&&event.button!==2)return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if(event.button===2)close();
+    else {
+      pointer={x:event.offsetX,y:event.offsetY};
+      commit();
+    }
+  },true);
+  canvas.addEventListener("contextmenu",event=>{
+    if(enabled){event.preventDefault();event.stopImmediatePropagation();}
+  },true);
+  window.addEventListener("keydown",event=>{
+    if(event.repeat||event.ctrlKey||event.altKey||event.metaKey)return;
+    if(event.code==="KeyP"&&!event.shiftKey){
+      event.preventDefault();event.stopImmediatePropagation();toggle();
+      return;
+    }
+    if(!enabled)return;
+    const id=event.code.match(/^Digit([123])$/);
+    if(id){event.preventDefault();event.stopImmediatePropagation();
+      choose(FURNITURE_CATALOG[Number(id[1])-1].id);return;}
+    if(event.code==="KeyR"){
+      event.preventDefault();event.stopImmediatePropagation();
+      rotation=((rotation+1)%4) as 0|1|2|3;
+      updateGhost();return;
+    }
+    if(event.code==="Escape"){
+      event.preventDefault();event.stopImmediatePropagation();
+      close();
+    }
+  },true);
+  scene.onBeforeRenderObservable.add(updateGhost);
+  return {open,close};
+}
