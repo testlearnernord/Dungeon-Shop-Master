@@ -289,3 +289,29 @@ export function inspectBedroomAtmosphere() {
     practicalLighting:!!candle&&!!torch,
   };
 }
+
+/** Check material reuse on actual gameplay meshes without adding a production debug API. */
+export function inspectDungeonSurfaces() {
+  const scene=Engine.LastCreatedScene!;
+  const at=(name:string)=>scene.getMeshByName(name);
+  const material=(name:string)=>at(name)?.material;
+  const textured=(name:string)=>!!(material(name) &&
+    "diffuseTexture" in material(name)! && (material(name) as {diffuseTexture?:{isReady():boolean}}).diffuseTexture?.isReady());
+  const props=["stone-floor","stone-ceiling","left-wall","right-wall",
+    "checkout-counter","counter-top","shelf-1-back","shelf-2-plank",
+    "bedroom-left-wall","bedroom-flagstone-0","bedroom-door-lintel",
+    "bed-frame","bedroom-desk","bedroom-floor-skin"];
+  return {
+    textureCount:scene.textures.filter(t=>t.name.startsWith("dungeon-")&&t.name.endsWith("-diffuse")).length,
+    surfaceCount:props.filter(textured).length,
+    requestedCount:props.length,
+    sharedWall:material("left-wall")===material("bedroom-left-wall"),
+    sharedTimber:material("shelf-1-back")===material("bed-frame"),
+    sharedFloor:material("stone-floor")===material("bedroom-floor-skin"),
+    semanticShelf:(at("shelf-1-slot-1")?.metadata?.kind as string|undefined),
+    solidWalls:["left-wall","right-wall","bedroom-left-wall"]
+      .every(name=>at(name)?.checkCollisions),
+    idleDecor:scene.meshes.filter(m=>m.name.startsWith("bedroom-flagstone-"))
+      .every(m=>!m.checkCollisions&&!m.isPickable),
+  };
+}
