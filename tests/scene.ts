@@ -395,10 +395,10 @@ export function stageReturningNpcVisualsInsideShop():void {
 export function stageBedchamberCleanupFrame(spot:"shop"|"bedroom"){
   const scene=Engine.LastCreatedScene!;
   const camera=scene.activeCamera as UniversalCamera;
-  camera.position.set(spot==="shop"?0:-0.5,1.72,spot==="shop"?-4.6:-8.15);
+  camera.position.set(spot==="shop"?-5.55:-0.5,1.72,spot==="shop"?-4.1:-8.15);
   camera.rotation.setAll(0);
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
   camera.setTarget(spot==="shop"?
-    new Vector3(-1.0,2.13,-7.0):new Vector3(0.3,1.0,-10.5));
+    new Vector3(-5.55,2.17,-6.45):new Vector3(0.3,1.0,-10.5));
 }
