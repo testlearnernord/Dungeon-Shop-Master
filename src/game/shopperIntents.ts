@@ -94,3 +94,16 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
   }
   return results;
 }
+
+/** Pure presentation policy. A customer with no possible purchase must not
+ * occupy a shop-floor idle waypoint forever. A held cart always takes priority:
+ * its owner belongs in the checkout queue, even if all shelves are now empty.
+ * The authoritative day-tick simulation and customer status are untouched.
+ */
+export type ShopperVisualAction = "shop" | "checkout" | "leave-unserved";
+export function shopperVisualAction(
+  intent: ShoppingIntent | null, hasUnpaidCart: boolean,
+): ShopperVisualAction {
+  if (hasUnpaidCart) return "checkout";
+  return intent?.items.length ? "shop" : "leave-unserved";
+}
