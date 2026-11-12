@@ -1,4 +1,5 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
@@ -288,4 +289,16 @@ export function inspectBedroomAtmosphere() {
       .every(name=>!!pick(name)),
     practicalLighting:!!candle&&!!torch,
   };
+}
+
+/** QA-only visual staging. Uses the actual gameplay scene and fixtures. */
+export function aimBedroomPreview(x=0,z=-7.75) {
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(x,1.69,z);
+  camera.rotation.setAll(0);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+  camera.setTarget(new Vector3(0.2,1.2,-11.0));
+  return scene.meshes.filter(mesh=>mesh.name.startsWith("bedroom-")).length;
 }
