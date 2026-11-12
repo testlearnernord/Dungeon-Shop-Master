@@ -94,7 +94,7 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   box(scene, "front-left-wall", { width: 5, height: 4, depth: 0.4 }, new Vector3(-5, 2, -7), rock, true, surfaces.stone);
   box(scene, "front-right-wall", { width: 5, height: 4, depth: 0.4 }, new Vector3(5, 2, -7), rock, true, surfaces.stone);
   // Keep the first-person room's structure and decoration isolated.
-  const bed=buildBedroom(scene,rock,surfaces);
+  const bed=buildBedroom(scene,surfaces);
   sign(scene,"bedroom-sign","GALVIK'S REST",new Vector3(0,2.8,-6.76));
   box(scene, "back-left-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(-6.375, 2, 7), rock, true, surfaces.stone);
   box(scene, "back-middle-wall", { width: 5.5, height: 4, depth: 0.4 }, new Vector3(0, 2, 7), rock, true, surfaces.stone);
