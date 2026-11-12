@@ -115,3 +115,26 @@ export function idleShopPositions(
   if(count===100)idleCache.set(layout,positions);
   return positions;
 }
+
+/** Clear the inner doorway before the entrant is handed to its shopping route.
+ * Otherwise the first entrant switches to browsing *inside the doorway* and
+ * physically holds the entire line behind it.
+ */
+export const ENTRANCE_STAGING_Z=4.65;
+
+/** A visitor switching from leaving back to shopping must not go to the gate
+ * if they have not even left the shop yet. For visitors already past the
+ * doorway, finish the outside lane change before re-entering.
+ * This function is pure: no save, inventory or visitor-state side effects.
+ */
+export function entranceApproachRoute(
+  gate:GateSide,position:ShopPoint,fromOutside:boolean,
+  innerZ:number,outerZ:number,
+):ShopPoint[] {
+  if(!fromOutside && position.z<=innerZ+0.25)return [];
+  const laneX=gateTravelLane(gate,"entering");
+  const approach=fromOutside
+    ?[{x:laneX,z:innerZ}]
+    :interruptedDepartureRoute(gate,position,innerZ,outerZ);
+  return [...approach,{x:laneX,z:ENTRANCE_STAGING_Z}];
+}

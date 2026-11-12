@@ -196,3 +196,37 @@ test("shop and sleeping cell reuse textured materials without changing collision
   await expect(page.locator("#day")).toHaveText("Day 2");
   expect(errors).toEqual([]);
 });
+
+test("restarted indoor visitors do not jam the doorway after successive day ticks",async({page})=>{
+  const errors:string[]=[];
+  page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  // The visual-only positions came from the actual blocked day-3 browser trace.
+  await page.evaluate(async()=>{
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).stageReturningNpcVisualsInsideShop();
+  });
+  const advance=()=>page.evaluate(()=>{
+    const tick=(window as Window&{__shopTestAdvanceDay?:()=>void}).__shopTestAdvanceDay;
+    if(!tick)throw new Error("Missing E2E day transition");
+    tick();
+  });
+  await advance();
+  await advance();
+  await expect(page.locator("#day")).toHaveText("Day 3");
+  const current=async()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals().visitors);
+  const returning=(await current()).filter(v=>
+    ["adventurer-1","adventurer-2"].includes(v.id)&&v.status==="at-shop");
+  expect(returning.length).toBeGreaterThan(0);
+  for(const npc of returning){
+    expect(npc.z).toBeLessThan(4.5);
+    if(npc.phase==="entering")expect(npc.shoppingPhase).toBe("resuming-in-shop");
+  }
+  await expect.poll(async()=> (await current()).filter(v=>
+    returning.some(n=>n.id===v.id)).every(v=>v.phase!=="entering"),
+    {timeout:8000}).toBe(true);
+  expect((await current()).filter(v=>returning.some(n=>n.id===v.id))
+    .every(v=>v.z<5.4)).toBe(true);
+  expect(errors).toEqual([]);
+});

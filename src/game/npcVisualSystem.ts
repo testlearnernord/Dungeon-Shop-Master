@@ -14,7 +14,7 @@ import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, crowdSafeStep, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, crowdSafeStep, entranceApproachRoute, gateTravelLane, idleShopPositions, nextEntranceSpawnZ } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -468,14 +468,14 @@ export class NpcVisualSystem {
     npc.slot = slot;
     npc.phase = "entering";
     npc.gateSide = npc.visitor.entranceGate ?? "level4";
-    const x = npc.root.position.x;
-    const gateX = gateTravelLane(npc.gateSide,"entering");
-    // Keep the same x lane until inside the shop; only then shift laterally.
-    npc.route = fromOutside
-      ? [new Vector3(gateX, 0, CORRIDOR_INNER_Z)]
-      : interruptedDepartureRoute(npc.gateSide,
-          {x,z:npc.root.position.z},CORRIDOR_INNER_Z,CORRIDOR_OUTER_Z)
-          .map(point=>new Vector3(point.x,0,point.z));
+    // Do not send an already-inside shopper back to the entrance just because
+    // the authoritative day tick reversed its earlier departure.
+    const points=entranceApproachRoute(npc.gateSide,{
+      x:npc.root.position.x,z:npc.root.position.z,
+    },fromOutside,CORRIDOR_INNER_Z,CORRIDOR_OUTER_Z);
+    npc.route=points.map(point=>new Vector3(point.x,0,point.z));
+    npc.root.metadata.shoppingPhase=points.length
+      ?"walking-in":"resuming-in-shop";
     npc.waypoint = 0;
     npc.wait = 0;
     npc.blockedSeconds=0;
@@ -621,6 +621,34 @@ export class NpcVisualSystem {
     return point?new Vector3(point.x,0,point.z):null;
   }
 
+  /** React to actual lack of progress, including a contested final waypoint.
+   * A stuck visitor *inside* the entrance may immediately start navigating
+   * toward its own needs instead of holding a staging spot indefinitely.
+   * Outside the gate we continue to yield rather than cross corridor walls.
+   */
+  private recoverTraffic(npc:NpcVisual):boolean{
+    const phase=npc.root.metadata.shoppingPhase;
+    if(npc.phase==="entering" &&
+      npc.root.position.z<=CORRIDOR_INNER_Z+0.15 &&
+      npc.blockedSeconds>2){
+      npc.blockedSeconds=0;
+      this.beginBrowsing(npc);
+      return true;
+    }
+    if(npc.phase==="browsing"&&npc.blockedSeconds>3 ||
+       npc.phase==="queueing"&&phase==="waiting-for-shelf"&&npc.blockedSeconds>3){
+      npc.blockedSeconds=0;
+      this.beginBrowsing(npc);
+      return true;
+    }
+    if(npc.phase==="leaving"&&npc.blockedSeconds>5){
+      npc.blockedSeconds=0;
+      this.beginLeaving(npc);
+      return true;
+    }
+    return false;
+  }
+
   private move(npc: NpcVisual, delta: number): void {
     const target=npc.route[npc.waypoint];
     if(!target){
@@ -650,8 +678,14 @@ export class NpcVisualSystem {
     const occupied=[...this.npcs.values()].filter(other=>other!==npc)
       .map(other=>({x:other.root.position.x,z:other.root.position.z}));
     if(distance<0.04){
-      if(occupied.some(other=>Math.hypot(other.x-target.x,other.z-target.z)<PERSONAL_SPACE))
+      if(occupied.some(other=>Math.hypot(other.x-target.x,other.z-target.z)<PERSONAL_SPACE)){
+        // A blocked final waypoint used to return without ticking the stuck
+        // timer. That permanently stranded shoppers and held shelf claims.
+        npc.blockedSeconds+=delta;
+        npc.root.metadata.blockedSeconds=npc.blockedSeconds;
+        this.recoverTraffic(npc);
         return;
+      }
       npc.root.position.x=target.x;
       npc.root.position.z=target.z;
       npc.waypoint+=1;
@@ -682,15 +716,9 @@ export class NpcVisualSystem {
     if(!proposed){
       npc.blockedSeconds+=delta;
       npc.root.metadata.blockedSeconds=npc.blockedSeconds;
-      // A blocked shopper or departing customer must get another chance to
-      // route around a stationary queue, not freeze permanently at a waypoint.
-      if(npc.blockedSeconds>3&&npc.phase==="browsing"){
-        npc.blockedSeconds=0;
-        this.beginBrowsing(npc);
-      }else if(npc.blockedSeconds>5&&npc.phase==="leaving"){
-        npc.blockedSeconds=0;
-        this.beginLeaving(npc);
-      }
+      // This also handles entrants and waiting shoppers, not only browsing
+      // or departing heroes. Do not force an entrant through a blocked lane.
+      this.recoverTraffic(npc);
       return;
     }
     const step=Math.min(distance,WALK_SPEED*delta);
@@ -698,11 +726,7 @@ export class NpcVisualSystem {
     const steering=Math.hypot(proposed.x-direct.x,proposed.z-direct.z);
     npc.blockedSeconds=steering>0.015?npc.blockedSeconds+delta:0;
     npc.root.metadata.blockedSeconds=npc.blockedSeconds;
-    if(npc.blockedSeconds>3&&npc.phase==="browsing"){
-      npc.blockedSeconds=0;
-      this.beginBrowsing(npc);
-      return;
-    }
+    if(this.recoverTraffic(npc))return;
     npc.root.rotation.y=Math.atan2(proposed.x-from.x,proposed.z-from.z);
     npc.root.position.x=proposed.x;
     npc.root.position.z=proposed.z;

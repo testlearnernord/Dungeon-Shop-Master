@@ -350,3 +350,15 @@ export function inspectDungeonSurfaces() {
       .every(m=>!m.checkCollisions&&!m.isPickable),
   };
 }
+
+/** Deterministic visual-only placement for the observed day-3 reversal jam. */
+export function stageReturningNpcVisualsInsideShop():void {
+  const scene=Engine.LastCreatedScene!;
+  for(const [id,x,z] of [
+    ["adventurer-1",-0.6,1],["adventurer-2",-5,-0.37],
+  ] as const){
+    const node=scene.transformNodes.find(n=>n.metadata?.adventurerId===id);
+    if(!node)throw new Error("Missing test NPC "+id);
+    node.position.set(x,0,z);
+  }
+}
