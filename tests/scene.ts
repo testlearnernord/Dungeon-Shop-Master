@@ -302,6 +302,11 @@ export function inspectDungeonSurfaces() {
     "bedroom-left-wall","bedroom-flagstone-0","bedroom-door-lintel",
     "bed-frame","bedroom-desk","bedroom-floor-skin"];
   return {
+    floorUVMax:(()=>{
+      const uv=at("stone-floor")?.getVerticesData("uv")??[];
+      return {u:Math.max(...uv.filter((_,i)=>i%2===0)),
+        v:Math.max(...uv.filter((_,i)=>i%2===1))};
+    })(),
     textureCount:scene.textures.filter(t=>t.name.startsWith("dungeon-")&&t.name.endsWith("-diffuse")).length,
     surfaceCount:props.filter(textured).length,
     requestedCount:props.length,
