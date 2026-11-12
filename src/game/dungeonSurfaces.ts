@@ -50,7 +50,7 @@ function makeTexture(scene: Scene, kind: SurfaceKind): DynamicTexture {
     width: size, height: size,
   }, scene, false);
   const ctx = texture.getContext();
-  const image = ctx.createImageData(size, size);
+  const image = ctx.getImageData(0, 0, size, size);
   const bytes = image.data;
   const base: [number, number, number] =
     kind === "wood" ? [89, 53, 31] :
@@ -94,12 +94,12 @@ function makeTexture(scene: Scene, kind: SurfaceKind): DynamicTexture {
       const x = 18 + rand() * (size - 36);
       const y = 18 + rand() * (size - 36);
       ctx.beginPath();
-      ctx.ellipse(x, y, 8 + rand() * 9, 2 + rand() * 2, 0, 0, 2 * Math.PI);
+      ctx.arc(x, y, 5 + rand() * 4, 0, 2 * Math.PI);
       ctx.strokeStyle = "rgba(32,17,11,0.47)";
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.beginPath();
-      ctx.ellipse(x, y, 3, 1.6, 0, 0, 2 * Math.PI);
+      ctx.arc(x, y, 2.3, 0, 2 * Math.PI);
       ctx.fillStyle = "rgba(27,13,9,0.45)";
       ctx.fill();
     }
