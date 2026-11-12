@@ -83,13 +83,14 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
         return false;
       });
       if(!needs.length)reason="no-need";
-      else if(needs.some(item=>state.shopEconomy.slots.some(slot=>
-        slot.itemId===item.id && slot.quantity>0))){
-        // Earlier heroes may have depleted the shelf or this hero cannot pay.
-        reason=needs.some(item=>state.shopEconomy.slots.some(slot=>
-          slot.itemId===item.id&&slot.quantity>0&&hero.gold>=item.salePrice))
-          ?"unavailable":"cannot-afford";
-      }else reason="unavailable";
+      else if(needs.some(item=>hero.gold>=item.salePrice)){
+        // Classify affordability against ALL unmet needs, not just goods
+        // currently on shelves. A hero with 4g can afford sold-out Waybread
+        // even if the only stocked product is a 9g sword. The empty forecast
+        // then means the affordable need is unavailable (or sold to an
+        // earlier buyer), so the 60-second restock wait must apply.
+        reason="unavailable";
+      }else reason="cannot-afford";
     }
     // Choose one truthful and affordable unmet need for an out-of-stock
     // request bubble. Survival goods are more urgent than equipment.
