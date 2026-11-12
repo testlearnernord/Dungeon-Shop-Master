@@ -968,3 +968,45 @@ body.dungeon-active #music-panel { top: 119px; }
   border-top: 1px solid var(--ui-border);
   border-bottom: 1px solid var(--ui-border);
 }
+
+
+/* Shop NPC restock request: crisp item atlas symbol shared with the hotbar. */
+.npc-wish-bubble{
+  position:fixed;left:0;top:0;z-index:32;
+  display:flex;align-items:center;gap:7px;
+  max-width:200px;padding:6px 9px;
+  border:1px solid #d4b277;border-radius:12px;
+  background:linear-gradient(150deg,#31251b,#1c1814);
+  box-shadow:0 5px 20px #000b,inset 0 0 0 1px #ffffff10;
+  color:#f6dcb5;font:700 11px system-ui,sans-serif;
+  pointer-events:none;white-space:nowrap;
+  will-change:transform;
+}
+.npc-wish-bubble[hidden]{display:none}
+.npc-wish-bubble::after{
+  content:"";position:absolute;left:50%;bottom:-8px;
+  border-left:7px solid transparent;border-right:7px solid transparent;
+  border-top:8px solid #d4b277;
+}
+.npc-wish-icon{width:30px;height:30px;flex:none;filter:drop-shadow(0 1px 1px #000)}
+.npc-wish-detail{max-width:110px;overflow:hidden;text-overflow:ellipsis}
+.npc-wish-timer{
+  background:#473321;border:1px solid #98764e;border-radius:4px;
+  padding:3px 4px;font:750 11px monospace;color:#f1cc7f;
+}
+.npc-wish-bubble.is-angry{border-color:#bc5846;background:#321d1a;color:#ffd0be}
+.npc-wish-bubble.is-angry .npc-wish-timer{
+  background:#5e241c;color:#ffc6b2;border-color:#c96853;
+}
+#npc-traffic-debug{
+  position:fixed;right:12px;bottom:94px;z-index:45;
+  max-width:min(720px,calc(100vw - 24px));max-height:44vh;overflow:auto;
+  padding:14px;border:1px solid #c49b62;border-radius:5px;
+  background:#100f0dec;color:#f2d9a8;
+  box-shadow:0 12px 35px #0009;
+  pointer-events:none;font:12px monospace;
+}
+#npc-traffic-debug[hidden]{display:none}
+#npc-traffic-debug strong{font:750 13px system-ui,sans-serif}
+#npc-traffic-debug p{margin:5px 0 10px;opacity:.7}
+#npc-traffic-debug pre{margin:0;font:11px/1.5 monospace;white-space:pre;tab-size:2}
