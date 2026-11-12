@@ -7,7 +7,7 @@ test("NPCs animate by actual movement even in queue, staging or shop idle state"
   const walking=npcLocomotion(origin,{x:-3.9664,z:0},0.016);
   assert.equal(walking.moving,true);
   assert(Math.abs(walking.speed-2.1)<0.01);
-  assert.equal(walking.strideScale,1);
+  assert(Math.abs(walking.strideScale-1)<1e-10);
   const paused=npcLocomotion(origin,origin,0.016);
   assert.deepEqual(paused,{moving:false,speed:0,strideScale:0});
   const jitter=npcLocomotion(origin,{x:-4+1e-5,z:0},0.016);
