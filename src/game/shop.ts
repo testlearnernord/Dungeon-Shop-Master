@@ -8,6 +8,7 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { ITEMS, type ItemId, type Slot } from "./inventory";
 import { GameStore } from "./gameStore";
+import { getDungeonSurfaces } from "./dungeonSurfaces";
 import {
   COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, shopLayoutProblem,
   type CounterPlacement, type ShelfId, type ShelfPlacement,
@@ -152,8 +153,7 @@ export class Shop {
   private createShelves(): void {
     for (const shelfId of ["shelf-1", "shelf-2"] as const) {
       const root = new TransformNode(shelfId+"-root", this.scene);
-      const material = new StandardMaterial(shelfId+"-wood", this.scene);
-      material.diffuseColor = new Color3(0.28, 0.18, 0.11);
+      const material = getDungeonSurfaces(this.scene).wood;
       const back = MeshBuilder.CreateBox(shelfId+"-back",{
         width:0.18,height:2,depth:5.8,
       },this.scene);
