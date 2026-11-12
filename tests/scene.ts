@@ -1,7 +1,6 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
   const scene = Engine.LastCreatedScene!;
