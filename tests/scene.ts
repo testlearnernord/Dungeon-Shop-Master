@@ -116,6 +116,8 @@ export function inspectNpcVisuals() {
         gateSide: node.metadata.gateSide as string,
         shoppingReason: node.metadata.shoppingReason as string|undefined,
         shoppingPhase: node.metadata.shoppingPhase as string|undefined,
+        wantedItemId: node.metadata.wantedItemId as string|null|undefined,
+        restockRemaining: node.metadata.restockRemaining as number|null|undefined,
         gateYield: node.metadata.gateYield as boolean|undefined,
         blockedSeconds: node.metadata.blockedSeconds as number|undefined,
         softPassing: node.metadata.softPassing as boolean|undefined,
