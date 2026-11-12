@@ -322,6 +322,7 @@ export class NpcVisualSystem {
   inspectTraffic():readonly {
     id:string;phase:string;status:string;reason:string;goal:string;
     target:string;blockedSeconds:number;waypoint:string;cartUnits:number;
+    motion:string;
     wish:string;restockSeconds:number|null;
     x:number;z:number;
   }[] {
@@ -333,6 +334,7 @@ export class NpcVisualSystem {
       goal:String(npc.root.metadata.shoppingTargets?.join(",")??""),
       target:String(npc.root.metadata.shoppingTargetSlot??""),
       blockedSeconds:Math.round(npc.blockedSeconds*10)/10,
+      motion:String(npc.root.metadata.movementMode??"idle"),
       waypoint:`${npc.waypoint}/${npc.route.length}`,
       cartUnits:Number(npc.root.metadata.cartUnits??0),
       wish:npc.wishItem??"",
@@ -527,6 +529,7 @@ export class NpcVisualSystem {
         // Neither waits halfway through the physical gate.
         const yielding=!!transit&&mustYieldAtGate(transit,gateFlow[transit.gate]);
         npc.root.metadata.gateYield=yielding;
+        if(yielding)npc.root.metadata.movementMode="gate-yield";
         if(!yielding){
           const isMovingThroughGate = !!transit && npc.root.position.z > 11.3;
           const physicalSide: GateSide = npc.root.position.x < 0 ? "level4" : "level6";
@@ -843,6 +846,7 @@ export class NpcVisualSystem {
         npc.blockedSeconds+=delta;
         npc.root.metadata.blockedSeconds=npc.blockedSeconds;
         npc.root.metadata.softPassing=false;
+        npc.root.metadata.movementMode="waypoint-yield";
         return;
       }
       npc.root.position.x=target.x;
@@ -851,6 +855,7 @@ export class NpcVisualSystem {
       npc.blockedSeconds=0;
       npc.root.metadata.blockedSeconds=0;
       npc.root.metadata.softPassing=heldByNeighbor;
+      npc.root.metadata.movementMode=heldByNeighbor?"soft-pass":"waypoint";
       return;
     }
     const walkable=(next:{x:number;z:number}):boolean=>{
@@ -890,6 +895,7 @@ export class NpcVisualSystem {
       npc.blockedSeconds+=delta;
       npc.root.metadata.blockedSeconds=npc.blockedSeconds;
       npc.root.metadata.softPassing=false;
+      npc.root.metadata.movementMode="no-step";
       // A *static* obstruction still requires a new path. NPC traffic alone
       // becomes nonblocking after a short wait via shopCrowdStep above.
       this.recoverTraffic(npc);
@@ -904,6 +910,7 @@ export class NpcVisualSystem {
       steering>0.015?npc.blockedSeconds+delta:0;
     npc.root.metadata.blockedSeconds=npc.blockedSeconds;
     npc.root.metadata.softPassing=move.softPass;
+    npc.root.metadata.movementMode=move.softPass?"soft-pass":steering>0.015?"sidestep":"moving";
     if(!move.softPass&&this.recoverTraffic(npc))return;
     npc.root.rotation.y=Math.atan2(proposed.x-from.x,proposed.z-from.z);
     npc.root.position.x=proposed.x;
