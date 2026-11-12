@@ -149,7 +149,7 @@ export function setupCashierHud(
     const cart=store.state.shopCarts.find(entry=>entry.heroId===id);
     const hero=store.state.adventurers.find(entry=>entry.id===id);
     if(!id||!cart||!hero)return "Wait for the first customer to reach the register.";
-    heroId=id;hits=0;misses=0;lastPress=0;started=performance.now();
+    heroId=id;hits=0;misses=0;lastPress=Number.NEGATIVE_INFINITY;started=performance.now();
     customer.textContent=hero.name+" · Lv"+hero.level+" "+hero.role;
     lines.replaceChildren();
     for(const line of cart.lines){
