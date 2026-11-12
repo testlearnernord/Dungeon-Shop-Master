@@ -36,6 +36,30 @@ test("no affordable stock yields a truthful bread request and a 60-second waitin
   assert.throws(()=>restockWaitRemaining(NaN,1),RangeError);
 });
 
+test("affordable sold-out bread is not mistaken for poverty when only expensive gear is stocked",()=>{
+  const {state,heroId}=emptyShop();
+  const mixed={
+    ...state,
+    adventurers:state.adventurers.map(hero=>hero.id===heroId
+      ?{...hero,gold:4}:hero),
+    shopEconomy:{...state.shopEconomy,
+      slots:state.shopEconomy.slots.map((slot,index)=>index===0
+        ?{...slot,itemId:"iron-sword" as const,quantity:1}:slot)},
+  };
+  const hungry=forecastShoppingIntents(mixed).get(heroId)!;
+  assert.deepEqual(hungry.items,[]);
+  assert.equal(hungry.reason,"unavailable");
+  assert.equal(hungry.wantedItemId,"bread");
+  assert.equal(shopperVisualAction(hungry,false),"wait-restock");
+
+  const broke={...mixed,adventurers:mixed.adventurers.map(hero=>
+    hero.id===heroId?{...hero,gold:0}:hero)};
+  const noMoney=forecastShoppingIntents(broke).get(heroId)!;
+  assert.equal(noMoney.reason,"cannot-afford");
+  assert.equal(noMoney.wantedItemId,undefined);
+  assert.equal(shopperVisualAction(noMoney,false),"leave-unserved");
+});
+
 test("replenishment reactivates the existing forecast before the wait expires",()=>{
   const {state,heroId}=emptyShop();
   const restocked={...state,shopEconomy:{...state.shopEconomy,
