@@ -38,7 +38,7 @@ test("the register verifies goods, seals receipt and only then transfers gold",a
   await expect(dialog).toBeVisible();
   await expect(dialog.locator(".cashier-stage-name")).toHaveText("Verify the goods");
   await expect(dialog.locator(".cashier-line")).toContainText("Waybread");
-  await expect(dialog.locator(".cashier-total")).toContainText("4g");
+  await expect(dialog.locator(".cashier-total")).toContainText("12g");
   expect(await stampAtMarker(page)).toBe(true);
   await expect(dialog.locator(".cashier-stage-name")).toHaveText("Seal the receipt");
   await expect(dialog.locator(".cashier-progress [data-stage='0']")).toHaveClass(/is-complete/);
@@ -53,6 +53,7 @@ test("the register verifies goods, seals receipt and only then transfers gold",a
   const finished=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/cashierHarness.ts")).inspectCashierHarness());
   expect(finished.manualReceipts).toBe(1);
+  expect(finished.tips).toBe(1);
   expect(finished.carts).toBe(0);
   expect(finished.gold).toBeLessThan(start.gold);
   expect(finished.balance).toBeGreaterThan(start.balance);
@@ -74,4 +75,33 @@ test("canceling a cashier session does not pay, clear or alter an unpaid cart",a
   expect(after.gold).toBe(start.gold);
   expect(after.balance).toBe(start.balance);
   expect(after.manualReceipts).toBe(0);
+});
+
+test("a missed first stamp permits checkout but denies the flawless-service tip",async({page})=>{
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  // The click occurs synchronously during creation, so the needle is still
+  // at its leftmost starting position and definitely outside the success zone.
+  await page.evaluate(async()=>{
+    (await import("/Dungeon-Shop-Master/tests/cashierHarness.ts")).openCashierHarness();
+    document.querySelector<HTMLButtonElement>("#cashier-overlay .cashier-stamp")!.click();
+  });
+  const dialog=page.locator("#cashier-overlay");
+  await expect(dialog.locator(".cashier-hint")).toContainText("tip forfeited");
+  const afterMiss=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/cashierHarness.ts")).inspectCashierHarness());
+  expect(afterMiss.carts).toBe(1);
+  expect(afterMiss.manualReceipts).toBe(0);
+  await page.waitForTimeout(280);
+  expect(await stampAtMarker(page)).toBe(true);
+  await expect(dialog.locator(".cashier-stage-name")).toHaveText("Seal the receipt");
+  expect(await stampAtMarker(page)).toBe(true);
+  await expect(dialog).toBeHidden();
+  const settled=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/cashierHarness.ts")).inspectCashierHarness());
+  expect(settled.manualReceipts).toBe(1);
+  expect(settled.tips).toBe(0);
+  expect(settled.balance-settled.initialBalance).toBe(12);
+  expect(settled.initialGold-settled.gold).toBe(12);
+  expect(settled.report).toContain("No flawless-service tip.");
 });
