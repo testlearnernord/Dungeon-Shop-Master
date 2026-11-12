@@ -71,6 +71,7 @@ export function setupCashierHud(
   const stamps=[...root.querySelectorAll<HTMLElement>(".cashier-progress [data-stage]")];
   let heroId:string|null=null;
   let hits=0;
+  let misses=0;
   let lastPress=0;
   let started=0;
   let frame=0;
@@ -116,8 +117,9 @@ export function setupCashierHud(
     lastPress=performance.now();
     const result=evaluateCashierTiming(hits,phase());
     if(!result.accepted){
+      misses++;
       hint.textContent=(result.direction==="early"?"Left of the mark. ":"Right of the mark. ")+
-        "Try again; the customer is still waiting.";
+        "Try again. Flawless-service tip forfeited.";
       sound("miss");
       return;
     }
@@ -134,9 +136,10 @@ export function setupCashierHud(
     }
     close();
     const before=store.state;
-    const outcome=pay(id,true);
+    const outcome=pay(id,misses===0);
     if(store.state!==before)sound("coins");
-    report(outcome+" Receipt verified and sealed.");
+    report(outcome+" Receipt verified and sealed."+
+      (misses===0?" Perfect service.":" No flawless-service tip."));
   };
   const open=():string=>{
     if(heroId)return "Finish or cancel the current checkout.";
@@ -146,7 +149,7 @@ export function setupCashierHud(
     const cart=store.state.shopCarts.find(entry=>entry.heroId===id);
     const hero=store.state.adventurers.find(entry=>entry.id===id);
     if(!id||!cart||!hero)return "Wait for the first customer to reach the register.";
-    heroId=id;hits=0;lastPress=0;started=performance.now();
+    heroId=id;hits=0;misses=0;lastPress=0;started=performance.now();
     customer.textContent=hero.name+" · Lv"+hero.level+" "+hero.role;
     lines.replaceChildren();
     for(const line of cart.lines){
