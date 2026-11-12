@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
+import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
   for(const gate of ["level4","level6"] as const){
@@ -276,4 +276,15 @@ test("gate chokepoints release blocked NPC bodies sooner but never tunnel throug
     false,NPC_GATE_SOFT_PASS_AFTER_SECONDS);
   assert.equal(solid.point,null);
   assert.equal(solid.softPass,false);
+});
+
+test("checkout-bound shoppers at the Level 4 mouth receive gate soft-pass too",()=>{
+  assert.equal(inGateTrafficThroat({x:-4.4,z:6}),true,"incoming");
+  assert.equal(inGateTrafficThroat({x:-3.5,z:5.5}),true,
+    "customer crossing from gate to register is no longer entering");
+  assert.equal(inGateTrafficThroat({x:4.5,z:5.3}),true,"same for Level 6");
+  assert.equal(inGateTrafficThroat({x:0,z:5.5}),false,
+    "the central register area retains ordinary collision timing");
+  assert.equal(inGateTrafficThroat({x:-4.5,z:1}),false,
+    "browsing beside a shelf must not trigger accelerated body passing");
 });
