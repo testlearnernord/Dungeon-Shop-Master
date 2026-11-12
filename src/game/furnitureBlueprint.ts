@@ -47,7 +47,8 @@ export function blueprintAtSurface(
   const definition=FURNITURE_CATALOG.find(entry=>entry.id===id);
   if(!definition?.surfaces.includes(surface))return null;
   if(surface==="floor"){
-    return {id,x:snapQuarter(hit.x),z:snapQuarter(hit.z),rotation};
+    const x=snapQuarter(hit.x),z=snapQuarter(hit.z);
+    return id==="counter"?{id,x,z,rotation}:{id,x,z,rotation};
   }
   if(id==="counter")return null;
   const wallAnchor:{[K in Exclude<BlueprintSurface,"floor"|"ceiling">]:
