@@ -1,5 +1,6 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
   const scene = Engine.LastCreatedScene!;
@@ -20,6 +21,19 @@ export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
     collisions: camera.checkCollisions && scene.collisionsEnabled,
     gravity: camera.applyGravity,
   };
+}
+
+/** E2E camera position for interacting with a real stationary NPC, no UI hooks. */
+export function aimAtBeggingVisitor(heroId:string):void {
+  const scene=Engine.LastCreatedScene!;
+  const node=scene.transformNodes.find(candidate=>
+    candidate.metadata?.adventurerId===heroId);
+  if(!node)throw new Error("Cannot find the requested visitor mesh.");
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(node.position.x+1.25,1.7,node.position.z+0.8);
+  camera.setTarget(new Vector3(node.position.x,1.5,node.position.z));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
 }
 
 export function aimAtRosterBoard() {
