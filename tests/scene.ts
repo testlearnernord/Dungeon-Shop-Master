@@ -36,6 +36,15 @@ export function aimAtBeggingVisitor(heroId:string):void {
   camera.cameraRotation.setAll(0);
 }
 
+export function aimAtBlueprintFloor():void {
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(0,1.7,-4.6);
+  camera.setTarget(new Vector3(0,0,0));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
 export function aimAtRosterBoard() {
   inspectPlayer({ x: -5, y: 1.7, z: -4.2 });
   const scene = Engine.LastCreatedScene!;

@@ -135,7 +135,7 @@ export function setupShopPlacementHud(
     canvas.focus();
   });
   window.addEventListener("keydown",event=>{
-    if(event.code!=="KeyP"||event.repeat||event.ctrlKey||
+    if(event.code!=="KeyP"||!event.shiftKey||event.repeat||event.ctrlKey||
       event.altKey||event.metaKey)return;
     if(dialog.open){event.preventDefault();close();return;}
     if(event.target instanceof HTMLElement &&

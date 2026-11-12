@@ -16,6 +16,7 @@ import { createRosterBoard } from "./game/rosterBoard";
 import { setupRosterBoardHud } from "./rosterBoardHud";
 import { Shop } from "./game/shop";
 import { setupShopPlacementHud } from "./shopPlacementHud.ts";
+import { setupBlueprintHud } from "./blueprintHud.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
@@ -36,6 +37,7 @@ import "./styles.css";
 import "./uiTheme.css";
 import "./merchantLedger.css";
 import "./beggarHud.css";
+import "./blueprintHud.css";
 
 async function startGame(): Promise<void> {
 setupShopStatusToggle();
@@ -65,6 +67,7 @@ let bedtime:BedtimeController|null=null;
 let ledger:MerchantLedger|null=null;
 let beggarHud:ReturnType<typeof setupBeggarHud>|null=null;
 setupShopPlacementHud(canvas, camera, store, shop);
+const blueprint=setupBlueprintHud(canvas,camera,store);
 const npcVisuals = new NpcVisualSystem(scene);
 setupNpcTrafficDebug(npcVisuals);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
@@ -114,6 +117,7 @@ setupCampaignHud(store, campaign, () => {
   resetReplayDisclosure();
   cashier?.close();
   beggarHud?.close();
+  blueprint.close();
   interactions.reset();
   camera.position.set(0, 1.7, -4.6);
   camera.rotation.setAll(0);

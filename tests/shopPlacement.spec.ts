@@ -32,7 +32,7 @@ test("shop placement previews, cancels, commits and persists shelf+stock transfo
   });
   expect(beforeSave?.shopLayout.shelves[0].z).toBe(0);
 
-  await page.keyboard.press("p");
+  await page.keyboard.press("Shift+p");
   await expect(page.locator("#shelf-placement")).toBeVisible();
   await backwards.click();
   await page.locator("#placement-save").click();
