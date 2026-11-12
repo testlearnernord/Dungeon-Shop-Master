@@ -122,12 +122,7 @@ test("a reversing day-tick departure resumes shopping inside rather than walking
   // Only stage visual positions, never inventory or GameState. These are the
   // actual indoor positions observed on day 3 of the entrance-jam repro.
   await page.evaluate(async()=>{
-    const {Engine}=await import("@babylonjs/core/Engines/engine");
-    const scene=Engine.LastCreatedScene!;
-    for(const [id,x,z] of [["adventurer-1",-0.6,1],["adventurer-2",-5,-0.37]] as const){
-      const hero=scene.transformNodes.find(node=>node.metadata?.adventurerId===id)!;
-      hero.position.set(x,0,z);
-    }
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).stageReturningNpcVisualsInsideShop();
   });
   await advanceTestDay(page);
   await advanceTestDay(page);
