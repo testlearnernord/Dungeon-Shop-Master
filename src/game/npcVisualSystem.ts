@@ -169,6 +169,7 @@ export class NpcVisualSystem {
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
   private readonly shelfOwners=new Map<string,string>();
   private carts:readonly ShopCart[]=[];
+  private wishBubblesVisible=true;
 
   constructor(private readonly scene: Scene) {
     this.portraits.addEventListener("load", () => {
@@ -306,6 +307,14 @@ export class NpcVisualSystem {
         this.beginBrowsing(npc);
       paintIdentity(npc,this.portraits);
     }
+  }
+
+  /** The 3D shop is paused during boss/dungeon observation. Hide DOM-based
+   * request bubbles while another Babylon scene occupies the viewport. */
+  setWishBubblesVisible(visible:boolean):void {
+    this.wishBubblesVisible=visible;
+    if(!visible)for(const npc of this.npcs.values())
+      if(npc.wishBubble)npc.wishBubble.root.hidden=true;
   }
 
   /** Read-only traffic snapshot for the opt-in F9 diagnostic panel.
@@ -475,7 +484,7 @@ export class NpcVisualSystem {
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x < 0) open.level4 = true;
         if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x > 0) open.level6 = true;
       }
-      if(npc.wishBubble){
+      if(npc.wishBubble&&this.wishBubblesVisible){
         updateNpcWishBubble(npc.wishBubble,this.scene,npc.root.position,
           npc.restockSeconds??0,npc.root.metadata.shoppingPhase==="leaving-upset");
       }
