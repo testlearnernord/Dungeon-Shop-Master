@@ -259,3 +259,33 @@ export function inspectBedroom() {
     oldWall:!!scene.getMeshByName("front-middle-wall"),
   };
 }
+
+/** Dedicated structural and dressing probe. Decorative meshes must be inert. */
+export function inspectBedroomAtmosphere() {
+  const scene=Engine.LastCreatedScene!;
+  const pick=(name:string)=>scene.getMeshByName(name);
+  const decor=scene.meshes.filter(mesh=>
+    mesh.name.startsWith("bedroom-rock-rib-")||
+    mesh.name.startsWith("bedroom-rear-rock-")||
+    mesh.name.startsWith("bedroom-fallen-stone-")||
+    mesh.name.startsWith("bedroom-flagstone-"));
+  const bed=pick("galvik-bed");
+  const candle=scene.getLightByName("galvik-bed-candle");
+  const torch=scene.getLightByName("bedroom-door-torch-light");
+  return {
+    bed:{x:bed?.position.x,z:bed?.position.z,collides:bed?.checkCollisions,
+      pickable:bed?.isPickable,kind:bed?.metadata?.kind},
+    entryClear:!pick("front-middle-wall"),
+    entrancePiers:["bedroom-door-left-pier","bedroom-door-right-pier"]
+      .every(name=>pick(name)?.checkCollisions),
+    wallSolid:["bedroom-left-wall","bedroom-right-wall","bedroom-rear-wall"]
+      .every(name=>pick(name)?.checkCollisions),
+    decorCount:decor.length,
+    decorInert:decor.every(mesh=>!mesh.checkCollisions&&!mesh.isPickable),
+    furniture:["bedroom-desk","bedroom-account-book","bedroom-inkwell",
+      "bed-chest-lid","bed-blanket-fold","bedroom-tally-board",
+      "bedroom-debt-note","bed-candle-flame","bedroom-torch-flame"]
+      .every(name=>!!pick(name)),
+    practicalLighting:!!candle&&!!torch,
+  };
+}
