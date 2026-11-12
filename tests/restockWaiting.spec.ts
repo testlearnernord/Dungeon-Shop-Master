@@ -116,7 +116,7 @@ test("expired stock request produces angry walkout and no next-day phantom sale"
     .toBe(false);
 });
 
-test("three Day-1 sold-out customers wait off-aisle instead of blocking Waybread or checkout",async({page})=>{
+test("three hungry customers wait off-aisle when bread is sold out but expensive swords remain",async({page})=>{
   test.setTimeout(95000);
   const errors:string[]=[];
   page.on("pageerror",e=>errors.push(e.message));
@@ -129,13 +129,15 @@ test("three Day-1 sold-out customers wait off-aisle instead of blocking Waybread
     const state={
       ...initial,
       adventurers:initial.adventurers.map((hero,index)=>index<3
-        ?{...hero,status:"at-shop" as const,floor:5 as const,gold:100,
+        ?{...hero,status:"at-shop" as const,floor:5 as const,gold:4,
           inventory:{...hero.inventory,food:0},
           equipment:{weapon:null,armor:null}}
         :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...initial.shopEconomy,
         slots:initial.shopEconomy.slots.map(slot=>({
-          ...slot,quantity:0,itemId:null,
+          ...slot,
+          quantity:slot.id==="shelf-1-slot-1"?1:0,
+          itemId:slot.id==="shelf-1-slot-1"?"iron-sword" as const:null,
         }))},
     };
     await new CampaignStorage().saveGame(state);
