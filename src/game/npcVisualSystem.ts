@@ -588,7 +588,10 @@ export class NpcVisualSystem {
           }else npc.root.metadata.movementMode="door-opening";
         }
       }
-      this.animate(npc,delta,beforeMove);
+      // A departing actor can dispose itself during move(). The iteration
+      // snapshot still contains its old object, whose root metadata is gone.
+      if(this.npcs.get(npc.visitor.id)===npc)
+        this.animate(npc,delta,beforeMove);
     }
     for (const gate of ["level4", "level6"] as const) {
       const target = open[gate] ? DOOR_OPEN_Y : DOOR_CLOSED_Y;
