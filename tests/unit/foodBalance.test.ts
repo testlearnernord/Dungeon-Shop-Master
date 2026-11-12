@@ -105,7 +105,7 @@ test("found rations have seeded ~25% chance, no duplicate grants or free food wh
 });
 
 test("version 5 saves migrate strictly to the current version without changing historical state", () => {
-  assert.equal(SIMULATION_VERSION, 10);
+  assert.equal(SIMULATION_VERSION, 11);
   const state = createGameState();
   const old = structuredClone(createSave(state)) as any;
   old.simulationVersion = 5;
@@ -113,12 +113,13 @@ test("version 5 saves migrate strictly to the current version without changing h
   delete old.payload.level7World;
   delete old.payload.shopLayout;
   delete old.payload.shopCarts;
+  delete old.payload.shopDebts;
   for (const hero of old.payload.adventurers) delete hero.missedFoodShopVisits;
   delete old.payload.shopEconomy.bag["iron-sword"];
   delete old.payload.shopEconomy.bag["leather-vest"];
   const input = JSON.stringify(old);
   const migrated = parseSave(input);
-  assert.equal(migrated.simulationVersion, 10);
+  assert.equal(migrated.simulationVersion, 11);
   assert.deepEqual(migrated, state);
   assert.equal(JSON.stringify(old), input);
   assert.deepEqual(parseSave(JSON.stringify(createSave(migrated))), state);
