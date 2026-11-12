@@ -14,7 +14,7 @@ import type { ShoppingIntent, ShoppingInterest } from "./shopperIntents.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, crowdSafeStep, entranceApproachRoute, gateTravelLane, idleShopPositions, nextEntranceSpawnZ } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -397,6 +397,16 @@ export class NpcVisualSystem {
   private readonly update = (): void => {
     const delta = Math.min(this.scene.getEngine().getDeltaTime() / 1000, 0.1);
     const open: Record<GateSide, boolean> = { level4: false, level6: false };
+    // Compute from the same snapshot for every visitor this frame. Otherwise
+    // the first actor moved would change right-of-way for subsequent actors.
+    const gateActors:GateTrafficActor[]=[...this.npcs.values()]
+      .filter(npc=>npc.phase==="entering"||npc.phase==="leaving")
+      .map(npc=>({gate:npc.gateSide,phase:npc.phase as "entering"|"leaving",
+        x:npc.root.position.x,z:npc.root.position.z}));
+    const gateFlow:Record<GateSide,"entering"|"leaving">={
+      level4:gateFlowDirection("level4",gateActors),
+      level6:gateFlowDirection("level6",gateActors),
+    };
     for (const npc of this.npcs.values()) {
       npc.animationTime += delta;
       const cameraPosition = this.scene.activeCamera?.globalPosition;
@@ -440,11 +450,19 @@ export class NpcVisualSystem {
       }else if(npc.phase!=="queueing"||
         (npc.root.metadata.shoppingPhase==="waiting-for-shelf"&&
           npc.route[npc.waypoint]!==undefined)){
-        const isMovingThroughGate = (npc.phase === "entering" || npc.phase === "leaving") &&
-          npc.root.position.z > 11.3;
-        const physicalSide: GateSide = npc.root.position.x < 0 ? "level4" : "level6";
-        if (!isMovingThroughGate || this.doorY[physicalSide] >= DOOR_PASSAGE_CLEAR_Y) {
-          this.move(npc, delta);
+        const transit = (npc.phase==="entering"||npc.phase==="leaving")?
+          {gate:npc.gateSide,phase:npc.phase,
+            x:npc.root.position.x,z:npc.root.position.z}:null;
+        // Outgoing shoppers wait inside; incoming shoppers wait outside.
+        // Neither waits halfway through the physical gate.
+        const yielding=!!transit&&mustYieldAtGate(transit,gateFlow[transit.gate]);
+        npc.root.metadata.gateYield=yielding;
+        if(!yielding){
+          const isMovingThroughGate = !!transit && npc.root.position.z > 11.3;
+          const physicalSide: GateSide = npc.root.position.x < 0 ? "level4" : "level6";
+          if(!isMovingThroughGate || this.doorY[physicalSide]>=DOOR_PASSAGE_CLEAR_Y){
+            this.move(npc,delta);
+          }
         }
       }
       this.animate(npc);
@@ -711,8 +729,13 @@ export class NpcVisualSystem {
       }
       return shopSegmentClear(a,b,this.layout);
     };
+    // Once a hero approaches the narrow gate, remain in its reserved lane.
+    // Side-stepping at z≈6 used to push entering and leaving actors back
+    // toward one another even though their long-distance lanes were distinct.
+    const inGateApproach=(npc.phase==="entering"||npc.phase==="leaving")&&
+      (from.z>=5.25||target.z>=6.0);
     const proposed=crowdSafeStep(from,{x:target.x,z:target.z},occupied,
-      WALK_SPEED*delta,walkable,from.z<=6.5);
+      WALK_SPEED*delta,walkable,!inGateApproach&&from.z<=6.5);
     if(!proposed){
       npc.blockedSeconds+=delta;
       npc.root.metadata.blockedSeconds=npc.blockedSeconds;
