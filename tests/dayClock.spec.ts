@@ -130,3 +130,26 @@ test("bedroom dressing preserves the collision-safe alcove and interactable bed"
   await expect(page.locator("#day")).toHaveText("Day 2");
   expect(errors).toEqual([]);
 });
+
+test("shop and sleeping cell reuse textured materials without changing collision or stocking",async({page})=>{
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const materials=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonSurfaces());
+  expect(materials.textureCount).toBe(3);
+  expect(materials.surfaceCount).toBe(materials.requestedCount);
+  expect(materials.sharedWall).toBe(true);
+  expect(materials.sharedTimber).toBe(true);
+  expect(materials.sharedFloor).toBe(true);
+  expect(materials.semanticShelf).toBe("shelf-slot");
+  expect(materials.solidWalls).toBe(true);
+  expect(materials.idleDecor).toBe(true);
+  await moveToBed(page);
+  await page.keyboard.down("e");
+  await expect(page.locator("#merchant-ledger")).toBeVisible({timeout:10000});
+  await page.keyboard.up("e");
+  await expect(page.locator("#day")).toHaveText("Day 2");
+  expect(errors).toEqual([]);
+});
