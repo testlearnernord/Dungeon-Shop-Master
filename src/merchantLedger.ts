@@ -213,12 +213,6 @@ export function setupMerchantLedger(
     if(tag)row.append(node("small","ledger-line-tag",tag));
     return row;
   }
-  const stateHeroName=(id:string):string|null=>{
-    const latest=afterState?.adventurers.find(hero=>hero.id===id);
-    return latest?.name??null;
-  };
-  let afterState:GameState|null=null;
-
   function renderPage():void{
     if(!summary)return;
     pages.textContent=String(page+1).padStart(2,"0")+" / 04";
@@ -285,8 +279,8 @@ export function setupMerchantLedger(
         for(const event of summary.credits.slice(-30)){
           const item=ITEMS.find(entry=>entry.id===event.itemId);
           creditRows.append(line(
-            (stateHeroName(event.adventurerId??"")??event.adventurerId??"Unknown")+
-              " · "+(item?.name??event.itemId??"Item")+" ×"+(event.quantity??1),
+            (event.message || event.adventurerId || "Unknown")+" · "+
+              (item?.name??event.itemId??"Item"),
             gold(event.debtGold??0),"UNPAID"));
         }
         content.append(creditRows);
