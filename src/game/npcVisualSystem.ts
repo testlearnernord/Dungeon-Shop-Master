@@ -357,6 +357,41 @@ export class NpcVisualSystem {
     npc.restockSeconds=seconds;
   }
 
+  /** Interact only with a physically present, facing, stationary petitioner. */
+  nearbyBeggarId(position:Vector3,direction:Vector3,maxDistance=3.1):string|null {
+    const facing=Math.hypot(direction.x,direction.z);
+    if(facing<0.01)return null;
+    const candidates=[...this.npcs.values()].filter(npc=>
+      npc.visitor.status==="at-shop"&&
+      npc.root.metadata.shoppingPhase==="waiting-for-credit");
+    let nearest:{id:string;distance:number}|null=null;
+    for(const npc of candidates){
+      const dx=npc.root.position.x-position.x;
+      const dz=npc.root.position.z-position.z;
+      const distance=Math.hypot(dx,dz);
+      if(distance>maxDistance||distance<0.01)continue;
+      if((dx*direction.x+dz*direction.z)/(distance*facing)<0.20)continue;
+      if(!nearest||distance<nearest.distance)
+        nearest={id:npc.visitor.id,distance};
+    }
+    return nearest?.id??null;
+  }
+
+  /** The authoritative debt has already been written; animate the departure. */
+  departWithCredit(heroId:string):void {
+    const npc=this.npcs.get(heroId);
+    if(!npc)return;
+    this.clearWish(npc);
+    this.beginLeaving(npc);
+    npc.root.metadata.shoppingPhase="leaving-with-credit";
+  }
+
+  dismissBeggar(heroId:string):void {
+    const npc=this.npcs.get(heroId);
+    if(npc?.root.metadata.shoppingPhase==="waiting-for-credit")
+      this.leaveUnserved(npc);
+  }
+
   /** Physical register admission, checked immediately before the transaction. */
   readyCheckoutHeroId():string|null {
     const head=this.carts.find(cart=>cart.lines.length>0);
@@ -495,6 +530,7 @@ export class NpcVisualSystem {
       }
       if(npc.phase==="queueing"&&(
         npc.root.metadata.shoppingPhase==="restock-spot-full"||
+        npc.root.metadata.shoppingPhase==="credit-spot-full"||
         npc.root.metadata.shoppingPhase==="shelf-waiting-spot-full")){
         // All safe pockets are reserved. Reattempt allocation, never start
         // waiting beside a shelf merely because route creation returned null.
@@ -502,7 +538,8 @@ export class NpcVisualSystem {
         if(npc.wait<=0)this.beginBrowsing(npc);
       }
       if(npc.phase==="queueing"&&
-        npc.root.metadata.shoppingPhase==="waiting-for-restock"){
+        (npc.root.metadata.shoppingPhase==="waiting-for-restock"||
+         npc.root.metadata.shoppingPhase==="waiting-for-credit")){
         npc.restockSeconds=restockWaitRemaining(npc.restockSeconds??RESTOCK_WAIT_SECONDS,delta);
         npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
         if(npc.restockSeconds<=0)this.leaveUnserved(npc);
@@ -626,9 +663,9 @@ export class NpcVisualSystem {
 
   /** Each unsatisfied customer owns a single, world-anchored request bubble.
    * Its SVG symbol matches the stocking hotbar and wholesale UI. */
-  private showWish(npc:NpcVisual,itemId:ItemId):void {
+  private showWish(npc:NpcVisual,itemId:ItemId,begging=false):void {
     if(!npc.wishBubble)npc.wishBubble=createNpcWishBubble(itemId);
-    else if(npc.wishItem!==itemId)setNpcWishItem(npc.wishBubble,itemId);
+    setNpcWishItem(npc.wishBubble,itemId,begging);
     npc.wishItem=itemId;
     npc.root.metadata.wantedItemId=itemId;
   }
@@ -665,14 +702,15 @@ export class NpcVisualSystem {
     const origin={x:npc.root.position.x,z:npc.root.position.z};
     const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
     const action=shopperVisualAction(npc.intent,checkoutIndex>=0);
-    if(!item&&action==="wait-restock"&&npc.intent?.wantedItemId){
+    if(!item&&(action==="wait-restock"||action==="beg")&&npc.intent?.wantedItemId){
+      const begging=action==="beg";
       // The generic idle-grid starts beside the actual shelves. Restock
       // customers require reserved rear-wall pockets away from both shopping
       // aisles and the entrance. Never treat an unreachable empty route as
       // successful arrival and start the 60-second countdown in the doorway.
       const waitRoute=this.offAisleWaitingRoute(npc);
       if(npc.restockSeconds===null)npc.restockSeconds=RESTOCK_WAIT_SECONDS;
-      this.showWish(npc,npc.intent.wantedItemId);
+      this.showWish(npc,npc.intent.wantedItemId,begging);
       npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
       npc.root.metadata.shoppingTargetSlot=null;
       npc.root.metadata.checkoutQueueIndex=-1;
@@ -682,7 +720,8 @@ export class NpcVisualSystem {
       npc.phase=waitRoute?"browsing":"queueing";
       npc.wait=0.5;
       npc.root.metadata.shoppingPhase=waitRoute
-        ?"walking-to-restock-wait":"restock-spot-full";
+        ?(begging?"walking-to-credit-wait":"walking-to-restock-wait")
+        :(begging?"credit-spot-full":"restock-spot-full");
       npc.root.metadata.phase=npc.phase;
       return;
     }
@@ -838,6 +877,8 @@ export class NpcVisualSystem {
           npc.phase="queueing";
           npc.root.metadata.shoppingPhase=npc.root.metadata.shoppingPhase==="walking-to-restock-wait"
             ?"waiting-for-restock"
+            :npc.root.metadata.shoppingPhase==="walking-to-credit-wait"
+              ?"waiting-for-credit"
             :checkoutQueueIndex(this.carts,npc.visitor.id)>=0
               ?"awaiting-checkout":"waiting-for-next-day";
         }else{
