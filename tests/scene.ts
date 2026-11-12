@@ -49,6 +49,33 @@ export function inspectBedroomSightlines() {
   return {
     rosterX:at("adventurer-roster-board").position.x,
     rightmostFrameX:at("roster-frame-right").position.x,
+    boardClearOfWall:(()=>{
+      const board=at("adventurer-roster-board");
+      const leftFrame=at("roster-frame-left");
+      const rightFrame=at("roster-frame-right");
+      const bedroomWall=at("bedroom-left-wall");
+      const mainWall=at("front-left-wall");
+      for(const mesh of [board,leftFrame,rightFrame,bedroomWall,mainWall])
+        mesh.computeWorldMatrix(true);
+      const boardBounds=board.getBoundingInfo().boundingBox;
+      const leftBounds=leftFrame.getBoundingInfo().boundingBox;
+      const rightBounds=rightFrame.getBoundingInfo().boundingBox;
+      const sideBounds=bedroomWall.getBoundingInfo().boundingBox;
+      const wallBounds=mainWall.getBoundingInfo().boundingBox;
+      return boardBounds.minimumWorld.x > wallBounds.minimumWorld.x+0.1 &&
+        boardBounds.maximumWorld.x < sideBounds.minimumWorld.x-0.1 &&
+        leftBounds.minimumWorld.x>wallBounds.minimumWorld.x+0.1 &&
+        rightBounds.maximumWorld.x<sideBounds.minimumWorld.x-0.1 &&
+        boardBounds.minimumWorld.z>sideBounds.maximumWorld.z+0.15;
+    })(),
+    signYaw:at("bedroom-sign").rotation.y,
+    signZ:at("bedroom-sign").position.z,
+    furnitureHulls:["chest","desk","candle-stool"].map(id=>{
+      const mesh=at("bedroom-furniture-collider-"+id);
+      return {id,exists:!!mesh,solid:mesh.checkCollisions,
+        invisible:mesh.visibility===0,unpickable:!mesh.isPickable,
+        width:mesh.getBoundingInfo().boundingBox.extendSize.x*2};
+    }),
     wallLeftWidth:at("bedroom-left-wall").getBoundingInfo().boundingBox.extendSizeWorld.x*2,
     wallRightWidth:at("bedroom-right-wall").getBoundingInfo().boundingBox.extendSizeWorld.x*2,
     jambsSolid:at("bedroom-door-jamb--1").checkCollisions&&
