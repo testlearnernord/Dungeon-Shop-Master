@@ -10,7 +10,7 @@ import { Scene } from "@babylonjs/core/scene";
 import type { Interactable } from "./inventory";
 import { CHECKOUT_COUNTER, COMPACT_COUNTER } from "./shopLayout";
 import { buildBedroom } from "./bedroom";
-import { getDungeonSurfaces } from "./dungeonSurfaces";
+import { getDungeonSurfaces, tileLargeFloorUV } from "./dungeonSurfaces";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
@@ -86,6 +86,7 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   const rock = new Color3(0.2, 0.18, 0.16);
   const floor = box(scene, "stone-floor", { width: 15, height: 0.4, depth: 25 }, new Vector3(0, -0.2, 0), new Color3(0.25, 0.22, 0.18), true, surfaces.floor);
   floor.checkCollisions = true;
+  tileLargeFloorUV(floor, 15, 25);
   const ceiling = box(scene, "stone-ceiling", { width: 15, height: 0.35, depth: 25 }, new Vector3(0, 4.1, 0), rock, true, surfaces.stone);
   ceiling.checkCollisions = true;
 
