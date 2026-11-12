@@ -17,8 +17,7 @@ async function waitForWorld(page:import("@playwright/test").Page){
 
 async function moveToBed(page:import("@playwright/test").Page){
   await page.evaluate(async()=>{
-    (await import("/Dungeon-Shop-Master/tests/scene.ts"))
-      .inspectPlayer({x:-0.25,y:1.7,z:-10.3});
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtBed();
   });
   await expect(page.locator("#sleep-bed-prompt")).toBeVisible();
 }
@@ -144,6 +143,33 @@ test("bedroom dressing preserves the collision-safe alcove and interactable bed"
   await page.keyboard.up("e");
   await expect(page.locator("#day")).toHaveText("Day 2");
   expect(errors).toEqual([]);
+});
+
+test("bedchamber entrance, sign and bed interaction have separate, solid sightlines",async({page})=>{
+  await page.goto("./");
+  await waitForWorld(page);
+  const probes=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBedroomSightlines());
+  expect(probes.rosterX).toBe(-5);
+  expect(probes.rightmostFrameX).toBeLessThan(-2.5);
+  expect(probes.wallLeftWidth).toBeGreaterThan(0.8);
+  expect(probes.wallRightWidth).toBeGreaterThan(0.8);
+  expect(probes.jambsSolid).toBe(true);
+  expect(probes.lintelSolid).toBe(true);
+  expect(probes.noteZ).toBeGreaterThan(probes.rearRockZ+0.2);
+
+  await moveToBed(page);
+  for(const name of ["bedroom-account-book","galvik-bed-chest","bed-candle"]){
+    await page.evaluate(async(prop)=>
+      (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtBedroomProp(prop),name);
+    await expect(page.locator("#sleep-bed-prompt")).toBeHidden();
+  }
+  await page.keyboard.down("e");
+  await page.waitForTimeout(1700);
+  await page.keyboard.up("e");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await moveToBed(page);
+  await expect(page.locator("#sleep-bed-prompt")).toBeVisible();
 });
 
 test("shop and sleeping cell reuse textured materials without changing collision or stocking",async({page})=>{

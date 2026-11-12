@@ -23,8 +23,12 @@ export function crowdSafeStep(
   if(!Number.isFinite(length)||length<=0||
      !Number.isFinite(maxDistance)||maxDistance<=0)return null;
   const step=Math.min(length,maxDistance),nx=dx/length,nz=dz/length;
+  // When the first row of the aisle jams, backing away may be the
+  // only collision-safe move. The segment test still prevents tunnelling.
   const angles=allowSidestep
-    ? [0,Math.PI/6,-Math.PI/6,Math.PI/3,-Math.PI/3,Math.PI/2,-Math.PI/2]
+    ? [0,Math.PI/6,-Math.PI/6,Math.PI/3,-Math.PI/3,
+       Math.PI/2,-Math.PI/2,2*Math.PI/3,-2*Math.PI/3,
+       5*Math.PI/6,-5*Math.PI/6,Math.PI]
     : [0];
   for(const angle of angles){
     const cos=Math.cos(angle),sin=Math.sin(angle);

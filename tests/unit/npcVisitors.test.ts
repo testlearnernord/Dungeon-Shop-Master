@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { reconcileVisitors, shouldLeaveShopVisual, type VisitorSnapshot } from "../../src/game/npcVisitors.ts";
+import { reconcileVisitors, shouldLeaveShopVisual, manuallyPaidVisitors, type VisitorSnapshot } from "../../src/game/npcVisitors.ts";
 
 const visitor = (id: string, status: VisitorSnapshot["status"] = "at-shop"): VisitorSnapshot => ({
   id, name: id, role: "tank", status,
@@ -65,4 +65,17 @@ test("paid customer departing for an expedition exits just once", () => {
   const current = [visitor("buyer","expedition")];
   assert.deepEqual(reconcileVisitors(previous,current).leaving.map(({id})=>id),["buyer"]);
   assert.deepEqual(reconcileVisitors(current,current).leaving,[]);
+});
+
+
+test("only committed manual same-day sales trigger physical departure",()=>{
+  const events=[
+    {day:1,type:"sale",saleChannel:"manual",adventurerId:"old"},
+    {day:2,type:"sale",saleChannel:"reserved",adventurerId:"reserved"},
+    {day:2,type:"shop-arrival",adventurerId:"new"},
+    {day:2,type:"sale",saleChannel:"manual",adventurerId:"paid"},
+    {day:2,type:"tip",adventurerId:"paid"},
+  ];
+  assert.deepEqual([...manuallyPaidVisitors(events,2)],["paid"]);
+  assert.deepEqual([...manuallyPaidVisitors(events,1)],["old"]);
 });

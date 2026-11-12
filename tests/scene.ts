@@ -23,10 +23,40 @@ export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
 }
 
 export function aimAtRosterBoard() {
-  inspectPlayer({ x: 0, y: 1.7, z: -4.2 });
+  inspectPlayer({ x: -5, y: 1.7, z: -4.2 });
   const scene = Engine.LastCreatedScene!;
   (scene.activeCamera as UniversalCamera).setTarget(scene.getMeshByName("adventurer-roster-board")!.getAbsolutePosition());
   return scene.getFrameId();
+}
+
+/** Aim the FPS camera at the actual mattress, not nearby bedroom props. */
+export function aimAtBed() {
+  inspectPlayer({ x: 0.6, y: 1.7, z: -8.95 });
+  const scene = Engine.LastCreatedScene!;
+  (scene.activeCamera as UniversalCamera).setTarget(scene.getMeshByName("galvik-bed")!.getAbsolutePosition());
+}
+
+/** Regression probe for objects around the bed that must not trigger sleep. */
+export function aimAtBedroomProp(name:string) {
+  inspectPlayer({ x: 0.6, y: 1.7, z: -8.95 });
+  const scene = Engine.LastCreatedScene!;
+  (scene.activeCamera as UniversalCamera).setTarget(scene.getMeshByName(name)!.getAbsolutePosition());
+}
+
+export function inspectBedroomSightlines() {
+  const scene = Engine.LastCreatedScene!;
+  const at=(name:string)=>scene.getMeshByName(name)!;
+  return {
+    rosterX:at("adventurer-roster-board").position.x,
+    rightmostFrameX:at("roster-frame-right").position.x,
+    wallLeftWidth:at("bedroom-left-wall").getBoundingInfo().boundingBox.extendSizeWorld.x*2,
+    wallRightWidth:at("bedroom-right-wall").getBoundingInfo().boundingBox.extendSizeWorld.x*2,
+    jambsSolid:at("bedroom-door-jamb--1").checkCollisions&&
+      at("bedroom-door-jamb-1").checkCollisions,
+    lintelSolid:at("bedroom-door-lintel").checkCollisions,
+    noteZ:at("bedroom-debt-note").position.z,
+    rearRockZ:at("bedroom-rear-rock-7").position.z,
+  };
 }
 
 export function aimAtShelfSlot() {

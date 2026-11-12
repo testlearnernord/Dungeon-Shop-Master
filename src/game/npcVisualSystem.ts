@@ -247,6 +247,7 @@ export class NpcVisualSystem {
     plans:ReadonlyMap<string,ShoppingIntent>,layout:ShopLayout,shop:Shop,
     carts:readonly ShopCart[],
     onPickUp:(heroId:string,slotId:string)=>boolean,
+    paidHeroIds:ReadonlySet<string>=new Set(),
   ):void {
     const furnitureMoved=this.layout!==null&&(
       JSON.stringify(this.layout.counter)!==JSON.stringify(layout.counter)||
@@ -259,12 +260,17 @@ export class NpcVisualSystem {
     const queueIds=carts.filter(cart=>cart.lines.length>0).map(cart=>cart.heroId);
     const queuePoints=checkoutQueuePoints(layout,{x:0,z:-1},queueIds.length);
     for(const npc of this.npcs.values()){
-      const isShopping=!shouldLeaveShopVisual(npc.visitor.status);
+      // Manual payment is committed before the Day Tick, so status stays
+      // at-shop for simulation but the customer must physically exit NOW.
+      const manuallyPaid=paidHeroIds.has(npc.visitor.id);
+      const isShopping=!shouldLeaveShopVisual(npc.visitor.status)&&!manuallyPaid;
       const held=isShopping?(cartByHero.get(npc.visitor.id)?.lines??[]):[];
       const changed=this.syncCarriedProducts(npc,held);
+      npc.root.metadata.cartPaid=manuallyPaid;
       // A departing visitor has just paid by the confirmed Day Tick. Clear
       // the unpaid basket immediately, and show their updated true inventory.
       if(!isShopping){
+        if(npc.phase!=="leaving")this.beginLeaving(npc);
         if(changed)paintIdentity(npc,this.portraits);
         // Leaving visitors keep their route across regular economy refreshes,
         // but must replan when moved furniture would intersect a cached path.
@@ -523,20 +529,17 @@ export class NpcVisualSystem {
     const origin={x:npc.root.position.x,z:npc.root.position.z};
     if(item&&slot&&this.layout&&this.shop){
       const pointForShelf=this.shop.shelfAccessPoint(slot);
-      // Different slots on the same shelf are only 1m apart. Reserving the
-      // exact slot alone lets two customers claim overlapping standing points.
-      // Hold the nearby access zone until the first shopper finishes inspecting.
+      // Reserve the entire physical shelf, not individual stock slots.
+      // Adjacent access points overlap once shoulder/arm meshes are included;
+      // only one browser may reach a shelf at a time. Others wait off-aisle.
       const shelfAccessBusy=[...this.shelfOwners].some(([reservedId,reservedBy])=>{
         if(reservedBy===npc.visitor.id)return false;
         const reserved=[...this.shop!.slotMeshes.values()].find(s=>s.id===reservedId);
-        if(!reserved)return false;
-        const point=this.shop!.shelfAccessPoint(reserved);
-        return Math.hypot(point.x-pointForShelf.x,
-          point.z-pointForShelf.z)<PERSONAL_SPACE+0.01;
+        return reserved?.shelfId===slot.shelfId;
       });
       if(shelfAccessBusy){
         const waitingRoutes=Array.from({length:this.npcs.size+5},(_,slot)=>{
-          const target=this.queuePosition(slot);
+          const target=this.queuePosition(slot,npc);
           const route=target?pathToShopGoal(origin,target,this.layout!):null;
           const point=route?.waypoints.at(-1)??target;
           const clearOfShelf=!!point&&Math.hypot(point.x-pointForShelf.x,
@@ -574,7 +577,7 @@ export class NpcVisualSystem {
     }
     const checkoutIndex=checkoutQueueIndex(this.carts,npc.visitor.id);
     const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length):[];
-    const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot);
+    const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot,npc);
     if(!target){
       npc.phase="queueing";npc.route=[];npc.waypoint=0;
       npc.root.metadata.shoppingPhase=checkoutIndex>=0
@@ -597,9 +600,24 @@ export class NpcVisualSystem {
     paintIdentity(npc,this.portraits);
   }
 
-  private queuePosition(slot:number):Vector3|null {
+  private queuePosition(slot:number,npc:NpcVisual):Vector3|null {
     if(!this.layout)return null;
-    const point=idleShopPositions(this.layout,100)[slot];
+    const points=idleShopPositions(this.layout,100);
+    const preferred=points[slot];
+    // Assign a distinct *future* standing spot, not merely a position that
+    // happens to be free this frame. Otherwise multiple shoppers all route
+    // to the same empty place and jam when they arrive there together.
+    const reservedByAnother=(point:{x:number;z:number})=>
+      [...this.npcs.values()].some(other=>{
+        if(other===npc)return false;
+        const current=other.root.position;
+        if(Math.hypot(point.x-current.x,point.z-current.z)<PERSONAL_SPACE)return true;
+        const destination=other.route.at(-1);
+        return !!destination&&Math.hypot(point.x-destination.x,
+          point.z-destination.z)<PERSONAL_SPACE;
+      });
+    const candidates=preferred?[preferred,...points.filter(p=>p!==preferred)]:points;
+    const point=candidates.find(p=>!reservedByAnother(p));
     return point?new Vector3(point.x,0,point.z):null;
   }
 
@@ -664,9 +682,14 @@ export class NpcVisualSystem {
     if(!proposed){
       npc.blockedSeconds+=delta;
       npc.root.metadata.blockedSeconds=npc.blockedSeconds;
+      // A blocked shopper or departing customer must get another chance to
+      // route around a stationary queue, not freeze permanently at a waypoint.
       if(npc.blockedSeconds>3&&npc.phase==="browsing"){
         npc.blockedSeconds=0;
         this.beginBrowsing(npc);
+      }else if(npc.blockedSeconds>5&&npc.phase==="leaving"){
+        npc.blockedSeconds=0;
+        this.beginLeaving(npc);
       }
       return;
     }

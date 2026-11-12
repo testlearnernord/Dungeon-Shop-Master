@@ -12,7 +12,10 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 /** Read-only projection of the authoritative heroes onto the shop's front wall. */
 export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh } {
   const board = MeshBuilder.CreatePlane("adventurer-roster-board", { width: 4.55, height: 2.75 }, scene);
-  board.position = new Vector3(0, 2.17, -6.68);
+  // Hang the roster entirely on the left front wall, outside the 2.4m
+  // passage into Galvik's sleeping room.
+  const boardX = -5;
+  board.position = new Vector3(boardX, 2.17, -6.68);
   board.rotation.y = Math.PI;
   board.checkCollisions = false;
   board.isPickable = true;
@@ -34,7 +37,7 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
     ["left", 0.12, 2.8, -2.37, 2.17], ["right", 0.12, 2.8, 2.37, 2.17],
   ] as const) {
     const frame = MeshBuilder.CreateBox("roster-frame-" + name, { width: w, height: h, depth: 0.11 }, scene);
-    frame.position.set(x, y, -6.64);
+    frame.position.set(boardX + x, y, -6.64);
     frame.material = wood;
     frame.isPickable = false;
     frame.checkCollisions = false;

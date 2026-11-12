@@ -68,9 +68,11 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   // would invalidate navigation, save positions and the bed's hold-E reach.
   cube("bedroom-door-left-pier", 1.3, 4, 0.4, -1.85, 2, -7, wall, true);
   cube("bedroom-door-right-pier", 1.3, 4, 0.4, 1.85, 2, -7, wall, true);
-  cube("bedroom-left-wall", 0.4, 4, 5.55, -3.25, 2, -9.68, wall, true);
-  cube("bedroom-right-wall", 0.4, 4, 5.55, 3.25, 2, -9.68, wall, true);
-  cube("bedroom-rear-wall", 6.9, 4, 0.4, 0, 2, -12.35, wall, true);
+  // Overlap the entry and rear masonry with thicker side walls so the FPS
+  // camera cannot graze a seam and peek into the unrendered cave exterior.
+  cube("bedroom-left-wall", 0.85, 4, 6.05, -3.25, 2, -9.68, wall, true);
+  cube("bedroom-right-wall", 0.85, 4, 6.05, 3.25, 2, -9.68, wall, true);
+  cube("bedroom-rear-wall", 6.9, 4, 0.65, 0, 2, -12.35, wall, true);
   const flagstone = surfaces.floor;
   cube("bedroom-floor-skin", 6.05, 0.025, 5.08, 0, 0.012, -9.68, flagstone);
   // Thin offset slabs interrupt the uninterrupted cube-floor silhouette.
@@ -109,10 +111,10 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   }
   // The doorway gains lintels and worn side frames, rather than an unrelated
   // new wall which could block the player.
-  cube("bedroom-door-lintel", 3.48, 0.47, 0.46, 0, 3.72, -6.96, masonry);
+  cube("bedroom-door-lintel", 3.48, 0.47, 0.46, 0, 3.72, -6.96, masonry, true);
   for (const side of [-1, 1]) {
     cube("bedroom-door-jamb-" + side, 0.22, 2.75, 0.27,
-      side * 1.18, 1.48, -6.75, wornEdges);
+      side * 1.18, 1.48, -6.75, wornEdges, true);
   }
   cube("bedroom-roof-beam", 6.05, 0.25, 0.32, 0, 3.37, -11.46, timber);
   cube("bedroom-roof-beam-front", 6.05, 0.19, 0.29, 0, 3.52, -8.12, timber);
@@ -232,7 +234,8 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   // not a gameplay counter, so it deliberately contains no changing numbers.
   const note = MeshBuilder.CreatePlane("bedroom-debt-note",
     { width: 0.91, height: 0.60 }, scene);
-  note.position.set(1.93, 2.14, -12.065);
+  // Put the lettering in front of the rocky insets, not through them.
+  note.position.set(1.93, 2.14, -11.79);
   // Babylon planes face -Z by default; turn the writing toward the shop door.
   note.rotation.y = Math.PI;
   const paper = new DynamicTexture("bedroom-debt-note-texture",
@@ -247,7 +250,7 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   paperMat.emissiveColor = new Color3(0.07, 0.046, 0.024);
   note.material = paperMat;
   note.isPickable = false;
-  round("bedroom-debt-note-pin", 0.07, 0.04, 1.93, 2.44, -12.02, metal, 7);
+  round("bedroom-debt-note-pin", 0.07, 0.04, 1.93, 2.44, -11.74, metal, 7);
 
   // Scattered rubble stays near the edges and never becomes a collision trap.
   for (let i = 0; i < 12; i++) {
