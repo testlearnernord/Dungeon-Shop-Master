@@ -118,6 +118,7 @@ export function inspectNpcVisuals() {
         shoppingPhase: node.metadata.shoppingPhase as string|undefined,
         gateYield: node.metadata.gateYield as boolean|undefined,
         blockedSeconds: node.metadata.blockedSeconds as number|undefined,
+        softPassing: node.metadata.softPassing as boolean|undefined,
         shoppingTargetSlot: node.metadata.shoppingTargetSlot as string|null|undefined,
         shoppingTargets: node.metadata.shoppingTargets as string[]|undefined,
         cartUnits: node.metadata.cartUnits as number|undefined,
