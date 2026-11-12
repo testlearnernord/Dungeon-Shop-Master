@@ -10,7 +10,9 @@ import { reconcileVisitors, shouldLeaveShopVisual, type GateSide, type VisitorRo
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
-import { shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
+import { RESTOCK_WAIT_SECONDS, restockWaitRemaining, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
+import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble, type NpcWishBubble } from "./npcWishBubble.ts";
+import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
@@ -42,6 +44,9 @@ interface NpcVisual {
   browseSide: number;
   animationTime: number;
   blockedSeconds:number;
+  restockSeconds:number|null;
+  wishItem:ItemId|null;
+  wishBubble:NpcWishBubble|null;
   gateSide: GateSide;
   readonly labelTexture: DynamicTexture;
   readonly labelMesh: Mesh;
@@ -138,6 +143,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
     root, arms, legs, torso, model, visitor, phase: "entering", route: [], waypoint: 0, slot,
     elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, blockedSeconds:0,
     gateSide: visitor.entranceGate ?? "level4",
+    restockSeconds:null,wishItem:null,wishBubble:null,
     intent:null,intentKey:"",targetIndex:0,toQueue:false,
     heldLines:[],heldMeshes:[],heldKey:"",
     labelTexture: texture, labelMesh: label,
@@ -160,6 +166,7 @@ export class NpcVisualSystem {
   private layout:ShopLayout|null=null;
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
+  private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
   private readonly shelfOwners=new Map<string,string>();
   private carts:readonly ShopCart[]=[];
 
@@ -248,6 +255,7 @@ export class NpcVisualSystem {
     carts:readonly ShopCart[],
     onPickUp:(heroId:string,slotId:string)=>boolean,
     paidHeroIds:ReadonlySet<string>=new Set(),
+    onWalkout?:((heroId:string,reason:ShoppingIntent["reason"])=>void),
   ):void {
     const furnitureMoved=this.layout!==null&&(
       JSON.stringify(this.layout.counter)!==JSON.stringify(layout.counter)||
@@ -255,6 +263,7 @@ export class NpcVisualSystem {
     this.layout=layout;
     this.shop=shop;
     this.onPickUp=onPickUp;
+    this.onWalkout=onWalkout??null;
     this.carts=carts;
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
     const queueIds=carts.filter(cart=>cart.lines.length>0).map(cart=>cart.heroId);
@@ -283,7 +292,7 @@ export class NpcVisualSystem {
       }
       const plan=plans.get(npc.visitor.id)??null;
       const queueIndex=checkoutQueueIndex(carts,npc.visitor.id);
-      const key=JSON.stringify([plan?.items,plan?.reason,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex]]);
+      const key=JSON.stringify([plan?.items,plan?.reason,plan?.wantedItemId,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex]]);
       if(key===npc.intentKey)continue;
       npc.intent=plan;
       npc.intentKey=key;
@@ -301,6 +310,7 @@ export class NpcVisualSystem {
   inspectTraffic():readonly {
     id:string;phase:string;status:string;reason:string;goal:string;
     target:string;blockedSeconds:number;waypoint:string;cartUnits:number;
+    wish:string;restockSeconds:number|null;
     x:number;z:number;
   }[] {
     return [...this.npcs.values()].map(npc=>({
@@ -313,6 +323,9 @@ export class NpcVisualSystem {
       blockedSeconds:Math.round(npc.blockedSeconds*10)/10,
       waypoint:`${npc.waypoint}/${npc.route.length}`,
       cartUnits:Number(npc.root.metadata.cartUnits??0),
+      wish:npc.wishItem??"",
+      restockSeconds:npc.restockSeconds===null?null:
+        Math.ceil(npc.restockSeconds),
       x:Math.round(npc.root.position.x*10)/10,
       z:Math.round(npc.root.position.z*10)/10,
     }));
