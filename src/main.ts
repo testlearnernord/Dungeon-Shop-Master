@@ -89,7 +89,8 @@ const refreshShoppingIntents = () => npcVisuals.setShoppingIntents(
     store.pickUpShopItem(heroId,slotId);
     return store.state!==previous;
   },
-  manuallyPaidVisitors(store.state.events,store.state.day));
+  manuallyPaidVisitors(store.state.events,store.state.day),
+  (heroId,reason)=>store.walkOutWithoutPurchase(heroId,reason));
 store.subscribe(refreshShoppingIntents);
 refreshShoppingIntents();
 setupSalesHud(store);
