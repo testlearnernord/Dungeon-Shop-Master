@@ -17,11 +17,7 @@ async function waitForWorld(page:import("@playwright/test").Page){
 
 async function moveToBed(page:import("@playwright/test").Page){
   await page.evaluate(async()=>{
-    (await import("/Dungeon-Shop-Master/tests/scene.ts"))
-      .inspectPlayer({x:0.6,y:1.7,z:-8.95});
-    const {Engine}=await import("@babylonjs/core/Engines/engine");
-    const camera=Engine.LastCreatedScene!.activeCamera!;
-    camera.setTarget(Engine.LastCreatedScene!.getMeshByName("galvik-bed")!.getAbsolutePosition());
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtBed();
   });
   await expect(page.locator("#sleep-bed-prompt")).toBeVisible();
 }
