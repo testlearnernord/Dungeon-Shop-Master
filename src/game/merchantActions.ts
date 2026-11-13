@@ -4,7 +4,7 @@ import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
-import type { Camera } from "@babylonjs/core/Cameras/camera";
+import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { ITEMS, type ItemId } from "./inventory.ts";
 import { merchantActionPose, merchantGaitPose, type MerchantAction } from "./merchantMotion.ts";
@@ -15,7 +15,7 @@ export type {MerchantAction} from "./merchantMotion.ts";
  * camera's world position/yaw but NOT its pitch, so looking down reveals
  * actual legs and boots instead of feet glued to the screen. */
 export function createMerchantActions(
-  scene:Scene,camera:Camera,enabled:()=>boolean,volume:()=>number,
+  scene:Scene,camera:UniversalCamera,enabled:()=>boolean,volume:()=>number,
   isShopView:()=>boolean=()=>true,
   selectedItem:()=>ItemId=()=>ITEMS[0].id,
 ){
