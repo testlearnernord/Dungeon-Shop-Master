@@ -1,3 +1,5 @@
+import { level5FloorWalkable, level5FloorSegmentWalkable } from "./level5Walkability.ts";
+import type { Level5Room } from "./level5Room.ts";
 import { COMPACT_COUNTER, getCounterPlacement, shelfBounds, type ShopLayout } from "./shopLayout.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
@@ -13,7 +15,8 @@ const worldPoint=(index:number):ShopPoint=>({
 });
 const index=(x:number,z:number)=>z*COUNT+x;
 const inGrid=(x:number,z:number)=>x>=0&&z>=0&&x<COUNT&&z<COUNT;
-export function isObstructed(p:ShopPoint,layout:ShopLayout):boolean{
+export function isObstructed(p:ShopPoint,layout:ShopLayout,room?:Level5Room):boolean{
+  if(room)return !level5FloorWalkable(p,room,layout);
   const pad=0.36;
   // Furniture, counter and wall-adjacent space; entrance lanes z>6.5
   // are handled by the existing level-door route.
@@ -35,7 +38,8 @@ export function isObstructed(p:ShopPoint,layout:ShopLayout):boolean{
 /** Sampling a whole segment (not just its endpoints) prevents off-grid
  * connectors from cutting diagonally through movable furniture.
  */
-export function shopSegmentClear(a:ShopPoint,b:ShopPoint,layout:ShopLayout):boolean {
+export function shopSegmentClear(a:ShopPoint,b:ShopPoint,layout:ShopLayout,room?:Level5Room):boolean {
+  if(room)return level5FloorSegmentWalkable(a,b,room,layout);
   const distance=Math.hypot(b.x-a.x,b.z-a.z);
   if(!Number.isFinite(distance))return false;
   const samples=Math.max(1,Math.ceil(distance/0.1));
@@ -50,24 +54,32 @@ export function shopSegmentClear(a:ShopPoint,b:ShopPoint,layout:ShopLayout):bool
  * Routes never invent wall-crossing diagonals or mutate any GameState fields.
  */
 export function pathToShopGoal(
-  from:ShopPoint,to:ShopPoint,layout:ShopLayout,
+  from:ShopPoint,to:ShopPoint,layout:ShopLayout,room?:Level5Room,
 ):ShopperRoute|null {
   if(!Number.isFinite(from.x)||!Number.isFinite(from.z)||
     !Number.isFinite(to.x)||!Number.isFinite(to.z))return null;
+  const min=room?-6.5-2*room.expansionTier:MIN;
+  const max=room?6.5+2*room.expansionTier:MAX;
+  const count=Math.round((max-min)/STEP)+1;
+  const point=(id:number):ShopPoint=>({x:min+(id%count)*STEP,z:min+Math.floor(id/count)*STEP});
+  const idx=(x:number,z:number)=>z*count+x;
+  const inside=(x:number,z:number)=>x>=0&&z>=0&&x<count&&z<count;
+  const blocked=(p:ShopPoint)=>isObstructed(p,layout,room);
+  const clear=(a:ShopPoint,b:ShopPoint)=>shopSegmentClear(a,b,layout,room);
   const snap=(p:ShopPoint):number=>{
     let best=-1,bestDist=Infinity;
-    const x0=Math.round((p.x-MIN)/STEP);
-    const z0=Math.round((p.z-MIN)/STEP);
+    const x0=Math.round((p.x-min)/STEP);
+    const z0=Math.round((p.z-min)/STEP);
     // Locate a legal nearby grid cell even when the destination is off-grid.
     for(let radius=0;radius<=3;radius++){
       for(let dz=-radius;dz<=radius;dz++)for(let dx=-radius;dx<=radius;dx++){
         const x=x0+dx,z=z0+dz;
-        if(!inGrid(x,z)||isObstructed(worldPoint(index(x,z)),layout))continue;
-        const candidate=index(x,z);
-        const p2=worldPoint(candidate);
+        if(!inside(x,z)||isObstructed(point(idx(x,z)),layout))continue;
+        const candidate=idx(x,z);
+        const p2=point(candidate);
         // For outside a shelf footprint, insist on a true straight connector.
         // Blocked destinations may use the nearest reachable standing point.
-        if(!isObstructed(p,layout)&&!shopSegmentClear(p,p2,layout))continue;
+        if(!blocked(p)&&!clear(p,p2))continue;
         const d=(p2.x-p.x)**2+(p2.z-p.z)**2;
         if(d<bestDist){bestDist=d;best=candidate;}
       }
@@ -77,18 +89,18 @@ export function pathToShopGoal(
   };
   const start=snap(from),goal=snap(to);
   if(start<0||goal<0)return null;
-  const prev=new Int32Array(COUNT*COUNT).fill(-1);
+  const prev=new Int32Array(count*count).fill(-1);
   const queue=[start];prev[start]=start;
   const vectors=[[0,-1],[-1,0],[1,0],[0,1]] as const;
   for(let i=0;i<queue.length;i++){
     const cell=queue[i];
     if(cell===goal)break;
-    const x=cell%COUNT,z=Math.floor(cell/COUNT);
+    const x=cell%count,z=Math.floor(cell/count);
     for(const [dx,dz] of vectors){
       const nx=x+dx,nz=z+dz;
-      if(!inGrid(nx,nz))continue;
-      const key=index(nx,nz);
-      if(prev[key]!==-1||isObstructed(worldPoint(key),layout))continue;
+      if(!inside(nx,nz))continue;
+      const key=idx(nx,nz);
+      if(prev[key]!==-1||isObstructed(point(key),layout))continue;
       prev[key]=cell;queue.push(key);
     }
   }
@@ -99,15 +111,15 @@ export function pathToShopGoal(
   path.push(start);path.reverse();
   // Remove collinear intermediary grid points without cutting corners.
   const result:ShopPoint[]=[];
-  const startingGrid=worldPoint(start);
+  const startingGrid=point(start);
   // The snapped-start connector must be part of the rendered route. Omitting it
   // makes the first turn a dangerous diagonal through a moved shelf.
   if(Math.hypot(from.x-startingGrid.x,from.z-startingGrid.z)>0.01)
     result.push(startingGrid);
   for(let i=1;i<path.length;i++){
-    const p=worldPoint(path[i]);
-    const before=worldPoint(path[i-1]);
-    const after=path[i+1]===undefined?null:worldPoint(path[i+1]);
+    const p=point(path[i]);
+    const before=point(path[i-1]);
+    const after=path[i+1]===undefined?null:point(path[i+1]);
     if(after&&(p.x-before.x)*(after.z-p.z)===(p.z-before.z)*(after.x-p.x)){
       continue;
     }
@@ -117,13 +129,13 @@ export function pathToShopGoal(
   // The snap grid cell is the guaranteed reachable fallback for odd angles.
   const last=result.at(-1)??(Math.hypot(from.x-startingGrid.x,
     from.z-startingGrid.z)<=0.01?from:startingGrid);
-  if(!isObstructed(to,layout)&&Math.hypot(last.x-to.x,last.z-to.z)>0.06){
-    if(!shopSegmentClear(last,to,layout))return null;
+  if(!blocked(to)&&Math.hypot(last.x-to.x,last.z-to.z)>0.06){
+    if(!clear(last,to))return null;
     result.push(to);
   }
   let cursor=from;
   for(const waypoint of result){
-    if(!shopSegmentClear(cursor,waypoint,layout))return null;
+    if(!clear(cursor,waypoint))return null;
     cursor=waypoint;
   }
   return {waypoints:result,length:path.length-1};
