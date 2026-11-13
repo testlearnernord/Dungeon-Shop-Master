@@ -1,5 +1,5 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
-import { consumeDailySupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
+import { useHealingSupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
 import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
 import { simulateDungeon, type DungeonOutcome } from "./dungeonSimulation.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
@@ -9,22 +9,19 @@ import {
   emptyLevel7World, LEVEL7_REPLAY_KEEP, simulateLevel7Day,
   type Level7Replay, type Level7World,
 } from "./level7Exploration.ts";
-import { forageAfterEncounter } from "./foraging.ts";
-import { ECONOMY } from "./economy.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
 import { settleHeldShopCarts, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 11;
+export const SIMULATION_VERSION = 12;
 
 export interface ShopEconomyState {
   readonly balance: number;
   readonly bag: Record<ItemId, number>;
   readonly slots: Slot[];
   readonly dailySales: { readonly day: number; readonly units: number; readonly revenue: number };
-  readonly lastRescueDay: number | null;
 }
 
 export interface DungeonFloorProgress {
@@ -40,8 +37,8 @@ export interface PopulationConfig {
 export interface WorldEvent {
   readonly id: string;
   readonly type: "welcome" | "day-started" | "dungeon-outcome" | "shop-arrival" | "shop-stay" | "shop-departure" | "shop-walkout" | "influx" |
-    "sale" | "tip" | "ate" | "healed" | "starvation" | "rescue" |
-    "level6-departure" | "level6-combat" | "level6-return" | "food-shortage" | "found-food" |
+    "sale" | "tip" | "healed" |
+    "level6-departure" | "level6-combat" | "level6-return" |
     "level7-departure" | "level7-exploration" | "shop-credit";
   readonly day: number;
   readonly message: string;
@@ -122,23 +119,6 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
   };
 }
 
-/**
- * Count a missed opportunity only at a real departure, once per shop visit.
- * The meal may have been purchased and consumed during this same global tick.
- */
-function recordFoodShopDeparture(
-  hero: AdventurerState, day: number, hadFood: boolean, events: WorldEvent[],
-): AdventurerState {
-  if (hadFood) return { ...hero, missedFoodShopVisits: 0 };
-  const failures = Math.min(ECONOMY.missedFoodShopsBeforeStarvation, hero.missedFoodShopVisits + 1);
-  events.push({
-    id: `day-${day}:${hero.id}:food-shortage`, type: "food-shortage",
-    day, adventurerId: hero.id,
-    message: `${hero.name} left the shop without food (${failures}/${ECONOMY.missedFoodShopsBeforeStarvation} failed food visits).`,
-  });
-  return { ...hero, missedFoodShopVisits: failures };
-}
-
 export function advanceDay(state: GameState): { state: GameState; events: readonly WorldEvent[] } {
   if (!Number.isSafeInteger(state.day) || state.day < 1 || state.day >= Number.MAX_SAFE_INTEGER) {
     throw new RangeError("The current day must be a positive safe integer with room for one more day.");
@@ -177,9 +157,9 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   let clearedLevel7 = state.dungeonFloors.some((entry) => entry.floor === 7 && entry.cleared);
   let level7World = state.level7World;
   const adventurers = postTradeHeroes.map((hero) => {
-    // Exactly one action per hero per global tick. Purchases precede supplies,
-    // and newly authorized departures cannot fight on their departure day.
-    const supplies = consumeDailySupplies(hero, day);
+    // Only injuries trigger healing. Newly authorized departures cannot
+    // fight on their departure day.
+    const supplies = useHealingSupplies(hero, day);
     events.push(...supplies.events);
     const ready = supplies.adventurer;
     if (ready.status === "expedition" && ready.floor === 7) {
@@ -199,11 +179,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       rngState = combat.rngState;
       events.push(...combat.events);
       if (combat.victory) clearedLevel6 = true;
-      if (!combat.victory) return combat.adventurer;
-      const found = forageAfterEncounter(combat.adventurer, day, rngState);
-      rngState = found.rngState;
-      events.push(...found.events);
-      return found.adventurer;
+      return combat.adventurer;
     }
     if (ready.status === "at-shop" && ready.level6Permit && ready.health > 0 &&
         level7UnlockedAtStart && !clearedLevel7) {
@@ -212,8 +188,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         day, adventurerId: ready.id,
         message: `${ready.name} entered the unexplored Level 7 from the shop.`,
       });
-      const departing = recordFoodShopDeparture(ready, day, hero.inventory.food > 0, events);
-      return { ...departing, status: "expedition" as const, floor: 7 as const, shopStayDays: 0 };
+      return { ...ready, status: "expedition" as const, floor: 7 as const, shopStayDays: 0 };
     }
     if (ready.status === "at-shop" && ready.level6Permit && ready.health > 0 &&
         !level7UnlockedAtStart) {
@@ -221,23 +196,12 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         id: `day-${day}:${ready.id}:level6-departure`, type: "level6-departure",
         day, adventurerId: ready.id, message: `${ready.name} entered Level 6 with the merchant's permission.`,
       });
-      const departing = recordFoodShopDeparture(ready, day, hero.inventory.food > 0, events);
-      return { ...departing, status: "expedition" as const, floor: 6 as const, shopStayDays: 0 };
+      return { ...ready, status: "expedition" as const, floor: 6 as const, shopStayDays: 0 };
     }
     const dungeon = simulateDungeon(ready, day, rngState);
-    const found = dungeon.events.some((event) => event.type === "dungeon-outcome") &&
-      dungeon.adventurer.status !== "dead"
-      ? forageAfterEncounter(dungeon.adventurer, day, dungeon.rngState)
-      : { adventurer: dungeon.adventurer, events: [] as readonly WorldEvent[], rngState: dungeon.rngState };
-    const shop = scheduleShopVisit(found.adventurer, day, found.rngState);
+    const shop = scheduleShopVisit(dungeon.adventurer, day, dungeon.rngState);
     rngState = shop.rngState;
-    events.push(...dungeon.events, ...found.events, ...shop.events);
-    // One missed opportunity per COMPLETED visit, not per day in the shop.
-    // Purchases are booked before meals and departures; a bought meal consumed
-    // on this very day counts as successful access to food.
-    if (ready.status === "at-shop" && shop.adventurer.status === "returning") {
-      return recordFoodShopDeparture(shop.adventurer, day, hero.inventory.food > 0, events);
-    }
+    events.push(...dungeon.events, ...shop.events);
     return shop.adventurer;
   });
   const active = adventurers.filter((hero) => hero.status !== "dead").length;
