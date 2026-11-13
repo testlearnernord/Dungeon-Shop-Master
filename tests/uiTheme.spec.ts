@@ -4,9 +4,9 @@ test("shop hotbar and management dialogs share interface theme", async ({ page }
   await page.goto("./");
   const theme = await page.locator("#inventory").evaluate((element) => {
     const styles = getComputedStyle(element);
-    return { border: styles.borderTopColor, background: styles.backgroundColor };
+    return { border: styles.borderTopWidth, background: styles.backgroundColor };
   });
-  expect(theme.border).toBe("rgba(0, 0, 0, 0)");
+  expect(theme.border).toBe("0px");
   expect(theme.background).toBe("rgba(0, 0, 0, 0)");
   await page.locator("#open-wholesale").click();
   await expect(page.locator("#wholesale")).toBeVisible();

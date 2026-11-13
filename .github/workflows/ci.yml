@@ -38,7 +38,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       # Exercise the FPS HUD, management panel, hero roster and shop controls.
       # Full browser regression runs nightly or on demand in full-browser-ci.yml.
-      - run: xvfb-run -a npm test -- tests/controlsDisclosure.spec.ts tests/hudMouseMode.spec.ts tests/shopManagement.spec.ts tests/adventurerOverview.spec.ts tests/dayClock.spec.ts tests/cashierReceipt.spec.ts tests/gateTraffic.spec.ts tests/softNpcTraffic.spec.ts tests/restockWaiting.spec.ts tests/beggingCredit.spec.ts tests/blueprintPlacement.spec.ts tests/debtBook.spec.ts tests/level5Excavation.spec.ts tests/galvikPresence.spec.ts tests/shopUiPass.spec.ts tests/shopperFlowReliability.spec.ts
+      - run: xvfb-run -a npm test -- tests/controlsDisclosure.spec.ts tests/hudMouseMode.spec.ts tests/shopManagement.spec.ts tests/adventurerOverview.spec.ts tests/dayClock.spec.ts tests/cashierReceipt.spec.ts tests/gateTraffic.spec.ts tests/softNpcTraffic.spec.ts tests/restockWaiting.spec.ts tests/beggingCredit.spec.ts tests/blueprintPlacement.spec.ts tests/debtBook.spec.ts tests/level5Excavation.spec.ts tests/galvikPresence.spec.ts tests/shopUiPass.spec.ts tests/shopperFlowReliability.spec.ts tests/immersiveInterface.spec.ts
       - name: Upload browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

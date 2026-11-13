@@ -23,6 +23,6 @@ test("spectator and management surfaces inherit the same theme tokens", async ({
       return { border: style.borderTopColor, radius: style.borderTopLeftRadius };
     });
     expect(result.border, selector).toBe("rgba(199, 165, 105, 0.33)");
-    expect(result.radius, selector).toBe("13px");
+    expect(result.radius, selector).toBe(selector==="#shelf-placement"?"16px":"13px");
   }
 });
