@@ -186,7 +186,7 @@ let isShopActive = () => true;
 let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
   ()=>isShopActive(),message=>{statusHud.textContent=message;});
-const merchantActions=createMerchantActions(scene,camera,()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
+const merchantActions=createMerchantActions(scene,camera,()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume,()=>isShopActive(),()=>selectedItemId);
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;

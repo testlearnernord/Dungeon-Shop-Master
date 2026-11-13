@@ -469,3 +469,23 @@ export function inspectLevel5Rock(x:number,z:number) {
     ceiling:!!scene.getMeshByName(`excavated-ceiling-${x},${z}`),
   };
 }
+
+/** Browser probe uses the rendered first-person meshes, not private game hooks. */
+export function inspectGalvikBody(){
+  const scene=Engine.LastCreatedScene!;
+  const hands=[-1,1].map(side=>scene.getMeshByName(`galvik-hand-${side}`));
+  const boots=[-1,1].map(side=>scene.getMeshByName(`galvik-boot-${side}`));
+  const arms=[-1,1].map(side=>scene.getTransformNodeByName(`galvik-arm-pivot-${side}`));
+  const legs=[-1,1].map(side=>scene.getTransformNodeByName(`galvik-leg-pivot-${side}`));
+  return {
+    hands:hands.filter(Boolean).length,boots:boots.filter(Boolean).length,
+    allUnpickable:[...hands,...boots].every(mesh=>mesh&&!mesh.isPickable&&!mesh.checkCollisions),
+    pickaxeVisible:!!scene.getMeshByName("galvik-pick-handle")?.isEnabled(),
+    bodyVisible:!!scene.getTransformNodeByName("galvik-grounded-body")?.isEnabled(),
+    leftLegAngle:legs[0]?.rotation.x??null,
+    rightLegAngle:legs[1]?.rotation.x??null,
+    leftArmAngle:arms[0]?.rotation.x??null,
+    bodyHeight:scene.getTransformNodeByName("galvik-grounded-body")?.position.y??null,
+    cameraHeight:scene.activeCamera?.position.y??null,
+  };
+}
