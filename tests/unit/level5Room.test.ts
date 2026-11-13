@@ -36,5 +36,5 @@ test("entrances, expansion bounds and malformed saves are rejected",()=>{
   assert.equal(isValidLevel5Room({...room,excavatedCells:["9,9"]}),false);
   assert.equal(isValidLevel5Room({...room,excavatedCells:["8,0","8,0"]}),false);
   assert.equal(isValidLevel5Room({...room,excavatedCells:["8,0","9,0"]}),true);
-  assert.equal(isValidLevel5Room({...room,excavatedCells:["8,0","8,2"]}),false);
+  assert.equal(isValidLevel5Room({...room,excavatedCells:["8,0","9,2"]}),false);
 });
