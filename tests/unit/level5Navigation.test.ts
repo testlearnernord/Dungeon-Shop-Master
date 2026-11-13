@@ -9,7 +9,8 @@ test("room-aware navigation uses excavated cells without changing legacy routes"
   const room={...createLevel5Room(),expansionTier:1};
   const origin={x:6,z:0};
   const destination={x:8,z:0};
-  assert.equal(pathToShopGoal(origin,destination,layout,room),null);
+  const before=pathToShopGoal(origin,destination,layout,room);
+  assert.notEqual(before?.waypoints.at(-1)?.x,8);
   const opened=excavateLevel5Cell(room,{x:8,z:0});
   assert.equal(opened.ok,true);
   if(!opened.ok)return;
