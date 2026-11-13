@@ -1,4 +1,3 @@
-import { createLevel5Room, excavateLevel5Cell, isValidLevel5Room, type RoomCell } from "./level5Room.ts";
 import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 import { replaceCounterPlacement, replaceShelfPlacement, type CounterPlacement, type ShelfPlacement } from "./shopLayout.ts";
@@ -58,25 +57,6 @@ export class GameStore {
     const result = discardBag(this.current, itemId);
     this.replace(result.state);
     return result.message;
-  }
-
-  /** Commits only validated excavation; geometry updates subscribe to state. */
-  excavateShopCell(cell:RoomCell):string {
-    const room=this.current.level5Room??createLevel5Room();
-    const result=excavateLevel5Cell(room,cell);
-    if(!result.ok)return result.reason;
-    this.replace({...this.current,level5Room:result.room});
-    return "Rock excavated.";
-  }
-
-  unlockShopExpansion(tier:number):string {
-    const room=this.current.level5Room??createLevel5Room();
-    if(!Number.isSafeInteger(tier)||tier!==room.expansionTier+1||tier>3)
-      return "Invalid expansion tier.";
-    const next={...room,expansionTier:tier};
-    if(!isValidLevel5Room(next))return "Invalid room geometry.";
-    this.replace({...this.current,level5Room:next});
-    return "Shop expansion unlocked.";
   }
 
   placeShelf(placement: ShelfPlacement): string {
