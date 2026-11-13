@@ -9,12 +9,12 @@ test("walkability shares the mined room and furniture footprint",()=>{
   const original={...createLevel5Room(),expansionTier:1};
   assert.equal(level5FloorWalkable({x:0,z:0},original,layout),true);
   assert.equal(level5FloorWalkable({x:0,z:2.5},original,layout),false);
-  assert.equal(level5FloorWalkable({x:8,z:0},original,layout),false);
-  const mined=excavateLevel5Cell(original,{x:8,z:0});
+  assert.equal(level5FloorWalkable({x:8,z:4},original,layout),false);
+  const mined=excavateLevel5Cell(original,{x:8,z:4});
   assert.equal(mined.ok,true);
   if(!mined.ok)return;
-  assert.equal(level5FloorWalkable({x:8,z:0},mined.room,layout),true);
-  assert.equal(level5FloorWalkable({x:8.3,z:0},mined.room,layout),false);
-  assert.equal(level5FloorSegmentWalkable({x:6,z:0},{x:8,z:0},mined.room,layout),true);
-  assert.equal(level5FloorSegmentWalkable({x:6,z:0},{x:9,z:0},mined.room,layout),false);
+  assert.equal(level5FloorWalkable({x:8,z:4},mined.room,layout),true);
+  assert.equal(level5FloorWalkable({x:8.3,z:4},mined.room,layout),false);
+  assert.equal(level5FloorSegmentWalkable({x:6,z:4},{x:8,z:4},mined.room,layout),true);
+  assert.equal(level5FloorSegmentWalkable({x:6,z:4},{x:9,z:4},mined.room,layout),false);
 });
