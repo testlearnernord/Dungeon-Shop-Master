@@ -14,7 +14,7 @@ function shopState():GameState {
     adventurers:state.adventurers.map((hero,index)=>index===0
       ? {...hero, status:"at-shop" as const, floor:5 as const,
         gold:100, health:Math.max(1,hero.health-20),
-        inventory:{...hero.inventory,food:0,healing:0},
+        inventory:{...hero.inventory,bread:0,healing:0},
         equipment:{weapon:null,armor:null}} : hero),
   };
 }
@@ -52,7 +52,7 @@ test("checkout commits the entire cart exactly once with conserved gold and a va
   const boughtHealing=cart.lines.filter(line=>line.itemId==="healing-herb")
     .reduce((sum,line)=>sum+line.quantity,0);
   assert.equal(nextHero.gold,hero.gold-cart.total);
-  assert.equal(nextHero.inventory.food,hero.inventory.food+boughtBread);
+  assert.equal(nextHero.inventory.bread,hero.inventory.bread+boughtBread);
   assert.equal(nextHero.inventory.healing,hero.inventory.healing+boughtHealing);
   assert.equal(result.state.shopEconomy.balance,state.shopEconomy.balance+cart.total);
   assert.equal(nextHero.gold+result.state.shopEconomy.balance,
@@ -166,7 +166,7 @@ test("Copilot regression: a customer paid once cannot claim freshly restocked br
   const state=shopState();
   const people=state.adventurers.map((person,i)=>i<2?{
     ...person,status:"at-shop" as const,floor:5 as const,
-    gold:100,inventory:{...person.inventory,food:0,healing:1},
+    gold:100,inventory:{...person.inventory,bread:0,healing:1},
     health:person.stats.maxHealth,equipment:{weapon:null,armor:null},
   }:person);
   // Exactly one bread is available before the first transaction.
@@ -178,7 +178,7 @@ test("Copilot regression: a customer paid once cannot claim freshly restocked br
   assert(first);
   assert.equal(first.lines.find(line=>line.itemId==="bread")?.quantity,1);
   const paid=checkoutCustomer(scarce,first).state;
-  assert.equal(paid.adventurers[0].inventory.food,1,
+  assert.equal(paid.adventurers[0].inventory.bread,1,
     "Paid hero still needs another meal but cannot pay again this day");
   assert.equal(quoteCustomerCheckout(paid,people[0].id),null);
   const restocked=transferShelf(paid,"shelf-1-slot-2","bread","stock").state;
@@ -186,8 +186,8 @@ test("Copilot regression: a customer paid once cannot claim freshly restocked br
   assert(second,"The unpaid buyer can request the newly stocked bread");
   assert.equal(second.lines.find(line=>line.itemId==="bread")?.quantity,1);
   const booked=checkoutCustomer(restocked,second);
-  assert.equal(booked.state.adventurers[1].inventory.food,1);
-  assert.equal(booked.state.adventurers[0].inventory.food,1);
+  assert.equal(booked.state.adventurers[1].inventory.bread,1);
+  assert.equal(booked.state.adventurers[0].inventory.bread,1);
   assert.equal(booked.state.shopEconomy.slots.find(slot=>
     slot.id==="shelf-1-slot-2")?.quantity,0);
   assert.deepEqual(parseSave(JSON.stringify(createSave(booked.state))),

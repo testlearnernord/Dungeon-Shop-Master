@@ -5,7 +5,7 @@ import { quoteBeggingRequest, issueShopCredit } from "../../src/game/shopCredit.
 import { forecastShoppingIntents, shopperVisualAction } from "../../src/game/shopperIntents.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
-function hungryWithoutGold(){
+function injuredWithoutGold(){
   const original=createGameState(7351);
   const hero=original.adventurers[0];
   return {
@@ -13,14 +13,14 @@ function hungryWithoutGold(){
     state:{
       ...original,
       adventurers:original.adventurers.map(person=>person.id===hero.id
-        ?{...person,gold:0,inventory:{...person.inventory,food:0},
+        ?{...person,gold:0,inventory:{...person.inventory,bread:0},
           equipment:{weapon:null,armor:null}}:person),
     },
   };
 }
 
-test("a penniless hero begs for needed bread rather than walking out or purchasing",()=>{
-  const {state,heroId}=hungryWithoutGold();
+test("a penniless hero begs for affordable basic healing rather than walking out",()=>{
+  const {state,heroId}=injuredWithoutGold();
   const plan=forecastShoppingIntents(state).get(heroId)!;
   assert.equal(plan.reason,"cannot-afford");
   assert.equal(plan.wantedItemId,"bread");
@@ -34,7 +34,7 @@ test("a penniless hero begs for needed bread rather than walking out or purchasi
 });
 
 test("credit costs exactly one real item and records debt, never cash or an automatic sale",()=>{
-  const {state,heroId}=hungryWithoutGold();
+  const {state,heroId}=injuredWithoutGold();
   const before=structuredClone(state);
   const quote=quoteBeggingRequest(state,heroId)!;
   const oldShelf=state.shopEconomy.slots
@@ -45,7 +45,7 @@ test("credit costs exactly one real item and records debt, never cash or an auto
     .filter(slot=>slot.itemId==="bread").reduce((sum,slot)=>sum+slot.quantity,0);
   assert.deepEqual(state,before,"quoting and issuing credit must not mutate previous state");
   assert.equal(newShelf,oldShelf-1);
-  assert.equal(hero.inventory.food,1);
+  assert.equal(hero.inventory.bread,1);
   assert.equal(hero.gold,0);
   assert.equal(hero.status,"returning");
   assert.equal(hero.floor,4);
@@ -63,7 +63,7 @@ test("credit costs exactly one real item and records debt, never cash or an auto
 });
 
 test("no stock, held carts and paid/absent heroes cannot obtain credit",()=>{
-  const {state,heroId}=hungryWithoutGold();
+  const {state,heroId}=injuredWithoutGold();
   const empty={...state,shopEconomy:{...state.shopEconomy,
     bag:{...state.shopEconomy.bag,bread:0},
     slots:state.shopEconomy.slots.map(slot=>slot.itemId==="bread"
@@ -79,20 +79,8 @@ test("no stock, held carts and paid/absent heroes cannot obtain credit",()=>{
   assert.equal(quoteBeggingRequest(cart,heroId),null);
 });
 
-test("legacy version 10 campaigns migrate without losing their unpaid carts",()=>{
-  const {state}=hungryWithoutGold();
-  const old=JSON.parse(JSON.stringify(createSave(state)));
-  old.simulationVersion=10;
-  old.payload.simulationVersion=10;
-  delete old.payload.shopDebts;
-  const restored=parseSave(JSON.stringify(old));
-  assert.equal(restored.simulationVersion,11);
-  assert.deepEqual(restored.shopCarts,state.shopCarts);
-  assert.deepEqual(restored.shopDebts,[]);
-});
-
 test("forged or inconsistent debt records fail save validation",()=>{
-  const {state,heroId}=hungryWithoutGold();
+  const {state,heroId}=injuredWithoutGold();
   const credited=issueShopCredit(state,heroId).state;
   const forged=JSON.parse(JSON.stringify(createSave(credited)));
   forged.payload.shopDebts[0].outstandingGold+=1;

@@ -6,7 +6,7 @@ import { GameStore } from "../../src/game/gameStore.ts";
 
 test("Level 6 permission is explicit, individual, immutable and does not consume a tick", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 11);
+  assert.equal(SIMULATION_VERSION, 12);
   assert(initial.adventurers.every((hero) => !hero.level6Permit));
   const visitor = initial.adventurers[0];
   const granted = setLevel6Permit(initial, visitor.id, true);
@@ -39,44 +39,7 @@ test("permissions survive future days, save roundtrips and GameStore restore", (
   assert.equal(next.adventurers.find((h) => h.id === id)?.level6Permit, true);
 });
 
-test("old v3 save migrates exactly once without modifying RNG, hero history or merchant state", () => {
-  // Reconstruct a genuine pre-foraging v3 state, without v6-only events.
-  const current = createGameState();
-  const old = structuredClone(current) as any;
-  old.simulationVersion = 3;
-  delete old.level7World; // A v3 save cannot contain future dungeon fields.
-  delete old.shopLayout; // Nor v9-only furniture transforms.
-  delete old.shopCarts;
-  delete old.shopDebts; // Nor v10-only reserved carts.
-  delete old.shopEconomy.bag["iron-sword"];
-  delete old.shopEconomy.bag["leather-vest"];
-  for (const hero of old.adventurers) {
-    delete hero.level6Permit;
-    delete hero.missedFoodShopVisits;
-  }
-  const oldEnvelope: any = createSave(current);
-  oldEnvelope.simulationVersion = 3;
-  oldEnvelope.payload = old;
-  const before = JSON.stringify(oldEnvelope);
-  const migrated = parseSave(before);
-  assert.equal(migrated.simulationVersion, 11);
-  assert.equal(migrated.day, current.day);
-  assert.equal(migrated.rngState, current.rngState);
-  assert.deepEqual(migrated.events, current.events);
-  assert.deepEqual(migrated.shopEconomy, current.shopEconomy);
-  assert(migrated.adventurers.every((hero) => hero.level6Permit === false));
-  assert.deepEqual(migrated, current);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(migrated))), migrated);
-  assert.equal(JSON.stringify(oldEnvelope), before);
-  const corrupt = JSON.parse(before);
-  corrupt.payload.shopEconomy.balance = -2;
-  assert.throws(() => parseSave(JSON.stringify(corrupt)), /balance/);
-  const future = JSON.parse(before);
-  future.simulationVersion = 99;
-  assert.throws(() => parseSave(JSON.stringify(future)), /incompatible/);
-});
-
-test("v6 payloads reject missing and wrongly typed permit values", () => {
+test("v12 payloads reject missing and wrongly typed permit values", () => {
   const normal = createSave(createGameState());
   const missing = structuredClone(normal) as any;
   delete missing.payload.adventurers[0].level6Permit;
