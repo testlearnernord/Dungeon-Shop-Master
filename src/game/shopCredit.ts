@@ -71,8 +71,8 @@ export function issueShopCredit(state:GameState,heroId:string):CreditResult {
       }};
 
   const inventory={...hero.inventory,
-    food:hero.inventory.food+(item.kind==="food"?1:0),
-    healing:hero.inventory.healing+(item.kind==="healing"?1:0)};
+    bread:hero.inventory.bread+(item.id==="bread"?1:0),
+    healing:hero.inventory.healing+(item.id==="healing-herb"?1:0)};
   const equipment={...hero.equipment,
     weapon:item.kind==="weapon"?item.name:hero.equipment.weapon,
     armor:item.kind==="armor"?item.name:hero.equipment.armor};

@@ -2,9 +2,9 @@ import { isValidLevel5Room } from "./level5Room.ts";
 import { ECONOMY, ITEMS, createEconomy } from "./economy.ts";
 import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
-import { emptyLevel7World, LEVEL7_STEP_BUDGET } from "./level7Exploration.ts";
+import { LEVEL7_STEP_BUDGET } from "./level7Exploration.ts";
 import { generateDungeonLayout, tileAt } from "./dungeonLayout.ts";
-import { createShopLayout, shopLayoutProblem, type ShelfPlacement } from "./shopLayout.ts";
+import { shopLayoutProblem, type ShelfPlacement } from "./shopLayout.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -60,13 +60,11 @@ function unique(value: string | number, seen: Set<string | number>, path: string
 }
 
 const itemIds = ITEMS.map((item) => item.id);
-const originalItemIds = itemIds.filter((id) => id !== "iron-sword" && id !== "leather-vest");
 const slotDefinitions = createEconomy().slots;
 const eventTypes = [
   "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure", "shop-walkout",
-  "influx", "sale", "tip", "ate", "healed", "starvation", "rescue",
+  "influx", "sale", "tip", "healed",
   "level6-departure", "level6-combat", "level6-return",
-  "food-shortage", "found-food",
   "level7-departure", "level7-exploration", "shop-credit",
 ] as const;
 
@@ -264,19 +262,16 @@ function validateLevel7Replay(
   });
 }
 
-function validateState(value: unknown, version = SIMULATION_VERSION): asserts value is GameState {
+function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
-    ...(version >= 8 ? ["level7World"] : []),
-    ...(version >= 9 ? ["shopLayout"] : []),
-    ...(version >= 10 ? ["shopCarts"] : []),
-    ...(version >= 11 ? ["shopDebts"] : []),
+    "level7World", "shopLayout", "shopCarts", "shopDebts",
   ], ["level5Room"]);
   if (state.level5Room !== undefined && !isValidLevel5Room(state.level5Room))
     fail("payload.level5Room", "has invalid excavation geometry");
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
-  if (state.simulationVersion !== version) fail("payload.simulationVersion", "is incompatible");
+  if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
   const campaignSeed = integer(state.seed, "payload.seed", 0, 0xffffffff);
   integer(state.rngState, "payload.rngState", 0, 0xffffffff);
   const population = object(state.populationConfig, "payload.populationConfig", ["dailyInflux", "maxActive"]);
@@ -289,9 +284,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     const path = `payload.adventurers[${index}]`;
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
-      "equipment", "inventory", "floor", "status", "hunger", "shopStayDays",
-      ...(version < 4 ? [] : ["level6Permit"]),
-      ...(version < 6 ? [] : ["missedFoodShopVisits"]),
+      "equipment", "inventory", "floor", "status", "shopStayDays", "level6Permit",
     ]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
@@ -315,26 +308,23 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     for (const key of Object.keys(equipment)) {
       if (equipment[key] !== null) text(equipment[key], `${path}.equipment.${key}`);
     }
-    const inventory = object(hero.inventory, `${path}.inventory`, ["loot", "food", "healing"]);
+    const inventory = object(hero.inventory, `${path}.inventory`,
+      ["loot", "bread", "healing"]);
     for (const key of Object.keys(inventory)) integer(inventory[key], `${path}.inventory.${key}`);
-    const floor = integer(hero.floor, `${path}.floor`, 1, version < 5 ? 5 : version >= 8 ? 7 : 6);
-    choice(hero.status, version < 5
-      ? ["exploring", "traveling", "at-shop", "returning", "dead"]
-      : ["exploring", "traveling", "at-shop", "returning", "expedition", "dead"], `${path}.status`);
+    const floor = integer(hero.floor, `${path}.floor`, 1, 7);
+    choice(hero.status, ["exploring", "traveling", "at-shop",
+      "returning", "expedition", "dead"], `${path}.status`);
     if ((hero.status === "dead") !== (health === 0)) fail(`${path}.status`, "must agree with health");
     if (hero.status !== "dead") {
       active += 1;
       if ((hero.status === "at-shop" && floor !== 5) ||
           (hero.status === "exploring" && floor > 4) ||
           ((hero.status === "traveling" || hero.status === "returning") && floor !== 4) ||
-          (hero.status === "expedition" && floor !== 6 && !(version >= 8 && floor === 7))) {
+          (hero.status === "expedition" && floor !== 6 && floor !== 7)) {
         fail(`${path}.floor`, "must agree with status");
       }
     }
-    integer(hero.hunger, `${path}.hunger`);
-    if (version >= 6) integer(hero.missedFoodShopVisits, `${path}.missedFoodShopVisits`,
-      0, ECONOMY.missedFoodShopsBeforeStarvation);
-    if (version >= 4 && typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
+    if (typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
     if (hero.status === "expedition" && hero.level6Permit !== true) fail(`${path}.level6Permit`, "is required for Level 6");
     const stay = integer(hero.shopStayDays, `${path}.shopStayDays`, 0, 1);
     if (stay !== 0 && hero.status !== "at-shop" && hero.status !== "dead") {
@@ -342,9 +332,9 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     }
   });
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
-  if(version >= 8) validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
-  if(version >= 9){
-    const layout=object(state.shopLayout,"payload.shopLayout",["shelves"],version>=10?["counter"]:[]);
+  validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
+  {
+    const layout=object(state.shopLayout,"payload.shopLayout",["shelves"],["counter"]);
     const shelves=array(layout.shelves,"payload.shopLayout.shelves");
     if(shelves.length!==2)fail("payload.shopLayout.shelves","must contain two shelves");
     const parsed:ShelfPlacement[]=shelves.map((value,i)=>{
@@ -370,10 +360,10 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
   }
 
   const economy = object(state.shopEconomy, "payload.shopEconomy", [
-    "balance", "bag", "slots", "dailySales", "lastRescueDay",
+    "balance", "bag", "slots", "dailySales",
   ]);
   integer(economy.balance, "payload.shopEconomy.balance");
-  const permittedItems = version < 7 ? originalItemIds : itemIds;
+  const permittedItems = itemIds;
   const bag = object(economy.bag, "payload.shopEconomy.bag", permittedItems);
   let bagTotal = 0;
   for (const id of permittedItems) bagTotal += integer(bag[id], `payload.shopEconomy.bag.${id}`, 0, ECONOMY.bagCapacity);
@@ -395,7 +385,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     choice(slot.itemId, [null, ...permittedItems], `${path}.itemId`);
     if ((quantity === 0) !== (slot.itemId === null)) fail(path, "must have an item exactly when stocked");
   });
-  if (version >= 10) {
+  {
     const reservedBySlot = new Map<string,{itemId:string;quantity:number}>();
     const cartHeroes = new Set<string | number>();
     array(state.shopCarts,"payload.shopCarts").forEach((value,i)=>{
@@ -424,7 +414,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
         const item=ITEMS.find(candidate=>candidate.id===line.itemId)!;
         if(integer(line.subtotal,lp+".subtotal")!==quantity*item.salePrice)
           fail(lp+".subtotal","must agree with item price and quantity");
-        if(!["food","healing","weapon","armor"].includes(item.kind))
+        if(!["healing","weapon","armor"].includes(item.kind))
           fail(lp+".itemId","is not supported for purchase");
         cartTotal+=quantity*item.salePrice;
         const old=reservedBySlot.get(slotId);
@@ -446,7 +436,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     }
   }
 
-  if(version>=11){
+  {
     const seenDebtHeroes=new Set<string|number>();
     const debts=array(state.shopDebts,"payload.shopDebts");
     if(debts.length>(state.adventurers as unknown[]).length)
@@ -465,13 +455,12 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
   if (sales.day !== day) fail("payload.shopEconomy.dailySales.day", "must match the current day");
   integer(sales.units, "payload.shopEconomy.dailySales.units");
   integer(sales.revenue, "payload.shopEconomy.dailySales.revenue");
-  if (economy.lastRescueDay !== null) integer(economy.lastRescueDay, "payload.shopEconomy.lastRescueDay", 1, day);
 
   const floors = new Set<string | number>();
   array(state.dungeonFloors, "payload.dungeonFloors").forEach((value, index) => {
     const path = `payload.dungeonFloors[${index}]`;
     const floor = object(value, path, ["floor", "cleared"]);
-    unique(integer(floor.floor, `${path}.floor`, 1, version < 5 ? 5 : version >= 8 ? 7 : 6), floors, `${path}.floor`);
+    unique(integer(floor.floor, `${path}.floor`, 1, 7), floors, `${path}.floor`);
     if (typeof floor.cleared !== "boolean") fail(`${path}.cleared`, "must be a boolean");
   });
 
@@ -481,22 +470,14 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
       ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
-        ...(version >= 7 ? ["combatReplay"] : []),
-        ...(version >= 8 ? ["level7Replay"] : []),
-        ...(version >= 10 ? ["saleChannel"] : []),
-        ...(version >= 11 ? ["debtGold"] : [])]);
-    choice(event.type, eventTypes.filter((type) =>
-      (version >= 5 || !type.startsWith("level6-")) &&
-      (version >= 6 || (type !== "food-shortage" && type !== "found-food")) &&
-      (version >= 8 || !type.startsWith("level7-")) &&
-      (version >= 10 || type !== "shop-walkout") &&
-      (version >= 11 || type !== "shop-credit")), `${path}.type`);
+        "combatReplay", "level7Replay", "saleChannel", "debtGold"]);
+    choice(event.type, eventTypes, `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
     lastDay = eventDay;
     text(event.message, `${path}.message`);
     const id = text(event.id, `${path}.id`);
     unique(id, eventIds, `${path}.id`);
-    const global = ["welcome", "day-started", "rescue"].includes(event.type as string);
+    const global = ["welcome", "day-started"].includes(event.type as string);
     if (!global && !heroIds.has(event.adventurerId as string)) fail(`${path}.adventurerId`, "must link to an existing hero");
     const allowed = ["id", "type", "day", "message", ...(!global ? ["adventurerId"] : [])];
     let suffix = event.type === "day-started" ? "started" : event.type;
@@ -520,18 +501,18 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       validateLevel7Replay(event.level7Replay,`${path}.level7Replay`,
         event.adventurerId as string,eventDay,campaignSeed);
     }
-    if (["sale", "ate", "healed", "rescue", "found-food"].includes(event.type as string)) {
+    if (event.type === "sale" || event.type === "healed") {
       allowed.push("itemId", "quantity");
       choice(event.itemId, permittedItems, `${path}.itemId`);
       integer(event.quantity, `${path}.quantity`, 1,
-        event.type === "sale" ? ECONOMY.slotCapacity : event.type === "rescue" ? ECONOMY.rescueQuantity : 1);
-      if ((event.type === "ate" || event.type === "rescue" || event.type === "found-food") && event.itemId !== "bread") fail(`${path}.itemId`, "must be bread");
-      if (event.type === "healed" && event.itemId !== "healing-herb") fail(`${path}.itemId`, "must be healing-herb");
+        event.type === "sale" ? ECONOMY.slotCapacity : 1);
+      if (event.type === "healed" &&
+        event.itemId !== "healing-herb" && event.itemId !== "bread")
+        fail(`${path}.itemId`, "must be a healing item");
     }
     if(event.type==="tip"){
       allowed.push("revenue");
       integer(event.revenue,`${path}.revenue`,1,1000000);
-      if(version<10)fail(`${path}.type`,"tip requires current save format");
       const manualRevenue=(state.events as unknown[]).reduce<number>((total,raw)=>{
         const sale=raw as RecordValue;
         return sale.type==="sale"&&sale.saleChannel==="manual"&&
@@ -548,14 +529,14 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       if(integer(event.quantity,path+".quantity",1,1)!==1)
         fail(path+".quantity","must represent one issued item");
       const item=ITEMS.find(candidate=>candidate.id===event.itemId)!;
-      if(!["food","healing","weapon","armor"].includes(item.kind))
+      if(!["healing","weapon","armor"].includes(item.kind))
         fail(path+".itemId","must be a hero need");
       if(integer(event.debtGold,path+".debtGold",1)!==item.salePrice)
         fail(path+".debtGold","must match the item's sticker price");
     }
     if (event.type === "sale") {
       allowed.push("revenue");
-      if (version >= 10 && event.saleChannel !== undefined) {
+      if (event.saleChannel !== undefined) {
         allowed.push("saleChannel");
         choice(event.saleChannel,["manual","reserved"],path+".saleChannel");
       }
@@ -575,7 +556,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
       if (!allowed.includes(key)) fail(`${path}.${key}`, "is not valid for this event type");
     }
   });
-  if(version >= 11) {
+  {
     const balances=new Map<string,number>();
     for(const raw of array(state.events,"payload.events")){
       const event=raw as RecordValue;
@@ -591,7 +572,7 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
        [...balances].some(([id,total])=>owed.get(id)!==total))
       fail("payload.shopDebts","must agree with all credit events");
   }
-  if(version >= 10) {
+  {
     const manualPaid=new Set(array(state.events,"payload.events")
       .filter(value=>(value as RecordValue).type==="sale" &&
         (value as RecordValue).saleChannel==="manual" &&
@@ -624,33 +605,11 @@ export function parseSave(text: string): GameState {
   }
   const envelope = object(value, "envelope", ["schemaVersion", "simulationVersion", "savedAt", "payload"]);
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
-  const version = envelope.simulationVersion;
-  if (version !== 3 && version !== 4 && version !== 5 && version !== 6 &&
-      version !== 7 && version !== 8 && version !== 9 && version !== 10 && version !== SIMULATION_VERSION) {
+  if (envelope.simulationVersion !== SIMULATION_VERSION)
     fail("simulationVersion", "is incompatible; no migrations are available");
-  }
-  const savedAt = textTimestamp(envelope.savedAt);
-  if (!savedAt) fail("savedAt", "must be an ISO UTC timestamp");
-  // Validate the original strict schema BEFORE migrating it; never repair corruption.
-  validateState(envelope.payload, version as number);
-  if (version === SIMULATION_VERSION) return envelope.payload;
-  return {
-    ...envelope.payload,
-    simulationVersion: SIMULATION_VERSION,
-    level7World: version < 8 ? emptyLevel7World() : envelope.payload.level7World,
-    shopLayout: version < 9 ? createShopLayout() : envelope.payload.shopLayout,
-    shopCarts: version < 10 ? [] : envelope.payload.shopCarts,
-    shopDebts: [],
-    shopEconomy: version < 7
-      ? { ...envelope.payload.shopEconomy,
-        bag: { ...envelope.payload.shopEconomy.bag, "iron-sword": 0, "leather-vest": 0 } }
-      : envelope.payload.shopEconomy,
-    adventurers: envelope.payload.adventurers.map((hero) => ({
-      ...hero,
-      level6Permit: version === 3 ? false : hero.level6Permit,
-      missedFoodShopVisits: version < 6 ? 0 : hero.missedFoodShopVisits,
-    })),
-  };
+  if (!textTimestamp(envelope.savedAt)) fail("savedAt", "must be an ISO UTC timestamp");
+  validateState(envelope.payload);
+  return envelope.payload;
 }
 
 function textTimestamp(value: unknown): boolean {

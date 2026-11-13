@@ -23,7 +23,7 @@ function merchantState(gold: number, stocked: ReadonlyArray<{ itemId: "iron-swor
 
 test("equipment catalog, wholesale and shelf stocking conserve gold and inventory", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 11);
+  assert.equal(SIMULATION_VERSION, 12);
   assert(ITEMS.some(x => x.id === "iron-sword" && x.kind === "weapon"));
   assert(ITEMS.some(x => x.id === "leather-vest" && x.kind === "armor"));
   assert.equal(initial.shopEconomy.bag["iron-sword"], 0);
@@ -36,7 +36,7 @@ test("equipment catalog, wholesale and shelf stocking conserve gold and inventor
   assert.deepEqual(initial, createGameState(), "new trade must never mutate original state");
 });
 
-test("food and healing come before equipment even when gear sits on the first shelf", () => {
+test("Waybread and herbs come before equipment even when gear sits on the first shelf", () => {
   const stocked = [
     { itemId: "iron-sword" as const, quantity: 2 },
     { itemId: "leather-vest" as const, quantity: 2 },
@@ -46,8 +46,8 @@ test("food and healing come before equipment even when gear sits on the first sh
   const limited = merchantState(14, stocked);
   const trade = tradeAtStartOfDay(limited, 2);
   const hero = trade.adventurers[0];
-  assert.equal(hero.gold, 4, "4g food + 6g healing before gear");
-  assert.equal(hero.inventory.food, 1);
+  assert.equal(hero.gold, 4, "4g Waybread + 6g herbs before gear");
+  assert.equal(hero.inventory.bread, 1);
   assert.equal(hero.inventory.healing, 1);
   assert.deepEqual(hero.equipment, { weapon: null, armor: null });
   assert.equal(trade.economy.balance, 60);
@@ -104,31 +104,6 @@ test("gear reduces danger and improves sword attack without granting invulnerabi
   assert.equal(improved.adventurer.equipment.weapon, "Iron Sword");
   assert.equal(simulateLevel6Combat(armed,2,1234).rngState,improved.rngState);
   void survivedExtra;
-});
-
-test("strict historical v6 saves gain empty equipment stock while preserving full progression", () => {
-  let state = createGameState();
-  for (let i=0; i<8; i++) state=advanceDay(state).state;
-  const old: any = structuredClone(createSave(state));
-  old.simulationVersion = 6;
-  old.payload.simulationVersion = 6;
-  delete old.payload.level7World; // Genuine historical v6 payloads predate the dungeon state.
-  delete old.payload.shopLayout; // Furniture transforms were introduced in v9.
-  delete old.payload.shopCarts;
-  delete old.payload.shopDebts; // Unpaid customer carts were introduced in v10.
-  delete old.payload.shopEconomy.bag["iron-sword"];
-  delete old.payload.shopEconomy.bag["leather-vest"];
-  const original=JSON.stringify(old);
-  const migrated=parseSave(original);
-  assert.deepEqual(migrated,state);
-  assert.equal(JSON.stringify(old), original);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(migrated))),migrated);
-  const corrupt = structuredClone(old);
-  corrupt.payload.shopEconomy.bag["iron-sword"]=1;
-  assert.throws(()=>parseSave(JSON.stringify(corrupt)),/iron-sword/);
-  const damaged = structuredClone(createSave(state)) as any;
-  delete damaged.payload.shopEconomy.bag["leather-vest"];
-  assert.throws(()=>parseSave(JSON.stringify(damaged)),/leather-vest/);
 });
 
 test("long deterministic campaigns remain stable across sale, combat and reload", () => {

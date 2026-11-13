@@ -13,7 +13,7 @@ function prepared() {
       i<3?{...hero,status:"at-shop" as const, floor:5 as const,
         gold:i===0?100:i===1?8:0,
         health:i===0?Math.max(1,hero.health-20):hero.health,
-        inventory:{...hero.inventory,food:0,healing:0},
+        inventory:{...hero.inventory,bread:0,healing:0},
         equipment:{weapon:null,armor:null}}:hero),
   };
 }

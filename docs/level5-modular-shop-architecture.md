@@ -1,5 +1,7 @@
 # Level 5: a modular shop, not a fixed corridor with furniture
 
+Status: historical architecture concept. Current rules are in README.md.
+
 Status: engineering design. The first live building milestone is the in-world
 furniture blueprint. Mining, extra furnishings and unified navigation are not
 implemented by this document.
@@ -107,12 +109,12 @@ topology + committed furniture footprints and reachable service sockets.
 - Walking animation derives from ACTUAL displacement, not the logical
   `queueing/browsing` label. Standing and movement blend smoothly.
 
-## 4. Migration and observable tests
+## 4. Current-format validation and observable tests
 
-Keep current simulation v11 save data intact. New room/registry data needs a
-strict, validated save migration (v12 when introduced). Historic shelf IDs,
-cash receipts, customer debt and existing layout transforms must remain
-unchanged. Do not silently delete a customer's cart on migration.
+The current alpha intentionally accepts only the latest simulation format.
+No old saves are migrated. Within a running campaign, shelf IDs, cash
+receipts, customer debt, held carts and existing transforms must remain
+consistent. Invalid saves must fail validation without silent repair.
 
 Acceptance scenarios:
 - 20 NPCs simultaneously, 10-minute reproducible browser test, no permanent
@@ -135,7 +137,7 @@ Acceptance scenarios:
    furniture. Retain old UI as a temporary diagnostic fallback.
 3. Introduce versioned room topology plus mesh/collider chunk regeneration.
 4. Generalize furniture definitions and service sockets, preserving all shelf
-   and counter state through migration.
+   and counter state inside the current campaign format.
 5. Integrate a room-derived dynamic nav graph and reservation-based customer
    tasks with a 20-NPC browser stress test.
 6. Enable tier-limited pickaxe excavation with discovery content after room

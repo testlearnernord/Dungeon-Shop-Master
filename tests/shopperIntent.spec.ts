@@ -13,7 +13,7 @@ test("visitors use exact projected need/stock/gold and travel toward the real sh
     const prepared={
       ...original,
       adventurers:original.adventurers.map((hero,index)=>
-        index===0?{...hero,gold:100,inventory:{...hero.inventory,food:0},
+        index===0?{...hero,gold:100,inventory:{...hero.inventory,bread:0},
           equipment:{weapon:null,armor:null}}:hero),
     };
     await new CampaignStorage().saveGame(prepared);

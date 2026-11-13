@@ -13,7 +13,7 @@ test("Galvik reads real outstanding credit from the bedroom Book of Debts, not t
     const initial=createGameState(7351);
     const hero=initial.adventurers[0];
     const broke={...initial,adventurers:initial.adventurers.map(entry=>
-      entry.id===hero.id?{...entry,gold:0,inventory:{...entry.inventory,food:0}}:entry)};
+      entry.id===hero.id?{...entry,gold:0,inventory:{...entry.inventory,bread:0}}:entry)};
     const loan=issueShopCredit(broke,hero.id);
     if(loan.state===broke)throw new Error("Fixture loan was not authorized");
     await new CampaignStorage().saveGame(loan.state);

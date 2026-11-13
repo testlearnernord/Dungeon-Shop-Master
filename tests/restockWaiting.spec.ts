@@ -12,7 +12,7 @@ async function seedEmptyShop(page:import("@playwright/test").Page) {
       ...initial,
       adventurers:initial.adventurers.map((hero,index)=>index===0
         ?{...hero,status:"at-shop" as const,floor:5 as const,gold:100,
-          inventory:{...hero.inventory,food:0},equipment:{weapon:null,armor:null}}
+          inventory:{...hero.inventory,bread:0},equipment:{weapon:null,armor:null}}
         :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...initial.shopEconomy,
         slots:initial.shopEconomy.slots.map(slot=>({
@@ -130,7 +130,7 @@ test("three hungry customers wait off-aisle when bread is sold out but expensive
       ...initial,
       adventurers:initial.adventurers.map((hero,index)=>index<3
         ?{...hero,status:"at-shop" as const,floor:5 as const,gold:4,
-          inventory:{...hero.inventory,food:0},
+          inventory:{...hero.inventory,bread:0},
           equipment:{weapon:null,armor:null}}
         :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...initial.shopEconomy,

@@ -461,10 +461,10 @@ export class NpcVisualSystem {
     for(const line of lines){
       const item=ITEMS.find(entry=>entry.id===line.itemId);
       if(!item)continue;
-      const mesh=item.kind==="healing"||item.id==="mana-potion"
+      const mesh=(item.id==="healing-herb"||item.id==="mana-potion")
         ? MeshBuilder.CreateCylinder("npc-carried-"+npc.visitor.id+"-"+position,
           {height:0.27,diameter:0.2},this.scene)
-        : item.kind==="food"
+        : item.id==="bread"
         ? MeshBuilder.CreateSphere("npc-carried-"+npc.visitor.id+"-"+position,
           {diameter:0.27},this.scene)
         : MeshBuilder.CreateBox("npc-carried-"+npc.visitor.id+"-"+position,

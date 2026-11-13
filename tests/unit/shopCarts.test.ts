@@ -13,7 +13,7 @@ function customers():GameState {
   return {...base,adventurers:base.adventurers.map((hero,index)=>
     index<2 ? {...hero, status:"at-shop" as const, floor:5 as const,
       gold:index===0?100:8, health:index===0?Math.max(1,hero.health-20):hero.health,
-      inventory:{...hero.inventory,food:0,healing:0},
+      inventory:{...hero.inventory,bread:0,healing:0},
       equipment:{weapon:null,armor:null}} :hero)};
 }
 function slotQuantity(state:GameState,slotId:string) {
@@ -21,7 +21,7 @@ function slotQuantity(state:GameState,slotId:string) {
 }
 test("pickup is durable, removes only physical shelf stock and never charges before checkout",()=>{
   const state=customers();
-  assert.equal(SIMULATION_VERSION,11);
+  assert.equal(SIMULATION_VERSION,12);
   const hero=state.adventurers[0];
   const plan=forecastShoppingIntents(state).get(hero.id)!;
   const needed=plan.items[0];
@@ -56,7 +56,7 @@ test("cannot reserve the same slot twice, steal held stock or buy an unavailable
   assert.strictEqual(pickUpShopItem(after,hero.id,"nonexistent").state,after);
   const plans=forecastShoppingIntents(after);
   assert.equal(plans.get(hero.id)?.items.some(item=>item.slotId===desired.slotId),false,
-    "The reserved food already satisfies its hero's virtual hunger.");
+    "The reserved Waybread already satisfies its hero's healing requirements.");
   assert(plans.get(state.adventurers[1].id));
 });
 test("multiple items accumulate and can be returned without money or inventory leaks",()=>{
@@ -107,23 +107,6 @@ test("transition settles held goods once, records day+1 receipts and preserves e
   const ids=transition.state.events.map(event=>event.id);
   assert.equal(new Set(ids).size,ids.length);
   assert.deepEqual(parseSave(JSON.stringify(createSave(transition.state))),transition.state);
-});
-test("unpaid carts migrate from v9 as empty, preserving furniture, heroes and receipts",()=>{
-  const state=advanceDay(createGameState(1307)).state;
-  const envelope=structuredClone(createSave(state)) as any;
-  envelope.simulationVersion=9;
-  envelope.payload.simulationVersion=9;
-  delete envelope.payload.shopCarts;
-  delete envelope.payload.shopDebts;
-  const migrated=parseSave(JSON.stringify(envelope));
-  assert.equal(migrated.simulationVersion,11);
-  assert.deepEqual(migrated.shopCarts,[]);
-  assert.deepEqual(migrated.shopLayout,state.shopLayout);
-  assert.deepEqual(migrated.shopEconomy,state.shopEconomy);
-  assert.deepEqual(migrated.adventurers,state.adventurers);
-  assert.deepEqual(migrated.events,state.events);
-  assert.equal(migrated.rngState,state.rngState);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(migrated))),migrated);
 });
 test("strict campaign validation rejects forged or excessive held cart stock",()=>{
   const state=customers();
@@ -177,7 +160,7 @@ test("Copilot regression: previous day's reserved receipt never blocks another s
   // Simulate a subsequent shop visit with empty supplies and fresh stock.
   const visiting={...day2,adventurers:day2.adventurers.map(h=>h.id===hero.id
     ? {...h,status:"at-shop" as const,floor:5 as const,
-      inventory:{...h.inventory,food:0},shopStayDays:0}
+      inventory:{...h.inventory,bread:0},shopStayDays:0}
     :h)};
   const slot=visiting.shopEconomy.slots.find(x=>x.id===first.slotId)!;
   const stocked={...visiting,shopEconomy:{...visiting.shopEconomy,

@@ -14,7 +14,7 @@ test("real 3D shelf pickup reserves stock, displays a hand-held item and survive
     const starting=createGameState(seed);
     const prepared={...starting,adventurers:starting.adventurers.map((hero,i)=>
       i===0?{...hero,gold:100,
-        inventory:{...hero.inventory,food:0,healing:0},
+        inventory:{...hero.inventory,bread:0,healing:0},
         equipment:{weapon:null,armor:null},
         health:Math.max(1,hero.health-20)}:hero)};
     await new CampaignStorage().saveGame(prepared);
@@ -94,7 +94,7 @@ test("warehouse operations are blocked while a hero holds unpaid stock",async({p
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const state=createGameState(7351);
     const store=new GameStore({...state,adventurers:state.adventurers.map((hero,i)=>
-      i===0?{...hero,gold:100,inventory:{...hero.inventory,food:0}}:hero)});
+      i===0?{...hero,gold:100,inventory:{...hero.inventory,bread:0}}:hero)});
     const hero=store.state.adventurers[0].id;
     const picked=store.pickUpShopItem(hero,"shelf-1-slot-2");
     const before=store.state.shopEconomy.slots.find(x=>x.id==="shelf-1-slot-2")!.quantity;

@@ -19,7 +19,7 @@ test("a single buyer can reach and request service at a rotated register",async(
     const state={...initial,shopLayout:moved.layout,
       adventurers:initial.adventurers.map((visitor,index)=>index===0
         ?{...visitor,status:"at-shop" as const,floor:5 as const,gold:100,
-          inventory:{...visitor.inventory,food:0}}
+          inventory:{...visitor.inventory,bread:0}}
         :{...visitor,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...initial.shopEconomy,
         slots:initial.shopEconomy.slots.map(slot=>
