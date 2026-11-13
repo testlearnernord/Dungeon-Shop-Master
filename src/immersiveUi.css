@@ -549,3 +549,39 @@
 @media(max-width:470px){
   #hud .sales-banner{bottom:113px}
 }
+
+
+/* Text remains intact for existing save, telemetry and accessibility contracts.
+ * Only the glance presentation uses its compact numeric counterpart. */
+#hud .shop-hud-glance #merchant-gold{
+  display:inline-flex;align-items:center;justify-content:flex-start;gap:4px;
+  font-size:0;white-space:nowrap;overflow:hidden
+}
+#hud .shop-hud-glance #merchant-gold .ui-icon{
+  width:14px;height:14px;color:#e8c17f
+}
+#hud .shop-hud-glance #merchant-gold::after{
+  content:attr(data-amount);
+  font:750 12px/1.2 system-ui,sans-serif;color:#f4dbac;
+  font-variant-numeric:tabular-nums
+}
+#hud .adventurer-overview-heading #population-summary{
+  font-size:0;white-space:nowrap
+}
+#hud .adventurer-overview-heading #population-summary::after{
+  content:attr(data-short);font:700 12px/1.35 system-ui,sans-serif;
+  color:var(--ui-gold)
+}
+#hud #shop-visitors{font-size:0;white-space:nowrap}
+#hud #shop-visitors::before{
+  content:attr(data-short);font:650 10px/1.35 system-ui,sans-serif;
+  color:var(--ui-muted)
+}
+#roster-dialog .roster-overview{
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px;
+}
+#roster-dialog .roster-overview .ui-icon{width:14px;height:14px;color:var(--ui-gold)}
+@media(max-width:470px){
+  #hud .shop-hud-glance #merchant-gold::after{font-size:11px}
+  #hud .adventurer-overview-heading #population-summary::after{font-size:10px}
+}

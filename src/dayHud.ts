@@ -61,7 +61,12 @@ export function setupDayHud(
     const active = state.adventurers.filter((hero) => hero.status !== "dead");
     const atShop = active.filter((hero) => hero.status === "at-shop");
     population.textContent = `Adventurers: ${active.length} active · ${state.adventurers.length - active.length} lost`;
+    population.dataset.short=active.length+" active";
+    population.setAttribute("aria-label",population.textContent);
     visitors.textContent = `Shop visitors (${atShop.length}): ${atShop.map((hero) => names.get(hero.id) ?? hero.name).join(", ") || "none"}`;
+    visitors.dataset.short=atShop.length+" in shop";
+    visitors.title=visitors.textContent;
+    visitors.setAttribute("aria-label",visitors.textContent);
     roster.replaceChildren(...active.map((hero) => {
       const entry = document.createElement("li");
       entry.dataset.adventurerId = hero.id;

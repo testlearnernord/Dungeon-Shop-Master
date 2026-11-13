@@ -1,5 +1,6 @@
 import { ECONOMY, ITEMS } from "./game/economy";
 import { GameStore } from "./game/gameStore";
+import {uiIcon} from "./uiIcons.ts";
 
 export function setupEconomyHud(
   canvas: HTMLCanvasElement,
@@ -204,6 +205,9 @@ export function setupEconomyHud(
         :(free===0?"Bag full":"Insufficient gold");
     }
     gold.textContent = `Merchant gold: ${economy.balance}g`;
+    gold.dataset.amount=economy.balance+"g";
+    gold.setAttribute("aria-label","Merchant gold: "+economy.balance+"g");
+    gold.prepend(uiIcon("coin"));
     supplies.textContent = `Shelves: ${ITEMS.map((item) =>
       `${item.name} ${economy.slots.filter((slot) => slot.itemId === item.id)
         .reduce((sum, slot) => sum + slot.quantity, 0)}`).join(" · ")}`;
