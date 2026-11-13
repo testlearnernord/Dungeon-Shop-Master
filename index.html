@@ -221,17 +221,35 @@
         <div id="roster-detail-list" aria-label="Hero roster"></div>
       </dialog>
       <dialog id="wholesale" aria-labelledby="wholesale-title">
-        <h2 id="wholesale-title">Wholesale catalog</h2>
-        <p>Buy into your bag, then stock shelves. Unpaid carts settle when Galvik closes the shop and sleeps.</p>
-        <p>Waybread feeds heroes; healing herbs restore HP. Mana potions and ore are reserved for future use.</p>
-        <div id="wholesale-catalog"></div>
+        <header class="wholesale-heading">
+          <div><small>GALVIK'S SUPPLIER LEDGER</small><h2 id="wholesale-title">Wholesale market</h2>
+            <p>Purchase goods into your bag, then stock the shop. Adventurers pay when they check out.</p></div>
+          <button id="close-wholesale" type="button">Close (B / Esc)</button>
+        </header>
+        <div class="wholesale-overview" aria-label="Current purchasing power">
+          <div><small>AVAILABLE GOLD</small><strong id="wholesale-gold">0g</strong></div>
+          <div><small>STORAGE</small><strong id="wholesale-bag-fill">0 / 24 bag slots</strong></div>
+        </div>
+        <div class="wholesale-filters">
+          <label for="wholesale-search">Find an item
+            <input id="wholesale-search" type="search" placeholder="Search stock…" autocomplete="off" /></label>
+          <label for="wholesale-category">Category
+            <select id="wholesale-category">
+              <option value="all">All goods</option>
+              <option value="supplies">Supplies &amp; provisions</option>
+              <option value="equipment">Equipment</option>
+              <option value="materials">Materials</option>
+            </select></label>
+          <output id="wholesale-count" aria-live="polite">6 / 6 items</output>
+        </div>
+        <div id="wholesale-catalog" aria-label="Supplier goods"></div>
         <details>
           <summary>Free bag space (discard, no refund)</summary>
           <p>To clear a full shelf, discard bag goods, then right-click its stock back into the bag. Discard that stock if needed.</p>
           <div id="discard-catalog"></div>
         </details>
         <p id="wholesale-message" role="status">Bulk orders buy multiple units immediately. Prices are fixed.</p>
-        <button id="close-wholesale" type="button">Close catalog (Esc / B)</button>
+
       </dialog>
     </main>
     <script type="module" src="/src/main.ts"></script>

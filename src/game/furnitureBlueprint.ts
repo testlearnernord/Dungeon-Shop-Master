@@ -24,7 +24,7 @@ export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=[
 export const snapQuarter=(value:number):number=>Math.round(value*4)/4;
 
 export function surfaceFromMesh(name:string):BlueprintSurface|null {
-  if(name==="stone-floor")return "floor";
+  if(name==="stone-floor"||/^excavated-floor--?\d+,-?\d+$/.test(name))return "floor";
   if(name==="stone-ceiling")return "ceiling";
   if(name==="left-wall")return "left-wall";
   if(name==="right-wall")return "right-wall";

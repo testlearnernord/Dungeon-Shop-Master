@@ -33,7 +33,7 @@ import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
 import { setupBeggarHud } from "./beggarHud.ts";
 import { setupDebtBookHud } from "./debtBookHud.ts";
-import { setupShopStatusToggle } from "./shopHudLayout";
+import { setupShopStatusToggle,setupControlsHotbarClearance } from "./shopHudLayout";
 import { setupAdventurerOverview } from "./adventurerOverview";
 import { setupHudMouseMode } from "./hudMouseMode";
 import "./styles.css";
@@ -176,6 +176,14 @@ function renderInventory(selectedItem: ItemId): void {
   capacity.className = "capacity";
   capacity.textContent = `Bag ${Object.values(store.state.shopEconomy.bag).reduce((sum, quantity) => sum + quantity, 0)} / ${ECONOMY.bagCapacity}`;
   inventoryHud.append(capacity);
+  const selectedStock=ITEMS.find(item=>item.id===selectedItem)!;
+  const selectedStatus=document.createElement("div");
+  selectedStatus.className="hotbar-selected";
+  selectedStatus.setAttribute("role","status");
+  selectedStatus.dataset.empty=String(store.state.shopEconomy.bag[selectedStock.id]===0);
+  selectedStatus.textContent="READY TO STOCK · "+selectedStock.name+" · "+
+    store.state.shopEconomy.bag[selectedStock.id]+" in bag";
+  inventoryHud.append(selectedStatus);
   const hint=document.createElement("span");hint.className="hotbar-hint";
   hint.textContent="Wheel / 1–6 select · Click stock · Right-click remove";
   inventoryHud.append(hint);
@@ -195,6 +203,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
   debtBook.open,store,action=>merchantActions.play(action));
+setupControlsHotbarClearance();
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
