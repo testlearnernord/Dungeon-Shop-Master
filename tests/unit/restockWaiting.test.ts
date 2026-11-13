@@ -12,7 +12,7 @@ function emptyShop(){
     ...original,
     adventurers:original.adventurers.map((person,index)=>index===0
       ?{...person,status:"at-shop" as const,floor:5 as const,gold:100,
-        inventory:{...person.inventory,food:0},equipment:{weapon:null,armor:null}}
+        inventory:{...person.inventory,bread:0},equipment:{weapon:null,armor:null}}
       :{...person,status:"exploring" as const}),
     shopEconomy:{...original.shopEconomy,slots:original.shopEconomy.slots.map(slot=>({
       ...slot,itemId:null,quantity:0,
@@ -79,11 +79,11 @@ test("unpaid carts ALWAYS go to checkout even when shelves are sold out",()=>{
   assert.equal(shopperVisualAction(null,true),"checkout");
 });
 
-test("satisfied heroes leave, penniless hungry heroes beg instead of buying",()=>{
+test("satisfied heroes leave, penniless heroes without healing supplies beg instead of buying",()=>{
   const {state,heroId}=emptyShop();
   const hero=state.adventurers.find(x=>x.id===heroId)!;
   const satisfied={...state,adventurers:state.adventurers.map(x=>x.id===heroId
-    ?{...x,inventory:{...x.inventory,food:2},equipment:{
+    ?{...x,inventory:{...x.inventory,bread:2,healing:1},equipment:{
       weapon:"Iron Sword",armor:"Leather Vest",
     }}:x)};
   const noNeed=forecastShoppingIntents(satisfied).get(heroId)!;
