@@ -31,8 +31,11 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   const origin=isObstructed(from,layout)?fallback:from;
   // Legacy checkout must not place a queue in the rear player aisle.
   // A relocated counter keeps its layout-aware search range.
-  for (let step = 0; step <= (layout.counter ? 8 : 5); step++) {
-    for (const x of [0, -1.1, 1.1, -2.2, 2.2, -3.3, 3.3, -4.4, 4.4]) {
+  // A queue is a sequence, not an audience lined up across the register.
+  // Fill the forward/backward lane first, then secondary safe overflow lanes.
+  // Stable cart order maps to stable physical places even after moving counter.
+  for (const x of [0, -1.1, 1.1, -2.2, 2.2, -3.3, 3.3, -4.4, 4.4]) {
+    for (let step = 0; step <= (layout.counter ? 8 : 5); step++) {
       const localZ = layout.counter
         ? -COMPACT_COUNTER.clearanceDepth / 2 - 0.65 - step * 1.1
         : legacyFrontZ - counter.z - step * 1.1;
@@ -48,7 +51,9 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
     const route = pathToShopGoal(origin, candidate, layout);
     if (!route) continue;
     const endpoint = route.waypoints.at(-1) ?? origin;
-    if (isObstructed(endpoint, layout)) continue;
+    // Never silently route a checkout customer to some nearest grid cell.
+    if (isObstructed(endpoint, layout) ||
+        Math.hypot(endpoint.x-candidate.x,endpoint.z-candidate.z)>0.17) continue;
     if (allocated.some(point => Math.hypot(point.x-endpoint.x,point.z-endpoint.z) < NPC_CENTER_CLEARANCE)) continue;
     allocated.push(endpoint);
   }
