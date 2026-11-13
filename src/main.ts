@@ -234,7 +234,12 @@ bedtime=setupBedtime(scene,canvas,camera,
   },
   ()=>!!ledger&&(ledger.isOpen||ledger.isSuspended));
 cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId(),isShopActive,
-  (heroId,perfectTiming)=>store.payReservedCart(heroId,perfectTiming),message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
+  (heroId,perfectTiming)=>{
+    const before=store.state;
+    const result=store.payReservedCart(heroId,perfectTiming);
+    if(store.state!==before)merchantActions.play("checkout");
+    return result;
+  },message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
 
 engine.runRenderLoop(() => {
   npcVisuals.setWishBubblesVisible(!arena.isActive&&!dungeon.isActive);
