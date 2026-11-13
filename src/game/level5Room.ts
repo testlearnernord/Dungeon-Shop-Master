@@ -31,7 +31,7 @@ export function isValidLevel5Room(value:unknown):value is Level5Room {
   if(!value||typeof value!=="object")return false;
   const room=value as Partial<Level5Room>;
   if(room.schemaVersion!==1||!Number.isSafeInteger(room.expansionTier)||
-    room.expansionTier!<0||room.expansionTier!>MAX_EXPANSION_TIER||
+    (room.expansionTier as number)<0||(room.expansionTier as number)>MAX_EXPANSION_TIER||
     !Array.isArray(room.excavatedCells)||room.excavatedCells.length>MAX_MINED_CELLS)return false;
   const seen=new Set<string>();
   for(const entry of room.excavatedCells){
@@ -39,8 +39,8 @@ export function isValidLevel5Room(value:unknown):value is Level5Room {
     const [x,z]=entry.split(",").map(Number);
     const cell={x,z};
     if(!isIntegerCell(cell)||baseAir(cell)||isProtectedRoomCell(cell)||
-      Math.abs(x)>allowedExtent(room.expansionTier!)||
-      Math.abs(z)>allowedExtent(room.expansionTier!))return false;
+      Math.abs(x)>allowedExtent((room.expansionTier as number))||
+      Math.abs(z)>allowedExtent((room.expansionTier as number)))return false;
     seen.add(entry);
   }
   // Every mined cell must connect back to the original cave, not float in rock.
