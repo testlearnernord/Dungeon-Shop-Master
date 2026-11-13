@@ -1,6 +1,6 @@
 import { level5FloorWalkable, level5FloorSegmentWalkable } from "./level5Walkability.ts";
 import type { Level5Room } from "./level5Room.ts";
-import { COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, shelfBounds, type ShelfId, type ShopLayout } from "./shopLayout.ts";
+import { COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, shelfBounds, type ShopLayout } from "./shopLayout.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
 export interface ShopperRoute {
@@ -148,7 +148,7 @@ export function pathToShopGoal(
  * the same shelf face is acceptable, but a distant proxy is not.
  */
 export function pathToShelfAccess(
-  from:ShopPoint,layout:ShopLayout,shelfId:ShelfId,slotIndex:number,
+  from:ShopPoint,layout:ShopLayout,shelfId:string,slotIndex:number,
   room?:Level5Room,
 ):ShopperRoute|null {
   const shelf=layout.shelves.find(entry=>entry.id===shelfId);
