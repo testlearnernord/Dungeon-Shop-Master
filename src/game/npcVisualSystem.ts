@@ -1,3 +1,4 @@
+import type { Level5Room } from "./level5Room.ts";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
@@ -167,6 +168,7 @@ export class NpcVisualSystem {
   private readonly doors: Record<GateSide, Mesh | null>;
   private readonly doorY: Record<GateSide, number> = { level4: DOOR_CLOSED_Y, level6: DOOR_CLOSED_Y };
   private layout:ShopLayout|null=null;
+  private room:Level5Room|undefined;
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
@@ -260,11 +262,14 @@ export class NpcVisualSystem {
     onPickUp:(heroId:string,slotId:string)=>boolean,
     paidHeroIds:ReadonlySet<string>=new Set(),
     onWalkout?:((heroId:string,reason:ShoppingIntent["reason"])=>void),
+    room?:Level5Room,
   ):void {
     const furnitureMoved=this.layout!==null&&(
+      JSON.stringify(this.room)!==JSON.stringify(room)||
       JSON.stringify(this.layout.counter)!==JSON.stringify(layout.counter)||
       JSON.stringify(this.layout.shelves)!==JSON.stringify(layout.shelves));
     this.layout=layout;
+    this.room=room;
     this.shop=shop;
     this.onPickUp=onPickUp;
     this.onWalkout=onWalkout??null;
@@ -644,7 +649,7 @@ export class NpcVisualSystem {
     const chosen=possibleLanes.map(x=>({
       x,route:this.layout?pathToShopGoal(from,{
         x,z:CORRIDOR_INNER_Z,
-      },this.layout):null,
+      },this.layout,this.room):null,
     })).find(entry=>entry.route!==null);
     if(this.layout&&!chosen){
       // Never fall back to a straight wall-crossing route.
@@ -770,7 +775,7 @@ export class NpcVisualSystem {
         npc.root.metadata.phase=npc.phase;
         return;
       }
-      const path=pathToShopGoal(origin,{x:pointForShelf.x,z:pointForShelf.z},this.layout);
+      const path=pathToShopGoal(origin,{x:pointForShelf.x,z:pointForShelf.z},this.layout,this.room);
       if(path){
         this.shelfOwners.set(item.slotId,npc.visitor.id);
         npc.phase="browsing";npc.toQueue=false;
@@ -795,7 +800,7 @@ export class NpcVisualSystem {
       return;
     }
     const route=this.layout?pathToShopGoal(origin,
-      {x:target.x,z:target.z},this.layout):null;
+      {x:target.x,z:target.z},this.layout,this.room):null;
     npc.phase="browsing";npc.toQueue=true;
     npc.route=(route?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
     npc.waypoint=0;
@@ -954,7 +959,7 @@ export class NpcVisualSystem {
         const fraction=(6.6-a.z)/(b.z-a.z);
         b={x:a.x+(b.x-a.x)*fraction,z:6.6};
       }
-      return shopSegmentClear(a,b,this.layout);
+      return shopSegmentClear(a,b,this.layout,this.room);
     };
     // Once a hero approaches the narrow gate, remain in its reserved lane.
     // NPC bodies yield to each other only briefly here; crossing opposite
