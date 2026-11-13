@@ -70,3 +70,31 @@
 @media(max-width:720px){
   #blueprint-panel {top:auto;bottom:100px;right:10px;transform:none;width:240px;padding:12px;}
 }
+
+#blueprint-facing {
+  border:1px solid #77603a;
+  border-radius:6px;
+  background:#3b2d19;
+  padding:9px 12px;
+  margin:10px 0;
+  color:#ffd48a!important;
+  letter-spacing:.07em;
+  font:700 13px/1.4 Inter,system-ui,sans-serif!important;
+}
+#furniture-look-prompt {
+  position:fixed;
+  left:50%;
+  bottom:21%;
+  transform:translateX(-50%);
+  max-width:min(420px,90vw);
+  padding:7px 13px;
+  color:#f4dfb3;
+  background:rgba(15,13,10,.86);
+  border:1px solid #806238;
+  border-radius:6px;
+  text-align:center;
+  font:600 12px Inter,system-ui,sans-serif;
+  pointer-events:none;
+  z-index:25;
+}
+#furniture-look-prompt[hidden]{display:none;}
