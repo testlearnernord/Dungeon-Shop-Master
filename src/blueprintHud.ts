@@ -2,6 +2,7 @@ import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
+import { shopServiceReachabilityProblem } from "./game/shopServiceReachability.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import {
@@ -164,8 +165,12 @@ export function setupBlueprintHud(
       ?replaceCounterPlacement(store.state.shopLayout,p)
       :replaceShelfPlacement(store.state.shopLayout,p);
     const good=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
-    return check.layout===store.state.shopLayout&&check.message!==good
-      ?check.message:occupiedBy(p);
+    if(check.layout===store.state.shopLayout&&check.message!==good)return check.message;
+    if(check.layout!==store.state.shopLayout){
+      const reachability=shopServiceReachabilityProblem(check.layout);
+      if(reachability)return reachability;
+    }
+    return occupiedBy(p);
   };
 
   const updateGhost=():void=>{
