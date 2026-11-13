@@ -15,6 +15,8 @@ export class InteractionSystem {
   private readonly repeatDelay = 320;
   private readonly clickDelay = 220;
   private selectedIndex = 0;
+  /** Excavation is an explicit player mode, never an ordinary shop click. */
+  private miningMode = false;
   private message = "Click to enter the shop";
 
   constructor(
@@ -50,11 +52,22 @@ export class InteractionSystem {
   }
 
   reset(): void {
+    this.setMiningMode(false);
     this.heldButton = null;
     this.selectedIndex = 0;
     this.shop.select(ITEMS[0].id);
     this.message = "Campaign ready. Click to enter the shop.";
     this.publish();
+  }
+
+  private setMiningMode(active:boolean):void {
+    this.miningMode=active;
+    this.heldButton=null;
+    const indicator=document.querySelector<HTMLElement>("#mining-mode-indicator");
+    if(indicator){
+      indicator.hidden=!active;
+      indicator.setAttribute("aria-hidden",String(!active));
+    }
   }
 
   private registerEvents(): void {
@@ -71,6 +84,12 @@ export class InteractionSystem {
     this.canvas.addEventListener("pointerdown", (event) => {
       if (document.querySelector("dialog[open]")) return;
       if (event.button !== 0 && event.button !== 2) return;
+      if(this.miningMode&&event.button===2){
+        this.setMiningMode(false);
+        this.message="Mining mode off.";
+        this.publish();
+        return;
+      }
       this.heldButton = event.button;
       this.nextRepeatAt = performance.now() + this.clickDelay;
       this.performPointerAction(event.button, event.offsetX, event.offsetY);
@@ -95,9 +114,34 @@ export class InteractionSystem {
         event.preventDefault();
         return;
       }
-      if(event.code==="KeyU" && !event.repeat && this.store && this.isShopActive() && !document.querySelector("dialog[open]")){
-        const tier=this.store.state.level5Room?.expansionTier??0;
-        this.message=this.store.unlockShopExpansion(tier+1);
+      if(event.code==="Escape"&&this.miningMode){
+        this.setMiningMode(false);
+        this.message="Mining mode off.";
+        this.publish();
+        event.preventDefault();
+        return;
+      }
+      if(event.code==="KeyU"&&!event.repeat&&this.store&&this.isShopActive()&&
+        !document.querySelector("dialog[open]")&&!event.altKey&&!event.ctrlKey&&
+        !event.metaKey&&!(event.target instanceof HTMLElement&&
+          (event.target.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(event.target.tagName)))){
+        if(event.shiftKey){
+          const tier=this.store.state.level5Room?.expansionTier??0;
+          this.message=this.store.unlockShopExpansion(tier+1);
+          this.publish();event.preventDefault();return;
+        }
+        if(this.miningMode){
+          this.setMiningMode(false);
+          this.message="Mining mode off.";
+        }else{
+          const tier=this.store.state.level5Room?.expansionTier??0;
+          if(tier===0)this.message=this.store.unlockShopExpansion(1);
+          const unlocked=(this.store.state.level5Room?.expansionTier??0)>0;
+          this.setMiningMode(unlocked);
+          this.message=unlocked
+            ?"Mining mode ON · Left-click exposed rock · U / Esc / right-click to cancel."
+            :this.message;
+        }
         this.publish();event.preventDefault();return;
       }
       if (event.code !== "KeyE" || event.repeat || !this.isShopActive() ||
@@ -133,7 +177,8 @@ export class InteractionSystem {
     if (!hit?.hit || !hit.pickedMesh) return;
 
     const mineCell=(hit.pickedMesh.metadata as {level5MineCell?:{x:number;z:number}}|null)?.level5MineCell;
-    if(mineCell && button===0 && this.store){
+    if(mineCell){
+      if(!this.miningMode||button!==0||!this.store)return;
       if(hit.distance>this.maxInteractionDistance)this.message="Move closer to the rock.";
       else{
         const before=this.store.state;

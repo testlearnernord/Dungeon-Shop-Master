@@ -585,3 +585,20 @@
   #hud .shop-hud-glance #merchant-gold::after{font-size:11px}
   #hud .adventurer-overview-heading #population-summary::after{font-size:10px}
 }
+
+/* Never expose excavation as an unlabeled first-person click. */
+#hud .mining-mode-indicator{
+  position:fixed;left:50%;bottom:115px;transform:translateX(-50%);
+  z-index:9;display:flex;align-items:center;gap:8px;
+  padding:8px 12px;border:1px solid rgba(240,181,92,.63);
+  border-radius:10px;background:rgba(31,27,21,.86);color:#f6d59c;
+  box-shadow:0 9px 28px #0009;pointer-events:none;
+  white-space:nowrap;font-size:11px
+}
+#hud .mining-mode-indicator[hidden]{display:none!important}
+#hud .mining-mode-indicator strong{font-size:11px;letter-spacing:.07em}
+#hud .mining-mode-indicator small{color:#dcc5a2;font-size:10px}
+@media(max-width:560px){
+  #hud .mining-mode-indicator{bottom:110px;max-width:96vw;font-size:10px}
+  #hud .mining-mode-indicator small{display:none}
+}
