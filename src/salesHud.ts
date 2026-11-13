@@ -1,6 +1,6 @@
 import type { GameStore } from "./game/gameStore.ts";
 import { currentDayReceipts } from "./game/saleView.ts";
-import {itemIcon} from "./uiIcons.ts";
+import {itemIcon,uiIcon} from "./uiIcons.ts";
 
 /** Live, replay-safe display of sales already booked by the global day tick. */
 export function setupSalesHud(store: GameStore): void {
@@ -26,7 +26,7 @@ export function setupSalesHud(store: GameStore): void {
       const detail = document.createElement("span");
       detail.textContent = receipt.heroName + " · " + receipt.quantity + " × " + receipt.itemName;
       const gold = document.createElement("strong");
-      gold.textContent = "+" + receipt.revenue + "g";
+      gold.append(uiIcon("coin"),document.createTextNode("+"+receipt.revenue+"g"));
       row.append(icon, detail, gold);
       list.append(row);
       return row;

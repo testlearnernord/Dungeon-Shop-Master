@@ -665,3 +665,22 @@
   background-clip:padding-box;background-repeat:no-repeat;
   background-color:#24312c
 }
+
+
+/* Same minted gold mark in every merchant, hero and debt amount. */
+#wholesale #wholesale-gold{display:inline-flex;align-items:center;gap:7px}
+#wholesale #wholesale-gold .ui-icon{width:22px;height:22px}
+#sales-receipts .sales-receipt strong,
+#debt-book-dialog .debt-book-totals strong,
+#debt-book-dialog .debt-book-account summary b,
+#debt-book-dialog .debt-book-account li strong,
+#merchant-ledger .ledger-metric-value,
+#merchant-ledger .ledger-line-value{
+  display:inline-flex;align-items:center;gap:5px
+}
+#sales-receipts .sales-receipt strong .ui-icon{width:15px;height:15px}
+#debt-book-dialog :is(.debt-book-totals strong,.debt-book-account summary b,
+  .debt-book-account li strong) .ui-icon,
+#merchant-ledger :is(.ledger-metric-value,.ledger-line-value) .ui-icon{
+  width:16px;height:16px;flex:none
+}

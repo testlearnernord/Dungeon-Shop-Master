@@ -185,7 +185,7 @@ export function setupEconomyHud(
     const economy = store.state.shopEconomy;
     const used=Object.values(economy.bag).reduce((sum,n)=>sum+n,0);
     const free=ECONOMY.bagCapacity-used;
-    balance.textContent=economy.balance+"g";
+    balance.replaceChildren(uiIcon("coin"),document.createTextNode(economy.balance+"g"));
     capacity.textContent=used+" / "+ECONOMY.bagCapacity+" bag slots";
     capacity.dataset.full=String(free===0);
     for(const card of cards){

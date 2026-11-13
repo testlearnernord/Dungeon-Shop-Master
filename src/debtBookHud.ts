@@ -50,6 +50,7 @@ export function setupDebtBookHud(
       const block=document.createElement("div");
       const label=document.createElement("span");label.textContent=name;
       const amount=document.createElement("strong");amount.textContent=value;
+      if(name!=="Debtors")amount.prepend(uiIcon("coin"));
       const detail=document.createElement("small");detail.textContent=caption;
       block.append(label,amount,detail);return block;
     };
@@ -85,6 +86,7 @@ export function setupDebtBookHud(
       condition.className=isDead?"debt-book-dead":"";
       identity.append(display,condition);
       const balance=document.createElement("b");balance.textContent=money(debt.outstandingGold);
+      balance.prepend(uiIcon("coin"));
       heading.append(identity,balance);
       section.append(heading);
       const history=document.createElement("ol");
@@ -97,6 +99,7 @@ export function setupDebtBookHud(
         detail.textContent="Day "+event.day+" · "+(item?.name??event.itemId??"Supplies")+
           " ×"+(event.quantity??1);
         const cost=document.createElement("strong");cost.textContent=money(event.debtGold??0);
+        cost.prepend(uiIcon("coin"));
         line.append(item?itemIcon(item.id,"ui-item-icon"):uiIcon("receipt"),detail,cost);
         history.append(line);
       }
