@@ -3,7 +3,7 @@ export type SoundtrackScene = "shop" | "dungeon" | "boss";
 const PREFERENCE_KEY = "dungeon-shop-master-music-v1";
 const FADE_DURATION_MS = 1100;
 const TRACK_NAMES: Record<SoundtrackScene, string> = {
-  shop: "The Last Warm Light",
+  shop: "The Lean Season",
   dungeon: "Beneath the Surface",
   boss: "Trial by Iron",
 };
@@ -71,7 +71,7 @@ export class SceneSoundtrack {
       return audio;
     };
     this.tracks = {
-      shop: makeTrack("shop", "the-last-warm-light.mp3"),
+      shop: makeTrack("shop", "the-lean-season.mp3"),
       dungeon: makeTrack("dungeon", "beneath-the-surface.mp3"),
       boss: makeTrack("boss", "trial-by-iron.mp3"),
     };
