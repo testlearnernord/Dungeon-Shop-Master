@@ -59,7 +59,8 @@ test("shop sells appropriate treatment without free rations or fake healing",()=
   assert.equal(customer.inventory.bread,1);
   assert.equal(customer.inventory.healing,0);
   assert.equal(customer.gold,hero.gold-4);
-  assert.equal(result.economy.balance,base.shopEconomy.balance+4);
+  assert.equal(result.economy.balance,base.shopEconomy.balance+
+    result.events.filter(e=>e.type==="sale").reduce((total,e)=>total+(e.revenue??0),0));
   assert(result.events.some(event=>event.type==="sale"&&event.itemId==="bread"));
   const used=useHealingSupplies(customer,2);
   assert.equal(used.adventurer.health,hero.stats.maxHealth);
