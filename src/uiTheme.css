@@ -424,3 +424,48 @@
     bottom: calc(100% + 108px);
   }
 }
+
+
+/* Merchant purchasing, readable at the shop's regular game resolutions. */
+#wholesale {width:min(890px,calc(100vw - 28px));max-height:min(90dvh,920px);padding:clamp(12px,2vw,22px);border-radius:14px;}
+#wholesale .wholesale-heading {display:flex;justify-content:space-between;gap:16px;align-items:start;padding-bottom:14px;border-bottom:1px solid var(--ui-border);}
+#wholesale .wholesale-heading h2 {margin:4px 0 5px;font:700 clamp(21px,2.8vw,29px)/1.15 Georgia,serif;color:var(--ui-text);}
+#wholesale .wholesale-heading small,#wholesale .wholesale-overview small {color:var(--ui-gold);font-size:10px;font-weight:750;letter-spacing:.11em;}
+#wholesale .wholesale-heading p {max-width:600px;margin:0;color:var(--ui-muted);font-size:12px;}
+#wholesale #close-wholesale {flex:none;white-space:nowrap;}
+#wholesale .wholesale-overview {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0;}
+#wholesale .wholesale-overview>div {display:grid;gap:5px;padding:11px 14px;border-radius:9px;border:1px solid var(--ui-border);background:linear-gradient(145deg,#302a21,#1e211f);}
+#wholesale .wholesale-overview strong {font-size:20px;font-variant-numeric:tabular-nums;color:#f2deb4;}
+#wholesale #wholesale-bag-fill[data-full="true"] {color:#ffa894;}
+#wholesale .wholesale-filters {display:flex;align-items:end;flex-wrap:wrap;gap:12px;padding:0 0 14px;}
+#wholesale .wholesale-filters label {display:grid;gap:5px;color:var(--ui-muted);font-size:11px;font-weight:650;}
+#wholesale .wholesale-filters label:first-child {flex:1 1 220px;}
+#wholesale .wholesale-filters input,#wholesale .wholesale-filters select {min-height:40px;padding:8px 11px;color:var(--ui-text);border:1px solid var(--ui-border);border-radius:7px;background:#272923;font:inherit;font-size:13px;}
+#wholesale #wholesale-count {margin-left:auto;padding-bottom:11px;color:var(--ui-gold);white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums;}
+#wholesale #wholesale-catalog {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));align-items:stretch;gap:12px;}
+#wholesale .catalog-row {margin:0;padding:13px;display:flex;flex-direction:column;gap:10px;min-width:0;border-radius:10px;background:linear-gradient(145deg,#292b26,#1f211f);}
+#wholesale .catalog-row[hidden] {display:none!important;}
+#wholesale .catalog-item-header {display:flex;align-items:center;gap:12px;min-height:60px;}
+#wholesale .catalog-icon-frame {flex:0 0 58px;width:58px;height:58px;display:grid;place-items:center;border:1px solid #776044;border-radius:10px;background:radial-gradient(circle at 50% 30%,#55422b,#26221d 75%);}
+#wholesale .catalog-item-icon {width:44px;height:44px;flex:none;}
+#wholesale .catalog-item-identity {min-width:0;display:grid;gap:5px;}
+#wholesale .catalog-product-name {font-size:15px;line-height:1.3;color:#f4e4c5;}
+#wholesale .catalog-product-type {color:#bda981;letter-spacing:.11em;font-size:10px;font-weight:750;}
+#wholesale .catalog-item-description {margin:0;min-height:30px;font-size:12px;line-height:1.4;color:var(--ui-muted);}
+#wholesale .catalog-prices,#wholesale .catalog-stocks {display:flex;gap:7px;flex-wrap:wrap;align-items:center;font-size:11px;font-variant-numeric:tabular-nums;}
+#wholesale .catalog-prices span {padding:4px 7px;border-radius:5px;background:#1c1e1c;}
+#wholesale .catalog-price-buy {color:#f5d296;}
+#wholesale .catalog-price-sell {color:#c6dbcc;}
+#wholesale .catalog-price-margin {color:#a5d79e;}
+#wholesale .catalog-stocks {border-top:1px solid #514737;padding-top:9px;justify-content:space-between;color:#d0c7b6;}
+#wholesale .catalog-actions {margin-top:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
+#wholesale .catalog-actions button {min-width:0;min-height:39px;padding:6px 5px;font-size:11px;}
+#wholesale .catalog-actions button:first-child {border-color:#9f7844;background:#53402a;}
+#wholesale #wholesale-message {position:sticky;bottom:-1px;margin:14px 0;padding:10px 12px;border:1px solid #886941;border-radius:8px;background:#28251e;color:#f0d9a6;z-index:2;}
+#wholesale #discard-catalog {display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+@media(max-width:740px){
+  #wholesale .wholesale-heading {flex-wrap:wrap;}
+  #wholesale .wholesale-overview strong {font-size:15px;}
+  #wholesale .wholesale-filters label {flex:1 1 100%;}
+  #wholesale #wholesale-count {padding:0;}
+}
