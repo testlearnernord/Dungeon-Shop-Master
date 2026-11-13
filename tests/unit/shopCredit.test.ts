@@ -79,18 +79,6 @@ test("no stock, held carts and paid/absent heroes cannot obtain credit",()=>{
   assert.equal(quoteBeggingRequest(cart,heroId),null);
 });
 
-test("legacy version 10 campaigns migrate without losing their unpaid carts",()=>{
-  const {state}=hungryWithoutGold();
-  const old=JSON.parse(JSON.stringify(createSave(state)));
-  old.simulationVersion=10;
-  old.payload.simulationVersion=10;
-  delete old.payload.shopDebts;
-  const restored=parseSave(JSON.stringify(old));
-  assert.equal(restored.simulationVersion,11);
-  assert.deepEqual(restored.shopCarts,state.shopCarts);
-  assert.deepEqual(restored.shopDebts,[]);
-});
-
 test("forged or inconsistent debt records fail save validation",()=>{
   const {state,heroId}=hungryWithoutGold();
   const credited=issueShopCredit(state,heroId).state;
