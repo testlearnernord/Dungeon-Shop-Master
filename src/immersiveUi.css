@@ -602,3 +602,163 @@
   #hud .mining-mode-indicator{bottom:110px;max-width:96vw;font-size:10px}
   #hud .mining-mode-indicator small{display:none}
 }
+
+
+/* V.002.1: layout fixes and real information design, not more hidden raw lists. */
+#hud #inventory.inventory .inventory-row{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  position:relative;isolation:isolate;padding:0!important
+}
+#hud #inventory.inventory .inventory-row .item-pictogram{
+  position:absolute;left:50%;top:50%;right:auto;bottom:auto;
+  transform:translate(-50%,-50%);display:block;margin:0;flex:none;
+  grid-area:auto;align-self:auto;justify-self:auto;pointer-events:none
+}
+#hud #inventory.inventory .inventory-row .hotbar-key{
+  position:absolute;top:3px;left:5px;right:auto;z-index:2;margin:0;pointer-events:none
+}
+#hud #inventory.inventory .inventory-row strong{
+  position:absolute;right:3px;bottom:2px;left:auto;top:auto;z-index:2;
+  pointer-events:none;margin:0
+}
+.ui-gold-icon{width:17px;height:17px;display:inline-block;object-fit:contain;vertical-align:middle;flex:none}
+#hud .shop-hud-glance #merchant-gold .ui-gold-icon{width:15px;height:15px}
+#roster-dialog .roster-overview .ui-gold-icon{width:15px;height:15px}
+#roster-dialog .roster-portrait{background-repeat:no-repeat!important;background-origin:padding-box;overflow:hidden}
+#hud #adventurer-roster .hero-gold{display:inline-flex;align-items:center;gap:4px;color:#f1d59a;font-variant-numeric:tabular-nums;margin:2px 0}
+#hud #adventurer-roster .hero-gold .ui-gold-icon{width:14px;height:14px}
+#wholesale #wholesale-gold{display:flex;align-items:center;gap:7px}
+#wholesale #wholesale-gold .ui-gold-icon{width:23px;height:23px}
+#debt-book-dialog .debt-book-totals strong,
+#debt-book-dialog .debt-book-account summary b,
+#debt-book-dialog .debt-book-account ol li strong,
+.sales-receipt strong,#merchant-ledger .ledger-metric-value,
+#merchant-ledger .ledger-line-value{display:inline-flex;align-items:center;gap:5px}
+#debt-book-dialog .debt-book-totals strong .ui-gold-icon{width:22px;height:22px}
+#merchant-ledger .ledger-metric-value .ui-gold-icon{width:22px;height:22px}
+#merchant-ledger .ledger-line-value .ui-gold-icon{width:15px;height:15px}
+.sales-receipt strong .ui-gold-icon{width:14px;height:14px}
+
+/* Expanded reports are a focused drawer beside the game, not 4 nested scrollbars
+ * inside a 240px translucent status chip. */
+#hud #shop-status-content{
+  position:absolute;top:calc(100% + 10px);left:0;margin:0;
+  width:min(440px,calc(100vw - 28px));max-height:min(72dvh,660px);
+  overflow-y:auto;padding:16px;
+  border:1px solid rgba(215,171,106,.34);border-radius:14px;
+  background:rgba(15,21,23,.94);box-shadow:0 25px 75px #000a;
+  backdrop-filter:blur(16px);overscroll-behavior:contain;
+  scrollbar-color:rgba(220,177,111,.48) transparent
+}
+#hud #shop-status-content[hidden]{display:none!important}
+#hud #shop-status-content .shop-management-details{margin:0}
+#hud #shop-status-content .shop-management-details>summary{
+  margin:6px 0;padding:6px 0;font:700 13px/1.4 Georgia,serif;color:#e7c58a
+}
+#hud #shop-status-content .shop-management-content{display:grid;gap:11px}
+#hud #shop-status-content .shop-management-content>h3{
+  display:flex;justify-content:space-between;align-items:center;
+  margin:0;padding:7px 0 3px;font:750 12px/1.4 system-ui,sans-serif;
+  color:#f3e0b7;border:0
+}
+#hud #shop-status-content .report-caption{font-size:10px;font-weight:500;color:#a99d8b}
+#hud #shop-status-content :is(.day-report,.expedition-ledger,.sales-ledger,.campaign-panel){
+  border:1px solid rgba(208,167,103,.19);border-radius:10px;
+  padding:0;background:rgba(24,32,32,.52);margin:0;overflow:clip
+}
+#hud #shop-status-content :is(.day-report,.expedition-ledger,.sales-ledger,.campaign-panel)>summary{
+  padding:11px 13px;margin:0;display:flex;align-items:center;
+  font:700 12px/1.3 system-ui,sans-serif;color:#edcf99;
+  cursor:pointer;background:rgba(49,53,43,.12)
+}
+#hud #shop-status-content :is(.day-report,.expedition-ledger,.sales-ledger,.campaign-panel)[open]>summary{
+  border-bottom:1px solid rgba(208,167,103,.22);background:rgba(105,84,49,.20)
+}
+#hud #shop-status-content #world-events,
+#hud #shop-status-content #day-history,
+#hud #shop-status-content #level6-expedition-events{
+  margin:0;padding:5px 8px;list-style:none;max-height:none;overflow:visible!important
+}
+#hud #shop-status-content #day-history{max-height:min(42dvh,350px);overflow-y:auto!important}
+#hud #shop-status-content .report-event{
+  display:flex;align-items:flex-start;gap:9px;margin:0;padding:10px 6px;
+  border-bottom:1px solid rgba(185,155,110,.13);
+  font:500 11px/1.45 system-ui,sans-serif;color:#e8e0d1
+}
+#hud #shop-status-content .report-event:last-child{border:0}
+#hud #shop-status-content .report-event .ui-icon{width:17px;height:17px;margin-top:3px;color:#e8bf7d}
+#hud #shop-status-content .report-event-dungeon .ui-icon{color:#b8d1ce}
+#hud #shop-status-content .report-event-other .ui-icon{color:#acb2ae}
+#hud #shop-status-content .report-event-copy{min-width:0;display:grid;gap:4px;flex:1}
+#hud #shop-status-content .report-event-meta{
+  letter-spacing:.11em;font:700 9px/1 system-ui,sans-serif;color:#c5a777
+}
+#hud #shop-status-content .report-event-dungeon .report-event-meta{color:#a1cbce}
+#hud #shop-status-content .report-event-other .report-event-meta{color:#aeb4ae}
+#hud #shop-status-content .day-report-overview{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;
+  padding:10px 10px 0
+}
+#hud #shop-status-content .report-count{
+  display:grid;place-items:center;gap:3px;padding:8px 3px;
+  border:1px solid rgba(217,176,107,.16);border-radius:7px;background:#0f161baa
+}
+#hud #shop-status-content .report-count strong{
+  color:#f3d49c;font:750 18px/1.15 system-ui,sans-serif;font-variant-numeric:tabular-nums
+}
+#hud #shop-status-content .report-count small{
+  font:700 9px/1.2 system-ui,sans-serif;letter-spacing:.05em;color:#a8aba4
+}
+#hud #shop-status-content .day-history-filters{
+  display:flex;gap:5px;flex-wrap:wrap;padding:11px 10px 7px
+}
+#hud #shop-status-content .day-history-filters button{
+  border:1px solid rgba(207,175,119,.20);border-radius:7px;
+  padding:6px 11px;background:rgba(31,36,34,.72);
+  color:#d8cfb9;font:700 10px/1.2 system-ui,sans-serif;cursor:pointer
+}
+#hud #shop-status-content .day-history-filters button[aria-pressed="true"]{
+  color:#231c12;background:#e0b775;border-color:#f1d49f
+}
+#hud #shop-status-content .report-empty{
+  list-style:none;padding:15px;color:#c0b3a2;font:500 11px/1.5 system-ui,sans-serif
+}
+#hud #shop-status-content :is(#level6-progress-counts,#sales-receipts,.sales-hint){margin:8px 12px;line-height:1.5}
+#hud #shop-status-content #level6-expedition-events>li{
+  margin:0;padding:8px 6px;border-bottom:1px solid rgba(212,174,112,.15);line-height:1.5
+}
+#hud #shop-status-content #sales-receipts .sales-receipt{
+  padding:8px 0;gap:9px;display:flex;align-items:center
+}
+#hud #shop-status-content #sales-receipts .sales-receipt span:nth-child(2){min-width:0;flex:1}
+#hud #shop-status-content #sales-receipts .sales-item-icon{width:26px;height:26px;flex:0 0 26px}
+#hud #shop-status-content .campaign-panel>button{margin:8px 4px 8px 10px;min-height:33px}
+
+/* Music must not occupy the top-center notification lane, especially while
+ * boss/dungeon footage has its own title bar and event notifications. */
+#music-panel,#game #music-panel{
+  position:fixed!important;top:auto!important;left:auto!important;
+  right:15px!important;bottom:118px!important;transform:none!important;
+  width:180px!important;max-width:calc(100vw - 30px)!important;
+  padding:6px 8px!important;border-radius:10px!important;
+  background:rgba(14,19,21,.44)!important;
+  border-color:rgba(208,165,100,.21)!important;
+  box-shadow:0 6px 20px #0003!important;z-index:29
+}
+#music-panel .music-heading{gap:6px;line-height:1.15}
+#music-panel .music-heading .ui-icon{width:15px;height:15px}
+#music-panel .music-heading strong{font-size:10px}
+#music-panel .music-heading small{font-size:8px}
+#music-panel .music-actions{gap:4px}
+#music-panel .music-actions button{padding:3px 5px;white-space:nowrap;font-size:9px}
+#music-panel #music-volume{width:64px}
+#music-panel .music-actions label{font-size:8px}
+@media(max-width:740px){
+  #hud #shop-status-content{width:min(420px,calc(100vw - 18px));max-height:66dvh;left:0}
+  #music-panel,#game #music-panel{right:8px!important;bottom:121px!important;width:148px!important}
+  #music-panel #music-volume{width:43px}
+}
+@media(max-height:650px){
+  #hud #shop-status-content{max-height:57dvh}
+  #music-panel,#game #music-panel{bottom:92px!important}
+}
