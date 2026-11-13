@@ -8,13 +8,7 @@ export interface ShopperRoute {
   readonly length: number;
 }
 const STEP=0.5;
-const MIN=-6.5,MAX=6.5,COUNT=Math.round((MAX-MIN)/STEP)+1;
-const worldPoint=(index:number):ShopPoint=>({
-  x:MIN+(index%COUNT)*STEP,
-  z:MIN+Math.floor(index/COUNT)*STEP,
-});
-const index=(x:number,z:number)=>z*COUNT+x;
-const inGrid=(x:number,z:number)=>x>=0&&z>=0&&x<COUNT&&z<COUNT;
+const MIN=-6.5,MAX=6.5;
 export function isObstructed(p:ShopPoint,layout:ShopLayout,room?:Level5Room):boolean{
   if(room)return !level5FloorWalkable(p,room,layout);
   const pad=0.36;
@@ -74,7 +68,7 @@ export function pathToShopGoal(
     for(let radius=0;radius<=3;radius++){
       for(let dz=-radius;dz<=radius;dz++)for(let dx=-radius;dx<=radius;dx++){
         const x=x0+dx,z=z0+dz;
-        if(!inside(x,z)||isObstructed(point(idx(x,z)),layout))continue;
+        if(!inside(x,z)||blocked(point(idx(x,z))))continue;
         const candidate=idx(x,z);
         const p2=point(candidate);
         // For outside a shelf footprint, insist on a true straight connector.
@@ -100,7 +94,7 @@ export function pathToShopGoal(
       const nx=x+dx,nz=z+dz;
       if(!inside(nx,nz))continue;
       const key=idx(nx,nz);
-      if(prev[key]!==-1||isObstructed(point(key),layout))continue;
+      if(prev[key]!==-1||blocked(point(key)))continue;
       prev[key]=cell;queue.push(key);
     }
   }
