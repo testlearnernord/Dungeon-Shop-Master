@@ -1,6 +1,8 @@
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { furnitureFacing } from "./game/furnitureFacing.ts";
 import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
 import { shopServiceReachabilityProblem } from "./game/shopServiceReachability.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
@@ -37,13 +39,16 @@ export function setupBlueprintHud(
   const status=document.createElement("p");
   status.className="blueprint-status";
   status.setAttribute("role","status");
+  const facingReadout=document.createElement("p");
+  facingReadout.id="blueprint-facing";
+  facingReadout.setAttribute("aria-live","polite");
   const controls=document.createElement("p");
   controls.className="blueprint-controls";
-  controls.textContent="R Rotate · Left click Place · Right click / Esc Cancel";
+  controls.textContent="Mouse Look 360° · R Rotate 90° · LMB Place · RMB / Esc Cancel";
   const cancel=document.createElement("button");
   cancel.type="button";
   cancel.textContent="Exit placement";
-  panel.append(title,hint,status,controls,cancel);
+  panel.append(title,hint,facingReadout,status,controls,cancel);
   document.body.append(panel);
 
   const validMaterial=new StandardMaterial("blueprint-valid",scene);
@@ -58,11 +63,57 @@ export function setupBlueprintHud(
   invalidMaterial.alpha=0.4;
   invalidMaterial.wireframe=true;
   invalidMaterial.disableLighting=true;
-  const ghost=MeshBuilder.CreateBox("blueprint-preview",{size:1},scene);
-  ghost.material=validMaterial;
-  ghost.isPickable=false;
-  ghost.checkCollisions=false;
-  ghost.renderingGroupId=2;
+  // Move a recognizable mesh silhouette, not a symmetric anonymous cuboid.
+  // The golden arrow ALWAYS indicates the customer-facing side. All pieces
+  // are visual-only; the saved footprint remains the authoritative geometry.
+  const ghost=new TransformNode("blueprint-preview-root",scene);
+  const parts:{mesh:import("@babylonjs/core/Meshes/mesh").Mesh;
+    type:"shelf"|"counter";direction?:boolean}[]=[];
+  const previewBox=(
+    name:string,width:number,height:number,depth:number,
+    x:number,y:number,z:number,type:"shelf"|"counter",direction=false,
+  )=>{
+    const mesh=MeshBuilder.CreateBox(name,{width,height,depth},scene);
+    mesh.parent=ghost;
+    mesh.position.set(x,y,z);
+    mesh.isPickable=false;mesh.checkCollisions=false;
+    mesh.renderingGroupId=2;
+    parts.push({mesh,type,direction});
+    return mesh;
+  };
+  // Shelf: back, plank and five distinct cubbies expose the usable +X side.
+  previewBox("blueprint-shelf-back",0.18,2,5.8,0,1.35,0,"shelf");
+  previewBox("blueprint-shelf-plank",1.2,0.18,5.8,0.48,0.65,0,"shelf");
+  for(let idx=0;idx<5;idx++){
+    previewBox("blueprint-slot-"+idx,0.76,0.14,0.78,
+      0.48,0.82,idx-2,"shelf");
+  }
+  // Counter: visible top and raised register establish the back of the till.
+  previewBox("blueprint-counter-body",1.75,1.15,1.15,0,0.68,0,"counter");
+  previewBox("blueprint-counter-top",2,0.14,1.35,0,1.32,0,"counter");
+  previewBox("blueprint-counter-register",0.62,0.30,0.5,0.35,1.55,0,"counter");
+  // Asymmetric directional shafts and tips survive every quarter turn.
+  previewBox("blueprint-shelf-front-shaft",0.55,0.12,0.12,
+    1.22,1.8,0,"shelf",true);
+  const shelfTip=MeshBuilder.CreateCylinder("blueprint-shelf-front-arrow",
+    {height:0.56,diameterTop:0,diameterBottom:0.4,tessellation:4},scene);
+  shelfTip.parent=ghost;shelfTip.position.set(1.62,1.8,0);
+  shelfTip.rotation.z=-Math.PI/2;
+  shelfTip.isPickable=false;shelfTip.checkCollisions=false;
+  shelfTip.renderingGroupId=2;parts.push({mesh:shelfTip,type:"shelf",direction:true});
+  previewBox("blueprint-counter-front-shaft",0.12,0.12,0.53,
+    0,1.76,-1.05,"counter",true);
+  const counterTip=MeshBuilder.CreateCylinder("blueprint-counter-front-arrow",
+    {height:0.56,diameterTop:0,diameterBottom:0.4,tessellation:4},scene);
+  counterTip.parent=ghost;counterTip.position.set(0,1.76,-1.43);
+  counterTip.rotation.x=-Math.PI/2;
+  counterTip.isPickable=false;counterTip.checkCollisions=false;
+  counterTip.renderingGroupId=2;parts.push({mesh:counterTip,type:"counter",direction:true});
+  const facingMaterial=new StandardMaterial("blueprint-facing-arrow",scene);
+  facingMaterial.diffuseColor=new Color3(1,0.74,0.17);
+  facingMaterial.emissiveColor=new Color3(0.7,0.42,0.05);
+  facingMaterial.alpha=0.95;
+  facingMaterial.disableLighting=true;
   ghost.setEnabled(false);
 
   // A distinct outline highlights an object under the crosshair before P.
@@ -87,7 +138,6 @@ export function setupBlueprintHud(
   let enabled=false;
   let activeId:FurnitureId="shelf-1";
   let rotation:0|1|2|3=0;
-  let pointer={x:canvas.clientWidth/2,y:canvas.clientHeight/2};
   let draft:FurnitureDraft|null=null;
   let placeable=false;
   let reason="Aim at a floor or wall to place the blueprint.";
@@ -176,32 +226,42 @@ export function setupBlueprintHud(
   const updateGhost=():void=>{
     if(!enabled)return;
     if(document.querySelector("dialog[open]")){close();return;}
-    const locked=document.pointerLockElement===canvas;
-    const width=canvas.clientWidth,height=canvas.clientHeight;
-    const hit=locked
-      ?scene.pickWithRay(camera.getForwardRay(16),mesh=>surfaceFromMesh(mesh.name)!==null)
-      :scene.pick(pointer.x,pointer.y,mesh=>surfaceFromMesh(mesh.name)!==null,false,camera);
+    // FPS targeting stays on the crosshair even when the camera turns.
+    // No screen-coordinate cursor state or detaching the Babylon camera.
+    const hit=scene.pickWithRay(camera.getForwardRay(16),
+      mesh=>surfaceFromMesh(mesh.name)!==null);
     const surface=hit?.pickedMesh?surfaceFromMesh(hit.pickedMesh.name):null;
     if(!surface||!hit?.pickedPoint){
       draft=null;placeable=false;ghost.setEnabled(false);
+      facingReadout.textContent="Facing: not positioned";
       updateStatus("Aim at the "+(activeId==="counter"?"floor":"floor or a wall")+".",false);
       return;
     }
     const p=blueprintAtSurface(activeId,surface,hit.pickedPoint,rotation);
     if(!p){
       draft=null;placeable=false;ghost.setEnabled(false);
+      facingReadout.textContent="Facing: unsupported mount";
       updateStatus("This furniture cannot be mounted on that surface.",false);
       return;
     }
     draft=p;
-    const definition=FURNITURE_CATALOG.find(item=>item.id===activeId)!;
-    const offset=p.id==="counter"?{x:0,z:0}:rotateShelfOffset(0.48,0,p.rotation);
-    ghost.position.set(p.x+offset.x,p.id==="counter"?0.95:1.27,p.z+offset.z);
+    ghost.position.set(p.x,0,p.z);
     ghost.rotation.y=p.rotation*Math.PI/2;
-    ghost.scaling.set(definition.width,definition.height,definition.depth);
+    const type=p.id==="counter"?"counter":"shelf";
+    for(const part of parts){
+      part.mesh.setEnabled(part.type===type);
+      part.mesh.material=part.direction?facingMaterial:
+        (placementError(p)?invalidMaterial:validMaterial);
+    }
+    const front=furnitureFacing(p.id,p.rotation);
+    facingReadout.textContent="FRONT → "+front.label.toUpperCase()+
+      "  ·  "+(p.rotation*90)+"°"+
+      (surface==="floor"?" · R rotates 90°":" · wall-aligned");
     reason=placementError(p)??"Valid placement. Left click to confirm.";
     placeable=reason==="Valid placement. Left click to confirm.";
-    ghost.material=placeable?validMaterial:invalidMaterial;
+    for(const part of parts){
+      if(!part.direction)part.mesh.material=placeable?validMaterial:invalidMaterial;
+    }
     ghost.setEnabled(true);
     updateStatus(reason,placeable);
   };
@@ -210,7 +270,6 @@ export function setupBlueprintHud(
     if(!enabled)return;
     enabled=false;panel.hidden=true;draft=null;placeable=false;
     ghost.setEnabled(false);
-    canvas.style.cursor="";
   };
   const open=():void=>{
     if(enabled){close();return;}
@@ -229,10 +288,12 @@ export function setupBlueprintHud(
     }
     enabled=true;panel.hidden=false;
     focusMesh.setEnabled(false);focusHint.hidden=true;
-    if(document.pointerLockElement===canvas)document.exitPointerLock();
-    canvas.style.cursor="crosshair";
+    // Retain pointer lock and the attached FPS camera while positioning.
+    // P comes from a key gesture and can acquire lock if first-person mode
+    // was not active; RMB/Esc cancels without sacrificing camera controls.
     choose(found.movableId);
-    pointer={x:canvas.clientWidth/2,y:canvas.clientHeight/2};
+    if(document.pointerLockElement!==canvas)void canvas.requestPointerLock()
+      .catch(()=>{updateStatus("Click the game to enable free camera look.",false);});
     updateGhost();
   };
   const commit=():void=>{
@@ -249,10 +310,6 @@ export function setupBlueprintHud(
 
   openButton.addEventListener("click",open);
   cancel.addEventListener("click",close);
-  canvas.addEventListener("pointermove",event=>{
-    if(!enabled)return;
-    pointer={x:event.offsetX,y:event.offsetY};
-  },{passive:true});
   // Capture before ordinary shelf stocking and register interaction handlers.
   canvas.addEventListener("pointerdown",event=>{
     if(!enabled)return;
@@ -260,10 +317,7 @@ export function setupBlueprintHud(
     event.preventDefault();
     event.stopImmediatePropagation();
     if(event.button===2)close();
-    else {
-      pointer={x:event.offsetX,y:event.offsetY};
-      commit();
-    }
+    else commit();
   },true);
   canvas.addEventListener("contextmenu",event=>{
     if(enabled){event.preventDefault();event.stopImmediatePropagation();}
