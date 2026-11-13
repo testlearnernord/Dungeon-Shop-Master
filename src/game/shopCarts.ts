@@ -147,8 +147,8 @@ export function settleHeldShopCarts(
           line.quantity < 1 || !Number.isSafeInteger(line.quantity))
         throw new Error("An unpaid shopping cart contains invalid stock.");
       units += line.quantity;
-      if (item.kind === "food") bread += line.quantity;
-      else if (item.kind === "healing") healing += line.quantity;
+      if (item.id === "bread") bread += line.quantity;
+      else if (item.id === "healing-herb") healing += line.quantity;
       else if (item.kind === "weapon") weapon = item.name;
       else if (item.kind === "armor") armor = item.name;
       else throw new Error("Unsupported reserved item type.");

@@ -43,8 +43,8 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
       const item = ITEMS.find(entry => entry.id === line.itemId);
       if (!item) continue;
       reservedGold += line.subtotal;
-      if (item.kind === "food") bread += line.quantity;
-      if (item.kind === "healing") healing += line.quantity;
+      if (item.id === "bread") bread += line.quantity;
+      if (item.id === "healing-herb") healing += line.quantity;
       if (item.kind === "weapon") weapon = item.name;
       if (item.kind === "armor") armor = item.name;
     }
@@ -75,8 +75,8 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
     let reason:ShoppingReason="interested";
     if(!items.length){
       const needs=ITEMS.filter(item=>{
-        if(item.kind==="food")return hero.inventory.bread<ECONOMY.breadTarget;
-        if(item.kind==="healing")return hero.inventory.healing<ECONOMY.healingTarget;
+        if(item.id==="bread")return hero.inventory.bread<ECONOMY.breadTarget;
+        if(item.id==="healing-herb")return hero.inventory.healing<ECONOMY.healingTarget;
         if(item.kind==="weapon")return hero.equipment.weapon===null;
         if(item.kind==="armor")return hero.equipment.armor===null;
         return false;

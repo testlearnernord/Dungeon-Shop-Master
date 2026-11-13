@@ -5,7 +5,7 @@ export const ITEMS = [
   { id: "healing-herb", name: "Healing Herb", color: "#64a84b", wholesaleCost: 3, salePrice: 6, kind: "healing", healing: 18 },
   { id: "mana-potion", name: "Mana Potion", color: "#548bd2", wholesaleCost: 4, salePrice: 7, kind: "supply", healing: 0 },
   { id: "iron-ore", name: "Iron Ore", color: "#9a9289", wholesaleCost: 2, salePrice: 3, kind: "material", healing: 0 },
-  { id: "bread", name: "Waybread", color: "#c79246", wholesaleCost: 2, salePrice: 4, kind: "food", healing: 8 },
+  { id: "bread", name: "Waybread", color: "#c79246", wholesaleCost: 2, salePrice: 4, kind: "healing", healing: 8 },
   { id: "iron-sword", name: "Iron Sword", color: "#a4b4c3", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0 },
   { id: "leather-vest", name: "Leather Vest", color: "#805338", wholesaleCost: 5, salePrice: 8, kind: "armor", healing: 0 },
 ] as const;
@@ -142,7 +142,6 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
     let weapon = hero.equipment.weapon;
     let armor = hero.equipment.armor;
     // Purchase affordable healing reserves before permanent equipment.
-    // No hunger-related purchasing or automatic provision grants.
     const prioritized = [...economy.slots.filter((slot) =>
       !["weapon", "armor"].includes(ITEMS.find((item) => item.id === slot.itemId)?.kind ?? "")),
       ...economy.slots.filter((slot) =>
@@ -150,8 +149,8 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
     for (const slot of prioritized) {
       const item = ITEMS.find((entry) => entry.id === slot.itemId);
       if (!item || slot.quantity < 1) continue;
-      const need = item.kind === "food" ? Math.max(0, ECONOMY.breadTarget - bread)
-        : item.kind === "healing"
+      const need = item.id === "bread" ? Math.max(0, ECONOMY.breadTarget - bread)
+        : item.id === "healing-herb"
           ? Math.max(0, ECONOMY.healingTarget - healing)
           : item.kind === "weapon" && weapon === null ? 1
           : item.kind === "armor" && armor === null ? 1 : 0;
@@ -159,8 +158,8 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
       if (quantity <= 0) continue;
       const revenue = quantity * item.salePrice;
       gold -= revenue;
-      if (item.kind === "food") bread += quantity;
-      if (item.kind === "healing") healing += quantity;
+      if (item.id === "bread") bread += quantity;
+      if (item.id === "healing-herb") healing += quantity;
       if (item.kind === "weapon") weapon = item.name;
       if (item.kind === "armor") armor = item.name;
       slot.quantity -= quantity;
