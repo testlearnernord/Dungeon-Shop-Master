@@ -150,6 +150,7 @@ export function setupRosterBoardHud(
   });
   window.addEventListener("keydown", (event) => {
     if (event.code !== "KeyR" || event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
+    if (document.body.classList.contains("blueprint-active")) return;
     if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable]")) return;
     if (dialog.open) closeRoster();
     else if (!document.querySelector("dialog[open]")) openRoster();
