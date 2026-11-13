@@ -81,7 +81,7 @@ export class GameStore {
   placeShelf(placement: ShelfPlacement): string {
     const result = replaceShelfPlacement(this.current.shopLayout, placement);
     if (result.layout !== this.current.shopLayout) {
-      const invalid=shopServiceReachabilityProblem(result.layout);
+      const invalid=shopServiceReachabilityProblem(result.layout,this.current.level5Room);
       if(invalid)return invalid;
       this.replace({ ...this.current, shopLayout: result.layout });
     }
