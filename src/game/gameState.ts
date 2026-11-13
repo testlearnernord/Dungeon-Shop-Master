@@ -1,3 +1,4 @@
+import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { consumeDailySupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
 import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
 import { simulateDungeon, type DungeonOutcome } from "./dungeonSimulation.ts";
@@ -73,6 +74,8 @@ export interface GameState {
   readonly adventurers: readonly AdventurerState[];
   readonly shopEconomy: ShopEconomyState;
   readonly shopLayout: ShopLayout;
+  /** Optional until save migration; absent on historical v11 saves. */
+  readonly level5Room?: Level5Room;
   readonly shopCarts: readonly ShopCart[];
   readonly shopDebts: readonly ShopDebt[];
   readonly dungeonFloors: readonly DungeonFloorProgress[];
@@ -107,6 +110,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     adventurers,
     shopEconomy: createEconomy(),
     shopLayout: createShopLayout(),
+    level5Room: createLevel5Room(),
     shopCarts: [],
     shopDebts: [],
     dungeonFloors: [],

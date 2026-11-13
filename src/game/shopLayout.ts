@@ -1,3 +1,4 @@
+import { isLevel5Air, type Level5Room } from "./level5Room.ts";
 /** Persisted shop furniture transforms. No rendering, economy or RNG dependencies. */
 export type ShelfId = "shelf-1" | "shelf-2";
 export interface ShelfPlacement {
@@ -108,7 +109,19 @@ export function shelfBounds(p:ShelfPlacement):Bounds {
   };
 }
 /** Descriptive validation is shared by editor, GameStore and strict save loading. */
-export function shopLayoutProblem(layout:ShopLayout): string|null {
+/** Every quarter-metre of a furniture footprint must rest on excavated floor. */
+function onRoomFloor(box:Bounds,room:Level5Room):boolean {
+  for(let x=box.minX+.05;x<box.maxX;x+=.25){
+    for(let z=box.minZ+.05;z<box.maxZ;z+=.25){
+      if(!isLevel5Air(room,{x:Math.floor(x+.5),z:Math.floor(z+.5)}))return false;
+    }
+  }
+  for(const x of [box.minX+.02,box.maxX-.02])
+    for(const z of [box.minZ+.02,box.maxZ-.02])
+      if(!isLevel5Air(room,{x:Math.floor(x+.5),z:Math.floor(z+.5)}))return false;
+  return true;
+}
+export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|null {
   if(!layout || !Array.isArray(layout.shelves)||layout.shelves.length!==2)
     return "Exactly two shelves are required.";
   const seen=new Set<string>();
@@ -120,7 +133,8 @@ export function shopLayoutProblem(layout:ShopLayout): string|null {
       p.rotation<0||p.rotation>3)
       return "Use 0.25m steps and quarter-turn rotations.";
     const box=shelfBounds(p);
-    if(box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
+    if(room ? !onRoomFloor(box,room) :
+      box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
       return "The shelf would intersect a shop wall.";
     if(overlap(box,movableCounterBounds(layout),0.04)||barriers.some(zone=>overlap(box,zone,0.04)))
       return "Keep the counter, entrances and visitor aisles clear.";
@@ -132,7 +146,8 @@ export function shopLayoutProblem(layout:ShopLayout): string|null {
     if(!p||!quarter(p.x)||!quarter(p.z)||!Number.isInteger(p.rotation)||
       p.rotation<0||p.rotation>3)return "Use 0.25m steps and quarter-turn rotations.";
     const box=compactCounterBounds(p);
-    if(box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
+    if(room ? !onRoomFloor(box,room) :
+      box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
       return "The counter would intersect a shop wall.";
     // The legacy cashier intentionally occupies a little of the central lane.
     // Block the actual gate approach, but retain that legacy placement.
@@ -168,7 +183,7 @@ export function shelfOverlapsActor(
 }
 
 export function replaceShelfPlacement(
-  layout:ShopLayout,placement:ShelfPlacement,
+  layout:ShopLayout,placement:ShelfPlacement,room?:Level5Room,
 ): {layout:ShopLayout;message:string} {
   if(!canonical(placement.id))
     return {layout,message:"Unknown shelf."};
@@ -177,12 +192,12 @@ export function replaceShelfPlacement(
     previous.rotation===placement.rotation)
     return {layout,message:"Shelf placement saved."};
   const next:ShopLayout={...layout,shelves:layout.shelves.map(p=>p.id===placement.id?placement:p)};
-  const problem=shopLayoutProblem(next);
+  const problem=shopLayoutProblem(next,room);
   return problem?{layout,message:problem}:{layout:next,message:"Shelf placement saved."};
 }
 
 /** Counter placement shares the shelf editor's immutable commit/validation flow. */
-export function replaceCounterPlacement(layout:ShopLayout,placement:CounterPlacement):
+export function replaceCounterPlacement(layout:ShopLayout,placement:CounterPlacement,room?:Level5Room):
   {layout:ShopLayout;message:string} {
   const old=getCounterPlacement(layout);
   if(old.x===placement.x&&old.z===placement.z&&old.rotation===placement.rotation)

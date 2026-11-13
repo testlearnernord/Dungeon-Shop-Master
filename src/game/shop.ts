@@ -92,7 +92,7 @@ export class Shop {
       this.positionCounter(placement);
       this.counterOutline.material=shopLayoutProblem({
         ...this.store.state.shopLayout,counter:placement,
-      })||occupied?this.invalidMaterial:this.validMaterial;
+      },this.store.state.level5Room)||occupied?this.invalidMaterial:this.validMaterial;
       this.counterOutline.setEnabled(true);
       return;
     }
@@ -103,7 +103,7 @@ export class Shop {
       ...this.store.state.shopLayout,
       shelves:this.store.state.shopLayout.shelves.map(p=>
         p.id===placement.id?placement:p),
-    }) || occupied ? this.invalidMaterial : this.validMaterial;
+    },this.store.state.level5Room) || occupied ? this.invalidMaterial : this.validMaterial;
     group.previewOutline.setEnabled(true);
   }
 

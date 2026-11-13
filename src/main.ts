@@ -1,3 +1,5 @@
+import { createMerchantActions } from "./game/merchantActions.ts";
+import { createLevel5RoomVisuals } from "./game/level5RoomVisuals.ts";
 import { createCashierSfx } from "./cashierSfx.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
@@ -61,6 +63,10 @@ const scene = new Scene(engine);
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
+const roomVisuals=createLevel5RoomVisuals(scene);
+const refreshRoom=()=>roomVisuals.update(store.state.level5Room);
+store.subscribe(refreshRoom);
+refreshRoom();
 const shop = new Shop(scene, store);
 const board = createRosterBoard(scene, store);
 worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
@@ -107,7 +113,7 @@ const refreshShoppingIntents = () => npcVisuals.setShoppingIntents(
     return store.state!==previous;
   },
   manuallyPaidVisitors(store.state.events,store.state.day),
-  (heroId,reason)=>store.walkOutWithoutPurchase(heroId,reason));
+  (heroId,reason)=>store.walkOutWithoutPurchase(heroId,reason),store.state.level5Room);
 store.subscribe(refreshShoppingIntents);
 refreshShoppingIntents();
 setupSalesHud(store);
@@ -180,6 +186,7 @@ let isShopActive = () => true;
 let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
   ()=>isShopActive(),message=>{statusHud.textContent=message;});
+const merchantActions=createMerchantActions(scene,camera,()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;
@@ -187,7 +194,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
 }, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.",
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
-  debtBook.open);
+  debtBook.open,store,action=>merchantActions.play(action));
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
@@ -227,7 +234,12 @@ bedtime=setupBedtime(scene,canvas,camera,
   },
   ()=>!!ledger&&(ledger.isOpen||ledger.isSuspended));
 cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId(),isShopActive,
-  (heroId,perfectTiming)=>store.payReservedCart(heroId,perfectTiming),message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
+  (heroId,perfectTiming)=>{
+    const before=store.state;
+    const result=store.payReservedCart(heroId,perfectTiming);
+    if(store.state!==before)merchantActions.play("checkout");
+    return result;
+  },message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
 
 engine.runRenderLoop(() => {
   npcVisuals.setWishBubblesVisible(!arena.isActive&&!dungeon.isActive);
