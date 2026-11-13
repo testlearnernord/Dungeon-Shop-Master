@@ -212,8 +212,8 @@ export function setupBlueprintHud(
   };
   const placementError=(p:FurnitureDraft):string|null=>{
     const check=p.id==="counter"
-      ?replaceCounterPlacement(store.state.shopLayout,p)
-      :replaceShelfPlacement(store.state.shopLayout,p);
+      ?replaceCounterPlacement(store.state.shopLayout,p,store.state.level5Room)
+      :replaceShelfPlacement(store.state.shopLayout,p,store.state.level5Room);
     const good=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
     if(check.layout===store.state.shopLayout&&check.message!==good)return check.message;
     if(check.layout!==store.state.shopLayout){
