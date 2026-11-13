@@ -263,7 +263,6 @@ function validateLevel7Replay(
 }
 
 function validateState(value: unknown): asserts value is GameState {
-  const version = SIMULATION_VERSION;
   const state = object(value, "payload", [
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
@@ -272,7 +271,7 @@ function validateState(value: unknown): asserts value is GameState {
   if (state.level5Room !== undefined && !isValidLevel5Room(state.level5Room))
     fail("payload.level5Room", "has invalid excavation geometry");
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
-  if (state.simulationVersion !== version) fail("payload.simulationVersion", "is incompatible");
+  if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
   const campaignSeed = integer(state.seed, "payload.seed", 0, 0xffffffff);
   integer(state.rngState, "payload.rngState", 0, 0xffffffff);
   const population = object(state.populationConfig, "payload.populationConfig", ["dailyInflux", "maxActive"]);
@@ -312,21 +311,20 @@ function validateState(value: unknown): asserts value is GameState {
     const inventory = object(hero.inventory, `${path}.inventory`,
       ["loot", "bread", "healing"]);
     for (const key of Object.keys(inventory)) integer(inventory[key], `${path}.inventory.${key}`);
-    const floor = integer(hero.floor, `${path}.floor`, 1, version < 5 ? 5 : version >= 8 ? 7 : 6);
-    choice(hero.status, version < 5
-      ? ["exploring", "traveling", "at-shop", "returning", "dead"]
-      : ["exploring", "traveling", "at-shop", "returning", "expedition", "dead"], `${path}.status`);
+    const floor = integer(hero.floor, `${path}.floor`, 1, 7);
+    choice(hero.status, ["exploring", "traveling", "at-shop",
+      "returning", "expedition", "dead"], `${path}.status`);
     if ((hero.status === "dead") !== (health === 0)) fail(`${path}.status`, "must agree with health");
     if (hero.status !== "dead") {
       active += 1;
       if ((hero.status === "at-shop" && floor !== 5) ||
           (hero.status === "exploring" && floor > 4) ||
           ((hero.status === "traveling" || hero.status === "returning") && floor !== 4) ||
-          (hero.status === "expedition" && floor !== 6 && !(version >= 8 && floor === 7))) {
+          (hero.status === "expedition" && floor !== 6 && floor !== 7)) {
         fail(`${path}.floor`, "must agree with status");
       }
     }
-    if (version >= 4 && typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
+    if (typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
     if (hero.status === "expedition" && hero.level6Permit !== true) fail(`${path}.level6Permit`, "is required for Level 6");
     const stay = integer(hero.shopStayDays, `${path}.shopStayDays`, 0, 1);
     if (stay !== 0 && hero.status !== "at-shop" && hero.status !== "dead") {
@@ -334,9 +332,9 @@ function validateState(value: unknown): asserts value is GameState {
     }
   });
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
-  if(version >= 8) validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
-  if(version >= 9){
-    const layout=object(state.shopLayout,"payload.shopLayout",["shelves"],version>=10?["counter"]:[]);
+  validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
+  {
+    const layout=object(state.shopLayout,"payload.shopLayout",["shelves"],["counter"]);
     const shelves=array(layout.shelves,"payload.shopLayout.shelves");
     if(shelves.length!==2)fail("payload.shopLayout.shelves","must contain two shelves");
     const parsed:ShelfPlacement[]=shelves.map((value,i)=>{
@@ -387,7 +385,7 @@ function validateState(value: unknown): asserts value is GameState {
     choice(slot.itemId, [null, ...permittedItems], `${path}.itemId`);
     if ((quantity === 0) !== (slot.itemId === null)) fail(path, "must have an item exactly when stocked");
   });
-  if (version >= 10) {
+  {
     const reservedBySlot = new Map<string,{itemId:string;quantity:number}>();
     const cartHeroes = new Set<string | number>();
     array(state.shopCarts,"payload.shopCarts").forEach((value,i)=>{
@@ -438,7 +436,7 @@ function validateState(value: unknown): asserts value is GameState {
     }
   }
 
-  if(version>=11){
+  {
     const seenDebtHeroes=new Set<string|number>();
     const debts=array(state.shopDebts,"payload.shopDebts");
     if(debts.length>(state.adventurers as unknown[]).length)
@@ -462,7 +460,7 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.dungeonFloors, "payload.dungeonFloors").forEach((value, index) => {
     const path = `payload.dungeonFloors[${index}]`;
     const floor = object(value, path, ["floor", "cleared"]);
-    unique(integer(floor.floor, `${path}.floor`, 1, version < 5 ? 5 : version >= 8 ? 7 : 6), floors, `${path}.floor`);
+    unique(integer(floor.floor, `${path}.floor`, 1, 7), floors, `${path}.floor`);
     if (typeof floor.cleared !== "boolean") fail(`${path}.cleared`, "must be a boolean");
   });
 
@@ -472,10 +470,7 @@ function validateState(value: unknown): asserts value is GameState {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
       ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
-        ...(version >= 7 ? ["combatReplay"] : []),
-        ...(version >= 8 ? ["level7Replay"] : []),
-        ...(version >= 10 ? ["saleChannel"] : []),
-        ...(version >= 11 ? ["debtGold"] : [])]);
+        "combatReplay", "level7Replay", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
     lastDay = eventDay;
@@ -541,7 +536,7 @@ function validateState(value: unknown): asserts value is GameState {
     }
     if (event.type === "sale") {
       allowed.push("revenue");
-      if (version >= 10 && event.saleChannel !== undefined) {
+      if (event.saleChannel !== undefined) {
         allowed.push("saleChannel");
         choice(event.saleChannel,["manual","reserved"],path+".saleChannel");
       }
@@ -561,7 +556,7 @@ function validateState(value: unknown): asserts value is GameState {
       if (!allowed.includes(key)) fail(`${path}.${key}`, "is not valid for this event type");
     }
   });
-  if(version >= 11) {
+  {
     const balances=new Map<string,number>();
     for(const raw of array(state.events,"payload.events")){
       const event=raw as RecordValue;
