@@ -842,7 +842,7 @@ export class NpcVisualSystem {
 
   private queuePosition(slot:number,npc:NpcVisual):Vector3|null {
     if(!this.layout)return null;
-    const points=idleShopPositions(this.layout,100);
+    const points=idleShopPositions(this.layout,100,this.room);
     const preferred=points[slot];
     // Assign a distinct *future* standing spot, not merely a position that
     // happens to be free this frame. Otherwise multiple shoppers all route
