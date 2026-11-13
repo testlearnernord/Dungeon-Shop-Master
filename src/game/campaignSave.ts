@@ -572,7 +572,7 @@ function validateState(value: unknown): asserts value is GameState {
        [...balances].some(([id,total])=>owed.get(id)!==total))
       fail("payload.shopDebts","must agree with all credit events");
   }
-  if(version >= 10) {
+  {
     const manualPaid=new Set(array(state.events,"payload.events")
       .filter(value=>(value as RecordValue).type==="sale" &&
         (value as RecordValue).saleChannel==="manual" &&
