@@ -1,3 +1,4 @@
+import { createMerchantActions } from "./game/merchantActions.ts";
 import { createLevel5RoomVisuals } from "./game/level5RoomVisuals.ts";
 import { createCashierSfx } from "./cashierSfx.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
@@ -185,6 +186,7 @@ let isShopActive = () => true;
 let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
   ()=>isShopActive(),message=>{statusHud.textContent=message;});
+const merchantActions=createMerchantActions(scene,camera,()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;
@@ -192,7 +194,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
 }, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.",
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
-  debtBook.open);
+  debtBook.open,store,action=>merchantActions.play(action));
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
