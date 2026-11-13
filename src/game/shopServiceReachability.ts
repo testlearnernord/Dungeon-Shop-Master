@@ -11,7 +11,7 @@ import { rotateShelfOffset, shopLayoutProblem, type ShopLayout } from "./shopLay
  * A returned error never changes any saved layout or shelf contents.
  */
 export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Room):string|null {
-  const geometryError=shopLayoutProblem(layout);
+  const geometryError=shopLayoutProblem(layout,room);
   if(geometryError)return geometryError;
   const entrances:ShopPoint[]=[
     {x:-3.43,z:4.65},{x:4.57,z:4.65},
