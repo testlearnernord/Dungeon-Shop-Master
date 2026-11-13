@@ -42,3 +42,21 @@ export function setupControlsHotbarClearance():void{
   window.addEventListener("resize",refresh);
   refresh();
 }
+
+/** World interaction prompts have a short lifetime. The full message remains
+ * in the DOM for assistive tech and existing action status assertions. */
+export function setupTransientStatus(status:HTMLElement):void{
+  let timeout:number|undefined;
+  const schedule=()=>{
+    window.clearTimeout(timeout);
+    status.classList.remove("is-stale");
+    const message=status.textContent??"";
+    const sticky=/error|invalid save|failed/i.test(message);
+    timeout=window.setTimeout(()=>status.classList.add("is-stale"),
+      sticky?11000:3500);
+  };
+  new MutationObserver(schedule).observe(status,{
+    childList:true,characterData:true,subtree:true,
+  });
+  schedule();
+}

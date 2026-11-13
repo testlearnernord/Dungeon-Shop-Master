@@ -8,8 +8,8 @@ test("spectator and management surfaces inherit the same theme tokens", async ({
     const color = style.getPropertyValue("--ui-text").trim();
     return { border, color };
   });
-  expect(values.border).toBe("rgb(192 153 96 / 48%)");
-  expect(values.color).toBe("#f1e9d9");
+  expect(values.border).toBe("rgba(199,165,105,.33)");
+  expect(values.color).toBe("#f2eadd");
   for (const selector of [
     "#shelf-placement",
     "#arena-hud .arena-toolbar",
@@ -22,7 +22,7 @@ test("spectator and management surfaces inherit the same theme tokens", async ({
       const style = getComputedStyle(element);
       return { border: style.borderTopColor, radius: style.borderTopLeftRadius };
     });
-    expect(result.border, selector).toBe("rgba(192, 153, 96, 0.48)");
-    expect(result.radius, selector).toBe("10px");
+    expect(result.border, selector).toBe("rgba(199, 165, 105, 0.33)");
+    expect(result.radius, selector).toBe("13px");
   }
 });

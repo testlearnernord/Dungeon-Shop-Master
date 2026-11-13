@@ -33,10 +33,10 @@ import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
 import { setupBeggarHud } from "./beggarHud.ts";
 import { setupDebtBookHud } from "./debtBookHud.ts";
-import { setupShopStatusToggle,setupControlsHotbarClearance } from "./shopHudLayout";
+import { setupShopStatusToggle,setupControlsHotbarClearance,setupTransientStatus } from "./shopHudLayout";
 import { setupAdventurerOverview } from "./adventurerOverview";
 import { setupHudMouseMode } from "./hudMouseMode";
-import { setupInterfaceIcons,uiIcon } from "./uiIcons.ts";
+import { setupInterfaceIcons,watchInterfaceDialogs,uiIcon } from "./uiIcons.ts";
 import "./styles.css";
 import "./uiTheme.css";
 import "./merchantLedger.css";
@@ -47,6 +47,7 @@ import "./immersiveUi.css";
 
 async function startGame(): Promise<void> {
 setupInterfaceIcons();
+watchInterfaceDialogs();
 setupShopStatusToggle();
 setupAdventurerOverview();
 const canvas = document.querySelector<HTMLCanvasElement>("#renderCanvas");
@@ -60,6 +61,7 @@ if (!canvas || !inventoryElement || !statusElement) {
 setupHudMouseMode(canvas);
 const inventoryHud = inventoryElement;
 const statusHud = statusElement;
+setupTransientStatus(statusHud);
 const campaign = await loadCampaign();
 const engine = new Engine(canvas, true, { antialias: true, preserveDrawingBuffer: false });
 const scene = new Scene(engine);

@@ -50,6 +50,15 @@ const controls:readonly [string,InterfaceIcon,boolean][]=[
   ["#export-save","book",false],
   ["#import-save","arrow-left",false],
   ["#new-game","spark",false],
+  ["#debt-book-close","close",false],
+  ["#beggar-refuse","close",false],
+  ["#beggar-close","chevron",false],
+  ["#beggar-credit","receipt",false],
+  ["#ledger-next","arrow-right",false],
+  ["#ledger-previous","arrow-left",false],
+  ["#ledger-begin","calendar",false],
+  ["#ledger-skip","spark",false],
+  ["#cashier-overlay .cashier-cancel","close",false],
 ];
 export function setupInterfaceIcons(root:ParentNode=document):void{
   for(const [selector,icon,compact] of controls){
@@ -57,3 +66,16 @@ export function setupInterfaceIcons(root:ParentNode=document):void{
     if(button)setIconButton(button,icon,compact);
   }
 }
+/** Game dialogs are mounted after the async campaign load. Decorate just
+ * the new top-level overlays, not every new live receipt/roster entry. */
+export function watchInterfaceDialogs():void{
+  const observer=new MutationObserver(records=>{
+    for(const record of records)for(const added of record.addedNodes){
+      if(!(added instanceof HTMLElement))continue;
+      if(added.matches('dialog,#cashier-overlay,#blueprint-panel'))
+        setupInterfaceIcons(added);
+    }
+  });
+  observer.observe(document.body,{childList:true});
+}
+
