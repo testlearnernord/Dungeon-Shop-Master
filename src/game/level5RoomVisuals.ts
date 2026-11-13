@@ -3,7 +3,7 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import type { Scene } from "@babylonjs/core/scene";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
-import { createLevel5Room, isLevel5Air, type Level5Room } from "./level5Room.ts";
+import { createLevel5Room, isLevel5Air, isProtectedRoomCell, type Level5Room } from "./level5Room.ts";
 
 /** Rebuilds the excavatable side walls. The original wall meshes are hidden
  * only for segments with an actual opening; all remaining rock collides. */
@@ -42,7 +42,7 @@ export function createLevel5RoomVisuals(scene:Scene) {
             {width:1,height:4,depth:1},scene);
           face.position.set(side*7.5,2,z);
           face.material=rock;face.checkCollisions=true;
-          if(z>=-6&&z<=6)face.metadata={level5MineCell:first};
+          if(z>=-6&&z<=6&&!isProtectedRoomCell(first))face.metadata={level5MineCell:first};
           blocks.push(face);
         }
       }
@@ -59,8 +59,33 @@ export function createLevel5RoomVisuals(scene:Scene) {
             {width:1,height:4,depth:1},scene);
           mesh.position.set(cell.x,2,z);
           mesh.material=rock;mesh.checkCollisions=true;
-          mesh.metadata={level5MineCell:cell};
+          if(!isProtectedRoomCell(cell))mesh.metadata={level5MineCell:cell};
           blocks.push(mesh);
+        }
+      }
+      // Keep the excavation bounded at the unlocked tier. Without these
+      // caps the outermost mined cell opens straight into the scene void.
+      const limit=7+room.expansionTier*2;
+      for(let z=-7;z<=7;z++){
+        if(!isLevel5Air(room,{x:side*limit,z}))continue;
+        const cap=MeshBuilder.CreateBox(`excavation-limit-${side}-${z}`,
+          {width:.4,height:4,depth:1},scene);
+        cap.position.set(side*(limit+.5),2,z);
+        cap.material=rock;cap.checkCollisions=true;
+        blocks.push(cap);
+      }
+      // Seal the two ends of side tunnels, including partially mined rows.
+      for(const entry of excavated){
+        const [x,z]=entry.split(",").map(Number);
+        if(Math.sign(x)!==side)continue;
+        for(const dz of [-1,1]){
+          const next={x,z:z+dz};
+          if(Math.abs(next.z)<=6||isLevel5Air(room,next))continue;
+          const end=MeshBuilder.CreateBox(`excavation-end-${x}-${next.z}`,
+            {width:1,height:4,depth:.4},scene);
+          end.position.set(x,2,z+dz*.5);
+          end.material=rock;end.checkCollisions=true;
+          blocks.push(end);
         }
       }
     }
