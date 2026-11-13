@@ -70,7 +70,7 @@ let bedtime:BedtimeController|null=null;
 let ledger:MerchantLedger|null=null;
 let beggarHud:ReturnType<typeof setupBeggarHud>|null=null;
 setupShopPlacementHud(canvas, camera, store, shop);
-const blueprint=setupBlueprintHud(canvas,camera,store);
+const blueprint=setupBlueprintHud(canvas,camera,store,()=>isShopActive());
 const npcVisuals = new NpcVisualSystem(scene);
 setupNpcTrafficDebug(npcVisuals);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
