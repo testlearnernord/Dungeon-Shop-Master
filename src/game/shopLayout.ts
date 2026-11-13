@@ -163,8 +163,9 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
     const front={x:p.x+offset.x,z:p.z+offset.z};
     const standing={minX:front.x-0.35,maxX:front.x+0.35,
       minZ:front.z-0.35,maxZ:front.z+0.35};
-    if(standing.minX < -6.5||standing.maxX > 6.5||
-       standing.minZ < -6.5||standing.maxZ > 6.5||
+    if((room ? !onRoomFloor(standing,room) :
+       standing.minX < -6.5||standing.maxX > 6.5||
+       standing.minZ < -6.5||standing.maxZ > 6.5)||
        barriers.some(zone=>overlap(standing,zone))||
        layout.shelves.some(shelf=>overlap(standing,shelfBounds(shelf))))
       return "Leave a reachable checkout queue in front of the counter.";

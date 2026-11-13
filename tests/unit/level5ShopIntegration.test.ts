@@ -1,34 +1,64 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createLevel5Room, excavateLevel5Cell, isValidLevel5Room } from "../../src/game/level5Room.ts";
-import { createShopLayout, shopLayoutProblem, type ShopLayout } from "../../src/game/shopLayout.ts";
-import { idleShopPositions } from "../../src/game/npcTraffic.ts";
+import {createLevel5Room,excavateLevel5Cell,isValidLevel5Room,type Level5Room}
+  from "../../src/game/level5Room.ts";
+import {level5RockFaces} from "../../src/game/level5WallFaces.ts";
+import {createShopLayout,shopLayoutProblem,type ShopLayout}
+  from "../../src/game/shopLayout.ts";
+import {idleShopPositions} from "../../src/game/npcTraffic.ts";
+import {isObstructed,pathToShopGoal} from "../../src/game/shopperNavigation.ts";
 
-test("mining cannot persist invisible front/back rooms",()=>{
-  const base={...createLevel5Room(),expansionTier:1};
-  assert.equal(excavateLevel5Cell(base,{x:0,z:8}).ok,false);
-  assert.equal(excavateLevel5Cell(base,{x:8,z:7}).ok,false);
-  assert.equal(isValidLevel5Room({...base,excavatedCells:["0,8"]}),false);
-  const mined=excavateLevel5Cell(base,{x:8,z:0});
+function opened(...cells:readonly string[]):Level5Room {
+  return {...createLevel5Room(),expansionTier:1,excavatedCells:[...cells]};
+}
+test("excavation excludes non-rendered rooms and protected entrances",()=>{
+  const room=opened();
+  assert.equal(excavateLevel5Cell(room,{x:0,z:8}).ok,false);
+  assert.equal(excavateLevel5Cell(room,{x:8,z:7}).ok,false);
+  assert.equal(isValidLevel5Room(opened("0,8")),false);
+  assert.equal(isValidLevel5Room(opened("8,7")),false);
+  const mined=excavateLevel5Cell(room,{x:8,z:0});
   assert.equal(mined.ok,true);
   if(mined.ok)assert.equal(isValidLevel5Room(mined.room),true);
 });
-
-test("furniture cannot float across rock while new floor is usable",()=>{
-  const room={...createLevel5Room(),expansionTier:2,
-    excavatedCells:Array.from({length:7},(_,i)=>`8,${i-3}`)};
-  assert.equal(isValidLevel5Room(room),true);
+test("every exposed rock edge matches an air/solid boundary",()=>{
+  const room=opened("8,0","9,0","8,1");
+  const faces=level5RockFaces(room);
+  assert.equal(faces.some(f=>f.x===7.5&&f.z===0),false,
+    "original side wall must open only where mined");
+  assert.equal(faces.some(f=>f.x===7.5&&f.z===2&&f.mineCell?.z===2),true,
+    "remaining side faces stay mineable");
+  assert.equal(faces.some(f=>f.x===9.5&&f.z===0&&f.mineCell!==undefined),false,
+    "outer rim is a solid cap until next tier");
+  assert.equal(faces.some(f=>f.x===9.5&&f.z===0),true);
+  assert.equal(faces.some(f=>f.x===8&&f.z===1.5&&f.mineCell?.z===2),true,
+    "sideways mining exposes selectable rock instead of invisible cells");
+  assert.equal(faces.some(f=>f.x===8.5&&f.z===0),false,
+    "two excavated neighbours cannot have an interior wall");
+  assert.equal(faces.every(f=>f.width<=1&&f.depth<=1),true);
+});
+test("new tunnels and layout share the same collision and pathfinding space",()=>{
+  const room=opened("8,0","9,0");
+  const layout=createShopLayout();
+  assert.equal(shopLayoutProblem(layout,room),null);
+  assert.equal(isObstructed({x:8,z:0},layout,room),false);
+  assert.equal(isObstructed({x:8,z:1},layout,room),true);
+  const route=pathToShopGoal({x:6,z:0},{x:8,z:0},layout,room);
+  assert.ok(route,"a customer should reach mined floor");
+  const points=idleShopPositions(layout,30,room);
+  assert.ok(points.length>0);
+  assert.ok(points.every(p=>!isObstructed(p,layout,room)));
+  assert.deepEqual(idleShopPositions(layout,10,room),points.slice(0,10),
+    "wait spots should reuse the cached destinations");
+  const closed=opened();
+  const other=idleShopPositions(layout,30,closed);
+  assert.ok(other.every(p=>!isObstructed(p,layout,closed)),
+    "changing room invalidates cached spots");
+});
+test("furniture cannot be placed on unmined rock",()=>{
+  const room=opened("8,-3","8,-2","8,-1","8,0","8,1","8,2","8,3");
   const layout=createShopLayout();
   const moved:ShopLayout={...layout,shelves:layout.shelves.map(s=>
     s.id==="shelf-1"?{...s,x:8,z:0,rotation:0 as const}:s)};
   assert.match(shopLayoutProblem(moved,room)??"",/wall/);
-  assert.equal(shopLayoutProblem(layout,room),null);
-});
-
-test("idle destinations stay inside the currently walkable shop",()=>{
-  const layout=createShopLayout();
-  const room={...createLevel5Room(),expansionTier:1,excavatedCells:["8,0","9,0"]};
-  const points=idleShopPositions(layout,20,room);
-  assert.ok(points.length>0);
-  assert.ok(points.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.z)));
 });

@@ -52,18 +52,24 @@ export function pathToShopGoal(
 ):ShopperRoute|null {
   if(!Number.isFinite(from.x)||!Number.isFinite(from.z)||
     !Number.isFinite(to.x)||!Number.isFinite(to.z))return null;
-  const min=room?-6.5-2*room.expansionTier:MIN;
-  const max=room?6.5+2*room.expansionTier:MAX;
-  const count=Math.round((max-min)/STEP)+1;
-  const point=(id:number):ShopPoint=>({x:min+(id%count)*STEP,z:min+Math.floor(id/count)*STEP});
-  const idx=(x:number,z:number)=>z*count+x;
-  const inside=(x:number,z:number)=>x>=0&&z>=0&&x<count&&z<count;
+  // Excavation grows only sideways; don't multiply the grid's Z dimension
+  // with every expansion tier when all those extra rows are solid rock.
+  const minX=room?-6.5-2*room.expansionTier:MIN;
+  const maxX=room?6.5+2*room.expansionTier:MAX;
+  const minZ=MIN,maxZ=MAX;
+  const width=Math.round((maxX-minX)/STEP)+1;
+  const height=Math.round((maxZ-minZ)/STEP)+1;
+  const point=(id:number):ShopPoint=>({
+    x:minX+(id%width)*STEP,z:minZ+Math.floor(id/width)*STEP
+  });
+  const idx=(x:number,z:number)=>z*width+x;
+  const inside=(x:number,z:number)=>x>=0&&z>=0&&x<width&&z<height;
   const blocked=(p:ShopPoint)=>isObstructed(p,layout,room);
   const clear=(a:ShopPoint,b:ShopPoint)=>shopSegmentClear(a,b,layout,room);
   const snap=(p:ShopPoint):number=>{
     let best=-1,bestDist=Infinity;
-    const x0=Math.round((p.x-min)/STEP);
-    const z0=Math.round((p.z-min)/STEP);
+    const x0=Math.round((p.x-minX)/STEP);
+    const z0=Math.round((p.z-minZ)/STEP);
     // Locate a legal nearby grid cell even when the destination is off-grid.
     for(let radius=0;radius<=3;radius++){
       for(let dz=-radius;dz<=radius;dz++)for(let dx=-radius;dx<=radius;dx++){
@@ -83,13 +89,13 @@ export function pathToShopGoal(
   };
   const start=snap(from),goal=snap(to);
   if(start<0||goal<0)return null;
-  const prev=new Int32Array(count*count).fill(-1);
+  const prev=new Int32Array(width*height).fill(-1);
   const queue=[start];prev[start]=start;
   const vectors=[[0,-1],[-1,0],[1,0],[0,1]] as const;
   for(let i=0;i<queue.length;i++){
     const cell=queue[i];
     if(cell===goal)break;
-    const x=cell%count,z=Math.floor(cell/count);
+    const x=cell%width,z=Math.floor(cell/width);
     for(const [dx,dz] of vectors){
       const nx=x+dx,nz=z+dz;
       if(!inside(nx,nz))continue;

@@ -274,6 +274,7 @@ export class NpcVisualSystem {
     this.onPickUp=onPickUp;
     this.onWalkout=onWalkout??null;
     this.carts=carts;
+    const roomSignature=JSON.stringify(room??null);
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
     const queueIds=carts.filter(cart=>cart.lines.length>0).map(cart=>cart.heroId);
     const queuePoints=checkoutQueuePoints(layout,{x:0,z:-1},queueIds.length);
@@ -304,7 +305,7 @@ export class NpcVisualSystem {
       }
       const plan=plans.get(npc.visitor.id)??null;
       const queueIndex=checkoutQueueIndex(carts,npc.visitor.id);
-      const key=JSON.stringify([plan?.items,plan?.reason,plan?.wantedItemId,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex]]);
+      const key=JSON.stringify([plan?.items,plan?.reason,plan?.wantedItemId,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex],roomSignature]);
       if(key===npc.intentKey)continue;
       npc.intent=plan;
       npc.intentKey=key;

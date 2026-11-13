@@ -90,14 +90,21 @@ export function interruptedDepartureRoute(
  * rather than snapping a blocked, hard-coded point onto another visitor.
  * The returned null means idle capacity is exhausted, not an occupied slot.
  */
-const idleCache=new WeakMap<import("./shopLayout.ts").ShopLayout,ShopPoint[]>();
+const idleCache=new WeakMap<import("./shopLayout.ts").ShopLayout,{
+  signature:string;positions:ShopPoint[];
+}>();
 export function idleShopPositions(
   layout:import("./shopLayout.ts").ShopLayout,count:number,room?:Level5Room,
 ):ShopPoint[] {
   if(!Number.isSafeInteger(count)||count<0||count>1000)
     throw new RangeError("Invalid visitor count");
-  const cached=room?undefined:idleCache.get(layout);
-  if(cached && (cached.length>=count || cached.length===100))return cached.slice(0,count);
+  // Excavation changes the available floor without changing the furniture
+  // object. Cache the geometry signature as well as the layout identity.
+  const signature=JSON.stringify(room??null);
+  const cached=idleCache.get(layout);
+  if(cached?.signature===signature &&
+     (cached.positions.length>=count || cached.positions.length>=100))
+    return cached.positions.slice(0,count);
   const {isObstructed,pathToShopGoal}=navigation;
   const positions:ShopPoint[]=[];
   const origin={x:gateTravelLane("level4","entering"),z:6};
@@ -119,7 +126,8 @@ export function idleShopPositions(
       positions.push(actual);
     }
   }
-  if(!room&&count===100)idleCache.set(layout,positions);
+  idleCache.set(layout,{signature,positions});
+
   return positions;
 }
 
