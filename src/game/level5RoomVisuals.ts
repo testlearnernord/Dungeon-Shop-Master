@@ -20,6 +20,15 @@ export function createLevel5RoomVisuals(scene:Scene) {
     blocks.forEach(mesh=>mesh.dispose());
     blocks.length=0;
     const excavated=new Set(room.excavatedCells);
+    for(const entry of excavated){
+      const [x,z]=entry.split(",").map(Number);
+      const floor=MeshBuilder.CreateBox(`excavated-floor-${entry}`,{width:1,height:.4,depth:1},scene);
+      floor.position.set(x,-.2,z);floor.material=rock;floor.checkCollisions=true;floor.isPickable=false;
+      blocks.push(floor);
+      const ceiling=MeshBuilder.CreateBox(`excavated-ceiling-${entry}`,{width:1,height:.35,depth:1},scene);
+      ceiling.position.set(x,4.1,z);ceiling.material=rock;ceiling.checkCollisions=true;ceiling.isPickable=false;
+      blocks.push(ceiling);
+    }
     for(const [side,wall] of [-1,1].map((side,i)=>[side,originalWalls[i]] as const)){
       const openings=[...excavated].some(key=>key.startsWith(side===-1?"-8,":"8,"));
       if(wall)wall.setEnabled(room.expansionTier===0 && !openings);
