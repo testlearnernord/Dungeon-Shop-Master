@@ -1,6 +1,7 @@
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import {uiIcon,setIconButton} from "./uiIcons.ts";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { furnitureFacing } from "./game/furnitureFacing.ts";
 import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
@@ -45,9 +46,11 @@ export function setupBlueprintHud(
   const controls=document.createElement("p");
   controls.className="blueprint-controls";
   controls.textContent="Mouse Look 360° · R Rotate 90° · LMB Place · RMB / Esc Cancel";
+  controls.prepend(uiIcon("rotate"));
   const cancel=document.createElement("button");
   cancel.type="button";
   cancel.textContent="Exit placement";
+  setIconButton(cancel,"close");
   panel.append(title,hint,facingReadout,status,controls,cancel);
   document.body.append(panel);
 

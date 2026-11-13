@@ -508,3 +508,44 @@
   #hud .shop-quick-actions .ui-compact-action,
   #hud .adventurer-panel .ui-compact-action{transition:none!important}
 }
+
+
+/* Final contextual and spectator polish. */
+#hud .sales-banner{top:64px}
+#arena-hud .spectator-help,#dungeon-hud .spectator-help{
+  display:block;margin:8px auto 0;width:max-content;max-width:100%;
+  text-align:center;pointer-events:auto
+}
+#arena-hud .spectator-help>summary,#dungeon-hud .spectator-help>summary{
+  font:600 11px/1.35 system-ui,sans-serif;color:var(--ui-gold);
+  cursor:pointer;list-style:none;display:flex;align-items:center;
+  justify-content:center;gap:6px;padding:5px 10px;border-radius:8px;
+  border:1px solid rgba(208,167,105,.25);background:rgba(17,23,24,.34)
+}
+#arena-hud .spectator-help>summary::before,
+#dungeon-hud .spectator-help>summary::before{
+  content:"?";display:grid;place-items:center;width:15px;height:15px;
+  border:1px solid rgba(212,174,109,.5);border-radius:50%
+}
+#arena-hud .spectator-help>p,#dungeon-hud .spectator-help>p{
+  margin:8px 0 0;max-width:560px;font-size:11px;line-height:1.6;
+  color:#dad0be
+}
+#blueprint-panel .blueprint-controls{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px
+}
+#blueprint-panel .blueprint-controls .ui-icon{color:var(--ui-gold)}
+#debt-book-dialog .debt-book-account ol li{
+  display:flex;align-items:center;gap:9px;min-height:29px
+}
+#debt-book-dialog .debt-book-account ol li .ui-item-icon,
+#debt-book-dialog .debt-book-account ol li .ui-icon{width:24px;height:24px}
+#debt-book-dialog .debt-book-account ol li strong{margin-left:auto;color:var(--ui-gold)}
+#music-panel #music-toggle .ui-icon{width:14px;height:14px}
+#music-panel #music-toggle{display:inline-flex;align-items:center;gap:5px}
+@media(max-width:780px){
+  #hud .sales-banner{top:auto;bottom:126px}
+}
+@media(max-width:470px){
+  #hud .sales-banner{bottom:113px}
+}

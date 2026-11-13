@@ -59,6 +59,7 @@ const controls:readonly [string,InterfaceIcon,boolean][]=[
   ["#ledger-begin","calendar",false],
   ["#ledger-skip","spark",false],
   ["#cashier-overlay .cashier-cancel","close",false],
+  ["#blueprint-panel > button","close",false],
 ];
 export function setupInterfaceIcons(root:ParentNode=document):void{
   for(const [selector,icon,compact] of controls){

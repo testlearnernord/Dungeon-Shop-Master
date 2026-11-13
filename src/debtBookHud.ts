@@ -1,6 +1,7 @@
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import { ITEMS } from "./game/economy.ts";
+import {itemIcon,uiIcon} from "./uiIcons.ts";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
 
 /** The bedroom account book is the only merchant-facing credit register.
@@ -96,7 +97,7 @@ export function setupDebtBookHud(
         detail.textContent="Day "+event.day+" · "+(item?.name??event.itemId??"Supplies")+
           " ×"+(event.quantity??1);
         const cost=document.createElement("strong");cost.textContent=money(event.debtGold??0);
-        line.append(detail,cost);
+        line.append(item?itemIcon(item.id,"ui-item-icon"):uiIcon("receipt"),detail,cost);
         history.append(line);
       }
       if(!creditEvents.length){
