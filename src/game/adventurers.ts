@@ -1,5 +1,5 @@
 import { SeededRandom } from "./random.ts";
-import { ECONOMY, ITEMS } from "./economy.ts";
+import { ITEMS } from "./economy.ts";
 import type { WorldEvent } from "./gameState.ts";
 
 export type AdventurerRole = "tank" | "DPS" | "healer";
@@ -26,12 +26,9 @@ export interface AdventurerState {
   readonly health: number;
   readonly gold: number;
   readonly equipment: { readonly weapon: string | null; readonly armor: string | null };
-  readonly inventory: { readonly loot: number; readonly food: number; readonly healing: number };
+  readonly inventory: { readonly loot: number; readonly bread: number; readonly healing: number };
   readonly floor: DungeonFloor;
   readonly status: AdventurerStatus;
-  readonly hunger: number;
-  /** Number of actual foodless shop visits completed since the last meal. */
-  readonly missedFoodShopVisits: number;
   readonly shopStayDays: number;
   /** Explicit, player-controlled future access to dungeon Level 6. */
   readonly level6Permit: boolean;
@@ -66,60 +63,42 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
     health: maxHealth,
     gold: 5 + random.int(11),
     equipment: { weapon: null, armor: null },
-    inventory: { loot: 0, food: 0, healing: 0 },
+    inventory: { loot: 0, bread: 0, healing: 0 },
     floor: 1,
     status: "exploring",
-    hunger: 0,
-    missedFoodShopVisits: 0,
     shopStayDays: 0,
     level6Permit: false,
   };
   return { adventurer, rngState: random.state };
 }
 
-export function consumeDailySupplies(hero: AdventurerState, day: number): {
+/**
+ * Healing is spent only on actual HP loss. Bread is the economical +8 HP
+ * option for light wounds; herbs recover +18 HP and win on severe wounds.
+ * No passive attrition, daily ration tax or hunger state exists.
+ */
+export function useHealingSupplies(hero: AdventurerState, day: number): {
   adventurer: AdventurerState; events: WorldEvent[];
 } {
-  if (hero.status === "dead") return { adventurer: hero, events: [] };
-  const events: WorldEvent[] = [];
-  let health = hero.health;
-  let hunger = hero.hunger;
-  let missedFoodShopVisits = hero.missedFoodShopVisits;
-  let { food, healing } = hero.inventory;
-  if (food > 0) {
-    food -= 1;
-    hunger = Math.max(0, hunger - ITEMS.find((item) => item.id === "bread")!.hunger);
-    // An actual meal breaks the chain of failed shopping trips, whether
-    // purchased or found in the dungeon. Never reset it merely for entering.
-    missedFoodShopVisits = 0;
-    events.push({
-      id: `day-${day}:${hero.id}:ate`, type: "ate", day, adventurerId: hero.id,
-      itemId: "bread", quantity: 1, message: `${hero.name} ate Waybread.`,
-    });
-  } else {
-    hunger = Math.min(ECONOMY.hungerCeiling, hunger + 1);
-  }
-  if (healing > 0 && health < hero.stats.maxHealth) {
-    healing -= 1;
-    health = Math.min(hero.stats.maxHealth, health + ITEMS.find((item) => item.id === "healing-herb")!.healing);
-    events.push({
-      id: `day-${day}:${hero.id}:healed`, type: "healed", day, adventurerId: hero.id,
-      itemId: "healing-herb", quantity: 1, message: `${hero.name} used a Healing Herb.`,
-    });
-  }
-  if (hunger >= ECONOMY.starvationThreshold &&
-      missedFoodShopVisits >= ECONOMY.missedFoodShopsBeforeStarvation) {
-    health = Math.max(0, health - ECONOMY.starvationDamage);
-    events.push({
-      id: `day-${day}:${hero.id}:starvation`, type: "starvation", day, adventurerId: hero.id,
-      message: `${hero.name} suffered starvation${health === 0 ? " and died" : ""}.`,
-    });
-  }
+  if (hero.status === "dead" || hero.health >= hero.stats.maxHealth)
+    return { adventurer: hero, events: [] };
+  const missing = hero.stats.maxHealth - hero.health;
+  const itemId = missing <= 8 && hero.inventory.bread > 0 ? "bread"
+    : missing > 8 && hero.inventory.healing > 0 ? "healing-herb"
+    : hero.inventory.bread > 0 ? "bread"
+    : hero.inventory.healing > 0 ? "healing-herb" : null;
+  if (!itemId) return { adventurer: hero, events: [] };
+  const item = ITEMS.find(entry => entry.id === itemId)!;
+  const health = Math.min(hero.stats.maxHealth, hero.health + item.healing);
+  const inventory = { ...hero.inventory,
+    bread: hero.inventory.bread - (itemId === "bread" ? 1 : 0),
+    healing: hero.inventory.healing - (itemId === "healing-herb" ? 1 : 0),
+  };
   return {
-    adventurer: { ...hero, health, hunger, missedFoodShopVisits,
-      status: health === 0 ? "dead" : hero.status,
-      inventory: { ...hero.inventory, food, healing } },
-    events,
+    adventurer: { ...hero, health, inventory },
+    events: [{ id: `day-${day}:${hero.id}:healed`, type: "healed",
+      day, adventurerId: hero.id, itemId, quantity: 1,
+      message: `${hero.name} used ${item.name} and recovered ${health - hero.health} HP.` }],
   };
 }
 

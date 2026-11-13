@@ -2,12 +2,12 @@ import type { AdventurerState } from "./adventurers.ts";
 import type { GameState, ShopEconomyState, WorldEvent } from "./gameState.ts";
 
 export const ITEMS = [
-  { id: "healing-herb", name: "Healing Herb", color: "#64a84b", wholesaleCost: 3, salePrice: 6, kind: "healing", healing: 18, hunger: 0 },
-  { id: "mana-potion", name: "Mana Potion", color: "#548bd2", wholesaleCost: 4, salePrice: 7, kind: "supply", healing: 0, hunger: 0 },
-  { id: "iron-ore", name: "Iron Ore", color: "#9a9289", wholesaleCost: 2, salePrice: 3, kind: "material", healing: 0, hunger: 0 },
-  { id: "bread", name: "Waybread", color: "#c79246", wholesaleCost: 2, salePrice: 4, kind: "food", healing: 0, hunger: 3 },
-  { id: "iron-sword", name: "Iron Sword", color: "#a4b4c3", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0, hunger: 0 },
-  { id: "leather-vest", name: "Leather Vest", color: "#805338", wholesaleCost: 5, salePrice: 8, kind: "armor", healing: 0, hunger: 0 },
+  { id: "healing-herb", name: "Healing Herb", color: "#64a84b", wholesaleCost: 3, salePrice: 6, kind: "healing", healing: 18 },
+  { id: "mana-potion", name: "Mana Potion", color: "#548bd2", wholesaleCost: 4, salePrice: 7, kind: "supply", healing: 0 },
+  { id: "iron-ore", name: "Iron Ore", color: "#9a9289", wholesaleCost: 2, salePrice: 3, kind: "material", healing: 0 },
+  { id: "bread", name: "Waybread", color: "#c79246", wholesaleCost: 2, salePrice: 4, kind: "healing", healing: 8 },
+  { id: "iron-sword", name: "Iron Sword", color: "#a4b4c3", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0 },
+  { id: "leather-vest", name: "Leather Vest", color: "#805338", wholesaleCost: 5, salePrice: 8, kind: "armor", healing: 0 },
 ] as const;
 
 export type ItemId = (typeof ITEMS)[number]["id"];
@@ -26,15 +26,8 @@ export const ECONOMY = {
   bagCapacity: 24,
   slotCapacity: 5,
   startingGold: 20,
-  foodTarget: 2,
-  healingTarget: 1,
-  starvationThreshold: 6,
-  starvationDamage: 4,
-  missedFoodShopsBeforeStarvation: 3,
-  hungerCeiling: 30,
-  dungeonFoodChance: 0.25,
-  dungeonFoodCarryCap: 2,
-  rescueQuantity: 2,
+  breadCarryLimit: 2,
+  herbCarryLimit: 1,
 } as const;
 
 export function createEconomy(): ShopEconomyState {
@@ -55,7 +48,6 @@ export function createEconomy(): ShopEconomyState {
       "iron-sword": 0, "leather-vest": 0 },
     slots,
     dailySales: { day: 1, units: 0, revenue: 0 },
-    lastRescueDay: null,
   };
 }
 
@@ -141,48 +133,41 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
       ? {...state.shopEconomy.dailySales}
       : { day, units: 0, revenue: 0 },
   };
-  const bread = ITEMS.find((item) => item.id === "bread")!;
-  // Emergency aid is bounded, bag-only, and available only once on a bankrupt, foodless day.
-  if (economy.balance < bread.wholesaleCost && economy.bag.bread === 0 &&
-      !economy.slots.some((slot) => slot.itemId === "bread" && slot.quantity > 0) &&
-      economy.lastRescueDay !== day) {
-    const quantity = Math.min(ECONOMY.rescueQuantity, ECONOMY.bagCapacity - bagTotal(economy));
-    if (quantity > 0) {
-      economy = { ...economy, bag: { ...economy.bag, bread: quantity }, lastRescueDay: day };
-      events.push({
-        id: `day-${day}:rescue`, type: "rescue", day, itemId: "bread", quantity,
-        message: `Emergency aid: ${quantity} Waybread added to the bag.`,
-      });
-    }
-  }
   // Array order breaks ties. Only customers already here may buy; new arrivals wait until tomorrow.
   const adventurers = state.adventurers.map((hero) => {
     if (hero.status !== "at-shop" || hero.health <= 0) return hero;
     let gold = hero.gold;
-    let food = hero.inventory.food;
+    let bread = hero.inventory.bread;
     let healing = hero.inventory.healing;
     let weapon = hero.equipment.weapon;
     let armor = hero.equipment.armor;
-    // Buy life-saving supplies first, irrespective of shelf placement. Only
-    // then spend remaining gold on permanent equipment, one item per empty slot.
-    const prioritized = [...economy.slots.filter((slot) =>
-      !["weapon", "armor"].includes(ITEMS.find((item) => item.id === slot.itemId)?.kind ?? "")),
-      ...economy.slots.filter((slot) =>
-        ["weapon", "armor"].includes(ITEMS.find((item) => item.id === slot.itemId)?.kind ?? ""))];
+    // Wounded visitors prefer the +18 herb for major injuries, the cheaper
+    // +8 bread for small cuts. Permanent gear comes after treatment.
+    const missing = hero.stats.maxHealth - hero.health;
+    const priority = (slot: Slot): number => {
+      const id = slot.itemId;
+      if (id === (missing <= 8 ? "bread" : "healing-herb")) return 0;
+      if (id === (missing <= 8 ? "healing-herb" : "bread")) return 1;
+      const kind = ITEMS.find(item => item.id === id)?.kind;
+      return kind === "weapon" || kind === "armor" ? 2 : 3;
+    };
+    const prioritized = [...economy.slots].sort((a,b) => priority(a)-priority(b));
     for (const slot of prioritized) {
       const item = ITEMS.find((entry) => entry.id === slot.itemId);
       if (!item || slot.quantity < 1) continue;
-      const need = item.kind === "food" ? Math.max(0, ECONOMY.foodTarget - food)
-        : item.kind === "healing" && hero.health < hero.stats.maxHealth
-          ? Math.max(0, ECONOMY.healingTarget - healing)
+      const uncovered = Math.max(0, missing - bread * 8 - healing * 18);
+      const need = item.id === "bread"
+        ? Math.min(ECONOMY.breadCarryLimit - bread, Math.ceil(uncovered / 8))
+        : item.id === "healing-herb"
+          ? Math.min(ECONOMY.herbCarryLimit - healing, Math.ceil(uncovered / 18))
           : item.kind === "weapon" && weapon === null ? 1
           : item.kind === "armor" && armor === null ? 1 : 0;
       const quantity = Math.min(need, slot.quantity, Math.floor(gold / item.salePrice));
       if (quantity <= 0) continue;
       const revenue = quantity * item.salePrice;
       gold -= revenue;
-      if (item.kind === "food") food += quantity;
-      if (item.kind === "healing") healing += quantity;
+      if (item.id === "bread") bread += quantity;
+      if (item.id === "healing-herb") healing += quantity;
       if (item.kind === "weapon") weapon = item.name;
       if (item.kind === "armor") armor = item.name;
       slot.quantity -= quantity;
@@ -198,7 +183,7 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
       });
     }
     return gold === hero.gold ? hero : {
-      ...hero, gold, inventory: { ...hero.inventory, food, healing },
+      ...hero, gold, inventory: { ...hero.inventory, bread, healing },
       equipment: { ...hero.equipment, weapon, armor },
     };
   });
