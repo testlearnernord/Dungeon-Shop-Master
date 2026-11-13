@@ -1,3 +1,5 @@
+import type { MerchantAction } from "./merchantActions.ts";
+import type { GameStore } from "./gameStore.ts";
 import { Camera } from "@babylonjs/core/Cameras/camera";
 import "@babylonjs/core/Culling/ray";
 import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
@@ -30,6 +32,8 @@ export class InteractionSystem {
     private readonly isNearBed: () => boolean = () => false,
     private readonly openBeggarRequest: () => boolean = () => false,
     private readonly openDebtBook: () => void = () => {},
+    private readonly store?: GameStore,
+    private readonly onMerchantAction: (action:MerchantAction)=>void = () => {},
   ) {
     this.shop.select(ITEMS[0].id);
     this.registerEvents();
@@ -91,6 +95,11 @@ export class InteractionSystem {
         event.preventDefault();
         return;
       }
+      if(event.code==="KeyU" && !event.repeat && this.store && this.isShopActive() && !document.querySelector("dialog[open]")){
+        const tier=this.store.state.level5Room?.expansionTier??0;
+        this.message=this.store.unlockShopExpansion(tier+1);
+        this.publish();event.preventDefault();return;
+      }
       if (event.code !== "KeyE" || event.repeat || !this.isShopActive() ||
           document.querySelector("dialog[open]") ||
           event.target instanceof HTMLElement &&
@@ -123,6 +132,16 @@ export class InteractionSystem {
     const hit = this.scene.pick(pickX, pickY);
     if (!hit?.hit || !hit.pickedMesh) return;
 
+    const mineCell=(hit.pickedMesh.metadata as {level5MineCell?:{x:number;z:number}}|null)?.level5MineCell;
+    if(mineCell && button===0 && this.store){
+      if(hit.distance>this.maxInteractionDistance)this.message="Move closer to the rock.";
+      else{
+        const before=this.store.state;
+        this.message=this.store.excavateShopCell(mineCell);
+        if(this.store.state!==before)this.onMerchantAction("mine");
+      }
+      this.publish();return;
+    }
     const slot = this.shop.slotMeshes.get(hit.pickedMesh as Mesh);
     if (slot) {
       if (hit.distance > this.maxInteractionDistance) {
@@ -130,7 +149,9 @@ export class InteractionSystem {
         this.publish();
         return;
       }
+      const before=this.store?.state;
       this.message = button === 0 ? this.shop.stock(slot) : this.shop.remove(slot);
+      if(this.store && this.store.state!==before)this.onMerchantAction(button===0?"stock":"destock");
     } else {
       const target = this.worldItems.find(({ mesh }) => mesh === hit.pickedMesh);
       if (target?.kind === "register") {
@@ -156,6 +177,7 @@ export class InteractionSystem {
     const target = this.worldItems.find(({ mesh }) => mesh === pick?.pickedMesh);
     if (target?.kind === "register") {
       this.message = this.checkoutRegister();
+      this.onMerchantAction("checkout");
     } else if (target?.kind === "roster-board") {
       this.message = "Adventurer roster opened.";
       this.openRoster();
