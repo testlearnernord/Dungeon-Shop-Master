@@ -89,7 +89,7 @@ export function checkoutCustomer(
       hero.gold < quote.total)
     return unchanged(state, "The customer cannot afford that cart.");
 
-  let food = hero.inventory.food;
+  let bread = hero.inventory.bread;
   let healing = hero.inventory.healing;
   let weapon = hero.equipment.weapon;
   let armor = hero.equipment.armor;
@@ -113,7 +113,7 @@ export function checkoutCustomer(
     units += line.quantity;
     revenue += line.subtotal;
     switch (item.kind) {
-      case "food": food += line.quantity; break;
+      case "food": bread += line.quantity; break;
       case "healing": healing += line.quantity; break;
       case "weapon": weapon = item.name; break;
       case "armor": armor = item.name; break;
@@ -139,7 +139,7 @@ export function checkoutCustomer(
 
   const nextHero = {
     ...hero, gold: hero.gold - revenue,
-    inventory: { ...hero.inventory, food, healing },
+    inventory: { ...hero.inventory, bread, healing },
     equipment: { ...hero.equipment, weapon, armor },
   };
   const nextSlots = state.shopEconomy.slots.map(slot => {
