@@ -38,7 +38,8 @@ test("fallen roster is ordered by latest event before limiting to 40 heroes", ()
   }));
   const deaths = [...heroes.slice(1), heroes[0]].map((hero, index) => ({
     id: `death-${index}`,
-    type: "starvation" as const,
+    type: "dungeon-outcome" as const,
+    outcome:"death" as const,
     day: index + 1,
     message: `${hero.name} died.`,
     adventurerId: hero.id,
