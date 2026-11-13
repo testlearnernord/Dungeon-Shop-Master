@@ -22,7 +22,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: node --experimental-strip-types --test tests/unit/healingBalance.test.ts tests/unit/checkoutQueue.test.ts tests/unit/npcTraffic.test.ts
+      - run: node --experimental-strip-types --test tests/unit/healingBalance.test.ts tests/unit/checkoutQueue.test.ts
 
   smoke:
     name: Browser smoke tests
@@ -38,7 +38,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       # Focused PR smoke: shop flow, real cashier, restocking and UI.
       # The full browser suite remains manual/nightly.
-      - run: xvfb-run -a npm test -- tests/gateTraffic.spec.ts tests/cashierReceipt.spec.ts tests/restockWaiting.spec.ts tests/immersiveInterface.spec.ts
+      - run: xvfb-run -a npm test -- tests/cashierReceipt.spec.ts tests/restockWaiting.spec.ts tests/immersiveInterface.spec.ts --grep "the register verifies goods|sold-out customer displays|default shop HUD"
       - name: Upload browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

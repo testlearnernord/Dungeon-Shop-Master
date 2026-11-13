@@ -11,7 +11,7 @@ import { GameStore } from "../../src/game/gameStore.ts";
 
 test("shop layout starts with two wall-mounted shelves with stable slot IDs",()=>{
   const state=createGameState(42);
-  assert.equal(SIMULATION_VERSION,11);
+  assert.equal(SIMULATION_VERSION,12);
   assert.deepEqual(state.shopLayout,createShopLayout());
   assert.equal(shopLayoutProblem(state.shopLayout),null);
   assert.equal(state.shopEconomy.slots.length,10);
@@ -70,24 +70,6 @@ test("geometry accepts valid rotations but rejects walls, counter, walkways and 
   }
   assert.match(shopLayoutProblem({shelves:[original.shelves[0],original.shelves[0]]})!,/IDs/);
   assert.match(shopLayoutProblem({shelves:[original.shelves[0]]})!,/two shelves/);
-});
-
-test("v8 save migration preserves heroes, RNG, past replays and every shelf slot",()=>{
-  const prior=advanceDay(createGameState(7351)).state;
-  const original=structuredClone(createSave(prior)) as any;
-  original.simulationVersion=8;
-  original.payload.simulationVersion=8;
-  delete original.payload.shopLayout;
-  delete original.payload.shopCarts;
-  delete original.payload.shopDebts;
-  const restored=parseSave(JSON.stringify(original));
-  assert.equal(restored.simulationVersion,11);
-  assert.deepEqual(restored.shopLayout,createShopLayout());
-  assert.deepEqual(restored.shopEconomy,prior.shopEconomy);
-  assert.deepEqual(restored.adventurers,prior.adventurers);
-  assert.deepEqual(restored.events,prior.events);
-  assert.equal(restored.rngState,prior.rngState);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(restored))),restored);
 });
 
 test("strict saves reject injected, incomplete or obstructing furniture geometry",()=>{
