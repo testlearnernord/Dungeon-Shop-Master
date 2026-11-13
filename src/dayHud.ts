@@ -2,6 +2,8 @@ import { GameStore } from "./game/gameStore";
 import { level6ReturnIds, type VisitorSnapshot } from "./game/npcVisitors";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
 import { hasObservedReplay } from "./replayDisclosure.ts";
+import {dayReportMetrics,eventGroup,groupedDayEvents,type EventGroup} from "./game/dayReportView.ts";
+import {uiIcon,type InterfaceIcon} from "./uiIcons.ts";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
@@ -19,6 +21,22 @@ export function setupDayHud(
   }
 
   const history = document.querySelector<HTMLOListElement>("#day-history")!;
+  const metricHost=document.querySelector<HTMLElement>("#day-report-metrics")!;
+  const categoryLabel:Record<EventGroup,string>={
+    trade:"Sales & credit",visitors:"Visitors",expeditions:"Expeditions",
+    survival:"Supplies & survival",other:"Other events",
+  };
+  const categoryIcon:Record<EventGroup,InterfaceIcon>={
+    trade:"coin",visitors:"users",expeditions:"swords",
+    survival:"heart",other:"book",
+  };
+  const card=(icon:InterfaceIcon,label:string,amount:string)=>{
+    const box=document.createElement("div");box.className="day-metric";
+    const labelNode=document.createElement("span");labelNode.textContent=label;
+    const amountNode=document.createElement("strong");amountNode.textContent=amount;
+    box.append(uiIcon(icon),labelNode,amountNode);
+    return box;
+  };
   const snapshotVisitors = (): readonly VisitorSnapshot[] => {
     const state = store.state;
     const fromLevel6 = level6ReturnIds(state.events, state.day);
@@ -40,10 +58,14 @@ export function setupDayHud(
         !hasObservedReplay(event.id)
         ? "An expedition recording has been sealed. Watch the saved footage to learn its outcome."
         : event.message;
-    events.replaceChildren(...state.events.slice(-3).map((event) => {
-      const entry = document.createElement("li");
-      entry.dataset.eventId = event.id;
-      entry.textContent = visibleMessage(event);
+    events.replaceChildren(...state.events.slice(-3).reverse().map(event=>{
+      const entry=document.createElement("li");
+      entry.dataset.eventId=event.id;
+      entry.dataset.group=eventGroup(event.type);
+      const group=eventGroup(event.type);
+      entry.append(uiIcon(categoryIcon[group]));
+      const detail=document.createElement("span");detail.textContent=visibleMessage(event);
+      entry.append(detail);
       return entry;
     }));
     const today = [];
@@ -52,10 +74,32 @@ export function setupDayHud(
       if (event.day !== state.day) break;
       today.push(event);
     }
-    history.replaceChildren(...today.reverse().map((event) => {
-      const entry = document.createElement("li");
-      entry.textContent = visibleMessage(event);
-      return entry;
+    const chronological=today.reverse();
+    const stats=dayReportMetrics(chronological);
+    metricHost.replaceChildren(
+      card("coin","Sales",stats.units+" items · "+stats.revenue+"g"),
+      card("users","Visitors",String(stats.arrivals)+" arrivals"),
+      card("swords","Dungeon",String(stats.expeditionEvents)+" events"),
+      card("receipt","Credit",String(stats.loans)+"g issued"),
+    );
+    history.replaceChildren(...groupedDayEvents(chronological).map(section=>{
+      const outer=document.createElement("li");outer.className="report-group";
+      outer.dataset.group=section.group;
+      const details=document.createElement("details");details.className="report-category";
+      const summary=document.createElement("summary");
+      const title=document.createElement("span");title.textContent=categoryLabel[section.group];
+      const count=document.createElement("small");
+      count.textContent=section.events.length+" events";
+      summary.append(uiIcon(categoryIcon[section.group]),title,count);
+      const body=document.createElement("ol");body.className="report-group-items";
+      body.append(...section.events.map(event=>{
+        const item=document.createElement("li");
+        item.dataset.eventId=event.id;
+        item.textContent=visibleMessage(event);
+        return item;
+      }));
+      details.append(summary,body);outer.append(details);
+      return outer;
     }));
     const names = heroDisplayNames(state.adventurers);
     const active = state.adventurers.filter((hero) => hero.status !== "dead");
