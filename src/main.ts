@@ -1,3 +1,4 @@
+import { createLevel5RoomVisuals } from "./game/level5RoomVisuals.ts";
 import { createCashierSfx } from "./cashierSfx.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
@@ -61,6 +62,10 @@ const scene = new Scene(engine);
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
+const roomVisuals=createLevel5RoomVisuals(scene);
+const refreshRoom=()=>roomVisuals.update(store.state.level5Room);
+store.subscribe(refreshRoom);
+refreshRoom();
 const shop = new Shop(scene, store);
 const board = createRosterBoard(scene, store);
 worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
