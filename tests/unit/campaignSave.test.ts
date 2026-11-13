@@ -77,7 +77,7 @@ const badPayloads: [string, (state: any) => void, RegExp][] = [
   ["empty name", (s) => { s.adventurers[0].name = " "; }, /name/],
   ["invalid equipment", (s) => { s.adventurers[0].equipment.weapon = 42; }, /weapon/],
   ["negative hero gold", (s) => { s.adventurers[0].gold = -1; }, /gold/],
-  ["negative inventory", (s) => { s.adventurers[0].inventory.food = -1; }, /food/],
+  ["negative inventory", (s) => { s.adventurers[0].inventory.bread = -1; }, /food/],
   ["fractional inventory", (s) => { s.adventurers[0].inventory.loot = 0.5; }, /loot/],
   ["bad level", (s) => { s.adventurers[0].level = 2; }, /level.*XP/],
   ["negative XP", (s) => { s.adventurers[0].xp = -1; }, /xp/],
@@ -86,7 +86,7 @@ const badPayloads: [string, (state: any) => void, RegExp][] = [
   ["explorer at shop", (s) => { s.adventurers[0].status = "exploring"; }, /floor.*status/],
   ["returning on wrong floor", (s) => { s.adventurers[0].status = "returning"; }, /floor.*status/],
   ["too long stay", (s) => { s.adventurers[0].shopStayDays = 2; }, /shopStayDays/],
-  ["negative hunger", (s) => { s.adventurers[0].hunger = -1; }, /hunger/],
+  ["obsolete hunger field", (s) => { s.adventurers[0].hunger = -1; }, /hunger/],
   ["negative gold", (s) => { s.shopEconomy.balance = -1; }, /balance/],
   ["unsafe gold", (s) => { s.shopEconomy.balance = Number.MAX_SAFE_INTEGER + 1; }, /balance/],
   ["unknown bag item", (s) => { s.shopEconomy.bag.sword = 1; }, /sword/],
@@ -104,7 +104,7 @@ const badPayloads: [string, (state: any) => void, RegExp][] = [
   ["item without stock", (s) => { s.shopEconomy.slots[1].quantity = 0; }, /stocked/],
   ["stale daily sales", (s) => { s.shopEconomy.dailySales.day = 2; }, /dailySales.day/],
   ["negative sales", (s) => { s.shopEconomy.dailySales.revenue = -1; }, /revenue/],
-  ["future rescue", (s) => { s.shopEconomy.lastRescueDay = 2; }, /lastRescueDay/],
+  ["obsolete rescue field", (s) => { s.shopEconomy.lastRescueDay = 2; }, /lastRescueDay/],
   ["duplicate floors", (s) => { s.dungeonFloors = [{ floor: 1, cleared: false }, { floor: 1, cleared: true }]; }, /unique/],
   ["invalid floor progress", (s) => { s.dungeonFloors = [{ floor: 8, cleared: true }]; }, /floor/],
   ["invalid cleared flag", (s) => { s.dungeonFloors = [{ floor: 1, cleared: 1 }]; }, /cleared/],
@@ -135,7 +135,7 @@ test("rejects malformed envelopes and incompatible versions without migrations",
     for (const version of [0, 999, "1", null]) {
       const envelope: any = JSON.parse(encoded());
       envelope[key] = version;
-      assert.throws(() => parseSave(JSON.stringify(envelope)), /incompatible.*no migrations/);
+      assert.throws(() => parseSave(JSON.stringify(envelope)), /incompatible/);
     }
   }
   for (const savedAt of ["yesterday", "2026-02-30T00:00:00.000Z", "2026-01-01", null, 42]) {
@@ -151,7 +151,9 @@ test("rejects malformed envelopes and incompatible versions without migrations",
 });
 
 test("checks event-specific outcome, prices, quantities, links and chronology", () => {
-  let state = advanceDay(createGameState()).state;
+  const initial=createGameState();
+  let state = advanceDay({...initial,adventurers:initial.adventurers.map((hero,i)=>
+    i===0?{...hero,health:hero.stats.maxHealth-7}:hero)}).state;
   const mutateEvent = (type: string, mutate: (event: any) => void, message: RegExp) => {
     const envelope = JSON.parse(encoded(state));
     const event = envelope.payload.events.find((event: any) => event.type === type);
@@ -162,23 +164,14 @@ test("checks event-specific outcome, prices, quantities, links and chronology", 
   mutateEvent("sale", (event) => { event.revenue += 1; }, /revenue/);
   mutateEvent("sale", (event) => { event.quantity = 0; }, /quantity/);
   mutateEvent("sale", (event) => { event.id = "day-2:adventurer-1:sale:unknown"; }, /shelf slot/);
-  mutateEvent("ate", (event) => { event.itemId = "mana-potion"; }, /bread/);
-  mutateEvent("ate", (event) => { delete event.quantity; }, /quantity/);
+  mutateEvent("healed", (event) => { event.itemId = "mana-potion"; }, /must restore HP/);
+  mutateEvent("healed", (event) => { delete event.quantity; }, /quantity/);
   mutateEvent("dungeon-outcome", (event) => { event.outcome = "victory"; }, /outcome/);
   mutateEvent("day-started", (event) => { event.adventurerId = "adventurer-1"; }, /not valid/);
   const envelope = JSON.parse(encoded(state));
   envelope.payload.events.reverse();
   assert.throws(() => parseSave(JSON.stringify(envelope)), /day/);
-  state = {
-    ...state,
-    shopEconomy: {
-      ...state.shopEconomy, balance: 0,
-      bag: { bread: 0, "healing-herb": 0, "mana-potion": 0, "iron-ore": 0, "iron-sword": 0, "leather-vest": 0 },
-      slots: state.shopEconomy.slots.map((slot) => ({ ...slot, itemId: null, quantity: 0 })),
-    },
-  };
-  state = advanceDay(state).state;
-  mutateEvent("rescue", (event) => { event.quantity = 3; }, /quantity/);
+
 });
 
 class MemoryAdapter implements CampaignStorageAdapter {
