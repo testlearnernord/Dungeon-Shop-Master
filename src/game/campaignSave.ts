@@ -1,3 +1,4 @@
+import { isValidLevel5Room } from "./level5Room.ts";
 import { ECONOMY, ITEMS, createEconomy } from "./economy.ts";
 import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
@@ -271,7 +272,9 @@ function validateState(value: unknown, version = SIMULATION_VERSION): asserts va
     ...(version >= 9 ? ["shopLayout"] : []),
     ...(version >= 10 ? ["shopCarts"] : []),
     ...(version >= 11 ? ["shopDebts"] : []),
-  ]);
+  ], ["level5Room"]);
+  if (state.level5Room !== undefined && !isValidLevel5Room(state.level5Room))
+    fail("payload.level5Room", "has invalid excavation geometry");
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
   if (state.simulationVersion !== version) fail("payload.simulationVersion", "is incompatible");
   const campaignSeed = integer(state.seed, "payload.seed", 0, 0xffffffff);
