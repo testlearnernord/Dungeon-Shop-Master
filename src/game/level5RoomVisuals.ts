@@ -41,6 +41,7 @@ export function createLevel5RoomVisuals(scene:Scene) {
           mesh.position.set(side*7.5,2,z);
           mesh.material=rock;
           mesh.checkCollisions=true;
+          if(room.expansionTier>0)mesh.metadata={level5MineCell:{x:side*8,z}};
           blocks.push(mesh);
         }
       }
