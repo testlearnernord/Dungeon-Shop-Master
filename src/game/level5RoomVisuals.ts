@@ -29,35 +29,36 @@ export function createLevel5RoomVisuals(scene:Scene) {
       ceiling.position.set(x,4.1,z);ceiling.material=rock;ceiling.checkCollisions=true;ceiling.isPickable=false;
       blocks.push(ceiling);
     }
-    for(const [side,wall] of [-1,1].map((side,i)=>[side,originalWalls[i]] as const)){
-      const openings=[...excavated].some(key=>key.startsWith(side===-1?"-8,":"8,"));
-      if(wall)wall.setEnabled(room.expansionTier===0 && !openings);
-      if(room.expansionTier===0 && !openings)continue;
-      // Replace the original monolithic wall with individually collidable
-      // segments, preserving the unexcavated sections.
-      for(let z=-6;z<=6;z++){
-        if(!isLevel5Air(room,{x:side*8,z})){
-          const mesh=MeshBuilder.CreateBox(`excavation-wall-${side}-${z}`,{width:1,height:4,depth:1},scene);
-          mesh.position.set(side*7.5,2,z);
-          mesh.material=rock;
-          mesh.checkCollisions=true;
-          if(room.expansionTier>0)mesh.metadata={level5MineCell:{x:side*8,z}};
-          blocks.push(mesh);
+    // Replace side walls with discrete cells once expansion is available.
+    // Never stack a second solid cube over a wall segment: the nearest
+    // ray hit must always identify the correct cell to excavate.
+    for(const [side,wall] of [-1,1].map((direction,i)=>[direction,originalWalls[i]] as const)){
+      wall?.setEnabled(room.expansionTier===0);
+      if(room.expansionTier===0)continue;
+      for(let z=-7;z<=7;z++){
+        const first={x:side*8,z};
+        if(!isLevel5Air(room,first)){
+          const face=MeshBuilder.CreateBox(`excavation-wall-${side}-${z}`,
+            {width:1,height:4,depth:1},scene);
+          face.position.set(side*7.5,2,z);
+          face.material=rock;face.checkCollisions=true;
+          if(z>=-6&&z<=6)face.metadata={level5MineCell:first};
+          blocks.push(face);
         }
       }
-      // Rock beyond the old boundary is still solid until explicitly mined.
-      for(let x=8;x<=7+room.expansionTier*2;x++){
+      for(let x=9;x<=7+room.expansionTier*2;x++){
         for(let z=-6;z<=6;z++){
           const cell={x:side*x,z};
           if(isLevel5Air(room,cell))continue;
-          // Only expose rock immediately next to an excavated cell.
-          if(![ {x:cell.x-side,z}, {x:cell.x+side,z},{x:cell.x,z:z-1},{x:cell.x,z:z+1}]
-            .some(neighbor=>isLevel5Air(room,neighbor)))continue;
-          const mesh=MeshBuilder.CreateBox(`mineable-rock-${cell.x}-${z}`,{size:1},scene);
+          const adjacent=[
+            {x:cell.x-side,z},{x:cell.x+side,z},
+            {x:cell.x,z:z-1},{x:cell.x,z:z+1},
+          ];
+          if(!adjacent.some(neighbor=>isLevel5Air(room,neighbor)))continue;
+          const mesh=MeshBuilder.CreateBox(`mineable-rock-${cell.x}-${z}`,
+            {width:1,height:4,depth:1},scene);
           mesh.position.set(cell.x,2,z);
-          mesh.scaling.y=4;
-          mesh.material=rock;
-          mesh.checkCollisions=true;
+          mesh.material=rock;mesh.checkCollisions=true;
           mesh.metadata={level5MineCell:cell};
           blocks.push(mesh);
         }
