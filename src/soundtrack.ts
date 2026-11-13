@@ -59,6 +59,19 @@ export class SceneSoundtrack {
       expand.setAttribute("aria-label",open?"Hide music controls":"Open music controls");
       expand.title=open?"Hide music controls":"Music controls";
     });
+    // M also releases mouse control in spectator views. Unfold music first
+    // so the existing keyboard-focus contract still reaches the mute button.
+    window.addEventListener("keydown",event=>{
+      if(event.code!=="KeyM"||event.repeat||document.querySelector("dialog[open]"))return;
+      if(document.body.classList.contains("arena-active")||
+        document.body.classList.contains("dungeon-active")){
+        panel.dataset.expanded="true";
+        expand.setAttribute("aria-expanded","true");
+        expand.setAttribute("aria-label","Hide music controls");
+        expand.title="Hide music controls";
+        this.toggle.focus();
+      }
+    });
     const musicMark=panel.querySelector(".music-heading > span");
     musicMark?.replaceWith(uiIcon("speaker"));
     const preferences = loadPreferences();

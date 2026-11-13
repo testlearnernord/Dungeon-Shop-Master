@@ -29,6 +29,7 @@ test("music uses the correct deployed assets and tracks shop / boss scenes", asy
 
 test("mute and volume persist across reloads independently of campaign state", async ({ page }) => {
   await page.goto("./");
+  await page.locator("#music-expand").click();
   await expect(page.locator("#music-toggle")).toHaveText("Mute");
   await page.locator("#music-toggle").click();
   await expect(page.locator("#music-toggle")).toHaveText("Unmute");
@@ -41,6 +42,7 @@ test("mute and volume persist across reloads independently of campaign state", a
   await expect(page.locator("#day")).toHaveText("Day 1");
   await expect(page.locator("#music-toggle")).toHaveText("Unmute");
   await expect(page.locator("#music-volume")).toHaveValue("17");
+  await page.locator("#music-expand").click();
   await page.locator("#music-toggle").click();
   await expect(page.locator("#music-toggle")).toHaveText("Mute");
 });
