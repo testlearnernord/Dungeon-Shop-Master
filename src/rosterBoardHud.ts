@@ -1,7 +1,6 @@
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries, type RosterFilter } from "./game/rosterView.ts";
-import { ECONOMY } from "./game/economy.ts";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
 import {itemIcon,uiIcon,goldIcon} from "./uiIcons.ts";
 import {portraitCssFrame} from "./game/portraitAtlas.ts";
@@ -61,8 +60,7 @@ export function setupRosterBoardHud(
       overview.className = "roster-overview";
       overview.append(
         goldIcon(),document.createTextNode(" "+hero.gold+"g  ·  "),
-        uiIcon("food"),document.createTextNode(" "+(hero.hunger>=3?"Hungry":"Fed")+
-          "  ·  "+hero.inventory.food+" food  ·  "+hero.inventory.healing+" heal"),
+        itemIcon("bread","ui-item-icon"),document.createTextNode(" "+hero.inventory.bread+" Waybread  ·  "+hero.inventory.healing+" Herbs"),
       );
       primary.append(name, location, bar, overview);
       const health = document.createElement("span");
@@ -73,8 +71,8 @@ export function setupRosterBoardHud(
       extended.className = "roster-card-extended";
       const stats = document.createElement("p");
       stats.textContent = "F" + hero.floor + " · XP " + hero.xp + " · Gold " + hero.gold +
-        "g · Hunger " + hero.hunger +
-        " · Missed food shops " + hero.missedFoodShopVisits + "/" + ECONOMY.missedFoodShopsBeforeStarvation +
+        "g · Waybread " + hero.inventory.bread +
+        " · Herbs " + hero.inventory.healing +
         " · STR " + hero.stats.strength +
         " / AGI " + hero.stats.agility + " / INT " + hero.stats.intellect;
       const traits = document.createElement("p");
@@ -93,7 +91,7 @@ export function setupRosterBoardHud(
       items.append(
         itemChip("iron-sword",hero.equipment.weapon??"No weapon"),
         itemChip("leather-vest",hero.equipment.armor??"No armor"),
-        itemChip("bread","Food "+hero.inventory.food),
+        itemChip("bread","Waybread "+hero.inventory.bread),
         itemChip("healing-herb","Healing "+hero.inventory.healing),
         itemChip("iron-ore","Loot "+hero.inventory.loot),
       );
