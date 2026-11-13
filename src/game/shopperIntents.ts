@@ -75,7 +75,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
     let reason:ShoppingReason="interested";
     if(!items.length){
       const needs=ITEMS.filter(item=>{
-        const uncovered=hero.stats.maxHealth-hero.health-
+        const uncovered=Math.max(8,hero.stats.maxHealth-hero.health)-
           hero.inventory.bread*8-hero.inventory.healing*18;
         if(item.id==="bread")return uncovered>0 &&
           hero.inventory.bread<ECONOMY.breadCarryLimit;
@@ -106,7 +106,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
       priorities.find(id=>{
         const item=ITEMS.find(entry=>entry.id===id)!;
         if(reason==="unavailable"&&projectedHero.gold<item.salePrice)return false;
-        const uncovered=wound-projectedHero.inventory.bread*8-
+        const uncovered=Math.max(8,wound)-projectedHero.inventory.bread*8-
           projectedHero.inventory.healing*18;
         if(id==="bread")return uncovered>0&&
           projectedHero.inventory.bread<ECONOMY.breadCarryLimit;

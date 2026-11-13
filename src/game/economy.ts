@@ -141,8 +141,9 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
     let healing = hero.inventory.healing;
     let weapon = hero.equipment.weapon;
     let armor = hero.equipment.armor;
-    // Wounded visitors prefer the +18 herb for major injuries, the cheaper
-    // +8 bread for small cuts. Permanent gear comes after treatment.
+    // Even unwounded visitors can buy a small emergency reserve for their
+    // next expedition. Only actual HP loss consumes it.
+    // Major wounds favor the +18 herb; small cuts favor cheap +8 bread.
     const missing = hero.stats.maxHealth - hero.health;
     const priority = (slot: Slot): number => {
       const id = slot.itemId;
@@ -155,7 +156,7 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
     for (const slot of prioritized) {
       const item = ITEMS.find((entry) => entry.id === slot.itemId);
       if (!item || slot.quantity < 1) continue;
-      const uncovered = Math.max(0, missing - bread * 8 - healing * 18);
+      const uncovered = Math.max(0, Math.max(8, missing) - bread * 8 - healing * 18);
       const need = item.id === "bread"
         ? Math.min(ECONOMY.breadCarryLimit - bread, Math.ceil(uncovered / 8))
         : item.id === "healing-herb"

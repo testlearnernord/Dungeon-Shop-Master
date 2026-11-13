@@ -418,7 +418,7 @@ function validateState(value: unknown): asserts value is GameState {
         const item=ITEMS.find(candidate=>candidate.id===line.itemId)!;
         if(integer(line.subtotal,lp+".subtotal")!==quantity*item.salePrice)
           fail(lp+".subtotal","must agree with item price and quantity");
-        if(!["food","healing","weapon","armor"].includes(item.kind))
+        if(!["healing","weapon","armor"].includes(item.kind))
           fail(lp+".itemId","is not supported for purchase");
         cartTotal+=quantity*item.salePrice;
         const old=reservedBySlot.get(slotId);
@@ -539,7 +539,7 @@ function validateState(value: unknown): asserts value is GameState {
       if(integer(event.quantity,path+".quantity",1,1)!==1)
         fail(path+".quantity","must represent one issued item");
       const item=ITEMS.find(candidate=>candidate.id===event.itemId)!;
-      if(!["food","healing","weapon","armor"].includes(item.kind))
+      if(!["healing","weapon","armor"].includes(item.kind))
         fail(path+".itemId","must be a hero need");
       if(integer(event.debtGold,path+".debtGold",1)!==item.salePrice)
         fail(path+".debtGold","must match the item's sticker price");
