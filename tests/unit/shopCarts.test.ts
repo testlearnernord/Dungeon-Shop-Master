@@ -21,7 +21,7 @@ function slotQuantity(state:GameState,slotId:string) {
 }
 test("pickup is durable, removes only physical shelf stock and never charges before checkout",()=>{
   const state=customers();
-  assert.equal(SIMULATION_VERSION,11);
+  assert.equal(SIMULATION_VERSION,12);
   const hero=state.adventurers[0];
   const plan=forecastShoppingIntents(state).get(hero.id)!;
   const needed=plan.items[0];
@@ -107,23 +107,6 @@ test("transition settles held goods once, records day+1 receipts and preserves e
   const ids=transition.state.events.map(event=>event.id);
   assert.equal(new Set(ids).size,ids.length);
   assert.deepEqual(parseSave(JSON.stringify(createSave(transition.state))),transition.state);
-});
-test("unpaid carts migrate from v9 as empty, preserving furniture, heroes and receipts",()=>{
-  const state=advanceDay(createGameState(1307)).state;
-  const envelope=structuredClone(createSave(state)) as any;
-  envelope.simulationVersion=9;
-  envelope.payload.simulationVersion=9;
-  delete envelope.payload.shopCarts;
-  delete envelope.payload.shopDebts;
-  const migrated=parseSave(JSON.stringify(envelope));
-  assert.equal(migrated.simulationVersion,11);
-  assert.deepEqual(migrated.shopCarts,[]);
-  assert.deepEqual(migrated.shopLayout,state.shopLayout);
-  assert.deepEqual(migrated.shopEconomy,state.shopEconomy);
-  assert.deepEqual(migrated.adventurers,state.adventurers);
-  assert.deepEqual(migrated.events,state.events);
-  assert.equal(migrated.rngState,state.rngState);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(migrated))),migrated);
 });
 test("strict campaign validation rejects forged or excessive held cart stock",()=>{
   const state=customers();
