@@ -10,3 +10,23 @@ export function setupShopStatusToggle(): void {
     button.textContent = expanded ? "Hide shop details" : "Show shop details";
   });
 }
+
+/** The stocking bar wraps on small screens. Position the expanded controls
+ * panel above the bar's actual top edge, never by guessing its height. */
+export function setupControlsHotbarClearance():void {
+  const hotbar=document.querySelector<HTMLElement>("#inventory");
+  const legend=document.querySelector<HTMLDetailsElement>("#hud details.controls");
+  if(!hotbar||!legend)return;
+  const refresh=():void=>{
+    const inventoryTop=hotbar.getBoundingClientRect().top;
+    const controlsTop=legend.getBoundingClientRect().top;
+    const clearance=Math.max(8,Math.ceil(controlsTop-inventoryTop+12));
+    legend.style.setProperty("--hotbar-clearance",clearance+"px");
+  };
+  const observer=new ResizeObserver(refresh);
+  observer.observe(hotbar);
+  observer.observe(legend);
+  legend.addEventListener("toggle",refresh);
+  window.addEventListener("resize",refresh);
+  refresh();
+}

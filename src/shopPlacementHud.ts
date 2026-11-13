@@ -41,8 +41,8 @@ export function setupShopPlacementHud(
     const occupied=occupiedBy(p);
     shop.previewPlacement(p,!!occupied);
     const check=p.id==="counter"
-      ? replaceCounterPlacement(store.state.shopLayout,p)
-      : replaceShelfPlacement(store.state.shopLayout,p);
+      ? replaceCounterPlacement(store.state.shopLayout,p,store.state.level5Room)
+      : replaceShelfPlacement(store.state.shopLayout,p,store.state.level5Room);
     const expected=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
     const invalid=check.layout===store.state.shopLayout&&check.message!==expected;
     // A valid placement might be equal to its saved origin and still be legal.

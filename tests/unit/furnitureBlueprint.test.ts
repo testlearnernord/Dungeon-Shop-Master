@@ -5,6 +5,9 @@ import { createShopLayout,replaceCounterPlacement,replaceShelfPlacement } from "
 
 test("raycast mount surfaces identify structural room pieces only",()=>{
   assert.equal(surfaceFromMesh("stone-floor"),"floor");
+  assert.equal(surfaceFromMesh("excavated-floor-8,0"),"floor");
+  assert.equal(surfaceFromMesh("excavated-floor--9,-2"),"floor");
+  assert.equal(surfaceFromMesh("excavation-rock-face-6"),null);
   assert.equal(surfaceFromMesh("stone-ceiling"),"ceiling");
   assert.equal(surfaceFromMesh("right-wall"),"right-wall");
   assert.equal(surfaceFromMesh("front-left-wall"),"front-wall");
