@@ -133,6 +133,48 @@ function paintIdentity(npc:NpcVisual,atlas:HTMLImageElement):void {
   npc.root.metadata.portraitReady=atlas.complete&&atlas.naturalWidth>0;
 }
 
+function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, position: Vector3, atlas: HTMLImageElement): NpcVisual {
+  const model = createHeroVisual(scene, {
+    id: visitor.id, role: visitor.role,
+    equipment: visitor.equipment ?? { weapon: null, armor: null },
+  }, `npc-${visitor.id}`);
+  const { root, arms, legs, torso } = model;
+  root.position.copyFrom(position);
+  
+  const label = MeshBuilder.CreatePlane(`npc-${visitor.id}-label`, { width: 1.36, height: 0.34 }, scene);
+  label.parent = root;
+  label.position.y = 2.22;
+  label.billboardMode = Mesh.BILLBOARDMODE_ALL;
+  label.isPickable = false;
+  label.checkCollisions = false;
+  const texture = new DynamicTexture(`npc-${visitor.id}-label-texture`, { width: 640, height: 160 }, scene, false);
+  texture.hasAlpha = true;
+  const labelMaterial = material(scene, `npc-${visitor.id}-label-material`, Color3.White());
+  labelMaterial.diffuseTexture = texture;
+  labelMaterial.emissiveColor = new Color3(0.8, 0.8, 0.8);
+  labelMaterial.disableLighting = true;
+  labelMaterial.backFaceCulling = false;
+  label.material = labelMaterial;
+
+  const visual: NpcVisual = {
+    root, arms, legs, torso, model, visitor, phase: "entering", route: [], waypoint: 0, slot,
+    elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, blockedSeconds:0, idleYieldCooldown:0,
+    gateSide: visitor.entranceGate ?? "level4",
+    restockSeconds:null,wishItem:null,wishBubble:null,
+    intent:null,intentKey:"",targetIndex:0,toQueue:false,
+    heldLines:[],heldMeshes:[],heldKey:"",
+    labelTexture: texture, labelMesh: label,
+    saleTag: null, saleSeconds: 0,
+  };
+  root.metadata = {
+    ...root.metadata,
+    adventurerId: visitor.id, name: visitor.name, role: visitor.role,
+    phase: visual.phase, simulationStatus: visitor.status, gateSide: visual.gateSide,
+  };
+  paintIdentity(visual, atlas);
+  return visual;
+}
+
 export class NpcVisualSystem {
   private readonly npcs = new Map<string, NpcVisual>();
   private readonly portraits = new Image();
