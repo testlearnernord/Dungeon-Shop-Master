@@ -79,7 +79,7 @@ export class GameStore {
   }
 
   placeShelf(placement: ShelfPlacement): string {
-    const result = replaceShelfPlacement(this.current.shopLayout, placement);
+    const result = replaceShelfPlacement(this.current.shopLayout, placement,this.current.level5Room);
     if (result.layout !== this.current.shopLayout) {
       const invalid=shopServiceReachabilityProblem(result.layout,this.current.level5Room);
       if(invalid)return invalid;
@@ -89,7 +89,7 @@ export class GameStore {
   }
 
   placeCounter(placement:CounterPlacement):string {
-    const result=replaceCounterPlacement(this.current.shopLayout,placement);
+    const result=replaceCounterPlacement(this.current.shopLayout,placement,this.current.level5Room);
     if(result.layout!==this.current.shopLayout){
       const invalid=shopServiceReachabilityProblem(result.layout);
       if(invalid)return invalid;
