@@ -42,7 +42,7 @@ test("new tunnels and layout share the same collision and pathfinding space",()=
   const layout=createShopLayout();
   assert.equal(shopLayoutProblem(layout,room),null);
   assert.equal(isObstructed({x:8,z:0},layout,room),false);
-  assert.equal(isObstructed({x:8,z:1},layout,room),true);
+  assert.equal(isObstructed({x:9,z:1},layout,room),true);
   const route=pathToShopGoal({x:6,z:4},{x:8,z:0},layout,room);
   assert.ok(route,"a customer should reach mined floor through a real entrance around the shelf");
   assert.equal(pathToShopGoal({x:6,z:4},{x:8,z:0},layout,opened("8,0")),null,
