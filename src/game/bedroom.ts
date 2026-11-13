@@ -177,6 +177,9 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   }
   cube("bed-chest-lock", 0.16, 0.16, 0.04, -2.15, 0.49, -10.995, metal);
 
+  // Furniture may be targeted by the contextual P editor, but stay at
+  // original support coordinates until modular fixture persistence exists.
+  // Do not give these decorative meshes collision shapes or the bed E action.
   // An improvised accounting desk. Nothing here is a buyable shop prop.
   cube("bedroom-desk", 1.17, 0.12, 0.72, -2.27, 0.95, -9.08, wornEdges);
   for (const x of [-2.72, -1.83]) {
@@ -292,5 +295,9 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
     r.isPickable = false;
   }
 
+  for(const name of ["bedroom-desk","galvik-bed-chest","bed-candle","bed-candle-holder"]){
+    const mesh=scene.getMeshByName(name);
+    if(mesh)mesh.isPickable=true;
+  }
   return bed;
 }
