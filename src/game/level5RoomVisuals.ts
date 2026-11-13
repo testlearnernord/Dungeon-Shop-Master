@@ -22,8 +22,8 @@ export function createLevel5RoomVisuals(scene:Scene) {
     const excavated=new Set(room.excavatedCells);
     for(const [side,wall] of [-1,1].map((side,i)=>[side,originalWalls[i]] as const)){
       const openings=[...excavated].some(key=>key.startsWith(side===-1?"-8,":"8,"));
-      if(wall)wall.setEnabled(!openings);
-      if(!openings)continue;
+      if(wall)wall.setEnabled(room.expansionTier===0 && !openings);
+      if(room.expansionTier===0 && !openings)continue;
       // Replace the original monolithic wall with individually collidable
       // segments, preserving the unexcavated sections.
       for(let z=-6;z<=6;z++){
@@ -44,8 +44,8 @@ export function createLevel5RoomVisuals(scene:Scene) {
           if(![ {x:cell.x-side,z}, {x:cell.x+side,z},{x:cell.x,z:z-1},{x:cell.x,z:z+1}]
             .some(neighbor=>isLevel5Air(room,neighbor)))continue;
           const mesh=MeshBuilder.CreateBox(`mineable-rock-${cell.x}-${z}`,{size:1},scene);
-          mesh.position.set(cell.x,1.8,z);
-          mesh.scaling.y=3.6;
+          mesh.position.set(cell.x,2,z);
+          mesh.scaling.y=4;
           mesh.material=rock;
           mesh.checkCollisions=true;
           mesh.metadata={level5MineCell:cell};
