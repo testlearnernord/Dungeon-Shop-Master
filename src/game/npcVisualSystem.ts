@@ -17,7 +17,7 @@ import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopperBlocksRoute, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
 import { reserveRestockWaitingRoute } from "./restockWaitingPlaces.ts";
 import { npcLocomotion } from "./npcLocomotion.ts";
@@ -48,6 +48,7 @@ interface NpcVisual {
   browseSide: number;
   animationTime: number;
   blockedSeconds:number;
+  idleYieldCooldown:number;
   restockSeconds:number|null;
   wishItem:ItemId|null;
   wishBubble:NpcWishBubble|null;
@@ -145,7 +146,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
 
   const visual: NpcVisual = {
     root, arms, legs, torso, model, visitor, phase: "entering", route: [], waypoint: 0, slot,
-    elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, blockedSeconds:0,
+    elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, blockedSeconds:0, idleYieldCooldown:0,
     gateSide: visitor.entranceGate ?? "level4",
     restockSeconds:null,wishItem:null,wishBubble:null,
     intent:null,intentKey:"",targetIndex:0,toQueue:false,
@@ -407,7 +408,7 @@ export class NpcVisualSystem {
     const npc=this.npcs.get(head.heroId);
     if(!npc||npc.visitor.status!=="at-shop"||npc.phase!=="queueing"||
        npc.root.metadata.shoppingPhase!=="awaiting-checkout")return null;
-    const point=checkoutQueuePoints(this.layout,{x:0,z:-1},1)[0];
+    const point=checkoutQueuePoints(this.layout,{x:0,z:-1},1,this.room)[0];
     if(!point||Math.hypot(npc.root.position.x-point.x,
        npc.root.position.z-point.z)>0.3)return null;
     return head.heroId;
@@ -507,6 +508,34 @@ export class NpcVisualSystem {
       .filter(npc=>npc.phase==="entering"||npc.phase==="leaving")
       .map(npc=>({gate:npc.gateSide,phase:npc.phase as "entering"|"leaving",
         x:npc.root.position.x,z:npc.root.position.z}));
+    // An idle visitor is allowed to give way when a real incoming route
+    // passes through their spot. Service queues never yield here.
+    // Try at most once per cooldown to avoid oscillating idlers.
+    for(const npc of this.npcs.values()){
+      npc.idleYieldCooldown=Math.max(0,npc.idleYieldCooldown-delta);
+      if(npc.idleYieldCooldown>0||npc.phase!=="queueing"||
+         npc.root.metadata.shoppingPhase!=="waiting-for-next-day")continue;
+      const idle={x:npc.root.position.x,z:npc.root.position.z};
+      const blocking=[...this.npcs.values()].some(other=>{
+        if(other===npc||!["entering","browsing","leaving"].includes(other.phase))
+          return false;
+        const next=other.route[other.waypoint];
+        return !!next&&idleShopperBlocksRoute(idle,
+          {x:other.root.position.x,z:other.root.position.z},
+          {x:next.x,z:next.z});
+      });
+      if(!blocking)continue;
+      const destination=this.queuePosition(npc.slot,npc,idle);
+      const route=destination&&this.layout?pathToShopGoal(idle,
+        {x:destination.x,z:destination.z},this.layout,this.room):null;
+      npc.idleYieldCooldown=8;
+      if(!route||!route.waypoints.length)continue;
+      npc.phase="browsing";npc.toQueue=true;
+      npc.route=route.waypoints.map(p=>new Vector3(p.x,0,p.z));
+      npc.waypoint=0; npc.blockedSeconds=0;
+      npc.root.metadata.phase=npc.phase;
+      npc.root.metadata.shoppingPhase="clearing-aisle";
+    }
     const gateFlow:Record<GateSide,"entering"|"leaving">={
       level4:gateFlowDirection("level4",gateActors),
       level6:gateFlowDirection("level6",gateActors),
@@ -544,6 +573,20 @@ export class NpcVisualSystem {
         // waiting beside a shelf merely because route creation returned null.
         npc.wait-=delta;
         if(npc.wait<=0)this.beginBrowsing(npc);
+      }
+      if((npc.phase==="queueing"||npc.phase==="browsing")&&(
+         npc.root.metadata.shoppingPhase==="checkout-capacity-full"||
+         npc.root.metadata.shoppingPhase==="idle-capacity-full"||
+         npc.root.metadata.shoppingPhase==="checkout-route-blocked"||
+         npc.root.metadata.shoppingPhase==="idle-route-blocked")){
+        // A missing destination is temporary: stock and furniture stay
+        // authoritative while visual capacity is re-evaluated periodically.
+        npc.wait-=delta;
+        if(npc.wait<=0)this.beginBrowsing(npc);
+      }
+      if(npc.phase==="leaving"&&npc.root.metadata.shoppingPhase==="blocked-exit"){
+        npc.wait-=delta;
+        if(npc.wait<=0)this.beginLeaving(npc);
       }
       if(npc.phase==="queueing"&&
         (npc.root.metadata.shoppingPhase==="waiting-for-restock"||
@@ -659,6 +702,7 @@ export class NpcVisualSystem {
       npc.route=[];
       npc.waypoint=0;
       npc.root.metadata.shoppingPhase="blocked-exit";
+      npc.wait=1.5+(npc.slot%3)*.3;
       return;
     }
     const exitX=chosen?.x??gateX;
@@ -799,12 +843,14 @@ export class NpcVisualSystem {
       npc.root.metadata.shoppingPhase=checkoutIndex>=0
         ?"checkout-capacity-full":"idle-capacity-full";
       npc.root.metadata.checkoutQueueIndex=checkoutIndex;
+      npc.wait=1.2+(npc.slot%4)*.25;
       npc.root.metadata.phase=npc.phase;
       return;
     }
     const route=this.layout?pathToShopGoal(origin,
       {x:target.x,z:target.z},this.layout,this.room):null;
-    npc.phase="browsing";npc.toQueue=true;
+    npc.phase=route?"browsing":"queueing";npc.toQueue=true;
+    npc.wait=route?0:1.2+(npc.slot%4)*.25;
     npc.route=(route?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
     npc.waypoint=0;
     npc.root.metadata.shoppingTargetSlot=null;
@@ -843,7 +889,7 @@ export class NpcVisualSystem {
       occupied,destinations,npc.slot,this.room)?.route??null;
   }
 
-  private queuePosition(slot:number,npc:NpcVisual):Vector3|null {
+  private queuePosition(slot:number,npc:NpcVisual,avoid?:{x:number;z:number}):Vector3|null {
     if(!this.layout)return null;
     const points=idleShopPositions(this.layout,100,this.room);
     const preferred=points[slot];
@@ -860,7 +906,8 @@ export class NpcVisualSystem {
           point.z-destination.z)<PERSONAL_SPACE;
       });
     const candidates=preferred?[preferred,...points.filter(p=>p!==preferred)]:points;
-    const point=candidates.find(p=>!reservedByAnother(p));
+    const point=candidates.find(p=>!reservedByAnother(p)&&
+      (!avoid||Math.hypot(p.x-avoid.x,p.z-avoid.z)>=1.85));
     return point?new Vector3(point.x,0,point.z):null;
   }
 
