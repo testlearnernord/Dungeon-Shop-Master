@@ -16,7 +16,7 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Roo
   const entrances:ShopPoint[]=[
     {x:-3.43,z:4.65},{x:4.57,z:4.65},
   ];
-  const queue=checkoutQueuePoints(layout,{x:0,z:-1},8);
+  const queue=checkoutQueuePoints(layout,{x:0,z:-1},8,room);
   if(queue.length<1)
     return "The checkout has no reachable customer standing position.";
   const cashier=queue[0];

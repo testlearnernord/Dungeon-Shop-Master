@@ -274,9 +274,10 @@ export class NpcVisualSystem {
     this.onPickUp=onPickUp;
     this.onWalkout=onWalkout??null;
     this.carts=carts;
+    const roomSignature=JSON.stringify(room??null);
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
     const queueIds=carts.filter(cart=>cart.lines.length>0).map(cart=>cart.heroId);
-    const queuePoints=checkoutQueuePoints(layout,{x:0,z:-1},queueIds.length);
+    const queuePoints=checkoutQueuePoints(layout,{x:0,z:-1},queueIds.length,room);
     for(const npc of this.npcs.values()){
       // Manual payment is committed before the Day Tick, so status stays
       // at-shop for simulation but the customer must physically exit NOW.
@@ -304,7 +305,7 @@ export class NpcVisualSystem {
       }
       const plan=plans.get(npc.visitor.id)??null;
       const queueIndex=checkoutQueueIndex(carts,npc.visitor.id);
-      const key=JSON.stringify([plan?.items,plan?.reason,plan?.wantedItemId,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex]]);
+      const key=JSON.stringify([plan?.items,plan?.reason,plan?.wantedItemId,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex],roomSignature]);
       if(key===npc.intentKey)continue;
       npc.intent=plan;
       npc.intentKey=key;
@@ -546,7 +547,9 @@ export class NpcVisualSystem {
       }
       if(npc.phase==="queueing"&&
         (npc.root.metadata.shoppingPhase==="waiting-for-restock"||
-         npc.root.metadata.shoppingPhase==="waiting-for-credit")){
+         npc.root.metadata.shoppingPhase==="waiting-for-credit"||
+          npc.root.metadata.shoppingPhase==="restock-spot-full"||
+          npc.root.metadata.shoppingPhase==="credit-spot-full")){
         npc.restockSeconds=restockWaitRemaining(npc.restockSeconds??RESTOCK_WAIT_SECONDS,delta);
         npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
         if(npc.restockSeconds<=0)this.leaveUnserved(npc);
@@ -789,7 +792,7 @@ export class NpcVisualSystem {
       }
       npc.root.metadata.shoppingPhase="unreachable-shelf";
     }
-    const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length):[];
+    const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length,this.room):[];
     const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot,npc);
     if(!target){
       npc.phase="queueing";npc.route=[];npc.waypoint=0;
@@ -822,7 +825,7 @@ export class NpcVisualSystem {
       others.map(other=>({x:other.root.position.x,z:other.root.position.z})),
       others.map(other=>other.route.at(-1))
         .filter((point):point is Vector3=>point!==undefined)
-        .map(point=>({x:point.x,z:point.z})))?.route??null;
+        .map(point=>({x:point.x,z:point.z})),this.room)?.route??null;
   }
 
   private offAisleWaitingRoute(npc:NpcVisual):
@@ -837,12 +840,12 @@ export class NpcVisualSystem {
       .map(point=>({x:point.x,z:point.z}));
     return reserveRestockWaitingRoute(this.layout,
       {x:npc.root.position.x,z:npc.root.position.z},
-      occupied,destinations,npc.slot)?.route??null;
+      occupied,destinations,npc.slot,this.room)?.route??null;
   }
 
   private queuePosition(slot:number,npc:NpcVisual):Vector3|null {
     if(!this.layout)return null;
-    const points=idleShopPositions(this.layout,100);
+    const points=idleShopPositions(this.layout,100,this.room);
     const preferred=points[slot];
     // Assign a distinct *future* standing spot, not merely a position that
     // happens to be free this frame. Otherwise multiple shoppers all route

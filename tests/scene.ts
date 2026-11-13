@@ -442,3 +442,30 @@ export function stageReturningNpcVisualsInsideShop():void {
     node.position.set(x,0,z);
   }
 }
+
+/** Aim at a real pickable rock face, not at an artificially injected UI hook. */
+export function aimAtLevel5Rock(x:number,z:number):string {
+  const scene=Engine.LastCreatedScene!;
+  const mesh=scene.meshes.find(mesh=>
+    mesh.metadata?.level5MineCell?.x===x&&
+    mesh.metadata?.level5MineCell?.z===z);
+  if(!mesh)throw new Error(`No exposed mineable rock at ${x},${z}`);
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(x>0?5.65:-5.65,1.7,z);
+  camera.setTarget(new Vector3(mesh.position.x,1.7,mesh.position.z));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+  return mesh.name;
+}
+
+/** Wall and floor observations from the rendered Babylon scene. */
+export function inspectLevel5Rock(x:number,z:number) {
+  const scene=Engine.LastCreatedScene!;
+  return {
+    floor:!!scene.getMeshByName(`excavated-floor-${x},${z}`),
+    clickableRock:scene.meshes.some(mesh=>
+      mesh.metadata?.level5MineCell?.x===x&&
+      mesh.metadata?.level5MineCell?.z===z),
+    ceiling:!!scene.getMeshByName(`excavated-ceiling-${x},${z}`),
+  };
+}

@@ -1,3 +1,4 @@
+import type { Level5Room } from "./level5Room.ts";
 import type { GateSide } from "./npcVisitors.ts";
 import * as navigation from "./shopperNavigation.ts";
 import type { ShopPoint } from "./shopperNavigation.ts";
@@ -89,33 +90,43 @@ export function interruptedDepartureRoute(
  * rather than snapping a blocked, hard-coded point onto another visitor.
  * The returned null means idle capacity is exhausted, not an occupied slot.
  */
-const idleCache=new WeakMap<import("./shopLayout.ts").ShopLayout,ShopPoint[]>();
+const idleCache=new WeakMap<import("./shopLayout.ts").ShopLayout,{
+  signature:string;positions:ShopPoint[];requestedCount:number;
+}>();
 export function idleShopPositions(
-  layout:import("./shopLayout.ts").ShopLayout,count:number,
+  layout:import("./shopLayout.ts").ShopLayout,count:number,room?:Level5Room,
 ):ShopPoint[] {
   if(!Number.isSafeInteger(count)||count<0||count>1000)
     throw new RangeError("Invalid visitor count");
+  // Excavation changes the available floor without changing the furniture
+  // object. Cache the geometry signature as well as the layout identity.
+  const signature=JSON.stringify(room??null);
   const cached=idleCache.get(layout);
-  if(cached && (cached.length>=count || cached.length===100))return cached.slice(0,count);
+  if(cached?.signature===signature && cached.requestedCount>=count)
+    return cached.positions.slice(0,count);
   const {isObstructed,pathToShopGoal}=navigation;
   const positions:ShopPoint[]=[];
   const origin={x:gateTravelLane("level4","entering"),z:6};
-  for(let row=0;row<11&&positions.length<count;row++){
+  const extent=room?6.25+room.expansionTier*2:6.25;
+  const columns=Math.floor(extent*2/1.05)+1;
+  const rows=room?Math.floor((extent+2.9)/1.05)+1:11;
+  for(let row=0;row<rows&&positions.length<count;row++){
     const z=2.9-row*1.05;
-    for(let column=0;column<13&&positions.length<count;column++){
-      const x=-6.25+column*1.05;
+    for(let column=0;column<columns&&positions.length<count;column++){
+      const x=-extent+column*1.05;
       const candidate={x,z};
-      if(isObstructed(candidate,layout))continue;
+      if(isObstructed(candidate,layout,room))continue;
       if(positions.some(p=>Math.hypot(p.x-x,p.z-z)<NPC_CENTER_CLEARANCE))continue;
-      const route=pathToShopGoal(origin,candidate,layout);
+      const route=pathToShopGoal(origin,candidate,layout,room);
       if(!route)continue;
       const actual=route.waypoints.at(-1)??candidate;
-      if(isObstructed(actual,layout))continue;
+      if(isObstructed(actual,layout,room))continue;
       if(positions.some(p=>Math.hypot(p.x-actual.x,p.z-actual.z)<NPC_CENTER_CLEARANCE))continue;
       positions.push(actual);
     }
   }
-  if(count===100)idleCache.set(layout,positions);
+  idleCache.set(layout,{signature,positions,requestedCount:count});
+
   return positions;
 }
 

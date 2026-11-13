@@ -19,6 +19,8 @@ const key=(x:number,z:number)=>`${x},${z}`;
 const isIntegerCell=(c:RoomCell)=>Number.isSafeInteger(c.x)&&Number.isSafeInteger(c.z);
 const baseAir=(c:RoomCell)=>Math.abs(c.x)<=BASE_ROOM_HALF_EXTENT&&Math.abs(c.z)<=BASE_ROOM_HALF_EXTENT;
 const allowedExtent=(tier:number)=>BASE_ROOM_HALF_EXTENT+2*tier;
+/** Only side tunnels are currently represented by the shop renderer. */
+const inSideTunnel=(c:RoomCell)=>Math.abs(c.x)>BASE_ROOM_HALF_EXTENT&&Math.abs(c.z)<=6;
 /** The north/south dungeon connections remain protected at every tier. */
 export function isProtectedRoomCell(c:RoomCell):boolean {
   return Math.abs(c.z)>=BASE_ROOM_HALF_EXTENT&&
@@ -38,7 +40,7 @@ export function isValidLevel5Room(value:unknown):value is Level5Room {
     if(typeof entry!=="string"||!/^-?[0-9]+,-?[0-9]+$/.test(entry)||seen.has(entry))return false;
     const [x,z]=entry.split(",").map(Number);
     const cell={x,z};
-    if(!isIntegerCell(cell)||baseAir(cell)||isProtectedRoomCell(cell)||
+    if(!isIntegerCell(cell)||baseAir(cell)||!inSideTunnel(cell)||isProtectedRoomCell(cell)||
       Math.abs(x)>allowedExtent((room.expansionTier as number))||
       Math.abs(z)>allowedExtent((room.expansionTier as number)))return false;
     seen.add(entry);
@@ -70,6 +72,7 @@ export function excavateLevel5Cell(room:Level5Room,c:RoomCell):MineResult {
   if(!isIntegerCell(c))return {ok:false,reason:"Mining targets integer cells."};
   if(room.expansionTier===0)return {ok:false,reason:"Unlock shop expansion first."};
   if(isProtectedRoomCell(c))return {ok:false,reason:"Dungeon entrances are protected."};
+  if(!inSideTunnel(c))return {ok:false,reason:"Only the side tunnels can be excavated."};
   if(isLevel5Air(room,c))return {ok:false,reason:"That cell is already open."};
   const limit=allowedExtent(room.expansionTier);
   if(Math.abs(c.x)>limit||Math.abs(c.z)>limit)
