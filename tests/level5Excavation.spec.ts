@@ -14,9 +14,20 @@ test("unlock, mine exposed rock and keep the opening after reloading",async({pag
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     return (await new CampaignStorage().loadGame())?.level5Room?.expansionTier;
   }),{timeout:10000}).toBe(1);
+  // Unlocking expansion is not a permanent permission to mine by clicking.
+  await page.keyboard.press("u");
+  await expect(page.locator("#mining-mode-indicator")).toBeHidden();
   const aimed=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtLevel5Rock(8,4));
   expect(aimed).toContain("excavation-rock-face-");
+  await page.mouse.click(400,300);
+  const cellBefore=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    return (await new CampaignStorage().loadGame())?.level5Room?.excavatedCells.includes("8,4")??false;
+  });
+  expect(cellBefore).toBe(false);
+  await page.keyboard.press("u");
+  await expect(page.locator("#mining-mode-indicator")).toBeVisible();
   await page.mouse.click(400,300);
   await expect.poll(()=>page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
