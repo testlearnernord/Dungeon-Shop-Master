@@ -11,7 +11,7 @@ test("credit petition transfers one bread and saves Galvik's loan",async({page})
     await new CampaignStorage().saveGame({
       ...state,
       adventurers:state.adventurers.map((hero,i)=>i===0
-        ?{...hero,gold:0,inventory:{...hero.inventory,food:0}}
+        ?{...hero,gold:0,inventory:{...hero.inventory,bread:0}}
         :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...state.shopEconomy,slots:state.shopEconomy.slots.map(slot=>
         slot.id==="shelf-1-slot-2"?{...slot,itemId:"bread" as const,quantity:2}:slot)},
@@ -45,7 +45,7 @@ test("credit petition transfers one bread and saves Galvik's loan",async({page})
       dailySales:state.shopEconomy.dailySales};
   },id);
   expect(recorded.hero?.gold).toBe(0);
-  expect(recorded.hero?.inventory.food).toBe(1);
+  expect(recorded.hero?.inventory.bread).toBe(1);
   expect(recorded.remaining).toBe(1);
   expect(recorded.receipts).toHaveLength(0);
   expect(recorded.credits).toHaveLength(1);
