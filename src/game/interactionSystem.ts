@@ -177,7 +177,6 @@ export class InteractionSystem {
     const target = this.worldItems.find(({ mesh }) => mesh === pick?.pickedMesh);
     if (target?.kind === "register") {
       this.message = this.checkoutRegister();
-      this.onMerchantAction("checkout");
     } else if (target?.kind === "roster-board") {
       this.message = "Adventurer roster opened.";
       this.openRoster();
