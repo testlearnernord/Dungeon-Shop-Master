@@ -112,8 +112,8 @@ export function checkoutCustomer(
     changes.set(slot.id,(changes.get(slot.id) ?? 0) + line.quantity);
     units += line.quantity;
     revenue += line.subtotal;
-    switch (item.kind) {
-      case "food": bread += line.quantity; break;
+    if(item.id==="bread")bread+=line.quantity;
+    else switch (item.kind) {
       case "healing": healing += line.quantity; break;
       case "weapon": weapon = item.name; break;
       case "armor": armor = item.name; break;
