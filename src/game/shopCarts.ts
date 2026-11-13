@@ -136,7 +136,7 @@ export function settleHeldShopCarts(
         !Number.isSafeInteger(result.shopEconomy.balance + total))
       throw new Error("An unpaid shopping cart has an invalid total.");
 
-    let food = hero.inventory.food;
+    let bread = hero.inventory.bread;
     let healing = hero.inventory.healing;
     let weapon = hero.equipment.weapon;
     let armor = hero.equipment.armor;
@@ -147,8 +147,8 @@ export function settleHeldShopCarts(
           line.quantity < 1 || !Number.isSafeInteger(line.quantity))
         throw new Error("An unpaid shopping cart contains invalid stock.");
       units += line.quantity;
-      if (item.kind === "food") food += line.quantity;
-      else if (item.kind === "healing") healing += line.quantity;
+      if (item.id === "bread") bread += line.quantity;
+      else if (item.id === "healing-herb") healing += line.quantity;
       else if (item.kind === "weapon") weapon = item.name;
       else if (item.kind === "armor") armor = item.name;
       else throw new Error("Unsupported reserved item type.");
@@ -165,7 +165,7 @@ export function settleHeldShopCarts(
       ...result,
       adventurers: result.adventurers.map(person => person.id === hero.id
         ? {...person, gold: person.gold-total,
-          inventory: {...person.inventory,food,healing},
+          inventory: {...person.inventory,bread,healing},
           equipment: {...person.equipment,weapon,armor}}
         : person),
       shopEconomy: {

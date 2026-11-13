@@ -26,8 +26,7 @@ export function setupEconomyHud(
     max:HTMLButtonElement;discard:HTMLButtonElement}[]=[];
   const groupFor=(kind:string)=>kind==="weapon"||kind==="armor"?"equipment":
     kind==="material"?"materials":"supplies";
-  const purposeFor=(kind:string)=>kind==="food"?"Keeps heroes fed before expeditions.":
-    kind==="healing"?"Restores health for wounded adventurers.":
+  const purposeFor=(kind:string)=>kind==="healing"?"Restores health for wounded adventurers.":
     kind==="weapon"?"Improves dungeon combat performance.":
     kind==="armor"?"Reduces incoming dungeon damage.":
     kind==="material"?"Raw material for future crafting.":
@@ -89,7 +88,8 @@ export function setupEconomyHud(
     const type=document.createElement("small");
     type.className="catalog-product-type";
     type.textContent=groupFor(item.kind).toUpperCase();
-    description.textContent=purposeFor(item.kind);
+    description.textContent=item.id==="bread"?"Cheap treatment: restores 8 HP when injured.":
+      item.id==="healing-herb"?"Strong treatment: restores 18 HP when injured.":purposeFor(item.kind);
     identity.append(name,type);
     const iconFrame=document.createElement("div");
     iconFrame.className="catalog-icon-frame";

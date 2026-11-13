@@ -61,9 +61,9 @@ export function setupDayHud(
     const state = store.state;
     const fromLevel6 = level6ReturnIds(state.events, state.day);
     const names = heroDisplayNames(state.adventurers);
-    return state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, level, status, equipment, gold, health, stats, hunger, inventory }) => ({
+    return state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, level, status, equipment, gold, health, stats }) => ({
       id, name, role, level, status, equipment, gold, health,
-      maxHealth:stats.maxHealth,hunger, food: inventory.food,
+      maxHealth:stats.maxHealth,
       displayName: names.get(id) ?? name,
       entranceGate: fromLevel6.has(id) ? "level6" as const : "level4" as const,
     }));
@@ -122,7 +122,7 @@ export function setupDayHud(
       entry.dataset.status = hero.status;
       const summary = document.createElement("span");
       summary.className = "hero-summary";
-      summary.textContent = `${names.get(hero.id) ?? hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
+      summary.textContent = `${names.get(hero.id) ?? hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Bread ${hero.inventory.bread} · Herbs ${hero.inventory.healing}`;
       entry.append(summary);
       const cash=document.createElement("span");
       cash.className="hero-gold";
@@ -142,7 +142,7 @@ export function setupDayHud(
         });
         entry.append(" ", permission);
       }
-      entry.title = `${hero.id} · XP ${hero.xp} · Gold ${hero.gold} · ${hero.traits.positive} / ${hero.traits.neutral} / ${hero.traits.negative} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
+      entry.title = `${hero.id} · XP ${hero.xp} · Gold ${hero.gold} · ${hero.traits.positive} / ${hero.traits.neutral} / ${hero.traits.negative} · Bread ${hero.inventory.bread} · Herbs ${hero.inventory.healing}`;
       return entry;
     }));
   };
