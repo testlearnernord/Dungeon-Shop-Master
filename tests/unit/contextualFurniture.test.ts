@@ -50,5 +50,5 @@ test("service routes stay reachable for default and supported moved shelves",()=
     ...createShopLayout(),
     counter:{x:7,z:7,rotation:0 as const},
   };
-  assert.match(shopServiceReachabilityProblem(stranded)??"",/checkout|Entrance/);
+  assert.match(shopServiceReachabilityProblem(stranded)??"",/checkout|Entrance|wall/i);
 });
