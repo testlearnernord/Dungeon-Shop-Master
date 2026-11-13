@@ -585,3 +585,74 @@
   #hud .shop-hud-glance #merchant-gold::after{font-size:11px}
   #hud .adventurer-overview-heading #population-summary::after{font-size:10px}
 }
+
+
+/* Small, genuinely centered inventory icons and deliberate mining feedback. */
+#hud #inventory .inventory-row{
+  position:relative!important;display:block!important;
+  box-sizing:border-box!important;padding:0!important;flex-shrink:0!important
+}
+#hud #inventory .inventory-row .item-pictogram{
+  position:absolute!important;inset:auto!important;
+  left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;
+  display:block!important;width:36px;height:36px;
+  padding:0!important;margin:0!important;pointer-events:none
+}
+#hud #inventory .inventory-row .hotbar-key{
+  position:absolute;top:3px;left:5px;line-height:1;z-index:2
+}
+#hud #inventory .inventory-row strong{
+  position:absolute;bottom:2px;right:2px;line-height:1.1;z-index:2
+}
+#mining-mode-indicator{
+  position:fixed;left:50%;top:68px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:9px;z-index:30;
+  padding:7px 12px;border:1px solid #c49c61;border-radius:10px;
+  background:rgba(24,27,23,.85);backdrop-filter:blur(10px);
+  color:#eddbb8;pointer-events:none;font-size:11px
+}
+#mining-mode-indicator[hidden]{display:none!important}
+#mining-mode-indicator strong{color:#f7c87a;letter-spacing:.08em;white-space:nowrap}
+#mining-mode-indicator span{white-space:nowrap}
+
+/* Audio is a button-sized, bottom-right instrument. Expand only on intent.
+   Never obscure game messages or spectator headers at top center again. */
+#music-panel,body.arena-active #music-panel,body.dungeon-active #music-panel{
+  position:fixed!important;top:auto!important;left:auto!important;
+  right:14px!important;bottom:14px!important;transform:none!important;
+  width:auto!important;min-width:0!important;
+  max-width:min(260px,calc(100vw - 24px))!important;
+  padding:4px!important;border-radius:10px;
+  background:rgba(15,19,22,.50)!important;backdrop-filter:blur(10px);
+  z-index:35
+}
+#music-panel #music-expand{
+  display:grid;place-items:center;width:32px;height:32px;
+  padding:5px;border:1px solid transparent;border-radius:8px;
+  background:transparent;color:var(--ui-gold);cursor:pointer
+}
+#music-panel #music-expand .ui-icon{width:19px;height:19px}
+#music-panel #music-content{display:none}
+#music-panel[data-expanded="true"]{
+  display:grid!important;grid-template-columns:32px 1fr;align-items:start;
+  gap:7px;padding:7px!important;background:rgba(15,19,22,.93)!important
+}
+#music-panel[data-expanded="true"] #music-content{display:block}
+#music-panel[data-expanded="true"] #music-expand{
+  background:rgba(186,137,71,.19);border-color:var(--ui-border)
+}
+#music-panel .music-heading{display:flex!important}
+#music-panel .music-actions{display:flex;gap:5px;align-items:center}
+#music-panel .music-actions label{display:inline}
+#music-panel #music-volume{width:74px}
+@media(max-width:780px){
+  #hud #inventory .inventory-row .item-pictogram{width:32px;height:32px}
+  #music-panel,body.arena-active #music-panel,body.dungeon-active #music-panel{
+    bottom:7px!important;right:8px!important
+  }
+  #mining-mode-indicator{top:120px;max-width:96vw;flex-wrap:wrap}
+  #mining-mode-indicator span{white-space:normal}
+}
+@media(max-width:470px){
+  #hud #inventory .inventory-row .item-pictogram{width:28px;height:28px}
+}

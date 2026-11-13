@@ -176,7 +176,9 @@
           <small>Saved footage never changes outcomes. Full map is available only in the explicit development preview.</small>
         </footer>
       </section>
-      <aside id="music-panel" aria-label="Game music">
+      <aside id="music-panel" aria-label="Game music" data-expanded="false">
+        <button id="music-expand" type="button" aria-label="Open music controls" aria-controls="music-content" aria-expanded="false" title="Music controls"></button>
+        <div id="music-content">
         <div class="music-heading">
           <span aria-hidden="true">♫</span>
           <div><strong id="music-track">The Lean Season</strong><small id="music-status" role="status">Starts after your first click</small></div>
@@ -185,6 +187,7 @@
           <button id="music-toggle" type="button" aria-pressed="false">Mute</button>
           <label for="music-volume">Volume</label>
           <input id="music-volume" type="range" min="0" max="100" step="1" value="35" aria-label="Music volume" />
+        </div>
         </div>
       </aside>
       <dialog id="shelf-placement" aria-labelledby="placement-title" tabindex="-1">

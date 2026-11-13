@@ -50,6 +50,15 @@ export class SceneSoundtrack {
     this.slider = document.querySelector<HTMLInputElement>("#music-volume")!;
     this.label = document.querySelector<HTMLElement>("#music-track")!;
     this.status = document.querySelector<HTMLElement>("#music-status")!;
+    const expand=panel.querySelector<HTMLButtonElement>("#music-expand")!;
+    expand.append(uiIcon("speaker"));
+    expand.addEventListener("click",()=>{
+      const open=panel.dataset.expanded!=="true";
+      panel.dataset.expanded=String(open);
+      expand.setAttribute("aria-expanded",String(open));
+      expand.setAttribute("aria-label",open?"Hide music controls":"Open music controls");
+      expand.title=open?"Hide music controls":"Music controls";
+    });
     const musicMark=panel.querySelector(".music-heading > span");
     musicMark?.replaceWith(uiIcon("speaker"));
     const preferences = loadPreferences();
