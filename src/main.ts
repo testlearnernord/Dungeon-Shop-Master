@@ -95,12 +95,14 @@ if(import.meta.env.VITE_E2E==="1"){
     __shopTestAdvanceDay?:()=>void;
     __shopTestStockItem?:(slotId:string,itemId:ItemId)=>string;
     __shopTestRestockWait?:(heroId:string,seconds:number)=>void;
+    __shopTestReadyCheckout?:()=>string|null;
   };
   hooks.__shopTestAdvanceDay=()=>dayClock.endDayFromBed();
   hooks.__shopTestStockItem=(slotId,itemId)=>
     store.transfer(slotId,itemId,"stock");
   hooks.__shopTestRestockWait=(heroId,seconds)=>
     npcVisuals.setRestockTimeForE2E(heroId,seconds);
+  hooks.__shopTestReadyCheckout=()=>npcVisuals.readyCheckoutHeroId();
 }
 // The forecast is read-only. It uses exactly the same purchase decisions
 // as the confirmed next-day transaction. Stock changes trigger replanning.

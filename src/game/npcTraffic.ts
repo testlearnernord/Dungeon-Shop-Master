@@ -1,4 +1,5 @@
 import type { Level5Room } from "./level5Room.ts";
+import {getCounterPlacement,rotateShelfOffset,type ShopLayout} from "./shopLayout.ts";
 import type { GateSide } from "./npcVisitors.ts";
 import * as navigation from "./shopperNavigation.ts";
 import type { ShopPoint } from "./shopperNavigation.ts";
@@ -65,7 +66,7 @@ export function nextEntranceSpawnZ(laneX:number,occupied:readonly ShopPoint[]):n
     const z=13+i*ENTRANCE_SPAWN_HEADWAY;
     if(occupied.every(p=>Math.hypot(p.x-laneX,p.z-z)>=NPC_CENTER_CLEARANCE))return z;
   }
-  return 13+120*0.8;
+  return 13+120*ENTRANCE_SPAWN_HEADWAY;
 }
 
 /** Re-entering a shop during an outbound animation must not cross the
@@ -83,6 +84,41 @@ export function interruptedDepartureRoute(
     ];
   }
   return [{x:incomingX,z:innerZ}];
+}
+
+/** Prefer perimeter idle stands, reserving customer service lanes for
+ * actual shoppers; keep the central floor as finite overflow capacity. */
+export function idleShopSpotPriority(p:ShopPoint,layout:ShopLayout):number {
+  const counter=getCounterPlacement(layout);
+  const registerDistance=Math.hypot(p.x-counter.x,p.z-counter.z);
+  const shelfDistance=Math.min(...layout.shelves.map(shelf=>{
+    const front=rotateShelfOffset(1.75,0,shelf.rotation);
+    return Math.hypot(p.x-shelf.x-front.x,p.z-shelf.z-front.z);
+  }));
+  const restockDistance=Math.min(...[-3.65,-2.3,2.3,3.65].flatMap(x=>
+    [-4.6,-3.2].map(z=>Math.hypot(p.x-x,p.z-z))));
+  return Math.max(0,3.25-registerDistance)*4+
+    Math.max(0,2.35-shelfDistance)*3+
+    Math.max(0,1.3-restockDistance)*6+
+    (p.z>-2.1?6:0)+(p.z>0?6:0)+
+    (Math.abs(p.x)<1.6?2:0)-Math.min(5,Math.abs(p.x))*.25;
+}
+
+/** Only idle, non-service customers step aside when a moving shopper has
+ * an immediate route through their standing place. Never make moving
+ * shoppers jump or teleport through furniture. */
+export function idleShopperBlocksRoute(
+  idle:ShopPoint,walker:ShopPoint,waypoint:ShopPoint,
+):boolean {
+  if(![idle.x,idle.z,walker.x,walker.z,waypoint.x,waypoint.z]
+    .every(Number.isFinite))return false;
+  const length=Math.hypot(waypoint.x-walker.x,waypoint.z-walker.z);
+  const separation=Math.hypot(idle.x-walker.x,idle.z-walker.z);
+  if(length<=.35||separation<.1||separation>2.65)return false;
+  const forward=((idle.x-walker.x)*(waypoint.x-walker.x)+
+    (idle.z-walker.z)*(waypoint.z-walker.z))/length;
+  return forward>.1&&forward<=length+.15&&
+    segmentDistance(idle,walker,waypoint)<NPC_CENTER_CLEARANCE+.2;
 }
 
 /** Choose real, reachable, non-overlapping waiting destinations.
@@ -109,21 +145,23 @@ export function idleShopPositions(
   const origin={x:gateTravelLane("level4","entering"),z:6};
   const extent=room?6.25+room.expansionTier*2:6.25;
   const columns=Math.floor(extent*2/1.05)+1;
-  const rows=room?Math.floor((extent+2.9)/1.05)+1:11;
-  for(let row=0;row<rows&&positions.length<count;row++){
-    const z=2.9-row*1.05;
-    for(let column=0;column<columns&&positions.length<count;column++){
-      const x=-extent+column*1.05;
-      const candidate={x,z};
-      if(isObstructed(candidate,layout,room))continue;
-      if(positions.some(p=>Math.hypot(p.x-x,p.z-z)<NPC_CENTER_CLEARANCE))continue;
-      const route=pathToShopGoal(origin,candidate,layout,room);
-      if(!route)continue;
-      const actual=route.waypoints.at(-1)??candidate;
-      if(isObstructed(actual,layout,room))continue;
-      if(positions.some(p=>Math.hypot(p.x-actual.x,p.z-actual.z)<NPC_CENTER_CLEARANCE))continue;
-      positions.push(actual);
-    }
+  const candidates:ShopPoint[]=[];
+  for(let row=0;row<11;row++)for(let column=0;column<columns;column++)
+    candidates.push({x:-extent+column*1.05,z:2.9-row*1.05});
+  candidates.sort((a,b)=>idleShopSpotPriority(a,layout)-
+    idleShopSpotPriority(b,layout)||a.z-b.z||a.x-b.x);
+  for(const candidate of candidates){
+    if(positions.length>=count)break;
+    if(isObstructed(candidate,layout,room))continue;
+    if(positions.some(p=>Math.hypot(p.x-candidate.x,p.z-candidate.z)<
+      NPC_CENTER_CLEARANCE))continue;
+    const route=pathToShopGoal(origin,candidate,layout,room);
+    if(!route)continue;
+    const actual=route.waypoints.at(-1)??candidate;
+    if(isObstructed(actual,layout,room))continue;
+    if(positions.some(p=>Math.hypot(p.x-actual.x,p.z-actual.z)<
+      NPC_CENTER_CLEARANCE))continue;
+    positions.push(actual);
   }
   idleCache.set(layout,{signature,positions,requestedCount:count});
 

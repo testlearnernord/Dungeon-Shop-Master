@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
+import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
   for(const gate of ["level4","level6"] as const){
@@ -287,4 +287,32 @@ test("checkout-bound shoppers at the Level 4 mouth receive gate soft-pass too",(
     "the central register area retains ordinary collision timing");
   assert.equal(inGateTrafficThroat({x:-4.5,z:1}),false,
     "browsing beside a shelf must not trigger accelerated body passing");
+});
+
+test("perimeter idle positions avoid blocking shopping, checkout and request pockets",()=>{
+  const layout=createShopLayout();
+  const spots=idleShopPositions(layout,12);
+  assert.equal(spots.length,12);
+  assert(spots.every(p=>p.z<0),"normal waiting visitors should clear the front counter");
+  const perimeter={x:-5.2,z:-5.5},checkout={x:0,z:0};
+  assert(idleShopSpotPriority(perimeter,layout)<idleShopSpotPriority(checkout,layout));
+  assert.equal(idleShopPositions(layout,6).length,6);
+});
+
+test("stationary shoppers yield only to approaching paths that actually cross them",()=>{
+  const idle={x:-2,z:-2};
+  assert.equal(idleShopperBlocksRoute(idle,{x:-2,z:-.3},{x:-2,z:-4}),true);
+  assert.equal(idleShopperBlocksRoute(idle,{x:-2,z:-4},{x:-2,z:-5}),false);
+  assert.equal(idleShopperBlocksRoute(idle,{x:2,z:-.3},{x:2,z:-4}),false);
+  assert.equal(idleShopperBlocksRoute(idle,{x:-2,z:-.3},{x:-2,z:-.3}),false);
+  assert.equal(idleShopperBlocksRoute(idle,{x:NaN,z:0},{x:-2,z:-4}),false);
+});
+
+test("saturated entrance spawns safely beyond all reserved positions",()=>{
+  const lane=gateTravelLane("level4","entering");
+  const occupied=Array.from({length:120},(_,i)=>
+    ({x:lane,z:13+i*ENTRANCE_SPAWN_HEADWAY}));
+  const z=nextEntranceSpawnZ(lane,occupied);
+  assert(z>occupied.at(-1)!.z);
+  assert(occupied.every(p=>Math.hypot(p.x-lane,p.z-z)>=NPC_CENTER_CLEARANCE));
 });
