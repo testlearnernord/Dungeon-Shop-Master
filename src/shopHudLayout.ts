@@ -1,30 +1,42 @@
-/** Shop HUD presentation only; game state remains mounted while details are collapsed. */
-export function setupShopStatusToggle(): void {
-  const button = document.querySelector<HTMLButtonElement>("#toggle-shop-status");
-  const content = document.querySelector<HTMLElement>("#shop-status-content");
-  if (!button || !content) return;
-  button.addEventListener("click", () => {
-    const expanded = button.getAttribute("aria-expanded") !== "true";
-    button.setAttribute("aria-expanded", String(expanded));
-    content.hidden = !expanded;
-    button.textContent = expanded ? "Hide shop details" : "Show shop details";
-  });
+import {setIconButtonLabel} from "./uiIcons.ts";
+/** A compact default HUD. Live day and gold remain visible outside the
+ * disclosure. Save failures are NEVER concealed behind its closed state. */
+export function setupShopStatusToggle():void {
+  const button=document.querySelector<HTMLButtonElement>("#toggle-shop-status");
+  const content=document.querySelector<HTMLElement>("#shop-status-content");
+  const save=document.querySelector<HTMLElement>("#save-status");
+  const panel=document.querySelector<HTMLElement>(".day-panel");
+  if(!button||!content||!save||!panel)return;
+  const refresh=()=>{
+    const message=save.textContent??"";
+    const error=/\b(error|failed|invalid|corrupt|unavailable)\b/i.test(message);
+    save.dataset.error=String(error);
+    panel.classList.toggle("has-save-error",error);
+  };
+  new MutationObserver(refresh).observe(save,{childList:true,characterData:true,subtree:true});
+  refresh();
+  const show=(open:boolean)=>{
+    button.setAttribute("aria-expanded",String(open));
+    content.hidden=!open;
+    setIconButtonLabel(button,open?"Hide shop details":"Show shop details");
+  };
+  show(false);
+  button.addEventListener("click",()=>show(button.getAttribute("aria-expanded")!=="true"));
 }
-
-/** The stocking bar wraps on small screens. Position the expanded controls
- * panel above the bar's actual top edge, never by guessing its height. */
-export function setupControlsHotbarClearance():void {
-  const hotbar=document.querySelector<HTMLElement>("#inventory");
+/** Measure the dock's actual upper edge. This is kept for the compact
+ * controls disclosure and retains correct placement after viewport changes. */
+export function setupControlsHotbarClearance():void{
+  const inventory=document.querySelector<HTMLElement>("#inventory");
   const legend=document.querySelector<HTMLDetailsElement>("#hud details.controls");
-  if(!hotbar||!legend)return;
-  const refresh=():void=>{
-    const inventoryTop=hotbar.getBoundingClientRect().top;
-    const controlsTop=legend.getBoundingClientRect().top;
-    const clearance=Math.max(8,Math.ceil(controlsTop-inventoryTop+12));
+  if(!inventory||!legend)return;
+  const refresh=()=>{
+    const dock=inventory.getBoundingClientRect();
+    const controls=legend.getBoundingClientRect();
+    const clearance=Math.max(8,Math.ceil(controls.top-dock.top+12));
     legend.style.setProperty("--hotbar-clearance",clearance+"px");
   };
   const observer=new ResizeObserver(refresh);
-  observer.observe(hotbar);
+  observer.observe(inventory);
   observer.observe(legend);
   legend.addEventListener("toggle",refresh);
   window.addEventListener("resize",refresh);
