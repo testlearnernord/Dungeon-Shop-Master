@@ -61,7 +61,7 @@ export function summarizeLedger(before: GameState, after: GameState): LedgerSumm
   // Do not announce death, victory, loot, health or exploration outcome here.
   const safeTypes: ReadonlySet<WorldEvent["type"]> = new Set([
     "shop-arrival","shop-departure","shop-stay","influx",
-    "level6-departure","level7-departure","food-shortage",
+    "level6-departure","level7-departure",
   ]);
   return {
     closingDay:before.day,morningDay:after.day,
