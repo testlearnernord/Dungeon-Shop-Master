@@ -1,6 +1,7 @@
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import {
@@ -20,6 +21,7 @@ import {
  */
 export function setupBlueprintHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
+  canEdit:()=>boolean=()=>true,
 ):{close:()=>void;open:()=>void}{
   const scene=camera.getScene();
   const openButton=document.querySelector<HTMLButtonElement>("#open-blueprint")!;
@@ -28,21 +30,19 @@ export function setupBlueprintHud(
   panel.hidden=true;
   panel.setAttribute("aria-label","Furniture blueprint placement");
   const title=document.createElement("h2");
-  title.textContent="FURNITURE BLUEPRINT";
+  title.textContent="MOVE FURNITURE";
   const hint=document.createElement("p");
-  hint.textContent="Move the mouse over the floor or a wall to position the ghost. Left click places it; right click cancels.";
-  const choices=document.createElement("div");
-  choices.className="blueprint-choices";
+  hint.textContent="Aim at a new floor or wall position. Left click places the object; right click cancels.";
   const status=document.createElement("p");
   status.className="blueprint-status";
   status.setAttribute("role","status");
   const controls=document.createElement("p");
   controls.className="blueprint-controls";
-  controls.textContent="1-3 Select · R Rotate · LMB Place · RMB / Esc Cancel · P Toggle";
+  controls.textContent="R Rotate · Left click Place · Right click / Esc Cancel";
   const cancel=document.createElement("button");
   cancel.type="button";
   cancel.textContent="Exit placement";
-  panel.append(title,hint,choices,status,controls,cancel);
+  panel.append(title,hint,status,controls,cancel);
   document.body.append(panel);
 
   const validMaterial=new StandardMaterial("blueprint-valid",scene);
@@ -64,6 +64,25 @@ export function setupBlueprintHud(
   ghost.renderingGroupId=2;
   ghost.setEnabled(false);
 
+  // A distinct outline highlights an object under the crosshair before P.
+  // It is only a visual overlay: no collision or authoritative position change.
+  const focusMaterial=new StandardMaterial("furniture-focus",scene);
+  focusMaterial.diffuseColor=new Color3(0.9,0.69,0.3);
+  focusMaterial.emissiveColor=new Color3(0.65,0.42,0.17);
+  focusMaterial.alpha=0.5;
+  focusMaterial.wireframe=true;
+  focusMaterial.disableLighting=true;
+  const focusMesh=MeshBuilder.CreateBox("furniture-focus-outline",{size:1},scene);
+  focusMesh.material=focusMaterial;
+  focusMesh.isPickable=false;
+  focusMesh.checkCollisions=false;
+  focusMesh.setEnabled(false);
+  const focusHint=document.createElement("div");
+  focusHint.id="furniture-look-prompt";
+  focusHint.hidden=true;
+  document.body.append(focusHint);
+  let lookedAt:LookedAtFurniture|null=null;
+
   let enabled=false;
   let activeId:FurnitureId="shelf-1";
   let rotation:0|1|2|3=0;
@@ -71,7 +90,7 @@ export function setupBlueprintHud(
   let draft:FurnitureDraft|null=null;
   let placeable=false;
   let reason="Aim at a floor or wall to place the blueprint.";
-  const buttons=new Map<FurnitureId,HTMLButtonElement>();
+
 
   const updateStatus=(message:string,valid:boolean):void=>{
     if(status.textContent!==message)status.textContent=message;
@@ -84,21 +103,50 @@ export function setupBlueprintHud(
   const choose=(id:FurnitureId):void=>{
     activeId=id;
     rotation=getSaved(id).rotation;
+    title.textContent="MOVE · "+
+      (FURNITURE_CATALOG.find(def=>def.id===id)?.label??"Furniture");
     draft=null;
-    for(const [key,button] of buttons){
-      button.setAttribute("aria-pressed",String(key===id));
-    }
     updateStatus("Aim at a "+(id==="counter"?"floor":"floor or wall")+".",false);
   };
-  for(const [index,definition] of FURNITURE_CATALOG.entries()){
-    const button=document.createElement("button");
-    button.type="button";
-    button.textContent=(index+1)+". "+definition.label;
-    button.dataset.furnitureId=definition.id;
-    button.addEventListener("click",()=>choose(definition.id));
-    choices.append(button);
-    buttons.set(definition.id,button);
-  }
+  /** Only raycast-pick existing furniture. The nearest ordinary hit must
+   * not be substantially closer: characters and walls occlude objects. */
+  const lookAtFurniture=():LookedAtFurniture|null=>{
+    const ray=camera.getForwardRay(5);
+    const target=scene.pickWithRay(ray,mesh=>
+      mesh.isPickable && classifyFurnitureMesh(mesh.name)!==null);
+    if(!target?.hit||!target.pickedMesh)return null;
+    const nearest=scene.pickWithRay(ray,mesh=>mesh.isPickable &&
+      mesh.name!=="furniture-focus-outline"&&mesh.name!=="blueprint-preview");
+    if(nearest?.hit&&nearest.distance<target.distance-0.1)return null;
+    return classifyFurnitureMesh(target.pickedMesh.name);
+  };
+  const updateHover=():void=>{
+    if(enabled||!canEdit()||document.querySelector("dialog[open]")){
+      focusMesh.setEnabled(false);focusHint.hidden=true;lookedAt=null;return;
+    }
+    const found=lookAtFurniture();
+    lookedAt=found;
+    if(!found){focusMesh.setEnabled(false);focusHint.hidden=true;return;}
+    const dimensions=found.bounds;
+    let x=found.position.x,y=found.position.y,z=found.position.z;
+    let turns=0;
+    if(found.movableId){
+      const saved=getSaved(found.movableId);
+      x=saved.x;z=saved.z;turns=saved.rotation;
+      if(found.movableId!=="counter"){
+        const offset=rotateShelfOffset(0.48,0,saved.rotation);
+        x+=offset.x;z+=offset.z;
+      }
+    }
+    focusMesh.position.set(x,y,z);
+    focusMesh.scaling.set(dimensions.width,dimensions.height,dimensions.depth);
+    focusMesh.rotation.y=turns*Math.PI/2;
+    focusMesh.setEnabled(true);
+    focusHint.textContent=found.movableId
+      ?found.label+" · P to move"
+      :found.label+" · Fixed until modular furniture is enabled";
+    focusHint.hidden=false;
+  };
 
   const occupiedBy=(p:FurnitureDraft):string|null=>{
     const hits=(x:number,z:number,radius:number)=>p.id==="counter"
@@ -160,18 +208,28 @@ export function setupBlueprintHud(
     canvas.style.cursor="";
   };
   const open=():void=>{
-    if(enabled)return;
-    if(document.querySelector("dialog[open]")||
-       document.body.classList.contains("arena-active")||
-       document.body.classList.contains("dungeon-active"))return;
+    if(enabled){close();return;}
+    if(!canEdit()||document.querySelector("dialog[open]"))return;
+    const found=lookAtFurniture();
+    if(!found){
+      focusHint.textContent="Look directly at a piece of furniture, then press P.";
+      focusHint.hidden=false;
+      return;
+    }
+    if(!found.movableId){
+      focusHint.textContent=found.label+
+        " is registered. Its support/collisions must become modular before it can be moved.";
+      focusHint.hidden=false;
+      return;
+    }
     enabled=true;panel.hidden=false;
+    focusMesh.setEnabled(false);focusHint.hidden=true;
     if(document.pointerLockElement===canvas)document.exitPointerLock();
     canvas.style.cursor="crosshair";
-    choose(activeId);
+    choose(found.movableId);
     pointer={x:canvas.clientWidth/2,y:canvas.clientHeight/2};
     updateGhost();
   };
-  const toggle=():void=>{if(enabled)close();else open();};
   const commit=():void=>{
     updateGhost();
     if(!draft||!placeable)return;
@@ -184,7 +242,7 @@ export function setupBlueprintHud(
     }else updateStatus(result,false);
   };
 
-  openButton.addEventListener("click",toggle);
+  openButton.addEventListener("click",open);
   cancel.addEventListener("click",close);
   canvas.addEventListener("pointermove",event=>{
     if(!enabled)return;
@@ -208,13 +266,10 @@ export function setupBlueprintHud(
   window.addEventListener("keydown",event=>{
     if(event.repeat||event.ctrlKey||event.altKey||event.metaKey)return;
     if(event.code==="KeyP"&&!event.shiftKey){
-      event.preventDefault();event.stopImmediatePropagation();toggle();
+      event.preventDefault();event.stopImmediatePropagation();open();
       return;
     }
     if(!enabled)return;
-    const id=event.code.match(/^Digit([123])$/);
-    if(id){event.preventDefault();event.stopImmediatePropagation();
-      choose(FURNITURE_CATALOG[Number(id[1])-1].id);return;}
     if(event.code==="KeyR"){
       event.preventDefault();event.stopImmediatePropagation();
       rotation=((rotation+1)%4) as 0|1|2|3;
@@ -225,6 +280,6 @@ export function setupBlueprintHud(
       close();
     }
   },true);
-  scene.onBeforeRenderObservable.add(updateGhost);
+  scene.onBeforeRenderObservable.add(()=>{updateHover();updateGhost();});
   return {open,close};
 }
