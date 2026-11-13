@@ -10,6 +10,8 @@ import { Scene } from "@babylonjs/core/scene";
 import { reconcileVisitors, shouldLeaveShopVisual, type GateSide, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
+import {heroPortraitRegion} from "./portraitAtlas.ts";
+import {drawGoldCoin} from "./goldCoin.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
 import { RESTOCK_WAIT_SECONDS, restockWaitRemaining, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
 import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble, type NpcWishBubble } from "./npcWishBubble.ts";
@@ -93,10 +95,8 @@ function paintIdentity(npc:NpcVisual,atlas:HTMLImageElement):void {
   ctx.arc(71,75,50,0,Math.PI*2);
   ctx.clip();
   if(atlas.complete&&atlas.naturalWidth>0){
-    const w=atlas.naturalWidth/5,h=atlas.naturalHeight/5;
-    const inset=Math.min(w,h)*.06;
-    ctx.drawImage(atlas,(index%5)*w+inset,Math.floor(index/5)*h+inset,
-      w-2*inset,h-2*inset,20,24,102,102);
+    const crop=heroPortraitRegion(index,atlas.naturalWidth,atlas.naturalHeight);
+    ctx.drawImage(atlas,crop.sx,crop.sy,crop.sw,crop.sh,20,24,102,102);
   }else{
     ctx.fillStyle="#576a62";
     ctx.fillRect(20,24,102,102);
@@ -119,6 +119,9 @@ function paintIdentity(npc:NpcVisual,atlas:HTMLImageElement):void {
   ctx.fillStyle=roles[role]??"#dbc293";
   ctx.font="650 22px system-ui";
   ctx.fillText(role.toUpperCase(),147,94);
+  drawGoldCoin(ctx,486,87,13);
+  ctx.fillStyle="#f5d79c";ctx.font="700 22px system-ui";
+  ctx.fillText(String(npc.visitor.gold??0)+"g",506,94,100);
   const hp=npc.visitor.health;
   const max=npc.visitor.maxHealth;
   const ratio=typeof hp==="number"&&typeof max==="number"&&max>0
@@ -129,6 +132,7 @@ function paintIdentity(npc:NpcVisual,atlas:HTMLImageElement):void {
   npc.labelTexture.update();
   npc.root.metadata.displayName=name;
   npc.root.metadata.level=level;
+  npc.root.metadata.walletGold=npc.visitor.gold??0;
   npc.root.metadata.portraitIndex=index;
   npc.root.metadata.portraitReady=atlas.complete&&atlas.naturalWidth>0;
 }

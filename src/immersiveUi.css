@@ -656,3 +656,12 @@
 @media(max-width:470px){
   #hud #inventory .inventory-row .item-pictogram{width:28px;height:28px}
 }
+
+/* Safe, centered hero portraits, clipped within the circular rim. */
+#roster-dialog .roster-portrait{
+  display:block;box-sizing:border-box;overflow:hidden;
+  flex:0 0 58px;width:58px;height:58px;
+  border-radius:50%;background-origin:padding-box;
+  background-clip:padding-box;background-repeat:no-repeat;
+  background-color:#24312c
+}

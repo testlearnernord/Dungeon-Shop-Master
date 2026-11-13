@@ -1,6 +1,7 @@
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries, type RosterFilter } from "./game/rosterView.ts";
+import {heroPortraitBackground} from "./game/portraitAtlas.ts";
 import { ECONOMY } from "./game/economy.ts";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
 import {itemIcon,uiIcon} from "./uiIcons.ts";
@@ -38,7 +39,9 @@ export function setupRosterBoardHud(
       const index = portraitIndex(hero.id);
       portrait.dataset.portraitId = String(index);
       portrait.style.backgroundImage = "url('" + import.meta.env.BASE_URL + "assets/hero-portraits.webp')";
-      portrait.style.backgroundPosition = ((index % 5) * 25) + "% " + (Math.floor(index / 5) * 25) + "%";
+      const crop=heroPortraitBackground(index);
+      portrait.style.backgroundSize=crop.size;
+      portrait.style.backgroundPosition=crop.position;
       portrait.setAttribute("aria-hidden", "true");
       const primary = document.createElement("span");
       primary.className = "roster-card-primary";

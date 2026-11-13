@@ -8,6 +8,8 @@ import { Scene } from "@babylonjs/core/scene";
 import type { GameStore } from "./gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries } from "./rosterView.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
+import {heroPortraitRegion} from "./portraitAtlas.ts";
+import {drawGoldCoin} from "./goldCoin.ts";
 
 /** Read-only projection of the authoritative heroes onto the shop's front wall. */
 export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh } {
@@ -67,18 +69,22 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       ctx.fillStyle = "#f0e4c9";
       const portrait = portraitIndex(hero.id);
       if (portraits.complete && portraits.naturalWidth > 0) {
-        const tileWidth = portraits.naturalWidth / 5;
-        const tileHeight = portraits.naturalHeight / 5;
-        const inset = Math.min(tileWidth, tileHeight) * 0.06;
-        ctx.drawImage(portraits, (portrait % 5) * tileWidth + inset, Math.floor(portrait / 5) * tileHeight + inset,
-          tileWidth - 2 * inset, tileHeight - 2 * inset, 45, y - 25, 36, 36);
+        const crop=heroPortraitRegion(portrait,portraits.naturalWidth,portraits.naturalHeight);
+        ctx.save();ctx.beginPath();ctx.arc(63,y-7,18,0,Math.PI*2);ctx.clip();
+        ctx.drawImage(portraits,crop.sx,crop.sy,crop.sw,crop.sh,45,y-25,36,36);
+        ctx.restore();
+        ctx.beginPath();ctx.arc(63,y-7,18,0,Math.PI*2);
+        ctx.lineWidth=2;ctx.strokeStyle="#d8b77e";ctx.stroke();
       }
       ctx.font = "bold 21px sans-serif";
       ctx.fillText((labels.get(hero.id) ?? hero.name) + " · Lv" + hero.level + " " + hero.role, 93, y + 1, 238);
       ctx.font = "23px sans-serif";
       ctx.fillStyle = hero.status === "at-shop" ? "#a8e1b8" :
         hero.status === "expedition" ? "#e9ae67" : "#c0bcae";
-      ctx.fillText(locationLabel(hero), 345, y + 1);
+      ctx.fillText(locationLabel(hero), 345, y + 1, 315);
+      drawGoldCoin(ctx,690,y-6,11);
+      ctx.fillStyle="#f0d099";ctx.font="bold 17px sans-serif";
+      ctx.fillText(hero.gold+"g",706,y+1,55);
       ctx.fillStyle = "#352a20";
       ctx.fillRect(756, y - 14, 173, 15);
       ctx.fillStyle = hero.health / hero.stats.maxHealth < 0.3 ? "#d16b55" : "#8ab668";
