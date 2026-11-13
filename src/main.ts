@@ -30,6 +30,7 @@ import { loadCampaign, setupCampaignHud } from "./campaignHud";
 import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
 import { setupBeggarHud } from "./beggarHud.ts";
+import { setupDebtBookHud } from "./debtBookHud.ts";
 import { setupShopStatusToggle } from "./shopHudLayout";
 import { setupAdventurerOverview } from "./adventurerOverview";
 import { setupHudMouseMode } from "./hudMouseMode";
@@ -38,6 +39,7 @@ import "./uiTheme.css";
 import "./merchantLedger.css";
 import "./beggarHud.css";
 import "./blueprintHud.css";
+import "./debtBookHud.css";
 
 async function startGame(): Promise<void> {
 setupShopStatusToggle();
@@ -63,6 +65,7 @@ const shop = new Shop(scene, store);
 const board = createRosterBoard(scene, store);
 worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
 const openRoster = setupRosterBoardHud(canvas, camera, store);
+const debtBook=setupDebtBookHud(canvas,camera,store);
 let bedtime:BedtimeController|null=null;
 let ledger:MerchantLedger|null=null;
 let beggarHud:ReturnType<typeof setupBeggarHud>|null=null;
@@ -118,6 +121,7 @@ setupCampaignHud(store, campaign, () => {
   cashier?.close();
   beggarHud?.close();
   blueprint.close();
+  debtBook.close();
   interactions.reset();
   camera.position.set(0, 1.7, -4.6);
   camera.rotation.setAll(0);
@@ -182,7 +186,8 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   renderInventory(selected);
 }, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.",
   () => isShopActive(), () => bedtime?.isNearBed()??false,
-  () => beggarHud?.openNearest()??false);
+  () => beggarHud?.openNearest()??false,
+  debtBook.open);
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
