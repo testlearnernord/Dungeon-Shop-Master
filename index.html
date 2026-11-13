@@ -30,19 +30,26 @@
           <details class="shop-management-details">
             <summary>Management &amp; reports</summary>
             <div class="shop-management-content">
-              <h3>Recent events</h3>
+              <h3>Recent events <small class="report-caption">Latest 3</small></h3>
           <ol id="world-events" aria-label="Recent world events"></ol>
-          <details class="day-report">
+          <details class="day-report" name="shop-reports">
             <summary title="Latest 100 events of the current day">Full day report</summary>
-            <ol id="day-history"></ol>
+            <div id="day-history-overview" class="day-report-overview" aria-label="Daily event totals"></div>
+            <div id="day-history-filters" class="day-history-filters" role="group" aria-label="Filter day events">
+              <button type="button" data-report-filter="all" aria-pressed="true">All</button>
+              <button type="button" data-report-filter="shop" aria-pressed="false">Shop</button>
+              <button type="button" data-report-filter="dungeon" aria-pressed="false">Dungeon</button>
+              <button type="button" data-report-filter="other" aria-pressed="false">Other</button>
+            </div>
+            <ol id="day-history" aria-label="Filtered daily events"></ol>
           </details>
-          <details id="level6-expedition-ledger" class="expedition-ledger">
+          <details id="level6-expedition-ledger" class="expedition-ledger" name="shop-reports">
             <summary id="level6-progress-summary">Level 6 expeditions</summary>
             <p id="level6-progress-counts"></p>
             <ol id="level6-expedition-events" aria-label="Recent Level 6 combats"></ol>
             <p class="sales-hint">Progress is calculated from saved expedition events. Only one encounter per hero per confirmed day.</p>
           </details>
-          <details id="sales-ledger" class="sales-ledger">
+          <details id="sales-ledger" class="sales-ledger" name="shop-reports">
             <summary id="sales-ledger-summary">Sales receipts</summary>
             <ol id="sales-receipts" aria-label="Customer purchase receipts"></ol>
             <p class="sales-hint">Heroes reserve goods when they physically reach a shelf. Held goods can be paid at the register. Any outstanding carts settle when Galvik closes the shop and sleeps.</p>
@@ -59,6 +66,10 @@
           </details>
           </div>
         </section>
+        <div id="mining-mode-indicator" class="mining-mode-indicator" hidden aria-hidden="true">
+          <span aria-hidden="true">⛏</span><strong>MINING MODE</strong>
+          <small>Left-click rock · U / Esc / right-click to exit</small>
+        </div>
         <div class="mobile-hud-stack">
           <p id="sales-banner" class="sales-banner" role="status"></p>
           <div id="inventory" class="inventory" aria-label="Stocking hotbar"></div>
@@ -69,6 +80,7 @@
             <span>·</span> <strong>Right-click</strong> remove
             <span>·</span> <strong>E</strong> interact
             <span>·</span> <strong>Hold E</strong> sleep / finish day at the bed
+            <span>·</span> <strong>U</strong> mining mode <span>·</span> <strong>Shift+U</strong> alpha expansion tier
             <span>·</span> <strong>B</strong> wholesale
             <span>·</span> <strong>P</strong> move looked-at furniture
              <span>·</span> <strong>R</strong> rotate in build mode

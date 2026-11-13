@@ -2,6 +2,9 @@ import { GameStore } from "./game/gameStore";
 import { level6ReturnIds, type VisitorSnapshot } from "./game/npcVisitors";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
 import { hasObservedReplay } from "./replayDisclosure.ts";
+import {reportCategory,reportIcon,reportCounts,type ReportCategory} from "./reportPresentation.ts";
+import {uiIcon} from "./uiIcons.ts";
+import {goldIcon} from "./uiIcons.ts";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
@@ -19,6 +22,41 @@ export function setupDayHud(
   }
 
   const history = document.querySelector<HTMLOListElement>("#day-history")!;
+  const reportOverview=document.querySelector<HTMLElement>("#day-history-overview")!;
+  const reportFilters=[...document.querySelectorAll<HTMLButtonElement>(
+    "#day-history-filters [data-report-filter]")];
+  let activeFilter:ReportCategory|"all"="all";
+  for(const button of reportFilters){
+    button.addEventListener("click",()=>{
+      activeFilter=button.dataset.reportFilter as ReportCategory|"all";
+      for(const choice of reportFilters)
+        choice.setAttribute("aria-pressed",String(choice===button));
+      render();
+    });
+  }
+  const visibleMessage=(event:typeof store.state.events[number]):string=>
+    (event.type==="level6-combat"||event.type==="level7-exploration")&&
+      !hasObservedReplay(event.id)
+      ?"An expedition recording has been sealed. Watch the saved footage to learn its outcome."
+      :event.message;
+  const eventRow=(event:typeof store.state.events[number])=>{
+    const entry=document.createElement("li");
+    const group=reportCategory(event);
+    entry.dataset.eventId=event.id;
+    entry.dataset.category=group;
+    entry.className="report-event report-event-"+group;
+    entry.append(uiIcon(reportIcon(event)));
+    const copy=document.createElement("div");
+    copy.className="report-event-copy";
+    const meta=document.createElement("small");
+    meta.className="report-event-meta";
+    meta.textContent=group==="shop"?"SHOP":group==="dungeon"?"DUNGEON":"WORLD";
+    const text=document.createElement("span");
+    text.textContent=visibleMessage(event);
+    copy.append(meta,text);
+    entry.append(copy);
+    return entry;
+  };
   const snapshotVisitors = (): readonly VisitorSnapshot[] => {
     const state = store.state;
     const fromLevel6 = level6ReturnIds(state.events, state.day);
@@ -35,28 +73,39 @@ export function setupDayHud(
   const render = (): void => {
     const state = store.state;
     day.textContent = `Day ${state.day}`;
-    const visibleMessage=(event:typeof state.events[number]):string=>
-      (event.type==="level6-combat"||event.type==="level7-exploration") &&
-        !hasObservedReplay(event.id)
-        ? "An expedition recording has been sealed. Watch the saved footage to learn its outcome."
-        : event.message;
-    events.replaceChildren(...state.events.slice(-3).map((event) => {
-      const entry = document.createElement("li");
-      entry.dataset.eventId = event.id;
-      entry.textContent = visibleMessage(event);
-      return entry;
-    }));
+    events.replaceChildren(...state.events.slice(-3).reverse().map(eventRow));
     const today = [];
     for (let index = state.events.length - 1; index >= 0 && today.length < 100; index -= 1) {
       const event = state.events[index];
       if (event.day !== state.day) break;
       today.push(event);
     }
-    history.replaceChildren(...today.reverse().map((event) => {
-      const entry = document.createElement("li");
-      entry.textContent = visibleMessage(event);
-      return entry;
+    const counts=reportCounts(today);
+    const summary=[
+      [counts.total,"EVENTS"],
+      [counts.shop,"SHOP"],
+      [counts.dungeon,"DUNGEON"],
+      [counts.other,"WORLD"],
+    ] as const;
+    reportOverview.replaceChildren(...summary.map(([count,label])=>{
+      const tile=document.createElement("span");
+      tile.className="report-count";
+      const value=document.createElement("strong");
+      value.textContent=String(count);
+      const caption=document.createElement("small");
+      caption.textContent=label;
+      tile.append(value,caption);
+      return tile;
     }));
+    history.replaceChildren(...today
+      .filter(event=>activeFilter==="all"||reportCategory(event)===activeFilter)
+      .map(eventRow));
+    if(!history.children.length){
+      const empty=document.createElement("li");
+      empty.className="report-empty";
+      empty.textContent="No "+(activeFilter==="all"?"":activeFilter+" ")+"events yet.";
+      history.append(empty);
+    }
     const names = heroDisplayNames(state.adventurers);
     const active = state.adventurers.filter((hero) => hero.status !== "dead");
     const atShop = active.filter((hero) => hero.status === "at-shop");
@@ -75,6 +124,11 @@ export function setupDayHud(
       summary.className = "hero-summary";
       summary.textContent = `${names.get(hero.id) ?? hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
       entry.append(summary);
+      const cash=document.createElement("span");
+      cash.className="hero-gold";
+      cash.setAttribute("aria-label",hero.gold+" gold");
+      cash.append(goldIcon(),document.createTextNode(" "+hero.gold+"g"));
+      entry.append(cash);
       if (hero.status === "at-shop") {
         const permission = document.createElement("button");
         permission.type = "button";

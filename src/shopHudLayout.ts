@@ -18,6 +18,10 @@ export function setupShopStatusToggle():void {
   const show=(open:boolean)=>{
     button.setAttribute("aria-expanded",String(open));
     content.hidden=!open;
+    if(open){
+      const management=content.querySelector<HTMLDetailsElement>(".shop-management-details");
+      if(management)management.open=true;
+    }
     setIconButtonLabel(button,open?"Hide shop details":"Show shop details");
   };
   show(false);

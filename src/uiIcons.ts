@@ -17,6 +17,17 @@ export const uiIcon=(name:InterfaceIcon,className="ui-icon")=>
   symbol("ui-interface-icons.svg",name,className,"0 0 24 24");
 export const itemIcon=(name:string,className="ui-item-icon")=>
   symbol("ui-item-icons.svg",name,className,"0 0 48 48");
+/** The same gold artwork is used by every HTML and canvas UI. */
+export const goldIconUrl=()=>import.meta.env.BASE_URL+"assets/ui-gold.svg";
+export function goldIcon(className="ui-gold-icon"):HTMLImageElement{
+  const image=document.createElement("img");
+  image.src=goldIconUrl();
+  image.className=className;
+  image.alt="";
+  image.setAttribute("aria-hidden","true");
+  image.width=18;image.height=18;
+  return image;
+}
 export function setIconButton(button:HTMLButtonElement,icon:InterfaceIcon,compact=false):void{
   if(button.dataset.uiIcon)return;
   const label=document.createElement("span");

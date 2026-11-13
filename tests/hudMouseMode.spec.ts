@@ -6,8 +6,6 @@ test("management reports can be opened by pointer without the HUD swallowing cli
   await expect(page.locator("#shop-status-content")).toBeHidden();
   await page.locator("#toggle-shop-status").click();
   await expect(page.locator("#shop-status-content")).toBeVisible();
-  await expect(management).not.toHaveAttribute("open", "");
-  await management.locator(":scope > summary").click();
   await expect(management).toHaveAttribute("open", "");
   await expect(page.locator("#world-events")).toBeVisible();
   await management.locator(":scope > summary").click();
@@ -22,6 +20,5 @@ test("M releases captured shop mouse for UI interaction", async ({ page }) => {
   await expect.poll(() => page.evaluate(() => document.pointerLockElement)).toBeNull();
   await page.locator("#toggle-shop-status").click();
   await expect(page.locator("#shop-status-content")).toBeVisible();
-  await page.locator(".shop-management-details > summary").click();
   await expect(page.locator(".shop-management-details")).toHaveAttribute("open", "");
 });

@@ -8,6 +8,8 @@ import { Scene } from "@babylonjs/core/scene";
 import type { GameStore } from "./gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries } from "./rosterView.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
+import {portraitSourceRect} from "./portraitAtlas.ts";
+import {goldIconUrl} from "../uiIcons.ts";
 
 /** Read-only projection of the authoritative heroes onto the shop's front wall. */
 export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh } {
@@ -33,6 +35,9 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
   const portraits = new Image();
   portraits.src = import.meta.env.BASE_URL + "assets/hero-portraits.webp";
   portraits.addEventListener("load", () => draw());
+  const goldSymbol=new Image();
+  goldSymbol.src=goldIconUrl();
+  goldSymbol.addEventListener("load",()=>draw());
   const wood = new StandardMaterial("roster-board-wood", scene);
   wood.diffuseColor = new Color3(0.38, 0.23, 0.11);
   for (const [name, w, h, x, y] of [
@@ -67,11 +72,11 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       ctx.fillStyle = "#f0e4c9";
       const portrait = portraitIndex(hero.id);
       if (portraits.complete && portraits.naturalWidth > 0) {
-        const tileWidth = portraits.naturalWidth / 5;
-        const tileHeight = portraits.naturalHeight / 5;
-        const inset = Math.min(tileWidth, tileHeight) * 0.06;
-        ctx.drawImage(portraits, (portrait % 5) * tileWidth + inset, Math.floor(portrait / 5) * tileHeight + inset,
-          tileWidth - 2 * inset, tileHeight - 2 * inset, 45, y - 25, 36, 36);
+        const rect=portraitSourceRect(portraits,portrait);
+        ctx.save();
+        ctx.beginPath();ctx.arc(63,y-7,18,0,Math.PI*2);ctx.clip();
+        ctx.drawImage(portraits,rect.sx,rect.sy,rect.sw,rect.sh,45,y-25,36,36);
+        ctx.restore();
       }
       ctx.font = "bold 21px sans-serif";
       ctx.fillText((labels.get(hero.id) ?? hero.name) + " · Lv" + hero.level + " " + hero.role, 93, y + 1, 238);
@@ -83,6 +88,11 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       ctx.fillRect(756, y - 14, 173, 15);
       ctx.fillStyle = hero.health / hero.stats.maxHealth < 0.3 ? "#d16b55" : "#8ab668";
       ctx.fillRect(756, y - 14, 173 * hero.health / hero.stats.maxHealth, 15);
+      if(goldSymbol.complete&&goldSymbol.naturalWidth>0)
+        ctx.drawImage(goldSymbol,665,y-20,23,23);
+      ctx.fillStyle="#f5d59e";
+      ctx.font="bold 19px sans-serif";
+      ctx.fillText(hero.gold+"g",690,y+1,64);
     });
     ctx.fillStyle = "#c8ae7d";
     ctx.font = "22px sans-serif";

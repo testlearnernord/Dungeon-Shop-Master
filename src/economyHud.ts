@@ -1,6 +1,6 @@
 import { ECONOMY, ITEMS } from "./game/economy";
 import { GameStore } from "./game/gameStore";
-import {uiIcon} from "./uiIcons.ts";
+import {goldIcon} from "./uiIcons.ts";
 
 export function setupEconomyHud(
   canvas: HTMLCanvasElement,
@@ -185,7 +185,7 @@ export function setupEconomyHud(
     const economy = store.state.shopEconomy;
     const used=Object.values(economy.bag).reduce((sum,n)=>sum+n,0);
     const free=ECONOMY.bagCapacity-used;
-    balance.textContent=economy.balance+"g";
+    balance.replaceChildren(goldIcon(),document.createTextNode(economy.balance+"g"));
     capacity.textContent=used+" / "+ECONOMY.bagCapacity+" bag slots";
     capacity.dataset.full=String(free===0);
     for(const card of cards){
@@ -207,7 +207,7 @@ export function setupEconomyHud(
     gold.textContent = `Merchant gold: ${economy.balance}g`;
     gold.dataset.amount=economy.balance+"g";
     gold.setAttribute("aria-label","Merchant gold: "+economy.balance+"g");
-    gold.prepend(uiIcon("coin"));
+    gold.prepend(goldIcon());
     supplies.textContent = `Shelves: ${ITEMS.map((item) =>
       `${item.name} ${economy.slots.filter((slot) => slot.itemId === item.id)
         .reduce((sum, slot) => sum + slot.quantity, 0)}`).join(" · ")}`;

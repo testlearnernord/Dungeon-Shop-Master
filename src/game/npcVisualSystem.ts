@@ -10,6 +10,8 @@ import { Scene } from "@babylonjs/core/scene";
 import { reconcileVisitors, shouldLeaveShopVisual, type GateSide, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
+import {portraitSourceRect} from "./portraitAtlas.ts";
+import {goldIconUrl} from "../uiIcons.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
 import { RESTOCK_WAIT_SECONDS, restockWaitRemaining, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
 import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble, type NpcWishBubble } from "./npcWishBubble.ts";
@@ -77,7 +79,14 @@ function material(scene: Scene, name: string, color: Color3): StandardMaterial {
 
 /** Compact transparent nameplate: the persistent portrait, readable name,
  * role and actual health. No gameplay or inventory authority lives here. */
+let nameplateGold:HTMLImageElement|null=null;
 function paintIdentity(npc:NpcVisual,atlas:HTMLImageElement):void {
+  if(!nameplateGold){
+    nameplateGold=new Image();
+    nameplateGold.src=goldIconUrl();
+  }
+  if(!nameplateGold.complete)
+    nameplateGold.addEventListener("load",()=>paintIdentity(npc,atlas),{once:true});
   const ctx=npc.labelTexture.getContext();
   ctx.clearRect(0,0,640,160);
   // One thin translucent identity strip instead of an opaque 640px slab.
@@ -93,10 +102,8 @@ function paintIdentity(npc:NpcVisual,atlas:HTMLImageElement):void {
   ctx.arc(71,75,50,0,Math.PI*2);
   ctx.clip();
   if(atlas.complete&&atlas.naturalWidth>0){
-    const w=atlas.naturalWidth/5,h=atlas.naturalHeight/5;
-    const inset=Math.min(w,h)*.06;
-    ctx.drawImage(atlas,(index%5)*w+inset,Math.floor(index/5)*h+inset,
-      w-2*inset,h-2*inset,20,24,102,102);
+    const rect=portraitSourceRect(atlas,index);
+    ctx.drawImage(atlas,rect.sx,rect.sy,rect.sw,rect.sh,20,24,102,102);
   }else{
     ctx.fillStyle="#576a62";
     ctx.fillRect(20,24,102,102);
@@ -119,6 +126,12 @@ function paintIdentity(npc:NpcVisual,atlas:HTMLImageElement):void {
   ctx.fillStyle=roles[role]??"#dbc293";
   ctx.font="650 22px system-ui";
   ctx.fillText(role.toUpperCase(),147,94);
+  const visitorGold=Number.isFinite(npc.visitor.gold)?Math.max(0,npc.visitor.gold??0):0;
+  if(nameplateGold?.complete&&nameplateGold.naturalWidth>0)
+    ctx.drawImage(nameplateGold,461,74,24,24);
+  ctx.fillStyle="#f3d19a";
+  ctx.font="700 25px system-ui";
+  ctx.fillText(visitorGold+"g",492,94,111);
   const hp=npc.visitor.health;
   const max=npc.visitor.maxHealth;
   const ratio=typeof hp==="number"&&typeof max==="number"&&max>0
@@ -129,6 +142,7 @@ function paintIdentity(npc:NpcVisual,atlas:HTMLImageElement):void {
   npc.labelTexture.update();
   npc.root.metadata.displayName=name;
   npc.root.metadata.level=level;
+  npc.root.metadata.gold=visitorGold;
   npc.root.metadata.portraitIndex=index;
   npc.root.metadata.portraitReady=atlas.complete&&atlas.naturalWidth>0;
 }
