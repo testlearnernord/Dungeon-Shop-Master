@@ -14,7 +14,7 @@ import { getDungeonSurfaces, tileLargeFloorUV } from "./dungeonSurfaces";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
-  kind: "register" | "corridor" | "roster-board" | "bed";
+  kind: "register" | "corridor" | "roster-board" | "bed" | "debt-book";
 }
 
 function material(scene: Scene, name: string, color: Color3): StandardMaterial {
@@ -140,6 +140,11 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
     new Vector3(counter.x+counter.registerOffsetX, 1.87, counter.z+counter.registerOffsetZ),
     new Color3(0.3, 0.48, 0.36), false);
   register.metadata = { kind: "register" };
+  const bookMeshNames=["bedroom-account-book","bedroom-account-pages","bedroom-account-spine"];
+  const bookInteractables:WorldInteractable[]=bookMeshNames
+    .map((name)=>scene.getMeshByName(name))
+    .filter((mesh):mesh is Mesh=>mesh instanceof Mesh)
+    .map(mesh=>({id:mesh.name,mesh,kind:"debt-book" as const}));
   return [{ id: "checkout-register", mesh: register, kind: "register" },
-    { id: "galvik-bed", mesh: bed, kind: "bed" }];
+    { id: "galvik-bed", mesh: bed, kind: "bed" },...bookInteractables];
 }

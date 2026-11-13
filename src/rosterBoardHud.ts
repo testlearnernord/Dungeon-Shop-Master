@@ -19,10 +19,7 @@ export function setupRosterBoardHud(
     const state = store.state;
     const active = state.adventurers.filter((hero) => hero.status !== "dead").length;
     const fallen = state.adventurers.length - active;
-    const debtByHero=new Map(state.shopDebts.map(debt=>[debt.heroId,debt.outstandingGold]));
-    const outstanding=state.shopDebts.reduce((sum,debt)=>sum+debt.outstandingGold,0);
     totals.textContent = active + " active · " + fallen + " fallen · Day " + state.day +
-      " · Credits outstanding " + outstanding + "g" +
       (filterValue === "fallen" && fallen > 40 ? " · Showing latest 40" : "");
     const expanded = new Set([...list.querySelectorAll<HTMLDetailsElement>("details[open][data-hero-id]")]
       .map((node) => node.dataset.heroId));
@@ -61,8 +58,7 @@ export function setupRosterBoardHud(
       const overview = document.createElement("span");
       overview.className = "roster-overview";
       overview.textContent =
-        "Gold " + hero.gold + "g" +
-        (debtByHero.has(hero.id)?" · Owes Galvik "+debtByHero.get(hero.id)+"g":"") + " · " +
+        "Gold " + hero.gold + "g · " +
         (hero.hunger >= 3 ? "Hungry" : "Fed") + " (Hunger " + hero.hunger + ")" +
         " · Food " + hero.inventory.food +
         " · Heal " + hero.inventory.healing +
@@ -109,18 +105,6 @@ export function setupRosterBoardHud(
         itemChip(30, "Loot " + hero.inventory.loot),
       );
       extended.append(stats, traits, items);
-      const owed=debtByHero.get(hero.id);
-      if(owed){
-        const account=document.createElement("p");
-        account.className="roster-credit-debt";
-        const granted=state.events.filter(event=>
-          event.type==="shop-credit"&&event.adventurerId===hero.id);
-        account.textContent="GALVIK'S DEBT BOOK · "+owed+
-          "g outstanding · "+granted.map(event=>
-            "Day "+event.day+": "+event.quantity+" "+
-            (event.itemId??"goods")+" ("+event.debtGold+"g)").join(" · ");
-        extended.append(account);
-      }
       if (hero.status === "at-shop") {
         const permit = document.createElement("button");
         permit.type = "button";
@@ -166,6 +150,7 @@ export function setupRosterBoardHud(
   });
   window.addEventListener("keydown", (event) => {
     if (event.code !== "KeyR" || event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
+    if (document.body.classList.contains("blueprint-active")) return;
     if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable]")) return;
     if (dialog.open) closeRoster();
     else if (!document.querySelector("dialog[open]")) openRoster();

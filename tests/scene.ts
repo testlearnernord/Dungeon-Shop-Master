@@ -36,6 +36,20 @@ export function aimAtBeggingVisitor(heroId:string):void {
   camera.cameraRotation.setAll(0);
 }
 
+/** Select the actual cash register using the FPS crosshair before P. */
+export function aimAtFurniture(name:string,distance=3.2):void {
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  const mesh=scene.getMeshByName(name);
+  if(!mesh)throw new Error("Missing furniture: "+name);
+  mesh.computeWorldMatrix(true);
+  const target=mesh.getAbsolutePosition();
+  camera.position.set(target.x,target.y+0.25,target.z-distance);
+  camera.setTarget(target);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
 export function aimAtBlueprintFloor():void {
   const scene=Engine.LastCreatedScene!;
   const camera=scene.activeCamera as UniversalCamera;
@@ -60,6 +74,17 @@ export function aimAtBed() {
 }
 
 /** Regression probe for objects around the bed that must not trigger sleep. */
+/** The account book must be reachable without triggering Galvik's bed hold-E. */
+export function aimAtDebtBook():void {
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  const book=scene.getMeshByName("bedroom-account-pages")!;
+  camera.position.set(-1.7,1.7,-8.0);
+  camera.setTarget(book.getAbsolutePosition());
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
 export function aimAtBedroomProp(name:string) {
   inspectPlayer({ x: 0.6, y: 1.7, z: -8.95 });
   const scene = Engine.LastCreatedScene!;

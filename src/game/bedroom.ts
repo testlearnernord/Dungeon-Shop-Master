@@ -177,6 +177,9 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   }
   cube("bed-chest-lock", 0.16, 0.16, 0.04, -2.15, 0.49, -10.995, metal);
 
+  // Furniture may be targeted by the contextual P editor, but stay at
+  // original support coordinates until modular fixture persistence exists.
+  // Do not give these decorative meshes collision shapes or the bed E action.
   // An improvised accounting desk. Nothing here is a buyable shop prop.
   cube("bedroom-desk", 1.17, 0.12, 0.72, -2.27, 0.95, -9.08, wornEdges);
   for (const x of [-2.72, -1.83]) {
@@ -185,9 +188,19 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
         x, 0.45, z, timber);
     }
   }
-  cube("bedroom-account-book", 0.65, 0.075, 0.41, -2.28, 1.065, -9.15, leather);
-  cube("bedroom-account-pages", 0.58, 0.018, 0.36, -2.28, 1.114, -9.15, mattress);
-  cube("bedroom-account-spine", 0.055, 0.12, 0.43, -2.62, 1.06, -9.15, metal);
+  // Galvik's account book is a real world interaction, not decoration.
+  // Keep the supporting desk's collider untouched; these thin book meshes
+  // can be picked by E/click without adding collision shapes to the player.
+  const accountCover=cube("bedroom-account-book", 0.65, 0.075, 0.41,
+    -2.28, 1.065, -9.15, leather);
+  const accountPages=cube("bedroom-account-pages", 0.58, 0.018, 0.36,
+    -2.28, 1.114, -9.15, mattress);
+  const accountSpine=cube("bedroom-account-spine", 0.055, 0.12, 0.43,
+    -2.62, 1.06, -9.15, metal);
+  for(const mesh of [accountCover,accountPages,accountSpine]){
+    mesh.isPickable=true;
+    mesh.metadata={kind:"debt-book",furnitureId:"debt-book"};
+  }
   round("bedroom-inkwell", 0.15, 0.18, -1.93, 1.095, -8.87, metal);
   const quill = cube("bedroom-quill", 0.025, 0.025, 0.51, -1.89, 1.20, -9.05, mattress);
   quill.rotation.y = -0.41;
@@ -282,5 +295,9 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
     r.isPickable = false;
   }
 
+  for(const name of ["bedroom-desk","galvik-bed-chest","bed-candle","bed-candle-holder"]){
+    const mesh=scene.getMeshByName(name);
+    if(mesh)mesh.isPickable=true;
+  }
   return bed;
 }

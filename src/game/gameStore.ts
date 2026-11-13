@@ -5,6 +5,7 @@ import { checkoutCustomer, quoteCustomerCheckout, type CheckoutQuote } from "./c
 import { pickUpShopItem, returnShopCart, payReservedShopCart } from "./shopCarts.ts";
 import { walkOutWithoutPurchase } from "./shopWalkout.ts";
 import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
+import { shopServiceReachabilityProblem } from "./shopServiceReachability.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
 
 export class GameStore {
@@ -60,15 +61,21 @@ export class GameStore {
 
   placeShelf(placement: ShelfPlacement): string {
     const result = replaceShelfPlacement(this.current.shopLayout, placement);
-    if (result.layout !== this.current.shopLayout)
+    if (result.layout !== this.current.shopLayout) {
+      const invalid=shopServiceReachabilityProblem(result.layout);
+      if(invalid)return invalid;
       this.replace({ ...this.current, shopLayout: result.layout });
+    }
     return result.message;
   }
 
   placeCounter(placement:CounterPlacement):string {
     const result=replaceCounterPlacement(this.current.shopLayout,placement);
-    if(result.layout!==this.current.shopLayout)
+    if(result.layout!==this.current.shopLayout){
+      const invalid=shopServiceReachabilityProblem(result.layout);
+      if(invalid)return invalid;
       this.replace({...this.current,shopLayout:result.layout});
+    }
     return result.message;
   }
 

@@ -29,6 +29,7 @@ export class InteractionSystem {
     private readonly isShopActive: () => boolean = () => true,
     private readonly isNearBed: () => boolean = () => false,
     private readonly openBeggarRequest: () => boolean = () => false,
+    private readonly openDebtBook: () => void = () => {},
   ) {
     this.shop.select(ITEMS[0].id);
     this.registerEvents();
@@ -141,6 +142,9 @@ export class InteractionSystem {
           this.message = "Adventurer roster opened.";
           this.openRoster();
         }
+      } else if(target?.kind==="debt-book" && button===0){
+        if(hit.distance>this.maxInteractionDistance)this.message="Move closer to Galvik's account book.";
+        else {this.message="Galvik's Book of Debts opened.";this.openDebtBook();}
       }
     }
     this.publish();
@@ -155,6 +159,9 @@ export class InteractionSystem {
     } else if (target?.kind === "roster-board") {
       this.message = "Adventurer roster opened.";
       this.openRoster();
+    } else if(target?.kind==="debt-book"){
+      this.message="Galvik's Book of Debts opened.";
+      this.openDebtBook();
     } else if (this.openBeggarRequest()) {
       this.message = "Review the adventurer's credit plea.";
     } else {
