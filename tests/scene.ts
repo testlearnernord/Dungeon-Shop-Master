@@ -36,6 +36,20 @@ export function aimAtBeggingVisitor(heroId:string):void {
   camera.cameraRotation.setAll(0);
 }
 
+/** Select the actual cash register using the FPS crosshair before P. */
+export function aimAtFurniture(name:string,distance=3.2):void {
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  const mesh=scene.getMeshByName(name);
+  if(!mesh)throw new Error("Missing furniture: "+name);
+  mesh.computeWorldMatrix(true);
+  const target=mesh.getAbsolutePosition();
+  camera.position.set(target.x,target.y+0.25,target.z-distance);
+  camera.setTarget(target);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
 export function aimAtBlueprintFloor():void {
   const scene=Engine.LastCreatedScene!;
   const camera=scene.activeCamera as UniversalCamera;
