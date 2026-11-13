@@ -1,3 +1,4 @@
+import {uiIcon} from "./uiIcons.ts";
 export type SoundtrackScene = "shop" | "dungeon" | "boss";
 
 const PREFERENCE_KEY = "dungeon-shop-master-music-v1";
@@ -49,6 +50,8 @@ export class SceneSoundtrack {
     this.slider = document.querySelector<HTMLInputElement>("#music-volume")!;
     this.label = document.querySelector<HTMLElement>("#music-track")!;
     this.status = document.querySelector<HTMLElement>("#music-status")!;
+    const musicMark=panel.querySelector(".music-heading > span");
+    musicMark?.replaceWith(uiIcon("speaker"));
     const preferences = loadPreferences();
     this.enabled = preferences.enabled;
     this.volume = preferences.volume;
@@ -189,7 +192,8 @@ export class SceneSoundtrack {
 
   private renderUi(): void {
     this.label.textContent = TRACK_NAMES[this.scene];
-    this.toggle.textContent = this.enabled ? "Mute" : "Unmute";
+    this.toggle.replaceChildren(uiIcon(this.enabled?"speaker":"mute"),
+      document.createTextNode(this.enabled?"Mute":"Unmute"));
     this.toggle.setAttribute("aria-pressed", String(!this.enabled));
     this.slider.value = String(Math.round(this.volume * 100));
     this.status.textContent = !this.enabled ? "Music off" : this.error ??

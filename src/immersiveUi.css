@@ -1,0 +1,587 @@
+/*
+ * DUNGEON SHOP MASTER · IMMERSIVE UI
+ * Single final cascade: all shop, spectator, service and book surfaces.
+ * HUD = small translucent instruments. Dialogs = readable management.
+ * The 3D cave, not an opaque dashboard, owns the screen.
+ */
+:root{
+  --ui-bg:rgba(15,19,22,.91);
+  --ui-bg-raised:rgba(37,43,42,.84);
+  --ui-border:rgba(199,165,105,.33);
+  --ui-border-strong:#d5af70;
+  --ui-text:#f2eadd;
+  --ui-muted:#bcb7aa;
+  --ui-gold:#f0c982;
+  --ui-focus:#ffe1a0;
+  --ui-radius:12px;
+  --ui-shadow:0 18px 55px rgba(0,0,0,.42);
+  --ui-glass:rgba(13,17,19,.43);
+  --ui-glass-strong:rgba(16,21,24,.79);
+  --ui-ink:#0f1416;
+  --ui-success:#aed6ae;
+  --ui-warning:#f0c77b;
+  --ui-danger:#ed9c91;
+  --ui-gap:12px;
+  --ui-duration:170ms;
+}
+.ui-icon{width:18px;height:18px;display:block;flex:none;stroke:currentColor;color:inherit}
+.ui-item-icon{width:24px;height:24px;display:block;flex:none}
+.ui-icon-button{display:inline-flex!important;align-items:center;justify-content:center;gap:8px;vertical-align:middle}
+.ui-compact-action{width:36px!important;min-width:36px!important;height:36px!important;min-height:36px!important;padding:6px!important;flex:none;position:relative;line-height:1}
+.ui-compact-action .ui-icon{width:19px;height:19px}
+.ui-compact-action .ui-action-label{
+  position:absolute!important;width:1px!important;height:1px!important;
+  padding:0!important;margin:-1px!important;overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important
+}
+.ui-icon-button .ui-action-label{white-space:nowrap}
+:where(button,select,input,summary):focus-visible{
+  outline:2px solid var(--ui-focus)!important;outline-offset:3px!important
+}
+:where(button,select,input){accent-color:var(--ui-gold)}
+:where(button,select,input):disabled{opacity:.48;cursor:not-allowed!important}
+:where(button,summary){touch-action:manipulation}
+:where(dialog,aside,section) [hidden],:where(dialog,aside,section)[hidden]{display:none!important}
+
+/* A glance, three actions and the unobstructed scene. Reports are opt-in. */
+#hud .shop-title{
+  left:14px;top:12px;padding:8px 12px;max-width:calc(100vw - 28px);
+  border:1px solid rgba(210,169,98,.23);
+  border-radius:9px;background:rgba(11,14,17,.38);
+  box-shadow:none;backdrop-filter:blur(8px);
+  font:700 13px/1.2 Georgia,serif;letter-spacing:.035em
+}
+#hud .shop-title span{font:600 10px/1.2 system-ui,sans-serif;letter-spacing:.05em}
+#hud .day-panel{
+  top:55px;left:14px;width:240px;max-width:min(260px,calc(100vw - 28px));
+  padding:9px;max-height:min(74dvh,660px);overflow:visible;
+  border:1px solid rgba(209,171,112,.19);border-radius:13px;
+  background:var(--ui-glass);backdrop-filter:blur(11px) saturate(.9);
+  box-shadow:0 7px 24px rgba(0,0,0,.14);font-size:12px;
+  pointer-events:auto
+}
+#hud .shop-hud-glance{display:flex;align-items:center;gap:8px;min-height:32px}
+#hud .shop-hud-glance #day{margin:0;font:750 15px/1.2 system-ui,sans-serif;color:var(--ui-gold);white-space:nowrap}
+#hud .shop-hud-glance #merchant-gold{
+  margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font-size:11px;color:#e4d5b8;font-variant-numeric:tabular-nums
+}
+#hud .shop-hud-glance #toggle-shop-status{
+  background:rgba(15,19,23,.32);border-color:rgba(211,170,108,.25);margin:0
+}
+#hud .shop-hud-glance #toggle-shop-status[aria-expanded="true"]{
+  border-color:var(--ui-border-strong);background:rgba(171,128,63,.18)
+}
+#hud .shop-quick-actions{
+  margin-top:7px;padding-top:7px;display:flex;align-items:center;
+  justify-content:flex-start;gap:7px;
+  border-top:1px solid rgba(210,172,105,.17)
+}
+#hud .shop-quick-actions .ui-compact-action,
+#hud .adventurer-panel .ui-compact-action{
+  color:#e9dcc8;border:1px solid rgba(205,165,99,.29);
+  border-radius:9px;background:rgba(18,22,24,.40);
+  box-shadow:none;transition:transform var(--ui-duration),border-color var(--ui-duration),background var(--ui-duration)
+}
+#hud .shop-quick-actions .ui-compact-action:hover,
+#hud .adventurer-panel .ui-compact-action:hover{
+  transform:translateY(-1px);background:rgba(113,87,54,.46);
+  border-color:var(--ui-gold)
+}
+#hud #shop-status-content{
+  margin-top:8px;padding:12px 6px 4px;
+  max-height:min(48dvh,430px);overflow:auto;overscroll-behavior:contain;
+  border-top:1px solid var(--ui-border);scrollbar-color:#8e714c transparent
+}
+#hud #shop-status-content[hidden]{display:none!important}
+#hud #shop-status-content #daily-sales{margin:0 0 10px;color:#e3cf9f;font-size:12px}
+#hud .shop-management-details{margin-top:8px}
+#hud .shop-management-content{gap:6px}
+#hud .shop-management-content details{padding:7px 0}
+#hud .shop-management-content #world-events{max-height:115px}
+#hud .bedtime-tip{margin:8px 0 0;font-size:11px;line-height:1.5;color:#c6b9a7}
+
+/* Campaign errors must remain visible even when shop details are collapsed.
+ * Normal autosave chatter should never consume gameplay screen space. */
+#hud #save-status:not([data-error="true"]){
+  position:absolute;height:0;width:0;overflow:hidden;opacity:0;
+  margin:0;padding:0;border:0;pointer-events:none
+}
+#hud #save-status[data-error="true"]{
+  position:fixed;z-index:56;left:50%;top:65px;transform:translateX(-50%);
+  width:min(630px,calc(100vw - 22px));max-height:28dvh;overflow:auto;
+  margin:0;padding:12px 18px;background:rgba(49,20,19,.94);
+  border:1px solid var(--ui-danger);border-radius:11px;
+  color:#ffdbce;box-shadow:0 18px 55px #000b;
+  font-size:12px;line-height:1.5;text-shadow:none
+}
+
+/* The right corner is a small tool cluster, not a second full-height ledger. */
+#hud .adventurer-panel{
+  top:14px;right:14px;width:220px;max-width:min(260px,calc(100vw - 28px));
+  max-height:min(72dvh,650px);overflow:visible;
+  padding:9px;border:1px solid rgba(209,171,112,.21);
+  border-radius:13px;background:var(--ui-glass);
+  backdrop-filter:blur(11px);box-shadow:0 7px 24px rgba(0,0,0,.12);
+  font-size:11px
+}
+#hud .adventurer-overview-heading{gap:5px}
+#hud .adventurer-overview-heading strong{
+  min-width:0;flex:1;font-size:11px;line-height:1.35;
+  font-weight:700;color:var(--ui-gold)
+}
+#hud #shop-visitors{
+  margin:5px 0 7px;font-size:10px;color:var(--ui-muted);
+  line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden
+}
+#hud .adventurer-quick-actions{
+  display:flex;grid-template-columns:none;align-items:center;gap:6px;
+  border-top:1px solid rgba(210,172,105,.17);padding-top:7px
+}
+#hud #adventurer-details{
+  max-height:min(48dvh,410px);overflow:auto;overscroll-behavior:contain;
+  scrollbar-color:#8e714c transparent;padding-top:9px
+}
+#hud #adventurer-details li{padding:5px 0;border-bottom:1px solid rgba(205,166,108,.15)}
+#hud #adventurer-details .level6-permit{padding:5px 6px;min-height:26px;font-size:10px}
+#hud #adventurer-details .hero-summary{font-size:11px;line-height:1.45}
+#hud #adventurer-details[hidden]{display:none!important}
+
+/* Six floating item slots, no giant black rectangle behind the game. */
+#hud #inventory.inventory{
+  position:fixed;top:auto;right:auto;left:50%;bottom:45px;
+  transform:translateX(-50%);
+  display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;
+  width:max-content;max-width:calc(100vw - 14px);min-width:0;
+  padding:0;gap:6px;border:0;border-radius:0;
+  background:transparent;box-shadow:none;backdrop-filter:none;
+  pointer-events:auto;overflow:visible;z-index:7;text-shadow:0 1px 4px #000
+}
+#hud #inventory .inventory-row{
+  flex:0 0 54px;min-width:0!important;min-height:56px;height:56px;
+  width:54px;padding:5px 3px;gap:0;position:relative;display:grid;
+  place-items:center;border:1px solid rgba(207,170,114,.23);
+  border-radius:11px;background:rgba(17,22,24,.39);
+  box-shadow:0 3px 14px rgba(0,0,0,.22);
+  backdrop-filter:blur(6px);
+  transition:transform var(--ui-duration),border-color var(--ui-duration),background var(--ui-duration),box-shadow var(--ui-duration)
+}
+#hud #inventory .inventory-row:hover{
+  transform:translateY(-3px);background:rgba(33,39,38,.70);
+  border-color:var(--ui-gold);outline:0
+}
+#hud #inventory .inventory-row:focus-visible{outline:2px solid var(--ui-focus)}
+#hud #inventory .inventory-row.selected{
+  transform:translateY(-5px);border:1px solid #f5ca81;
+  color:var(--ui-text);background:rgba(76,62,38,.72);
+  box-shadow:0 0 0 1px rgba(246,203,126,.34),0 5px 18px #0008,
+    inset 0 0 18px rgba(225,161,73,.14)
+}
+#hud #inventory .inventory-row.selected.empty{opacity:.8}
+#hud #inventory .inventory-row.empty:not(.selected){opacity:.43}
+#hud #inventory .inventory-row .item-pictogram{width:40px;height:40px;grid-area:1/1;filter:drop-shadow(0 2px 3px #0008)}
+#hud #inventory .inventory-row .hotbar-key{
+  top:2px;left:5px;font-size:9px;font-weight:800;
+  color:rgba(249,225,185,.82);z-index:2
+}
+#hud #inventory .inventory-row .item-name{
+  position:absolute!important;width:1px!important;height:1px!important;
+  padding:0!important;margin:-1px!important;overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;white-space:nowrap!important
+}
+#hud #inventory .inventory-row strong{
+  position:absolute;right:2px;bottom:2px;min-width:15px;
+  text-align:center;padding:1px 3px;border-radius:5px;
+  color:#fff3db;background:rgba(8,11,14,.74);
+  font-size:11px;font-weight:750;font-variant-numeric:tabular-nums
+}
+#hud #inventory .capacity{
+  flex:0 0 auto;min-width:43px;display:flex;align-items:center;
+  flex-direction:column;gap:2px;margin:0;padding:5px 2px;
+  color:#d9c9ac;font-size:10px;font-variant-numeric:tabular-nums;
+  background:none;border:none;text-align:center
+}
+#hud #inventory .capacity .ui-icon{width:16px;height:16px;color:var(--ui-gold)}
+#hud #inventory .hotbar-selected{
+  position:absolute;top:-29px;left:50%;transform:translateX(-50%) translateY(4px);
+  border:0;border-radius:7px;background:rgba(12,16,19,.55);
+  color:#f5d89e;padding:3px 9px;min-width:max-content;
+  font-size:10px;font-weight:700;opacity:0;pointer-events:none;
+  white-space:nowrap;transition:opacity var(--ui-duration),transform var(--ui-duration)
+}
+#hud #inventory:hover .hotbar-selected,
+#hud #inventory:focus-within .hotbar-selected{
+  opacity:1;transform:translateX(-50%) translateY(0)
+}
+#hud #inventory .hotbar-hint{display:none}
+#hud .mobile-hud-stack{display:contents}
+#hud .sales-banner{
+  position:fixed;left:50%;top:12px;transform:translateX(-50%);
+  width:max-content;max-width:min(350px,34vw);
+  padding:5px 10px;margin:0;border:1px solid transparent;border-radius:8px;
+  background:rgba(15,22,19,.42);box-shadow:none;
+  color:#e0d5bd;font-size:10px;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+#hud .sales-banner[data-has-sales="true"]{
+  border-color:rgba(136,182,114,.30);background:rgba(17,44,30,.46);
+  color:#c9e8bd
+}
+/* Controls lives BELOW the dock; expanded help floats ABOVE without covering it. */
+#hud details.controls,#hud .mobile-hud-stack details.controls{
+  position:fixed;left:50%;top:auto;bottom:6px;transform:translateX(-50%);
+  width:auto;max-width:calc(100vw - 16px);padding:0;margin:0;
+  border:0;background:transparent;box-shadow:none;pointer-events:auto
+}
+#hud details.controls > summary{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:5px 10px;color:#e5cfaa;font-size:10px;
+  border-radius:8px;background:rgba(14,17,19,.35);
+  border:1px solid rgba(205,165,101,.17)
+}
+#hud details.controls > summary span{margin:0;width:15px;height:15px;font-size:10px}
+#hud details.controls[open] .controls-keys,
+#hud .mobile-hud-stack details.controls[open] .controls-keys{
+  left:50%;bottom:calc(100% + var(--hotbar-clearance,78px));
+  width:min(640px,calc(100vw - 16px));
+  max-height:min(43dvh,300px);overflow:auto;
+  padding:13px 17px;border:1px solid var(--ui-border);
+  background:rgba(16,21,23,.91);backdrop-filter:blur(14px);
+  border-radius:12px;box-shadow:var(--ui-shadow)
+}
+#hud .status{
+  top:18%;font-size:12px;padding:8px 12px;border-radius:9px;
+  background:rgba(11,17,19,.52);backdrop-filter:blur(5px);
+  color:#f5deb2;max-width:min(540px,calc(100vw - 24px))
+}
+#hud .status.is-stale{opacity:0;transition:opacity .35s;pointer-events:none}
+
+/* Form-heavy overlays share one readable, restrained management language. */
+#wholesale,#roster-dialog,#shelf-placement,#beggar-dialog,#debt-book-dialog{
+  color:var(--ui-text)!important;
+  background:linear-gradient(155deg,rgba(29,35,35,.97),rgba(16,20,22,.98))!important;
+  border:1px solid var(--ui-border)!important;border-radius:16px!important;
+  box-shadow:0 30px 100px rgba(0,0,0,.65)!important;
+  scrollbar-color:#987b50 transparent
+}
+#wholesale::backdrop,#roster-dialog::backdrop,#shelf-placement::backdrop,
+#beggar-dialog::backdrop,#debt-book-dialog::backdrop{background:rgba(2,5,7,.70)!important;backdrop-filter:blur(5px)}
+#wholesale h2,#roster-dialog h2,#shelf-placement h2,#beggar-dialog h2,#debt-book-dialog h2{
+  font:600 clamp(23px,3vw,34px)/1.1 Georgia,serif;
+  color:#f4d49b!important;letter-spacing:-.015em
+}
+#wholesale .wholesale-heading,#roster-dialog .roster-heading,
+#shelf-placement .placement-heading,#debt-book-dialog .debt-book-heading{
+  border-bottom:1px solid rgba(200,164,105,.28);
+  padding-bottom:16px;align-items:flex-start;gap:14px
+}
+#wholesale :is(button,input,select),#roster-dialog :is(button,input,select),
+#shelf-placement :is(button,input,select),#beggar-dialog :is(button,input,select),
+#debt-book-dialog :is(button,input,select){
+  color:var(--ui-text);background:var(--ui-bg-raised);
+  border:1px solid var(--ui-border);border-radius:9px;
+  font:600 12px/1.35 system-ui,sans-serif;transition:background var(--ui-duration),border-color var(--ui-duration)
+}
+#wholesale :is(button,input,select):hover:not(:disabled),
+#roster-dialog :is(button,input,select):hover:not(:disabled),
+#shelf-placement :is(button,input,select):hover:not(:disabled),
+#beggar-dialog :is(button,input,select):hover:not(:disabled),
+#debt-book-dialog :is(button,input,select):hover:not(:disabled){
+  border-color:var(--ui-border-strong);background:rgba(86,72,51,.74)
+}
+#wholesale .wholesale-overview>div,#wholesale .catalog-row,
+#roster-dialog .roster-card,#debt-book-dialog .debt-book-totals>div{
+  border:1px solid rgba(200,164,105,.20);border-radius:12px;
+  background:rgba(11,17,20,.38);box-shadow:none
+}
+#wholesale .wholesale-overview>div,#debt-book-dialog .debt-book-totals>div{padding:13px}
+#wholesale .catalog-icon-frame{background:rgba(44,49,43,.36);border-color:rgba(219,180,112,.23)}
+#wholesale .catalog-actions button:first-child{background:rgba(111,86,49,.63);border-color:#b58c58}
+#wholesale .catalog-row .catalog-product-type{letter-spacing:.08em}
+#wholesale #wholesale-message{background:rgba(24,31,29,.95);border-color:rgba(208,165,92,.27);color:#f0d5a2}
+#roster-dialog .roster-card{padding:12px;border-color:rgba(205,166,110,.24)!important}
+#roster-dialog .roster-card[data-status="at-shop"]{border-left:3px solid #9ac49d!important}
+#roster-dialog .roster-card[data-status="dead"]{border-left:3px solid var(--ui-danger)!important}
+#roster-dialog .roster-item-chip{
+  display:inline-flex;gap:6px;padding:4px 8px;border-radius:8px;
+  background:rgba(18,25,27,.62);border:1px solid rgba(185,154,102,.18)
+}
+#roster-dialog .roster-item-icon{width:24px;height:24px;background:none;border-radius:0}
+#roster-dialog .roster-hp{height:5px;border-radius:20px;background:rgba(10,18,20,.75);overflow:hidden}
+#roster-dialog .roster-hp>span{border-radius:20px}
+#roster-dialog .roster-overview{display:block;margin-top:6px;color:var(--ui-muted);font-size:11px}
+#shelf-placement,#blueprint-panel{max-height:min(85dvh,850px);overflow:auto}
+#blueprint-panel{
+  border:1px solid var(--ui-border)!important;background:rgba(16,22,24,.82)!important;
+  backdrop-filter:blur(16px);box-shadow:var(--ui-shadow);border-radius:13px;
+  color:var(--ui-text)
+}
+#blueprint-panel h2,#blueprint-facing{color:var(--ui-gold)!important}
+#blueprint-panel button{background:var(--ui-bg-raised);border-color:var(--ui-border);border-radius:8px}
+#blueprint-panel .blueprint-status[data-valid="true"]{color:var(--ui-success)}
+#blueprint-panel .blueprint-status:not([data-valid="true"]){color:var(--ui-warning)}
+#furniture-look-prompt,#sleep-bed-prompt{
+  border:1px solid rgba(218,173,105,.36)!important;
+  background:rgba(13,18,20,.66)!important;backdrop-filter:blur(7px);
+  border-radius:10px!important;box-shadow:0 8px 25px #0006!important
+}
+#cashier-overlay .cashier-panel{
+  border:1px solid var(--ui-border)!important;border-radius:16px;
+  background:linear-gradient(155deg,rgba(32,35,34,.96),rgba(12,16,20,.97))!important;
+  color:var(--ui-text);box-shadow:0 22px 75px rgba(0,0,0,.6)
+}
+#cashier-overlay .cashier-receipt,#cashier-overlay .cashier-challenge{
+  border-color:rgba(200,162,103,.26)
+}
+
+/* Debt and day-end accounting deliberately have more visual ceremony,
+ * but use the same typography, gold accent and component geometry. */
+#debt-book-dialog{width:min(880px,calc(100vw - 22px));padding:0!important}
+#debt-book-dialog .debt-book-pages{
+  background:transparent;padding:clamp(16px,3vw,36px)
+}
+#debt-book-dialog :is(p,small,span){color:var(--ui-muted)}
+#debt-book-dialog .debt-book-heading small{color:var(--ui-gold)}
+#debt-book-dialog .debt-book-totals strong{color:#f6d7a0;font:700 26px Georgia,serif}
+#debt-book-dialog .debt-book-account{
+  border-color:rgba(198,167,112,.23)!important;border-radius:9px;
+  background:rgba(9,16,19,.35);margin-bottom:7px
+}
+#debt-book-dialog .debt-book-account summary{color:var(--ui-text)}
+#debt-book-dialog .debt-book-account summary small{color:var(--ui-success)}
+#debt-book-dialog .debt-book-account summary small.debt-book-dead{color:var(--ui-danger)}
+#debt-book-dialog .debt-book-account summary b{color:var(--ui-gold)}
+#debt-book-dialog .debt-book-footnote{color:var(--ui-muted)}
+#merchant-ledger .ledger-shell{
+  border:1px solid var(--ui-border);border-radius:14px;overflow:hidden;
+  box-shadow:0 22px 90px #000b;background:var(--ui-ink)
+}
+#merchant-ledger .ledger-top,
+#merchant-ledger .ledger-bottom{
+  background:linear-gradient(125deg,#252b29,#151a1b);
+  border-color:var(--ui-border)
+}
+#merchant-ledger .ledger-index{
+  background:linear-gradient(160deg,#212b2a,#111617);
+  border-color:rgba(190,159,103,.31)
+}
+#merchant-ledger .ledger-paper{
+  color:#eee3cf;text-shadow:none;
+  background:linear-gradient(130deg,#25302e,#1b2325 65%,#151b1e)
+}
+#merchant-ledger .ledger-paper::before{box-shadow:inset 13px 0 27px #0005}
+#merchant-ledger .ledger-paper::after{border-color:rgba(197,164,109,.19)}
+#merchant-ledger :is(#ledger-heading,.ledger-metric-value,.ledger-line-value,.ledger-record-title){
+  color:#f6e3bd
+}
+#merchant-ledger :is(.ledger-page-overline,.ledger-subhead,.ledger-record-seal,.ledger-metric-label){
+  color:#dab87e
+}
+#merchant-ledger :is(.ledger-page-intro,.ledger-metric-sub,.ledger-footnote,
+  .ledger-record-meta,.ledger-line-tag,.ledger-paper-foot){color:#bdb6a9}
+#merchant-ledger .ledger-metric{
+  background:rgba(13,19,22,.49);border:1px solid rgba(206,173,119,.29);
+  border-radius:10px;box-shadow:none
+}
+#merchant-ledger .ledger-line{border-color:rgba(210,165,96,.22)}
+#merchant-ledger .ledger-line-dots{border-color:rgba(210,165,96,.28)}
+#merchant-ledger .ledger-record{
+  background:rgba(15,22,23,.50);border:1px solid rgba(198,159,102,.26);border-radius:10px
+}
+#merchant-ledger .ledger-chapter{border-radius:8px}
+#merchant-ledger .ledger-begin{border-radius:9px}
+#merchant-ledger .ledger-ornament{color:#b58d52}
+
+/* In-world signals: icon dominant, text on request and on focus only. */
+.npc-wish-bubble{
+  max-width:110px;padding:5px 7px;gap:4px;
+  border:1px solid rgba(235,187,114,.49);border-radius:12px;
+  background:rgba(13,19,21,.72);
+  backdrop-filter:blur(6px);box-shadow:0 5px 16px #0009;
+  color:#f4dec0
+}
+.npc-wish-bubble::after{border-top-color:rgba(220,180,108,.6)}
+.npc-wish-bubble .npc-wish-icon{width:34px;height:34px}
+.npc-wish-bubble .npc-wish-detail{
+  position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)
+}
+.npc-wish-bubble .npc-wish-timer{
+  padding:2px 4px;min-width:26px;text-align:center;
+  background:rgba(20,25,27,.56);border-color:rgba(220,181,109,.25);font-size:10px
+}
+.npc-wish-bubble.is-angry{background:rgba(53,22,23,.88);border-color:#d87f69}
+#arena-hud .arena-toolbar,#arena-hud .arena-bottom,
+#dungeon-hud .dungeon-toolbar,#dungeon-hud .dungeon-bottom,
+#dungeon-hud .dungeon-minimap-panel{
+  border:1px solid var(--ui-border);
+  border-radius:13px;background:rgba(13,18,21,.66);
+  backdrop-filter:blur(10px);box-shadow:0 9px 24px #0005
+}
+#arena-hud .arena-toolbar,#dungeon-hud .dungeon-toolbar{
+  max-height:min(37dvh,250px);overflow:auto;padding:10px 14px
+}
+#arena-hud .arena-bottom,#dungeon-hud .dungeon-bottom{
+  max-height:min(33dvh,250px);overflow:auto
+}
+#arena-hud .arena-bottom>p:last-child,
+#dungeon-hud .dungeon-bottom>p:last-of-type{
+  color:var(--ui-muted);font-size:10px
+}
+#dungeon-hud .dungeon-minimap-panel{background:rgba(13,18,21,.77)}
+#music-panel{
+  top:12px;width:auto;min-width:0;max-width:min(285px,calc(100vw - 24px));
+  padding:5px 9px;border:1px solid rgba(206,162,93,.24);
+  border-radius:11px;background:rgba(13,18,20,.37);
+  backdrop-filter:blur(8px);box-shadow:none;color:var(--ui-text)
+}
+#music-panel .music-heading strong{font-size:10px}
+#music-panel .music-heading small{font-size:9px}
+#music-panel .music-actions{gap:6px}
+#music-panel .music-actions label{font-size:9px}
+#music-panel button{border-radius:7px}
+
+/* Tiny screens still display all six item slots, without horizontal scrolling. */
+@media(max-width:780px){
+  #hud .shop-title{top:7px;left:8px;padding:6px 8px;font-size:11px}
+  #hud .shop-title span{font-size:9px}
+  #hud .day-panel{top:47px;left:8px;max-width:calc(50vw - 12px);width:190px;padding:7px}
+  #hud .adventurer-panel{
+    top:47px;right:8px;max-width:calc(50vw - 12px);
+    width:182px;padding:7px
+  }
+  #hud .shop-hud-glance{flex-wrap:wrap;gap:3px}
+  #hud .shop-hud-glance #merchant-gold{font-size:10px}
+  #hud .shop-quick-actions{gap:4px}
+  #hud .shop-quick-actions .ui-compact-action,
+  #hud .adventurer-panel .ui-compact-action{width:32px!important;min-width:32px!important;height:32px!important;min-height:32px!important;padding:5px!important}
+  #hud .adventurer-panel .adventurer-quick-actions{grid-template-columns:none;display:flex}
+  #hud .adventurer-panel #shop-visitors{-webkit-line-clamp:1}
+  #hud .sales-banner{top:auto;bottom:126px;max-width:94vw;font-size:10px}
+  #hud .mobile-hud-stack{display:contents!important}
+  #hud #inventory.inventory{position:fixed;left:50%;bottom:45px;max-width:calc(100vw - 10px);gap:3px;padding:0;transform:translateX(-50%)}
+  #hud #inventory .inventory-row{width:clamp(39px,11vw,49px);flex-basis:clamp(39px,11vw,49px);height:48px;min-height:48px;padding:3px}
+  #hud #inventory .inventory-row .item-pictogram{width:34px;height:34px}
+  #hud #inventory .capacity{min-width:34px;font-size:9px}
+  #hud details.controls,#hud .mobile-hud-stack details.controls{position:fixed;left:50%;bottom:6px;transform:translateX(-50%)}
+  #hud details.controls[open] .controls-keys,
+  #hud .mobile-hud-stack details.controls[open] .controls-keys{
+    bottom:calc(100% + var(--hotbar-clearance,72px))
+  }
+  #music-panel{top:7px;left:50%;max-width:min(190px,34vw)}
+}
+@media(max-width:470px){
+  #music-panel{top:auto;bottom:7px;left:auto;right:7px;transform:none;
+    max-width:94px;padding:3px 6px}
+  #music-panel .music-heading{display:none}
+  #music-panel .music-actions label{display:none}
+  #music-panel .music-actions{display:flex;align-items:center}
+  #music-panel input[type=range]{width:34px}
+  #hud .shop-title{max-width:calc(100vw - 16px)}
+  #hud .shop-title span{display:none}
+  #hud .day-panel{max-width:calc(53vw - 8px);width:182px}
+  #hud .adventurer-panel{max-width:calc(47vw - 8px);width:160px}
+  #hud #inventory .inventory-row{width:clamp(37px,10.3vw,45px);flex-basis:clamp(37px,10.3vw,45px);height:44px;min-height:44px}
+  #hud #inventory .inventory-row .item-pictogram{width:30px;height:30px}
+  #hud #inventory .inventory-row strong{font-size:9px}
+  #hud #inventory .capacity{font-size:8px;min-width:27px}
+  #hud .sales-banner{bottom:113px}
+  #hud .adventurer-panel .adventurer-overview-heading strong{font-size:10px}
+  #hud .adventurer-panel .ui-compact-action,
+  #hud .shop-quick-actions .ui-compact-action{width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important}
+  #hud .status{top:29%}
+  #wholesale,#roster-dialog,#debt-book-dialog,#shelf-placement{
+    width:calc(100vw - 14px)!important;max-height:94dvh!important;padding:12px!important
+  }
+  #blueprint-panel{bottom:115px;right:7px;max-height:52dvh}
+}
+@media(max-height:610px){
+  #hud .day-panel,#hud .adventurer-panel{max-height:55dvh}
+  #hud #inventory.inventory{bottom:35px}
+  #hud .sales-banner{display:none}
+  #hud .status{top:26%}
+}
+@media(prefers-reduced-motion:reduce){
+  :root{--ui-duration:0ms}
+  #hud #inventory .hotbar-selected,
+  #hud #inventory .inventory-row,
+  #hud .shop-quick-actions .ui-compact-action,
+  #hud .adventurer-panel .ui-compact-action{transition:none!important}
+}
+
+
+/* Final contextual and spectator polish. */
+#hud .sales-banner{top:64px}
+#arena-hud .spectator-help,#dungeon-hud .spectator-help{
+  display:block;margin:8px auto 0;width:max-content;max-width:100%;
+  text-align:center;pointer-events:auto
+}
+#arena-hud .spectator-help>summary,#dungeon-hud .spectator-help>summary{
+  font:600 11px/1.35 system-ui,sans-serif;color:var(--ui-gold);
+  cursor:pointer;list-style:none;display:flex;align-items:center;
+  justify-content:center;gap:6px;padding:5px 10px;border-radius:8px;
+  border:1px solid rgba(208,167,105,.25);background:rgba(17,23,24,.34)
+}
+#arena-hud .spectator-help>summary::before,
+#dungeon-hud .spectator-help>summary::before{
+  content:"?";display:grid;place-items:center;width:15px;height:15px;
+  border:1px solid rgba(212,174,109,.5);border-radius:50%
+}
+#arena-hud .spectator-help>p,#dungeon-hud .spectator-help>p{
+  margin:8px 0 0;max-width:560px;font-size:11px;line-height:1.6;
+  color:#dad0be
+}
+#blueprint-panel .blueprint-controls{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px
+}
+#blueprint-panel .blueprint-controls .ui-icon{color:var(--ui-gold)}
+#debt-book-dialog .debt-book-account ol li{
+  display:flex;align-items:center;gap:9px;min-height:29px
+}
+#debt-book-dialog .debt-book-account ol li .ui-item-icon,
+#debt-book-dialog .debt-book-account ol li .ui-icon{width:24px;height:24px}
+#debt-book-dialog .debt-book-account ol li strong{margin-left:auto;color:var(--ui-gold)}
+#music-panel #music-toggle .ui-icon{width:14px;height:14px}
+#music-panel #music-toggle{display:inline-flex;align-items:center;gap:5px}
+@media(max-width:780px){
+  #hud .sales-banner{top:auto;bottom:126px}
+}
+@media(max-width:470px){
+  #hud .sales-banner{bottom:113px}
+}
+
+
+/* Text remains intact for existing save, telemetry and accessibility contracts.
+ * Only the glance presentation uses its compact numeric counterpart. */
+#hud .shop-hud-glance #merchant-gold{
+  display:inline-flex;align-items:center;justify-content:flex-start;gap:4px;
+  font-size:0;white-space:nowrap;overflow:hidden
+}
+#hud .shop-hud-glance #merchant-gold .ui-icon{
+  width:14px;height:14px;color:#e8c17f
+}
+#hud .shop-hud-glance #merchant-gold::after{
+  content:attr(data-amount);
+  font:750 12px/1.2 system-ui,sans-serif;color:#f4dbac;
+  font-variant-numeric:tabular-nums
+}
+#hud .adventurer-overview-heading #population-summary{
+  font-size:0;white-space:nowrap
+}
+#hud .adventurer-overview-heading #population-summary::after{
+  content:attr(data-short);font:700 12px/1.35 system-ui,sans-serif;
+  color:var(--ui-gold)
+}
+#hud #shop-visitors{font-size:0;white-space:nowrap}
+#hud #shop-visitors::before{
+  content:attr(data-short);font:650 10px/1.35 system-ui,sans-serif;
+  color:var(--ui-muted)
+}
+#roster-dialog .roster-overview{
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px;
+}
+#roster-dialog .roster-overview .ui-icon{width:14px;height:14px;color:var(--ui-gold)}
+@media(max-width:470px){
+  #hud .shop-hud-glance #merchant-gold::after{font-size:11px}
+  #hud .adventurer-overview-heading #population-summary::after{font-size:10px}
+}

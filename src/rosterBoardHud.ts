@@ -3,6 +3,7 @@ import type { GameStore } from "./game/gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries, type RosterFilter } from "./game/rosterView.ts";
 import { ECONOMY } from "./game/economy.ts";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
+import {itemIcon,uiIcon} from "./uiIcons.ts";
 
 export function setupRosterBoardHud(
   canvas: HTMLCanvasElement, camera: UniversalCamera, store: GameStore,
@@ -57,15 +58,11 @@ export function setupRosterBoardHud(
       bar.append(fill);
       const overview = document.createElement("span");
       overview.className = "roster-overview";
-      overview.textContent =
-        "Gold " + hero.gold + "g · " +
-        (hero.hunger >= 3 ? "Hungry" : "Fed") + " (Hunger " + hero.hunger + ")" +
-        " · Food " + hero.inventory.food +
-        " · Heal " + hero.inventory.healing +
-        " · Loot " + hero.inventory.loot +
-        " · " + (hero.equipment.weapon ?? "No weapon") +
-        " · " + (hero.equipment.armor ?? "No armor") +
-        " · XP " + hero.xp;
+      overview.append(
+        uiIcon("coin"),document.createTextNode(" "+hero.gold+"g  ·  "),
+        uiIcon("food"),document.createTextNode(" "+(hero.hunger>=3?"Hungry":"Fed")+
+          "  ·  "+hero.inventory.food+" food  ·  "+hero.inventory.healing+" heal"),
+      );
       primary.append(name, location, bar, overview);
       const health = document.createElement("span");
       health.className = "roster-hp-value";
@@ -83,26 +80,21 @@ export function setupRosterBoardHud(
       traits.textContent = "Traits: " + hero.traits.positive + " / " + hero.traits.neutral + " / " + hero.traits.negative;
       const items = document.createElement("p");
       items.className = "roster-items";
-      const itemChip = (atlasIndex: number, text: string): HTMLElement => {
+      const itemChip = (id: string, text: string): HTMLElement => {
         const chip = document.createElement("span");
         chip.className = "roster-item-chip";
-        const icon = document.createElement("span");
-        icon.className = "roster-item-icon";
-        icon.style.backgroundImage = "url('" + import.meta.env.BASE_URL + "assets/item-icons.webp')";
-        icon.style.backgroundPosition =
-          ((atlasIndex % 7) * (100 / 6)) + "% " + (Math.floor(atlasIndex / 7) * 25) + "%";
-        icon.setAttribute("aria-hidden", "true");
-        const label = document.createElement("span");
-        label.textContent = text;
-        chip.append(icon, label);
+        chip.title=text;
+        const label=document.createElement("span");
+        label.textContent=text;
+        chip.append(itemIcon(id,"roster-item-icon"),label);
         return chip;
       };
       items.append(
-        itemChip(0, hero.equipment.weapon ?? "No weapon"),
-        itemChip(9, hero.equipment.armor ?? "No armor"),
-        itemChip(24, "Food " + hero.inventory.food),
-        itemChip(31, "Healing supplies " + hero.inventory.healing),
-        itemChip(30, "Loot " + hero.inventory.loot),
+        itemChip("iron-sword",hero.equipment.weapon??"No weapon"),
+        itemChip("leather-vest",hero.equipment.armor??"No armor"),
+        itemChip("bread","Food "+hero.inventory.food),
+        itemChip("healing-herb","Healing "+hero.inventory.healing),
+        itemChip("iron-ore","Loot "+hero.inventory.loot),
       );
       extended.append(stats, traits, items);
       if (hero.status === "at-shop") {

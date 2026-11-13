@@ -75,50 +75,62 @@ function material(scene: Scene, name: string, color: Color3): StandardMaterial {
   return result;
 }
 
-/** Draw the original portrait tile beside the persistent hero's name/level. */
-function paintIdentity(npc: NpcVisual, atlas: HTMLImageElement): void {
-  const ctx = npc.labelTexture.getContext();
-  ctx.clearRect(0, 0, 640, 160);
-  ctx.fillStyle = "#211910";
-  ctx.fillRect(0, 0, 640, 160);
-  setHeroVisualEquipment(npc.model, npc.visitor.equipment ?? { weapon: null, armor: null });
-  const index = heroPortraitIndex(npc.visitor.id);
+/** Compact transparent nameplate: the persistent portrait, readable name,
+ * role and actual health. No gameplay or inventory authority lives here. */
+function paintIdentity(npc:NpcVisual,atlas:HTMLImageElement):void {
+  const ctx=npc.labelTexture.getContext();
+  ctx.clearRect(0,0,640,160);
+  // One thin translucent identity strip instead of an opaque 640px slab.
+  ctx.fillStyle="rgba(12,19,22,.68)";
+  ctx.fillRect(8,10,624,132);
+  ctx.strokeStyle="rgba(224,184,117,.58)";
+  ctx.lineWidth=3;
+  ctx.strokeRect(9,11,622,130);
+  setHeroVisualEquipment(npc.model,npc.visitor.equipment??{weapon:null,armor:null});
+  const index=heroPortraitIndex(npc.visitor.id);
   ctx.save();
   ctx.beginPath();
-  ctx.arc(76, 80, 62, 0, Math.PI * 2);
+  ctx.arc(71,75,50,0,Math.PI*2);
   ctx.clip();
-  if (atlas.complete && atlas.naturalWidth > 0) {
-    const w = atlas.naturalWidth / 5;
-    const h = atlas.naturalHeight / 5;
-    const inset = Math.min(w, h) * 0.06;
-    ctx.drawImage(atlas, (index % 5) * w + inset, Math.floor(index / 5) * h + inset,
-      w - 2 * inset, h - 2 * inset, 14, 18, 124, 124);
-  } else {
-    ctx.fillStyle = "#52634d";
-    ctx.fillRect(14, 18, 124, 124);
-    ctx.fillStyle = "#fff0cb";
-    ctx.font = "bold 62px sans-serif";
-    ctx.fillText(npc.visitor.name.charAt(0), 52, 101);
+  if(atlas.complete&&atlas.naturalWidth>0){
+    const w=atlas.naturalWidth/5,h=atlas.naturalHeight/5;
+    const inset=Math.min(w,h)*.06;
+    ctx.drawImage(atlas,(index%5)*w+inset,Math.floor(index/5)*h+inset,
+      w-2*inset,h-2*inset,20,24,102,102);
+  }else{
+    ctx.fillStyle="#576a62";
+    ctx.fillRect(20,24,102,102);
+    ctx.fillStyle="#fff1d8";
+    ctx.font="700 59px system-ui";
+    ctx.fillText(npc.visitor.name.charAt(0),48,99);
   }
   ctx.restore();
-  ctx.strokeStyle = "#d6ae67";
-  ctx.lineWidth = 8;
-  ctx.beginPath();
-  ctx.arc(76, 80, 62, 0, Math.PI * 2);
-  ctx.stroke();
-  const displayName = npc.visitor.displayName ?? npc.visitor.name;
-  const level = npc.visitor.level ?? 1;
-  ctx.fillStyle = "#fff0cb";
-  ctx.font = "bold 35px sans-serif";
-  ctx.fillText(displayName + " · Lv" + level, 155, 76, 475);
-  ctx.fillStyle = "#e0bc88";
-  ctx.font = "25px sans-serif";
-  ctx.fillText(npc.visitor.role, 157, 120);
+  ctx.beginPath();ctx.arc(71,75,51,0,Math.PI*2);
+  ctx.strokeStyle="#d8b77e";ctx.lineWidth=3;ctx.stroke();
+  const name=npc.visitor.displayName??npc.visitor.name;
+  const level=npc.visitor.level??1;
+  const role=npc.visitor.role;
+  ctx.fillStyle="#fff0d6";
+  ctx.font="700 34px system-ui";
+  ctx.fillText(name,147,62,340);
+  ctx.fillStyle="#efcc94";ctx.font="650 22px system-ui";
+  ctx.fillText("Lv "+level,525,61,92);
+  const roles:{[key:string]:string}={tank:"#abd0e4",healer:"#aad6af",DPS:"#ebad8b"};
+  ctx.fillStyle=roles[role]??"#dbc293";
+  ctx.font="650 22px system-ui";
+  ctx.fillText(role.toUpperCase(),147,94);
+  const hp=npc.visitor.health;
+  const max=npc.visitor.maxHealth;
+  const ratio=typeof hp==="number"&&typeof max==="number"&&max>0
+    ?Math.min(1,Math.max(0,hp/max)):1;
+  ctx.fillStyle="rgba(0,0,0,.65)";ctx.fillRect(147,112,445,9);
+  ctx.fillStyle=ratio<.3?"#e18c7e":ratio<.65?"#e4be72":"#9acba0";
+  ctx.fillRect(147,112,445*ratio,9);
   npc.labelTexture.update();
-  npc.root.metadata.displayName = displayName;
-  npc.root.metadata.level = level;
-  npc.root.metadata.portraitIndex = index;
-  npc.root.metadata.portraitReady = atlas.complete && atlas.naturalWidth > 0;
+  npc.root.metadata.displayName=name;
+  npc.root.metadata.level=level;
+  npc.root.metadata.portraitIndex=index;
+  npc.root.metadata.portraitReady=atlas.complete&&atlas.naturalWidth>0;
 }
 
 function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, position: Vector3, atlas: HTMLImageElement): NpcVisual {
@@ -129,7 +141,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
   const { root, arms, legs, torso } = model;
   root.position.copyFrom(position);
   
-  const label = MeshBuilder.CreatePlane(`npc-${visitor.id}-label`, { width: 1.05, height: 0.263 }, scene);
+  const label = MeshBuilder.CreatePlane(`npc-${visitor.id}-label`, { width: 1.36, height: 0.34 }, scene);
   label.parent = root;
   label.position.y = 2.22;
   label.billboardMode = Mesh.BILLBOARDMODE_ALL;

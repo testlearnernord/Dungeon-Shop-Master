@@ -33,17 +33,21 @@ import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
 import { setupBeggarHud } from "./beggarHud.ts";
 import { setupDebtBookHud } from "./debtBookHud.ts";
-import { setupShopStatusToggle,setupControlsHotbarClearance } from "./shopHudLayout";
+import { setupShopStatusToggle,setupControlsHotbarClearance,setupTransientStatus } from "./shopHudLayout";
 import { setupAdventurerOverview } from "./adventurerOverview";
 import { setupHudMouseMode } from "./hudMouseMode";
+import { setupInterfaceIcons,watchInterfaceDialogs,uiIcon } from "./uiIcons.ts";
 import "./styles.css";
 import "./uiTheme.css";
 import "./merchantLedger.css";
 import "./beggarHud.css";
 import "./blueprintHud.css";
 import "./debtBookHud.css";
+import "./immersiveUi.css";
 
 async function startGame(): Promise<void> {
+setupInterfaceIcons();
+watchInterfaceDialogs();
 setupShopStatusToggle();
 setupAdventurerOverview();
 const canvas = document.querySelector<HTMLCanvasElement>("#renderCanvas");
@@ -57,6 +61,7 @@ if (!canvas || !inventoryElement || !statusElement) {
 setupHudMouseMode(canvas);
 const inventoryHud = inventoryElement;
 const statusHud = statusElement;
+setupTransientStatus(statusHud);
 const campaign = await loadCampaign();
 const engine = new Engine(canvas, true, { antialias: true, preserveDrawingBuffer: false });
 const scene = new Scene(engine);
@@ -176,7 +181,12 @@ function renderInventory(selectedItem: ItemId): void {
   }
   const capacity = document.createElement("div");
   capacity.className = "capacity";
-  capacity.textContent = `Bag ${Object.values(store.state.shopEconomy.bag).reduce((sum, quantity) => sum + quantity, 0)} / ${ECONOMY.bagCapacity}`;
+  const bagCount=Object.values(store.state.shopEconomy.bag)
+    .reduce((sum,quantity)=>sum+quantity,0);
+  capacity.setAttribute("aria-label",`Bag ${bagCount} of ${ECONOMY.bagCapacity}`);
+  const amount=document.createElement("span");
+  amount.textContent=`${bagCount}/${ECONOMY.bagCapacity}`;
+  capacity.append(uiIcon("bag"),amount);
   inventoryHud.append(capacity);
   const selectedStock=ITEMS.find(item=>item.id===selectedItem)!;
   const selectedStatus=document.createElement("div");

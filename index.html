@@ -13,15 +13,19 @@
       <section id="hud" aria-live="polite">
         <div class="shop-title">GALVIK'S SHOP <span>· LEVEL 5 · V.002 ALPHA</span></div>
         <section class="day-panel" aria-label="Day clock">
-          <button id="toggle-shop-status" class="shop-panel-toggle" type="button" aria-expanded="true" aria-controls="shop-status-content">Hide shop details</button>
-          <div id="shop-status-content">
-          <strong id="day">Loading…</strong>
+          <div class="shop-hud-glance" aria-label="Shop status">
+            <strong id="day">Loading…</strong>
+            <p id="merchant-gold"></p>
+            <button id="toggle-shop-status" class="shop-panel-toggle" type="button" aria-expanded="false" aria-controls="shop-status-content">Show shop details</button>
+          </div>
           <p id="save-status" role="status">Loading campaign…</p>
-          <p id="merchant-gold"></p>
+          <nav class="shop-quick-actions" aria-label="Shop actions">
+            <button id="open-wholesale" type="button">Wholesale (B)</button>
+            <button id="open-blueprint" type="button">Move looked-at furniture (P)</button>
+            <button id="open-placement" type="button">Advanced coordinates (Shift+P)</button>
+          </nav>
+          <div id="shop-status-content" hidden>
           <p id="daily-sales"></p>
-          <button id="open-wholesale" type="button">Wholesale (B)</button>
-          <button id="open-blueprint" type="button">Move looked-at furniture (P)</button>
-          <button id="open-placement" type="button">Advanced coordinates (Shift+P)</button>
           <p class="bedtime-tip">✦ To end the day, visit Galvik's sleeping room behind the shop and hold <kbd>E</kbd> at his bed.</p>
           <details class="shop-management-details">
             <summary>Management &amp; reports</summary>
@@ -117,7 +121,9 @@
           </div>
           <p id="arena-focus">TAB focus: hero</p>
           <p id="arena-combat-info">Combat phases</p>
-          <p>WASD free fly · Shift turbo · Q / E up / down · Mouse look (click to capture) · TAB cycle hero / boss · M music controls · C switch replay source · V / Esc return</p>
+          <details class="spectator-help"><summary>Controls</summary>
+            <p>WASD free fly · Shift turbo · Q / E up / down · Mouse look (click to capture) · TAB cycle hero / boss · M music controls · C switch replay source · V / Esc return</p>
+          </details>
         </div>
       </section>
       <section id="dungeon-hud" hidden aria-label="Level 7 dungeon observation and saved expedition replay">
@@ -160,7 +166,9 @@
           </div>
           <p id="dungeon-focus">Camera focus: entrance</p>
           <p id="dungeon-summary">Loading dungeon layout...</p>
-          <p>WASD fly · Shift turbo · Q / E camera height · Wheel zoom · Tab focus · R reset camera · Space play/pause · G / Esc return</p>
+          <details class="spectator-help"><summary>Controls</summary>
+            <p>WASD fly · Shift turbo · Q / E camera height · Wheel zoom · Tab focus · R reset camera · Space play/pause · G / Esc return</p>
+          </details>
           <small>Saved footage never changes outcomes. Full map is available only in the explicit development preview.</small>
         </footer>
       </section>

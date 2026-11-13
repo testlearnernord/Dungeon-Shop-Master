@@ -1,10 +1,6 @@
 import type { GameStore } from "./game/gameStore.ts";
 import { currentDayReceipts } from "./game/saleView.ts";
-
-const ITEM_ATLAS_INDEX: Record<string, number> = {
-  bread: 24, "healing-herb": 31, "mana-potion": 22, "iron-ore": 28,
-  "iron-sword": 0, "leather-vest": 8,
-};
+import {itemIcon} from "./uiIcons.ts";
 
 /** Live, replay-safe display of sales already booked by the global day tick. */
 export function setupSalesHud(store: GameStore): void {
@@ -26,13 +22,7 @@ export function setupSalesHud(store: GameStore): void {
       const row = document.createElement("li");
       row.className = "sales-receipt";
       row.dataset.eventId = receipt.id;
-      const icon = document.createElement("span");
-      icon.className = "sales-item-icon";
-      const atlasIndex = ITEM_ATLAS_INDEX[receipt.itemId];
-      icon.style.backgroundImage = "url('" + import.meta.env.BASE_URL + "assets/item-icons.webp')";
-      icon.style.backgroundPosition =
-        ((atlasIndex % 7) * (100 / 6)) + "% " + (Math.floor(atlasIndex / 7) * 25) + "%";
-      icon.setAttribute("aria-hidden", "true");
+      const icon=itemIcon(receipt.itemId,"sales-item-icon");
       const detail = document.createElement("span");
       detail.textContent = receipt.heroName + " · " + receipt.quantity + " × " + receipt.itemName;
       const gold = document.createElement("strong");
