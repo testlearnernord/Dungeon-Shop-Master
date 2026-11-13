@@ -28,11 +28,7 @@ test("aim at real furniture then P: visual front arrow, 90-degree R rotation, fr
   await page.keyboard.press("r");
   await expect(page.locator("#blueprint-facing")).toContainText("WEST");
   await expect(page.locator("#blueprint-facing")).toContainText("90°");
-  const arrow=await page.evaluate(async()=>{
-    const {Engine}=await import("/Dungeon-Shop-Master/tests/scene.ts");
-    return document.querySelector("#blueprint-facing")?.textContent??"";
-  });
-  expect(arrow).toContain("WEST");
+  await expect(page.locator("#blueprint-facing")).toContainText("WEST");
   // Pointer lock remains in force. A player can look around without
   // an artificial 180-degree cursor constraint or losing the blueprint.
   expect(await page.evaluate(()=>document.pointerLockElement?.id)).toBe("renderCanvas");
