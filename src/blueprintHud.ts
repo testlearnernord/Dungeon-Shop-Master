@@ -217,7 +217,7 @@ export function setupBlueprintHud(
     const good=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
     if(check.layout===store.state.shopLayout&&check.message!==good)return check.message;
     if(check.layout!==store.state.shopLayout){
-      const reachability=shopServiceReachabilityProblem(check.layout);
+      const reachability=shopServiceReachabilityProblem(check.layout,store.state.level5Room);
       if(reachability)return reachability;
     }
     return occupiedBy(p);
