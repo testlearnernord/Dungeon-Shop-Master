@@ -34,7 +34,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
     if (paid) return { ...hero, status: "returning" as const,
       floor: 4 as const, shopStayDays: 0 };
     if (!cart) return hero;
-    let food = hero.inventory.food;
+    let bread = hero.inventory.bread;
     let healing = hero.inventory.healing;
     let weapon = hero.equipment.weapon;
     let armor = hero.equipment.armor;
@@ -43,13 +43,13 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
       const item = ITEMS.find(entry => entry.id === line.itemId);
       if (!item) continue;
       reservedGold += line.subtotal;
-      if (item.kind === "food") food += line.quantity;
+      if (item.kind === "food") bread += line.quantity;
       if (item.kind === "healing") healing += line.quantity;
       if (item.kind === "weapon") weapon = item.name;
       if (item.kind === "armor") armor = item.name;
     }
     return { ...hero, gold: hero.gold - reservedGold,
-      inventory: {...hero.inventory, food, healing},
+      inventory: {...hero.inventory, bread, healing},
       equipment: {...hero.equipment, weapon, armor} };
   });
   const planningState = { ...state, adventurers: virtualHeroes };
@@ -75,9 +75,8 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
     let reason:ShoppingReason="interested";
     if(!items.length){
       const needs=ITEMS.filter(item=>{
-        if(item.kind==="food")return hero.inventory.food<ECONOMY.foodTarget;
-        if(item.kind==="healing")return hero.health<hero.stats.maxHealth &&
-          hero.inventory.healing<ECONOMY.healingTarget;
+        if(item.kind==="food")return hero.inventory.bread<ECONOMY.breadTarget;
+        if(item.kind==="healing")return hero.inventory.healing<ECONOMY.healingTarget;
         if(item.kind==="weapon")return hero.equipment.weapon===null;
         if(item.kind==="armor")return hero.equipment.armor===null;
         return false;
@@ -93,16 +92,15 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
       }else reason="cannot-afford";
     }
     // Choose one truthful and affordable unmet need for an out-of-stock
-    // request bubble. Survival goods are more urgent than equipment.
+    // request bubble. Healing supplies are more urgent than equipment.
     const projectedHero=virtualHeroes.find(entry=>entry.id===hero.id)??hero;
     const priorities:readonly ItemId[]=["bread","healing-herb","iron-sword","leather-vest"];
     const wantedItemId=(reason==="unavailable"||reason==="cannot-afford")?
       priorities.find(id=>{
         const item=ITEMS.find(entry=>entry.id===id)!;
         if(reason==="unavailable"&&projectedHero.gold<item.salePrice)return false;
-        if(id==="bread")return projectedHero.inventory.food<ECONOMY.foodTarget;
-        if(id==="healing-herb")return projectedHero.health<projectedHero.stats.maxHealth&&
-          projectedHero.inventory.healing<ECONOMY.healingTarget;
+        if(id==="bread")return projectedHero.inventory.bread<ECONOMY.breadTarget;
+        if(id==="healing-herb")return projectedHero.inventory.healing<ECONOMY.healingTarget;
         if(id==="iron-sword")return projectedHero.equipment.weapon===null;
         return projectedHero.equipment.armor===null;
       }):undefined;
