@@ -1,5 +1,7 @@
 # Dungeon Shop Master
 
+**Current playable milestone: V.002 Alpha.** The default shop track is **The Lean Season** (`public/audio/the-lean-season.mp3`); the dungeon and boss cues are unchanged. **Fortune Returns (fem vocals)** is present as an unassigned source track, not the shop loop.
+
 A small browser-based first-person prototype set in Galvik's mineshaft shop on Dungeon Level 5. The scene uses original placeholder geometry and materials; it has no backend or paid assets.
 
 ## Controls

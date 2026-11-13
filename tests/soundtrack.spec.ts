@@ -5,25 +5,25 @@ test("music uses the correct deployed assets and tracks shop / boss scenes", asy
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
-  await expect(page.locator("#music-track")).toHaveText("The Last Warm Light");
+  await expect(page.locator("#music-track")).toHaveText("The Lean Season");
   await expect(page.locator("#music-status")).toContainText("first click");
   const sources = await page.locator("#music-panel audio").evaluateAll(nodes =>
     nodes.map(node => (node as HTMLAudioElement).src));
   expect(sources).toHaveLength(3);
-  expect(sources[0]).toMatch(/\/Dungeon-Shop-Master\/audio\/the-last-warm-light\.mp3$/);
+  expect(sources[0]).toMatch(/\/Dungeon-Shop-Master\/audio\/the-lean-season\.mp3$/);
   expect(sources[1]).toMatch(/\/Dungeon-Shop-Master\/audio\/beneath-the-surface\.mp3$/);
   expect(sources[2]).toMatch(/\/Dungeon-Shop-Master\/audio\/trial-by-iron\.mp3$/);
   const gold = await page.locator("#merchant-gold").textContent();
   await page.locator("#open-arena").click();
   await expect(page.locator("#music-track")).toHaveText("Trial by Iron");
   await page.locator("#close-arena").click();
-  await expect(page.locator("#music-track")).toHaveText("The Last Warm Light");
+  await expect(page.locator("#music-track")).toHaveText("The Lean Season");
   await expect(page.locator("#day")).toHaveText("Day 1");
   await expect(page.locator("#merchant-gold")).toHaveText(gold!);
   await page.locator("#open-dungeon").click();
   await expect(page.locator("#music-track")).toHaveText("Beneath the Surface");
   await page.locator("#close-dungeon").click();
-  await expect(page.locator("#music-track")).toHaveText("The Last Warm Light");
+  await expect(page.locator("#music-track")).toHaveText("The Lean Season");
   expect(errors).toEqual([]);
 });
 
