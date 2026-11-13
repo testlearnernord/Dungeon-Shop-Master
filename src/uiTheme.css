@@ -489,3 +489,11 @@
 @media(max-width:740px){
   #hud #inventory .hotbar-selected {font-size:10px;}
 }
+
+/* The mobile stack previously had a more specific 108px override. Keep the
+   same specificity so responsive wrapping cannot defeat measured clearance. */
+@media(max-width:740px){
+  #hud .mobile-hud-stack details.controls[open] .controls-keys{
+    bottom:calc(100% + var(--hotbar-clearance,170px));
+  }
+}

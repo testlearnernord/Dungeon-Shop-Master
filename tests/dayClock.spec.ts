@@ -105,6 +105,9 @@ test("book keeps expedition results sealed until the observer watches a replay",
 
 test("player can walk through former rear wall into the bedchamber",async({page})=>{
   await page.goto("./");
+  // The shell can be visible before the asynchronous game scene is mounted.
+  // Wait for game initialization before using the camera inspection helper.
+  await expect(page.locator("#day")).toHaveText("Day 1");
   await page.evaluate(async()=>{
     (await import("/Dungeon-Shop-Master/tests/scene.ts"))
       .inspectPlayer({x:0,y:1.7,z:-6});
