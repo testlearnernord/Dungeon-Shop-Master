@@ -226,6 +226,10 @@ export function setupBlueprintHud(
   const updateGhost=():void=>{
     if(!enabled)return;
     if(document.querySelector("dialog[open]")){close();return;}
+    const facing=furnitureFacing(activeId,rotation);
+    const facingLabel="FRONT → "+facing.label.toUpperCase()+
+      "  ·  "+(rotation*90)+"°";
+    facingReadout.textContent=facingLabel;
     // FPS targeting stays on the crosshair even when the camera turns.
     // No screen-coordinate cursor state or detaching the Babylon camera.
     const hit=scene.pickWithRay(camera.getForwardRay(16),
@@ -233,14 +237,14 @@ export function setupBlueprintHud(
     const surface=hit?.pickedMesh?surfaceFromMesh(hit.pickedMesh.name):null;
     if(!surface||!hit?.pickedPoint){
       draft=null;placeable=false;ghost.setEnabled(false);
-      facingReadout.textContent="Facing: not positioned";
+      facingReadout.textContent=facingLabel+" · aim at a surface";
       updateStatus("Aim at the "+(activeId==="counter"?"floor":"floor or a wall")+".",false);
       return;
     }
     const p=blueprintAtSurface(activeId,surface,hit.pickedPoint,rotation);
     if(!p){
       draft=null;placeable=false;ghost.setEnabled(false);
-      facingReadout.textContent="Facing: unsupported mount";
+      facingReadout.textContent=facingLabel+" · unsupported mount";
       updateStatus("This furniture cannot be mounted on that surface.",false);
       return;
     }
