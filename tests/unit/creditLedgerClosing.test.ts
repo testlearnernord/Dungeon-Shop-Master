@@ -10,7 +10,7 @@ test("day-close ledger displays shop loans separately from sales and keeps unpai
   const broke={
     ...initial,
     adventurers:initial.adventurers.map(hero=>hero.id===borrower.id?
-      {...hero,gold:0,inventory:{...hero.inventory,food:0}}:hero),
+      {...hero,gold:0,inventory:{...hero.inventory,bread:0}}:hero),
   };
   const issued=issueShopCredit(broke,borrower.id);
   assert.notEqual(issued.state,broke);
