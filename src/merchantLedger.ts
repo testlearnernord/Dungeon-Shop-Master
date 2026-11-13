@@ -1,3 +1,4 @@
+import {goldIcon} from "./uiIcons.ts";
 import type { GameState, WorldEvent } from "./game/gameState.ts";
 import { ITEMS } from "./game/economy.ts";
 import type { SaleReceipt } from "./game/saleView.ts";
@@ -201,15 +202,18 @@ export function setupMerchantLedger(
   }
   function metric(label:string,value:string,sub:string):HTMLElement {
     const tile=node("div","ledger-metric");
+    const valueNode=node("strong","ledger-metric-value",value);
+    if(/g$/.test(value))valueNode.prepend(goldIcon());
     tile.append(node("span","ledger-metric-label",label),
-      node("strong","ledger-metric-value",value),
-      node("small","ledger-metric-sub",sub));
+      valueNode,node("small","ledger-metric-sub",sub));
     return tile;
   }
   function line(label:string,value:string,tag=""):HTMLElement{
     const row=node("div","ledger-line");
+    const money=node("strong","ledger-line-value",value);
+    if(/g$/.test(value))money.prepend(goldIcon());
     row.append(node("span","ledger-line-label",label),node("span","ledger-line-dots"),
-      node("strong","ledger-line-value",value));
+      money);
     if(tag)row.append(node("small","ledger-line-tag",tag));
     return row;
   }
