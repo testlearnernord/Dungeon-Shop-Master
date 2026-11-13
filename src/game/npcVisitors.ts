@@ -24,6 +24,9 @@ export interface VisitorSnapshot {
   /** Unique, UI-only name derived from full persistent history. */
   readonly displayName?: string;
   readonly level?: number;
+  /** UI-only vitals for world nameplates, never the authoritative RPG save. */
+  readonly health?:number;
+  readonly maxHealth?:number;
   readonly role: VisitorRole;
   readonly gold?: number;
   readonly food?: number;

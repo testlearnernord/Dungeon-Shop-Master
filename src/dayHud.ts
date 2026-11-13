@@ -23,8 +23,9 @@ export function setupDayHud(
     const state = store.state;
     const fromLevel6 = level6ReturnIds(state.events, state.day);
     const names = heroDisplayNames(state.adventurers);
-    return state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, level, status, equipment, gold, hunger, inventory }) => ({
-      id, name, role, level, status, equipment, gold, hunger, food: inventory.food,
+    return state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, level, status, equipment, gold, health, stats, hunger, inventory }) => ({
+      id, name, role, level, status, equipment, gold, health,
+      maxHealth:stats.maxHealth,hunger, food: inventory.food,
       displayName: names.get(id) ?? name,
       entranceGate: fromLevel6.has(id) ? "level6" as const : "level4" as const,
     }));
