@@ -1,3 +1,4 @@
+import type { Level5Room } from "./level5Room.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
 import { rotateShelfOffset, shopLayoutProblem, type ShopLayout } from "./shopLayout.ts";
@@ -9,7 +10,7 @@ import { rotateShelfOffset, shopLayoutProblem, type ShopLayout } from "./shopLay
  * rearranged store. It must be consulted at the UI AND authoritative commit.
  * A returned error never changes any saved layout or shelf contents.
  */
-export function shopServiceReachabilityProblem(layout:ShopLayout):string|null {
+export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Room):string|null {
   const geometryError=shopLayoutProblem(layout);
   if(geometryError)return geometryError;
   const entrances:ShopPoint[]=[
@@ -19,10 +20,10 @@ export function shopServiceReachabilityProblem(layout:ShopLayout):string|null {
   if(queue.length<1)
     return "The checkout has no reachable customer standing position.";
   const cashier=queue[0];
-  if(isObstructed(cashier,layout))
+  if(isObstructed(cashier,layout,room))
     return "The checkout is obstructed.";
   for(const [index,origin] of entrances.entries()){
-    const route=pathToShopGoal(origin,cashier,layout);
+    const route=pathToShopGoal(origin,cashier,layout,room);
     if(!route)
       return "Entrance "+(index+1)+" cannot reach the checkout.";
   }
@@ -30,10 +31,10 @@ export function shopServiceReachabilityProblem(layout:ShopLayout):string|null {
     for(let slot=0;slot<5;slot++){
       const offset=rotateShelfOffset(1.75,slot-2,shelf.rotation);
       const service={x:shelf.x+offset.x,z:shelf.z+offset.z};
-      if(isObstructed(service,layout))
+      if(isObstructed(service,layout,room))
         return "Customer standing space is blocked at "+shelf.id+" slot "+(slot+1)+".";
-      if(entrances.some(origin=>!pathToShopGoal(origin,service,layout))||
-         !pathToShopGoal(service,cashier,layout))
+      if(entrances.some(origin=>!pathToShopGoal(origin,service,layout,room))||
+         !pathToShopGoal(service,cashier,layout,room))
         return "A shelf service point cannot reach the entrance and checkout.";
     }
   }
