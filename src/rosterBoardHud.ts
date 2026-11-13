@@ -3,7 +3,8 @@ import type { GameStore } from "./game/gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries, type RosterFilter } from "./game/rosterView.ts";
 import { ECONOMY } from "./game/economy.ts";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
-import {itemIcon,uiIcon} from "./uiIcons.ts";
+import {itemIcon,uiIcon,goldIcon} from "./uiIcons.ts";
+import {portraitCssFrame} from "./game/portraitAtlas.ts";
 
 export function setupRosterBoardHud(
   canvas: HTMLCanvasElement, camera: UniversalCamera, store: GameStore,
@@ -38,7 +39,7 @@ export function setupRosterBoardHud(
       const index = portraitIndex(hero.id);
       portrait.dataset.portraitId = String(index);
       portrait.style.backgroundImage = "url('" + import.meta.env.BASE_URL + "assets/hero-portraits.webp')";
-      portrait.style.backgroundPosition = ((index % 5) * 25) + "% " + (Math.floor(index / 5) * 25) + "%";
+      Object.assign(portrait.style,portraitCssFrame(index));
       portrait.setAttribute("aria-hidden", "true");
       const primary = document.createElement("span");
       primary.className = "roster-card-primary";
@@ -59,7 +60,7 @@ export function setupRosterBoardHud(
       const overview = document.createElement("span");
       overview.className = "roster-overview";
       overview.append(
-        uiIcon("coin"),document.createTextNode(" "+hero.gold+"g  ·  "),
+        goldIcon(),document.createTextNode(" "+hero.gold+"g  ·  "),
         uiIcon("food"),document.createTextNode(" "+(hero.hunger>=3?"Hungry":"Fed")+
           "  ·  "+hero.inventory.food+" food  ·  "+hero.inventory.healing+" heal"),
       );

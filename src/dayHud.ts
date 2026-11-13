@@ -2,6 +2,7 @@ import { GameStore } from "./game/gameStore";
 import { level6ReturnIds, type VisitorSnapshot } from "./game/npcVisitors";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
 import { hasObservedReplay } from "./replayDisclosure.ts";
+import {goldIcon} from "./uiIcons.ts";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
@@ -75,6 +76,11 @@ export function setupDayHud(
       summary.className = "hero-summary";
       summary.textContent = `${names.get(hero.id) ?? hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Hunger ${hero.hunger} · Food ${hero.inventory.food}`;
       entry.append(summary);
+      const cash=document.createElement("span");
+      cash.className="hero-gold";
+      cash.setAttribute("aria-label",hero.gold+" gold");
+      cash.append(goldIcon(),document.createTextNode(" "+hero.gold+"g"));
+      entry.append(cash);
       if (hero.status === "at-shop") {
         const permission = document.createElement("button");
         permission.type = "button";

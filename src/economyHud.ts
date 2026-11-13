@@ -1,6 +1,6 @@
 import { ECONOMY, ITEMS } from "./game/economy";
 import { GameStore } from "./game/gameStore";
-import {uiIcon} from "./uiIcons.ts";
+import {goldIcon} from "./uiIcons.ts";
 
 export function setupEconomyHud(
   canvas: HTMLCanvasElement,
@@ -207,7 +207,7 @@ export function setupEconomyHud(
     gold.textContent = `Merchant gold: ${economy.balance}g`;
     gold.dataset.amount=economy.balance+"g";
     gold.setAttribute("aria-label","Merchant gold: "+economy.balance+"g");
-    gold.prepend(uiIcon("coin"));
+    gold.prepend(goldIcon());
     supplies.textContent = `Shelves: ${ITEMS.map((item) =>
       `${item.name} ${economy.slots.filter((slot) => slot.itemId === item.id)
         .reduce((sum, slot) => sum + slot.quantity, 0)}`).join(" · ")}`;
