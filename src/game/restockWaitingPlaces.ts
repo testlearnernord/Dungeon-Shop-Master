@@ -1,3 +1,4 @@
+import type { Level5Room } from "./level5Room.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE } from "./npcTraffic.ts";
 import { shelfBounds, type ShopLayout } from "./shopLayout.ts";
@@ -22,13 +23,13 @@ function shelfClearance(point:ShopPoint,layout:ShopLayout):number {
     return Math.hypot(dx,dz);
   }));
 }
-export function restockWaitingPositions(layout:ShopLayout):readonly ShopPoint[] {
-  const checkout=checkoutQueuePoints(layout,{x:0,z:-1},12);
+export function restockWaitingPositions(layout:ShopLayout,room?:Level5Room):readonly ShopPoint[] {
+  const checkout=checkoutQueuePoints(layout,{x:0,z:-1},12,room);
   const positions:ShopPoint[]=[];
   for(const point of REAR_POCKETS){
-    if(isObstructed(point,layout)||shelfClearance(point,layout)<1.05||
+    if(isObstructed(point,layout,room)||shelfClearance(point,layout)<1.05||
       checkout.some(other=>distance(point,other)<RESTOCK_WAIT_CLEARANCE))continue;
-    const route=pathToShopGoal({x:-3.43,z:4.65},point,layout);
+    const route=pathToShopGoal({x:-3.43,z:4.65},point,layout,room);
     const end=route?.waypoints.at(-1)??{x:-3.43,z:4.65};
     if(!route||distance(end,point)>0.17||
       positions.some(other=>distance(point,other)<RESTOCK_WAIT_CLEARANCE))continue;
@@ -43,15 +44,15 @@ export function restockWaitingPositions(layout:ShopLayout):readonly ShopPoint[] 
 export function reserveRestockWaitingRoute(
   layout:ShopLayout,from:ShopPoint,
   occupied:readonly ShopPoint[],destinations:readonly ShopPoint[],
-  preferredIndex=0,
+  preferredIndex=0,room?:Level5Room,
 ):{point:ShopPoint;route:ShopperRoute}|null {
-  const positions=restockWaitingPositions(layout);
+  const positions=restockWaitingPositions(layout,room);
   if(!positions.length)return null;
   const index=((preferredIndex%positions.length)+positions.length)%positions.length;
   for(const point of [...positions.slice(index),...positions.slice(0,index)]){
     if([...occupied,...destinations].some(other=>distance(point,other)<RESTOCK_WAIT_CLEARANCE))
       continue;
-    const route=pathToShopGoal(from,point,layout);
+    const route=pathToShopGoal(from,point,layout,room);
     const last=route?.waypoints.at(-1)??from;
     if(route&&distance(last,point)<=0.17)return {point,route};
   }

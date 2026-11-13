@@ -1,3 +1,4 @@
+import type { Level5Room } from "./level5Room.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { NPC_CENTER_CLEARANCE } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
@@ -15,7 +16,7 @@ export function checkoutQueueIndex(carts: readonly ShopCart[], heroId: string): 
  * Queue allocation is based on actual path endpoints, not desired coordinates:
  * path snapping must never cause two customers to share a position.
  */
-export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: number): readonly ShopPoint[] {
+export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: number, room?:Level5Room): readonly ShopPoint[] {
   if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Invalid queue capacity");
   if (count === 0) return [];
   const candidates: ShopPoint[] = [];
@@ -28,7 +29,7 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   const safeFront=rotateShelfOffset(0,
     -COMPACT_COUNTER.clearanceDepth/2-0.95,counter.rotation);
   const fallback={x:counter.x+safeFront.x,z:counter.z+safeFront.z};
-  const origin=isObstructed(from,layout)?fallback:from;
+  const origin=isObstructed(from,layout,room)?fallback:from;
   // Legacy checkout must not place a queue in the rear player aisle.
   // A relocated counter keeps its layout-aware search range.
   // A queue is a sequence, not an audience lined up across the register.
@@ -41,18 +42,18 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
         : legacyFrontZ - counter.z - step * 1.1;
       const rotated = rotateShelfOffset(x, localZ, counter.rotation);
       const point = {x:counter.x + rotated.x,z:counter.z + rotated.z};
-      if (isObstructed(point, layout)) continue;
+      if (isObstructed(point, layout, room)) continue;
       candidates.push(point);
     }
   }
   const allocated: ShopPoint[] = [];
   for (const candidate of candidates) {
     if (allocated.length >= count) break;
-    const route = pathToShopGoal(origin, candidate, layout);
+    const route = pathToShopGoal(origin, candidate, layout, room);
     if (!route) continue;
     const endpoint = route.waypoints.at(-1) ?? origin;
     // Never silently route a checkout customer to some nearest grid cell.
-    if (isObstructed(endpoint, layout) ||
+    if (isObstructed(endpoint, layout, room) ||
         Math.hypot(endpoint.x-candidate.x,endpoint.z-candidate.z)>0.17) continue;
     if (allocated.some(point => Math.hypot(point.x-endpoint.x,point.z-endpoint.z) < NPC_CENTER_CLEARANCE)) continue;
     allocated.push(endpoint);

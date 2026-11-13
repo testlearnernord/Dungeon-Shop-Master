@@ -1,3 +1,4 @@
+import type { Level5Room } from "./level5Room.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint, type ShopperRoute } from "./shopperNavigation.ts";
@@ -18,10 +19,11 @@ export function reserveShelfWaitingRoute(
   shelfAccess:ShopPoint,
   occupied:readonly ShopPoint[],
   destinations:readonly ShopPoint[],
+  room?:Level5Room,
 ):{point:ShopPoint;route:ShopperRoute}|null {
   if(!Number.isFinite(shelfAccess.x)||!Number.isFinite(shelfAccess.z))
     return null;
-  const checkout=checkoutQueuePoints(layout,{x:0,z:-1},8);
+  const checkout=checkoutQueuePoints(layout,{x:0,z:-1},8,room);
   const intoRoom=shelfAccess.x<0?1:-1;
   const candidates:ShopPoint[]=[];
   // Prioritize lateral pockets in the same browsing zone, then nearby
@@ -42,10 +44,10 @@ export function reserveShelfWaitingRoute(
   // your shelf is useful; walking four unnecessary meters is not.
   let chosen:{point:ShopPoint;route:ShopperRoute;score:number}|null=null;
   for(const point of candidates){
-    if(isObstructed(point,layout)||
+    if(isObstructed(point,layout,room)||
        checkout.some(q=>distance(q,point)<clearance)||
        [...occupied,...destinations].some(q=>distance(q,point)<clearance))continue;
-    const route=pathToShopGoal(from,point,layout);
+    const route=pathToShopGoal(from,point,layout,room);
     if(!route)continue;
     const last=route.waypoints.at(-1)??from;
     if(distance(last,point)>0.17)continue;
