@@ -20,7 +20,7 @@ import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopperBlocksRoute, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
-import { isObstructed, pathToShopGoal, shopSegmentClear } from "./shopperNavigation.ts";
+import { isObstructed, pathToShopGoal, pathToShelfAccess, shopSegmentClear } from "./shopperNavigation.ts";
 import { reserveRestockWaitingRoute } from "./restockWaitingPlaces.ts";
 import { npcLocomotion } from "./npcLocomotion.ts";
 import { reserveShelfWaitingRoute } from "./shelfWaitingPlaces.ts";
@@ -604,7 +604,8 @@ export class NpcVisualSystem {
          npc.root.metadata.shoppingPhase==="checkout-capacity-full"||
          npc.root.metadata.shoppingPhase==="idle-capacity-full"||
          npc.root.metadata.shoppingPhase==="checkout-route-blocked"||
-         npc.root.metadata.shoppingPhase==="idle-route-blocked")){
+         npc.root.metadata.shoppingPhase==="idle-route-blocked"||
+         npc.root.metadata.shoppingPhase==="shelf-route-blocked")){
         // A missing destination is temporary: stock and furniture stay
         // authoritative while visual capacity is re-evaluated periodically.
         npc.wait-=delta;
@@ -777,6 +778,28 @@ export class NpcVisualSystem {
     this.onWalkout?.(npc.visitor.id,reason);
   }
 
+  /** A shelf can be temporarily unreachable because of furniture, traffic
+   * or an obstructed access point. Route the shopper to a separate safe idle
+   * stand and retry. Never silently mark a still-interested buyer as "waiting
+   * for next day" and never consume their basket or reserve any stock here.
+   */
+  private deferShelfRoute(npc:NpcVisual,slotId:string):void {
+    const from={x:npc.root.position.x,z:npc.root.position.z};
+    const stand=this.queuePosition(npc.slot,npc,from);
+    const route=stand&&this.layout?pathToShopGoal(from,
+      {x:stand.x,z:stand.z},this.layout,this.room):null;
+    npc.phase=route?"browsing":"queueing";
+    npc.toQueue=!!route;
+    npc.route=route?.waypoints.map(p=>new Vector3(p.x,0,p.z))??[];
+    npc.waypoint=0;
+    npc.wait=1.1+(npc.slot%4)*0.2;
+    npc.root.metadata.shoppingTargetSlot=slotId;
+    npc.root.metadata.checkoutQueueIndex=-1;
+    npc.root.metadata.shoppingPhase=route
+      ?"walking-to-shelf-retry-spot":"shelf-route-blocked";
+    npc.root.metadata.phase=npc.phase;
+  }
+
   private beginBrowsing(npc:NpcVisual):void {
     this.releaseShelf(npc);
     const item=npc.intent?.items[npc.targetIndex];
@@ -821,6 +844,10 @@ export class NpcVisualSystem {
       npc.root.metadata.phase=npc.phase;
       return;
     }
+    if(item&&(!slot||!this.layout||!this.shop)){
+      this.deferShelfRoute(npc,item.slotId);
+      return;
+    }
     if(item&&slot&&this.layout&&this.shop){
       const pointForShelf=this.shop.shelfAccessPoint(slot);
       // Reserve the entire physical shelf, not individual stock slots.
@@ -848,7 +875,7 @@ export class NpcVisualSystem {
         npc.root.metadata.phase=npc.phase;
         return;
       }
-      const path=pathToShopGoal(origin,{x:pointForShelf.x,z:pointForShelf.z},this.layout,this.room);
+      const path=pathToShelfAccess(origin,this.layout,slot.shelfId,slot.index,this.room);
       if(path){
         this.shelfOwners.set(item.slotId,npc.visitor.id);
         npc.phase="browsing";npc.toQueue=false;
@@ -860,7 +887,8 @@ export class NpcVisualSystem {
         paintIdentity(npc,this.portraits);
         return;
       }
-      npc.root.metadata.shoppingPhase="unreachable-shelf";
+      this.deferShelfRoute(npc,item.slotId);
+      return;
     }
     const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length,this.room):[];
     const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot,npc);
@@ -975,7 +1003,9 @@ export class NpcVisualSystem {
           if(npc.root.metadata.shoppingPhase==="checkout-route-blocked"||
             npc.root.metadata.shoppingPhase==="idle-route-blocked")return;
           npc.phase="queueing";
-          npc.root.metadata.shoppingPhase=npc.root.metadata.shoppingPhase==="walking-to-restock-wait"
+          npc.root.metadata.shoppingPhase=npc.root.metadata.shoppingPhase==="walking-to-shelf-retry-spot"
+            ?"shelf-route-blocked"
+            :npc.root.metadata.shoppingPhase==="walking-to-restock-wait"
             ?"waiting-for-restock"
             :npc.root.metadata.shoppingPhase==="walking-to-credit-wait"
               ?"waiting-for-credit"

@@ -1,6 +1,6 @@
 import { level5FloorWalkable, level5FloorSegmentWalkable } from "./level5Walkability.ts";
 import type { Level5Room } from "./level5Room.ts";
-import { COMPACT_COUNTER, getCounterPlacement, shelfBounds, type ShopLayout } from "./shopLayout.ts";
+import { COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, shelfBounds, type ShopLayout } from "./shopLayout.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
 export interface ShopperRoute {
@@ -139,4 +139,31 @@ export function pathToShopGoal(
     cursor=waypoint;
   }
   return {waypoints:result,length:path.length-1};
+}
+
+/** Find a genuine reachable position at the FRONT of the requested shelf slot.
+ * The nominal shelf point can become blocked after rearranging furniture; the
+ * generic grid snap would otherwise silently place the customer behind a
+ * collider (or claim they reached an inaccessible item). A small sidestep along
+ * the same shelf face is acceptable, but a distant proxy is not.
+ */
+export function pathToShelfAccess(
+  from:ShopPoint,layout:ShopLayout,shelfId:string,slotIndex:number,
+  room?:Level5Room,
+):ShopperRoute|null {
+  const shelf=layout.shelves.find(entry=>entry.id===shelfId);
+  if(!shelf||!Number.isSafeInteger(slotIndex)||slotIndex<0||slotIndex>=5)
+    return null;
+  for(const outward of [0,0.3,0.55]){
+    for(const along of [0,-0.35,0.35,-0.7,0.7]){
+      const offset=rotateShelfOffset(1.75+outward,slotIndex-2+along,shelf.rotation);
+      const goal={x:shelf.x+offset.x,z:shelf.z+offset.z};
+      if(isObstructed(goal,layout,room))continue;
+      const route=pathToShopGoal(from,goal,layout,room);
+      const reached=route?.waypoints.at(-1)??from;
+      if(route&&Math.hypot(reached.x-goal.x,reached.z-goal.z)<=0.17)
+        return route;
+    }
+  }
+  return null;
 }
