@@ -1,6 +1,6 @@
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
-import { rotateShelfOffset, type ShopLayout } from "./shopLayout.ts";
+import { rotateShelfOffset, shopLayoutProblem, type ShopLayout } from "./shopLayout.ts";
 
 /** A furniture commit is invalid if the physical entrance, checkout and
  * shelf service sockets no longer share a walkable component.
@@ -10,6 +10,8 @@ import { rotateShelfOffset, type ShopLayout } from "./shopLayout.ts";
  * A returned error never changes any saved layout or shelf contents.
  */
 export function shopServiceReachabilityProblem(layout:ShopLayout):string|null {
+  const geometryError=shopLayoutProblem(layout);
+  if(geometryError)return geometryError;
   const entrances:ShopPoint[]=[
     {x:-3.43,z:4.65},{x:4.57,z:4.65},
   ];
@@ -30,7 +32,7 @@ export function shopServiceReachabilityProblem(layout:ShopLayout):string|null {
       const service={x:shelf.x+offset.x,z:shelf.z+offset.z};
       if(isObstructed(service,layout))
         return "Customer standing space is blocked at "+shelf.id+" slot "+(slot+1)+".";
-      if(!entrances.some(origin=>pathToShopGoal(origin,service,layout))||
+      if(entrances.some(origin=>!pathToShopGoal(origin,service,layout))||
          !pathToShopGoal(service,cashier,layout))
         return "A shelf service point cannot reach the entrance and checkout.";
     }
