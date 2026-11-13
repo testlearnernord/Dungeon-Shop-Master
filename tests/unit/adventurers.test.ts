@@ -22,9 +22,7 @@ test("Day 1 has ten generated persistent heroes, exactly three distinct Level 5 
     assert.equal(hero.health, hero.stats.maxHealth);
     assert.equal(hero.level, 1);
     assert.equal(hero.xp, 0);
-    assert.deepEqual(hero.inventory, { food: 0, loot: 0, healing: 0 });
-    assert.equal(hero.hunger, 0);
-    assert.equal(hero.missedFoodShopVisits, 0);
+    assert.deepEqual(hero.inventory, { bread: 0, loot: 0, healing: 0 });
     assert.deepEqual(hero.equipment, { weapon: null, armor: null });
   }
 });
@@ -56,7 +54,7 @@ test("each dungeon outcome preserves bounded stats and only defined outcomes cre
     assert.equal(next.level, 1 + Math.floor(next.xp / 100));
     assert(next.gold - hero.gold >= 0 && next.gold - hero.gold <= 4);
     assert([0, 1].includes(next.inventory.loot - hero.inventory.loot));
-    assert.equal(next.inventory.food, 0);
+    assert.equal(next.inventory.bread, 0);
     if (next.inventory.loot > 0) {
       foundLoot = true;
       assert(next.gold > hero.gold);
@@ -108,7 +106,7 @@ test("floor 4 travelers arrive, stay briefly, return to floor 4 and can revisit 
   assert.equal(revisit.adventurer.id, hero.id);
   assert.equal(revisit.adventurer.status, "at-shop");
   assert.notEqual(revisit.events[0].id, arrival.events[0].id);
-  assert.equal(revisit.adventurer.inventory.food, 0);
+  assert.equal(revisit.adventurer.inventory.bread, 0);
 });
 
 test("identical seed and confirmed ticks reproduce a serialized multi-day session", () => {
@@ -151,9 +149,7 @@ test("multi-day population is bounded, IDs/events unique, deaths permanent, and 
       assert(hero.floor >= 1 && hero.floor <= 5);
       assert(hero.health >= 0 && hero.health <= hero.stats.maxHealth);
       if (hero.status !== "dead") assert.equal(hero.status === "at-shop", hero.floor === 5);
-      assert(hero.inventory.food >= 0 && hero.inventory.food <= 2);
-      assert(hero.hunger >= 0);
-      assert(hero.missedFoodShopVisits >= 0 && hero.missedFoodShopVisits <= 3);
+      assert(hero.inventory.bread >= 0 && hero.inventory.bread <= 2);
       const previous = before.adventurers.find((entry) => entry.id === hero.id);
       if (previous) {
         assert.equal(hero.name, previous.name);

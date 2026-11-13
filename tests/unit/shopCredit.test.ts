@@ -13,7 +13,7 @@ function hungryWithoutGold(){
     state:{
       ...original,
       adventurers:original.adventurers.map(person=>person.id===hero.id
-        ?{...person,gold:0,inventory:{...person.inventory,food:0},
+        ?{...person,gold:0,inventory:{...person.inventory,bread:0},
           equipment:{weapon:null,armor:null}}:person),
     },
   };
@@ -45,7 +45,7 @@ test("credit costs exactly one real item and records debt, never cash or an auto
     .filter(slot=>slot.itemId==="bread").reduce((sum,slot)=>sum+slot.quantity,0);
   assert.deepEqual(state,before,"quoting and issuing credit must not mutate previous state");
   assert.equal(newShelf,oldShelf-1);
-  assert.equal(hero.inventory.food,1);
+  assert.equal(hero.inventory.bread,1);
   assert.equal(hero.gold,0);
   assert.equal(hero.status,"returning");
   assert.equal(hero.floor,4);
