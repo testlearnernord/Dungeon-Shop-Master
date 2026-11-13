@@ -269,6 +269,7 @@ export function setupBlueprintHud(
   const close=():void=>{
     if(!enabled)return;
     enabled=false;panel.hidden=true;draft=null;placeable=false;
+    document.body.classList.remove("blueprint-active");
     ghost.setEnabled(false);
   };
   const open=():void=>{
@@ -287,6 +288,7 @@ export function setupBlueprintHud(
       return;
     }
     enabled=true;panel.hidden=false;
+    document.body.classList.add("blueprint-active");
     focusMesh.setEnabled(false);focusHint.hidden=true;
     // Retain pointer lock and the attached FPS camera while positioning.
     // P comes from a key gesture and can acquire lock if first-person mode
@@ -339,6 +341,11 @@ export function setupBlueprintHud(
       close();
     }
   },true);
+  // Esc can be consumed by the browser to release pointer lock, without a
+  // JS keydown event. In that case exit the blueprint as well.
+  document.addEventListener("pointerlockchange",()=>{
+    if(enabled && document.pointerLockElement!==canvas)close();
+  });
   scene.onBeforeRenderObservable.add(()=>{updateHover();updateGhost();});
   return {open,close};
 }
