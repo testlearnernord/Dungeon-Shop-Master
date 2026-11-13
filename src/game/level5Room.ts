@@ -35,7 +35,7 @@ export function isValidLevel5Room(value:unknown):value is Level5Room {
     !Array.isArray(room.excavatedCells)||room.excavatedCells.length>MAX_MINED_CELLS)return false;
   const seen=new Set<string>();
   for(const entry of room.excavatedCells){
-    if(typeof entry!=="string"||!/^-?\\d+,-?\\d+$/.test(entry)||seen.has(entry))return false;
+    if(typeof entry!=="string"||!/^-?[0-9]+,-?[0-9]+$/.test(entry)||seen.has(entry))return false;
     const [x,z]=entry.split(",").map(Number);
     const cell={x,z};
     if(!isIntegerCell(cell)||baseAir(cell)||isProtectedRoomCell(cell)||
