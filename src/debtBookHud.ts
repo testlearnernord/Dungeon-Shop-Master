@@ -1,6 +1,7 @@
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import { ITEMS } from "./game/economy.ts";
+import { heroDisplayNames } from "./game/heroIdentity.ts";
 
 /** The bedroom account book is the only merchant-facing credit register.
  * It reads, but never changes, the authoritative debt and credit events.
@@ -40,6 +41,7 @@ export function setupDebtBookHud(
     if(!dialog.open)return;
     const state=store.state;
     const heroes=new Map(state.adventurers.map(hero=>[hero.id,hero]));
+    const displayNames=heroDisplayNames(state.adventurers);
     const total=state.shopDebts.reduce((sum,debt)=>sum+debt.outstandingGold,0);
     const dead=state.shopDebts.filter(debt=>heroes.get(debt.heroId)?.status==="dead");
     const badDebt=dead.reduce((sum,debt)=>sum+debt.outstandingGold,0);
@@ -75,7 +77,7 @@ export function setupDebtBookHud(
       const heading=document.createElement("summary");
       const identity=document.createElement("span");
       const display=document.createElement("strong");
-      display.textContent=hero?.displayName??hero?.name??debt.heroId;
+      display.textContent=displayNames.get(debt.heroId)??hero?.name??debt.heroId;
       const condition=document.createElement("small");
       const isDead=hero?.status==="dead";
       condition.textContent=isDead?"FALLEN · DEBT UNPAID":"ACTIVE · DEBT UNPAID";
