@@ -91,7 +91,7 @@ export function interruptedDepartureRoute(
  * The returned null means idle capacity is exhausted, not an occupied slot.
  */
 const idleCache=new WeakMap<import("./shopLayout.ts").ShopLayout,{
-  signature:string;positions:ShopPoint[];
+  signature:string;positions:ShopPoint[];requestedCount:number;
 }>();
 export function idleShopPositions(
   layout:import("./shopLayout.ts").ShopLayout,count:number,room?:Level5Room,
@@ -102,8 +102,7 @@ export function idleShopPositions(
   // object. Cache the geometry signature as well as the layout identity.
   const signature=JSON.stringify(room??null);
   const cached=idleCache.get(layout);
-  if(cached?.signature===signature &&
-     (cached.positions.length>=count || cached.positions.length>=100))
+  if(cached?.signature===signature && cached.requestedCount>=count)
     return cached.positions.slice(0,count);
   const {isObstructed,pathToShopGoal}=navigation;
   const positions:ShopPoint[]=[];
@@ -126,7 +125,7 @@ export function idleShopPositions(
       positions.push(actual);
     }
   }
-  idleCache.set(layout,{signature,positions});
+  idleCache.set(layout,{signature,positions,requestedCount:count});
 
   return positions;
 }
