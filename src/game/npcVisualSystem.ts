@@ -22,6 +22,7 @@ import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, canYieldShopperSpot, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, pathToShelfAccess, shopSegmentClear } from "./shopperNavigation.ts";
 import { reserveRestockWaitingRoute } from "./restockWaitingPlaces.ts";
+import { reserveServiceOverflowRoute } from "./serviceOverflowPlaces.ts";
 import { npcLocomotion } from "./npcLocomotion.ts";
 import { reserveShelfWaitingRoute } from "./shelfWaitingPlaces.ts";
 import type { ShopLayout } from "./shopLayout.ts";
@@ -615,6 +616,11 @@ export class NpcVisualSystem {
         npc.wait-=delta;
         if(npc.wait<=0)this.beginBrowsing(npc);
       }
+      if(npc.phase==="queueing"&&
+         npc.root.metadata.shoppingPhase==="checkout-overflow-wait"){
+        npc.wait-=delta;
+        if(npc.wait<=0)this.beginBrowsing(npc);
+      }
       if(npc.phase==="leaving"&&npc.root.metadata.shoppingPhase==="blocked-exit"){
         npc.wait-=delta;
         if(npc.wait<=0)this.beginLeaving(npc);
@@ -623,7 +629,9 @@ export class NpcVisualSystem {
         (npc.root.metadata.shoppingPhase==="waiting-for-restock"||
          npc.root.metadata.shoppingPhase==="waiting-for-credit"||
           npc.root.metadata.shoppingPhase==="restock-spot-full"||
-          npc.root.metadata.shoppingPhase==="credit-spot-full")){
+          npc.root.metadata.shoppingPhase==="credit-spot-full"||
+          npc.root.metadata.shoppingPhase==="waiting-for-restock-overflow"||
+          npc.root.metadata.shoppingPhase==="waiting-for-credit-overflow")){
         npc.restockSeconds=restockWaitRemaining(npc.restockSeconds??RESTOCK_WAIT_SECONDS,delta);
         npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
         if(npc.restockSeconds<=0)this.leaveUnserved(npc);
@@ -819,19 +827,25 @@ export class NpcVisualSystem {
       // aisles and the entrance. Never treat an unreachable empty route as
       // successful arrival and start the 60-second countdown in the doorway.
       const waitRoute=this.offAisleWaitingRoute(npc);
+      // When all reserved stockout pockets are occupied, use a genuine
+      // side waiting destination instead of staying in the shelf aisle.
+      const overflowRoute=waitRoute?null:this.serviceOverflowRoute(npc);
+      const safeRoute=waitRoute??overflowRoute;
       if(npc.restockSeconds===null)npc.restockSeconds=RESTOCK_WAIT_SECONDS;
       this.showWish(npc,npc.intent.wantedItemId,begging);
       npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
       npc.root.metadata.shoppingTargetSlot=null;
       npc.root.metadata.checkoutQueueIndex=-1;
       npc.toQueue=true;
-      npc.route=(waitRoute?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
+      npc.route=(safeRoute?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
       npc.waypoint=0;
-      npc.phase=waitRoute?"browsing":"queueing";
+      npc.phase=safeRoute?"browsing":"queueing";
       npc.wait=0.5;
       npc.root.metadata.shoppingPhase=waitRoute
         ?(begging?"walking-to-credit-wait":"walking-to-restock-wait")
-        :(begging?"credit-spot-full":"restock-spot-full");
+        :overflowRoute
+          ?(begging?"walking-to-credit-overflow":"walking-to-restock-overflow")
+          :(begging?"credit-spot-full":"restock-spot-full");
       npc.root.metadata.phase=npc.phase;
       return;
     }
@@ -910,25 +924,30 @@ export class NpcVisualSystem {
     }
     const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length,this.room):[];
     const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot,npc);
-    if(!target){
+    // A customer who already reached safe checkout overflow must not
+    // shuffle between different waiting spots on each retry while the
+    // checkout queue is still full. Replan as soon as capacity appears.
+    if(!target&&checkoutIndex>=0&&
+       npc.root.metadata.shoppingPhase==="checkout-overflow-wait"){
       npc.phase="queueing";npc.route=[];npc.waypoint=0;
-      npc.root.metadata.shoppingPhase=checkoutIndex>=0
-        ?"checkout-capacity-full":"idle-capacity-full";
-      npc.root.metadata.checkoutQueueIndex=checkoutIndex;
-      npc.wait=1.2+(npc.slot%4)*.25;
+      npc.wait=1.4; npc.toQueue=false;
       npc.root.metadata.phase=npc.phase;
       return;
     }
-    const route=this.layout?pathToShopGoal(origin,
+    const route=target&&this.layout?pathToShopGoal(origin,
       {x:target.x,z:target.z},this.layout,this.room):null;
-    npc.phase=route?"browsing":"queueing";npc.toQueue=true;
-    npc.wait=route?0:1.2+(npc.slot%4)*.25;
-    npc.route=(route?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
+    const overflow=checkoutIndex>=0&&!route
+      ?this.serviceOverflowRoute(npc):null;
+    const safeRoute=route??overflow;
+    npc.phase=safeRoute?"browsing":"queueing";npc.toQueue=!!safeRoute;
+    npc.wait=safeRoute?0:1.2+(npc.slot%4)*.25;
+    npc.route=(safeRoute?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
     npc.waypoint=0;
     npc.root.metadata.shoppingTargetSlot=null;
     npc.root.metadata.shoppingPhase=checkoutIndex>=0
-      ? (route?"walking-to-checkout":"checkout-route-blocked")
-      : (route?"walking-to-wait":"idle-route-blocked");
+      ? (route?"walking-to-checkout":overflow?"walking-to-checkout-overflow":
+          target?"checkout-route-blocked":"checkout-capacity-full")
+      : (route?"walking-to-wait":target?"idle-route-blocked":"idle-capacity-full");
     npc.root.metadata.checkoutQueueIndex=checkoutIndex;
     npc.root.metadata.phase=npc.phase;
     paintIdentity(npc,this.portraits);
@@ -959,6 +978,24 @@ export class NpcVisualSystem {
     return reserveRestockWaitingRoute(this.layout,
       {x:npc.root.position.x,z:npc.root.position.z},
       occupied,destinations,npc.slot,this.room)?.route??null;
+  }
+
+  /** Overflow is a non-service standing area. It must never occupy checkout
+   * slots, shelf lanes or reserved 60-second stockout destinations.
+   */
+  private serviceOverflowRoute(npc:NpcVisual):
+    NonNullable<ReturnType<typeof reserveServiceOverflowRoute>>["route"]|null {
+    if(!this.layout)return null;
+    const others=[...this.npcs.values()].filter(other=>other!==npc);
+    const points=checkoutQueuePoints(this.layout,{x:0,z:-1},
+      this.carts.filter(cart=>cart.lines.length>0).length,this.room);
+    return reserveServiceOverflowRoute(this.layout,
+      {x:npc.root.position.x,z:npc.root.position.z},
+      others.map(other=>({x:other.root.position.x,z:other.root.position.z})),
+      others.map(other=>other.route.at(-1))
+        .filter((point):point is Vector3=>point!==undefined)
+        .map(point=>({x:point.x,z:point.z})),
+      points,npc.slot,this.room)?.route??null;
   }
 
   private queuePosition(slot:number,npc:NpcVisual,avoid?:{x:number;z:number}):Vector3|null {
@@ -1029,8 +1066,14 @@ export class NpcVisualSystem {
               ?"shelf-route-blocked"
             :npc.root.metadata.shoppingPhase==="walking-to-restock-wait"
             ?"waiting-for-restock"
+            :npc.root.metadata.shoppingPhase==="walking-to-restock-overflow"
+              ?"waiting-for-restock-overflow"
             :npc.root.metadata.shoppingPhase==="walking-to-credit-wait"
               ?"waiting-for-credit"
+            :npc.root.metadata.shoppingPhase==="walking-to-credit-overflow"
+              ?"waiting-for-credit-overflow"
+            :npc.root.metadata.shoppingPhase==="walking-to-checkout-overflow"
+              ?"checkout-overflow-wait"
             :checkoutQueueIndex(this.carts,npc.visitor.id)>=0
               ?"awaiting-checkout":"waiting-for-next-day";
         }else{
