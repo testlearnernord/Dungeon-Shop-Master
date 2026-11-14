@@ -1,117 +1,105 @@
-# Dungeon Shop Master — Game Design Bible
+# Dungeon Shop Master — Game Bible
 
-> **Status: living draft · 2026-11-14.** This is the canonical record of the **intended design**, not proof that a feature has been implemented. The repository's code, data and tests are authoritative for **current behavior**. Do not turn an open question into lore or a feature without a design decision.
+> **Living design reference · reviewed 2026-11-14.** This document describes the currently valid game direction, not a chronological archive. Replace or delete superseded information in the same PR that changes it. Git history preserves previous drafts. The source code and tests, not this document, establish what is playable.
 
-## 1. Game identity and promise
+## Reading this document
 
-**Genre:** Dark-fantasy dungeon shopkeeper simulation with autonomous adventurers, commerce, persistent consequences, and watchable dungeon expeditions.
+- **CURRENT** means behavior verified in the repository. It does not mean permanent design approval.
+- **LOCKED** means the project owner has explicitly accepted a design principle. A newer explicit decision can replace it.
+- **OPEN** means unresolved, proposed or being explored. Do not present it as canon or silently implement it.
+- **REJECTED** means a discarded direction; only revisit after an explicit new decision.
+- The latest explicit project-owner decision overrides an older statement here. Update this document in the same change; do not let outdated text veto new work.
+- A conceptual image, brainstorm, AI suggestion or prototype is **not** a LOCKED decision by itself.
 
-**Player fantasy:** Maintain a shop deep inside a dangerous, living dungeon. The customers are people rather than disposable units: they have identities, needs, money, equipment, injuries, and uncertain futures. Your stock, prices, choices and shop layout can change who returns.
+## 1. The game we are making
 
-**Tone:** Grounded dark fantasy: a rare pocket of warmth and commerce surrounded by danger, loss, debt and moral compromises. Emotional consequences matter more than gratuitous punishment or survival meters.
+**Identity (LOCKED):** An atmospheric, dark-fantasy shopkeeping simulator in a dangerous dungeon. The shop is physically operated, rather than being a menu. Adventurers are autonomous customers with identities and uncertain futures. Commerce, greed, survival and long-term consequences belong together.
 
-**Long-term horizon:** A 100-floor dungeon is a narrative and progression aspiration, **not** a claim that 100 playable floors exist in the current build.
+**The shop:** A small, rough, inhabited cave on **Floor 5**, not a fully equipped city storefront. Galvik is a sharp-tongued, selfish, deeply greedy merchant. His black humor and lack of scruples are part of the intended character, not an instruction to make the player's UI hostile.
 
-## 2. Decision labels
+**The central choice:** The player controls what is offered, stocked, priced, placed and made accessible. Heroes choose their own purchases. A good shop can help them survive; selling rubbish for a profit can have consequences.
 
-- **LOCKED:** Explicitly decided design intent. Preserve unless the project owner changes it.
-- **CURRENT:** Verified implementation in source/README. Not necessarily final design.
-- **OPEN:** Unresolved choice. Do not assume an answer or silently implement one.
-- **REJECTED:** Idea deliberately removed or abandoned. Do not reintroduce casually.
-- **EXPERIMENTAL:** Testable option, not a committed direction.
+**Scale:** A dungeon of up to 100 floors is the long-term fiction/ambition. It does **not** imply that 100 playable levels exist, or that a specific release scope or real-time simulation model has been approved.
 
-A decision changed by the project owner moves to the decision log with date and rationale. Major feature PRs must update this document when the intended design changes.
+## 2. Current playable alpha (CURRENT)
 
-## 3. Core gameplay pillars
+The repository currently implements:
 
-1. **A real shop, not a passive menu.** Physically stock shelves, serve customers, manage wholesale inventory and money, and arrange usable furniture.
-2. **Autonomous heroes.** Heroes independently decide whether and what to buy based on need, available gold and stock; the player affects outcomes indirectly rather than puppeteering their purchases.
-3. **Consequences without arbitrary attrition.** Heroes can be injured or die as a result of dungeon gameplay. Supplies and equipment meaningfully affect their chances.
-4. **Truthful dungeon simulation and replay.** A recorded replay presents committed outcomes. Viewing it must never generate a different fight or reroll loot, death or survival.
-5. **Progression with meaning.** Shop improvements, hero development, and deeper floors should create new strategic choices. Exact progression schedule is **OPEN**.
-6. **Readable, atmospheric presentation.** Make hero identity, inventory, sales, deaths and other important changes understandable without walls of log text.
+- TypeScript/Vite with Babylon.js; first-person Level 5 shop, shelf restocking, wholesale purchasing, cashier interaction, credits and customer shopping behavior.
+- NPC movement, checkout queues and restock waiting, with collision and route constraints.
+- Contextual furniture placement: shelves and checkout counter, plus bedroom desk/book, chest, candle/stool, bed and wall-mounted Adventurer Board. Previews are not saved until confirmed.
+- Level 5 room excavation/expansion, persistence, hero identities and roster.
+- Deterministic day-based adventures on Floors 1–4, a Cave Troll encounter on Floor 6 and the shared Floor 7 exploration/replay systems. Later floors are not claimed as playable.
+- Bed-based day close, four-part merchant ledger (reckoning, receipts, hero chronicle, sealed expedition recordings), and saved replay viewing that does not reroll outcomes.
+- A browser build deployed through GitHub Pages. Desktop distribution and any engine migration remain unapproved possibilities.
 
-## 4. Current playable alpha (CURRENT, checked against README/source)
+For exact prices, damage, timers, controls, available rooms and release behavior, consult [README](../README.md), the implementation and tests. Avoid duplicating fast-changing numbers here.
 
-- Browser-based TypeScript game rendered with Babylon.js.
-- The current playable shop is Galvik's cursed shop on dungeon **Level 5**.
-- First-person shop; physical shelving and cashier interaction, wholesale buying, furniture placement, shop excavation/expansion.
-- Persistent hero identities with roles, HP, money, equipment, experience and dungeon states.
-- Day advancement through sleeping; merchant ledger, receipts and reports.
-- Deterministic simulation of upper floors 1–4; Level 6 Cave Troll encounter; shared Level 7 exploration, fog and replay.
-- Current published build and exact gameplay details: consult [README](../README.md), source and tests. This section must be revised when code changes.
+## 3. Accepted gameplay rules (LOCKED)
 
-## 5. Locked gameplay decisions (LOCKED)
+### Shop and adventurers
 
-### Heroes, survival and merchandise
-- **No hunger, starvation or daily food-consumption system.** It was consciously removed because this kind of death is difficult for a shopkeeper to influence and distracts from actual dungeon risk.
-- **Waybread stays** as inexpensive, relatively weak **HP healing**, while Healing Herbs restore more HP for more gold. These are healing supplies, **not hunger meters**.
-- Hero spending and equipment decisions remain autonomous; player influence is primarily through stock, availability, and shop operations.
-- Injuries and deaths must follow actual dungeon simulation, not arbitrary background timers.
-- No free healing items should be conjured to compensate for unsold stock.
+- Adventurers have their own intentions, budgets and decisions; the player does **not** directly choose their shopping baskets.
+- Item availability, service quality, shop layout, equipment and HP supplies should matter to subsequent risk.
+- **No hunger or starvation mechanic.** The previous hunger system was removed. Waybread remains inexpensive **HP healing**, weaker than Healing Herbs, not a hunger meter. Do not reintroduce hunger through a renamed daily timer.
+- Dungeon wounds and deaths must arise from actual resolved simulation, not arbitrary punishment or a hidden starvation countdown.
+- Never fabricate free medicine, stock, sales or loot to make the economy look healthier.
 
-### Dungeon and presentation
-- Dungeon outcomes are committed before playback; replay is a faithful visualization, not a second simulation.
-- Shopkeeper-relevant consequences should be legible in the interface, especially the end-of-day report.
-- A furniture preview is visual only until confirmed; invalid furniture placements must not block vital customer routes.
+### Dungeon, reports and replay
 
-### Technical product direction
-- Browser delivery is the current development workflow, **not** a permanent limitation or exclusive release platform.
-- Desktop distribution is a possible future direction, **not** an approved engine migration or finalized release plan.
+- Resolve outcomes once and store them; viewing or replaying a fight/exploration must not reroll victory, death, purchases, loot or gold.
+- Information the player has not yet legitimately learned must stay sealed. Ledger summaries may show known purchases and movement, not secretly reveal unviewed battle outcomes.
+- Reports should favor readable hero identities, portraits, item pictograms, losses, receipts and clear status over walls of raw event text.
 
-## 6. Story — locked direction vs. open canon
+### Physical shop
 
-### Locked narrative direction (LOCKED)
-- The story is a tragedy of **desperate choices and their consequences**, not arbitrary punishment.
-- The **young hero consciously chooses** to take on the curse, rather than being punished for a mercenary leader's unrelated mistake.
-- Do **not** write the protagonist as an all-knowing veteran who has already mastered the entire dungeon before the game begins.
+- Furniture previews must be cheap and non-mutating; the final placement must be validated.
+- Shelf/checkout access and customer routes may not be obstructed by a committed rearrangement. Movable bedroom objects must keep their dependent visuals/interactions together and preserve sleep access.
 
-### Existing premise (CURRENT, implementation-facing)
-- The running game starts in Galvik's cursed Level 5 shop. This does not settle the final prologue, player identity, or ending.
+## 4. Narrative status
 
-### Unresolved story questions (OPEN, not canon)
-1. **Galvik:** Why was he cursed, by whom, and under which fair, comprehensible rules?
-2. **Protagonist:** What exact sacrifice does the young hero knowingly accept, when, and with what information?
-3. **Motive:** What is the precise role of the sick fiancée, medicine, money, letters and personal stakes? Earlier concepts are *proposals*, not finalized facts.
-4. **Amulet:** Is it essential? If yes, who created it, why does it matter, and why would its fate affect the curse?
-5. **Mercenaries / Level 100:** Are they part of the definitive story? If so, establish causality without blaming the young hero for their independent acts.
-6. **Shop reset:** Why does the player begin with a small shop and limited means despite Galvik's prior history?
-7. **Ending / New Game Plus:** What breaks the curse? How does the ending honor the player's decisions and support a coherent replay loop?
+**CURRENT game premise:** Galvik is the cursed merchant in the Floor 5 shop, and the playable alpha currently controls him. This does not settle the final prologue, whether the perspective changes later, or how the curse ends.
 
-**Rule:** Do not implement plot triggers, cutscenes, or claim narrative canon until these questions are resolved by the project owner.
+**Character intent (LOCKED):** Galvik is cynical, opportunistic and unashamedly greedy, with cruel or macabre humor. The world may be tragic without turning Galvik into a generic heroic mentor.
 
-## 7. Game design questions (OPEN)
+**OPEN, not story canon:**
 
-- How much direct control should the player gain without destroying hero autonomy?
-- What are the major shop-management choices and meaningful money sinks in early, middle and late game?
-- How does progressing deeper change stock, demand, expedition risk and the visual shop?
-- Which upgrades are permanent, temporary, optional or ethically costly?
-- How can the 100-floor ambition avoid repetitive daily loops?
-- What is the final visual style for characters, furniture, monsters, props and environment?
-- What is the final commercial/distribution strategy: web demo, downloadable desktop build, Steam, or a combination?
+- What caused Galvik's curse, who imposed it, what sustains it and under what conditions it can end.
+- Whether a **young hero** or a **mercenary leader** later becomes the player character, and why. The idea of a young hero *consciously accepting* a curse is one proposed solution to a causality problem, **not a finalized plot event**.
+- Whether an amulet, a sick fiancée, letters, a mercenary expedition or Floor 100 are needed at all. These are prior brainstorming possibilities, **not required story elements**.
+- How any transfer of the curse could be voluntary, comprehensible and causally connected to its consequences, rather than punishment for someone else's unrelated action.
+- Why a potential successor would begin with a modest shop instead of inheriting a fully developed business; how Galvik could behave after a transfer.
+- The ultimate ending, post-game loop and what, if anything, truly breaks the curse.
 
-## 8. Explicitly rejected directions (REJECTED)
+**Rejected approach (REJECTED):** Do not make the new protagonist a veteran who already knows every dungeon secret because they previously conquered all 100 floors. Do not treat unresolved amulet, transfer or mercenary lore as mandatory.
 
-- **Hunger/starvation simulation.** Do not revive it as a daily food meter under a new name.
-- **Replays that can change a previously committed outcome.**
-- **A protagonist who already knows every dungeon secret because they previously conquered the dungeon.**
-- **Making unresolved amulet/mercenary lore into mandatory canon without resolving causal gaps.**
+**Writing rule:** Short dialogue sketches, dark jokes and prototypes can be explored without declaring the entire scenario canon. Only promote story details to LOCKED after an explicit project decision.
 
-## 9. Decision log
+## 5. Design questions still open (OPEN)
 
-| Date | Status | Decision | Why |
-| --- | --- | --- | --- |
-| 2026-11 | LOCKED | Remove hunger entirely; Waybread heals HP | Avoid unmanageable off-screen starvation and preserve meaningful combat risk |
-| 2026-11 | LOCKED | Hero buys independently; player influences indirectly | Preserve the living-shop simulation |
-| 2026-11 | LOCKED | Dungeon replay cannot reroll outcomes | Results and consequences must be trustworthy |
-| 2026-11-14 | LOCKED | Young hero **knowingly** accepts the curse | Moral agency and a coherent tragedy rather than arbitrary inherited punishment |
-| 2026-11-14 | OPEN | Exact story causality, ending and Level 100 logic | Require a coherent final narrative before implementation |
-| 2026-11-14 | OPEN | Desktop delivery and visual asset pipeline | Keep options open; no premature engine rewrite |
+- How to keep watching autonomous dungeon expeditions engaging, and what indirect powers the player gains over routes, traps, hazards or boss encounters.
+- Whether, when and how shop time and dungeon activity should interact continuously instead of only at committed day transitions. **No 24-hour concurrent simulation has been approved.**
+- Meaningful short- and long-term shop decisions, prices, upgrades, helpers, money sinks and increasing demand.
+- How exploration, deeper floors and hero progression expand gameplay without requiring 100 hand-built or repetitive levels.
+- The long-term art/asset pipeline, optional desktop delivery and commercial release model.
 
-## 10. How to maintain this bible
+These are questions, not permissions to undertake a large rewrite.
 
-- Update **intent** in this document when a mechanic, story rule or artistic direction is intentionally approved/changed.
-- Update **CURRENT** descriptions only when implementation has actually changed; refer to code/tests.
-- Preserve superseded decisions in the log instead of silently overwriting history.
-- Do not mistake a chat suggestion, mockup, music experiment or old roadmap for an approved feature.
-- For the code map and integration constraints, read [ARCHITECTURE.md](ARCHITECTURE.md). AI collaborators start with [AGENTS.md](../AGENTS.md).
+## 6. Explicit exclusions (REJECTED)
+
+- Hunger/starvation, regardless of renamed meter.
+- Replays that resolve combat again or alter committed outcomes.
+- Mandatory lore built from unresolved curse/amulet/Mercenary/Floor 100 theories.
+- Presenting concept art or brainstorming as final UI, story or production scope.
+
+## 7. Keeping the Bible current
+
+**Every gameplay, economy, story, UI or presentation PR must review this file.**
+
+1. Update the affected **CURRENT** statements after implementing a mechanic. If something was removed, delete its current-feature claim.
+2. Move a design between OPEN / LOCKED / REJECTED only when the owner has genuinely made that decision. Replace the old classification in place, instead of leaving two competing versions.
+3. Remove superseded descriptions and obsolete proposals from the active reference. Use Git history and PR discussions for archaeology; **do not append an ever-growing historical decision log here**.
+4. Keep the distinction between **what exists**, **what is explicitly approved**, and **what is merely being discussed**.
+5. Review [ARCHITECTURE.md](ARCHITECTURE.md) and [AGENTS.md](../AGENTS.md) alongside this document. A PR that changes an invariant or workflow must synchronize the relevant sections of all three.
+
+The documentation is maintained **with** the code/story change, never as an indefinitely deferred cleanup task.
