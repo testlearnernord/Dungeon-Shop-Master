@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createBlueprintPreviewValidator } from "../../src/game/blueprintPreviewValidator.ts";
 import { createShopLayout } from "../../src/game/shopLayout.ts";
+import { createLevel5Room } from "../../src/game/level5Room.ts";
 import type { FurnitureDraft } from "../../src/game/furnitureBlueprint.ts";
 
 const counter=(x:number):FurnitureDraft=>({id:"counter",x,z:0,rotation:0});
@@ -53,7 +54,7 @@ test("moving furniture or excavating the room invalidates old path checks",()=>{
   preview.evaluate(counter(0),layout,undefined,1,true);
   preview.evaluate(counter(0),changed,undefined,2,true);
   assert.equal(calls,2,"new layout must not use previous geometry");
-  const room={...({expansionTier:0,excavated:[]} as any)};
+  const room=createLevel5Room();
   preview.evaluate(counter(0),changed,room,3,true);
   assert.equal(calls,3,"excavation topology must invalidate cached reachability");
 });

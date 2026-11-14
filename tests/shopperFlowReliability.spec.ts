@@ -42,3 +42,66 @@ test("a single buyer can reach and request service at a rotated register",async(
   expect(visuals.visitors.find(v=>v.id===buyer)?.shoppingPhase).toBe("awaiting-checkout");
   expect(errors).toEqual([]);
 });
+
+
+/** Browser-only crowd test. Deliberately combines relocated furniture, eight
+ * simultaneous customer spawns, and limited Waybread stock. This catches
+ * actual Babylon movement failures missed by pure route allocation tests. */
+test("eight incoming customers progress around relocated shelves and checkout",async({page})=>{
+  test.setTimeout(110000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.evaluate(async()=>{
+    const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+    const {replaceShelfPlacement,replaceCounterPlacement}=await import(
+      "/Dungeon-Shop-Master/src/game/shopLayout.ts");
+    const {shopServiceReachabilityProblem}=await import(
+      "/Dungeon-Shop-Master/src/game/shopServiceReachability.ts");
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const original=createGameState(7351);
+    const movedShelf=replaceShelfPlacement(original.shopLayout,{
+      id:"shelf-1",x:0,z:-2,rotation:1,
+    });
+    if(movedShelf.message!=="Shelf placement saved.")throw Error(movedShelf.message);
+    const movedCounter=replaceCounterPlacement(movedShelf.layout,{
+      x:0,z:2.25,rotation:1,
+    });
+    if(movedCounter.message!=="Counter placement saved.")
+      throw Error(movedCounter.message);
+    const problem=shopServiceReachabilityProblem(
+      movedCounter.layout,original.level5Room);
+    if(problem)throw Error(problem);
+    const state={
+      ...original,shopLayout:movedCounter.layout,
+      adventurers:original.adventurers.map((hero,index)=>index<8
+        ?{...hero,status:"at-shop" as const,floor:5 as const,gold:100,
+          inventory:{...hero.inventory,bread:0,healing:0},
+          equipment:{weapon:null,armor:null}}
+        :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
+      shopEconomy:{...original.shopEconomy,
+        slots:original.shopEconomy.slots.map(slot=>
+          slot.id==="shelf-1-slot-2"||slot.id==="shelf-2-slot-2"
+            ?{...slot,itemId:"bread" as const,quantity:slot.capacity}
+            :{...slot,itemId:null,quantity:0})},
+    };
+    await new CampaignStorage().saveGame(state);
+  });
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const read=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals());
+  const starting=await read();
+  expect(starting.visitors.length).toBeGreaterThanOrEqual(8);
+  await expect.poll(async()=>{
+    const {visitors}=await read();
+    return visitors.filter(visitor=>(visitor.cartUnits??0)>0 ||
+      visitor.shoppingPhase==="waiting-for-restock"||
+      visitor.shoppingPhase==="awaiting-checkout").length;
+  },{timeout:75000,intervals:[1000,2000,3000]}).toBeGreaterThanOrEqual(3);
+  const final=await read();
+  expect(final.visitors.every(visitor=>visitor.wallClear)).toBe(true);
+  expect(final.visitors.some(visitor=>(visitor.cartUnits??0)>0)).toBe(true);
+  expect(errors).toEqual([]);
+});
