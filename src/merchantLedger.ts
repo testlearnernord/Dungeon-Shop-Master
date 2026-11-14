@@ -1,4 +1,5 @@
 import {goldIcon,itemIcon,uiIcon,type InterfaceIcon} from "./uiIcons.ts";
+import {restoreLedgerView} from "./ledgerViewState.ts";
 import {sealedExpeditionDossiers,sealedExpeditionCounts,
   type SealedExpeditionDossier} from "./ledgerSealedExpeditions.ts";
 import {portraitCssFrame} from "./game/portraitAtlas.ts";
@@ -117,7 +118,8 @@ export function setupMerchantLedger(
       <header class="ledger-top">
         <span class="ledger-brand"><span class="ledger-brand-mark">✦</span> GALVIK'S PRIVATE ACCOUNTS <small>THE FIFTH DESCENT</small></span>
         <span class="ledger-volume" id="ledger-volume"></span>
-        <button type="button" class="ledger-skip" id="ledger-skip">Skip animations ↷</button>
+        <button type="button" class="ledger-skip" id="ledger-skip"
+          aria-pressed="false" title="Turn ledger page animations on or off">Skip animations</button>
       </header>
       <div class="ledger-interior">
         <nav class="ledger-index" aria-label="Ledger chapters">
@@ -131,7 +133,7 @@ export function setupMerchantLedger(
             <div class="ledger-page-overline" id="ledger-overline"></div>
             <h2 id="ledger-heading" tabindex="-1"></h2>
             <div class="ledger-ornament">✦ <span>❧</span> ✦</div>
-            <div id="ledger-page-content" class="ledger-page-content"></div>
+            <div id="ledger-page-content" class="ledger-page-content" role="region" aria-labelledby="ledger-heading"></div>
             <div class="ledger-paper-foot"><span>GALVIK'S LEDGER</span><span id="ledger-folio"></span></div>
           </div>
         </div>
@@ -139,7 +141,7 @@ export function setupMerchantLedger(
       <footer class="ledger-bottom">
         <div class="ledger-navigation">
           <button type="button" id="ledger-previous">← Previous page</button>
-          <span id="ledger-pages">01 / 04</span>
+          <span id="ledger-pages" aria-live="polite">01 / 04</span>
           <button type="button" id="ledger-next">Next page →</button>
         </div>
         <button type="button" id="ledger-begin" class="ledger-begin">☀ Begin Next Day <span>→</span></button>
@@ -167,16 +169,26 @@ export function setupMerchantLedger(
   let restoreFocus:HTMLElement|null=null;
   let animationSkipped=false;
   let soundContext:AudioContext|null=null;
-  function persistPending(before:GameState,after:GameState):void {
+  /** Snapshot the accounting boundary once; navigating the book must not
+   * require rerunning a day or inventing a pre-sleep GameState. */
+  let pendingBoundary:{
+    seed:number;day:number;beforeGold:number;visitorCount:number;
+  }|null=null;
+  function persistPending():void {
+    if(!pendingBoundary||!summary)return;
     try{
       sessionStorage.setItem(LEDGER_SESSION_KEY,JSON.stringify({
-        seed:after.seed,day:after.day,
-        beforeGold:before.shopEconomy.balance,
-        visitorCount:summary?.visited??before.adventurers.filter(h=>h.status==="at-shop").length,
-        heroes:summary?.heroes,
-        dossiers:summary?.dossiers,
+        ...pendingBoundary,
+        page,animationSkipped,
+        heroes:summary.heroes,
+        dossiers:summary.dossiers,
       }));
     }catch{ /* Session recovery is best effort if browser storage is denied. */ }
+  }
+  function syncAnimationToggle():void{
+    skip.textContent=animationSkipped?"Enable animations":"Skip animations";
+    skip.setAttribute("aria-pressed",String(animationSkipped));
+    skip.title=animationSkipped?"Restore page animations":"Disable page animations";
   }
   /** Untrusted tab storage never gets to insert markup or unbounded arrays. */
   function restoreHeroChronicle(value:unknown):LedgerHeroChronicle|null{
@@ -516,10 +528,11 @@ export function setupMerchantLedger(
   }
   function renderPage():void{
     if(!summary)return;
-    pages.textContent=String(page+1).padStart(2,"0")+" / 04";
+    pages.textContent=String(page+1).padStart(2,"0")+" / "+String(labels.length).padStart(2,"0");
     previous.disabled=page===0;
-    next.disabled=page===3;
+    next.disabled=page===labels.length-1;
     heading.textContent=labels[page];
+    syncAnimationToggle();
     overline.textContent=`NIGHT ${summary.closingDay}  /  LEAVING DAY ${summary.morningDay}`;
     folio.textContent="FOLIO "+String(page+1).padStart(3,"0");
     chapters.replaceChildren(...labels.map((label,index)=>{
@@ -604,19 +617,31 @@ export function setupMerchantLedger(
   }
   function changePage(to:number):void{
     if(!summary||to<0||to>=labels.length||page===to)return;
-    page=to;sound("page");renderPage();
+    page=to;
+    renderPage();
+    // A long register can scroll the whole modal; the next folio should
+    // open at its heading, not halfway down the previous one.
+    dialog.scrollTop=0;
+    persistPending();
+    sound("page");
+    heading.focus({preventScroll:true});
   }
   next.addEventListener("click",()=>changePage(page+1));
   previous.addEventListener("click",()=>changePage(page-1));
   skip.addEventListener("click",()=>{
     animationSkipped=!animationSkipped;
-    skip.textContent=animationSkipped?"Animations enabled? Click to restore":"Skip animations ↷";
-    renderPage();
+    syncAnimationToggle();
+    // Do not destroy and recreate the current page: scroll position,
+    // selected text, and replay buttons should all remain in place.
+    content.classList.toggle("ledger-no-animation",animationSkipped);
+    if(animationSkipped)content.classList.remove("ledger-page-enter");
+    persistPending();
   });
   begin.addEventListener("click",()=>{
     if(!summary||suspended)return;
     dialog.close();
     summary=null;
+    pendingBoundary=null;
     clearPending();
     onNextMorning();
     restoreFocus?.focus({preventScroll:true});
@@ -627,21 +652,29 @@ export function setupMerchantLedger(
     if(event.code==="Escape"){event.preventDefault();return;}
     if(event.code==="ArrowRight"){event.preventDefault();changePage(page+1);}
     if(event.code==="ArrowLeft"){event.preventDefault();changePage(page-1);}
+    if(event.code==="Home"){event.preventDefault();changePage(0);}
+    if(event.code==="End"){event.preventDefault();changePage(labels.length-1);}
   });
   return {
     open(before,after){
       summary=summarizeLedger(before,after);
-      persistPending(before,after);
+      pendingBoundary={
+        seed:after.seed,day:after.day,
+        beforeGold:before.shopEconomy.balance,
+        visitorCount:summary.visited,
+      };
       page=0;
       suspended=false;
       restoreFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
       find<HTMLElement>("#ledger-volume").textContent=`DAY ${summary.closingDay} · ACCOUNTS CLOSED`;
+      persistPending();
       renderPage();
       if(!dialog.open)dialog.showModal();
       heading.focus({preventScroll:true});
     },
     close(){
       suspended=false;summary=null;
+      pendingBoundary=null;
       clearPending();
       if(dialog.open)dialog.close();
     },
@@ -664,6 +697,7 @@ export function setupMerchantLedger(
       const pending=data as {
         seed?:unknown;day?:unknown;beforeGold?:unknown;visitorCount?:unknown;
         heroes?:unknown;dossiers?:unknown;
+        page?:unknown;animationSkipped?:unknown;
       };
       if(pending.seed!==current.seed||pending.day!==current.day||
          !Number.isSafeInteger(pending.beforeGold)||!Number.isSafeInteger(pending.visitorCount)||
@@ -679,27 +713,38 @@ export function setupMerchantLedger(
         events:current.events.filter(e=>e.day<current.day),
         shopEconomy:{...current.shopEconomy,balance:pending.beforeGold as number},
       };
-      this.open(prior,current);
-      // The current save knows the aftermath, not which heroes Galvik saw
-      // just before sleeping. Keep the exact spoiler-safe page snapshot in
-      // tab-scoped storage for uninterrupted ledgers after a reload.
+      // Construct the verified folio BEFORE rendering it. The old code
+      // called open() here, briefly painting post-night hero information
+      // from a reconstructed state before restoring the safe snapshot.
+      const rebuilt=summarizeLedger(prior,current);
       const restored=restoreHeroChronicle(pending.heroes);
-      const restoredDossiers=restoreSealedDossiers(pending.dossiers,summary!.expeditions);
-      // Old or corrupt session markers lack a pre-sleep hero snapshot.
-      // The reconstructed 'prior' is made from the AFTER state, so its
-      // death flags cannot be interpreted as previously known losses.
-      // Fall back to counters only rather than revealing sealed casualties.
+      const restoredDossiers=restoreSealedDossiers(pending.dossiers,rebuilt.expeditions);
+      // Historical or corrupt markers lack a pre-sleep snapshot. Do not
+      // infer known casualties or earned levels from the after-state.
       const fallback:LedgerHeroChronicle={
-        ...summary!.heroes,lines:[],remembered:[],rememberedTotal:0,
+        ...rebuilt.heroes,lines:[],remembered:[],rememberedTotal:0,
         knownShopVisitors:pending.visitorCount as number,
       };
-      summary={...summary!,visited:pending.visitorCount as number,
+      summary={...rebuilt,visited:pending.visitorCount as number,
         heroes:restored??fallback,
-        dossiers:restoredDossiers??summary!.dossiers.map(dossier=>({
+        dossiers:restoredDossiers??rebuilt.dossiers.map(dossier=>({
           ...dossier,knownLevel:null,
         }))};
-      persistPending(prior,current);
+      pendingBoundary={
+        seed:current.seed,day:current.day,
+        beforeGold:pending.beforeGold as number,
+        visitorCount:pending.visitorCount as number,
+      };
+      const view=restoreLedgerView(pending.page,pending.animationSkipped,labels.length);
+      page=view.page;
+      animationSkipped=view.animationSkipped;
+      suspended=false;
+      restoreFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
+      find<HTMLElement>("#ledger-volume").textContent=`DAY ${summary.closingDay} · ACCOUNTS CLOSED`;
+      persistPending();
       renderPage();
+      if(!dialog.open)dialog.showModal();
+      heading.focus({preventScroll:true});
       return true;
     },
   };
