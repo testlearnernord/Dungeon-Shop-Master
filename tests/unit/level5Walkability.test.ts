@@ -8,7 +8,8 @@ test("walkability shares the mined room and furniture footprint",()=>{
   const layout=createShopLayout();
   const original={...createLevel5Room(),expansionTier:1};
   assert.equal(level5FloorWalkable({x:0,z:0},original,layout),true);
-  assert.equal(level5FloorWalkable({x:0,z:2.5},original,layout),false);
+  assert.equal(level5FloorWalkable({x:0,z:2.5},original,layout),true);
+  assert.equal(level5FloorWalkable({x:-4.25,z:-4.5},original,layout),false);
   assert.equal(level5FloorWalkable({x:8,z:4},original,layout),false);
   const mined=excavateLevel5Cell(original,{x:8,z:4});
   assert.equal(mined.ok,true);

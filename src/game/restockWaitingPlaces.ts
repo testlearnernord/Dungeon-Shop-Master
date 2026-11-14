@@ -7,9 +7,15 @@ import { isObstructed, pathToShopGoal, type ShopPoint, type ShopperRoute } from 
 /** Reserved rear-wall waiting pockets, away from shelf access, both entrances
  * and the register. Unlike generic idle positions these never start in the
  * busiest browsing aisle. Validate every candidate against moved furniture. */
+// Additional side-wall pockets preserve restock waiting capacity when the
+// default cashier occupies part of the original left-rear row. All positions
+// remain validated against the actual moved counter, queue and shelves.
 const REAR_POCKETS:readonly ShopPoint[]=[
   {x:-3.65,z:-4.6},{x:-2.30,z:-4.6},{x:2.30,z:-4.6},{x:3.65,z:-4.6},
   {x:-3.65,z:-3.2},{x:-2.30,z:-3.2},{x:2.30,z:-3.2},{x:3.65,z:-3.2},
+  {x:-3.65,z:-5.75},{x:-2.30,z:-5.75},
+  {x:2.30,z:-5.75},{x:3.65,z:-5.75},
+  {x:5.0,z:-5.75},{x:5.0,z:-4.6},{x:5.0,z:-3.2},
 ];
 export const RESTOCK_WAIT_CLEARANCE=NPC_CENTER_CLEARANCE+0.16;
 export const RESTOCK_WAIT_MAX_Z=-3.1;

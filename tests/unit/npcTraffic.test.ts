@@ -85,11 +85,14 @@ test("shared checkout geometry preserves legacy furniture, collision and save la
   assert.deepEqual(checkoutCounterBounds(),{
     minX:-2.25,maxX:2.25,minZ:1.15,maxZ:3.45,
   });
-  const layout=createShopLayout();
+  const layout={shelves:createShopLayout().shelves};
   assert(isObstructed({x:0,z:2.45},layout));
   assert(!isObstructed({x:0,z:1.4},layout));
   assert(!isObstructed({x:0,z:3.4},layout));
-  assert.deepEqual(Object.keys(layout),["shelves"],"existing saves stay unchanged");
+  assert.deepEqual(Object.keys(layout),["shelves"],"legacy saves omit the moved counter");
+  const fresh=createShopLayout();
+  assert(!isObstructed({x:0,z:2.45},fresh),"new center aisle is clear");
+  assert(isObstructed({x:-4.25,z:-4.5},fresh),"corner till is solid");
 });
 
 test("departure step detects a newly moved counter before walking through it",()=>{

@@ -78,7 +78,7 @@ test("strict saves reject injected, incomplete or obstructing furniture geometry
   const mutations:[string,(data:any)=>void][]=[
     ["shopLayout",(s)=>{delete s.shopLayout;}],
     ["shopLayout",(s)=>{s.shopLayout.extra="unrecognized";}],
-    ["shopLayout",(s)=>{s.shopLayout.shelves[0].x=0;}],
+    ["shopLayout",(s)=>{s.shopLayout.shelves[0].x=7;}],
     ["shopLayout",(s)=>{s.shopLayout.shelves[0].z=Infinity;}],
     ["shopLayout",(s)=>{s.shopLayout.shelves[0].rotation=0.5;}],
     ["shopLayout",(s)=>{s.shopLayout.shelves[0].id="shelf-2";}],
@@ -110,8 +110,8 @@ test("compact checkout candidate has deterministic quarter-turn clearance",()=>{
     maxZ:2+COMPACT_COUNTER.clearanceDepth/2,
   });
   const rotated=compactCounterBounds({...at,rotation:1 as const});
-  assert.equal(rotated.maxX-rotated.minX,COMPACT_COUNTER.clearanceDepth);
-  assert.equal(rotated.maxZ-rotated.minZ,COMPACT_COUNTER.clearanceWidth);
+  assert.ok(Math.abs(rotated.maxX-rotated.minX-COMPACT_COUNTER.clearanceDepth)<1e-9);
+  assert.ok(Math.abs(rotated.maxZ-rotated.minZ-COMPACT_COUNTER.clearanceWidth)<1e-9);
   assert.deepEqual(compactCounterBounds({...at,rotation:2 as const}),compactCounterBounds(at));
   assert.deepEqual(compactCounterBounds({...at,rotation:3 as const}),rotated);
   assert.deepEqual(createShopLayout().shelves.map(s=>s.id),["shelf-1","shelf-2"]);
