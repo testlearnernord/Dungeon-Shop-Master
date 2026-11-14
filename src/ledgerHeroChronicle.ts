@@ -126,6 +126,9 @@ export function buildLedgerHeroChronicle(
     };
   };
   const rows=[...people].flatMap(id=>{
+    // People already marked dead before tonight belong only in the memorial,
+    // even if a historical arrival event shares the closing day.
+    if(oldById.get(id)?.status==="dead")return [];
     // Newly generated heroes have no previous state, but their appearance
     // and level at creation are known from the influx event.
     const hero=oldById.get(id)??afterById.get(id);
