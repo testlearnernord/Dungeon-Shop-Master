@@ -1,4 +1,4 @@
-import {goldIcon,itemIcon,uiIcon,type InterfaceIcon} from "./uiIcons.ts";
+import {goldIcon,itemIcon,uiIcon,setIconButtonLabel,type InterfaceIcon} from "./uiIcons.ts";
 import {restoreLedgerView} from "./ledgerViewState.ts";
 import {sealedExpeditionDossiers,sealedExpeditionCounts,
   type SealedExpeditionDossier} from "./ledgerSealedExpeditions.ts";
@@ -186,7 +186,7 @@ export function setupMerchantLedger(
     }catch{ /* Session recovery is best effort if browser storage is denied. */ }
   }
   function syncAnimationToggle():void{
-    skip.textContent=animationSkipped?"Enable animations":"Skip animations";
+    setIconButtonLabel(skip,animationSkipped?"Enable animations":"Skip animations");
     skip.setAttribute("aria-pressed",String(animationSkipped));
     skip.title=animationSkipped?"Restore page animations":"Disable page animations";
   }
@@ -608,8 +608,10 @@ export function setupMerchantLedger(
         "Every sealed file holds a journey below the fifth floor. Break the seal to witness its truth."));
       renderSealedExpeditions();
     }
-    if(animationSkipped)content.classList.add("ledger-no-animation");
-    else{
+    if(animationSkipped){
+      content.classList.add("ledger-no-animation");
+      content.classList.remove("ledger-page-enter");
+    }else{
       content.classList.remove("ledger-no-animation","ledger-page-enter");
       void content.offsetWidth; // restart the parchment reveal on each new page
       content.classList.add("ledger-page-enter");
