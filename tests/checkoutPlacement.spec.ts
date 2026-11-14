@@ -11,6 +11,19 @@ test("cashier uses the shelf placement editor: preview, cancel, rotate, save and
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     return new CampaignStorage().loadGame();
   });
+  // New campaigns place a compact corner till. A legacy campaign whose
+  // optional counter is omitted must still load and support the old editor.
+  expect((await read())?.shopLayout.counter).toEqual(
+    {x:-4.25,z:-4.5,rotation:3});
+  await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const storage=new CampaignStorage();
+    const state=await storage.loadGame();
+    if(!state)throw new Error("Missing default campaign");
+    await storage.saveGame({...state,shopLayout:{shelves:state.shopLayout.shelves}});
+  });
+  await page.reload();
+  await expect(page.locator("#save-status")).toHaveText("Continued saved Day 1.");
   const original=await inspect();
   expect(original.counter?.z).toBeCloseTo(2.5,4);
   expect(original.counter?.collides).toBe(true);

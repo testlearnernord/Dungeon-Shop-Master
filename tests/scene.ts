@@ -44,7 +44,15 @@ export function aimAtFurniture(name:string,distance=3.2):void {
   if(!mesh)throw new Error("Missing furniture: "+name);
   mesh.computeWorldMatrix(true);
   const target=mesh.getAbsolutePosition();
-  camera.position.set(target.x,target.y+0.25,target.z-distance);
+  // Always approach the register from its physical FRONT, not from a
+  // fixed -Z camera location that would be behind the back-room wall
+  // once a new-game counter is placed in the corner.
+  if(name==="cash-register"){
+    const facing=mesh.rotation.y;
+    const reach=Math.min(distance,2.4);
+    camera.position.set(target.x-Math.sin(facing)*reach,target.y+0.25,
+      target.z-Math.cos(facing)*reach);
+  }else camera.position.set(target.x,target.y+0.25,target.z-distance);
   camera.setTarget(target);
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);

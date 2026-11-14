@@ -22,13 +22,13 @@ test("aim at real furniture then P: visual front arrow, 90-degree R rotation, fr
   await page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtBlueprintFloor());
   await expect.poll(()=>page.locator("#blueprint-facing").textContent(),
-    {timeout:10000}).toContain("NORTH");
+    {timeout:10000}).toContain("EAST");
   await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").getAttribute("data-valid"),
     {timeout:10000}).toBe("true");
   await page.keyboard.press("r");
-  await expect(page.locator("#blueprint-facing")).toContainText("WEST");
-  await expect(page.locator("#blueprint-facing")).toContainText("90°");
-  await expect(page.locator("#blueprint-facing")).toContainText("WEST");
+  await expect(page.locator("#blueprint-facing")).toContainText("NORTH");
+  await expect(page.locator("#blueprint-facing")).toContainText("0°");
+  await expect(page.locator("#blueprint-facing")).toContainText("NORTH");
   // Pointer lock remains in force. A player can look around without
   // an artificial 180-degree cursor constraint or losing the blueprint.
   expect(await page.evaluate(()=>document.pointerLockElement?.id)).toBe("renderCanvas");
@@ -38,13 +38,13 @@ test("aim at real furniture then P: visual front arrow, 90-degree R rotation, fr
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const state=await new CampaignStorage().loadGame();
     return state?.shopLayout.counter?.rotation;
-  }),{timeout:10000}).toBe(1);
+  }),{timeout:10000}).toBe(0);
   await page.reload();
   const placement=await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     return (await new CampaignStorage().loadGame())?.shopLayout.counter;
   });
-  expect(placement?.rotation).toBe(1);
+  expect(placement?.rotation).toBe(0);
   expect(placement?.z).toBe(0);
   expect(errors).toEqual([]);
 });
@@ -65,7 +65,7 @@ test("contextual P refuses empty crosshair; RMB cancels a valid preview without 
   await page.keyboard.press("p");
   await expect(page.locator("#blueprint-panel")).toBeVisible();
   await page.keyboard.press("r");
-  await expect(page.locator("#blueprint-facing")).toContainText("90°");
+  await expect(page.locator("#blueprint-facing")).toContainText("0°");
   await page.mouse.click(400,300,{button:"right"});
   await expect(page.locator("#blueprint-panel")).toBeHidden();
   const after=await page.evaluate(async()=>{
