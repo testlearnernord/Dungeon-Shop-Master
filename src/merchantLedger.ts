@@ -1,4 +1,6 @@
-import {goldIcon} from "./uiIcons.ts";
+import {goldIcon,itemIcon,uiIcon,type InterfaceIcon} from "./uiIcons.ts";
+import {portraitCssFrame} from "./game/portraitAtlas.ts";
+import {buildLedgerHeroChronicle,type LedgerHeroChronicle,type LedgerHeroLine,type LedgerHeroKind} from "./ledgerHeroChronicle.ts";
 import type { GameState, WorldEvent } from "./game/gameState.ts";
 import { ITEMS } from "./game/economy.ts";
 import type { SaleReceipt } from "./game/saleView.ts";
@@ -26,6 +28,7 @@ export interface LedgerSummary {
   readonly relevantEvents: readonly WorldEvent[];
   readonly expeditions: readonly WorldEvent[];
   readonly safeChronicle: readonly WorldEvent[];
+  readonly heroes:LedgerHeroChronicle;
 }
 
 export function summarizeLedger(before: GameState, after: GameState): LedgerSummary {
@@ -77,6 +80,7 @@ export function summarizeLedger(before: GameState, after: GameState): LedgerSumm
     relevantEvents:newlyBooked,
     expeditions,
     safeChronicle:newlyBooked.filter(e=>safeTypes.has(e.type)),
+    heroes:buildLedgerHeroChronicle(before,after,sales,credits,newlyBooked),
   };
 }
 
@@ -165,8 +169,41 @@ export function setupMerchantLedger(
         seed:after.seed,day:after.day,
         beforeGold:before.shopEconomy.balance,
         visitorCount:before.adventurers.filter(h=>h.status==="at-shop").length,
+        heroes:summary?.heroes,
       }));
     }catch{ /* Session recovery is best effort if browser storage is denied. */ }
+  }
+  /** Untrusted tab storage never gets to insert markup or unbounded arrays. */
+  function restoreHeroChronicle(value:unknown):LedgerHeroChronicle|null{
+    if(!value||typeof value!=="object")return null;
+    const v=value as Partial<LedgerHeroChronicle>;
+    const acceptable=(rows:unknown):rows is LedgerHeroLine[]=>
+      Array.isArray(rows)&&rows.length<=150&&rows.every(entry=>
+        entry!==null&&typeof entry==="object"&&
+        typeof entry.id==="string"&&entry.id.length<=60&&
+        typeof entry.name==="string"&&entry.name.length<=120&&
+        typeof entry.label==="string"&&entry.label.length<=100&&
+        typeof entry.explanation==="string"&&entry.explanation.length<=200&&
+        ["tank","DPS","healer"].includes(entry.role)&&
+        Object.prototype.hasOwnProperty.call(heroKindIcon,entry.kind)&&
+        Number.isSafeInteger(entry.level)&&entry.level>=1&&
+        Number.isSafeInteger(entry.portrait)&&entry.portrait>=0&&entry.portrait<25&&
+        Number.isSafeInteger(entry.paidGold)&&entry.paidGold>=0&&
+        Number.isSafeInteger(entry.soldUnits)&&entry.soldUnits>=0&&
+        Number.isSafeInteger(entry.creditGold)&&entry.creditGold>=0&&
+        Array.isArray(entry.goods)&&entry.goods.length<=8&&
+        entry.goods.every((good:unknown)=>!!good&&typeof good==="object"&&
+          typeof (good as {id?:unknown}).id==="string"&&
+          ITEMS.some(item=>item.id===(good as {id:string}).id)&&
+          Number.isSafeInteger((good as {quantity?:unknown}).quantity)&&
+          (good as {quantity:number}).quantity>0));
+    if(!acceptable(v.lines)||!acceptable(v.remembered))return null;
+    for(const key of ["rememberedTotal","knownShopVisitors","payingHeroes",
+      "sealedRecords","arrivals","departures"] as const){
+      const n=v[key];
+      if(!Number.isSafeInteger(n)||typeof n!=="number"||n<0||n>100000)return null;
+    }
+    return v as LedgerHeroChronicle;
   }
   function clearPending():void {
     try{sessionStorage.removeItem(LEDGER_SESSION_KEY);}catch{ /* storage unavailable */ }
@@ -216,6 +253,122 @@ export function setupMerchantLedger(
       money);
     if(tag)row.append(node("small","ledger-line-tag",tag));
     return row;
+  }
+  const heroKindIcon:Record<LedgerHeroKind,InterfaceIcon>={
+    sealed:"lock",descended:"arrow-down",arrived:"arrow-up",
+    departed:"arrow-right",stayed:"shop",walkout:"arrow-right",
+    shop:"shop",newcomer:"spark",traded:"receipt",fallen:"skull",
+  };
+  const heroKindDescription:Record<LedgerHeroKind,string>={
+    sealed:"Sealed record",descended:"Descent",arrived:"Arrival",
+    departed:"Departure",stayed:"Staying",walkout:"Walkout",
+    shop:"Shop visitor",newcomer:"New arrival",traded:"Customer",
+    fallen:"Previously fallen",
+  };
+  function heroCard(hero:LedgerHeroLine):HTMLElement{
+    const row=node("article","ledger-hero-card ledger-hero-"+hero.kind);
+    row.dataset.heroId=hero.id;
+    row.dataset.kind=hero.kind;
+    const portrait=node("span","ledger-hero-portrait");
+    portrait.style.backgroundImage="url('"+import.meta.env.BASE_URL+"assets/hero-portraits.webp')";
+    Object.assign(portrait.style,portraitCssFrame(hero.portrait));
+    portrait.setAttribute("role","img");
+    portrait.setAttribute("aria-label",hero.name+" portrait");
+    const body=node("div","ledger-hero-details");
+    const title=node("strong","ledger-hero-name",hero.name);
+    const role=node("span","ledger-hero-role",hero.role.toUpperCase()+" · LV "+hero.level);
+    const byline=node("span","ledger-hero-byline",hero.explanation);
+    body.append(title,role,byline);
+    const status=node("span","ledger-hero-status");
+    status.append(uiIcon(heroKindIcon[hero.kind],"ledger-hero-status-icon"),
+      node("span","",hero.label));
+    status.setAttribute("aria-label",heroKindDescription[hero.kind]+": "+hero.label);
+    const right=node("div","ledger-hero-right");
+    right.append(status);
+    if(hero.soldUnits||hero.creditGold){
+      const activity=node("div","ledger-hero-trade");
+      if(hero.soldUnits){
+        const amount=node("span","ledger-hero-amount",
+          hero.soldUnits+" SOLD · "+gold(hero.paidGold));
+        amount.prepend(uiIcon("shop","ledger-hero-mini-icon"));
+        activity.append(amount);
+      }
+      if(hero.creditGold){
+        const debt=node("span","ledger-hero-amount ledger-hero-credit",
+          "CREDIT "+gold(hero.creditGold));
+        debt.prepend(uiIcon("receipt","ledger-hero-mini-icon"));
+        activity.append(debt);
+      }
+      right.append(activity);
+    }
+    if(hero.goods.length){
+      const goods=node("div","ledger-hero-goods");
+      goods.setAttribute("aria-label","Purchased goods");
+      for(const good of hero.goods.slice(0,4)){
+        const chip=node("span","ledger-hero-item",good.quantity+"×");
+        const name=ITEMS.find(entry=>entry.id===good.id)?.name??good.id;
+        chip.title=name+" · "+good.quantity+" purchased";
+        chip.append(itemIcon(good.id,"ledger-hero-item-icon"));
+        goods.append(chip);
+      }
+      if(hero.goods.length>4)
+        goods.append(node("span","ledger-hero-extra","+"+(hero.goods.length-4)));
+      right.append(goods);
+    }
+    row.append(portrait,body,right);
+    return row;
+  }
+  function renderHeroChronicle(heroes:LedgerHeroChronicle):void{
+    const overview=node("div","ledger-people-overview");
+    const pill=(icon:InterfaceIcon,label:string,value:number):HTMLElement=>{
+      const box=node("div","ledger-people-stat");
+      const iconBox=node("span","ledger-people-stat-icon");
+      iconBox.append(uiIcon(icon));
+      const words=node("div","ledger-people-stat-words");
+      words.append(node("strong","",String(value)),node("span","",label));
+      box.append(iconBox,words);
+      return box;
+    };
+    overview.append(
+      pill("shop","SHOP AT CLOSING",heroes.knownShopVisitors),
+      pill("arrow-up","NEW ARRIVALS",heroes.arrivals),
+      pill("receipt","BUYERS",heroes.payingHeroes),
+      pill("lock","SEALED RECORDS",heroes.sealedRecords),
+    );
+    content.append(overview);
+    content.append(node("h3","ledger-subhead","THE ADVENTURERS · KNOWN MOVEMENTS"));
+    if(!heroes.lines.length)content.append(empty("No confirmed shop activity was entered in the book."));
+    else{
+      const list=node("div","ledger-hero-list");
+      list.setAttribute("aria-label","Adventurers and verified shop activity");
+      list.append(...heroes.lines.map(heroCard));
+      content.append(list);
+      if(heroes.lines.length>10)
+        content.append(node("p","ledger-hero-scroll-hint",
+          heroes.lines.length+" names in the register · Scroll to read the full account"));
+    }
+    if(heroes.rememberedTotal){
+      const memorial=node("section","ledger-hero-memorial");
+      const heading=node("div","ledger-hero-memorial-heading");
+      heading.append(uiIcon("skull"),node("strong","",
+        "PREVIOUSLY FALLEN · "+heroes.rememberedTotal+" ON RECORD"));
+      memorial.append(heading);
+      const names=node("div","ledger-hero-memorial-names");
+      names.append(...heroes.remembered.map(hero=>{
+        const line=node("span","ledger-hero-memorial-name");
+        line.append(uiIcon("skull"),node("span","",hero.name));
+        return line;
+      }));
+      if(heroes.rememberedTotal>heroes.remembered.length)
+        names.append(node("span","ledger-hero-memorial-extra",
+          "+"+(heroes.rememberedTotal-heroes.remembered.length)+" more"));
+      memorial.append(names);
+      content.append(memorial);
+    }
+    const note=node("p","ledger-footnote ledger-hero-disclosure");
+    note.append(uiIcon("lock"),
+      document.createTextNode("New expedition results, injuries, loot and deaths remain sealed until their recordings are watched. The skull marks only losses known before this night."));
+    content.append(note);
   }
   function renderPage():void{
     if(!summary)return;
@@ -291,22 +444,8 @@ export function setupMerchantLedger(
       }
     }else if(page===2){
       content.append(node("p","ledger-page-intro",
-        "They come with dreams of gold. Those who leave the door do not always return."));
-      const metrics=node("div","ledger-metrics ledger-metrics-small");
-      metrics.append(metric("AT THE SHOP",String(summary.visited),"Before closing"),
-        metric("ARRIVALS",String(summary.arrivals),"Overnight"),
-        metric("DEPARTURES",String(summary.departures),"Overnight"));
-      content.append(metrics);
-      content.append(node("h3","ledger-subhead","MOVEMENT THROUGH THE DEPTHS"));
-      if(!summary.safeChronicle.length)content.append(empty("The corridors were quiet tonight."));
-      else{
-        const entries=node("div","ledger-chronicle");
-        for(const event of summary.safeChronicle.slice(-35))
-          entries.append(node("p","ledger-event",event.message));
-        content.append(entries);
-      }
-      content.append(node("p","ledger-footnote",
-        "Expedition results and the fate of the fighters stay sealed until you watch their records."));
+        "Every face has a price, every journey a risk. This page records what Galvik actually knows."));
+      renderHeroChronicle(summary.heroes);
     }else{
       content.append(node("p","ledger-page-intro",
         "Below the shop, steel meets stone. These records are sealed. Open one to witness its truth."));
@@ -406,7 +545,10 @@ export function setupMerchantLedger(
         data=JSON.parse(raw);
       }catch{return false;}
       if(!data||typeof data!=="object")return false;
-      const pending=data as {seed?:unknown;day?:unknown;beforeGold?:unknown;visitorCount?:unknown};
+      const pending=data as {
+        seed?:unknown;day?:unknown;beforeGold?:unknown;visitorCount?:unknown;
+        heroes?:unknown;
+      };
       if(pending.seed!==current.seed||pending.day!==current.day||
          !Number.isSafeInteger(pending.beforeGold)||!Number.isSafeInteger(pending.visitorCount)||
          current.day<2){
@@ -422,7 +564,12 @@ export function setupMerchantLedger(
         shopEconomy:{...current.shopEconomy,balance:pending.beforeGold as number},
       };
       this.open(prior,current);
-      summary={...summary!,visited:pending.visitorCount as number};
+      // The current save knows the aftermath, not which heroes Galvik saw
+      // just before sleeping. Keep the exact spoiler-safe page snapshot in
+      // tab-scoped storage for uninterrupted ledgers after a reload.
+      const restored=restoreHeroChronicle(pending.heroes);
+      summary={...summary!,visited:pending.visitorCount as number,
+        ...(restored?{heroes:restored}:{})};
       renderPage();
       return true;
     },
