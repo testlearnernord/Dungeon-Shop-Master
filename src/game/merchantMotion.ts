@@ -18,10 +18,11 @@ export function merchantActionPose(action:MerchantAction|null,progress:number):M
   return {
     leftPitch:action==="stock"?-.58*swing:
       action==="destock"?.36*swing:action==="checkout"?-.36*swing:action==="mine"?.28*swing:0,
-    rightPitch:action==="mine"?-1.28*swing:
+    // A downward strike from the raised pick, not an upswing from below.
+    rightPitch:action==="mine"?1.12*swing:
       action==="stock"?-.92*swing:action==="destock"?.52*swing:
         action==="checkout"?-.5*swing:0,
-    rightRoll:action==="mine"?-.43*swing:action==="checkout"?.17*swing:0,
+    rightRoll:action==="mine"?-.28*swing:action==="checkout"?.17*swing:0,
     toolVisible:action==="mine"&&t<1,
     itemVisible:(action==="stock"&&t<.64)||(action==="destock"&&t>.32&&t<1),
     coinVisible:action==="checkout"&&t>.16&&t<.83,

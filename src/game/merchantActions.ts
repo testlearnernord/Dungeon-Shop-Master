@@ -87,16 +87,16 @@ export function createMerchantActions(
       [side*.11,-.56,.06],skin);
     return shoulder;
   });
-  const pickHandle=cylinder("galvik-pick-handle",.7,.064,arms[1],
-    [0,-.91,.04],wood);
-  pickHandle.rotation.z=-.12;
-  const pickHead=box("galvik-pick-head",{width:.56,height:.075,depth:.10},
-    arms[1],[0,-1.23,.04],iron);
-  // The taper and central rivet distinguish a pick from a plain T-shaped rod.
-  box("galvik-pick-tooth-left",{width:.16,height:.055,depth:.055},
-    arms[1],[-.33,-1.25,.04],iron).rotation.z=-.35;
-  box("galvik-pick-tooth-right",{width:.16,height:.055,depth:.055},
-    arms[1],[.33,-1.25,.04],iron).rotation.z=.35;
+  // A proper pick is held below its head, not dangled below the wrist.
+  const pickHandle=cylinder("galvik-pick-handle",.83,.064,arms[1],
+    [0,-.36,.09],wood);
+  pickHandle.rotation.z=-.13;
+  box("galvik-pick-head",{width:.62,height:.075,depth:.12},
+    arms[1],[0,.04,.09],iron);
+  box("galvik-pick-tooth-left",{width:.20,height:.065,depth:.06},
+    arms[1],[-.36,.055,.09],iron).rotation.z=-.43;
+  box("galvik-pick-tooth-right",{width:.20,height:.065,depth:.06},
+    arms[1],[.36,.055,.09],iron).rotation.z=.43;
   const pickParts=meshes.filter(m=>m.name.startsWith("galvik-pick-"));
   const itemBox=box("galvik-held-package",{width:.22,height:.27,depth:.25},
     arms[1],[0,-.8,.17],goods);
