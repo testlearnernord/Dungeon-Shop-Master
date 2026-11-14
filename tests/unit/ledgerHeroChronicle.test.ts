@@ -70,16 +70,15 @@ test("sealed combat never leaks after-state death, loot, equipment, health or XP
   assert(!JSON.stringify(defeated).includes("death"));
 });
 
-test("skull memorials only include heroes confirmed dead before the night",()=>{
+test("unobserved early-floor deaths never appear in a fake memorial",()=>{
   const initial=createGameState(7351);
   const hero=initial.adventurers[0];
   const before={...initial,adventurers:initial.adventurers.map(h=>
     h.id===hero.id?{...h,health:0,status:"dead" as const}:h)};
   const after={...before,day:2};
   const result=buildLedgerHeroChronicle(before,after,[],[],[]);
-  assert.equal(result.rememberedTotal,1);
-  assert.equal(result.remembered[0].id,hero.id);
-  assert.equal(result.remembered[0].kind,"fallen");
+  assert.equal(result.rememberedTotal,0);
+  assert.deepEqual(result.remembered,[]);
   assert(!result.lines.some(entry=>entry.id===hero.id));
 });
 

@@ -42,7 +42,7 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 - Adventurers have their own intentions, budgets and decisions; the player does **not** directly choose their shopping baskets.
 - Item availability, service quality, shop layout, equipment and HP supplies should matter to subsequent risk.
 - **No hunger or starvation mechanic.** The previous hunger system was removed. Waybread remains inexpensive **HP healing**, weaker than Healing Herbs, not a hunger meter. Do not reintroduce hunger through a renamed daily timer.
-- Dungeon wounds and deaths must arise from actual resolved simulation, not arbitrary punishment or a hidden starvation countdown.
+- Dungeon wounds and deaths must arise from actual HP damage, not an unrelated instant-kill roll, starvation or hidden punishment.
 - Never fabricate free medicine, stock, sales or loot to make the economy look healthier.
 
 ### Dungeon, reports and replay
@@ -81,6 +81,7 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 - Whether, when and how shop time and dungeon activity should interact continuously instead of only at committed day transitions. **No 24-hour concurrent simulation has been approved.**
 - Meaningful short- and long-term shop decisions, possible player-controlled pricing (not in the current alpha), upgrades, helpers, money sinks and increasing demand.
 - How exploration, deeper floors and hero progression expand gameplay without requiring 100 hand-built or repetitive levels.
+- How to make early-floor (1–4) deaths observable or replay-backed. These floors currently simulate offscreen, and the ledger no longer showcases their unobserved casualties as a memorial.
 - The long-term art/asset pipeline, optional desktop delivery and commercial release model.
 
 These are questions, not permissions to undertake a large rewrite.
