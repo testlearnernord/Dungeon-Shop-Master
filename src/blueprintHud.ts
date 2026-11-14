@@ -8,6 +8,7 @@ import { createBlueprintPreviewValidator } from "./game/blueprintPreviewValidato
 import {bedroomFurnitureOverlapsActor,getBedroomFurniture,isBedroomFurnitureId,
   replaceBedroomFurniture,type BedroomFurniturePlacement,type BedroomFurnitureId} from "./game/bedroomFurniture.ts";
 import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
+import {DEFAULT_ROSTER_BOARD,replaceRosterBoard} from "./game/rosterBoardPlacement.ts";
 import { shopServiceReachabilityProblem } from "./game/shopServiceReachability.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
@@ -81,7 +82,7 @@ export function setupBlueprintHud(
   // The golden arrow ALWAYS indicates the customer-facing side. All pieces
   // are visual-only; the saved footprint remains the authoritative geometry.
   const ghost=new TransformNode("blueprint-preview-root",scene);
-  type GhostType="shelf"|"counter"|BedroomFurnitureId;
+  type GhostType="shelf"|"counter"|BedroomFurnitureId|"adventurer-board";
   const parts:{mesh:import("@babylonjs/core/Meshes/mesh").Mesh;
     type:GhostType;direction?:boolean}[]=[];
   const previewBox=(
@@ -118,6 +119,19 @@ export function setupBlueprintHud(
   previewBox("blueprint-stool",0.58,0.6,0.58,0,0.30,0,"candle");
   previewBox("blueprint-candle",0.14,0.28,0.14,0,0.84,0,"candle");
   previewBox("blueprint-candle-flame",0.12,0.16,0.12,0,1.04,0,"candle");
+  // The mattress includes headboard and footboard so rotation is obvious.
+  previewBox("blueprint-bed-frame",1.74,0.4,2.4,0,0.35,0,"bed");
+  previewBox("blueprint-bed-mattress",1.5,0.24,2.05,0,0.62,0,"bed");
+  previewBox("blueprint-bed-headboard",1.74,1.1,0.2,0,0.8,-1.18,"bed");
+  previewBox("blueprint-bed-pillow",1.05,0.15,0.4,0,0.82,-0.85,"bed");
+  previewBox("blueprint-bed-foot",1.74,0.55,0.15,0,0.5,1.17,"bed");
+  // A vertical wall-mounted roster with an obvious front, not a floor cube.
+  previewBox("blueprint-roster-board-face",3.25,2.02,0.09,0,2.17,0,"adventurer-board");
+  previewBox("blueprint-roster-board-frame-top",3.4,0.12,0.15,0,3.22,0,"adventurer-board");
+  previewBox("blueprint-roster-board-frame-bottom",3.4,0.12,0.15,0,1.12,0,"adventurer-board");
+  for(const side of [-1,1])
+    previewBox("blueprint-roster-board-frame-side",0.12,2.09,0.15,
+      side*1.69,2.17,0,"adventurer-board");
   // Asymmetric directional shafts and tips survive every quarter turn.
   previewBox("blueprint-shelf-front-shaft",0.55,0.12,0.12,
     1.22,1.8,0,"shelf",true);
@@ -135,10 +149,12 @@ export function setupBlueprintHud(
   counterTip.rotation.x=-Math.PI/2;
   counterTip.isPickable=false;counterTip.checkCollisions=false;
   counterTip.renderingGroupId=2;parts.push({mesh:counterTip,type:"counter",direction:true});
-  for(const kind of ["desk","chest","candle"] as const){
+  for(const kind of ["desk","chest","candle","bed"] as const){
     previewBox("blueprint-"+kind+"-front",0.16,0.12,0.35,
       0,1.3,0.55,kind,true);
   }
+  previewBox("blueprint-board-facing",0.15,0.15,0.55,
+    0,2.16,-0.48,"adventurer-board",true);
   const facingMaterial=new StandardMaterial("blueprint-facing-arrow",scene);
   facingMaterial.diffuseColor=new Color3(1,0.74,0.17);
   facingMaterial.emissiveColor=new Color3(0.7,0.42,0.05);
@@ -179,6 +195,7 @@ export function setupBlueprintHud(
   };
   const getSaved=(id:FurnitureId):FurnitureDraft=>{
     if(id==="counter")return {id,...getCounterPlacement(store.state.shopLayout)};
+    if(id==="adventurer-board")return {id,...(store.state.rosterBoard??DEFAULT_ROSTER_BOARD)};
     if(isBedroomFurnitureId(id))return getBedroomFurniture(store.state.bedroomFurniture,id);
     return store.state.shopLayout.shelves.find(item=>item.id===id)!;
   };
@@ -188,7 +205,8 @@ export function setupBlueprintHud(
     title.textContent="MOVE · "+
       (FURNITURE_CATALOG.find(def=>def.id===id)?.label??"Furniture");
     draft=null;
-    updateStatus("Aim at a "+(id==="counter"?"floor":"floor or wall")+".",false);
+    updateStatus(id==="adventurer-board"?"Aim at a free shop wall.":
+      "Aim at a "+(id==="counter"||isBedroomFurnitureId(id)?"floor":"floor or wall")+".",false);
   };
   /** Only raycast-pick existing furniture. The nearest ordinary hit must
    * not be substantially closer: characters and walls occlude objects. */
@@ -231,7 +249,7 @@ export function setupBlueprintHud(
   };
 
   const occupiedBy=(p:FurnitureDraft):string|null=>{
-    const hits=(x:number,z:number,radius:number)=>isBedroomFurnitureId(p.id)
+    const hits=(x:number,z:number,radius:number)=>p.id==="adventurer-board"?false:isBedroomFurnitureId(p.id)
       ?bedroomFurnitureOverlapsActor(p as BedroomFurniturePlacement,{x,z,radius})
       :p.id==="counter"
         ?counterOverlapsActor(p,{x,z,radius})
@@ -248,6 +266,10 @@ export function setupBlueprintHud(
   // The cache is invalidated whenever the committed furniture or mined room
   // changes; live player/NPC occupancy is checked independently each frame.
   const validator=createBlueprintPreviewValidator((p,layout,room)=>{
+    if(p.id==="adventurer-board"){
+      const result=replaceRosterBoard(store.state.rosterBoard,p,layout);
+      return result.message==="Adventurer board placed."?null:result.message;
+    }
     if(isBedroomFurnitureId(p.id)){
       const result=replaceBedroomFurniture(store.state.bedroomFurniture,
         p as BedroomFurniturePlacement);
@@ -277,7 +299,8 @@ export function setupBlueprintHud(
     if(!surface||!hit?.pickedPoint){
       draft=null;placeable=false;ghost.setEnabled(false);
       facingReadout.textContent=facingLabel+" · aim at a surface";
-      updateStatus("Aim at the "+(activeId==="counter"?"floor":"floor or a wall")+".",false);
+      updateStatus(activeId==="adventurer-board"?"Aim at a shop wall.":
+        "Aim at the "+(activeId==="counter"||isBedroomFurnitureId(activeId)?"floor":"floor or a wall")+".",false);
       return;
     }
     const p=blueprintAtSurface(activeId,surface,hit.pickedPoint,rotation);
@@ -291,10 +314,12 @@ export function setupBlueprintHud(
     ghost.position.set(p.x,0,p.z);
     ghost.rotation.y=p.rotation*Math.PI/2;
     const type:GhostType=p.id==="counter"?"counter":
+      p.id==="adventurer-board"?"adventurer-board":
       isBedroomFurnitureId(p.id)?p.id:"shelf";
     const state=store.state;
     const staticCheck=validator.evaluate(p,state.shopLayout,state.level5Room,
-      performance.now(),immediate,state.bedroomFurniture);
+      performance.now(),immediate,
+      p.id==="adventurer-board"?state.rosterBoard:state.bedroomFurniture);
     const occupied=occupiedBy(p);
     const isChecking=!staticCheck.ready&&!occupied;
     reason=occupied??(staticCheck.ready
@@ -356,11 +381,13 @@ export function setupBlueprintHud(
     if(!draft||!placeable)return;
     const occupied=occupiedBy(draft);
     if(occupied){updateStatus(occupied,false);return;}
-    const result=isBedroomFurnitureId(draft.id)
+    const result=draft.id==="adventurer-board"?
+      store.placeRosterBoard(draft):
+      isBedroomFurnitureId(draft.id)
       ?store.placeBedroomFurniture(draft as BedroomFurniturePlacement)
       :draft.id==="counter"?store.placeCounter(draft):store.placeShelf(draft as ShelfPlacement);
     if(result==="Counter placement saved."||result==="Shelf placement saved."||
-       result==="Bedroom furniture placed."){
+       result==="Bedroom furniture placed."||result==="Adventurer board placed."){
       close();
     }else updateStatus(result,false);
   };
@@ -388,6 +415,7 @@ export function setupBlueprintHud(
     if(!enabled)return;
     if(event.code==="KeyR"||event.code==="KeyQ"){
       event.preventDefault();event.stopImmediatePropagation();
+      if(activeId==="adventurer-board")return; // Wall attachment determines facing.
       rotation=((rotation+(event.code==="KeyR"?1:3))%4) as 0|1|2|3;
       updateGhost();return;
     }

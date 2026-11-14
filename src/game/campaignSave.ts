@@ -4,7 +4,8 @@ import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
 import { LEVEL7_STEP_BUDGET } from "./level7Exploration.ts";
 import { generateDungeonLayout, tileAt } from "./dungeonLayout.ts";
-import { shopLayoutProblem, type ShelfPlacement } from "./shopLayout.ts";
+import { shopLayoutProblem, type ShelfPlacement,type ShopLayout } from "./shopLayout.ts";
+import {rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 import {bedroomFurnitureProblem,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
@@ -268,7 +269,7 @@ function validateState(value: unknown): asserts value is GameState {
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
-  ], ["level5Room","bedroomFurniture"]);
+  ], ["level5Room","bedroomFurniture","rosterBoard"]);
   if (state.level5Room !== undefined && !isValidLevel5Room(state.level5Room))
     fail("payload.level5Room", "has invalid excavation geometry");
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
@@ -334,6 +335,7 @@ function validateState(value: unknown): asserts value is GameState {
   });
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
   validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
+  let parsedShopLayout:ShopLayout;
   {
     const layout=object(state.shopLayout,"payload.shopLayout",["shelves"],["counter"]);
     const shelves=array(layout.shelves,"payload.shopLayout.shelves");
@@ -356,7 +358,8 @@ function validateState(value: unknown): asserts value is GameState {
       const rotation=integer(p.rotation,"payload.shopLayout.counter.rotation",0,3);
       counter={x,z,rotation:rotation as 0|1|2|3};
     }
-    const problem=shopLayoutProblem({shelves:parsed,...(counter?{counter}:{})});
+    parsedShopLayout={shelves:parsed,...(counter?{counter}:{})};
+    const problem=shopLayoutProblem(parsedShopLayout);
     if(problem)fail("payload.shopLayout",problem);
   }
   if(state.bedroomFurniture!==undefined){
@@ -364,7 +367,7 @@ function validateState(value: unknown): asserts value is GameState {
     const parsed:BedroomFurniturePlacement[]=list.map((raw,index)=>{
       const path="payload.bedroomFurniture["+index+"]";
       const p=object(raw,path,["id","x","z","rotation"]);
-      choice(p.id,["desk","chest","candle"],path+".id");
+      choice(p.id,["desk","chest","candle","bed"],path+".id");
       const x=validNumber(p.x,path+".x",-3,3);
       const z=validNumber(p.z,path+".z",-12,-7);
       const rotation=integer(p.rotation,path+".rotation",0,3);
@@ -373,6 +376,16 @@ function validateState(value: unknown): asserts value is GameState {
     });
     const problem=bedroomFurnitureProblem(parsed);
     if(problem)fail("payload.bedroomFurniture",problem);
+  }
+  if(state.rosterBoard!==undefined){
+    const raw=object(state.rosterBoard,"payload.rosterBoard",["x","z","rotation"]);
+    const placement:RosterBoardPlacement={
+      x:validNumber(raw.x,"payload.rosterBoard.x",-8,8),
+      z:validNumber(raw.z,"payload.rosterBoard.z",-8,8),
+      rotation:integer(raw.rotation,"payload.rosterBoard.rotation",0,3) as 0|1|2|3,
+    };
+    const problem=rosterBoardProblem(placement,parsedShopLayout);
+    if(problem)fail("payload.rosterBoard",problem);
   }
 
   const economy = object(state.shopEconomy, "payload.shopEconomy", [

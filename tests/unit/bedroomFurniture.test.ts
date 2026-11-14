@@ -69,3 +69,26 @@ test("strict saves reject tampered bedroom placement coordinates and duplicate I
     assert.throws(()=>createSave(corrupted as any),/bedroomFurniture/);
   }
 });
+
+test("Galvik's bed is movable while its original absence in older v12 furniture arrays remains valid",()=>{
+  const base=createBedroomFurnitureLayout();
+  assert.equal(base.length,4);
+  const changed=replaceBedroomFurniture(base,{id:"bed",x:0.75,z:-10,rotation:0});
+  assert.equal(changed.message,"Bedroom furniture placed.");
+  assert.equal(getBedroomFurniture(changed.layout,"bed").z,-10);
+  assert.equal(bedroomFurnitureProblem(changed.layout),null);
+  assert.equal(replaceBedroomFurniture(base,{id:"bed",x:-2.25,z:-9,rotation:0}).layout,base);
+  assert.equal(replaceBedroomFurniture(base,{id:"bed",x:0,z:-8,rotation:0}).layout,base);
+  assert.equal(replaceBedroomFurniture(base,{id:"bed",x:0.75,z:-10,rotation:1}).layout,base,
+    "rotated bed would intersect the stool");
+  const legacy=base.filter(furniture=>furniture.id!=="bed");
+  assert.equal(bedroomFurnitureProblem(legacy),null);
+  assert.deepEqual(getBedroomFurniture(legacy,"bed"),getBedroomFurniture(undefined,"bed"));
+  const movedLegacy=replaceBedroomFurniture(legacy,{id:"bed",x:0.75,z:-10,rotation:0});
+  assert.equal(movedLegacy.message,"Bedroom furniture placed.");
+  assert.equal(movedLegacy.layout.length,4);
+  const parsed=parseSave(JSON.stringify(createSave({
+    ...createGameState(),bedroomFurniture:legacy,
+  })));
+  assert.equal(parsed.bedroomFurniture?.length,3);
+});

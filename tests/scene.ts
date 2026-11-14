@@ -95,8 +95,8 @@ export function inspectBedroomSightlines() {
   const scene = Engine.LastCreatedScene!;
   const at=(name:string)=>scene.getMeshByName(name)!;
   return {
-    rosterX:at("adventurer-roster-board").position.x,
-    rightmostFrameX:at("roster-frame-right").position.x,
+    rosterX:at("adventurer-roster-board").getAbsolutePosition().x,
+    rightmostFrameX:at("roster-frame-right").getAbsolutePosition().x,
     boardClearOfWall:(()=>{
       const board=at("adventurer-roster-board");
       const leftFrame=at("roster-frame-left");
@@ -383,7 +383,7 @@ export function inspectBedroomAtmosphere() {
   const candle=scene.getLightByName("galvik-bed-candle");
   const torch=scene.getLightByName("bedroom-door-torch-light");
   return {
-    bed:{x:bed?.position.x,z:bed?.position.z,collides:bed?.checkCollisions,
+    bed:{x:bed?.getAbsolutePosition().x,z:bed?.getAbsolutePosition().z,collides:bed?.checkCollisions,
       pickable:bed?.isPickable,kind:bed?.metadata?.kind},
     entryClear:!pick("front-middle-wall"),
     entrancePiers:["bedroom-door-left-pier","bedroom-door-right-pier"]
@@ -520,5 +520,40 @@ export function inspectModularBedroom(){
     candle:coords("bed-candle"),
     candleRoot:root?{x:root.position.x,z:root.position.z}:null,
     candleLightParent:light?.parent?.name??null,
+  };
+}
+
+/** Drive the real FPS crosshair rather than synthesizing UI clicks. */
+export function aimAtMainShopWall(x:number,z:number):void{
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(x,1.7,z+2.5);
+  camera.setTarget(new Vector3(x,1.65,z));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+export function aimAtRelocatedRosterBoard():void{
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  const mesh=scene.getMeshByName("adventurer-roster-board")!;
+  mesh.computeWorldMatrix(true);
+  const pos=mesh.getAbsolutePosition();
+  camera.position.set(pos.x,1.7,pos.z+2.5);
+  camera.setTarget(pos);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+export function inspectMovedBedAndBoard(){
+  const scene=Engine.LastCreatedScene!;
+  const at=(name:string)=>{
+    const mesh=scene.getMeshByName(name)!;
+    mesh.computeWorldMatrix(true);
+    const pos=mesh.getAbsolutePosition();
+    return {x:pos.x,z:pos.z,parent:mesh.parent?.name??null};
+  };
+  return {
+    mattress:at("galvik-bed"),frame:at("bed-frame"),
+    pillow:at("bed-pillow"),roster:at("adventurer-roster-board"),
+    rosterFrame:at("roster-frame-right"),
   };
 }

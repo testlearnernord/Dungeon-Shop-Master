@@ -9,6 +9,7 @@ import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
 import { shopServiceReachabilityProblem } from "./shopServiceReachability.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
 import {replaceBedroomFurniture,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
+import {DEFAULT_ROSTER_BOARD,replaceRosterBoard,rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 
 export class GameStore {
   private current: GameState;
@@ -82,6 +83,8 @@ export class GameStore {
   placeShelf(placement: ShelfPlacement): string {
     const result = replaceShelfPlacement(this.current.shopLayout, placement,this.current.level5Room);
     if (result.layout !== this.current.shopLayout) {
+      const boardProblem=rosterBoardProblem(this.current.rosterBoard??DEFAULT_ROSTER_BOARD,result.layout);
+      if(boardProblem)return boardProblem;
       const invalid=shopServiceReachabilityProblem(result.layout,this.current.level5Room);
       if(invalid)return invalid;
       this.replace({ ...this.current, shopLayout: result.layout });
@@ -96,6 +99,13 @@ export class GameStore {
       if(invalid)return invalid;
       this.replace({...this.current,shopLayout:result.layout});
     }
+    return result.message;
+  }
+
+  placeRosterBoard(placement:RosterBoardPlacement):string {
+    const result=replaceRosterBoard(this.current.rosterBoard,placement,this.current.shopLayout);
+    if(result.placement!==this.current.rosterBoard)
+      this.replace({...this.current,rosterBoard:result.placement});
     return result.message;
   }
 

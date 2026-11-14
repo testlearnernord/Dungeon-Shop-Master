@@ -132,7 +132,11 @@ test("bedroom dressing preserves the collision-safe alcove and interactable bed"
   const room=await page.evaluate(async()=>{
     return (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBedroomAtmosphere();
   });
-  expect(room.bed).toEqual({x:0.8,z:-10.6,collides:true,pickable:true,kind:"bed"});
+  // Parenting a movable bed uses Babylon's float32 world matrix; exact
+  // decimal equality is not a meaningful placement invariant.
+  expect(room.bed.x).toBeCloseTo(0.8,4);
+  expect(room.bed.z).toBeCloseTo(-10.6,4);
+  expect(room.bed).toMatchObject({collides:true,pickable:true,kind:"bed"});
   expect(room.entryClear).toBe(true);
   expect(room.entrancePiers).toBe(true);
   expect(room.wallSolid).toBe(true);
@@ -153,7 +157,7 @@ test("bedchamber entrance, sign and bed interaction have separate, solid sightli
   await waitForWorld(page);
   const probes=await page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBedroomSightlines());
-  expect(probes.rosterX).toBe(-5.55);
+  expect(probes.rosterX).toBeCloseTo(-5.55,4);
   expect(probes.rightmostFrameX).toBeLessThan(-3.8);
   expect(probes.boardClearOfWall).toBe(true);
   expect(probes.signYaw).toBeCloseTo(Math.PI);
