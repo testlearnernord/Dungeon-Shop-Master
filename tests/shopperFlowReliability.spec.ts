@@ -105,3 +105,47 @@ test("eight incoming customers progress around relocated shelves and checkout",a
   expect(final.visitors.some(visitor=>(visitor.cartUnits??0)>0)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+/** End-to-end check of the same contextual P flow used by shelves, now with
+ * a grouped bedroom prop. The Book of Debts, desk and collider must never
+ * split up, and the placement must survive save/reload. */
+test("contextual P moves the accounting desk with its Book of Debts and collision",async({page})=>{
+  test.setTimeout(80000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtDebtBook());
+  await expect(page.locator("#furniture-look-prompt")).toContainText("Book of Debts");
+  await page.keyboard.press("p");
+  await expect(page.locator("#blueprint-panel")).toBeVisible();
+  await expect(page.locator("#blueprint-panel h2")).toContainText("Accounting desk");
+  await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .aimAtBedroomPlacement(-2.25,-9.75));
+  await expect.poll(()=>
+    page.locator("#blueprint-panel .blueprint-status").getAttribute("data-valid"),
+    {timeout:10000}).toBe("true");
+  await page.keyboard.press("r");
+  await expect(page.locator("#blueprint-facing")).toContainText("90°");
+  await page.mouse.click(400,300);
+  await expect(page.locator("#blueprint-panel")).toBeHidden();
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    return state?.bedroomFurniture?.find(item=>item.id==="desk")?.z;
+  }),{timeout:15000}).toBe(-9.75);
+  const before=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectModularBedroom());
+  expect(before.desk.z).toBeCloseTo(-9.75,3);
+  expect(before.deskCollider.z).toBeCloseTo(-9.75,3);
+  await page.reload();
+  const persisted=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectModularBedroom());
+  expect(persisted.desk.z).toBeCloseTo(before.desk.z,3);
+  expect(persisted.book.z).toBeCloseTo(before.book.z,3);
+  expect(persisted.deskCollider.z).toBeCloseTo(before.deskCollider.z,3);
+  expect(persisted.candleLightParent).toBe("bedroom-module-candle");
+  expect(errors).toEqual([]);
+});

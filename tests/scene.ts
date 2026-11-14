@@ -489,3 +489,36 @@ export function inspectGalvikBody(){
     cameraHeight:scene.activeCamera?.position.y??null,
   };
 }
+
+/** E2E-only camera target inside the private room, aimed at real floor geometry. */
+export function aimAtBedroomPlacement(x:number,z:number):void {
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(-0.8,1.7,-8.0);
+  camera.setTarget(new Vector3(x,0.018,z));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
+export function inspectModularBedroom(){
+  const scene=Engine.LastCreatedScene!;
+  const coords=(name:string)=>{
+    const node=scene.getMeshByName(name);
+    if(!node)throw Error("Missing bedroom mesh "+name);
+    node.computeWorldMatrix(true);
+    const p=node.getAbsolutePosition();
+    return {x:p.x,z:p.z};
+  };
+  const root=scene.getTransformNodeByName("bedroom-module-candle");
+  const light=scene.getLightByName("galvik-bed-candle");
+  return {
+    desk:coords("bedroom-desk"),
+    book:coords("bedroom-account-book"),
+    deskCollider:coords("bedroom-furniture-collider-desk"),
+    chest:coords("galvik-bed-chest"),
+    chestCollider:coords("bedroom-furniture-collider-chest"),
+    candle:coords("bed-candle"),
+    candleRoot:root?{x:root.position.x,z:root.position.z}:null,
+    candleLightParent:light?.parent?.name??null,
+  };
+}
