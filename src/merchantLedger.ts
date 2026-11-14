@@ -168,7 +168,7 @@ export function setupMerchantLedger(
       sessionStorage.setItem(LEDGER_SESSION_KEY,JSON.stringify({
         seed:after.seed,day:after.day,
         beforeGold:before.shopEconomy.balance,
-        visitorCount:before.adventurers.filter(h=>h.status==="at-shop").length,
+        visitorCount:summary?.visited??before.adventurers.filter(h=>h.status==="at-shop").length,
         heroes:summary?.heroes,
       }));
     }catch{ /* Session recovery is best effort if browser storage is denied. */ }
@@ -570,6 +570,7 @@ export function setupMerchantLedger(
       const restored=restoreHeroChronicle(pending.heroes);
       summary={...summary!,visited:pending.visitorCount as number,
         ...(restored?{heroes:restored}:{})};
+      persistPending(prior,current);
       renderPage();
       return true;
     },
