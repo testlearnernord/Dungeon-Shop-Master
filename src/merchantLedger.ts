@@ -1,4 +1,6 @@
 import {goldIcon,itemIcon,uiIcon,type InterfaceIcon} from "./uiIcons.ts";
+import {sealedExpeditionDossiers,sealedExpeditionCounts,
+  type SealedExpeditionDossier} from "./ledgerSealedExpeditions.ts";
 import {portraitCssFrame} from "./game/portraitAtlas.ts";
 import {buildLedgerHeroChronicle,type LedgerHeroChronicle,type LedgerHeroLine,type LedgerHeroKind} from "./ledgerHeroChronicle.ts";
 import type { GameState, WorldEvent } from "./game/gameState.ts";
@@ -27,6 +29,7 @@ export interface LedgerSummary {
   readonly departures: number;
   readonly relevantEvents: readonly WorldEvent[];
   readonly expeditions: readonly WorldEvent[];
+  readonly dossiers:readonly SealedExpeditionDossier[];
   readonly safeChronicle: readonly WorldEvent[];
   readonly heroes:LedgerHeroChronicle;
 }
@@ -79,6 +82,7 @@ export function summarizeLedger(before: GameState, after: GameState): LedgerSumm
     departures:newlyBooked.filter(e=>e.type==="shop-departure").length,
     relevantEvents:newlyBooked,
     expeditions,
+    dossiers:sealedExpeditionDossiers(before,after,expeditions),
     safeChronicle:newlyBooked.filter(e=>safeTypes.has(e.type)),
     heroes:buildLedgerHeroChronicle(before,after,sales,credits,newlyBooked),
   };
@@ -170,6 +174,7 @@ export function setupMerchantLedger(
         beforeGold:before.shopEconomy.balance,
         visitorCount:summary?.visited??before.adventurers.filter(h=>h.status==="at-shop").length,
         heroes:summary?.heroes,
+        dossiers:summary?.dossiers,
       }));
     }catch{ /* Session recovery is best effort if browser storage is denied. */ }
   }
@@ -204,6 +209,38 @@ export function setupMerchantLedger(
       if(!Number.isSafeInteger(n)||typeof n!=="number"||n<0||n>100000)return null;
     }
     return v as LedgerHeroChronicle;
+  }
+  /** Use only snapshot headers matching the actual saved replay events.
+   * On legacy markers, with no pre-night snapshot, hide levels rather than
+   * display post-combat XP / level changes as previously known facts.
+   */
+  function restoreSealedDossiers(
+    raw:unknown,events:readonly WorldEvent[],
+  ):readonly SealedExpeditionDossier[]|null{
+    if(!Array.isArray(raw)||raw.length!==events.length||raw.length>200)
+      return null;
+    const valid=raw.every((entry:unknown,index:number)=>{
+      if(!entry||typeof entry!=="object")return false;
+      const d=entry as Partial<SealedExpeditionDossier>;
+      const event=events[index];
+      const isCombat=event.type==="level6-combat";
+      return d.recordId===event.id&&
+        d.heroId===(event.adventurerId??null)&&
+        d.day===event.day&&
+        d.kind===(isCombat?"combat":"exploration")&&
+        d.floor===(isCombat?6:7)&&
+        d.title===(isCombat?"THE CAVE TROLL":"UNCHARTED DEPTHS")&&
+        d.category===(isCombat?"COMBAT RECORDING":"EXPLORATION RECORDING")&&
+        typeof d.heroName==="string"&&d.heroName.length<=120&&
+        (d.role===null||d.role==="tank"||d.role==="DPS"||d.role==="healer")&&
+        (d.knownLevel===null||
+          (Number.isSafeInteger(d.knownLevel)&&typeof d.knownLevel==="number"&&
+           d.knownLevel>=1&&d.knownLevel<=10000))&&
+        (d.portrait===null||
+          (Number.isInteger(d.portrait)&&typeof d.portrait==="number"&&
+           d.portrait>=0&&d.portrait<25));
+    });
+    return valid?raw as SealedExpeditionDossier[]:null;
   }
   function clearPending():void {
     try{sessionStorage.removeItem(LEDGER_SESSION_KEY);}catch{ /* storage unavailable */ }
@@ -370,6 +407,113 @@ export function setupMerchantLedger(
       document.createTextNode("New expedition results, injuries, loot and deaths remain sealed until their recordings are watched. The skull marks only losses known before this night."));
     content.append(note);
   }
+  function renderSealedExpeditions():void{
+    if(!summary)return;
+    const dossiers=summary.dossiers;
+    const counts=sealedExpeditionCounts(dossiers);
+    const overview=node("div","ledger-sealed-overview");
+    overview.setAttribute("aria-label","Sealed expedition archive counts");
+    const tally=(icon:InterfaceIcon,value:number,label:string):HTMLElement=>{
+      const item=node("div","ledger-sealed-stat");
+      item.append(uiIcon(icon,"ledger-sealed-stat-icon"),
+        node("strong","ledger-sealed-stat-value",String(value)),
+        node("span","ledger-sealed-stat-label",label));
+      return item;
+    };
+    overview.append(tally("lock",counts.total,"SEALED FILES"),
+      tally("swords",counts.combat,"COMBAT"),
+      tally("map",counts.exploration,"EXPLORATION"));
+    content.append(overview);
+    if(!dossiers.length){
+      const vacant=node("div","ledger-sealed-empty");
+      vacant.append(uiIcon("book"),
+        node("strong","","NO NEW EXPEDITION RECORDS"),
+        node("p","","When a dungeon expedition is recorded, its sealed account will be filed here."));
+      content.append(vacant);
+    }else{
+      content.append(node("h3","ledger-subhead ledger-sealed-subhead",
+        "THE UNOPENED FILES"));
+      const list=node("div","ledger-sealed-list");
+      list.setAttribute("aria-label","Sealed expedition recordings");
+      dossiers.forEach((dossier,index)=>{
+        // Preserve the exact authoritative replay event object in the
+        // event handler. Dossier metadata intentionally contains no results.
+        const event=summary!.expeditions[index];
+        if(!event||event.id!==dossier.recordId)return;
+        const card=node("article","ledger-record ledger-dossier ledger-dossier-"+dossier.kind);
+        card.dataset.recordId=event.id;
+        card.dataset.kind=dossier.kind;
+        card.dataset.floor=String(dossier.floor);
+        const emblem=node("div","ledger-dossier-emblem");
+        emblem.append(uiIcon(dossier.kind==="combat"?"swords":"map"));
+        emblem.setAttribute("aria-hidden","true");
+        const body=node("div","ledger-dossier-body");
+        const eye=node("div","ledger-dossier-eyebrow");
+        eye.append(
+          node("span","ledger-dossier-number",
+            "FILE "+String(index+1).padStart(3,"0")),
+          node("span","ledger-dossier-category",dossier.category));
+        const title=node("strong","ledger-record-title",dossier.title);
+        const location=node("div","ledger-dossier-location");
+        location.append(uiIcon("arrow-down"),
+          node("span","","FLOOR "+String(dossier.floor).padStart(2,"0")),
+          node("span","ledger-dossier-date","· DAY "+dossier.day));
+        const person=node("div","ledger-dossier-person");
+        if(dossier.portrait!==null){
+          const portrait=node("span","ledger-dossier-portrait");
+          portrait.style.backgroundImage="url('"+import.meta.env.BASE_URL+
+            "assets/hero-portraits.webp')";
+          Object.assign(portrait.style,portraitCssFrame(dossier.portrait));
+          portrait.setAttribute("role","img");
+          portrait.setAttribute("aria-label",dossier.heroName+" portrait");
+          person.append(portrait);
+        }else{
+          const unknown=node("span","ledger-dossier-portrait ledger-dossier-unknown");
+          unknown.append(uiIcon("users"));
+          person.append(unknown);
+        }
+        const name=node("span","ledger-dossier-person-name",dossier.heroName);
+        const identity=node("span","ledger-dossier-person-role",
+          [dossier.role?.toUpperCase(),
+            dossier.knownLevel===null?null:"LV "+dossier.knownLevel]
+            .filter(Boolean).join(" · ")||"IDENTITY UNRECORDED");
+        const personDetails=node("div","ledger-dossier-person-details");
+        personDetails.append(name,identity);
+        person.append(personDetails);
+        body.append(eye,title,location,person);
+        const side=node("div","ledger-dossier-side");
+        const seal=node("div","ledger-record-seal");
+        seal.append(uiIcon("lock"),node("span","","SEALED RECORD"));
+        const reveal=node("p","ledger-dossier-disclosure",
+          "Fate, injuries and spoils are unknown until observed.");
+        const watch=document.createElement("button");
+        watch.type="button";
+        watch.className="ledger-watch";
+        watch.append(uiIcon("play"),node("span","","WATCH RECORDING"));
+        watch.setAttribute("aria-label",
+          "Watch "+dossier.heroName+"'s floor "+dossier.floor+
+          " "+dossier.kind+" recording");
+        watch.addEventListener("click",()=>{
+          dialog.close();
+          suspended=true;
+          if(!onWatch(event)){
+            suspended=false;
+            dialog.showModal();
+            heading.focus({preventScroll:true});
+          }
+        });
+        side.append(seal,reveal,watch);
+        card.append(emblem,body,side);
+        list.append(card);
+      });
+      content.append(list);
+    }
+    const note=node("p","ledger-footnote ledger-sealed-footnote");
+    note.append(uiIcon("lock"),
+      document.createTextNode(
+        "WATCH replays the committed history. It cannot change combat, award items, add gold or advance the day. Outcomes remain sealed until witnessed."));
+    content.append(note);
+  }
   function renderPage():void{
     if(!summary)return;
     pages.textContent=String(page+1).padStart(2,"0")+" / 04";
@@ -448,36 +592,8 @@ export function setupMerchantLedger(
       renderHeroChronicle(summary.heroes);
     }else{
       content.append(node("p","ledger-page-intro",
-        "Below the shop, steel meets stone. These records are sealed. Open one to witness its truth."));
-      if(!summary.expeditions.length)
-        content.append(empty("No new combat or exploration recordings were filed tonight."));
-      else{
-        for(const event of summary.expeditions){
-          const card=node("article","ledger-record");
-          card.append(node("span","ledger-record-seal","SEALED RECORD"),
-            node("strong","ledger-record-title",
-              (event.type==="level6-combat"?"LEVEL 6 · THE TROLL":"LEVEL 7 · THE DEPTHS")),
-            node("span","ledger-record-meta",
-              `Day ${event.day} · ${event.adventurerId??"Unnamed adventurer"}`));
-          const watch=document.createElement("button");
-          watch.type="button";
-          watch.className="ledger-watch";
-          watch.textContent="▶ WATCH EXPEDITION";
-          watch.addEventListener("click",()=>{
-            dialog.close();
-            suspended=true;
-            if(!onWatch(event)){
-              suspended=false;
-              dialog.showModal();
-              heading.focus({preventScroll:true});
-            }
-          });
-          card.append(watch);
-          content.append(card);
-        }
-      }
-      content.append(node("p","ledger-footnote",
-        "WATCH opens a historical recording. It never re-rolls combat, grants loot, changes the merchant's gold or advances time."));
+        "Every sealed file holds a journey below the fifth floor. Break the seal to witness its truth."));
+      renderSealedExpeditions();
     }
     if(animationSkipped)content.classList.add("ledger-no-animation");
     else{
@@ -547,7 +663,7 @@ export function setupMerchantLedger(
       if(!data||typeof data!=="object")return false;
       const pending=data as {
         seed?:unknown;day?:unknown;beforeGold?:unknown;visitorCount?:unknown;
-        heroes?:unknown;
+        heroes?:unknown;dossiers?:unknown;
       };
       if(pending.seed!==current.seed||pending.day!==current.day||
          !Number.isSafeInteger(pending.beforeGold)||!Number.isSafeInteger(pending.visitorCount)||
@@ -568,6 +684,7 @@ export function setupMerchantLedger(
       // just before sleeping. Keep the exact spoiler-safe page snapshot in
       // tab-scoped storage for uninterrupted ledgers after a reload.
       const restored=restoreHeroChronicle(pending.heroes);
+      const restoredDossiers=restoreSealedDossiers(pending.dossiers,summary!.expeditions);
       // Old or corrupt session markers lack a pre-sleep hero snapshot.
       // The reconstructed 'prior' is made from the AFTER state, so its
       // death flags cannot be interpreted as previously known losses.
@@ -577,7 +694,10 @@ export function setupMerchantLedger(
         knownShopVisitors:pending.visitorCount as number,
       };
       summary={...summary!,visited:pending.visitorCount as number,
-        heroes:restored??fallback};
+        heroes:restored??fallback,
+        dossiers:restoredDossiers??summary!.dossiers.map(dossier=>({
+          ...dossier,knownLevel:null,
+        }))};
       persistPending(prior,current);
       renderPage();
       return true;
