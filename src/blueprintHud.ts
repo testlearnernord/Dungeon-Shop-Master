@@ -4,6 +4,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import {uiIcon,setIconButton} from "./uiIcons.ts";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { furnitureFacing } from "./game/furnitureFacing.ts";
+import { createBlueprintPreviewValidator } from "./game/blueprintPreviewValidator.ts";
 import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
 import { shopServiceReachabilityProblem } from "./game/shopServiceReachability.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
@@ -66,6 +67,14 @@ export function setupBlueprintHud(
   invalidMaterial.alpha=0.4;
   invalidMaterial.wireframe=true;
   invalidMaterial.disableLighting=true;
+  // Route checks are deliberately delayed while the crosshair is moving.
+  // Amber means the draft is not yet verified, never "safe to place".
+  const checkingMaterial=new StandardMaterial("blueprint-checking",scene);
+  checkingMaterial.diffuseColor=new Color3(0.91,0.69,0.21);
+  checkingMaterial.emissiveColor=new Color3(0.4,0.26,0.05);
+  checkingMaterial.alpha=0.4;
+  checkingMaterial.wireframe=true;
+  checkingMaterial.disableLighting=true;
   // Move a recognizable mesh silhouette, not a symmetric anonymous cuboid.
   // The golden arrow ALWAYS indicates the customer-facing side. All pieces
   // are visual-only; the saved footprint remains the authoritative geometry.
@@ -213,20 +222,21 @@ export function setupBlueprintHud(
       hits(node.position.x,node.position.z,0.45));
     return occupied?"A visitor is standing in the placement area.":null;
   };
-  const placementError=(p:FurnitureDraft):string|null=>{
+  // The expensive service reachability check runs at most once per snapped
+  // draft after the camera settles, not once per ghost mesh every frame.
+  // The cache is invalidated whenever the committed furniture or mined room
+  // changes; live player/NPC occupancy is checked independently each frame.
+  const validator=createBlueprintPreviewValidator((p,layout,room)=>{
     const check=p.id==="counter"
-      ?replaceCounterPlacement(store.state.shopLayout,p,store.state.level5Room)
-      :replaceShelfPlacement(store.state.shopLayout,p,store.state.level5Room);
+      ?replaceCounterPlacement(layout,p,room)
+      :replaceShelfPlacement(layout,p,room);
     const good=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
-    if(check.layout===store.state.shopLayout&&check.message!==good)return check.message;
-    if(check.layout!==store.state.shopLayout){
-      const reachability=shopServiceReachabilityProblem(check.layout,store.state.level5Room);
-      if(reachability)return reachability;
-    }
-    return occupiedBy(p);
-  };
+    if(check.layout===layout&&check.message!==good)return check.message;
+    return check.layout!==layout
+      ?shopServiceReachabilityProblem(check.layout,room):null;
+  });
 
-  const updateGhost=():void=>{
+  const updateGhost=(immediate=false):void=>{
     if(!enabled)return;
     if(document.querySelector("dialog[open]")){close();return;}
     const facing=furnitureFacing(activeId,rotation);
@@ -255,20 +265,25 @@ export function setupBlueprintHud(
     ghost.position.set(p.x,0,p.z);
     ghost.rotation.y=p.rotation*Math.PI/2;
     const type=p.id==="counter"?"counter":"shelf";
+    const state=store.state;
+    const staticCheck=validator.evaluate(p,state.shopLayout,state.level5Room,
+      performance.now(),immediate);
+    const occupied=occupiedBy(p);
+    const isChecking=!staticCheck.ready&&!occupied;
+    reason=occupied??(staticCheck.ready
+      ?staticCheck.problem??"Valid placement. Left click to confirm."
+      :"Checking customer routes…");
+    placeable=staticCheck.ready&&!occupied&&!staticCheck.problem;
+    const bodyMaterial=isChecking?checkingMaterial:
+      placeable?validMaterial:invalidMaterial;
     for(const part of parts){
       part.mesh.setEnabled(part.type===type);
-      part.mesh.material=part.direction?facingMaterial:
-        (placementError(p)?invalidMaterial:validMaterial);
+      part.mesh.material=part.direction?facingMaterial:bodyMaterial;
     }
     const front=furnitureFacing(p.id,p.rotation);
     facingReadout.textContent="FRONT → "+front.label.toUpperCase()+
       "  ·  "+(p.rotation*90)+"°"+
       (surface==="floor"?" · R rotates 90°":" · wall-aligned");
-    reason=placementError(p)??"Valid placement. Left click to confirm.";
-    placeable=reason==="Valid placement. Left click to confirm.";
-    for(const part of parts){
-      if(!part.direction)part.mesh.material=placeable?validMaterial:invalidMaterial;
-    }
     ghost.setEnabled(true);
     updateStatus(reason,placeable);
   };
@@ -306,11 +321,13 @@ export function setupBlueprintHud(
     updateGhost();
   };
   const commit=():void=>{
-    updateGhost();
+    // The first click always completes validation synchronously, even when
+    // hovering began less than 140 ms ago. GameStore repeats authoritative
+    // geometry/reachability validation before it changes the saved layout.
+    updateGhost(true);
     if(!draft||!placeable)return;
-    // Revalidate on the same input event that changes the authoritative state.
-    const validation=placementError(draft);
-    if(validation){updateStatus(validation,false);return;}
+    const occupied=occupiedBy(draft);
+    if(occupied){updateStatus(occupied,false);return;}
     const result=draft.id==="counter"?store.placeCounter(draft):store.placeShelf(draft);
     if(result==="Counter placement saved."||result==="Shelf placement saved."){
       close();
