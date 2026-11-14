@@ -42,12 +42,14 @@ export interface CounterPlacement {
   readonly rotation: 0 | 1 | 2 | 3;
 }
 export const COMPACT_COUNTER = Object.freeze({
-  bodyWidth: 1.75,
-  bodyDepth: 1.15,
-  topWidth: 2,
-  topDepth: 1.35,
-  clearanceWidth: 2.5,
-  clearanceDepth: 2.3,
+  bodyWidth: 1.35,
+  bodyDepth: 0.75,
+  topWidth: 1.55,
+  topDepth: 0.93,
+  clearanceWidth: 2.15,
+  clearanceDepth: 1.8,
+  registerOffsetX: 0.28,
+  registerOffsetZ: 0.04,
 });
 export function compactCounterBounds(placement: CounterPlacement): {
   minX:number;maxX:number;minZ:number;maxZ:number
@@ -60,9 +62,30 @@ export function compactCounterBounds(placement: CounterPlacement): {
 
 /** Older saves omit the placement; the same compact counter appears at the old location. */
 export const DEFAULT_COUNTER_PLACEMENT: CounterPlacement = Object.freeze({x:0,z:2.5,rotation:0});
+/** New campaigns start at the back-left corner near Galvik's private door.
+ * Existing saved campaigns without a counter transform keep the old position.
+ */
+export const NEW_GAME_COUNTER_PLACEMENT:CounterPlacement=
+  Object.freeze({x:-4.25,z:-4.5,rotation:3});
 export const getCounterPlacement=(layout:ShopLayout):CounterPlacement=>
   layout.counter??DEFAULT_COUNTER_PLACEMENT;
 export const movableCounterBounds=(layout:ShopLayout)=>compactCounterBounds(getCounterPlacement(layout));
+/** Shared physical service sockets, in the exact rotated frame of the till. */
+export function counterDockPoint(layout:ShopLayout,who:"staff"|"customer"):{
+  x:number;z:number
+}{
+  const p=getCounterPlacement(layout);
+  const reach=COMPACT_COUNTER.clearanceDepth/2+(who==="staff"?.58:.65);
+  const offset=rotateShelfOffset(0,who==="staff"?reach:-reach,p.rotation);
+  return {x:p.x+offset.x,z:p.z+offset.z};
+}
+export function isAtCounterStaffDock(
+  layout:ShopLayout,person:{readonly x:number;readonly z:number},radius=1.05,
+):boolean{
+  const dock=counterDockPoint(layout,"staff");
+  return Number.isFinite(person.x)&&Number.isFinite(person.z)&&
+    Math.hypot(person.x-dock.x,person.z-dock.z)<=radius;
+}
 
 const IDS: readonly ShelfId[] = ["shelf-1","shelf-2"];
 type Bounds={minX:number;maxX:number;minZ:number;maxZ:number};
@@ -85,7 +108,7 @@ export function createShopLayout(): ShopLayout {
   return {shelves:[
     {id:"shelf-1",x:-7,z:0,rotation:0},
     {id:"shelf-2",x:7,z:0,rotation:2},
-  ]};
+  ],counter:{...NEW_GAME_COUNTER_PLACEMENT}};
 }
 export function rotateShelfOffset(
   x:number,z:number,turns:0|1|2|3,
@@ -156,6 +179,17 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
       overlap(box,gateApproach,0.04)||
       layout.shelves.some(shelf=>overlap(box,shelfBounds(shelf),0.04)))
       return "Keep the counter, entrances and visitor aisles clear.";
+    // Even future hired workers need physical standing space behind the
+    // desk. Do not allow a cashier that visitors can reach but staff cannot.
+    const staff=counterDockPoint(layout,"staff");
+    const staffBox={minX:staff.x-.36,maxX:staff.x+.36,
+      minZ:staff.z-.36,maxZ:staff.z+.36};
+    if((room?!onRoomFloor(staffBox,room):
+      staffBox.minX< -7.1||staffBox.maxX>7.1||
+      staffBox.minZ< -6.65||staffBox.maxZ>6.65)||
+      layout.shelves.some(shelf=>overlap(staffBox,shelfBounds(shelf),.04))||
+      barriers.some(zone=>overlap(staffBox,zone,.04)))
+      return "Leave an accessible staff position behind the counter.";
     // Reserve a reachable first customer spot *in front* of the counter.
     // Counter placement must not push the entire checkout queue beyond walls
     // or into fixed player/door/roster obstacles.

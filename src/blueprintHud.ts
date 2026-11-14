@@ -105,9 +105,9 @@ export function setupBlueprintHud(
       0.48,0.82,idx-2,"shelf");
   }
   // Counter: visible top and raised register establish the back of the till.
-  previewBox("blueprint-counter-body",1.75,1.15,1.15,0,0.68,0,"counter");
-  previewBox("blueprint-counter-top",2,0.14,1.35,0,1.32,0,"counter");
-  previewBox("blueprint-counter-register",0.62,0.30,0.5,0.35,1.55,0,"counter");
+  previewBox("blueprint-counter-body",1.35,0.84,0.75,0,0.42,0,"counter");
+  previewBox("blueprint-counter-top",1.55,0.12,0.93,0,0.90,0,"counter");
+  previewBox("blueprint-counter-register",0.49,0.17,0.39,0.28,1.05,0.04,"counter");
   // Bedroom modules include visible silhouettes, not generic wire cubes.
   previewBox("blueprint-desk-top",1.18,0.12,0.76,0,0.95,0,"desk");
   for(const x of [-0.45,0.45])for(const z of [-0.27,0.27])
@@ -141,11 +141,11 @@ export function setupBlueprintHud(
   shelfTip.rotation.z=-Math.PI/2;
   shelfTip.isPickable=false;shelfTip.checkCollisions=false;
   shelfTip.renderingGroupId=2;parts.push({mesh:shelfTip,type:"shelf",direction:true});
-  previewBox("blueprint-counter-front-shaft",0.12,0.12,0.53,
-    0,1.76,-1.05,"counter",true);
+  previewBox("blueprint-counter-front-shaft",0.12,0.12,0.39,
+    0,1.32,-0.75,"counter",true);
   const counterTip=MeshBuilder.CreateCylinder("blueprint-counter-front-arrow",
     {height:0.56,diameterTop:0,diameterBottom:0.4,tessellation:4},scene);
-  counterTip.parent=ghost;counterTip.position.set(0,1.76,-1.43);
+  counterTip.parent=ghost;counterTip.position.set(0,1.32,-1.08);
   counterTip.rotation.x=-Math.PI/2;
   counterTip.isPickable=false;counterTip.checkCollisions=false;
   counterTip.renderingGroupId=2;parts.push({mesh:counterTip,type:"counter",direction:true});

@@ -58,7 +58,7 @@ export class Shop {
     this.validMaterial = makeGuide("placement-valid", new Color3(0.28, 0.94, 0.52));
     this.invalidMaterial = makeGuide("placement-invalid", new Color3(1, 0.23, 0.22));
     this.counterOutline=MeshBuilder.CreateBox("counter-placement-preview",{
-      width:COMPACT_COUNTER.clearanceWidth,height:1.8,depth:COMPACT_COUNTER.clearanceDepth,
+      width:COMPACT_COUNTER.clearanceWidth,height:1.25,depth:COMPACT_COUNTER.clearanceDepth,
     },scene);
     this.counterOutline.material=this.validMaterial;
     this.counterOutline.isPickable=false;
@@ -129,11 +129,11 @@ export class Shop {
       mesh.position.set(p.x+offset.x,y,p.z+offset.z);
       mesh.rotation.y=p.rotation*Math.PI/2;
     };
-    put("checkout-counter",0,0.68,0);
-    put("counter-top",0,1.32,0);
-    put("register-base",0.35,1.55,0);
-    put("cash-register",0.35,1.87,-0.1);
-    this.counterOutline.position.set(p.x,0.95,p.z);
+    put("checkout-counter",0,0.42,0);
+    put("counter-top",0,0.90,0);
+    put("register-base",COMPACT_COUNTER.registerOffsetX,1.05,COMPACT_COUNTER.registerOffsetZ);
+    put("cash-register",COMPACT_COUNTER.registerOffsetX,1.22,COMPACT_COUNTER.registerOffsetZ);
+    this.counterOutline.position.set(p.x,0.64,p.z);
     this.counterOutline.rotation.y=p.rotation*Math.PI/2;
   }
   private positionShelf(group: ShelfGroup, p: ShelfPlacement): void {
