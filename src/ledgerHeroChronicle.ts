@@ -92,14 +92,15 @@ export function buildLedgerHeroChronicle(
   const purchases=new Map<string,{paidGold:number;units:number;goods:Map<ItemId,number>}>();
   for(const sale of sales){
     if(!sale.adventurerId||!sale.itemId||
-       !Number.isSafeInteger(sale.quantity)||sale.quantity!<0||
-       !Number.isSafeInteger(sale.revenue)||sale.revenue!<0)continue;
+       typeof sale.quantity!=="number"||!Number.isSafeInteger(sale.quantity)||
+       sale.quantity<0||typeof sale.revenue!=="number"||
+       !Number.isSafeInteger(sale.revenue)||sale.revenue<0)continue;
     const purchase=purchases.get(sale.adventurerId)??
       {paidGold:0,units:0,goods:new Map<ItemId,number>()};
-    purchase.paidGold+=sale.revenue!;
-    purchase.units+=sale.quantity!;
+    purchase.paidGold+=sale.revenue;
+    purchase.units+=sale.quantity;
     purchase.goods.set(sale.itemId as ItemId,
-      (purchase.goods.get(sale.itemId as ItemId)??0)+sale.quantity!);
+      (purchase.goods.get(sale.itemId as ItemId)??0)+sale.quantity);
     purchases.set(sale.adventurerId,purchase);
   }
   const debts=new Map<string,number>();

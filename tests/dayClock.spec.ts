@@ -63,6 +63,12 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger",async(
   await expect(page.locator("#ledger-page-content")).toContainText("SALES BY GOOD");
   await page.locator("#ledger-next").click();
   await expect(page.locator("#ledger-heading")).toHaveText("The Living");
+  const knownBeforeReload=await page.locator(".ledger-hero-list").innerText();
+  await expect(page.locator(".ledger-hero-card")).toHaveCount(3);
+  await expect(page.locator(".ledger-hero-portrait")).toHaveCount(3);
+  await expect(page.locator(".ledger-people-overview")).toContainText("SHOP AT CLOSING");
+  await expect(page.locator(".ledger-hero-disclosure")).toContainText("remain sealed");
+  await expect(page.locator(".ledger-hero-card")).not.toContainText(["VICTORY","DEATH"]);
   await page.locator("#ledger-next").click();
   await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
   // A reload must reopen the still-unread ledger, not advance another day.
@@ -70,6 +76,9 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger",async(
   await page.reload();
   await expect(page.locator("#merchant-ledger")).toBeVisible();
   await expect(page.locator("#day")).toHaveText("Day 2");
+  await page.locator("#ledger-chapters button").nth(2).click();
+  await expect(page.locator("#ledger-heading")).toHaveText("The Living");
+  expect(await page.locator(".ledger-hero-list").innerText()).toBe(knownBeforeReload);
   await page.locator("#ledger-begin").click();
   await expect(page.locator("#merchant-ledger")).not.toBeVisible();
   await expect(page.locator("#day")).toHaveText("Day 2");
