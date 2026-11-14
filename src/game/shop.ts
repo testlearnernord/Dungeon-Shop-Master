@@ -161,7 +161,7 @@ export class Shop {
       back.position.set(0,1.35,0);
       back.material = material;
       back.checkCollisions = true;
-      back.isPickable = false;
+      back.isPickable = true; // Looking at the frame, not only stock slots, selects the shelf for P
       const plank=MeshBuilder.CreateBox(shelfId+"-plank",{
         width:1.2,height:0.18,depth:5.8,
       },this.scene);
@@ -169,7 +169,7 @@ export class Shop {
       plank.position.set(0.48,0.65,0);
       plank.material=material;
       plank.checkCollisions=true;
-      plank.isPickable=false;
+      plank.isPickable=true;
 
       const outline=MeshBuilder.CreateBox(shelfId+"-placement-preview",{
         width:1.36,height:2.35,depth:6.1,

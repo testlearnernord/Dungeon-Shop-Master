@@ -5,6 +5,7 @@ import { createShopLayout,replaceCounterPlacement,replaceShelfPlacement } from "
 
 test("raycast mount surfaces identify structural room pieces only",()=>{
   assert.equal(surfaceFromMesh("stone-floor"),"floor");
+  assert.equal(surfaceFromMesh("bedroom-floor-skin"),"floor");
   assert.equal(surfaceFromMesh("excavated-floor-8,0"),"floor");
   assert.equal(surfaceFromMesh("excavated-floor--9,-2"),"floor");
   assert.equal(surfaceFromMesh("excavation-rock-face-6"),null);
@@ -14,7 +15,7 @@ test("raycast mount surfaces identify structural room pieces only",()=>{
   assert.equal(surfaceFromMesh("corridor-wall--5.3"),null);
   assert.equal(surfaceFromMesh("shelf-1-plank"),null);
   assert.deepEqual(FURNITURE_CATALOG.map(item=>item.id),
-    ["shelf-1","shelf-2","counter"]);
+    ["shelf-1","shelf-2","counter","desk","chest","candle"]);
 });
 
 test("mouse floor projection snaps to quarter-metre grid with retained rotation",()=>{
@@ -43,4 +44,11 @@ test("wall-surface blueprints face into Galvik's store and preserve shelf IDs",(
   assert.equal(replaceShelfPlacement(layout,right).message,"Shelf placement saved.");
   const movable=blueprintAtSurface("counter","floor",{x:0,z:2.49},0)!;
   assert.equal(replaceCounterPlacement(layout,movable).message,"Counter placement saved.");
+});
+
+test("bedroom furniture shares floor snapping but cannot mount to walls or the ceiling",()=>{
+  const chest=blueprintAtSurface("chest","floor",{x:-2.24,z:-10.27},1);
+  assert.deepEqual(chest,{id:"chest",x:-2.25,z:-10.25,rotation:1});
+  assert.equal(blueprintAtSurface("desk","left-wall",{x:-3,z:-9},0),null);
+  assert.equal(blueprintAtSurface("candle","ceiling",{x:2,z:-11},0),null);
 });

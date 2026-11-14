@@ -74,7 +74,8 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   cube("bedroom-right-wall", 0.85, 4, 6.05, 3.25, 2, -9.68, wall, true);
   cube("bedroom-rear-wall", 6.9, 4, 0.65, 0, 2, -12.35, wall, true);
   const flagstone = surfaces.floor;
-  cube("bedroom-floor-skin", 6.05, 0.025, 5.08, 0, 0.012, -9.68, flagstone);
+  const bedroomFloor=cube("bedroom-floor-skin", 6.05, 0.025, 5.08, 0, 0.012, -9.68, flagstone);
+  bedroomFloor.isPickable=true; // Blueprint floor targeting; not a gameplay interactable
   // Thin offset slabs interrupt the uninterrupted cube-floor silhouette.
   for (let i = 0; i < 12; i++) {
     const x = -2.42 + (i % 4) * 1.52;
@@ -295,9 +296,15 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
     r.isPickable = false;
   }
 
-  for(const name of ["bedroom-desk","galvik-bed-chest","bed-candle","bed-candle-holder"]){
-    const mesh=scene.getMeshByName(name);
-    if(mesh)mesh.isPickable=true;
+  // Every visible part of a bedroom module can be targeted by P.
+  // The existing debt-book click/E action still owns its own meshes.
+  for(const mesh of scene.meshes){
+    if(mesh.name==="bedroom-desk"||mesh.name.startsWith("bedroom-desk-leg-")||
+       mesh.name==="galvik-bed-chest"||mesh.name.startsWith("bed-chest-")||
+       mesh.name==="bed-side-stool"||mesh.name==="bed-side-stool-top"||
+       mesh.name==="bed-candle"||mesh.name==="bed-candle-holder"){
+      mesh.isPickable=true;
+    }
   }
   return bed;
 }

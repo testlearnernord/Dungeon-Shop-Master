@@ -58,3 +58,16 @@ test("moving furniture or excavating the room invalidates old path checks",()=>{
   preview.evaluate(counter(0),changed,room,3,true);
   assert.equal(calls,3,"excavation topology must invalidate cached reachability");
 });
+
+test("moving bedroom modules invalidates earlier route results without invalidating unchanged hovers",()=>{
+  const layout=createShopLayout();
+  const bedroom1={desk:{x:-2.27,z:-9.08}};
+  const bedroom2={desk:{x:-2.25,z:-9.75}};
+  let calls=0;
+  const preview=createBlueprintPreviewValidator(()=>{calls++;return null;});
+  preview.evaluate(counter(0),layout,undefined,0,true,bedroom1);
+  preview.evaluate(counter(0),layout,undefined,1,true,bedroom1);
+  assert.equal(calls,1);
+  preview.evaluate(counter(0),layout,undefined,2,true,bedroom2);
+  assert.equal(calls,2,"a moved bedroom item needs a fresh collision validation");
+});
