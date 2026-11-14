@@ -19,20 +19,22 @@ export function createBlueprintPreviewValidator(
   quietMs=140,
 ):{
   evaluate:(draft:FurnitureDraft,layout:ShopLayout,room:Level5Room|undefined,
-    now:number,immediate?:boolean)=>BlueprintPreviewCheck;
+    now:number,immediate?:boolean,revision?:unknown)=>BlueprintPreviewCheck;
 }{
   let currentLayout:ShopLayout|null=null;
   let currentRoom:Level5Room|undefined;
+  let currentRevision:unknown;
   let activeKey="";
   let enteredAt=0;
   const cache=new Map<string,string|null>();
   const evaluate=(
     draft:FurnitureDraft,layout:ShopLayout,room:Level5Room|undefined,
-    now:number,immediate=false,
+    now:number,immediate=false,revision?:unknown,
   ):BlueprintPreviewCheck=>{
-    if(layout!==currentLayout||room!==currentRoom){
+    if(layout!==currentLayout||room!==currentRoom||revision!==currentRevision){
       currentLayout=layout;
       currentRoom=room;
+      currentRevision=revision;
       cache.clear();
       activeKey="";
     }

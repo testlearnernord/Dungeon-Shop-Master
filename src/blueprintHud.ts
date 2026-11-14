@@ -294,7 +294,7 @@ export function setupBlueprintHud(
       isBedroomFurnitureId(p.id)?p.id:"shelf";
     const state=store.state;
     const staticCheck=validator.evaluate(p,state.shopLayout,state.level5Room,
-      performance.now(),immediate);
+      performance.now(),immediate,state.bedroomFurniture);
     const occupied=occupiedBy(p);
     const isChecking=!staticCheck.ready&&!occupied;
     reason=occupied??(staticCheck.ready
