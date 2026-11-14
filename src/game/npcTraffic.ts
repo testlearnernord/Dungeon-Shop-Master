@@ -261,6 +261,39 @@ export function inGateTrafficThroat(point:ShopPoint):boolean {
 }
 export const NPC_FINAL_WAYPOINT_RADIUS = 0.16;
 
+/** Traffic deadlock recovery measures *forward progress*, not deviation from
+ * a straight line. A customer correctly sidestepping somebody is still
+ * approaching the waypoint and must not become a ghost after 1.15 seconds.
+ * Sideways and backward oscillations, however, still accumulate stall time.
+ */
+export function crowdStallSeconds(
+  previous:number,delta:number,
+  from:ShopPoint,after:ShopPoint,goal:ShopPoint,softPassing=false,
+):number {
+  if(softPassing)return NPC_SOFT_PASS_AFTER_SECONDS;
+  if(!Number.isFinite(previous)||previous<0||!Number.isFinite(delta)||delta<=0||
+    ![from.x,from.z,after.x,after.z,goal.x,goal.z].every(Number.isFinite))
+    return Math.max(0,Number.isFinite(previous)?previous:0);
+  const movement=Math.hypot(after.x-from.x,after.z-from.z);
+  const gained=Math.hypot(goal.x-from.x,goal.z-from.z)-
+    Math.hypot(goal.x-after.x,goal.z-after.z);
+  // Require meaningful travel in the right direction, not tiny numerical
+  // jitter that could permanently reset the escape timer in a crowded aisle.
+  return gained>Math.max(0.003,movement*0.15)?0:previous+delta;
+}
+
+/** Only genuinely stationary, non-service visitors may move out of the
+ * path of another shopper. A shelf waiter can yield, but checkout queues
+ * and 60-second stock requests retain their exclusive reserved spots.
+ */
+export function canYieldShopperSpot(
+  phase:string,shoppingPhase:string,hasRemainingRoute:boolean,
+):boolean {
+  return phase==="queueing"&&!hasRemainingRoute&&
+    (shoppingPhase==="waiting-for-next-day"||
+     shoppingPhase==="waiting-for-shelf");
+}
+
 export interface ShopCrowdMove {
   readonly point: ShopPoint | null;
   readonly softPass: boolean;

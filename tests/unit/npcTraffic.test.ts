@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ } from "../../src/game/npcTraffic.ts";
+import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ   crowdStallSeconds,canYieldShopperSpot,
+} from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
   for(const gate of ["level4","level6"] as const){
@@ -315,4 +316,37 @@ test("saturated entrance spawns safely beyond all reserved positions",()=>{
   const z=nextEntranceSpawnZ(lane,occupied);
   assert(z>occupied.at(-1)!.z);
   assert(occupied.every(p=>Math.hypot(p.x-lane,p.z-z)>=NPC_CENTER_CLEARANCE));
+});
+ 
+
+test("safe sidesteps count as forward progress, not as a traffic deadlock",()=>{
+  const from={x:0,z:0},goal={x:4,z:0};
+  let seconds=0;
+  // A 30- or 60-degree detour is forward progress even though the
+  // immediate movement vector is not pointing directly at the goal.
+  for(let tick=0;tick<24;tick++){
+    const position={x:tick*0.1,z:0};
+    const next={x:position.x+0.08,z:0.08};
+    seconds=crowdStallSeconds(seconds,0.1,position,next,goal);
+    assert.equal(seconds,0,"passing another shopper should not trigger ghosting");
+  }
+  // Purely lateral/backward oscillation remains stalled.
+  assert.equal(crowdStallSeconds(0.6,0.2,from,{x:0,z:0.1},goal),0.8);
+  assert.equal(crowdStallSeconds(0.8,0.2,from,{x:-0.1,z:0},goal),1);
+  assert.equal(crowdStallSeconds(0.8,0.2,from,from,goal),1);
+  assert.equal(crowdStallSeconds(0.2,0.1,from,from,goal,true),
+    NPC_SOFT_PASS_AFTER_SECONDS);
+});
+
+test("only stationary shelf and idle waiters yield, never cashier or restock customers",()=>{
+  assert(canYieldShopperSpot("queueing","waiting-for-next-day",false));
+  assert(canYieldShopperSpot("queueing","waiting-for-shelf",false));
+  assert(!canYieldShopperSpot("queueing","waiting-for-shelf",true),
+    "shelf waiter following its retreat route must finish first");
+  for(const state of ["awaiting-checkout","waiting-for-restock",
+    "waiting-for-credit","walking-to-checkout","clearing-shelf-aisle"]){
+    assert.equal(canYieldShopperSpot("queueing",state,false),false,state);
+  }
+  assert(!canYieldShopperSpot("browsing","waiting-for-shelf",false));
+  assert(!canYieldShopperSpot("leaving","waiting-for-next-day",false));
 });

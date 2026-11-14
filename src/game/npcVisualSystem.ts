@@ -19,7 +19,7 @@ import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopperBlocksRoute, nextEntranceSpawnZ, type GateTrafficActor } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, canYieldShopperSpot, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, pathToShelfAccess, shopSegmentClear } from "./shopperNavigation.ts";
 import { reserveRestockWaitingRoute } from "./restockWaitingPlaces.ts";
 import { npcLocomotion } from "./npcLocomotion.ts";
@@ -539,8 +539,11 @@ export class NpcVisualSystem {
     // Try at most once per cooldown to avoid oscillating idlers.
     for(const npc of this.npcs.values()){
       npc.idleYieldCooldown=Math.max(0,npc.idleYieldCooldown-delta);
-      if(npc.idleYieldCooldown>0||npc.phase!=="queueing"||
-         npc.root.metadata.shoppingPhase!=="waiting-for-next-day")continue;
+      const standing=String(npc.root.metadata.shoppingPhase??"");
+      if(npc.idleYieldCooldown>0||
+         !canYieldShopperSpot(npc.phase,standing,
+           npc.route[npc.waypoint]!==undefined))continue;
+      const shelfWaiter=standing==="waiting-for-shelf";
       const idle={x:npc.root.position.x,z:npc.root.position.z};
       const blocking=[...this.npcs.values()].some(other=>{
         if(other===npc||!["entering","browsing","leaving"].includes(other.phase))
@@ -560,7 +563,8 @@ export class NpcVisualSystem {
       npc.route=route.waypoints.map(p=>new Vector3(p.x,0,p.z));
       npc.waypoint=0; npc.blockedSeconds=0;
       npc.root.metadata.phase=npc.phase;
-      npc.root.metadata.shoppingPhase="clearing-aisle";
+      npc.root.metadata.shoppingPhase=shelfWaiter
+        ?"clearing-shelf-aisle":"clearing-aisle";
     }
     const gateFlow:Record<GateSide,"entering"|"leaving">={
       level4:gateFlowDirection("level4",gateActors),
@@ -859,6 +863,20 @@ export class NpcVisualSystem {
         return reserved?.shelfId===slot.shelfId;
       });
       if(shelfAccessBusy){
+        // A shelf waiter who moved aside for traffic must stay at the cleared
+        // location until the shelf becomes available. Otherwise the next
+        // half-second retry sends them straight back into the same bottleneck.
+        if(npc.idleYieldCooldown>0&&
+           npc.root.metadata.shoppingPhase==="waiting-for-shelf"){
+          npc.phase="queueing";
+          npc.route=[];
+          npc.waypoint=0;
+          npc.toQueue=false;
+          npc.wait=Math.min(0.8,npc.idleYieldCooldown);
+          npc.root.metadata.shoppingTargetSlot=item.slotId;
+          npc.root.metadata.phase=npc.phase;
+          return;
+        }
         // A shopper briefly queued for a busy shelf stays near that shelf.
         // Rear-wall waiting pockets are exclusively for sold-out stock and
         // begging, never for an ordinary purchase in progress.
@@ -1003,8 +1021,12 @@ export class NpcVisualSystem {
           if(npc.root.metadata.shoppingPhase==="checkout-route-blocked"||
             npc.root.metadata.shoppingPhase==="idle-route-blocked")return;
           npc.phase="queueing";
-          npc.root.metadata.shoppingPhase=npc.root.metadata.shoppingPhase==="walking-to-shelf-retry-spot"
-            ?"shelf-route-blocked"
+          const clearingShelf=npc.root.metadata.shoppingPhase==="clearing-shelf-aisle";
+          if(clearingShelf)npc.wait=0.7;
+          npc.root.metadata.shoppingPhase=clearingShelf
+            ?"waiting-for-shelf"
+            :npc.root.metadata.shoppingPhase==="walking-to-shelf-retry-spot"
+              ?"shelf-route-blocked"
             :npc.root.metadata.shoppingPhase==="walking-to-restock-wait"
             ?"waiting-for-restock"
             :npc.root.metadata.shoppingPhase==="walking-to-credit-wait"
@@ -1096,10 +1118,10 @@ export class NpcVisualSystem {
     const step=Math.min(distance,WALK_SPEED*delta);
     const direct={x:from.x+dx/distance*step,z:from.z+dz/distance*step};
     const steering=Math.hypot(proposed.x-direct.x,proposed.z-direct.z);
-    // Keep soft-passing through this waypoint after its first release rather
-    // than flickering between stepping and freezing every other frame.
-    npc.blockedSeconds=move.softPass?NPC_SOFT_PASS_AFTER_SECONDS:
-      steering>0.015?npc.blockedSeconds+delta:0;
+    // Count actual lack of progress. Steering around a person is normal
+    // walking and must not trigger body-overlap escape mode by itself.
+    npc.blockedSeconds=crowdStallSeconds(npc.blockedSeconds,delta,from,
+      proposed,{x:target.x,z:target.z},move.softPass);
     npc.root.metadata.blockedSeconds=npc.blockedSeconds;
     npc.root.metadata.softPassing=move.softPass;
     npc.root.metadata.movementMode=move.softPass?"soft-pass":steering>0.015?"sidestep":"moving";
