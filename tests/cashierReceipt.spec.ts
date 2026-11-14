@@ -29,6 +29,12 @@ test("the register verifies goods, seals receipt and only then transfers gold",a
   page.on("pageerror",e=>errors.push(e.message));
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
+  // Both sides can see the register; only the staff side may operate it.
+  const fromFront=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/cashierHarness.ts"))
+      .openCashierHarness("customer"));
+  expect(fromFront.openResult).toContain("Stand behind the counter");
+  expect(fromFront.manualReceipts).toBe(0);
   const start=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/cashierHarness.ts")).openCashierHarness());
   expect(start.openResult).toContain("Register ready");

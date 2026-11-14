@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   compactCounterBounds, COMPACT_COUNTER, counterOverlapsActor, createShopLayout, getCounterPlacement,
+  counterDockPoint,isAtCounterStaffDock,DEFAULT_COUNTER_PLACEMENT,NEW_GAME_COUNTER_PLACEMENT,
   replaceCounterPlacement, replaceShelfPlacement, rotateShelfOffset,
   shopLayoutProblem, shelfBounds, shelfOverlapsActor, type ShelfPlacement,
 } from "../../src/game/shopLayout.ts";
@@ -123,7 +124,9 @@ test("current shop layouts keep their default counter on save",()=>{
   assert.deepEqual(loaded.shopLayout,initial.shopLayout);
   assert.deepEqual(loaded.shopLayout.counter,
     {x:-4.25,z:-4.5,rotation:3});
-  assert.deepEqual(getCounterPlacement(loaded.shopLayout),{x:0,z:2.5,rotation:0});
+  assert.deepEqual(getCounterPlacement(loaded.shopLayout),NEW_GAME_COUNTER_PLACEMENT);
+  const old={...loaded.shopLayout,counter:undefined};
+  assert.deepEqual(getCounterPlacement(old),DEFAULT_COUNTER_PLACEMENT);
   assert.deepEqual(createSave(loaded).payload.shopLayout,initial.shopLayout);
 });
 
@@ -201,4 +204,27 @@ test("editor id never reaches persisted counter transform or autosave",()=>{
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))).shopLayout.counter,
     {x:0,z:2.25,rotation:1});
   assert.equal(Object.hasOwn(store.state.shopLayout.counter!,"id"),false);
+});
+
+test("new-game corner counter keeps distinct visitor and staff docking sides",()=>{
+  const layout=createShopLayout();
+  assert.deepEqual(layout.counter,NEW_GAME_COUNTER_PLACEMENT);
+  assert.equal(shopLayoutProblem(layout),null);
+  assert(COMPACT_COUNTER.bodyWidth<1.5);
+  assert(COMPACT_COUNTER.topDepth<1);
+  const staff=counterDockPoint(layout,"staff");
+  const customer=counterDockPoint(layout,"customer");
+  assert(staff.x<layout.counter!.x,"staff stands toward the side wall");
+  assert(customer.x>layout.counter!.x,"customers approach from the shop");
+  assert(Math.hypot(staff.x-customer.x,staff.z-customer.z)>2);
+  assert.equal(isAtCounterStaffDock(layout,staff),true);
+  assert.equal(isAtCounterStaffDock(layout,customer),false);
+  assert.equal(isAtCounterStaffDock(layout,{x:0,z:0}),false);
+  for(const rotation of [0,1,2,3] as const){
+    const moved={...layout,counter:{x:0,z:0,rotation}};
+    const a=counterDockPoint(moved,"staff");
+    const b=counterDockPoint(moved,"customer");
+    assert.equal(isAtCounterStaffDock(moved,a),true);
+    assert.equal(isAtCounterStaffDock(moved,b),false);
+  }
 });
