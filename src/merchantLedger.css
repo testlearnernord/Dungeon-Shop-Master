@@ -173,3 +173,110 @@
   #sleep-fade{transition:none}
   .ledger-page-enter,.ledger-page-enter *{animation:none!important}
 }
+
+/* HERO CHRONICLE | ledger folio 03. Faces and badges are verified shop
+ * knowledge, not a hidden post-combat status reveal. */
+.ledger-people-overview{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;margin:14px 0 19px;
+}
+.ledger-people-stat{
+  display:flex;align-items:center;gap:9px;min-width:0;
+  padding:11px 9px;border:1px solid #9f80596b;
+  background:linear-gradient(155deg,#f6e8c9b0,#d7c29c91);
+  box-shadow:inset 0 1px #fff6;
+}
+.ledger-people-stat-icon{
+  display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;
+  border:1px solid #96764c80;border-radius:50%;color:#79532f;
+  background:#dbc39d88;
+}
+.ledger-people-stat-icon svg{width:16px;height:16px}
+.ledger-people-stat-words{display:grid;gap:2px;min-width:0}
+.ledger-people-stat-words strong{font:600 24px/1.1 Georgia,serif;color:#47301f;
+  font-variant-numeric:tabular-nums}
+.ledger-people-stat-words span{font:700 8px/1.35 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.1em;color:#846347}
+.ledger-hero-list{
+  display:grid;gap:8px;max-height:min(43vh,325px);overflow:auto;
+  padding:2px 7px 7px 2px;scrollbar-color:#a58b65 #d7c29d65;
+}
+.ledger-hero-card{
+  display:grid;grid-template-columns:54px minmax(0,1fr) auto;
+  gap:12px;align-items:center;
+  padding:9px 11px 9px 10px;min-width:0;min-height:74px;
+  border:1px solid #b093696a;border-left:3px solid #99754c;
+  background:linear-gradient(90deg,#f8eccbba,#e8d3aeaa);
+  box-shadow:0 2px 7px #72502f16;
+}
+.ledger-hero-card.ledger-hero-sealed{border-left-color:#68536e;
+  background:linear-gradient(90deg,#e3d2bbdf,#ebdbc2ad)}
+.ledger-hero-card.ledger-hero-fallen{border-left-color:#79483c}
+.ledger-hero-portrait{
+  display:block;width:52px;height:52px;min-width:52px;border-radius:50%;
+  border:2px solid #8b6743;background-color:#a38864;
+  background-repeat:no-repeat;box-shadow:0 0 0 2px #ead6af,
+  0 3px 8px #4b321f56;
+}
+.ledger-hero-details{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ledger-hero-name{color:#3b291b;font:700 16px/1.15 Georgia,serif;
+  overflow-wrap:anywhere}
+.ledger-hero-role{font:700 9px/1.25 ui-sans-serif,system-ui,sans-serif;
+  color:#846043;letter-spacing:.11em}
+.ledger-hero-byline{font:11px/1.35 ui-sans-serif,system-ui,sans-serif;
+  color:#786147;max-width:29ch}
+.ledger-hero-right{display:flex;flex-direction:column;align-items:flex-end;
+  gap:7px;min-width:132px}
+.ledger-hero-status{display:inline-flex;align-items:center;gap:6px;
+  font:800 9px/1.25 ui-sans-serif,system-ui,sans-serif;letter-spacing:.06em;
+  color:#4e5130;white-space:nowrap}
+.ledger-hero-status-icon{width:18px;height:18px;flex-shrink:0}
+.ledger-hero-sealed .ledger-hero-status{color:#62486c}
+.ledger-hero-descended .ledger-hero-status{color:#73533a}
+.ledger-hero-walkout .ledger-hero-status{color:#8b5540}
+.ledger-hero-fallen .ledger-hero-status{color:#7a3f3a}
+.ledger-hero-trade{display:flex;gap:9px;align-items:center;flex-wrap:wrap;
+  justify-content:flex-end}
+.ledger-hero-amount{display:inline-flex;align-items:center;gap:5px;
+  font:700 9px ui-sans-serif,system-ui,sans-serif;
+  color:#725033;font-variant-numeric:tabular-nums}
+.ledger-hero-credit{color:#8b6043}
+.ledger-hero-mini-icon{width:14px;height:14px;flex:0 0 14px}
+.ledger-hero-goods{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.ledger-hero-item{display:inline-flex;align-items:center;gap:3px;
+  padding:2px 4px;border:1px solid #a78a6478;background:#ead7b77d;
+  font:700 9px ui-sans-serif,system-ui,sans-serif;color:#614729}
+.ledger-hero-item-icon{width:19px;height:19px}
+.ledger-hero-extra{font:700 10px ui-sans-serif,system-ui,sans-serif;
+  color:#8a7354;align-self:center}
+.ledger-hero-scroll-hint{font:10px ui-sans-serif,system-ui,sans-serif;
+  color:#826546;text-align:right;margin:7px 4px}
+.ledger-hero-memorial{margin-top:20px;padding:12px 14px;
+  border:1px solid #926a5c62;background:#bfa3873b}
+.ledger-hero-memorial-heading{display:flex;align-items:center;gap:7px;
+  color:#795042;font:700 10px ui-sans-serif,system-ui,sans-serif;letter-spacing:.1em}
+.ledger-hero-memorial-heading svg{height:17px;width:17px}
+.ledger-hero-memorial-names{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.ledger-hero-memorial-name{display:inline-flex;align-items:center;gap:4px;
+  border-radius:2px;background:#e5d2bb;border:1px solid #a8827391;
+  padding:5px 9px;font:12px Georgia,serif;color:#5c3c30}
+.ledger-hero-memorial-name svg{height:13px;width:13px}
+.ledger-hero-memorial-extra{font:12px Georgia,serif;color:#795b44;align-self:center}
+.ledger-hero-disclosure{display:flex;gap:9px;align-items:flex-start;
+  margin-top:17px;padding:11px 13px;background:#ccb59159;
+  border-left:2px solid #907451}
+.ledger-hero-disclosure svg{height:16px;width:16px;flex:0 0 16px;margin-top:1px}
+@media(max-width:940px){
+  .ledger-people-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ledger-people-stat-words strong{font-size:22px}
+}
+@media(max-width:560px){
+  .ledger-hero-card{grid-template-columns:44px minmax(0,1fr);gap:8px;padding:8px}
+  .ledger-hero-portrait{width:42px;height:42px;min-width:42px}
+  .ledger-hero-name{font-size:14px}
+  .ledger-hero-right{grid-column:2;grid-row:2;align-items:flex-start;min-width:0;
+    margin-top:-1px}
+  .ledger-hero-trade,.ledger-hero-goods{justify-content:flex-start}
+  .ledger-hero-byline{max-width:none}
+  .ledger-hero-list{max-height:43vh}
+}
