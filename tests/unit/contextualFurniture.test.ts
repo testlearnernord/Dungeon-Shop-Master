@@ -21,7 +21,8 @@ test("P raycast catalog recognizes real shelf/checkout/bedroom furniture",()=>{
   assert.equal(classifyFurnitureMesh("cash-register")?.movableId,"counter");
   assert.equal(classifyFurnitureMesh("bedroom-account-book")?.id,"debt-book");
   assert.equal(classifyFurnitureMesh("bed-candle-holder")?.id,"candle");
-  assert.equal(classifyFurnitureMesh("adventurer-roster-board")?.id,"adventurer-board");
+  assert.equal(classifyFurnitureMesh("adventurer-roster-board")?.movableId,"adventurer-board");
+  assert.equal(classifyFurnitureMesh("galvik-bed")?.movableId,"bed");
   assert.equal(classifyFurnitureMesh("npc-adventurer-1"),null);
   assert.equal(classifyFurnitureMesh("stone-floor"),null);
 });
