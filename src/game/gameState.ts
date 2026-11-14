@@ -12,6 +12,7 @@ import {
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
 import { createBedroomFurnitureLayout, type BedroomFurnitureLayout } from "./bedroomFurniture.ts";
+import { DEFAULT_ROSTER_BOARD,type RosterBoardPlacement } from "./rosterBoardPlacement.ts";
 import { settleHeldShopCarts, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
@@ -74,6 +75,8 @@ export interface GameState {
   readonly shopLayout: ShopLayout;
   /** Optional for existing saves; absent means the original bedroom positions. */
   readonly bedroomFurniture?: BedroomFurnitureLayout;
+  /** Optional for historical saves; absent means the original board wall. */
+  readonly rosterBoard?: RosterBoardPlacement;
   /** Optional until save migration; absent on historical v11 saves. */
   readonly level5Room?: Level5Room;
   readonly shopCarts: readonly ShopCart[];
@@ -111,6 +114,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     shopEconomy: createEconomy(),
     shopLayout: createShopLayout(),
     bedroomFurniture: createBedroomFurnitureLayout(),
+    rosterBoard: DEFAULT_ROSTER_BOARD,
     level5Room: createLevel5Room(),
     shopCarts: [],
     shopDebts: [],

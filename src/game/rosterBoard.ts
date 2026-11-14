@@ -5,6 +5,8 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { DEFAULT_ROSTER_BOARD } from "./rosterBoardPlacement.ts";
 import type { GameStore } from "./gameStore.ts";
 import { locationLabel, portraitIndex, rosterEntries } from "./rosterView.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
@@ -40,6 +42,7 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
   goldSymbol.addEventListener("load",()=>draw());
   const wood = new StandardMaterial("roster-board-wood", scene);
   wood.diffuseColor = new Color3(0.38, 0.23, 0.11);
+  const frames:Mesh[]=[];
   for (const [name, w, h, x, y] of [
     ["top", 3.37, 0.12, 0, 3.22], ["bottom", 3.37, 0.12, 0, 1.12],
     ["left", 0.12, 2.09, -1.69, boardY], ["right", 0.12, 2.09, 1.69, boardY],
@@ -49,7 +52,22 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
     frame.material = wood;
     frame.isPickable = false;
     frame.checkCollisions = false;
+    frames.push(frame);
   }
+  const root=new TransformNode("adventurer-board-module",scene);
+  root.position.set(DEFAULT_ROSTER_BOARD.x,0,DEFAULT_ROSTER_BOARD.z);
+  for(const mesh of [board,...frames]){
+    mesh.computeWorldMatrix(true);
+    mesh.setParent(root);
+  }
+  const syncPlacement=()=>{
+    const p=store.state.rosterBoard??DEFAULT_ROSTER_BOARD;
+    root.position.set(p.x,0,p.z);
+    // The original plane faces into the shop at rotation PI (turn 2).
+    root.rotation.y=(p.rotation-2)*Math.PI/2;
+  };
+  store.subscribe(syncPlacement);
+  syncPlacement();
   function draw(): void {
     const state = store.state;
     const ctx = texture.getContext();

@@ -58,7 +58,14 @@ export function setupBedtime(
   let holdStarted=0;
   let busy=false;
   let timeout:number|null=null;
-  const nearBed=()=>Math.hypot(camera.position.x-BED_X,camera.position.z-BED_Z)<=BED_REACH;
+  // Follow the mattress mesh, never a fixed anchor left behind on movement.
+  const nearBed=()=>{
+    const mattress=scene.getMeshByName("galvik-bed");
+    if(!mattress)return false;
+    mattress.computeWorldMatrix(true);
+    const position=mattress.getAbsolutePosition();
+    return Math.hypot(camera.position.x-position.x,camera.position.z-position.z)<=BED_REACH;
+  };
   const focusedOnBed=()=>{
     if(!nearBed())return false;
     const ray=camera.getForwardRay(BED_REACH+1.4);
@@ -82,6 +89,7 @@ export function setupBedtime(
     fade.classList.remove("active");
   };
   const usable=()=>!busy&&!hasLedger()&&isShopAvailable()&&focusedOnBed()&&
+    !document.body.classList.contains("blueprint-active")&&
     !document.querySelector("dialog[open]");
   const validFocus=(event:KeyboardEvent)=>!(event.target instanceof HTMLElement &&
     (event.target.isContentEditable||event.target.closest("input,textarea,select,button,[contenteditable]")));
