@@ -149,3 +149,69 @@ test("contextual P moves the accounting desk with its Book of Debts and collisio
   expect(persisted.candleLightParent).toBe("bedroom-module-candle");
   expect(errors).toEqual([]);
 });
+
+/** Physically move both remaining fixtures through P. The sleep action and
+ * roster interaction must follow their moved meshes after a full reload. */
+test("movable bed still closes the day and relocated board still opens the roster",async({page})=>{
+  test.setTimeout(110000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const api="/Dungeon-Shop-Master/tests/scene.ts";
+
+  await page.evaluate(async(url)=>{(await import(url)).aimAtBed();},api);
+  await expect(page.locator("#furniture-look-prompt")).toContainText("Galvik's bed");
+  await page.keyboard.press("p");
+  await expect(page.locator("#blueprint-panel h2")).toContainText("Galvik's bed");
+  await page.evaluate(async(url)=>{(await import(url)).aimAtBedroomPlacement(0.75,-10);},api);
+  await expect.poll(()=>
+    page.locator("#blueprint-panel .blueprint-status").getAttribute("data-valid"),
+    {timeout:15000}).toBe("true");
+  await page.mouse.click(400,300);
+  await expect(page.locator("#blueprint-panel")).toBeHidden();
+  const afterBed=await page.evaluate(async(url)=>
+    (await import(url)).inspectMovedBedAndBoard(),api);
+  expect(afterBed.mattress.z).toBeCloseTo(-10,2);
+  expect(afterBed.frame.z).toBeCloseTo(-10,1);
+
+  await page.evaluate(async(url)=>{(await import(url)).aimAtRosterBoard();},api);
+  await expect(page.locator("#furniture-look-prompt")).toContainText("Adventurer board");
+  await page.keyboard.press("p");
+  await expect(page.locator("#blueprint-panel h2")).toContainText("Adventurer board");
+  await page.evaluate(async(url)=>{(await import(url)).aimAtMainShopWall(5.5,-7);},api);
+  await expect.poll(()=>
+    page.locator("#blueprint-panel .blueprint-status").getAttribute("data-valid"),
+    {timeout:15000}).toBe("true");
+  await page.mouse.click(400,300);
+  await expect(page.locator("#blueprint-panel")).toBeHidden();
+  const moved=await page.evaluate(async(url)=>(
+    await import(url)).inspectMovedBedAndBoard(),api);
+  expect(moved.roster.x).toBeCloseTo(5.5,2);
+  expect(moved.rosterFrame.x).toBeGreaterThan(5.5);
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    return {bed:state?.bedroomFurniture?.find(p=>p.id==="bed")?.z,
+      board:state?.rosterBoard?.x};
+  }),{timeout:15000}).toEqual({bed:-10,board:5.5});
+
+  await page.reload();
+  const persisted=await page.evaluate(async(url)=>
+    (await import(url)).inspectMovedBedAndBoard(),api);
+  expect(persisted.mattress.z).toBeCloseTo(-10,2);
+  expect(persisted.roster.x).toBeCloseTo(5.5,2);
+  expect(persisted.rosterFrame.x).toBeCloseTo(moved.rosterFrame.x,2);
+
+  await page.evaluate(async(url)=>{(await import(url)).aimAtRelocatedRosterBoard();},api);
+  await page.keyboard.press("e");
+  await expect(page.locator("#roster-dialog")).toBeVisible();
+  await page.locator("#close-roster").click();
+  await page.evaluate(async(url)=>{(await import(url)).aimAtBed();},api);
+  await expect(page.locator("#sleep-bed-prompt")).toBeVisible();
+  await page.keyboard.down("e");
+  await expect(page.locator("#merchant-ledger")).toBeVisible({timeout:12000});
+  await page.keyboard.up("e");
+  await expect(page.locator("#day")).toHaveText("Day 2");
+  expect(errors).toEqual([]);
+});
