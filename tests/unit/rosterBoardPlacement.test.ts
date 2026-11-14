@@ -23,7 +23,7 @@ test("board side walls do not allow hiding the board behind shelves or in dungeo
   const layout=createShopLayout();
   assert.equal(rosterBoardProblem(rosterBoardAtWall("right-wall",{x:7.5,z:0})!,layout),
     "The board would be covered by a shelf.");
-  assert.equal(rosterBoardProblem(rosterBoardAtWall("right-wall",{x:7.5,z:4.5})!,layout),null);
+  assert.equal(rosterBoardProblem(rosterBoardAtWall("right-wall",{x:7.5,z:5})!,layout),null);
   assert(rosterBoardProblem({x:7.22,z:6.5,rotation:1},layout));
   assert.equal(rosterBoardAtWall("back-wall",{x:0,z:7}),null);
   const next=replaceShelfPlacement(layout,{id:"shelf-1",x:-5.25,z:-5.25,rotation:1});

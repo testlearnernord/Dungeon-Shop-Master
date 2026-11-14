@@ -50,7 +50,7 @@ export function rosterBoardProblem(
       minZ:board.z-0.12,maxZ:board.z+0.12};
   }else if((board.rotation===3&&board.x===-7.22)||
            (board.rotation===1&&board.x===7.22)){
-    if(!quarter(board.z)||board.z< -4.75||board.z>4.75)
+    if(!quarter(board.z)||board.z< -5.0||board.z>5.0)
       return "Keep the board within the shop's side wall.";
     box={minX:board.x-0.12,maxX:board.x+0.12,
       minZ:board.z-1.69,maxZ:board.z+1.69};
