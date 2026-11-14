@@ -20,6 +20,9 @@ export function setupBedroomFurnitureVisuals(scene:Scene,store:GameStore):void {
     candle:name=>name==="bed-side-stool"||name==="bed-side-stool-top"||
       name.startsWith("bed-candle")||
       name==="bedroom-furniture-collider-candle-stool",
+    bed:name=>name==="galvik-bed"||(name.startsWith("bed-")&&
+      !name.startsWith("bed-candle")&&!name.startsWith("bed-chest")&&
+      !name.startsWith("bed-side-")),
   };
   for(const base of BEDROOM_DEFAULTS){
     const root=new TransformNode("bedroom-module-"+base.id,scene);
