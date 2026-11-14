@@ -1,11 +1,13 @@
 import type { CounterPlacement, ShelfId, ShelfPlacement } from "./shopLayout.ts";
 import type {BedroomFurnitureId,BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 import {isBedroomFurnitureId} from "./bedroomFurniture.ts";
+import {rosterBoardAtWall,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 
-export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId;
+export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId|"adventurer-board";
 export type BlueprintSurface=
   "floor"|"ceiling"|"left-wall"|"right-wall"|"front-wall"|"back-wall";
-export type FurnitureDraft=ShelfPlacement|(CounterPlacement&{readonly id:"counter"})|BedroomFurniturePlacement;
+export type FurnitureDraft=ShelfPlacement|(CounterPlacement&{readonly id:"counter"})|BedroomFurniturePlacement|
+  (RosterBoardPlacement&{readonly id:"adventurer-board"});
 
 export interface FurnitureDefinition {
   readonly id:FurnitureId;
@@ -24,6 +26,8 @@ export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=[
   {id:"desk",label:"Accounting desk + Book of Debts",surfaces:["floor"],width:1.18,depth:0.76,height:1.25},
   {id:"chest",label:"Storage chest",surfaces:["floor"],width:1.04,depth:0.72,height:0.9},
   {id:"candle",label:"Bedside candle + stool",surfaces:["floor"],width:0.66,depth:0.66,height:1.2},
+  {id:"bed",label:"Galvik\'s bed",surfaces:["floor"],width:1.74,depth:2.70,height:1.55},
+  {id:"adventurer-board",label:"Adventurer board",surfaces:["front-wall","left-wall","right-wall"],width:3.45,depth:0.22,height:2.25},
 ] as const;
 
 export const snapQuarter=(value:number):number=>Math.round(value*4)/4;
@@ -52,6 +56,10 @@ export function blueprintAtSurface(
   if(!Number.isFinite(hit.x)||!Number.isFinite(hit.z))return null;
   const definition=FURNITURE_CATALOG.find(entry=>entry.id===id);
   if(!definition?.surfaces.includes(surface))return null;
+  if(id==="adventurer-board"){
+    const wall=rosterBoardAtWall(surface,hit);
+    return wall?{id,...wall}:null;
+  }
   if(surface==="floor"){
     const x=snapQuarter(hit.x),z=snapQuarter(hit.z);
     return id==="counter"?{id,x,z,rotation}:{id,x,z,rotation};
