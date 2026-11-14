@@ -74,7 +74,8 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   cube("bedroom-right-wall", 0.85, 4, 6.05, 3.25, 2, -9.68, wall, true);
   cube("bedroom-rear-wall", 6.9, 4, 0.65, 0, 2, -12.35, wall, true);
   const flagstone = surfaces.floor;
-  cube("bedroom-floor-skin", 6.05, 0.025, 5.08, 0, 0.012, -9.68, flagstone);
+  const bedroomFloor=cube("bedroom-floor-skin", 6.05, 0.025, 5.08, 0, 0.012, -9.68, flagstone);
+  bedroomFloor.isPickable=true; // Blueprint floor targeting; not a gameplay interactable
   // Thin offset slabs interrupt the uninterrupted cube-floor silhouette.
   for (let i = 0; i < 12; i++) {
     const x = -2.42 + (i % 4) * 1.52;

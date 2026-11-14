@@ -11,6 +11,7 @@ import {
 } from "./level7Exploration.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
+import { createBedroomFurnitureLayout, type BedroomFurnitureLayout } from "./bedroomFurniture.ts";
 import { settleHeldShopCarts, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
@@ -71,6 +72,8 @@ export interface GameState {
   readonly adventurers: readonly AdventurerState[];
   readonly shopEconomy: ShopEconomyState;
   readonly shopLayout: ShopLayout;
+  /** Optional for existing saves; absent means the original bedroom positions. */
+  readonly bedroomFurniture?: BedroomFurnitureLayout;
   /** Optional until save migration; absent on historical v11 saves. */
   readonly level5Room?: Level5Room;
   readonly shopCarts: readonly ShopCart[];
@@ -107,6 +110,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     adventurers,
     shopEconomy: createEconomy(),
     shopLayout: createShopLayout(),
+    bedroomFurniture: createBedroomFurnitureLayout(),
     level5Room: createLevel5Room(),
     shopCarts: [],
     shopDebts: [],

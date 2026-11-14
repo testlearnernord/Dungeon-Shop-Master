@@ -65,7 +65,7 @@ export function bedroomFurnitureProblem(layout:BedroomFurnitureLayout):string|nu
       Math.abs(p.z*4-Math.round(p.z*4))>1e-8))
       return "Use 0.25m grid positions for bedroom furniture.";
     const b=bounds(p);
-    if(b.minX< -2.77||b.maxX>2.77||b.minZ< -11.85||b.maxZ> -7.65)
+    if(b.minX< -2.95||b.maxX>2.77||b.minZ< -11.85||b.maxZ> -7.65)
       return "The bedroom furniture would intersect a stone wall.";
     if(overlap(b,fixedBed,0.19))
       return "Keep Galvik's bed and sleeping access clear.";

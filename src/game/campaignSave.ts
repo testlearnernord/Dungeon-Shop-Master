@@ -5,6 +5,7 @@ import { validateBossReplay } from "./bossCombatReplay.ts";
 import { LEVEL7_STEP_BUDGET } from "./level7Exploration.ts";
 import { generateDungeonLayout, tileAt } from "./dungeonLayout.ts";
 import { shopLayoutProblem, type ShelfPlacement } from "./shopLayout.ts";
+import {bedroomFurnitureProblem,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -267,7 +268,7 @@ function validateState(value: unknown): asserts value is GameState {
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
-  ], ["level5Room"]);
+  ], ["level5Room","bedroomFurniture"]);
   if (state.level5Room !== undefined && !isValidLevel5Room(state.level5Room))
     fail("payload.level5Room", "has invalid excavation geometry");
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
@@ -357,6 +358,21 @@ function validateState(value: unknown): asserts value is GameState {
     }
     const problem=shopLayoutProblem({shelves:parsed,...(counter?{counter}:{})});
     if(problem)fail("payload.shopLayout",problem);
+  }
+  if(state.bedroomFurniture!==undefined){
+    const list=array(state.bedroomFurniture,"payload.bedroomFurniture");
+    const parsed:BedroomFurniturePlacement[]=list.map((raw,index)=>{
+      const path="payload.bedroomFurniture["+index+"]";
+      const p=object(raw,path,["id","x","z","rotation"]);
+      choice(p.id,["desk","chest","candle"],path+".id");
+      const x=validNumber(p.x,path+".x",-3,3);
+      const z=validNumber(p.z,path+".z",-12,-7);
+      const rotation=integer(p.rotation,path+".rotation",0,3);
+      return {id:p.id as BedroomFurniturePlacement["id"],x,z,
+        rotation:rotation as BedroomFurniturePlacement["rotation"]};
+    });
+    const problem=bedroomFurnitureProblem(parsed);
+    if(problem)fail("payload.bedroomFurniture",problem);
   }
 
   const economy = object(state.shopEconomy, "payload.shopEconomy", [

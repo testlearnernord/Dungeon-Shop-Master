@@ -1,5 +1,6 @@
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
+import {PointLight} from "@babylonjs/core/Lights/pointLight";
 import type { GameStore } from "./gameStore.ts";
 import { BEDROOM_DEFAULTS, getBedroomFurniture,
   type BedroomFurnitureId } from "./bedroomFurniture.ts";
@@ -29,7 +30,7 @@ export function setupBedroomFurnitureVisuals(scene:Scene,store:GameStore):void {
       mesh.setParent(root);
     }
     if(base.id==="candle"){
-      const light=scene.getLightByName("galvik-bed-candle");
+      const light=scene.getLightByName("galvik-bed-candle") as PointLight|null;
       if(light){
         light.parent=root;
         const location=light.position;

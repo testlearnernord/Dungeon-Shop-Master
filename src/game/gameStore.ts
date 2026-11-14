@@ -8,6 +8,7 @@ import { walkOutWithoutPurchase } from "./shopWalkout.ts";
 import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
 import { shopServiceReachabilityProblem } from "./shopServiceReachability.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
+import {replaceBedroomFurniture,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 
 export class GameStore {
   private current: GameState;
@@ -94,6 +95,14 @@ export class GameStore {
       const invalid=shopServiceReachabilityProblem(result.layout);
       if(invalid)return invalid;
       this.replace({...this.current,shopLayout:result.layout});
+    }
+    return result.message;
+  }
+
+  placeBedroomFurniture(placement:BedroomFurniturePlacement):string {
+    const result=replaceBedroomFurniture(this.current.bedroomFurniture,placement);
+    if(result.layout!==this.current.bedroomFurniture){
+      this.replace({...this.current,bedroomFurniture:result.layout});
     }
     return result.message;
   }
