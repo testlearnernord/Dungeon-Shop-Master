@@ -121,7 +121,8 @@ test("current shop layouts keep their default counter on save",()=>{
   const legacy=JSON.stringify(createSave(initial));
   const loaded=parseSave(legacy);
   assert.deepEqual(loaded.shopLayout,initial.shopLayout);
-  assert.equal(loaded.shopLayout.counter,undefined);
+  assert.deepEqual(loaded.shopLayout.counter,
+    {x:-4.25,z:-4.5,rotation:3});
   assert.deepEqual(getCounterPlacement(loaded.shopLayout),{x:0,z:2.5,rotation:0});
   assert.deepEqual(createSave(loaded).payload.shopLayout,initial.shopLayout);
 });

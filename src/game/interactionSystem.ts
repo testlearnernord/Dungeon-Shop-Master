@@ -199,9 +199,8 @@ export class InteractionSystem {
       if(this.store && this.store.state!==before)this.onMerchantAction(button===0?"stock":"destock");
     } else {
       const target = this.worldItems.find(({ mesh }) => mesh === hit.pickedMesh);
-      if (target?.kind === "register") {
-        this.message = "Wholesale catalog opened. Visitors buy on confirmed End Day.";
-        this.openCatalog();
+      if (target?.kind === "register" && button === 0) {
+        this.message = this.checkoutRegister();
       } else if (target?.kind === "roster-board" && button === 0) {
         if (hit.distance > this.maxInteractionDistance) this.message = "Move closer to the roster board.";
         else {

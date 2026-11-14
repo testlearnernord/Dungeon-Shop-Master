@@ -20,7 +20,7 @@ The current game is a **TypeScript/Vite** browser application rendered with **Ba
 | Economy, item rules, credit, payment | `src/game/economy.ts`, `src/game/shopCredit.ts`, `src/game/customerCheckout.ts`, `src/game/shopCarts.ts` |
 | Adventurers and autonomous customer intentions | `src/game/adventurers.ts`, `src/game/shopperIntents.ts`, `src/game/shopArrivals.ts` |
 | Customer visuals, movement, waiting and checkout | `src/game/npcVisualSystem.ts`, `src/game/shopperNavigation.ts`, `src/game/checkoutQueue.ts`, `src/game/restockWaitingPlaces.ts` |
-| Shop geometry and service-path validation | `src/game/shopLayout.ts`, `src/game/level5Room.ts`, `src/game/shopServiceReachability.ts` |
+| Shop geometry, cashier docking and service-path validation | `src/game/shopLayout.ts`, `src/game/level5Room.ts`, `src/game/shopServiceReachability.ts`, `src/game/checkoutQueue.ts` |
 | Contextual furniture editor and preview performance | `src/blueprintHud.ts`, `src/game/furnitureBlueprint.ts`, `src/game/furnitureSelection.ts`, `src/game/blueprintPreviewValidator.ts` |
 | Bedroom props and wall-mounted board | `src/game/bedroomFurniture.ts`, `src/game/bedroomFurnitureVisuals.ts`, `src/game/rosterBoardPlacement.ts`, `src/game/rosterBoard.ts` |
 | Levels 1–4, Floor 6 boss and Floor 7 exploration | `src/game/dungeonSimulation.ts`, `src/game/level6Combat.ts`, `src/game/level7Exploration.ts` |
@@ -38,7 +38,7 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 2. **Replay fidelity.** Level 6/7 outcomes are committed before watching. Reopening a recording never rerolls combat, survival, loot, XP or merchant gold.
 3. **Spoiler-safe projection.** The ledger separates known business activity from sealed outcomes. Never derive pre-replay hero status from the after-day state. Pending-ledger restore must not temporarily render unsafe information.
 4. **Furniture preview versus commit.** Cursor previews do not write saved state. Click/commit rechecks collision and geometry using authoritative rules. Shelf access, checkout queues and the door stay reachable.
-5. **All dependent transforms move together.** Bedroom object groups include their interaction targets, collision hulls and lights when applicable. Sleep range follows the moved bed; roster interaction follows the moved board.
+5. **All dependent transforms move together.** Bedroom object groups include their interaction targets, collision hulls and lights when applicable. Sleep range follows the moved bed; roster interaction follows the moved board. Register geometry, staff docking, queue and blueprint use the same counter placement and orientation.
 6. **No hunger implementation.** Waybread/Herbs heal HP. No starvation timers, hunger events or residual hunger logic.
 7. **Persistence discipline.** `SIMULATION_VERSION` is presently **12**. Different simulation versions are not automatically migrated. Optional fields can still preserve compatibility within version 12; do not conflate that with introducing a save migration. Invalid saves must not be silently overwritten.
 

@@ -27,7 +27,7 @@ The repository currently implements:
 
 - TypeScript/Vite with Babylon.js; first-person Level 5 shop, shelf restocking, wholesale purchasing, cashier interaction, credits and customer shopping behavior.
 - NPC movement, checkout queues and restock waiting, with collision and route constraints.
-- Contextual furniture placement: shelves and checkout counter, plus bedroom desk/book, chest, candle/stool, bed and wall-mounted Adventurer Board. Previews are not saved until confirmed.
+- Contextual furniture placement: shelves and compact checkout counter (new campaigns start at the corner near Galvik’s rest-room wall), plus bedroom desk/book, chest, candle/stool, bed and wall-mounted Adventurer Board. Previews are not saved until confirmed.
 - Level 5 room excavation/expansion, persistence, hero identities and roster.
 - Deterministic day-based adventures on Floors 1–4, a Cave Troll encounter on Floor 6 and the shared Floor 7 exploration/replay systems. Later floors are not claimed as playable.
 - Bed-based day close, four-part merchant ledger (reckoning, receipts, hero chronicle, sealed expedition recordings), and saved replay viewing that does not reroll outcomes.
@@ -53,7 +53,7 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 
 ### Physical shop
 
-- Furniture previews must be cheap and non-mutating; the final placement must be validated.
+- Furniture previews must be cheap and non-mutating; the final placement must be validated. The cashier has distinct visitor and staff sockets, and Galvik can operate it only from the staff side.
 - Shelf/checkout access and customer routes may not be obstructed by a committed rearrangement. Movable bedroom objects must keep their dependent visuals/interactions together and preserve sleep access.
 
 ## 4. Narrative status
