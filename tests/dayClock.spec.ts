@@ -71,16 +71,38 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger",async(
   await expect(page.locator(".ledger-people-overview")).toContainText("SHOP AT CLOSING");
   await expect(page.locator(".ledger-hero-disclosure")).toContainText("remain sealed");
   expect(knownBeforeReload).not.toMatch(/VICTORY|DEFEAT|KILLED|DIED/i);
+  await page.locator("#ledger-skip").click();
+  await expect(page.locator("#ledger-skip")).toHaveAttribute("aria-pressed","true");
+  await expect(page.locator("#ledger-skip")).toHaveText("Enable animations");
+  // Toggling the animations must not destroy the displayed hero cards.
+  expect(await page.locator(".ledger-hero-list").innerText()).toBe(knownBeforeReload);
   await page.locator("#ledger-next").click();
   await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
-  // A reload must reopen the still-unread ledger, not advance another day.
+  await expect(page.locator("#ledger-heading")).toBeFocused();
+  await expect(page.locator("#ledger-pages")).toHaveText("04 / 04");
+  await expect(page.locator("#ledger-next")).toBeDisabled();
+  // A reload should restore exactly this folio and preferences, not page 1.
   await expect(page.locator("#save-status")).toHaveText("Saved Day 2.");
   await page.reload();
   await expect(page.locator("#merchant-ledger")).toBeVisible();
   await expect(page.locator("#day")).toHaveText("Day 2");
+  await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
+  await expect(page.locator("#ledger-skip")).toHaveAttribute("aria-pressed","true");
+  await expect(page.locator("#ledger-page-content")).toHaveClass(/ledger-no-animation/);
+  // A second reload must be identical: no stale session rewrite.
+  await page.reload();
+  await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
+  await expect(page.locator("#ledger-skip")).toHaveText("Enable animations");
+  await page.keyboard.press("Home");
+  await expect(page.locator("#ledger-heading")).toHaveText("The Reckoning");
+  await page.keyboard.press("End");
+  await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
   await page.locator("#ledger-chapters button").nth(2).click();
   await expect(page.locator("#ledger-heading")).toHaveText("The Living");
   expect(await page.locator(".ledger-hero-list").innerText()).toBe(knownBeforeReload);
+  await page.locator("#ledger-skip").click();
+  await expect(page.locator("#ledger-skip")).toHaveText("Skip animations");
+  await expect(page.locator("#ledger-skip")).toHaveAttribute("aria-pressed","false");
   await page.locator("#ledger-begin").click();
   await expect(page.locator("#merchant-ledger")).not.toBeVisible();
   await expect(page.locator("#day")).toHaveText("Day 2");
