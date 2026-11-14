@@ -557,3 +557,15 @@ export function inspectMovedBedAndBoard(){
     rosterFrame:at("roster-frame-right"),
   };
 }
+
+/** The same material and pickability invariant used by the FPS blueprint. */
+export function inspectMinedFloorSurface(cell:string){
+  const scene=Engine.LastCreatedScene!;
+  const floor=scene.getMeshByName("excavated-floor-"+cell);
+  const original=scene.getMeshByName("stone-floor");
+  return {
+    pickable:floor?.isPickable===true,
+    sameMaterial:!!floor&&floor.material===original?.material,
+    kind:floor?.name.startsWith("excavated-floor-")?"floor":null,
+  };
+}

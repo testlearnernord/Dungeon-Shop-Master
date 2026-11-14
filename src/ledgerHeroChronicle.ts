@@ -143,14 +143,12 @@ export function buildLedgerHeroChronicle(
   };
   rows.sort((a,b)=>importance[a.kind]-importance[b.kind]||
     b.paidGold-a.paidGold||a.id.localeCompare(b.id,undefined,{numeric:true}));
-  // The skull means KNOWN lost before tonight, never a newly revealed
-  // death that would spoil sealed combat. These are memorials, not results.
-  const fallen=before.adventurers.filter(h=>h.status==="dead")
-    .sort((a,b)=>b.id.localeCompare(a.id,undefined,{numeric:true}));
-  const remembered=fallen.slice(0,3).map(hero=>lineFor(hero,"fallen",
-    "PREVIOUSLY FALLEN","Loss recorded before this night"));
+  // Earlier floors currently resolve without a watchable combat recording.
+  // A raw "dead" flag cannot prove that the player watched that loss;
+  // do not turn those offscreen outcomes into a fabricated memorial.
+  const remembered:LedgerHeroLine[]=[];
   return {
-    lines:rows,remembered,rememberedTotal:fallen.length,
+    lines:rows,remembered,rememberedTotal:0,
     knownShopVisitors:visited.size,payingHeroes:purchases.size,
     sealedRecords:hiddenRecordIds.size,
     arrivals:newlyBooked.filter(e=>e.type==="shop-arrival").length,

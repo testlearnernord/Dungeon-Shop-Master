@@ -448,3 +448,9 @@
     flex:1 1 155px;width:auto;margin:0
   }
 }
+
+/* Shared item pictograms on all accounting rows, not just hero cards. */
+.ledger-item-label{display:inline-flex;align-items:center;gap:10px;min-width:0}
+.ledger-receipt-item-icon{width:28px;height:28px;flex:0 0 28px;
+  filter:drop-shadow(0 1px 2px #37271949)}
+.ledger-receipts .ledger-receipt-item-icon{width:25px;height:25px;flex-basis:25px}

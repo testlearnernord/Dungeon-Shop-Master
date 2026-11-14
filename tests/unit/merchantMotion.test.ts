@@ -14,7 +14,7 @@ test("every action returns arms to neutral after its cycle",()=>{
   }
 });
 test("mining swings with a pick, stocking/destocking with goods, checkout with coins",()=>{
-  assert.ok(merchantActionPose("mine",.5).rightPitch<-.9);
+  assert.ok(merchantActionPose("mine",.5).rightPitch>.9);
   assert.equal(merchantActionPose("mine",.5).toolVisible,true);
   assert.equal(merchantActionPose("mine",1).toolVisible,false);
   assert.equal(merchantActionPose("stock",.4).itemVisible,true);

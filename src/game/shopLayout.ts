@@ -206,7 +206,7 @@ export function replaceCounterPlacement(layout:ShopLayout,placement:CounterPlace
   // Editor drafts carry an id: "counter"; never persist that UI-only field.
   const counter:CounterPlacement={x:placement.x,z:placement.z,rotation:placement.rotation};
   const next:ShopLayout={...layout,counter};
-  const problem=shopLayoutProblem(next);
+  const problem=shopLayoutProblem(next,room);
   return problem?{layout,message:problem}:{layout:next,message:"Counter placement saved."};
 }
 

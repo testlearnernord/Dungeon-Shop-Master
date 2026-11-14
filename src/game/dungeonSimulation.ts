@@ -18,7 +18,8 @@ export function simulateDungeon(
   const armed = hero.equipment.weapon === "Iron Sword";
   const damage = Math.max(1, 1 + random.int(6) + hero.floor - (armored ? 2 : 0));
   const health = Math.max(0, hero.health - damage);
-  const outcome: DungeonOutcome = health === 0 || roll < (armored ? 0.025 : 0.04) ? "death"
+  // Damage must actually exhaust HP. No unrecorded instant-kill coin flip.
+  const outcome: DungeonOutcome = health === 0 ? "death"
     : roll < (armed ? 0.19 : 0.22) ? "retreat"
     : roll < (armed ? 0.75 : 0.70) ? "advance" : "stay";
   const survived = outcome !== "death";

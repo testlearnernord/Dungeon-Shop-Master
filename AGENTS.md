@@ -20,7 +20,7 @@
 ## Current hard boundaries
 
 - Shopkeepers influence autonomous hero purchasing through shop operations; do not convert their choices into direct orders.
-- **No hunger/starvation system.** Waybread and Healing Herbs heal HP; deaths require simulated dungeon risk.
+- **No hunger/starvation system.** Waybread and Healing Herbs heal HP. Dungeon casualties require actual damage through zero HP, never a separate arbitrary instant-kill roll. Offscreen deaths are not automatically replay-verified memorials.
 - Replays visualize **committed** results. Do not re-resolve fights or leak unwatched outcomes through the day ledger.
 - Furniture previews are non-mutating; committed placement must preserve customer route/service access and movable interaction targets.
 - Source currently uses TypeScript/Vite/Babylon.js and strict save/version validation. Do not introduce an engine rewrite or save migration without a reason and current owner decision.

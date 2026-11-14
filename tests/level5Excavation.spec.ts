@@ -37,6 +37,11 @@ test("unlock, mine exposed rock and keep the opening after reloading",async({pag
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectLevel5Rock(8,4));
   await expect.poll(async()=>(await observe()).floor).toBe(true);
   expect(await observe()).toEqual({floor:true,ceiling:true,clickableRock:false});
+  // The newly exposed flagstone must be pickable by the P blueprint
+  // raycaster and share the shop's original floor material.
+  const floorTarget=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectMinedFloorSurface("8,4"));
+  expect(floorTarget).toEqual({pickable:true,sameMaterial:true,kind:"floor"});
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
   await expect.poll(async()=>(await observe()).floor).toBe(true);

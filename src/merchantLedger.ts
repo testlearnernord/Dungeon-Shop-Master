@@ -367,6 +367,15 @@ export function setupMerchantLedger(
     row.append(portrait,body,right);
     return row;
   }
+  function itemLedgerLine(itemId:string,label:string,value:string,tag=""):HTMLElement{
+    const row=line(label,value,tag);
+    const caption=row.querySelector<HTMLElement>(".ledger-line-label");
+    if(caption){
+      caption.classList.add("ledger-item-label");
+      caption.prepend(itemIcon(itemId,"ledger-receipt-item-icon"));
+    }
+    return row;
+  }
   function renderHeroChronicle(heroes:LedgerHeroChronicle):void{
     const overview=node("div","ledger-people-overview");
     const pill=(icon:InterfaceIcon,label:string,value:number):HTMLElement=>{
@@ -416,7 +425,7 @@ export function setupMerchantLedger(
     }
     const note=node("p","ledger-footnote ledger-hero-disclosure");
     note.append(uiIcon("lock"),
-      document.createTextNode("New expedition results, injuries, loot and deaths remain sealed until their recordings are watched. The skull marks only losses known before this night."));
+      document.createTextNode("New expedition results, injuries, loot and deaths remain sealed until their recordings are watched. Background losses without watched replays are not listed as a memorial."));
     content.append(note);
   }
   function renderSealedExpeditions():void{
@@ -569,19 +578,22 @@ export function setupMerchantLedger(
       content.append(node("p","ledger-page-intro","What was taken, what was paid. The ledger remembers."));
       if(!summary.receipts.length)content.append(empty("No receipts were posted during this closing cycle."));
       else{
-        const grouped=new Map<string,{units:number,revenue:number}>();
+        const grouped=new Map<string,{name:string;units:number;revenue:number}>();
         for(const receipt of summary.receipts){
-          const entry=grouped.get(receipt.itemName)??{units:0,revenue:0};
+          const entry=grouped.get(receipt.itemId)??{
+            name:receipt.itemName,units:0,revenue:0};
           entry.units+=receipt.quantity;entry.revenue+=receipt.revenue;
-          grouped.set(receipt.itemName,entry);
+          grouped.set(receipt.itemId,entry);
         }
         content.append(node("h3","ledger-subhead","SALES BY GOOD"));
-        for(const [item,value] of grouped)
-          content.append(line(item,`${value.units} ×   ${gold(value.revenue)}`));
+        for(const [id,value] of grouped)
+          content.append(itemLedgerLine(id,value.name,
+            `${value.units} ×   ${gold(value.revenue)}`));
         content.append(node("h3","ledger-subhead","CUSTOMER RECEIPTS"));
         const scroll=node("div","ledger-receipts");
         for(const receipt of summary.receipts.slice(-40))
-          scroll.append(line(`${receipt.heroName} · ${receipt.itemName} ×${receipt.quantity}`,
+          scroll.append(itemLedgerLine(receipt.itemId,
+            `${receipt.heroName} · ${receipt.itemName} ×${receipt.quantity}`,
             "+"+gold(receipt.revenue)));
         content.append(scroll);
         if(summary.receipts.length>40)
@@ -592,9 +604,11 @@ export function setupMerchantLedger(
         const creditRows=node("div","ledger-receipts");
         for(const event of summary.credits.slice(-30)){
           const item=ITEMS.find(entry=>entry.id===event.itemId);
-          creditRows.append(line(
-            (event.message || event.adventurerId || "Unknown")+" · "+
-              (item?.name??event.itemId??"Item"),
+          creditRows.append(item&&event.itemId?itemLedgerLine(
+            event.itemId,
+            (event.message || event.adventurerId || "Unknown")+" · "+item.name,
+            gold(event.debtGold??0),"UNPAID"):line(
+            event.message || event.adventurerId || "Unknown",
             gold(event.debtGold??0),"UNPAID"));
         }
         content.append(creditRows);

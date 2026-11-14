@@ -64,3 +64,9 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 - Update affected entries **in that PR**. Delete renamed, removed or obsolete references instead of leaving historical modules as if they still existed.
 - Keep architecture facts in this file, design approvals and unresolved questions in the Game Bible, and contributor workflow rules in AGENTS. Do not duplicate long policy paragraphs across all three.
 - Do not record a new “latest architecture” subsection each week; edit the existing overview. History belongs in Git commits and PR discussions.
+
+### Current excavation and casualty-display rules
+
+- Expanding Level 5 must reuse the scene's textured stone/flagstone materials. Mining mode should not replace the old wall finish with flat-colored rock.
+- Newly dug floor meshes must be pickable as blueprint floor surfaces. Final counter/shelf validation receives the authoritative excavated room.
+- Floors 1–4 have offscreen combat simulation without player-watched recordings. Their victims must not automatically be shown as replay-verified memorial deaths. The background simulation may kill only through exhausted HP.
