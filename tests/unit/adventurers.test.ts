@@ -70,7 +70,9 @@ test("each dungeon outcome preserves bounded stats and only defined outcomes cre
       assert.equal(next.inventory.loot, hero.inventory.loot);
     }
   }
-  assert.deepEqual([...outcomes].sort(), ["advance", "death", "retreat", "stay"]);
+  // A healthy hero with more HP than one floor-3 hit cannot be killed
+  // by an independent random roll. Fatality still occurs at zero HP.
+  assert.deepEqual([...outcomes].sort(), ["advance", "retreat", "stay"]);
   assert(foundLoot);
 });
 
