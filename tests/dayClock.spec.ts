@@ -103,13 +103,32 @@ test("book keeps expedition results sealed until the observer watches a replay",
   await page.locator('#ledger-chapters button').last().click();
   const recording=page.locator(".ledger-record").first();
   await expect(recording).toBeVisible();
-  await expect(recording).toContainText("SEALED RECORD");
-  await expect(recording).not.toContainText(/victory|death|defeat/i);
+  await expect(page.locator(".ledger-sealed-overview")).toContainText("SEALED FILES");
+  await expect(recording).toHaveAttribute("data-kind","combat");
+  await expect(recording).toHaveAttribute("data-floor","6");
+  await expect(recording.locator(".ledger-record-title")).toHaveText("THE CAVE TROLL");
+  await expect(recording.locator(".ledger-dossier-portrait")).toBeVisible();
+  await expect(recording.locator(".ledger-dossier-person-name")).not.toBeEmpty();
+  await expect(recording.locator(".ledger-record-seal")).toContainText("SEALED RECORD");
+  await expect(recording).not.toContainText(/victory|death|defeat|rare loot|xp gained/i);
+  // The archive entry must resolve to the exact saved event that is replayed.
+  const recordId=await recording.getAttribute("data-record-id");
+  const expectedRecord=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const current=await new CampaignStorage().loadGame();
+    return current?.events.find(event=>event.type==="level6-combat"&&
+      !!event.combatReplay)?.id??null;
+  });
+  expect(recordId).toBe(expectedRecord);
+  const dayBeforeReplay=await page.locator("#day").innerText();
   await recording.locator(".ledger-watch").click();
   await expect(page.locator("#arena-hud")).toBeVisible();
   await expect(page.locator("#merchant-ledger")).not.toBeVisible();
   await page.locator("#close-arena").click();
   await expect(page.locator("#merchant-ledger")).toBeVisible();
+  await expect(page.locator(".ledger-record").first()).toHaveAttribute(
+    "data-record-id",recordId!);
+  await expect(page.locator("#day")).toHaveText(dayBeforeReplay);
   await page.locator("#ledger-begin").click();
   await expect(page.locator("#day")).toHaveText("Day 3");
 });
