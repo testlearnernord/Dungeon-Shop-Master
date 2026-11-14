@@ -17,7 +17,7 @@
 
 **The shop:** A small, rough, inhabited cave on **Floor 5**, not a fully equipped city storefront. Galvik is a sharp-tongued, selfish, deeply greedy merchant. His black humor and lack of scruples are part of the intended character, not an instruction to make the player's UI hostile.
 
-**The central choice:** The player controls what is offered, stocked, priced, placed and made accessible. Heroes choose their own purchases. A good shop can help them survive; selling rubbish for a profit can have consequences.
+**The central choice:** The player controls what is ordered, stocked, arranged and made available. Heroes choose their own purchases. A good shop can help them survive; selling rubbish for a profit can have consequences. Retail prices are currently fixed in the item catalog, not player-adjustable.
 
 **Scale:** A dungeon of up to 100 floors is the long-term fiction/ambition. It does **not** imply that 100 playable levels exist, or that a specific release scope or real-time simulation model has been approved.
 
@@ -79,7 +79,7 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 
 - How to keep watching autonomous dungeon expeditions engaging, and what indirect powers the player gains over routes, traps, hazards or boss encounters.
 - Whether, when and how shop time and dungeon activity should interact continuously instead of only at committed day transitions. **No 24-hour concurrent simulation has been approved.**
-- Meaningful short- and long-term shop decisions, prices, upgrades, helpers, money sinks and increasing demand.
+- Meaningful short- and long-term shop decisions, possible player-controlled pricing (not in the current alpha), upgrades, helpers, money sinks and increasing demand.
 - How exploration, deeper floors and hero progression expand gameplay without requiring 100 hand-built or repetitive levels.
 - The long-term art/asset pipeline, optional desktop delivery and commercial release model.
 
