@@ -568,8 +568,16 @@ export function setupMerchantLedger(
       // just before sleeping. Keep the exact spoiler-safe page snapshot in
       // tab-scoped storage for uninterrupted ledgers after a reload.
       const restored=restoreHeroChronicle(pending.heroes);
+      // Old or corrupt session markers lack a pre-sleep hero snapshot.
+      // The reconstructed 'prior' is made from the AFTER state, so its
+      // death flags cannot be interpreted as previously known losses.
+      // Fall back to counters only rather than revealing sealed casualties.
+      const fallback:LedgerHeroChronicle={
+        ...summary!.heroes,lines:[],remembered:[],rememberedTotal:0,
+        knownShopVisitors:pending.visitorCount as number,
+      };
       summary={...summary!,visited:pending.visitorCount as number,
-        ...(restored?{heroes:restored}:{})};
+        heroes:restored??fallback};
       persistPending(prior,current);
       renderPage();
       return true;
