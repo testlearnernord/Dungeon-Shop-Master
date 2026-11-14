@@ -1,6 +1,6 @@
 /** Shared semantic UI symbol set. Product artwork continues to use the
  * same existing sprite atlas in the hotbar, wish bubbles and trade UI. */
-export type InterfaceIcon="calendar"|"coin"|"shop"|"build"|"grid"|"users"|"shield"|"swords"|"map"|"book"|"bag"|"speaker"|"mute"|"close"|"rotate"|"check"|"warning"|"heart"|"food"|"play"|"pause"|"chevron"|"info"|"moon"|"pickaxe"|"receipt"|"search"|"settings"|"arrow-left"|"arrow-right"|"spark";
+export type InterfaceIcon="calendar"|"coin"|"shop"|"build"|"grid"|"users"|"shield"|"swords"|"map"|"book"|"bag"|"speaker"|"mute"|"close"|"rotate"|"check"|"warning"|"heart"|"food"|"play"|"pause"|"chevron"|"info"|"moon"|"pickaxe"|"receipt"|"search"|"settings"|"arrow-left"|"arrow-right"|"spark"|"skull"|"lock"|"treasure"|"arrow-up"|"arrow-down";
 const NS="http://www.w3.org/2000/svg";
 function symbol(src:string,name:string,className:string,viewBox:string):SVGSVGElement{
   const svg=document.createElementNS(NS,"svg");
