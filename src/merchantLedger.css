@@ -280,3 +280,171 @@
   .ledger-hero-byline{max-width:none}
   .ledger-hero-list{max-height:43vh}
 }
+
+
+/* SEALED EXPEDITIONS | wax-stamped replay dossiers on folio IV */
+.ledger-sealed-overview{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;margin:12px 0 22px
+}
+.ledger-sealed-stat{
+  display:flex;align-items:center;gap:9px;min-width:0;
+  padding:11px 13px;border:1px solid #a0835f85;
+  background:linear-gradient(120deg,#eee0c2b5,#d9c4a19c);
+  box-shadow:inset 0 1px #fff7
+}
+.ledger-sealed-stat-icon{
+  width:23px;height:23px;flex-shrink:0;color:#80603f
+}
+.ledger-sealed-stat-value{
+  font:700 25px/1 Georgia,serif;font-variant-numeric:tabular-nums;
+  color:#4a3222
+}
+.ledger-sealed-stat-label{
+  font:800 9px/1.35 ui-sans-serif,system-ui,sans-serif;
+  color:#7e5c3d;letter-spacing:.12em
+}
+.ledger-sealed-subhead{margin-top:0}
+.ledger-sealed-list{
+  display:grid;gap:12px;max-height:min(46vh,465px);
+  overflow-y:auto;scrollbar-color:#9e7655 #c2a98755;
+  padding:2px 8px 8px 2px
+}
+.ledger-dossier{
+  display:grid;grid-template-columns:64px minmax(0,1fr) minmax(156px,190px);
+  align-items:stretch;gap:12px;padding:17px 16px;
+  border:1px solid #91694b99;border-left:4px solid #735b52;
+  margin:0;min-width:0;
+  background:linear-gradient(120deg,#fbefd2,#e8d6b6 63%,#dbc4a3);
+  box-shadow:0 3px 9px #51321f20,inset 0 1px #fff7;
+  position:relative
+}
+.ledger-dossier:before{
+  content:"";position:absolute;inset:5px;pointer-events:none;
+  border:1px solid #a18a6c38
+}
+.ledger-dossier-exploration{
+  border-left-color:#64746d;
+  background:linear-gradient(120deg,#f3eacb,#dce0ce 67%,#c4cabc)
+}
+.ledger-dossier-emblem{
+  display:flex;align-items:flex-start;justify-content:center;
+  color:#8b6745;padding-top:7px
+}
+.ledger-dossier-emblem svg{
+  width:47px;height:47px;padding:11px;
+  border:1px solid #9e7b5390;border-radius:50%;
+  box-shadow:inset 0 0 0 3px #e7d7b6,0 2px 8px #5a45322b;
+  background:#ad8e6140
+}
+.ledger-dossier-exploration .ledger-dossier-emblem{color:#567168}
+.ledger-dossier-body{display:flex;flex-direction:column;gap:9px;min-width:0}
+.ledger-dossier-eyebrow{
+  display:flex;align-items:center;flex-wrap:wrap;
+  gap:7px 11px;font:800 9px ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.14em;color:#906a47
+}
+.ledger-dossier-number{
+  padding:3px 5px;border:1px solid #94754b9e;color:#664832;
+  font-variant-numeric:tabular-nums;background:#e6d3aa70
+}
+.ledger-dossier-category{color:#84684d}
+.ledger-dossier .ledger-record-title{
+  color:#3c2920;font:600 clamp(18px,2vw,23px)/1.15 Georgia,serif;
+  letter-spacing:-.012em
+}
+.ledger-dossier-location{display:flex;align-items:center;gap:6px;
+  color:#77543b;font:800 10px ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.11em
+}
+.ledger-dossier-location svg{width:14px;height:14px}
+.ledger-dossier-date{letter-spacing:.05em;color:#8c7353;font-weight:600}
+.ledger-dossier-person{display:flex;align-items:center;gap:9px;min-width:0;
+  border-top:1px solid #aa8c6652;padding-top:8px;margin-top:1px}
+.ledger-dossier-portrait{
+  flex:0 0 39px;width:39px;height:39px;display:block;
+  border-radius:50%;border:2px solid #937250;
+  box-shadow:0 0 0 1px #f4e9d3,0 2px 6px #5b463051;
+  background-color:#987856;background-repeat:no-repeat
+}
+.ledger-dossier-unknown{display:grid;place-items:center;background:#b6a17f}
+.ledger-dossier-unknown svg{width:22px;height:22px;color:#e9dcc2}
+.ledger-dossier-person-details{display:grid;gap:3px;min-width:0}
+.ledger-dossier-person-name{color:#4d3122;font:700 14px/1.15 Georgia,serif;
+  overflow-wrap:anywhere}
+.ledger-dossier-person-role{
+  color:#8c7156;font:700 9px/1.35 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.13em
+}
+.ledger-dossier-side{
+  display:flex;flex-direction:column;align-items:stretch;
+  gap:13px;min-width:0;padding-left:11px;
+  border-left:1px solid #a1845a6c
+}
+.ledger-dossier .ledger-record-seal{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  color:#704a43;background:#8b5b4e17;border:1px double #94665899;
+  font:800 9px ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.13em;padding:10px 5px
+}
+.ledger-dossier .ledger-record-seal svg{height:16px;width:16px;flex-shrink:0}
+.ledger-dossier-disclosure{
+  margin:0;flex:1;text-align:center;color:#8a6a4d;
+  font:italic 11px/1.45 Georgia,serif
+}
+#merchant-ledger .ledger-dossier .ledger-watch{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  grid-column:auto;grid-row:auto;width:100%;
+  padding:12px 10px;margin-top:auto;color:#f4dfbd;
+  background:linear-gradient(135deg,#65452f,#3f3026);
+  box-shadow:0 3px 7px #4c291d38;font-size:10px;
+  white-space:nowrap;border:1px solid #785237
+}
+#merchant-ledger .ledger-dossier .ledger-watch:hover{
+  background:linear-gradient(135deg,#8c633c,#563e2c)
+}
+.ledger-dossier .ledger-watch svg{
+  width:15px;height:15px;flex:0 0 15px
+}
+.ledger-sealed-footnote{
+  display:flex;align-items:flex-start;gap:9px;
+  margin-top:15px;padding:11px 13px;
+  border-left:2px solid #946c4a;background:#d0b89b59
+}
+.ledger-sealed-footnote svg{
+  width:16px;height:16px;flex:0 0 16px;margin-top:1px
+}
+.ledger-sealed-empty{
+  display:flex;flex-direction:column;align-items:center;
+  gap:12px;text-align:center;padding:35px 23px;
+  border:1px dashed #92724b8c;background:#e2cdab55;color:#705337
+}
+.ledger-sealed-empty svg{width:42px;height:42px;color:#8c6942}
+.ledger-sealed-empty strong{
+  font:800 12px ui-sans-serif,system-ui,sans-serif;letter-spacing:.17em
+}
+.ledger-sealed-empty p{font:italic 14px/1.5 Georgia,serif;margin:0}
+@media(max-width:1060px){
+  .ledger-dossier{grid-template-columns:51px minmax(0,1fr) 155px;
+    gap:9px;padding:13px 12px}
+  .ledger-dossier-emblem svg{width:41px;height:41px;padding:9px}
+  .ledger-dossier-side{padding-left:8px}
+}
+@media(max-width:680px){
+  .ledger-sealed-overview{gap:5px}
+  .ledger-sealed-stat{padding:9px 6px;gap:5px;flex-wrap:wrap}
+  .ledger-sealed-stat-icon{width:18px;height:18px}
+  .ledger-sealed-stat-value{font-size:21px}
+  .ledger-sealed-stat-label{font-size:8px;flex-basis:100%}
+  .ledger-dossier{grid-template-columns:43px minmax(0,1fr);
+    gap:8px;padding:12px 10px}
+  .ledger-dossier-emblem svg{width:38px;height:38px}
+  .ledger-dossier-side{grid-column:1/-1;flex-direction:row;
+    flex-wrap:wrap;align-items:center;border-left:0;
+    padding:10px 0 0;border-top:1px solid #a1845a6c}
+  .ledger-dossier .ledger-record-seal{flex:1 1 120px}
+  .ledger-dossier-disclosure{display:none}
+  #merchant-ledger .ledger-dossier .ledger-watch{
+    flex:1 1 155px;width:auto;margin:0
+  }
+}

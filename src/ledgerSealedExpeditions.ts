@@ -53,7 +53,8 @@ export function sealedExpeditionDossiers(
         "Unknown adventurer",
       role:earlier?.role??person?.role??null,
       knownLevel:earlier?.level??null,
-      portrait:id&&earlier||id&&person?heroPortraitIndex(id):null,
+      portrait:id!==null&&(earlier!==undefined||person!==undefined)
+        ?heroPortraitIndex(id):null,
       day:event.day,
       floor:combat?6:7,
       kind:combat?"combat":"exploration",
