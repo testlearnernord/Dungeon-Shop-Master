@@ -13,7 +13,7 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import {
   counterOverlapsActor,getCounterPlacement,replaceCounterPlacement,
-  replaceShelfPlacement,rotateShelfOffset,shelfOverlapsActor,
+  replaceShelfPlacement,rotateShelfOffset,shelfOverlapsActor,type ShelfPlacement,
 } from "./game/shopLayout.ts";
 import {
   blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,
@@ -235,7 +235,7 @@ export function setupBlueprintHud(
       ?bedroomFurnitureOverlapsActor(p as BedroomFurniturePlacement,{x,z,radius})
       :p.id==="counter"
         ?counterOverlapsActor(p,{x,z,radius})
-        :shelfOverlapsActor(p,{x,z,radius});
+        :shelfOverlapsActor(p as ShelfPlacement,{x,z,radius});
     if(hits(camera.position.x,camera.position.z,0.45))
       return "Player is standing inside the furniture footprint.";
     const occupied=scene.transformNodes.some(node=>
@@ -255,7 +255,7 @@ export function setupBlueprintHud(
     }
     const check=p.id==="counter"
       ?replaceCounterPlacement(layout,p,room)
-      :replaceShelfPlacement(layout,p,room);
+      :replaceShelfPlacement(layout,p as ShelfPlacement,room);
     const good=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
     if(check.layout===layout&&check.message!==good)return check.message;
     return check.layout!==layout
@@ -358,7 +358,7 @@ export function setupBlueprintHud(
     if(occupied){updateStatus(occupied,false);return;}
     const result=isBedroomFurnitureId(draft.id)
       ?store.placeBedroomFurniture(draft as BedroomFurniturePlacement)
-      :draft.id==="counter"?store.placeCounter(draft):store.placeShelf(draft);
+      :draft.id==="counter"?store.placeCounter(draft):store.placeShelf(draft as ShelfPlacement);
     if(result==="Counter placement saved."||result==="Shelf placement saved."||
        result==="Bedroom furniture placed."){
       close();
