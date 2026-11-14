@@ -1,9 +1,11 @@
 import type { CounterPlacement, ShelfId, ShelfPlacement } from "./shopLayout.ts";
+import type {BedroomFurnitureId,BedroomFurniturePlacement} from "./bedroomFurniture.ts";
+import {isBedroomFurnitureId} from "./bedroomFurniture.ts";
 
-export type FurnitureId=ShelfId|"counter";
+export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId;
 export type BlueprintSurface=
   "floor"|"ceiling"|"left-wall"|"right-wall"|"front-wall"|"back-wall";
-export type FurnitureDraft=ShelfPlacement|(CounterPlacement&{readonly id:"counter"});
+export type FurnitureDraft=ShelfPlacement|(CounterPlacement&{readonly id:"counter"})|BedroomFurniturePlacement;
 
 export interface FurnitureDefinition {
   readonly id:FurnitureId;
@@ -19,12 +21,16 @@ export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=[
   {id:"shelf-1",label:"Left shelf",surfaces:["floor","left-wall","right-wall","front-wall","back-wall"],width:1.36,depth:6.1,height:2.35},
   {id:"shelf-2",label:"Right shelf",surfaces:["floor","left-wall","right-wall","front-wall","back-wall"],width:1.36,depth:6.1,height:2.35},
   {id:"counter",label:"Checkout counter",surfaces:["floor"],width:2.5,depth:2.3,height:1.8},
+  {id:"desk",label:"Accounting desk + Book of Debts",surfaces:["floor"],width:1.18,depth:0.76,height:1.25},
+  {id:"chest",label:"Storage chest",surfaces:["floor"],width:1.04,depth:0.72,height:0.9},
+  {id:"candle",label:"Bedside candle + stool",surfaces:["floor"],width:0.66,depth:0.66,height:1.2},
 ] as const;
 
 export const snapQuarter=(value:number):number=>Math.round(value*4)/4;
 
 export function surfaceFromMesh(name:string):BlueprintSurface|null {
-  if(name==="stone-floor"||/^excavated-floor--?\d+,-?\d+$/.test(name))return "floor";
+  if(name==="stone-floor"||name==="bedroom-floor-skin"||
+     /^excavated-floor--?\d+,-?\d+$/.test(name))return "floor";
   if(name==="stone-ceiling")return "ceiling";
   if(name==="left-wall")return "left-wall";
   if(name==="right-wall")return "right-wall";
@@ -50,7 +56,7 @@ export function blueprintAtSurface(
     const x=snapQuarter(hit.x),z=snapQuarter(hit.z);
     return id==="counter"?{id,x,z,rotation}:{id,x,z,rotation};
   }
-  if(id==="counter")return null;
+  if(id==="counter"||isBedroomFurnitureId(id))return null;
   const wallAnchor:{[K in Exclude<BlueprintSurface,"floor"|"ceiling">]:
     {x:number;z:number;rotation:0|1|2|3}}={
     "left-wall":{x:-7,z:snapQuarter(hit.z),rotation:0},

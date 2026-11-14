@@ -13,8 +13,9 @@ export interface FurnitureFacing {
  * This is also the orientation of the 3D preview's arrow indicator.
  */
 export function furnitureFacing(id:FurnitureId,rotation:QuarterTurn):FurnitureFacing {
-  const shelf=id!=="counter";
-  const localX=shelf?1:0,localZ=shelf?0:-1;
+  const shelf=id==="shelf-1"||id==="shelf-2";
+  const bedroom=id==="desk"||id==="chest"||id==="candle";
+  const localX=shelf?1:0,localZ=shelf?0:bedroom?1:-1;
   const x=rotation===0?localX:rotation===1?localZ:rotation===2?-localX:-localZ;
   const z=rotation===0?localZ:rotation===1?-localX:rotation===2?-localZ:localX;
   const label=x>0?"east":x<0?"west":z>0?"south":"north";

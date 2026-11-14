@@ -296,9 +296,15 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
     r.isPickable = false;
   }
 
-  for(const name of ["bedroom-desk","galvik-bed-chest","bed-candle","bed-candle-holder"]){
-    const mesh=scene.getMeshByName(name);
-    if(mesh)mesh.isPickable=true;
+  // Every visible part of a bedroom module can be targeted by P.
+  // The existing debt-book click/E action still owns its own meshes.
+  for(const mesh of scene.meshes){
+    if(mesh.name==="bedroom-desk"||mesh.name.startsWith("bedroom-desk-leg-")||
+       mesh.name==="galvik-bed-chest"||mesh.name.startsWith("bed-chest-")||
+       mesh.name==="bed-side-stool"||mesh.name==="bed-side-stool-top"||
+       mesh.name==="bed-candle"||mesh.name==="bed-candle-holder"){
+      mesh.isPickable=true;
+    }
   }
   return bed;
 }
