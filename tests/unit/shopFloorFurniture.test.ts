@@ -128,7 +128,9 @@ test("new registry drives persisted shelf in mined wing while keeping trade deci
   const moved={id:"shelf-2" as const,x:8.25,z:0,rotation:2 as const};
   assert.equal(store.previewShopPlacement(moved),null);
   assert.equal(store.placeShelf(moved),"Shelf placement saved.");
-  const counter={x:9.25,z:0,rotation:0 as const};
+  // Keep the checkout in the central shop while the shelf occupies the wing;
+  // a separate excavation regression already moves the till into the wing.
+  const counter={x:0,z:2.25,rotation:1 as const};
   assert.equal(store.previewShopPlacement({...counter,id:"counter"}),null);
   assert.equal(store.placeCounter(counter),"Counter placement saved.");
   assert.equal(shopServiceReachabilityProblem(store.state.shopLayout,room),null);
