@@ -15,7 +15,10 @@ export interface LookedAtFurniture {
 }
 
 const bounds=(id:FurnitureKind)=>{
-  const {width,height,depth}=FURNITURE_REGISTRY[id];
+  const definition=FURNITURE_REGISTRY[id] as
+    import("./furnitureRegistry.ts").FurnitureDefinition;
+  if(definition.focus)return definition.focus;
+  const {width,height,depth}=definition;
   return {width,height,depth};
 };
 
