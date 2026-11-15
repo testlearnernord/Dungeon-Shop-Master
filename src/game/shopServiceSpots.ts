@@ -1,6 +1,6 @@
 import type {Level5Room} from "./level5Room.ts";
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
-import {shelfServicePoint,SHELF_SLOT_COUNT} from "./shopFloorFurniture.ts";
+import {shelfServicePoint,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 import {checkoutQueuePoints} from "./checkoutQueue.ts";
 import {idleShopPositions,NPC_STATION_CLEARANCE} from "./npcTraffic.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
