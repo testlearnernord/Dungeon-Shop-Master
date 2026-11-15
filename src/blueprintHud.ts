@@ -5,16 +5,16 @@ import {uiIcon,setIconButton} from "./uiIcons.ts";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { furnitureFacing } from "./game/furnitureFacing.ts";
 import { createBlueprintPreviewValidator } from "./game/blueprintPreviewValidator.ts";
-import {bedroomFurnitureOverlapsActor,getBedroomFurniture,isBedroomFurnitureId,
-  replaceBedroomFurniture,type BedroomFurniturePlacement,type BedroomFurnitureId} from "./game/bedroomFurniture.ts";
+import {getBedroomFurniture,isBedroomFurnitureId,
+  type BedroomFurnitureId} from "./game/bedroomFurniture.ts";
+import {furnitureTouchesActor} from "./game/furnitureRegistry.ts";
 import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
-import {DEFAULT_ROSTER_BOARD,replaceRosterBoard} from "./game/rosterBoardPlacement.ts";
+import {DEFAULT_ROSTER_BOARD} from "./game/rosterBoardPlacement.ts";
 
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import {
-  counterOverlapsActor,getCounterPlacement,
-  rotateShelfOffset,shelfOverlapsActor,type ShelfPlacement,
+  getCounterPlacement,rotateShelfOffset,
 } from "./game/shopLayout.ts";
 import {
   blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,
@@ -251,11 +251,8 @@ export function setupBlueprintHud(
   };
 
   const occupiedBy=(p:FurnitureDraft):string|null=>{
-    const hits=(x:number,z:number,radius:number)=>p.id==="adventurer-board"?false:isBedroomFurnitureId(p.id)
-      ?bedroomFurnitureOverlapsActor(p as BedroomFurniturePlacement,{x,z,radius})
-      :p.id==="counter"
-        ?counterOverlapsActor(p,{x,z,radius})
-        :shelfOverlapsActor(p as ShelfPlacement,{x,z,radius});
+    const hits=(x:number,z:number,radius:number)=>
+      furnitureTouchesActor(p,{x,z,radius});
     if(hits(camera.position.x,camera.position.z,0.45))
       return "Player is standing inside the furniture footprint.";
     const occupied=scene.transformNodes.some(node=>
@@ -267,20 +264,8 @@ export function setupBlueprintHud(
   // draft after the camera settles, not once per ghost mesh every frame.
   // The cache is invalidated whenever the committed furniture or mined room
   // changes; live player/NPC occupancy is checked independently each frame.
-  const validator=createBlueprintPreviewValidator((p,layout,room)=>{
-    if(p.id==="adventurer-board"){
-      const result=replaceRosterBoard(store.state.rosterBoard,p,layout);
-      return result.message==="Adventurer board placed."?null:result.message;
-    }
-    if(isBedroomFurnitureId(p.id)){
-      const result=replaceBedroomFurniture(store.state.bedroomFurniture,
-        p as BedroomFurniturePlacement);
-      return result.message==="Bedroom furniture placed."?null:result.message;
-    }
-    return store.previewShopPlacement(p as ShelfPlacement|
-      ({readonly id:"counter";readonly x:number;readonly z:number;
-        readonly rotation:0|1|2|3}));
-  });
+  const validator=createBlueprintPreviewValidator(p=>
+    store.previewFurniturePlacement(p));
 
   const updateGhost=(immediate=false):void=>{
     if(!enabled)return;
@@ -310,7 +295,8 @@ export function setupBlueprintHud(
         "Aim at the "+(activeId==="counter"||isBedroomFurnitureId(activeId)?"floor":"floor or a wall")+".",false);
       return;
     }
-    const p=blueprintAtSurface(activeId,surface,hit.pickedPoint,rotation);
+    const p=blueprintAtSurface(activeId,surface,hit.pickedPoint,
+      rotation,store.state.level5Room);
     if(!p){
       draft=null;placeable=false;ghost.setEnabled(false);
       facingReadout.textContent=facingLabel+" · unsupported mount";
@@ -388,11 +374,7 @@ export function setupBlueprintHud(
     if(!draft||!placeable)return;
     const occupied=occupiedBy(draft);
     if(occupied){updateStatus(occupied,false);return;}
-    const result=draft.id==="adventurer-board"?
-      store.placeRosterBoard(draft):
-      isBedroomFurnitureId(draft.id)
-      ?store.placeBedroomFurniture(draft as BedroomFurniturePlacement)
-      :draft.id==="counter"?store.placeCounter(draft):store.placeShelf(draft as ShelfPlacement);
+    const result=store.placeFurniture(draft);
     if(result==="Counter placement saved."||result==="Shelf placement saved."||
        result==="Bedroom furniture placed."||result==="Adventurer board placed."){
       close();
