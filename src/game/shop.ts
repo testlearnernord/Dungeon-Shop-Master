@@ -159,6 +159,21 @@ export class Shop {
   }
 
   private createShelves(): void {
+    const activeIds=new Set(this.store.state.shopLayout.shelves.map(shelf=>shelf.id));
+    // New Game / imported campaign may REMOVE an instanced shelf again.
+    // Retire its collision meshes and slot mappings before refresh tries to
+    // read stock that no longer belongs to the current saved layout.
+    for(const [id,group] of this.shelves){
+      if(activeIds.has(id))continue;
+      for(const [mesh,slot] of this.slotMeshes){
+        if(slot.shelfId!==id)continue;
+        this.slotMeshes.delete(mesh);
+        this.slotById.delete(slot.id);
+        this.itemVisuals.delete(slot.id);
+      }
+      group.root.dispose();
+      this.shelves.delete(id);
+    }
     for (const {id:shelfId} of this.store.state.shopLayout.shelves) {
       if(this.shelves.has(shelfId))continue;
       const root = new TransformNode(shelfId+"-root", this.scene);
