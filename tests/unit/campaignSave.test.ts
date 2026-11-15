@@ -1,10 +1,11 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CampaignStorage, createSave, parseSave, SAVE_SCHEMA_VERSION,
   type CampaignRecords, type CampaignStorageAdapter,
 } from "../../src/game/campaignSave.ts";
-import { advanceDay, createGameState, SIMULATION_VERSION, type GameState } from "../../src/game/gameState.ts";
+import { advanceDay, SIMULATION_VERSION, type GameState } from "../../src/game/gameState.ts";
 import { buyWholesale, discardBag, transferShelf } from "../../src/game/economy.ts";
 
 function encoded(state = createGameState()): string {
