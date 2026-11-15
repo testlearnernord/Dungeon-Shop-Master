@@ -86,6 +86,45 @@ test("reserved shelf wait uses the moved shelf's access socket and never steals 
   assert(blocked===null||distance(blocked.point,waiting.point)>1.02);
 });
 
+test("a shelf browser reserves its precise arrival point as well as its shelf",()=>{
+  const layout=createShopLayout(),room=createLevel5Room();
+  const manager=new ShopServiceSpots();
+  const shopper=manager.reserveShelfAccess("browser","shelf-2",2,
+    start,layout,room);
+  assert(shopper,"a stocked shelf should have an accessible front");
+  assert.deepEqual(manager.claim("browser")?.point,shopper.point);
+  assert.equal(manager.claim("browser")?.role,"shelf-browse");
+  assert.equal(manager.shelfBusyFor("shelf-2","another"),true);
+
+  // Reservation is spatial: a second role cannot claim the exact spot,
+  // even if it otherwise owns a completely different service category.
+  const conflicting=manager.reserve("buyer","checkout",start,layout,room,{
+    checkoutTarget:shopper.point,
+  });
+  assert.equal(conflicting,null,"checkout must not steal a browsing position");
+
+  const idle=manager.reserve("idle","idle",start,layout,room);
+  assert(idle);
+  assert(distance(idle.point,shopper.point)>=1.18-1e-6);
+  manager.release("browser");
+  assert.equal(manager.claim("browser"),null);
+  assert.equal(manager.shelfBusyFor("shelf-2","another"),false);
+  assert(manager.reserveShelfAccess("another","shelf-2",2,start,layout,room));
+});
+
+test("a busy shelf approach is not considered free just because the shelf ID is free",()=>{
+  const layout=createShopLayout(),room=createLevel5Room();
+  const manager=new ShopServiceSpots();
+  const initial=manager.reserveShelfAccess("initial","shelf-1",2,
+    start,layout,room);
+  assert(initial);
+  manager.release("initial");
+  const blocked=manager.reserveShelfAccess("next","shelf-1",2,
+    start,layout,room,{occupied:[initial.point]});
+  assert(blocked===null||distance(blocked.point,initial.point)>=1.18-1e-6,
+    "a physically occupied shelf access must not be reissued");
+});
+
 test("orange counter focus follows the actual counter body, not its old 2.5m clearance box",()=>{
   const model=classifyFurnitureMesh("cash-register");
   const body=classifyFurnitureMesh("checkout-counter");

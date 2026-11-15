@@ -150,6 +150,7 @@ export function pathToShopGoal(
 export function pathToShelfAccess(
   from:ShopPoint,layout:ShopLayout,shelfId:string,slotIndex:number,
   room?:Level5Room,
+  canUseStandingPoint?:(point:ShopPoint)=>boolean,
 ):ShopperRoute|null {
   const shelf=layout.shelves.find(entry=>entry.id===shelfId);
   if(!shelf||!Number.isSafeInteger(slotIndex)||slotIndex<0||slotIndex>=5)
@@ -158,7 +159,8 @@ export function pathToShelfAccess(
     for(const along of [0,-0.35,0.35,-0.7,0.7]){
       const offset=rotateShelfOffset(1.75+outward,slotIndex-2+along,shelf.rotation);
       const goal={x:shelf.x+offset.x,z:shelf.z+offset.z};
-      if(isObstructed(goal,layout,room))continue;
+      if(isObstructed(goal,layout,room)||
+        (canUseStandingPoint&&!canUseStandingPoint(goal)))continue;
       const route=pathToShopGoal(from,goal,layout,room);
       const reached=route?.waypoints.at(-1)??from;
       if(route&&Math.hypot(reached.x-goal.x,reached.z-goal.z)<=0.17)

@@ -100,11 +100,29 @@ test("eight incoming customers progress around relocated shelves and checkout",a
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals());
   const starting=await read();
   expect(starting.visitors.length).toBeGreaterThanOrEqual(8);
-  await expect.poll(async()=>{
-    const {visitors}=await read();
-    const phases=visitors.map(v=>v.shoppingPhase??"");
-    return phases.includes("waiting-for-credit")&&phases.includes("waiting-for-restock");
-  },{timeout:80000,intervals:[800,1200,2000]}).toBe(true);
+  // Keep compact crowd breadcrumbs only when the browser test fails.
+  // Successful CI stays quiet; a failing wait still exposes each hero's
+  // position, intention and blocked time instead of just a generic timeout.
+  const trafficSamples:unknown[]=[];
+  let lastDiagnostic=-10000;
+  try{
+    await expect.poll(async()=>{
+      const {visitors,time}=await read();
+      if(time-lastDiagnostic>=10000){
+        lastDiagnostic=time;
+        trafficSamples.push(visitors.map(v=>({
+          id:v.id.slice(-6),reason:v.shoppingReason,phase:v.shoppingPhase,
+          x:Math.round(v.x*10)/10,z:Math.round(v.z*10)/10,
+          remaining:v.restockRemaining,blocked:v.blockedSeconds,
+        })));
+      }
+      const phases=visitors.map(v=>v.shoppingPhase??"");
+      return phases.includes("waiting-for-credit")&&phases.includes("waiting-for-restock");
+    },{timeout:80000,intervals:[800,1200,2000]}).toBe(true);
+  }catch(error){
+    console.error("NPC_TRAFFIC_FAILURE",JSON.stringify(trafficSamples));
+    throw error;
+  }
   await expect.poll(async()=>{
     const {visitors}=await read();
     return visitors.filter(visitor=>(visitor.cartUnits??0)>0 ||
@@ -116,7 +134,7 @@ test("eight incoming customers progress around relocated shelves and checkout",a
   // A service place is not a magic coordinate. Customers who have actually
   // finished reaching a station must not be standing on top of another
   // stationary customer, even with rotated furniture.
-  const settled=new Set(["awaiting-checkout","waiting-for-restock",
+  const settled=new Set(["awaiting-checkout","considering-item","waiting-for-restock",
     "waiting-for-credit","waiting-for-shelf","waiting-for-restock-overflow",
     "waiting-for-credit-overflow","checkout-overflow-wait"]);
   const stationary=final.visitors.filter(visitor=>settled.has(visitor.shoppingPhase??""));

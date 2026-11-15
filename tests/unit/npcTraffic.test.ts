@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ, crowdStallSeconds, canYieldShopperSpot,
+import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot,
 } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
@@ -355,6 +355,21 @@ test("safe sidesteps count as forward progress, not as a traffic deadlock",()=>{
   assert.equal(crowdStallSeconds(0.8,0.2,from,from,goal),1);
   assert.equal(crowdStallSeconds(0.2,0.1,from,from,goal,true),
     NPC_SOFT_PASS_AFTER_SECONDS);
+});
+
+test("waypoint progress detects pendulum paths even when individual steps advance",()=>{
+  const target={x:4,z:0};
+  let state:null|ReturnType<typeof trackWaypointProgress>=null;
+  for(const x of [0,0.1,0.18,0.04,0.2,0.03,0.19,0.08])
+    state=trackWaypointProgress(state,target,{x,z:0},1);
+  assert(state);
+  assert(state.stagnantSeconds>=7,
+    "oscillating within the same 20cm must still build a deadlock timeout");
+  state=trackWaypointProgress(state,target,{x:0.7,z:0},0.2);
+  assert.equal(state.stagnantSeconds,0,
+    "accumulated progress of 35cm resets the timer even across small frames");
+  state=trackWaypointProgress(state,{x:4,z:2},{x:0.7,z:0},0.2);
+  assert.equal(state.stagnantSeconds,0,"a new waypoint resets old congestion");
 });
 
 test("only stationary shelf and idle waiters yield, never cashier or restock customers",()=>{

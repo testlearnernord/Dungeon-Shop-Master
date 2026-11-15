@@ -282,6 +282,33 @@ export function crowdStallSeconds(
   return gained>Math.max(0.003,movement*0.15)?0:previous+delta;
 }
 
+/** Track meaningful net progress against one waypoint. Alternating small
+ * sidesteps can make each frame look productive while the shopper stays in
+ * the same corner for an entire minute.
+ */
+export interface WaypointProgress {
+  readonly target:ShopPoint;
+  readonly closest:number;
+  readonly stagnantSeconds:number;
+}
+export function trackWaypointProgress(
+  previous:WaypointProgress|null,target:ShopPoint,position:ShopPoint,
+  delta:number,
+):WaypointProgress {
+  const distance=Math.hypot(target.x-position.x,target.z-position.z);
+  if(!Number.isFinite(distance)||!Number.isFinite(delta)||delta<0)
+    return {target,closest:Number.isFinite(distance)?distance:Infinity,
+      stagnantSeconds:0};
+  if(!previous||Math.hypot(previous.target.x-target.x,
+    previous.target.z-target.z)>0.05)
+    return {target:{...target},closest:distance,stagnantSeconds:0};
+  const advanced=previous.closest-distance>=0.35;
+  // Keep the last meaningful checkpoint until at least 35cm of real
+  // progress accumulates. Individual movement frames are much smaller.
+  return {target:previous.target,closest:advanced?distance:previous.closest,
+    stagnantSeconds:advanced?0:previous.stagnantSeconds+delta};
+}
+
 /** Only genuinely stationary, non-service visitors may move out of the
  * path of another shopper. A shelf waiter can yield, but checkout queues
  * and 60-second stock requests retain their exclusive reserved spots.
