@@ -3,7 +3,7 @@ import {
   SHOP_FLOOR_FURNITURE,cashierServicePoint,shelfServicePoint,
   shopFixtureBounds,shopFixtureTouches,
   type ShopFloorKind,type ShopFloorBounds,
-} from "./shopFloorFurniture.ts";
+} from "./furnitureRegistry.ts";
 /** Persisted shop furniture transforms. No rendering, economy or RNG dependencies. */
 /** Stable per-instance furniture IDs, generated only when a shelf is built. */
 export type ShelfId = `shelf-${number}`;
