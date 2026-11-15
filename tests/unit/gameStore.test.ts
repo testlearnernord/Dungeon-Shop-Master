@@ -1,7 +1,6 @@
 import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import {  } from "../../src/game/gameState.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
 
 test("store processes a purchase request ID once without duplicate gold, items or notifications", () => {
@@ -78,7 +77,7 @@ test("one store endDay call advances exactly once and publishes one fully resolv
 });
 
 test("store shelf transfers notify only on success and share the authoritative economy", () => {
-  const store = new GameStore();
+  const store = new GameStore(createGameState());
   const initial = store.state;
   let notifications = 0;
   store.subscribe(() => { notifications += 1; });
