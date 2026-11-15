@@ -9,12 +9,12 @@ import {bedroomFurnitureOverlapsActor,getBedroomFurniture,isBedroomFurnitureId,
   replaceBedroomFurniture,type BedroomFurniturePlacement,type BedroomFurnitureId} from "./game/bedroomFurniture.ts";
 import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
 import {DEFAULT_ROSTER_BOARD,replaceRosterBoard} from "./game/rosterBoardPlacement.ts";
-import { shopServiceReachabilityProblem } from "./game/shopServiceReachability.ts";
+
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import {
-  counterOverlapsActor,getCounterPlacement,replaceCounterPlacement,
-  replaceShelfPlacement,rotateShelfOffset,shelfOverlapsActor,type ShelfPlacement,
+  counterOverlapsActor,getCounterPlacement,
+  rotateShelfOffset,shelfOverlapsActor,type ShelfPlacement,
 } from "./game/shopLayout.ts";
 import {
   blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,
@@ -275,13 +275,9 @@ export function setupBlueprintHud(
         p as BedroomFurniturePlacement);
       return result.message==="Bedroom furniture placed."?null:result.message;
     }
-    const check=p.id==="counter"
-      ?replaceCounterPlacement(layout,p,room)
-      :replaceShelfPlacement(layout,p as ShelfPlacement,room);
-    const good=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
-    if(check.layout===layout&&check.message!==good)return check.message;
-    return check.layout!==layout
-      ?shopServiceReachabilityProblem(check.layout,room):null;
+    return store.previewShopPlacement(p as ShelfPlacement|
+      ({readonly id:"counter";readonly x:number;readonly z:number;
+        readonly rotation:0|1|2|3}));
   });
 
   const updateGhost=(immediate=false):void=>{
@@ -293,8 +289,13 @@ export function setupBlueprintHud(
     facingReadout.textContent=facingLabel;
     // FPS targeting stays on the crosshair even when the camera turns.
     // No screen-coordinate cursor state or detaching the Babylon camera.
-    const hit=scene.pickWithRay(camera.getForwardRay(16),
-      mesh=>surfaceFromMesh(mesh.name)!==null);
+    // Mining creates real pickable floor beyond the initial ±7.5m cave.
+    // A short ray (formerly 16m) made the ghost stop at the old boundary
+    // until Galvik physically walked into the expansion. Target any visible
+    // surface across the enlarged room; actual support and routes still
+    // decide whether placement is allowed.
+    const hit=scene.pickWithRay(camera.getForwardRay(48),
+      mesh=>mesh.isPickable&&surfaceFromMesh(mesh.name)!==null);
     const surface=hit?.pickedMesh?surfaceFromMesh(hit.pickedMesh.name):null;
     if(!surface||!hit?.pickedPoint){
       draft=null;placeable=false;ghost.setEnabled(false);
