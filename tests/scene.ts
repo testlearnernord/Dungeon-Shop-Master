@@ -612,12 +612,10 @@ export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
   const floor=scene.getMeshByName(name);
   if(!floor||!floor.isPickable)throw new Error("Mined floor cannot be targeted");
   const camera=scene.activeCamera as UniversalCamera;
-  // Deliberately remain in the ORIGINAL showroom, >16m from the
-  // excavated target. The furniture ghost must reach a visible mined floor
-  // without requiring the player to physically walk into the new wing.
-  // Aim through the EXCAVATED gap at x=7.5 and z≈0.3, not through
-  // an adjacent intact side-wall segment. Still >16m from (8.25,0).
-  camera.position.set(-6.95,1.7,6.45);
+  // Stay in the original cave and look straight down an excavated wing.
+  // A fully mined passage keeps the ray physically clear while extending
+  // >16m beyond the initial editor's reach (x=-6.4 to x=13).
+  camera.position.set(x>0?-6.4:6.4,1.7,z);
   camera.setTarget(new Vector3(x,0,z));
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
