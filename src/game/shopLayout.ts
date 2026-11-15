@@ -5,7 +5,16 @@ import {
   type ShopFloorKind,type ShopFloorBounds,
 } from "./shopFloorFurniture.ts";
 /** Persisted shop furniture transforms. No rendering, economy or RNG dependencies. */
-export type ShelfId = "shelf-1" | "shelf-2";
+/** Stable per-instance identifiers. Existing shelf-1/2 and slot IDs never change. */
+export type ShelfId = `shelf-${number}`;
+/** Bounded by room area and current service/mesh workload, not two fixed shelves. */
+export const MAX_SHOP_SHELVES=12;
+export const isShelfId=(value:unknown):value is ShelfId=>
+  typeof value==="string"&&/^shelf-[1-9][0-9]*$/.test(value)&&
+  Number(value.slice(6))<=MAX_SHOP_SHELVES;
+export const nextShelfId=(layout:ShopLayout):ShelfId|null=>
+  layout.shelves.length<MAX_SHOP_SHELVES
+    ?`shelf-${layout.shelves.length+1}` as ShelfId:null;
 export interface ShelfPlacement {
   readonly id: ShelfId;
   /** Metres, snapped to 0.25m grid. */
@@ -66,7 +75,7 @@ export function isAtCounterStaffDock(
     Math.hypot(person.x-dock.x,person.z-dock.z)<=radius;
 }
 
-const IDS: readonly ShelfId[] = ["shelf-1","shelf-2"];
+
 type Bounds=ShopFloorBounds;
 export interface RegisteredShopFixture {
   readonly id:string;
@@ -110,7 +119,7 @@ const overlap=(a:Bounds,b:Bounds,padding=0)=>
   a.minX < b.maxX+padding && a.maxX > b.minX-padding &&
   a.minZ < b.maxZ+padding && a.maxZ > b.minZ-padding;
 const quarter=(n:number)=>Number.isFinite(n)&&Math.abs(n*4-Math.round(n*4))<1e-8;
-const canonical=(id:unknown):id is ShelfId=>id==="shelf-1"||id==="shelf-2";
+const canonical=isShelfId;
 
 export function createShopLayout(): ShopLayout {
   return {shelves:[
@@ -148,12 +157,17 @@ function onRoomFloor(box:Bounds,room:Level5Room):boolean {
   return true;
 }
 export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|null {
-  if(!layout || !Array.isArray(layout.shelves)||layout.shelves.length!==2)
-    return "Exactly two shelves are required.";
+  if(!layout||!Array.isArray(layout.shelves)||layout.shelves.length<2)
+    return "At least two shelves are required.";
+  if(layout.shelves.length>MAX_SHOP_SHELVES)
+    return "The shop has reached its current shelf capacity.";
   const seen=new Set<string>();
-  for(const p of layout.shelves){
-    if(!p||!canonical(p.id)||seen.has(p.id))
-      return "Shelf IDs must be shelf-1 and shelf-2 without duplicates.";
+  for(const [index,p] of layout.shelves.entries()){
+    // Stable, monotonic IDs also make imported saves and held carts safe:
+    // an removed shelf ID is never silently reassigned to different stock.
+    if(!p||!canonical(p.id)||p.id!==`shelf-${index+1}`||
+       seen.has(p.id))
+      return "Shelf IDs must be ordered, unique and contiguous.";
     seen.add(p.id);
     if(!quarter(p.x)||!quarter(p.z)||!Number.isInteger(p.rotation)||
       p.rotation<0||p.rotation>3)
@@ -165,8 +179,10 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
     if(overlap(box,movableCounterBounds(layout),0.04)||barriers.some(zone=>overlap(box,zone,0.04)))
       return "Keep the counter, entrances and visitor aisles clear.";
   }
-  if(overlap(shelfBounds(layout.shelves[0]),shelfBounds(layout.shelves[1]),0.28))
-    return "Shelves cannot overlap.";
+  for(let i=0;i<layout.shelves.length;i++)
+    for(let j=i+1;j<layout.shelves.length;j++)
+      if(overlap(shelfBounds(layout.shelves[i]),shelfBounds(layout.shelves[j]),.28))
+        return "Shelves cannot overlap.";
   if(layout.counter!==undefined){
     const p=layout.counter;
     if(!p||!quarter(p.x)||!quarter(p.z)||!Number.isInteger(p.rotation)||
@@ -221,10 +237,14 @@ export function replaceShelfPlacement(
   if(!canonical(placement.id))
     return {layout,message:"Unknown shelf."};
   const previous=layout.shelves.find(p=>p.id===placement.id);
+  if(!previous&&placement.id!==nextShelfId(layout))
+    return {layout,message:"Only the next unused shelf can be built."};
   if(previous&&previous.x===placement.x&&previous.z===placement.z&&
     previous.rotation===placement.rotation)
     return {layout,message:"Shelf placement saved."};
-  const next:ShopLayout={...layout,shelves:layout.shelves.map(p=>p.id===placement.id?placement:p)};
+  const next:ShopLayout={...layout,shelves:previous
+    ?layout.shelves.map(p=>p.id===placement.id?placement:p)
+    :[...layout.shelves,placement]};
   const problem=shopLayoutProblem(next,room);
   return problem?{layout,message:problem}:{layout:next,message:"Shelf placement saved."};
 }
