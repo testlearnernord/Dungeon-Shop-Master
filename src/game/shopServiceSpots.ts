@@ -11,6 +11,7 @@ import {isObstructed,pathToShopGoal,pathToShelfAccess,type ShopPoint,type Shoppe
  * they are paying, requesting restock/credit or waiting for a busy shelf. */
 export type ShopServiceRole =
   "checkout"|"restock"|"credit"|"shelf-browse"|"shelf-wait"|"overflow"|"idle";
+export type ShopWaitingRole=Exclude<ShopServiceRole,"shelf-browse">;
 export interface ShopServiceClaim{
   readonly heroId:string;
   readonly role:ShopServiceRole;
@@ -92,7 +93,9 @@ export class ShopServiceSpots{
     const occupied=[...(request.occupied??[]),...(request.destinations??[])];
     const otherClaims=[...this.claims.values()]
       .filter(claim=>claim.heroId!==heroId).map(claim=>claim.point);
-    const unavailable=[...occupied,...otherClaims,...this.checkout,...this.restock];
+    // Only *claimed* future destinations are exclusive. Unoccupied queue and
+    // credit pockets are not permanent no-go zones for valid shelf layouts.
+    const unavailable=[...occupied,...otherClaims];
     const route=pathToShelfAccess(from,layout,shelfId,slotIndex,room,
       point=>unavailable.every(other=>dist(point,other)>=CLEARANCE));
     if(!route)return null;
@@ -115,7 +118,7 @@ export class ShopServiceSpots{
    * capacity-full state. No teleport, ghost-through-furniture or stock mutation.
    */
   reserve(
-    heroId:string,role:ShopServiceRole,from:ShopPoint,
+    heroId:string,role:ShopWaitingRole,from:ShopPoint,
     layout:ShopLayout,room?:Level5Room,request:ShopServiceRequest={},
   ):ReservedShopRoute|null{
     this.configure(layout,room);
