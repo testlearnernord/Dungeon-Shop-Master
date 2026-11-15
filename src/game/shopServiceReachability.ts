@@ -3,7 +3,7 @@ import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
 import { createShopRoutePlanner, isObstructed, type ShopPoint } from "./shopperNavigation.ts";
 import {shopLayoutProblem,type ShopLayout} from "./shopLayout.ts";
-import {shelfServicePoint,SHELF_SLOT_COUNT} from "./shopFloorFurniture.ts";
+import {shelfServicePoint,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 
 /** A furniture commit is invalid if the physical entrance, checkout and
  * shelf service sockets no longer share a walkable component.
