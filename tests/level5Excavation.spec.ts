@@ -130,3 +130,57 @@ test("contextual P moves and persists a shelf onto sufficiently excavated real f
   await page.reload();
   expect(await placed()).toBe(13);
 });
+
+test("contextual P mounts the board on freshly excavated stone and survives a reload",async({page})=>{
+  test.setTimeout(90000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const storage=new CampaignStorage(),state=await storage.loadGame();
+    if(!state)throw new Error("Missing campaign");
+    let room={...state.level5Room,expansionTier:2};
+    // A continuous 7m wall and connected 2m side wing; the rock at 10,0
+    // is still solid and available as a real wall-mounted support.
+    for(let x=8;x<=9;x++)for(let z=-3;z<=3;z++){
+      const mined=excavateLevel5Cell(room,{x,z});
+      if(!mined.ok)throw new Error(mined.reason);
+      room=mined.room;
+    }
+    await storage.saveGame({...state,level5Room:room});
+  });
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtRosterBoard());
+  await page.keyboard.press("p");
+  await expect(page.locator("#blueprint-panel")).toBeVisible();
+  const hit=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .aimAtExcavatedBoardWall(10,0));
+  expect(hit).toContain("excavation-rock-face-9.5:");
+  await expect.poll(()=>page.locator("#blueprint-facing").textContent(),
+    {timeout:10000}).toContain("X 9.25");
+  await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").textContent(),
+    {timeout:10000}).toContain("Valid placement");
+  await page.mouse.click(400,300);
+  await expect(page.locator("#blueprint-panel")).toBeHidden();
+  const board=()=>page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    return (await new CampaignStorage().loadGame())?.rosterBoard;
+  });
+  await expect.poll(board).toEqual({x:9.25,z:0,rotation:1});
+  await page.reload();
+  expect(await board()).toEqual({x:9.25,z:0,rotation:1});
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const {Engine}=await import("@babylonjs/core/Engines/engine");
+    const mesh=Engine.LastCreatedScene?.getMeshByName("adventurer-roster-board");
+    if(!mesh)return null;
+    mesh.computeWorldMatrix(true);
+    return Math.round(mesh.getAbsolutePosition().x*100)/100;
+  })).toBe(9.25);
+  expect(errors).toEqual([]);
+});
