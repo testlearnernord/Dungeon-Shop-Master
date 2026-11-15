@@ -6,7 +6,8 @@ test("credit petition transfers one bread and saves Galvik's loan",async({page})
   const id=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const state=createGameState(7351);
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const state=withStockedSmallShelf(createGameState(7351));
     const heroId=state.adventurers[0].id;
     await new CampaignStorage().saveGame({
       ...state,
