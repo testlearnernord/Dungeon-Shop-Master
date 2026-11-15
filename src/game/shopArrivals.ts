@@ -12,8 +12,13 @@ export function arrivalEvent(hero: AdventurerState, day: number): WorldEvent {
   };
 }
 
+/** A confirmed purchase ends the current visit at closing. Do not reroll a
+ * paid shopper into another day in the store after the physical NPC has
+ * already headed out. An authorized Level 6 departure is handled upstream.
+ */
 export function scheduleShopVisit(
   hero: AdventurerState, day: number, rngState: number,
+  alreadyBought: boolean = false,
 ): { adventurer: AdventurerState; events: readonly WorldEvent[]; rngState: number } {
   if (hero.status === "traveling") {
     return {
@@ -24,9 +29,11 @@ export function scheduleShopVisit(
   }
   if (hero.status !== "at-shop") return { adventurer: hero, events: [], rngState };
 
+  // Only shoppers who have not completed their purchase can opt to
+  // spend a second day at Galvik's store. Avoid consuming RNG when the
+  // result is already settled; replayed day ticks remain deterministic.
   const random = new SeededRandom(rngState);
-  // At most two consecutive shop days; no transactions or food are created here.
-  const stay = hero.shopStayDays === 0 && random.next() < 0.35;
+  const stay = !alreadyBought && hero.shopStayDays === 0 && random.next() < 0.35;
   return {
     rngState: random.state,
     adventurer: {
