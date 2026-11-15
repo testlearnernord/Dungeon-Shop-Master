@@ -600,15 +600,22 @@ export function inspectMiningWallVisuals(){
     uvSpan:u.length?Math.max(...u)-Math.min(...u):null,
   };
 }
+/** Mesh identity is stable for unchanged excavated floor while a second
+ * nearby rock cell is removed. Rebuilding the entire cave breaks this. */
+export function level5MeshIdentity(name:string):number|null {
+  return Engine.LastCreatedScene?.getMeshByName(name)?.uniqueId??null;
+}
+
 export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
   const scene=Engine.LastCreatedScene!;
   const name=`excavated-floor-${Math.floor(x+.5)},${Math.floor(z+.5)}`;
   const floor=scene.getMeshByName(name);
   if(!floor||!floor.isPickable)throw new Error("Mined floor cannot be targeted");
   const camera=scene.activeCamera as UniversalCamera;
-  // Stand just outside the moved shelf footprint in a mined side passage.
-  // A ray from the original showroom can hit the old structural wall first.
-  camera.position.set(x,1.7,z-3.48);
+  // Deliberately remain in the ORIGINAL showroom, >16m from the
+  // excavated target. The furniture ghost must reach a visible mined floor
+  // without requiring the player to physically walk into the new wing.
+  camera.position.set(-6.4,1.7,-6.4);
   camera.setTarget(new Vector3(x,0,z));
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
