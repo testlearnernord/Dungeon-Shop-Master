@@ -55,6 +55,26 @@ test("unlock, mine exposed rock and keep the opening after reloading",async({pag
   expect(afterMining.uvSpan).not.toBeNull();
   expect(afterMining.uvSpan!).toBeLessThan(0.10,
     "one slice must inherit 1/14th of the original wall stone texture");
+  // One additional mined cell must NOT replace an unchanged floor mesh.
+  // The old room renderer disposed and rebuilt every cell after every strike.
+  const stableFloor="excavated-floor-8,4";
+  const oldMeshId=await page.evaluate(async name=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .level5MeshIdentity(name),stableFloor);
+  expect(oldMeshId).not.toBeNull();
+  await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtLevel5Rock(8,5));
+  await page.mouse.click(400,300);
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    return (await new CampaignStorage().loadGame())?.level5Room?.excavatedCells.includes("8,5");
+  }),{timeout:10000}).toBe(true);
+  const sameMeshId=await page.evaluate(async name=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .level5MeshIdentity(name),stableFloor);
+  expect(sameMeshId).toBe(oldMeshId,
+    "existing excavated floor geometry must survive adjacent mining");
+
   // The newly exposed flagstone must be pickable by the P blueprint
   // raycaster and share the shop's original floor material.
   const floorTarget=await page.evaluate(async()=>(
