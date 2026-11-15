@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {GameStore} from "../../src/game/gameStore.ts";
-import {advanceDay,createGameState} from "../../src/game/gameState.ts";
+import {advanceDay} from "../../src/game/gameState.ts";
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import {createLevel5Room,excavateLevel5Cell,isValidLevel5Room} from "../../src/game/level5Room.ts";
 import {shopServiceReachabilityProblem} from "../../src/game/shopServiceReachability.ts";
 import {restockWaitingPositions} from "../../src/game/restockWaitingPlaces.ts";
@@ -9,7 +10,7 @@ import {checkoutQueuePoints} from "../../src/game/checkoutQueue.ts";
 import {ShopServiceSpots} from "../../src/game/shopServiceSpots.ts";
 import {isObstructed,pathToShopGoal,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 import {type ShopLayout} from "../../src/game/shopLayout.ts";
-import { turnShopOffset } from "../../src/game/furnitureRegistry.ts";
+import {shelfServicePoint,SHELF_SLOT_COUNT} from "../../src/game/furnitureRegistry.ts";
 import type {Level5Room} from "../../src/game/level5Room.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
@@ -59,9 +60,8 @@ test("connected excavated wing, moved shelf and counter preserve all customer se
   for(const door of [entrance,farEntrance]){
     assertRoute(layout,room,door,checkout[0]);
     for(const petition of requests.slice(0,2))assertRoute(layout,room,door,petition);
-    for(const shelf of layout.shelves)for(let slot=0;slot<5;slot++){
-      const offset=turnShopOffset(1.75,slot-2,shelf.rotation);
-      const target={x:shelf.x+offset.x,z:shelf.z+offset.z};
+    for(const shelf of layout.shelves)for(let slot=0;slot<SHELF_SLOT_COUNT;slot++){
+      const target=shelfServicePoint(shelf,slot);
       assertRoute(layout,room,door,target);
       assertRoute(layout,room,target,checkout[0]);
     }
