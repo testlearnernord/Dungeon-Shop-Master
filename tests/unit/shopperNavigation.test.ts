@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createShopLayout,replaceShelfPlacement} from "../../src/game/shopLayout.ts";
-import { turnShopOffset } from "../../src/game/shopFloorFurniture.ts";
-import {isObstructed,pathToShopGoal,pathToShelfAccess,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
+import { turnShopOffset,shelfServicePoint } from "../../src/game/shopFloorFurniture.ts";
+import { createLevel5Room } from "../../src/game/level5Room.ts";
+import {createShopRoutePlanner,isObstructed,pathToShopGoal,pathToShelfAccess,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 
 const distance=(a:{x:number;z:number},b:{x:number;z:number})=>
   Math.hypot(a.x-b.x,a.z-b.z);
@@ -72,4 +73,28 @@ test("unreachable and invalid requests fail cleanly instead of inventing targets
   // This is deliberately blocked: no fake success from a legal grid snap.
   const source={x:0,z:0};
   assert(pathToShopGoal(source,source,layout));
+});
+
+test("batch planner preserves the exact paths for both entrances, every shelf slot and invalid targets",()=>{
+  const room=createLevel5Room(),layout=createShopLayout();
+  const route=createShopRoutePlanner(layout,room);
+  const targets=layout.shelves.flatMap(shelf=>Array.from({length:5},
+    (_,i)=>shelfServicePoint(shelf,i)));
+  targets.push({x:0,z:0},{x:-3.43,z:4.65},{x:999,z:999});
+  for(const start of [{x:-3.43,z:4.65},{x:4.57,z:4.65}]){
+    for(const goal of targets){
+      assert.deepEqual(route(start,goal),pathToShopGoal(start,goal,layout,room),
+        "shared grid must keep the complete one-shot path unchanged");
+    }
+  }
+  assert.equal(route({x:NaN,z:0},{x:0,z:0}),null);
+  const moved=replaceShelfPlacement(layout,{id:"shelf-1",x:0,z:-2,rotation:1},room);
+  assert.equal(moved.message,"Shelf placement saved.");
+  const fresh=createShopRoutePlanner(moved.layout,room);
+  const goal=shelfServicePoint(moved.layout.shelves[0],2);
+  assert.deepEqual(fresh({x:-3,z:0},goal),
+    pathToShopGoal({x:-3,z:0},goal,moved.layout,room));
+  assert.deepEqual(route({x:-3,z:0},goal),
+    pathToShopGoal({x:-3,z:0},goal,layout,room),
+    "old batch observes only its original immutable topology");
 });
