@@ -1,3 +1,4 @@
+import {createStockedShopLayout,createStockedShopState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {compactCounterBounds, COMPACT_COUNTER, counterOverlapsActor, createShopLayout, getCounterPlacement,
@@ -10,30 +11,31 @@ import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
 import { shopServiceReachabilityProblem } from "../../src/game/shopServiceReachability.ts";
 
-test("shop layout starts with two wall-mounted shelves with stable slot IDs",()=>{
+test("new game starts with an empty sales floor and no display inventory",()=>{
   const state=createGameState(42);
-  assert.equal(SIMULATION_VERSION,12);
+  assert.equal(SIMULATION_VERSION,13);
   assert.deepEqual(state.shopLayout,createShopLayout());
   assert.equal(shopLayoutProblem(state.shopLayout),null);
-  assert.equal(state.shopEconomy.slots.length,10);
-  assert.equal(new Set(state.shopEconomy.slots.map(s=>s.id)).size,10);
+  assert.equal(state.shopEconomy.slots.length,0);
+  assert.deepEqual(state.shopLayout.shelves,[]);
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
   assert.notStrictEqual(createShopLayout(),createShopLayout());
 });
 
 test("moving one shelf is immutable, grid-bound and leaves all economy fields unchanged",()=>{
-  const initial=createGameState();
+  const initial=createStockedShopState();
   const proposal:ShelfPlacement={id:"shelf-1",x:-7,z:-0.25,rotation:0};
   const outcome=replaceShelfPlacement(initial.shopLayout,proposal);
   assert.equal(outcome.message,"Shelf placement saved.");
   assert.equal(outcome.layout.shelves[0].z,-0.25);
-  assert.deepEqual(initial.shopLayout,createShopLayout());
+  assert.deepEqual(initial.shopLayout,createStockedShopLayout());
   const store=new GameStore(initial);
   let notifications=0;
   store.subscribe(()=>notifications++);
   assert.equal(store.placeShelf(proposal),"Shelf placement saved.");
   assert.equal(notifications,1);
-  assert.strictEqual(store.state.shopEconomy,initial.shopEconomy);
+  assert.deepEqual(store.state.shopEconomy.slots,initial.shopEconomy.slots);
+  assert.equal(store.state.shopEconomy.balance,initial.shopEconomy.balance);
   assert.strictEqual(store.state.adventurers,initial.adventurers);
   assert.strictEqual(store.state.events,initial.events);
   assert.equal(store.placeShelf({id:"shelf-2",x:0,z:2,rotation:0}),
@@ -46,7 +48,7 @@ test("moving one shelf is immutable, grid-bound and leaves all economy fields un
 });
 
 test("geometry accepts valid rotations but rejects walls, counter, walkways and collisions",()=>{
-  const original=createShopLayout();
+  const original=createStockedShopLayout();
   const rotate=replaceShelfPlacement(original,{
     id:"shelf-1",x:0,z:-2,rotation:1,
   });
@@ -69,11 +71,11 @@ test("geometry accepts valid rotations but rejects walls, counter, walkways and 
     assert.strictEqual(proposed.layout,original,JSON.stringify(invalid));
   }
   assert.match(shopLayoutProblem({shelves:[original.shelves[0],original.shelves[0]]})!,/IDs/);
-  assert.match(shopLayoutProblem({shelves:[original.shelves[0]]})!,/two shelves/);
+  assert.equal(shopLayoutProblem({shelves:[original.shelves[0]]}),null);
 });
 
 test("side-aisle placements are decided by actual clearance and reachable routes",()=>{
-  const layout=createShopLayout();
+  const layout=createStockedShopLayout();
   const shelf=replaceShelfPlacement(layout,{
     id:"shelf-1",x:-6.75,z:0,rotation:0,
   });
@@ -95,7 +97,7 @@ test("side-aisle placements are decided by actual clearance and reachable routes
 });
 
 test("strict saves reject injected, incomplete or obstructing furniture geometry",()=>{
-  const good=createSave(createGameState());
+  const good=createSave(createStockedShopState());
   const mutations:[string,(data:any)=>void][]=[
     ["shopLayout",(s)=>{delete s.shopLayout;}],
     ["shopLayout",(s)=>{s.shopLayout.extra="unrecognized";}],
@@ -114,7 +116,7 @@ test("strict saves reject injected, incomplete or obstructing furniture geometry
 
 test("occupied floor space blocks shelf placement even when static geometry is legal",()=>{
   const placement:ShelfPlacement={id:"shelf-1",x:0,z:-2,rotation:1};
-  assert.equal(shopLayoutProblem(replaceShelfPlacement(createShopLayout(),placement).layout),null);
+  assert.equal(shopLayoutProblem(replaceShelfPlacement(createStockedShopLayout(),placement).layout),null);
   assert.equal(shelfOverlapsActor(placement,{x:0,z:-2,radius:0.45}),true);
   assert.equal(shelfOverlapsActor(placement,{x:0,z:-4.6,radius:0.45}),false);
   assert.equal(shelfOverlapsActor(placement,{x:2.5,z:-2.5,radius:0.4}),true);
@@ -135,7 +137,7 @@ test("compact checkout candidate has deterministic quarter-turn clearance",()=>{
   assert.ok(Math.abs(rotated.maxZ-rotated.minZ-COMPACT_COUNTER.clearanceWidth)<1e-9);
   assert.deepEqual(compactCounterBounds({...at,rotation:2 as const}),compactCounterBounds(at));
   assert.deepEqual(compactCounterBounds({...at,rotation:3 as const}),rotated);
-  assert.deepEqual(createShopLayout().shelves.map(s=>s.id),["shelf-1","shelf-2"]);
+  assert.deepEqual(createStockedShopLayout().shelves.map(s=>s.id),["shelf-1","shelf-2"]);
 });
 
 test("current shop layouts keep their default counter on save",()=>{
