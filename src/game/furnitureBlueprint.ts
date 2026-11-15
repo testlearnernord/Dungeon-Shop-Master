@@ -31,10 +31,6 @@ const catalogEntry=(id:FurnitureId,label:string,
     height:def(id).height,
   });
 export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=[
-  catalogEntry("shelf-1","Left shelf",
-    ["floor","left-wall","right-wall","front-wall","back-wall"]),
-  catalogEntry("shelf-2","Right shelf",
-    ["floor","left-wall","right-wall","front-wall","back-wall"]),
   catalogEntry("counter","Checkout counter",["floor"]),
   catalogEntry("desk","Accounting desk + Book of Debts",["floor"]),
   catalogEntry("chest","Storage chest",["floor"]),
