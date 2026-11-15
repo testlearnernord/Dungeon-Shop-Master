@@ -4,7 +4,7 @@ import {compactCounterBounds, COMPACT_COUNTER, counterOverlapsActor, createShopL
   counterDockPoint,isAtCounterStaffDock,DEFAULT_COUNTER_PLACEMENT,NEW_GAME_COUNTER_PLACEMENT,
   replaceCounterPlacement, replaceShelfPlacement,
   shopLayoutProblem, shelfBounds, shelfOverlapsActor, type ShelfPlacement} from "../../src/game/shopLayout.ts";
-import { turnShopOffset } from "../../src/game/shopFloorFurniture.ts";
+import { turnShopOffset } from "../../src/game/furnitureRegistry.ts";
 import { advanceDay, createGameState, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
