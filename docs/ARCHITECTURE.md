@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Current Architecture
 
-> **Living technical map · reviewed 2026-11-14.** Navigational guidance, not a frozen API or history of refactors. If modules move, interfaces change or mechanics are removed, replace obsolete entries in the same PR. Source and tests remain the authority for implemented behavior.
+> **Living technical map · reviewed 2026-11-15.** Navigational guidance, not a frozen API or history of refactors. If modules move, interfaces change or mechanics are removed, replace obsolete entries in the same PR. Source and tests remain the authority for implemented behavior.
 
 ## 1. Runtime and ownership
 
