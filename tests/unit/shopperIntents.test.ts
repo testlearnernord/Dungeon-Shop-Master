@@ -1,6 +1,7 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState, advanceDay } from "../../src/game/gameState.ts";
+import { advanceDay } from "../../src/game/gameState.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
 import {createShopLayout, replaceShelfPlacement} from "../../src/game/shopLayout.ts";
 import { turnShopOffset } from "../../src/game/furnitureRegistry.ts";
