@@ -344,8 +344,8 @@ function validateState(value: unknown): asserts value is GameState {
     // below still rejects unmined rock and unsupported service footprints.
     const sideLimit=room===undefined?8:BASE_ROOM_HALF_EXTENT+2*room.expansionTier+0.5;
     const shelves=array(layout.shelves,"payload.shopLayout.shelves");
-    if(shelves.length<2||shelves.length>MAX_SHOP_SHELVES)
-      fail("payload.shopLayout.shelves","must contain 2 to "+MAX_SHOP_SHELVES+" shelves");
+    if(shelves.length>MAX_SHOP_SHELVES)
+      fail("payload.shopLayout.shelves","must contain at most "+MAX_SHOP_SHELVES+" shelves");
     const parsed:ShelfPlacement[]=shelves.map((value,i)=>{
       const path="payload.shopLayout.shelves["+i+"]";
       const shelf=object(value,path,["id","x","z","rotation"]);
@@ -408,7 +408,7 @@ function validateState(value: unknown): asserts value is GameState {
   if (bagTotal > ECONOMY.bagCapacity) fail("payload.shopEconomy.bag", "exceeds bag capacity");
   const slots = array(economy.slots, "payload.shopEconomy.slots");
   if (slots.length !== slotDefinitions.length)
-    fail("payload.shopEconomy.slots","must match five slots per placed shelf");
+    fail("payload.shopEconomy.slots","must match four slots per placed shelf");
   const slotIds = new Set<string | number>();
   slots.forEach((value, index) => {
     const path = `payload.shopEconomy.slots[${index}]`;
