@@ -1,6 +1,7 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
   const scene = Engine.LastCreatedScene!;
@@ -620,5 +621,15 @@ export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
   camera.setTarget(new Vector3(x,0,z));
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
-  return name;
+  const visible=scene.pickWithRay(camera.getForwardRay(48),
+    mesh=>mesh.isPickable&&surfaceFromMesh(mesh.name)!==null);
+  const direct=scene.pickWithRay(camera.getForwardRay(48),
+    mesh=>mesh.name===name);
+  const right=scene.getMeshByName("right-wall");
+  const left=scene.getMeshByName("left-wall");
+  return name+" | visible="+(visible?.pickedMesh?.name??"none")+
+    " at "+(visible?.pickedPoint?.asArray().join(",")??"none")+
+    " | direct="+String(direct?.hit)+
+    " | rightWall="+String(right?.isEnabled())+
+    " | leftWall="+String(left?.isEnabled());
 }
