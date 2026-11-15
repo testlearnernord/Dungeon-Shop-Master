@@ -19,7 +19,7 @@ import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot, type WaypointProgress, type GateTrafficActor } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, isInExitCorridor, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot, type WaypointProgress, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
 import { ShopServiceSpots } from "./shopServiceSpots.ts";
 
@@ -737,7 +737,9 @@ export class NpcVisualSystem {
 
   private beginLeaving(npc: NpcVisual, replan=false): void {
     const desiredGate=npc.visitor.status === "expedition" ? "level6" : "level4";
-    const outside=npc.root.position.z>CORRIDOR_INNER_Z+0.25;
+    const outside=isInExitCorridor({
+      x:npc.root.position.x,z:npc.root.position.z,
+    },CORRIDOR_INNER_Z);
     // An outgoing visitor must not turn back toward the shop merely because
     // another customer paid, the day ended, or furniture changed behind them.
     // A change of destination gate is safe only while still inside the shop.
