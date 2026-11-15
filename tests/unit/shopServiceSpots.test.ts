@@ -171,3 +171,22 @@ test("adjacent buyers can claim successive single-file cashier stations",()=>{
   }
   assert.equal(spots.snapshot().length,5);
 });
+
+test("moving a shelf browser to checkout atomically frees the old shelf",()=>{
+  const layout=createShopLayout(),room=createLevel5Room();
+  const spots=new ShopServiceSpots();
+  const first=spots.reserveShelfAccess("shopper","shelf-1",2,start,layout,room);
+  assert(first);
+  assert.equal(spots.shelfBusyFor("shelf-1","next-shopper"),true);
+  const checkout=checkoutQueuePoints(layout,{x:0,z:-1},1,room)[0];
+  assert(checkout);
+  const next=spots.reserve("shopper","checkout",start,layout,room,{
+    checkoutTarget:checkout,
+  });
+  assert(next);
+  assert.equal(spots.claim("shopper")?.role,"checkout");
+  assert.equal(spots.shelfBusyFor("shelf-1","next-shopper"),false,
+    "a buyer heading to the register must stop monopolizing an old shelf");
+  assert(spots.reserveShelfAccess("next-shopper","shelf-1",2,start,layout,room));
+  assert.equal(spots.snapshot().length,2,"one customer must never own two stations");
+});

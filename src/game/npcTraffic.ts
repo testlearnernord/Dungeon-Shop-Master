@@ -153,7 +153,8 @@ export function idleShopPositions(
   const cached=idleCache.get(layout);
   if(cached?.signature===signature && cached.requestedCount>=count)
     return cached.positions.slice(0,count);
-  const {isObstructed,pathToShopGoal}=navigation;
+  const {isObstructed,createShopRoutePlanner}=navigation;
+  const route=createShopRoutePlanner(layout,room);
   const positions:ShopPoint[]=[];
   const origin={x:gateTravelLane("level4","entering"),z:6};
   const extent=room?6.25+room.expansionTier*2:6.25;
@@ -168,9 +169,9 @@ export function idleShopPositions(
     if(isObstructed(candidate,layout,room))continue;
     if(positions.some(p=>Math.hypot(p.x-candidate.x,p.z-candidate.z)<
       NPC_CENTER_CLEARANCE))continue;
-    const route=pathToShopGoal(origin,candidate,layout,room);
-    if(!route)continue;
-    const actual=route.waypoints.at(-1)??candidate;
+    const path=route(origin,candidate);
+    if(!path)continue;
+    const actual=path.waypoints.at(-1)??candidate;
     if(isObstructed(actual,layout,room))continue;
     if(positions.some(p=>Math.hypot(p.x-actual.x,p.z-actual.z)<
       NPC_CENTER_CLEARANCE))continue;
