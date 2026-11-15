@@ -195,7 +195,7 @@ test("build a third shelf with N on mined floor, keep its stock IDs and 3D mesh 
     const state=await storage.loadGame();
     if(!state)throw new Error("Missing campaign");
     let room={...state.level5Room,expansionTier:3};
-    for(let x=8;x<=13;x++)for(let z=-3;z<=3;z++){
+    for(let x=8;x<=13;x++)for(let z=-5;z<=5;z++){
       const cut=excavateLevel5Cell(room,{x,z});
       if(!cut.ok)throw new Error(cut.reason);
       room=cut.room;
