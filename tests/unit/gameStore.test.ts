@@ -1,6 +1,7 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState } from "../../src/game/gameState.ts";
+import {  } from "../../src/game/gameState.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
 
 test("store processes a purchase request ID once without duplicate gold, items or notifications", () => {
