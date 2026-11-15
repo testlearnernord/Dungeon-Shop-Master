@@ -1,10 +1,11 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createShopLayout,replaceShelfPlacement} from "../../src/game/shopLayout.ts";
 import {rosterBoardAtWall,rosterBoardProblem,replaceRosterBoard,
   DEFAULT_ROSTER_BOARD} from "../../src/game/rosterBoardPlacement.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
-import {createGameState} from "../../src/game/gameState.ts";
+import {  } from "../../src/game/gameState.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 
 test("roster board stays on the old wall by default and can move to the other shop wall",()=>{
