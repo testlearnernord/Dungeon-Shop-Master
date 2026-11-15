@@ -8,7 +8,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import type { Interactable } from "./inventory";
-import { CHECKOUT_COUNTER, COMPACT_COUNTER } from "./shopLayout";
+import { DEFAULT_COUNTER_PLACEMENT, COMPACT_COUNTER } from "./shopLayout";
 import { buildBedroom } from "./bedroom";
 import { getDungeonSurfaces, tileLargeFloorUV } from "./dungeonSurfaces";
 
@@ -129,7 +129,7 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   level6PlayerBarrier.visibility = 0;
   level6PlayerBarrier.isPickable = false;
 
-  const counter=CHECKOUT_COUNTER;
+  const counter=DEFAULT_COUNTER_PLACEMENT;
   box(scene, "checkout-counter", { width: COMPACT_COUNTER.bodyWidth, height: 0.84, depth: COMPACT_COUNTER.bodyDepth },
     new Vector3(counter.x, 0.42, counter.z), new Color3(0.32, 0.2, 0.12), true, surfaces.wood);
   box(scene, "counter-top", { width: COMPACT_COUNTER.topWidth, height: 0.12, depth: COMPACT_COUNTER.topDepth },
