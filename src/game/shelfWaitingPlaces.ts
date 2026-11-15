@@ -7,6 +7,30 @@ import type { ShopLayout } from "./shopLayout.ts";
 const clearance=NPC_CENTER_CLEARANCE+0.17;
 const distance=(a:ShopPoint,b:ShopPoint)=>Math.hypot(a.x-b.x,a.z-b.z);
 
+/** Recompute waiting candidates from the actual shelf access socket after
+ * every furniture/room update. All wait purposes share one claim manager. */
+export function shelfWaitingCandidates(shelfAccess:ShopPoint):readonly ShopPoint[]{
+  if(!Number.isFinite(shelfAccess.x)||!Number.isFinite(shelfAccess.z))return [];
+  const intoRoom=shelfAccess.x<0?1:-1;
+  const candidates:ShopPoint[]=[];
+  // Prioritize lateral pockets in the same browsing zone, then nearby
+  // staggered points. Both wall orientations are permitted by validation.
+  for(const offset of [1.55,2.15,2.85]){
+    for(const dz of [0,-1.35,1.35,-2.4,2.4]){
+      for(const direction of [intoRoom,-intoRoom]){
+        const point={
+          x:Math.round((shelfAccess.x+offset*direction)*4)/4,
+          z:Math.round((shelfAccess.z+dz)*4)/4,
+        };
+        if(distance(point,shelfAccess)<1.25)continue;
+        candidates.push(point);
+      }
+    }
+  }
+  return candidates;
+}
+
+
 /** A temporary shopper waiting for an occupied shelf should remain near THAT
  * shelf, not trek to the rear-wall stockout/begging zone and back again.
  *
@@ -24,22 +48,7 @@ export function reserveShelfWaitingRoute(
   if(!Number.isFinite(shelfAccess.x)||!Number.isFinite(shelfAccess.z))
     return null;
   const checkout=checkoutQueuePoints(layout,{x:0,z:-1},8,room);
-  const intoRoom=shelfAccess.x<0?1:-1;
-  const candidates:ShopPoint[]=[];
-  // Prioritize lateral pockets in the same browsing zone, then nearby
-  // staggered points. Both wall orientations are permitted by validation.
-  for(const offset of [1.55,2.15,2.85]){
-    for(const dz of [0,-1.35,1.35,-2.4,2.4]){
-      for(const direction of [intoRoom,-intoRoom]){
-        const point={
-          x:Math.round((shelfAccess.x+offset*direction)*4)/4,
-          z:Math.round((shelfAccess.z+dz)*4)/4,
-        };
-        if(distance(point,shelfAccess)<1.25)continue;
-        candidates.push(point);
-      }
-    }
-  }
+  const candidates=shelfWaitingCandidates(shelfAccess);
   // Both path length and distance to the shelf matter. Waiting a meter from
   // your shelf is useful; walking four unnecessary meters is not.
   let chosen:{point:ShopPoint;route:ShopperRoute;score:number}|null=null;
