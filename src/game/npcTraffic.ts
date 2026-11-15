@@ -241,6 +241,26 @@ export function gateFlowDirection(
   return "entering";
 }
 
+/** The two 2.4m-wide gate lanes have enough shoulder clearance to pass
+ * each other. An outgoing customer must not wait for every inbound visitor
+ * when both are physically in their own separate lanes. Fall back to gate
+ * arbitration when any opponent is still crossing between the lanes.
+ */
+export function canShareGateLanes(
+  actor:GateTrafficActor,actors:readonly GateTrafficActor[],
+):boolean {
+  const own=gateTravelLane(actor.gate,actor.phase);
+  if(Math.abs(actor.x-own)>0.22)return false;
+  return actors.every(other=>{
+    if(other.gate!==actor.gate||other.phase===actor.phase)return true;
+    if(other.z<GATE_CLEAR_INSIDE_Z-0.3||
+       other.z>GATE_OUTER_HOLD_Z+0.4)return true;
+    const opposite=gateTravelLane(other.gate,other.phase);
+    return Math.abs(other.x-opposite)<=0.22&&
+      Math.abs(own-opposite)>=NPC_CENTER_CLEARANCE;
+  });
+}
+
 /** Only the *next* person waiting outside/inside yields. Never freeze someone
  * already inside the throat; doing so would turn a near miss into a deadlock. */
 export function mustYieldAtGate(
