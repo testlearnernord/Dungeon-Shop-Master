@@ -107,7 +107,9 @@ export function rosterBoardProblem(
   }else if(room&&room.expansionTier>0&&
     supportedExcavatedWall(board,room)){
     box=furnitureBounds({id:"adventurer-board",...board});
-  }else return "Mount the board on a supported shop wall.";
+  }else return room?.expansionTier
+    ?"Mount the board on a supported shop wall."
+    :"Mount the board on a clear main-shop wall.";
   // A legacy side-wall board also requires real support after the player
   // opens those original stones. The old full wall may now be disabled.
   if(room?.expansionTier&&
