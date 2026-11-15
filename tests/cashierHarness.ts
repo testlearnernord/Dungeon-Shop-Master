@@ -3,7 +3,8 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { GameStore } from "../src/game/gameStore.ts";
 import { createGameState } from "../src/game/gameState.ts";
 import { setupCashierHud } from "../src/cashierHud.ts";
-import {counterDockPoint} from "../src/game/shopLayout.ts";
+import {counterDockPoint,replaceShelfPlacement} from "../src/game/shopLayout.ts";
+import {createEmptyShelfSlots} from "../src/game/economy.ts";
 
 /** Standalone test-only register: authoritative payment, no game-save edits. */
 let harness:{store:GameStore;heroId:string;initialGold:number;
@@ -19,7 +20,11 @@ export function openCashierHarness(side:"staff"|"customer"="staff") {
   // An explicitly funded customer lets the test distinguish tip vs no tip.
   const state={...seeded,adventurers:seeded.adventurers.map(person=>
     person.id===hero.id?{...person,gold:100}:person)};
-  const store=new GameStore({...state,shopCarts:[{
+  const built=replaceShelfPlacement(state.shopLayout,{id:"shelf-1",x:-7,z:0,rotation:0});
+  if(built.message!=="Shelf placement saved.")throw Error(built.message);
+  const store=new GameStore({...state,shopLayout:built.layout,
+    shopEconomy:{...state.shopEconomy,slots:createEmptyShelfSlots("shelf-1")},
+    shopCarts:[{
     heroId:hero.id,day:state.day,
     lines:[{itemId:"bread",slotId:"shelf-1-slot-2",quantity:3,subtotal:12}],
   }]});
