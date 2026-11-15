@@ -49,7 +49,10 @@ export function surfaceFromMesh(name:string):BlueprintSurface|null {
   if(name==="stone-floor"||name==="bedroom-floor-skin"||
      /^excavated-floor--?\d+,-?\d+$/.test(name))return "floor";
   if(name==="stone-ceiling")return "ceiling";
-  if(name.startsWith("excavation-rock-face-"))return "rock-wall";
+  // Only actual topology-generated stone faces are valid mounting hits.
+  // A similarly prefixed decorative or stale mesh must not become a wall.
+  if(/^excavation-rock-face--?\d+(?:\.\d+)?:-?\d+(?:\.\d+)?:\d+(?:\.\d+)?:\d+(?:\.\d+)?:(?:-?\d+)?:(?:-?\d+)?:(?:true|false)$/.test(name))
+    return "rock-wall";
   if(name==="left-wall")return "left-wall";
   if(name==="right-wall")return "right-wall";
   if(name==="front-left-wall"||name==="front-right-wall")return "front-wall";
