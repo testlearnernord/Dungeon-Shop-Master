@@ -89,3 +89,54 @@ test("requests, cancellation and duplicate confirmation never advance without a 
   assert.deepEqual(confirmed, { pending: false, advance: true });
   assert.equal(transitionDayConfirmation(confirmed.pending, "confirm").advance, false);
 });
+
+test("manual payment closes a shop visit instead of randomly sending the buyer back inside",()=>{
+  const initial=createGameState(7351);
+  const buyer=initial.adventurers[0];
+  const state={...initial,
+    adventurers:initial.adventurers.map(person=>person.id===buyer.id
+      ?{...person,status:"at-shop" as const,floor:5 as const,
+        shopStayDays:0,level6Permit:false,gold:100}:person),
+    events:[...initial.events,{
+      id:`day-1:${buyer.id}:sale:shelf-1-slot-2:manual`,
+      type:"sale" as const,saleChannel:"manual" as const,day:1,
+      adventurerId:buyer.id,itemId:"bread" as const,quantity:1,revenue:4,
+      message:buyer.name+" paid for Waybread.",
+    }],
+  };
+  const next=advanceDay(state);
+  const updated=next.state.adventurers.find(person=>person.id===buyer.id)!;
+  assert.equal(updated.status,"returning");
+  assert.equal(updated.floor,4);
+  assert.equal(updated.shopStayDays,0);
+  assert.equal(next.events.filter(e=>e.adventurerId===buyer.id&&e.type==="shop-stay").length,0);
+  assert.equal(next.events.filter(e=>e.adventurerId===buyer.id&&e.type==="shop-departure").length,1);
+  assert.deepEqual(advanceDay(state),next,"a saved day tick must not reroll customer departures");
+});
+
+test("an unpaid cart settled at day close also departs; an L6 pass still takes precedence",()=>{
+  const initial=createGameState(9321);
+  const buyer=initial.adventurers[0];
+  const visiting={...initial,
+    adventurers:initial.adventurers.map(person=>person.id===buyer.id
+      ?{...person,status:"at-shop" as const,floor:5 as const,
+        shopStayDays:0,gold:100,level6Permit:false}:person),
+    shopCarts:[{heroId:buyer.id,day:1,
+      lines:[{itemId:"bread" as const,slotId:"shelf-1-slot-2",
+        quantity:1,subtotal:4}]}],
+  };
+  const settled=advanceDay(visiting);
+  assert.equal(settled.state.adventurers.find(person=>person.id===buyer.id)?.status,"returning");
+  assert(settled.events.some(e=>e.adventurerId===buyer.id&&e.type==="shop-departure"));
+  assert(!settled.events.some(e=>e.adventurerId===buyer.id&&e.type==="shop-stay"));
+  const permitted={...visiting,
+    adventurers:visiting.adventurers.map(person=>person.id===buyer.id
+      ?{...person,level6Permit:true}:person),
+  };
+  const next=advanceDay(permitted);
+  const expedition=next.state.adventurers.find(person=>person.id===buyer.id)!;
+  assert.equal(expedition.status,"expedition");
+  assert.equal(expedition.floor,6);
+  assert(next.events.some(e=>e.adventurerId===buyer.id&&e.type==="level6-departure"));
+  assert(!next.events.some(e=>e.adventurerId===buyer.id&&e.type==="shop-stay"));
+});
