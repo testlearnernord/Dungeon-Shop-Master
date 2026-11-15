@@ -4,13 +4,13 @@ import {checkoutQueuePoints} from "./checkoutQueue.ts";
 import {idleShopPositions,NPC_CENTER_CLEARANCE} from "./npcTraffic.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
 import {shelfWaitingCandidates} from "./shelfWaitingPlaces.ts";
-import {isObstructed,pathToShopGoal,type ShopPoint,type ShopperRoute} from "./shopperNavigation.ts";
+import {isObstructed,pathToShopGoal,pathToShelfAccess,type ShopPoint,type ShopperRoute} from "./shopperNavigation.ts";
 
 /** Presentation-only reservations. GameStore, carts, stock and gold remain
  * authoritative. One visitor owns one destination, regardless of whether
  * they are paying, requesting restock/credit or waiting for a busy shelf. */
 export type ShopServiceRole =
-  "checkout"|"restock"|"credit"|"shelf-wait"|"overflow"|"idle";
+  "checkout"|"restock"|"credit"|"shelf-browse"|"shelf-wait"|"overflow"|"idle";
 export interface ShopServiceClaim{
   readonly heroId:string;
   readonly role:ShopServiceRole;
@@ -76,6 +76,36 @@ export class ShopServiceSpots{
   }
   claim(heroId:string):ShopServiceClaim|null{return this.claims.get(heroId)??null;}
   snapshot():readonly ShopServiceClaim[]{return [...this.claims.values()];}
+
+  /** Reserve the actual shelf approach, not only the shelf ID.
+   * A checkout / credit / restock / idle customer must not receive the same
+   * endpoint while this browser is travelling or inspecting an item. Prefer
+   * real alternative points on the same shelf face before postponing service.
+   */
+  reserveShelfAccess(
+    heroId:string,shelfId:string,slotIndex:number,from:ShopPoint,
+    layout:ShopLayout,room?:Level5Room,request:ShopServiceRequest={},
+  ):ReservedShopRoute|null {
+    this.configure(layout,room);
+    if(!heroId||!isFinitePoint(from)||this.shelfBusyFor(shelfId,heroId))
+      return null;
+    const occupied=[...(request.occupied??[]),...(request.destinations??[])];
+    const otherClaims=[...this.claims.values()]
+      .filter(claim=>claim.heroId!==heroId).map(claim=>claim.point);
+    const unavailable=[...occupied,...otherClaims,...this.checkout,...this.restock];
+    const route=pathToShelfAccess(from,layout,shelfId,slotIndex,room,
+      point=>unavailable.every(other=>dist(point,other)>=CLEARANCE));
+    if(!route)return null;
+    const point=route.waypoints.at(-1)??from;
+    if(!isFinitePoint(point)||unavailable.some(other=>dist(point,other)<CLEARANCE))
+      return null;
+    // One atomic handoff: releasing a previous destination also drops the
+    // hero's previous shelf ownership, then binds both new claims together.
+    this.release(heroId);
+    if(!this.claimShelf(shelfId,heroId))return null;
+    this.claims.set(heroId,{heroId,role:"shelf-browse",point});
+    return {point,route};
+  }
 
   /** Never fabricate a final waypoint or allow two future reservations to
    * overlap. Moving traffic also counts as occupancy when acquiring a new
