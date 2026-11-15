@@ -1,10 +1,11 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
-import { ECONOMY, ITEMS, createEconomy } from "./economy.ts";
+import { ECONOMY, ITEMS,createEmptyShelfSlots } from "./economy.ts";
 import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
 import { LEVEL7_STEP_BUDGET } from "./level7Exploration.ts";
 import { generateDungeonLayout, tileAt } from "./dungeonLayout.ts";
-import { shopLayoutProblem, type ShelfPlacement,type ShopLayout } from "./shopLayout.ts";
+import {isShelfId,MAX_SHOP_SHELVES,shopLayoutProblem,
+  type ShelfPlacement,type ShopLayout} from "./shopLayout.ts";
 import {rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 import {bedroomFurnitureProblem,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 
@@ -62,7 +63,6 @@ function unique(value: string | number, seen: Set<string | number>, path: string
 }
 
 const itemIds = ITEMS.map((item) => item.id);
-const slotDefinitions = createEconomy().slots;
 const eventTypes = [
   "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure", "shop-walkout",
   "influx", "sale", "tip", "healed",
@@ -344,11 +344,12 @@ function validateState(value: unknown): asserts value is GameState {
     // below still rejects unmined rock and unsupported service footprints.
     const sideLimit=room===undefined?8:BASE_ROOM_HALF_EXTENT+2*room.expansionTier+0.5;
     const shelves=array(layout.shelves,"payload.shopLayout.shelves");
-    if(shelves.length!==2)fail("payload.shopLayout.shelves","must contain two shelves");
+    if(shelves.length<2||shelves.length>MAX_SHOP_SHELVES)
+      fail("payload.shopLayout.shelves","must contain 2 to "+MAX_SHOP_SHELVES+" shelves");
     const parsed:ShelfPlacement[]=shelves.map((value,i)=>{
       const path="payload.shopLayout.shelves["+i+"]";
       const shelf=object(value,path,["id","x","z","rotation"]);
-      choice(shelf.id,["shelf-1","shelf-2"],path+".id");
+      if(!isShelfId(shelf.id))fail(path+".id","must be a stable shelf instance ID");
       const x=validNumber(shelf.x,path+".x",-sideLimit,sideLimit);
       const z=validNumber(shelf.z,path+".z",-8,8);
       const rotation=integer(shelf.rotation,path+".rotation",0,3);
@@ -394,6 +395,8 @@ function validateState(value: unknown): asserts value is GameState {
     if(problem)fail("payload.rosterBoard",problem);
   }
 
+  const slotDefinitions=parsedShopLayout.shelves.flatMap(shelf=>
+    createEmptyShelfSlots(shelf.id));
   const economy = object(state.shopEconomy, "payload.shopEconomy", [
     "balance", "bag", "slots", "dailySales",
   ]);
@@ -404,7 +407,8 @@ function validateState(value: unknown): asserts value is GameState {
   for (const id of permittedItems) bagTotal += integer(bag[id], `payload.shopEconomy.bag.${id}`, 0, ECONOMY.bagCapacity);
   if (bagTotal > ECONOMY.bagCapacity) fail("payload.shopEconomy.bag", "exceeds bag capacity");
   const slots = array(economy.slots, "payload.shopEconomy.slots");
-  if (slots.length !== slotDefinitions.length) fail("payload.shopEconomy.slots", "must contain all ten shelf slots");
+  if (slots.length !== slotDefinitions.length)
+    fail("payload.shopEconomy.slots","must match five slots per placed shelf");
   const slotIds = new Set<string | number>();
   slots.forEach((value, index) => {
     const path = `payload.shopEconomy.slots[${index}]`;
