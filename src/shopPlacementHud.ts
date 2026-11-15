@@ -2,7 +2,7 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import type { Shop } from "./game/shop.ts";
 import {
-  counterOverlapsActor, getCounterPlacement, replaceCounterPlacement, replaceShelfPlacement,
+  counterOverlapsActor, getCounterPlacement,
   shelfOverlapsActor, type CounterPlacement, type ShelfId, type ShelfPlacement,
 } from "./game/shopLayout.ts";
 
@@ -39,14 +39,8 @@ export function setupShopPlacementHud(
   const update=(p:FurnitureDraft):void=>{
     draft=p;
     const occupied=occupiedBy(p);
-    shop.previewPlacement(p,!!occupied);
-    const check=p.id==="counter"
-      ? replaceCounterPlacement(store.state.shopLayout,p,store.state.level5Room)
-      : replaceShelfPlacement(store.state.shopLayout,p,store.state.level5Room);
-    const expected=p.id==="counter"?"Counter placement saved.":"Shelf placement saved.";
-    const invalid=check.layout===store.state.shopLayout&&check.message!==expected;
-    // A valid placement might be equal to its saved origin and still be legal.
-    const problem=invalid?check.message:occupied;
+    const problem=occupied??store.previewShopPlacement(p);
+    shop.previewPlacement(p,!!problem);
     save.disabled=!!problem;
     info.textContent=p.id+" · X "+p.x.toFixed(2)+
       " · Z "+p.z.toFixed(2)+" · Rotation "+(p.rotation*90)+"°";
