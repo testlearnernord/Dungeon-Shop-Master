@@ -62,5 +62,5 @@ test("furniture cannot be placed on unmined rock",()=>{
   const layout=createShopLayout();
   const moved:ShopLayout={...layout,shelves:layout.shelves.map(s=>
     s.id==="shelf-1"?{...s,x:8,z:0,rotation:0 as const}:s)};
-  assert.match(shopLayoutProblem(moved,room)??"",/wall/);
+  assert.match(shopLayoutProblem(moved,room)??"",/wall|Excavate connected floor/);
 });

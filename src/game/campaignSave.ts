@@ -1,4 +1,4 @@
-import { isValidLevel5Room } from "./level5Room.ts";
+import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
 import { ECONOMY, ITEMS, createEconomy } from "./economy.ts";
 import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
@@ -270,7 +270,8 @@ function validateState(value: unknown): asserts value is GameState {
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
   ], ["level5Room","bedroomFurniture","rosterBoard"]);
-  if (state.level5Room !== undefined && !isValidLevel5Room(state.level5Room))
+  const room=state.level5Room;
+  if (room !== undefined && !isValidLevel5Room(room))
     fail("payload.level5Room", "has invalid excavation geometry");
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
   if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
@@ -338,13 +339,17 @@ function validateState(value: unknown): asserts value is GameState {
   let parsedShopLayout:ShopLayout;
   {
     const layout=object(state.shopLayout,"payload.shopLayout",["shelves"],["counter"]);
+    // Furniture can legitimately be outside the original 7m cave once the
+    // corresponding corridor is mined. The full room-aware geometry check
+    // below still rejects unmined rock and unsupported service footprints.
+    const sideLimit=room===undefined?8:BASE_ROOM_HALF_EXTENT+2*room.expansionTier+0.5;
     const shelves=array(layout.shelves,"payload.shopLayout.shelves");
     if(shelves.length!==2)fail("payload.shopLayout.shelves","must contain two shelves");
     const parsed:ShelfPlacement[]=shelves.map((value,i)=>{
       const path="payload.shopLayout.shelves["+i+"]";
       const shelf=object(value,path,["id","x","z","rotation"]);
       choice(shelf.id,["shelf-1","shelf-2"],path+".id");
-      const x=validNumber(shelf.x,path+".x",-8,8);
+      const x=validNumber(shelf.x,path+".x",-sideLimit,sideLimit);
       const z=validNumber(shelf.z,path+".z",-8,8);
       const rotation=integer(shelf.rotation,path+".rotation",0,3);
       return {id:shelf.id as ShelfPlacement["id"],x,z,
@@ -353,13 +358,13 @@ function validateState(value: unknown): asserts value is GameState {
     let counter;
     if(layout.counter!==undefined){
       const p=object(layout.counter,"payload.shopLayout.counter",["x","z","rotation"]);
-      const x=validNumber(p.x,"payload.shopLayout.counter.x",-8,8);
+      const x=validNumber(p.x,"payload.shopLayout.counter.x",-sideLimit,sideLimit);
       const z=validNumber(p.z,"payload.shopLayout.counter.z",-8,8);
       const rotation=integer(p.rotation,"payload.shopLayout.counter.rotation",0,3);
       counter={x,z,rotation:rotation as 0|1|2|3};
     }
     parsedShopLayout={shelves:parsed,...(counter?{counter}:{})};
-    const problem=shopLayoutProblem(parsedShopLayout);
+    const problem=shopLayoutProblem(parsedShopLayout,room);
     if(problem)fail("payload.shopLayout",problem);
   }
   if(state.bedroomFurniture!==undefined){
