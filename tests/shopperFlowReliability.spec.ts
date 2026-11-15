@@ -60,6 +60,8 @@ test("eight incoming customers progress around relocated shelves and checkout",a
     const {shopServiceReachabilityProblem}=await import(
       "/Dungeon-Shop-Master/src/game/shopServiceReachability.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {ECONOMY}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
+    const {forecastShoppingIntents}=await import("/Dungeon-Shop-Master/src/game/shopperIntents.ts");
     const original=createGameState(7351);
     const movedShelf=replaceShelfPlacement(original.shopLayout,{
       id:"shelf-1",x:0,z:-2,rotation:1,
@@ -76,8 +78,9 @@ test("eight incoming customers progress around relocated shelves and checkout",a
     const state={
       ...original,shopLayout:movedCounter.layout,
       adventurers:original.adventurers.map((hero,index)=>index<8
-        ?{...hero,status:"at-shop" as const,floor:5 as const,gold:100,
-          inventory:{...hero.inventory,bread:0,healing:0},
+        ?{...hero,status:"at-shop" as const,floor:5 as const,
+          gold:index%4===0?0:index%4===1?8:100,
+          inventory:{...hero.inventory,bread:index%4===1?ECONOMY.breadTarget:0,healing:0},
           equipment:{weapon:null,armor:null}}
         :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...original.shopEconomy,
@@ -86,6 +89,9 @@ test("eight incoming customers progress around relocated shelves and checkout",a
             ?{...slot,itemId:"bread" as const,quantity:slot.capacity}
             :{...slot,itemId:null,quantity:0})},
     };
+    const reasons=[...forecastShoppingIntents(state).values()].map(x=>x.reason);
+    for(const desired of ["interested","unavailable","cannot-afford"])
+      if(!reasons.includes(desired))throw Error("Missing buyer scenario: "+desired);
     await new CampaignStorage().saveGame(state);
   });
   await page.reload();
@@ -96,8 +102,14 @@ test("eight incoming customers progress around relocated shelves and checkout",a
   expect(starting.visitors.length).toBeGreaterThanOrEqual(8);
   await expect.poll(async()=>{
     const {visitors}=await read();
+    const phases=visitors.map(v=>v.shoppingPhase??"");
+    return phases.includes("waiting-for-credit")&&phases.includes("waiting-for-restock");
+  },{timeout:80000,intervals:[800,1200,2000]}).toBe(true);
+  await expect.poll(async()=>{
+    const {visitors}=await read();
     return visitors.filter(visitor=>(visitor.cartUnits??0)>0 ||
       visitor.shoppingPhase==="waiting-for-restock"||
+      visitor.shoppingPhase==="waiting-for-credit"||
       visitor.shoppingPhase==="awaiting-checkout").length;
   },{timeout:75000,intervals:[1000,2000,3000]}).toBeGreaterThanOrEqual(3);
   const final=await read();
