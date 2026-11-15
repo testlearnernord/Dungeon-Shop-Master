@@ -19,7 +19,7 @@ The current game is a **TypeScript/Vite** browser application rendered with **Ba
 | State, day advancement and player mutations | `src/game/gameState.ts`, `src/game/gameStore.ts`, `src/bedtime.ts` |
 | Economy, item rules, credit, payment | `src/game/economy.ts`, `src/game/shopCredit.ts`, `src/game/customerCheckout.ts`, `src/game/shopCarts.ts` |
 | Adventurers and autonomous customer intentions | `src/game/adventurers.ts`, `src/game/shopperIntents.ts`, `src/game/shopArrivals.ts` |
-| Customer visuals, movement, waiting and checkout | `src/game/npcVisualSystem.ts`, `src/game/shopperNavigation.ts`, `src/game/checkoutQueue.ts`, `src/game/restockWaitingPlaces.ts` |
+| Customer visuals, movement, waiting and checkout | `src/game/npcVisualSystem.ts`, `src/game/shopServiceSpots.ts`, `src/game/shopperNavigation.ts`, `src/game/checkoutQueue.ts`, `src/game/restockWaitingPlaces.ts`, `src/game/shelfWaitingPlaces.ts` |
 | Shop geometry, cashier docking and service-path validation | `src/game/shopLayout.ts`, `src/game/level5Room.ts`, `src/game/shopServiceReachability.ts`, `src/game/checkoutQueue.ts` |
 | Contextual furniture editor and preview performance | `src/blueprintHud.ts`, `src/game/furnitureBlueprint.ts`, `src/game/furnitureSelection.ts`, `src/game/blueprintPreviewValidator.ts` |
 | Bedroom props and wall-mounted board | `src/game/bedroomFurniture.ts`, `src/game/bedroomFurnitureVisuals.ts`, `src/game/rosterBoardPlacement.ts`, `src/game/rosterBoard.ts` |
@@ -37,7 +37,7 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 1. **One authoritative game state.** Changes run through validated simulation/store operations. HUDs and meshes follow; they do not independently resolve purchases, damage or progression.
 2. **Replay fidelity.** Level 6/7 outcomes are committed before watching. Reopening a recording never rerolls combat, survival, loot, XP or merchant gold.
 3. **Spoiler-safe projection.** The ledger separates known business activity from sealed outcomes. Never derive pre-replay hero status from the after-day state. Pending-ledger restore must not temporarily render unsafe information.
-4. **Furniture preview versus commit.** Cursor previews do not write saved state. Click/commit rechecks collision and geometry using authoritative rules. Shelf access, checkout queues and the door stay reachable.
+4. **Furniture preview versus commit.** Cursor previews do not write saved state. Click/commit rechecks collision and geometry using authoritative rules. Shelf access, checkout queues and the door stay reachable. Focus outlines trace visible furniture, not the larger clearances reserved for NPC service.
 5. **All dependent transforms move together.** Bedroom object groups include their interaction targets, collision hulls and lights when applicable. Sleep range follows the moved bed; roster interaction follows the moved board. Register geometry, staff docking, queue and blueprint use the same counter placement and orientation.
 6. **No hunger implementation.** Waybread/Herbs heal HP. No starvation timers, hunger events or residual hunger logic.
 7. **Persistence discipline.** `SIMULATION_VERSION` is presently **12**. Different simulation versions are not automatically migrated. Optional fields can still preserve compatibility within version 12; do not conflate that with introducing a save migration. Invalid saves must not be silently overwritten.
@@ -45,7 +45,7 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 ## 4. Performance and runtime watchpoints
 
 - **Blueprint hover:** snapped candidate position and rotation may update every frame. Avoid full customer-path BFS per mouse movement or per ghost mesh. Cache settled geometry checks and invalidate against layout/room/furniture changes; keep moving NPC/player occupancy live.
-- **NPC traffic:** maintain navigable entrances, shelves, checkout positions and waiting areas. Measure actual congestion before changing collider sizes, collision semantics or path grid resolution.
+- **NPC traffic:** `ShopServiceSpots` derives checkout, shelf-wait, restock, credit and idle/overflow points from the current layout/room and reserves exclusive destinations and shelf service ownership. Invalidate only on topology changes, release on reassignment/departure, and refuse placement when no reachable free spot exists. Movement still has separate gate crowd arbitration; do not mistake service reservation for a complete multi-agent path planner. Measure actual congestion before changing collider sizes, collision semantics or path grid resolution.
 - **Replays and reports:** preserve snapshot/event identity across sleep, observation and reload. Never call day advancement twice through UI lifecycle.
 - **Meshes and listeners:** reuse materials/geometry where sensible; avoid accumulating per-frame allocations, subscriptions or event listeners after scene/view transitions.
 - **Audio/visual assets:** keep asset work separate from simulation semantics. A nicer model should not redefine its gameplay footprint accidentally.
