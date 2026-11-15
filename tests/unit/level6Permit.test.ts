@@ -1,6 +1,7 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState, advanceDay, setLevel6Permit, SIMULATION_VERSION } from "../../src/game/gameState.ts";
+import { advanceDay, setLevel6Permit, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
 
