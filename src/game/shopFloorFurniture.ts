@@ -89,6 +89,12 @@ export function shopFixtureBounds(
       minZ:p.z-b.maxZ,maxZ:p.z-b.minZ};
     case 3:return {minX:p.x-b.maxZ,maxX:p.x-b.minZ,
       minZ:p.z+b.minX,maxZ:p.z+b.maxX};
+    default:
+      // This helper can run during a draft's *pre-validation* before the
+      // store rejects a corrupt rotation. Return a finite provisional box
+      // instead of throwing in an earlier shelf-overlap check.
+      return {minX:p.x+b.minX,maxX:p.x+b.maxX,
+        minZ:p.z+b.minZ,maxZ:p.z+b.maxZ};
   }
 }
 
