@@ -131,6 +131,19 @@ export function shelfBounds(p:ShelfPlacement):Bounds {
     maxZ:p.z+Math.max(...corners.map(c=>c.z)),
   };
 }
+/** A fresh 1m excavation isn't necessarily big enough for a real shelf
+ * or cash desk. Tell the player what is missing instead of implying that P
+ * ignored the new floor. The same result is used by preview and commit. */
+function outsideOriginalSide(box:Bounds):boolean{
+  return box.minX< -7.5||box.maxX>7.5;
+}
+function unsupportedFootprintMessage(box:Bounds,room:Level5Room|undefined,
+  furniture:"shelf"|"counter"):string{
+  return room&&room.expansionTier>0&&outsideOriginalSide(box)
+    ?"Excavate connected floor beneath the entire "+furniture+
+      " and leave space for visitors; one rock cell is only 1 metre wide."
+    :"The "+furniture+" would intersect a shop wall.";
+}
 /** Descriptive validation is shared by editor, GameStore and strict save loading. */
 /** Every quarter-metre of a furniture footprint must rest on excavated floor. */
 function onRoomFloor(box:Bounds,room:Level5Room):boolean {
@@ -158,7 +171,7 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
     const box=shelfBounds(p);
     if(room ? !onRoomFloor(box,room) :
       box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
-      return "The shelf would intersect a shop wall.";
+      return unsupportedFootprintMessage(box,room,"shelf");
     if(overlap(box,movableCounterBounds(layout),0.04)||barriers.some(zone=>overlap(box,zone,0.04)))
       return "Keep the counter, entrances and visitor aisles clear.";
   }
@@ -171,7 +184,7 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
     const box=compactCounterBounds(p);
     if(room ? !onRoomFloor(box,room) :
       box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
-      return "The counter would intersect a shop wall.";
+      return unsupportedFootprintMessage(box,room,"counter");
     // The legacy cashier intentionally occupies a little of the central lane.
     // Block the actual gate approach, but retain that legacy placement.
     const gateApproach={minX:-1.8,maxX:1.8,minZ:4,maxZ:7};

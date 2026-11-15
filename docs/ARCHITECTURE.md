@@ -67,6 +67,6 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 
 ### Current excavation and casualty-display rules
 
-- Expanding Level 5 must reuse the scene's textured stone/flagstone materials. Mining mode should not replace the old wall finish with flat-colored rock.
-- Newly dug floor meshes must be pickable as blueprint floor surfaces. Final counter/shelf validation receives the authoritative excavated room.
+- Unlocking mining (U) **must not change visible wall art**. Until a side is actually excavated, retain its original 14m masonry mesh and use transparent pick-only targets in front of it. Once dug, only that side is segmented, and all remaining wall slices inherit the corresponding full-wall UV coordinates rather than rescaling the entire stone texture into every 1m segment.
+- Newly dug floor meshes must be pickable as blueprint floor surfaces. Final counter/shelf validation receives the authoritative excavated room. Support must cover the **full furniture footprint**, not just the cell under the crosshair. Incomplete excavations receive a precise status; contiguous excavations must pass the real P placement and save flow.
 - Floors 1–4 have offscreen combat simulation without player-watched recordings. Their victims must not automatically be shown as replay-verified memorial deaths. The background simulation may kill only through exhausted HP.

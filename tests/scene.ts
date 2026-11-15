@@ -577,3 +577,40 @@ export function inspectMinedFloorSurface(cell:string){
     kind:floor?.name.startsWith("excavated-floor-")?"floor":null,
   };
 }
+
+/** U must not alter the original full-wall meshes until this side is mined. */
+export function inspectMiningWallVisuals(){
+  const scene=Engine.LastCreatedScene!;
+  const left=scene.getMeshByName("left-wall");
+  const right=scene.getMeshByName("right-wall");
+  const targets=scene.meshes.filter(m=>m.metadata?.level5MineCell);
+  const slice=scene.meshes.find(m=>m.name.startsWith("excavation-rock-face-")&&
+    Math.abs(m.position.x-7.5)<.01&&m.visibility>=1);
+  const uv=slice?.getVerticesData("uv")??[];
+  const normals=slice?.getVerticesData("normal")??[];
+  const u:number[]=[];
+  for(let i=0;i<normals.length/3;i++)
+    if(normals[i*3]<-.9)u.push(uv[i*2]);
+  return {
+    leftVisible:left?.isEnabled()??false,
+    rightVisible:right?.isEnabled()??false,
+    leftMaterial:left?.material?.name??null,
+    rightMaterial:right?.material?.name??null,
+    transparentPickTargets:targets.filter(m=>m.visibility<.001&&m.isPickable).length,
+    uvSpan:u.length?Math.max(...u)-Math.min(...u):null,
+  };
+}
+export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
+  const scene=Engine.LastCreatedScene!;
+  const name=`excavated-floor-${Math.floor(x+.5)},${Math.floor(z+.5)}`;
+  const floor=scene.getMeshByName(name);
+  if(!floor||!floor.isPickable)throw new Error("Mined floor cannot be targeted");
+  const camera=scene.activeCamera as UniversalCamera;
+  // Stand just outside the moved shelf footprint in a mined side passage.
+  // A ray from the original showroom can hit the old structural wall first.
+  camera.position.set(x,1.7,z-3.48);
+  camera.setTarget(new Vector3(x,0,z));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+  return name;
+}
