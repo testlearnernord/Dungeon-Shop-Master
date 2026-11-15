@@ -25,6 +25,12 @@ interface ShopFloorDefinition {
   readonly solid:ShopFloorBounds;
   readonly preview:ShopFloorVisual;
   readonly focus:Pick<ShopFloorVisual,"width"|"depth"|"height">;
+  readonly service:
+    |{readonly outward:number;readonly slots:number;readonly slotSpacing:number}
+    |{readonly visitorGap:number;readonly staffGap:number;
+      readonly queueSpacing:number;readonly queueCapacity:number};
+  readonly body?:{readonly width:number;readonly depth:number};
+  readonly register?:ShopFloorPoint;
 }
 
 /** Every new public-shop fixture must be registered here AND given a
