@@ -60,7 +60,7 @@ const intersects=furnitureBoundsOverlap;
  * delete the supporting wall of a persisted board.
  */
 function supportedExcavatedWall(
-  board:RosterBoardPlacement,room:Level5Room,
+  board:RosterBoardPlacement,room:Level5Room,layout:ShopLayout,
 ):boolean{
   const faces=level5RockFaces(room);
   const vertical=board.rotation===1||board.rotation===3;
@@ -80,7 +80,7 @@ function supportedExcavatedWall(
     :board.rotation===2?{x:0,z:.65}:{x:0,z:-.65};
   return level5FloorWalkable({
     x:board.x+outward.x,z:board.z+outward.z,
-  },room,{shelves:[]},.25);
+  },room,layout,.25);
 }
 
 export function rosterBoardProblem(
@@ -105,7 +105,7 @@ export function rosterBoardProblem(
       return "Keep the board within the shop's side wall.";
     box=furnitureBounds({id:"adventurer-board",...board});
   }else if(room&&room.expansionTier>0&&
-    supportedExcavatedWall(board,room)){
+    supportedExcavatedWall(board,room,layout)){
     box=furnitureBounds({id:"adventurer-board",...board});
   }else return room?.expansionTier
     ?"Mount the board on a supported shop wall."
@@ -114,7 +114,7 @@ export function rosterBoardProblem(
   // opens those original stones. The old full wall may now be disabled.
   if(room?.expansionTier&&
      (board.rotation===1||board.rotation===3)&&
-     !supportedExcavatedWall(board,room))
+     !supportedExcavatedWall(board,room,layout))
     return "Move the board before excavating its supporting wall.";
   if(layout.shelves.some(shelf=>intersects(box,shelfBounds(shelf),0.13)))
     return "The board would be covered by a shelf.";
