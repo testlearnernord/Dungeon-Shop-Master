@@ -1,4 +1,5 @@
 import type { FurnitureId } from "./furnitureBlueprint.ts";
+import {SHOP_FLOOR_FURNITURE} from "./shopFloorFurniture.ts";
 
 /** All visible built-in furnishings have a stable identity, not a keyboard slot.
  * Legacy shelves and counter already have persisted transforms. Bedroom and
@@ -14,9 +15,12 @@ export interface LookedAtFurniture {
 }
 
 const furniture:readonly LookedAtFurniture[]=[
-  {id:"shelf-1",label:"Left shelf",movableId:"shelf-1",bounds:{width:1.36,height:2.35,depth:6.1},position:{x:-6.52,y:1.27,z:0}},
-  {id:"shelf-2",label:"Right shelf",movableId:"shelf-2",bounds:{width:1.36,height:2.35,depth:6.1},position:{x:6.52,y:1.27,z:0}},
-  {id:"counter",label:"Checkout counter",movableId:"counter",bounds:{width:1.55,height:1.38,depth:0.93},position:{x:0,y:0.69,z:2.5}},
+  {id:"shelf-1",label:"Left shelf",movableId:"shelf-1",
+    bounds:SHOP_FLOOR_FURNITURE.shelf.focus,position:{x:-6.52,y:1.27,z:0}},
+  {id:"shelf-2",label:"Right shelf",movableId:"shelf-2",
+    bounds:SHOP_FLOOR_FURNITURE.shelf.focus,position:{x:6.52,y:1.27,z:0}},
+  {id:"counter",label:"Checkout counter",movableId:"counter",
+    bounds:SHOP_FLOOR_FURNITURE.counter.focus,position:{x:0,y:0.69,z:2.5}},
   {id:"adventurer-board",label:"Adventurer board",movableId:"adventurer-board",bounds:{width:3.45,height:2.25,depth:0.22},position:{x:-5.55,y:2.17,z:-6.45}},
   {id:"bed",label:"Galvik's bed",movableId:"bed",bounds:{width:1.7,height:1.55,depth:2.5},position:{x:0.8,y:0.78,z:-10.6}},
   {id:"debt-book",label:"Book of Debts · move with desk",movableId:"desk",bounds:{width:1.18,height:1.25,depth:0.76},position:{x:-2.27,y:0.65,z:-9.08}},
