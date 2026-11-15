@@ -211,6 +211,14 @@ test("build a third shelf with N on mined floor, keep its stock IDs and 3D mesh 
       .aimAtExcavatedBlueprintFloor(11,0))).toContain("excavated-floor-11,0");
   await expect.poll(()=>page.locator("#blueprint-facing").textContent(),
     {timeout:10000}).toContain("X 11.00");
+  // A shelf facing outward into solid rock has NO reachable stock sockets.
+  // The real editor must reject it, then accept the player turning its
+  // customer face inward toward the shop.
+  await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").textContent(),
+    {timeout:10000}).toContain("cannot reach");
+  await page.keyboard.press("r");
+  await page.keyboard.press("r");
+  await expect.poll(()=>page.locator("#blueprint-facing").textContent()).toContain("180°");
   await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").textContent(),
     {timeout:15000}).toContain("Valid placement");
   await page.mouse.click(400,300);
@@ -227,7 +235,7 @@ test("build a third shelf with N on mined floor, keep its stock IDs and 3D mesh 
   });
   await expect.poll(async()=>(await read())?.ids.length).toBe(3);
   const persisted=await read();
-  expect(persisted?.built).toEqual({id:"shelf-3",x:11,z:0,rotation:0});
+  expect(persisted?.built).toEqual({id:"shelf-3",x:11,z:0,rotation:2});
   expect(persisted?.slots).toEqual(Array.from({length:5},(_,i)=>({
     id:`shelf-3-slot-${i+1}`,quantity:0,itemId:null,
   })));
