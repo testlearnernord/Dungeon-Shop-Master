@@ -1,6 +1,5 @@
 import type { FurnitureId } from "./furnitureBlueprint.ts";
 import {isShelfId} from "./shopLayout.ts";
-import {furnitureDefinition} from "./furnitureRegistry.ts";
 import {furnitureDefinition,type FurnitureKind} from "./furnitureRegistry.ts";
 
 /** All visible built-in furnishings have a stable identity, not a keyboard slot.
