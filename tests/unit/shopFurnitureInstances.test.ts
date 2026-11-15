@@ -14,7 +14,7 @@ import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 const origin={x:-3.43,z:4.65};
 function openWing():Level5Room{
   let room:Level5Room={...createLevel5Room(),expansionTier:3};
-  for(let x=8;x<=13;x++)for(let z=-3;z<=3;z++){
+  for(let x=8;x<=13;x++)for(let z=-5;z<=5;z++){
     const cut=excavateLevel5Cell(room,{x,z});
     assert(cut.ok,"mining must open "+x+","+z);
     room=cut.room;
@@ -104,7 +104,7 @@ test("invalid new shelves are atomic and strict saved layouts/slots cannot disag
   orphan.payload.shopEconomy.slots[10].shelfId="shelf-9";
   assert.throws(()=>parseSave(JSON.stringify(orphan)),/invalid slot ID/);
   const duplicate=clone();
-  duplicate.payload.shopLayout.shelves[2].id="shelf-2";
+  Object.assign(duplicate.payload.shopLayout.shelves[2],{id:"shelf-2"});
   assert.throws(()=>parseSave(JSON.stringify(duplicate)),/unique|contiguous|ordered/);
   assert.equal(nextShelfId({shelves:Array.from({length:MAX_SHOP_SHELVES},
     (_,i)=>({id:`shelf-${i+1}` as `shelf-${number}`,x:0,z:0,rotation:0 as const}))}),null);
