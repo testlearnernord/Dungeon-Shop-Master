@@ -169,6 +169,8 @@ export function pathToShelfAccess(
   const shelf=layout.shelves.find(entry=>entry.id===shelfId);
   if(!shelf||!Number.isSafeInteger(slotIndex)||slotIndex<0||slotIndex>=5)
     return null;
+  // Up to 15 nearby candidate spots share the same static shop geometry.
+  const routeTo=createShopRoutePlanner(layout,room);
   for(const outward of [0,0.3,0.55]){
     for(const along of [0,-0.35,0.35,-0.7,0.7]){
       const nominal=shelfServicePoint(shelf,slotIndex);
@@ -176,7 +178,7 @@ export function pathToShelfAccess(
       const goal={x:nominal.x+offset.x,z:nominal.z+offset.z};
       if(isObstructed(goal,layout,room)||
         (canUseStandingPoint&&!canUseStandingPoint(goal)))continue;
-      const route=pathToShopGoal(from,goal,layout,room);
+      const route=routeTo(from,goal);
       const reached=route?.waypoints.at(-1)??from;
       if(route&&Math.hypot(reached.x-goal.x,reached.z-goal.z)<=0.17)
         return route;
