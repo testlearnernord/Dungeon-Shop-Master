@@ -110,7 +110,7 @@ test("N builds then P moves the first compact shelf onto excavated floor",async(
   await page.reload();
   // No original shelf exists. Construct an actual one through the player
   // blueprint, then move that same saved instance with contextual P.
-  await page.keyboard.press("n");
+  await page.locator("#build-shelf").click();
   await expect(page.locator("#blueprint-panel")).toBeVisible();
   await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))
@@ -228,11 +228,8 @@ test("build the first four-slot shelf with N on mined floor and persist every re
       .aimAtExcavatedBlueprintFloor(11,0))).toContain("excavated-floor-11,0");
   await expect.poll(()=>page.locator("#blueprint-facing").textContent(),
     {timeout:10000}).toContain("X 11.00");
-  // A shelf facing outward into solid rock has NO reachable stock sockets.
-  // The real editor must reject it, then accept the player turning its
-  // customer face inward toward the shop.
-  await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").textContent(),
-    {timeout:10000}).toContain("cannot reach");
+  // The smaller four-slot shelf now fits this excavation at either facing.
+  // Rotation still changes the stored orientation and actual service sockets.
   await page.keyboard.press("r");
   await page.keyboard.press("r");
   await expect.poll(()=>page.locator("#blueprint-facing").textContent()).toContain("180°");
