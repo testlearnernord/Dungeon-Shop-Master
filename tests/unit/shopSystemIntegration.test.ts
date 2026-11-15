@@ -9,7 +9,7 @@ import {checkoutQueuePoints} from "../../src/game/checkoutQueue.ts";
 import {ShopServiceSpots} from "../../src/game/shopServiceSpots.ts";
 import {isObstructed,pathToShopGoal,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 import {type ShopLayout} from "../../src/game/shopLayout.ts";
-import { turnShopOffset } from "../../src/game/shopFloorFurniture.ts";
+import { turnShopOffset } from "../../src/game/furnitureRegistry.ts";
 import type {Level5Room} from "../../src/game/level5Room.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
