@@ -1,6 +1,7 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { advanceDay, createGameState } from "../../src/game/gameState.ts";
+import { advanceDay } from "../../src/game/gameState.ts";
 import { currentDayReceipts, salesByHero } from "../../src/game/saleView.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { ITEMS } from "../../src/game/economy.ts";
