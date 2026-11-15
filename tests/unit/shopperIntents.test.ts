@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createGameState, advanceDay } from "../../src/game/gameState.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
-import { createShopLayout, replaceShelfPlacement, rotateShelfOffset } from "../../src/game/shopLayout.ts";
+import {createShopLayout, replaceShelfPlacement} from "../../src/game/shopLayout.ts";
+import { turnShopOffset } from "../../src/game/shopFloorFurniture.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
 
 function prepared() {
@@ -65,7 +66,7 @@ test("relocating a shelf reroutes the forecast but does not change pricing, sale
   assert.deepEqual(forecastShoppingIntents({...state,shopLayout:moved.layout}),original);
   assert.deepEqual(advanceDay({...state,shopLayout:moved.layout}).state.shopEconomy,
     advanceDay(state).state.shopEconomy);
-  const target=rotateShelfOffset(1.75,-1,1);
+  const target=turnShopOffset(1.75,-1,1);
   const route=pathToShopGoal({x:-4,z:6},{x:target.x,z:target.z-2},moved.layout);
   assert(route&&route.waypoints.length>0);
   for(const step of route.waypoints)assert.equal(isObstructed(step,moved.layout),false);
