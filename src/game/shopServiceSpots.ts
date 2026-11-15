@@ -48,7 +48,7 @@ export class ShopServiceSpots{
     if(signature===this.layoutSignature)return;
     this.layoutSignature=signature;
     this.claims.clear();
-    this.checkout=checkoutQueuePoints(layout,{x:0,z:-1},24,room);
+    this.checkout=checkoutQueuePoints(layout,{x:0,z:-1},12,room);
     this.restock=restockWaitingPositions(layout,room);
     this.idle=idleShopPositions(layout,100,room);
   }

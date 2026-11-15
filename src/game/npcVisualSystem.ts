@@ -19,7 +19,7 @@ import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, canYieldShopperSpot, type GateTrafficActor } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, canYieldShopperSpot, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, pathToShelfAccess, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
 import { ShopServiceSpots } from "./shopServiceSpots.ts";
 
@@ -1083,7 +1083,13 @@ export class NpcVisualSystem {
     if(distance<=NPC_FINAL_WAYPOINT_RADIUS){
       const heldByNeighbor=occupied.some(other=>
         Math.hypot(other.x-target.x,other.z-target.z)<PERSONAL_SPACE);
-      if(!canFinishShopWaypoint(distance,heldByNeighbor,npc.blockedSeconds)){
+      const claim=this.serviceSpots.claim(npc.visitor.id);
+      const isReservedDestination=!!claim&&
+        Math.hypot(claim.point.x-target.x,claim.point.z-target.z)<0.3;
+      // Even after a traffic stall, a visitor must not ghost into a claimed
+      // checkout, stockout, credit or shelf waiting position.
+      if((heldByNeighbor&&isReservedDestination)||
+        !canFinishShopWaypoint(distance,heldByNeighbor,npc.blockedSeconds)){
         // Keep waiting for an occupied *visual* waypoint, but never forever.
         // Shelf and checkout admission have their own exclusive reservations.
         npc.blockedSeconds+=delta;
@@ -1130,9 +1136,13 @@ export class NpcVisualSystem {
     // need to steer around shelves and other visitors en route.
     const inGateApproach=(npc.phase==="entering"||npc.phase==="leaving")&&
       from.z>=5.1;
+    const ownedServiceDestination=this.serviceSpots.claim(npc.visitor.id)!==null;
     const move=shopCrowdStep(from,{x:target.x,z:target.z},occupied,
       WALK_SPEED*delta,walkable,npc.blockedSeconds,!inGateApproach&&from.z<=6.5,
-      inGateTrafficThroat(from)?NPC_GATE_SOFT_PASS_AFTER_SECONDS:NPC_SOFT_PASS_AFTER_SECONDS);
+      ownedServiceDestination&&from.z<=6.5
+        ?Number.POSITIVE_INFINITY
+        :inGateTrafficThroat(from)
+          ?NPC_GATE_SOFT_PASS_AFTER_SECONDS:NPC_SOFT_PASS_AFTER_SECONDS);
     const proposed=move.point;
     if(!proposed){
       npc.blockedSeconds+=delta;
