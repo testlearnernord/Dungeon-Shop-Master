@@ -22,7 +22,7 @@
 - Shopkeepers influence autonomous hero purchasing through shop operations; do not convert their choices into direct orders.
 - **No hunger/starvation system.** Waybread and Healing Herbs heal HP. Dungeon casualties require actual damage through zero HP, never a separate arbitrary instant-kill roll. Offscreen deaths are not automatically replay-verified memorials.
 - Replays visualize **committed** results. Do not re-resolve fights or leak unwatched outcomes through the day ledger.
-- Furniture previews are non-mutating; committed placement must preserve customer route/service access and movable interaction targets.
+- Furniture previews are non-mutating; committed placement must preserve customer route/service access and movable interaction targets. The register is operated only from its staff docking side; customer queues use a separate facing socket.
 - Source currently uses TypeScript/Vite/Babylon.js and strict save/version validation. Do not introduce an engine rewrite or save migration without a reason and current owner decision.
 - **Story causality remains OPEN.** A young hero willingly inheriting a curse, an amulet, a mercenary leader, Floor 100 and Galvik's eventual role are not final canon. Do not “lock” them merely because they appear in a brainstorm.
 

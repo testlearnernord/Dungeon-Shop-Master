@@ -2,6 +2,8 @@ import type { CashierCue } from "./cashierSfx.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { cartTotal } from "./game/shopCarts.ts";
 import { ITEMS } from "./game/economy.ts";
+import {counterDockPoint,isAtCounterStaffDock} from "./game/shopLayout.ts";
+import {Vector3} from "@babylonjs/core/Maths/math.vector";
 import { CASHIER_STAGES, CASHIER_TIMING_TOLERANCE, evaluateCashierTiming } from "./game/cashierChallenge.ts";
 import type { GameStore } from "./game/gameStore.ts";
 
@@ -145,10 +147,18 @@ export function setupCashierHud(
     if(heroId)return "Finish or cancel the current checkout.";
     if(document.querySelector("dialog[open]"))return "Close the open dialog first.";
     if(!shopActive())return "Return to the shop first.";
+    if(!isAtCounterStaffDock(store.state.shopLayout,camera.position))
+      return "Stand behind the counter at the cashier's station to serve.";
     const id=readyHero();
     const cart=store.state.shopCarts.find(entry=>entry.heroId===id);
     const hero=store.state.adventurers.find(entry=>entry.id===id);
     if(!id||!cart||!hero)return "Wait for the first customer to reach the register.";
+    // Short, same-side snap to the dedicated register workstation. The
+    // opposite customer socket cannot activate the checkout overlay.
+    const dock=counterDockPoint(store.state.shopLayout,"staff");
+    camera.position.x=dock.x;camera.position.z=dock.z;
+    const counter=store.state.shopLayout.counter;
+    if(counter)camera.setTarget(new Vector3(counter.x,camera.position.y+.10,counter.z));
     heroId=id;hits=0;misses=0;lastPress=Number.NEGATIVE_INFINITY;started=performance.now();
     customer.textContent=hero.name+" · Lv"+hero.level+" "+hero.role;
     lines.replaceChildren();

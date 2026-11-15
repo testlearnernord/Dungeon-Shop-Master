@@ -22,7 +22,7 @@ export interface FurnitureDefinition {
 export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=[
   {id:"shelf-1",label:"Left shelf",surfaces:["floor","left-wall","right-wall","front-wall","back-wall"],width:1.36,depth:6.1,height:2.35},
   {id:"shelf-2",label:"Right shelf",surfaces:["floor","left-wall","right-wall","front-wall","back-wall"],width:1.36,depth:6.1,height:2.35},
-  {id:"counter",label:"Checkout counter",surfaces:["floor"],width:2.5,depth:2.3,height:1.8},
+  {id:"counter",label:"Checkout counter",surfaces:["floor"],width:2.15,depth:1.8,height:1.25},
   {id:"desk",label:"Accounting desk + Book of Debts",surfaces:["floor"],width:1.18,depth:0.76,height:1.25},
   {id:"chest",label:"Storage chest",surfaces:["floor"],width:1.04,depth:0.72,height:0.9},
   {id:"candle",label:"Bedside candle + stool",surfaces:["floor"],width:0.66,depth:0.66,height:1.2},

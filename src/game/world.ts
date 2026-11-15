@@ -130,14 +130,15 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   level6PlayerBarrier.isPickable = false;
 
   const counter=CHECKOUT_COUNTER;
-  box(scene, "checkout-counter", { width: COMPACT_COUNTER.bodyWidth, height: 1.15, depth: COMPACT_COUNTER.bodyDepth },
-    new Vector3(counter.x, 0.68, counter.z), new Color3(0.32, 0.2, 0.12), true, surfaces.wood);
-  box(scene, "counter-top", { width: COMPACT_COUNTER.topWidth, height: 0.14, depth: COMPACT_COUNTER.topDepth },
-    new Vector3(counter.x, 1.32, counter.z), new Color3(0.42, 0.29, 0.17), true, surfaces.woodEdge);
-  box(scene, "register-base", { width: 0.62, height: 0.3, depth: 0.5 },
-    new Vector3(counter.x+0.35, 1.55, counter.z), new Color3(0.17, 0.2, 0.18), false);
-  const register = box(scene, "cash-register", { width: 0.48, height: 0.38, depth: 0.18 },
-    new Vector3(counter.x+counter.registerOffsetX, 1.87, counter.z+counter.registerOffsetZ),
+  box(scene, "checkout-counter", { width: COMPACT_COUNTER.bodyWidth, height: 0.84, depth: COMPACT_COUNTER.bodyDepth },
+    new Vector3(counter.x, 0.42, counter.z), new Color3(0.32, 0.2, 0.12), true, surfaces.wood);
+  box(scene, "counter-top", { width: COMPACT_COUNTER.topWidth, height: 0.12, depth: COMPACT_COUNTER.topDepth },
+    new Vector3(counter.x, 0.90, counter.z), new Color3(0.42, 0.29, 0.17), true, surfaces.woodEdge);
+  box(scene, "register-base", { width: 0.49, height: 0.17, depth: 0.39 },
+    new Vector3(counter.x+COMPACT_COUNTER.registerOffsetX, 1.05, counter.z+COMPACT_COUNTER.registerOffsetZ),
+    new Color3(0.17, 0.2, 0.18), false);
+  const register = box(scene, "cash-register", { width: 0.39, height: 0.26, depth: 0.18 },
+    new Vector3(counter.x+COMPACT_COUNTER.registerOffsetX, 1.22, counter.z+COMPACT_COUNTER.registerOffsetZ),
     new Color3(0.3, 0.48, 0.36), false);
   register.metadata = { kind: "register" };
   const bookMeshNames=["bedroom-account-book","bedroom-account-pages","bedroom-account-spine"];

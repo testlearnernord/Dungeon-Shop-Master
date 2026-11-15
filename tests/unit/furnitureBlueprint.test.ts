@@ -42,7 +42,7 @@ test("wall-surface blueprints face into Galvik's store and preserve shelf IDs",(
   const right=blueprintAtSurface("shelf-2","right-wall",{x:7.5,z:0},0)!;
   assert.equal(replaceShelfPlacement(layout,left).message,"Shelf placement saved.");
   assert.equal(replaceShelfPlacement(layout,right).message,"Shelf placement saved.");
-  const movable=blueprintAtSurface("counter","floor",{x:0,z:2.49},0)!;
+  const movable=blueprintAtSurface("counter","floor",{x:0,z:0.01},0)!;
   assert.equal(replaceCounterPlacement(layout,movable).message,"Counter placement saved.");
 });
 

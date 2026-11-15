@@ -68,11 +68,14 @@ test("queue allocation rejects invalid capacities without inventing standing spo
 test("checkout queue front remains aligned with shared legacy counter clearance", () => {
   const frontZ = CHECKOUT_COUNTER.clearanceMinZ - 0.65;
   assert.ok(Math.abs(frontZ - 0.5) < 1e-9);
-  const points = checkoutQueuePoints(createShopLayout(), {x:0,z:-1}, 1);
+  // Explicit legacy layout: an old save with no counter transform
+  // keeps the previous center register and queue geometry.
+  const legacy={shelves:createShopLayout().shelves};
+  const points = checkoutQueuePoints(legacy, {x:0,z:-1}, 1);
   assert.equal(points.length, 1);
   // Pathfinding may snap a candidate to a reachable endpoint on either side of the row.
   assert.ok(Math.abs(points[0].z - frontZ) <= 0.75);
-  assert.equal(isObstructed(points[0], createShopLayout()), false);
+  assert.equal(isObstructed(points[0], legacy), false);
 });
 
 test("rotated and relocated checkout offers reachable, separated standing spots",()=>{

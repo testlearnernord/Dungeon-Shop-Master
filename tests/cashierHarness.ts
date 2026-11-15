@@ -3,12 +3,13 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { GameStore } from "../src/game/gameStore.ts";
 import { createGameState } from "../src/game/gameState.ts";
 import { setupCashierHud } from "../src/cashierHud.ts";
+import {counterDockPoint} from "../src/game/shopLayout.ts";
 
 /** Standalone test-only register: authoritative payment, no game-save edits. */
 let harness:{store:GameStore;heroId:string;initialGold:number;
   initialBalance:number;latestMessage:string;open:()=>string;close:()=>void}|null=null;
 
-export function openCashierHarness() {
+export function openCashierHarness(side:"staff"|"customer"="staff") {
   const scene=Engine.LastCreatedScene!;
   const camera=scene.activeCamera as UniversalCamera;
   const canvas=document.querySelector<HTMLCanvasElement>("#renderCanvas")!;
@@ -22,6 +23,9 @@ export function openCashierHarness() {
     heroId:hero.id,day:state.day,
     lines:[{itemId:"bread",slotId:"shelf-1-slot-2",quantity:3,subtotal:12}],
   }]});
+  // The real cashier refuses transactions from the customer side.
+  const dock=counterDockPoint(store.state.shopLayout,side);
+  camera.position.x=dock.x;camera.position.z=dock.z;
   // Only the test replaces the inactive production overlay. Its production
   // listener is idle, and the page's real save/game store remains untouched.
   document.querySelector("#cashier-overlay")?.remove();
