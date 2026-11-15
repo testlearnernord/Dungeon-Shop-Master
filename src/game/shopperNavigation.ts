@@ -1,7 +1,7 @@
 import { level5FloorWalkable, level5FloorSegmentWalkable } from "./level5Walkability.ts";
 import type { Level5Room } from "./level5Room.ts";
 import {shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
-import {pointTouchesShopBounds,shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT} from "./shopFloorFurniture.ts";
+import {pointTouchesShopBounds,shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
 export interface ShopperRoute {
