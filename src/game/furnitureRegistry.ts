@@ -162,6 +162,9 @@ export interface FurnitureDefinition {
   readonly depth:number;
   readonly height:number;
   readonly collides:boolean;
+  /** Physical highlight bounds may be smaller than the placement ghost. */
+  readonly focus?:{readonly width:number;readonly height:number;
+    readonly depth:number};
   readonly interaction?:{readonly reach:number;readonly label:string};
   readonly customerService?: "shelf"|"checkout";
 }
@@ -178,6 +181,7 @@ export const FURNITURE_REGISTRY={
   counter:{
     mount:"shop-floor",purpose:"checkout",width:counter.preview.width,
     depth:counter.preview.depth,height:counter.preview.height,
+    focus:counter.focus,
     collides:true,customerService:"checkout",
   },
   desk:{mount:"private-floor",purpose:"debt",width:1.18,depth:.76,
