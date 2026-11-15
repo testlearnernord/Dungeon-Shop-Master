@@ -656,8 +656,7 @@ export class NpcVisualSystem {
       // A request expires even while its owner is walking around, or when
       // every station is full. Neither rerouting nor layout changes reset it.
       if(npc.restockSeconds!==null&&
-         npc.phase!=="entering"&&npc.phase!=="leaving"&&
-         (npc.requestActive||npc.phase==="queueing")){
+         npc.phase!=="entering"&&npc.phase!=="leaving"){
         npc.restockSeconds=restockWaitRemaining(npc.restockSeconds,delta);
         npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
         if(npc.restockSeconds<=0){
@@ -1112,7 +1111,7 @@ export class NpcVisualSystem {
     }
     if(npc.phase==="leaving"&&npc.blockedSeconds>5){
       npc.blockedSeconds=0;
-      this.beginLeaving(npc);
+      this.beginLeaving(npc,true);
       return true;
     }
     return false;
