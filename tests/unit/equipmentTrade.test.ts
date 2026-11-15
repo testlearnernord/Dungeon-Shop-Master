@@ -1,6 +1,7 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState, advanceDay, SIMULATION_VERSION } from "../../src/game/gameState.ts";
+import { advanceDay, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { tradeAtStartOfDay, buyWholesale, transferShelf, ITEMS } from "../../src/game/economy.ts";
 import { simulateDungeon } from "../../src/game/dungeonSimulation.ts";
 import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
