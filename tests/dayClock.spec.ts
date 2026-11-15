@@ -338,7 +338,15 @@ test("a paid visitor never respawns on roster changes or extends their visit ove
   // not loop through the entrance again because their simulation status
   // remains at-shop until Galvik sleeps.
   await expect.poll(async()=>await paidVisual(),{timeout:12000}).toBeNull();
-  await page.locator(`#adventurer-roster .level6-permit[data-adventurer-id="${ids.other}"]`).click();
+  // The compact roster is intentionally collapsed in the real HUD.
+  // Invoke its actual button click handler rather than waiting for a
+  // hidden row to become visible; this still uses GameStore.setLevel6Permit.
+  await page.evaluate(otherId=>{
+    const button=document.querySelector<HTMLButtonElement>(
+      `#adventurer-roster .level6-permit[data-adventurer-id="${otherId}"]`);
+    if(!button)throw Error("Missing other visitor's Level 6 permit");
+    button.click();
+  },ids.other);
   await expect(page.locator(
     `#adventurer-roster .level6-permit[data-adventurer-id="${ids.other}"]`))
     .toHaveAttribute("aria-pressed","true");
