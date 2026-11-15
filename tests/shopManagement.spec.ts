@@ -6,7 +6,7 @@ test("shop management keeps daily actions visible and reports optional", async (
   await expect(page.locator("#day")).toBeVisible();
   await expect(page.locator("#merchant-gold")).toBeVisible();
   await expect(page.locator("#open-wholesale")).toBeVisible();
-  await expect(page.locator("#open-placement")).toBeVisible();
+  await expect(page.locator("#build-shelf")).toBeVisible();
   // The immersive shop HUD starts compact, while core actions remain visible.
   await expect(page.locator("#shop-status-content")).toBeHidden();
   await expect(page.locator(".bedtime-tip")).toBeHidden();
