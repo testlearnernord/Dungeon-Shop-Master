@@ -7,6 +7,9 @@
 export type ShopFloorKind="shelf"|"counter";
 /** Every modular shelf owns four independent, persistent merchandise positions. */
 export const SHELF_SLOT_COUNT=4;
+/** Identical geometry anchors for ghost, physical stock meshes and labels. */
+export const shelfSlotLocalZ=(index:number):number=>
+  (index-(SHELF_SLOT_COUNT-1)/2)*0.72;
 export type QuarterTurn=0|1|2|3;
 export interface ShopFloorTransform {
   readonly x:number;
@@ -123,7 +126,7 @@ export function shelfServicePoint(
   if(!Number.isSafeInteger(slotIndex)||slotIndex<0||
      slotIndex>=service.slots)throw new RangeError("Unknown shelf slot");
   const offset=turnShopOffset(service.outward,
-    (slotIndex-(service.slots-1)/2)*service.slotSpacing,shelf.rotation);
+    shelfSlotLocalZ(slotIndex),shelf.rotation);
   return {x:shelf.x+offset.x,z:shelf.z+offset.z};
 }
 
