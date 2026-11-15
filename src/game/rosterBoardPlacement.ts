@@ -72,7 +72,7 @@ function supportedExcavatedWall(
     const supported=faces.some(face=>
       (vertical?face.width<face.depth:face.depth<face.width)&&
       Math.abs((vertical?face.x:face.z)-plane)<.12&&
-      Math.abs((vertical?face.z:face.x)-sample)<.48);
+      Math.abs((vertical?face.z:face.x)-sample)<=.5001);
     if(!supported)return false;
   }
   const outward=board.rotation===1?{x:-.65,z:0}
