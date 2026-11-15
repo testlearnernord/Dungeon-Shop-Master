@@ -4,7 +4,7 @@ import {
   SHOP_FLOOR_FURNITURE,shopFixtureBounds,shopFixtureTouches,
   shopFixtureBounds as bounds,shelfServicePoint,cashierServicePoint,
   turnShopOffset,pointTouchesShopBounds,
-} from "../../src/game/shopFloorFurniture.ts";
+} from "../../src/game/furnitureRegistry.ts";
 import {
   COMPACT_COUNTER,createShopLayout,replaceShelfPlacement,replaceCounterPlacement,
   counterDockPoint,shelfBounds,compactCounterBounds,shopFloorFixtures,
