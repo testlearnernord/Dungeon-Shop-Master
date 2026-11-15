@@ -6,7 +6,8 @@ async function seedEmptyShop(page:import("@playwright/test").Page) {
   const heroId=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const initial=createGameState(7351);
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const initial=withStockedSmallShelf(createGameState(7351));
     const shopper=initial.adventurers[0];
     const state={
       ...initial,
@@ -125,7 +126,8 @@ test("three hungry customers wait off-aisle when bread is sold out but expensive
   await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const initial=createGameState(7351);
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const initial=withStockedSmallShelf(createGameState(7351));
     const state={
       ...initial,
       adventurers:initial.adventurers.map((hero,index)=>index<3
