@@ -1,7 +1,7 @@
 import type {Level5Room} from "./level5Room.ts";
 import type {ShopLayout} from "./shopLayout.ts";
 import {checkoutQueuePoints} from "./checkoutQueue.ts";
-import {idleShopPositions,NPC_CENTER_CLEARANCE} from "./npcTraffic.ts";
+import {idleShopPositions,NPC_STATION_CLEARANCE} from "./npcTraffic.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
 import {shelfWaitingCandidates} from "./shelfWaitingPlaces.ts";
 import {isObstructed,pathToShopGoal,pathToShelfAccess,type ShopPoint,type ShopperRoute} from "./shopperNavigation.ts";
@@ -30,7 +30,7 @@ export interface ReservedShopRoute{
   readonly route:ShopperRoute;
 }
 
-const CLEARANCE=NPC_CENTER_CLEARANCE+0.16;
+const CLEARANCE=NPC_STATION_CLEARANCE;
 const dist=(a:ShopPoint,b:ShopPoint)=>Math.hypot(a.x-b.x,a.z-b.z);
 const isFinitePoint=(p:ShopPoint)=>Number.isFinite(p.x)&&Number.isFinite(p.z);
 
