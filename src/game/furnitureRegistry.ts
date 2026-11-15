@@ -1,10 +1,12 @@
-/** Canonical geometry for furniture that occupies the public Floor-5 shop.
+/** Canonical geometry for all furniture in the Level-5 shop.
  * This is deliberately independent of Babylon, the economy and save I/O.
  * A furniture type has a support/placement footprint, a physical collision
  * hull, a visual preview/focus, and service sockets. These are distinct.
  * Bedroom props and wall-mounted boards are separate placement domains.
  */
 export type ShopFloorKind="shelf"|"counter";
+/** Every modular shelf owns four independent, persistent merchandise positions. */
+export const SHELF_SLOT_COUNT=4;
 export type QuarterTurn=0|1|2|3;
 export interface ShopFloorTransform {
   readonly x:number;
@@ -41,12 +43,12 @@ export const SHOP_FLOOR_FURNITURE={
   shelf:{
     // Coordinates relative to the unrotated shelf root. Its back does not
     // sit at the root's centre; keeping this offset avoids wall clipping.
-    footprint:{minX:-0.16,maxX:1.16,minZ:-3.02,maxZ:3.02},
-    solid:{minX:-0.16,maxX:1.16,minZ:-3.02,maxZ:3.02},
-    preview:{width:1.36,depth:6.1,height:2.35,
-      offsetX:0.48,offsetY:1.27,offsetZ:0},
-    focus:{width:1.36,depth:6.1,height:2.35},
-    service:{outward:1.75,slots:5,slotSpacing:1},
+    footprint:{minX:-0.13,maxX:1.05,minZ:-1.58,maxZ:1.58},
+    solid:{minX:-0.13,maxX:1.05,minZ:-1.58,maxZ:1.58},
+    preview:{width:1.2,depth:3.18,height:1.72,
+      offsetX:0.46,offsetY:0.93,offsetZ:0},
+    focus:{width:1.2,depth:3.18,height:1.72},
+    service:{outward:1.48,slots:SHELF_SLOT_COUNT,slotSpacing:0.72},
   },
   counter:{
     // The larger footprint protects the cashier and first visitor socket;
@@ -176,8 +178,6 @@ const shelfDefinition={
   collides:true,customerService:"shelf",
 } as const;
 export const FURNITURE_REGISTRY={
-  "shelf-1":shelfDefinition,
-  "shelf-2":shelfDefinition,
   counter:{
     mount:"shop-floor",purpose:"checkout",width:counter.preview.width,
     depth:counter.preview.depth,height:counter.preview.height,
@@ -195,7 +195,7 @@ export const FURNITURE_REGISTRY={
   "adventurer-board":{mount:"shop-wall",purpose:"roster",
     width:3.45,depth:.22,height:2.25,collides:false,
     interaction:{reach:2.2,label:"Adventurers"}},
-} as const satisfies Record<FurnitureKind,FurnitureDefinition>;
+} as const satisfies Record<Exclude<FurnitureKind,`shelf-${number}`>,FurnitureDefinition>;
 
 const registeredShelf=(id:string):boolean=>
   /^shelf-[1-9][0-9]*$/.test(id)&&Number(id.slice(6))<=12;
