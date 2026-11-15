@@ -13,7 +13,7 @@ import {DEFAULT_ROSTER_BOARD} from "./game/rosterBoardPlacement.ts";
 
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
-import {getCounterPlacement} from "./game/shopLayout.ts";
+import {getCounterPlacement,isShelfId,nextShelfId} from "./game/shopLayout.ts";
 import {turnShopOffset} from "./game/furnitureRegistry.ts";
 import {
   blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,
@@ -32,6 +32,7 @@ export function setupBlueprintHud(
 ):{close:()=>void;open:()=>void}{
   const scene=camera.getScene();
   const openButton=document.querySelector<HTMLButtonElement>("#open-blueprint")!;
+  const buildShelfButton=document.querySelector<HTMLButtonElement>("#build-shelf");
   const panel=document.createElement("aside");
   panel.id="blueprint-panel";
   panel.hidden=true;
@@ -231,7 +232,7 @@ export function setupBlueprintHud(
     const dimensions=found.bounds;
     const saved=getSaved(found.movableId);
     let x=saved.x,z=saved.z;
-    if(found.movableId==="shelf-1"||found.movableId==="shelf-2"){
+    if(isShelfId(found.movableId)){
       const offset=turnShopOffset(0.48,0,saved.rotation);
       x+=offset.x;z+=offset.z;
     }
@@ -359,6 +360,27 @@ export function setupBlueprintHud(
       .catch(()=>{updateStatus("Click the game to enable free camera look.",false);});
     updateGhost();
   };
+  /** Building a shelf uses the *same* ghost, floor raycast and authoritative
+   * preview/commit as moving one. Only its stable ID is new.
+   */
+  const buildShelf=():void=>{
+    if(enabled){close();return;}
+    if(!canEdit()||document.querySelector("dialog[open]"))return;
+    const id=nextShelfId(store.state.shopLayout);
+    if(!id){
+      focusHint.textContent="The shop cannot support more shelf instances.";
+      focusHint.hidden=false;
+      return;
+    }
+    enabled=true;panel.hidden=false;activeId=id;rotation=0;draft=null;
+    title.textContent="BUILD · SHELF "+id.slice(6);
+    updateStatus("Aim at supported floor, clear space for buyers, then click.",false);
+    document.body.classList.add("blueprint-active");
+    focusMesh.setEnabled(false);focusHint.hidden=true;
+    if(document.pointerLockElement!==canvas)void canvas.requestPointerLock()
+      .catch(()=>updateStatus("Click the game to enable free camera look.",false));
+    updateGhost();
+  };
   const commit=():void=>{
     // The first click always completes validation synchronously, even when
     // hovering began less than 140 ms ago. GameStore repeats authoritative
@@ -375,6 +397,7 @@ export function setupBlueprintHud(
   };
 
   openButton.addEventListener("click",open);
+  buildShelfButton?.addEventListener("click",buildShelf);
   cancel.addEventListener("click",close);
   // Capture before ordinary shelf stocking and register interaction handlers.
   canvas.addEventListener("pointerdown",event=>{
@@ -390,6 +413,10 @@ export function setupBlueprintHud(
   },true);
   window.addEventListener("keydown",event=>{
     if(event.repeat||event.ctrlKey||event.altKey||event.metaKey)return;
+    if(event.code==="KeyN"&&!event.shiftKey){
+      event.preventDefault();event.stopImmediatePropagation();buildShelf();
+      return;
+    }
     if(event.code==="KeyP"&&!event.shiftKey){
       event.preventDefault();event.stopImmediatePropagation();open();
       return;
