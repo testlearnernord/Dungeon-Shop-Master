@@ -258,7 +258,8 @@ test("shop and sleeping cell reuse textured materials without changing collision
   expect(materials.sharedWall).toBe(true);
   expect(materials.sharedTimber).toBe(true);
   expect(materials.sharedFloor).toBe(true);
-  expect(materials.semanticShelf).toBe("shelf-slot");
+  expect(materials.semanticShelf).toBeUndefined();
+  expect(materials.hasPrebuiltShelf).toBe(false);
   expect(materials.solidWalls).toBe(true);
   expect(materials.idleDecor).toBe(true);
   await moveToBed(page);
