@@ -5,7 +5,7 @@ import {checkoutQueuePoints} from "./checkoutQueue.ts";
 import {idleShopPositions,NPC_STATION_CLEARANCE} from "./npcTraffic.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
 import {shelfWaitingCandidates} from "./shelfWaitingPlaces.ts";
-import {isObstructed,pathToShopGoal,pathToShelfAccess,type ShopPoint,type ShopperRoute} from "./shopperNavigation.ts";
+import {createShopRoutePlanner,isObstructed,pathToShelfAccess,type ShopPoint,type ShopperRoute} from "./shopperNavigation.ts";
 
 /** Presentation-only reservations. GameStore, carts, stock and gold remain
  * authoritative. One visitor owns one destination, regardless of whether
@@ -174,6 +174,7 @@ export class ShopServiceSpots{
     }
     const start=(request.preferredIndex??0)%Math.max(1,candidates.length);
     const ordered=[...candidates.slice(start),...candidates.slice(0,start)];
+    const routeTo=createShopRoutePlanner(layout,room);
     // A shelf-waiter should wait close to its own shop shelf, rather than
     // take the first free pocket across the entire shop.
     let chosen:(ReservedShopRoute&{score:number})|null=null;
@@ -182,11 +183,14 @@ export class ShopServiceSpots{
         request.avoid&&dist(point,request.avoid)<1.85||
         [...occupied,...otherClaims,...forbidden].some(p=>dist(point,p)<CLEARANCE))
         continue;
-      const route=pathToShopGoal(from,point,layout,room);
+      const route=routeTo(from,point);
       if(!route)continue;
       const actual=route.waypoints.at(-1)??from;
       if(dist(actual,point)>0.17)continue;
       if(role!=="shelf-wait"){
+        // Switching from a shelf to checkout/restock/roaming must not leave
+        // its previous exclusive shelf ownership behind.
+        this.release(heroId);
         this.claims.set(heroId,{heroId,role,point});
         return {point,route};
       }
@@ -195,6 +199,7 @@ export class ShopServiceSpots{
       if(!chosen||score<chosen.score)chosen={point,route,score};
     }
     if(chosen){
+      this.release(heroId);
       this.claims.set(heroId,{heroId,role,point:chosen.point});
       return {point:chosen.point,route:chosen.route};
     }
