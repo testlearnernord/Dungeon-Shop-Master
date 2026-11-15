@@ -13,7 +13,7 @@ import {
   COMPACT_COUNTER, getCounterPlacement, shopLayoutProblem,
   type CounterPlacement, type ShelfId, type ShelfPlacement,
 } from "./shopLayout.ts";
-import {SHOP_FLOOR_FURNITURE,shelfServicePoint,turnShopOffset} from "./shopFloorFurniture.ts";
+import {SHOP_FLOOR_FURNITURE,shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT,shelfSlotLocalZ} from "./shopFloorFurniture.ts";
 
 interface ShelfGroup {
   root: TransformNode;
@@ -179,18 +179,18 @@ export class Shop {
       const root = new TransformNode(shelfId+"-root", this.scene);
       const material = getDungeonSurfaces(this.scene).wood;
       const back = MeshBuilder.CreateBox(shelfId+"-back",{
-        width:0.18,height:2,depth:5.8,
+        width:0.15,height:1.5,depth:3.0,
       },this.scene);
       back.parent = root;
-      back.position.set(0,1.35,0);
+      back.position.set(0,0.85,0);
       back.material = material;
       back.checkCollisions = true;
       back.isPickable = true; // Looking at the frame, not only stock slots, selects the shelf for P
       const plank=MeshBuilder.CreateBox(shelfId+"-plank",{
-        width:1.2,height:0.18,depth:5.8,
+        width:1.0,height:0.14,depth:3.0,
       },this.scene);
       plank.parent=root;
-      plank.position.set(0.48,0.65,0);
+      plank.position.set(0.42,0.52,0);
       plank.material=material;
       plank.checkCollisions=true;
       plank.isPickable=true;
@@ -207,14 +207,14 @@ export class Shop {
       outline.setEnabled(false);
       this.shelves.set(shelfId,{root,previewOutline:outline});
 
-      for(let index=0;index<5;index++){
+      for(let index=0;index<SHELF_SLOT_COUNT;index++){
         const slot=this.store.state.shopEconomy.slots.find(({id})=>
           id===`${shelfId}-slot-${index+1}`)!;
         const mesh=MeshBuilder.CreateBox(slot.id,{
-          width:0.76,height:0.14,depth:0.78,
+          width:0.65,height:0.12,depth:0.61,
         },this.scene);
         mesh.parent=root;
-        mesh.position.set(0.48,0.82,index-2);
+        mesh.position.set(0.44,0.66,shelfSlotLocalZ(index));
         mesh.material=this.slotMaterials.get("empty")!;
         mesh.checkCollisions=true;
         mesh.isPickable=true;
@@ -232,7 +232,7 @@ export class Shop {
       width:0.24,height:0.2,
     },this.scene);
     label.parent=root;
-    label.position.set(0.88,1.08,slot.index-2);
+    label.position.set(0.78,0.92,shelfSlotLocalZ(slot.index));
     label.rotation.y=Math.PI/2;
     const texture=new DynamicTexture(slot.id+"-number-texture",{
       width:128,height:128,
@@ -269,8 +269,8 @@ export class Shop {
               size:item.id==="bread"?0.28:0.32,
             },this.scene);
         visual.parent=root;
-        visual.position.set(0.48,1.08+(count%2)*0.25,
-          slot.index-2+(count-2)*0.12);
+        visual.position.set(0.44,0.94+(count%2)*0.18,
+          shelfSlotLocalZ(slot.index)+(count-2)*0.09);
         visual.material=this.slotMaterials.get(slot.itemId)!;
         visual.isPickable=false;
         visuals.push(visual);
