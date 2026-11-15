@@ -330,7 +330,8 @@ export function canYieldShopperSpot(
 ):boolean {
   return phase==="queueing"&&!hasRemainingRoute&&
     (shoppingPhase==="waiting-for-next-day"||
-     shoppingPhase==="waiting-for-shelf");
+     shoppingPhase==="waiting-for-shelf"||
+     shoppingPhase==="roaming-request");
 }
 
 export interface ShopCrowdMove {
