@@ -1,7 +1,7 @@
 import { level5FloorWalkable, level5FloorSegmentWalkable } from "./level5Walkability.ts";
 import type { Level5Room } from "./level5Room.ts";
-import {rotateShelfOffset,shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
-import {pointTouchesShopBounds,shelfServicePoint} from "./shopFloorFurniture.ts";
+import {shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
+import {pointTouchesShopBounds,shelfServicePoint,turnShopOffset} from "./shopFloorFurniture.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
 export interface ShopperRoute {
@@ -165,7 +165,7 @@ export function pathToShelfAccess(
   for(const outward of [0,0.3,0.55]){
     for(const along of [0,-0.35,0.35,-0.7,0.7]){
       const nominal=shelfServicePoint(shelf,slotIndex);
-      const offset=rotateShelfOffset(outward,along,shelf.rotation);
+      const offset=turnShopOffset(outward,along,shelf.rotation);
       const goal={x:nominal.x+offset.x,z:nominal.z+offset.z};
       if(isObstructed(goal,layout,room)||
         (canUseStandingPoint&&!canUseStandingPoint(goal)))continue;
