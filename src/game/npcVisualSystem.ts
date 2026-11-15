@@ -214,6 +214,13 @@ export class NpcVisualSystem {
    * visual is already leaving and must never be regenerated or reversed. */
   private paidThisDay:ReadonlySet<string>=new Set();
   private wishBubblesVisible=true;
+  private engagedBeggarId:string|null=null;
+
+  /** An E-dialog is an actual customer conversation. Keep that customer
+   * present, looking at Galvik, and do not expire their request mid-dialog. */
+  holdBeggarConversation(heroId:string|null):void {
+    this.engagedBeggarId=heroId;
+  }
 
   constructor(private readonly scene: Scene) {
     this.portraits.addEventListener("load", () => {
@@ -409,18 +416,20 @@ export class NpcVisualSystem {
     if(import.meta.env.VITE_E2E!=="1"||!Number.isFinite(seconds)||
       seconds<0)throw new Error("Restock test hook disabled.");
     const npc=this.npcs.get(heroId);
-    if(!npc||npc.root.metadata.shoppingPhase!=="waiting-for-restock")
-      throw new Error("Customer is not waiting for a restock.");
+    if(!npc||npc.intent?.reason!=="unavailable"||
+       npc.restockSeconds===null)
+      throw new Error("Customer has no active restock request.");
     npc.restockSeconds=seconds;
   }
 
-  /** Interact only with a physically present, facing, stationary petitioner. */
+  /** Interact with a nearby, facing petitioner even during a safe browsing
+   * stroll. Opening the dialog pauses that customer's visual walk. */
   nearbyBeggarId(position:Vector3,direction:Vector3,maxDistance=3.1):string|null {
     const facing=Math.hypot(direction.x,direction.z);
     if(facing<0.01)return null;
     const candidates=[...this.npcs.values()].filter(npc=>
-      npc.visitor.status==="at-shop"&&
-      npc.root.metadata.shoppingPhase==="waiting-for-credit");
+      npc.visitor.status==="at-shop"&&npc.intent?.reason==="cannot-afford"&&
+      npc.restockSeconds!==null&&npc.phase!=="leaving");
     let nearest:{id:string;distance:number}|null=null;
     for(const npc of candidates){
       const dx=npc.root.position.x-position.x;
@@ -445,7 +454,7 @@ export class NpcVisualSystem {
 
   dismissBeggar(heroId:string):void {
     const npc=this.npcs.get(heroId);
-    if(npc?.root.metadata.shoppingPhase==="waiting-for-credit")
+    if(npc?.intent?.reason==="cannot-afford"&&npc.phase!=="leaving")
       this.leaveUnserved(npc);
   }
 
@@ -596,6 +605,11 @@ export class NpcVisualSystem {
     };
     for (const npc of this.npcs.values()) {
       const beforeMove={x:npc.root.position.x,z:npc.root.position.z};
+      if(npc.visitor.id===this.engagedBeggarId){
+        npc.root.metadata.movementMode="talking";
+        this.animate(npc,delta,beforeMove);
+        continue;
+      }
       if(npc.phase==="queueing")npc.root.metadata.movementMode="waiting";
       if(npc.phase==="considering")npc.root.metadata.movementMode="inspecting";
       const cameraPosition = this.scene.activeCamera?.globalPosition;
