@@ -55,6 +55,7 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 ### Physical shop
 
 - Furniture previews must be cheap and non-mutating; the final placement must be validated. The cashier has distinct visitor and staff sockets, and Galvik can operate it only from the staff side.
+- CURRENT technical foundation: public-shop shelves and cashier share a canonical registered footprint, physical obstacle hull, visual preview/highlight and customer/staff service socket definition across placement, pathfinding and UI. Their persisted IDs, item slots and economy remain unchanged; bedroom props and the wall-mounted noticeboard still use separate placement domains.
 - Shelf/checkout access, both entrances and at least two distinct reachable restock/credit petition stations may not be obstructed by a committed rearrangement. Every active service destination is exclusive per shopper, including safe roaming targets; moving furniture or excavating invalidates old reservations. The Level 5 side expansion uses the same floor-walkability and routes as the original cave. Bedroom objects and the wall noticeboard have their own player-only access rules and must preserve dependent visuals/interactions and sleep access. **Future shop-floor furniture** must join the authoritative placement, collision, pathfinding, service-reachability and persistence contract before it is considered playable; as-yet-unimplemented furniture cannot be claimed tested.
 
 ## 4. Narrative status
