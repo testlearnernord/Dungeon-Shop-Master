@@ -170,7 +170,6 @@
   #dungeon-hud #dungeon-minimap { width: 148px; height: 148px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #shelf-placement button,
   #cashier-overlay button,
   #arena-hud .arena-actions button,
   #dungeon-hud .dungeon-actions button { transition: none; }
