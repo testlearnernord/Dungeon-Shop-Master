@@ -1,8 +1,9 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { useHealingSupplies, generateAdventurer, type AdventurerState } from "../../src/game/adventurers.ts";
 import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
-import { advanceDay, createGameState, type GameState } from "../../src/game/gameState.ts";
+import { advanceDay, type GameState } from "../../src/game/gameState.ts";
 
 function freeze<T>(value: T): T {
   if (value !== null && typeof value === "object") {
