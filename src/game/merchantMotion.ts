@@ -15,11 +15,17 @@ const clamp=(n:number)=>Math.min(1,Math.max(0,Number.isFinite(n)?n:0));
 export function merchantActionPose(action:MerchantAction|null,progress:number):MerchantActionPose {
   const t=clamp(progress);
   const swing=action===null?0:Math.sin(Math.PI*t);
+  const ease=(n:number)=>{const p=clamp(n);return p*p*(3-2*p);};
+  // Mining is a real overhead swing: lift the shaft behind the shoulder,
+  // drive the iron head down into the rock, then recover the arm. A single
+  // positive sine swing instead looked like Galvik poking upward with a rod.
+  const minePitch=t<=.22?-.82*ease(t/.22)
+    :t<=.56?-.82+2.04*ease((t-.22)/.34)
+      :1.22*(1-ease((t-.56)/.44));
   return {
     leftPitch:action==="stock"?-.58*swing:
-      action==="destock"?.36*swing:action==="checkout"?-.36*swing:action==="mine"?.28*swing:0,
-    // A downward strike from the raised pick, not an upswing from below.
-    rightPitch:action==="mine"?1.12*swing:
+      action==="destock"?.36*swing:action==="checkout"?-.36*swing:action==="mine"?-.16*swing:0,
+    rightPitch:action==="mine"?minePitch:
       action==="stock"?-.92*swing:action==="destock"?.52*swing:
         action==="checkout"?-.5*swing:0,
     rightRoll:action==="mine"?-.28*swing:action==="checkout"?.17*swing:0,
