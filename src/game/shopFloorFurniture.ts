@@ -50,7 +50,8 @@ export const SHOP_FLOOR_FURNITURE={
     preview:{width:2.15,depth:1.8,height:1.25,
       offsetX:0,offsetY:0.64,offsetZ:0},
     focus:{width:1.55,depth:0.93,height:1.38},
-    service:{visitorGap:0.65,staffGap:0.58},
+    service:{visitorGap:0.65,staffGap:0.58,
+      queueSpacing:1.3,queueCapacity:5},
     body:{width:1.35,depth:0.75},
     register:{x:0.28,z:0.04},
   },
@@ -86,15 +87,19 @@ export function shopFixtureBounds(
 }
 
 /** True when an actor's horizontal radius overlaps either registered zone. */
+export function pointTouchesShopBounds(
+  b:ShopFloorBounds,actor:ShopFloorPoint,radius:number,
+):boolean{
+  return Number.isFinite(actor.x)&&Number.isFinite(actor.z)&&
+    Number.isFinite(radius)&&radius>=0&&
+    actor.x+radius>b.minX&&actor.x-radius<b.maxX&&
+    actor.z+radius>b.minZ&&actor.z-radius<b.maxZ;
+}
 export function shopFixtureTouches(
   kind:ShopFloorKind,p:ShopFloorTransform,actor:ShopFloorPoint,
   radius:number,zone:"footprint"|"solid"="footprint",
 ):boolean{
-  if(!Number.isFinite(actor.x)||!Number.isFinite(actor.z)||
-     !Number.isFinite(radius)||radius<0)return false;
-  const b=shopFixtureBounds(kind,p,zone);
-  return actor.x+radius>b.minX&&actor.x-radius<b.maxX&&
-    actor.z+radius>b.minZ&&actor.z-radius<b.maxZ;
+  return pointTouchesShopBounds(shopFixtureBounds(kind,p,zone),actor,radius);
 }
 
 export function shelfServicePoint(
