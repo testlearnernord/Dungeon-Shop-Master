@@ -7,7 +7,7 @@ import { furnitureFacing } from "./game/furnitureFacing.ts";
 import { createBlueprintPreviewValidator } from "./game/blueprintPreviewValidator.ts";
 import {getBedroomFurniture,isBedroomFurnitureId,
   type BedroomFurnitureId} from "./game/bedroomFurniture.ts";
-import {furnitureTouchesActor} from "./game/furnitureRegistry.ts";
+import {furnitureTouchesActor,SHELF_SLOT_COUNT,shelfSlotLocalZ} from "./game/furnitureRegistry.ts";
 import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
 import {DEFAULT_ROSTER_BOARD} from "./game/rosterBoardPlacement.ts";
 
@@ -97,12 +97,12 @@ export function setupBlueprintHud(
     parts.push({mesh,type,direction});
     return mesh;
   };
-  // Shelf: back, plank and five distinct cubbies expose the usable +X side.
-  previewBox("blueprint-shelf-back",0.18,2,5.8,0,1.35,0,"shelf");
-  previewBox("blueprint-shelf-plank",1.2,0.18,5.8,0.48,0.65,0,"shelf");
-  for(let idx=0;idx<5;idx++){
-    previewBox("blueprint-slot-"+idx,0.76,0.14,0.78,
-      0.48,0.82,idx-2,"shelf");
+  // All newly built shelves share the same four-position compact silhouette.
+  previewBox("blueprint-shelf-back",0.15,1.5,3.0,0,0.85,0,"shelf");
+  previewBox("blueprint-shelf-plank",1.0,0.14,3.0,0.42,0.52,0,"shelf");
+  for(let idx=0;idx<SHELF_SLOT_COUNT;idx++){
+    previewBox("blueprint-slot-"+idx,0.65,0.12,0.61,
+      0.44,0.66,shelfSlotLocalZ(idx),"shelf");
   }
   // Counter: visible top and raised register establish the back of the till.
   previewBox("blueprint-counter-body",1.35,0.84,0.75,0,0.42,0,"counter");
@@ -133,11 +133,11 @@ export function setupBlueprintHud(
     previewBox("blueprint-roster-board-frame-side",0.12,2.09,0.15,
       side*1.69,2.17,0,"adventurer-board");
   // Asymmetric directional shafts and tips survive every quarter turn.
-  previewBox("blueprint-shelf-front-shaft",0.55,0.12,0.12,
-    1.22,1.8,0,"shelf",true);
+  previewBox("blueprint-shelf-front-shaft",0.40,0.12,0.12,
+    1.05,1.42,0,"shelf",true);
   const shelfTip=MeshBuilder.CreateCylinder("blueprint-shelf-front-arrow",
     {height:0.56,diameterTop:0,diameterBottom:0.4,tessellation:4},scene);
-  shelfTip.parent=ghost;shelfTip.position.set(1.62,1.8,0);
+  shelfTip.parent=ghost;shelfTip.position.set(1.42,1.42,0);
   shelfTip.rotation.z=-Math.PI/2;
   shelfTip.isPickable=false;shelfTip.checkCollisions=false;
   shelfTip.renderingGroupId=2;parts.push({mesh:shelfTip,type:"shelf",direction:true});
@@ -182,7 +182,7 @@ export function setupBlueprintHud(
   let lookedAt:LookedAtFurniture|null=null;
 
   let enabled=false;
-  let activeId:FurnitureId="shelf-1";
+  let activeId:FurnitureId="counter";
   let rotation:0|1|2|3=0;
   let draft:FurnitureDraft|null=null;
   let placeable=false;
