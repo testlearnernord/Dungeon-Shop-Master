@@ -1,6 +1,6 @@
 import type {Level5Room} from "./level5Room.ts";
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
-import {shelfServicePoint} from "./shopFloorFurniture.ts";
+import {shelfServicePoint,SHELF_SLOT_COUNT} from "./shopFloorFurniture.ts";
 import {checkoutQueuePoints} from "./checkoutQueue.ts";
 import {idleShopPositions,NPC_STATION_CLEARANCE} from "./npcTraffic.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
@@ -93,7 +93,7 @@ export class ShopServiceSpots{
          dist(point,counter)<2.6)return false;
       if(this.checkout.some(q=>dist(point,q)<2.3)||
          this.restock.some(q=>dist(point,q)<1.85))return false;
-      return layout.shelves.every(shelf=>[0,1,2,3,4].every(index=>{
+      return layout.shelves.every(shelf=>Array.from({length:SHELF_SLOT_COUNT},(_,index)=>index).every(index=>{
         return dist(point,shelfServicePoint(shelf,index))>=1.95;
       }));
     });
