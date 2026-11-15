@@ -702,6 +702,8 @@ export class NpcVisualSystem {
 
   private beginEntering(npc: NpcVisual, slot: number, fromOutside: boolean): void {
     this.releaseShelf(npc);
+    npc.routeProgress=null;
+    npc.trafficReroutes=0;
     this.clearWish(npc);
     npc.slot = slot;
     npc.phase = "entering";
@@ -724,6 +726,7 @@ export class NpcVisualSystem {
 
   private beginLeaving(npc: NpcVisual): void {
     this.releaseShelf(npc);
+    npc.routeProgress=null;
     npc.phase = "leaving";
     npc.gateSide = npc.visitor.status === "expedition" ? "level6" : "level4";
     const gateX = gateTravelLane(npc.gateSide,"leaving");
@@ -817,6 +820,7 @@ export class NpcVisualSystem {
 
   private beginBrowsing(npc:NpcVisual):void {
     this.releaseShelf(npc);
+    npc.routeProgress=null;
     const item=npc.intent?.items[npc.targetIndex];
     const slot=item&&this.shop?[...this.shop.slotMeshes.values()]
       .find(s=>s.id===item.slotId):undefined;
