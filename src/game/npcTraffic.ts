@@ -302,9 +302,10 @@ export function trackWaypointProgress(
   if(!previous||Math.hypot(previous.target.x-target.x,
     previous.target.z-target.z)>0.05)
     return {target:{...target},closest:distance,stagnantSeconds:0};
-  const closest=Math.min(previous.closest,distance);
   const advanced=previous.closest-distance>=0.35;
-  return {target:previous.target,closest:advanced?distance:closest,
+  // Keep the last meaningful checkpoint until at least 35cm of real
+  // progress accumulates. Individual movement frames are much smaller.
+  return {target:previous.target,closest:advanced?distance:previous.closest,
     stagnantSeconds:advanced?0:previous.stagnantSeconds+delta};
 }
 
