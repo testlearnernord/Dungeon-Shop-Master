@@ -10,10 +10,10 @@ import { ITEMS, type ItemId, type Slot } from "./inventory";
 import { GameStore } from "./gameStore";
 import { getDungeonSurfaces } from "./dungeonSurfaces";
 import {
-  COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, shopLayoutProblem,
+  COMPACT_COUNTER, getCounterPlacement, shopLayoutProblem,
   type CounterPlacement, type ShelfId, type ShelfPlacement,
 } from "./shopLayout.ts";
-import {SHOP_FLOOR_FURNITURE,shelfServicePoint} from "./shopFloorFurniture.ts";
+import {SHOP_FLOOR_FURNITURE,shelfServicePoint,turnShopOffset} from "./shopFloorFurniture.ts";
 
 interface ShelfGroup {
   root: TransformNode;
@@ -128,7 +128,7 @@ export class Shop {
     const put=(name:string,x:number,y:number,z:number)=>{
       const mesh=this.scene.getMeshByName(name);
       if(!mesh)return;
-      const offset=rotateShelfOffset(x,z,p.rotation);
+      const offset=turnShopOffset(x,z,p.rotation);
       mesh.position.set(p.x+offset.x,y,p.z+offset.z);
       mesh.rotation.y=p.rotation*Math.PI/2;
     };
@@ -137,7 +137,7 @@ export class Shop {
     put("register-base",COMPACT_COUNTER.registerOffsetX,1.05,COMPACT_COUNTER.registerOffsetZ);
     put("cash-register",COMPACT_COUNTER.registerOffsetX,1.22,COMPACT_COUNTER.registerOffsetZ);
     const visual=SHOP_FLOOR_FURNITURE.counter.preview;
-    const offset=rotateShelfOffset(visual.offsetX,visual.offsetZ,p.rotation);
+    const offset=turnShopOffset(visual.offsetX,visual.offsetZ,p.rotation);
     this.counterOutline.position.set(p.x+offset.x,visual.offsetY,p.z+offset.z);
     this.counterOutline.rotation.y=p.rotation*Math.PI/2;
   }
