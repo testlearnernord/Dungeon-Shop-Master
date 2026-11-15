@@ -126,8 +126,13 @@ test("eight incoming customers progress around relocated shelves and checkout",a
           remaining:v.restockRemaining,blocked:v.blockedSeconds,
         })));
       }
-      const phases=visitors.map(v=>v.shoppingPhase??"");
-      return phases.includes("waiting-for-credit")&&phases.includes("waiting-for-restock");
+      // Requests now roam after a short petition; requiring both visitors
+      // to remain frozen at exact stations would reintroduce the behavior
+      // this test is supposed to prevent.
+      return visitors.some(v=>v.shoppingReason==="cannot-afford"&&
+        (v.restockRemaining??0)>0) &&
+        visitors.some(v=>v.shoppingReason==="unavailable"&&
+          (v.restockRemaining??0)>0);
     },{timeout:80000,intervals:[800,1200,2000]}).toBe(true);
   }catch(error){
     console.error("NPC_TRAFFIC_FAILURE",JSON.stringify(trafficSamples));
