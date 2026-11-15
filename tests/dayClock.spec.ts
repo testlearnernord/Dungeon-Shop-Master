@@ -65,7 +65,7 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger",async(
   await expect(page.locator("#merchant-ledger")).toBeVisible();
   await page.locator("#ledger-next").click();
   await expect(page.locator("#ledger-heading")).toHaveText("Goods & Receipts");
-  await expect(page.locator("#ledger-page-content")).toContainText("SALES BY GOOD");
+  await expect(page.locator("#ledger-page-content")).toContainText("No receipts were posted");
   await page.locator("#ledger-next").click();
   await expect(page.locator("#ledger-heading")).toHaveText("The Living");
   const knownBeforeReload=await page.locator(".ledger-hero-list").innerText();
@@ -312,7 +312,8 @@ test("a paid visitor never respawns on roster changes or extends their visit ove
   const ids=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const initial=createGameState(72541);
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const initial=withStockedSmallShelf(createGameState(72541));
     const paid=initial.adventurers[0],other=initial.adventurers[1];
     const prepared={...initial,
       adventurers:initial.adventurers.map((hero,index)=>index<2
