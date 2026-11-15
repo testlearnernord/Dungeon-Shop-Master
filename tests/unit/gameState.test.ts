@@ -16,7 +16,8 @@ test("a fresh session starts on Day 1 with independent state and a welcome event
   });
   assert.equal(state.adventurers.length, 10);
   assert.equal(state.shopEconomy.balance, 20);
-  assert.equal(state.shopEconomy.slots.length, 10);
+  assert.equal(state.shopEconomy.slots.length, 0);
+  assert.deepEqual(state.shopLayout.shelves, [],"the player builds every shelf");
   assert.deepEqual(state.dungeonFloors, []);
   assert.notEqual(state.events, createGameState().events);
 });
