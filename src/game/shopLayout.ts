@@ -25,10 +25,10 @@ export interface ShelfPlacement {
 }
 export interface ShopLayout {
   readonly shelves: readonly ShelfPlacement[];
-  /** Optional for compatibility with existing version-10 saves. */
+  /** Optional checkout transform for saved campaign compatibility within v13. */
   readonly counter?: CounterPlacement;
 }
-/** Persisted checkout transform. Geometry lives in shopFloorFurniture.ts. */
+/** Persisted checkout transform. Geometry lives in furnitureRegistry.ts. */
 export interface CounterPlacement {
   readonly x: number;
   readonly z: number;
