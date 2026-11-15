@@ -1,5 +1,6 @@
 import type { CounterPlacement, ShelfId, ShelfPlacement } from "./shopLayout.ts";
-import {FURNITURE_REGISTRY} from "./furnitureRegistry.ts";
+import {furnitureDefinition} from "./furnitureRegistry.ts";
+import {isShelfId} from "./shopLayout.ts";
 import type {BedroomFurnitureId,BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 import {isBedroomFurnitureId} from "./bedroomFurniture.ts";
 import {rosterBoardAtWall,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
@@ -23,7 +24,7 @@ export interface FurnitureDefinition {
 /** All visible sizes come from the same registry used by collision
  * and authoritative placement. Keep IDs and mounting faces explicit here.
  */
-const def=(id:FurnitureId)=>FURNITURE_REGISTRY[id];
+const def=(id:FurnitureId)=>furnitureDefinition(id);
 const catalogEntry=(id:FurnitureId,label:string,
   surfaces:readonly BlueprintSurface[]):FurnitureDefinition=>({
     id,label,surfaces,width:def(id).width,depth:def(id).depth,
@@ -73,7 +74,9 @@ export function blueprintAtSurface(
 ):FurnitureDraft|null {
   if(!Number.isFinite(hit.x)||!Number.isFinite(hit.z))return null;
   const definition=FURNITURE_CATALOG.find(entry=>entry.id===id);
-  if(!definition?.surfaces.includes(surface))return null;
+  const permitted=definition?.surfaces??(isShelfId(id)?
+    ["floor","left-wall","right-wall","front-wall","back-wall"]:[]);
+  if(!permitted.includes(surface))return null;
   if(id==="adventurer-board"){
     const wall=rosterBoardAtWall(surface,hit,room);
     return wall?{id,...wall}:null;
