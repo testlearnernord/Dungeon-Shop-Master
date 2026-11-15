@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {FURNITURE_REGISTRY,furnitureBounds,furnitureTouchesActor,
+import {FURNITURE_REGISTRY,furnitureDefinition,furnitureBounds,furnitureTouchesActor,
   type FurnitureKind} from "../../src/game/furnitureRegistry.ts";
 import {FURNITURE_CATALOG,blueprintAtSurface,surfaceFromMesh} from
   "../../src/game/furnitureBlueprint.ts";
@@ -33,7 +33,7 @@ test("all eight furniture types share one geometry and mounting registry",()=>{
   ];
   assert.deepEqual(Object.keys(FURNITURE_REGISTRY),ids);
   for(const id of ids){
-    const def=FURNITURE_REGISTRY[id];
+    const def=furnitureDefinition(id);
     const visual=FURNITURE_CATALOG.find(x=>x.id===id);
     assert(visual,"Blueprint catalog must register "+id);
     assert.equal(visual.width,def.width);
