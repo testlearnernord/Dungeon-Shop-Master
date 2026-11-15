@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CHECKOUT_LINE_MAX_CUSTOMERS, checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoint, checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
-import { CHECKOUT_COUNTER, createShopLayout, replaceCounterPlacement, shopLayoutProblem } from "../../src/game/shopLayout.ts";
+import { createShopLayout, replaceCounterPlacement, shopLayoutProblem } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
 import type { ShopCart } from "../../src/game/shopCarts.ts";
 import { NPC_CENTER_CLEARANCE } from "../../src/game/npcTraffic.ts";
@@ -80,9 +80,8 @@ test("queue allocation rejects invalid capacities without inventing standing spo
 });
 
 
-test("checkout queue front remains aligned with shared legacy counter clearance", () => {
-  const frontZ = CHECKOUT_COUNTER.clearanceMinZ - 0.65;
-  assert.ok(Math.abs(frontZ - 0.5) < 1e-9);
+test("legacy saves keep the historical checkout queue front without duplicate desk geometry", () => {
+  const frontZ = 0.5;
   // Explicit legacy layout: an old save with no counter transform
   // keeps the previous center register and queue geometry.
   const legacy={shelves:createShopLayout().shelves};
