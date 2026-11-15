@@ -1,3 +1,4 @@
+import {createStockedShopLayout as createShopLayout} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -5,10 +6,7 @@ import {
   shopFixtureBounds as bounds,shelfServicePoint,cashierServicePoint,
   turnShopOffset,pointTouchesShopBounds,
 } from "../../src/game/furnitureRegistry.ts";
-import {
-  COMPACT_COUNTER,createShopLayout,replaceShelfPlacement,replaceCounterPlacement,
-  counterDockPoint,shelfBounds,compactCounterBounds,shopFloorFixtures,
-} from "../../src/game/shopLayout.ts";
+import { COMPACT_COUNTER, replaceShelfPlacement, replaceCounterPlacement, counterDockPoint, shelfBounds, compactCounterBounds, shopFloorFixtures,  } from "../../src/game/shopLayout.ts";
 import {FURNITURE_CATALOG} from "../../src/game/furnitureBlueprint.ts";
 import {classifyFurnitureMesh} from "../../src/game/furnitureSelection.ts";
 import {level5FloorWalkable} from "../../src/game/level5Walkability.ts";
