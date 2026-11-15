@@ -1,4 +1,5 @@
-import { COMPACT_COUNTER, getCounterPlacement, shelfBounds, type ShopLayout } from "./shopLayout.ts";
+import {shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
+import {pointTouchesShopBounds} from "./shopFloorFurniture.ts";
 import { isLevel5Air, type Level5Room } from "./level5Room.ts";
 
 export interface FloorPoint { readonly x:number; readonly z:number }
@@ -19,16 +20,10 @@ export function level5FloorWalkable(
     if(!isLevel5Air(room,{x:Math.floor(x+0.5),z:Math.floor(z+0.5)}))
       return false;
   }
-  const counter=getCounterPlacement(layout);
-  const width=counter.rotation%2===0?COMPACT_COUNTER.topWidth:COMPACT_COUNTER.topDepth;
-  const depth=counter.rotation%2===0?COMPACT_COUNTER.topDepth:COMPACT_COUNTER.topWidth;
-  if(Math.abs(point.x-counter.x)<width/2+radius&&
-    Math.abs(point.z-counter.z)<depth/2+radius)return false;
-  for(const shelf of layout.shelves){
-    const b=shelfBounds(shelf);
-    if(point.x+radius>b.minX&&point.x-radius<b.maxX&&
-      point.z+radius>b.minZ&&point.z-radius<b.maxZ)return false;
-  }
+  // The same registered solid hulls drive navigation and visible
+  // furniture selection, regardless of which wall has been excavated.
+  for(const fixture of shopFloorFixtures(layout))
+    if(pointTouchesShopBounds(fixture.solid,point,radius))return false;
   return true;
 }
 
