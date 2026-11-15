@@ -12,6 +12,10 @@ export function checkoutQueueIndex(carts: readonly ShopCart[], heroId: string): 
   return checkoutQueueIds(carts).indexOf(heroId);
 }
 
+/** One physical line at the register; additional shoppers use the existing
+ * safe checkout-overflow stands rather than surrounding the cash desk. */
+export const CHECKOUT_LINE_MAX_CUSTOMERS=5;
+
 /** Candidate standing places are deliberately restricted to the shop floor.
  * Queue allocation is based on actual path endpoints, not desired coordinates:
  * path snapping must never cause two customers to share a position.
@@ -30,21 +34,20 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
     -COMPACT_COUNTER.clearanceDepth/2-0.95,counter.rotation);
   const fallback={x:counter.x+safeFront.x,z:counter.z+safeFront.z};
   const origin=isObstructed(from,layout,room)?fallback:from;
-  // Legacy checkout must not place a queue in the rear player aisle.
-  // A relocated counter keeps its layout-aware search range.
-  // A queue is a sequence, not an audience lined up across the register.
-  // Fill the forward/backward lane first, then secondary safe overflow lanes.
-  // Stable cart order maps to stable physical places even after moving counter.
-  for (const x of [0, -1.1, 1.1, -2.2, 2.2, -3.3, 3.3, -4.4, 4.4]) {
-    for (let step = 0; step <= (layout.counter ? 8 : 5); step++) {
-      const localZ = layout.counter
-        ? -COMPACT_COUNTER.clearanceDepth / 2 - 0.65 - step * 1.1
-        : legacyFrontZ - counter.z - step * 1.1;
-      const rotated = rotateShelfOffset(x, localZ, counter.rotation);
-      const point = {x:counter.x + rotated.x,z:counter.z + rotated.z};
-      if (isObstructed(point, layout, room)) continue;
-      candidates.push(point);
-    }
+  // A visible single-file queue, never an audience crowding the till.
+  // Beyond five customers (or the first blocked section of the lane),
+  // existing service overflow holding spots handle the excess shoppers.
+  // Capacity may be smaller for a counter moved next to an actual wall.
+  for(let step=0;step<Math.min(count,CHECKOUT_LINE_MAX_CUSTOMERS);step++){
+    const localZ=layout.counter
+      ? -COMPACT_COUNTER.clearanceDepth/2-0.65-step*1.1
+      : legacyFrontZ-counter.z-step*1.1;
+    const offset=rotateShelfOffset(0,localZ,counter.rotation);
+    const point={x:counter.x+offset.x,z:counter.z+offset.z};
+    // No snaking sideways around furniture: an interrupted line ends here
+    // and the remaining buyers wait in their own safe overflow pockets.
+    if(isObstructed(point,layout,room))break;
+    candidates.push(point);
   }
   const allocated: ShopPoint[] = [];
   for (const candidate of candidates) {
