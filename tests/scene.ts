@@ -622,14 +622,12 @@ export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
   const visible=scene.pickWithRay(camera.getForwardRay(48),
-    mesh=>mesh.isPickable&&surfaceFromMesh(mesh.name)!==null);
-  const direct=scene.pickWithRay(camera.getForwardRay(48),
-    mesh=>mesh.name===name);
-  const right=scene.getMeshByName("right-wall");
-  const left=scene.getMeshByName("left-wall");
-  return name+" | visible="+(visible?.pickedMesh?.name??"none")+
-    " at "+(visible?.pickedPoint?.asArray().join(",")??"none")+
-    " | direct="+String(direct?.hit)+
-    " | rightWall="+String(right?.isEnabled())+
-    " | leftWall="+String(left?.isEnabled());
+    mesh=>mesh.isEnabled()&&mesh.isVisible&&mesh.isPickable&&
+      surfaceFromMesh(mesh.name)!==null);
+  const hitName=visible?.pickedMesh?.name??"none";
+  if(hitName!==name)
+    throw new Error("Blueprint ray selected "+hitName+
+      " instead of "+name+" from original showroom. Right wall enabled="+
+      String(scene.getMeshByName("right-wall")?.isEnabled()));
+  return name;
 }
