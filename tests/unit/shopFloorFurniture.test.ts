@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   SHOP_FLOOR_FURNITURE,shopFixtureBounds,shopFixtureTouches,
   shopFixtureBounds as bounds,shelfServicePoint,cashierServicePoint,
-  turnShopOffset,pointTouchesShopBounds,
+  turnShopOffset,pointTouchesShopBounds,SHELF_SLOT_COUNT,shelfSlotLocalZ,furnitureDefinition,
 } from "../../src/game/furnitureRegistry.ts";
 import { COMPACT_COUNTER, replaceShelfPlacement, replaceCounterPlacement, counterDockPoint, shelfBounds, compactCounterBounds, shopFloorFixtures,  } from "../../src/game/shopLayout.ts";
 import {FURNITURE_CATALOG} from "../../src/game/furnitureBlueprint.ts";
@@ -14,7 +14,8 @@ import {createLevel5Room,excavateLevel5Cell} from "../../src/game/level5Room.ts"
 import {checkoutQueuePoints} from "../../src/game/checkoutQueue.ts";
 import {isObstructed,pathToShopGoal,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 import {shopServiceReachabilityProblem} from "../../src/game/shopServiceReachability.ts";
-import {createGameState,advanceDay} from "../../src/game/gameState.ts";
+import {advanceDay} from "../../src/game/gameState.ts";
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 
@@ -48,10 +49,11 @@ test("all quarter turns derive shop-floor placement and solid AABBs from registr
 test("the shelf and cashier's visible models, blueprints, focus and hitboxes have one definition",()=>{
   const layout=createShopLayout();
   const visual=SHOP_FLOOR_FURNITURE.shelf.preview;
-  const render=FURNITURE_CATALOG.find(x=>x.id==="shelf-1")!;
+  const render=furnitureDefinition("shelf-1");
   assert.equal(render.width,visual.width);
   assert.equal(render.depth,visual.depth);
   assert.equal(render.height,visual.height);
+  assert.equal(FURNITURE_CATALOG.some(x=>x.id==="shelf-1"),false);
   assert.deepEqual(classifyFurnitureMesh("shelf-2-plank")?.bounds,
     SHOP_FLOOR_FURNITURE.shelf.focus);
   const counter=FURNITURE_CATALOG.find(x=>x.id==="counter")!;
@@ -67,9 +69,10 @@ test("the shelf and cashier's visible models, blueprints, focus and hitboxes hav
   assert.deepEqual(compactCounterBounds(layout.counter!),bounds("counter",layout.counter!));
   for(const shelf of layout.shelves){
     assert.deepEqual(shelfBounds(shelf),bounds("shelf",shelf));
-    for(let slot=0;slot<5;slot++){
+    for(let slot=0;slot<SHELF_SLOT_COUNT;slot++){
       const actual=shelfServicePoint(shelf,slot);
-      const local=turnShopOffset(1.75,slot-2,shelf.rotation);
+      const local=turnShopOffset(SHOP_FLOOR_FURNITURE.shelf.service.outward,
+        shelfSlotLocalZ(slot),shelf.rotation);
       assert.deepEqual(actual,{x:shelf.x+local.x,z:shelf.z+local.z});
     }
   }
