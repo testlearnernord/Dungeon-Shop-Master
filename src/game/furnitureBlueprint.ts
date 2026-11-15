@@ -80,7 +80,7 @@ export function blueprintAtSurface(
     return id==="counter"?{id,x,z,rotation}:{id,x,z,rotation};
   }
   if(id==="counter"||isBedroomFurnitureId(id))return null;
-  const wallAnchor:{[K in Exclude<BlueprintSurface,"floor"|"ceiling">]:
+  const wallAnchor:{[K in Exclude<BlueprintSurface,"floor"|"ceiling"|"rock-wall">]:
     {x:number;z:number;rotation:0|1|2|3}}={
     "left-wall":{x:-7,z:snapQuarter(hit.z),rotation:0},
     "right-wall":{x:7,z:snapQuarter(hit.z),rotation:2},
