@@ -29,8 +29,8 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Roo
   if(isObstructed(cashier,layout,room))
     return "The checkout is obstructed.";
   for(const [index,origin] of entrances.entries()){
-    const route=route(origin,cashier);
-    if(!route)
+    const entranceRoute=route(origin,cashier);
+    if(!entranceRoute)
       return "Entrance "+(index+1)+" cannot reach the checkout.";
   }
   // An editor may not commit furniture that leaves buyers able to reach
