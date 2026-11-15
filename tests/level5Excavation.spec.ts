@@ -115,6 +115,7 @@ test("contextual P moves and persists a shelf onto sufficiently excavated real f
   const targeted=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))
       .aimAtExcavatedBlueprintFloor(13,0));
+  console.log("BLUEPRINT_DISTANT_RAY",targeted);
   expect(targeted).toContain("excavated-floor-13,0");
   await expect.poll(()=>page.locator("#blueprint-facing").textContent(),
     {timeout:10000}).toContain("X 13.00");
