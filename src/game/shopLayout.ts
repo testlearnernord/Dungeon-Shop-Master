@@ -1,7 +1,7 @@
 import { isLevel5Air, type Level5Room } from "./level5Room.ts";
 import {
   SHOP_FLOOR_FURNITURE,cashierServicePoint,shelfServicePoint,
-  shopFixtureBounds,shopFixtureTouches,turnShopOffset,
+  shopFixtureBounds,shopFixtureTouches,
   type ShopFloorKind,type ShopFloorBounds,
 } from "./shopFloorFurniture.ts";
 /** Persisted shop furniture transforms. No rendering, economy or RNG dependencies. */
@@ -118,8 +118,6 @@ export function createShopLayout(): ShopLayout {
     {id:"shelf-2",x:7,z:0,rotation:2},
   ],counter:{...NEW_GAME_COUNTER_PLACEMENT}};
 }
-/** Legacy caller name kept stable; all offsets use the same registration. */
-export const rotateShelfOffset=turnShopOffset;
 export function shelfBounds(p:ShelfPlacement):Bounds {
   return shopFixtureBounds("shelf",p);
 }
