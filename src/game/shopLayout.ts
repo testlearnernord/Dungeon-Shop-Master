@@ -1,4 +1,9 @@
 import { isLevel5Air, type Level5Room } from "./level5Room.ts";
+import {
+  SHOP_FLOOR_FURNITURE,cashierServicePoint,shelfServicePoint,
+  shopFixtureBounds,shopFixtureTouches,turnShopOffset,
+  type ShopFloorKind,type ShopFloorBounds,
+} from "./shopFloorFurniture.ts";
 /** Persisted shop furniture transforms. No rendering, economy or RNG dependencies. */
 export type ShelfId = "shelf-1" | "shelf-2";
 export interface ShelfPlacement {
@@ -41,23 +46,21 @@ export interface CounterPlacement {
   readonly z: number;
   readonly rotation: 0 | 1 | 2 | 3;
 }
+/** Backwards-compatible rendering interface, derived from the canonical
+ * counter registry. No additional dimensions should be defined here. */
+const COUNTER=SHOP_FLOOR_FURNITURE.counter;
 export const COMPACT_COUNTER = Object.freeze({
-  bodyWidth: 1.35,
-  bodyDepth: 0.75,
-  topWidth: 1.55,
-  topDepth: 0.93,
-  clearanceWidth: 2.15,
-  clearanceDepth: 1.8,
-  registerOffsetX: 0.28,
-  registerOffsetZ: 0.04,
+  bodyWidth:COUNTER.body.width,
+  bodyDepth:COUNTER.body.depth,
+  topWidth:COUNTER.focus.width,
+  topDepth:COUNTER.focus.depth,
+  clearanceWidth:COUNTER.footprint.maxX-COUNTER.footprint.minX,
+  clearanceDepth:COUNTER.footprint.maxZ-COUNTER.footprint.minZ,
+  registerOffsetX:COUNTER.register.x,
+  registerOffsetZ:COUNTER.register.z,
 });
-export function compactCounterBounds(placement: CounterPlacement): {
-  minX:number;maxX:number;minZ:number;maxZ:number
-} {
-  const {x,z,rotation}=placement;
-  const width=rotation%2===0?COMPACT_COUNTER.clearanceWidth:COMPACT_COUNTER.clearanceDepth;
-  const depth=rotation%2===0?COMPACT_COUNTER.clearanceDepth:COMPACT_COUNTER.clearanceWidth;
-  return {minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2};
+export function compactCounterBounds(placement: CounterPlacement):ShopFloorBounds {
+  return shopFixtureBounds("counter",placement);
 }
 
 /** Older saves omit the placement; the same compact counter appears at the old location. */
@@ -74,10 +77,7 @@ export const movableCounterBounds=(layout:ShopLayout)=>compactCounterBounds(getC
 export function counterDockPoint(layout:ShopLayout,who:"staff"|"customer"):{
   x:number;z:number
 }{
-  const p=getCounterPlacement(layout);
-  const reach=COMPACT_COUNTER.clearanceDepth/2+(who==="staff"?.58:.65);
-  const offset=rotateShelfOffset(0,who==="staff"?reach:-reach,p.rotation);
-  return {x:p.x+offset.x,z:p.z+offset.z};
+  return cashierServicePoint(getCounterPlacement(layout),who);
 }
 export function isAtCounterStaffDock(
   layout:ShopLayout,person:{readonly x:number;readonly z:number},radius=1.05,
@@ -88,7 +88,34 @@ export function isAtCounterStaffDock(
 }
 
 const IDS: readonly ShelfId[] = ["shelf-1","shelf-2"];
-type Bounds={minX:number;maxX:number;minZ:number;maxZ:number};
+type Bounds=ShopFloorBounds;
+export interface RegisteredShopFixture {
+  readonly id:string;
+  readonly kind:ShopFloorKind;
+  readonly footprint:ShopFloorBounds;
+  readonly solid:ShopFloorBounds;
+}
+/** Materialize collision geometry once per immutable layout rather than
+ * recalculating rotated shelf corners in every half-metre pathfinding cell.
+ * New shop-floor layout categories must be wired here and in the registry. */
+const fixtureCache=new WeakMap<ShopLayout,readonly RegisteredShopFixture[]>();
+export function shopFloorFixtures(layout:ShopLayout):readonly RegisteredShopFixture[]{
+  const hit=fixtureCache.get(layout);
+  if(hit)return hit;
+  const fixtures:RegisteredShopFixture[]=layout.shelves.map(shelf=>({
+    id:shelf.id,kind:"shelf",
+    footprint:shopFixtureBounds("shelf",shelf),
+    solid:shopFixtureBounds("shelf",shelf,"solid"),
+  }));
+  const counter=getCounterPlacement(layout);
+  fixtures.push({
+    id:"counter",kind:"counter",
+    footprint:shopFixtureBounds("counter",counter),
+    solid:shopFixtureBounds("counter",counter,"solid"),
+  });
+  fixtureCache.set(layout,fixtures);
+  return fixtures;
+}
 const barriers: readonly Bounds[] = [
   {minX:-1.35,maxX:1.35,minZ:-5.6,maxZ:-3.55}, // player spawn
   {minX:-2.5,maxX:2.5,minZ:-6.9,maxZ:-5.3}, // roster board viewing
@@ -112,26 +139,10 @@ export function createShopLayout(): ShopLayout {
     {id:"shelf-2",x:7,z:0,rotation:2},
   ],counter:{...NEW_GAME_COUNTER_PLACEMENT}};
 }
-export function rotateShelfOffset(
-  x:number,z:number,turns:0|1|2|3,
-): {x:number;z:number} {
-  switch(turns) {
-    case 0: return {x,z};
-    case 1: return {x:z,z:-x};
-    case 2: return {x:-x,z:-z};
-    case 3: return {x:-z,z:x};
-  }
-}
+/** Legacy caller name kept stable; all offsets use the same registration. */
+export const rotateShelfOffset=turnShopOffset;
 export function shelfBounds(p:ShelfPlacement):Bounds {
-  // Includes plank, back and stocked objects, but not a character's reach.
-  const corners = [[-0.16,-3.02],[-0.16,3.02],[1.16,-3.02],[1.16,3.02]]
-    .map(([x,z])=>rotateShelfOffset(x,z,p.rotation));
-  return {
-    minX:p.x+Math.min(...corners.map(c=>c.x)),
-    maxX:p.x+Math.max(...corners.map(c=>c.x)),
-    minZ:p.z+Math.min(...corners.map(c=>c.z)),
-    maxZ:p.z+Math.max(...corners.map(c=>c.z)),
-  };
+  return shopFixtureBounds("shelf",p);
 }
 /** A fresh 1m excavation isn't necessarily big enough for a real shelf
  * or cash desk. Tell the player what is missing instead of implying that P
@@ -208,8 +219,7 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
     // Reserve a reachable first customer spot *in front* of the counter.
     // Counter placement must not push the entire checkout queue beyond walls
     // or into fixed player/door/roster obstacles.
-    const offset=rotateShelfOffset(0,-COMPACT_COUNTER.clearanceDepth/2-0.65,p.rotation);
-    const front={x:p.x+offset.x,z:p.z+offset.z};
+    const front=cashierServicePoint(p,"customer");
     const standing={minX:front.x-0.35,maxX:front.x+0.35,
       minZ:front.z-0.35,maxZ:front.z+0.35};
     if((room ? !onRoomFloor(standing,room) :
@@ -225,11 +235,7 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
 export function shelfOverlapsActor(
   placement:ShelfPlacement,actor: {readonly x:number;readonly z:number;readonly radius:number},
 ):boolean {
-  const bounds=shelfBounds(placement);
-  return Number.isFinite(actor.x)&&Number.isFinite(actor.z)&&
-    Number.isFinite(actor.radius)&&actor.radius>=0&&
-    actor.x+actor.radius>bounds.minX&&actor.x-actor.radius<bounds.maxX&&
-    actor.z+actor.radius>bounds.minZ&&actor.z-actor.radius<bounds.maxZ;
+  return shopFixtureTouches("shelf",placement,actor,actor.radius);
 }
 
 export function replaceShelfPlacement(
@@ -262,9 +268,5 @@ export function replaceCounterPlacement(layout:ShopLayout,placement:CounterPlace
 export function counterOverlapsActor(
   placement:CounterPlacement,actor:{readonly x:number;readonly z:number;readonly radius:number},
 ):boolean {
-  const b=compactCounterBounds(placement);
-  return Number.isFinite(actor.x)&&Number.isFinite(actor.z)&&
-    Number.isFinite(actor.radius)&&actor.radius>=0&&
-    actor.x+actor.radius>b.minX&&actor.x-actor.radius<b.maxX&&
-    actor.z+actor.radius>b.minZ&&actor.z-actor.radius<b.maxZ;
+  return shopFixtureTouches("counter",placement,actor,actor.radius);
 }
