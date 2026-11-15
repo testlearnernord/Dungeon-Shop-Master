@@ -469,6 +469,14 @@ export function aimAtLevel5Rock(x:number,z:number):string {
   return mesh.name;
 }
 
+/** Read the visible mounted board's world transform after a reload. */
+export function inspectMountedRosterBoardX():number|null {
+  const board=Engine.LastCreatedScene?.getMeshByName("adventurer-roster-board");
+  if(!board)return null;
+  board.computeWorldMatrix(true);
+  return Math.round(board.getAbsolutePosition().x*100)/100;
+}
+
 /** Aim the contextual P editor from an actually mined cell toward the
  * next unmined rock wall. Never teleport the board or fake a wall surface.
  */
