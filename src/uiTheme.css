@@ -89,9 +89,8 @@
 }
 
 
-/* Finish the shared theme across placement, checkout and spectator views.
+/* Finish the shared theme across checkout and spectator views.
    Preserve the established spatial layout and semantic combat status colors. */
-#shelf-placement,
 #cashier-overlay .cashier-panel,
 #arena-hud .arena-toolbar,
 #arena-hud .arena-bottom,
@@ -104,23 +103,17 @@
   color: var(--ui-text);
   box-shadow: var(--ui-shadow);
 }
-#shelf-placement::backdrop { background: rgb(0 0 0 / 72%); }
-#shelf-placement .placement-heading h2,
 #cashier-overlay h2,
 #arena-hud .arena-toolbar strong,
 #dungeon-hud .dungeon-toolbar strong,
 #dungeon-hud .dungeon-minimap-panel strong {
   color: var(--ui-gold);
 }
-#shelf-placement .placement-heading p,
-#shelf-placement .placement-note,
 #dungeon-hud .dungeon-toolbar p,
 #dungeon-hud .dungeon-minimap-panel small,
 #arena-hud .arena-toolbar p {
   color: var(--ui-muted);
 }
-#shelf-placement button,
-#shelf-placement #placement-shelf,
 #cashier-overlay button,
 #arena-hud .arena-actions button,
 #dungeon-hud .dungeon-actions button,
@@ -134,14 +127,12 @@
   cursor: pointer;
   transition: border-color .16s ease, background-color .16s ease;
 }
-#shelf-placement button:hover:not(:disabled),
 #cashier-overlay button:hover:not(:disabled),
 #arena-hud .arena-actions button:hover:not(:disabled),
 #dungeon-hud .dungeon-actions button:hover:not(:disabled) {
   border-color: var(--ui-border-strong);
   background: #35332b;
 }
-#shelf-placement :focus-visible,
 #cashier-overlay :focus-visible,
 #arena-hud button:focus-visible,
 #dungeon-hud button:focus-visible,
@@ -149,7 +140,6 @@
   outline: 2px solid var(--ui-focus);
   outline-offset: 3px;
 }
-#shelf-placement button:disabled,
 #cashier-overlay button:disabled,
 #arena-hud button:disabled,
 #dungeon-hud button:disabled { opacity: .5; cursor: not-allowed; }
