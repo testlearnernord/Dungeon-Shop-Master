@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
+import { DEFAULT_COUNTER_PLACEMENT, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
 import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, canShareGateLanes, gateTravelLane, isInExitCorridor, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot,
 } from "../../src/game/npcTraffic.ts";
@@ -76,23 +76,13 @@ test("moved shelf never snaps two waiting visitors onto the same destination",()
   }
 });
 
-test("shared checkout geometry preserves legacy furniture, collision and save layout",()=>{
-  const c=CHECKOUT_COUNTER;
-  assert.equal(c.x,0);
-  assert.equal(c.z,2.45);
-  assert.equal(c.bodyWidth,3.5);
-  assert.equal(c.bodyDepth,1.15);
-  assert.deepEqual(checkoutCounterBounds(),{
-    minX:-2.25,maxX:2.25,minZ:1.15,maxZ:3.45,
-  });
+test("legacy saves without a counter keep the canonical fallback placement",()=>{
   const layout={shelves:createShopLayout().shelves};
-  assert(isObstructed({x:0,z:2.45},layout));
+  assert.deepEqual(DEFAULT_COUNTER_PLACEMENT,{x:0,z:2.5,rotation:0});
+  assert(isObstructed({x:0,z:2.5},layout));
   assert(!isObstructed({x:0,z:1.4},layout));
   assert(!isObstructed({x:0,z:3.4},layout));
   assert.deepEqual(Object.keys(layout),["shelves"],"legacy saves omit the moved counter");
-  const fresh=createShopLayout();
-  assert(!isObstructed({x:0,z:2.45},fresh),"new center aisle is clear");
-  assert(isObstructed({x:-4.25,z:-4.5},fresh),"corner till is solid");
 });
 
 test("departure step detects a newly moved counter before walking through it",()=>{

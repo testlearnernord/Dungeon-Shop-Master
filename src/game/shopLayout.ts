@@ -1,7 +1,7 @@
 import { isLevel5Air, type Level5Room } from "./level5Room.ts";
 import {
   SHOP_FLOOR_FURNITURE,cashierServicePoint,shelfServicePoint,
-  shopFixtureBounds,shopFixtureTouches,turnShopOffset,
+  shopFixtureBounds,shopFixtureTouches,
   type ShopFloorKind,type ShopFloorBounds,
 } from "./shopFloorFurniture.ts";
 /** Persisted shop furniture transforms. No rendering, economy or RNG dependencies. */
@@ -19,28 +19,7 @@ export interface ShopLayout {
   /** Optional for compatibility with existing version-10 saves. */
   readonly counter?: CounterPlacement;
 }
-/** One source of truth for the checkout furniture and its clearance zone.
- * The clearance deliberately preserves legacy NPC paths and saved layouts.
- * Future movable counters must validate this footprint before changing position.
- */
-export const CHECKOUT_COUNTER = Object.freeze({
-  x:0,z:2.45,
-  bodyWidth:3.5,bodyDepth:1.15,
-  topWidth:3.75,topDepth:1.35,
-  registerOffsetX:0.9,registerOffsetZ:-0.1,
-  clearanceHalfWidth:2.25,
-  clearanceMinZ:1.15,clearanceMaxZ:3.45,
-});
-export function checkoutCounterBounds() {
-  const c=CHECKOUT_COUNTER;
-  return {minX:c.x-c.clearanceHalfWidth,maxX:c.x+c.clearanceHalfWidth,
-    minZ:c.clearanceMinZ,maxZ:c.clearanceMaxZ};
-}
-
-/** Candidate counter placement is kept separate from persisted layouts until all
- * consumers (rendering, queue, collision and saves) support moving the counter.
- * This pure geometry helper makes rotated footprints testable without migrations.
- */
+/** Persisted checkout transform. Geometry lives in shopFloorFurniture.ts. */
 export interface CounterPlacement {
   readonly x: number;
   readonly z: number;
@@ -139,8 +118,6 @@ export function createShopLayout(): ShopLayout {
     {id:"shelf-2",x:7,z:0,rotation:2},
   ],counter:{...NEW_GAME_COUNTER_PLACEMENT}};
 }
-/** Legacy caller name kept stable; all offsets use the same registration. */
-export const rotateShelfOffset=turnShopOffset;
 export function shelfBounds(p:ShelfPlacement):Bounds {
   return shopFixtureBounds("shelf",p);
 }

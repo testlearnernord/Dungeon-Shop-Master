@@ -2,7 +2,7 @@ import type { Level5Room } from "./level5Room.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { NPC_STATION_CLEARANCE } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
-import {CHECKOUT_COUNTER,getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
+import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
 import {
   SHOP_FLOOR_FURNITURE,cashierServicePoint,turnShopOffset,
 } from "./shopFloorFurniture.ts";
@@ -33,9 +33,9 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Invalid queue capacity");
   if (count === 0) return [];
   const candidates: ShopPoint[] = [];
-  // Derive the front of the queue from the same counter used by rendering and collisions.
-  // At the legacy position this starts at z=0.5, preserving existing paths.
-  const legacyFrontZ = Math.round((CHECKOUT_COUNTER.clearanceMinZ - 0.65) * 4) / 4;
+  // Old saves without a persisted counter used this checkout lane. Keep the
+  // compatibility coordinate explicit rather than reviving obsolete desk geometry.
+  const legacyFrontZ = 0.5;
   const counter = getCounterPlacement(layout);
   // A moved counter may cover the legacy planning origin (0,-1). Never
   // declare the whole queue unreachable merely because that origin is blocked.

@@ -1,7 +1,7 @@
 import { level5FloorWalkable, level5FloorSegmentWalkable } from "./level5Walkability.ts";
 import type { Level5Room } from "./level5Room.ts";
-import {rotateShelfOffset,shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
-import {pointTouchesShopBounds,shelfServicePoint} from "./shopFloorFurniture.ts";
+import {shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
+import {pointTouchesShopBounds,shelfServicePoint,turnShopOffset} from "./shopFloorFurniture.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
 export interface ShopperRoute {
@@ -61,6 +61,17 @@ export function pathToShopGoal(
   const idx=(x:number,z:number)=>z*width+x;
   const inside=(x:number,z:number)=>x>=0&&z>=0&&x<width&&z<height;
   const blocked=(p:ShopPoint)=>isObstructed(p,layout,room);
+  // A single route probes the same grid cells repeatedly while snapping and
+  // searching. Cache only immutable layout obstacles for this route invocation;
+  // moving NPC occupancy is intentionally handled by the traffic controller.
+  const cellState=new Uint8Array(width*height); // 0 unknown, 1 clear, 2 blocked
+  const blockedCell=(id:number):boolean=>{
+    const state=cellState[id];
+    if(state!==0)return state===2;
+    const result=blocked(point(id));
+    cellState[id]=result?2:1;
+    return result;
+  };
   const clear=(a:ShopPoint,b:ShopPoint)=>shopSegmentClear(a,b,layout,room);
   const snap=(p:ShopPoint):number=>{
     let best=-1,bestDist=Infinity;
@@ -70,7 +81,7 @@ export function pathToShopGoal(
     for(let radius=0;radius<=3;radius++){
       for(let dz=-radius;dz<=radius;dz++)for(let dx=-radius;dx<=radius;dx++){
         const x=x0+dx,z=z0+dz;
-        if(!inside(x,z)||blocked(point(idx(x,z))))continue;
+        if(!inside(x,z)||blockedCell(idx(x,z)))continue;
         const candidate=idx(x,z);
         const p2=point(candidate);
         // For outside a shelf footprint, insist on a true straight connector.
@@ -96,7 +107,7 @@ export function pathToShopGoal(
       const nx=x+dx,nz=z+dz;
       if(!inside(nx,nz))continue;
       const key=idx(nx,nz);
-      if(prev[key]!==-1||blocked(point(key)))continue;
+      if(prev[key]!==-1||blockedCell(key))continue;
       prev[key]=cell;queue.push(key);
     }
   }
@@ -154,7 +165,7 @@ export function pathToShelfAccess(
   for(const outward of [0,0.3,0.55]){
     for(const along of [0,-0.35,0.35,-0.7,0.7]){
       const nominal=shelfServicePoint(shelf,slotIndex);
-      const offset=rotateShelfOffset(outward,along,shelf.rotation);
+      const offset=turnShopOffset(outward,along,shelf.rotation);
       const goal={x:nominal.x+offset.x,z:nominal.z+offset.z};
       if(isObstructed(goal,layout,room)||
         (canUseStandingPoint&&!canUseStandingPoint(goal)))continue;

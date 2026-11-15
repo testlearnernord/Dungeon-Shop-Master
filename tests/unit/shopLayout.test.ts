@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  compactCounterBounds, COMPACT_COUNTER, counterOverlapsActor, createShopLayout, getCounterPlacement,
+import {compactCounterBounds, COMPACT_COUNTER, counterOverlapsActor, createShopLayout, getCounterPlacement,
   counterDockPoint,isAtCounterStaffDock,DEFAULT_COUNTER_PLACEMENT,NEW_GAME_COUNTER_PLACEMENT,
-  replaceCounterPlacement, replaceShelfPlacement, rotateShelfOffset,
-  shopLayoutProblem, shelfBounds, shelfOverlapsActor, type ShelfPlacement,
-} from "../../src/game/shopLayout.ts";
+  replaceCounterPlacement, replaceShelfPlacement,
+  shopLayoutProblem, shelfBounds, shelfOverlapsActor, type ShelfPlacement} from "../../src/game/shopLayout.ts";
+import { turnShopOffset } from "../../src/game/shopFloorFurniture.ts";
 import { advanceDay, createGameState, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
@@ -53,10 +52,10 @@ test("geometry accepts valid rotations but rejects walls, counter, walkways and 
   });
   assert.equal(rotate.message,"Shelf placement saved.");
   assert.equal(shopLayoutProblem(rotate.layout),null);
-  assert.deepEqual(rotateShelfOffset(1,2,0),{x:1,z:2});
-  assert.deepEqual(rotateShelfOffset(1,2,1),{x:2,z:-1});
-  assert.deepEqual(rotateShelfOffset(1,2,2),{x:-1,z:-2});
-  assert.deepEqual(rotateShelfOffset(1,2,3),{x:-2,z:1});
+  assert.deepEqual(turnShopOffset(1,2,0),{x:1,z:2});
+  assert.deepEqual(turnShopOffset(1,2,1),{x:2,z:-1});
+  assert.deepEqual(turnShopOffset(1,2,2),{x:-1,z:-2});
+  assert.deepEqual(turnShopOffset(1,2,3),{x:-2,z:1});
   assert(shelfBounds(original.shelves[0]).maxX< -5.7);
   for(const invalid of [
     {id:"shelf-1",x:-7.25,z:0,rotation:0},

@@ -13,9 +13,8 @@ import {DEFAULT_ROSTER_BOARD} from "./game/rosterBoardPlacement.ts";
 
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
-import {
-  getCounterPlacement,rotateShelfOffset,
-} from "./game/shopLayout.ts";
+import {getCounterPlacement} from "./game/shopLayout.ts";
+import {turnShopOffset} from "./game/furnitureRegistry.ts";
 import {
   blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,
   type FurnitureId,type FurnitureDraft,
@@ -230,23 +229,17 @@ export function setupBlueprintHud(
     lookedAt=found;
     if(!found){focusMesh.setEnabled(false);focusHint.hidden=true;return;}
     const dimensions=found.bounds;
-    let x=found.position.x,y=found.position.y,z=found.position.z;
-    let turns=0;
-    if(found.movableId){
-      const saved=getSaved(found.movableId);
-      x=saved.x;z=saved.z;turns=saved.rotation;
-      if(found.movableId==="shelf-1"||found.movableId==="shelf-2"){
-        const offset=rotateShelfOffset(0.48,0,saved.rotation);
-        x+=offset.x;z+=offset.z;
-      }
+    const saved=getSaved(found.movableId);
+    let x=saved.x,z=saved.z;
+    if(found.movableId==="shelf-1"||found.movableId==="shelf-2"){
+      const offset=turnShopOffset(0.48,0,saved.rotation);
+      x+=offset.x;z+=offset.z;
     }
-    focusMesh.position.set(x,y,z);
+    focusMesh.position.set(x,found.focusY,z);
     focusMesh.scaling.set(dimensions.width,dimensions.height,dimensions.depth);
-    focusMesh.rotation.y=turns*Math.PI/2;
+    focusMesh.rotation.y=saved.rotation*Math.PI/2;
     focusMesh.setEnabled(true);
-    focusHint.textContent=found.movableId
-      ?found.label+" · P to move"
-      :found.label+" · Fixed until modular furniture is enabled";
+    focusHint.textContent=found.label+" · P to move";
     focusHint.hidden=false;
   };
 

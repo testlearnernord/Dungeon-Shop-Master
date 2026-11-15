@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createShopLayout,replaceShelfPlacement,rotateShelfOffset} from "../../src/game/shopLayout.ts";
+import {createShopLayout,replaceShelfPlacement} from "../../src/game/shopLayout.ts";
+import { turnShopOffset } from "../../src/game/shopFloorFurniture.ts";
 import {isObstructed,pathToShopGoal,pathToShelfAccess,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 
 const distance=(a:{x:number;z:number},b:{x:number;z:number})=>
@@ -13,7 +14,7 @@ test("shelf approach stays on the actual stock face for both legacy shelves",()=
     for(let index=0;index<5;index++){
       const route=pathToShelfAccess(origin,layout,shelf.id,index);
       assert(route,`slot ${shelf.id} index ${index} must be reachable`);
-      const offset=rotateShelfOffset(1.75,index-2,shelf.rotation);
+      const offset=turnShopOffset(1.75,index-2,shelf.rotation);
       const desired={x:shelf.x+offset.x,z:shelf.z+offset.z};
       const actual=route.waypoints.at(-1)??origin;
       assert(distance(actual,desired)<=0.85);

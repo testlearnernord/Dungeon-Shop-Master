@@ -8,7 +8,8 @@ import {restockWaitingPositions} from "../../src/game/restockWaitingPlaces.ts";
 import {checkoutQueuePoints} from "../../src/game/checkoutQueue.ts";
 import {ShopServiceSpots} from "../../src/game/shopServiceSpots.ts";
 import {isObstructed,pathToShopGoal,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
-import {rotateShelfOffset,type ShopLayout} from "../../src/game/shopLayout.ts";
+import {type ShopLayout} from "../../src/game/shopLayout.ts";
+import { turnShopOffset } from "../../src/game/shopFloorFurniture.ts";
 import type {Level5Room} from "../../src/game/level5Room.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
@@ -59,7 +60,7 @@ test("connected excavated wing, moved shelf and counter preserve all customer se
     assertRoute(layout,room,door,checkout[0]);
     for(const petition of requests.slice(0,2))assertRoute(layout,room,door,petition);
     for(const shelf of layout.shelves)for(let slot=0;slot<5;slot++){
-      const offset=rotateShelfOffset(1.75,slot-2,shelf.rotation);
+      const offset=turnShopOffset(1.75,slot-2,shelf.rotation);
       const target={x:shelf.x+offset.x,z:shelf.z+offset.z};
       assertRoute(layout,room,door,target);
       assertRoute(layout,room,target,checkout[0]);
