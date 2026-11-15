@@ -24,7 +24,13 @@ test("same-day manual receipts send customers toward the exit, not back to the s
   await expect.poll(async()=>page.evaluate(async(id)=>{
     const {inspectNpcVisuals}=await import("/Dungeon-Shop-Master/tests/scene.ts");
     const hero=inspectNpcVisuals().visitors.find(visitor=>visitor.id===id);
-    return {phase:hero?.phase,paid:hero?.cartPaid??false};
-  },heroId)).toEqual({phase:"leaving",paid:true});
+    // On loading an already-paid save, an outside visitor can finish the
+    // shortest possible exit within two frames. No forced trek into the shop.
+    return hero===undefined||hero.phase==="leaving"&&hero.cartPaid===true;
+  },heroId)).toBe(true);
+  await expect.poll(async()=>page.evaluate(async id=>{
+    const {inspectNpcVisuals}=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    return inspectNpcVisuals().visitors.some(visitor=>visitor.id===id);
+  },heroId),{timeout:10000}).toBe(false);
   await expect(page.locator("#day")).toHaveText("Day 1");
 });
