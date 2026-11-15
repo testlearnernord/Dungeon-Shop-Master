@@ -1,7 +1,7 @@
 import type { FurnitureId } from "./furnitureBlueprint.ts";
 import {isShelfId} from "./shopLayout.ts";
 import {furnitureDefinition} from "./furnitureRegistry.ts";
-import {FURNITURE_REGISTRY,type FurnitureKind} from "./furnitureRegistry.ts";
+import {furnitureDefinition,type FurnitureKind} from "./furnitureRegistry.ts";
 
 /** All visible built-in furnishings have a stable identity, not a keyboard slot.
  * Persisted positions are resolved from GameState when focused; this module
@@ -16,8 +16,7 @@ export interface LookedAtFurniture {
 }
 
 const bounds=(id:FurnitureKind)=>{
-  const definition=FURNITURE_REGISTRY[id] as
-    import("./furnitureRegistry.ts").FurnitureDefinition;
+  const definition=furnitureDefinition(id);
   if(definition.focus)return definition.focus;
   const {width,height,depth}=definition;
   return {width,height,depth};
