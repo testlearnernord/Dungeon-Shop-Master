@@ -1,10 +1,10 @@
+import {createStockedShopLayout as createShopLayout} from "./shopFixtures.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createLevel5Room,excavateLevel5Cell,isValidLevel5Room,type Level5Room}
   from "../../src/game/level5Room.ts";
 import {level5RockFaces} from "../../src/game/level5WallFaces.ts";
-import {createShopLayout,shopLayoutProblem,type ShopLayout}
-  from "../../src/game/shopLayout.ts";
+import { shopLayoutProblem, type ShopLayout } from "../../src/game/shopLayout.ts";
 import {idleShopPositions} from "../../src/game/npcTraffic.ts";
 import {isObstructed,pathToShopGoal} from "../../src/game/shopperNavigation.ts";
 
