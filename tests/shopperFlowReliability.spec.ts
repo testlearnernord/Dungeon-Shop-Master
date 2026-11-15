@@ -101,6 +101,18 @@ test("eight incoming customers progress around relocated shelves and checkout",a
       visitor.shoppingPhase==="awaiting-checkout").length;
   },{timeout:75000,intervals:[1000,2000,3000]}).toBeGreaterThanOrEqual(3);
   const final=await read();
+  // A service place is not a magic coordinate. Customers who have actually
+  // finished reaching a station must not be standing on top of another
+  // stationary customer, even with rotated furniture.
+  const settled=new Set(["awaiting-checkout","waiting-for-restock",
+    "waiting-for-credit","waiting-for-shelf","waiting-for-restock-overflow",
+    "waiting-for-credit-overflow","checkout-overflow-wait"]);
+  const stationary=final.visitors.filter(visitor=>settled.has(visitor.shoppingPhase??""));
+  for(let i=0;i<stationary.length;i++)for(let j=i+1;j<stationary.length;j++){
+    const a=stationary[i],b=stationary[j];
+    expect(Math.hypot(a.x-b.x,a.z-b.z),a.id+" and "+b.id+
+      " overlap at reserved service spots").toBeGreaterThan(0.82);
+  }
   expect(final.visitors.every(visitor=>visitor.wallClear)).toBe(true);
   expect(final.visitors.some(visitor=>(visitor.cartUnits??0)>0)).toBe(true);
   expect(errors).toEqual([]);

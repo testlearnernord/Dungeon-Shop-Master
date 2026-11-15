@@ -19,12 +19,12 @@ import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, canYieldShopperSpot, type GateTrafficActor } from "./npcTraffic.ts";
-import { isObstructed, pathToShopGoal, pathToShelfAccess, shopSegmentClear } from "./shopperNavigation.ts";
-import { reserveRestockWaitingRoute } from "./restockWaitingPlaces.ts";
-import { reserveServiceOverflowRoute } from "./serviceOverflowPlaces.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, canYieldShopperSpot, type GateTrafficActor } from "./npcTraffic.ts";
+import { isObstructed, pathToShopGoal, pathToShelfAccess, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
+import { ShopServiceSpots } from "./shopServiceSpots.ts";
+
 import { npcLocomotion } from "./npcLocomotion.ts";
-import { reserveShelfWaitingRoute } from "./shelfWaitingPlaces.ts";
+
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
 
@@ -200,7 +200,7 @@ export class NpcVisualSystem {
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
-  private readonly shelfOwners=new Map<string,string>();
+  private readonly serviceSpots=new ShopServiceSpots();
   private carts:readonly ShopCart[]=[];
   private wishBubblesVisible=true;
 
@@ -298,6 +298,7 @@ export class NpcVisualSystem {
       JSON.stringify(this.layout.shelves)!==JSON.stringify(layout.shelves));
     this.layout=layout;
     this.room=room;
+    this.serviceSpots.configure(layout,room);
     this.shop=shop;
     this.onPickUp=onPickUp;
     this.onWalkout=onWalkout??null;
@@ -691,10 +692,8 @@ export class NpcVisualSystem {
     }
   };
 
-  private releaseShelf(npc:NpcVisual):void {
-    for(const [slot,owner] of this.shelfOwners){
-      if(owner===npc.visitor.id)this.shelfOwners.delete(slot);
-    }
+  private releaseShelf(npc:NpcVisual):void{
+    this.serviceSpots.release(npc.visitor.id);
   }
 
   private beginEntering(npc: NpcVisual, slot: number, fromOutside: boolean): void {
@@ -871,11 +870,8 @@ export class NpcVisualSystem {
       // Reserve the entire physical shelf, not individual stock slots.
       // Adjacent access points overlap once shoulder/arm meshes are included;
       // only one browser may reach a shelf at a time. Others wait off-aisle.
-      const shelfAccessBusy=[...this.shelfOwners].some(([reservedId,reservedBy])=>{
-        if(reservedBy===npc.visitor.id)return false;
-        const reserved=[...this.shop!.slotMeshes.values()].find(s=>s.id===reservedId);
-        return reserved?.shelfId===slot.shelfId;
-      });
+      const shelfAccessBusy=this.serviceSpots.shelfBusyFor(
+        slot.shelfId,npc.visitor.id);
       if(shelfAccessBusy){
         // A shelf waiter who moved aside for traffic must stay at the cleared
         // location until the shelf becomes available. Otherwise the next
@@ -909,7 +905,10 @@ export class NpcVisualSystem {
       }
       const path=pathToShelfAccess(origin,this.layout,slot.shelfId,slot.index,this.room);
       if(path){
-        this.shelfOwners.set(item.slotId,npc.visitor.id);
+        if(!this.serviceSpots.claimShelf(slot.shelfId,npc.visitor.id)){
+          this.deferShelfRoute(npc,item.slotId);
+          return;
+        }
         npc.phase="browsing";npc.toQueue=false;
         npc.route=path.waypoints.map(p=>new Vector3(p.x,0,p.z));
         npc.waypoint=0;
@@ -923,7 +922,13 @@ export class NpcVisualSystem {
       return;
     }
     const queuePoints=this.layout?checkoutQueuePoints(this.layout,{x:0,z:-1},this.carts.length,this.room):[];
-    const target=checkoutIndex>=0?queuePoints[checkoutIndex]:this.queuePosition(npc.slot,npc);
+    const checkoutTarget=checkoutIndex>=0?queuePoints[checkoutIndex]:null;
+    const allocatedCheckout=checkoutTarget&&this.layout
+      ?this.serviceSpots.reserve(npc.visitor.id,"checkout",origin,this.layout,this.room,{
+          ...this.otherServiceOccupancy(npc),checkoutTarget,
+        }):null;
+    const target=checkoutIndex>=0?allocatedCheckout?.point:
+      this.queuePosition(npc.slot,npc);
     // A customer who already reached safe checkout overflow must not
     // shuffle between different waiting spots on each retry while the
     // checkout queue is still full. Replan as soon as capacity appears.
@@ -934,8 +939,9 @@ export class NpcVisualSystem {
       npc.root.metadata.phase=npc.phase;
       return;
     }
-    const route=target&&this.layout?pathToShopGoal(origin,
-      {x:target.x,z:target.z},this.layout,this.room):null;
+    const route=checkoutIndex>=0?allocatedCheckout?.route??null:
+      target&&this.layout?pathToShopGoal(origin,
+        {x:target.x,z:target.z},this.layout,this.room):null;
     const overflow=checkoutIndex>=0&&!route
       ?this.serviceOverflowRoute(npc):null;
     const safeRoute=route??overflow;
@@ -953,71 +959,49 @@ export class NpcVisualSystem {
     paintIdentity(npc,this.portraits);
   }
 
-  private nearShelfWaitingRoute(npc:NpcVisual,target:{x:number;z:number}):
-    NonNullable<ReturnType<typeof reserveShelfWaitingRoute>>["route"]|null {
-    if(!this.layout)return null;
+  private otherServiceOccupancy(npc:NpcVisual):{
+    occupied:ShopPoint[];destinations:ShopPoint[];
+  }{
     const others=[...this.npcs.values()].filter(other=>other!==npc);
-    return reserveShelfWaitingRoute(this.layout,
-      {x:npc.root.position.x,z:npc.root.position.z},target,
-      others.map(other=>({x:other.root.position.x,z:other.root.position.z})),
-      others.map(other=>other.route.at(-1))
-        .filter((point):point is Vector3=>point!==undefined)
-        .map(point=>({x:point.x,z:point.z})),this.room)?.route??null;
-  }
-
-  private offAisleWaitingRoute(npc:NpcVisual):
-    NonNullable<ReturnType<typeof reserveRestockWaitingRoute>>["route"]|null {
-    if(!this.layout)return null;
-    const others=[...this.npcs.values()].filter(other=>other!==npc);
-    const occupied=others.map(other=>({
-      x:other.root.position.x,z:other.root.position.z,
-    }));
-    const destinations=others.map(other=>other.route.at(-1))
-      .filter((point):point is Vector3=>point!==undefined)
-      .map(point=>({x:point.x,z:point.z}));
-    return reserveRestockWaitingRoute(this.layout,
-      {x:npc.root.position.x,z:npc.root.position.z},
-      occupied,destinations,npc.slot,this.room)?.route??null;
-  }
-
-  /** Overflow is a non-service standing area. It must never occupy checkout
-   * slots, shelf lanes or reserved 60-second stockout destinations.
-   */
-  private serviceOverflowRoute(npc:NpcVisual):
-    NonNullable<ReturnType<typeof reserveServiceOverflowRoute>>["route"]|null {
-    if(!this.layout)return null;
-    const others=[...this.npcs.values()].filter(other=>other!==npc);
-    const points=checkoutQueuePoints(this.layout,{x:0,z:-1},
-      this.carts.filter(cart=>cart.lines.length>0).length,this.room);
-    return reserveServiceOverflowRoute(this.layout,
-      {x:npc.root.position.x,z:npc.root.position.z},
-      others.map(other=>({x:other.root.position.x,z:other.root.position.z})),
-      others.map(other=>other.route.at(-1))
+    return {
+      occupied:others.map(other=>({
+        x:other.root.position.x,z:other.root.position.z,
+      })),
+      destinations:others.map(other=>other.route.at(-1))
         .filter((point):point is Vector3=>point!==undefined)
         .map(point=>({x:point.x,z:point.z})),
-      points,npc.slot,this.room)?.route??null;
+    };
   }
 
-  private queuePosition(slot:number,npc:NpcVisual,avoid?:{x:number;z:number}):Vector3|null {
+  private nearShelfWaitingRoute(npc:NpcVisual,target:ShopPoint):ShopperRoute|null{
     if(!this.layout)return null;
-    const points=idleShopPositions(this.layout,100,this.room);
-    const preferred=points[slot];
-    // Assign a distinct *future* standing spot, not merely a position that
-    // happens to be free this frame. Otherwise multiple shoppers all route
-    // to the same empty place and jam when they arrive there together.
-    const reservedByAnother=(point:{x:number;z:number})=>
-      [...this.npcs.values()].some(other=>{
-        if(other===npc)return false;
-        const current=other.root.position;
-        if(Math.hypot(point.x-current.x,point.z-current.z)<PERSONAL_SPACE)return true;
-        const destination=other.route.at(-1);
-        return !!destination&&Math.hypot(point.x-destination.x,
-          point.z-destination.z)<PERSONAL_SPACE;
+    return this.serviceSpots.reserve(npc.visitor.id,"shelf-wait",
+      {x:npc.root.position.x,z:npc.root.position.z},this.layout,this.room,{
+        ...this.otherServiceOccupancy(npc),shelfAccess:target,
+      })?.route??null;
+  }
+  private offAisleWaitingRoute(npc:NpcVisual):ShopperRoute|null{
+    if(!this.layout)return null;
+    const role=shopperVisualAction(npc.intent,false)==="beg"?"credit":"restock";
+    return this.serviceSpots.reserve(npc.visitor.id,role,
+      {x:npc.root.position.x,z:npc.root.position.z},this.layout,this.room,{
+        ...this.otherServiceOccupancy(npc),preferredIndex:npc.slot,
+      })?.route??null;
+  }
+  private serviceOverflowRoute(npc:NpcVisual):ShopperRoute|null{
+    if(!this.layout)return null;
+    return this.serviceSpots.reserve(npc.visitor.id,"overflow",
+      {x:npc.root.position.x,z:npc.root.position.z},this.layout,this.room,{
+        ...this.otherServiceOccupancy(npc),preferredIndex:npc.slot,
+      })?.route??null;
+  }
+  private queuePosition(slot:number,npc:NpcVisual,avoid?:ShopPoint):Vector3|null{
+    if(!this.layout)return null;
+    const result=this.serviceSpots.reserve(npc.visitor.id,"idle",
+      {x:npc.root.position.x,z:npc.root.position.z},this.layout,this.room,{
+        ...this.otherServiceOccupancy(npc),preferredIndex:slot,avoid,
       });
-    const candidates=preferred?[preferred,...points.filter(p=>p!==preferred)]:points;
-    const point=candidates.find(p=>!reservedByAnother(p)&&
-      (!avoid||Math.hypot(p.x-avoid.x,p.z-avoid.z)>=1.85));
-    return point?new Vector3(point.x,0,point.z):null;
+    return result?new Vector3(result.point.x,0,result.point.z):null;
   }
 
   /** React to actual lack of progress, including a contested final waypoint.
@@ -1095,7 +1079,13 @@ export class NpcVisualSystem {
     if(distance<=NPC_FINAL_WAYPOINT_RADIUS){
       const heldByNeighbor=occupied.some(other=>
         Math.hypot(other.x-target.x,other.z-target.z)<PERSONAL_SPACE);
-      if(!canFinishShopWaypoint(distance,heldByNeighbor,npc.blockedSeconds)){
+      const claim=this.serviceSpots.claim(npc.visitor.id);
+      const isReservedDestination=!!claim&&
+        Math.hypot(claim.point.x-target.x,claim.point.z-target.z)<0.3;
+      // Even after a traffic stall, a visitor must not ghost into a claimed
+      // checkout, stockout, credit or shelf waiting position.
+      if((heldByNeighbor&&isReservedDestination)||
+        !canFinishShopWaypoint(distance,heldByNeighbor,npc.blockedSeconds)){
         // Keep waiting for an occupied *visual* waypoint, but never forever.
         // Shelf and checkout admission have their own exclusive reservations.
         npc.blockedSeconds+=delta;
@@ -1142,9 +1132,13 @@ export class NpcVisualSystem {
     // need to steer around shelves and other visitors en route.
     const inGateApproach=(npc.phase==="entering"||npc.phase==="leaving")&&
       from.z>=5.1;
+    const ownedServiceDestination=this.serviceSpots.claim(npc.visitor.id)!==null;
     const move=shopCrowdStep(from,{x:target.x,z:target.z},occupied,
       WALK_SPEED*delta,walkable,npc.blockedSeconds,!inGateApproach&&from.z<=6.5,
-      inGateTrafficThroat(from)?NPC_GATE_SOFT_PASS_AFTER_SECONDS:NPC_SOFT_PASS_AFTER_SECONDS);
+      ownedServiceDestination&&from.z<=6.5
+        ?Number.POSITIVE_INFINITY
+        :inGateTrafficThroat(from)
+          ?NPC_GATE_SOFT_PASS_AFTER_SECONDS:NPC_SOFT_PASS_AFTER_SECONDS);
     const proposed=move.point;
     if(!proposed){
       npc.blockedSeconds+=delta;

@@ -26,7 +26,7 @@
 The repository currently implements:
 
 - TypeScript/Vite with Babylon.js; first-person Level 5 shop, shelf restocking, wholesale purchasing, cashier interaction, credits and customer shopping behavior.
-- NPC movement, checkout queues and restock waiting, with collision and route constraints.
+- NPC movement, checkout queues, credit/restock requests and shelf waiting, with a shared, geometry-aware service-spot reservation manager. Claims are temporary visual navigation state, not purchases or saves.
 - Contextual furniture placement: shelves and compact checkout counter (new campaigns start at the corner near Galvik’s rest-room wall), plus bedroom desk/book, chest, candle/stool, bed and wall-mounted Adventurer Board. Previews are not saved until confirmed. Newly dug 1m cells can be used for furniture **once enough connected floor has been cleared for the entire object and its service access**.
 - Level 5 room excavation/expansion, persistence, hero identities and roster.
 - Deterministic day-based adventures on Floors 1–4, a Cave Troll encounter on Floor 6 and the shared Floor 7 exploration/replay systems. Later floors are not claimed as playable.
@@ -54,7 +54,7 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 ### Physical shop
 
 - Furniture previews must be cheap and non-mutating; the final placement must be validated. The cashier has distinct visitor and staff sockets, and Galvik can operate it only from the staff side.
-- Shelf/checkout access and customer routes may not be obstructed by a committed rearrangement. Movable bedroom objects must keep their dependent visuals/interactions together and preserve sleep access.
+- Shelf/checkout access and customer routes may not be obstructed by a committed rearrangement. Every active service position is exclusive per shopper, and moving furniture or excavating invalidates old reservations. Movable bedroom objects must keep dependent visuals/interactions together and preserve sleep access.
 
 ## 4. Narrative status
 
