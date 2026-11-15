@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot,
+import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, isInExitCorridor, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot,
 } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
@@ -383,4 +383,15 @@ test("only stationary shelf and idle waiters yield, never cashier or restock cus
   }
   assert(!canYieldShopperSpot("browsing","waiting-for-shelf",false));
   assert(!canYieldShopperSpot("leaving","waiting-for-next-day",false));
+});
+
+test("only visitors in a real gate corridor may finish departing straight outward",()=>{
+  const innerZ=6;
+  assert.equal(isInExitCorridor({x:-4.57,z:9},innerZ),true);
+  assert.equal(isInExitCorridor({x:-3.43,z:6.4},innerZ),true);
+  assert.equal(isInExitCorridor({x:4.57,z:13},innerZ),true);
+  assert.equal(isInExitCorridor({x:-6,z:6.5},innerZ),false,
+    "rear side of original showroom still needs ordinary pathfinding");
+  assert.equal(isInExitCorridor({x:0,z:8},innerZ),false);
+  assert.equal(isInExitCorridor({x:-4,z:5.9},innerZ),false);
 });
