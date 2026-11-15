@@ -38,6 +38,7 @@ const isFinitePoint=(p:ShopPoint)=>Number.isFinite(p.x)&&Number.isFinite(p.z);
  * from the rendering loop and does not write the save. */
 export class ShopServiceSpots{
   private readonly claims=new Map<string,ShopServiceClaim>();
+  private readonly shelfOwners=new Map<string,string>();
   private layoutSignature="";
   private idle:readonly ShopPoint[]=[];
   private restock:readonly ShopPoint[]=[];
@@ -48,13 +49,31 @@ export class ShopServiceSpots{
     if(signature===this.layoutSignature)return;
     this.layoutSignature=signature;
     this.claims.clear();
+    this.shelfOwners.clear();
     this.checkout=checkoutQueuePoints(layout,{x:0,z:-1},12,room);
     this.restock=restockWaitingPositions(layout,room);
     this.idle=idleShopPositions(layout,100,room);
   }
 
-  release(heroId:string):void {this.claims.delete(heroId);}
-  clear():void {this.claims.clear();this.layoutSignature="";}
+  /** Same owner may use any slot on its shelf; no second customer may
+   * claim an adjacent slot whose physical shoulder clearance overlaps. */
+  shelfBusyFor(shelfId:string,heroId:string):boolean{
+    const owner=this.shelfOwners.get(shelfId);
+    return owner!==undefined&&owner!==heroId;
+  }
+  claimShelf(shelfId:string,heroId:string):boolean{
+    if(this.shelfBusyFor(shelfId,heroId))return false;
+    this.shelfOwners.set(shelfId,heroId);
+    return true;
+  }
+  release(heroId:string):void {
+    this.claims.delete(heroId);
+    for(const [shelfId,owner] of this.shelfOwners)
+      if(owner===heroId)this.shelfOwners.delete(shelfId);
+  }
+  clear():void {
+    this.claims.clear();this.shelfOwners.clear();this.layoutSignature="";
+  }
   claim(heroId:string):ShopServiceClaim|null{return this.claims.get(heroId)??null;}
   snapshot():readonly ShopServiceClaim[]{return [...this.claims.values()];}
 

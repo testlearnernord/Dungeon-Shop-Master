@@ -96,3 +96,19 @@ test("orange counter focus follows the actual counter body, not its old 2.5m cle
   assert.equal(model.bounds.depth,0.93);
   assert.equal(model.bounds.height,1.38);
 });
+
+test("shelf slots on a moved modular shelf share one exclusive service owner",()=>{
+  const spots=new ShopServiceSpots();
+  const layout=createShopLayout();
+  spots.configure(layout,createLevel5Room());
+  assert.equal(spots.claimShelf("shelf-2","hero-a"),true);
+  assert.equal(spots.claimShelf("shelf-2","hero-a"),true);
+  assert.equal(spots.shelfBusyFor("shelf-2","hero-b"),true);
+  assert.equal(spots.claimShelf("shelf-2","hero-b"),false);
+  assert.equal(spots.claimShelf("shelf-1","hero-b"),true);
+  spots.release("hero-a");
+  assert.equal(spots.shelfBusyFor("shelf-2","hero-b"),false);
+  assert.equal(spots.claimShelf("shelf-2","hero-b"),true);
+  spots.clear();
+  assert.equal(spots.shelfBusyFor("shelf-2","hero-c"),false);
+});

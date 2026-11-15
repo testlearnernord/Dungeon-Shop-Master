@@ -200,7 +200,6 @@ export class NpcVisualSystem {
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
-  private readonly shelfOwners=new Map<string,string>();
   private readonly serviceSpots=new ShopServiceSpots();
   private carts:readonly ShopCart[]=[];
   private wishBubblesVisible=true;
@@ -693,11 +692,8 @@ export class NpcVisualSystem {
     }
   };
 
-  private releaseShelf(npc:NpcVisual):void {
+  private releaseShelf(npc:NpcVisual):void{
     this.serviceSpots.release(npc.visitor.id);
-    for(const [slot,owner] of this.shelfOwners){
-      if(owner===npc.visitor.id)this.shelfOwners.delete(slot);
-    }
   }
 
   private beginEntering(npc: NpcVisual, slot: number, fromOutside: boolean): void {
@@ -874,11 +870,8 @@ export class NpcVisualSystem {
       // Reserve the entire physical shelf, not individual stock slots.
       // Adjacent access points overlap once shoulder/arm meshes are included;
       // only one browser may reach a shelf at a time. Others wait off-aisle.
-      const shelfAccessBusy=[...this.shelfOwners].some(([reservedId,reservedBy])=>{
-        if(reservedBy===npc.visitor.id)return false;
-        const reserved=[...this.shop!.slotMeshes.values()].find(s=>s.id===reservedId);
-        return reserved?.shelfId===slot.shelfId;
-      });
+      const shelfAccessBusy=this.serviceSpots.shelfBusyFor(
+        slot.shelfId,npc.visitor.id);
       if(shelfAccessBusy){
         // A shelf waiter who moved aside for traffic must stay at the cleared
         // location until the shelf becomes available. Otherwise the next
@@ -912,7 +905,10 @@ export class NpcVisualSystem {
       }
       const path=pathToShelfAccess(origin,this.layout,slot.shelfId,slot.index,this.room);
       if(path){
-        this.shelfOwners.set(item.slotId,npc.visitor.id);
+        if(!this.serviceSpots.claimShelf(slot.shelfId,npc.visitor.id)){
+          this.deferShelfRoute(npc,item.slotId);
+          return;
+        }
         npc.phase="browsing";npc.toQueue=false;
         npc.route=path.waypoints.map(p=>new Vector3(p.x,0,p.z));
         npc.waypoint=0;
