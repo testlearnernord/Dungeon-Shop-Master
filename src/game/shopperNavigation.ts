@@ -43,11 +43,13 @@ export function shopSegmentClear(a:ShopPoint,b:ShopPoint,layout:ShopLayout,room?
 /** Fast, deterministic grid search with bounds and actual moved shelf footprints.
  * Routes never invent wall-crossing diagonals or mutate any GameState fields.
  */
-export function pathToShopGoal(
-  from:ShopPoint,to:ShopPoint,layout:ShopLayout,room?:Level5Room,
-):ShopperRoute|null {
-  if(!Number.isFinite(from.x)||!Number.isFinite(from.z)||
-    !Number.isFinite(to.x)||!Number.isFinite(to.z))return null;
+/** A topology-scoped route planner for bulk validation and multi-shelf
+ * service searches. Only static rock and furniture grid cells are cached;
+ * actor occupancy is deliberately absent. Discard the planner after any
+ * room/layout mutation. A one-shot pathToShopGoal creates a fresh planner. */
+export function createShopRoutePlanner(
+  layout:ShopLayout,room?:Level5Room,
+): (from:ShopPoint,to:ShopPoint)=>ShopperRoute|null {
   // Excavation grows only sideways; don't multiply the grid's Z dimension
   // with every expansion tier when all those extra rows are solid rock.
   const minX=room?-6.5-2*room.expansionTier:MIN;
@@ -73,6 +75,9 @@ export function pathToShopGoal(
     return result;
   };
   const clear=(a:ShopPoint,b:ShopPoint)=>shopSegmentClear(a,b,layout,room);
+  return (from:ShopPoint,to:ShopPoint):ShopperRoute|null => {
+  if(!Number.isFinite(from.x)||!Number.isFinite(from.z)||
+    !Number.isFinite(to.x)||!Number.isFinite(to.z))return null;
   const snap=(p:ShopPoint):number=>{
     let best=-1,bestDist=Infinity;
     const x0=Math.round((p.x-minX)/STEP);
@@ -146,6 +151,15 @@ export function pathToShopGoal(
     cursor=waypoint;
   }
   return {waypoints:result,length:path.length-1};
+  };
+}
+
+/** One-shot navigation for active visitors. Every call observes its latest
+ * room and furniture layout; no persistent topology cache is retained. */
+export function pathToShopGoal(
+  from:ShopPoint,to:ShopPoint,layout:ShopLayout,room?:Level5Room,
+):ShopperRoute|null {
+  return createShopRoutePlanner(layout,room)(from,to);
 }
 
 /** Find a genuine reachable position at the FRONT of the requested shelf slot.
