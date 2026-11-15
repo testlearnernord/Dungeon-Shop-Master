@@ -10,14 +10,13 @@ import { ITEMS, type ItemId, type Slot } from "./inventory";
 import { GameStore } from "./gameStore";
 import { getDungeonSurfaces } from "./dungeonSurfaces";
 import {
-  COMPACT_COUNTER, getCounterPlacement, shopLayoutProblem,
+  COMPACT_COUNTER, getCounterPlacement,
   type CounterPlacement, type ShelfId, type ShelfPlacement,
 } from "./shopLayout.ts";
-import {SHOP_FLOOR_FURNITURE,shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT,shelfSlotLocalZ} from "./furnitureRegistry.ts";
+import {shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT,shelfSlotLocalZ} from "./furnitureRegistry.ts";
 
 interface ShelfGroup {
   root: TransformNode;
-  previewOutline: Mesh;
 }
 
 /** Shelf inventory IDs never change when a physical shelf is moved or rotated. */
@@ -27,9 +26,6 @@ export class Shop {
   private readonly slotMaterials = new Map<ItemId | "empty", StandardMaterial>();
   private readonly itemVisuals = new Map<string, Mesh[]>();
   private readonly shelves = new Map<ShelfId, ShelfGroup>();
-  private readonly validMaterial: StandardMaterial;
-  private readonly counterOutline: Mesh;
-  private readonly invalidMaterial: StandardMaterial;
   private selectedItemId: ItemId = ITEMS[0].id;
 
   constructor(
@@ -47,26 +43,6 @@ export class Shop {
     empty.diffuseColor = new Color3(0.33, 0.26, 0.19);
     this.slotMaterials.set("empty", empty);
 
-    const makeGuide = (name: string, color: Color3) => {
-      const mat = new StandardMaterial(name, scene);
-      mat.diffuseColor = color;
-      mat.emissiveColor = color.scale(0.45);
-      mat.alpha = 0.6;
-      mat.wireframe = true;
-      mat.disableLighting = true;
-      return mat;
-    };
-    this.validMaterial = makeGuide("placement-valid", new Color3(0.28, 0.94, 0.52));
-    this.invalidMaterial = makeGuide("placement-invalid", new Color3(1, 0.23, 0.22));
-    this.counterOutline=MeshBuilder.CreateBox("counter-placement-preview",{
-      width:SHOP_FLOOR_FURNITURE.counter.preview.width,
-      height:SHOP_FLOOR_FURNITURE.counter.preview.height,
-      depth:SHOP_FLOOR_FURNITURE.counter.preview.depth,
-    },scene);
-    this.counterOutline.material=this.validMaterial;
-    this.counterOutline.isPickable=false;
-    this.counterOutline.checkCollisions=false;
-    this.counterOutline.setEnabled(false);
     this.createShelves();
     this.syncPlacements();
     this.refresh();
@@ -85,32 +61,6 @@ export class Shop {
   }
   remove(slot: Slot): string {
     return this.store.transfer(slot.id, slot.itemId ?? this.selectedItemId, "remove");
-  }
-
-  /** Non-authoritative ghost preview; game/save state is only committed by GameStore. */
-  previewPlacement(placement: ShelfPlacement | (CounterPlacement & {readonly id:"counter"}) | null,
-    occupied = false): void {
-    this.syncPlacements();
-    for (const group of this.shelves.values()) group.previewOutline.setEnabled(false);
-    this.counterOutline.setEnabled(false);
-    if (!placement) return;
-    if(placement.id==="counter"){
-      this.positionCounter(placement);
-      this.counterOutline.material=shopLayoutProblem({
-        ...this.store.state.shopLayout,counter:placement,
-      },this.store.state.level5Room)||occupied?this.invalidMaterial:this.validMaterial;
-      this.counterOutline.setEnabled(true);
-      return;
-    }
-    const group = this.shelves.get(placement.id);
-    if (!group) return;
-    this.positionShelf(group, placement);
-    group.previewOutline.material = shopLayoutProblem({
-      ...this.store.state.shopLayout,
-      shelves:this.store.state.shopLayout.shelves.map(p=>
-        p.id===placement.id?placement:p),
-    },this.store.state.level5Room) || occupied ? this.invalidMaterial : this.validMaterial;
-    group.previewOutline.setEnabled(true);
   }
 
   /** For subsequent shopping/navigation AI: shelf position, never a hard-coded aisle. */
@@ -139,10 +89,7 @@ export class Shop {
     put("counter-top",0,0.90,0);
     put("register-base",COMPACT_COUNTER.registerOffsetX,1.05,COMPACT_COUNTER.registerOffsetZ);
     put("cash-register",COMPACT_COUNTER.registerOffsetX,1.22,COMPACT_COUNTER.registerOffsetZ);
-    const visual=SHOP_FLOOR_FURNITURE.counter.preview;
-    const offset=turnShopOffset(visual.offsetX,visual.offsetZ,p.rotation);
-    this.counterOutline.position.set(p.x+offset.x,visual.offsetY,p.z+offset.z);
-    this.counterOutline.rotation.y=p.rotation*Math.PI/2;
+
   }
   private positionShelf(group: ShelfGroup, p: ShelfPlacement): void {
     group.root.position.set(p.x, 0, p.z);
@@ -195,18 +142,7 @@ export class Shop {
       plank.checkCollisions=true;
       plank.isPickable=true;
 
-      const preview=SHOP_FLOOR_FURNITURE.shelf.preview;
-      const outline=MeshBuilder.CreateBox(shelfId+"-placement-preview",{
-        width:preview.width,height:preview.height,depth:preview.depth,
-      },this.scene);
-      outline.parent=root;
-      outline.position.set(preview.offsetX,preview.offsetY,preview.offsetZ);
-      outline.material=this.validMaterial;
-      outline.isPickable=false;
-      outline.checkCollisions=false;
-      outline.setEnabled(false);
-      this.shelves.set(shelfId,{root,previewOutline:outline});
-
+      this.shelves.set(shelfId,{root});
       for(let index=0;index<SHELF_SLOT_COUNT;index++){
         const slot=this.store.state.shopEconomy.slots.find(({id})=>
           id===`${shelfId}-slot-${index+1}`)!;
