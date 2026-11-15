@@ -116,7 +116,7 @@ test("eight incoming customers progress around relocated shelves and checkout",a
   // A service place is not a magic coordinate. Customers who have actually
   // finished reaching a station must not be standing on top of another
   // stationary customer, even with rotated furniture.
-  const settled=new Set(["awaiting-checkout","waiting-for-restock",
+  const settled=new Set(["awaiting-checkout","considering-item","waiting-for-restock",
     "waiting-for-credit","waiting-for-shelf","waiting-for-restock-overflow",
     "waiting-for-credit-overflow","checkout-overflow-wait"]);
   const stationary=final.visitors.filter(visitor=>settled.has(visitor.shoppingPhase??""));
