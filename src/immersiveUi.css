@@ -258,26 +258,26 @@
 #hud .status.is-stale{opacity:0;transition:opacity .35s;pointer-events:none}
 
 /* Form-heavy overlays share one readable, restrained management language. */
-#wholesale,#roster-dialog,#shelf-placement,#beggar-dialog,#debt-book-dialog{
+#wholesale,#roster-dialog,#beggar-dialog,#debt-book-dialog{
   color:var(--ui-text)!important;
   background:linear-gradient(155deg,rgba(29,35,35,.97),rgba(16,20,22,.98))!important;
   border:1px solid var(--ui-border)!important;border-radius:16px!important;
   box-shadow:0 30px 100px rgba(0,0,0,.65)!important;
   scrollbar-color:#987b50 transparent
 }
-#wholesale::backdrop,#roster-dialog::backdrop,#shelf-placement::backdrop,
+#wholesale::backdrop,#roster-dialog::backdrop,
 #beggar-dialog::backdrop,#debt-book-dialog::backdrop{background:rgba(2,5,7,.70)!important;backdrop-filter:blur(5px)}
-#wholesale h2,#roster-dialog h2,#shelf-placement h2,#beggar-dialog h2,#debt-book-dialog h2{
+#wholesale h2,#roster-dialog h2,#beggar-dialog h2,#debt-book-dialog h2{
   font:600 clamp(23px,3vw,34px)/1.1 Georgia,serif;
   color:#f4d49b!important;letter-spacing:-.015em
 }
 #wholesale .wholesale-heading,#roster-dialog .roster-heading,
-#shelf-placement .placement-heading,#debt-book-dialog .debt-book-heading{
+#debt-book-dialog .debt-book-heading{
   border-bottom:1px solid rgba(200,164,105,.28);
   padding-bottom:16px;align-items:flex-start;gap:14px
 }
 #wholesale :is(button,input,select),#roster-dialog :is(button,input,select),
-#shelf-placement :is(button,input,select),#beggar-dialog :is(button,input,select),
+#beggar-dialog :is(button,input,select),
 #debt-book-dialog :is(button,input,select){
   color:var(--ui-text);background:var(--ui-bg-raised);
   border:1px solid var(--ui-border);border-radius:9px;
@@ -285,7 +285,6 @@
 }
 #wholesale :is(button,input,select):hover:not(:disabled),
 #roster-dialog :is(button,input,select):hover:not(:disabled),
-#shelf-placement :is(button,input,select):hover:not(:disabled),
 #beggar-dialog :is(button,input,select):hover:not(:disabled),
 #debt-book-dialog :is(button,input,select):hover:not(:disabled){
   border-color:var(--ui-border-strong);background:rgba(86,72,51,.74)
@@ -311,7 +310,7 @@
 #roster-dialog .roster-hp{height:5px;border-radius:20px;background:rgba(10,18,20,.75);overflow:hidden}
 #roster-dialog .roster-hp>span{border-radius:20px}
 #roster-dialog .roster-overview{display:block;margin-top:6px;color:var(--ui-muted);font-size:11px}
-#shelf-placement,#blueprint-panel{max-height:min(85dvh,850px);overflow:auto}
+#blueprint-panel{max-height:min(85dvh,850px);overflow:auto}
 #blueprint-panel{
   border:1px solid var(--ui-border)!important;background:rgba(16,22,24,.82)!important;
   backdrop-filter:blur(16px);box-shadow:var(--ui-shadow);border-radius:13px;
@@ -490,7 +489,7 @@
   #hud .adventurer-panel .ui-compact-action,
   #hud .shop-quick-actions .ui-compact-action{width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important}
   #hud .status{top:29%}
-  #wholesale,#roster-dialog,#debt-book-dialog,#shelf-placement{
+  #wholesale,#roster-dialog,#debt-book-dialog{
     width:calc(100vw - 14px)!important;max-height:94dvh!important;padding:12px!important
   }
   #blueprint-panel{bottom:115px;right:7px;max-height:52dvh}
