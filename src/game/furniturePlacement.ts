@@ -1,8 +1,10 @@
 import type {GameState} from "./gameState.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
-import {isBedroomFurnitureId,replaceBedroomFurniture} from "./bedroomFurniture.ts";
+import {isBedroomFurnitureId,replaceBedroomFurniture,
+  type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 import {replaceRosterBoard,rosterBoardProblem,DEFAULT_ROSTER_BOARD} from "./rosterBoardPlacement.ts";
-import {replaceCounterPlacement,replaceShelfPlacement} from "./shopLayout.ts";
+import {replaceCounterPlacement,replaceShelfPlacement,
+  type ShelfPlacement} from "./shopLayout.ts";
 import {shopServiceReachabilityProblem} from "./shopServiceReachability.ts";
 
 export type FurniturePlacementResult={
@@ -35,7 +37,8 @@ export function resolveFurniturePlacement(
       message:result.message};
   }
   if(isBedroomFurnitureId(draft.id)){
-    const result=replaceBedroomFurniture(state.bedroomFurniture,draft);
+    const result=replaceBedroomFurniture(state.bedroomFurniture,
+      draft as BedroomFurniturePlacement);
     if(result.message!=="Bedroom furniture placed.")
       return unchanged(result.message,result.message);
     return {state:result.layout===state.bedroomFurniture?state:
@@ -53,7 +56,7 @@ export function resolveFurniturePlacement(
       {...state,shopLayout:result.layout},problem:null,
       message:result.message};
   }
-  const result=replaceShelfPlacement(state.shopLayout,draft,
+  const result=replaceShelfPlacement(state.shopLayout,draft as ShelfPlacement,
     state.level5Room);
   if(result.message!=="Shelf placement saved.")
     return unchanged(result.message,result.message);
