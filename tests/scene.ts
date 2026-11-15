@@ -469,6 +469,30 @@ export function aimAtLevel5Rock(x:number,z:number):string {
   return mesh.name;
 }
 
+/** Aim the contextual P editor from an actually mined cell toward the
+ * next unmined rock wall. Never teleport the board or fake a wall surface.
+ */
+export function aimAtExcavatedBoardWall(nextX:number,z:number):string{
+  const scene=Engine.LastCreatedScene!;
+  const face=scene.meshes.find(mesh=>
+    mesh.metadata?.level5MineCell?.x===nextX&&
+    mesh.metadata?.level5MineCell?.z===z&&
+    Math.abs(mesh.position.x-(nextX-.5))<.05);
+  if(!face)throw new Error("Missing exposed rock support "+nextX+","+z);
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(nextX-1.4,1.7,z);
+  camera.setTarget(new Vector3(face.position.x,1.7,face.position.z));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+  const picked=scene.pickWithRay(camera.getForwardRay(48),
+    mesh=>mesh.isEnabled()&&mesh.isVisible&&mesh.isPickable&&
+      surfaceFromMesh(mesh.name)==="rock-wall");
+  if(picked?.pickedMesh!==face)
+    throw new Error("Editor aimed at "+
+      (picked?.pickedMesh?.name??"nothing")+" instead of "+face.name);
+  return face.name;
+}
+
 /** Wall and floor observations from the rendered Babylon scene. */
 export function inspectLevel5Rock(x:number,z:number) {
   const scene=Engine.LastCreatedScene!;
