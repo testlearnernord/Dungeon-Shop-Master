@@ -65,7 +65,7 @@ npm run test:unit
 npm test
 ```
 
-The latest campaign format is **simulation version 12**. This alpha
+The latest campaign format is **simulation version 13**. Fresh games begin with an empty sales floor: press **N** to build a compact four-position shelf, then stock it from the starting bag. The previous fixed large shelves and Shift+P coordinate editor are removed. This alpha
 intentionally does **not migrate older saves**. If a previous build's
 campaign cannot be loaded, start a new campaign. Invalid stored data is
 preserved rather than silently overwritten.
