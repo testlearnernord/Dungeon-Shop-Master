@@ -26,7 +26,7 @@
 The repository currently implements:
 
 - TypeScript/Vite with Babylon.js; first-person Level 5 shop, shelf restocking, wholesale purchasing, cashier interaction, credits and customer shopping behavior.
-- NPC movement, checkout queues, credit/restock requests and shelf waiting, with a shared, geometry-aware service-spot reservation manager. Claims are temporary visual navigation state, not purchases or saves.
+- NPC movement, checkout queues, credit/restock requests and shelf waiting, with a shared, geometry-aware service-spot reservation manager covering actual shelf-browsing endpoints as well as queues and waiting points. Claims are temporary visual navigation state, not purchases or saves.
 - Contextual furniture placement: shelves and compact checkout counter (new campaigns start at the corner near Galvik’s rest-room wall), plus bedroom desk/book, chest, candle/stool, bed and wall-mounted Adventurer Board. Previews are not saved until confirmed. Newly dug 1m cells can be used for furniture **once enough connected floor has been cleared for the entire object and its service access**.
 - Level 5 room excavation/expansion, persistence, hero identities and roster.
 - Deterministic day-based adventures on Floors 1–4, a Cave Troll encounter on Floor 6 and the shared Floor 7 exploration/replay systems. Later floors are not claimed as playable.
