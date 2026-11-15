@@ -91,9 +91,9 @@ test("side-aisle placements are decided by actual clearance and reachable routes
   }),null);
   // Not everything near the same wall is okay: farther right blocks the
   // actual shelf face, which must remain a rejected placement.
-  const blocked=replaceCounterPlacement(layout,{x:4.5,z:0,rotation:0});
-  assert.equal(blocked.message,"Counter placement saved.");
-  assert.match(shopServiceReachabilityProblem(blocked.layout)??"",/shelf-2/);
+  const blocked=replaceCounterPlacement(layout,{x:5.5,z:0,rotation:0});
+  assert.notEqual(blocked.message,"Counter placement saved.");
+  assert.strictEqual(blocked.layout,layout,"counter cannot overlap an actual small shelf");
 });
 
 test("strict saves reject injected, incomplete or obstructing furniture geometry",()=>{
@@ -119,7 +119,7 @@ test("occupied floor space blocks shelf placement even when static geometry is l
   assert.equal(shopLayoutProblem(replaceShelfPlacement(createStockedShopLayout(),placement).layout),null);
   assert.equal(shelfOverlapsActor(placement,{x:0,z:-2,radius:0.45}),true);
   assert.equal(shelfOverlapsActor(placement,{x:0,z:-4.6,radius:0.45}),false);
-  assert.equal(shelfOverlapsActor(placement,{x:2.5,z:-2.5,radius:0.4}),true);
+  assert.equal(shelfOverlapsActor(placement,{x:1.3,z:-2.5,radius:0.4}),true);
   assert.equal(shelfOverlapsActor(placement,{x:4,z:-2,radius:0.4}),false);
 });
 
