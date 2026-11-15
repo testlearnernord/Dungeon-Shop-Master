@@ -1,6 +1,7 @@
+import {createStockedShopLayout as createShopLayout} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createShopLayout,replaceCounterPlacement} from "../../src/game/shopLayout.ts";
+import { replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import {checkoutQueuePoints} from "../../src/game/checkoutQueue.ts";
 import {createLevel5Room,excavateLevel5Cell} from "../../src/game/level5Room.ts";
 import {ShopServiceSpots} from "../../src/game/shopServiceSpots.ts";
