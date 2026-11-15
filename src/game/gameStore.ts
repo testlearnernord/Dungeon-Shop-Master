@@ -1,15 +1,16 @@
 import { createLevel5Room, excavateLevel5Cell, isValidLevel5Room, type RoomCell } from "./level5Room.ts";
 import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
-import { replaceCounterPlacement, replaceShelfPlacement, type CounterPlacement, type ShelfPlacement } from "./shopLayout.ts";
+import type {CounterPlacement,ShelfPlacement} from "./shopLayout.ts";
+import type {FurnitureDraft} from "./furnitureBlueprint.ts";
+import {resolveFurniturePlacement} from "./furniturePlacement.ts";
 import { checkoutCustomer, quoteCustomerCheckout, type CheckoutQuote } from "./customerCheckout.ts";
 import { pickUpShopItem, returnShopCart, payReservedShopCart } from "./shopCarts.ts";
 import { walkOutWithoutPurchase } from "./shopWalkout.ts";
 import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
-import { shopServiceReachabilityProblem } from "./shopServiceReachability.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
-import {replaceBedroomFurniture,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
-import {DEFAULT_ROSTER_BOARD,replaceRosterBoard,rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
+import type {BedroomFurniturePlacement} from "./bedroomFurniture.ts";
+import {DEFAULT_ROSTER_BOARD,rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 
 export class GameStore {
   private current: GameState;
@@ -66,6 +67,11 @@ export class GameStore {
     const room=this.current.level5Room??createLevel5Room();
     const result=excavateLevel5Cell(room,cell);
     if(!result.ok)return result.reason;
+    // The mineable rock is also a possible *wall mount*. Excavating its
+    // supporting stone must not strand a saved board in midair.
+    const board=this.current.rosterBoard??DEFAULT_ROSTER_BOARD;
+    if(rosterBoardProblem(board,this.current.shopLayout,result.room))
+      return "Move the Adventurer Board before mining its supporting rock.";
     this.replace({...this.current,level5Room:result.room});
     return "Rock excavated.";
   }
@@ -80,56 +86,35 @@ export class GameStore {
     return "Shop expansion unlocked.";
   }
 
-  /** Authoritative read-only placement check for BOTH furniture editors.
-   * Use the same room, board and customer routes that the eventual commit
-   * will use. Do not let the preview and GameStore disagree.
+  /** One authoritative placement path for the shelf, till, bedroom and
+   * wall board. Both editors and the preview ask exactly this pure validator.
    */
-  previewShopPlacement(placement:ShelfPlacement|
-    (CounterPlacement&{readonly id:"counter"})):string|null {
-    const isCounter=placement.id==="counter";
-    const result=isCounter
-      ?replaceCounterPlacement(this.current.shopLayout,placement,this.current.level5Room)
-      :replaceShelfPlacement(this.current.shopLayout,placement,this.current.level5Room);
-    const success=isCounter?"Counter placement saved.":"Shelf placement saved.";
-    if(result.message!==success)return result.message;
-    if(!isCounter){
-      const board=rosterBoardProblem(this.current.rosterBoard??DEFAULT_ROSTER_BOARD,result.layout);
-      if(board)return board;
-    }
-    return shopServiceReachabilityProblem(result.layout,this.current.level5Room);
+  previewFurniturePlacement(draft:FurnitureDraft):string|null{
+    return resolveFurniturePlacement(this.current,draft).problem;
   }
-
-  placeShelf(placement: ShelfPlacement): string {
-    const problem=this.previewShopPlacement(placement);
-    if(problem)return problem;
-    const result=replaceShelfPlacement(this.current.shopLayout,placement,this.current.level5Room);
-    if(result.layout!==this.current.shopLayout)
-      this.replace({...this.current,shopLayout:result.layout});
+  placeFurniture(draft:FurnitureDraft):string{
+    const result=resolveFurniturePlacement(this.current,draft);
+    if(result.problem)return result.problem;
+    this.replace(result.state);
     return result.message;
   }
-
-  placeCounter(placement:CounterPlacement):string {
-    const problem=this.previewShopPlacement({...placement,id:"counter"});
-    if(problem)return problem;
-    const result=replaceCounterPlacement(this.current.shopLayout,placement,this.current.level5Room);
-    if(result.layout!==this.current.shopLayout)
-      this.replace({...this.current,shopLayout:result.layout});
-    return result.message;
+  // Keep the existing typed public API for saved games and UI callers while
+  // routing every furniture family through the same placement transaction.
+  previewShopPlacement(draft:ShelfPlacement|
+    (CounterPlacement&{readonly id:"counter"})):string|null{
+    return this.previewFurniturePlacement(draft);
   }
-
-  placeRosterBoard(placement:RosterBoardPlacement):string {
-    const result=replaceRosterBoard(this.current.rosterBoard,placement,this.current.shopLayout);
-    if(result.placement!==this.current.rosterBoard)
-      this.replace({...this.current,rosterBoard:result.placement});
-    return result.message;
+  placeShelf(placement:ShelfPlacement):string{
+    return this.placeFurniture(placement);
   }
-
-  placeBedroomFurniture(placement:BedroomFurniturePlacement):string {
-    const result=replaceBedroomFurniture(this.current.bedroomFurniture,placement);
-    if(result.layout!==this.current.bedroomFurniture){
-      this.replace({...this.current,bedroomFurniture:result.layout});
-    }
-    return result.message;
+  placeCounter(placement:CounterPlacement):string{
+    return this.placeFurniture({id:"counter",...placement});
+  }
+  placeRosterBoard(placement:RosterBoardPlacement):string{
+    return this.placeFurniture({id:"adventurer-board",...placement});
+  }
+  placeBedroomFurniture(placement:BedroomFurniturePlacement):string{
+    return this.placeFurniture(placement);
   }
 
   pickUpShopItem(heroId: string, slotId: string): string {

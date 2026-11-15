@@ -1,9 +1,9 @@
 import type { FurnitureId } from "./furnitureBlueprint.ts";
-import {SHOP_FLOOR_FURNITURE} from "./shopFloorFurniture.ts";
+import {FURNITURE_REGISTRY,type FurnitureKind} from "./furnitureRegistry.ts";
 
-/** All currently selectable built-in furnishings have a stable movable identity.
- * Persisted transforms are resolved from GameState when focused; this registry
- * only maps visible mesh names to furniture identity and focus dimensions.
+/** All visible built-in furnishings have a stable identity, not a keyboard slot.
+ * Persisted positions are resolved from GameState when focused; this module
+ * only maps visible mesh identities to movable objects and focus dimensions.
  */
 export interface LookedAtFurniture {
   readonly id:string;
@@ -13,19 +13,27 @@ export interface LookedAtFurniture {
   readonly focusY:number;
 }
 
+const bounds=(id:FurnitureKind)=>{
+  const definition=FURNITURE_REGISTRY[id] as
+    import("./furnitureRegistry.ts").FurnitureDefinition;
+  if(definition.focus)return definition.focus;
+  const {width,height,depth}=definition;
+  return {width,height,depth};
+};
+
 const furniture:readonly LookedAtFurniture[]=[
   {id:"shelf-1",label:"Left shelf",movableId:"shelf-1",
-    bounds:SHOP_FLOOR_FURNITURE.shelf.focus,focusY:1.27},
+    bounds:bounds("shelf-1"),focusY:1.27},
   {id:"shelf-2",label:"Right shelf",movableId:"shelf-2",
-    bounds:SHOP_FLOOR_FURNITURE.shelf.focus,focusY:1.27},
+    bounds:bounds("shelf-2"),focusY:1.27},
   {id:"counter",label:"Checkout counter",movableId:"counter",
-    bounds:SHOP_FLOOR_FURNITURE.counter.focus,focusY:0.69},
-  {id:"adventurer-board",label:"Adventurer board",movableId:"adventurer-board",bounds:{width:3.45,height:2.25,depth:0.22},focusY:2.17},
-  {id:"bed",label:"Galvik's bed",movableId:"bed",bounds:{width:1.7,height:1.55,depth:2.5},focusY:0.78},
-  {id:"debt-book",label:"Book of Debts · move with desk",movableId:"desk",bounds:{width:1.18,height:1.25,depth:0.76},focusY:0.65},
-  {id:"desk",label:"Accounting desk",movableId:"desk",bounds:{width:1.18,height:1.25,depth:0.76},focusY:0.65},
-  {id:"chest",label:"Storage chest",movableId:"chest",bounds:{width:1.04,height:0.9,depth:0.72},focusY:0.45},
-  {id:"candle",label:"Bedside candle + stool",movableId:"candle",bounds:{width:0.66,height:1.2,depth:0.66},focusY:0.60},
+    bounds:bounds("counter"),focusY:0.69},
+  {id:"adventurer-board",label:"Adventurer board",movableId:"adventurer-board",bounds:bounds("adventurer-board"),focusY:2.17},
+  {id:"bed",label:"Galvik's bed",movableId:"bed",bounds:bounds("bed"),focusY:0.78},
+  {id:"debt-book",label:"Book of Debts · move with desk",movableId:"desk",bounds:bounds("desk"),focusY:0.65},
+  {id:"desk",label:"Accounting desk",movableId:"desk",bounds:bounds("desk"),focusY:0.65},
+  {id:"chest",label:"Storage chest",movableId:"chest",bounds:bounds("chest"),focusY:0.45},
+  {id:"candle",label:"Bedside candle + stool",movableId:"candle",bounds:bounds("candle"),focusY:0.60},
 ];
 
 /** Mesh names, including their component pieces, resolve to one furniture.

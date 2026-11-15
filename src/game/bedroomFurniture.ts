@@ -1,3 +1,4 @@
+import {furnitureBounds,furnitureBoundsOverlap,furnitureTouchesActor} from "./furnitureRegistry.ts";
 /** Bedroom furnishings are a small physical floor-only system. A v12 save
  * from before movable beds contains three props; the bed is then implicitly
  * at its original location. No save migration is necessary.
@@ -17,12 +18,6 @@ export const BEDROOM_DEFAULTS:BedroomFurnitureLayout=[
   {id:"bed",x:0.8,z:-10.6,rotation:0},
 ] as const;
 
-const sizes:Record<BedroomFurnitureId,{width:number;depth:number}>={
-  desk:{width:1.18,depth:0.76},
-  chest:{width:1.04,depth:0.72},
-  candle:{width:0.66,depth:0.66},
-  bed:{width:1.74,depth:2.70},
-};
 export function createBedroomFurnitureLayout():BedroomFurnitureLayout{
   return BEDROOM_DEFAULTS.map(p=>({...p}));
 }
@@ -34,17 +29,9 @@ export function getBedroomFurniture(
   return layout?.find(p=>p.id===id)??BEDROOM_DEFAULTS.find(p=>p.id===id)!;
 }
 
-interface Bounds{minX:number;maxX:number;minZ:number;maxZ:number}
-const bounds=(p:BedroomFurniturePlacement):Bounds=>{
-  const size=sizes[p.id],turned=p.rotation%2!==0;
-  const width=turned?size.depth:size.width;
-  const depth=turned?size.width:size.depth;
-  return {minX:p.x-width/2,maxX:p.x+width/2,
-    minZ:p.z-depth/2,maxZ:p.z+depth/2};
-};
-const overlap=(a:Bounds,b:Bounds,pad=0)=>
-  a.minX<b.maxX+pad&&a.maxX>b.minX-pad&&
-  a.minZ<b.maxZ+pad&&a.maxZ>b.minZ-pad;
+type Bounds=ReturnType<typeof furnitureBounds>;
+const bounds=(p:BedroomFurniturePlacement):Bounds=>furnitureBounds(p);
+const overlap=furnitureBoundsOverlap;
 const quarter=(n:number)=>Math.abs(n*4-Math.round(n*4))<1e-8;
 
 /** Keep an accessible place beside the mattress, not just a legal bed
@@ -109,9 +96,7 @@ export function bedroomFurnitureOverlapsActor(
 ):boolean{
   if(!Number.isFinite(actor.x)||!Number.isFinite(actor.z)||
      !Number.isFinite(actor.radius)||actor.radius<0)return false;
-  const b=bounds(placement);
-  return actor.x+actor.radius>b.minX&&actor.x-actor.radius<b.maxX&&
-    actor.z+actor.radius>b.minZ&&actor.z-actor.radius<b.maxZ;
+  return furnitureTouchesActor(placement,actor);
 }
 export function replaceBedroomFurniture(
   layout:BedroomFurnitureLayout|undefined,placement:BedroomFurniturePlacement,
