@@ -297,3 +297,76 @@ test("restarted indoor visitors do not jam the doorway after successive day tick
     .every(v=>v.z<5.4)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("a paid visitor never respawns on roster changes or extends their visit overnight",async({page})=>{
+  test.setTimeout(45000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  const ids=await page.evaluate(async()=>{
+    const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const initial=createGameState(72541);
+    const paid=initial.adventurers[0],other=initial.adventurers[1];
+    const prepared={...initial,
+      adventurers:initial.adventurers.map((hero,index)=>index<2
+        ?{...hero,status:"at-shop" as const,floor:5 as const,
+          shopStayDays:0,level6Permit:false,gold:100,
+          inventory:{...hero.inventory,bread:0,healing:0}}
+        :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
+      events:[...initial.events,{
+        id:"day-1:"+paid.id+":sale:shelf-1-slot-2:manual",
+        type:"sale" as const,saleChannel:"manual" as const,day:1,
+        adventurerId:paid.id,itemId:"bread" as const,quantity:1,revenue:4,
+        message:paid.name+" paid for Waybread.",
+      }],
+      shopEconomy:{...initial.shopEconomy,
+        slots:initial.shopEconomy.slots.map(slot=>({
+          ...slot,itemId:null,quantity:0,
+        }))},
+    };
+    await new CampaignStorage().saveGame(prepared);
+    return {paid:paid.id,other:other.id};
+  });
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const paidVisual=()=>page.evaluate(async id=>{
+    const {inspectNpcVisuals}=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    return inspectNpcVisuals().visitors.find(hero=>hero.id===id)??null;
+  },ids.paid);
+  // The visitor has a same-day manual receipt and should complete an exit,
+  // not loop through the entrance again because their simulation status
+  // remains at-shop until Galvik sleeps.
+  await expect.poll(async()=>await paidVisual(),{timeout:12000}).toBeNull();
+  // The compact roster is intentionally collapsed in the real HUD.
+  // Invoke its actual button click handler rather than waiting for a
+  // hidden row to become visible; this still uses GameStore.setLevel6Permit.
+  await page.evaluate(otherId=>{
+    const button=document.querySelector<HTMLButtonElement>(
+      `#adventurer-roster .level6-permit[data-adventurer-id="${otherId}"]`);
+    if(!button)throw Error("Missing other visitor's Level 6 permit");
+    button.click();
+  },ids.other);
+  await expect(page.locator(
+    `#adventurer-roster .level6-permit[data-adventurer-id="${ids.other}"]`))
+    .toHaveAttribute("aria-pressed","true");
+  await page.waitForTimeout(800);
+  expect(await paidVisual()).toBeNull();
+  await page.evaluate(()=>{
+    (window as Window&{__shopTestAdvanceDay?:()=>void}).__shopTestAdvanceDay?.();
+  });
+  await expect(page.locator("#day")).toHaveText("Day 2");
+  await expect.poll(async()=>page.evaluate(async id=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    if(!state||state.day!==2)return null;
+    const hero=state.adventurers.find(person=>person.id===id);
+    return {status:hero?.status,floor:hero?.floor,
+      stayed:state.events.some(e=>e.day===2&&e.adventurerId===id&&e.type==="shop-stay"),
+      departed:state.events.some(e=>e.day===2&&e.adventurerId===id&&e.type==="shop-departure")};
+  },ids.paid),{timeout:12000}).toEqual({
+    status:"returning",floor:4,stayed:false,departed:true,
+  });
+  expect(await paidVisual()).toBeNull();
+  expect(errors).toEqual([]);
+});

@@ -6,6 +6,10 @@ import type { ShopPoint } from "./shopperNavigation.ts";
 
 /** Minimum center-to-center clearance for rendered NPC shoulders, not a radius. */
 export const NPC_CENTER_CLEARANCE=1.02;
+/** Shared minimum separation between two independently reserved standing
+ * destinations (queue, restock, checkout, shelf access). Navigation queues
+ * must use this clearance too, not just the narrower rendered body width. */
+export const NPC_STATION_CLEARANCE=NPC_CENTER_CLEARANCE+0.16;
 
 /** Closest a neighbour gets to an entire step, not just the step's endpoint. */
 function segmentDistance(p:ShopPoint,a:ShopPoint,b:ShopPoint):number {
@@ -55,6 +59,14 @@ export function gateTravelLane(gate:GateSide,phase:"entering"|"leaving"):number 
   const center=gate==="level4"?-4:4;
   const side=gate==="level4"?-1:1;
   return center+side*(phase==="entering"?0.57:-0.57);
+}
+
+/** Distinguish the actual two narrow exit corridors from the rest of the
+ * rear shop floor. The original cave still reaches beyond z=6 along its
+ * side walls; z alone does NOT mean a hero is already through a gate. */
+export function isInExitCorridor(position:ShopPoint,innerZ:number):boolean {
+  return position.z>innerZ+0.25 &&
+    (Math.abs(position.x+4)<=0.68||Math.abs(position.x-4)<=0.68);
 }
 
 /** An arriving group needs more room than the bare collision radius; exact

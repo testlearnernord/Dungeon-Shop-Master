@@ -207,7 +207,8 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       return { ...ready, status: "expedition" as const, floor: 6 as const, shopStayDays: 0 };
     }
     const dungeon = simulateDungeon(ready, day, rngState);
-    const shop = scheduleShopVisit(dungeon.adventurer, day, dungeon.rngState);
+    const shop = scheduleShopVisit(dungeon.adventurer, day, dungeon.rngState,
+      paidIds.has(hero.id));
     rngState = shop.rngState;
     events.push(...dungeon.events, ...shop.events);
     return shop.adventurer;

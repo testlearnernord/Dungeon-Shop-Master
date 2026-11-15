@@ -19,7 +19,7 @@ import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot, type WaypointProgress, type GateTrafficActor } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, isInExitCorridor, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot, type WaypointProgress, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
 import { ShopServiceSpots } from "./shopServiceSpots.ts";
 
@@ -204,6 +204,10 @@ export class NpcVisualSystem {
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
   private readonly serviceSpots=new ShopServiceSpots();
   private carts:readonly ShopCart[]=[];
+  /** Shopping-state notifications may happen without a new day. A committed
+   * manual payment keeps the simulated hero at-shop until closing, but the
+   * visual is already leaving and must never be regenerated or reversed. */
+  private paidThisDay:ReadonlySet<string>=new Set();
   private wishBubblesVisible=true;
 
   constructor(private readonly scene: Scene) {
@@ -254,13 +258,19 @@ export class NpcVisualSystem {
         visual.visitor = visitor;
         paintIdentity(visual, this.portraits);
         visual.root.metadata.simulationStatus = visitor.status;
-        if (visual.phase === "leaving") this.beginEntering(visual, visual.slot, false);
+        // "at-shop" is deliberately retained in the economy until the day
+        // closes, even after a manual checkout. A roster/permit update must
+        // never revive that paid customer's already-running exit animation.
+        if (visual.phase === "leaving" &&
+            !this.paidThisDay.has(visitor.id))
+          this.beginEntering(visual, visual.slot, false);
       } else {
+        // This hero may have walked completely offscreen after payment.
+        // A later unrelated GameStore update must not spawn them again.
+        if(this.paidThisDay.has(visitor.id))continue;
         let slot = 0;
         while (usedSlots.has(slot)) slot += 1;
         usedSlots.add(slot);
-        // Concurrent arrivals have distinct lateral lanes and spawn depth.
-        // Never create two physical models at the same position.
         const gate=visitor.entranceGate??"level4";
         const laneX=gateTravelLane(gate,"entering");
         const spawnZ=nextEntranceSpawnZ(laneX,[...this.npcs.values()].map(n=>({
@@ -305,6 +315,7 @@ export class NpcVisualSystem {
     this.onPickUp=onPickUp;
     this.onWalkout=onWalkout??null;
     this.carts=carts;
+    this.paidThisDay=paidHeroIds;
     const roomSignature=JSON.stringify(room??null);
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
     const queueIds=carts.filter(cart=>cart.lines.length>0).map(cart=>cart.heroId);
@@ -331,7 +342,7 @@ export class NpcVisualSystem {
         if(npc.phase==="leaving"&&(
           npc.root.metadata.shoppingPhase==="blocked-exit"||
           (furnitureMoved&&npc.root.position.z<=CORRIDOR_INNER_Z)))
-          this.beginLeaving(npc);
+          this.beginLeaving(npc,true);
         continue;
       }
       const plan=plans.get(npc.visitor.id)??null;
@@ -724,43 +735,51 @@ export class NpcVisualSystem {
     npc.root.metadata.simulationStatus = npc.visitor.status;
   }
 
-  private beginLeaving(npc: NpcVisual): void {
+  private beginLeaving(npc: NpcVisual, replan=false): void {
+    const desiredGate=npc.visitor.status === "expedition" ? "level6" : "level4";
+    const outside=isInExitCorridor({
+      x:npc.root.position.x,z:npc.root.position.z,
+    },CORRIDOR_INNER_Z);
+    // An outgoing visitor must not turn back toward the shop merely because
+    // another customer paid, the day ended, or furniture changed behind them.
+    // A change of destination gate is safe only while still inside the shop.
+    if(npc.phase==="leaving" && npc.route[npc.waypoint] &&
+        (outside || (!replan && npc.gateSide===desiredGate)))return;
     this.releaseShelf(npc);
     npc.routeProgress=null;
-    npc.phase = "leaving";
-    npc.gateSide = npc.visitor.status === "expedition" ? "level6" : "level4";
-    const gateX = gateTravelLane(npc.gateSide,"leaving");
-    // Keep the current corridor lane when outside: crossing lateral corridor
-    // walls at z>7 is forbidden. Inside the shop use furniture-aware routing.
-    const mustEnterShop=npc.root.position.z>CORRIDOR_INNER_Z+0.25;
-    const from=mustEnterShop?
-      {x:npc.root.position.x,z:CORRIDOR_INNER_Z}:
-      {x:npc.root.position.x,z:npc.root.position.z};
-    const possibleLanes=[gateX];
-    const chosen=possibleLanes.map(x=>({
-      x,route:this.layout?pathToShopGoal(from,{
-        x,z:CORRIDOR_INNER_Z,
-      },this.layout,this.room):null,
-    })).find(entry=>entry.route!==null);
-    if(this.layout&&!chosen){
-      // Never fall back to a straight wall-crossing route.
-      npc.route=[];
-      npc.waypoint=0;
-      npc.root.metadata.shoppingPhase="blocked-exit";
-      npc.wait=1.5+(npc.slot%3)*.3;
-      return;
+    npc.phase="leaving";
+    if(outside){
+      // If an entering actor becomes a departing one mid-corridor, leave
+      // through the corridor they are physically in. Never plan a return
+      // across the 2.4m corridor's walls to reach a preferred gate.
+      npc.gateSide=npc.root.position.x<0?"level4":"level6";
+      npc.route=[new Vector3(npc.root.position.x,0,CORRIDOR_OUTER_Z)];
+    }else{
+      npc.gateSide=desiredGate;
+      const gateX=gateTravelLane(npc.gateSide,"leaving");
+      const from={x:npc.root.position.x,z:npc.root.position.z};
+      const route=this.layout?pathToShopGoal(from,{
+        x:gateX,z:CORRIDOR_INNER_Z,
+      },this.layout,this.room):null;
+      if(this.layout&&!route){
+        npc.route=[];
+        npc.waypoint=0;
+        npc.root.metadata.shoppingPhase="blocked-exit";
+        npc.wait=1.5+(npc.slot%3)*.3;
+        npc.root.metadata.phase=npc.phase;
+        return;
+      }
+      npc.route=[
+        ...(route?.waypoints.map(point=>new Vector3(point.x,0,point.z))
+          ??[new Vector3(gateX,0,CORRIDOR_INNER_Z)]),
+        new Vector3(gateX,0,CORRIDOR_OUTER_Z),
+      ];
     }
-    const exitX=chosen?.x??gateX;
-    npc.route=[
-      ...(mustEnterShop?[new Vector3(from.x,0,from.z)]:[]),
-      ...(chosen?.route?.waypoints.map(point=>
-        new Vector3(point.x,0,point.z))??[
-          new Vector3(exitX,0,CORRIDOR_INNER_Z)]),
-      new Vector3(exitX,0,CORRIDOR_OUTER_Z),
-    ];
-    npc.waypoint = 0;
-    npc.root.metadata.phase = npc.phase;
-    npc.root.metadata.gateSide = npc.gateSide;
+    npc.waypoint=0;
+    npc.blockedSeconds=0;
+    npc.root.metadata.phase=npc.phase;
+    npc.root.metadata.gateSide=npc.gateSide;
+    npc.root.metadata.shoppingPhase="walking-out";
   }
 
   /** Each unsatisfied customer owns a single, world-anchored request bubble.
