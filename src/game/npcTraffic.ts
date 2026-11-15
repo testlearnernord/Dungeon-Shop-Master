@@ -1,5 +1,6 @@
 import type { Level5Room } from "./level5Room.ts";
-import {getCounterPlacement,rotateShelfOffset,type ShopLayout} from "./shopLayout.ts";
+import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
+import {shelfServicePoint} from "./shopFloorFurniture.ts";
 import type { GateSide } from "./npcVisitors.ts";
 import * as navigation from "./shopperNavigation.ts";
 import type { ShopPoint } from "./shopperNavigation.ts";
@@ -104,8 +105,8 @@ export function idleShopSpotPriority(p:ShopPoint,layout:ShopLayout):number {
   const counter=getCounterPlacement(layout);
   const registerDistance=Math.hypot(p.x-counter.x,p.z-counter.z);
   const shelfDistance=Math.min(...layout.shelves.map(shelf=>{
-    const front=rotateShelfOffset(1.75,0,shelf.rotation);
-    return Math.hypot(p.x-shelf.x-front.x,p.z-shelf.z-front.z);
+    const front=shelfServicePoint(shelf,2);
+    return Math.hypot(p.x-front.x,p.z-front.z);
   }));
   const restockDistance=Math.min(...[-3.65,-2.3,2.3,3.65].flatMap(x=>
     [-4.6,-3.2].map(z=>Math.hypot(p.x-x,p.z-z))));
