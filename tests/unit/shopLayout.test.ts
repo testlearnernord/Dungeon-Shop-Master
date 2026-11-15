@@ -9,6 +9,7 @@ import {
 import { advanceDay, createGameState, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
+import { shopServiceReachabilityProblem } from "../../src/game/shopServiceReachability.ts";
 
 test("shop layout starts with two wall-mounted shelves with stable slot IDs",()=>{
   const state=createGameState(42);
@@ -61,7 +62,6 @@ test("geometry accepts valid rotations but rejects walls, counter, walkways and 
     {id:"shelf-1",x:-7.25,z:0,rotation:0},
     {id:"shelf-1",x:0,z:2,rotation:0},
     {id:"shelf-1",x:7,z:0,rotation:2},
-    {id:"shelf-1",x:-6.75,z:0,rotation:0},
     {id:"shelf-1",x:-6.9,z:0,rotation:0},
     {id:"shelf-1",x:-7,z:0,rotation:4},
     {id:"shelf-1",x:Infinity,z:0,rotation:0},
@@ -71,6 +71,21 @@ test("geometry accepts valid rotations but rejects walls, counter, walkways and 
   }
   assert.match(shopLayoutProblem({shelves:[original.shelves[0],original.shelves[0]]})!,/IDs/);
   assert.match(shopLayoutProblem({shelves:[original.shelves[0]]})!,/two shelves/);
+});
+
+test("side-aisle placements are decided by actual clearance and reachable routes",()=>{
+  const layout=createShopLayout();
+  const shelf=replaceShelfPlacement(layout,{
+    id:"shelf-1",x:-6.75,z:0,rotation:0,
+  });
+  assert.equal(shelf.message,"Shelf placement saved.");
+  assert.equal(shopServiceReachabilityProblem(shelf.layout),null);
+  const cashier=replaceCounterPlacement(layout,{x:4.5,z:0,rotation:0});
+  assert.equal(cashier.message,"Counter placement saved.");
+  assert.equal(shopServiceReachabilityProblem(cashier.layout),null);
+  assert.equal(new GameStore().previewShopPlacement({
+    id:"counter",x:4.5,z:0,rotation:0,
+  }),null);
 });
 
 test("strict saves reject injected, incomplete or obstructing furniture geometry",()=>{
@@ -159,7 +174,6 @@ test("invalid counter moves leave previous game state and saved position unchang
     {x:0.1,z:0,rotation:0},
     {x:8,z:0,rotation:0},
     {x:0,z:-5,rotation:0},
-    {x:4.5,z:0,rotation:0},
     {x:4,z:4,rotation:0},
     {x:0,z:4.5,rotation:0},
     {x:4,z:-5.5,rotation:0},
