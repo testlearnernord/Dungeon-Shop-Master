@@ -20,7 +20,7 @@ The current game is a **TypeScript/Vite** browser application rendered with **Ba
 | Economy, item rules, credit, payment | `src/game/economy.ts`, `src/game/shopCredit.ts`, `src/game/customerCheckout.ts`, `src/game/shopCarts.ts` |
 | Adventurers and autonomous customer intentions | `src/game/adventurers.ts`, `src/game/shopperIntents.ts`, `src/game/shopArrivals.ts` |
 | Customer visuals, movement, waiting and checkout | `src/game/npcVisualSystem.ts`, `src/game/shopServiceSpots.ts`, `src/game/shopperNavigation.ts`, `src/game/checkoutQueue.ts`, `src/game/restockWaitingPlaces.ts`, `src/game/shelfWaitingPlaces.ts` |
-| Shop geometry, cashier docking and service-path validation | `src/game/shopLayout.ts`, `src/game/level5Room.ts`, `src/game/shopServiceReachability.ts`, `src/game/checkoutQueue.ts` |
+| Registered public-shop furniture geometry, cashier docking and service routes | `src/game/shopFloorFurniture.ts` (canonical footprint, solid collision, visible preview/focus, service sockets), `src/game/shopLayout.ts` (persisted transforms and cached geometry), `src/game/level5Walkability.ts`, `src/game/shopServiceReachability.ts`, `src/game/checkoutQueue.ts` |
 | Contextual furniture editor and preview performance | `src/blueprintHud.ts`, `src/game/furnitureBlueprint.ts`, `src/game/furnitureSelection.ts`, `src/game/blueprintPreviewValidator.ts` |
 | Bedroom props and wall-mounted board | `src/game/bedroomFurniture.ts`, `src/game/bedroomFurnitureVisuals.ts`, `src/game/rosterBoardPlacement.ts`, `src/game/rosterBoard.ts` |
 | Levels 1–4, Floor 6 boss and Floor 7 exploration | `src/game/dungeonSimulation.ts`, `src/game/level6Combat.ts`, `src/game/level7Exploration.ts` |
