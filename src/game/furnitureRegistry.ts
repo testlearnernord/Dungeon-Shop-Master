@@ -7,9 +7,10 @@
 export type ShopFloorKind="shelf"|"counter";
 /** Every modular shelf owns four independent, persistent merchandise positions. */
 export const SHELF_SLOT_COUNT=4;
+export const SHELF_SLOT_SPACING=0.72;
 /** Identical geometry anchors for ghost, physical stock meshes and labels. */
 export const shelfSlotLocalZ=(index:number):number=>
-  (index-(SHELF_SLOT_COUNT-1)/2)*0.72;
+  (index-(SHELF_SLOT_COUNT-1)/2)*SHELF_SLOT_SPACING;
 export type QuarterTurn=0|1|2|3;
 export interface ShopFloorTransform {
   readonly x:number;
@@ -51,7 +52,7 @@ export const SHOP_FLOOR_FURNITURE={
     preview:{width:1.2,depth:3.18,height:1.72,
       offsetX:0.46,offsetY:0.93,offsetZ:0},
     focus:{width:1.2,depth:3.18,height:1.72},
-    service:{outward:1.48,slots:SHELF_SLOT_COUNT,slotSpacing:0.72},
+    service:{outward:1.48,slots:SHELF_SLOT_COUNT,slotSpacing:SHELF_SLOT_SPACING},
   },
   counter:{
     // The larger footprint protects the cashier and first visitor socket;
