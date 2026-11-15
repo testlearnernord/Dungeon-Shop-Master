@@ -1,5 +1,5 @@
 import type {Level5Room} from "./level5Room.ts";
-import type {ShopLayout} from "./shopLayout.ts";
+import {getCounterPlacement,rotateShelfOffset,type ShopLayout} from "./shopLayout.ts";
 import {checkoutQueuePoints} from "./checkoutQueue.ts";
 import {idleShopPositions,NPC_STATION_CLEARANCE} from "./npcTraffic.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
@@ -10,7 +10,7 @@ import {isObstructed,pathToShopGoal,pathToShelfAccess,type ShopPoint,type Shoppe
  * authoritative. One visitor owns one destination, regardless of whether
  * they are paying, requesting restock/credit or waiting for a busy shelf. */
 export type ShopServiceRole =
-  "checkout"|"restock"|"credit"|"shelf-browse"|"shelf-wait"|"overflow"|"idle";
+  "checkout"|"restock"|"credit"|"shelf-browse"|"shelf-wait"|"overflow"|"idle"|"roam";
 export type ShopWaitingRole=Exclude<ShopServiceRole,"shelf-browse">;
 export interface ShopServiceClaim{
   readonly heroId:string;
@@ -44,6 +44,7 @@ export class ShopServiceSpots{
   private idle:readonly ShopPoint[]=[];
   private idleCount=0;
   private restock:readonly ShopPoint[]=[];
+  private roam:readonly ShopPoint[]=[];
   private checkout:readonly ShopPoint[]=[];
 
   configure(layout:ShopLayout,room?:Level5Room):void {
@@ -56,7 +57,7 @@ export class ShopServiceSpots{
     this.restock=restockWaitingPositions(layout,room);
     // Do not run 100 full navigation searches merely because one rock
     // was mined. Compute idle/overflow destinations lazily on actual demand.
-    this.idle=[];this.idleCount=0;
+    this.idle=[];this.idleCount=0;this.roam=[];
   }
 
   /** Same owner may use any slot on its shelf; no second customer may
@@ -83,6 +84,20 @@ export class ShopServiceSpots{
     if(this.idleCount>=count)return;
     this.idleCount=Math.min(100,Math.max(24,count));
     this.idle=idleShopPositions(layout,this.idleCount,room);
+    // Roaming visitors must not turn the queue, active shelf faces or
+    // restock counters into another set of idle stations.
+    const counter=getCounterPlacement(layout);
+    this.roam=this.idle.filter(point=>{
+      if(point.z>=2.1||point.z<=-5.85||
+         dist(point,counter)<2.6)return false;
+      if(this.checkout.some(q=>dist(point,q)<2.3)||
+         this.restock.some(q=>dist(point,q)<1.85))return false;
+      return layout.shelves.every(shelf=>[0,1,2,3,4].every(index=>{
+        const offset=rotateShelfOffset(1.75,index-2,shelf.rotation);
+        return dist(point,{x:shelf.x+offset.x,
+          z:shelf.z+offset.z})>=1.95;
+      }));
+    });
   }
   claim(heroId:string):ShopServiceClaim|null{return this.claims.get(heroId)??null;}
   snapshot():readonly ShopServiceClaim[]{return [...this.claims.values()];}
@@ -140,7 +155,7 @@ export class ShopServiceSpots{
     const forbidden=role==="checkout"?[]:
       role==="restock"||role==="credit"?this.checkout:
       [...this.checkout,...this.restock];
-    if(role==="idle"||role==="overflow")
+    if(role==="idle"||role==="overflow"||role==="roam")
       this.ensureIdle(layout,room,24);
     let candidates:readonly ShopPoint[];
     switch(role){
@@ -155,6 +170,7 @@ export class ShopServiceSpots{
       case "overflow":
         candidates=this.idle.filter(p=>p.z<=0.5);
         break;
+      case "roam": candidates=this.roam;break;
       default: candidates=this.idle;
     }
     const start=(request.preferredIndex??0)%Math.max(1,candidates.length);
@@ -183,7 +199,7 @@ export class ShopServiceSpots{
       this.claims.set(heroId,{heroId,role,point:chosen.point});
       return {point:chosen.point,route:chosen.route};
     }
-    if((role==="idle"||role==="overflow")&&this.idleCount<100){
+    if((role==="idle"||role==="overflow"||role==="roam")&&this.idleCount<100){
       this.ensureIdle(layout,room,100);
       return this.reserve(heroId,role,from,layout,room,request);
     }
