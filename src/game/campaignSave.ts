@@ -385,11 +385,12 @@ function validateState(value: unknown): asserts value is GameState {
   if(state.rosterBoard!==undefined){
     const raw=object(state.rosterBoard,"payload.rosterBoard",["x","z","rotation"]);
     const placement:RosterBoardPlacement={
-      x:validNumber(raw.x,"payload.rosterBoard.x",-8,8),
+      x:validNumber(raw.x,"payload.rosterBoard.x",
+        -(7+(room?.expansionTier??0)*2+1),7+(room?.expansionTier??0)*2+1),
       z:validNumber(raw.z,"payload.rosterBoard.z",-8,8),
       rotation:integer(raw.rotation,"payload.rosterBoard.rotation",0,3) as 0|1|2|3,
     };
-    const problem=rosterBoardProblem(placement,parsedShopLayout);
+    const problem=rosterBoardProblem(placement,parsedShopLayout,room);
     if(problem)fail("payload.rosterBoard",problem);
   }
 
