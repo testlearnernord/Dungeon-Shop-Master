@@ -41,7 +41,11 @@ export function setupBeggarHud(
   const credit=el<HTMLButtonElement>("beggar-credit");
   const symbol=dialog.querySelector<SVGUseElement>("#beggar-item-symbol")!;
   let selectedHeroId:string|null=null;
-  const close=():void=>{if(dialog.open)dialog.close();selectedHeroId=null;};
+  const close=():void=>{
+    visitors.holdBeggarConversation(null);
+    if(dialog.open)dialog.close();
+    selectedHeroId=null;
+  };
 
   const render=():void=>{
     if(!dialog.open||!selectedHeroId)return;
@@ -72,6 +76,7 @@ export function setupBeggarHud(
     if(document.pointerLockElement===canvas)document.exitPointerLock();
     camera.detachControl();
     dialog.showModal();
+    visitors.holdBeggarConversation(heroId);
     render();
     return true;
   };
@@ -99,6 +104,7 @@ export function setupBeggarHud(
   });
   el<HTMLButtonElement>("beggar-close").addEventListener("click",close);
   dialog.addEventListener("close",()=>{
+    visitors.holdBeggarConversation(null);
     selectedHeroId=null;
     if(isShopActive())camera.attachControl(canvas,true);
     canvas.focus();

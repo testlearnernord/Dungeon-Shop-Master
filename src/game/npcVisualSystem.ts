@@ -19,7 +19,7 @@ import type { ItemId } from "./economy.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, isInExitCorridor, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot, type WaypointProgress, type GateTrafficActor } from "./npcTraffic.ts";
+import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, canShareGateLanes, gateTravelLane, isInExitCorridor, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot, type WaypointProgress, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
 import { ShopServiceSpots } from "./shopServiceSpots.ts";
 
@@ -55,6 +55,10 @@ interface NpcVisual {
   trafficReroutes:number;
   idleYieldCooldown:number;
   restockSeconds:number|null;
+  /** After approaching a service station, roam between reachable quiet
+   * destinations while the original request timer keeps running. */
+  requestActive:boolean;
+  roamLeg:number;
   wishItem:ItemId|null;
   wishBubble:NpcWishBubble|null;
   gateSide: GateSide;
@@ -177,7 +181,8 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
     root, arms, legs, torso, model, visitor, phase: "entering", route: [], waypoint: 0, slot,
     elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, blockedSeconds:0, routeProgress:null, trafficReroutes:0, idleYieldCooldown:0,
     gateSide: visitor.entranceGate ?? "level4",
-    restockSeconds:null,wishItem:null,wishBubble:null,
+    restockSeconds:null,requestActive:false,roamLeg:0,
+    wishItem:null,wishBubble:null,
     intent:null,intentKey:"",targetIndex:0,toQueue:false,
     heldLines:[],heldMeshes:[],heldKey:"",
     labelTexture: texture, labelMesh: label,
@@ -209,6 +214,13 @@ export class NpcVisualSystem {
    * visual is already leaving and must never be regenerated or reversed. */
   private paidThisDay:ReadonlySet<string>=new Set();
   private wishBubblesVisible=true;
+  private engagedBeggarId:string|null=null;
+
+  /** An E-dialog is an actual customer conversation. Keep that customer
+   * present, looking at Galvik, and do not expire their request mid-dialog. */
+  holdBeggarConversation(heroId:string|null):void {
+    this.engagedBeggarId=heroId;
+  }
 
   constructor(private readonly scene: Scene) {
     this.portraits.addEventListener("load", () => {
@@ -404,18 +416,20 @@ export class NpcVisualSystem {
     if(import.meta.env.VITE_E2E!=="1"||!Number.isFinite(seconds)||
       seconds<0)throw new Error("Restock test hook disabled.");
     const npc=this.npcs.get(heroId);
-    if(!npc||npc.root.metadata.shoppingPhase!=="waiting-for-restock")
-      throw new Error("Customer is not waiting for a restock.");
+    if(!npc||npc.intent?.reason!=="unavailable"||
+       npc.restockSeconds===null)
+      throw new Error("Customer has no active restock request.");
     npc.restockSeconds=seconds;
   }
 
-  /** Interact only with a physically present, facing, stationary petitioner. */
+  /** Interact with a nearby, facing petitioner even during a safe browsing
+   * stroll. Opening the dialog pauses that customer's visual walk. */
   nearbyBeggarId(position:Vector3,direction:Vector3,maxDistance=3.1):string|null {
     const facing=Math.hypot(direction.x,direction.z);
     if(facing<0.01)return null;
     const candidates=[...this.npcs.values()].filter(npc=>
-      npc.visitor.status==="at-shop"&&
-      npc.root.metadata.shoppingPhase==="waiting-for-credit");
+      npc.visitor.status==="at-shop"&&npc.intent?.reason==="cannot-afford"&&
+      npc.restockSeconds!==null&&npc.phase!=="leaving");
     let nearest:{id:string;distance:number}|null=null;
     for(const npc of candidates){
       const dx=npc.root.position.x-position.x;
@@ -440,7 +454,7 @@ export class NpcVisualSystem {
 
   dismissBeggar(heroId:string):void {
     const npc=this.npcs.get(heroId);
-    if(npc?.root.metadata.shoppingPhase==="waiting-for-credit")
+    if(npc?.intent?.reason==="cannot-afford"&&npc.phase!=="leaving")
       this.leaveUnserved(npc);
   }
 
@@ -561,6 +575,7 @@ export class NpcVisualSystem {
          !canYieldShopperSpot(npc.phase,standing,
            npc.route[npc.waypoint]!==undefined))continue;
       const shelfWaiter=standing==="waiting-for-shelf";
+      const requestRoamer=standing==="roaming-request";
       const idle={x:npc.root.position.x,z:npc.root.position.z};
       const blocking=[...this.npcs.values()].some(other=>{
         if(other===npc||!["entering","browsing","leaving"].includes(other.phase))
@@ -581,7 +596,8 @@ export class NpcVisualSystem {
       npc.waypoint=0; npc.blockedSeconds=0;
       npc.root.metadata.phase=npc.phase;
       npc.root.metadata.shoppingPhase=shelfWaiter
-        ?"clearing-shelf-aisle":"clearing-aisle";
+        ?"clearing-shelf-aisle":requestRoamer
+          ?"walking-to-request-roam":"clearing-aisle";
     }
     const gateFlow:Record<GateSide,"entering"|"leaving">={
       level4:gateFlowDirection("level4",gateActors),
@@ -589,6 +605,11 @@ export class NpcVisualSystem {
     };
     for (const npc of this.npcs.values()) {
       const beforeMove={x:npc.root.position.x,z:npc.root.position.z};
+      if(npc.visitor.id===this.engagedBeggarId){
+        npc.root.metadata.movementMode="talking";
+        this.animate(npc,delta,beforeMove);
+        continue;
+      }
       if(npc.phase==="queueing")npc.root.metadata.movementMode="waiting";
       if(npc.phase==="considering")npc.root.metadata.movementMode="inspecting";
       const cameraPosition = this.scene.activeCamera?.globalPosition;
@@ -641,16 +662,34 @@ export class NpcVisualSystem {
         npc.wait-=delta;
         if(npc.wait<=0)this.beginLeaving(npc);
       }
-      if(npc.phase==="queueing"&&
-        (npc.root.metadata.shoppingPhase==="waiting-for-restock"||
-         npc.root.metadata.shoppingPhase==="waiting-for-credit"||
-          npc.root.metadata.shoppingPhase==="restock-spot-full"||
-          npc.root.metadata.shoppingPhase==="credit-spot-full"||
-          npc.root.metadata.shoppingPhase==="waiting-for-restock-overflow"||
-          npc.root.metadata.shoppingPhase==="waiting-for-credit-overflow")){
-        npc.restockSeconds=restockWaitRemaining(npc.restockSeconds??RESTOCK_WAIT_SECONDS,delta);
+      const requestPhase=String(npc.root.metadata.shoppingPhase??"");
+      const waitingForRequest=[
+        "waiting-for-restock","waiting-for-credit",
+        "waiting-for-restock-overflow","waiting-for-credit-overflow",
+      ].includes(requestPhase);
+      // A request expires even while its owner is walking around, or when
+      // every station is full. Neither rerouting nor layout changes reset it.
+      if(npc.restockSeconds!==null&&
+         npc.phase!=="entering"&&npc.phase!=="leaving"){
+        npc.restockSeconds=restockWaitRemaining(npc.restockSeconds,delta);
         npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
-        if(npc.restockSeconds<=0)this.leaveUnserved(npc);
+        if(npc.restockSeconds<=0){
+          this.leaveUnserved(npc);
+        }
+      }
+      if(npc.phase==="queueing"&&waitingForRequest&&
+         npc.restockSeconds!==null){
+        if(!npc.requestActive){
+          npc.requestActive=true;
+          npc.wait=5.0+(npc.slot%4)*0.7;
+        }
+        npc.wait-=delta;
+        if(npc.wait<=0)this.roamWhileRequesting(npc);
+      }
+      if(npc.phase==="queueing"&&requestPhase==="roaming-request"&&
+         npc.restockSeconds!==null){
+        npc.wait-=delta;
+        if(npc.wait<=0)this.roamWhileRequesting(npc);
       }
       if(npc.phase==="queueing" &&
         npc.root.metadata.shoppingPhase==="waiting-for-shelf" &&
@@ -683,7 +722,8 @@ export class NpcVisualSystem {
             x:npc.root.position.x,z:npc.root.position.z}:null;
         // Outgoing shoppers wait inside; incoming shoppers wait outside.
         // Neither waits halfway through the physical gate.
-        const yielding=!!transit&&mustYieldAtGate(transit,gateFlow[transit.gate]);
+        const yielding=!!transit&&mustYieldAtGate(transit,gateFlow[transit.gate])&&
+          !canShareGateLanes(transit,gateActors);
         npc.root.metadata.gateYield=yielding;
         if(yielding)npc.root.metadata.movementMode="gate-yield";
         if(!yielding){
@@ -796,6 +836,8 @@ export class NpcVisualSystem {
     npc.wishBubble=null;
     npc.wishItem=null;
     npc.restockSeconds=null;
+    npc.requestActive=false;
+    npc.roamLeg=0;
     npc.root.metadata.wantedItemId=null;
     npc.root.metadata.restockRemaining=null;
   }
@@ -834,6 +876,34 @@ export class NpcVisualSystem {
     npc.root.metadata.checkoutQueueIndex=-1;
     npc.root.metadata.shoppingPhase=route
       ?"walking-to-shelf-retry-spot":"shelf-route-blocked";
+    npc.root.metadata.phase=npc.phase;
+  }
+
+  /** Restock and begging requests stay visible while their owner explores
+   * quiet, reachable floor rather than occupying a fixed petition pocket for
+   * an entire minute. This is visual only: no changes to money, needs or RNG.
+   * If the store is congested, stay in the last safe spot and retry later.
+   */
+  private roamWhileRequesting(npc:NpcVisual):void {
+    if(!this.layout||npc.restockSeconds===null||!npc.requestActive)return;
+    const origin={x:npc.root.position.x,z:npc.root.position.z};
+    const route=this.serviceSpots.reserve(npc.visitor.id,"roam",origin,
+      this.layout,this.room,{
+        ...this.otherServiceOccupancy(npc),
+        preferredIndex:npc.slot*7+npc.roamLeg*11,
+        avoid:origin,
+      })?.route??null;
+    npc.roamLeg++;
+    npc.root.metadata.roamLeg=npc.roamLeg;
+    npc.blockedSeconds=0;
+    npc.routeProgress=null;
+    npc.waypoint=0;
+    npc.wait=2.5+(npc.slot%3)*0.65;
+    npc.toQueue=true;
+    npc.phase=route?"browsing":"queueing";
+    npc.route=route?.waypoints.map(point=>new Vector3(point.x,0,point.z))??[];
+    npc.root.metadata.shoppingPhase=route
+      ?"walking-to-request-roam":"roaming-request";
     npc.root.metadata.phase=npc.phase;
   }
 
@@ -1056,7 +1126,7 @@ export class NpcVisualSystem {
     }
     if(npc.phase==="leaving"&&npc.blockedSeconds>5){
       npc.blockedSeconds=0;
-      this.beginLeaving(npc);
+      this.beginLeaving(npc,true);
       return true;
     }
     return false;
@@ -1076,6 +1146,8 @@ export class NpcVisualSystem {
           npc.trafficReroutes=0;
           const clearingShelf=npc.root.metadata.shoppingPhase==="clearing-shelf-aisle";
           if(clearingShelf)npc.wait=0.7;
+          if(npc.root.metadata.shoppingPhase==="walking-to-request-roam")
+            npc.wait=2.4+(npc.slot%4)*.7;
           npc.root.metadata.shoppingPhase=clearingShelf
             ?"waiting-for-shelf"
             :npc.root.metadata.shoppingPhase==="walking-to-shelf-retry-spot"
@@ -1088,6 +1160,8 @@ export class NpcVisualSystem {
               ?"waiting-for-credit"
             :npc.root.metadata.shoppingPhase==="walking-to-credit-overflow"
               ?"waiting-for-credit-overflow"
+            :npc.root.metadata.shoppingPhase==="walking-to-request-roam"
+              ?"roaming-request"
             :npc.root.metadata.shoppingPhase==="walking-to-checkout-overflow"
               ?"checkout-overflow-wait"
             :checkoutQueueIndex(this.carts,npc.visitor.id)>=0

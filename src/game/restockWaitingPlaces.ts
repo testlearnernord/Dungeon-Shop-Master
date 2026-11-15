@@ -1,6 +1,6 @@
 import type { Level5Room } from "./level5Room.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
-import { NPC_CENTER_CLEARANCE } from "./npcTraffic.ts";
+import { idleShopPositions, NPC_STATION_CLEARANCE } from "./npcTraffic.ts";
 import { shelfBounds, type ShopLayout } from "./shopLayout.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint, type ShopperRoute } from "./shopperNavigation.ts";
 
@@ -17,7 +17,7 @@ const REAR_POCKETS:readonly ShopPoint[]=[
   {x:2.30,z:-5.75},{x:3.65,z:-5.75},
   {x:5.0,z:-5.75},{x:5.0,z:-4.6},{x:5.0,z:-3.2},
 ];
-export const RESTOCK_WAIT_CLEARANCE=NPC_CENTER_CLEARANCE+0.16;
+export const RESTOCK_WAIT_CLEARANCE=NPC_STATION_CLEARANCE;
 export const RESTOCK_WAIT_MAX_Z=-3.1;
 const distance=(a:ShopPoint,b:ShopPoint)=>
   Math.hypot(a.x-b.x,a.z-b.z);
@@ -40,6 +40,25 @@ export function restockWaitingPositions(layout:ShopLayout,room?:Level5Room):read
     if(!route||distance(end,point)>0.17||
       positions.some(other=>distance(point,other)<RESTOCK_WAIT_CLEARANCE))continue;
     positions.push(point);
+  }
+  // Fixed rear pockets belong to the original tiny cave. A player who
+  // moves a counter or shelves into that zone may still have an ample mined
+  // side wing. Reuse the same current-room idle navigation pool to recover
+  // petition capacity rather than treating the old wall coordinates as law.
+  if(positions.length<3){
+    const extra=idleShopPositions(layout,32,room);
+    for(const point of extra){
+      if(positions.length>=6)break;
+      if(point.z>1.25||point.z< -5.85||
+         shelfClearance(point,layout)<1.35||
+         isObstructed(point,layout,room)||
+         checkout.some(other=>distance(point,other)<1.8)||
+         positions.some(other=>distance(point,other)<1.65))continue;
+      const path=pathToShopGoal({x:-3.43,z:4.65},point,layout,room);
+      if(!path||distance(path.waypoints.at(-1)??point,point)>0.17)
+        continue;
+      positions.push(point);
+    }
   }
   return positions;
 }

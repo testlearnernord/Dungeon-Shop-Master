@@ -257,3 +257,117 @@ test("movable bed still closes the day and relocated board still opens the roste
   await expect(page.locator("#day")).toHaveText("Day 2");
   expect(errors).toEqual([]);
 });
+
+/** Live Babylon integration, not a synthetic route-only check:
+ * connected 1m excavation, relocated shelf, rotated till, independently
+ * shopping, petitioning and credit-seeking visitors. A restock customer
+ * wanders without resetting the real request or holding other people hostage.
+ */
+test("mined shop lets requesting visitors roam while buyers shop and finished customers leave",async({page})=>{
+  test.setTimeout(125000);
+  const errors:string[]=[];
+  page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("./");
+  const ids=await page.evaluate(async()=>{
+    const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const {replaceShelfPlacement,replaceCounterPlacement}=await import(
+      "/Dungeon-Shop-Master/src/game/shopLayout.ts");
+    const {shopServiceReachabilityProblem}=await import(
+      "/Dungeon-Shop-Master/src/game/shopServiceReachability.ts");
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {ECONOMY}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
+    const {forecastShoppingIntents}=await import("/Dungeon-Shop-Master/src/game/shopperIntents.ts");
+    const original=createGameState(7351);
+    let room={...original.level5Room,expansionTier:2};
+    for(let x=8;x<=9;x++)for(let z=-6;z<=6;z++){
+      const next=excavateLevel5Cell(room,{x,z});
+      if(!next.ok)throw Error(next.reason);
+      room=next.room;
+    }
+    const shelf=replaceShelfPlacement(original.shopLayout,{
+      id:"shelf-2",x:8.25,z:0,rotation:2,
+    },room);
+    if(shelf.message!=="Shelf placement saved.")throw Error(shelf.message);
+    const till=replaceCounterPlacement(shelf.layout,{x:0,z:2.25,rotation:1},room);
+    if(till.message!=="Counter placement saved.")throw Error(till.message);
+    const problem=shopServiceReachabilityProblem(till.layout,room);
+    if(problem)throw Error(problem);
+    const state={...original,level5Room:room,shopLayout:till.layout,
+      adventurers:original.adventurers.map((hero,index)=>index<4
+        ?{...hero,status:"at-shop" as const,floor:5 as const,
+          gold:index===0?0:index===1?8:100,
+          inventory:{...hero.inventory,
+            bread:index===1?ECONOMY.breadTarget:0,healing:0},
+          equipment:{weapon:null,armor:null}}
+        :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
+      shopEconomy:{...original.shopEconomy,
+        slots:original.shopEconomy.slots.map(slot=>
+          slot.id==="shelf-2-slot-2"?
+            {...slot,itemId:"bread" as const,quantity:slot.capacity}
+            :{...slot,itemId:null,quantity:0})},
+    };
+    const plans=[...forecastShoppingIntents(state).values()];
+    for(const needed of ["interested","unavailable","cannot-afford"])
+      if(!plans.some(plan=>plan.reason===needed))
+        throw Error("Missing buyer type "+needed);
+    await new CampaignStorage().saveGame(state);
+    return {
+      restock:plans.find(plan=>plan.reason==="unavailable")!.heroId,
+      beggar:plans.find(plan=>plan.reason==="cannot-afford")!.heroId,
+      buyers:plans.filter(plan=>plan.reason==="interested").map(plan=>plan.heroId),
+    };
+  });
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const read=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals());
+  const samples:unknown[]=[];
+  let last=-10000;
+  try{
+    await expect.poll(async()=>{
+      const snapshot=await read();
+      if(snapshot.time-last>7000){
+        last=snapshot.time;
+        samples.push(snapshot.visitors.map(v=>({
+          id:v.id.slice(-4),phase:v.shoppingPhase,
+          x:Math.round(v.x*10)/10,z:Math.round(v.z*10)/10,
+          remaining:v.restockRemaining,roam:v.roamLeg,
+        })));
+      }
+      const request=snapshot.visitors.find(v=>v.id===ids.restock);
+      const begging=snapshot.visitors.find(v=>v.id===ids.beggar);
+      return !!request&&!!begging&&
+        (request.roamLeg??0)>0 &&
+        (begging.roamLeg??0)>0 &&
+        snapshot.visitors.every(v=>v.wallClear)&&
+        snapshot.visitors.some(v=>ids.buyers.includes(v.id)&&
+          (v.cartUnits??0)>0);
+    },{timeout:90000,intervals:[600,1000,1700]}).toBe(true);
+  }catch(e){
+    console.error("INTEGRATED_SHOP_FAILURE",JSON.stringify(samples));
+    throw e;
+  }
+  const before=(await read()).visitors.find(v=>v.id===ids.restock)!;
+  expect(before.wantedItemId).toBeTruthy();
+  expect(before.restockRemaining).toBeGreaterThan(0);
+  // Compress only the remaining real-time timer, not the economy or NPC route.
+  await page.evaluate(id=>{
+    (window as Window&{
+      __shopTestRestockWait?:(heroId:string,seconds:number)=>void;
+    }).__shopTestRestockWait?.(id,0.8);
+  },ids.restock);
+  await expect.poll(async()=>page.evaluate(async id=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const save=await new CampaignStorage().loadGame();
+    return save?.adventurers.find(v=>v.id===id)?.status;
+  },ids.restock),{timeout:10000}).toBe("returning");
+  await expect.poll(async()=>!(await read()).visitors.some(v=>v.id===ids.restock),
+    {timeout:25000}).toBe(true);
+  const final=await read();
+  expect(final.visitors.some(v=>v.id===ids.beggar)).toBe(true);
+  expect(final.visitors.every(v=>v.wallClear)).toBe(true);
+  await page.reload();
+  expect((await read()).visitors.some(v=>v.id===ids.restock)).toBe(false);
+  expect(errors).toEqual([]);
+});

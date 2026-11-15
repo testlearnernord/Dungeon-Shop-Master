@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { CHECKOUT_COUNTER, checkoutCounterBounds, createShopLayout, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear } from "../../src/game/shopperNavigation.ts";
-import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, isInExitCorridor, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot,
+import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, NPC_FINAL_WAYPOINT_RADIUS, GATE_INNER_HOLD_Z, GATE_OUTER_HOLD_Z, canFinishShopWaypoint, shopCrowdStep, crowdSafeStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, canShareGateLanes, gateTravelLane, isInExitCorridor, idleShopPositions, idleShopSpotPriority, idleShopperBlocksRoute, interruptedDepartureRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot,
 } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
@@ -394,4 +394,24 @@ test("only visitors in a real gate corridor may finish departing straight outwar
     "rear side of original showroom still needs ordinary pathfinding");
   assert.equal(isInExitCorridor({x:0,z:8},innerZ),false);
   assert.equal(isInExitCorridor({x:-4,z:5.9},innerZ),false);
+});
+
+test("arriving and departing visitors may share physically separated gate lanes",()=>{
+  const outgoing={gate:"level4" as const,phase:"leaving" as const,
+    x:gateTravelLane("level4","leaving"),z:7.9};
+  const incoming={gate:"level4" as const,phase:"entering" as const,
+    x:gateTravelLane("level4","entering"),z:8.1};
+  assert(canShareGateLanes(outgoing,[outgoing,incoming]));
+  assert(canShareGateLanes(incoming,[outgoing,incoming]));
+  assert(Math.abs(outgoing.x-incoming.x)>=NPC_CENTER_CLEARANCE);
+  assert(!canShareGateLanes(outgoing,[outgoing,{...incoming,x:-4.0}]),
+    "an actor crossing the center must still obey gate arbitration");
+  assert(!canShareGateLanes({...outgoing,x:-4.0},[outgoing,incoming]));
+});
+
+test("roaming request visitors yield a live aisle, unlike checkout customers",()=>{
+  assert(canYieldShopperSpot("queueing","roaming-request",false));
+  assert(!canYieldShopperSpot("queueing","roaming-request",true));
+  assert(!canYieldShopperSpot("queueing","awaiting-checkout",false));
+  assert(!canYieldShopperSpot("queueing","waiting-for-restock",false));
 });
