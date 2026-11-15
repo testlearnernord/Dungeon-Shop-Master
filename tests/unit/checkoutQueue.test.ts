@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoint, checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
+import { CHECKOUT_LINE_MAX_CUSTOMERS, checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoint, checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
 import { CHECKOUT_COUNTER, createShopLayout, replaceCounterPlacement, shopLayoutProblem } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
 import type { ShopCart } from "../../src/game/shopCarts.ts";
@@ -21,12 +21,25 @@ test("queue uses persistent cart order, not render order", () => {
   assert.equal(checkoutQueueIndex(compacted, "a"), 0);
 });
 
+test("queue cannot outgrow its first five visible customers",()=>{
+  const layout=createShopLayout();
+  const points=checkoutQueuePoints(layout,{x:0,z:-1},40);
+  assert.equal(points.length,CHECKOUT_LINE_MAX_CUSTOMERS);
+  const p=layout.counter!;
+  // New-game counter faces the showroom, so single-file customers advance
+  // along X while retaining the same Z row.
+  assert(points.every(point=>Math.abs(point.z-p.z)<0.01));
+  for(let i=1;i<points.length;i++)
+    assert(points[i].x>points[i-1].x,
+      "next queue position must be behind the preceding customer");
+});
+
 test("empty carts never occupy checkout spots", () => {
   const carts = [cart("a"), { ...cart("empty"), lines: [] }, cart("b")];
   assert.deepEqual(checkoutQueueIds(carts), ["a", "b"]);
 });
 
-test("queue positions stay separated with a rotated shelf and high demand", () => {
+test("one single-file checkout line stays separated; excess demand uses overflow", () => {
   const base = createShopLayout();
   const layout = {
     shelves: base.shelves.map(shelf => shelf.id === "shelf-1"
@@ -36,10 +49,12 @@ test("queue positions stay separated with a rotated shelf and high demand", () =
   assert.equal(shopLayoutProblem(layout), null);
   const from = {x:0,z:-1};
   const points = checkoutQueuePoints(layout, from, 100);
-  assert.ok(points.length > 30);
-  assert.ok(points.length <= 100);
+  assert.ok(points.length >= 1);
+  assert.ok(points.length <= CHECKOUT_LINE_MAX_CUSTOMERS,
+    "the physical cashier must never fan customers into parallel rows");
   for (const [index, point] of points.entries()) {
-    assert.ok(Math.abs(point.x) <= 4.5);
+    assert.ok(Math.abs(point.x) <= 0.01,
+      "all cashier customers stand in one forward-facing lane");
     assert.ok(point.z >= -5.5 && point.z <= 0.5);
     assert.equal(isObstructed(point, layout), false);
     const route = pathToShopGoal(from, point, layout);
