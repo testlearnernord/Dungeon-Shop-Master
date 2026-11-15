@@ -1,7 +1,7 @@
 import type { Level5Room } from "./level5Room.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
-import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
+import { createShopRoutePlanner, isObstructed, type ShopPoint } from "./shopperNavigation.ts";
 import {shopLayoutProblem,type ShopLayout} from "./shopLayout.ts";
 import {shelfServicePoint} from "./shopFloorFurniture.ts";
 
@@ -15,6 +15,10 @@ import {shelfServicePoint} from "./shopFloorFurniture.ts";
 export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Room):string|null {
   const geometryError=shopLayoutProblem(layout,room);
   if(geometryError)return geometryError;
+  // A blueprint commit checks multiple gates and every stocked slot against
+  // the same immutable draft layout. Reuse the static walkability grid while
+  // keeping all original full-route and off-grid connector validations.
+  const route=createShopRoutePlanner(layout,room);
   const entrances:ShopPoint[]=[
     {x:-3.43,z:4.65},{x:4.57,z:4.65},
   ];
@@ -25,7 +29,7 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Roo
   if(isObstructed(cashier,layout,room))
     return "The checkout is obstructed.";
   for(const [index,origin] of entrances.entries()){
-    const route=pathToShopGoal(origin,cashier,layout,room);
+    const route=route(origin,cashier);
     if(!route)
       return "Entrance "+(index+1)+" cannot reach the checkout.";
   }
@@ -33,7 +37,7 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Roo
   // shelves and checkout but traps all stockout/credit petitioners. Two
   // independent request pockets must remain reachable from both gates.
   const requests=restockWaitingPositions(layout,room).filter(point=>
-    entrances.every(origin=>pathToShopGoal(origin,point,layout,room)!==null));
+    entrances.every(origin=>route(origin,point)!==null));
   const petitionPair=requests.some((a,index)=>requests.slice(index+1)
     .some(b=>Math.hypot(a.x-b.x,a.z-b.z)>=1.18));
   if(!petitionPair)
@@ -43,8 +47,8 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Roo
       const service=shelfServicePoint(shelf,slot);
       if(isObstructed(service,layout,room))
         return "Customer standing space is blocked at "+shelf.id+" slot "+(slot+1)+".";
-      if(entrances.some(origin=>!pathToShopGoal(origin,service,layout,room))||
-         !pathToShopGoal(service,cashier,layout,room))
+      if(entrances.some(origin=>!route(origin,service))||
+         !route(service,cashier))
         return "A shelf service point cannot reach the entrance and checkout.";
     }
   }
