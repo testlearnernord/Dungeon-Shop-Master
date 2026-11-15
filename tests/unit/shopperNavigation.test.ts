@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createShopLayout,replaceShelfPlacement} from "../../src/game/shopLayout.ts";
-import { turnShopOffset,shelfServicePoint } from "../../src/game/shopFloorFurniture.ts";
+import { turnShopOffset,shelfServicePoint } from "../../src/game/furnitureRegistry.ts";
 import { createLevel5Room } from "../../src/game/level5Room.ts";
 import {createShopRoutePlanner,isObstructed,pathToShopGoal,pathToShelfAccess,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 
