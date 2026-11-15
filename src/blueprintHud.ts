@@ -14,12 +14,13 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import {
   counterOverlapsActor,getCounterPlacement,
-  rotateShelfOffset,shelfOverlapsActor,type ShelfPlacement,
+  shelfOverlapsActor,type ShelfPlacement,
 } from "./game/shopLayout.ts";
 import {
   blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,
   type FurnitureId,type FurnitureDraft,
 } from "./game/furnitureBlueprint.ts";
+import {turnShopOffset} from "./game/shopFloorFurniture.ts";
 
 /** FPS-compatible interactive furniture editor.
  *
@@ -234,7 +235,7 @@ export function setupBlueprintHud(
     let x=saved.x,z=saved.z;
     const turns=saved.rotation;
     if(found.movableId==="shelf-1"||found.movableId==="shelf-2"){
-      const offset=rotateShelfOffset(0.48,0,saved.rotation);
+      const offset=turnShopOffset(0.48,0,saved.rotation);
       x+=offset.x;z+=offset.z;
     }
     focusMesh.position.set(x,found.focusY,z);
