@@ -6,6 +6,10 @@ import type { ShopPoint } from "./shopperNavigation.ts";
 
 /** Minimum center-to-center clearance for rendered NPC shoulders, not a radius. */
 export const NPC_CENTER_CLEARANCE=1.02;
+/** Shared minimum separation between two independently reserved standing
+ * destinations (queue, restock, checkout, shelf access). Navigation queues
+ * must use this clearance too, not just the narrower rendered body width. */
+export const NPC_STATION_CLEARANCE=NPC_CENTER_CLEARANCE+0.16;
 
 /** Closest a neighbour gets to an entire step, not just the step's endpoint. */
 function segmentDistance(p:ShopPoint,a:ShopPoint,b:ShopPoint):number {
