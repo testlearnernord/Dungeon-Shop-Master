@@ -6,7 +6,7 @@ import {createEmptyShelfSlots,tradeAtStartOfDay} from "../../src/game/economy.ts
 import {nextShelfId,replaceShelfPlacement,MAX_SHOP_SHELVES} from "../../src/game/shopLayout.ts";
 import {createLevel5Room,excavateLevel5Cell,type Level5Room} from "../../src/game/level5Room.ts";
 import {shopServiceReachabilityProblem} from "../../src/game/shopServiceReachability.ts";
-import {pathToShelfAccess,pathToShopGoal,isObstructed} from "../../src/game/shopperNavigation.ts";
+import {createShopRoutePlanner,pathToShelfAccess,pathToShopGoal,isObstructed} from "../../src/game/shopperNavigation.ts";
 import {shelfServicePoint} from "../../src/game/furnitureRegistry.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
@@ -111,4 +111,26 @@ test("invalid new shelves are atomic and strict saved layouts/slots cannot disag
   const invalid=replaceShelfPlacement(withWing.state.shopLayout,
     {id:"shelf-5",x:12,z:0,rotation:2},room);
   assert.strictEqual(invalid.layout,withWing.state.shopLayout);
+});
+
+test("expanded three-shelf rooms reuse batch navigation without stale rock or shelf cells",()=>{
+  const room=openWing(),base=createGameState(7351);
+  const store=new GameStore({...base,level5Room:room});
+  assert.equal(store.placeFurniture(next),"Shelf placement saved.");
+  const layout=store.state.shopLayout;
+  const batch=createShopRoutePlanner(layout,room);
+  const gateways=[{x:-3.43,z:4.65},{x:4.57,z:4.65}];
+  for(const shelf of layout.shelves)for(let slot=0;slot<5;slot++){
+    const target=shelfServicePoint(shelf,slot);
+    for(const gate of gateways){
+      assert.deepEqual(batch(gate,target),pathToShopGoal(gate,target,layout,room),
+        "new and old shelves must use identical real room paths");
+    }
+  }
+  const changed={...next,x:11.25};
+  assert.equal(store.placeFurniture(changed),"Shelf placement saved.");
+  const latest=createShopRoutePlanner(store.state.shopLayout,room);
+  const goal=shelfServicePoint(changed,2);
+  assert.deepEqual(latest(origin,goal),pathToShopGoal(origin,goal,store.state.shopLayout,room));
+  assert.equal(shopServiceReachabilityProblem(store.state.shopLayout,room),null);
 });
