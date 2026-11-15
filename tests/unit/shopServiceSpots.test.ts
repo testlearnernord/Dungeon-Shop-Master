@@ -4,6 +4,7 @@ import {createShopLayout,replaceCounterPlacement} from "../../src/game/shopLayou
 import {checkoutQueuePoints} from "../../src/game/checkoutQueue.ts";
 import {createLevel5Room,excavateLevel5Cell} from "../../src/game/level5Room.ts";
 import {ShopServiceSpots} from "../../src/game/shopServiceSpots.ts";
+import {NPC_STATION_CLEARANCE} from "../../src/game/npcTraffic.ts";
 import {classifyFurnitureMesh} from "../../src/game/furnitureSelection.ts";
 
 const distance=(a:{x:number;z:number},b:{x:number;z:number})=>
@@ -150,4 +151,23 @@ test("shelf slots on a moved modular shelf share one exclusive service owner",()
   assert.equal(spots.claimShelf("shelf-2","hero-b"),true);
   spots.clear();
   assert.equal(spots.shelfBusyFor("shelf-2","hero-c"),false);
+});
+
+test("adjacent buyers can claim successive single-file cashier stations",()=>{
+  const layout=createShopLayout();
+  const room=createLevel5Room();
+  const positions=checkoutQueuePoints(layout,{x:0,z:-1},5,room);
+  assert.equal(positions.length,5);
+  for(let i=1;i<positions.length;i++)
+    assert(distance(positions[i],positions[i-1])>=NPC_STATION_CLEARANCE,
+      "queue step must satisfy the service reservation clearance");
+  const spots=new ShopServiceSpots();
+  for(let i=0;i<positions.length;i++){
+    const claim=spots.reserve("buyer-"+i,"checkout",start,layout,room,{
+      checkoutTarget:positions[i],
+    });
+    assert(claim,"buyer "+i+" should reserve an adjacent cashier station");
+    assert.deepEqual(claim.point,positions[i]);
+  }
+  assert.equal(spots.snapshot().length,5);
 });
