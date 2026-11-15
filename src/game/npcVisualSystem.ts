@@ -20,7 +20,7 @@ import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, gateTravelLane, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, canYieldShopperSpot, type GateTrafficActor } from "./npcTraffic.ts";
-import { isObstructed, pathToShopGoal, pathToShelfAccess, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
+import { isObstructed, pathToShopGoal, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
 import { ShopServiceSpots } from "./shopServiceSpots.ts";
 
 import { npcLocomotion } from "./npcLocomotion.ts";
@@ -903,14 +903,12 @@ export class NpcVisualSystem {
         npc.root.metadata.phase=npc.phase;
         return;
       }
-      const path=pathToShelfAccess(origin,this.layout,slot.shelfId,slot.index,this.room);
-      if(path){
-        if(!this.serviceSpots.claimShelf(slot.shelfId,npc.visitor.id)){
-          this.deferShelfRoute(npc,item.slotId);
-          return;
-        }
+      const reserved=this.serviceSpots.reserveShelfAccess(
+        npc.visitor.id,slot.shelfId,slot.index,origin,this.layout,this.room,
+        this.otherServiceOccupancy(npc));
+      if(reserved){
         npc.phase="browsing";npc.toQueue=false;
-        npc.route=path.waypoints.map(p=>new Vector3(p.x,0,p.z));
+        npc.route=reserved.route.waypoints.map(p=>new Vector3(p.x,0,p.z));
         npc.waypoint=0;
         npc.root.metadata.shoppingTargetSlot=item.slotId;
         npc.root.metadata.shoppingPhase="approaching-shelf";
