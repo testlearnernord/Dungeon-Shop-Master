@@ -1,5 +1,6 @@
 import type { Level5Room } from "./level5Room.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
+import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
 import { rotateShelfOffset, shopLayoutProblem, type ShopLayout } from "./shopLayout.ts";
 
@@ -27,6 +28,15 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Roo
     if(!route)
       return "Entrance "+(index+1)+" cannot reach the checkout.";
   }
+  // An editor may not commit furniture that leaves buyers able to reach
+  // shelves and checkout but traps all stockout/credit petitioners. Two
+  // independent request pockets must remain reachable from both gates.
+  const requests=restockWaitingPositions(layout,room).filter(point=>
+    entrances.every(origin=>pathToShopGoal(origin,point,layout,room)!==null));
+  const petitionPair=requests.some((a,index)=>requests.slice(index+1)
+    .some(b=>Math.hypot(a.x-b.x,a.z-b.z)>=1.18));
+  if(!petitionPair)
+    return "Leave two accessible waiting areas for restock requests and credit.";
   for(const shelf of layout.shelves){
     for(let slot=0;slot<5;slot++){
       const offset=rotateShelfOffset(1.75,slot-2,shelf.rotation);
