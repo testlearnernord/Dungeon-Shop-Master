@@ -87,16 +87,30 @@ export function createMerchantActions(
       [side*.11,-.56,.06],skin);
     return shoulder;
   });
-  // A proper pick is held below its head, not dangled below the wrist.
-  const pickHandle=cylinder("galvik-pick-handle",.83,.064,arms[1],
-    [0,-.36,.09],wood);
-  pickHandle.rotation.z=-.13;
-  box("galvik-pick-head",{width:.62,height:.075,depth:.12},
-    arms[1],[0,.04,.09],iron);
-  box("galvik-pick-tooth-left",{width:.20,height:.065,depth:.06},
-    arms[1],[-.36,.055,.09],iron).rotation.z=-.43;
-  box("galvik-pick-tooth-right",{width:.20,height:.065,depth:.06},
-    arms[1],[.36,.055,.09],iron).rotation.z=.43;
+  // The grip is at the wrist and the wooden shaft extends UP, past the
+  // hand, to a distinct iron crosshead. The old mesh extended mostly below
+  // the hand, leaving only a thin metallic bar visible during its upswing.
+  const pickGrip=new TransformNode("galvik-pick-grip",scene);
+  pickGrip.parent=arms[1];
+  pickGrip.position.set(0,-.55,.10);
+  const pickHandle=cylinder("galvik-pick-handle",.98,.075,pickGrip,
+    [0,.43,0],wood);
+  pickHandle.rotation.z=-.08;
+  box("galvik-pick-head",{width:.72,height:.12,depth:.14},
+    pickGrip,[0,.88,0],iron);
+  for(const side of [-1,1]){
+    const tooth=MeshBuilder.CreateCylinder("galvik-pick-tooth-"+side,{
+      height:.40,diameterTop:0,diameterBottom:.14,tessellation:8,
+    },scene);
+    tooth.parent=pickGrip;
+    tooth.position.set(side*.54,.87,0);
+    // The tapered point faces away from the center of the iron head.
+    tooth.rotation.z=side===-1?Math.PI/2:-Math.PI/2;
+    tooth.material=iron;
+    tooth.isPickable=false;
+    tooth.checkCollisions=false;
+    meshes.push(tooth);
+  }
   const pickParts=meshes.filter(m=>m.name.startsWith("galvik-pick-"));
   const itemBox=box("galvik-held-package",{width:.22,height:.27,depth:.25},
     arms[1],[0,-.8,.17],goods);
@@ -150,8 +164,10 @@ export function createMerchantActions(
       const at=context.currentTime;
       const level=Math.min(.11,volume()*.09);
       if(kind==="mine"){
-        tone(115,at,.15,level,"sawtooth");
-        tone(77,at+.055,.22,level*.7,"triangle");
+        // Impact follows the visible overhead strike instead of playing
+        // as soon as the mouse button begins the wind-up.
+        tone(115,at+.30,.14,level,"sawtooth");
+        tone(77,at+.35,.19,level*.7,"triangle");
       }else if(kind==="stock"){
         tone(180,at,.09,level*.48);
         tone(240,at+.09,.12,level*.30);
@@ -221,6 +237,7 @@ export function createMerchantActions(
     dispose(){
       scene.onBeforeRenderObservable.remove(observer);
       meshes.forEach(mesh=>mesh.dispose());
+      pickGrip.dispose();
       arms.forEach(node=>node.dispose());legs.forEach(node=>node.dispose());
       viewRoot.dispose();bodyRoot.dispose();
       materials.forEach(material=>material.dispose());
