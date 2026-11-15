@@ -80,25 +80,40 @@ export class GameStore {
     return "Shop expansion unlocked.";
   }
 
-  placeShelf(placement: ShelfPlacement): string {
-    const result = replaceShelfPlacement(this.current.shopLayout, placement,this.current.level5Room);
-    if (result.layout !== this.current.shopLayout) {
-      const boardProblem=rosterBoardProblem(this.current.rosterBoard??DEFAULT_ROSTER_BOARD,result.layout);
-      if(boardProblem)return boardProblem;
-      const invalid=shopServiceReachabilityProblem(result.layout,this.current.level5Room);
-      if(invalid)return invalid;
-      this.replace({ ...this.current, shopLayout: result.layout });
+  /** Authoritative read-only placement check for BOTH furniture editors.
+   * Use the same room, board and customer routes that the eventual commit
+   * will use. Do not let the preview and GameStore disagree.
+   */
+  previewShopPlacement(placement:ShelfPlacement|
+    (CounterPlacement&{readonly id:"counter"})):string|null {
+    const isCounter=placement.id==="counter";
+    const result=isCounter
+      ?replaceCounterPlacement(this.current.shopLayout,placement,this.current.level5Room)
+      :replaceShelfPlacement(this.current.shopLayout,placement,this.current.level5Room);
+    const success=isCounter?"Counter placement saved.":"Shelf placement saved.";
+    if(result.message!==success)return result.message;
+    if(!isCounter){
+      const board=rosterBoardProblem(this.current.rosterBoard??DEFAULT_ROSTER_BOARD,result.layout);
+      if(board)return board;
     }
+    return shopServiceReachabilityProblem(result.layout,this.current.level5Room);
+  }
+
+  placeShelf(placement: ShelfPlacement): string {
+    const problem=this.previewShopPlacement(placement);
+    if(problem)return problem;
+    const result=replaceShelfPlacement(this.current.shopLayout,placement,this.current.level5Room);
+    if(result.layout!==this.current.shopLayout)
+      this.replace({...this.current,shopLayout:result.layout});
     return result.message;
   }
 
   placeCounter(placement:CounterPlacement):string {
+    const problem=this.previewShopPlacement({...placement,id:"counter"});
+    if(problem)return problem;
     const result=replaceCounterPlacement(this.current.shopLayout,placement,this.current.level5Room);
-    if(result.layout!==this.current.shopLayout){
-      const invalid=shopServiceReachabilityProblem(result.layout);
-      if(invalid)return invalid;
+    if(result.layout!==this.current.shopLayout)
       this.replace({...this.current,shopLayout:result.layout});
-    }
     return result.message;
   }
 
