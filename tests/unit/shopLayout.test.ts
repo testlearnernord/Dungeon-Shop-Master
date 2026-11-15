@@ -80,12 +80,19 @@ test("side-aisle placements are decided by actual clearance and reachable routes
   });
   assert.equal(shelf.message,"Shelf placement saved.");
   assert.equal(shopServiceReachabilityProblem(shelf.layout),null);
-  const cashier=replaceCounterPlacement(layout,{x:4.5,z:0,rotation:0});
+  // A counter may enter the former right-side no-go strip, provided its
+  // customer and staff sockets still leave the nearby shelf accessible.
+  const cashier=replaceCounterPlacement(layout,{x:3.5,z:0,rotation:0});
   assert.equal(cashier.message,"Counter placement saved.");
   assert.equal(shopServiceReachabilityProblem(cashier.layout),null);
   assert.equal(new GameStore().previewShopPlacement({
-    id:"counter",x:4.5,z:0,rotation:0,
+    id:"counter",x:3.5,z:0,rotation:0,
   }),null);
+  // Not everything near the same wall is okay: farther right blocks the
+  // actual shelf face, which must remain a rejected placement.
+  const blocked=replaceCounterPlacement(layout,{x:4.5,z:0,rotation:0});
+  assert.equal(blocked.message,"Counter placement saved.");
+  assert.match(shopServiceReachabilityProblem(blocked.layout)??"",/shelf-2/);
 });
 
 test("strict saves reject injected, incomplete or obstructing furniture geometry",()=>{
