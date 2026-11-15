@@ -203,7 +203,8 @@ export function setupBlueprintHud(
     activeId=id;
     rotation=getSaved(id).rotation;
     title.textContent="MOVE · "+
-      (FURNITURE_CATALOG.find(def=>def.id===id)?.label??"Furniture");
+      (isShelfId(id)?`Shelf ${id.slice(6)}`:
+        FURNITURE_CATALOG.find(def=>def.id===id)?.label??"Furniture");
     draft=null;
     updateStatus(id==="adventurer-board"?"Aim at a free shop wall.":
       "Aim at a "+(id==="counter"||isBedroomFurnitureId(id)?"floor":"floor or wall")+".",false);
