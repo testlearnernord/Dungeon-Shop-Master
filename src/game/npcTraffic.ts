@@ -61,6 +61,14 @@ export function gateTravelLane(gate:GateSide,phase:"entering"|"leaving"):number 
   return center+side*(phase==="entering"?0.57:-0.57);
 }
 
+/** Distinguish the actual two narrow exit corridors from the rest of the
+ * rear shop floor. The original cave still reaches beyond z=6 along its
+ * side walls; z alone does NOT mean a hero is already through a gate. */
+export function isInExitCorridor(position:ShopPoint,innerZ:number):boolean {
+  return position.z>innerZ+0.25 &&
+    (Math.abs(position.x+4)<=0.68||Math.abs(position.x-4)<=0.68);
+}
+
 /** An arriving group needs more room than the bare collision radius; exact
  * 1.1m spawning behind a 1.02m body leaves virtually no headway at corners. */
 export const ENTRANCE_SPAWN_HEADWAY=1.5;
