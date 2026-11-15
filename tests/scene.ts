@@ -356,6 +356,17 @@ export function inspectShopPlacement() {
   return {left:data("shelf-1"),right:data("shelf-2")};
 }
 
+/** Read a genuinely instantiated extra shelf from the Babylon scene. */
+export function inspectAdditionalShelf(id:string){
+  const scene=Engine.LastCreatedScene!;
+  const root=scene.getTransformNodeByName(id+"-root");
+  const slots=scene.meshes.filter(mesh=>mesh.metadata?.kind==="shelf-slot"&&
+    typeof mesh.metadata.slotId==="string"&&
+    mesh.metadata.slotId.startsWith(id+"-slot-"));
+  return {x:root?.position.x??null,slotCount:slots.length,
+    allPickable:slots.every(mesh=>mesh.isPickable&&mesh.checkCollisions)};
+}
+
 /** Integration probe: physical cashier meshes must follow editor previews and saves. */
 export function inspectCheckoutPlacement() {
   const scene=Engine.LastCreatedScene!;
