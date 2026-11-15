@@ -38,15 +38,14 @@ function inheritSideWallUV(slice:Mesh,original:Mesh):void {
   slice.setVerticesData(VertexBuffer.UVKind,uvs,false);
 }
 
-/** Rebuild just the opened side from authoritative topology. Before ANY rock
- * is removed, the original unmodified side wall remains visible and solid;
- * transparent pick-only targets provide mining without a visual swap on U.
- * After mining, the uncut side retains its original mesh and the cut side's
- * new slices inherit continuous stone UV coordinates from that same mesh.
+/** Apply only topology deltas. Mining one cell must not dispose and rebuild
+ * every existing floor, ceiling and wall slice. That generated large Babylon
+ * mesh/geometry spikes during repeated swings, especially in big excavations.
+ * Stable mesh names, UV inheritance and original-wall behaviour are retained.
  */
 export function createLevel5RoomVisuals(scene:Scene) {
   const surfaces=getDungeonSurfaces(scene);
-  const blocks:Mesh[]=[];
+  const blocks=new Map<string,Mesh>();
   let previous="";
   const originalWalls=[
     scene.getMeshByName("left-wall") as Mesh|null,
@@ -56,52 +55,76 @@ export function createLevel5RoomVisuals(scene:Scene) {
     const signature=JSON.stringify(room);
     if(signature===previous)return;
     previous=signature;
-    blocks.forEach(mesh=>mesh.dispose());
-    blocks.length=0;
+    const keep=new Set<string>();
+    const ensure=(key:string,create:()=>Mesh):void=>{
+      keep.add(key);
+      if(!blocks.has(key))blocks.set(key,create());
+    };
     const minedLeft=room.excavatedCells.some(key=>Number(key.split(",")[0])<0);
     const minedRight=room.excavatedCells.some(key=>Number(key.split(",")[0])>0);
     originalWalls[0]?.setEnabled(!minedLeft);
     originalWalls[1]?.setEnabled(!minedRight);
-    if(room.expansionTier===0)return;
-    for(const entry of room.excavatedCells){
-      const [x,z]=entry.split(",").map(Number);
-      const floor=MeshBuilder.CreateBox(`excavated-floor-${entry}`,
-        {width:1,height:.4,depth:1},scene);
-      floor.position.set(x,-.2,z);
-      floor.material=surfaces.floor;floor.checkCollisions=true;floor.isPickable=true;
-      blocks.push(floor);
-      const ceiling=MeshBuilder.CreateBox(`excavated-ceiling-${entry}`,
-        {width:1,height:.35,depth:1},scene);
-      ceiling.position.set(x,4.1,z);
-      ceiling.material=surfaces.stone;ceiling.checkCollisions=true;ceiling.isPickable=false;
-      blocks.push(ceiling);
-    }
-    for(const [index,face] of level5RockFaces(room).entries()){
-      const originalSide=face.width===.4&&face.depth===1&&
-        Math.abs(face.x)===7.5;
-      const side=face.x<0?0:1;
-      const untouched=originalSide&&(side===0?!minedLeft:!minedRight);
-      // Only the mining interaction needs a target; a still-intact wall
-      // must never have its visible mesh, collision or UVs replaced.
-      if(untouched&&!face.mineCell)continue;
-      const wall=MeshBuilder.CreateBox(`excavation-rock-face-${index}`,
-        {width:face.width,height:4,depth:face.depth},scene);
-      wall.position.set(untouched?(side===0?-7.24:7.24):face.x,2,face.z);
-      wall.material=surfaces.stone;
-      wall.checkCollisions=!untouched;
-      if(untouched){
-        wall.scaling.x=.1; // Invisible pick-only skin in front of the old wall.
-        wall.visibility=0.000001;
-      }else if(originalSide){
-        const original=originalWalls[side];
-        if(original)inheritSideWallUV(wall,original);
+    if(room.expansionTier>0){
+      for(const entry of room.excavatedCells){
+        const [x,z]=entry.split(",").map(Number);
+        ensure("floor:"+entry,()=>{
+          const floor=MeshBuilder.CreateBox(`excavated-floor-${entry}`,
+            {width:1,height:.4,depth:1},scene);
+          floor.position.set(x,-.2,z);
+          floor.material=surfaces.floor;
+          floor.checkCollisions=true;
+          floor.isPickable=true;
+          return floor;
+        });
+        ensure("ceiling:"+entry,()=>{
+          const ceiling=MeshBuilder.CreateBox(`excavated-ceiling-${entry}`,
+            {width:1,height:.35,depth:1},scene);
+          ceiling.position.set(x,4.1,z);
+          ceiling.material=surfaces.stone;
+          ceiling.checkCollisions=true;
+          ceiling.isPickable=false;
+          return ceiling;
+        });
       }
-      if(face.mineCell)wall.metadata={level5MineCell:face.mineCell};
-      blocks.push(wall);
+      for(const face of level5RockFaces(room)){
+        const originalSide=face.width===.4&&face.depth===1&&
+          Math.abs(face.x)===7.5;
+        const side=face.x<0?0:1;
+        const untouched=originalSide&&(side===0?!minedLeft:!minedRight);
+        if(untouched&&!face.mineCell)continue;
+        const key="rock:"+[face.x,face.z,face.width,face.depth,
+          face.mineCell?.x??"",face.mineCell?.z??"",untouched].join(":");
+        ensure(key,()=>{
+          // Stable topology-based names replace old index-based identities.
+          // A neighbour's index used to change whenever a cell was mined.
+          const wall=MeshBuilder.CreateBox("excavation-rock-face-"+key.slice(5),
+            {width:face.width,height:4,depth:face.depth},scene);
+          wall.position.set(untouched?(side===0?-7.24:7.24):face.x,2,face.z);
+          wall.material=surfaces.stone;
+          wall.checkCollisions=!untouched;
+          if(untouched){
+            wall.scaling.x=.1;
+            wall.visibility=0.000001;
+          }else if(originalSide){
+            const original=originalWalls[side];
+            if(original)inheritSideWallUV(wall,original);
+          }
+          if(face.mineCell)wall.metadata={level5MineCell:face.mineCell};
+          return wall;
+        });
+      }
+    }
+    // Meshes still representing rock or floor are retained verbatim. Only
+    // disappeared faces are disposed, never the complete excavated cave.
+    for(const [key,mesh] of blocks){
+      if(keep.has(key))continue;
+      mesh.dispose();
+      blocks.delete(key);
     }
   }
   return {update,dispose:()=>{
     blocks.forEach(mesh=>mesh.dispose());
+    blocks.clear();
     originalWalls.forEach(wall=>wall?.setEnabled(true));
   }};
 }
