@@ -430,7 +430,7 @@ export function inspectDungeonSurfaces() {
   const textured=(name:string)=>!!(material(name) &&
     "diffuseTexture" in material(name)! && (material(name) as {diffuseTexture?:{isReady():boolean}}).diffuseTexture?.isReady());
   const props=["stone-floor","stone-ceiling","left-wall","right-wall",
-    "checkout-counter","counter-top","shelf-1-back","shelf-2-plank",
+    "checkout-counter","counter-top",
     "bedroom-left-wall","bedroom-flagstone-0","bedroom-door-lintel",
     "bed-frame","bedroom-desk","bedroom-floor-skin"];
   return {
@@ -443,9 +443,10 @@ export function inspectDungeonSurfaces() {
     surfaceCount:props.filter(textured).length,
     requestedCount:props.length,
     sharedWall:material("left-wall")===material("bedroom-left-wall"),
-    sharedTimber:material("shelf-1-back")===material("bed-frame"),
+    sharedTimber:material("checkout-counter")===material("bed-frame"),
     sharedFloor:material("stone-floor")===material("bedroom-floor-skin"),
     semanticShelf:(at("shelf-1-slot-1")?.metadata?.kind as string|undefined),
+    hasPrebuiltShelf:scene.meshes.some(mesh=>/^shelf-\\d+-back$/.test(mesh.name)),
     solidWalls:["left-wall","right-wall","bedroom-left-wall"]
       .every(name=>at(name)?.checkCollisions),
     idleDecor:scene.meshes.filter(m=>m.name.startsWith("bedroom-flagstone-"))
