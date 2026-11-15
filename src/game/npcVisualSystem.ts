@@ -1074,8 +1074,23 @@ export class NpcVisualSystem {
     }
     const from={x:npc.root.position.x,z:npc.root.position.z};
     const dx=target.x-from.x,dz=target.z-from.z,distance=Math.hypot(dx,dz);
-    const occupied=[...this.npcs.values()].filter(other=>other!==npc)
-      .map(other=>({x:other.root.position.x,z:other.root.position.z}));
+    const others=[...this.npcs.values()].filter(other=>other!==npc);
+    const occupied=others.map(other=>({
+      x:other.root.position.x,z:other.root.position.z,
+    }));
+    // A service claim protects a *settled* customer, not the entire route.
+    // Customers travelling to different stations may briefly pass through
+    // each other after a traffic stall, but never through a stationary buyer
+    // at checkout, a waiting petitioner or a shopper inspecting a shelf.
+    const protectedOccupied=others.filter(other=>{
+      if(other.phase==="considering")return true;
+      const claim=this.serviceSpots.claim(other.visitor.id);
+      return !!claim&&other.route[other.waypoint]===undefined&&
+        Math.hypot(other.root.position.x-claim.point.x,
+          other.root.position.z-claim.point.z)<NPC_CENTER_CLEARANCE*0.5;
+    }).map(other=>({
+      x:other.root.position.x,z:other.root.position.z,
+    }));
     if(distance<=NPC_FINAL_WAYPOINT_RADIUS){
       const heldByNeighbor=occupied.some(other=>
         Math.hypot(other.x-target.x,other.z-target.z)<PERSONAL_SPACE);
@@ -1132,13 +1147,18 @@ export class NpcVisualSystem {
     // need to steer around shelves and other visitors en route.
     const inGateApproach=(npc.phase==="entering"||npc.phase==="leaving")&&
       from.z>=5.1;
-    const ownedServiceDestination=this.serviceSpots.claim(npc.visitor.id)!==null;
+    const claim=this.serviceSpots.claim(npc.visitor.id);
+    const finalServiceApproach=!!claim&&
+      Math.hypot(target.x-claim.point.x,target.z-claim.point.z)<0.3&&
+      Math.hypot(from.x-claim.point.x,from.z-claim.point.z)<
+        NPC_CENTER_CLEARANCE+0.25;
     const move=shopCrowdStep(from,{x:target.x,z:target.z},occupied,
       WALK_SPEED*delta,walkable,npc.blockedSeconds,!inGateApproach&&from.z<=6.5,
-      ownedServiceDestination&&from.z<=6.5
+      finalServiceApproach
         ?Number.POSITIVE_INFINITY
         :inGateTrafficThroat(from)
-          ?NPC_GATE_SOFT_PASS_AFTER_SECONDS:NPC_SOFT_PASS_AFTER_SECONDS);
+          ?NPC_GATE_SOFT_PASS_AFTER_SECONDS:NPC_SOFT_PASS_AFTER_SECONDS,
+      protectedOccupied);
     const proposed=move.point;
     if(!proposed){
       npc.blockedSeconds+=delta;

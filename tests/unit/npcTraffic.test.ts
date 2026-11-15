@@ -238,6 +238,22 @@ test("neighbour collisions are soft after a short wait, preserving furniture",()
   assert.equal(solidShelf.softPass,false);
 });
 
+test("moving customers can unjam an aisle without passing through settled service visitors",()=>{
+  const from={x:0,z:0},goal={x:3,z:0};
+  const moving={x:0.45,z:0},checkout={x:2,z:0};
+  const normal=shopCrowdStep(from,goal,[moving,checkout],0.2,()=>true,0,
+    false,NPC_SOFT_PASS_AFTER_SECONDS,[checkout]);
+  assert.equal(normal.point,null);
+  const freed=shopCrowdStep(from,goal,[moving,checkout],0.2,()=>true,
+    NPC_SOFT_PASS_AFTER_SECONDS,false,NPC_SOFT_PASS_AFTER_SECONDS,[checkout]);
+  assert.equal(freed.softPass,true,"stalled shoppers may pass moving bodies");
+  assert.deepEqual(freed.point,{x:0.2,z:0});
+  const atCounter=shopCrowdStep({x:1.2,z:0},goal,[checkout],0.2,()=>true,
+    NPC_SOFT_PASS_AFTER_SECONDS,false,NPC_SOFT_PASS_AFTER_SECONDS,[checkout]);
+  assert.equal(atCounter.softPass,false,"a service position stays occupied");
+  assert.equal(atCounter.point,null,"body overlap must not reach the cashier");
+});
+
 test("soft passing stays deterministic, does not skip navigation or force blocked geometry",()=>{
   const from={x:0.6,z:0.25},goal={x:2,z:0.25};
   const other=[{x:0.8,z:0.25}];

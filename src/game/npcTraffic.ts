@@ -300,8 +300,9 @@ export interface ShopCrowdMove {
 }
 
 /** Prefer natural avoidance while it works. After sustained obstruction use
- * the same static-world collision test without other NPCs. That preserves
- * walls/shelves/counter and lets both pedestrians finish their routes.
+ * the static-world collision test with only settled service customers
+ * remaining solid. Moving pedestrians can pass; occupied counters, waiting
+ * points, walls and furniture cannot be walked through.
  * A running soft pass stays active until its current waypoint is reached,
  * instead of alternating one movement frame and another full-second stop.
  */
@@ -310,9 +311,13 @@ export function shopCrowdStep(
   maxDistance: number, canWalk:(next: ShopPoint)=>boolean,
   blockedSeconds: number, allowSidestep=true,
   softAfterSeconds=NPC_SOFT_PASS_AFTER_SECONDS,
+  protectedOccupied:readonly ShopPoint[]=[],
 ): ShopCrowdMove {
   if (blockedSeconds>=softAfterSeconds) {
-    const unobstructed=crowdSafeStep(from,goal,[],maxDistance,canWalk,false);
+    // Relax only moving pedestrians. A hero already serving at a station
+    // cannot be walked through even during a prolonged aisle deadlock.
+    const unobstructed=crowdSafeStep(from,goal,protectedOccupied,
+      maxDistance,canWalk,false);
     if(unobstructed)return {point:unobstructed,softPass:true};
   }
   return {
