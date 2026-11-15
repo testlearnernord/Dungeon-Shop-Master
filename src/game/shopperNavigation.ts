@@ -1,6 +1,7 @@
 import { level5FloorWalkable, level5FloorSegmentWalkable } from "./level5Walkability.ts";
 import type { Level5Room } from "./level5Room.ts";
-import { COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, shelfBounds, type ShopLayout } from "./shopLayout.ts";
+import {rotateShelfOffset,shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
+import {pointTouchesShopBounds,shelfServicePoint} from "./shopFloorFurniture.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
 export interface ShopperRoute {
@@ -15,17 +16,12 @@ export function isObstructed(p:ShopPoint,layout:ShopLayout,room?:Level5Room):boo
   // Furniture, counter and wall-adjacent space; entrance lanes z>6.5
   // are handled by the existing level-door route.
   if(Math.abs(p.x)>6.7||Math.abs(p.z)>6.7)return true;
-  const counter=getCounterPlacement(layout);
-  // Use the physical countertop plus walker clearance, not the wider
-  // furniture-editing zone. The Level 4/6 central lane remains passable.
-  const horizontal=counter.rotation%2===0?COMPACT_COUNTER.topWidth:COMPACT_COUNTER.topDepth;
-  const vertical=counter.rotation%2===0?COMPACT_COUNTER.topDepth:COMPACT_COUNTER.topWidth;
-  if(Math.abs(p.x-counter.x)<=horizontal/2+0.18&&
-     Math.abs(p.z-counter.z)<=vertical/2+0.18)return true;
-  for(const shelf of layout.shelves){
-    const b=shelfBounds(shelf);
-    if(p.x>b.minX-pad&&p.x<b.maxX+pad &&
-       p.z>b.minZ-pad&&p.z<b.maxZ+pad)return true;
+  // Older layouts without an explicit room retain their historical
+  // walking margins. Actual geometry still comes from the same registry as
+  // the expanded-room navigator, not a second set of dimensions.
+  for(const fixture of shopFloorFixtures(layout)){
+    const clearance=fixture.kind==="counter"?0.18:pad;
+    if(pointTouchesShopBounds(fixture.solid,p,clearance))return true;
   }
   return false;
 }
@@ -157,8 +153,9 @@ export function pathToShelfAccess(
     return null;
   for(const outward of [0,0.3,0.55]){
     for(const along of [0,-0.35,0.35,-0.7,0.7]){
-      const offset=rotateShelfOffset(1.75+outward,slotIndex-2+along,shelf.rotation);
-      const goal={x:shelf.x+offset.x,z:shelf.z+offset.z};
+      const nominal=shelfServicePoint(shelf,slotIndex);
+      const offset=rotateShelfOffset(outward,along,shelf.rotation);
+      const goal={x:nominal.x+offset.x,z:nominal.z+offset.z};
       if(isObstructed(goal,layout,room)||
         (canUseStandingPoint&&!canUseStandingPoint(goal)))continue;
       const route=pathToShopGoal(from,goal,layout,room);

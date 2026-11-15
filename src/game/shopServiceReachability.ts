@@ -2,7 +2,8 @@ import type { Level5Room } from "./level5Room.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
-import { rotateShelfOffset, shopLayoutProblem, type ShopLayout } from "./shopLayout.ts";
+import {shopLayoutProblem,type ShopLayout} from "./shopLayout.ts";
+import {shelfServicePoint} from "./shopFloorFurniture.ts";
 
 /** A furniture commit is invalid if the physical entrance, checkout and
  * shelf service sockets no longer share a walkable component.
@@ -39,8 +40,7 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Roo
     return "Leave two accessible waiting areas for restock requests and credit.";
   for(const shelf of layout.shelves){
     for(let slot=0;slot<5;slot++){
-      const offset=rotateShelfOffset(1.75,slot-2,shelf.rotation);
-      const service={x:shelf.x+offset.x,z:shelf.z+offset.z};
+      const service=shelfServicePoint(shelf,slot);
       if(isObstructed(service,layout,room))
         return "Customer standing space is blocked at "+shelf.id+" slot "+(slot+1)+".";
       if(entrances.some(origin=>!pathToShopGoal(origin,service,layout,room))||

@@ -13,6 +13,7 @@ import {
   COMPACT_COUNTER, getCounterPlacement, rotateShelfOffset, shopLayoutProblem,
   type CounterPlacement, type ShelfId, type ShelfPlacement,
 } from "./shopLayout.ts";
+import {SHOP_FLOOR_FURNITURE,shelfServicePoint} from "./shopFloorFurniture.ts";
 
 interface ShelfGroup {
   root: TransformNode;
@@ -58,7 +59,9 @@ export class Shop {
     this.validMaterial = makeGuide("placement-valid", new Color3(0.28, 0.94, 0.52));
     this.invalidMaterial = makeGuide("placement-invalid", new Color3(1, 0.23, 0.22));
     this.counterOutline=MeshBuilder.CreateBox("counter-placement-preview",{
-      width:COMPACT_COUNTER.clearanceWidth,height:1.25,depth:COMPACT_COUNTER.clearanceDepth,
+      width:SHOP_FLOOR_FURNITURE.counter.preview.width,
+      height:SHOP_FLOOR_FURNITURE.counter.preview.height,
+      depth:SHOP_FLOOR_FURNITURE.counter.preview.depth,
     },scene);
     this.counterOutline.material=this.validMaterial;
     this.counterOutline.isPickable=false;
@@ -110,8 +113,8 @@ export class Shop {
   /** For subsequent shopping/navigation AI: shelf position, never a hard-coded aisle. */
   shelfAccessPoint(slot: Slot): Vector3 {
     const placement = this.store.state.shopLayout.shelves.find(p=>p.id===slot.shelfId)!;
-    const offset = rotateShelfOffset(1.75, slot.index - 2, placement.rotation);
-    return new Vector3(placement.x + offset.x, 0, placement.z + offset.z);
+    const point=shelfServicePoint(placement,slot.index);
+    return new Vector3(point.x,0,point.z);
   }
 
   private syncPlacements(): void {
@@ -133,7 +136,9 @@ export class Shop {
     put("counter-top",0,0.90,0);
     put("register-base",COMPACT_COUNTER.registerOffsetX,1.05,COMPACT_COUNTER.registerOffsetZ);
     put("cash-register",COMPACT_COUNTER.registerOffsetX,1.22,COMPACT_COUNTER.registerOffsetZ);
-    this.counterOutline.position.set(p.x,0.64,p.z);
+    const visual=SHOP_FLOOR_FURNITURE.counter.preview;
+    const offset=rotateShelfOffset(visual.offsetX,visual.offsetZ,p.rotation);
+    this.counterOutline.position.set(p.x+offset.x,visual.offsetY,p.z+offset.z);
     this.counterOutline.rotation.y=p.rotation*Math.PI/2;
   }
   private positionShelf(group: ShelfGroup, p: ShelfPlacement): void {
@@ -171,11 +176,12 @@ export class Shop {
       plank.checkCollisions=true;
       plank.isPickable=true;
 
+      const preview=SHOP_FLOOR_FURNITURE.shelf.preview;
       const outline=MeshBuilder.CreateBox(shelfId+"-placement-preview",{
-        width:1.36,height:2.35,depth:6.1,
+        width:preview.width,height:preview.height,depth:preview.depth,
       },this.scene);
       outline.parent=root;
-      outline.position.set(0.48,1.27,0);
+      outline.position.set(preview.offsetX,preview.offsetY,preview.offsetZ);
       outline.material=this.validMaterial;
       outline.isPickable=false;
       outline.checkCollisions=false;
