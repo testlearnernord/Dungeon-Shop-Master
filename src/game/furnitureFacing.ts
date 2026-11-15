@@ -1,5 +1,5 @@
 import type { FurnitureId } from "./furnitureBlueprint.ts";
-import type { ShelfPlacement } from "./shopLayout.ts";
+import {isShelfId,type ShelfPlacement} from "./shopLayout.ts";
 
 export type QuarterTurn=ShelfPlacement["rotation"];
 export interface FurnitureFacing {
@@ -13,7 +13,7 @@ export interface FurnitureFacing {
  * This is also the orientation of the 3D preview's arrow indicator.
  */
 export function furnitureFacing(id:FurnitureId,rotation:QuarterTurn):FurnitureFacing {
-  const shelf=id==="shelf-1"||id==="shelf-2";
+  const shelf=isShelfId(id);
   const bedroom=id==="desk"||id==="chest"||id==="candle"||id==="bed";
   const localX=shelf?1:0,localZ=shelf?0:bedroom?1:-1;
   const x=rotation===0?localX:rotation===1?localZ:rotation===2?-localX:-localZ;

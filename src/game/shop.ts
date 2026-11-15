@@ -71,8 +71,11 @@ export class Shop {
     this.syncPlacements();
     this.refresh();
     this.store.subscribe(() => {
-      this.refresh();
+      // New saved instances have real meshes, slots and scene interactions
+      // before any customer/pathfinding view observes the updated store.
+      this.createShelves();
       this.syncPlacements();
+      this.refresh();
     });
   }
 
@@ -156,7 +159,23 @@ export class Shop {
   }
 
   private createShelves(): void {
-    for (const shelfId of ["shelf-1", "shelf-2"] as const) {
+    const activeIds=new Set(this.store.state.shopLayout.shelves.map(shelf=>shelf.id));
+    // New Game / imported campaign may REMOVE an instanced shelf again.
+    // Retire its collision meshes and slot mappings before refresh tries to
+    // read stock that no longer belongs to the current saved layout.
+    for(const [id,group] of this.shelves){
+      if(activeIds.has(id))continue;
+      for(const [mesh,slot] of this.slotMeshes){
+        if(slot.shelfId!==id)continue;
+        this.slotMeshes.delete(mesh);
+        this.slotById.delete(slot.id);
+        this.itemVisuals.delete(slot.id);
+      }
+      group.root.dispose();
+      this.shelves.delete(id);
+    }
+    for (const {id:shelfId} of this.store.state.shopLayout.shelves) {
+      if(this.shelves.has(shelfId))continue;
       const root = new TransformNode(shelfId+"-root", this.scene);
       const material = getDungeonSurfaces(this.scene).wood;
       const back = MeshBuilder.CreateBox(shelfId+"-back",{
@@ -203,10 +222,9 @@ export class Shop {
         this.slotMeshes.set(mesh,slot);
         this.slotById.set(slot.id,mesh);
         this.createSlotLabel(slot,root);
+        this.updateSlot(slot);
       }
     }
-    this.syncPlacements();
-    for(const slot of this.store.state.shopEconomy.slots) this.updateSlot(slot);
   }
 
   private createSlotLabel(slot:Slot,root:TransformNode):void {

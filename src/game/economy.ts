@@ -30,6 +30,16 @@ export const ECONOMY = {
   healingTarget: 1,
 } as const;
 
+/** Instance-owned slots: stable identities, real goods and cart references.
+ * Newly built shelving is EMPTY, never a source of free merchandise.
+ */
+export function createEmptyShelfSlots(shelfId:string):Slot[]{
+  return Array.from({length:5},(_,index)=>({
+    id:`${shelfId}-slot-${index+1}`,shelfId,index,
+    itemId:null,quantity:0,capacity:ECONOMY.slotCapacity,
+  }));
+}
+
 export function createEconomy(): ShopEconomyState {
   const slots: Slot[] = [];
   for (let shelf = 1; shelf <= 2; shelf += 1) {

@@ -29,7 +29,12 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger",async(
   await expect(page.locator("#day")).toHaveText("Day 1");
   await expect(page.locator("#end-day")).toHaveCount(0);
   await expect(page.locator("#day-confirmation")).toHaveCount(0);
+  // N now intentionally enters shelf construction. Cancel the ghost before
+  // interacting with the bed; building must not close the day by itself.
   await page.keyboard.press("n");
+  await expect(page.locator("#blueprint-panel")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#blueprint-panel")).toBeHidden();
   await page.keyboard.press("z");
   await expect(page.locator("#day")).toHaveText("Day 1");
   const bedroom=await page.evaluate(async()=>

@@ -142,7 +142,7 @@ export function cashierServicePoint(
  * Geometry and mounting semantics live here; GameStore, the blueprint,
  * player collisions and shop navigation use the same definitions.
  */
-export type FurnitureKind="shelf-1"|"shelf-2"|"counter"|
+export type FurnitureKind=`shelf-${number}`|"counter"|
   "desk"|"chest"|"candle"|"bed"|"adventurer-board";
 export type FurnitureMount="shop-floor"|"private-floor"|"shop-wall";
 export type FurniturePurpose="stock"|"checkout"|"sleep"|"debt"|"storage"|
@@ -197,21 +197,24 @@ export const FURNITURE_REGISTRY={
     interaction:{reach:2.2,label:"Adventurers"}},
 } as const satisfies Record<FurnitureKind,FurnitureDefinition>;
 
+const registeredShelf=(id:string):boolean=>
+  /^shelf-[1-9][0-9]*$/.test(id)&&Number(id.slice(6))<=12;
 export const furnitureDefinition=(id:FurnitureKind):FurnitureDefinition=>
-  FURNITURE_REGISTRY[id];
+  registeredShelf(id)?shelfDefinition:
+    FURNITURE_REGISTRY[id as keyof typeof FURNITURE_REGISTRY];
 
 export function furnitureBounds(p:FurniturePose):FurnitureBounds {
-  if(p.id==="shelf-1"||p.id==="shelf-2")
+  if(registeredShelf(p.id))
     return shopFixtureBounds("shelf",p);
   if(p.id==="counter")return shopFixtureBounds("counter",p);
-  const def=FURNITURE_REGISTRY[p.id];
+  const def=furnitureDefinition(p.id);
   const turn=p.rotation%2===1;
   const w=turn?def.depth:def.width,d=turn?def.width:def.depth;
   return {minX:p.x-w/2,maxX:p.x+w/2,
     minZ:p.z-d/2,maxZ:p.z+d/2};
 }
 export function furnitureSolidBounds(p:FurniturePose):FurnitureBounds {
-  if(p.id==="shelf-1"||p.id==="shelf-2")
+  if(registeredShelf(p.id))
     return shopFixtureBounds("shelf",p,"solid");
   if(p.id==="counter")return shopFixtureBounds("counter",p,"solid");
   return furnitureBounds(p);
@@ -220,8 +223,8 @@ export function furnitureTouchesActor(
   p:FurniturePose,actor:{readonly x:number;readonly z:number;
     readonly radius:number},
 ):boolean {
-  if(!FURNITURE_REGISTRY[p.id].collides)return false;
-  if(p.id==="shelf-1"||p.id==="shelf-2")
+  if(!furnitureDefinition(p.id).collides)return false;
+  if(registeredShelf(p.id))
     return shopFixtureTouches("shelf",p,actor,actor.radius);
   if(p.id==="counter")
     return shopFixtureTouches("counter",p,actor,actor.radius);
@@ -238,4 +241,4 @@ export function furnitureBoundsOverlap(
     a.minZ<b.maxZ+pad&&a.maxZ>b.minZ-pad;
 }
 export const isFurnitureKind=(id:unknown):id is FurnitureKind=>
-  typeof id==="string"&&Object.hasOwn(FURNITURE_REGISTRY,id);
+  typeof id==="string"&&(registeredShelf(id)||Object.hasOwn(FURNITURE_REGISTRY,id));

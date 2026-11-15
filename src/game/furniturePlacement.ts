@@ -6,6 +6,7 @@ import {replaceRosterBoard,rosterBoardProblem,DEFAULT_ROSTER_BOARD} from "./rost
 import {replaceCounterPlacement,replaceShelfPlacement,
   type ShelfPlacement} from "./shopLayout.ts";
 import {shopServiceReachabilityProblem} from "./shopServiceReachability.ts";
+import {createEmptyShelfSlots} from "./economy.ts";
 
 export type FurniturePlacementResult={
   readonly state:GameState;
@@ -66,7 +67,11 @@ export function resolveFurniturePlacement(
   if(boardProblem)return unchanged(boardProblem,boardProblem);
   const problem=shopServiceReachabilityProblem(result.layout,state.level5Room);
   if(problem)return unchanged(problem,problem);
+  const isNew=!state.shopLayout.shelves.some(shelf=>shelf.id===draft.id);
+  const economy=isNew?{...state.shopEconomy,
+    slots:[...state.shopEconomy.slots,...createEmptyShelfSlots(draft.id)]}
+    :state.shopEconomy;
   return {state:result.layout===state.shopLayout?state:
-    {...state,shopLayout:result.layout},problem:null,
-    message:result.message};
+    {...state,shopLayout:result.layout,shopEconomy:economy},
+    problem:null,message:result.message};
 }

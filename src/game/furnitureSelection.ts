@@ -1,5 +1,6 @@
 import type { FurnitureId } from "./furnitureBlueprint.ts";
-import {FURNITURE_REGISTRY,type FurnitureKind} from "./furnitureRegistry.ts";
+import {isShelfId} from "./shopLayout.ts";
+import {furnitureDefinition,type FurnitureKind} from "./furnitureRegistry.ts";
 
 /** All visible built-in furnishings have a stable identity, not a keyboard slot.
  * Persisted positions are resolved from GameState when focused; this module
@@ -14,8 +15,7 @@ export interface LookedAtFurniture {
 }
 
 const bounds=(id:FurnitureKind)=>{
-  const definition=FURNITURE_REGISTRY[id] as
-    import("./furnitureRegistry.ts").FurnitureDefinition;
+  const definition=furnitureDefinition(id);
   if(definition.focus)return definition.focus;
   const {width,height,depth}=definition;
   return {width,height,depth};
@@ -40,8 +40,15 @@ const furniture:readonly LookedAtFurniture[]=[
  * Avoid selecting rock, NPCs, product labels, or stock items as furniture.
  */
 export function classifyFurnitureMesh(name:string):LookedAtFurniture|null {
-  if(/^shelf-[12]-(slot-|back|plank|root|placement-preview)/.test(name))
-    return furniture[Number(name[6])-1]??null;
+  const shelfMatch=/^(shelf-[1-9][0-9]*)-(?:slot-|back|plank|root|placement-preview)/.exec(name);
+  if(shelfMatch&&isShelfId(shelfMatch[1])){
+    const id=shelfMatch[1];
+    if(id==="shelf-1"||id==="shelf-2")
+      return furniture[Number(id.slice(6))-1]??null;
+    const {focus,width,height,depth}=furnitureDefinition(id);
+    return {id,label:"Shelf "+id.slice(6),movableId:id,
+      bounds:focus??{width,height,depth},focusY:1.27};
+  }
   if(["checkout-counter","counter-top","register-base","cash-register"].includes(name))
     return furniture[2];
   if(name==="adventurer-roster-board"||name.startsWith("roster-frame-"))

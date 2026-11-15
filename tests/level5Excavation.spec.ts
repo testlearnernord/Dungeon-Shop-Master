@@ -181,3 +181,71 @@ test("contextual P mounts the board on freshly excavated stone and survives a re
   )).toBe(9.25);
   expect(errors).toEqual([]);
 });
+
+test("build a third shelf with N on mined floor, keep its stock IDs and 3D mesh after reload",async({page})=>{
+  test.setTimeout(110000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const storage=new CampaignStorage();
+    const state=await storage.loadGame();
+    if(!state)throw new Error("Missing campaign");
+    let room={...state.level5Room,expansionTier:3};
+    for(let x=8;x<=13;x++)for(let z=-5;z<=5;z++){
+      const cut=excavateLevel5Cell(room,{x,z});
+      if(!cut.ok)throw new Error(cut.reason);
+      room=cut.room;
+    }
+    await storage.saveGame({...state,level5Room:room});
+  });
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.locator("#build-shelf").click();
+  await expect(page.locator("#blueprint-panel")).toBeVisible();
+  expect(await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .aimAtExcavatedBlueprintFloor(11,0))).toContain("excavated-floor-11,0");
+  await expect.poll(()=>page.locator("#blueprint-facing").textContent(),
+    {timeout:10000}).toContain("X 11.00");
+  // A shelf facing outward into solid rock has NO reachable stock sockets.
+  // The real editor must reject it, then accept the player turning its
+  // customer face inward toward the shop.
+  await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").textContent(),
+    {timeout:10000}).toContain("cannot reach");
+  await page.keyboard.press("r");
+  await page.keyboard.press("r");
+  await expect.poll(()=>page.locator("#blueprint-facing").textContent()).toContain("180°");
+  await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").textContent(),
+    {timeout:15000}).toContain("Valid placement");
+  await page.mouse.click(400,300);
+  await expect(page.locator("#blueprint-panel")).toBeHidden();
+  const read=()=>page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    return state?{
+      ids:state.shopLayout.shelves.map(shelf=>shelf.id),
+      built:state.shopLayout.shelves[2],
+      slots:state.shopEconomy.slots.filter(slot=>slot.shelfId==="shelf-3")
+        .map(slot=>({id:slot.id,quantity:slot.quantity,itemId:slot.itemId})),
+    }:null;
+  });
+  await expect.poll(async()=>(await read())?.ids.length).toBe(3);
+  const persisted=await read();
+  expect(persisted?.built).toEqual({id:"shelf-3",x:11,z:0,rotation:2});
+  expect(persisted?.slots).toEqual(Array.from({length:5},(_,i)=>({
+    id:`shelf-3-slot-${i+1}`,quantity:0,itemId:null,
+  })));
+  const scene=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .inspectAdditionalShelf("shelf-3"));
+  await expect.poll(async()=>(await scene()).slotCount).toBe(5);
+  await page.reload();
+  expect(await read()).toEqual(persisted);
+  await expect.poll(async()=>(await scene()).slotCount).toBe(5);
+  expect((await scene()).x).toBe(11);
+  expect(errors).toEqual([]);
+});
