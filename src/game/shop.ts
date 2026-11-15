@@ -13,7 +13,7 @@ import {
   COMPACT_COUNTER, getCounterPlacement, shopLayoutProblem,
   type CounterPlacement, type ShelfId, type ShelfPlacement,
 } from "./shopLayout.ts";
-import {SHOP_FLOOR_FURNITURE,shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT,shelfSlotLocalZ} from "./shopFloorFurniture.ts";
+import {SHOP_FLOOR_FURNITURE,shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT,shelfSlotLocalZ} from "./furnitureRegistry.ts";
 
 interface ShelfGroup {
   root: TransformNode;
