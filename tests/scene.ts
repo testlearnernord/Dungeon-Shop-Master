@@ -614,8 +614,9 @@ export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
   const camera=scene.activeCamera as UniversalCamera;
   // Stay in the original cave and look straight down an excavated wing.
   // A fully mined passage keeps the ray physically clear while extending
-  // >16m beyond the initial editor's reach (x=-6.4 to x=13).
-  camera.position.set(x>0?-6.4:6.4,1.7,z);
+  // >16m beyond the initial editor's reach (x=-4.8 to x=13).
+  // Keep the camera clear of the two original wall-mounted shelves.
+  camera.position.set(x>0?-4.8:4.8,1.7,z);
   camera.setTarget(new Vector3(x,0,z));
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
