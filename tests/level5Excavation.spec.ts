@@ -175,12 +175,9 @@ test("contextual P mounts the board on freshly excavated stone and survives a re
   await expect.poll(board).toEqual({x:9.25,z:0,rotation:1});
   await page.reload();
   expect(await board()).toEqual({x:9.25,z:0,rotation:1});
-  await expect.poll(async()=>page.evaluate(async()=>{
-    const {Engine}=await import("@babylonjs/core/Engines/engine");
-    const mesh=Engine.LastCreatedScene?.getMeshByName("adventurer-roster-board");
-    if(!mesh)return null;
-    mesh.computeWorldMatrix(true);
-    return Math.round(mesh.getAbsolutePosition().x*100)/100;
-  })).toBe(9.25);
+  await expect.poll(async()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .inspectMountedRosterBoardX()
+  )).toBe(9.25);
   expect(errors).toEqual([]);
 });
