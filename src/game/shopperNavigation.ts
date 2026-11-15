@@ -40,9 +40,6 @@ export function shopSegmentClear(a:ShopPoint,b:ShopPoint,layout:ShopLayout,room?
   }
   return true;
 }
-/** Fast, deterministic grid search with bounds and actual moved shelf footprints.
- * Routes never invent wall-crossing diagonals or mutate any GameState fields.
- */
 /** A topology-scoped route planner for bulk validation and multi-shelf
  * service searches. Only static rock and furniture grid cells are cached;
  * actor occupancy is deliberately absent. Discard the planner after any
@@ -63,9 +60,8 @@ export function createShopRoutePlanner(
   const idx=(x:number,z:number)=>z*width+x;
   const inside=(x:number,z:number)=>x>=0&&z>=0&&x<width&&z<height;
   const blocked=(p:ShopPoint)=>isObstructed(p,layout,room);
-  // A single route probes the same grid cells repeatedly while snapping and
-  // searching. Cache only immutable layout obstacles for this route invocation;
-  // moving NPC occupancy is intentionally handled by the traffic controller.
+  // Cache only immutable layout obstacles for this planner's lifetime.
+  // Moving NPC occupancy belongs to the traffic controller, not this grid.
   const cellState=new Uint8Array(width*height); // 0 unknown, 1 clear, 2 blocked
   const blockedCell=(id:number):boolean=>{
     const state=cellState[id];
@@ -76,9 +72,9 @@ export function createShopRoutePlanner(
   };
   const clear=(a:ShopPoint,b:ShopPoint)=>shopSegmentClear(a,b,layout,room);
   return (from:ShopPoint,to:ShopPoint):ShopperRoute|null => {
-  if(!Number.isFinite(from.x)||!Number.isFinite(from.z)||
+    if(!Number.isFinite(from.x)||!Number.isFinite(from.z)||
     !Number.isFinite(to.x)||!Number.isFinite(to.z))return null;
-  const snap=(p:ShopPoint):number=>{
+    const snap=(p:ShopPoint):number=>{
     let best=-1,bestDist=Infinity;
     const x0=Math.round((p.x-minX)/STEP);
     const z0=Math.round((p.z-minZ)/STEP);
@@ -98,13 +94,13 @@ export function createShopRoutePlanner(
       if(best>=0)break;
     }
     return best;
-  };
-  const start=snap(from),goal=snap(to);
-  if(start<0||goal<0)return null;
-  const prev=new Int32Array(width*height).fill(-1);
-  const queue=[start];prev[start]=start;
-  const vectors=[[0,-1],[-1,0],[1,0],[0,1]] as const;
-  for(let i=0;i<queue.length;i++){
+    };
+    const start=snap(from),goal=snap(to);
+    if(start<0||goal<0)return null;
+    const prev=new Int32Array(width*height).fill(-1);
+    const queue=[start];prev[start]=start;
+    const vectors=[[0,-1],[-1,0],[1,0],[0,1]] as const;
+    for(let i=0;i<queue.length;i++){
     const cell=queue[i];
     if(cell===goal)break;
     const x=cell%width,z=Math.floor(cell/width);
@@ -115,20 +111,20 @@ export function createShopRoutePlanner(
       if(prev[key]!==-1||blockedCell(key))continue;
       prev[key]=cell;queue.push(key);
     }
-  }
-  if(prev[goal]===-1)return null;
-  const path:number[]=[];
-  let current=goal;
-  while(current!==start){path.push(current);current=prev[current];}
-  path.push(start);path.reverse();
-  // Remove collinear intermediary grid points without cutting corners.
-  const result:ShopPoint[]=[];
-  const startingGrid=point(start);
-  // The snapped-start connector must be part of the rendered route. Omitting it
-  // makes the first turn a dangerous diagonal through a moved shelf.
-  if(Math.hypot(from.x-startingGrid.x,from.z-startingGrid.z)>0.01)
+    }
+    if(prev[goal]===-1)return null;
+    const path:number[]=[];
+    let current=goal;
+    while(current!==start){path.push(current);current=prev[current];}
+    path.push(start);path.reverse();
+    // Remove collinear intermediary grid points without cutting corners.
+    const result:ShopPoint[]=[];
+    const startingGrid=point(start);
+    // The snapped-start connector must be part of the rendered route. Omitting it
+    // makes the first turn a dangerous diagonal through a moved shelf.
+    if(Math.hypot(from.x-startingGrid.x,from.z-startingGrid.z)>0.01)
     result.push(startingGrid);
-  for(let i=1;i<path.length;i++){
+    for(let i=1;i<path.length;i++){
     const p=point(path[i]);
     const before=point(path[i-1]);
     const after=path[i+1]===undefined?null:point(path[i+1]);
@@ -136,21 +132,21 @@ export function createShopRoutePlanner(
       continue;
     }
     result.push(p);
-  }
-  // Append precise target only when it remains within collision-free space.
-  // The snap grid cell is the guaranteed reachable fallback for odd angles.
-  const last=result.at(-1)??(Math.hypot(from.x-startingGrid.x,
+    }
+    // Append precise target only when it remains within collision-free space.
+    // The snap grid cell is the guaranteed reachable fallback for odd angles.
+    const last=result.at(-1)??(Math.hypot(from.x-startingGrid.x,
     from.z-startingGrid.z)<=0.01?from:startingGrid);
-  if(!blocked(to)&&Math.hypot(last.x-to.x,last.z-to.z)>0.06){
+    if(!blocked(to)&&Math.hypot(last.x-to.x,last.z-to.z)>0.06){
     if(!clear(last,to))return null;
     result.push(to);
-  }
-  let cursor=from;
-  for(const waypoint of result){
+    }
+    let cursor=from;
+    for(const waypoint of result){
     if(!clear(cursor,waypoint))return null;
     cursor=waypoint;
-  }
-  return {waypoints:result,length:path.length-1};
+    }
+    return {waypoints:result,length:path.length-1};
   };
 }
 
