@@ -1,6 +1,7 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
   const scene = Engine.LastCreatedScene!;
@@ -600,17 +601,33 @@ export function inspectMiningWallVisuals(){
     uvSpan:u.length?Math.max(...u)-Math.min(...u):null,
   };
 }
+/** Mesh identity is stable for unchanged excavated floor while a second
+ * nearby rock cell is removed. Rebuilding the entire cave breaks this. */
+export function level5MeshIdentity(name:string):number|null {
+  return Engine.LastCreatedScene?.getMeshByName(name)?.uniqueId??null;
+}
+
 export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
   const scene=Engine.LastCreatedScene!;
   const name=`excavated-floor-${Math.floor(x+.5)},${Math.floor(z+.5)}`;
   const floor=scene.getMeshByName(name);
   if(!floor||!floor.isPickable)throw new Error("Mined floor cannot be targeted");
   const camera=scene.activeCamera as UniversalCamera;
-  // Stand just outside the moved shelf footprint in a mined side passage.
-  // A ray from the original showroom can hit the old structural wall first.
-  camera.position.set(x,1.7,z-3.48);
+  // Stay in the original cave and look straight down an excavated wing.
+  // A fully mined passage keeps the ray physically clear while extending
+  // >16m beyond the initial editor's reach (x=-4.8 to x=13).
+  // Keep the camera clear of the two original wall-mounted shelves.
+  camera.position.set(x>0?-4.8:4.8,1.7,z);
   camera.setTarget(new Vector3(x,0,z));
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
+  const visible=scene.pickWithRay(camera.getForwardRay(48),
+    mesh=>mesh.isEnabled()&&mesh.isVisible&&mesh.isPickable&&
+      surfaceFromMesh(mesh.name)!==null);
+  const hitName=visible?.pickedMesh?.name??"none";
+  if(hitName!==name)
+    throw new Error("Blueprint ray selected "+hitName+
+      " instead of "+name+" from original showroom. Right wall enabled="+
+      String(scene.getMeshByName("right-wall")?.isEnabled()));
   return name;
 }

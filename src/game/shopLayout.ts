@@ -92,8 +92,10 @@ type Bounds={minX:number;maxX:number;minZ:number;maxZ:number};
 const barriers: readonly Bounds[] = [
   {minX:-1.35,maxX:1.35,minZ:-5.6,maxZ:-3.55}, // player spawn
   {minX:-2.5,maxX:2.5,minZ:-6.9,maxZ:-5.3}, // roster board viewing
-  {minX:-5.7,maxX:-4.0,minZ:-3.15,maxZ:3.15}, // left browsing aisle
-  {minX:4.0,maxX:5.7,minZ:-3.15,maxZ:3.15}, // right browsing aisle
+  // No hard-coded full-length side aisles. Furniture navigation and
+  // shelf checkout reachability are tested against actual room geometry
+  // after placement, including excavated floor, instead of excluding two
+  // large rectangles even when a perfectly safe alternate route exists.
   {minX:-5.6,maxX:-2.4,minZ:3.15,maxZ:7.0}, // Level 4 corridor
   {minX:2.4,maxX:5.6,minZ:3.15,maxZ:7.0}, // Level 6 corridor
   {minX:-1.8,maxX:1.8,minZ:3.1,maxZ:7.0}, // queue and central walking route

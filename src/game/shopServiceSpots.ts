@@ -42,6 +42,7 @@ export class ShopServiceSpots{
   private readonly shelfOwners=new Map<string,string>();
   private layoutSignature="";
   private idle:readonly ShopPoint[]=[];
+  private idleCount=0;
   private restock:readonly ShopPoint[]=[];
   private checkout:readonly ShopPoint[]=[];
 
@@ -53,7 +54,9 @@ export class ShopServiceSpots{
     this.shelfOwners.clear();
     this.checkout=checkoutQueuePoints(layout,{x:0,z:-1},12,room);
     this.restock=restockWaitingPositions(layout,room);
-    this.idle=idleShopPositions(layout,100,room);
+    // Do not run 100 full navigation searches merely because one rock
+    // was mined. Compute idle/overflow destinations lazily on actual demand.
+    this.idle=[];this.idleCount=0;
   }
 
   /** Same owner may use any slot on its shelf; no second customer may
@@ -74,6 +77,12 @@ export class ShopServiceSpots{
   }
   clear():void {
     this.claims.clear();this.shelfOwners.clear();this.layoutSignature="";
+    this.idle=[];this.idleCount=0;
+  }
+  private ensureIdle(layout:ShopLayout,room:Level5Room|undefined,count:number):void {
+    if(this.idleCount>=count)return;
+    this.idleCount=Math.min(100,Math.max(24,count));
+    this.idle=idleShopPositions(layout,this.idleCount,room);
   }
   claim(heroId:string):ShopServiceClaim|null{return this.claims.get(heroId)??null;}
   snapshot():readonly ShopServiceClaim[]{return [...this.claims.values()];}
@@ -131,6 +140,8 @@ export class ShopServiceSpots{
     const forbidden=role==="checkout"?[]:
       role==="restock"||role==="credit"?this.checkout:
       [...this.checkout,...this.restock];
+    if(role==="idle"||role==="overflow")
+      this.ensureIdle(layout,room,24);
     let candidates:readonly ShopPoint[];
     switch(role){
       case "checkout":
@@ -171,6 +182,10 @@ export class ShopServiceSpots{
     if(chosen){
       this.claims.set(heroId,{heroId,role,point:chosen.point});
       return {point:chosen.point,route:chosen.route};
+    }
+    if((role==="idle"||role==="overflow")&&this.idleCount<100){
+      this.ensureIdle(layout,room,100);
+      return this.reserve(heroId,role,from,layout,room,request);
     }
     this.release(heroId);
     return null;

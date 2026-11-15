@@ -55,6 +55,26 @@ test("unlock, mine exposed rock and keep the opening after reloading",async({pag
   expect(afterMining.uvSpan).not.toBeNull();
   expect(afterMining.uvSpan!).toBeLessThan(0.10,
     "one slice must inherit 1/14th of the original wall stone texture");
+  // One additional mined cell must NOT replace an unchanged floor mesh.
+  // The old room renderer disposed and rebuilt every cell after every strike.
+  const stableFloor="excavated-floor-8,4";
+  const oldMeshId=await page.evaluate(async name=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .level5MeshIdentity(name),stableFloor);
+  expect(oldMeshId).not.toBeNull();
+  await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtLevel5Rock(8,5));
+  await page.mouse.click(400,300);
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    return (await new CampaignStorage().loadGame())?.level5Room?.excavatedCells.includes("8,5");
+  }),{timeout:10000}).toBe(true);
+  const sameMeshId=await page.evaluate(async name=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .level5MeshIdentity(name),stableFloor);
+  expect(sameMeshId).toBe(oldMeshId,
+    "existing excavated floor geometry must survive adjacent mining");
+
   // The newly exposed flagstone must be pickable by the P blueprint
   // raycaster and share the shop's original floor material.
   const floorTarget=await page.evaluate(async()=>(
@@ -77,9 +97,11 @@ test("contextual P moves and persists a shelf onto sufficiently excavated real f
     const storage=new CampaignStorage();
     const state=await storage.loadGame();
     if(!state)throw new Error("Missing campaign");
-    let room={...state.level5Room,expansionTier:1};
-    for(let z=-3;z<=3;z++){
-      const next=excavateLevel5Cell(room,{x:8,z});
+    let room={...state.level5Room,expansionTier:3};
+    // A continuous six-cell side tunnel permits a long, unobstructed
+    // crosshair ray from Galvik's original showroom (>16m to the target).
+    for(let x=8;x<=13;x++)for(let z=-3;z<=3;z++){
+      const next=excavateLevel5Cell(room,{x,z});
       if(!next.ok)throw new Error(next.reason);
       room=next.room;
     }
@@ -92,10 +114,10 @@ test("contextual P moves and persists a shelf onto sufficiently excavated real f
   await expect(page.locator("#blueprint-panel")).toBeVisible();
   const targeted=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))
-      .aimAtExcavatedBlueprintFloor(8.25,0));
-  expect(targeted).toContain("excavated-floor-8,0");
+      .aimAtExcavatedBlueprintFloor(13,0));
+  expect(targeted).toContain("excavated-floor-13,0");
   await expect.poll(()=>page.locator("#blueprint-facing").textContent(),
-    {timeout:10000}).toContain("X 8.25");
+    {timeout:10000}).toContain("X 13.00");
   await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").textContent(),
     {timeout:10000}).toContain("Valid placement");
   await page.mouse.click(400,300);
@@ -104,7 +126,7 @@ test("contextual P moves and persists a shelf onto sufficiently excavated real f
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     return (await new CampaignStorage().loadGame())?.shopLayout.shelves[1].x;
   });
-  await expect.poll(placed).toBe(8.25);
+  await expect.poll(placed).toBe(13);
   await page.reload();
-  expect(await placed()).toBe(8.25);
+  expect(await placed()).toBe(13);
 });
