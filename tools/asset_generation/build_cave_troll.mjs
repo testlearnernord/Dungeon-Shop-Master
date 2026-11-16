@@ -30,7 +30,7 @@ const buildCaveTrollGlb=function buildCaveTrollGlb(){
   };
   const surfaces=[];
   function buildSurface(name,profile,seed,hammer=false){
-    const sides=hammer?12:28;
+    const sides=hammer?20:28;
     const p=[],uv=[],color=[],indices=[];
     const detail=(t,a)=>{
       const faceted=hammer?Math.cos(a*6+seed*.14)*.028:0;
