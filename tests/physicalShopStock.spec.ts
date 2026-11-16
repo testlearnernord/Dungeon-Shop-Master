@@ -96,3 +96,47 @@ test("actual stocked shelf meshes follow saved quantities for all six products",
   expect(shown.every(slot=>!slot.modelsPickable&&!slot.modelsCollision)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("Shift-click stocks and clears the aimed physical shelf using real GLBs",async({page})=>{
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const state=withStockedSmallShelf(createGameState(97319));
+    await new CampaignStorage().saveGame({...state,
+      adventurers:state.adventurers.map(hero=>({...hero,
+        status:"exploring" as const,floor:4 as const,shopStayDays:0}))});
+  });
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.evaluate(async()=>{
+    const scene=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    await scene.waitForShopStockAssets();
+    scene.aimAtShelfSlot();
+  });
+  await expect(page.locator("#shop-shelf-focus")).toBeVisible();
+  await expect(page.locator("#shelf-focus-action")).toContainText("Shift+left-click: fill slot");
+  await page.keyboard.down("Shift");
+  await page.mouse.click(400,300);
+  await page.keyboard.up("Shift");
+  await expect(page.locator("#status")).toContainText("Placed 5 Healing Herb");
+  await expect(page.locator("#shelf-focus-title")).toContainText("5/5");
+  let result=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectRenderedShopStock("shelf-1"));
+  expect(result[0].units).toBe(5);
+  expect(result[0].modelsPickable||result[0].modelsCollision).toBe(false);
+  await expect(page.locator(".inventory-row").filter({hasText:"Healing Herb"}).locator("strong")).toHaveText("0");
+  await page.keyboard.down("Shift");
+  await page.mouse.click(400,300,{button:"right"});
+  await page.keyboard.up("Shift");
+  await expect(page.locator("#status")).toContainText("Returned 5 Healing Herb");
+  await expect(page.locator(".inventory-row").filter({hasText:"Healing Herb"}).locator("strong")).toHaveText("5");
+  result=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectRenderedShopStock("shelf-1"));
+  expect(result[0].units).toBe(0);
+  expect(result[0].padPickable&&result[0].padCollision).toBe(true);
+  expect(errors).toEqual([]);
+});

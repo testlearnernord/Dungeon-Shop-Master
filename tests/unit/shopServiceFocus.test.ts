@@ -15,6 +15,7 @@ test("empty shelf tells the player exactly which stock and quantity can be used"
   assert.equal(hint.title,"Empty shelf slot · 0/5");
   assert.match(hint.instruction,/Left-click: stock Waybread \(2 in bag\)/);
   assert.equal(hint.tone,"ready");
+  assert.match(hint.instruction,/Shift\+left-click: fill slot/);
   const noBag=describeShelfFocus(shelf(null,0),"iron-sword",economy.bag,false);
   assert.match(noBag.instruction,/No Iron Sword in bag · B: Wholesale/);
   assert.equal(noBag.tone,"warning");

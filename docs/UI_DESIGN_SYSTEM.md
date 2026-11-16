@@ -59,7 +59,7 @@ This document is a maintainable implementation contract.
 | Shop header / day / gold | Tiny top-left glance; extra details behind disclosure |
 | Hotbar | Six ~54px translucent slots, no whole-bar background; quantities visible, item label on focus |
 | Live service strip | Conditional small top-center chips for ready-to-pay customers, live expiring restock and credit requests; **F/click selects stock**, no automatic merchant action |
-| Physical shelf focus | The wooden slot remains the only pick/collision target; each stocked unit is a real GLB-derived 3D mesh sharing its loaded geometry, not a billboard or UI sprite. Aimed slot shows item/count/capacity, correct left/right click and held-cart/bag warnings; no extra modal or pointer interception |
+| Physical shelf focus | The wooden slot remains the only pick/collision target; each stocked unit is a real GLB-derived 3D mesh sharing its loaded geometry, not a billboard or UI sprite. Aimed slot shows item/count/capacity, left/right one-unit clicks, Shift+click fill/clear and held-cart/bag warnings; no extra modal or pointer interception |
 | Controls | Collapsed by default, expandable above the measured dock |
 | Visitors / roster | Small glance cluster, full cards and tactical details on demand |
 | Wholesale | Item symbols, search, gold, stock, actionable costs and limits |
@@ -97,5 +97,4 @@ This document is a maintainable implementation contract.
   `shopHudLayout.spec.ts`, `controlsDisclosure.spec.ts` and the
   existing crowded-shop browser flow. This does not replace human
   assessment of legibility and repeated-action friction.
-- Further cashier feel polish, batch restocking and additional customer
-  reactions belong to [ROADMAP](ROADMAP.md), not CURRENT functionality.
+- Batch shelf fill/clear is implemented through `GameStore.transfer`; further cashier feel polish and additional customer reactions remain in [ROADMAP](ROADMAP.md), not CURRENT functionality.

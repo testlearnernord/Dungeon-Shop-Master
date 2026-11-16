@@ -90,6 +90,7 @@ export function discardBag(state: GameState, itemId: ItemId): { state: GameState
 
 export function transferShelf(
   state: GameState, slotId: string, itemId: ItemId, direction: "stock" | "remove",
+  requestedUnits = 1,
 ): { state: GameState; message: string } {
   const item = ITEMS.find((entry) => entry.id === itemId);
   const economy = state.shopEconomy;
@@ -99,7 +100,8 @@ export function transferShelf(
   if (state.shopCarts.some(cart => cart.lines.some(line =>
     line.slotId === slotId)))
     return {state, message: "This shelf slot contains items held by customers."};
-  if (!item || !slot || (direction !== "stock" && direction !== "remove")) {
+  if (!item || !slot || (direction !== "stock" && direction !== "remove") ||
+      !Number.isSafeInteger(requestedUnits) || requestedUnits < 1) {
     return { state, message: "Choose a valid item, slot and transfer direction." };
   }
   if (direction === "stock") {
@@ -111,7 +113,12 @@ export function transferShelf(
     if (slot.itemId !== itemId || slot.quantity < 1) return { state, message: "That slot is empty or holds a different item." };
     if (bagTotal(economy) >= ECONOMY.bagCapacity) return { state, message: "Your inventory is full." };
   }
-  const delta = direction === "stock" ? 1 : -1;
+  // One validated transaction for both single clicks and Shift+click;
+  // never make per-frame stock changes or a separate bulk inventory.
+  const units = direction === "stock"
+    ? Math.min(requestedUnits, economy.bag[itemId], slot.capacity - slot.quantity)
+    : Math.min(requestedUnits, slot.quantity, ECONOMY.bagCapacity - bagTotal(economy));
+  const delta = direction === "stock" ? units : -units;
   const quantity = slot.quantity + delta;
   return {
     state: { ...state, shopEconomy: {
@@ -119,7 +126,10 @@ export function transferShelf(
       bag: { ...economy.bag, [itemId]: economy.bag[itemId] - delta },
       slots: economy.slots.map((entry) => entry === slot ? { ...entry, quantity, itemId: quantity ? itemId : null } : entry),
     } },
-    message: direction === "stock" ? `Placed ${item.name}.` : `Returned ${item.name} to your inventory.`,
+    message: direction === "stock"
+      ? units === 1 ? `Placed ${item.name}.` : `Placed ${units} ${item.name}.`
+      : units === 1 ? `Returned ${item.name} to your inventory.`
+        : `Returned ${units} ${item.name} to your inventory.`,
   };
 }
 

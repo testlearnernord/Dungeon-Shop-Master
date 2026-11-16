@@ -48,8 +48,8 @@ export class GameStore {
     return result.message;
   }
 
-  transfer(slotId: string, itemId: ItemId, direction: "stock" | "remove"): string {
-    const result = transferShelf(this.current, slotId, itemId, direction);
+  transfer(slotId: string, itemId: ItemId, direction: "stock" | "remove", units = 1): string {
+    const result = transferShelf(this.current, slotId, itemId, direction, units);
     this.replace(result.state);
     return result.message;
   }
