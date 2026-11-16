@@ -63,7 +63,7 @@ export function npcShopPose(input:NpcShopGestureInput):NpcShopPose {
         rightArm:.88*lift,headYaw:.07*glance,
         headPitch:.14*lift,headRoll:0,torsoLean:.06*lift};
     return {gesture:"paid",leftArm:.42*lift,
-      rightArm:input.carrying?.12*lift:.27*lift,
+      rightArm:input.carrying ? .12*lift : .27*lift,
       headYaw:0,headPitch:.12*lift,headRoll:0,torsoLean:.015};
   }
   if(input.moving)return neutral("walking");
@@ -77,7 +77,7 @@ export function npcShopPose(input:NpcShopGestureInput):NpcShopPose {
   if(input.phase==="queueing"&&
      input.shoppingPhase==="awaiting-checkout"){
     return {gesture:"checkout",leftArm:.16+.03*breath,
-      rightArm:input.carrying?.10:0,
+      rightArm:input.carrying ? .10 : 0,
       headYaw:.025*glance,headPitch:.025,
       headRoll:.01*breath,torsoLean:0};
   }
