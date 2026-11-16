@@ -25,8 +25,7 @@ export interface ShelfPlacement {
 }
 export interface ShopLayout {
   readonly shelves: readonly ShelfPlacement[];
-  /** Optional checkout transform for saved campaign compatibility within v13. */
-  readonly counter?: CounterPlacement;
+  readonly counter: CounterPlacement;
 }
 /** Persisted checkout transform. Geometry lives in furnitureRegistry.ts. */
 export interface CounterPlacement {
@@ -51,15 +50,10 @@ export function compactCounterBounds(placement: CounterPlacement):ShopFloorBound
   return shopFixtureBounds("counter",placement);
 }
 
-/** Older saves omit the placement; the same compact counter appears at the old location. */
-export const DEFAULT_COUNTER_PLACEMENT: CounterPlacement = Object.freeze({x:0,z:2.5,rotation:0});
-/** New campaigns start at the back-left corner near Galvik's private door.
- * Existing saved campaigns without a counter transform keep the old position.
- */
+/** New campaigns start at the back-left corner near Galvik's private door. */
 export const NEW_GAME_COUNTER_PLACEMENT:CounterPlacement=
   Object.freeze({x:-4.25,z:-4.5,rotation:3});
-export const getCounterPlacement=(layout:ShopLayout):CounterPlacement=>
-  layout.counter??DEFAULT_COUNTER_PLACEMENT;
+export const getCounterPlacement=(layout:ShopLayout):CounterPlacement=>layout.counter;
 export const movableCounterBounds=(layout:ShopLayout)=>compactCounterBounds(getCounterPlacement(layout));
 /** Shared physical service sockets, in the exact rotated frame of the till. */
 export function counterDockPoint(layout:ShopLayout,who:"staff"|"customer"):{
@@ -180,7 +174,7 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
     for(let j=i+1;j<layout.shelves.length;j++)
       if(overlap(shelfBounds(layout.shelves[i]),shelfBounds(layout.shelves[j]),.28))
         return "Shelves cannot overlap.";
-  if(layout.counter!==undefined){
+  {
     const p=layout.counter;
     if(!p||!quarter(p.x)||!quarter(p.z)||!Number.isInteger(p.rotation)||
       p.rotation<0||p.rotation>3)return "Use 0.25m steps and quarter-turn rotations.";
@@ -188,8 +182,7 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
     if(room ? !onRoomFloor(box,room) :
       box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
       return unsupportedFootprintMessage(box,room,"counter");
-    // The legacy cashier intentionally occupies a little of the central lane.
-    // Block the actual gate approach, but retain that legacy placement.
+    // Keep the actual gate approach clear regardless of counter rotation.
     const gateApproach={minX:-1.8,maxX:1.8,minZ:4,maxZ:7};
     if(barriers.slice(0,-1).some(zone=>overlap(box,zone,0.04))||
       overlap(box,gateApproach,0.04)||

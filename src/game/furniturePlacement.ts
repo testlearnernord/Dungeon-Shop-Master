@@ -2,7 +2,7 @@ import type {GameState} from "./gameState.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
 import {isBedroomFurnitureId,replaceBedroomFurniture,
   type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
-import {replaceRosterBoard,rosterBoardProblem,DEFAULT_ROSTER_BOARD} from "./rosterBoardPlacement.ts";
+import {replaceRosterBoard,rosterBoardProblem} from "./rosterBoardPlacement.ts";
 import {replaceCounterPlacement,replaceShelfPlacement,
   type ShelfPlacement} from "./shopLayout.ts";
 import {shopServiceReachabilityProblem} from "./shopServiceReachability.ts";
@@ -31,7 +31,7 @@ export function resolveFurniturePlacement(
   });
   if(draft.id==="galvik-portrait"){
     const result=replaceWallPortrait(state.wallPortrait,draft,
-      state.shopLayout,state.level5Room,state.rosterBoard??DEFAULT_ROSTER_BOARD);
+      state.shopLayout,state.level5Room,state.rosterBoard);
     if(result.message!=="Portrait hung.")
       return unchanged(result.message,result.message);
     return {state:result.placement===state.wallPortrait?state:
@@ -44,7 +44,7 @@ export function resolveFurniturePlacement(
       return unchanged(result.message,result.message);
     if(state.wallPortrait){
       const blocked=wallPortraitProblem(state.wallPortrait,state.shopLayout,
-        state.level5Room,result.placement??DEFAULT_ROSTER_BOARD);
+        state.level5Room,result.placement!);
       if(blocked)return unchanged(blocked,blocked);
     }
     return {state:result.placement===state.rosterBoard?state:
@@ -77,11 +77,11 @@ export function resolveFurniturePlacement(
     return unchanged(result.message,result.message);
   // A new shelf may cover the board even if it leaves the cashier reachable.
   const boardProblem=rosterBoardProblem(
-    state.rosterBoard??DEFAULT_ROSTER_BOARD,result.layout,state.level5Room);
+    state.rosterBoard,result.layout,state.level5Room);
   if(boardProblem)return unchanged(boardProblem,boardProblem);
   if(state.wallPortrait){
     const blocked=wallPortraitProblem(state.wallPortrait,result.layout,
-      state.level5Room,state.rosterBoard??DEFAULT_ROSTER_BOARD);
+      state.level5Room,state.rosterBoard);
     if(blocked)return unchanged(blocked,blocked);
   }
   const problem=shopServiceReachabilityProblem(result.layout,state.level5Room);

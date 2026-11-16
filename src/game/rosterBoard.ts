@@ -61,7 +61,7 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
     mesh.setParent(root);
   }
   const syncPlacement=()=>{
-    const p=store.state.rosterBoard??DEFAULT_ROSTER_BOARD;
+    const p=store.state.rosterBoard;
     root.position.set(p.x,0,p.z);
     // The original plane faces into the shop at rotation PI (turn 2).
     root.rotation.y=(p.rotation-2)*Math.PI/2;

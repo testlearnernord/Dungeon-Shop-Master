@@ -126,7 +126,7 @@ export class InteractionSystem {
         !event.metaKey&&!(event.target instanceof HTMLElement&&
           (event.target.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(event.target.tagName)))){
         if(event.shiftKey){
-          const tier=this.store.state.level5Room?.expansionTier??0;
+          const tier=this.store.state.level5Room.expansionTier;
           this.message=this.store.unlockShopExpansion(tier+1);
           this.publish();event.preventDefault();return;
         }
@@ -134,9 +134,9 @@ export class InteractionSystem {
           this.setMiningMode(false);
           this.message="Mining mode off.";
         }else{
-          const tier=this.store.state.level5Room?.expansionTier??0;
+          const tier=this.store.state.level5Room.expansionTier;
           if(tier===0)this.message=this.store.unlockShopExpansion(1);
-          const unlocked=(this.store.state.level5Room?.expansionTier??0)>0;
+          const unlocked=(this.store.state.level5Room.expansionTier)>0;
           this.setMiningMode(unlocked);
           this.message=unlocked
             ?"Mining mode ON · Left-click exposed rock · U / Esc / right-click to cancel."

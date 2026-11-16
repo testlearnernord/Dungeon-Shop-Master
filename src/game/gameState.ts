@@ -74,14 +74,11 @@ export interface GameState {
   readonly adventurers: readonly AdventurerState[];
   readonly shopEconomy: ShopEconomyState;
   readonly shopLayout: ShopLayout;
-  /** Optional for existing saves; absent means the original bedroom positions. */
-  readonly bedroomFurniture?: BedroomFurnitureLayout;
-  /** Optional for historical saves; absent means the original board wall. */
-  readonly rosterBoard?: RosterBoardPlacement;
+  readonly bedroomFurniture: BedroomFurnitureLayout;
+  readonly rosterBoard: RosterBoardPlacement;
   /** Optional one-of-a-kind wall decoration, absent until the player hangs it. */
   readonly wallPortrait?: WallPortraitPlacement;
-  /** Optional until save migration; absent on historical v11 saves. */
-  readonly level5Room?: Level5Room;
+  readonly level5Room: Level5Room;
   readonly shopCarts: readonly ShopCart[];
   readonly shopDebts: readonly ShopDebt[];
   readonly dungeonFloors: readonly DungeonFloorProgress[];

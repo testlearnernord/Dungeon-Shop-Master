@@ -33,9 +33,6 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Invalid queue capacity");
   if (count === 0) return [];
   const candidates: ShopPoint[] = [];
-  // Old saves without a persisted counter used this checkout lane. Keep the
-  // compatibility coordinate explicit rather than reviving obsolete desk geometry.
-  const legacyFrontZ = 0.5;
   const counter = getCounterPlacement(layout);
   // A moved counter may cover the legacy planning origin (0,-1). Never
   // declare the whole queue unreachable merely because that origin is blocked.
@@ -48,10 +45,7 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   // existing service overflow holding spots handle the excess shoppers.
   // Capacity may be smaller for a counter moved next to an actual wall.
   for(let step=0;step<Math.min(count,CHECKOUT_LINE_MAX_CUSTOMERS);step++){
-    const first=layout.counter?customer:{
-      x:counter.x+turnShopOffset(0,legacyFrontZ-counter.z,counter.rotation).x,
-      z:counter.z+turnShopOffset(0,legacyFrontZ-counter.z,counter.rotation).z,
-    };
+    const first=customer;
     const offset=turnShopOffset(0,-step*CHECKOUT_QUEUE_SPACING,counter.rotation);
     const point={x:first.x+offset.x,z:first.z+offset.z};
     // No snaking sideways around furniture: an interrupted line ends here
@@ -74,9 +68,3 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   return allocated;
 }
 
-/** No queue point is fabricated when the shop has no remaining safe capacity. */
-export function checkoutQueuePoint(index: number): ShopPoint {
-  if (!Number.isSafeInteger(index) || index < 0) throw new RangeError("Invalid queue index");
-  if (index >= 5) throw new RangeError("Queue capacity requires layout-aware allocation");
-  return {x:0,z:0.65-index*CHECKOUT_QUEUE_SPACING};
-}
