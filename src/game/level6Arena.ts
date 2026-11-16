@@ -22,7 +22,7 @@ import type { GameStore } from "./gameStore.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import { createHeroVisual } from "./heroVisual.ts";
 import { createCaveTrollVisual, type CaveTrollVisual } from "./caveTrollVisual.ts";
-import { buildCaveTrollArenaArt } from "./caveTrollArenaArt.ts";
+import { buildCaveTrollArenaArt, paintCaveTrollFloor } from "./caveTrollArenaArt.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -248,17 +248,19 @@ export class Level6Arena {
     camera.inertia = 0;
     this.camera = camera;
     scene.activeCamera = camera;
-    new HemisphericLight("arena-ambient", new Vector3(0, 1, 0), scene).intensity = 0.35;
+    const ambient = new HemisphericLight("arena-ambient", new Vector3(0, 1, 0), scene);
+    ambient.intensity = .78;
+    ambient.groundColor = Color3.FromHexString("#5f5650");
     const lavaLight = new PointLight("lava-glow", new Vector3(0, 2, 0), scene);
-    lavaLight.diffuse = new Color3(1, 0.29, 0.06);
-    lavaLight.intensity = 2.5;
+    lavaLight.diffuse = Color3.FromHexString("#da7152");
+    lavaLight.intensity = 1.30;
     lavaLight.range = 38;
     const warmRim = new PointLight("troll-ember-rim",new Vector3(-7,10,7),scene);
     warmRim.diffuse = Color3.FromHexString("#f08b54");
-    warmRim.intensity = 1.25; warmRim.range=23;
+    warmRim.intensity = 2.0; warmRim.range=26;
     const faceFill = new PointLight("troll-face-fill",new Vector3(5,8,-10),scene);
-    faceFill.diffuse=Color3.FromHexString("#95a5bc");
-    faceFill.intensity=.65; faceFill.range=28;
+    faceFill.diffuse=Color3.FromHexString("#e2d8c9");
+    faceFill.intensity=1.6; faceFill.range=31;
     const makeMat = (name: string, hex: string, emissive = false): StandardMaterial => {
       const mat = new StandardMaterial(name, scene);
       mat.diffuseColor = Color3.FromHexString(hex);
@@ -267,9 +269,10 @@ export class Level6Arena {
       return mat;
     };
     const stone = makeMat("basalt", "#29282a");
-    const darkRock = makeMat("cave-rock", "#1b2024");
-    const lava = makeMat("molten-lava", "#81321a", true);
-    const fire = makeMat("lava-fire", "#cb6525", true);
+    const darkRock = makeMat("cave-rock", "#302b2a");
+    const lava = makeMat("molten-lava", "#662a1d", true);
+    const fire = makeMat("lava-fire", "#a9492a");
+    paintCaveTrollFloor(scene,stone);
     const visibleRole = this.replay?.role ?? this.fighter?.role;
     const visibleSword = this.replay?.sword ?? (this.fighter?.equipment.weapon === "Iron Sword");
     const visibleArmor = this.replay?.armor ?? (this.fighter?.equipment.armor === "Leather Vest");
