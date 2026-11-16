@@ -114,6 +114,8 @@ test("a playing Desperate Measures playhead starts the duel on its 13.5s drop",a
     };
   });
   await page.goto("./");
+  // The HUD exists before the async campaign bootstrap populates the balance.
+  await expect(page.locator("#merchant-gold")).toContainText("Merchant gold:");
   const gold=await page.locator("#merchant-gold").textContent();
   await page.keyboard.press("v");
   await expect(page.locator("#arena-cinematic")).toBeVisible();
