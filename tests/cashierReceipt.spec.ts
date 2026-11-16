@@ -55,7 +55,12 @@ test("the register verifies goods, seals receipt and only then transfers gold",a
   expect(halfway.carts).toBe(1);
   expect(halfway.manualReceipts).toBe(0);
   expect(await stampAtMarker(page)).toBe(true);
-  await expect(dialog).toBeHidden();
+  await expect(dialog.locator(".cashier-settlement")).toBeVisible();
+  await expect(dialog.locator(".cashier-settlement-amount"))
+    .toContainText("13g collected");
+  await expect(dialog.locator(".cashier-settlement-detail"))
+    .toContainText("12g sale + 1g customer-funded tip");
+  await expect(dialog.locator(".cashier-next")).toBeDisabled();
   const finished=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/cashierHarness.ts")).inspectCashierHarness());
   expect(finished.manualReceipts).toBe(1);
@@ -64,6 +69,10 @@ test("the register verifies goods, seals receipt and only then transfers gold",a
   expect(finished.gold).toBeLessThan(start.gold);
   expect(finished.balance).toBeGreaterThan(start.balance);
   expect(finished.report).toContain("Receipt verified and sealed.");
+  // Payment does not force a pointer-lock modal roundtrip, but the player
+  // can always exit the staffed register explicitly.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
   expect(errors).toEqual([]);
 });
 
@@ -102,7 +111,9 @@ test("a missed first stamp permits checkout but denies the flawless-service tip"
   expect(await stampAtMarker(page)).toBe(true);
   await expect(dialog.locator(".cashier-stage-name")).toHaveText("Seal the receipt");
   expect(await stampAtMarker(page)).toBe(true);
-  await expect(dialog).toBeHidden();
+  await expect(dialog.locator(".cashier-settlement")).toBeVisible();
+  await expect(dialog.locator(".cashier-settlement-amount"))
+    .toContainText("12g collected");
   const settled=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/cashierHarness.ts")).inspectCashierHarness());
   expect(settled.manualReceipts).toBe(1);
@@ -110,4 +121,65 @@ test("a missed first stamp permits checkout but denies the flawless-service tip"
   expect(settled.balance-settled.initialBalance).toBe(12);
   expect(settled.initialGold-settled.gold).toBe(12);
   expect(settled.report).toContain("No flawless-service tip.");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});
+
+test("two customers are processed consecutively at one staffed register without auto-charging the next cart",async({page})=>{
+  test.setTimeout(85000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  const start=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/cashierHarness.ts"))
+      .openCashierHarness("staff",2));
+  expect(start.carts).toBe(2);
+  expect(start.manualReceiptsAll).toBe(0);
+  const dialog=page.locator("#cashier-overlay");
+  await expect(dialog.locator(".cashier-stage-name")).toHaveText("Verify the goods");
+  await expect(dialog.locator(".cashier-item-icon")).toHaveCount(1);
+  expect(await stampAtMarker(page)).toBe(true);
+  expect(await stampAtMarker(page)).toBe(true);
+  await expect(dialog.locator(".cashier-settlement")).toBeVisible();
+  const afterFirst=await page.evaluate(async()=>(
+    (await import("/Dungeon-Shop-Master/tests/cashierHarness.ts"))
+      .inspectCashierHarness()));
+  expect(afterFirst.manualReceiptsAll).toBe(1);
+  expect(afterFirst.tipsAll).toBe(1);
+  expect(afterFirst.carts).toBe(1);
+  expect(afterFirst.balance-start.balance).toBe(13);
+  await expect(dialog.locator(".cashier-next")).toBeEnabled();
+  // Nothing happens to the second person's money just by presenting
+  // their turn. E is an explicit new checkout, never an automatic payment.
+  await page.keyboard.press("e");
+  await expect(dialog.locator(".cashier-challenge")).toBeVisible();
+  await expect(dialog.locator(".cashier-stage-name")).toHaveText("Verify the goods");
+  await expect(dialog.locator(".cashier-customer"))
+    .not.toHaveText(start.customer);
+  const beforeSecond=await page.evaluate(async()=>(
+    (await import("/Dungeon-Shop-Master/tests/cashierHarness.ts"))
+      .inspectCashierHarness()));
+  expect(beforeSecond.manualReceiptsAll).toBe(1);
+  expect(beforeSecond.carts).toBe(1);
+  expect(beforeSecond.balance).toBe(afterFirst.balance);
+  expect(await stampAtMarker(page)).toBe(true);
+  expect(await stampAtMarker(page)).toBe(true);
+  await expect(dialog.locator(".cashier-settlement")).toBeVisible();
+  await expect(dialog.locator(".cashier-next")).toBeDisabled();
+  const completed=await page.evaluate(async()=>(
+    (await import("/Dungeon-Shop-Master/tests/cashierHarness.ts"))
+      .inspectCashierHarness()));
+  expect(completed.manualReceiptsAll).toBe(2);
+  expect(new Set(completed.paidCustomerIds).size).toBe(2);
+  expect(completed.tipsAll).toBe(2);
+  expect(completed.carts).toBe(0);
+  expect(completed.balance-start.balance).toBe(26);
+  await page.keyboard.press("e");
+  await expect(dialog.locator(".cashier-settlement")).toBeVisible();
+  expect((await page.evaluate(async()=>(
+    (await import("/Dungeon-Shop-Master/tests/cashierHarness.ts"))
+      .inspectCashierHarness())).manualReceiptsAll)).toBe(2);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  expect(errors).toEqual([]);
 });
