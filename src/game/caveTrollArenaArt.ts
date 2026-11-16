@@ -1,6 +1,7 @@
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
@@ -9,6 +10,40 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
  * so the walkable radius, impact arcs and saved combat outcome never change.
  * All pieces are visual-only; no collisions, triggers or rewards.
  */
+/** A painted cracked-rock texture on the old platform, rather than a featureless
+ * dark disc. Procedural and seeded: no asset network fetch or sim randomness. */
+export function paintCaveTrollFloor(scene:Scene,material:StandardMaterial):void {
+  const texture=new DynamicTexture("mauler-arena-chipped-stone",
+    {width:512,height:512},scene,false);
+  const ctx=texture.getContext() as CanvasRenderingContext2D;
+  const img=ctx.createImageData(512,512);
+  let seed=401;
+  const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  for(let y=0;y<512;y++)for(let x=0;x<512;x++){
+    const strata=Math.sin(x*.035+Math.sin(y*.012)*3)*8+
+      Math.sin((x+y)*.017)*6;
+    const noise=(rand()-.5)*26;
+    const v=Math.max(34,Math.min(110,72+strata+noise));
+    const at=(y*512+x)*4;
+    img.data[at]=v+3;img.data[at+1]=v;img.data[at+2]=v-4;
+    img.data[at+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  for(let i=0;i<58;i++){
+    const x=rand()*512,y=rand()*512;
+    ctx.strokeStyle=i%3===0?"rgba(17,14,14,.73)":"rgba(20,18,17,.52)";
+    ctx.lineWidth=.7+rand()*2.0;
+    ctx.beginPath();ctx.moveTo(x,y);
+    ctx.lineTo(x+(rand()-.5)*65,y+(rand()-.5)*46);
+    ctx.lineTo(x+(rand()-.5)*125,y+(rand()-.5)*95);
+    ctx.stroke();
+  }
+  texture.update();
+  material.diffuseColor=Color3.White();
+  material.diffuseTexture=texture;
+  material.specularColor=new Color3(.09,.07,.07);
+}
+
 export function buildCaveTrollArenaArt(scene:Scene):void {
   const material=(name:string,hex:string,glow=false):StandardMaterial=>{
     const m=new StandardMaterial("troll-set-"+name,scene);
@@ -17,8 +52,8 @@ export function buildCaveTrollArenaArt(scene:Scene):void {
     if(glow)m.emissiveColor=Color3.FromHexString(hex).scale(.8);
     return m;
   };
-  const rock=material("cavern-rock","#292725");
-  const shale=material("shale","#34312e");
+  const rock=material("cavern-rock","#3e3b38");
+  const shale=material("shale","#514842");
   const deep=material("cave-inner-darkness","#161819");
   const lumber=material("mine-beams","#483124");
   const band=material("rusted-braces","#6a4e3b");
