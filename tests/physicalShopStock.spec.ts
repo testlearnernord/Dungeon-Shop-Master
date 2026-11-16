@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 test("the six physical shop goods are 3D meshes, not pickable shelf blockers", async ({ page }) => {
   const pageErrors: string[] = [];
@@ -21,14 +22,13 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
     expect(model.collisions, model.itemId).toBe(false);
     expect(model.size.every(value => value > 0), model.itemId).toBe(true);
   }
-  // The six committed GLB source assets must be valid glTF 2.0 files
-  // that Vite actually serves. The current runtime still intentionally
-  // uses procedural meshes; these binaries remain available for future use.
+  // Verify the ORIGINAL binary GLBs in the checked-out project, not
+  // an HTML SPA fallback from Vite's development server routing.
+  // The runtime intentionally renders procedural meshes for now; these
+  // files are reusable export assets, not a simulated loaded asset.
   for(const item of models){
-    const url=new URL("assets/models/"+item.itemId+".glb",page.url());
-    const response=await page.request.get(url.toString());
-    expect(response.ok(),item.itemId+" GLB is served").toBe(true);
-    const bytes=Buffer.from(await response.body());
+    const bytes=await readFile(new URL(
+      "../public/assets/models/"+item.itemId+".glb",import.meta.url));
     expect(bytes.toString("ascii",0,4)).toBe("glTF");
     expect(bytes.readUInt32LE(4)).toBe(2);
     expect(bytes.readUInt32LE(8)).toBe(bytes.length);
