@@ -302,6 +302,38 @@ export async function inspectCaveTrollDeathPose():Promise<{
   return result;
 }
 
+/** Isolated rig regression: meters walked drive planted-to-lifted feet;
+ * the real attack phase must sweep the heavy hammer overhead into the strike.
+ * No game store, replay or combat motor is mutated. */
+export async function inspectCaveTrollMotion():Promise<{
+  gaitMeters:number;footMinimum:number;footMaximum:number;
+  windup:number;strike:number;liftAtWindup:number;
+}> {
+  const scene=Engine.LastCreatedScene!;
+  const {createCaveTrollVisual}=await import("../src/game/caveTrollVisual.ts");
+  const model=createCaveTrollVisual(scene);
+  const foot=model.root.getChildMeshes(false)
+    .find(mesh=>mesh.name==="troll-boulder-foot-1");
+  if(!foot)throw Error("Cave Troll has no animated foot.");
+  const sample:number[]=[];
+  for(let i=0;i<40;i++){
+    model.animate({phase:"chase",phaseAge:0,slam:false,time:i*.05,
+      moved:.13,delta:.05,hp:145,maxHp:145});
+    sample.push(foot.position.y);
+  }
+  const gaitMeters=model.root.metadata.gaitDistance as number;
+  for(let i=0;i<16;i++)model.animate({phase:"windup",phaseAge:i*.09,
+    slam:true,time:2+i*.09,moved:0,delta:.09,hp:145,maxHp:145});
+  const windup=model.root.metadata.hammerSwing as number;
+  const liftAtWindup=model.root.metadata.hammerLift as number;
+  for(let i=0;i<7;i++)model.animate({phase:"strike",phaseAge:i*.034,
+    slam:true,time:4+i*.034,moved:0,delta:.034,hp:145,maxHp:145});
+  const strike=model.root.metadata.hammerSwing as number;
+  model.root.dispose();
+  return {gaitMeters,footMinimum:Math.min(...sample),
+    footMaximum:Math.max(...sample),windup,strike,liftAtWindup};
+}
+
 /** Shared scene-agnostic visual identity inspection for browser tests. */
 export function inspectHeroModels() {
   const scene = Engine.LastCreatedScene!;

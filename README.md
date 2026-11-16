@@ -41,7 +41,7 @@ was mentioned in a roadmap.
 | Shoppers | Individual needs, gold, gear and HP; real shelf pickups into unpaid carts; collision-aware browsing, a five-place physical checkout queue with overflow, local restock/credit requests and walkouts; short event-triggered character remarks in the physical shop |
 | Player service | Crosshair shelf details for actual stock and valid actions; compact live checkout/restock/credit status; **F** selects the most urgent requested item in the existing hotbar |
 | Money | Real bag/slot inventory, wholesale costs, fixed retail prices, credit debt book and manual receipts. Outstanding collected carts settle once at end of day |
-| Adventurers / dungeon | Persistent identities and equipment; deterministic offscreen Floors 1–4; individually authorized Floor 6 Cave Troll; Floor 7 observation/replay |
+| Adventurers / dungeon | Persistent identities and equipment; deterministic offscreen Floors 1–4; individually authorized Floor 6 Cave Troll with a score-synchronized 13.5s entrance and visually grounded maul attacks; Floor 7 observation/replay |
 | Day / reports | End the day at Galvik's bed; merchant ledger, receipts, hero records and spoiler-safe sealed replay presentation; validated campaign save/load |
 
 **Implemented does not mean visually perfect.** The CI checks safety and
@@ -91,7 +91,8 @@ need human game testing. Shop remarks never alter sales or dungeon outcomes.
 | P | Move looked-at furniture; R / Q rotate while placing |
 | U | Mining mode; Shift+U is an alpha expansion-tier development control |
 | R (outside placement) | Adventurer roster |
-| V / G | Level 6 arena / Level 7 dungeon viewer |
+| V / G | Level 6 arena (13.5s music-led intro) / Level 7 dungeon viewer |
+| Space / Enter (during Level 6 intro) | Skip the cinematic and seek Desperate Measures to the 13.5s combat downbeat; V / Esc still returns to the shop |
 | M | Toggle mouse/HUD cursor mode |
 | Esc | Release cursor or cancel/close the current interaction |
 

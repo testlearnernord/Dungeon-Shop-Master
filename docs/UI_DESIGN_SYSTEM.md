@@ -69,7 +69,7 @@ This document is a maintainable implementation contract.
 | Blueprint / placement / mining | Context prompt and real-world ghost; not a permanent sidebar |
 | World nameplates / request bubbles | Portrait, level, role, gold and HP; individual icon-based restock/credit requests with real deadlines; one optional short role/item-aware customer remark above a visible NPC at a time, without intercepting world input |
 | Level 6 / 7 spectator | Compact panels, optional controls legend, same focus style |
-| Audio / notifications / campaign | Minimal chrome, consistent buttons and persistent errors |
+| Audio / notifications / campaign | Minimal chrome, consistent buttons and persistent errors; Level 6 has one transient music-led cinematic overlay before the original HUD and combat data appear |
 
 ## Invariants and review gates
 - Never hide a campaign save **error** behind a collapsed panel.
@@ -97,4 +97,5 @@ This document is a maintainable implementation contract.
   `shopHudLayout.spec.ts`, `controlsDisclosure.spec.ts` and the
   existing crowded-shop browser flow. This does not replace human
   assessment of legibility and repeated-action friction.
+- The Level 6 cinematic presents one hero and the boss without inventing additional party members. Its centre-bottom title/shot captions never intercept the camera; current HP, replay outcomes and combat cues remain hidden until the 13.5s downbeat. Space/Enter skips the intro, V/Escape closes the viewer, and the existing soundtrack panel remains available. The replay stays untouched while the camera runs.
 - Batch shelf fill/clear is implemented through `GameStore.transfer`. Customer remarks use the same read-only world projection as request bubbles, but never replace their item icon or timer. One speaker is rendered at a time; the rate limit and short lifetime prevent dialogue walls. Additional narrative reactions and cashier polish remain subject to [ROADMAP](ROADMAP.md).

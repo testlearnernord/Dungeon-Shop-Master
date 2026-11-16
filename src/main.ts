@@ -226,7 +226,9 @@ const soundtrack = setupSoundtrack();
 const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
 const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "boss" : "shop");
-});
+},()=>soundtrack.bossPlaybackSeconds,
+  ()=>soundtrack.restartBossTheme(),
+  seconds=>soundtrack.skipBossIntro(seconds));
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
 });

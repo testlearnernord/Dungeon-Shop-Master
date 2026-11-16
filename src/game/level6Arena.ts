@@ -23,6 +23,7 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 import { createHeroVisual } from "./heroVisual.ts";
 import { createCaveTrollVisual, type CaveTrollVisual } from "./caveTrollVisual.ts";
 import { buildCaveTrollArenaArt, paintCaveTrollFloor } from "./caveTrollArenaArt.ts";
+import { BOSS_INTRO_SECONDS, sampleBossIntro } from "./bossCinematic.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -69,6 +70,12 @@ export class Level6Arena {
   private readonly bossText: HTMLElement;
   private readonly previewText: HTMLElement;
   private readonly musicToggle: HTMLButtonElement;
+  private readonly cinematic: HTMLElement;
+  private readonly cinematicLine: HTMLElement;
+  private readonly cinematicProgress: HTMLElement;
+  private introActive=false;
+  private introWallSeconds=0;
+  private introSeconds=0;
 
   constructor(
     private readonly engine: Engine,
@@ -76,8 +83,14 @@ export class Level6Arena {
     private readonly shopCamera: UniversalCamera,
     private readonly store: GameStore,
     private readonly onActiveChange: (active: boolean) => void = () => {},
+    private readonly bossMusicSeconds:()=>number|null=()=>null,
+    private readonly restartBossTheme:()=>void=()=>{},
+    private readonly skipBossThemeTo:(seconds:number)=>void=()=>{},
   ) {
     this.panel = document.querySelector<HTMLElement>("#arena-hud")!;
+    this.cinematic=document.querySelector<HTMLElement>("#arena-cinematic")!;
+    this.cinematicLine=document.querySelector<HTMLElement>("#arena-cinematic-line")!;
+    this.cinematicProgress=document.querySelector<HTMLElement>("#arena-cinematic-progress")!;
     this.status = document.querySelector<HTMLElement>("#arena-status")!;
     this.focusText = document.querySelector<HTMLElement>("#arena-focus")!;
     this.healthText = document.querySelector<HTMLElement>("#arena-hero-health")!;
@@ -110,10 +123,15 @@ export class Level6Arena {
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.repeat) return;
-      if (event.code === "Escape" || event.code === "KeyV") this.close();
-      else if (event.code === "Tab") this.nextFocus();
-      else if (event.code === "KeyM") this.musicToggle.focus();
-      else if (event.code === "KeyC" && !this.sourceToggle.hidden) this.toggleSource();
+      if(this.introActive&&(event.code==="Space"||event.code==="Enter")){
+        this.finishCinematic(true);
+        return;
+      }
+      if(event.code==="Escape"||event.code==="KeyV")this.close();
+      else if(event.code==="KeyM")this.musicToggle.focus();
+      else if(event.code==="KeyC"&&!this.sourceToggle.hidden)this.toggleSource();
+      else if(this.introActive)return; // The audience cannot interrupt the filmed camera.
+      else if(event.code==="Tab")this.nextFocus();
       else this.pressed.add(event.code);
     }, true);
     window.addEventListener("keyup", (event) => {
@@ -128,10 +146,12 @@ export class Level6Arena {
       if (!this.active) return;
       event.preventDefault();
       event.stopImmediatePropagation();
+      if(this.introActive)return;
       if (document.pointerLockElement !== canvas) void canvas.requestPointerLock();
     }, true);
     document.addEventListener("mousemove", (event) => {
-      if (!this.active || document.pointerLockElement !== canvas || !this.camera) return;
+      if (!this.active || this.introActive ||
+          document.pointerLockElement !== canvas || !this.camera) return;
       this.camera.rotation.y += event.movementX / 2700;
       this.camera.rotation.x = Math.max(-1.45, Math.min(1.45,
         this.camera.rotation.x + event.movementY / 2700));
@@ -164,6 +184,9 @@ export class Level6Arena {
   close(): void {
     if (!this.active) return;
     this.active = false;
+    this.introActive=false;
+    this.cinematic.hidden=true;
+    this.panel.dataset.intro="false";
     this.onActiveChange(false);
     this.pressed.clear();
     if (document.pointerLockElement) void document.exitPointerLock();
@@ -204,6 +227,9 @@ export class Level6Arena {
     this.replayTime = 0;
     this.replayFrameIndex = 0;
     this.replayFinished = false;
+    this.introActive=false;
+    this.introWallSeconds=0;
+    this.introSeconds=0;
     this.result = "fighting";
     const state = this.store.state;
     const recorded = [...state.events].reverse()
@@ -393,6 +419,7 @@ export class Level6Arena {
       ? "Recorded fight ready. The same committed actions will play back."
       : "The Cave Troll is guarding Level 6.";
     this.updateHud();
+    this.startCinematic();
   }
 
   private nextFocus(): void {
@@ -413,10 +440,74 @@ export class Level6Arena {
     this.focusText.textContent = "TAB focus: " + target.label;
   }
 
+  /** Each restart (including saved replay switches) restarts the soundtrack
+   * and samples a read-only 13.5-second cinematic before advancing one tick. */
+  private startCinematic():void {
+    this.introActive=true;
+    this.introSeconds=0;
+    this.introWallSeconds=0;
+    this.pressed.clear();
+    this.panel.dataset.intro="true";
+    this.panel.dataset.introSeconds="0";
+    this.cinematic.hidden=false;
+    this.restartBossTheme();
+    this.paintCinematic(0,0);
+  }
+
+  private paintCinematic(seconds:number,dt:number):void {
+    if(!this.camera)return;
+    const view=sampleBossIntro(seconds);
+    this.camera.position.set(...view.eye);
+    this.camera.setTarget(new Vector3(...view.look));
+    this.cinematicLine.textContent=view.caption;
+    this.cinematicProgress.style.width=Math.round(view.progress*100)+"%";
+    this.panel.dataset.introSeconds=view.time.toFixed(2);
+    // Breathe/brace in front of the player, but never touch combat or replay.
+    this.trollVisual?.animate({
+      phase:"chase",phaseAge:0,slam:false,time:seconds,moved:0,
+      delta:dt,hp:BOSS_HP,maxHp:BOSS_HP,introTime:seconds,
+    });
+  }
+
+  private finishCinematic(skipped:boolean):void {
+    if(!this.introActive)return;
+    this.introActive=false;
+    this.panel.dataset.intro="false";
+    this.panel.dataset.introSeconds=BOSS_INTRO_SECONDS.toFixed(2);
+    this.cinematic.hidden=true;
+    if(skipped)this.skipBossThemeTo(BOSS_INTRO_SECONDS);
+    this.pressed.clear();
+    this.focusCamera();
+    this.status.textContent=this.replay
+      ?"Recorded combat · original saved frames, no new damage or rewards."
+      :"The Ashen Tunnel Mauler is attacking · training only.";
+    this.paintCombat(0);
+  }
+
+  private updateCinematic(dt:number):void {
+    this.introWallSeconds+=dt;
+    const audioSeconds=this.bossMusicSeconds();
+    this.introSeconds=audioSeconds===null
+      ?this.introWallSeconds:Math.max(0,audioSeconds);
+    // Browser audio stalls, muted tabs and failed autoplay must not softlock
+    // the replay. Use the visual wall clock after a modest grace period.
+    if(this.introWallSeconds>BOSS_INTRO_SECONDS+4)
+      this.introSeconds=Math.max(this.introSeconds,BOSS_INTRO_SECONDS);
+    if(this.introSeconds>=BOSS_INTRO_SECONDS){
+      this.finishCinematic(false);
+      return;
+    }
+    this.paintCinematic(this.introSeconds,dt);
+  }
+
   /** Preview combat advances at a fixed 60 Hz independent of render FPS. */
   update(deltaSeconds: number): void {
     if (!this.active || !this.scene || !this.camera || !this.hero || !this.boss || !this.motion) return;
     const frameDt = Math.min(0.1, Math.max(0, deltaSeconds));
+    if(this.introActive){
+      this.updateCinematic(frameDt);
+      return;
+    }
     const speed = (this.pressed.has("ShiftLeft") || this.pressed.has("ShiftRight") ? 21 : 7) * frameDt;
     const yaw = this.camera.rotation.y;
     const forward = new Vector3(Math.sin(yaw), 0, Math.cos(yaw));

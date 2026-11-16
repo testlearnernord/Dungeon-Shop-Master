@@ -141,6 +141,17 @@
             <button id="close-arena" type="button">Return to shop (V / Esc)</button>
           </div>
         </header>
+        <div id="arena-cinematic" class="arena-cinematic" hidden aria-live="off">
+          <div class="arena-cinematic-copy">
+            <small>THE SIXTH FLOOR</small>
+            <strong>THE ASHEN TUNNEL MAULER</strong>
+            <p id="arena-cinematic-line">FLOOR VI · THE ASHEN TUNNEL</p>
+            <span>SPACE / ENTER · SKIP INTRO TO MUSICAL DROP</span>
+            <div class="arena-cinematic-track" aria-hidden="true">
+              <div id="arena-cinematic-progress"></div>
+            </div>
+          </div>
+        </div>
         <div class="arena-bottom">
           <p id="arena-status">The Cave Troll is waiting.</p>
           <div class="arena-vitals">
@@ -151,7 +162,7 @@
           <p id="arena-focus">TAB focus: hero</p>
           <p id="arena-combat-info">Combat phases</p>
           <details class="spectator-help"><summary>Controls</summary>
-            <p>WASD free fly · Shift turbo · Q / E up / down · Mouse look (click to capture) · TAB cycle hero / boss · M music controls · C switch replay source · V / Esc return</p>
+            <p>Intro: Space / Enter skip to music drop · During fight: WASD free fly · Shift turbo · Q / E up / down · Mouse look (click to capture) · TAB cycle hero / boss · M music controls · C switch replay source · V / Esc return</p>
           </details>
         </div>
       </section>
