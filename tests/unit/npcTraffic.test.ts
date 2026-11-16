@@ -65,7 +65,7 @@ test("up to 100 idle visitors get unique walkable reachable positions",()=>{
 
 test("moved shelf never snaps two waiting visitors onto the same destination",()=>{
   const layout=createShopLayout();
-  const moved={shelves:layout.shelves.map(shelf=>shelf.id==="shelf-1"
+  const moved={...layout,shelves:layout.shelves.map(shelf=>shelf.id==="shelf-1"
     ?{...shelf,x:0,z:-2,rotation:1 as const}:shelf)};
   const spots=idleShopPositions(moved,100);
   assert(spots.length>=60,"layout should retain useful idle capacity");
