@@ -1,98 +1,175 @@
 # Dungeon Shop Master
 
-A browser-based 3D dungeon-shop simulator. Play as Galvik, a cursed merchant
-bound to his small shop on Level 5 of a 100-floor dungeon. Adventurers from
-the upper floors arrive, inspect shelves, buy supplies and equipment, and
-continue into dangers they do not necessarily survive.
+**Playable browser alpha:** https://testlearnernord.github.io/Dungeon-Shop-Master/  
+**Repository:** https://github.com/testlearnernord/Dungeon-Shop-Master
 
-**Play:** https://testlearnernord.github.io/Dungeon-Shop-Master/
+A first-person, dark-fantasy shopkeeping game built with TypeScript, Vite and
+Babylon.js. The player currently controls Galvik, the cursed proprietor of
+a physical shop on **Floor 5**. Autonomous adventurers from the upper floors
+buy supplies, risk their lives below, and may or may not return.
 
-## Current alpha loop
+The *100-floor dungeon* is the setting's long-term premise, **not** a claim
+that 100 playable floors exist. The current alpha is **day-based**, not a
+continuously running dungeon simulation.
 
-- **Shop:** first-person movement, stocking and removing shelf items,
-  wholesale orders, a cashier interaction, placeable furniture, optional
-  room excavation and compact merchant HUD. Customers have individual
-  shopping interests, queues, waiting timers and credit requests.
-- **Adventurers:** persistent hero identities, classes, equipment, HP,
-  money, XP and dungeon status. A roster and wall board show their records.
-- **Dungeon:** deterministic day-based exploration on floors 1–4,
-  individually authorized Cave Troll encounters on Level 6, and the
-  shared Level 7 world with replay and fog. Watching saved footage never
-  rerolls or changes the authoritative outcome.
-- **End Day:** Galvik sleeps at his bed. A merchant ledger summarizes
-  the closing day before the next begins. All sales, hero decisions
-  and simulated events are persisted and reproducible.
-- **Reports:** grouped events and receipts are available on demand.
-  Heavy combat/dungeon outcomes remain sealed until their replay is viewed.
+## Start here: source of truth
 
-## HP supplies and combat risk
+- [Game Bible](docs/GAME_BIBLE.md): current implementation versus explicitly
+  accepted (**LOCKED**), undecided (**OPEN**) and discarded (**REJECTED**)
+  design. Do not turn brainstorms into canon.
+- [Architecture](docs/ARCHITECTURE.md): authoritative state, navigation,
+  furniture contracts, saves, replays and current code ownership.
+- [UI Design System](docs/UI_DESIGN_SYSTEM.md): the compact first-person
+  interaction and visual language, including customer service hints.
+- [Development Roadmap](docs/ROADMAP.md): proposed next five PRs, success
+  criteria and deliberately excluded scope.
+- [Contributor/AI Guide](AGENTS.md): how to begin work and keep these files
+  synchronized with the implementation.
 
-Heroes have **HP, not an exhaustion or daily-food timer**. They can be
-injured or killed by the actual dungeon and fight simulation. The shop
-supports two affordable kinds of healing:
+**For a new AI/chat session:** read these documents on the latest `main`;
+then inspect the live repository source, open PRs and their CI. Previous
+chat messages, screenshots and PR descriptions are not authoritative if they
+disagree with current code. No PR is automatically merged merely because it
+was mentioned in a roadmap.
+
+## What is playable now
+
+| System | Current alpha behavior |
+| --- | --- |
+| First-person shop | Walk/look, order wholesale goods, stock and remove physical shelf items, operate a staffed register and grant credit |
+| Furniture / expansion | Build compact 4-slot shelves, move registered furniture, hang Galvik's portrait, excavate Level 5 and place furniture on sufficiently cleared floor |
+| Shoppers | Individual needs, gold, gear and HP; real shelf pickups into unpaid carts; collision-aware browsing, a five-place physical checkout queue with overflow, local restock/credit requests and walkouts |
+| Player service | Crosshair shelf details for actual stock and valid actions; compact live checkout/restock/credit status; **F** selects the most urgent requested item in the existing hotbar |
+| Money | Real bag/slot inventory, wholesale costs, fixed retail prices, credit debt book and manual receipts. Outstanding collected carts settle once at end of day |
+| Adventurers / dungeon | Persistent identities and equipment; deterministic offscreen Floors 1–4; individually authorized Floor 6 Cave Troll; Floor 7 observation/replay |
+| Day / reports | End the day at Galvik's bed; merchant ledger, receipts, hero records and spoiler-safe sealed replay presentation; validated campaign save/load |
+
+**Implemented does not mean visually perfect.** The CI checks safety and
+functional behavior; customer acting, friction and interface placement still
+need human game testing. The next planned improvements target that experience.
+
+### First few minutes
+
+1. Start or load a campaign. **A fresh shop has no shelves**, no shelf stock
+   and a small initial merchandise bag, not prebuilt giant racks.
+2. Press **N** to place a small four-slot shelf; rotate with **R**, confirm
+   with left-click or cancel with right-click/Esc. A new shelf starts empty.
+3. Select a bag item with **1–6** or the mouse wheel; look at a real shelf
+   slot and **left-click to stock** or **right-click to remove**. The crosshair
+   prompt explains capacity, wrong-item selection and cart-related locks.
+4. Buy stock through **B** (wholesale). When a real customer asks for
+   replenishment, the small service strip displays the expiring request;
+   press **F** to select that item, then walk over and stock it yourself.
+   Neither F nor the strip purchases or transfers anything.
+5. Customers choose what to buy. At the staff side of the register use
+   **E** when someone with a cart is ready; finish its existing two-stage
+   timing/receipt interaction. A nearby credit customer can also be
+   addressed with **E**, with the actual item issued as debt, not a sale.
+6. To close the day, go to Galvik's bedroom and **hold E** at the bed.
+   The ledger opens and the next day is committed. Saved dungeon footage
+   can be watched without rerolling the outcome.
+
+### Common controls
+
+| Key / input | Shop action |
+| --- | --- |
+| WASD / mouse / Shift | Move, look, sprint |
+| 1–6 / wheel | Select a carried stocking item |
+| Left-click / right-click at shelf | Stock one / remove one; no bulk-stocking shortcut yet |
+| E | Contextual interaction (cashier staff side, credit customer, board, etc.) |
+| Hold E at bed | Finish day |
+| F | Select the earliest-expiring **live restock** item, if any |
+| B | Wholesale |
+| N / Shift+N | Build a four-slot shelf / hang portrait |
+| P | Move looked-at furniture; R / Q rotate while placing |
+| U | Mining mode; Shift+U is an alpha expansion-tier development control |
+| R (outside placement) | Adventurer roster |
+| V / G | Level 6 arena / Level 7 dungeon viewer |
+| M | Toggle mouse/HUD cursor mode |
+| Esc | Release cursor or cancel/close the current interaction |
+
+This table describes current code, not proposed controls. Full context
+prompts are shown in-game.
+
+## Economy and survival facts
+
+Heroes have **HP, not hunger**. Waybread and Healing Herbs both restore HP:
 
 | Product | Wholesale | Retail | HP restored |
-|---|---:|---:|---:|
+| --- | ---: | ---: | ---: |
 | Waybread | 2g | 4g | 8 |
 | Healing Herb | 3g | 6g | 18 |
 
-Both are `healing` items. Individual hero inventories keep
-`bread` and `healing` counts; they are not merchant bag stock.
-Waybread is cheaper and weaker. An injured hero may consume one healing
-item during the daily simulation. Full-health heroes never consume a
-healing item simply because a day passes. When both are available,
-small wounds use Waybread and serious wounds use Herbs. Wounds cap at
-the hero's maximum HP. No free stock or combat loot is generated to
-replace shop purchases.
+Other current stock: Mana Potion, Iron Ore, Iron Sword and Leather Vest.
+The retailer's bag and shelf stock are distinct from a hero's supplies.
+Heroes choose purchases according to need, gold and availability. Damage,
+deaths and equipment consequences come from the committed dungeon
+simulation, not random starvation or arbitrary visual effects.
 
-Equipment changes later dungeon survival chances. Heroes buy according
-to need, gold and shelf availability, not a player-directed command.
+## Local development
 
-## Running locally
-
-Requires Node.js 22 and npm.
+Requires **Node.js 22** and npm.
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Validation:
-
 ```bash
 npm run build
 npm run test:unit
+npx playwright install chromium
 npm test
 ```
 
-The latest campaign format is **simulation version 13**. Its room, bedroom furniture, Adventurer Board and checkout transform are required state rather than compatibility fallbacks. Fresh games begin with an empty sales floor: press **N** to build a compact four-position shelf, then stock it from the starting bag. The previous fixed large shelves and Shift+P coordinate editor are removed. This alpha
-intentionally does **not migrate older saves**. If a previous build's
-campaign cannot be loaded, start a new campaign. Invalid stored data is
-preserved rather than silently overwritten.
+The project uses `npm run build` for the TypeScript/Vite production build,
+Node's built-in runner for unit tests, and Playwright for browser scenarios.
+Playwright's test runner may need a display or `xvfb-run` on headless Linux.
 
-## CI policy
+### GitHub workflows
 
-Every pull request runs TypeScript/Vite build, all quick Node unit tests,
-and four essential Playwright browser smoke specs in a single runner:
-day clock, cashier receipt, Level 5 excavation and shopper checkout flow.
-The full Playwright suite is opt-in through the GitHub Actions
-**Full browser regression** workflow; it does not run nightly. This
-keeps ordinary PR feedback short without dropping the ability to run
-deeper regressions when changing architecture.
+- **CI** on pull requests into `main`: build, unit tests and four selected
+  Playwright specs (`dayClock`, `cashierReceipt`, `level5Excavation`,
+  `shopperFlowReliability`). Each spec can contain multiple browser tests.
+- **Full browser regression**: manually dispatched GitHub Actions workflow,
+  not the default PR run.
+- **Deploy to GitHub Pages**: triggered by pushes to `main`. A green PR
+  build is not proof that Pages has finished deploying; check its workflow.
 
-## Code map
+Prefer focused additional coverage over inflating the default CI.
 
-| Area | Main files |
-|---|---|
-| Persistent simulation and day ticks | `src/game/gameState.ts`, `src/game/adventurers.ts` |
-| Catalog, sales and HP-supply demand | `src/game/economy.ts`, `src/game/shopperIntents.ts` |
-| Physical customer checkout / held stock | `src/game/shopCarts.ts`, `src/game/customerCheckout.ts`, `src/game/shopCredit.ts` |
-| Dungeon and boss | `src/game/dungeonSimulation.ts`, `src/game/level6Combat.ts`, `src/game/level7Exploration.ts` |
-| Shop scene, guests, controls | `src/game/interactionSystem.ts`, `src/game/npcVisualSystem.ts` |
-| Save validation | `src/game/campaignSave.ts` |
-| Interface / icon system | `src/immersiveUi.css`, `src/uiIcons.ts` |
-| Merchant end-day ledger | `src/merchantLedger.ts` |
+### Saves and compatibility
 
-UI concept images and historical roadmap notes are inspiration rather
-than binding specifications. The current gameplay rules are defined by
-the source modules and the tests.
+`SIMULATION_VERSION = 13` in `src/game/gameState.ts`. Saves require the
+persisted Level 5 room, bedroom furniture, board, counter, all shelf
+instances and matching four-slot inventories. Version-12/partial or old
+five-slot giant-shelf campaigns **are not automatically migrated**. Invalid
+stored saves are not silently overwritten. Start a fresh campaign if an
+older alpha save cannot be loaded.
+
+## Where to code
+
+| Area | Authoritative code |
+| --- | --- |
+| Simulation and merchant mutations | `src/game/gameState.ts`, `src/game/gameStore.ts`, `src/game/economy.ts` |
+| Actual collected carts, cashier and debt | `src/game/shopCarts.ts`, `src/cashierHud.ts`, `src/game/shopCredit.ts` |
+| NPC intents and visual traffic | `src/game/shopperIntents.ts`, `src/game/npcVisualSystem.ts`, `src/game/shopServiceSpots.ts`, `src/game/shopperNavigation.ts` |
+| Furniture and mining | `src/game/furnitureRegistry.ts`, `src/game/furniturePlacement.ts`, `src/blueprintHud.ts`, `src/game/level5Room.ts` |
+| Player UX | `src/game/interactionSystem.ts`, `src/game/shopServiceFocus.ts`, `src/shopHudLayout.ts`, `src/uiIcons.ts`, `src/immersiveUi.css` |
+| Dungeon / observation | `src/game/dungeonSimulation.ts`, `src/game/level6Combat.ts`, `src/game/level7Exploration.ts`, `src/game/level6Arena.ts`, `src/game/dungeonViewer.ts` |
+| Saved results / ledger | `src/game/campaignSave.ts`, `src/merchantLedger.ts`, `src/ledgerViewState.ts` |
+
+For details and non-negotiable invariants, use the
+[architecture map](docs/ARCHITECTURE.md), not this quick reference.
+
+## Upcoming development
+
+The agreed **five-step working sequence** is checkout feel, physical
+restocking ergonomics, customer personality, meaningful shop-to-dungeon
+feedback, and ten-day balance/playtesting. As documentation itself uses
+PR #152, feature PRs are tentatively **#153–#157** (not reserved).
+**None of these five feature changes is implemented or promised merged
+by this README.** Follow [ROADMAP](docs/ROADMAP.md) and check GitHub.
+
+Illustrations, previous brainstorms and historical conversations are
+references, not alternative canonical implementations.
