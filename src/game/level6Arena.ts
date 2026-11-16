@@ -22,6 +22,7 @@ import type { GameStore } from "./gameStore.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import { createHeroVisual } from "./heroVisual.ts";
 import { createCaveTrollVisual, type CaveTrollVisual } from "./caveTrollVisual.ts";
+import { buildCaveTrollArenaArt } from "./caveTrollArenaArt.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -56,6 +57,7 @@ export class Level6Arena {
   private projectiles: AbstractMesh[] = [];
   private telegraph: AbstractMesh | null = null;
   private slamTelegraph: AbstractMesh | null = null;
+  private impactShockwave: Mesh | null = null;
   private readonly staminaText: HTMLElement;
   private readonly combatInfo: HTMLElement;
   private result: "fighting" | "victory" | "defeat" = "fighting";
@@ -178,6 +180,7 @@ export class Level6Arena {
     this.projectiles = [];
     this.telegraph = null;
     this.slamTelegraph = null;
+    this.impactShockwave = null;
     this.heroArm = null;
     this.heroWeapon = null;
     this.trollVisual = null;
@@ -194,6 +197,7 @@ export class Level6Arena {
     this.projectiles = [];
     this.telegraph = null;
     this.slamTelegraph = null;
+    this.impactShockwave = null;
     this.heroArm = null;
     this.heroWeapon = null;
     this.motionAccumulator = 0;
@@ -284,6 +288,17 @@ export class Level6Arena {
     }, scene);
     rim.position.y = -0.36;
     rim.material = fire;
+    // Visual mine walls, supports and furnaces do not touch combat geometry.
+    buildCaveTrollArenaArt(scene);
+    const shockwave = MeshBuilder.CreateTorus("troll-maul-impact-dust",{
+      diameter:2.8,thickness:.26,tessellation:42,
+    },scene);
+    shockwave.material=makeMat("maul-impact-stone-dust","#b28a62",true);
+    shockwave.visibility=0;
+    shockwave.position.y=.14;
+    shockwave.isPickable=false;
+    shockwave.checkCollisions=false;
+    this.impactShockwave=shockwave;
     // Stable geometry only, not simulation RNG; concentric stalagmites around the arena.
     for (let i = 0; i < 34; i++) {
       const angle = i * 2.399963229728653;
@@ -568,6 +583,13 @@ export class Level6Arena {
       hero.root.rotation.x = 0;
       hero.root.rotation.z = state.outcome === "defeat" ? Math.PI / 2
         : state.heroPhase === "hurt" ? -0.25 : 0;
+    }
+    if(this.impactShockwave) {
+      const impact=state.bossPhase==="strike" ? Math.max(0,state.bossAge-.10) : -1;
+      this.impactShockwave.visibility=impact>=0&&impact<.36
+        ? .46*(1-impact/.36):0;
+      this.impactShockwave.scaling.setAll(1+Math.max(0,impact)*5.1);
+      this.impactShockwave.position.set(state.boss.x,.14,state.boss.z);
     }
     for (const [telegraph, slam] of [[this.telegraph, false], [this.slamTelegraph, true]] as const) {
       if (!telegraph) continue;
