@@ -21,6 +21,23 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
     expect(model.collisions, model.itemId).toBe(false);
     expect(model.size.every(value => value > 0), model.itemId).toBe(true);
   }
+  // The six committed GLB source assets must be valid glTF 2.0 files
+  // that Vite actually serves. The current runtime still intentionally
+  // uses procedural meshes; these binaries remain available for future use.
+  for(const item of models){
+    const url=new URL("assets/models/"+item.itemId+".glb",page.url());
+    const response=await page.request.get(url.toString());
+    expect(response.ok(),item.itemId+" GLB is served").toBe(true);
+    const bytes=Buffer.from(await response.body());
+    expect(bytes.toString("ascii",0,4)).toBe("glTF");
+    expect(bytes.readUInt32LE(4)).toBe(2);
+    expect(bytes.readUInt32LE(8)).toBe(bytes.length);
+    const jsonBytes=bytes.readUInt32LE(12);
+    expect(bytes.readUInt32LE(16)).toBe(0x4e4f534a); // JSON chunk
+    const model=JSON.parse(bytes.toString("utf8",20,20+jsonBytes));
+    expect(model.asset?.version).toBe("2.0");
+    expect(model.meshes?.length,item.itemId+" geometry").toBeGreaterThan(0);
+  }
   expect(pageErrors).toEqual([]);
 });
 
