@@ -353,7 +353,11 @@ export function canYieldShopperSpot(
   return phase==="queueing"&&!hasRemainingRoute&&
     (shoppingPhase==="waiting-for-next-day"||
      shoppingPhase==="waiting-for-shelf"||
-     shoppingPhase==="roaming-request");
+     shoppingPhase==="roaming-request"||
+     shoppingPhase==="waiting-for-restock"||
+     shoppingPhase==="waiting-for-credit"||
+     shoppingPhase==="waiting-for-restock-overflow"||
+     shoppingPhase==="waiting-for-credit-overflow");
 }
 
 export interface ShopCrowdMove {
