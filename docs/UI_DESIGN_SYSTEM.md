@@ -2,8 +2,8 @@
 
 > **Current implementation contract, reviewed 2026-11-16.** Read this
 > alongside [GAME_BIBLE](GAME_BIBLE.md), [ARCHITECTURE](ARCHITECTURE.md)
-> and [ROADMAP](ROADMAP.md). Features planned for #152–#156 are not yet
-> implemented by this document.
+> and [ROADMAP](ROADMAP.md). The next five planned gameplay work packages
+> are **not implemented** by this document; PR numbers are not reserved.
 
 ## Purpose
 The Level 5 shop is a first-person **cave**, not a desktop dashboard. Gameplay,
