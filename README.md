@@ -164,11 +164,12 @@ For details and non-negotiable invariants, use the
 
 ## Upcoming development
 
-The agreed **working sequence**, subject to code review and playtesting,
-is #152 checkout feel, #153 physical restocking ergonomics, #154 customer
-personality, #155 meaningful shop-to-dungeon feedback and #156 ten-day
-balance/playtest. **None of these proposed PRs is implemented or promised
-merged by this README.** Follow [ROADMAP](docs/ROADMAP.md) and check GitHub.
+The agreed **five-step working sequence** is checkout feel, physical
+restocking ergonomics, customer personality, meaningful shop-to-dungeon
+feedback, and ten-day balance/playtesting. As documentation itself uses
+PR #152, feature PRs are tentatively **#153–#157** (not reserved).
+**None of these five feature changes is implemented or promised merged
+by this README.** Follow [ROADMAP](docs/ROADMAP.md) and check GitHub.
 
 Illustrations, previous brainstorms and historical conversations are
 references, not alternative canonical implementations.
