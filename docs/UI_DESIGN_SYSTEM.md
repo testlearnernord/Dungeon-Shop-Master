@@ -84,10 +84,11 @@ This document is a maintainable implementation contract.
   furniture blueprint owns the interaction. It must never replace the
   authoritative `InteractionSystem` stock/remove ray.
 - The `#shop-service-brief` must show only physically present customers'
-  active needs or an actually ready cashier head. It hides when irrelevant
-  or while a modal/editor is active. The **F** shortcut only selects an
-  existing hotbar item; no transfer, purchase, credit grant or reserve
-  belongs in HUD code.
+  active needs or an actually ready cashier head. Its current implementation
+  hides when irrelevant, or when an open dialog or furniture blueprint owns
+  the screen. Mining mode does not presently hide the top service strip.
+  The **F** shortcut only selects an existing hotbar item; no transfer,
+  purchase, credit grant or reserve belongs in HUD code.
 - Existing valid version-13 saves, controls, dialogues and gameplay tests
   must continue working after UI changes; add visual/geometry checks for
   changed layout. Unsupported older campaigns are **not** silently migrated.
