@@ -1,6 +1,7 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState, advanceDay, SIMULATION_VERSION, type GameState } from "../../src/game/gameState.ts";
+import { advanceDay, SIMULATION_VERSION, type GameState } from "../../src/game/gameState.ts";
 import { pickUpShopItem, returnShopCart, cartTotal, settleHeldShopCarts, payReservedShopCart } from "../../src/game/shopCarts.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
@@ -21,7 +22,7 @@ function slotQuantity(state:GameState,slotId:string) {
 }
 test("pickup is durable, removes only physical shelf stock and never charges before checkout",()=>{
   const state=customers();
-  assert.equal(SIMULATION_VERSION,12);
+  assert.equal(SIMULATION_VERSION,13);
   const hero=state.adventurers[0];
   const plan=forecastShoppingIntents(state).get(hero.id)!;
   const needed=plan.items[0];

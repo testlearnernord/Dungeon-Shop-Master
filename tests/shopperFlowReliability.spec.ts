@@ -10,10 +10,15 @@ test("a single buyer can reach and request service at a rotated register",async(
   await expect(page.locator("#day")).toHaveText("Day 1");
   const buyer=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
-    const {replaceCounterPlacement}=await import("/Dungeon-Shop-Master/src/game/shopLayout.ts");
+    const {replaceCounterPlacement,replaceShelfPlacement}=await import("/Dungeon-Shop-Master/src/game/shopLayout.ts");
+    const {createEmptyShelfSlots}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const initial=createGameState(7351);
-    const moved=replaceCounterPlacement(initial.shopLayout,{x:0,z:2.25,rotation:1});
+    const built=replaceShelfPlacement(initial.shopLayout,{
+      id:"shelf-1",x:-7,z:0,rotation:0,
+    });
+    if(built.message!=="Shelf placement saved.")throw Error(built.message);
+    const moved=replaceCounterPlacement(built.layout,{x:0,z:2.25,rotation:1});
     if(moved.message!=="Counter placement saved.")throw Error(moved.message);
     const hero=initial.adventurers[0];
     const state={...initial,shopLayout:moved.layout,
@@ -22,7 +27,7 @@ test("a single buyer can reach and request service at a rotated register",async(
           inventory:{...visitor.inventory,bread:0}}
         :{...visitor,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...initial.shopEconomy,
-        slots:initial.shopEconomy.slots.map(slot=>
+        slots:createEmptyShelfSlots("shelf-1").map(slot=>
           slot.id==="shelf-1-slot-2"
             ?{...slot,itemId:"bread" as const,quantity:5}:slot)}
     };
@@ -60,14 +65,18 @@ test("eight incoming customers progress around relocated shelves and checkout",a
     const {shopServiceReachabilityProblem}=await import(
       "/Dungeon-Shop-Master/src/game/shopServiceReachability.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const {ECONOMY}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
+    const {ECONOMY,createEmptyShelfSlots}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
     const {forecastShoppingIntents}=await import("/Dungeon-Shop-Master/src/game/shopperIntents.ts");
     const original=createGameState(7351);
     const movedShelf=replaceShelfPlacement(original.shopLayout,{
       id:"shelf-1",x:0,z:-2,rotation:1,
     });
     if(movedShelf.message!=="Shelf placement saved.")throw Error(movedShelf.message);
-    const movedCounter=replaceCounterPlacement(movedShelf.layout,{
+    const second=replaceShelfPlacement(movedShelf.layout,{
+      id:"shelf-2",x:7,z:0,rotation:2,
+    });
+    if(second.message!=="Shelf placement saved.")throw Error(second.message);
+    const movedCounter=replaceCounterPlacement(second.layout,{
       x:0,z:2.25,rotation:1,
     });
     if(movedCounter.message!=="Counter placement saved.")
@@ -84,10 +93,11 @@ test("eight incoming customers progress around relocated shelves and checkout",a
           equipment:{weapon:null,armor:null}}
         :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...original.shopEconomy,
-        slots:original.shopEconomy.slots.map(slot=>
+        slots:[...createEmptyShelfSlots("shelf-1"),
+          ...createEmptyShelfSlots("shelf-2")].map(slot=>
           slot.id==="shelf-1-slot-2"||slot.id==="shelf-2-slot-2"
             ?{...slot,itemId:"bread" as const,quantity:slot.capacity}
-            :{...slot,itemId:null,quantity:0})},
+            :slot)},
     };
     const reasons=[...forecastShoppingIntents(state).values()].map(x=>x.reason);
     for(const desired of ["interested","unavailable","cannot-afford"])
@@ -116,8 +126,13 @@ test("eight incoming customers progress around relocated shelves and checkout",a
           remaining:v.restockRemaining,blocked:v.blockedSeconds,
         })));
       }
-      const phases=visitors.map(v=>v.shoppingPhase??"");
-      return phases.includes("waiting-for-credit")&&phases.includes("waiting-for-restock");
+      // Requests now roam after a short petition; requiring both visitors
+      // to remain frozen at exact stations would reintroduce the behavior
+      // this test is supposed to prevent.
+      return visitors.some(v=>v.shoppingReason==="cannot-afford"&&
+        (v.restockRemaining??0)>0) &&
+        visitors.some(v=>v.shoppingReason==="unavailable"&&
+          (v.restockRemaining??0)>0);
     },{timeout:80000,intervals:[800,1200,2000]}).toBe(true);
   }catch(error){
     console.error("NPC_TRAFFIC_FAILURE",JSON.stringify(trafficSamples));
@@ -276,7 +291,7 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
     const {shopServiceReachabilityProblem}=await import(
       "/Dungeon-Shop-Master/src/game/shopServiceReachability.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const {ECONOMY}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
+    const {ECONOMY,createEmptyShelfSlots}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
     const {forecastShoppingIntents}=await import("/Dungeon-Shop-Master/src/game/shopperIntents.ts");
     const original=createGameState(7351);
     let room={...original.level5Room,expansionTier:2};
@@ -286,7 +301,7 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
       room=next.room;
     }
     const shelf=replaceShelfPlacement(original.shopLayout,{
-      id:"shelf-2",x:8.25,z:0,rotation:2,
+      id:"shelf-1",x:8.25,z:0,rotation:2,
     },room);
     if(shelf.message!=="Shelf placement saved.")throw Error(shelf.message);
     const till=replaceCounterPlacement(shelf.layout,{x:0,z:2.25,rotation:1},room);
@@ -302,10 +317,10 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
           equipment:{weapon:null,armor:null}}
         :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...original.shopEconomy,
-        slots:original.shopEconomy.slots.map(slot=>
-          slot.id==="shelf-2-slot-2"?
-            {...slot,itemId:"bread" as const,quantity:slot.capacity}
-            :{...slot,itemId:null,quantity:0})},
+        slots:createEmptyShelfSlots("shelf-1").map(slot=>
+          slot.id==="shelf-1-slot-2"
+            ?{...slot,itemId:"bread" as const,quantity:slot.capacity}
+            :slot)},
     };
     const plans=[...forecastShoppingIntents(state).values()];
     for(const needed of ["interested","unavailable","cannot-afford"])

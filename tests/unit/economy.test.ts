@@ -1,8 +1,9 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { useHealingSupplies, generateAdventurer, type AdventurerState } from "../../src/game/adventurers.ts";
 import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
-import { advanceDay, createGameState, type GameState } from "../../src/game/gameState.ts";
+import { advanceDay, type GameState } from "../../src/game/gameState.ts";
 
 function freeze<T>(value: T): T {
   if (value !== null && typeof value === "object") {
@@ -50,13 +51,10 @@ test("catalog, starter economy and shelf layout are complete, independent and bo
   assert.equal(ECONOMY.bagCapacity, 24);
   assert.notEqual(first.bag, second.bag);
   assert.notEqual(first.slots, second.slots);
-  assert.notEqual(first.slots[0], second.slots[0]);
+  assert.deepEqual(first.slots,[]);
+  assert.deepEqual(second.slots,[]);
   assert.deepEqual(first.bag, { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2, "iron-sword": 0, "leather-vest": 0 });
-  assert.equal(first.slots[0].itemId, null);
-  assert(first.slots.some((slot) => slot.itemId === "bread" && slot.quantity > 0));
-  assert(first.slots.some((slot) => slot.itemId === "healing-herb" && slot.quantity > 0));
-  assert(first.slots.every((slot) => slot.capacity === ECONOMY.slotCapacity && slot.quantity <= slot.capacity));
-  assert.equal(new Set(first.slots.map((slot) => slot.id)).size, 10);
+  assert.equal(first.slots.length,0,"merchandise stays in the bag until a real shelf is built");
 });
 
 test("wholesale atomically exchanges gold for whole units and preserves frozen input", () => {

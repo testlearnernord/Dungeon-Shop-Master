@@ -1,5 +1,5 @@
 import {shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
-import {pointTouchesShopBounds} from "./shopFloorFurniture.ts";
+import {pointTouchesShopBounds} from "./furnitureRegistry.ts";
 import { isLevel5Air, type Level5Room } from "./level5Room.ts";
 
 export interface FloorPoint { readonly x:number; readonly z:number }

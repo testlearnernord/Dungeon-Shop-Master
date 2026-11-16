@@ -1,9 +1,11 @@
+import {createStockedShopLayout as createShopLayout} from "./shopFixtures.ts";
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createLevel5Room,excavateLevel5Cell} from "../../src/game/level5Room.ts";
-import {createShopLayout,replaceShelfPlacement,replaceCounterPlacement} from "../../src/game/shopLayout.ts";
+import { replaceShelfPlacement, replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import {shopServiceReachabilityProblem} from "../../src/game/shopServiceReachability.ts";
-import {createGameState} from "../../src/game/gameState.ts";
+import {  } from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 

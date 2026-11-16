@@ -3,9 +3,9 @@ import {
   SHOP_FLOOR_FURNITURE,cashierServicePoint,shelfServicePoint,
   shopFixtureBounds,shopFixtureTouches,
   type ShopFloorKind,type ShopFloorBounds,
-} from "./shopFloorFurniture.ts";
+} from "./furnitureRegistry.ts";
 /** Persisted shop furniture transforms. No rendering, economy or RNG dependencies. */
-/** Stable per-instance identifiers. Existing shelf-1/2 and slot IDs never change. */
+/** Stable per-instance furniture IDs, generated only when a shelf is built. */
 export type ShelfId = `shelf-${number}`;
 /** Bounded by room area and current service/mesh workload, not two fixed shelves. */
 export const MAX_SHOP_SHELVES=12;
@@ -25,10 +25,10 @@ export interface ShelfPlacement {
 }
 export interface ShopLayout {
   readonly shelves: readonly ShelfPlacement[];
-  /** Optional for compatibility with existing version-10 saves. */
+  /** Optional checkout transform for saved campaign compatibility within v13. */
   readonly counter?: CounterPlacement;
 }
-/** Persisted checkout transform. Geometry lives in shopFloorFurniture.ts. */
+/** Persisted checkout transform. Geometry lives in furnitureRegistry.ts. */
 export interface CounterPlacement {
   readonly x: number;
   readonly z: number;
@@ -122,10 +122,7 @@ const quarter=(n:number)=>Number.isFinite(n)&&Math.abs(n*4-Math.round(n*4))<1e-8
 const canonical=isShelfId;
 
 export function createShopLayout(): ShopLayout {
-  return {shelves:[
-    {id:"shelf-1",x:-7,z:0,rotation:0},
-    {id:"shelf-2",x:7,z:0,rotation:2},
-  ],counter:{...NEW_GAME_COUNTER_PLACEMENT}};
+  return {shelves:[],counter:{...NEW_GAME_COUNTER_PLACEMENT}};
 }
 export function shelfBounds(p:ShelfPlacement):Bounds {
   return shopFixtureBounds("shelf",p);
@@ -157,14 +154,14 @@ function onRoomFloor(box:Bounds,room:Level5Room):boolean {
   return true;
 }
 export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|null {
-  if(!layout||!Array.isArray(layout.shelves)||layout.shelves.length<2)
-    return "At least two shelves are required.";
+  if(!layout||!Array.isArray(layout.shelves))
+    return "A valid furniture instance list is required.";
   if(layout.shelves.length>MAX_SHOP_SHELVES)
     return "The shop has reached its current shelf capacity.";
   const seen=new Set<string>();
   for(const [index,p] of layout.shelves.entries()){
     // Stable, monotonic IDs also make imported saves and held carts safe:
-    // an removed shelf ID is never silently reassigned to different stock.
+    // A removed instance ID must never be silently reassigned to other stock.
     if(!p||!canonical(p.id)||p.id!==`shelf-${index+1}`||
        seen.has(p.id))
       return "Shelf IDs must be ordered, unique and contiguous.";

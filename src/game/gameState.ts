@@ -17,7 +17,7 @@ import { settleHeldShopCarts, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 12;
+export const SIMULATION_VERSION = 13;
 
 export interface ShopEconomyState {
   readonly balance: number;

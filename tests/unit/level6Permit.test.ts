@@ -1,12 +1,13 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState, advanceDay, setLevel6Permit, SIMULATION_VERSION } from "../../src/game/gameState.ts";
+import { advanceDay, setLevel6Permit, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
 
 test("Level 6 permission is explicit, individual, immutable and does not consume a tick", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 12);
+  assert.equal(SIMULATION_VERSION, 13);
   assert(initial.adventurers.every((hero) => !hero.level6Permit));
   const visitor = initial.adventurers[0];
   const granted = setLevel6Permit(initial, visitor.id, true);

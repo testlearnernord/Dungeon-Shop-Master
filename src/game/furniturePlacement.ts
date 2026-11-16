@@ -16,7 +16,7 @@ export type FurniturePlacementResult={
 
 /** The one authoritative placement transaction for every existing object.
  * A preview calls the SAME pure function as click/commit. No ghost changes
- * the save. The current save fields are adapters for historical campaigns.
+ * the save. State fields are persisted without an alternative shelf editor.
  *
  * Mounting policies differ, but the transaction, geometry and validation
  * lifecycle do not: floor support, physical overlap, all required service

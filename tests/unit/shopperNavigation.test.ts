@@ -1,22 +1,22 @@
+import {createStockedShopLayout as createShopLayout} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createShopLayout,replaceShelfPlacement} from "../../src/game/shopLayout.ts";
-import { turnShopOffset,shelfServicePoint } from "../../src/game/shopFloorFurniture.ts";
+import { replaceShelfPlacement } from "../../src/game/shopLayout.ts";
+import {shelfServicePoint,SHELF_SLOT_COUNT} from "../../src/game/furnitureRegistry.ts";
 import { createLevel5Room } from "../../src/game/level5Room.ts";
 import {createShopRoutePlanner,isObstructed,pathToShopGoal,pathToShelfAccess,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 
 const distance=(a:{x:number;z:number},b:{x:number;z:number})=>
   Math.hypot(a.x-b.x,a.z-b.z);
 
-test("shelf approach stays on the actual stock face for both legacy shelves",()=>{
+test("shelf approach stays on the actual face of compact placed shelves",()=>{
   const layout=createShopLayout();
   const origin={x:0,z:0};
   for(const shelf of layout.shelves){
-    for(let index=0;index<5;index++){
+    for(let index=0;index<SHELF_SLOT_COUNT;index++){
       const route=pathToShelfAccess(origin,layout,shelf.id,index);
       assert(route,`slot ${shelf.id} index ${index} must be reachable`);
-      const offset=turnShopOffset(1.75,index-2,shelf.rotation);
-      const desired={x:shelf.x+offset.x,z:shelf.z+offset.z};
+      const desired=shelfServicePoint(shelf,index);
       const actual=route.waypoints.at(-1)??origin;
       assert(distance(actual,desired)<=0.85);
       assert(!isObstructed(actual,layout));
@@ -36,7 +36,7 @@ test("rotating a shelf rebuilds real routes to the moved stock slots",()=>{
   });
   assert.equal(replacement.message,"Shelf placement saved.");
   const origin={x:-3,z:0};
-  for(let index=0;index<5;index++){
+  for(let index=0;index<SHELF_SLOT_COUNT;index++){
     const route=pathToShelfAccess(origin,replacement.layout,"shelf-1",index);
     assert(route,"must approach a rotated shelf from reachable floor");
     const end=route.waypoints.at(-1)??origin;
@@ -78,7 +78,7 @@ test("unreachable and invalid requests fail cleanly instead of inventing targets
 test("batch planner preserves the exact paths for both entrances, every shelf slot and invalid targets",()=>{
   const room=createLevel5Room(),layout=createShopLayout();
   const route=createShopRoutePlanner(layout,room);
-  const targets=layout.shelves.flatMap(shelf=>Array.from({length:5},
+  const targets=layout.shelves.flatMap(shelf=>Array.from({length:SHELF_SLOT_COUNT},
     (_,i)=>shelfServicePoint(shelf,i)));
   targets.push({x:0,z:0},{x:-3.43,z:4.65},{x:999,z:999});
   for(const start of [{x:-3.43,z:4.65},{x:4.57,z:4.65}]){

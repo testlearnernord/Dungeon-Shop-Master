@@ -5,7 +5,7 @@ import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigatio
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
 import {
   SHOP_FLOOR_FURNITURE,cashierServicePoint,turnShopOffset,
-} from "./shopFloorFurniture.ts";
+} from "./furnitureRegistry.ts";
 
 export function checkoutQueueIds(carts: readonly ShopCart[]): readonly string[] {
   return carts.filter(cart => cart.lines.length > 0).map(cart => cart.heroId);

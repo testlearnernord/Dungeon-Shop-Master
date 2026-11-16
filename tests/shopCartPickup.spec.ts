@@ -11,7 +11,8 @@ test("real 3D shelf pickup reserves stock, displays a hand-held item and survive
   const heroId=await page.evaluate(async(seed)=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const starting=createGameState(seed);
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const starting=withStockedSmallShelf(createGameState(seed));
     const prepared={...starting,adventurers:starting.adventurers.map((hero,i)=>
       i===0?{...hero,gold:100,
         inventory:{...hero.inventory,bread:0,healing:0},
@@ -92,7 +93,8 @@ test("warehouse operations are blocked while a hero holds unpaid stock",async({p
   const result=await page.evaluate(async()=>{
     const {GameStore}=await import("/Dungeon-Shop-Master/src/game/gameStore.ts");
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
-    const state=createGameState(7351);
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const state=withStockedSmallShelf(createGameState(7351));
     const store=new GameStore({...state,adventurers:state.adventurers.map((hero,i)=>
       i===0?{...hero,gold:100,inventory:{...hero.inventory,bread:0}}:hero)});
     const hero=store.state.adventurers[0].id;

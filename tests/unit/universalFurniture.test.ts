@@ -31,14 +31,19 @@ test("all eight furniture types share one geometry and mounting registry",()=>{
     "shelf-1","shelf-2","counter","desk","chest","candle","bed",
     "adventurer-board",
   ];
-  assert.deepEqual(Object.keys(FURNITURE_REGISTRY),ids);
+  assert.deepEqual(Object.keys(FURNITURE_REGISTRY),ids.slice(2),
+    "static registry lists unique furniture, not fabricated shelf instances");
   for(const id of ids){
     const def=furnitureDefinition(id);
     const visual=FURNITURE_CATALOG.find(x=>x.id===id);
-    assert(visual,"Blueprint catalog must register "+id);
-    assert.equal(visual.width,def.width);
-    assert.equal(visual.depth,def.depth);
-    assert.equal(visual.height,def.height);
+    if(id.startsWith("shelf-"))assert.equal(visual,undefined,
+      "modular shelves have a shared instance definition, not fixed catalog positions");
+    else {
+      assert(visual,"Blueprint catalog must register "+id);
+      assert.equal(visual.width,def.width);
+      assert.equal(visual.depth,def.depth);
+      assert.equal(visual.height,def.height);
+    }
     assert(def.width>0&&def.depth>0&&def.height>0);
     assert(["shop-floor","private-floor","shop-wall"].includes(def.mount));
     for(const rotation of [0,1,2,3] as const){

@@ -1,7 +1,7 @@
 import { level5FloorWalkable, level5FloorSegmentWalkable } from "./level5Walkability.ts";
 import type { Level5Room } from "./level5Room.ts";
 import {shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
-import {pointTouchesShopBounds,shelfServicePoint,turnShopOffset} from "./shopFloorFurniture.ts";
+import {pointTouchesShopBounds,shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 
 export interface ShopPoint { readonly x:number; readonly z:number }
 export interface ShopperRoute {
@@ -167,7 +167,8 @@ export function pathToShelfAccess(
   canUseStandingPoint?:(point:ShopPoint)=>boolean,
 ):ShopperRoute|null {
   const shelf=layout.shelves.find(entry=>entry.id===shelfId);
-  if(!shelf||!Number.isSafeInteger(slotIndex)||slotIndex<0||slotIndex>=5)
+  if(!shelf||!Number.isSafeInteger(slotIndex)||slotIndex<0||
+    slotIndex>=SHELF_SLOT_COUNT)
     return null;
   // Up to 15 nearby candidate spots share the same static shop geometry.
   const routeTo=createShopRoutePlanner(layout,room);

@@ -3,7 +3,7 @@ import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
 import { createShopRoutePlanner, isObstructed, type ShopPoint } from "./shopperNavigation.ts";
 import {shopLayoutProblem,type ShopLayout} from "./shopLayout.ts";
-import {shelfServicePoint} from "./shopFloorFurniture.ts";
+import {shelfServicePoint,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 
 /** A furniture commit is invalid if the physical entrance, checkout and
  * shelf service sockets no longer share a walkable component.
@@ -43,7 +43,7 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Roo
   if(!petitionPair)
     return "Leave two accessible waiting areas for restock requests and credit.";
   for(const shelf of layout.shelves){
-    for(let slot=0;slot<5;slot++){
+    for(let slot=0;slot<SHELF_SLOT_COUNT;slot++){
       const service=shelfServicePoint(shelf,slot);
       if(isObstructed(service,layout,room))
         return "Customer standing space is blocked at "+shelf.id+" slot "+(slot+1)+".";

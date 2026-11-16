@@ -1,10 +1,10 @@
+import {createStockedShopLayout,createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createShopLayout,replaceShelfPlacement} from "../../src/game/shopLayout.ts";
 import {rosterBoardAtWall,rosterBoardProblem,replaceRosterBoard,
   DEFAULT_ROSTER_BOARD} from "../../src/game/rosterBoardPlacement.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
-import {createGameState} from "../../src/game/gameState.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 
 test("roster board stays on the old wall by default and can move to the other shop wall",()=>{
@@ -20,7 +20,7 @@ test("roster board stays on the old wall by default and can move to the other sh
     "Mount the board on a clear main-shop wall.");
 });
 test("board side walls do not allow hiding the board behind shelves or in dungeon gates",()=>{
-  const layout=createShopLayout();
+  const layout=createStockedShopLayout();
   assert.equal(rosterBoardProblem(rosterBoardAtWall("right-wall",{x:7.5,z:0})!,layout),
     "The board would be covered by a shelf.");
   assert.equal(rosterBoardProblem(rosterBoardAtWall("right-wall",{x:7.5,z:5})!,layout),null);

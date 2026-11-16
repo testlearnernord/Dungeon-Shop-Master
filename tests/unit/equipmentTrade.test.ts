@@ -1,6 +1,7 @@
+import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState, advanceDay, SIMULATION_VERSION } from "../../src/game/gameState.ts";
+import { advanceDay, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { tradeAtStartOfDay, buyWholesale, transferShelf, ITEMS } from "../../src/game/economy.ts";
 import { simulateDungeon } from "../../src/game/dungeonSimulation.ts";
 import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
@@ -23,7 +24,7 @@ function merchantState(gold: number, stocked: ReadonlyArray<{ itemId: "iron-swor
 
 test("equipment catalog, wholesale and shelf stocking conserve gold and inventory", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 12);
+  assert.equal(SIMULATION_VERSION, 13);
   assert(ITEMS.some(x => x.id === "iron-sword" && x.kind === "weapon"));
   assert(ITEMS.some(x => x.id === "leather-vest" && x.kind === "armor"));
   assert.equal(initial.shopEconomy.bag["iron-sword"], 0);

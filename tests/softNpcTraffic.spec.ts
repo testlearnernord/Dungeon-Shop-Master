@@ -14,7 +14,8 @@ test("same-shelf Day 1 shoppers continue moving and collect goods without a dead
   await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const initial=createGameState(72541);
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const initial=withStockedSmallShelf(createGameState(72541));
     const prepared={...initial,
       adventurers:initial.adventurers.map(person=>person.status==="at-shop"?
         {...person,gold:100,inventory:{...person.inventory,food:0}}:person),

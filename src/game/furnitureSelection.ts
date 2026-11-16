@@ -2,7 +2,7 @@ import type { FurnitureId } from "./furnitureBlueprint.ts";
 import {isShelfId} from "./shopLayout.ts";
 import {furnitureDefinition,type FurnitureKind} from "./furnitureRegistry.ts";
 
-/** All visible built-in furnishings have a stable identity, not a keyboard slot.
+/** All placed furnishings have a stable identity, not a keyboard slot.
  * Persisted positions are resolved from GameState when focused; this module
  * only maps visible mesh identities to movable objects and focus dimensions.
  */
@@ -22,10 +22,6 @@ const bounds=(id:FurnitureKind)=>{
 };
 
 const furniture:readonly LookedAtFurniture[]=[
-  {id:"shelf-1",label:"Left shelf",movableId:"shelf-1",
-    bounds:bounds("shelf-1"),focusY:1.27},
-  {id:"shelf-2",label:"Right shelf",movableId:"shelf-2",
-    bounds:bounds("shelf-2"),focusY:1.27},
   {id:"counter",label:"Checkout counter",movableId:"counter",
     bounds:bounds("counter"),focusY:0.69},
   {id:"adventurer-board",label:"Adventurer board",movableId:"adventurer-board",bounds:bounds("adventurer-board"),focusY:2.17},
@@ -43,22 +39,20 @@ export function classifyFurnitureMesh(name:string):LookedAtFurniture|null {
   const shelfMatch=/^(shelf-[1-9][0-9]*)-(?:slot-|back|plank|root|placement-preview)/.exec(name);
   if(shelfMatch&&isShelfId(shelfMatch[1])){
     const id=shelfMatch[1];
-    if(id==="shelf-1"||id==="shelf-2")
-      return furniture[Number(id.slice(6))-1]??null;
     const {focus,width,height,depth}=furnitureDefinition(id);
     return {id,label:"Shelf "+id.slice(6),movableId:id,
-      bounds:focus??{width,height,depth},focusY:1.27};
+      bounds:focus??{width,height,depth},focusY:0.93};
   }
   if(["checkout-counter","counter-top","register-base","cash-register"].includes(name))
-    return furniture[2];
+    return furniture[0];
   if(name==="adventurer-roster-board"||name.startsWith("roster-frame-"))
-    return furniture[3];
+    return furniture[1];
   if(name==="galvik-bed"||/^bed-(frame|post|headboard|footboard|blanket|quilt|pillow)/.test(name))
-    return furniture[4];
-  if(/^bedroom-account-(book|pages|spine)$/.test(name))return furniture[5];
-  if(name==="bedroom-desk"||name.startsWith("bedroom-desk-leg-"))return furniture[6];
-  if(name==="galvik-bed-chest"||name.startsWith("bed-chest-"))return furniture[7];
+    return furniture[2];
+  if(/^bedroom-account-(book|pages|spine)$/.test(name))return furniture[3];
+  if(name==="bedroom-desk"||name.startsWith("bedroom-desk-leg-"))return furniture[4];
+  if(name==="galvik-bed-chest"||name.startsWith("bed-chest-"))return furniture[5];
   if(name==="bed-candle"||name==="bed-candle-holder"||
-     name==="bed-side-stool"||name==="bed-side-stool-top")return furniture[8];
+     name==="bed-side-stool"||name==="bed-side-stool-top")return furniture[6];
   return null;
 }

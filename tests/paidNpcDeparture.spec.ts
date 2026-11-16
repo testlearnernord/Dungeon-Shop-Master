@@ -5,7 +5,8 @@ test("same-day manual receipts send customers toward the exit, not back to the s
   const heroId=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const initial=createGameState(72541);
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const initial=withStockedSmallShelf(createGameState(72541));
     const hero=initial.adventurers[0];
     const prepared={...initial,
       adventurers:initial.adventurers.map(person=>person.id===hero.id

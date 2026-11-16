@@ -9,7 +9,8 @@ test("visitors use exact projected need/stock/gold and travel toward the real sh
   await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const original=createGameState(7351);
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const original=withStockedSmallShelf(createGameState(7351));
     const prepared={
       ...original,
       adventurers:original.adventurers.map((hero,index)=>

@@ -1,4 +1,5 @@
 import type { AdventurerState } from "./adventurers.ts";
+import {SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 import type { GameState, ShopEconomyState, WorldEvent } from "./gameState.ts";
 
 export const ITEMS = [
@@ -34,29 +35,19 @@ export const ECONOMY = {
  * Newly built shelving is EMPTY, never a source of free merchandise.
  */
 export function createEmptyShelfSlots(shelfId:string):Slot[]{
-  return Array.from({length:5},(_,index)=>({
+  return Array.from({length:SHELF_SLOT_COUNT},(_,index)=>({
     id:`${shelfId}-slot-${index+1}`,shelfId,index,
     itemId:null,quantity:0,capacity:ECONOMY.slotCapacity,
   }));
 }
 
 export function createEconomy(): ShopEconomyState {
-  const slots: Slot[] = [];
-  for (let shelf = 1; shelf <= 2; shelf += 1) {
-    for (let index = 0; index < 5; index += 1) {
-      slots.push({
-        id: `shelf-${shelf}-slot-${index + 1}`, shelfId: `shelf-${shelf}`, index,
-        itemId: shelf === 1 && index === 1 ? "bread" : shelf === 1 && index === 2 ? "healing-herb" : null,
-        quantity: shelf === 1 && index === 1 ? 3 : shelf === 1 && index === 2 ? 2 : 0,
-        capacity: ECONOMY.slotCapacity,
-      });
-    }
-  }
   return {
     balance: ECONOMY.startingGold,
     bag: { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2,
       "iron-sword": 0, "leather-vest": 0 },
-    slots,
+    // Merchandising begins only after the player builds a real shelf.
+    slots:[],
     dailySales: { day: 1, units: 0, revenue: 0 },
   };
 }

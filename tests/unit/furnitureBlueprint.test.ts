@@ -1,7 +1,8 @@
+import {createStockedShopLayout as createShopLayout} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,snapQuarter } from "../../src/game/furnitureBlueprint.ts";
-import { createShopLayout,replaceCounterPlacement,replaceShelfPlacement } from "../../src/game/shopLayout.ts";
+import { replaceCounterPlacement, replaceShelfPlacement } from "../../src/game/shopLayout.ts";
 
 test("raycast mount surfaces identify structural room pieces only",()=>{
   assert.equal(surfaceFromMesh("stone-floor"),"floor");
@@ -15,7 +16,7 @@ test("raycast mount surfaces identify structural room pieces only",()=>{
   assert.equal(surfaceFromMesh("corridor-wall--5.3"),null);
   assert.equal(surfaceFromMesh("shelf-1-plank"),null);
   assert.deepEqual(FURNITURE_CATALOG.map(item=>item.id),
-    ["shelf-1","shelf-2","counter","desk","chest","candle","bed","adventurer-board"]);
+    ["counter","desk","chest","candle","bed","adventurer-board"]);
 });
 
 test("mouse floor projection snaps to quarter-metre grid with retained rotation",()=>{

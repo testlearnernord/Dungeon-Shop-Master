@@ -334,28 +334,6 @@ export function inspectShopPolish() {
 }
 
 /** Test-only world-matrix inspection of the persisted furniture transforms. */
-export function inspectShopPlacement() {
-  const scene=Engine.LastCreatedScene!;
-  const data=(id:"shelf-1"|"shelf-2")=>{
-    const root=scene.getTransformNodeByName(id+"-root");
-    const back=scene.getMeshByName(id+"-back");
-    const slot=scene.getMeshByName(id+"-slot-2");
-    const item=scene.getMeshByName(id+"-slot-2-item-0");
-    root?.computeWorldMatrix(true);
-    back?.computeWorldMatrix(true);
-    slot?.computeWorldMatrix(true);
-    item?.computeWorldMatrix(true);
-    return {
-      root:root?{x:root.position.x,z:root.position.z,rotation:root.rotation.y}:null,
-      back:back?{x:back.getAbsolutePosition().x,z:back.getAbsolutePosition().z}:null,
-      slot:slot?{x:slot.getAbsolutePosition().x,z:slot.getAbsolutePosition().z}:null,
-      item:item?{x:item.getAbsolutePosition().x,z:item.getAbsolutePosition().z}:null,
-      guideEnabled:scene.getMeshByName(id+"-placement-preview")?.isEnabled()??false,
-    };
-  };
-  return {left:data("shelf-1"),right:data("shelf-2")};
-}
-
 /** Read a genuinely instantiated extra shelf from the Babylon scene. */
 export function inspectAdditionalShelf(id:string){
   const scene=Engine.LastCreatedScene!;
@@ -365,19 +343,6 @@ export function inspectAdditionalShelf(id:string){
     mesh.metadata.slotId.startsWith(id+"-slot-"));
   return {x:root?.position.x??null,slotCount:slots.length,
     allPickable:slots.every(mesh=>mesh.isPickable&&mesh.checkCollisions)};
-}
-
-/** Integration probe: physical cashier meshes must follow editor previews and saves. */
-export function inspectCheckoutPlacement() {
-  const scene=Engine.LastCreatedScene!;
-  const read=(name:string)=>{
-    const mesh=scene.getMeshByName(name);
-    mesh?.computeWorldMatrix(true);
-    return mesh?{x:mesh.position.x,z:mesh.position.z,rotation:mesh.rotation.y,
-      collides:mesh.checkCollisions,enabled:mesh.isEnabled()}:null;
-  };
-  return {counter:read("checkout-counter"),top:read("counter-top"),
-    register:read("cash-register"),guide:read("counter-placement-preview")};
 }
 
 /** Browser-friendly scene probe for Galvik's new sleeping room. */
@@ -430,7 +395,7 @@ export function inspectDungeonSurfaces() {
   const textured=(name:string)=>!!(material(name) &&
     "diffuseTexture" in material(name)! && (material(name) as {diffuseTexture?:{isReady():boolean}}).diffuseTexture?.isReady());
   const props=["stone-floor","stone-ceiling","left-wall","right-wall",
-    "checkout-counter","counter-top","shelf-1-back","shelf-2-plank",
+    "checkout-counter","counter-top",
     "bedroom-left-wall","bedroom-flagstone-0","bedroom-door-lintel",
     "bed-frame","bedroom-desk","bedroom-floor-skin"];
   return {
@@ -443,9 +408,10 @@ export function inspectDungeonSurfaces() {
     surfaceCount:props.filter(textured).length,
     requestedCount:props.length,
     sharedWall:material("left-wall")===material("bedroom-left-wall"),
-    sharedTimber:material("shelf-1-back")===material("bed-frame"),
+    sharedTimber:material("checkout-counter")===material("bed-frame"),
     sharedFloor:material("stone-floor")===material("bedroom-floor-skin"),
     semanticShelf:(at("shelf-1-slot-1")?.metadata?.kind as string|undefined),
+    hasPrebuiltShelf:scene.meshes.some(mesh=>/^shelf-\\d+-back$/.test(mesh.name)),
     solidWalls:["left-wall","right-wall","bedroom-left-wall"]
       .every(name=>at(name)?.checkCollisions),
     idleDecor:scene.meshes.filter(m=>m.name.startsWith("bedroom-flagstone-"))

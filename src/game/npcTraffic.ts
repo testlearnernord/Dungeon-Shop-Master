@@ -1,6 +1,6 @@
 import type { Level5Room } from "./level5Room.ts";
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
-import {shelfServicePoint} from "./shopFloorFurniture.ts";
+import {shelfServicePoint} from "./furnitureRegistry.ts";
 import type { GateSide } from "./npcVisitors.ts";
 import * as navigation from "./shopperNavigation.ts";
 import type { ShopPoint } from "./shopperNavigation.ts";
