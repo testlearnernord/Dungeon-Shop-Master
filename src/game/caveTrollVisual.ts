@@ -229,14 +229,14 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     for(const y of [-.7,.7]){
       cylinder("canister-banded-"+side+"-"+y,mountCan,[0,y,0],.43,.16,plated,14);
     }
-    cylinder("canister-vent-dark-"+side,mountCan,[0,-.84,0],.35,.03,mouth,14);
+    cylinder("canister-vent-dark-"+side,mountCan,[0,.84,0],.35,.03,mouth,14);
     for(let a=0;a<7;a++){
       const angle=(a/7)*Math.PI*2;
       sphere("canister-hot-perforation-"+side+"-"+a,mountCan,
-        [Math.cos(angle)*.215,-.868,Math.sin(angle)*.215],
+        [Math.cos(angle)*.215,.868,Math.sin(angle)*.215],
         [.063,.016,.063],ember,8);
     }
-    cylinder("canister-center-hole-"+side,mountCan,[0,-.87,0],.08,.03,ember);
+    cylinder("canister-center-hole-"+side,mountCan,[0,.87,0],.08,.03,ember);
     const anchor=block("canister-buckle-"+side,spine,
       [side*.88,3.07,-.56],[.48,.19,.68],leather);
     anchor.rotation.z=side*.19;
