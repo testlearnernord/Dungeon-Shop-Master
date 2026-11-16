@@ -52,8 +52,8 @@ test("a single buyer can reach and request service at a rotated register",async(
 /** Browser-only crowd test. Deliberately combines relocated furniture, eight
  * simultaneous customer spawns, and limited Waybread stock. This catches
  * actual Babylon movement failures missed by pure route allocation tests. */
-test("eight incoming customers progress around relocated shelves and checkout",async({page})=>{
-  test.setTimeout(110000);
+test("eight incoming customers progress, settle their carts at bed-close and reload without duplicate sales",async({page})=>{
+  test.setTimeout(150000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
@@ -174,6 +174,54 @@ test("eight incoming customers progress around relocated shelves and checkout",a
   }
   expect(final.visitors.every(visitor=>visitor.wallClear)).toBe(true);
   expect(final.visitors.some(visitor=>(visitor.cartUnits??0)>0)).toBe(true);
+
+  // Continue this SAME actual crowded browser session through the player's
+  // bed interaction, the economic day tick, the visible ledger and reload.
+  // A stock reservation must become exactly one booked sale, never an
+  // orphaned cart or a second sale after the ledger is restored.
+  const snapshot=()=>page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    if(!state)throw Error("No campaign save found");
+    return {day:state.day,balance:state.shopEconomy.balance,
+      carts:state.shopCarts.map(cart=>({
+        id:cart.heroId,units:cart.lines.reduce((sum,line)=>sum+line.quantity,0),
+      })).filter(cart=>cart.units>0),
+      sales:state.events.filter(event=>event.type==="sale")
+        .map(event=>({id:event.id,day:event.day,hero:event.adventurerId})),
+      stocks:state.shopEconomy.slots.map(slot=>slot.quantity)};
+  });
+  await expect.poll(async()=> (await snapshot()).carts.length,{
+    timeout:12000,intervals:[250,500,900],
+  }).toBeGreaterThan(0);
+  const beforeClose=await snapshot();
+  expect(beforeClose.day).toBe(1);
+  await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtBed());
+  await expect(page.locator("#sleep-bed-prompt")).toBeVisible();
+  await page.keyboard.down("e");
+  await expect(page.locator("#merchant-ledger")).toBeVisible({timeout:12000});
+  await page.keyboard.up("e");
+  await expect(page.locator("#day")).toHaveText("Day 2");
+  const afterClose=await snapshot();
+  expect(afterClose.day).toBe(2);
+  expect(afterClose.carts).toEqual([]);
+  expect(afterClose.balance).toBeGreaterThan(beforeClose.balance);
+  expect(afterClose.stocks.every(stock=>stock>=0)).toBe(true);
+  const receipts=afterClose.sales.filter(sale=>sale.day===2);
+  for(const cart of beforeClose.carts){
+    expect(receipts.filter(sale=>sale.hero===cart.id).length,
+      "an actual held cart must settle into exactly one daily receipt").toBe(1);
+  }
+  expect(new Set(afterClose.sales.map(sale=>sale.id)).size)
+    .toBe(afterClose.sales.length);
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 2");
+  await expect(page.locator("#merchant-ledger")).toBeVisible();
+  const reloaded=await snapshot();
+  expect(reloaded.carts).toEqual([]);
+  expect(reloaded.sales).toEqual(afterClose.sales);
+  expect(reloaded.balance).toBe(afterClose.balance);
   expect(errors).toEqual([]);
 });
 
