@@ -24,6 +24,7 @@ import { isObstructed, pathToShopGoal, shopSegmentClear, type ShopperRoute, type
 import { ShopServiceSpots } from "./shopServiceSpots.ts";
 
 import {npcLocomotion,easedNpcWalkSpeed,turnNpcToward} from "./npcLocomotion.ts";
+import {npcShopPose,type ConfirmedVisualAction} from "./npcShopGestures.ts";
 import {getCounterPlacement} from "./shopLayout.ts";
 
 import type { ShopLayout } from "./shopLayout.ts";
@@ -53,6 +54,10 @@ interface NpcVisual {
   animationTime: number;
   /** Presentation-only current walking speed: never saved or used by sales. */
   walkSpeed:number;
+  /** Ephemeral motion-only action cues. Actual pickups/payments remain in GameStore. */
+  confirmedAction:ConfirmedVisualAction;
+  confirmedSeconds:number;
+  performanceTime:number;
   blockedSeconds:number;
   routeProgress:WaypointProgress|null;
   trafficReroutes:number;
@@ -184,7 +189,8 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
 
   const visual: NpcVisual = {
     root, arms, legs, torso, model, visitor, phase: "entering", route: [], waypoint: 0, slot,
-    elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, walkSpeed:0, blockedSeconds:0, routeProgress:null, trafficReroutes:0, idleYieldCooldown:0,
+    elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, walkSpeed:0, confirmedAction:null,confirmedSeconds:0,
+    performanceTime:slot*.37, blockedSeconds:0, routeProgress:null, trafficReroutes:0, idleYieldCooldown:0,
     gateSide: visitor.entranceGate ?? "level4",
     restockSeconds:null,requestActive:false,roamLeg:0,
     wishItem:null,wishBubble:null,
@@ -547,6 +553,11 @@ export class NpcVisualSystem {
       tag.material = saleMaterial;
       npc.saleTag = tag;
       npc.saleSeconds = 8;
+      // A payment gesture is triggered by an already confirmed sale receipt.
+      npc.confirmedAction="paid";
+      npc.confirmedSeconds=.95;
+      npc.root.metadata.confirmedPayments=
+        Number(npc.root.metadata.confirmedPayments??0)+1;
       npc.root.metadata.lastSaleGold = purchase.gold;
     }
   }
@@ -722,8 +733,14 @@ export class NpcVisualSystem {
           if(!item&&checkoutQueueIndex(this.carts,npc.visitor.id)<0){
             this.leaveUnserved(npc);
           }else if(item&&this.onPickUp?.(npc.visitor.id,item.slotId)){
-            // Store notifications synchronously update cart meshes and route
-            // planning. Do not overwrite their fresh phase metadata here.
+            // Only a successful authoritative stock reservation starts the
+            // reaching animation. Failed attempts never fabricate a pickup.
+            // The store may synchronously replan the NPC, so don't overwrite
+            // the new route or shopping phase after this callback.
+            npc.confirmedAction="pickup";
+            npc.confirmedSeconds=1.15;
+            npc.root.metadata.confirmedPickups=
+              Number(npc.root.metadata.confirmedPickups??0)+1;
           }else{
             npc.targetIndex++;
             this.beginBrowsing(npc);
@@ -1346,27 +1363,69 @@ export class NpcVisualSystem {
     const motion=npcLocomotion(beforeMove,{
       x:npc.root.position.x,z:npc.root.position.z,
     },delta,WALK_SPEED);
-    // An unmoving buyer looks toward the actual counter instead of freezing
-    // at the heading of the last path waypoint. No locomotion/queue mutation.
-    if(!motion.moving&&npc.phase==="queueing"&&
-       npc.root.metadata.shoppingPhase==="awaiting-checkout"&&this.layout){
+    const shoppingPhase=String(npc.root.metadata.shoppingPhase??"");
+    const conversing=npc.visitor.id===this.engagedBeggarId;
+    // While inspecting an actual shelf slot, face the merchandise. During
+    // an E-dialog face the player; neither rotation modifies movement goals.
+    let lookAt:{x:number;z:number}|null=null;
+    if(conversing){
+      const camera=this.scene.activeCamera?.globalPosition;
+      if(camera)lookAt={x:camera.x,z:camera.z};
+    }else if(!motion.moving&&npc.phase==="considering"&&
+      shoppingPhase==="considering-item"&&this.shop){
+      const slotId=npc.intent?.items[npc.targetIndex]?.slotId;
+      const mesh=slotId?[...this.shop.slotMeshes.keys()]
+        .find(entry=>entry.name===slotId):undefined;
+      if(mesh){
+        const world=mesh.getAbsolutePosition();
+        lookAt={x:world.x,z:world.z};
+      }
+    }else if(!motion.moving&&npc.phase==="queueing"&&
+      shoppingPhase==="awaiting-checkout"&&this.layout){
       const till=getCounterPlacement(this.layout);
-      const dx=till.x-npc.root.position.x,dz=till.z-npc.root.position.z;
+      lookAt={x:till.x,z:till.z};
+    }
+    if(lookAt){
+      const dx=lookAt.x-npc.root.position.x;
+      const dz=lookAt.z-npc.root.position.z;
       if(Math.hypot(dx,dz)>.5){
         npc.root.rotation.y=turnNpcToward(npc.root.rotation.y,
-          Math.atan2(dx,dz),delta,3.2);
+          Math.atan2(dx,dz),delta,conversing?4:3.2);
       }
     }
-    // Animation follows real displacement, not state-machine intent. A
-    // stopped visitor settles naturally; their legs do not treadmill in place.
+    // Leg cycles reflect physical displacement, even during queue changes.
     npc.animationTime+=delta*(motion.moving?motion.strideScale:0.3);
+    npc.performanceTime+=delta;
+    npc.confirmedSeconds=Math.max(0,npc.confirmedSeconds-delta);
+    if(npc.confirmedSeconds===0)npc.confirmedAction=null;
+    const pose=npcShopPose({
+      phase:npc.phase,shoppingPhase,moving:motion.moving,
+      time:npc.performanceTime,slot:npc.slot,
+      carrying:npc.heldLines.length>0,
+      confirmedAction:npc.confirmedAction,
+      confirmedSeconds:npc.confirmedSeconds,conversing,
+    });
     const swing=motion.moving
       ?Math.sin(npc.animationTime*8)*0.65
       :Math.sin(npc.animationTime*2)*0.035;
     npc.legs[0].rotation.x=swing;
     npc.legs[1].rotation.x=-swing;
-    npc.arms[0].rotation.x=-swing*0.7;
-    npc.arms[1].rotation.x=swing*0.7;
+    // Blend limb targets rather than popping from the walk cycle to a
+    // request, inspection, pickup or confirmed-payment gesture.
+    const weight=1-Math.exp(-delta*9);
+    const blend=(current:number,target:number)=>
+      current+(target-current)*weight;
+    npc.arms[0].rotation.x=blend(npc.arms[0].rotation.x,
+      -swing*.7+pose.leftArm);
+    npc.arms[1].rotation.x=blend(npc.arms[1].rotation.x,
+      swing*.7+pose.rightArm);
+    npc.model.headPivot.rotation.x=blend(npc.model.headPivot.rotation.x,
+      pose.headPitch);
+    npc.model.headPivot.rotation.y=blend(npc.model.headPivot.rotation.y,
+      pose.headYaw);
+    npc.model.headPivot.rotation.z=blend(npc.model.headPivot.rotation.z,
+      pose.headRoll);
+    npc.torso.rotation.x=blend(npc.torso.rotation.x,pose.torsoLean);
     npc.torso.position.y=1.14+Math.sin(npc.animationTime*2)*
       (motion.moving?0.025:0.01);
     npc.torso.rotation.z=motion.moving?0:
@@ -1374,6 +1433,7 @@ export class NpcVisualSystem {
     npc.root.position.y=0.6*Math.cos(swing)-0.6;
     npc.root.metadata.animatingWalk=motion.moving;
     npc.root.metadata.actualSpeed=Math.round(motion.speed*100)/100;
+    npc.root.metadata.shopGesture=pose.gesture;
   }
 
   private dispose(npc: NpcVisual): void {
