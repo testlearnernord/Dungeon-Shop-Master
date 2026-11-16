@@ -1399,7 +1399,8 @@ export class NpcVisualSystem {
     npc.confirmedSeconds=Math.max(0,npc.confirmedSeconds-delta);
     if(npc.confirmedSeconds===0)npc.confirmedAction=null;
     const pose=npcShopPose({
-      phase:npc.phase,shoppingPhase,moving:motion.moving,
+      phase:npc.phase,shoppingPhase,reason:npc.intent?.reason??"no-need",
+      moving:motion.moving,
       time:npc.performanceTime,slot:npc.slot,
       carrying:npc.heldLines.length>0,
       confirmedAction:npc.confirmedAction,
