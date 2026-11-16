@@ -138,6 +138,20 @@ test("eight incoming customers progress around relocated shelves and checkout",a
     console.error("NPC_TRAFFIC_FAILURE",JSON.stringify(trafficSamples));
     throw error;
   }
+  // Verify actual animated limb transforms in the live Babylon scene.
+  // A request phase label by itself is not an interaction animation.
+  await expect.poll(async()=>{
+    const {visitors}=await read();
+    return visitors.some(v=>
+      (v.shopGesture==="restock"&&v.rightArmPitch>.12)||
+      (v.shopGesture==="credit"&&v.leftArmPitch>.12));
+  },{timeout:30000,intervals:[300,600,1000]}).toBe(true);
+  // The handoff animation is only triggered by a successful GameStore
+  // stock reservation, never by a buyer simply walking toward a shelf.
+  await expect.poll(async()=>{
+    const {visitors}=await read();
+    return visitors.some(v=>(v.confirmedPickups??0)>0);
+  },{timeout:75000,intervals:[500,1000,1600]}).toBe(true);
   await expect.poll(async()=>{
     const {visitors}=await read();
     return visitors.filter(visitor=>(visitor.cartUnits??0)>0 ||
