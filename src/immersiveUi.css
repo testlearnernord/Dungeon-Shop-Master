@@ -478,6 +478,35 @@
   background:rgba(20,25,27,.56);border-color:rgba(220,181,109,.25);font-size:10px
 }
 .npc-wish-bubble.is-angry{background:rgba(53,22,23,.88);border-color:#d87f69}
+
+/* One short, world-anchored customer line at a time. It never intercepts
+ * the shelf/cashier ray, obscures a request icon or opens a dialogue.
+ * Static presentation intentionally respects reduced-motion preferences. */
+.npc-customer-bark{
+  position:fixed;top:0;left:0;z-index:14;
+  display:flex;flex-direction:column;gap:3px;
+  width:max-content;max-width:min(230px,70vw);padding:7px 11px;
+  border:1px solid rgba(220,183,129,.52);border-radius:11px;
+  background:rgba(17,22,24,.89);
+  color:#f8ead0;text-shadow:0 1px 3px #000b;
+  box-shadow:0 8px 22px #0008;pointer-events:none;
+  font:500 12px/1.35 system-ui,sans-serif;
+  text-align:left;overflow-wrap:break-word;
+}
+.npc-customer-bark[hidden]{display:none!important}
+.npc-customer-bark strong{
+  color:#dcb980;font-size:10px;line-height:1.2;font-weight:750;
+  letter-spacing:.02em;
+}
+.npc-customer-bark span{font-size:12px;line-height:1.4}
+.npc-customer-bark::after{
+  content:"";position:absolute;bottom:-7px;left:calc(50% - 6px);
+  width:12px;height:12px;transform:rotate(45deg);
+  border-right:1px solid rgba(220,183,129,.52);
+  border-bottom:1px solid rgba(220,183,129,.52);
+  background:rgba(17,22,24,.89);
+}
+
 #arena-hud .arena-toolbar,#arena-hud .arena-bottom,
 #dungeon-hud .dungeon-toolbar,#dungeon-hud .dungeon-bottom,
 #dungeon-hud .dungeon-minimap-panel{

@@ -1,9 +1,9 @@
 # Dungeon Shop Master — Next Development Pass
 
 > **Working roadmap, reviewed 2026-11-16.** This is a prioritized,
-> owner-accepted direction. **PR #153 (cashier) and #154 (physical
-> merchandise assets) are already merged.** Further package numbers are
-> not reserved: GitHub numbers do not match this conceptual roadmap.
+> owner-accepted direction. **PR #153 (cashier), #154 (physical
+> merchandise), #155 (runtime GLB loading) and #156 (restocking) are merged.**
+> Future package numbers are not reserved; GitHub numbers are authoritative.
 > This is **not** a list of completed gameplay changes or final approval
 > of every design detail. Inspect `main`, open PRs and CI before starting.
 
@@ -52,7 +52,7 @@ or unnecessary pointer-lock roundtrips. Human playtest judges pacing.
 
 ## Feature work package 2: Stocking ergonomics
 
-**Delivery status:** Implemented on the feature branch pending CI and review: Shift+click fills/clears the aimed slot atomically using existing transfer rules, normal clicks remain single-unit and held clicks never spill into adjacent slots. Existing hand motion and SFX are reused.
+**Delivery status:** Shipped in merged PR #156. Shift+click fills/clears the aimed slot atomically through existing transfer rules; ordinary clicks remain single-unit and held clicks cannot spill into adjacent slots. Existing hand animation and SFX are reused.
 
 **Player goal:** Respond to restock pressure quickly while still
 physically operating the shelves.
@@ -74,6 +74,8 @@ disagree. Include actual shelf-ray and mixed-customer browser regression.
 
 ## Feature work package 3: Distinct short customer reactions
 
+**Delivery status:** Implemented on the current feature branch pending verification. Short, deterministic world-anchored reactions follow only observed pickup, manual payment, restock/credit petition, verified credit issue and walkout. One voice appears at a time; production game state never changes merely to display a line.
+
 **Player goal:** Recognizable, darkly funny customers rather than bots
 without halting the shop loop for dialogue.
 
@@ -91,7 +93,7 @@ without halting the shop loop for dialogue.
 **Acceptance:** Repeatable, correct reactions under load; barks never
 change purchases, pathfinding, request timers or deterministic outcomes.
 
-## Feature work package 4 (tentatively PR #156): Shop → dungeon consequence feedback
+## Feature work package 4: Shop → dungeon consequence feedback
 
 **Player goal:** Care what happens to customers **after** their purchase.
 
@@ -110,7 +112,7 @@ change purchases, pathfinding, request timers or deterministic outcomes.
 replay/reload yield exactly the same economy and hero outcome; the
 narrative UI communicates cause and uncertainty honestly.
 
-## Feature work package 5 (tentatively PR #157): First ten-day playability and balance
+## Feature work package 5: First ten-day playability and balance
 
 **Player goal:** Ten days of coherent decisions, progress and tension
 rather than a technically correct but repetitive loop.

@@ -38,6 +38,20 @@ export function aimAtBeggingVisitor(heroId:string):void {
   camera.cameraRotation.setAll(0);
 }
 
+/** Center the *overhead* customer-bark position in a genuine FPS camera.
+ * Normal credit conversations use the separate lower torso aim helper. */
+export function aimAtCustomerBark(heroId:string):void {
+  const scene=Engine.LastCreatedScene!;
+  const node=scene.transformNodes.find(candidate=>
+    candidate.metadata?.adventurerId===heroId);
+  if(!node)throw new Error("Cannot find customer for speech-bubble camera.");
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(node.position.x+2.6,1.7,node.position.z+2.8);
+  camera.setTarget(new Vector3(node.position.x,node.position.y+3.25,node.position.z));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
 /** Select the actual cash register using the FPS crosshair before P. */
 export function aimAtFurniture(name:string,distance=3.2):void {
   const scene=Engine.LastCreatedScene!;

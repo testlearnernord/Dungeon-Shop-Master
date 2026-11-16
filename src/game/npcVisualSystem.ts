@@ -14,7 +14,11 @@ import {portraitSourceRect} from "./portraitAtlas.ts";
 import {goldIconUrl} from "../uiIcons.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
 import { RESTOCK_WAIT_SECONDS, restockWaitRemaining, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
-import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble, type NpcWishBubble } from "./npcWishBubble.ts";
+import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble,
+  createNpcCustomerBubble, positionNpcBubble,
+  type NpcWishBubble, type NpcCustomerBubble } from "./npcWishBubble.ts";
+import {customerBark, customerBarkPriority,
+  type CustomerBarkKind} from "./npcCustomerBarks.ts";
 import type { ItemId } from "./economy.ts";
 import type {LiveServiceRequest} from "./shopServiceFocus.ts";
 import { ITEMS } from "./economy.ts";
@@ -70,11 +74,22 @@ interface NpcVisual {
   roamLeg:number;
   wishItem:ItemId|null;
   wishBubble:NpcWishBubble|null;
+  /** Short lines already delivered this visit. Not saved to the campaign. */
+  barkedEvents:Set<string>;
   gateSide: GateSide;
   readonly labelTexture: DynamicTexture;
   readonly labelMesh: Mesh;
   saleTag: Mesh | null;
   saleSeconds: number;
+}
+
+/** One bounded on-screen customer voice, not a second shopper behavior tree. */
+interface PendingCustomerBark {
+  readonly heroId:string;
+  readonly kind:CustomerBarkKind;
+  readonly message:string;
+  readonly priority:number;
+  readonly expiresAt:number;
 }
 
 const WALK_SPEED = 2.1;
@@ -194,7 +209,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
     performanceTime:slot*.37, blockedSeconds:0, routeProgress:null, trafficReroutes:0, idleYieldCooldown:0,
     gateSide: visitor.entranceGate ?? "level4",
     restockSeconds:null,requestActive:false,roamLeg:0,
-    wishItem:null,wishBubble:null,
+    wishItem:null,wishBubble:null,barkedEvents:new Set(),
     intent:null,intentKey:"",targetIndex:0,toQueue:false,
     heldLines:[],heldMeshes:[],heldKey:"",
     labelTexture: texture, labelMesh: label,
@@ -227,6 +242,10 @@ export class NpcVisualSystem {
   private paidThisDay:ReadonlySet<string>=new Set();
   private wishBubblesVisible=true;
   private engagedBeggarId:string|null=null;
+  private readonly customerBubble:NpcCustomerBubble;
+  private readonly customerBarkQueue:PendingCustomerBark[]=[];
+  private activeCustomerBark:{entry:PendingCustomerBark;until:number}|null=null;
+  private nextCustomerBarkAt=0;
 
   /** An E-dialog is an actual customer conversation. Keep that customer
    * present, looking at Galvik, and do not expire their request mid-dialog. */
@@ -235,6 +254,7 @@ export class NpcVisualSystem {
   }
 
   constructor(private readonly scene: Scene) {
+    this.customerBubble=createNpcCustomerBubble();
     this.portraits.addEventListener("load", () => {
       for (const npc of this.npcs.values()) paintIdentity(npc, this.portraits);
     });
@@ -328,6 +348,7 @@ export class NpcVisualSystem {
     onWalkout?:((heroId:string,reason:ShoppingIntent["reason"])=>void),
     room?:Level5Room,
   ):void {
+    const hadProjection=this.layout!==null;
     const furnitureMoved=this.layout!==null&&(
       JSON.stringify(this.room)!==JSON.stringify(room)||
       JSON.stringify(this.layout.counter)!==JSON.stringify(layout.counter)||
@@ -339,6 +360,8 @@ export class NpcVisualSystem {
     this.onPickUp=onPickUp;
     this.onWalkout=onWalkout??null;
     this.carts=carts;
+    const priorPaid=this.paidThisDay;
+    const wasInitialized=hadProjection;
     this.paidThisDay=paidHeroIds;
     const roomSignature=JSON.stringify(room??null);
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
@@ -348,6 +371,8 @@ export class NpcVisualSystem {
       // Manual payment is committed before the Day Tick, so status stays
       // at-shop for simulation but the customer must physically exit NOW.
       const manuallyPaid=paidHeroIds.has(npc.visitor.id);
+      if(wasInitialized&&manuallyPaid&&!priorPaid.has(npc.visitor.id))
+        this.queueCustomerBark(npc,"paid");
       const isShopping=!shouldLeaveShopVisual(npc.visitor.status)&&!manuallyPaid;
       const held=isShopping?(cartByHero.get(npc.visitor.id)?.lines??[]):[];
       const changed=this.syncCarriedProducts(npc,held);
@@ -389,9 +414,74 @@ export class NpcVisualSystem {
   /** The 3D shop is paused during boss/dungeon observation. Hide DOM-based
    * request bubbles while another Babylon scene occupies the viewport. */
   setWishBubblesVisible(visible:boolean):void {
+    if(this.wishBubblesVisible===visible)return;
     this.wishBubblesVisible=visible;
-    if(!visible)for(const npc of this.npcs.values())
-      if(npc.wishBubble)npc.wishBubble.root.hidden=true;
+    if(!visible){
+      for(const npc of this.npcs.values())
+        if(npc.wishBubble)npc.wishBubble.root.hidden=true;
+      this.customerBubble.root.hidden=true;
+      this.customerBarkQueue.length=0;
+      this.activeCustomerBark=null;
+    }
+  }
+
+  /** Event-driven and cosmetic only. Bound per hero/visit, with no RNG, save
+   * writes, route changes or automatic shop actions. */
+  private queueCustomerBark(
+    npc:NpcVisual,kind:CustomerBarkKind,itemId:ItemId|null=null,
+  ):void {
+    const key=kind+":"+(itemId??"");
+    if(npc.barkedEvents.has(key))return;
+    npc.barkedEvents.add(key);
+    const entry:PendingCustomerBark={
+      heroId:npc.visitor.id,kind,
+      message:customerBark({heroId:npc.visitor.id,role:npc.visitor.role,
+        gold:npc.visitor.gold,itemId,kind}),
+      priority:customerBarkPriority(kind),
+      expiresAt:performance.now()+14000,
+    };
+    this.customerBarkQueue.push(entry);
+    this.customerBarkQueue.sort((a,b)=>b.priority-a.priority);
+    // A crowded shop must not queue a wall of stale dialogue.
+    if(this.customerBarkQueue.length>12)this.customerBarkQueue.length=12;
+  }
+
+  private showNextCustomerBark():void {
+    const bubble=this.customerBubble;
+    if(!this.wishBubblesVisible||document.querySelector("dialog[open]")){
+      bubble.root.hidden=true;return;
+    }
+    const now=performance.now();
+    if(this.activeCustomerBark){
+      const {entry,until}=this.activeCustomerBark;
+      const npc=this.npcs.get(entry.heroId);
+      if(npc&&now<until){
+        positionNpcBubble(bubble.root,this.scene,npc.root.position,3.65);
+        return;
+      }
+      this.activeCustomerBark=null;
+      this.nextCustomerBarkAt=now+1600;
+    }
+    bubble.root.hidden=true;
+    if(now<this.nextCustomerBarkAt)return;
+    const camera=this.scene.activeCamera?.globalPosition;
+    if(!camera)return;
+    for(let index=0;index<this.customerBarkQueue.length;index++){
+      const entry=this.customerBarkQueue[index]!;
+      const npc=this.npcs.get(entry.heroId);
+      if(!npc||entry.expiresAt<now){
+        this.customerBarkQueue.splice(index--,1);continue;
+      }
+      if(Vector3.Distance(camera,npc.root.getAbsolutePosition())>9)continue;
+      bubble.speaker.textContent=npc.visitor.displayName??npc.visitor.name;
+      bubble.line.textContent=entry.message;
+      bubble.root.dataset.kind=entry.kind;
+      if(!positionNpcBubble(bubble.root,this.scene,npc.root.position,3.65))
+        continue;
+      this.customerBarkQueue.splice(index,1);
+      this.activeCustomerBark={entry,until:now+2600};
+      return;
+    }
   }
 
   /** Read-only traffic snapshot for the opt-in F9 diagnostic panel.
@@ -459,6 +549,7 @@ export class NpcVisualSystem {
   departWithCredit(heroId:string):void {
     const npc=this.npcs.get(heroId);
     if(!npc)return;
+    this.queueCustomerBark(npc,"credit-granted",npc.wishItem);
     this.clearWish(npc);
     this.beginLeaving(npc);
     npc.root.metadata.shoppingPhase="leaving-with-credit";
@@ -466,8 +557,10 @@ export class NpcVisualSystem {
 
   dismissBeggar(heroId:string):void {
     const npc=this.npcs.get(heroId);
-    if(npc?.intent?.reason==="cannot-afford"&&npc.phase!=="leaving")
+    if(npc?.intent?.reason==="cannot-afford"&&npc.phase!=="leaving"){
+      this.queueCustomerBark(npc,"refused",npc.wishItem);
       this.leaveUnserved(npc);
+    }
   }
 
   /** Real active stockout and credit requests for the small player HUD.
@@ -759,6 +852,7 @@ export class NpcVisualSystem {
             npc.confirmedSeconds=1.15;
             npc.root.metadata.confirmedPickups=
               Number(npc.root.metadata.confirmedPickups??0)+1;
+            this.queueCustomerBark(npc,"pickup",item.itemId);
           }else{
             npc.targetIndex++;
             this.beginBrowsing(npc);
@@ -795,6 +889,7 @@ export class NpcVisualSystem {
       this.doorY[gate] += Math.sign(target - y) * Math.min(Math.abs(target - y), delta * 4);
       if (this.doors[gate]) this.doors[gate]!.position.y = this.doorY[gate];
     }
+    this.showNextCustomerBark();
   };
 
   private releaseShelf(npc:NpcVisual):void{
@@ -875,10 +970,13 @@ export class NpcVisualSystem {
   /** Each unsatisfied customer owns a single, world-anchored request bubble.
    * Its SVG symbol matches the stocking hotbar and wholesale UI. */
   private showWish(npc:NpcVisual,itemId:ItemId,begging=false):void {
+    const fresh=npc.wishItem!==itemId||
+      !npc.wishBubble||npc.wishBubble.root.classList.contains("is-begging")!==begging;
     if(!npc.wishBubble)npc.wishBubble=createNpcWishBubble(itemId);
     setNpcWishItem(npc.wishBubble,itemId,begging);
     npc.wishItem=itemId;
     npc.root.metadata.wantedItemId=itemId;
+    if(fresh)this.queueCustomerBark(npc,begging?"credit-request":"restock",itemId);
   }
 
   private clearWish(npc:NpcVisual):void {
@@ -895,6 +993,8 @@ export class NpcVisualSystem {
   private leaveUnserved(npc:NpcVisual):void {
     const reason=npc.intent?.reason??"no-need";
     const upset=reason==="unavailable";
+    if(upset)this.queueCustomerBark(npc,"unserved",npc.wishItem);
+    if(reason==="no-need")this.queueCustomerBark(npc,"no-need");
     // Preserve an angry visual bubble during the walk out. Only a real,
     // guarded GameStore transition makes the visitor ineligible for future
     // same-day / next-day automatic sales.
@@ -1456,6 +1556,13 @@ export class NpcVisualSystem {
   }
 
   private dispose(npc: NpcVisual): void {
+    for(let i=this.customerBarkQueue.length-1;i>=0;i--)
+      if(this.customerBarkQueue[i]?.heroId===npc.visitor.id)
+        this.customerBarkQueue.splice(i,1);
+    if(this.activeCustomerBark?.entry.heroId===npc.visitor.id){
+      this.activeCustomerBark=null;
+      this.customerBubble.root.hidden=true;
+    }
     this.releaseShelf(npc);
     this.clearWish(npc);
     this.clearSaleTag(npc);
