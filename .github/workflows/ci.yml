@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -17,29 +17,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      # One-shot generator: commit the already-authored GLB models to the PR branch.
-      # Remove this step and restore read-only permissions once the six files land.
-      - name: Import six authored GLB shop models
-        if: github.head_ref == 'feat/physical-3d-shop-stock' && github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          if [ -f public/assets/models/healing-herb.glb ] && [ -f public/assets/models/leather-vest.glb ]; then
-            echo "Six GLB models already committed to the PR."
-            exit 0
-          fi
-          python3 -m venv /tmp/dsm-asset-venv
-          /tmp/dsm-asset-venv/bin/pip install -q numpy==2.3.5 scipy==1.17.0 trimesh==4.11.1
-          /tmp/dsm-asset-venv/bin/python tools/asset_generation/build_models.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/assets/models/*.glb
-          git commit -m "assets: commit six generated GLB merchandise models"
-          git push origin HEAD:refs/heads/feat/physical-3d-shop-stock
       - run: npm ci
       - run: npm run build
       - run: npm run test:unit
