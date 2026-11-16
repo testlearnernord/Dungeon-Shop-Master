@@ -34,7 +34,8 @@ import { setupSoundtrack } from "./soundtrack";
 import { setupCashierHud } from "./cashierHud.ts";
 import { setupBeggarHud } from "./beggarHud.ts";
 import { setupDebtBookHud } from "./debtBookHud.ts";
-import { setupShopStatusToggle,setupControlsHotbarClearance,setupTransientStatus } from "./shopHudLayout";
+import { setupShopStatusToggle,setupControlsHotbarClearance,
+  setupTransientStatus,setupShopServiceBrief } from "./shopHudLayout";
 import { setupAdventurerOverview } from "./adventurerOverview";
 import { setupHudMouseMode } from "./hudMouseMode";
 import { setupInterfaceIcons,watchInterfaceDialogs,uiIcon } from "./uiIcons.ts";
@@ -218,6 +219,8 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   () => beggarHud?.openNearest()??false,
   debtBook.open,store,action=>merchantActions.play(action));
 setupControlsHotbarClearance();
+setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),
+  itemId=>interactions.selectItem(itemId));
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
 const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
