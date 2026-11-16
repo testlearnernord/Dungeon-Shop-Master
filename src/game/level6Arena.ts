@@ -21,6 +21,7 @@ import { observeReplay } from "../replayDisclosure.ts";
 import type { GameStore } from "./gameStore.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import { createHeroVisual } from "./heroVisual.ts";
+import { createCaveTrollVisual, type CaveTrollVisual } from "./caveTrollVisual.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -51,14 +52,13 @@ export class Level6Arena {
   private motionAccumulator = 0;
   private heroArm: TransformNode | null = null;
   private heroWeapon: TransformNode | null = null;
-  private trollLegs: TransformNode[] = [];
+  private trollVisual: CaveTrollVisual | null = null;
   private projectiles: AbstractMesh[] = [];
   private telegraph: AbstractMesh | null = null;
   private slamTelegraph: AbstractMesh | null = null;
   private readonly staminaText: HTMLElement;
   private readonly combatInfo: HTMLElement;
   private result: "fighting" | "victory" | "defeat" = "fighting";
-  private swing: TransformNode | null = null;
   private heroLegs: TransformNode[] = [];
   private readonly panel: HTMLElement;
   private readonly status: HTMLElement;
@@ -180,6 +180,7 @@ export class Level6Arena {
     this.slamTelegraph = null;
     this.heroArm = null;
     this.heroWeapon = null;
+    this.trollVisual = null;
     this.shopCamera.attachControl(this.canvas, true);
     this.canvas.focus();
   }
@@ -188,7 +189,7 @@ export class Level6Arena {
     if (!this.active) return;
     this.scene?.dispose();
     this.heroLegs = [];
-    this.trollLegs = [];
+    this.trollVisual = null;
     this.targets = [];
     this.projectiles = [];
     this.telegraph = null;
@@ -248,6 +249,12 @@ export class Level6Arena {
     lavaLight.diffuse = new Color3(1, 0.29, 0.06);
     lavaLight.intensity = 2.5;
     lavaLight.range = 38;
+    const warmRim = new PointLight("troll-ember-rim",new Vector3(-7,10,7),scene);
+    warmRim.diffuse = Color3.FromHexString("#f08b54");
+    warmRim.intensity = 1.25; warmRim.range=23;
+    const faceFill = new PointLight("troll-face-fill",new Vector3(5,8,-10),scene);
+    faceFill.diffuse=Color3.FromHexString("#95a5bc");
+    faceFill.intensity=.65; faceFill.range=28;
     const makeMat = (name: string, hex: string, emissive = false): StandardMaterial => {
       const mat = new StandardMaterial(name, scene);
       mat.diffuseColor = Color3.FromHexString(hex);
@@ -257,12 +264,8 @@ export class Level6Arena {
     };
     const stone = makeMat("basalt", "#29282a");
     const darkRock = makeMat("cave-rock", "#1b2024");
-    const lava = makeMat("molten-lava", "#db390b", true);
-    const fire = makeMat("lava-fire", "#fc8b18", true);
-    const bone = makeMat("troll-bone", "#ae9e82");
-    const trollSkin = makeMat("troll-skin", "#59694c");
-    const trollDark = makeMat("troll-dark", "#343c36");
-    const clubWood = makeMat("club", "#554333");
+    const lava = makeMat("molten-lava", "#81321a", true);
+    const fire = makeMat("lava-fire", "#cb6525", true);
     const visibleRole = this.replay?.role ?? this.fighter?.role;
     const visibleSword = this.replay?.sword ?? (this.fighter?.equipment.weapon === "Iron Sword");
     const visibleArmor = this.replay?.armor ?? (this.fighter?.equipment.armor === "Leather Vest");
@@ -302,48 +305,17 @@ export class Level6Arena {
       shard.rotation.y = a;
       shard.material = fire;
     }
-    const part = (root: TransformNode, name: string, kind: "box" | "sphere" | "cylinder",
-      dimensions: { width?: number; height?: number; depth?: number; diameter?: number },
-      xyz: [number, number, number], material: StandardMaterial): TransformNode => {
-      const mesh = kind === "box" ? MeshBuilder.CreateBox(name, {
-        width: dimensions.width ?? 1, height: dimensions.height ?? 1, depth: dimensions.depth ?? 1,
-      }, scene) : kind === "sphere" ? MeshBuilder.CreateSphere(name, {
-        diameter: dimensions.diameter ?? 1,
-      }, scene) : MeshBuilder.CreateCylinder(name, {
-        diameter: dimensions.diameter ?? 1, height: dimensions.height ?? 1, tessellation: 10,
-      }, scene);
-      mesh.parent = root;
-      mesh.position.set(...xyz);
-      mesh.material = material;
-      mesh.isPickable = false;
-      return mesh;
-    };
-    const boss = new TransformNode("arena-boss-troll", scene);
-    boss.position.set(0, 0, 2);
-    boss.metadata = { kind: "boss", role: "boss" };
-    part(boss, "troll-body", "sphere", { diameter: 4.2 }, [0, 3.2, 0], trollSkin).scaling.set(1, 1.2, 0.7);
-    part(boss, "troll-head", "sphere", { diameter: 2.4 }, [0, 6.4, 0.2], trollSkin);
-    for (const side of [-1, 1]) {
-      const legPivot = new TransformNode("troll-leg-pivot-" + side, scene);
-      legPivot.parent = boss;
-      legPivot.position.set(side * 1.1, 2.45, 0);
-      part(legPivot, "troll-leg-" + side, "cylinder", { diameter: 1.35, height: 3 },
-        [0, -1.25, 0], trollDark);
-      this.trollLegs.push(legPivot);
-      part(boss, "troll-horn-" + side, "cylinder", { diameter: 0.65, height: 1.4 },
-        [side * 0.9, 7.65, 0.1], bone).rotation.z = side * 0.6;
-      part(boss, "troll-eye-" + side, "sphere", { diameter: 0.35 },
-        [side * 0.52, 6.6, -0.91], fire);
-    }
-    part(boss, "troll-nose", "sphere", { diameter: 0.9 }, [0, 6.1, -1.02], trollDark);
-    const arm = new TransformNode("troll-club-arm-pivot", scene);
-    arm.parent = boss;
-    arm.position.set(2.15, 5.1, 0);
-    part(arm, "troll-arm", "cylinder", { diameter: 1.1, height: 3.5 }, [0.2, -1.5, 0], trollSkin);
-    part(arm, "troll-club-handle", "cylinder", { diameter: 0.6, height: 4.5 }, [0.7, -3.45, -0.5], clubWood);
-    part(arm, "troll-club-head", "cylinder", { diameter: 1.6, height: 2.3 }, [0.7, -5.8, -0.5], darkRock);
-    this.swing = arm;
-    this.boss = { root: boss, hp: BOSS_HP, max: BOSS_HP, alive: true };
+    // Approved Ashen Tunnel Mauler design: a volumetric, art-directed,
+    // phase-animated 3D boss. Combat ranges, hit ticks and saves still belong
+    // exclusively to arenaCombatMotion.ts, not to these visual meshes.
+    this.trollVisual = createCaveTrollVisual(scene);
+    const boss = this.trollVisual.root;
+    boss.position.set(0,0,2);
+    this.trollVisual.animate({
+      phase:"chase",phaseAge:0,slam:false,time:0,moved:0,
+      delta:0,hp:BOSS_HP,maxHp:BOSS_HP,
+    });
+    this.boss = {root:boss,hp:BOSS_HP,max:BOSS_HP,alive:true};
 
     // The same geometry/identity factory is used by shop NPCs and future dungeons.
     // Recorded battles use their own historical gear snapshot, not today's gear.
@@ -393,8 +365,8 @@ export class Level6Arena {
     const displayName = this.fighter ? names.get(this.fighter.id) ?? this.fighter.name : "Preview Hero";
     this.targets = [
       { label: displayName + " · " + (this.fighter?.role ?? "tank"), node: hero,
-        vantage: new Vector3(5, 5, -8) },
-      { label: "THE CAVE TROLL · BOSS", node: boss, vantage: new Vector3(10, 9, -9) },
+        vantage: new Vector3(4, 5, -13) },
+      { label: "THE CAVE TROLL · BOSS", node: boss, vantage: new Vector3(10, 7, -11) },
     ];
     this.focusIndex = 0;
     this.focusCamera();
@@ -414,8 +386,11 @@ export class Level6Arena {
     const target = this.targets[this.focusIndex];
     if (!target || !this.camera) return;
     this.camera.position.copyFrom(target.node.position.add(target.vantage));
-    this.camera.setTarget(target.node.position.add(new Vector3(0,
-      this.focusIndex === 0 ? 1.7 : 4.3, 0)));
+    const view = this.focusIndex === 0 && this.boss && this.hero
+      ? Vector3.Lerp(this.hero.root.position, this.boss.root.position, .53)
+        .addInPlace(new Vector3(0,3.2,0))
+      : target.node.position.add(new Vector3(0,4.1,0));
+    this.camera.setTarget(view);
     this.focusText.textContent = "TAB focus: " + target.label;
   }
 
@@ -447,7 +422,7 @@ export class Level6Arena {
       for (const cue of cues) this.displayCue(cue);
       this.motionAccumulator -= fixedDt;
     }
-    this.paintCombat();
+    this.paintCombat(frameDt);
   }
 
   /** Restore state strictly from a recorded frame; NEVER invoke the combat AI. */
@@ -519,7 +494,7 @@ export class Level6Arena {
       this.motion.outcome = replay.outcome === "death" ? "defeat" :
         replay.outcome === "victory" ? "victory" : "fighting";
     }
-    this.paintCombat();
+    this.paintCombat(dt);
   }
 
   private displayCue(cue: ArenaCue): void {
@@ -543,7 +518,7 @@ export class Level6Arena {
     this.status.textContent = messages[cue.kind];
   }
 
-  private paintCombat(): void {
+  private paintCombat(frameDt: number): void {
     const state = this.motion;
     if (!state || !this.hero || !this.boss || !this.scene) return;
     const hero = this.hero, boss = this.boss;
@@ -553,7 +528,6 @@ export class Level6Arena {
     boss.root.position.set(state.boss.x, 0, state.boss.z);
     hero.root.rotation.y = state.heroHeading;
     boss.root.rotation.y = state.bossHeading;
-    boss.root.rotation.z = state.outcome === "victory" ? Math.PI / 2 : 0;
     hero.hp = state.heroHp;
     boss.hp = state.bossHp;
     hero.alive = state.outcome !== "defeat";
@@ -565,10 +539,16 @@ export class Level6Arena {
       leg.rotation.x = movedHero > 0.005 && state.heroPhase === "move"
         ? Math.sin(state.time * 12 + index * Math.PI) * 0.50 : 0;
     }
-    for (const [index, leg] of this.trollLegs.entries()) {
-      leg.rotation.x = movedBoss > 0.005
-        ? Math.sin(state.time * 5 + index * Math.PI) * 0.25 : 0;
-    }
+    this.trollVisual?.animate({
+      phase: state.bossPhase,
+      phaseAge: state.bossAge,
+      slam: state.bossSlam,
+      time: state.time,
+      moved: movedBoss,
+      delta: frameDt,
+      hp: state.bossHp,
+      maxHp: BOSS_HP,
+    });
     if (this.heroArm) {
       const attacking = state.heroPhase === "attack";
       const casting = state.heroPhase === "cast" || state.heroPhase === "heal";
@@ -588,14 +568,6 @@ export class Level6Arena {
       hero.root.rotation.x = 0;
       hero.root.rotation.z = state.outcome === "defeat" ? Math.PI / 2
         : state.heroPhase === "hurt" ? -0.25 : 0;
-    }
-    if (this.swing) {
-      const age = state.bossAge;
-      this.swing.rotation.z = state.bossPhase === "windup"
-        ? -1.0 - Math.min(1, age / 0.85) * 0.4
-        : state.bossPhase === "strike" ? 1.6 * Math.min(1, age / 0.22)
-        : state.bossPhase === "recover" ? 0.4 * (1 - Math.min(1, age / 0.7))
-        : state.bossPhase === "stagger" ? -0.9 : 0;
     }
     for (const [telegraph, slam] of [[this.telegraph, false], [this.slamTelegraph, true]] as const) {
       if (!telegraph) continue;
