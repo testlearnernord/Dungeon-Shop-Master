@@ -40,11 +40,41 @@ export function shopSegmentClear(a:ShopPoint,b:ShopPoint,layout:ShopLayout,room?
   }
   return true;
 }
+/** Eliminate raster staircases only when the entire diagonal is clear. */
+export function smoothShopWaypoints(
+  from:ShopPoint,waypoints:readonly ShopPoint[],
+  clear:(a:ShopPoint,b:ShopPoint)=>boolean,
+):ShopPoint[]{
+  const result:ShopPoint[]=[];
+  let cursor=from,index=0;
+  while(index<waypoints.length){
+    let best=index;
+    for(let j=waypoints.length-1;j>index;j--){
+      if(clear(cursor,waypoints[j])){best=j;break;}
+    }
+    result.push(waypoints[best]);
+    cursor=waypoints[best];index=best+1;
+  }
+  return result;
+}
+
+/** Distance from a standing visitor to an entire route leg, not its endpoint. */
+export function shopPointSegmentDistance(
+  other:ShopPoint,a:ShopPoint,b:ShopPoint,
+):number{
+  const dx=b.x-a.x,dz=b.z-a.z,len2=dx*dx+dz*dz;
+  const t=len2===0?0:Math.max(0,Math.min(1,
+    ((other.x-a.x)*dx+(other.z-a.z)*dz)/len2));
+  return Math.hypot(other.x-a.x-dx*t,other.z-a.z-dz*t);
+}
+
 /** Topology-scoped static navigation for a group of route checks.
  * Cache only rock and furniture obstacles; never cache moving NPCs.
  * Discard after a layout or room change. */
 export function createShopRoutePlanner(
   layout:ShopLayout,room?:Level5Room,
+  /** Ephemeral occupied cashier stations for this one route batch. */
+  avoidStations:readonly ShopPoint[]=[],
 ): (from:ShopPoint,to:ShopPoint)=>ShopperRoute|null {
   // Excavation grows only sideways; don't multiply the grid's Z dimension
   // with every expansion tier when all those extra rows are solid rock.
@@ -58,7 +88,8 @@ export function createShopRoutePlanner(
   });
   const idx=(x:number,z:number)=>z*width+x;
   const inside=(x:number,z:number)=>x>=0&&z>=0&&x<width&&z<height;
-  const blocked=(p:ShopPoint)=>isObstructed(p,layout,room);
+  const blocked=(p:ShopPoint)=>isObstructed(p,layout,room)||
+    avoidStations.some(other=>Math.hypot(other.x-p.x,other.z-p.z)<.68);
   // Static cells are safe to share while this planner's topology is unchanged.
   const cellState=new Uint8Array(width*height); // 0 unknown, 1 clear, 2 blocked
   const blockedCell=(id:number):boolean=>{
@@ -68,7 +99,9 @@ export function createShopRoutePlanner(
     cellState[id]=result?2:1;
     return result;
   };
-  const clear=(a:ShopPoint,b:ShopPoint)=>shopSegmentClear(a,b,layout,room);
+  const clear=(a:ShopPoint,b:ShopPoint)=>
+    shopSegmentClear(a,b,layout,room)&&
+    avoidStations.every(other=>shopPointSegmentDistance(other,a,b)>=.68);
   return (from:ShopPoint,to:ShopPoint):ShopperRoute|null => {
     if(!Number.isFinite(from.x)||!Number.isFinite(from.z)||
       !Number.isFinite(to.x)||!Number.isFinite(to.z))return null;
@@ -144,7 +177,10 @@ export function createShopRoutePlanner(
       if(!clear(cursor,waypoint))return null;
       cursor=waypoint;
     }
-    return {waypoints:result,length:path.length-1};
+    // BFS determines reachability; line of sight removes unnatural grid turns
+    // without permitting shortcuts through moved shelves, rock or customers.
+    return {waypoints:smoothShopWaypoints(from,result,clear),
+      length:path.length-1};
   };
 }
 
