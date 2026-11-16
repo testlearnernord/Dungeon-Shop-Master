@@ -6,7 +6,7 @@ const FADE_DURATION_MS = 1100;
 const TRACK_NAMES: Record<SoundtrackScene, string> = {
   shop: "The Lean Season",
   dungeon: "Beneath the Surface",
-  boss: "Trial by Iron",
+  boss: "Desperate Measures",
 };
 
 type Preferences = { enabled: boolean; volume: number };
@@ -76,7 +76,7 @@ export class SceneSoundtrack {
     this.tracks = {
       shop: makeTrack("shop", "the-lean-season.mp3"),
       dungeon: makeTrack("dungeon", "beneath-the-surface.mp3"),
-      boss: makeTrack("boss", "trial-by-iron.mp3"),
+      boss: makeTrack("boss", "desperate-measures.mp3"),
     };
 
     this.toggle.addEventListener("click", () => {
