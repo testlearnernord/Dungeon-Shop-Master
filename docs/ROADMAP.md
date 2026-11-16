@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Next Development Pass
 
-> **Working roadmap, reviewed 2026-11-16.** This is a prioritized,
+> **Working roadmap, reviewed 2026-11-17.** This is a prioritized,
 > owner-accepted direction. **PR #153 (cashier), #154 (physical
 > merchandise), #155 (runtime GLB loading), #156 (restocking),
 > #157 (customer remarks), #158 (Cave Troll rig) and #159 (Desperate
@@ -9,21 +9,30 @@
 > This is **not** a list of completed gameplay changes or final approval
 > of every design detail. Inspect `main`, open PRs and CI before starting.
 
-## Immediate approved boss-quality pass
+## Current boss-art delivery and next art gate
 
-The current user-directed work addresses the actual Level 6 review: the
-source-authored alpha boss was too spherical and cartoonish, lacked grounded
-steps and delivered a sideways-looking hammer strike. The user also approved
-a music-led 13.5-second entrance (arena → boss → actual hero → boss → fight)
-at the peak of **Desperate Measures**. Deliver the pure, skip-capable intro
-and animation fixes through `bossCinematic.ts`, `level6Arena.ts`,
-`caveTrollVisual.ts` and the existing music player without rerolling any
-replay, damage, purchases or saves. Verify via real Babylon browser tests.
+The source-controlled **PR #160** cinematic/locomotion pass is merged:
+13.5-second musical introduction, grounded gait, a clearer hammer windup,
+visual-only animations, real preview/replay synchronization. It does not
+re-resolve fights or modify saved outcomes.
 
-**Remaining art limitation:** The current geometry is still a stylized
-source-built prototype. A future hand-sculpted, rigged GLB could be
-commissioned/modelled to truly match the concept art. Do not mark that
-higher-fidelity replacement as completed by a code-only sculpt pass.
+The current follow-up replaces **17 primitive anatomical surfaces** with an
+original checked-in, vertex-painted **Ashen Mauler GLB mesh set**, generated
+reproducibly using `tools/asset_generation/build_cave_troll.mjs`. These surfaces
+are grafted onto the existing Babylon rig, retaining the proven IK animation,
+cue timing, death, scene cleanup and fallback on asset failure.
+
+**Not done:** a cohesive artist-sculpted, skinned character with true
+deforming joints, baked/retargeted animation clips, and final in-game visual
+sign-off against the owner-approved turnaround. The current GLB is a segmented
+mesh improvement, not that full-quality asset. Human screenshot/playtest
+review is necessary before declaring the troll art finished.
+
+**After this art pass:** make Level 6 combat itself substantial enough for the
+soundtrack (carefully staged attacks, duration, readable counters) in a
+separate design/test PR. Keep all authoritative results deterministic, do
+not change already committed replay outcomes. Then prioritize shop-to-dungeon
+consequence feedback and a measured first ten-day playthrough.
 
 ## Why this sequence
 
