@@ -15,6 +15,7 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
     "bread", "iron-sword", "leather-vest",
   ]);
   for (const model of models) {
+    expect(model.sourceUrl, model.itemId).toBe("/Dungeon-Shop-Master/assets/models/"+model.itemId+".glb");
     expect(model.vertices, model.itemId).toBeGreaterThan(20);
     expect(model.triangles, model.itemId).toBeGreaterThan(10);
     expect(model.hasVertexPaint, model.itemId).toBe(true);
@@ -22,10 +23,8 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
     expect(model.collisions, model.itemId).toBe(false);
     expect(model.size.every(value => value > 0), model.itemId).toBe(true);
   }
-  // Verify the ORIGINAL binary GLBs in the checked-out project, not
-  // an HTML SPA fallback from Vite's development server routing.
-  // The runtime intentionally renders procedural meshes for now; these
-  // files are reusable export assets, not a simulated loaded asset.
+  // The browser loaded each source GLB into the render templates above.
+  // Independently verify binary files in the checkout, not the SPA fallback.
   for(const item of models){
     const bytes=await readFile(new URL(
       "../public/assets/models/"+item.itemId+".glb",import.meta.url));
@@ -72,9 +71,11 @@ test("actual stocked shelf meshes follow saved quantities for all six products",
         shopCarts:[],
         shopEconomy:{...base.shopEconomy,slots}});
     },{ids,counts});
-  const inspect=()=>page.evaluate(async()=>(
-    await import("/Dungeon-Shop-Master/tests/scene.ts"))
-      .inspectRenderedShopStock("shelf-1"));
+  const inspect=()=>page.evaluate(async()=>{
+    const scene=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    await scene.waitForShopStockAssets();
+    return scene.inspectRenderedShopStock("shelf-1");
+  });
   await seed(["healing-herb","mana-potion","iron-ore","bread"],[3,1,5,2]);
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
