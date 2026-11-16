@@ -31,7 +31,7 @@ The current game is a **TypeScript/Vite** browser application rendered with **Ba
 | End-of-day book and spoiler-safe projections | `src/merchantLedger.ts`, `src/ledgerHeroChronicle.ts`, `src/ledgerSealedExpeditions.ts`, `src/ledgerViewState.ts` |
 | Campaign save validation | `src/game/campaignSave.ts` |
 | Player shop service and crosshair | `src/game/shopServiceFocus.ts` (pure shelf hints and urgent request ranking), `src/game/interactionSystem.ts` (throttled real shelf-ray hint), `src/shopHudLayout.ts` (compact status and F shortcut), `src/game/npcVisualSystem.ts` (read-only active requests and physical checkout readiness), `src/cashierHud.ts` (current two-stage staffed register) |
-| Shared interface and sound | `src/uiIcons.ts`, `src/immersiveUi.css`, `src/soundtrack.ts` |
+| Shared interface and sound | `src/uiIcons.ts`, `src/immersiveUi.css`, `src/soundtrack.ts` (one scene-based mixer: shop `The Lean Season`, dungeon `Beneath the Surface`, Level 6 boss `Desperate Measures` from `public/audio/desperate-measures.mp3`; fades, mute, volume, restart on re-entry) |
 
 This is a **route map**. Before editing, inspect the named module, its imports, callers and relevant tests; do not assume the table guarantees an isolated interface.
 

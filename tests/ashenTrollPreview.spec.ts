@@ -10,6 +10,20 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   // This is the actual in-game, read-only Level 6 training preview.
   await page.keyboard.press("v");
   await expect(page.locator("#arena-preview")).toContainText("TRAINING PREVIEW");
+  // Check the real MP3 URL and signature from the same deployed Vite base
+  // path the soundtrack uses; an SPA HTML fallback is not audio.
+  await expect(page.locator("#music-track")).toHaveText("Desperate Measures");
+  const musicUrl=await page.locator("#music-boss-audio").evaluate(
+    (audio:HTMLAudioElement)=>audio.src);
+  expect(musicUrl).toMatch(/\/Dungeon-Shop-Master\/audio\/desperate-measures\.mp3$/);
+  const track=await page.request.get(musicUrl);
+  expect(track.ok()).toBe(true);
+  expect(track.headers()["content-type"]).toMatch(/audio\/mpeg/i);
+  const bytes=await track.body();
+  expect(bytes.byteLength).toBeGreaterThan(1_000_000);
+  const hasId3=bytes.subarray(0,3).toString("ascii")==="ID3";
+  const hasFrame=bytes[0]===0xff&&((bytes[1]??0)&0xe0)===0xe0;
+  expect(hasId3||hasFrame).toBe(true);
   const inspect=()=>page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBossArena());
   const initial=await inspect();
