@@ -278,6 +278,10 @@ export function inspectBossArena() {
     parryCount: boss?.metadata?.parryCount as number | undefined,
     missedHits: boss?.metadata?.missedHits as number | undefined,
     trollVisualId: boss?.metadata?.visualId as string | undefined,
+    sculptStatus: boss?.metadata?.sculptStatus as string | undefined,
+    sculptSourceUrl: boss?.metadata?.sculptSourceUrl as string | undefined,
+    sculptedPartCount: boss?.getChildMeshes(false).filter(
+      mesh=>mesh.metadata?.sculpted===true).length ?? 0,
     trollMeshCount: boss?.metadata?.geometryCount as number | undefined,
     trollPhase: boss?.metadata?.animationPhase as string | undefined,
     trollAnimationClock: boss?.metadata?.animationClock as number | undefined,
