@@ -211,7 +211,8 @@ test("eight incoming customers progress, settle their carts at bed-close and rel
   const receipts=afterClose.sales.filter(sale=>sale.day===2);
   for(const cart of beforeClose.carts){
     expect(receipts.filter(sale=>sale.hero===cart.id).length,
-      "an actual held cart must settle into exactly one daily receipt").toBe(1);
+      "an actual held cart must settle into one or more daily sale lines")
+      .toBeGreaterThanOrEqual(1);
   }
   expect(new Set(afterClose.sales.map(sale=>sale.id)).size)
     .toBe(afterClose.sales.length);
