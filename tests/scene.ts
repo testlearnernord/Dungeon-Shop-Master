@@ -642,3 +642,40 @@ export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
       String(scene.getMeshByName("right-wall")?.isEnabled()));
   return name;
 }
+
+/** Point the real FPS ray at a standard front-wall segment for wall decor. */
+export function aimAtPortraitWall(x=4.25):string{
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(x,1.7,-4.6);
+  camera.setTarget(new Vector3(x,2.15,-6.8));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+  const hit=scene.pickWithRay(camera.getForwardRay(48),
+    mesh=>mesh.isEnabled()&&mesh.isVisible&&mesh.isPickable&&
+      surfaceFromMesh(mesh.name)==="front-wall");
+  return hit?.pickedMesh?.name??"no-wall";
+}
+
+/** Target the real portrait canvas so contextual P uses ray picking. */
+export function aimAtWallPortrait():void{
+  const scene=Engine.LastCreatedScene!;
+  const camera=scene.activeCamera as UniversalCamera;
+  const canvas=scene.getMeshByName("galvik-portrait-canvas");
+  if(!canvas||!canvas.isEnabled())throw new Error("Portrait not hanging");
+  const target=canvas.getAbsolutePosition();
+  camera.position.set(target.x,1.7,target.z+2);
+  camera.setTarget(target);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+export function inspectWallPortrait(){
+  const scene=Engine.LastCreatedScene!;
+  const root=scene.getTransformNodeByName("galvik-portrait-root");
+  const plane=scene.getMeshByName("galvik-portrait-canvas");
+  return {enabled:!!root?.isEnabled(),
+    x:root?.position.x??null,z:root?.position.z??null,
+    textured:!!plane?.material&&
+      "diffuseTexture" in plane.material&&
+      !!plane.material.diffuseTexture?.isReady()};
+}
