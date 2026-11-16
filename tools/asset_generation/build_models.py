@@ -91,7 +91,9 @@ for i,(pos,scale) in enumerate([
     ell(n,scale,[[94,93,91],[115,108,96],[78,82,84],[134,108,83]][i],pos,sub=0,rot=T)
 save(n)
 
-n='waybread';S[n]=[]
+# The retail display name is Waybread, but the canonical ItemId is "bread".
+# Asset filenames intentionally match ItemId for future glTF integration.
+n='bread';S[n]=[]
 ell(n,(.166,.085,.125),[169,100,50],(0,.09,0),sub=2)
 ell(n,(.145,.046,.102),[205,133,66],(0,.147,0),sub=1)
 for z in [-.065,0,.065]:
