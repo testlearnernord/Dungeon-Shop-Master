@@ -707,3 +707,24 @@ export async function inspectPhysicalStockMeshes() {
     return data;
   });
 }
+
+/** Observe the actual rendered shelf inventory, not only newly constructed
+ * standalone model factories. This must agree with saved slot quantities. */
+export function inspectRenderedShopStock(shelfId="shelf-1"){
+  const scene=Engine.LastCreatedScene!;
+  return [1,2,3,4].map(index=>{
+    const slotId=shelfId+"-slot-"+index;
+    const pad=scene.getMeshByName(slotId);
+    const units=scene.meshes.filter(mesh=>
+      mesh.name.startsWith(slotId+"-item-")&&
+      /^\d+$/.test(mesh.name.slice((slotId+"-item-").length)));
+    return {slotId,padPresent:!!pad,
+      padPickable:pad?.isPickable??false,
+      padCollision:pad?.checkCollisions??false,
+      units:units.length,
+      modelVertices:units.map(mesh=>mesh.getTotalVertices()),
+      modelsPickable:units.some(mesh=>mesh.isPickable),
+      modelsCollision:units.some(mesh=>mesh.checkCollisions),
+      modelsColor:units.every(mesh=>!!mesh.getVerticesData("color")?.length)};
+  });
+}
