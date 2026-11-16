@@ -54,7 +54,7 @@ test("a valid cashier on mined floor is accepted by the same preview and GameSto
   assert.notEqual(shopServiceReachabilityProblem(proposed.layout),null,
     "the original-room-only test rejects this candidate incorrectly");
   assert.equal(store.previewFurniturePlacement(counter),null);
-  assert.equal(store.placeFurniture({id:"counter",...counter),"Counter placement saved."});
+  assert.equal(store.placeFurniture(counter),"Counter placement saved.");
   assert.deepEqual(store.state.shopLayout.counter,{
     x:counter.x,z:counter.z,rotation:counter.rotation,
   });

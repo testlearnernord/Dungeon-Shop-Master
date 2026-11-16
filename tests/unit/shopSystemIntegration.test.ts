@@ -51,7 +51,7 @@ test("connected excavated wing, moved shelf and counter preserve all customer se
   assert.equal(store.placeFurniture(shelf),"Shelf placement saved.");
   const counter={id:"counter" as const,x:0,z:2.25,rotation:1 as const};
   assert.equal(store.previewFurniturePlacement(counter),null);
-  assert.equal(store.placeFurniture({id:"counter",...counter),"Counter placement saved."});
+  assert.equal(store.placeFurniture(counter),"Counter placement saved.");
   const layout=store.state.shopLayout;
   assert.equal(shopServiceReachabilityProblem(layout,room),null);
   const checkout=checkoutQueuePoints(layout,entrance,5,room);

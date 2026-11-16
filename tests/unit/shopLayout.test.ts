@@ -132,11 +132,10 @@ test("occupied floor space blocks shelf placement even when static geometry is l
 
 test("compact checkout candidate has deterministic quarter-turn clearance",()=>{
   const at={x:1,z:2,rotation:0 as const};
+  const footprint=shopFurnitureDefinition("counter").footprint;
   assert.deepEqual(compactCounterBounds(at),{
-    minX:1-shopFurnitureDefinition("counter").footprint.maxX,
-    maxX:1+shopFurnitureDefinition("counter").footprint.maxX,
-    minZ:2-shopFurnitureDefinition("counter").footprint.maxZ,
-    maxZ:2+shopFurnitureDefinition("counter").footprint.maxZ,
+    minX:1+footprint.minX,maxX:1+footprint.maxX,
+    minZ:2+footprint.minZ,maxZ:2+footprint.maxZ,
   });
   const rotated=compactCounterBounds({...at,rotation:1 as const});
   assert.ok(Math.abs(rotated.maxX-rotated.minX-(shopFurnitureDefinition("counter").footprint.maxZ-shopFurnitureDefinition("counter").footprint.minZ))<1e-9);
@@ -163,7 +162,7 @@ test("counter uses shelf editor commit flow and keeps inventory, sales and RNG i
   let notifications=0;
   store.subscribe(()=>notifications++);
   const proposal={x:0,z:0,rotation:1 as const};
-  assert.equal(store.placeFurniture({id:"counter",...proposal),"Counter placement saved."});
+  assert.equal(store.placeFurniture({id:"counter",...proposal}),"Counter placement saved.");
   assert.equal(notifications,1);
   assert.deepEqual(store.state.shopLayout.counter,proposal);
   assert.deepEqual(store.state.shopLayout.shelves,state.shopLayout.shelves);
@@ -171,7 +170,7 @@ test("counter uses shelf editor commit flow and keeps inventory, sales and RNG i
   assert.strictEqual(store.state.adventurers,state.adventurers);
   assert.strictEqual(store.state.events,state.events);
   assert.equal(store.state.rngState,state.rngState);
-  assert.equal(store.placeFurniture({id:"counter",...proposal),"Counter placement saved."});
+  assert.equal(store.placeFurniture({id:"counter",...proposal}),"Counter placement saved.");
   assert.equal(notifications,1);
   const after=parseSave(JSON.stringify(createSave(store.state)));
   assert.deepEqual(after.shopLayout.counter,proposal);
@@ -225,7 +224,7 @@ test("strict save loader rejects corrupt placed checkout transforms",()=>{
 test("editor id never reaches persisted counter transform or autosave",()=>{
   const store=new GameStore(createGameState(91));
   const editorDraft={id:"counter" as const,x:0,z:2.25,rotation:1 as const};
-  assert.equal(store.placeFurniture({id:"counter",...editorDraft),"Counter placement saved."});
+  assert.equal(store.placeFurniture(editorDraft),"Counter placement saved.");
   assert.deepEqual(store.state.shopLayout.counter,{x:0,z:2.25,rotation:1});
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))).shopLayout.counter,
     {x:0,z:2.25,rotation:1});

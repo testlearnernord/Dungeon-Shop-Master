@@ -48,18 +48,17 @@ test("all quarter turns derive shop-floor placement and solid AABBs from registr
 
 test("the shelf and cashier's visible models, blueprints, focus and hitboxes have one definition",()=>{
   const layout=createShopLayout();
-  const visual=FURNITURE_REGISTRY.shelf.preview;
   const render=furnitureDefinition("shelf-1");
-  assert.equal(render.width,visual.width);
-  assert.equal(render.depth,visual.depth);
-  assert.equal(render.height,visual.height);
+  assert.equal(render.width,FURNITURE_REGISTRY.shelf.width);
+  assert.equal(render.depth,FURNITURE_REGISTRY.shelf.depth);
+  assert.equal(render.height,FURNITURE_REGISTRY.shelf.height);
   assert.equal(FURNITURE_CATALOG.some(x=>x.id==="shelf-1"),false);
   assert.deepEqual(classifyFurnitureMesh("shelf-2-plank")?.bounds,
     FURNITURE_REGISTRY.shelf.focus);
   const counter=FURNITURE_CATALOG.find(x=>x.id==="counter")!;
-  assert.equal(counter.width,FURNITURE_REGISTRY.counter.preview.width);
-  assert.equal(counter.depth,FURNITURE_REGISTRY.counter.preview.depth);
-  assert.equal(counter.height,FURNITURE_REGISTRY.counter.preview.height);
+  assert.equal(counter.width,FURNITURE_REGISTRY.counter.width);
+  assert.equal(counter.depth,FURNITURE_REGISTRY.counter.depth);
+  assert.equal(counter.height,FURNITURE_REGISTRY.counter.height);
   assert.deepEqual(classifyFurnitureMesh("counter-top")?.bounds,
     FURNITURE_REGISTRY.counter.focus);
   assert.deepEqual(compactCounterBounds(layout.counter!),bounds("counter",layout.counter!));
