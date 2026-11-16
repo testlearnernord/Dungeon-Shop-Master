@@ -29,7 +29,19 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   await expect(page.locator("#arena-cinematic")).toBeVisible();
   await expect(page.locator(".arena-bottom")).toBeHidden();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-intro","true");
+  // The preview must use the checked-in GLB surfaces, never silently
+  // pass with the original procedural backup when asset loading fails.
+  await expect.poll(async()=>(await inspect()).sculptStatus,
+    {timeout:15000,intervals:[150,250,400]}).toBe("ready");
   const initial=await inspect();
+  expect(initial.sculptedPartCount).toBe(17);
+  expect(initial.sculptSourceUrl).toBe(
+    "/Dungeon-Shop-Master/assets/models/ashen-mauler-sculpt.glb");
+  const sculpt=await page.request.get(initial.sculptSourceUrl!);
+  expect(sculpt.ok()).toBe(true);
+  const geometry=await sculpt.body();
+  expect(geometry.byteLength).toBeGreaterThan(100_000);
+  expect(geometry.subarray(0,4).toString("ascii")).toBe("glTF");
   expect(initial.heroPosition?.z).toBe(-9);
   // A real preview never starts to simulate during the introductory camera.
   await page.waitForTimeout(450);
