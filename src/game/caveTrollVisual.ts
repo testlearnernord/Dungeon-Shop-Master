@@ -72,10 +72,10 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   pose.parent=root;
   const spine=new TransformNode("troll-rig-spine",scene);
   spine.parent=pose;
-  spine.position.set(0,2.75,0);
+  spine.position.set(0,2.62,0);
   const head=new TransformNode("troll-rig-head",scene);
   head.parent=spine;
-  head.position.set(0,3.26,.48);
+  head.position.set(0,3.05,.69);
   const weapon=new TransformNode("troll-rig-hammer",scene);
   weapon.parent=spine;
   weapon.position.set(0,-.05,1.66);
@@ -89,10 +89,10 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     mat.backFaceCulling=true;
     return mat;
   };
-  const skin=makeMaterial("ashen-scarred-skin","#c2b3a4");
-  const shadowSkin=makeMaterial("shadow-skin","#9b8c81");
-  const scar=makeMaterial("scars","#80675f");
-  const nose=makeMaterial("nose","#a57f74");
+  const skin=makeMaterial("ashen-scarred-skin","#a5978c");
+  const shadowSkin=makeMaterial("shadow-skin","#867b73");
+  const scar=makeMaterial("scars","#69534d");
+  const nose=makeMaterial("nose","#765a51");
   const leather=makeMaterial("leather","#50382c");
   const darkLeather=makeMaterial("stitch-leather","#312522");
   const plated=makeMaterial("plated-iron","#6f6460",false);
@@ -120,7 +120,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const broad=Math.sin(x*.105+Math.cos(y*.031)*3.2)*5+
       Math.sin(y*.071+x*.039)*7;
     const grain=(random()-.5)*26;
-    const v=Math.max(185,Math.min(255,232+broad+grain));
+    const v=Math.max(145,Math.min(230,207+broad+grain));
     const at=(y*256+x)*4;
     pixels.data[at]=v; pixels.data[at+1]=v-5;
     pixels.data[at+2]=v-13; pixels.data[at+3]=255;
@@ -188,10 +188,10 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   };
   // The body is broad and deeply hunched, with three overlapping sculpted
   // masses rather than the former orange ball. Its material is ash-grey.
-  sculpt(sphere("barrel-torso",spine,[0,1.1,-.20],[3.95,3.25,2.52],skin,28),5,.028);
-  sculpt(sphere("bent-upper-back",spine,[0,1.82,-.50],[3.75,2.22,2.45],shadowSkin,22),12,.055);
-  sculpt(sphere("belly",spine,[0,.52,.45],[2.75,1.97,2.2],skin,20),19,.034);
-  sculpt(sphere("neck",spine,[0,2.72,.22],[2.1,1.3,1.52],shadowSkin),8);
+  sculpt(sphere("barrel-torso",spine,[0,1.16,-.28],[4.15,3.48,2.62],skin,28),5,.028);
+  sculpt(sphere("bent-upper-back",spine,[0,1.84,-.54],[3.88,2.45,2.54],shadowSkin,22),12,.055);
+  sculpt(sphere("belly",spine,[0,.51,.36],[2.62,1.72,2.07],skin,20),19,.034);
+  sculpt(sphere("neck",spine,[0,2.70,.30],[2.17,1.23,1.60],shadowSkin),8);
   // Underbelly leather belt and three torn cloth plates, all dimensional.
   cylinder("waist-belt",spine,[0,-.12,0],1.42,.23,darkLeather,15).scaling.z=.81;
   for(const x of [-.65,0,.65]){
@@ -220,34 +220,54 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   }
   torus("harness-ring",spine,[0,.88,1.29],.38,.09,copper).rotation.x=Math.PI/2;
   // Strong face silhouette. Front is +Z, matching the combat motor's +Z yaw.
-  sculpt(sphere("head",head,[0,.20,.23],[2.13,1.95,1.69],skin,24),24,.043);
-  sphere("heavy-brow",head,[0,.49,.88],[1.69,.39,.53],shadowSkin);
+  sculpt(sphere("head",head,[0,.18,.20],[1.89,1.80,1.60],skin,24),24,.043);
+  sphere("heavy-brow",head,[0,.53,.84],[1.70,.34,.53],shadowSkin);
   for(const side of [-1,1]){
-    sphere("cheek-"+side,head,[side*.64,-.13,.69],[.75,.71,.62],skin,15);
-    sphere("eye-socket-"+side,head,[side*.49,.39,.91],[.47,.33,.20],mouth,16);
-    sphere("eye-glow-"+side,head,[side*.48,.37,1.06],[.19,.14,.095],ember,15);
-    sphere("eye-pupil-"+side,head,[side*.48,.37,1.15],[.05,.06,.025],pupil,10);
-    const eyebrow=sphere("furrow-"+side,head,[side*.49,.62,.94],[.79,.29,.34],skin,12);
+    sphere("cheek-"+side,head,[side*.58,-.10,.65],[.67,.62,.55],skin,15);
+    sphere("eye-socket-"+side,head,[side*.47,.38,.89],[.35,.21,.15],mouth,16);
+    sphere("eye-glow-"+side,head,[side*.47,.38,.985],[.12,.09,.065],ember,15);
+    sphere("eye-pupil-"+side,head,[side*.47,.38,1.03],[.043,.048,.022],pupil,10);
+    const eyebrow=sphere("furrow-"+side,head,[side*.49,.59,.90],[.67,.27,.34],skin,12);
     eyebrow.rotation.z=side*.23;
-    const ear=cone("pointed-ear-"+side,head,[side*1.12,.23,.08],.30,.83,shadowSkin);
+    const ear=cone("pointed-ear-"+side,head,[side*1.00,.20,.01],.30,.68,shadowSkin);
     ear.rotation.z=side*Math.PI/2.8;
     // Obvious fangs give the open mouth a readable threatening expression.
-    const tusk=cone("tusk-"+side,head,[side*.48,-.48,1.13],.14,.52,bone);
+    const tusk=cone("tusk-"+side,head,[side*.52,-.56,1.02],.11,.32,bone);
     tusk.rotation.z=-side*.16;
   }
-  sphere("nose",head,[0,-.02,1.15],[.76,.54,.62],nose,20);
-  sphere("gaping-mouth",head,[0,-.62,1.00],[1.12,.62,.21],mouth,16);
+  sphere("nose",head,[0,.00,1.13],[.55,.36,.47],nose,20);
+  sphere("gaping-mouth",head,[0,-.54,.94],[.89,.38,.15],mouth,16);
   for(let t=-2;t<=2;t++){
-    const tooth=cone("tooth-"+t,head,[t*.19,-.38,1.12],.078,.20,bone);
+    const tooth=cone("tooth-"+t,head,[t*.135,-.43,1.055],.054,.14,bone);
     tooth.rotation.z=Math.PI;
   }
-  sphere("lower-jaw",head,[0,-.87,.79],[1.48,.37,.55],skin);
+  sphere("lower-jaw",head,[0,-.78,.84],[1.17,.32,.47],skin);
   // Roughly 1 in 5 scars read clearly even when the camera is far away.
   for(let i=0;i<9;i++){
     const x=Math.sin(i*2.17)*.71;
-    const m=block("face-scar-"+i,head,[x,.20-i*.083,1.0+Math.cos(i)*.11],
-      [.043,.28+(i%3)*.06,.035],scar);
+    const m=block("face-scar-"+i,head,[x*.88,.20-i*.072,.97+Math.cos(i)*.09],
+      [.035,.22+(i%3)*.045,.032],scar);
     m.rotation.z=.35+i*.13;
+  }
+  // Broken stone growth around brow and neck prevents a symmetrical toy face:
+  // angular jagged plates form a hostile cave-dweller silhouette.
+  for(const side of [-1,1]){
+    const browRidge=block("brow-stone-ridge-"+side,head,
+      [side*.57,.60,.96],[.59,.14,.24],shadowSkin);
+    browRidge.rotation.z=side*.26;
+    const jawTendon=sphere("cheek-tendon-"+side,head,
+      [side*.65,-.48,.50],[.28,.53,.42],shadowSkin,12);
+    jawTendon.rotation.z=side*.35;
+    const horn=cone("temple-bone-spur-"+side,head,
+      [side*.88,.61,.25],.17,.48,bone);
+    horn.rotation.z=side*.85;
+  }
+  for(let i=0;i<11;i++){
+    const x=(i%4-1.5)*.41;
+    const y=(Math.floor(i/4)-1)*.28;
+    const p=block("brow-skin-fissure-"+i,head,
+      [x,y+.53,.95],[.023,.17+i%3*.07,.029],scar);
+    p.rotation.z=(i%5-2)*.24;
   }
   // Twin red vented mine canisters, the signature silhouette chosen in art.
   // These are physical cylinders with armoured rims and recessed black ends.
@@ -292,14 +312,14 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const shoulder=V(side*1.82,2.24,.31);
     const upper=sphere("upper-arm-"+side,spine,[0,0,0],[1,1,1],skin,20);sculpt(upper,side+31,.03);
     const lower=sphere("forearm-"+side,spine,[0,0,0],[1,1,1],skin,20);sculpt(lower,side+45,.035);
-    const elbow=sphere("elbow-"+side,spine,[0,0,0],[.76,.71,.72],skin,14);
+    const elbow=sphere("elbow-"+side,spine,[0,0,0],[.71,.65,.66],skin,14);
     const bracer=sphere("bracer-"+side,spine,[0,0,0],[1,1,1],plated,17);
-    const hand=sphere("giant-hand-"+side,spine,[0,0,0],[.66,.57,.69],skin,16);
+    const hand=sphere("giant-hand-"+side,spine,[0,0,0],[.59,.47,.60],skin,16);
     const wristBand=sphere("wrist-band-"+side,spine,[0,0,0],[1,1,1],leather,13);
     for(let f=0;f<4;f++){
       // Fingers are curled directly around the long timber shaft.
       const digit=sphere("hammer-grip-finger-"+side+"-"+f,hand,
-        [-.30+f*.2,-.25,.18],[.19,.34,.27],skin,9);
+        [-.24+f*.17,-.22,.17],[.16,.26,.22],skin,9);
       digit.rotation.x=.4;
     }
     return {side,shoulder,upper,lower,elbow,bracer,hand,wristBand};
@@ -311,9 +331,9 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const thigh=sphere("thigh-"+side,pose,[0,0,0],[1,1,1],skin,20);sculpt(thigh,side+67,.04);
     const shin=sphere("shin-"+side,pose,[0,0,0],[1,1,1],shadowSkin,18);sculpt(shin,side+71,.04);
     const kneecap=sphere("kneecap-"+side,pose,[0,0,0],[.85,.76,.85],skin,14);
-    const foot=sphere("boulder-foot-"+side,pose,[side*1.06,.36,.66],[1.65,.67,1.75],skin,18);
+    const foot=sphere("boulder-foot-"+side,pose,[side*1.06,.31,.55],[1.45,.60,1.47],skin,18);
     for(let t=0;t<4;t++){
-      sphere("foot-claw-"+side+"-"+t,foot,[-.35+t*.23,-.19,.48],[.22,.23,.37],bone,9);
+      sphere("foot-claw-"+side+"-"+t,foot,[-.32+t*.21,-.15,.43],[.12,.16,.24],bone,9);
     }
     const strap=block("ankle-leather-"+side,pose,[side*1.06,.7,.23],[.79,.17,.87],leather);
     return {side,hip,thigh,shin,kneecap,foot,strap};
