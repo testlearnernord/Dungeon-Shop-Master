@@ -30,18 +30,15 @@ test("board side walls do not allow hiding the board behind shelves or in dungeo
   if(next.layout!==layout)
     assert(rosterBoardProblem(DEFAULT_ROSTER_BOARD,next.layout));
 });
-test("board placement is saved independently of the heroes and existing v12 campaigns",()=>{
+test("board placement is saved independently of the heroes in v13",()=>{
   const initial=createGameState();
   const store=new GameStore(initial);
   const moved={x:5.5,z:-6.45,rotation:2 as const};
-  assert.equal(store.placeRosterBoard(moved),"Adventurer board placed.");
+  assert.equal(store.placeFurniture({id:"adventurer-board",...moved}),"Adventurer board placed.");
   assert.deepEqual(store.state.rosterBoard,moved);
   assert.equal(store.state.adventurers,initial.adventurers);
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))).rosterBoard,moved);
-  const {rosterBoard:unused,...older}=initial;
-  const restored=parseSave(JSON.stringify(createSave(older)));
-  assert.equal(restored.rosterBoard,undefined);
-  assert.equal(store.placeRosterBoard({x:0,z:0,rotation:0}),"Mount the board on a clear main-shop wall.");
+  assert.equal(store.placeFurniture({id:"adventurer-board",x:0,z:0,rotation:0}),"Mount the board on a clear main-shop wall.");
   assert.deepEqual(store.state.rosterBoard,moved);
   for(const invalid of [{x:0,z:0,rotation:0},{x:7.22,z:0,rotation:1}]){
     assert.throws(()=>createSave({...initial,rosterBoard:invalid as any}),/rosterBoard/);

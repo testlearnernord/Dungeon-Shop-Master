@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CHECKOUT_LINE_MAX_CUSTOMERS, checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoint, checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
+import { CHECKOUT_LINE_MAX_CUSTOMERS, checkoutQueueIds, checkoutQueueIndex, checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
 import { createShopLayout, replaceCounterPlacement, shopLayoutProblem } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
 import type { ShopCart } from "../../src/game/shopCarts.ts";
@@ -42,6 +42,7 @@ test("empty carts never occupy checkout spots", () => {
 test("one single-file checkout line stays separated; excess demand uses overflow", () => {
   const base = createShopLayout();
   const layout = {
+    ...base,
     shelves: base.shelves.map(shelf => shelf.id === "shelf-1"
       ? { ...shelf, x: 0, z: -2, rotation: 1 as const }
       : shelf),
@@ -64,8 +65,6 @@ test("one single-file checkout line stays separated; excess demand uses overflow
       assert.ok(Math.hypot(point.x-other.x,point.z-other.z)>=NPC_CENTER_CLEARANCE-1e-6);
   }
   assert.ok(points.length < 100);
-  assert.throws(() => checkoutQueuePoint(-1), RangeError);
-  assert.throws(() => checkoutQueuePoint(30), RangeError);
 });
 
 
@@ -79,18 +78,6 @@ test("queue allocation rejects invalid capacities without inventing standing spo
   assert.equal(checkoutQueuePoints(layout, from, 1).length, 1);
 });
 
-
-test("legacy saves keep the historical checkout queue front without duplicate desk geometry", () => {
-  const frontZ = 0.5;
-  // Explicit legacy layout: an old save with no counter transform
-  // keeps the previous center register and queue geometry.
-  const legacy={shelves:createShopLayout().shelves};
-  const points = checkoutQueuePoints(legacy, {x:0,z:-1}, 1);
-  assert.equal(points.length, 1);
-  // Pathfinding may snap a candidate to a reachable endpoint on either side of the row.
-  assert.ok(Math.abs(points[0].z - frontZ) <= 0.75);
-  assert.equal(isObstructed(points[0], legacy), false);
-});
 
 test("rotated and relocated checkout offers reachable, separated standing spots",()=>{
   const base=createShopLayout();

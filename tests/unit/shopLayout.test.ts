@@ -2,7 +2,7 @@ import {createStockedShopLayout,createStockedShopState} from "./shopFixtures.ts"
 import assert from "node:assert/strict";
 import test from "node:test";
 import {compactCounterBounds, COMPACT_COUNTER, counterOverlapsActor, createShopLayout, getCounterPlacement,
-  counterDockPoint,isAtCounterStaffDock,DEFAULT_COUNTER_PLACEMENT,NEW_GAME_COUNTER_PLACEMENT,
+  counterDockPoint,isAtCounterStaffDock,NEW_GAME_COUNTER_PLACEMENT,
   replaceCounterPlacement, replaceShelfPlacement,
   shopLayoutProblem, shelfBounds, shelfOverlapsActor, type ShelfPlacement} from "../../src/game/shopLayout.ts";
 import { turnShopOffset } from "../../src/game/furnitureRegistry.ts";
@@ -32,13 +32,13 @@ test("moving one shelf is immutable, grid-bound and leaves all economy fields un
   const store=new GameStore(initial);
   let notifications=0;
   store.subscribe(()=>notifications++);
-  assert.equal(store.placeShelf(proposal),"Shelf placement saved.");
+  assert.equal(store.placeFurniture(proposal),"Shelf placement saved.");
   assert.equal(notifications,1);
   assert.deepEqual(store.state.shopEconomy.slots,initial.shopEconomy.slots);
   assert.equal(store.state.shopEconomy.balance,initial.shopEconomy.balance);
   assert.strictEqual(store.state.adventurers,initial.adventurers);
   assert.strictEqual(store.state.events,initial.events);
-  assert.equal(store.placeShelf({id:"shelf-2",x:0,z:2,rotation:0}),
+  assert.equal(store.placeFurniture({id:"shelf-2",x:0,z:2,rotation:0}),
     "Keep the counter, entrances and visitor aisles clear.");
   assert.equal(notifications,1);
   assert.deepEqual(store.state.shopLayout.shelves[1],initial.shopLayout.shelves[1]);
@@ -70,8 +70,10 @@ test("geometry accepts valid rotations but rejects walls, counter, walkways and 
     const proposed=replaceShelfPlacement(original,invalid as ShelfPlacement);
     assert.strictEqual(proposed.layout,original,JSON.stringify(invalid));
   }
-  assert.match(shopLayoutProblem({shelves:[original.shelves[0],original.shelves[0]]})!,/IDs/);
-  assert.equal(shopLayoutProblem({shelves:[original.shelves[0]]}),null);
+  assert.match(shopLayoutProblem({counter:original.counter,
+    shelves:[original.shelves[0],original.shelves[0]]})!,/IDs/);
+  assert.equal(shopLayoutProblem({counter:original.counter,
+    shelves:[original.shelves[0]]}),null);
 });
 
 test("side-aisle placements are decided by actual clearance and reachable routes",()=>{
@@ -86,7 +88,7 @@ test("side-aisle placements are decided by actual clearance and reachable routes
   const cashier=replaceCounterPlacement(layout,{x:3.5,z:0,rotation:0});
   assert.equal(cashier.message,"Counter placement saved.");
   assert.equal(shopServiceReachabilityProblem(cashier.layout),null);
-  assert.equal(new GameStore().previewShopPlacement({
+  assert.equal(new GameStore().previewFurniturePlacement({
     id:"counter",x:3.5,z:0,rotation:0,
   }),null);
   // Not everything near the same wall is okay: farther right blocks the
@@ -140,16 +142,14 @@ test("compact checkout candidate has deterministic quarter-turn clearance",()=>{
   assert.deepEqual(createStockedShopLayout().shelves.map(s=>s.id),["shelf-1","shelf-2"]);
 });
 
-test("current shop layouts keep their default counter on save",()=>{
+test("current v13 shop layouts require and preserve their counter transform",()=>{
   const initial=createGameState(91);
-  const legacy=JSON.stringify(createSave(initial));
-  const loaded=parseSave(legacy);
+  const serialized=JSON.stringify(createSave(initial));
+  const loaded=parseSave(serialized);
   assert.deepEqual(loaded.shopLayout,initial.shopLayout);
   assert.deepEqual(loaded.shopLayout.counter,
     {x:-4.25,z:-4.5,rotation:3});
   assert.deepEqual(getCounterPlacement(loaded.shopLayout),NEW_GAME_COUNTER_PLACEMENT);
-  const old={...loaded.shopLayout,counter:undefined};
-  assert.deepEqual(getCounterPlacement(old),DEFAULT_COUNTER_PLACEMENT);
   assert.deepEqual(createSave(loaded).payload.shopLayout,initial.shopLayout);
 });
 
@@ -159,7 +159,7 @@ test("counter uses shelf editor commit flow and keeps inventory, sales and RNG i
   let notifications=0;
   store.subscribe(()=>notifications++);
   const proposal={x:0,z:0,rotation:1 as const};
-  assert.equal(store.placeCounter(proposal),"Counter placement saved.");
+  assert.equal(store.placeFurniture({id:"counter",...proposal),"Counter placement saved."});
   assert.equal(notifications,1);
   assert.deepEqual(store.state.shopLayout.counter,proposal);
   assert.deepEqual(store.state.shopLayout.shelves,state.shopLayout.shelves);
@@ -167,7 +167,7 @@ test("counter uses shelf editor commit flow and keeps inventory, sales and RNG i
   assert.strictEqual(store.state.adventurers,state.adventurers);
   assert.strictEqual(store.state.events,state.events);
   assert.equal(store.state.rngState,state.rngState);
-  assert.equal(store.placeCounter(proposal),"Counter placement saved.");
+  assert.equal(store.placeFurniture({id:"counter",...proposal),"Counter placement saved."});
   assert.equal(notifications,1);
   const after=parseSave(JSON.stringify(createSave(store.state)));
   assert.deepEqual(after.shopLayout.counter,proposal);
@@ -204,7 +204,7 @@ test("invalid counter moves leave previous game state and saved position unchang
 
 test("strict save loader rejects corrupt placed checkout transforms",()=>{
   const store=new GameStore();
-  store.placeCounter({x:0,z:0,rotation:1});
+  store.placeFurniture({id:"counter",...{x:0,z:0,rotation:1}});
   const saved=createSave(store.state);
   for(const damage of [
     (p:any)=>{p.x=0.125;},
@@ -221,7 +221,7 @@ test("strict save loader rejects corrupt placed checkout transforms",()=>{
 test("editor id never reaches persisted counter transform or autosave",()=>{
   const store=new GameStore(createGameState(91));
   const editorDraft={id:"counter" as const,x:0,z:2.25,rotation:1 as const};
-  assert.equal(store.placeCounter(editorDraft),"Counter placement saved.");
+  assert.equal(store.placeFurniture({id:"counter",...editorDraft),"Counter placement saved."});
   assert.deepEqual(store.state.shopLayout.counter,{x:0,z:2.25,rotation:1});
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))).shopLayout.counter,
     {x:0,z:2.25,rotation:1});
