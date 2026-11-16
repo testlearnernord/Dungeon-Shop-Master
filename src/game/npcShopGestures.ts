@@ -40,6 +40,31 @@ const neutral=(gesture:NpcShopGesture):NpcShopPose=>({
 });
 const bounded=(n:number,min:number,max:number)=>
   Math.max(min,Math.min(max,Number.isFinite(n)?n:0));
+const smooth=(n:number)=>{
+  const t=bounded(n,0,1);
+  return t*t*(3-2*t);
+};
+/** Held looking directions and short, occasional signals. Do not make
+ * every petitioning character endlessly flap their arms on a sine wave. */
+export function customerAttention(time:number,slot:number):{
+  glance:number;signal:number;
+}{
+  const t=bounded(time,0,1e8),s=bounded(slot,0,100);
+  const scan=(t+s*1.93)%12;
+  const glance=scan<1.5?0:
+    scan<2.1?smooth((scan-1.5)/.6):
+    scan<4.7?1:
+    scan<5.3?1-smooth((scan-4.7)/.6):
+    scan<7?0:
+    scan<7.6?-smooth((scan-7)/.6):
+    scan<9.8?-1:
+    scan<10.4?-1+smooth((scan-9.8)/.6):0;
+  const signalTime=(t+s*1.7)%9;
+  const signal=signalTime<1.0?smooth(signalTime):
+    signalTime<1.9?1:
+    signalTime<2.9?1-smooth(signalTime-1.9):0;
+  return {glance,signal};
+}
 
 /** Return a soft, human-scale pose, never a full-body teleport.
  * Reaching/nodding require confirmed shop events; waiting requests are
@@ -49,7 +74,7 @@ export function npcShopPose(input:NpcShopGestureInput):NpcShopPose {
   const t=bounded(input.time,0,1e8);
   const slot=bounded(input.slot,0,100);
   const breath=Math.sin(t*1.0+slot*.79);
-  const glance=Math.sin(t*.72+slot*1.41);
+  const {glance,signal}=customerAttention(t,slot);
   if(input.conversing)
     return {gesture:"conversation",leftArm:.18,rightArm:.26,
       headYaw:.025*glance,headPitch:.02,headRoll:.05*breath,
@@ -92,17 +117,15 @@ export function npcShopPose(input:NpcShopGestureInput):NpcShopPose {
   ].includes(input.shoppingPhase)||
     (input.shoppingPhase==="roaming-request"&&input.reason==="cannot-afford");
   if(input.phase==="queueing"&&waitingCredit){
-    // Slight open-hand plea, not an endlessly looping cartoon wave.
-    const ask=(1+Math.sin(t*1.3+slot*.8))*.5;
-    return {gesture:"credit",leftArm:.21+.17*ask,
-      rightArm:.18+.12*ask,headYaw:.10*glance,
-      headPitch:-.045,headRoll:.045*breath,torsoLean:.025};
+    // Open-hand request is brief; most of the time the customer just waits.
+    return {gesture:"credit",leftArm:.16+.26*signal,
+      rightArm:.10+.13*signal,headYaw:.10*glance,
+      headPitch:-.045,headRoll:.025*breath,torsoLean:.025};
   }
   if(input.phase==="queueing"&&waitingRestock){
-    const ask=(1+Math.sin(t*1.15+slot*.9))*.5;
-    return {gesture:"restock",leftArm:.08,
-      rightArm:.20+.32*ask,headYaw:.11*glance,
-      headPitch:-.015,headRoll:.028*breath,torsoLean:0};
+    return {gesture:"restock",leftArm:.045,
+      rightArm:.14+.34*signal,headYaw:.11*glance,
+      headPitch:-.015,headRoll:.02*breath,torsoLean:0};
   }
   return {gesture:"idle",leftArm:0,rightArm:0,
     headYaw:.13*glance,headPitch:.025*breath,

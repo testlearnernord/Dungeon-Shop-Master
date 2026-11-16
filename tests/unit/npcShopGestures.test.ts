@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {npcShopPose,type NpcShopGestureInput} from "../../src/game/npcShopGestures.ts";
+import {customerAttention,npcShopPose,type NpcShopGestureInput} from "../../src/game/npcShopGestures.ts";
 
 const base:Readonly<NpcShopGestureInput>={
   phase:"queueing",shoppingPhase:"waiting-for-next-day",reason:"no-need",
@@ -89,4 +89,30 @@ test("visual poses are deterministic, finite and cannot modify the input or econ
     for(const value of Object.values(variant))
       if(typeof value==="number")assert(Number.isFinite(value));
   }
+});
+
+test("customers hold a glance, rest, and gesture only briefly instead of constant arm pumping",()=>{
+  const scan0=customerAttention(0,0);
+  const scan3=customerAttention(3,0);
+  const scan6=customerAttention(6,0);
+  const scan9=customerAttention(9,0);
+  assert.equal(scan0.glance,0);
+  assert.equal(scan3.glance,1);
+  assert.equal(scan6.glance,0);
+  assert.equal(scan9.glance,-1);
+  assert.equal(scan0.signal,0);
+  assert.equal(customerAttention(1.5,0).signal,1);
+  assert.equal(customerAttention(5,0).signal,0);
+  const signaled=npcShopPose({...base,time:1.5,slot:0,
+    shoppingPhase:"waiting-for-restock",reason:"unavailable"});
+  const relaxed=npcShopPose({...base,time:5,slot:0,
+    shoppingPhase:"waiting-for-restock",reason:"unavailable"});
+  assert(signaled.rightArm>relaxed.rightArm+.3,
+    "restock request must not pump its hand indefinitely");
+  assert.deepEqual(customerAttention(NaN,NaN),customerAttention(0,0));
+  for(const frame of [0,.2,1,2,5,9,12,25])
+    for(const value of Object.values(customerAttention(frame,2))){
+      assert(Number.isFinite(value));
+      assert(Math.abs(value)<=1);
+    }
 });
