@@ -9,6 +9,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import type { BossPhase } from "./arenaCombatMotion.ts";
+import { applyCaveTrollSculpt } from "./caveTrollSculpt.ts";
 
 /** A real, articulated 3D boss. Its visual pose is *derived* from the existing
  * deterministic combat phases. It never makes combat, AI or save decisions.
@@ -22,6 +23,8 @@ export interface CaveTrollVisual {
   readonly root: TransformNode;
   /** Scene-owned 3D parts. The handle/torso/limbs all have real volume. */
   readonly geometryCount: number;
+  /** Completes when the sculpted GLB geometry has been applied (or fallback recorded). */
+  readonly ready: Promise<void>;
   animate(input: CaveTrollAnimation): void;
 }
 export interface CaveTrollAnimation {
@@ -69,7 +72,8 @@ function elbowFor(shoulder:Vector3,wrist:Vector3,side:number):Vector3 {
 
 export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   const root=new TransformNode("arena-boss-troll",scene);
-  root.metadata={kind:"boss",role:"boss",visualId:"ashen-tunnel-mauler",visualVersion:1};
+  root.metadata={kind:"boss",role:"boss",visualId:"ashen-tunnel-mauler",visualVersion:2,
+    sculptStatus:"loading"};
   const pose=new TransformNode("troll-rig-pose",scene);
   pose.parent=root;
   const spine=new TransformNode("troll-rig-spine",scene);
@@ -570,6 +574,21 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   root.metadata.hasAnimatedLegs=true;
   root.metadata.hasHammer=true;
   root.metadata.hasDeathSequence=true;
+  // A real checked-in GLB replaces the primitive silhouette surfaces in place.
+  // The existing IK, feet, hit timing and save/replay contract remain unchanged.
+  // Keep the authored fallback visible if an asset download fails.
+  const targets=root.getChildMeshes(false).filter(
+    (mesh):mesh is Mesh=>mesh instanceof Mesh);
+  const ready=applyCaveTrollSculpt(scene,targets).then(sourceUrl=>{
+    if(root.isDisposed())return;
+    root.metadata.sculptStatus="ready";
+    root.metadata.sculptSourceUrl=sourceUrl;
+  }).catch((error:unknown)=>{
+    if(root.isDisposed())return;
+    root.metadata.sculptStatus="failed";
+    root.metadata.sculptError=error instanceof Error?error.message:String(error);
+    console.error("Cave Troll GLB sculpt failed; showing backup rig geometry:",error);
+  });
   void materials;
-  return {root,geometryCount,animate:animation};
+  return {root,geometryCount,ready,animate:animation};
 }
