@@ -12,6 +12,8 @@ export type ConfirmedVisualAction="pickup"|"paid"|null;
 export interface NpcShopGestureInput {
   readonly phase:string;
   readonly shoppingPhase:string;
+  /** Existing economic reason, not a new or derived shopper decision. */
+  readonly reason:string;
   readonly moving:boolean;
   readonly time:number;
   readonly slot:number;
@@ -82,11 +84,13 @@ export function npcShopPose(input:NpcShopGestureInput):NpcShopPose {
       headRoll:.01*breath,torsoLean:0};
   }
   const waitingRestock=[
-    "waiting-for-restock","waiting-for-restock-overflow","roaming-request",
-  ].includes(input.shoppingPhase);
+    "waiting-for-restock","waiting-for-restock-overflow",
+  ].includes(input.shoppingPhase)||
+    (input.shoppingPhase==="roaming-request"&&input.reason==="unavailable");
   const waitingCredit=[
     "waiting-for-credit","waiting-for-credit-overflow",
-  ].includes(input.shoppingPhase);
+  ].includes(input.shoppingPhase)||
+    (input.shoppingPhase==="roaming-request"&&input.reason==="cannot-afford");
   if(input.phase==="queueing"&&waitingCredit){
     // Slight open-hand plea, not an endlessly looping cartoon wave.
     const ask=(1+Math.sin(t*1.3+slot*.8))*.5;
