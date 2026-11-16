@@ -95,8 +95,9 @@ These are questions, not permissions to undertake a large rewrite.
 **Approved direction for the next development pass (not yet implemented):**
 improve the existing staffed cashier, physical stocking ergonomics, short
 customer reactions, observable shop-to-dungeon consequences and ten-day
-balance/testing, in that order. The proposed PRs #152–#156 and their
-acceptance criteria are in [ROADMAP.md](ROADMAP.md). The sequence does **not**
+balance/testing, in that order. These five *unimplemented* work packages
+and their acceptance criteria are in [ROADMAP.md](ROADMAP.md); their
+future GitHub PR numbers are not reserved. This sequence does **not**
 approve an always-running simulation, automatic merchant labor, a new
 protagonist or a definitive curse backstory.
 
