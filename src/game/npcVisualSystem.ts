@@ -576,6 +576,8 @@ export class NpcVisualSystem {
            npc.route[npc.waypoint]!==undefined))continue;
       const shelfWaiter=standing==="waiting-for-shelf";
       const requestRoamer=standing==="roaming-request";
+      const requestWaiting=["waiting-for-restock","waiting-for-credit",
+        "waiting-for-restock-overflow","waiting-for-credit-overflow"].includes(standing);
       const idle={x:npc.root.position.x,z:npc.root.position.z};
       const blocking=[...this.npcs.values()].some(other=>{
         if(other===npc||!["entering","browsing","leaving"].includes(other.phase))
@@ -586,6 +588,14 @@ export class NpcVisualSystem {
           {x:next.x,z:next.z});
       });
       if(!blocking)continue;
+      if(requestWaiting){
+        // An active petitioner can move aside from an approaching buyer
+        // without silently becoming an idle customer or losing the request.
+        if(!npc.requestActive)continue;
+        this.roamWhileRequesting(npc);
+        if(npc.route.length)npc.idleYieldCooldown=8;
+        continue;
+      }
       const destination=this.queuePosition(npc.slot,npc,idle);
       const route=destination&&this.layout?pathToShopGoal(idle,
         {x:destination.x,z:destination.z},this.layout,this.room):null;
@@ -898,7 +908,7 @@ export class NpcVisualSystem {
     npc.blockedSeconds=0;
     npc.routeProgress=null;
     npc.waypoint=0;
-    npc.wait=2.5+(npc.slot%3)*0.65;
+    npc.wait=8+(npc.slot%3)*1.5;
     npc.toQueue=true;
     npc.phase=route?"browsing":"queueing";
     npc.route=route?.waypoints.map(point=>new Vector3(point.x,0,point.z))??[];
@@ -1147,7 +1157,7 @@ export class NpcVisualSystem {
           const clearingShelf=npc.root.metadata.shoppingPhase==="clearing-shelf-aisle";
           if(clearingShelf)npc.wait=0.7;
           if(npc.root.metadata.shoppingPhase==="walking-to-request-roam")
-            npc.wait=2.4+(npc.slot%4)*.7;
+            npc.wait=8+(npc.slot%4)*1.4;
           npc.root.metadata.shoppingPhase=clearingShelf
             ?"waiting-for-shelf"
             :npc.root.metadata.shoppingPhase==="walking-to-shelf-retry-spot"
