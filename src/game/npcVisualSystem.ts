@@ -16,6 +16,7 @@ import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./her
 import { RESTOCK_WAIT_SECONDS, restockWaitRemaining, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
 import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble, type NpcWishBubble } from "./npcWishBubble.ts";
 import type { ItemId } from "./economy.ts";
+import type {LiveServiceRequest} from "./shopServiceFocus.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
@@ -467,6 +468,23 @@ export class NpcVisualSystem {
     const npc=this.npcs.get(heroId);
     if(npc?.intent?.reason==="cannot-afford"&&npc.phase!=="leaving")
       this.leaveUnserved(npc);
+  }
+
+  /** Real active stockout and credit requests for the small player HUD.
+   * No AI state or timer changes: never count expired/departing customers.
+   */
+  activeServiceRequests():LiveServiceRequest[]{
+    const live:LiveServiceRequest[]=[];
+    for(const npc of this.npcs.values()){
+      const reason=npc.intent?.reason;
+      if(npc.phase==="leaving"||npc.visitor.status!=="at-shop"||
+         (reason!=="unavailable"&&reason!=="cannot-afford")||
+         !npc.wishBubble||!npc.wishItem||
+         npc.restockSeconds===null||npc.restockSeconds<=0)continue;
+      live.push({heroId:npc.visitor.id,itemId:npc.wishItem,reason,
+        secondsRemaining:npc.restockSeconds});
+    }
+    return live;
   }
 
   /** Physical register admission, checked immediately before the transaction. */

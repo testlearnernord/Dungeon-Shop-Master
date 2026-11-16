@@ -7,11 +7,13 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Scene } from "@babylonjs/core/scene";
 import { ITEMS, type ItemId } from "./inventory";
 import { Shop } from "./shop";
+import {describeShelfFocus} from "./shopServiceFocus.ts";
 import type { WorldInteractable } from "./world";
 
 export class InteractionSystem {
   private heldButton: number | null = null;
   private nextRepeatAt = 0;
+  private nextFocusAt = 0;
   private readonly repeatDelay = 320;
   private readonly clickDelay = 220;
   private selectedIndex = 0;
@@ -154,6 +156,10 @@ export class InteractionSystem {
       this.interact();
     });
     this.scene.onBeforeRenderObservable.add(() => {
+      if(performance.now()>=this.nextFocusAt){
+        this.nextFocusAt=performance.now()+140;
+        this.updateShelfFocus();
+      }
       if (this.heldButton === null || performance.now() < this.nextRepeatAt) return;
       if (document.querySelector("dialog[open]")) {
         this.heldButton = null;
@@ -166,6 +172,42 @@ export class InteractionSystem {
       if (info.type !== PointerEventTypes.POINTERMOVE || this.heldButton === null) return;
       if (info.event.buttons === 0) this.heldButton = null;
     });
+  }
+
+  /** The crosshair uses the same pickable physical slot meshes as clicks.
+   * Read-only and throttled: no stock transfers or navigation on hover.
+   */
+  private updateShelfFocus():void {
+    const panel=document.querySelector<HTMLElement>("#shop-shelf-focus");
+    const heading=document.querySelector<HTMLElement>("#shelf-focus-title");
+    const action=document.querySelector<HTMLElement>("#shelf-focus-action");
+    if(!panel||!heading||!action)return;
+    if(!this.store||!this.isShopActive()||this.miningMode||
+       document.querySelector("dialog[open]")||
+       document.body.classList.contains("blueprint-active")){
+      panel.hidden=true;
+      return;
+    }
+    const hit=this.scene.pickWithRay(this.camera.getForwardRay(
+      this.maxInteractionDistance));
+    const mesh=hit?.pickedMesh;
+    const slot=mesh&&this.shop.slotMeshes.get(mesh as Mesh);
+    const current=slot&&this.store.state.shopEconomy.slots.find(
+      entry=>entry.id===slot.id);
+    if(!hit?.hit||!current||hit.distance>this.maxInteractionDistance){
+      panel.hidden=true;
+      return;
+    }
+    const locked=this.store.state.shopCarts.some(cart=>
+      cart.lines.some(line=>line.slotId===current.id));
+    const hint=describeShelfFocus(current,ITEMS[this.selectedIndex].id,
+      this.store.state.shopEconomy.bag,locked);
+    if(heading.textContent!==hint.title)heading.textContent=hint.title;
+    if(action.textContent!==hint.instruction)
+      action.textContent=hint.instruction;
+    panel.dataset.tone=hint.tone;
+    panel.dataset.slotId=current.id;
+    panel.hidden=false;
   }
 
   private performPointerAction(button: number, x: number, y: number): void {

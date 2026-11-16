@@ -45,6 +45,17 @@ test("a single buyer can reach and request service at a rotated register",async(
   const visuals=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals());
   expect(visuals.visitors.find(v=>v.id===buyer)?.shoppingPhase).toBe("awaiting-checkout");
+  // Player-facing guidance uses a REAL first-person shelf ray, not a
+  // decorative shelf label. It follows the selected hotbar item.
+  await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtShelfSlot());
+  await expect(page.locator("#shop-shelf-focus")).toBeVisible();
+  await expect(page.locator("#shelf-focus-title")).toContainText("Empty shelf slot");
+  await expect(page.locator("#shelf-focus-action"))
+    .toContainText("Left-click: stock Healing Herb");
+  await page.keyboard.press("4");
+  await expect(page.locator("#shelf-focus-action"))
+    .toContainText("Left-click: stock Waybread");
   expect(errors).toEqual([]);
 });
 
@@ -138,6 +149,27 @@ test("eight incoming customers progress, settle their carts at bed-close and rel
     console.error("NPC_TRAFFIC_FAILURE",JSON.stringify(trafficSamples));
     throw error;
   }
+  // During the real eight-customer scene, show the ACTUAL urgent restock
+  // request from NPCs, not forecast demand. F selects its requested item in
+  // the existing inventory hotbar; no automatic transfer or payment occurs.
+  await expect(page.locator("#service-restock")).toBeVisible();
+  const urgent=await page.locator("#service-restock").getAttribute("data-item-id");
+  expect(urgent).toBeTruthy();
+  await expect(page.locator("#service-restock-label")).toContainText("RESTOCK");
+  const beforePick=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    return {bag:state?.shopEconomy.bag,slots:state?.shopEconomy.slots};
+  });
+  await page.keyboard.press("f");
+  await expect(page.locator("#inventory .inventory-row.selected"))
+    .toHaveAttribute("data-item-id",urgent!);
+  const afterPick=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    return {bag:state?.shopEconomy.bag,slots:state?.shopEconomy.slots};
+  });
+  expect(afterPick).toEqual(beforePick);
   // Verify actual animated limb transforms in the live Babylon scene.
   // A request phase label by itself is not an interaction animation.
   await expect.poll(async()=>{

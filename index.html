@@ -73,12 +73,23 @@
         </div>
         <div class="mobile-hud-stack">
           <p id="sales-banner" class="sales-banner" role="status"></p>
+          <aside id="shop-service-brief" class="shop-service-brief" aria-label="Current customer service" hidden>
+            <span id="service-ready-checkout" class="service-ready-checkout" hidden>REGISTER READY · E at the counter</span>
+            <button id="service-restock" class="service-restock" type="button" hidden
+              aria-label="Select the urgently requested stock item">
+              <svg viewBox="0 0 48 48" aria-hidden="true"><use id="service-restock-icon"></use></svg>
+              <span id="service-restock-label"></span>
+              <kbd>F</kbd>
+            </button>
+            <span id="service-credit" class="service-credit" hidden>CREDIT REQUEST · E near customer</span>
+          </aside>
           <div id="inventory" class="inventory" aria-label="Stocking hotbar"></div>
           <details class="controls" aria-label="Keyboard controls"><summary>Controls <span aria-hidden="true">?</span></summary><div class="controls-keys">
             <strong>WASD</strong> move <span>·</span> <strong>Shift</strong> sprint <span>·</span> <strong>Mouse</strong> look
             <span>·</span> <strong>1–6 / Wheel</strong> select
             <span>·</span> <strong>Left-click</strong> stock
             <span>·</span> <strong>Right-click</strong> remove
+            <span>·</span> <strong>F</strong> select urgent requested item
             <span>·</span> <strong>E</strong> interact
             <span>·</span> <strong>Hold E</strong> sleep / finish day at the bed
             <span>·</span> <strong>U</strong> mining mode <span>·</span> <strong>Shift+U</strong> alpha expansion tier
@@ -112,6 +123,10 @@
           </div>
         </section>
         <div id="status" class="status">Loading campaign…</div>
+        <div id="shop-shelf-focus" class="shop-shelf-focus" hidden aria-live="off">
+          <strong id="shelf-focus-title"></strong>
+          <span id="shelf-focus-action"></span>
+        </div>
         <div class="crosshair" aria-hidden="true"></div>
       </section>
       <section id="arena-hud" hidden aria-label="Level 6 cave troll spectator preview">

@@ -28,6 +28,7 @@ The current game is a **TypeScript/Vite** browser application rendered with **Ba
 | Hero identity/appearance and portraits | `src/game/heroIdentity.ts`, `src/game/heroVisual.ts`, `src/game/portraitAtlas.ts` |
 | End-of-day book and spoiler-safe projections | `src/merchantLedger.ts`, `src/ledgerHeroChronicle.ts`, `src/ledgerSealedExpeditions.ts`, `src/ledgerViewState.ts` |
 | Campaign save validation | `src/game/campaignSave.ts` |
+| Player shop service / crosshair interactions | `src/game/shopServiceFocus.ts` (pure shelf hints and urgent request ranking), `src/game/interactionSystem.ts` (throttled real shelf-ray hint), `src/shopHudLayout.ts` (existing compact HUD), `src/game/npcVisualSystem.ts` (read-only present requests and physical checkout readiness) |
 | Shared interface and sound | `src/uiIcons.ts`, `src/immersiveUi.css`, `src/soundtrack.ts` |
 
 This is a **route map**. Before editing, inspect the named module, its imports, callers and relevant tests; do not assume the table guarantees an isolated interface.
