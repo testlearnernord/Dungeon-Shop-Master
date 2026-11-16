@@ -82,6 +82,10 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   const head=new TransformNode("troll-rig-head",scene);
   head.parent=spine;
   head.position.set(0,3.05,.69);
+  // The mouth is a real sub-joint, not a flattened animation decal.
+  const jaw=new TransformNode("troll-rig-jaw",scene);
+  jaw.parent=head;
+  jaw.position.set(0,-.65,.80);
   const weapon=new TransformNode("troll-rig-hammer",scene);
   weapon.parent=spine;
   weapon.position.set(0,-.05,1.66);
@@ -200,9 +204,11 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   sculpt(sphere("neck",spine,[0,2.58,.40],[1.90,1.19,1.55],shadowSkin),8,.095);
   // Underbelly leather belt and three torn cloth plates, all dimensional.
   cylinder("waist-belt",spine,[0,-.12,0],1.42,.23,darkLeather,15).scaling.z=.81;
+  const apronPanels:Mesh[]=[];
   for(const x of [-.65,0,.65]){
     const flap=block("apron-panel-"+x,spine,[x,-1.08,.94],[.64,1.66,.09],apron);
     flap.rotation.z=x*.22;
+    apronPanels.push(flap);
     cone("apron-torn-edge-"+x,spine,[x,-1.94,.93],.32,.43,apron).rotation.z=Math.PI;
   }
   for(let j=0;j<5;j++){
@@ -247,7 +253,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const tooth=cone("tooth-"+t,head,[t*.135,-.43,1.055],.054,.14,bone);
     tooth.rotation.z=Math.PI;
   }
-  sphere("lower-jaw",head,[0,-.84,.96],[1.16,.27,.59],skin);
+  sphere("lower-jaw",jaw,[0,-.19,.16],[1.16,.27,.59],skin);
   // Roughly 1 in 5 scars read clearly even when the camera is far away.
   for(let i=0;i<9;i++){
     const x=Math.sin(i*2.17)*.71;
@@ -277,8 +283,10 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   }
   // Twin red vented mine canisters, the signature silhouette chosen in art.
   // These are physical cylinders with armoured rims and recessed black ends.
+  const canisterRigs:{side:number;rig:TransformNode}[]=[];
   for(const side of [-1,1]){
     const mountCan=new TransformNode("troll-canister-rig-"+side,scene);
+    canisterRigs.push({side,rig:mountCan});
     mountCan.parent=spine;
     mountCan.position.set(side*1.20,4.08,-.46);
     mountCan.rotation.z=side*.32;
@@ -546,9 +554,28 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     weapon.rotation.z=hammerPitch;
     weapon.rotation.y=hammerYaw;
     weapon.rotation.x=hammerRoll;
-    head.rotation.x=(a.phase==="windup"?-.14:0)+breath;
-    head.rotation.y=twist*.26;
+    // Loose mining gear and the jaw follow the active motion with lag.
+    // Driven only by elapsed presentation time and the *existing* phase.
+    // These are not extra combat states, hitboxes or RNG calls.
+    const wind=a.phase==="windup"?ease(a.phaseAge/(a.slam?1.05:.85)):0;
+    const hit=a.phase==="strike"?1:0;
+    const settle=a.phase==="recover"?1-ease(a.phaseAge/.56):0;
+    const snarl=Math.max(wind,hit,settle);
+    head.rotation.x=(a.phase==="windup"?-.14*wind:
+      a.phase==="strike"?.16*ease(a.phaseAge/.21):0)+breath;
+    head.rotation.y=twist*.26+Math.sin(a.time*.78)*.016;
     if(a.phase==="dead")head.rotation.x=fall*.37;
+    jaw.rotation.x=.035+snarl*.40+fall*.13+
+      (dead?0:(1-snarl)*(.015+.014*Math.sin(a.time*1.7)));
+    const gearSwing=step*walk;
+    for(const {side,rig} of canisterRigs){
+      rig.rotation.x=1.0+gearSwing*.05+snarl*.07;
+      rig.rotation.z=side*(.32+gearSwing*.025+snarl*.045);
+    }
+    for(let i=0;i<apronPanels.length;i++){
+      apronPanels[i]!.rotation.x=-.035+gearSwing*(.045+i*.012)-
+        hit*.13+settle*.09+Math.sin(a.time*2+i*.8)*.018;
+    }
     const life=dead?1-fall:1;
     ember.emissiveColor=Color3.FromHexString("#ff7625").scale(.85*life);
     pupil.emissiveColor=Color3.FromHexString("#ffe0a0").scale(.85*life);
@@ -566,6 +593,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     root.metadata.gaitDistance=gaitMeters;
     root.metadata.gaitBlend=gaitWeight;
     root.metadata.hammerLift=hammerLift;
+    root.metadata.jawOpen=jaw.rotation.x;
     root.metadata.animationClock=elapsed;
   };
   // Export one root whose children cleanly dispose with the arena's scene.
