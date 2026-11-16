@@ -41,9 +41,9 @@ export function wallPortraitProblem(
   // x=7.22 or z=-6.45). Only the coordinate along the wall must be snapped.
   const snapped=front||back?quarter(pose.x):
     onSide?quarter(pose.z):quarter(pose.x)&&quarter(pose.z);
-  if(!snapped)return "Hang the portrait on the wall's 0.25m grid.";
   if(!front&&!back&&!onSide&&!rock)
     return "Hang the portrait on an existing solid shop wall, not a doorway or empty air.";
+  if(!snapped)return "Hang the portrait on the wall's 0.25m grid.";
   if(onSide&&room?.expansionTier&&
     !supportedExcavatedWall(pose,room,layout,width))
     return "Move the portrait before excavating its supporting wall.";
