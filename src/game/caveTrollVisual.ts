@@ -1,6 +1,7 @@
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import { VertexBuffer } from "@babylonjs/core/Buffers/buffer";
 import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
@@ -88,13 +89,13 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     mat.backFaceCulling=true;
     return mat;
   };
-  const skin=makeMaterial("ashen-scarred-skin","#9e9388");
-  const shadowSkin=makeMaterial("shadow-skin","#746a62");
-  const scar=makeMaterial("scars","#5e514d");
-  const nose=makeMaterial("nose","#94665e");
+  const skin=makeMaterial("ashen-scarred-skin","#c2b3a4");
+  const shadowSkin=makeMaterial("shadow-skin","#9b8c81");
+  const scar=makeMaterial("scars","#80675f");
+  const nose=makeMaterial("nose","#a57f74");
   const leather=makeMaterial("leather","#50382c");
   const darkLeather=makeMaterial("stitch-leather","#312522");
-  const plated=makeMaterial("plated-iron","#55504a",false);
+  const plated=makeMaterial("plated-iron","#6f6460",false);
   const iron=makeMaterial("iron-edge","#89817a",false);
   const copper=makeMaterial("rust","#a45338",false);
   const rust=makeMaterial("red-canisters","#803a2e");
@@ -104,8 +105,39 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   const mouth=makeMaterial("mouth","#231b1b");
   const ember=makeMaterial("molten-eyes","#ff8b28",false,true);
   const pupil=makeMaterial("hot-pupils","#fff0a6",false,true);
-  const rock=makeMaterial("hammer-stone","#514f50");
+  const rock=makeMaterial("hammer-stone","#696764");
   const wood=makeMaterial("hammer-haft","#624536");
+  // Stable procedural hand-painted texture for skin. Real UV shading keeps
+  // veins, dirt and pigment variation visible across the 3D model instead
+  // of returning to uniformly coloured Blender-style spheres.
+  const skinTexture=new DynamicTexture("mauler-skin-pigment",
+    {width:256,height:256},scene,false);
+  const ctx=skinTexture.getContext() as CanvasRenderingContext2D;
+  const pixels=ctx.createImageData(256,256);
+  let seed=9321;
+  const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  for(let y=0;y<256;y++)for(let x=0;x<256;x++){
+    const broad=Math.sin(x*.105+Math.cos(y*.031)*3.2)*5+
+      Math.sin(y*.071+x*.039)*7;
+    const grain=(random()-.5)*26;
+    const v=Math.max(185,Math.min(255,232+broad+grain));
+    const at=(y*256+x)*4;
+    pixels.data[at]=v; pixels.data[at+1]=v-5;
+    pixels.data[at+2]=v-13; pixels.data[at+3]=255;
+  }
+  ctx.putImageData(pixels,0,0);
+  for(let n=0;n<150;n++){
+    const x=random()*256,y=random()*256;
+    ctx.strokeStyle=n%4===0?"rgba(85,62,52,.23)":"rgba(111,87,72,.15)";
+    ctx.lineWidth=n%5===0?1.7:.65;
+    ctx.beginPath();ctx.moveTo(x,y);
+    ctx.quadraticCurveTo(x+(random()-.5)*18,y+8,
+      x+(random()-.5)*29,y+16+random()*24);
+    ctx.stroke();
+  }
+  skinTexture.update();
+  skin.diffuseTexture=skinTexture;
+  shadowSkin.diffuseTexture=skinTexture;
   const materials=[skin,shadowSkin,scar,nose,leather,darkLeather,plated,iron,
     copper,rust,apron,rope,bone,mouth,ember,pupil,rock,wood];
   const mount=(m:Mesh,parent:TransformNode,p:[number,number,number],mat:StandardMaterial):Mesh=>{
@@ -193,8 +225,8 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   for(const side of [-1,1]){
     sphere("cheek-"+side,head,[side*.64,-.13,.69],[.75,.71,.62],skin,15);
     sphere("eye-socket-"+side,head,[side*.49,.39,.91],[.47,.33,.20],mouth,16);
-    sphere("eye-glow-"+side,head,[side*.48,.37,1.06],[.26,.20,.11],ember,15);
-    sphere("eye-pupil-"+side,head,[side*.48,.37,1.15],[.075,.10,.025],pupil,10);
+    sphere("eye-glow-"+side,head,[side*.48,.37,1.06],[.19,.14,.095],ember,15);
+    sphere("eye-pupil-"+side,head,[side*.48,.37,1.15],[.05,.06,.025],pupil,10);
     const eyebrow=sphere("furrow-"+side,head,[side*.49,.62,.94],[.79,.29,.34],skin,12);
     eyebrow.rotation.z=side*.23;
     const ear=cone("pointed-ear-"+side,head,[side*1.12,.23,.08],.30,.83,shadowSkin);
@@ -203,7 +235,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const tusk=cone("tusk-"+side,head,[side*.48,-.48,1.13],.14,.52,bone);
     tusk.rotation.z=-side*.16;
   }
-  sphere("nose",head,[0,-.02,1.15],[.90,.64,.68],nose,20);
+  sphere("nose",head,[0,-.02,1.15],[.76,.54,.62],nose,20);
   sphere("gaping-mouth",head,[0,-.62,1.00],[1.12,.62,.21],mouth,16);
   for(let t=-2;t<=2;t++){
     const tooth=cone("tooth-"+t,head,[t*.19,-.38,1.12],.078,.20,bone);
