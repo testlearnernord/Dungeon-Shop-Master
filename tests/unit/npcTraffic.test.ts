@@ -362,13 +362,13 @@ test("waypoint progress detects pendulum paths even when individual steps advanc
   assert.equal(state.stagnantSeconds,0,"a new waypoint resets old congestion");
 });
 
-test("only stationary shelf and idle waiters yield, never cashier or restock customers",()=>{
+test("stationary shelf, idle and petition waiters yield, but cashier customers hold their position",()=>{
   assert(canYieldShopperSpot("queueing","waiting-for-next-day",false));
   assert(canYieldShopperSpot("queueing","waiting-for-shelf",false));
   assert(!canYieldShopperSpot("queueing","waiting-for-shelf",true),
     "shelf waiter following its retreat route must finish first");
-  for(const state of ["awaiting-checkout","waiting-for-restock",
-    "waiting-for-credit","walking-to-checkout","clearing-shelf-aisle"]){
+  for(const state of ["awaiting-checkout",
+    "walking-to-checkout","clearing-shelf-aisle"]){
     assert.equal(canYieldShopperSpot("queueing",state,false),false,state);
   }
   assert(!canYieldShopperSpot("browsing","waiting-for-shelf",false));
@@ -403,5 +403,13 @@ test("roaming request visitors yield a live aisle, unlike checkout customers",()
   assert(canYieldShopperSpot("queueing","roaming-request",false));
   assert(!canYieldShopperSpot("queueing","roaming-request",true));
   assert(!canYieldShopperSpot("queueing","awaiting-checkout",false));
-  assert(!canYieldShopperSpot("queueing","waiting-for-restock",false));
+  assert(canYieldShopperSpot("queueing","waiting-for-restock",false));
+});
+
+test("a stationary petitioner may yield to a buyer, but the checkout line holds",()=>{
+  assert.equal(canYieldShopperSpot("queueing","waiting-for-restock",false),true);
+  assert.equal(canYieldShopperSpot("queueing","waiting-for-credit",false),true);
+  assert.equal(canYieldShopperSpot("queueing","waiting-for-credit-overflow",false),true);
+  assert.equal(canYieldShopperSpot("queueing","waiting-for-restock",true),false);
+  assert.equal(canYieldShopperSpot("queueing","awaiting-checkout",false),false);
 });

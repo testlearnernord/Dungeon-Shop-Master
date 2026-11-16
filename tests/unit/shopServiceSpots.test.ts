@@ -191,3 +191,63 @@ test("moving a shelf browser to checkout atomically frees the old shelf",()=>{
   assert(spots.reserveShelfAccess("next-shopper","shelf-1",2,start,layout,room));
   assert.equal(spots.snapshot().length,2,"one customer must never own two stations");
 });
+
+test("checkout customers do not walk through already reserved cashier stations",()=>{
+  const layout=createShopLayout(),room=createLevel5Room();
+  const stations=checkoutQueuePoints(layout,start,4,room);
+  assert(stations.length>=3);
+  const spots=new ShopServiceSpots();
+  const first=spots.reserve("front","checkout",start,layout,room,
+    {checkoutTarget:stations[0]});
+  assert(first);
+  const second=spots.reserve("behind","checkout",start,layout,room,
+    {checkoutTarget:stations[1]});
+  assert(second,"the next buyer should be able to join a real line");
+  let from=start;
+  for(const end of second.route.waypoints){
+    const dx=end.x-from.x,dz=end.z-from.z,length2=dx*dx+dz*dz;
+    const t=length2===0?0:Math.max(0,Math.min(1,
+      ((first.point.x-from.x)*dx+(first.point.z-from.z)*dz)/length2));
+    const nearest={x:from.x+t*dx,z:from.z+t*dz};
+    assert(distance(nearest,first.point)>=.68-1e-5,
+      "a new buyer must walk AROUND the occupied queue station");
+    from=end;
+  }
+});
+
+test("credit and restock petitions use nearby quiet stands and do not pace across the cave",()=>{
+  const layout=createShopLayout(),room=createLevel5Room();
+  const spots=new ShopServiceSpots();
+  const origin={x:4,z:-2.5};
+  const wait=spots.reserve("petition","credit",origin,layout,room);
+  assert(wait);
+  assert(wait.point.x>0,"right-side customers should not trek to a left-side pocket");
+  const stroll=spots.reserve("petition","roam",wait.point,layout,room,
+    {avoid:wait.point});
+  if(stroll){
+    assert(distance(stroll.point,wait.point)<=3.8);
+    assert.equal(spots.claim("petition")?.role,"roam");
+  }else{
+    assert.equal(spots.claim("petition")?.role,"credit",
+      "no free local destination must preserve the original request station");
+  }
+});
+
+test("fifteen simultaneous intents retain exclusive, reachable stations without checkout crowding",()=>{
+  const layout=createShopLayout(),room=createLevel5Room();
+  const stations=checkoutQueuePoints(layout,start,15,room);
+  const spots=new ShopServiceSpots();
+  let cashierCount=0;
+  for(let i=0;i<15;i++){
+    const role=i<5?"checkout":i<10?(i%2?"credit":"restock"):"overflow";
+    const position=spots.reserve("visitor-"+i,role,start,layout,room,
+      role==="checkout"?{checkoutTarget:stations[i]}:{preferredIndex:i});
+    if(role==="checkout"&&position)cashierCount++;
+  }
+  assert.equal(cashierCount,5,"the visible checkout lane has five separated places");
+  const claims=spots.snapshot();
+  assert(claims.length>=8,"a crowded shop should retain multiple independent service points");
+  for(let i=0;i<claims.length;i++)for(let j=i+1;j<claims.length;j++)
+    assert(distance(claims[i].point,claims[j].point)>=NPC_STATION_CLEARANCE-1e-5,
+      "visitors may not overlap at checkout, petition or overflow stations");
+});
