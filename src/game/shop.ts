@@ -7,6 +7,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { ITEMS, type ItemId, type Slot } from "./inventory";
+import { createShopStockModel } from "./shopItemModels.ts";
 import { GameStore } from "./gameStore";
 import { getDungeonSurfaces } from "./dungeonSurfaces";
 import {
@@ -23,7 +24,7 @@ interface ShelfGroup {
 export class Shop {
   readonly slotMeshes = new Map<Mesh, Slot>();
   private readonly slotById = new Map<string, Mesh>();
-  private readonly slotMaterials = new Map<ItemId | "empty", StandardMaterial>();
+  private readonly slotBaseMaterial: StandardMaterial;
   private readonly itemVisuals = new Map<string, Mesh[]>();
   private readonly shelves = new Map<ShelfId, ShelfGroup>();
   private selectedItemId: ItemId = ITEMS[0].id;
@@ -32,16 +33,9 @@ export class Shop {
     private readonly scene: Scene,
     private readonly store: GameStore,
   ) {
-    for (const item of ITEMS) {
-      const color = Color3.FromHexString(item.color);
-      const material = new StandardMaterial(`${item.id}-material`, scene);
-      material.diffuseColor = color;
-      material.specularColor = new Color3(0.15, 0.15, 0.15);
-      this.slotMaterials.set(item.id, material);
-    }
-    const empty = new StandardMaterial("empty-slot-material", scene);
-    empty.diffuseColor = new Color3(0.33, 0.26, 0.19);
-    this.slotMaterials.set("empty", empty);
+    this.slotBaseMaterial = new StandardMaterial("shelf-slot-wood", scene);
+    this.slotBaseMaterial.diffuseColor = new Color3(0.33, 0.26, 0.19);
+    this.slotBaseMaterial.specularColor = new Color3(0.07, 0.06, 0.04);
 
     this.createShelves();
     this.syncPlacements();
@@ -152,7 +146,7 @@ export class Shop {
         },this.scene);
         mesh.parent=root;
         mesh.position.set(0.44,0.66,shelfSlotLocalZ(index));
-        mesh.material=this.slotMaterials.get("empty")!;
+        mesh.material=this.slotBaseMaterial;
         mesh.checkCollisions=true;
         mesh.isPickable=true;
         mesh.metadata={kind:"shelf-slot",slotId:slot.id};
@@ -187,29 +181,33 @@ export class Shop {
   private updateSlot(slot:Slot):void {
     const mesh=this.slotById.get(slot.id);
     if(!mesh)return;
-    mesh.material=this.slotMaterials.get(slot.itemId??"empty")!;
+    // The slot's pickable wooden pad stays the exact same collision/interaction
+    // target. Items are purely visual meshes, never obstacles for customers.
+    mesh.material=this.slotBaseMaterial;
     for(const visual of this.itemVisuals.get(slot.id)??[])visual.dispose();
     const visuals:Mesh[]=[];
     if(slot.itemId){
-      const item=ITEMS.find(entry=>entry.id===slot.itemId)!;
       const root=this.shelves.get(slot.shelfId as ShelfId)!.root;
+      const positions=[
+        {x:.29,z:-.16},{x:.29,z:.16},
+        {x:.58,z:-.19},{x:.58,z:0},{x:.58,z:.19},
+      ];
       for(let count=0;count<slot.quantity;count++){
-        const visual=item.id==="mana-potion"
-          ? MeshBuilder.CreateCylinder(slot.id+"-item-"+count,{
-            height:0.38,diameter:0.22,
-          },this.scene)
-          : item.id==="healing-herb"
-            ? MeshBuilder.CreateSphere(slot.id+"-item-"+count,{
-              diameter:0.3,
-            },this.scene)
-            : MeshBuilder.CreateBox(slot.id+"-item-"+count,{
-              size:item.id==="bread"?0.28:0.32,
-            },this.scene);
+        const visual=createShopStockModel(this.scene,slot.itemId,
+          slot.id+"-item-"+count);
         visual.parent=root;
-        visual.position.set(0.44,0.94+(count%2)*0.18,
-          shelfSlotLocalZ(slot.index)+(count-2)*0.09);
-        visual.material=this.slotMaterials.get(slot.itemId)!;
-        visual.isPickable=false;
+        if(slot.itemId==="iron-sword"){
+          // Real blades lie in a short, tidy stack; never poke through the
+          // neighboring slot or obstruct the service side of the shelf.
+          visual.position.set(.43,.735+count*.016,
+            shelfSlotLocalZ(slot.index)+(count-2)*.09);
+          visual.scaling.setAll(.87);
+        }else{
+          const pose=positions[count]!;
+          visual.position.set(pose.x,.735,shelfSlotLocalZ(slot.index)+pose.z);
+          visual.scaling.setAll(slot.itemId==="bread"?.76:.87);
+          visual.rotation.y=count%2===0?-.09:.12;
+        }
         visuals.push(visual);
       }
     }
