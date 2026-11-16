@@ -1,11 +1,13 @@
 # Dungeon Shop Master — Next Development Pass
 
 > **Working roadmap, reviewed 2026-11-16.** This is a prioritized,
-> owner-accepted direction after the implementation through PR #151,
-> **not** a list of completed changes, newly created GitHub PRs or final
-> approvals of each individual design detail. The numbers below are
-> *suggested next PR numbers*, not reservations. Always check `main`, open
-> PRs and active CI before assigning the next number or starting work.
+> owner-accepted direction after implementation through PR #151 and the
+> subsequent documentation sync in PR #152. This is **not** a list of
+> completed gameplay changes or final approval of every design detail.
+> Documentation PR #152 used the number originally discussed for cashier
+> polish. The five future feature PRs are **tentatively #153–#157**;
+> GitHub numbers are not reserved. Inspect `main`, open PRs and current
+> CI before starting or assigning an actual number.
 
 ## Why this sequence
 
@@ -21,7 +23,7 @@ consequences in committed expeditions → make a better or greedier decision
 tomorrow. The player's actions affect stock and access; the heroes still
 choose what they buy.
 
-## Proposed PR #152: Cashier feel and flow
+## Feature work package 1 (tentatively PR #153): Cashier feel and flow
 
 **Player goal:** A complete checkout feels satisfying and is manageable
 with a queue, not repetitive button bureaucracy.
@@ -41,7 +43,7 @@ with a queue, not repetitive button bureaucracy.
 without overlapping register admission, duplicate gold, phantom receipts
 or unnecessary pointer-lock roundtrips. Human playtest judges pacing.
 
-## Proposed PR #153: Stocking ergonomics
+## Feature work package 2 (tentatively PR #154): Stocking ergonomics
 
 **Player goal:** Respond to restock pressure quickly while still
 physically operating the shelves.
@@ -61,7 +63,7 @@ physically operating the shelves.
 customer-held items, exceed a shelf, or make UI and saved quantities
 disagree. Include actual shelf-ray and mixed-customer browser regression.
 
-## Proposed PR #154: Distinct short customer reactions
+## Feature work package 3 (tentatively PR #155): Distinct short customer reactions
 
 **Player goal:** Recognizable, darkly funny customers rather than bots
 without halting the shop loop for dialogue.
@@ -80,7 +82,7 @@ without halting the shop loop for dialogue.
 **Acceptance:** Repeatable, correct reactions under load; barks never
 change purchases, pathfinding, request timers or deterministic outcomes.
 
-## Proposed PR #155: Shop → dungeon consequence feedback
+## Feature work package 4 (tentatively PR #156): Shop → dungeon consequence feedback
 
 **Player goal:** Care what happens to customers **after** their purchase.
 
@@ -99,7 +101,7 @@ change purchases, pathfinding, request timers or deterministic outcomes.
 replay/reload yield exactly the same economy and hero outcome; the
 narrative UI communicates cause and uncertainty honestly.
 
-## Proposed PR #156: First ten-day playability and balance
+## Feature work package 5 (tentatively PR #157): First ten-day playability and balance
 
 **Player goal:** Ten days of coherent decisions, progress and tension
 rather than a technically correct but repetitive loop.
