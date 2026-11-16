@@ -686,3 +686,24 @@ export function inspectWallPortrait(){
     textured:plane?.material instanceof StandardMaterial&&
       !!plane.material.diffuseTexture?.isReady()};
 }
+
+/** Non-interactive 3D stock meshes must exist for every catalog item. */
+export async function inspectPhysicalStockMeshes() {
+  const {ITEMS}=await import("../src/game/economy.ts");
+  const {createShopStockModel}=await import("../src/game/shopItemModels.ts");
+  const scene=Engine.LastCreatedScene!;
+  return ITEMS.map(item=>{
+    const model=createShopStockModel(scene,item.id,"model-test-"+item.id);
+    const data={
+      itemId:item.id,
+      vertices:model.getTotalVertices(),
+      triangles:model.getTotalIndices()/3,
+      pickable:model.isPickable,
+      collisions:model.checkCollisions,
+      hasVertexPaint:!!model.getVerticesData("color")?.length,
+      size:model.getBoundingInfo().boundingBox.extendSize.asArray(),
+    };
+    model.dispose();
+    return data;
+  });
+}
