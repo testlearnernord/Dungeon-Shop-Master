@@ -12,7 +12,7 @@ test("roster board stays on the old wall by default and can move to the other sh
   assert.equal(rosterBoardProblem(DEFAULT_ROSTER_BOARD,layout),null);
   const newSpot=rosterBoardAtWall("front-wall",{x:5.53,z:-7})!;
   assert.deepEqual(newSpot,{x:5.5,z:-6.45,rotation:2});
-  const applied=replaceRosterBoard(undefined,newSpot,layout);
+  const applied=replaceRosterBoard(DEFAULT_ROSTER_BOARD,newSpot,layout);
   assert.equal(applied.message,"Adventurer board placed.");
   assert.deepEqual(applied.placement,newSpot);
   assert.equal(rosterBoardProblem(newSpot,layout),null);
