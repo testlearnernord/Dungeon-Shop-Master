@@ -690,12 +690,14 @@ export function inspectWallPortrait(){
 /** Non-interactive 3D stock meshes must exist for every catalog item. */
 export async function inspectPhysicalStockMeshes() {
   const {ITEMS}=await import("../src/game/economy.ts");
-  const {createShopStockModel}=await import("../src/game/shopItemModels.ts");
+  const {getShopStockTemplates}=await import("../src/game/shopStockAssets.ts");
   const scene=Engine.LastCreatedScene!;
+  const templates=await getShopStockTemplates(scene);
   return ITEMS.map(item=>{
-    const model=createShopStockModel(scene,item.id,"model-test-"+item.id);
+    const model=templates.get(item.id)!;
     const data={
       itemId:item.id,
+      sourceUrl:model.metadata?.sourceUrl as string | undefined,
       vertices:model.getTotalVertices(),
       triangles:model.getTotalIndices()/3,
       pickable:model.isPickable,
@@ -703,13 +705,21 @@ export async function inspectPhysicalStockMeshes() {
       hasVertexPaint:!!model.getVerticesData("color")?.length,
       size:model.getBoundingInfo().boundingBox.extendSize.asArray(),
     };
-    model.dispose();
     return data;
   });
 }
 
-/** Observe the actual rendered shelf inventory, not only newly constructed
- * standalone model factories. This must agree with saved slot quantities. */
+/** Wait for six real GLB imports and Shop's pending stock refresh. */
+export async function waitForShopStockAssets(){
+  const scene=Engine.LastCreatedScene!;
+  const {getShopStockTemplates}=await import("../src/game/shopStockAssets.ts");
+  await getShopStockTemplates(scene);
+  // Shop registered its refresh callback before the browser test did.
+  await Promise.resolve();
+}
+
+/** Observe the actual rendered shelf inventory, not only a template factory.
+ * This must agree with saved slot quantities. */
 export function inspectRenderedShopStock(shelfId="shelf-1"){
   const scene=Engine.LastCreatedScene!;
   return [1,2,3,4].map(index=>{

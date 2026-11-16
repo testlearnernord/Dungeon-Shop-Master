@@ -1,13 +1,11 @@
 # Dungeon Shop Master — Next Development Pass
 
 > **Working roadmap, reviewed 2026-11-16.** This is a prioritized,
-> owner-accepted direction after implementation through PR #151 and the
-> subsequent documentation sync in PR #152. This is **not** a list of
-> completed gameplay changes or final approval of every design detail.
-> Documentation PR #152 used the number originally discussed for cashier
-> polish. The five future feature PRs are **tentatively #153–#157**;
-> GitHub numbers are not reserved. Inspect `main`, open PRs and current
-> CI before starting or assigning an actual number.
+> owner-accepted direction. **PR #153 (cashier) and #154 (physical
+> merchandise assets) are already merged.** Further package numbers are
+> not reserved: GitHub numbers do not match this conceptual roadmap.
+> This is **not** a list of completed gameplay changes or final approval
+> of every design detail. Inspect `main`, open PRs and CI before starting.
 
 ## Why this sequence
 
@@ -27,10 +25,9 @@ choose what they buy.
 
 **Delivery status:** the continuous two-stage register, real paid receipt,
 item icons and explicit E-to-next-customer transition are implemented in
-PR #153. This is a change on the PR branch until merged, not evidence that
-`main` or the deployed build already contains it. The owner still reviews
+merged PR #153. The owner still reviews
 visual pacing and may request revisions. Subsequent package numbers are
-only tentative.
+unreserved.
 
 **Player goal:** A complete checkout feels satisfying and is manageable
 with a queue, not repetitive button bureaucracy.
@@ -53,7 +50,7 @@ with a queue, not repetitive button bureaucracy.
 without overlapping register admission, duplicate gold, phantom receipts
 or unnecessary pointer-lock roundtrips. Human playtest judges pacing.
 
-## Feature work package 2 (tentatively PR #154): Stocking ergonomics
+## Feature work package 2: Stocking ergonomics
 
 **Player goal:** Respond to restock pressure quickly while still
 physically operating the shelves.
@@ -73,7 +70,7 @@ physically operating the shelves.
 customer-held items, exceed a shelf, or make UI and saved quantities
 disagree. Include actual shelf-ray and mixed-customer browser regression.
 
-## Feature work package 3 (tentatively PR #155): Distinct short customer reactions
+## Feature work package 3: Distinct short customer reactions
 
 **Player goal:** Recognizable, darkly funny customers rather than bots
 without halting the shop loop for dialogue.

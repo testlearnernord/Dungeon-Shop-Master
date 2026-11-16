@@ -7,7 +7,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { ITEMS, type ItemId, type Slot } from "./inventory";
-import { createShopStockModel } from "./shopItemModels.ts";
+import { cloneShopStockModel, getShopStockTemplates } from "./shopStockAssets.ts";
 import { GameStore } from "./gameStore";
 import { getDungeonSurfaces } from "./dungeonSurfaces";
 import {
@@ -26,6 +26,7 @@ export class Shop {
   private readonly slotById = new Map<string, Mesh>();
   private readonly slotBaseMaterial: StandardMaterial;
   private readonly itemVisuals = new Map<string, Mesh[]>();
+  private stockTemplates: ReadonlyMap<ItemId, Mesh> | null = null;
   private readonly shelves = new Map<ShelfId, ShelfGroup>();
   private selectedItemId: ItemId = ITEMS[0].id;
 
@@ -47,6 +48,13 @@ export class Shop {
       this.syncPlacements();
       this.refresh();
     });
+    // Load real GLBs independently of game-state readiness. Newly stocked
+    // slots remain interactive while models load and are refreshed from the
+    // latest authoritative inventory after the last asset is available.
+    void getShopStockTemplates(scene).then(templates => {
+      this.stockTemplates = templates;
+      for (const slot of this.store.state.shopEconomy.slots) this.updateSlot(slot);
+    }).catch(error => console.error("Shop stock GLB loading failed", error));
   }
 
   select(itemId: ItemId): void { this.selectedItemId = itemId; }
@@ -186,15 +194,16 @@ export class Shop {
     mesh.material=this.slotBaseMaterial;
     for(const visual of this.itemVisuals.get(slot.id)??[])visual.dispose();
     const visuals:Mesh[]=[];
-    if(slot.itemId){
+    if(slot.itemId && this.stockTemplates){
       const root=this.shelves.get(slot.shelfId as ShelfId)!.root;
       const positions=[
         {x:.29,z:-.16},{x:.29,z:.16},
         {x:.58,z:-.19},{x:.58,z:0},{x:.58,z:.19},
       ];
       for(let count=0;count<slot.quantity;count++){
-        const visual=createShopStockModel(this.scene,slot.itemId,
-          slot.id+"-item-"+count);
+        const template=this.stockTemplates.get(slot.itemId);
+        if(!template)throw new Error("Missing stock GLB: "+slot.itemId);
+        const visual=cloneShopStockModel(template,slot.id+"-item-"+count);
         visual.parent=root;
         if(slot.itemId==="iron-sword"){
           // Real blades lie in a short, tidy stack; never poke through the
