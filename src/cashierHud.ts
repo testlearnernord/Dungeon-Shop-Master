@@ -128,14 +128,83 @@ export function setupCashierHud(
       ?"Press R (or STAMP) as the needle crosses the green mark."
       :"Goods verified. Seal the receipt at the new mark.";
   };
-  const render=()=>{
-    if(!heroId)return;
-    if(!shopActive()||readyHero()!==heroId){
-      close();report("Customer left the register.");return;
+  // Only the physically admitted front customer, with a saved real
+  // unpaid cart, can enter a new checkout. No hypothetical queue shortcut.
+  const payableAtRegister=()=>{
+    if(!shopActive()||
+       !isAtCounterStaffDock(store.state.shopLayout,camera.position))return null;
+    const id=readyHero();
+    if(!id)return null;
+    const cart=store.state.shopCarts.find(entry=>entry.heroId===id);
+    const hero=store.state.adventurers.find(entry=>entry.id===id);
+    return cart&&hero?{id,cart,hero}:null;
+  };
+  const syncNext=()=>{
+    const next=payableAtRegister();
+    nextButton.disabled=!next;
+    nextHint.textContent=next
+      ?next.hero.name+" is ready with "+cartTotal(next.cart)+"g of goods."
+      :"Waiting for the next customer to reach the counter.";
+  };
+  const beginCustomer=(buyer:NonNullable<ReturnType<typeof payableAtRegister>>)=>{
+    heroId=buyer.id;
+    settled=false;
+    hits=0;
+    misses=0;
+    lastPress=Number.NEGATIVE_INFINITY;
+    started=performance.now();
+    challenge.hidden=false;
+    settlement.hidden=true;
+    customer.textContent=buyer.hero.name+" · Lv"+buyer.hero.level+" "+buyer.hero.role;
+    lines.replaceChildren();
+    for(const line of buyer.cart.lines){
+      const item=ITEMS.find(entry=>entry.id===line.itemId);
+      const p=document.createElement("p");
+      p.className="cashier-line";
+      const name=document.createElement("span");
+      name.className="cashier-item-name";
+      name.append(itemIcon(line.itemId,"cashier-item-icon"),
+        document.createTextNode(line.quantity+" × "+(item?.name??line.itemId)));
+      const price=document.createElement("strong");
+      price.textContent=line.subtotal+"g";
+      p.append(name,price);
+      lines.append(p);
     }
-    needle.style.left=(phase()*100)+"%";
-    pulse(Math.floor((performance.now()-started)/(Math.PI*700)));
+    const basket=cartTotal(buyer.cart);
+    total.replaceChildren(document.createTextNode("TOTAL DUE  ·  "),
+      goldIcon("cashier-gold-icon"),
+      document.createTextNode(basket+"g"));
+    const possibleTip=Math.floor(basket/10);
+    tipNote.textContent=possibleTip>0&&buyer.hero.gold>=basket+possibleTip
+      ?"Flawless stamps may earn "+possibleTip+"g extra from this customer."
+      :"No extra tip available for this basket.";
+    showStage();
+    root.dataset.phase="stamping";
+  };
+  const render=()=>{
+    if(!root.open)return;
+    if(heroId){
+      if(!shopActive()||readyHero()!==heroId){
+        close();report("Customer left the register.");return;
+      }
+      needle.style.left=(phase()*100)+"%";
+      pulse(Math.floor((performance.now()-started)/(Math.PI*700)));
+    }else if(settled){
+      if(!shopActive()){close();return;}
+      if(performance.now()-lastNextCheck>=200){
+        lastNextCheck=performance.now();
+        syncNext();
+      }
+    }
     frame=requestAnimationFrame(render);
+  };
+  const serveNext=()=>{
+    if(!root.open||!settled)return;
+    const next=payableAtRegister();
+    if(!next){syncNext();return;}
+    beginCustomer(next);
+    sound("open");
+    root.querySelector<HTMLButtonElement>(".cashier-stamp")!.focus();
   };
   const attemptStamp=()=>{
     if(!root.open||!heroId||!shopActive())return;
@@ -160,45 +229,59 @@ export function setupCashierHud(
     if(readyHero()!==id||!shopActive()){
       close();report("Checkout canceled: customer moved.");return;
     }
-    close();
+    // Clear the active customer BEFORE GameStore notifies subscribers, or
+    // its cart-removal listener would close the entire register session.
+    heroId=null;
     const before=store.state;
     const outcome=pay(id,misses===0);
-    if(store.state!==before)sound("coins");
+    if(store.state===before){
+      close();
+      report(outcome);
+      return;
+    }
+    const cashReceived=store.state.shopEconomy.balance-
+      before.shopEconomy.balance;
+    const bought=before.shopCarts.find(entry=>entry.heroId===id);
+    const subtotal=bought?cartTotal(bought):0;
+    const tip=Math.max(0,cashReceived-subtotal);
+    sound("coins");
     report(outcome+" Receipt verified and sealed."+
       (misses===0?" Perfect service.":" No flawless-service tip."));
+    // The player explicitly decides to serve each subsequent customer.
+    // Keeping the register open eliminates repeated modal/pointer-lock
+    // roundtrips; it never charges an unconfirmed second cart.
+    settled=true;
+    root.dataset.phase="settled";
+    challenge.hidden=true;
+    settlement.hidden=false;
+    settlementAmount.replaceChildren(goldIcon("cashier-gold-icon"),
+      document.createTextNode(cashReceived+"g collected"));
+    settlementDetail.textContent=tip>0
+      ?subtotal+"g sale + "+tip+"g customer-funded tip"
+      :subtotal+"g sale · "+(misses>0
+        ?"no flawless-service tip":"no additional tip on this basket");
+    lastNextCheck=0;
+    syncNext();
+    (nextButton.disabled?finishButton:nextButton).focus();
   };
   const open=():string=>{
-    if(heroId)return "Finish or cancel the current checkout.";
-    if(document.querySelector("dialog[open]"))return "Close the open dialog first.";
+    if(root.open||heroId)return "Finish or leave the current checkout.";
+    if(document.querySelector("dialog[open]"))
+      return "Close the open dialog first.";
     if(!shopActive())return "Return to the shop first.";
     if(!isAtCounterStaffDock(store.state.shopLayout,camera.position))
       return "Stand behind the counter at the cashier's station to serve.";
-    const id=readyHero();
-    const cart=store.state.shopCarts.find(entry=>entry.heroId===id);
-    const hero=store.state.adventurers.find(entry=>entry.id===id);
-    if(!id||!cart||!hero)return "Wait for the first customer to reach the register.";
-    // Short, same-side snap to the dedicated register workstation. The
-    // opposite customer socket cannot activate the checkout overlay.
+    const buyer=payableAtRegister();
+    if(!buyer)return "Wait for the first customer to reach the register.";
+    // Initial service snaps only to the staff-side socket. Subsequent
+    // customers are admitted without moving the player/camera again.
     const dock=counterDockPoint(store.state.shopLayout,"staff");
-    camera.position.x=dock.x;camera.position.z=dock.z;
+    camera.position.x=dock.x;
+    camera.position.z=dock.z;
     const counter=store.state.shopLayout.counter;
-    if(counter)camera.setTarget(new Vector3(counter.x,camera.position.y+.10,counter.z));
-    heroId=id;hits=0;misses=0;lastPress=Number.NEGATIVE_INFINITY;started=performance.now();
-    customer.textContent=hero.name+" · Lv"+hero.level+" "+hero.role;
-    lines.replaceChildren();
-    for(const line of cart.lines){
-      const item=ITEMS.find(entry=>entry.id===line.itemId);
-      const p=document.createElement("p");
-      p.className="cashier-line";
-      const name=document.createElement("span");
-      name.textContent=line.quantity+" × "+(item?.name??line.itemId);
-      const price=document.createElement("strong");
-      price.textContent=line.subtotal+"g";
-      p.append(name,price);
-      lines.append(p);
-    }
-    total.textContent="TOTAL DUE  ·  "+cartTotal(cart)+"g";
-    showStage();
+    if(counter)
+      camera.setTarget(new Vector3(counter.x,camera.position.y+.10,counter.z));
+    beginCustomer(buyer);
     if(document.pointerLockElement)void document.exitPointerLock();
     camera.detachControl();
     root.showModal();
@@ -209,16 +292,28 @@ export function setupCashierHud(
   };
   root.querySelector(".cashier-cancel")!.addEventListener("click",close);
   root.querySelector(".cashier-stamp")!.addEventListener("click",attemptStamp);
+  nextButton.addEventListener("click",serveNext);
+  finishButton.addEventListener("click",close);
   window.addEventListener("keydown",event=>{
-    if(!root.open||!heroId||event.repeat)return;
-    if(event.code==="Escape"){event.preventDefault();close();return;}
-    if(event.code!=="KeyR")return;
+    if(!root.open||event.repeat)return;
+    if(event.code==="Escape"){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      close();return;
+    }
+    if(settled&&(event.code==="KeyE"||event.code==="Enter")){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      serveNext();return;
+    }
+    if(event.code!=="KeyR"||!heroId)return;
     event.preventDefault();
     event.stopImmediatePropagation();
     attemptStamp();
   },true);
   store.subscribe(()=>{
-    if(heroId&&!store.state.shopCarts.some(cart=>cart.heroId===heroId))close();
+    if(heroId&&!store.state.shopCarts.some(cart=>cart.heroId===heroId))
+      close();
   });
   return {open,close};
 }
