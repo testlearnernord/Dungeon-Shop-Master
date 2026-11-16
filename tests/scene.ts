@@ -324,7 +324,7 @@ export async function inspectCaveTrollDeathPose():Promise<{
  * No game store, replay or combat motor is mutated. */
 export async function inspectCaveTrollMotion():Promise<{
   gaitMeters:number;footMinimum:number;footMaximum:number;
-  windup:number;strike:number;liftAtWindup:number;
+  windup:number;strike:number;liftAtWindup:number;jawAtWindup:number;
 }> {
   const scene=Engine.LastCreatedScene!;
   const {createCaveTrollVisual}=await import("../src/game/caveTrollVisual.ts");
@@ -343,12 +343,13 @@ export async function inspectCaveTrollMotion():Promise<{
     slam:true,time:2+i*.09,moved:0,delta:.09,hp:145,maxHp:145});
   const windup=model.root.metadata.hammerSwing as number;
   const liftAtWindup=model.root.metadata.hammerLift as number;
+  const jawAtWindup=model.root.metadata.jawOpen as number;
   for(let i=0;i<7;i++)model.animate({phase:"strike",phaseAge:i*.034,
     slam:true,time:4+i*.034,moved:0,delta:.034,hp:145,maxHp:145});
   const strike=model.root.metadata.hammerSwing as number;
   model.root.dispose();
   return {gaitMeters,footMinimum:Math.min(...sample),
-    footMaximum:Math.max(...sample),windup,strike,liftAtWindup};
+    footMaximum:Math.max(...sample),windup,strike,liftAtWindup,jawAtWindup};
 }
 
 /** Shared scene-agnostic visual identity inspection for browser tests. */
