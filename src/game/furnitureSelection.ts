@@ -30,6 +30,8 @@ const furniture:readonly LookedAtFurniture[]=[
   {id:"desk",label:"Accounting desk",movableId:"desk",bounds:bounds("desk"),focusY:0.65},
   {id:"chest",label:"Storage chest",movableId:"chest",bounds:bounds("chest"),focusY:0.45},
   {id:"candle",label:"Bedside candle + stool",movableId:"candle",bounds:bounds("candle"),focusY:0.60},
+  {id:"galvik-portrait",label:"Portrait of Galvik's lost beloved",
+    movableId:"galvik-portrait",bounds:bounds("galvik-portrait"),focusY:2.15},
 ];
 
 /** Mesh names, including their component pieces, resolve to one furniture.
@@ -54,5 +56,6 @@ export function classifyFurnitureMesh(name:string):LookedAtFurniture|null {
   if(name==="galvik-bed-chest"||name.startsWith("bed-chest-"))return furniture[5];
   if(name==="bed-candle"||name==="bed-candle-holder"||
      name==="bed-side-stool"||name==="bed-side-stool-top")return furniture[6];
+  if(name.startsWith("galvik-portrait-"))return furniture[7];
   return null;
 }

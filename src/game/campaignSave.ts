@@ -7,6 +7,7 @@ import { generateDungeonLayout, tileAt } from "./dungeonLayout.ts";
 import {isShelfId,MAX_SHOP_SHELVES,shopLayoutProblem,
   type ShelfPlacement,type ShopLayout} from "./shopLayout.ts";
 import {rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
+import {wallPortraitProblem,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 import {bedroomFurnitureProblem,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
@@ -269,7 +270,7 @@ function validateState(value: unknown): asserts value is GameState {
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
-  ], ["level5Room","bedroomFurniture","rosterBoard"]);
+  ], ["level5Room","bedroomFurniture","rosterBoard","wallPortrait"]);
   const room=state.level5Room;
   if (room !== undefined && !isValidLevel5Room(room))
     fail("payload.level5Room", "has invalid excavation geometry");
@@ -395,6 +396,19 @@ function validateState(value: unknown): asserts value is GameState {
     if(problem)fail("payload.rosterBoard",problem);
   }
 
+  if(state.wallPortrait!==undefined){
+    const raw=object(state.wallPortrait,"payload.wallPortrait",["x","z","rotation"]);
+    const sideLimit=7+(room?.expansionTier??0)*2+1;
+    const pose:WallPortraitPlacement={
+      x:validNumber(raw.x,"payload.wallPortrait.x",-sideLimit,sideLimit),
+      z:validNumber(raw.z,"payload.wallPortrait.z",-8,8),
+      rotation:integer(raw.rotation,"payload.wallPortrait.rotation",0,3) as 0|1|2|3,
+    };
+    const board=state.rosterBoard===undefined?undefined:
+      state.rosterBoard as RosterBoardPlacement;
+    const problem=wallPortraitProblem(pose,parsedShopLayout,room,board);
+    if(problem)fail("payload.wallPortrait",problem);
+  }
   const slotDefinitions=parsedShopLayout.shelves.flatMap(shelf=>
     createEmptyShelfSlots(shelf.id));
   const economy = object(state.shopEconomy, "payload.shopEconomy", [

@@ -13,6 +13,7 @@ import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
 import { createBedroomFurnitureLayout, type BedroomFurnitureLayout } from "./bedroomFurniture.ts";
 import { DEFAULT_ROSTER_BOARD,type RosterBoardPlacement } from "./rosterBoardPlacement.ts";
+import type {WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 import { settleHeldShopCarts, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
@@ -77,6 +78,8 @@ export interface GameState {
   readonly bedroomFurniture?: BedroomFurnitureLayout;
   /** Optional for historical saves; absent means the original board wall. */
   readonly rosterBoard?: RosterBoardPlacement;
+  /** Optional one-of-a-kind wall decoration, absent until the player hangs it. */
+  readonly wallPortrait?: WallPortraitPlacement;
   /** Optional until save migration; absent on historical v11 saves. */
   readonly level5Room?: Level5Room;
   readonly shopCarts: readonly ShopCart[];

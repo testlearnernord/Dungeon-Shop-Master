@@ -4,12 +4,14 @@ import {isShelfId} from "./shopLayout.ts";
 import type {BedroomFurnitureId,BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 import {isBedroomFurnitureId} from "./bedroomFurniture.ts";
 import {rosterBoardAtWall,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
+import {wallPortraitAtWall,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 
-export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId|"adventurer-board";
+export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait";
 export type BlueprintSurface=
   "floor"|"ceiling"|"left-wall"|"right-wall"|"front-wall"|"back-wall"|"rock-wall";
 export type FurnitureDraft=ShelfPlacement|(CounterPlacement&{readonly id:"counter"})|BedroomFurniturePlacement|
-  (RosterBoardPlacement&{readonly id:"adventurer-board"});
+  (RosterBoardPlacement&{readonly id:"adventurer-board"})|
+  (WallPortraitPlacement&{readonly id:"galvik-portrait"});
 
 export interface FurnitureDefinition {
   readonly id:FurnitureId;
@@ -38,6 +40,8 @@ export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=[
   catalogEntry("bed","Galvik's bed",["floor"]),
   catalogEntry("adventurer-board","Adventurer board",
     ["front-wall","left-wall","right-wall","rock-wall"]),
+  catalogEntry("galvik-portrait","Portrait of Galvik's lost beloved",
+    ["front-wall","left-wall","right-wall","back-wall","rock-wall"]),
 ] as const;
 
 export const snapQuarter=(value:number):number=>Math.round(value*4)/4;
@@ -75,6 +79,10 @@ export function blueprintAtSurface(
   if(!permitted.includes(surface))return null;
   if(id==="adventurer-board"){
     const wall=rosterBoardAtWall(surface,hit,room);
+    return wall?{id,...wall}:null;
+  }
+  if(id==="galvik-portrait"){
+    const wall=wallPortraitAtWall(surface,hit,room);
     return wall?{id,...wall}:null;
   }
   if(surface==="floor"){

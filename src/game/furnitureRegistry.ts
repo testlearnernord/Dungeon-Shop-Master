@@ -149,10 +149,10 @@ export function cashierServicePoint(
  * player collisions and shop navigation use the same definitions.
  */
 export type FurnitureKind=`shelf-${number}`|"counter"|
-  "desk"|"chest"|"candle"|"bed"|"adventurer-board";
+  "desk"|"chest"|"candle"|"bed"|"adventurer-board"|"galvik-portrait";
 export type FurnitureMount="shop-floor"|"private-floor"|"shop-wall";
 export type FurniturePurpose="stock"|"checkout"|"sleep"|"debt"|"storage"|
-  "light"|"roster";
+  "light"|"roster"|"decoration";
 export type FurniturePoint=ShopFloorPoint;
 export type FurnitureBounds=ShopFloorBounds;
 export interface FurniturePose {
@@ -199,6 +199,8 @@ export const FURNITURE_REGISTRY={
   "adventurer-board":{mount:"shop-wall",purpose:"roster",
     width:3.45,depth:.22,height:2.25,collides:false,
     interaction:{reach:2.2,label:"Adventurers"}},
+  "galvik-portrait":{mount:"shop-wall",purpose:"decoration",
+    width:1.08,depth:.14,height:1.3,collides:false},
 } as const satisfies Record<Exclude<FurnitureKind,`shelf-${number}`>,FurnitureDefinition>;
 
 const registeredShelf=(id:string):boolean=>

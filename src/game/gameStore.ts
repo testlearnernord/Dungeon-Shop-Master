@@ -11,6 +11,7 @@ import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
 import type {BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 import {DEFAULT_ROSTER_BOARD,rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
+import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
 
 export class GameStore {
   private current: GameState;
@@ -72,6 +73,9 @@ export class GameStore {
     const board=this.current.rosterBoard??DEFAULT_ROSTER_BOARD;
     if(rosterBoardProblem(board,this.current.shopLayout,result.room))
       return "Move the Adventurer Board before mining its supporting rock.";
+    if(this.current.wallPortrait&&wallPortraitProblem(this.current.wallPortrait,
+      this.current.shopLayout,result.room,board))
+      return "Move Galvik's portrait before mining its supporting rock.";
     this.replace({...this.current,level5Room:result.room});
     return "Rock excavated.";
   }
