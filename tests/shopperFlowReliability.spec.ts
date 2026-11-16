@@ -515,7 +515,7 @@ test("a real stockout produces one short, nonblocking customer comment",async({p
       const tools=await import("/Dungeon-Shop-Master/tests/scene.ts");
       const shopper=tools.inspectNpcVisuals().visitors.find(v=>v.id===heroId);
       if(shopper && (shopper.restockRemaining??0)>0)
-        tools.aimAtBeggingVisitor(heroId);
+        tools.aimAtCustomerBark(heroId);
       const bubble=document.querySelector<HTMLElement>("#npc-customer-bark");
       return {request:!!shopper&&(shopper.restockRemaining??0)>0,
         visible:!!bubble&&!bubble.hidden && bubble.dataset.kind==="restock",
