@@ -4,6 +4,7 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
   const pageErrors: string[] = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
   const models = await page.evaluate(async () => {
     const testScene = await import("/Dungeon-Shop-Master/tests/scene.ts");
     return testScene.inspectPhysicalStockMeshes();
@@ -21,4 +22,53 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
     expect(model.size.every(value => value > 0), model.itemId).toBe(true);
   }
   expect(pageErrors).toEqual([]);
+});
+
+test("actual stocked shelf meshes follow saved quantities for all six products",async({page})=>{
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  // Check the REAL shop-rendered meshes, not merely geometry created by a
+  // factory inside a test. Two persisted four-slot inventories cover 6 items.
+  const seed=(ids:readonly (string|null)[],counts:readonly number[])=>
+    page.evaluate(async({ids,counts})=>{
+      const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+      const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+      const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+      const {ITEMS}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
+      const storage=new CampaignStorage();
+      const existing=await storage.loadGame();
+      const base=existing?.shopLayout.shelves.length?existing:
+        withStockedSmallShelf(createGameState(97319));
+      const valid=new Set<string>(ITEMS.map(item=>item.id));
+      const slots=base.shopEconomy.slots.map((slot,index)=>{
+        const id=ids[index];
+        return {...slot,itemId:id&&valid.has(id)
+          ?id as typeof slot.itemId:null,quantity:counts[index]??0};
+      });
+      await storage.saveGame({...base,shopEconomy:{...base.shopEconomy,slots}});
+    },{ids,counts});
+  const inspect=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .inspectRenderedShopStock("shelf-1"));
+  await seed(["healing-herb","mana-potion","iron-ore","bread"],[3,1,5,2]);
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  let shown=await inspect();
+  expect(shown.map(slot=>slot.units)).toEqual([3,1,5,2]);
+  for(const slot of shown){
+    expect(slot.padPresent&&slot.padPickable&&slot.padCollision).toBe(true);
+    expect(slot.modelsPickable||slot.modelsCollision).toBe(false);
+    expect(slot.modelsColor).toBe(true);
+    expect(slot.modelVertices.every(count=>count>20)).toBe(true);
+  }
+  await seed(["iron-sword","leather-vest",null,null],[2,4,0,0]);
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  shown=await inspect();
+  expect(shown.map(slot=>slot.units)).toEqual([2,4,0,0]);
+  expect(shown.every(slot=>slot.padPickable&&slot.padCollision)).toBe(true);
+  expect(shown.every(slot=>!slot.modelsPickable&&!slot.modelsCollision)).toBe(true);
+  expect(errors).toEqual([]);
 });
