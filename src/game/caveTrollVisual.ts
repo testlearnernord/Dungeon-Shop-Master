@@ -274,9 +274,9 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   for(const side of [-1,1]){
     const mountCan=new TransformNode("troll-canister-rig-"+side,scene);
     mountCan.parent=spine;
-    mountCan.position.set(side*.88,3.78,-.47);
-    mountCan.rotation.z=side*.24;
-    mountCan.rotation.x=1.17;
+    mountCan.position.set(side*1.20,4.08,-.46);
+    mountCan.rotation.z=side*.32;
+    mountCan.rotation.x=1.0;
     cylinder("canister-body-"+side,mountCan,[0,0,0],.40,1.72,rust,14);
     for(const y of [-.7,.7]){
       cylinder("canister-banded-"+side+"-"+y,mountCan,[0,y,0],.43,.16,plated,14);
@@ -290,7 +290,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     }
     cylinder("canister-center-hole-"+side,mountCan,[0,.87,0],.08,.03,ember);
     const anchor=block("canister-buckle-"+side,spine,
-      [side*.88,3.07,-.56],[.48,.19,.68],leather);
+      [side*1.20,3.32,-.56],[.54,.19,.72],leather);
     anchor.rotation.z=side*.19;
   }
   // Three-dimensional overlapping rust plates on shoulders/back.
@@ -363,6 +363,22 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const mark=block("maul-mark-"+angle,weapon,[-2.45,-.08,.808],
       [.10,.72,.055],rope);
     mark.rotation.z=angle;
+  }
+  // Hammer head damage catches torchlight with exposed 3D splinters.
+  // These are fixed to the weapon socket, so attack and death poses keep
+  // their shards properly attached to the real swinging maul.
+  for(let i=0;i<14;i++){
+    const x=-2.9+(i%4)*.34;
+    const y=(i%5-2)*.19;
+    const z=(i%2?1:-1)*.80;
+    const crack=block("maul-stone-fissure-"+i,weapon,[x,y,z],
+      [.028,.20+i%3*.11,.035],i%3===0?darkLeather:plated);
+    crack.rotation.z=(i%5-2)*.25;
+  }
+  for(const side of [-1,1]){
+    const wedge=cone("maul-iron-burr-"+side,weapon,
+      [-2.67,side*.75,.58],.18,.49,iron);
+    wedge.rotation.z=side*.85;
   }
   const chipped=block("maul-chipped-corner",weapon,[-2.98,.62,.57],[.42,.36,.45],iron);
   chipped.rotation.z=.38;
