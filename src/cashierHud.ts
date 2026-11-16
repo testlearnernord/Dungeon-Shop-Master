@@ -2,6 +2,7 @@ import type { CashierCue } from "./cashierSfx.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { cartTotal } from "./game/shopCarts.ts";
 import { ITEMS } from "./game/economy.ts";
+import {itemIcon,goldIcon} from "./uiIcons.ts";
 import {counterDockPoint,isAtCounterStaffDock} from "./game/shopLayout.ts";
 import {Vector3} from "@babylonjs/core/Maths/math.vector";
 import { CASHIER_STAGES, CASHIER_TIMING_TOLERANCE, evaluateCashierTiming } from "./game/cashierChallenge.ts";
@@ -40,6 +41,7 @@ export function setupCashierHud(
       <div class="cashier-receipt-heading"><strong>RECEIPT</strong><span>Goods carried to counter</span></div>
       <div class="cashier-lines"></div>
       <p class="cashier-total"></p>
+      <p class="cashier-tip-note"></p>
     </section>
     <section class="cashier-challenge" aria-label="Register timing challenge">
       <div class="cashier-stage-header">
@@ -59,11 +61,29 @@ export function setupCashierHud(
         <button type="button" class="cashier-cancel">Cancel <kbd>Esc</kbd></button>
       </div>
     </section>
+    <section class="cashier-settlement" aria-label="Completed checkout" hidden>
+      <span class="cashier-settlement-eyebrow">PAYMENT RECORDED</span>
+      <strong class="cashier-settlement-amount"></strong>
+      <p class="cashier-settlement-detail"></p>
+      <p class="cashier-next-hint">Next customer approaching the counter.</p>
+      <div class="cashier-actions">
+        <button type="button" class="cashier-next" disabled>Next customer <kbd>E</kbd></button>
+        <button type="button" class="cashier-finish">Leave register <kbd>Esc</kbd></button>
+      </div>
+    </section>
   </section>`;
   document.body.append(root);
   const customer=root.querySelector<HTMLElement>(".cashier-customer")!;
   const lines=root.querySelector<HTMLElement>(".cashier-lines")!;
   const total=root.querySelector<HTMLElement>(".cashier-total")!;
+  const tipNote=root.querySelector<HTMLElement>(".cashier-tip-note")!;
+  const challenge=root.querySelector<HTMLElement>(".cashier-challenge")!;
+  const settlement=root.querySelector<HTMLElement>(".cashier-settlement")!;
+  const settlementAmount=root.querySelector<HTMLElement>(".cashier-settlement-amount")!;
+  const settlementDetail=root.querySelector<HTMLElement>(".cashier-settlement-detail")!;
+  const nextHint=root.querySelector<HTMLElement>(".cashier-next-hint")!;
+  const nextButton=root.querySelector<HTMLButtonElement>(".cashier-next")!;
+  const finishButton=root.querySelector<HTMLButtonElement>(".cashier-finish")!;
   const hint=root.querySelector<HTMLElement>(".cashier-hint")!;
   const needle=root.querySelector<HTMLElement>(".cashier-needle")!;
   const target=root.querySelector<HTMLElement>(".cashier-target")!;
@@ -72,6 +92,8 @@ export function setupCashierHud(
   const stageDetail=root.querySelector<HTMLElement>(".cashier-stage-detail")!;
   const stamps=[...root.querySelectorAll<HTMLElement>(".cashier-progress [data-stage]")];
   let heroId:string|null=null;
+  let settled=false;
+  let lastNextCheck=0;
   let hits=0;
   let misses=0;
   let lastPress=0;
@@ -79,11 +101,13 @@ export function setupCashierHud(
   let frame=0;
 
   const close=()=>{
-    if(!heroId&&!root.open)return;
+    if(!root.open&&!heroId)return;
     heroId=null;
+    settled=false;
     cancelAnimationFrame(frame);
     if(root.open)root.close();
   };
+  root.addEventListener("cancel",event=>{event.preventDefault();close();});
   root.addEventListener("close",()=>{
     camera.attachControl(canvas,true);
     canvas.focus();
