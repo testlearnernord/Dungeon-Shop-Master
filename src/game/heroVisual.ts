@@ -25,6 +25,8 @@ export interface HeroVisualIdentity {
 export interface HeroVisual {
   readonly root: TransformNode;
   readonly torso: Mesh;
+  /** Shared neck socket for head-only turns and glances. */
+  readonly headPivot: TransformNode;
   readonly arms: readonly [TransformNode, TransformNode];
   readonly legs: readonly [TransformNode, TransformNode];
   /** Weapon animation is driven by the active scene, not the model factory. */
@@ -81,15 +83,19 @@ export function createHeroVisual(
       diameterBottom: identity.role === "healer" ? 0.58 : 0.48,
       tessellation: 8,
     }, scene), root, [0, 1.14, 0], coat);
+  // Independent head motion does not change the NPC's route or body collider.
+  const headPivot=new TransformNode(prefix+"-head-pivot",scene);
+  headPivot.parent=root;
+  headPivot.position.set(0,1.60,0);
   attach("head", MeshBuilder.CreateSphere(prefix + "-head",
-    { diameter: 0.39, segments: 8 }, scene), root, [0, 1.73, 0], skin);
+    { diameter: 0.39, segments: 8 }, scene), headPivot, [0, 0.13, 0], skin);
   // Visible personal silhouette: stable head hair, occasional beard, and role silhouette.
   const hairMesh = attach("hair", MeshBuilder.CreateSphere(prefix + "-hair",
-    { diameter: 0.40, segments: 8 }, scene), root, [0, 1.86, 0], hair);
+    { diameter: 0.40, segments: 8 }, scene), headPivot, [0, 0.26, 0], hair);
   hairMesh.scaling.y = 0.36;
   if (look.beard) {
     const beard = attach("beard", MeshBuilder.CreateSphere(prefix + "-beard",
-      { diameter: 0.29, segments: 8 }, scene), root, [0, 1.60, -0.13], hair);
+      { diameter: 0.29, segments: 8 }, scene), headPivot, [0, 0, -0.13], hair);
     beard.scaling.y = 0.60;
   }
   if (identity.role === "tank") {
@@ -107,7 +113,7 @@ export function createHeroVisual(
   } else {
     attach("hood", MeshBuilder.CreateCylinder(prefix + "-hood", {
       height: 0.16, diameter: 0.50, tessellation: 8,
-    }, scene), root, [0, 1.92, 0], dark);
+    }, scene), headPivot, [0, 0.32, 0], dark);
   }
 
   const arms = ([-1, 1] as const).map((side) => {
@@ -143,7 +149,7 @@ export function createHeroVisual(
   // A tiny stable stature variance retains a different silhouette for each ID.
   root.scaling.setAll(look.stature);
   const model: HeroVisual = {
-    root, torso, arms, legs, weaponPivot, swordMesh, vestMesh,
+    root, torso, headPivot, arms, legs, weaponPivot, swordMesh, vestMesh,
     appearanceKey: look.key,
     signature: look.key,
   };
