@@ -2,10 +2,28 @@
 
 > **Working roadmap, reviewed 2026-11-16.** This is a prioritized,
 > owner-accepted direction. **PR #153 (cashier), #154 (physical
-> merchandise), #155 (runtime GLB loading) and #156 (restocking) are merged.**
+> merchandise), #155 (runtime GLB loading), #156 (restocking),
+> #157 (customer remarks), #158 (Cave Troll rig) and #159 (Desperate
+> Measures soundtrack) are merged.**
 > Future package numbers are not reserved; GitHub numbers are authoritative.
 > This is **not** a list of completed gameplay changes or final approval
 > of every design detail. Inspect `main`, open PRs and CI before starting.
+
+## Immediate approved boss-quality pass
+
+The current user-directed work addresses the actual Level 6 review: the
+source-authored alpha boss was too spherical and cartoonish, lacked grounded
+steps and delivered a sideways-looking hammer strike. The user also approved
+a music-led 13.5-second entrance (arena → boss → actual hero → boss → fight)
+at the peak of **Desperate Measures**. Deliver the pure, skip-capable intro
+and animation fixes through `bossCinematic.ts`, `level6Arena.ts`,
+`caveTrollVisual.ts` and the existing music player without rerolling any
+replay, damage, purchases or saves. Verify via real Babylon browser tests.
+
+**Remaining art limitation:** The current geometry is still a stylized
+source-built prototype. A future hand-sculpted, rigged GLB could be
+commissioned/modelled to truly match the concept art. Do not mark that
+higher-fidelity replacement as completed by a code-only sculpt pass.
 
 ## Why this sequence
 
@@ -74,7 +92,7 @@ disagree. Include actual shelf-ray and mixed-customer browser regression.
 
 ## Feature work package 3: Distinct short customer reactions
 
-**Delivery status:** Implemented on the current feature branch pending verification. Short, deterministic world-anchored reactions follow only observed pickup, manual payment, restock/credit petition, verified credit issue and walkout. One voice appears at a time; production game state never changes merely to display a line.
+**Delivery status:** Shipped in merged PR #157. Short, deterministic world-anchored reactions follow only observed pickup, payment, restock/credit petition, verified credit issue and walkout. One voice appears at a time, with no simulation changes.
 
 **Player goal:** Recognizable, darkly funny customers rather than bots
 without halting the shop loop for dialogue.

@@ -101,6 +101,9 @@ test("Shift-click stocks and clears the aimed physical shelf using real GLBs",as
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
+  // Finish the initial autosave before another storage instance seeds the shelf.
+  // Otherwise its pending empty-shop write can overwrite this browser fixture.
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
@@ -115,6 +118,7 @@ test("Shift-click stocks and clears the aimed physical shelf using real GLBs",as
   await page.evaluate(async()=>{
     const scene=await import("/Dungeon-Shop-Master/tests/scene.ts");
     await scene.waitForShopStockAssets();
+    await scene.waitForShelfSlotMesh();
     scene.aimAtShelfSlot();
   });
   await expect(page.locator("#shop-shelf-focus")).toBeVisible();

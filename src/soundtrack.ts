@@ -113,6 +113,29 @@ export class SceneSoundtrack {
   get soundEnabled():boolean { return this.enabled; }
   get soundVolume():number { return this.volume; }
 
+  /** Level-6 presentation uses the real music playhead for the 13.5s
+   * cinematic beat. Null means muted, blocked or still buffering: then the
+   * camera uses a wall-clock fallback and never stalls a replay forever. */
+  get bossPlaybackSeconds():number|null {
+    const audio=this.tracks.boss;
+    if(!this.enabled || this.scene!=="boss" || audio.paused ||
+       !Number.isFinite(audio.currentTime))return null;
+    return audio.currentTime;
+  }
+
+  /** Restart/replay is a new encounter; its music must start at 0 too. */
+  restartBossTheme():void {
+    if(this.scene!=="boss")return;
+    try {this.tracks.boss.currentTime=0;}catch { /* Audio not yet seekable. */ }
+  }
+
+  /** Skipping the visuals also seeks the score to its first combat downbeat. */
+  skipBossIntro(seconds:number):void {
+    if(!this.enabled||this.scene!=="boss")return;
+    try {this.tracks.boss.currentTime=Math.max(0,seconds);}
+    catch { /* Keep gameplay accessible if browser blocks seeking. */ }
+  }
+
   setScene(next: SoundtrackScene): void {
     if (this.scene === next) return;
     this.scene = next;

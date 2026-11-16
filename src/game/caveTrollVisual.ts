@@ -33,6 +33,8 @@ export interface CaveTrollAnimation {
   delta: number;
   hp: number;
   maxHp: number;
+  /** Only the uncommitted introduction may use this; gameplay never reads it. */
+  introTime?:number;
 }
 
 const ease = (v: number) => { const t=Math.max(0,Math.min(1,v));return t*t*(3-2*t); };
@@ -89,14 +91,14 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     mat.backFaceCulling=true;
     return mat;
   };
-  const skin=makeMaterial("ashen-scarred-skin","#a5978c");
-  const shadowSkin=makeMaterial("shadow-skin","#867b73");
-  const scar=makeMaterial("scars","#69534d");
+  const skin=makeMaterial("ashen-scarred-skin","#8f847c");
+  const shadowSkin=makeMaterial("shadow-skin","#665f5a");
+  const scar=makeMaterial("scars","#514641");
   const nose=makeMaterial("nose","#765a51");
   const leather=makeMaterial("leather","#50382c");
   const darkLeather=makeMaterial("stitch-leather","#312522");
-  const plated=makeMaterial("plated-iron","#6f6460",false);
-  const iron=makeMaterial("iron-edge","#89817a",false);
+  const plated=makeMaterial("plated-iron","#595456",false);
+  const iron=makeMaterial("iron-edge","#827b77",false);
   const copper=makeMaterial("rust","#a45338",false);
   const rust=makeMaterial("red-canisters","#803a2e");
   const apron=makeMaterial("mining-apron","#704038");
@@ -188,10 +190,10 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   };
   // The body is broad and deeply hunched, with three overlapping sculpted
   // masses rather than the former orange ball. Its material is ash-grey.
-  sculpt(sphere("barrel-torso",spine,[0,1.16,-.28],[4.15,3.48,2.62],skin,28),5,.028);
-  sculpt(sphere("bent-upper-back",spine,[0,1.84,-.54],[3.88,2.45,2.54],shadowSkin,22),12,.055);
-  sculpt(sphere("belly",spine,[0,.51,.36],[2.62,1.72,2.07],skin,20),19,.034);
-  sculpt(sphere("neck",spine,[0,2.70,.30],[2.17,1.23,1.60],shadowSkin),8);
+  sculpt(sphere("barrel-torso",spine,[0,1.06,-.38],[3.62,3.18,2.29],skin,28),5,.095);
+  sculpt(sphere("bent-upper-back",spine,[0,1.90,-.62],[4.19,2.79,2.66],shadowSkin,22),12,.115);
+  sculpt(sphere("belly",spine,[0,.41,.23],[2.22,1.56,1.72],skin,20),19,.084);
+  sculpt(sphere("neck",spine,[0,2.58,.40],[1.90,1.19,1.55],shadowSkin),8,.095);
   // Underbelly leather belt and three torn cloth plates, all dimensional.
   cylinder("waist-belt",spine,[0,-.12,0],1.42,.23,darkLeather,15).scaling.z=.81;
   for(const x of [-.65,0,.65]){
@@ -220,8 +222,8 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   }
   torus("harness-ring",spine,[0,.88,1.29],.38,.09,copper).rotation.x=Math.PI/2;
   // Strong face silhouette. Front is +Z, matching the combat motor's +Z yaw.
-  sculpt(sphere("head",head,[0,.18,.20],[1.89,1.80,1.60],skin,24),24,.043);
-  sphere("heavy-brow",head,[0,.53,.84],[1.70,.34,.53],shadowSkin);
+  sculpt(sphere("head",head,[0,.15,.23],[1.78,1.61,1.79],skin,24),24,.12);
+  sphere("heavy-brow",head,[0,.52,.95],[1.83,.26,.57],shadowSkin);
   for(const side of [-1,1]){
     sphere("cheek-"+side,head,[side*.58,-.10,.65],[.67,.62,.55],skin,15);
     sphere("eye-socket-"+side,head,[side*.47,.38,.89],[.35,.21,.15],mouth,16);
@@ -232,16 +234,16 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const ear=cone("pointed-ear-"+side,head,[side*1.00,.20,.01],.30,.68,shadowSkin);
     ear.rotation.z=side*Math.PI/2.8;
     // Obvious fangs give the open mouth a readable threatening expression.
-    const tusk=cone("tusk-"+side,head,[side*.52,-.56,1.02],.11,.32,bone);
+    const tusk=cone("tusk-"+side,head,[side*.52,-.58,1.22],.13,.43,bone);
     tusk.rotation.z=-side*.16;
   }
-  sphere("nose",head,[0,.00,1.13],[.55,.36,.47],nose,20);
-  sphere("gaping-mouth",head,[0,-.54,.94],[.89,.38,.15],mouth,16);
+  sculpt(sphere("nose",head,[0,-.10,1.25],[.64,.37,.65],nose,20),91,.065);
+  sphere("gaping-mouth",head,[0,-.58,1.06],[.84,.42,.19],mouth,16);
   for(let t=-2;t<=2;t++){
     const tooth=cone("tooth-"+t,head,[t*.135,-.43,1.055],.054,.14,bone);
     tooth.rotation.z=Math.PI;
   }
-  sphere("lower-jaw",head,[0,-.78,.84],[1.17,.32,.47],skin);
+  sphere("lower-jaw",head,[0,-.84,.96],[1.16,.27,.59],skin);
   // Roughly 1 in 5 scars read clearly even when the camera is far away.
   for(let i=0;i<9;i++){
     const x=Math.sin(i*2.17)*.71;
@@ -306,15 +308,33 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     }
   }
 
+  // Broken angular scapula armour sits over the broad shoulder hump,
+  // disrupting the former ball-shaped shoulder and plastic toy silhouette.
+  for(const side of [-1,1]){
+    const cheekPlate=block("shoulder-iron-ridge-"+side,spine,
+      [side*1.80,2.43,.24],[.67,.26,1.15],plated);
+    cheekPlate.rotation.z=side*.29;
+    cheekPlate.rotation.x=-.22;
+    for(let i=0;i<3;i++){
+      const jag=block("shoulder-broken-flange-"+side+"-"+i,spine,
+        [side*(2.02+i*.12),2.22-i*.19,-.20-i*.14],
+        [.18,.39+i*.09,.56-i*.11],i===1?copper:plated);
+      jag.rotation.z=side*(.20+i*.12);
+    }
+    const tendon=block("neck-harness-gusset-"+side,spine,
+      [side*.98,2.82,.94],[.45,.76,.09],leather);
+    tendon.rotation.z=side*.49;
+  }
+
   // Upper arms have real elbow joints. Hand positions are IK-driven toward
   // two distinct hammer grips, so the weapon never floats away in a swing.
   const arms=([-1,1] as const).map(side=>{
     const shoulder=V(side*1.82,2.24,.31);
-    const upper=sphere("upper-arm-"+side,spine,[0,0,0],[1,1,1],skin,20);sculpt(upper,side+31,.03);
-    const lower=sphere("forearm-"+side,spine,[0,0,0],[1,1,1],skin,20);sculpt(lower,side+45,.035);
-    const elbow=sphere("elbow-"+side,spine,[0,0,0],[.71,.65,.66],skin,14);
+    const upper=sphere("upper-arm-"+side,spine,[0,0,0],[1,1,1],skin,20);sculpt(upper,side+31,.065);
+    const lower=sphere("forearm-"+side,spine,[0,0,0],[1,1,1],skin,20);sculpt(lower,side+45,.095);
+    const elbow=sphere("elbow-"+side,spine,[0,0,0],[.64,.59,.60],skin,14);
     const bracer=sphere("bracer-"+side,spine,[0,0,0],[1,1,1],plated,17);
-    const hand=sphere("giant-hand-"+side,spine,[0,0,0],[.59,.47,.60],skin,16);
+    const hand=sphere("giant-hand-"+side,spine,[0,0,0],[.73,.51,.69],skin,16);
     const wristBand=sphere("wrist-band-"+side,spine,[0,0,0],[1,1,1],leather,13);
     for(let f=0;f<4;f++){
       // Fingers are curled directly around the long timber shaft.
@@ -330,8 +350,8 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const hip=V(side*.96,2.62,-.30);
     const thigh=sphere("thigh-"+side,pose,[0,0,0],[1,1,1],skin,20);sculpt(thigh,side+67,.04);
     const shin=sphere("shin-"+side,pose,[0,0,0],[1,1,1],shadowSkin,18);sculpt(shin,side+71,.04);
-    const kneecap=sphere("kneecap-"+side,pose,[0,0,0],[.85,.76,.85],skin,14);
-    const foot=sphere("boulder-foot-"+side,pose,[side*1.06,.31,.55],[1.45,.60,1.47],skin,18);
+    const kneecap=sphere("kneecap-"+side,pose,[0,0,0],[.64,.56,.63],skin,14);
+    const foot=sphere("boulder-foot-"+side,pose,[side*1.06,.30,.55],[1.35,.60,1.52],skin,18);
     for(let t=0;t<4;t++){
       sphere("foot-claw-"+side+"-"+t,foot,[-.32+t*.21,-.15,.43],[.12,.16,.24],bone,9);
     }
@@ -388,7 +408,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
 
   let elapsed=0,deathTime=0,wasDead=false,activePhase:BossPhase="chase";
   let hammerPitch=0,hammerYaw=0,hammerRoll=0,bodyPitch=0,bodyRoll=0;
-  let lastStep=0;
+  let lastStep=0,gaitMeters=0,gaitWeight=0;
   const updateHandIK=():void=>{
     const inv=spine.getWorldMatrix().clone().invert();
     weapon.computeWorldMatrix(true);
@@ -399,27 +419,31 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
       const wrist=grip.add(V(0,-.065,.04));
       const elbow=elbowFor(arm.shoulder,wrist,arm.side);
       along(arm.upper,arm.shoulder,elbow,.89,.82);
-      along(arm.lower,elbow,wrist,.95,.94);
-      along(arm.bracer,elbow.add(wrist.subtract(elbow).scale(.45)),wrist,.98,1.05);
+      along(arm.lower,elbow,wrist,1.10,1.01);
+      along(arm.bracer,elbow.add(wrist.subtract(elbow).scale(.45)),wrist,1.10,1.05);
       along(arm.wristBand,elbow.add(wrist.subtract(elbow).scale(.80)),wrist,1.0,1.05);
       arm.elbow.position.copyFrom(elbow);
       arm.hand.position.copyFrom(wrist);
     }
   };
-  const moveLegs=(time:number,moving:number,death:number):void=>{
-    const amplitude=Math.min(1,moving*4.2)*(1-death);
+  /** Travel-driven gait, NOT animation-per-render-frame. Each foot has a
+   * stance phase grounded at y=.30 (sphere radius .30), followed by a lifted
+   * swing. Runtime visual only: the boss's actual path remains motor-owned. */
+  const moveLegs=(distance:number,blend:number,death:number):void=>{
     for(const leg of legs){
-      const stride=Math.sin(time*5.9+(leg.side===1?0:Math.PI))*amplitude;
-      const knee=V(leg.side*(1.00+.10*stride),1.37-.12*Math.abs(stride),
-        -.14+.53*stride+death*.45);
-      const ankle=V(leg.side*1.04,.47+Math.max(0,stride)*.16,.22+stride*.72+death*.28);
+      const phase=distance*4.45+(leg.side===1?0:Math.PI);
+      const stride=Math.cos(phase)*.76*blend*(1-death);
+      const swing=Math.max(0,Math.sin(phase))*.46*blend*(1-death);
+      const knee=V(leg.side*(1.00+.08*stride),1.35-.15*Math.abs(stride)+swing*.32,
+        -.14+.44*stride+death*.40);
+      const ankle=V(leg.side*1.04,.46+swing,.20+stride+death*.28);
       const hip=leg.hip.add(V(0,-death*.35,0));
-      along(leg.thigh,hip,knee,1.06,1.02);
-      along(leg.shin,knee,ankle,.73,.72);
+      along(leg.thigh,hip,knee,1.00,.98);
+      along(leg.shin,knee,ankle,.77,.71);
       leg.kneecap.position.copyFrom(knee);
-      leg.foot.position.set(ankle.x,.34+Math.max(0,stride)*.13,ankle.z+.40);
-      leg.foot.rotation.x=-stride*.14;
-      leg.strap.position.set(ankle.x,.78,ankle.z);
+      leg.foot.position.set(ankle.x,.30+swing,ankle.z+.38);
+      leg.foot.rotation.x=-stride*.17;
+      leg.strap.position.set(ankle.x,.78+swing,ankle.z);
     }
   };
   const animation=(a:CaveTrollAnimation):void=>{
@@ -430,41 +454,54 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     else if(wasDead){deathTime=0;wasDead=false;}
     const fall=ease(deathTime/1.65);
     const breath=Math.sin(a.time*1.65)*.026;
-    const step=Math.sin(a.time*5.9);
-    const walk=a.phase==="chase"?Math.min(1,a.moved*4.5):0;
-    let pitch=-.05,twist=0,roll=0,hammerZ=.0,hammerY=0,hammerX=.0;
+    // a.moved is metres since the previous rendered frame. The previous
+    // 4.5*distance weighting barely moved feet at 60fps, causing gliding.
+    const speed=dt>0?a.moved/dt:0;
+    const target=a.phase==="chase"?Math.min(1,speed/1.25):0;
+    gaitWeight=lerp(gaitWeight,target,1-Math.exp(-dt*8));
+    gaitMeters+=Math.max(0,a.moved);
+    const step=Math.sin(gaitMeters*4.45);
+    const walk=gaitWeight;
+    let pitch=-.15,twist=0,roll=0,hammerZ=0,hammerY=0,hammerX=0;
+    let hammerLift=0,hammerReach=0;
     switch(a.phase){
       case "chase":
-        pitch=-.13+breath+Math.abs(step)*walk*.045;
-        twist=step*walk*.045;
-        hammerZ=.035+Math.sin(a.time*2.2)*.045;
+        pitch=-.21+breath+Math.abs(step)*walk*.035;
+        twist=step*walk*.095;
+        roll=step*walk*.035;
+        hammerZ=-.08+Math.sin(a.time*2.2)*.028;
         break;
       case "windup":{
         const t=ease(a.phaseAge/(a.slam?1.05:.85));
-        pitch=lerp(-.12,-.42,t);
-        twist=(a.slam?-.18:-.35)*t;
-        hammerZ=-.10-.68*t;
-        hammerY=(a.slam?-.12:-.3)*t;
-        hammerX=-.18*t;
+        pitch=lerp(-.21,-.47,t);
+        twist=(a.slam?-.13:-.25)*t;
+        hammerZ=-.08-(a.slam?1.22:.97)*t;
+        hammerY=-.15*t;
+        hammerX=-.20*t;
+        hammerLift=.64*t;
         head.rotation.x=.06-.25*t;
         break;
       }
       case "strike":{
         // Head crosses the ground near the real 140 ms hit tick.
         const strike=ease(a.phaseAge/.205);
-        pitch=lerp(-.42,.27,strike);
-        twist=lerp(-.3,.35,strike);
-        hammerZ=lerp(-.78,.90,strike);
-        hammerY=lerp(-.25,.18,strike);
-        hammerX=lerp(-.18,.16,strike);
+        pitch=lerp(-.47,.28,strike);
+        twist=lerp(-.25,.20,strike);
+        hammerZ=lerp(a.slam?-1.30:-1.05,a.slam?.88:.70,strike);
+        hammerY=lerp(-.15,.04,strike);
+        hammerX=lerp(-.20,.12,strike);
+        hammerLift=lerp(.64,-.39,strike);
+        hammerReach=.51*strike;
         break;
       }
       case "recover":{
         const t=ease(a.phaseAge/.72);
-        pitch=lerp(.27,-.12,t);
-        twist=lerp(.35,0,t);
-        hammerZ=lerp(.90,.04,t);
-        hammerY=lerp(.18,0,t);
+        pitch=lerp(.28,-.21,t);
+        twist=lerp(.20,0,t);
+        hammerZ=lerp(a.slam?.88:.70,-.08,t);
+        hammerY=lerp(.04,0,t);
+        hammerLift=lerp(-.39,0,t);
+        hammerReach=.51*(1-t);
         break;
       }
       case "stagger":{
@@ -481,6 +518,13 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
         hammerY=.32*fall;
         break;
     }
+    if(a.introTime!==undefined){
+      const tension=ease((a.introTime-10.2)/3.0);
+      pitch=-.21-.13*tension+breath;
+      hammerZ=-.08-.56*tension;
+      hammerLift=.27*tension;
+      twist=-.08*tension;
+    }
     const easing=1-Math.exp(-dt*(a.phase==="strike"?30:11));
     bodyPitch=lerp(bodyPitch,pitch,easing);
     bodyRoll=lerp(bodyRoll,roll,easing);
@@ -492,7 +536,9 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     spine.rotation.y=twist;
     pose.rotation.x=fall*1.22;
     pose.rotation.z=fall*.13;
-    pose.position.y=-fall*.79+Math.abs(step)*walk*.06;
+    // No levitating torso bob. Stance feet touch the arena plane.
+    pose.position.y=-fall*.79-Math.abs(step)*walk*.028;
+    weapon.position.set(0,-.05+hammerLift,1.66+hammerReach);
     weapon.rotation.z=hammerPitch;
     weapon.rotation.y=hammerYaw;
     weapon.rotation.x=hammerRoll;
@@ -506,13 +552,16 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     spine.computeWorldMatrix(true);
     weapon.computeWorldMatrix(true);
     updateHandIK();
-    moveLegs(a.time,a.moved,fall);
+    moveLegs(gaitMeters,walk,fall);
     activePhase=a.phase;
     lastStep=a.moved;
     root.metadata.animationPhase=activePhase;
     root.metadata.deathProgress=fall;
     root.metadata.hammerSwing=hammerPitch;
     root.metadata.walkMotion=lastStep;
+    root.metadata.gaitDistance=gaitMeters;
+    root.metadata.gaitBlend=gaitWeight;
+    root.metadata.hammerLift=hammerLift;
     root.metadata.animationClock=elapsed;
   };
   // Export one root whose children cleanly dispose with the arena's scene.
