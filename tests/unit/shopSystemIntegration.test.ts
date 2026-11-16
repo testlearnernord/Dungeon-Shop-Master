@@ -69,10 +69,15 @@ test("connected excavated wing, moved shelf and counter preserve all customer se
   const manager=new ShopServiceSpots();
   const a=manager.reserve("restock","restock",entrance,layout,room);
   const b=manager.reserve("beggar","credit",entrance,layout,room);
-  const c=manager.reserve("roamer","roam",entrance,layout,room,{avoid:entrance});
-  assert(a&&b&&c,"requests and roaming require simultaneous safe capacity");
-  for(const [first,second] of [[a,b],[a,c],[b,c]])
-    assert(distance(first.point,second.point)>=1.18);
+  assert(a&&b,"requests require simultaneous safe waiting capacity");
+  // Roaming is only a LOCAL diversion from a settled request station. It
+  // should not send a customer three rooms across the shop from the gate.
+  const c=manager.reserve("roamer","roam",a.point,layout,room,{avoid:a.point});
+  assert(distance(a.point,b.point)>=1.18);
+  if(c){
+    assert(distance(c.point,a.point)<=3.8);
+    assert(distance(c.point,b.point)>=1.18);
+  }else assert.equal(manager.claim("roamer"),null);
   assert.deepEqual(forecastShoppingIntents(store.state),
     forecastShoppingIntents({...initial,level5Room:room}));
   assert.deepEqual(advanceDay(store.state).state.shopEconomy,
