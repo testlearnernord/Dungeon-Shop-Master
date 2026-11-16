@@ -98,3 +98,23 @@ test("batch planner preserves the exact paths for both entrances, every shelf sl
     pathToShopGoal({x:-3,z:0},goal,layout,room),
     "old batch observes only its original immutable topology");
 });
+
+test("clear-floor buyers walk diagonally rather than following a raster staircase",()=>{
+  const room=createLevel5Room(),layout=createShopLayout();
+  const from={x:-2,z:0},to={x:2,z:2};
+  const direct=pathToShopGoal(from,to,layout,room);
+  assert(direct);
+  assert.deepEqual(direct.waypoints,[to]);
+  const placed=replaceShelfPlacement(layout,
+    {id:"shelf-1",x:0,z:0,rotation:0},room);
+  assert.equal(placed.message,"Shelf placement saved.");
+  const detour=pathToShopGoal({x:-3,z:0},{x:3,z:0},placed.layout,room);
+  assert(detour);
+  let cursor={x:-3,z:0};
+  for(const point of detour.waypoints){
+    assert(shopSegmentClear(cursor,point,placed.layout,room),
+      "smoothing may not shortcut through the shelf collider");
+    cursor=point;
+  }
+  assert(distance(cursor,{x:3,z:0})<.17);
+});
