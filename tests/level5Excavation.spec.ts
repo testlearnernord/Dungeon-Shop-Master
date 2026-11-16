@@ -263,3 +263,65 @@ test("build the first four-slot shelf with N on mined floor and persist every re
   expect((await scene()).x).toBe(11);
   expect(errors).toEqual([]);
 });
+
+test("the portrait hangs using the FPS wall blueprint, moves onto mined stone and reloads textured",async({page})=>{
+  test.setTimeout(120000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await page.locator("#build-portrait").click();
+  await expect(page.locator("#blueprint-panel")).toBeVisible();
+  const face=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtPortraitWall(4.25));
+  expect(face).toBe("front-right-wall");
+  await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").textContent(),
+    {timeout:12000}).toContain("Valid placement");
+  await page.mouse.click(400,300);
+  await expect(page.locator("#blueprint-panel")).toBeHidden();
+  const pose=()=>page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    return (await new CampaignStorage().loadGame())?.wallPortrait;
+  });
+  await expect.poll(pose).toEqual({x:4.25,z:-6.45,rotation:2});
+  await expect.poll(async()=>(
+    await page.evaluate(async()=>(
+      await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectWallPortrait())
+    )).toMatchObject({enabled:true,x:4.25,textured:true});
+
+  // Re-use the existing real excavation topology fixture, never a fake wall.
+  await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const storage=new CampaignStorage(),state=await storage.loadGame();
+    if(!state)throw Error("Missing campaign");
+    let room={...state.level5Room,expansionTier:2};
+    for(let x=8;x<=9;x++)for(let z=-3;z<=3;z++){
+      const next=excavateLevel5Cell(room,{x,z});
+      if(!next.ok)throw Error(next.reason);
+      room=next.room;
+    }
+    await storage.saveGame({...state,level5Room:room});
+  });
+  await page.reload();
+  await expect.poll(pose).toEqual({x:4.25,z:-6.45,rotation:2});
+  await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtWallPortrait());
+  await page.keyboard.press("p");
+  await expect(page.locator("#blueprint-panel")).toBeVisible();
+  const mined=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .aimAtExcavatedBoardWall(10,0));
+  expect(mined).toContain("excavation-rock-face-9.5:");
+  await expect.poll(()=>page.locator("#blueprint-panel .blueprint-status").textContent(),
+    {timeout:12000}).toContain("Valid placement");
+  await page.mouse.click(400,300);
+  await expect(page.locator("#blueprint-panel")).toBeHidden();
+  await expect.poll(pose).toEqual({x:9.25,z:0,rotation:1});
+  await page.reload();
+  await expect.poll(pose).toEqual({x:9.25,z:0,rotation:1});
+  await expect.poll(async()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectWallPortrait()
+  )).toMatchObject({enabled:true,x:9.25,z:0,textured:true});
+  expect(errors).toEqual([]);
+});
