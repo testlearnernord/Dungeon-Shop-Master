@@ -65,7 +65,7 @@ This document is a maintainable implementation contract.
 | Wholesale | Item symbols, search, gold, stock, actionable costs and limits |
 | Debt Book / begging | Shared icons and controls, ledger-like typography and readable debt |
 | Merchant ledger | Cinematic day-end chapter experience, consistent tokens and metrics |
-| Cashier | One focused two-stage timed receipt overlay; opens only at the physical staff side with the true next customer; booked sale remains a GameStore action |
+| Cashier | Two-stage timed receipt overlay opened from the real staff socket; item pictograms, real collected gold and tip, paid receipt remains visible; **E** explicitly takes the next physically-ready customer's cart without a modal/pointer-lock roundtrip, **Esc** exits; the GameStore is the only payment authority |
 | Blueprint / placement / mining | Context prompt and real-world ghost; not a permanent sidebar |
 | World nameplates / request bubbles | Portrait, level, role, gold and HP; individual icon-based restock/credit requests with real deadlines |
 | Level 6 / 7 spectator | Compact panels, optional controls legend, same focus style |
@@ -76,6 +76,7 @@ This document is a maintainable implementation contract.
 - Never move purchase or movement authority into presentation helpers.
 - All six item symbols remain distinguishable and share exact IDs.
 - HUD dimensions remain narrow at 390px, 800px, and desktop 1440px.
+- The register's paid state must never imply that another cart is already paid. The next-customer action stays disabled until `readyCheckoutHeroId()` and a real unpaid cart agree; merely viewing the next receipt or pressing E does not transfer value. Do not reattach the camera between consecutive registered customers; restore it when the overlay actually closes.
 - The game stays keyboard operable without pointer lock; do not force
   unnecessary Esc/M roundtrips to handle the hotbar or cashier. Modal focus
   and pointer-lock restoration must remain understandable.
@@ -96,5 +97,5 @@ This document is a maintainable implementation contract.
   `shopHudLayout.spec.ts`, `controlsDisclosure.spec.ts` and the
   existing crowded-shop browser flow. This does not replace human
   assessment of legibility and repeated-action friction.
-- Proposed cashier flow polish, batch restocking and additional customer
+- Further cashier feel polish, batch restocking and additional customer
   reactions belong to [ROADMAP](ROADMAP.md), not CURRENT functionality.
