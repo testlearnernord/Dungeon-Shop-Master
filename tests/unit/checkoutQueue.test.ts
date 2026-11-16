@@ -5,6 +5,7 @@ import { createShopLayout, replaceCounterPlacement, shopLayoutProblem } from "..
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
 import type { ShopCart } from "../../src/game/shopCarts.ts";
 import { NPC_CENTER_CLEARANCE } from "../../src/game/npcTraffic.ts";
+import {cashierServicePoint,turnShopOffset} from "../../src/game/furnitureRegistry.ts";
 
 const cart = (heroId: string): ShopCart => ({
   heroId, day: 1,
@@ -53,10 +54,14 @@ test("one single-file checkout line stays separated; excess demand uses overflow
   assert.ok(points.length >= 1);
   assert.ok(points.length <= CHECKOUT_LINE_MAX_CUSTOMERS,
     "the physical cashier must never fan customers into parallel rows");
+  const front=cashierServicePoint(layout.counter,"customer");
+  const axis=turnShopOffset(0,-1,layout.counter.rotation);
   for (const [index, point] of points.entries()) {
-    assert.ok(Math.abs(point.x) <= 0.01,
-      "all cashier customers stand in one forward-facing lane");
-    assert.ok(point.z >= -5.5 && point.z <= 0.5);
+    const dx=point.x-front.x,dz=point.z-front.z;
+    assert.ok(Math.abs(dx*axis.z-dz*axis.x)<0.01,
+      "all cashier customers stand in one rotated single-file lane");
+    assert.ok(dx*axis.x+dz*axis.z>=-0.01,
+      "queue positions extend away from the register");
     assert.equal(isObstructed(point, layout), false);
     const route = pathToShopGoal(from, point, layout);
     assert.ok(route);
