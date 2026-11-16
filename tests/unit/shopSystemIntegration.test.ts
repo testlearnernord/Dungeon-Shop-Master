@@ -47,11 +47,11 @@ test("connected excavated wing, moved shelf and counter preserve all customer se
   const room=carveWing(),initial=createGameState(7351);
   const store=new GameStore({...initial,level5Room:room});
   const shelf={id:"shelf-2" as const,x:8.25,z:0,rotation:2 as const};
-  assert.equal(store.previewShopPlacement(shelf),null);
-  assert.equal(store.placeShelf(shelf),"Shelf placement saved.");
+  assert.equal(store.previewFurniturePlacement(shelf),null);
+  assert.equal(store.placeFurniture(shelf),"Shelf placement saved.");
   const counter={id:"counter" as const,x:0,z:2.25,rotation:1 as const};
-  assert.equal(store.previewShopPlacement(counter),null);
-  assert.equal(store.placeCounter(counter),"Counter placement saved.");
+  assert.equal(store.previewFurniturePlacement(counter),null);
+  assert.equal(store.placeFurniture(counter),"Counter placement saved.");
   const layout=store.state.shopLayout;
   assert.equal(shopServiceReachabilityProblem(layout,room),null);
   const checkout=checkoutQueuePoints(layout,entrance,5,room);
@@ -91,11 +91,11 @@ test("connected excavated wing, moved shelf and counter preserve all customer se
 test("bedroom, bed and board stay independent of retail navigation in an enlarged shop",()=>{
   const initial=createGameState(7351),room=carveWing();
   const store=new GameStore({...initial,level5Room:room});
-  assert.equal(store.placeRosterBoard({x:-5,z:-6.45,rotation:2}),
+  assert.equal(store.placeFurniture({id:"adventurer-board",x:-5,z:-6.45,rotation:2}),
     "Adventurer board placed.");
-  assert.equal(store.placeBedroomFurniture({id:"desk",x:-2.25,z:-9.75,rotation:1}),
+  assert.equal(store.placeFurniture({id:"desk",x:-2.25,z:-9.75,rotation:1}),
     "Bedroom furniture placed.");
-  assert.equal(store.placeBedroomFurniture({id:"bed",x:0.75,z:-10,rotation:0}),
+  assert.equal(store.placeFurniture({id:"bed",x:0.75,z:-10,rotation:0}),
     "Bedroom furniture placed.");
   assert.equal(getBedroomFurniture(store.state.bedroomFurniture,"bed").z,-10);
   assert.equal(shopServiceReachabilityProblem(store.state.shopLayout,room),null);

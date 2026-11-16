@@ -29,7 +29,7 @@ test("seven actual adjoining rock cells support shelf relocation; one cell canno
   assert.equal(shopServiceReachabilityProblem(proposed.layout,room),null);
   const before=createGameState(7351);
   const store=new GameStore({...before,level5Room:room});
-  assert.equal(store.placeShelf(placement),"Shelf placement saved.");
+  assert.equal(store.placeFurniture(placement),"Shelf placement saved.");
   assert.deepEqual(store.state.shopLayout.shelves[1],placement);
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))).shopLayout,
     store.state.shopLayout);
@@ -53,8 +53,8 @@ test("a valid cashier on mined floor is accepted by the same preview and GameSto
     "both entrances must reach checkout on the excavated wing");
   assert.notEqual(shopServiceReachabilityProblem(proposed.layout),null,
     "the original-room-only test rejects this candidate incorrectly");
-  assert.equal(store.previewShopPlacement(counter),null);
-  assert.equal(store.placeCounter(counter),"Counter placement saved.");
+  assert.equal(store.previewFurniturePlacement(counter),null);
+  assert.equal(store.placeFurniture(counter),"Counter placement saved.");
   assert.deepEqual(store.state.shopLayout.counter,{
     x:counter.x,z:counter.z,rotation:counter.rotation,
   });

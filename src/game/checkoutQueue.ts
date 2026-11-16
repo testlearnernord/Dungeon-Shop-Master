@@ -4,7 +4,7 @@ import { NPC_STATION_CLEARANCE } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
 import {
-  SHOP_FLOOR_FURNITURE,cashierServicePoint,turnShopOffset,
+  cashierServicePoint,shopFurnitureDefinition,turnShopOffset,
 } from "./furnitureRegistry.ts";
 
 export function checkoutQueueIds(carts: readonly ShopCart[]): readonly string[] {
@@ -18,12 +18,12 @@ export function checkoutQueueIndex(carts: readonly ShopCart[], heroId: string): 
 /** One physical line at the register; additional shoppers use the existing
  * safe checkout-overflow stands rather than surrounding the cash desk. */
 export const CHECKOUT_LINE_MAX_CUSTOMERS=
-  SHOP_FLOOR_FURNITURE.counter.service.queueCapacity;
+  shopFurnitureDefinition("counter").checkoutService.queueCapacity;
 /** Reserve enough real space for service claims, not just NPC collision.
  * 1.1m looked like a queue but the 1.18m service exclusion silently rejected
  * every adjacent cashier claim and forced customers into overflow. */
 export const CHECKOUT_QUEUE_SPACING=
-  SHOP_FLOOR_FURNITURE.counter.service.queueSpacing;
+  shopFurnitureDefinition("counter").checkoutService.queueSpacing;
 
 /** Candidate standing places are deliberately restricted to the shop floor.
  * Queue allocation is based on actual path endpoints, not desired coordinates:
@@ -33,9 +33,6 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Invalid queue capacity");
   if (count === 0) return [];
   const candidates: ShopPoint[] = [];
-  // Old saves without a persisted counter used this checkout lane. Keep the
-  // compatibility coordinate explicit rather than reviving obsolete desk geometry.
-  const legacyFrontZ = 0.5;
   const counter = getCounterPlacement(layout);
   // A moved counter may cover the legacy planning origin (0,-1). Never
   // declare the whole queue unreachable merely because that origin is blocked.
@@ -48,10 +45,7 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   // existing service overflow holding spots handle the excess shoppers.
   // Capacity may be smaller for a counter moved next to an actual wall.
   for(let step=0;step<Math.min(count,CHECKOUT_LINE_MAX_CUSTOMERS);step++){
-    const first=layout.counter?customer:{
-      x:counter.x+turnShopOffset(0,legacyFrontZ-counter.z,counter.rotation).x,
-      z:counter.z+turnShopOffset(0,legacyFrontZ-counter.z,counter.rotation).z,
-    };
+    const first=customer;
     const offset=turnShopOffset(0,-step*CHECKOUT_QUEUE_SPACING,counter.rotation);
     const point={x:first.x+offset.x,z:first.z+offset.z};
     // No snaking sideways around furniture: an interrupted line ends here
@@ -74,9 +68,3 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   return allocated;
 }
 
-/** No queue point is fabricated when the shop has no remaining safe capacity. */
-export function checkoutQueuePoint(index: number): ShopPoint {
-  if (!Number.isSafeInteger(index) || index < 0) throw new RangeError("Invalid queue index");
-  if (index >= 5) throw new RangeError("Queue capacity requires layout-aware allocation");
-  return {x:0,z:0.65-index*CHECKOUT_QUEUE_SPACING};
-}

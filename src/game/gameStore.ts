@@ -1,7 +1,6 @@
-import { createLevel5Room, excavateLevel5Cell, isValidLevel5Room, type RoomCell } from "./level5Room.ts";
+import { excavateLevel5Cell, isValidLevel5Room, type RoomCell } from "./level5Room.ts";
 import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
-import type {CounterPlacement,ShelfPlacement} from "./shopLayout.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
 import {resolveFurniturePlacement} from "./furniturePlacement.ts";
 import { checkoutCustomer, quoteCustomerCheckout, type CheckoutQuote } from "./customerCheckout.ts";
@@ -9,8 +8,7 @@ import { pickUpShopItem, returnShopCart, payReservedShopCart } from "./shopCarts
 import { walkOutWithoutPurchase } from "./shopWalkout.ts";
 import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
-import type {BedroomFurniturePlacement} from "./bedroomFurniture.ts";
-import {DEFAULT_ROSTER_BOARD,rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
+import {rosterBoardProblem} from "./rosterBoardPlacement.ts";
 import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
 
 export class GameStore {
@@ -65,12 +63,12 @@ export class GameStore {
   }
 
   excavateShopCell(cell:RoomCell):string {
-    const room=this.current.level5Room??createLevel5Room();
+    const room=this.current.level5Room;
     const result=excavateLevel5Cell(room,cell);
     if(!result.ok)return result.reason;
     // The mineable rock is also a possible *wall mount*. Excavating its
     // supporting stone must not strand a saved board in midair.
-    const board=this.current.rosterBoard??DEFAULT_ROSTER_BOARD;
+    const board=this.current.rosterBoard;
     if(rosterBoardProblem(board,this.current.shopLayout,result.room))
       return "Move the Adventurer Board before mining its supporting rock.";
     if(this.current.wallPortrait&&wallPortraitProblem(this.current.wallPortrait,
@@ -81,7 +79,7 @@ export class GameStore {
   }
 
   unlockShopExpansion(tier:number):string {
-    const room=this.current.level5Room??createLevel5Room();
+    const room=this.current.level5Room;
     if(!Number.isSafeInteger(tier)||tier!==room.expansionTier+1||tier>3)
       return "Invalid expansion tier.";
     const next={...room,expansionTier:tier};
@@ -102,25 +100,6 @@ export class GameStore {
     this.replace(result.state);
     return result.message;
   }
-  // Keep the existing typed public API for saved games and UI callers while
-  // routing every furniture family through the same placement transaction.
-  previewShopPlacement(draft:ShelfPlacement|
-    (CounterPlacement&{readonly id:"counter"})):string|null{
-    return this.previewFurniturePlacement(draft);
-  }
-  placeShelf(placement:ShelfPlacement):string{
-    return this.placeFurniture(placement);
-  }
-  placeCounter(placement:CounterPlacement):string{
-    return this.placeFurniture({id:"counter",...placement});
-  }
-  placeRosterBoard(placement:RosterBoardPlacement):string{
-    return this.placeFurniture({id:"adventurer-board",...placement});
-  }
-  placeBedroomFurniture(placement:BedroomFurniturePlacement):string{
-    return this.placeFurniture(placement);
-  }
-
   pickUpShopItem(heroId: string, slotId: string): string {
     const result = pickUpShopItem(this.current, heroId, slotId);
     this.replace(result.state);

@@ -270,9 +270,10 @@ function validateState(value: unknown): asserts value is GameState {
     "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
-  ], ["level5Room","bedroomFurniture","rosterBoard","wallPortrait"]);
+    "level5Room","bedroomFurniture","rosterBoard",
+  ], ["wallPortrait"]);
   const room=state.level5Room;
-  if (room !== undefined && !isValidLevel5Room(room))
+  if (!isValidLevel5Room(room))
     fail("payload.level5Room", "has invalid excavation geometry");
   const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
   if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
@@ -339,11 +340,11 @@ function validateState(value: unknown): asserts value is GameState {
   validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
   let parsedShopLayout:ShopLayout;
   {
-    const layout=object(state.shopLayout,"payload.shopLayout",["shelves"],["counter"]);
+    const layout=object(state.shopLayout,"payload.shopLayout",["shelves","counter"]);
     // Furniture can legitimately be outside the original 7m cave once the
     // corresponding corridor is mined. The full room-aware geometry check
     // below still rejects unmined rock and unsupported service footprints.
-    const sideLimit=room===undefined?8:BASE_ROOM_HALF_EXTENT+2*room.expansionTier+0.5;
+    const sideLimit=BASE_ROOM_HALF_EXTENT+2*room.expansionTier+0.5;
     const shelves=array(layout.shelves,"payload.shopLayout.shelves");
     if(shelves.length>MAX_SHOP_SHELVES)
       fail("payload.shopLayout.shelves","must contain at most "+MAX_SHOP_SHELVES+" shelves");
@@ -357,19 +358,17 @@ function validateState(value: unknown): asserts value is GameState {
       return {id:shelf.id as ShelfPlacement["id"],x,z,
         rotation:rotation as ShelfPlacement["rotation"]};
     });
-    let counter;
-    if(layout.counter!==undefined){
-      const p=object(layout.counter,"payload.shopLayout.counter",["x","z","rotation"]);
-      const x=validNumber(p.x,"payload.shopLayout.counter.x",-sideLimit,sideLimit);
-      const z=validNumber(p.z,"payload.shopLayout.counter.z",-8,8);
-      const rotation=integer(p.rotation,"payload.shopLayout.counter.rotation",0,3);
-      counter={x,z,rotation:rotation as 0|1|2|3};
-    }
-    parsedShopLayout={shelves:parsed,...(counter?{counter}:{})};
+    const p=object(layout.counter,"payload.shopLayout.counter",["x","z","rotation"]);
+    const counter={
+      x:validNumber(p.x,"payload.shopLayout.counter.x",-sideLimit,sideLimit),
+      z:validNumber(p.z,"payload.shopLayout.counter.z",-8,8),
+      rotation:integer(p.rotation,"payload.shopLayout.counter.rotation",0,3) as 0|1|2|3,
+    };
+    parsedShopLayout={shelves:parsed,counter};
     const problem=shopLayoutProblem(parsedShopLayout,room);
     if(problem)fail("payload.shopLayout",problem);
   }
-  if(state.bedroomFurniture!==undefined){
+  {
     const list=array(state.bedroomFurniture,"payload.bedroomFurniture");
     const parsed:BedroomFurniturePlacement[]=list.map((raw,index)=>{
       const path="payload.bedroomFurniture["+index+"]";
@@ -384,11 +383,11 @@ function validateState(value: unknown): asserts value is GameState {
     const problem=bedroomFurnitureProblem(parsed);
     if(problem)fail("payload.bedroomFurniture",problem);
   }
-  if(state.rosterBoard!==undefined){
+  {
     const raw=object(state.rosterBoard,"payload.rosterBoard",["x","z","rotation"]);
     const placement:RosterBoardPlacement={
       x:validNumber(raw.x,"payload.rosterBoard.x",
-        -(7+(room?.expansionTier??0)*2+1),7+(room?.expansionTier??0)*2+1),
+        -(7+(room.expansionTier)*2+1),7+(room.expansionTier)*2+1),
       z:validNumber(raw.z,"payload.rosterBoard.z",-8,8),
       rotation:integer(raw.rotation,"payload.rosterBoard.rotation",0,3) as 0|1|2|3,
     };
@@ -398,15 +397,14 @@ function validateState(value: unknown): asserts value is GameState {
 
   if(state.wallPortrait!==undefined){
     const raw=object(state.wallPortrait,"payload.wallPortrait",["x","z","rotation"]);
-    const sideLimit=7+(room?.expansionTier??0)*2+1;
+    const sideLimit=7+(room.expansionTier)*2+1;
     const pose:WallPortraitPlacement={
       x:validNumber(raw.x,"payload.wallPortrait.x",-sideLimit,sideLimit),
       z:validNumber(raw.z,"payload.wallPortrait.z",-8,8),
       rotation:integer(raw.rotation,"payload.wallPortrait.rotation",0,3) as 0|1|2|3,
     };
-    const board=state.rosterBoard===undefined?undefined:
-      state.rosterBoard as RosterBoardPlacement;
-    const problem=wallPortraitProblem(pose,parsedShopLayout,room,board);
+    const problem=wallPortraitProblem(pose,parsedShopLayout,room,
+      state.rosterBoard as RosterBoardPlacement);
     if(problem)fail("payload.wallPortrait",problem);
   }
   const slotDefinitions=parsedShopLayout.shelves.flatMap(shelf=>

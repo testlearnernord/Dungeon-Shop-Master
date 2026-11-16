@@ -9,7 +9,6 @@ import {getBedroomFurniture,isBedroomFurnitureId,
   type BedroomFurnitureId} from "./game/bedroomFurniture.ts";
 import {furnitureTouchesActor,SHELF_SLOT_COUNT,shelfSlotLocalZ} from "./game/furnitureRegistry.ts";
 import { classifyFurnitureMesh, type LookedAtFurniture } from "./game/furnitureSelection.ts";
-import {DEFAULT_ROSTER_BOARD} from "./game/rosterBoardPlacement.ts";
 
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
@@ -205,7 +204,7 @@ export function setupBlueprintHud(
   };
   const getSaved=(id:FurnitureId):FurnitureDraft=>{
     if(id==="counter")return {id,...getCounterPlacement(store.state.shopLayout)};
-    if(id==="adventurer-board")return {id,...(store.state.rosterBoard??DEFAULT_ROSTER_BOARD)};
+    if(id==="adventurer-board")return {id,...store.state.rosterBoard};
     if(id==="galvik-portrait")return {id,...store.state.wallPortrait!};
     if(isBedroomFurnitureId(id))return getBedroomFurniture(store.state.bedroomFurniture,id);
     return store.state.shopLayout.shelves.find(item=>item.id===id)!;

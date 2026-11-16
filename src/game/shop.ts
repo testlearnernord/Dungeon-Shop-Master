@@ -10,10 +10,10 @@ import { ITEMS, type ItemId, type Slot } from "./inventory";
 import { GameStore } from "./gameStore";
 import { getDungeonSurfaces } from "./dungeonSurfaces";
 import {
-  COMPACT_COUNTER, getCounterPlacement,
+  getCounterPlacement,
   type CounterPlacement, type ShelfId, type ShelfPlacement,
 } from "./shopLayout.ts";
-import {shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT,shelfSlotLocalZ} from "./furnitureRegistry.ts";
+import {shelfServicePoint,shopFurnitureDefinition,turnShopOffset,SHELF_SLOT_COUNT,shelfSlotLocalZ} from "./furnitureRegistry.ts";
 
 interface ShelfGroup {
   root: TransformNode;
@@ -87,8 +87,9 @@ export class Shop {
     };
     put("checkout-counter",0,0.42,0);
     put("counter-top",0,0.90,0);
-    put("register-base",COMPACT_COUNTER.registerOffsetX,1.05,COMPACT_COUNTER.registerOffsetZ);
-    put("cash-register",COMPACT_COUNTER.registerOffsetX,1.22,COMPACT_COUNTER.registerOffsetZ);
+    const register=shopFurnitureDefinition("counter").register;
+    put("register-base",register.x,1.05,register.z);
+    put("cash-register",register.x,1.22,register.z);
 
   }
   private positionShelf(group: ShelfGroup, p: ShelfPlacement): void {

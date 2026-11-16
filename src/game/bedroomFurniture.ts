@@ -1,8 +1,6 @@
 import {furnitureBounds,furnitureBoundsOverlap,furnitureTouchesActor} from "./furnitureRegistry.ts";
-/** Bedroom furnishings are a small physical floor-only system. A v12 save
- * from before movable beds contains three props; the bed is then implicitly
- * at its original location. No save migration is necessary.
- */
+/** Galvik's private-room furniture uses the shared furniture geometry while
+ * retaining room-specific doorway and bed-access rules. */
 export type BedroomFurnitureId="desk"|"chest"|"candle"|"bed";
 export interface BedroomFurniturePlacement{
   readonly id:BedroomFurnitureId;
@@ -24,9 +22,9 @@ export function createBedroomFurnitureLayout():BedroomFurnitureLayout{
 export const isBedroomFurnitureId=(id:string):id is BedroomFurnitureId=>
   id==="desk"||id==="chest"||id==="candle"||id==="bed";
 export function getBedroomFurniture(
-  layout:BedroomFurnitureLayout|undefined,id:BedroomFurnitureId,
+  layout:BedroomFurnitureLayout,id:BedroomFurnitureId,
 ):BedroomFurniturePlacement{
-  return layout?.find(p=>p.id===id)??BEDROOM_DEFAULTS.find(p=>p.id===id)!;
+  return layout.find(p=>p.id===id)!;
 }
 
 type Bounds=ReturnType<typeof furnitureBounds>;
@@ -54,8 +52,8 @@ function hasBedAccess(layout:BedroomFurnitureLayout):boolean{
     }));
 }
 export function bedroomFurnitureProblem(layout:BedroomFurnitureLayout):string|null{
-  if(!Array.isArray(layout)||(layout.length!==3&&layout.length!==4))
-    return "The bedroom needs its desk, chest, candle and optional original bed.";
+  if(!Array.isArray(layout)||layout.length!==4)
+    return "The bedroom needs its desk, chest, candle and bed.";
   const seen=new Set<BedroomFurnitureId>();
   const doorway:Bounds={minX:-0.72,maxX:0.72,minZ:-8.55,maxZ:-7.4};
   for(const p of layout){
@@ -77,16 +75,13 @@ export function bedroomFurnitureProblem(layout:BedroomFurnitureLayout):string|nu
     if(overlap(b,doorway,0.10))
       return "Leave the bedroom doorway clear.";
   }
-  for(const id of ["desk","chest","candle"] as const)
+  for(const id of ["desk","chest","candle","bed"] as const)
     if(!seen.has(id))return "Missing required bedroom furniture.";
-  if(layout.length===4&&!seen.has("bed"))return "Missing Galvik's bed.";
-  const actual=[...layout];
-  if(!seen.has("bed"))actual.push(getBedroomFurniture(undefined,"bed"));
-  for(let i=0;i<actual.length;i++)
-    for(let j=i+1;j<actual.length;j++)
-      if(overlap(bounds(actual[i]),bounds(actual[j]),0.16))
+  for(let i=0;i<layout.length;i++)
+    for(let j=i+1;j<layout.length;j++)
+      if(overlap(bounds(layout[i]),bounds(layout[j]),0.16))
         return "Bedroom furniture cannot overlap or obstruct Galvik's bed.";
-  if(!hasBedAccess(actual))
+  if(!hasBedAccess(layout))
     return "Leave accessible standing space beside Galvik's bed.";
   return null;
 }
@@ -99,9 +94,9 @@ export function bedroomFurnitureOverlapsActor(
   return furnitureTouchesActor(placement,actor);
 }
 export function replaceBedroomFurniture(
-  layout:BedroomFurnitureLayout|undefined,placement:BedroomFurniturePlacement,
+  layout:BedroomFurnitureLayout,placement:BedroomFurniturePlacement,
 ):{layout:BedroomFurnitureLayout;message:string}{
-  const current=layout??createBedroomFurnitureLayout();
+  const current=layout;
   if(!placement||!isBedroomFurnitureId(placement.id))
     return {layout:current,message:"Unknown bedroom furniture."};
   const previous=getBedroomFurniture(current,placement.id);
