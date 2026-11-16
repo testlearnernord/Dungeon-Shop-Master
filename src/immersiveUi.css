@@ -761,3 +761,70 @@
   #hud #shop-status-content{max-height:57dvh}
   #music-panel,#game #music-panel{bottom:92px!important}
 }
+
+/* Contextual merchant work: one short read-only crosshair cue, not another
+ * management window. Never obstruct the aim/click ray or the bottom hotbar. */
+#hud #shop-shelf-focus{
+  position:fixed;left:50%;top:calc(50% + 27px);
+  transform:translateX(-50%);z-index:7;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  width:max-content;max-width:min(410px,calc(100vw - 28px));
+  padding:7px 12px;border-radius:9px;
+  background:rgba(13,20,21,.70);border:1px solid rgba(207,166,108,.28);
+  box-shadow:0 6px 23px #0005;backdrop-filter:blur(8px);
+  color:#ecdcc0;text-align:center;text-shadow:0 1px 5px #000b
+}
+#hud #shop-shelf-focus[hidden],
+#hud #shop-service-brief[hidden]{display:none!important}
+#hud #shop-shelf-focus strong{font-size:11px;line-height:1.3;color:#f2d39c}
+#hud #shop-shelf-focus span{font-size:10px;line-height:1.4;color:#d6c8ae}
+#hud #shop-shelf-focus[data-tone="blocked"] span{color:#e2a59b}
+#hud #shop-shelf-focus[data-tone="warning"] span{color:#e4c08b}
+
+/* Live requests are visible to a busy shopkeeper without another NPC AI,
+ * modal, scrolling panel or loud notification. Real customer bubbles stay. */
+#hud #shop-service-brief{
+  position:fixed;top:48px;left:50%;transform:translateX(-50%);
+  z-index:8;width:max-content;max-width:min(510px,calc(100vw - 500px));
+  display:flex;flex-wrap:wrap;justify-content:center;align-items:center;
+  gap:6px;margin:0;padding:0;background:transparent;pointer-events:none;
+  text-shadow:0 1px 4px #000a
+}
+#hud #shop-service-brief > *{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:29px;max-width:100%;padding:4px 9px;border-radius:8px;
+  border:1px solid rgba(203,172,120,.29);background:rgba(18,25,25,.77);
+  backdrop-filter:blur(8px);font:650 10px/1.35 system-ui,sans-serif;
+  color:#ead6b1;box-shadow:0 3px 12px #0004
+}
+#hud #shop-service-brief > [hidden]{display:none!important}
+#hud #shop-service-brief #service-ready-checkout{
+  color:#d6e9be;border-color:rgba(160,201,130,.36)
+}
+#hud #shop-service-brief #service-credit{color:#f1c89f}
+#hud #shop-service-brief #service-restock{
+  cursor:pointer;pointer-events:auto;text-shadow:inherit
+}
+#hud #shop-service-brief #service-restock svg{
+  width:19px;height:19px;flex:0 0 19px;
+  filter:drop-shadow(0 2px 2px #0007)
+}
+#hud #shop-service-brief #service-restock kbd{
+  font:800 10px/1 system-ui,sans-serif;padding:3px 5px;
+  border:1px solid rgba(227,199,144,.42);border-radius:5px;color:#fce2ab
+}
+#hud #shop-service-brief #service-restock[data-urgent="true"]{
+  border-color:rgba(234,139,105,.72);color:#ffbba0
+}
+#hud #shop-service-brief #service-restock:is(:hover,:focus-visible){
+  background:rgba(59,53,39,.91);outline:2px solid #e6b875;outline-offset:2px
+}
+@media(max-width:1050px){
+  #hud #shop-service-brief{
+    top:52px;max-width:min(310px,calc(100vw - 280px))
+  }
+}
+@media(max-width:650px){
+  #hud #shop-service-brief{top:105px;max-width:calc(100vw - 30px)}
+  #hud #shop-shelf-focus{max-width:calc(100vw - 28px)}
+}
