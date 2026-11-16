@@ -23,7 +23,8 @@ import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SE
 import { isObstructed, pathToShopGoal, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
 import { ShopServiceSpots } from "./shopServiceSpots.ts";
 
-import { npcLocomotion } from "./npcLocomotion.ts";
+import {npcLocomotion,easedNpcWalkSpeed,turnNpcToward} from "./npcLocomotion.ts";
+import {getCounterPlacement} from "./shopLayout.ts";
 
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
@@ -50,6 +51,8 @@ interface NpcVisual {
   wait: number;
   browseSide: number;
   animationTime: number;
+  /** Presentation-only current walking speed: never saved or used by sales. */
+  walkSpeed:number;
   blockedSeconds:number;
   routeProgress:WaypointProgress|null;
   trafficReroutes:number;
@@ -161,7 +164,9 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
   }, `npc-${visitor.id}`);
   const { root, arms, legs, torso } = model;
   root.position.copyFrom(position);
-  
+  // Entrants begin facing into the shop, not walking backward while turning.
+  root.rotation.y=Math.PI;
+
   const label = MeshBuilder.CreatePlane(`npc-${visitor.id}-label`, { width: 1.36, height: 0.34 }, scene);
   label.parent = root;
   label.position.y = 2.22;
@@ -179,7 +184,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
 
   const visual: NpcVisual = {
     root, arms, legs, torso, model, visitor, phase: "entering", route: [], waypoint: 0, slot,
-    elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, blockedSeconds:0, routeProgress:null, trafficReroutes:0, idleYieldCooldown:0,
+    elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, walkSpeed:0, blockedSeconds:0, routeProgress:null, trafficReroutes:0, idleYieldCooldown:0,
     gateSide: visitor.entranceGate ?? "level4",
     restockSeconds:null,requestActive:false,roamLeg:0,
     wishItem:null,wishBubble:null,
@@ -1145,6 +1150,7 @@ export class NpcVisualSystem {
   private move(npc: NpcVisual, delta: number): void {
     const target=npc.route[npc.waypoint];
     if(!target){
+      npc.walkSpeed=0;
       if(npc.phase==="entering"){
         this.beginBrowsing(npc);
       }else if(npc.phase==="browsing"){
@@ -1247,6 +1253,7 @@ export class NpcVisualSystem {
       npc.root.position.x=target.x;
       npc.root.position.z=target.z;
       npc.waypoint+=1;
+      if(npc.waypoint===npc.route.length)npc.walkSpeed=0;
       npc.blockedSeconds=0;
       npc.root.metadata.blockedSeconds=0;
       npc.root.metadata.softPassing=heldByNeighbor;
@@ -1287,8 +1294,14 @@ export class NpcVisualSystem {
       Math.hypot(target.x-claim.point.x,target.z-claim.point.z)<0.3&&
       Math.hypot(from.x-claim.point.x,from.z-claim.point.z)<
         NPC_CENTER_CLEARANCE+0.25;
+    // Apply acceleration to actual pedestrian displacement, not only the leg
+    // animation. Brake only for the last goal: intermediate waypoints from
+    // pathfinding are corners, not reasons to stop and restart.
+    npc.walkSpeed=easedNpcWalkSpeed(npc.walkSpeed,distance,delta,
+      npc.waypoint===npc.route.length-1,WALK_SPEED);
+    const travelStep=Math.min(distance,npc.walkSpeed*delta);
     const move=shopCrowdStep(from,{x:target.x,z:target.z},occupied,
-      WALK_SPEED*delta,walkable,npc.blockedSeconds,!inGateApproach&&from.z<=6.5,
+      travelStep,walkable,npc.blockedSeconds,!inGateApproach&&from.z<=6.5,
       finalServiceApproach
         ?Number.POSITIVE_INFINITY
         :inGateTrafficThroat(from)
@@ -1299,16 +1312,19 @@ export class NpcVisualSystem {
       npc.blockedSeconds+=delta;
       npc.root.metadata.blockedSeconds=npc.blockedSeconds;
       npc.root.metadata.softPassing=false;
-      const nearest={x:from.x+(dx/distance)*Math.min(distance,WALK_SPEED*delta),
-        z:from.z+(dz/distance)*Math.min(distance,WALK_SPEED*delta)};
+      // A blocked walker physically comes to a stop instead of instantly
+      // resuming full-speed movement after every collision retry.
+      npc.walkSpeed=Math.max(0,npc.walkSpeed-5.5*delta);
+      const nearest={x:from.x+(dx/distance)*travelStep,
+        z:from.z+(dz/distance)*travelStep};
       npc.root.metadata.movementMode=walkable(nearest)?"crowd-block":"static-block";
       // A *static* obstruction still requires a new path. NPC traffic alone
       // becomes nonblocking after a short wait via shopCrowdStep above.
       this.recoverTraffic(npc);
       return;
     }
-    const step=Math.min(distance,WALK_SPEED*delta);
-    const direct={x:from.x+dx/distance*step,z:from.z+dz/distance*step};
+    const direct={x:from.x+dx/distance*travelStep,
+      z:from.z+dz/distance*travelStep};
     const steering=Math.hypot(proposed.x-direct.x,proposed.z-direct.z);
     // Count actual lack of progress. Steering around a person is normal
     // walking and must not trigger body-overlap escape mode by itself.
@@ -1318,7 +1334,10 @@ export class NpcVisualSystem {
     npc.root.metadata.softPassing=move.softPass;
     npc.root.metadata.movementMode=move.softPass?"soft-pass":steering>0.015?"sidestep":"moving";
     if(!move.softPass&&this.recoverTraffic(npc))return;
-    npc.root.rotation.y=Math.atan2(proposed.x-from.x,proposed.z-from.z);
+    if(Math.hypot(proposed.x-from.x,proposed.z-from.z)>0.001){
+      const facing=Math.atan2(proposed.x-from.x,proposed.z-from.z);
+      npc.root.rotation.y=turnNpcToward(npc.root.rotation.y,facing,delta);
+    }
     npc.root.position.x=proposed.x;
     npc.root.position.z=proposed.z;
   }
@@ -1327,8 +1346,19 @@ export class NpcVisualSystem {
     const motion=npcLocomotion(beforeMove,{
       x:npc.root.position.x,z:npc.root.position.z,
     },delta,WALK_SPEED);
-    // Animation follows actual displacement, even while queueing, seeking
-    // a safe stand, or sidestepping. A blocked character no longer moonwalks.
+    // An unmoving buyer looks toward the actual counter instead of freezing
+    // at the heading of the last path waypoint. No locomotion/queue mutation.
+    if(!motion.moving&&npc.phase==="queueing"&&
+       npc.root.metadata.shoppingPhase==="awaiting-checkout"&&this.layout){
+      const till=getCounterPlacement(this.layout);
+      const dx=till.x-npc.root.position.x,dz=till.z-npc.root.position.z;
+      if(Math.hypot(dx,dz)>.5){
+        npc.root.rotation.y=turnNpcToward(npc.root.rotation.y,
+          Math.atan2(dx,dz),delta,3.2);
+      }
+    }
+    // Animation follows real displacement, not state-machine intent. A
+    // stopped visitor settles naturally; their legs do not treadmill in place.
     npc.animationTime+=delta*(motion.moving?motion.strideScale:0.3);
     const swing=motion.moving
       ?Math.sin(npc.animationTime*8)*0.65
@@ -1339,6 +1369,8 @@ export class NpcVisualSystem {
     npc.arms[1].rotation.x=swing*0.7;
     npc.torso.position.y=1.14+Math.sin(npc.animationTime*2)*
       (motion.moving?0.025:0.01);
+    npc.torso.rotation.z=motion.moving?0:
+      Math.sin(npc.animationTime*.6+npc.slot*.9)*.014;
     npc.root.position.y=0.6*Math.cos(swing)-0.6;
     npc.root.metadata.animatingWalk=motion.moving;
     npc.root.metadata.actualSpeed=Math.round(motion.speed*100)/100;
