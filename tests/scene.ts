@@ -176,6 +176,13 @@ export function inspectNpcVisuals() {
         shoppingPhase: node.metadata.shoppingPhase as string|undefined,
         roamLeg: node.metadata.roamLeg as number|undefined,
         movementMode: node.metadata.movementMode as string|undefined,
+        shopGesture: node.metadata.shopGesture as string|undefined,
+        confirmedPickups: node.metadata.confirmedPickups as number|undefined,
+        confirmedPayments: node.metadata.confirmedPayments as number|undefined,
+        // Observe actual Babylon transforms, not just a metadata claim.
+        headPitch: scene.getTransformNodeByName(node.name+"-head-pivot")?.rotation.x??0,
+        leftArmPitch: scene.getTransformNodeByName(node.name+"-arm--1")?.rotation.x??0,
+        rightArmPitch: scene.getTransformNodeByName(node.name+"-arm-1")?.rotation.x??0,
         wantedItemId: node.metadata.wantedItemId as string|null|undefined,
         restockRemaining: node.metadata.restockRemaining as number|null|undefined,
         gateYield: node.metadata.gateYield as boolean|undefined,
