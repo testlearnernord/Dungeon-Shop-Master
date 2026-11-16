@@ -62,9 +62,13 @@ need human game testing. The next planned improvements target that experience.
    press **F** to select that item, then walk over and stock it yourself.
    Neither F nor the strip purchases or transfers anything.
 5. Customers choose what to buy. At the staff side of the register use
-   **E** when someone with a cart is ready; finish its existing two-stage
-   timing/receipt interaction. A nearby credit customer can also be
-   addressed with **E**, with the actual item issued as debt, not a sale.
+   **E** when someone with a cart is ready; finish its two-stage timing/receipt interaction. The actual amount and any
+   customer-funded tip appear on a paid receipt; the register stays open.
+   When the next **physically ready** buyer arrives, press **E** again to
+   begin the next checkout without reopening the modal. **Esc** leaves the
+   register. No customer is charged until their own two stages succeed.
+   A nearby credit customer can also be addressed with **E**, with the
+   actual item issued as debt, not a sale.
 6. To close the day, go to Galvik's bedroom and **hold E** at the bed.
    The ledger opens and the next day is committed. Saved dungeon footage
    can be watched without rerolling the outcome.
@@ -76,7 +80,7 @@ need human game testing. The next planned improvements target that experience.
 | WASD / mouse / Shift | Move, look, sprint |
 | 1–6 / wheel | Select a carried stocking item |
 | Left-click / right-click at shelf | Stock one / remove one; no bulk-stocking shortcut yet |
-| E | Contextual interaction (cashier staff side, credit customer, board, etc.) |
+| E | Contextual interaction; after a paid register receipt, serve the next physically ready buyer |
 | Hold E at bed | Finish day |
 | F | Select the earliest-expiring **live restock** item, if any |
 | B | Wholesale |
@@ -164,7 +168,8 @@ For details and non-negotiable invariants, use the
 
 ## Upcoming development
 
-The agreed **five-step working sequence** is checkout feel, physical
+The agreed **five-step working sequence** begins with checkout feel (the
+continuous-register feature is delivered in PR #153 for review), physical
 restocking ergonomics, customer personality, meaningful shop-to-dungeon
 feedback, and ten-day balance/playtesting. As documentation itself uses
 PR #152, feature PRs are tentatively **#153–#157** (not reserved).
