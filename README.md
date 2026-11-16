@@ -136,9 +136,10 @@ Playwright's test runner may need a display or `xvfb-run` on headless Linux.
 
 ### GitHub workflows
 
-- **CI** on pull requests into `main`: build, unit tests and four selected
+- **CI** on pull requests into `main`: build, unit tests and seven selected
   Playwright specs (`dayClock`, `cashierReceipt`, `level5Excavation`,
-  `shopperFlowReliability`). Each spec can contain multiple browser tests.
+  `shopperFlowReliability`, `physicalShopStock`, `ashenTrollPreview`,
+  `soundtrack`). Each spec can contain multiple browser tests.
 - **Full browser regression**: manually dispatched GitHub Actions workflow,
   not the default PR run.
 - **Deploy to GitHub Pages**: triggered by pushes to `main`. A green PR
@@ -170,15 +171,29 @@ older alpha save cannot be loaded.
 For details and non-negotiable invariants, use the
 [architecture map](docs/ARCHITECTURE.md), not this quick reference.
 
+## Boss asset regeneration
+
+`public/assets/models/ashen-mauler-sculpt.glb` contains 17 original,
+vertex-painted anatomical surfaces. It is committed as a regular binary asset;
+regenerate deterministically with:
+
+```bash
+node tools/asset_generation/build_cave_troll.mjs
+```
+
+The existing Babylon transform rig animates the imported geometry. This is
+**not** yet a unified hand-sculpted, skinned GLB with embedded animation clips.
+
 ## Upcoming development
 
-The agreed **five-step working sequence** begins with checkout feel (the
-continuous-register feature is delivered in PR #153 for review), physical
-restocking ergonomics, customer personality, meaningful shop-to-dungeon
-feedback, and ten-day balance/playtesting. As documentation itself uses
-PR #152, feature PRs are tentatively **#153–#157** (not reserved).
-**None of these five feature changes is implemented or promised merged
-by this README.** Follow [ROADMAP](docs/ROADMAP.md) and check GitHub.
+The register flow (PR #153), restocking ergonomics (#156), customer remarks
+(#157) and music-led boss cinematic (#160) have shipped. The next quality
+gates are real character-art review, meaningful boss combat pacing, legible
+shop-to-dungeon consequences and a measured ten-day balance/playability
+pass. The optional cellar and deeper shop systems remain separately planned,
+not an automatic feature commitment. Check the live [ROADMAP](docs/ROADMAP.md)
+and PR list rather than treating old numbers as reservations.
+
 
 Illustrations, previous brainstorms and historical conversations are
 references, not alternative canonical implementations.
