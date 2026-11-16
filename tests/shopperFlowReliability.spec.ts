@@ -439,6 +439,11 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals());
   const samples:unknown[]=[];
   let last=-10000;
+  // A buyer can complete a pickup and leave before *both* petitioners start
+  // roaming. Preserve the stronger assertion that a real cart was observed
+  // while the requests existed, without requiring unrelated transient phases
+  // to coincide on one arbitrary Playwright polling frame.
+  let buyerWithCartDuringRequest=false;
   try{
     await expect.poll(async()=>{
       const snapshot=await read();
@@ -452,12 +457,16 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
       }
       const request=snapshot.visitors.find(v=>v.id===ids.restock);
       const begging=snapshot.visitors.find(v=>v.id===ids.beggar);
-      return !!request&&!!begging&&
-        (request.roamLeg??0)>0 &&
-        (begging.roamLeg??0)>0 &&
-        snapshot.visitors.every(v=>v.wallClear)&&
-        snapshot.visitors.some(v=>ids.buyers.includes(v.id)&&
-          (v.cartUnits??0)>0);
+      const requestsLive=!!request&&!!begging&&
+        (request.restockRemaining??0)>0 &&
+        (begging.restockRemaining??0)>0;
+      if(requestsLive&&snapshot.visitors.some(v=>
+        ids.buyers.includes(v.id)&&(v.cartUnits??0)>0))
+        buyerWithCartDuringRequest=true;
+      return requestsLive&&buyerWithCartDuringRequest&&
+        (request!.roamLeg??0)>0 &&
+        (begging!.roamLeg??0)>0 &&
+        snapshot.visitors.every(v=>v.wallClear);
     },{timeout:90000,intervals:[600,1000,1700]}).toBe(true);
   }catch(e){
     console.error("INTEGRATED_SHOP_FAILURE",JSON.stringify(samples));

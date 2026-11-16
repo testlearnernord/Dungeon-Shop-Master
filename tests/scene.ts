@@ -158,6 +158,19 @@ export function inspectBedroomSightlines() {
   };
 }
 
+/** A loaded save can show Day 1 before rebuilt shelf meshes become pickable.
+ * Wait for the actual interaction surface, not just the GLB asset promise. */
+export async function waitForShelfSlotMesh(
+  name="shelf-1-slot-1",timeoutMs=6000,
+):Promise<void> {
+  const deadline=performance.now()+timeoutMs;
+  while(performance.now()<deadline){
+    if(Engine.LastCreatedScene?.getMeshByName(name))return;
+    await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+  }
+  throw Error("Physical shelf slot never appeared: "+name);
+}
+
 export function aimAtShelfSlot() {
   const start = inspectPlayer({ x: -5.05, y: 1.7, z: -2 });
   const scene = Engine.LastCreatedScene!;

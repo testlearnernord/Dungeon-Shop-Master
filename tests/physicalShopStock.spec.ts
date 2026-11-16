@@ -115,6 +115,7 @@ test("Shift-click stocks and clears the aimed physical shelf using real GLBs",as
   await page.evaluate(async()=>{
     const scene=await import("/Dungeon-Shop-Master/tests/scene.ts");
     await scene.waitForShopStockAssets();
+    await scene.waitForShelfSlotMesh();
     scene.aimAtShelfSlot();
   });
   await expect(page.locator("#shop-shelf-focus")).toBeVisible();
