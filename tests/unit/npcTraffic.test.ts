@@ -405,3 +405,11 @@ test("roaming request visitors yield a live aisle, unlike checkout customers",()
   assert(!canYieldShopperSpot("queueing","awaiting-checkout",false));
   assert(!canYieldShopperSpot("queueing","waiting-for-restock",false));
 });
+
+test("a stationary petitioner may yield to a buyer, but the checkout line holds",()=>{
+  assert.equal(canYieldShopperSpot("queueing","waiting-for-restock",false),true);
+  assert.equal(canYieldShopperSpot("queueing","waiting-for-credit",false),true);
+  assert.equal(canYieldShopperSpot("queueing","waiting-for-credit-overflow",false),true);
+  assert.equal(canYieldShopperSpot("queueing","waiting-for-restock",true),false);
+  assert.equal(canYieldShopperSpot("queueing","awaiting-checkout",false),false);
+});
