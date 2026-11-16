@@ -380,7 +380,7 @@ export class Level6Arena {
     const displayName = this.fighter ? names.get(this.fighter.id) ?? this.fighter.name : "Preview Hero";
     this.targets = [
       { label: displayName + " · " + (this.fighter?.role ?? "tank"), node: hero,
-        vantage: new Vector3(4, 5, -13) },
+        vantage: new Vector3(4, 5, -8) },
       { label: "THE CAVE TROLL · BOSS", node: boss, vantage: new Vector3(10, 7, -11) },
     ];
     this.focusIndex = 0;
