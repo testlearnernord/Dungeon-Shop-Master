@@ -264,7 +264,42 @@ export function inspectBossArena() {
     dodgeCount: boss?.metadata?.dodgeCount as number | undefined,
     parryCount: boss?.metadata?.parryCount as number | undefined,
     missedHits: boss?.metadata?.missedHits as number | undefined,
+    trollVisualId: boss?.metadata?.visualId as string | undefined,
+    trollMeshCount: boss?.metadata?.geometryCount as number | undefined,
+    trollPhase: boss?.metadata?.animationPhase as string | undefined,
+    trollAnimationClock: boss?.metadata?.animationClock as number | undefined,
+    trollHammerRotation: boss?.metadata?.hammerSwing as number | undefined,
+    trollDeathProgress: boss?.metadata?.deathProgress as number | undefined,
+    realTroll3d: scene.getMeshByName("troll-head")?.getTotalVertices()??0,
+    realMaul3d: scene.getMeshByName("troll-maul-stone-core")?.getTotalVertices()??0,
+    canisterCount: scene.meshes.filter(m=>m.name.startsWith("troll-canister-body-")).length,
+    mineWalls: scene.meshes.filter(m=>m.name.startsWith("troll-cavern-wall-")).length,
+    armRig: scene.getMeshByName("troll-upper-arm-1")?.position.asArray(),
+    hammerSocket: scene.getTransformNodeByName("troll-rig-hammer")?.rotation.z,
+    impactVisibility: scene.getMeshByName("troll-maul-impact-dust")?.visibility,
   };
+}
+
+/** Visual-only death pose probe inside a training-preview scene.
+ * No GameStore or combat motor APIs are invoked or changed. */
+export async function inspectCaveTrollDeathPose():Promise<{
+  elapsed:number;fall:number;weapon:number;vertices:number;
+}> {
+  const scene=Engine.LastCreatedScene!;
+  const {createCaveTrollVisual}=await import("../src/game/caveTrollVisual.ts");
+  const model=createCaveTrollVisual(scene);
+  for(let i=0;i<22;i++)model.animate({
+    phase:"dead",phaseAge:i*.10,slam:true,time:i*.1,
+    moved:0,delta:.10,hp:0,maxHp:145,
+  });
+  const result={
+    elapsed:model.root.metadata.animationClock as number,
+    fall:model.root.metadata.deathProgress as number,
+    weapon:model.root.metadata.hammerSwing as number,
+    vertices:scene.getMeshByName("troll-head")?.getTotalVertices()??0,
+  };
+  model.root.dispose();
+  return result;
 }
 
 /** Shared scene-agnostic visual identity inspection for browser tests. */
