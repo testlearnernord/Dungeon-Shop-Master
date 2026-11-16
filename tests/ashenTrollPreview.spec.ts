@@ -4,6 +4,7 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
+  await page.setViewportSize({width:1440,height:900});
   const startingGold=await page.locator("#merchant-gold").textContent();
   await expect(page.locator("#day")).toHaveText("Day 1");
   // This is the actual in-game, read-only Level 6 training preview.
@@ -31,6 +32,9 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
     return Math.abs((current.trollHammerRotation??0)-start);
   },{timeout:7000,intervals:[100,100,150]}).toBeGreaterThan(.16);
   await page.screenshot({path:testInfo.outputPath("ashen-mauler-training-preview.png")});
+  await page.keyboard.press("Tab"); // actual spectator switch to boss focus
+  await expect(page.locator("#arena-focus")).toContainText("CAVE TROLL");
+  await page.screenshot({path:testInfo.outputPath("ashen-mauler-boss-closeup.png")});
 
   // Death is a noninstant sequence, tested on an isolated visual-only rig,
   // without artificially mutating the real campaign or replay frames.
