@@ -59,16 +59,20 @@ const intersects=furnitureBoundsOverlap;
  * This checks current exposed rock faces, so a pickaxe cannot silently
  * delete the supporting wall of a persisted board.
  */
-function supportedExcavatedWall(
+export function supportedExcavatedWall(
   board:RosterBoardPlacement,room:Level5Room,layout:ShopLayout,
+  width=3.45,
 ):boolean{
   const faces=level5RockFaces(room);
   const vertical=board.rotation===1||board.rotation===3;
   const plane=vertical
     ?board.x+(board.rotation===1?.28:-.28)
     :board.z+(board.rotation===2?-.28:.28);
-  for(let step=-1.5;step<=1.5;step+=.25){
-    const sample=vertical?board.z+step:board.x+step;
+  // Check the entire supporting span, accounting for individual 1m rock faces.
+  const half=width/2-.09;
+  for(let step=-half;step<=half+.25;step+=.25){
+    const offset=Math.min(step,half);
+    const sample=vertical?board.z+offset:board.x+offset;
     const supported=faces.some(face=>
       (vertical?face.width<face.depth:face.depth<face.width)&&
       Math.abs((vertical?face.x:face.z)-plane)<.12&&

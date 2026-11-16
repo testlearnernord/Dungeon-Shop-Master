@@ -26,10 +26,10 @@ function carvedWall():Level5Room{
   return room;
 }
 
-test("all eight furniture types share one geometry and mounting registry",()=>{
+test("all nine furniture types share one geometry and mounting registry",()=>{
   const ids:FurnitureKind[]=[
     "shelf-1","shelf-2","counter","desk","chest","candle","bed",
-    "adventurer-board",
+    "adventurer-board","galvik-portrait",
   ];
   assert.deepEqual(Object.keys(FURNITURE_REGISTRY),ids.slice(2),
     "static registry lists unique furniture, not fabricated shelf instances");

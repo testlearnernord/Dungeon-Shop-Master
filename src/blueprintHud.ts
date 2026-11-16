@@ -33,6 +33,7 @@ export function setupBlueprintHud(
   const scene=camera.getScene();
   const openButton=document.querySelector<HTMLButtonElement>("#open-blueprint")!;
   const buildShelfButton=document.querySelector<HTMLButtonElement>("#build-shelf");
+  const buildPortraitButton=document.querySelector<HTMLButtonElement>("#build-portrait");
   const panel=document.createElement("aside");
   panel.id="blueprint-panel";
   panel.hidden=true;
@@ -82,7 +83,7 @@ export function setupBlueprintHud(
   // The golden arrow ALWAYS indicates the customer-facing side. All pieces
   // are visual-only; the saved footprint remains the authoritative geometry.
   const ghost=new TransformNode("blueprint-preview-root",scene);
-  type GhostType="shelf"|"counter"|BedroomFurnitureId|"adventurer-board";
+  type GhostType="shelf"|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait";
   const parts:{mesh:import("@babylonjs/core/Meshes/mesh").Mesh;
     type:GhostType;direction?:boolean}[]=[];
   const previewBox=(
@@ -132,6 +133,15 @@ export function setupBlueprintHud(
   for(const side of [-1,1])
     previewBox("blueprint-roster-board-frame-side",0.12,2.09,0.15,
       side*1.69,2.17,0,"adventurer-board");
+  // The same 1.08m framed portrait silhouette appears while wall targeting.
+  previewBox("blueprint-portrait-canvas",.98,1.16,.045,
+    0,2.15,0,"galvik-portrait");
+  for(const side of [-1,1]){
+    previewBox("blueprint-portrait-frame-side",.08,1.3,.12,
+      side*.52,2.15,0,"galvik-portrait");
+    previewBox("blueprint-portrait-frame-edge",1.08,.08,.12,
+      0,2.15+side*.63,0,"galvik-portrait");
+  }
   // Asymmetric directional shafts and tips survive every quarter turn.
   previewBox("blueprint-shelf-front-shaft",0.40,0.12,0.12,
     1.05,1.42,0,"shelf",true);
@@ -196,6 +206,7 @@ export function setupBlueprintHud(
   const getSaved=(id:FurnitureId):FurnitureDraft=>{
     if(id==="counter")return {id,...getCounterPlacement(store.state.shopLayout)};
     if(id==="adventurer-board")return {id,...(store.state.rosterBoard??DEFAULT_ROSTER_BOARD)};
+    if(id==="galvik-portrait")return {id,...store.state.wallPortrait!};
     if(isBedroomFurnitureId(id))return getBedroomFurniture(store.state.bedroomFurniture,id);
     return store.state.shopLayout.shelves.find(item=>item.id===id)!;
   };
@@ -206,7 +217,7 @@ export function setupBlueprintHud(
       (isShelfId(id)?`Shelf ${id.slice(6)}`:
         FURNITURE_CATALOG.find(def=>def.id===id)?.label??"Furniture");
     draft=null;
-    updateStatus(id==="adventurer-board"?"Aim at a free shop wall.":
+    updateStatus(id==="adventurer-board"||id==="galvik-portrait"?"Aim at a free shop wall.":
       "Aim at a "+(id==="counter"||isBedroomFurnitureId(id)?"floor":"floor or wall")+".",false);
   };
   /** Only raycast-pick existing furniture. The nearest ordinary hit must
@@ -286,7 +297,7 @@ export function setupBlueprintHud(
     if(!surface||!hit?.pickedPoint){
       draft=null;placeable=false;ghost.setEnabled(false);
       facingReadout.textContent=facingLabel+" · aim at a surface";
-      updateStatus(activeId==="adventurer-board"?"Aim at a shop wall.":
+      updateStatus(activeId==="adventurer-board"||activeId==="galvik-portrait"?"Aim at a shop wall.":
         "Aim at the "+(activeId==="counter"||isBedroomFurnitureId(activeId)?"floor":"floor or a wall")+".",false);
       return;
     }
@@ -303,11 +314,13 @@ export function setupBlueprintHud(
     ghost.rotation.y=p.rotation*Math.PI/2;
     const type:GhostType=p.id==="counter"?"counter":
       p.id==="adventurer-board"?"adventurer-board":
+      p.id==="galvik-portrait"?"galvik-portrait":
       isBedroomFurnitureId(p.id)?p.id:"shelf";
     const state=store.state;
     const staticCheck=validator.evaluate(p,state.shopLayout,state.level5Room,
       performance.now(),immediate,
-      p.id==="adventurer-board"?state.rosterBoard:state.bedroomFurniture);
+      p.id==="adventurer-board"||p.id==="galvik-portrait"?
+        state.rosterBoard:state.bedroomFurniture);
     const occupied=occupiedBy(p);
     const isChecking=!staticCheck.ready&&!occupied;
     reason=occupied??(staticCheck.ready
@@ -382,6 +395,24 @@ export function setupBlueprintHud(
       .catch(()=>updateStatus("Click the game to enable free camera look.",false));
     updateGhost();
   };
+  /** Unique picture: build via the shared wall ghost, move later with P. */
+  const buildPortrait=():void=>{
+    if(enabled){close();return;}
+    if(!canEdit()||document.querySelector("dialog[open]"))return;
+    if(store.state.wallPortrait){
+      focusHint.textContent="The portrait already hangs in the shop. Aim at it and press P to move.";
+      focusHint.hidden=false;
+      return;
+    }
+    enabled=true;panel.hidden=false;activeId="galvik-portrait";rotation=2;draft=null;
+    title.textContent="HANG · GALVIK'S LOST BELOVED";
+    updateStatus("Aim at a solid shop wall, then click to hang the portrait.",false);
+    document.body.classList.add("blueprint-active");
+    focusMesh.setEnabled(false);focusHint.hidden=true;
+    if(document.pointerLockElement!==canvas)void canvas.requestPointerLock()
+      .catch(()=>updateStatus("Click the game to enable free camera look.",false));
+    updateGhost();
+  };
   const commit=():void=>{
     // The first click always completes validation synchronously, even when
     // hovering began less than 140 ms ago. GameStore repeats authoritative
@@ -392,13 +423,15 @@ export function setupBlueprintHud(
     if(occupied){updateStatus(occupied,false);return;}
     const result=store.placeFurniture(draft);
     if(result==="Counter placement saved."||result==="Shelf placement saved."||
-       result==="Bedroom furniture placed."||result==="Adventurer board placed."){
+       result==="Bedroom furniture placed."||result==="Adventurer board placed."||
+       result==="Portrait hung."){
       close();
     }else updateStatus(result,false);
   };
 
   openButton.addEventListener("click",open);
   buildShelfButton?.addEventListener("click",buildShelf);
+  buildPortraitButton?.addEventListener("click",buildPortrait);
   cancel.addEventListener("click",close);
   // Capture before ordinary shelf stocking and register interaction handlers.
   canvas.addEventListener("pointerdown",event=>{
@@ -414,8 +447,9 @@ export function setupBlueprintHud(
   },true);
   window.addEventListener("keydown",event=>{
     if(event.repeat||event.ctrlKey||event.altKey||event.metaKey)return;
-    if(event.code==="KeyN"&&!event.shiftKey){
-      event.preventDefault();event.stopImmediatePropagation();buildShelf();
+    if(event.code==="KeyN"){
+      event.preventDefault();event.stopImmediatePropagation();
+      if(event.shiftKey)buildPortrait();else buildShelf();
       return;
     }
     if(event.code==="KeyP"&&!event.shiftKey){
@@ -425,7 +459,7 @@ export function setupBlueprintHud(
     if(!enabled)return;
     if(event.code==="KeyR"||event.code==="KeyQ"){
       event.preventDefault();event.stopImmediatePropagation();
-      if(activeId==="adventurer-board")return; // Wall attachment determines facing.
+      if(activeId==="adventurer-board"||activeId==="galvik-portrait")return; // Wall attachment determines facing.
       rotation=((rotation+(event.code==="KeyR"?1:3))%4) as 0|1|2|3;
       updateGhost();return;
     }
