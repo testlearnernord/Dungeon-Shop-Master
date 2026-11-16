@@ -249,18 +249,18 @@ export class Level6Arena {
     this.camera = camera;
     scene.activeCamera = camera;
     const ambient = new HemisphericLight("arena-ambient", new Vector3(0, 1, 0), scene);
-    ambient.intensity = .78;
-    ambient.groundColor = Color3.FromHexString("#5f5650");
+    ambient.intensity = .53;
+    ambient.groundColor = Color3.FromHexString("#423e3b");
     const lavaLight = new PointLight("lava-glow", new Vector3(0, 2, 0), scene);
     lavaLight.diffuse = Color3.FromHexString("#da7152");
-    lavaLight.intensity = 1.30;
+    lavaLight.intensity = .9;
     lavaLight.range = 38;
     const warmRim = new PointLight("troll-ember-rim",new Vector3(-7,10,7),scene);
     warmRim.diffuse = Color3.FromHexString("#f08b54");
-    warmRim.intensity = 2.0; warmRim.range=26;
+    warmRim.intensity = 1.65; warmRim.range=26;
     const faceFill = new PointLight("troll-face-fill",new Vector3(5,8,-10),scene);
     faceFill.diffuse=Color3.FromHexString("#e2d8c9");
-    faceFill.intensity=1.6; faceFill.range=31;
+    faceFill.intensity=1.10; faceFill.range=31;
     const makeMat = (name: string, hex: string, emissive = false): StandardMaterial => {
       const mat = new StandardMaterial(name, scene);
       mat.diffuseColor = Color3.FromHexString(hex);
@@ -270,8 +270,9 @@ export class Level6Arena {
     };
     const stone = makeMat("basalt", "#29282a");
     const darkRock = makeMat("cave-rock", "#302b2a");
-    const lava = makeMat("molten-lava", "#662a1d", true);
-    const fire = makeMat("lava-fire", "#a9492a");
+    const lava = makeMat("molten-lava", "#481b13", true);
+    lava.emissiveColor = Color3.FromHexString("#aa3318").scale(.34);
+    const fire = makeMat("lava-fire", "#965632");
     paintCaveTrollFloor(scene,stone);
     const visibleRole = this.replay?.role ?? this.fighter?.role;
     const visibleSword = this.replay?.sword ?? (this.fighter?.equipment.weapon === "Iron Sword");
@@ -287,7 +288,7 @@ export class Level6Arena {
     moltenGround.position.y = -0.95;
     moltenGround.material = lava;
     const rim = MeshBuilder.CreateTorus("lava-ring", {
-      diameter: 39, thickness: 4, tessellation: 96,
+      diameter: 39, thickness: 2.3, tessellation: 96,
     }, scene);
     rim.position.y = -0.36;
     rim.material = fire;
