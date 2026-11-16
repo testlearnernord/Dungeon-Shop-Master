@@ -1,12 +1,11 @@
 import {furnitureBounds,furnitureBoundsOverlap} from "./furnitureRegistry.ts";
-import {rosterBoardAtWall,supportedExcavatedWall,
-  DEFAULT_ROSTER_BOARD,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
+import {DEFAULT_ROSTER_BOARD,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 import {shelfBounds,type ShopLayout} from "./shopLayout.ts";
 import type {Level5Room} from "./level5Room.ts";
+import {supportedExcavatedWall,wallFurnitureAtWall,
+  type WallFurniturePlacement} from "./wallFurniturePlacement.ts";
 
-/** One-of-a-kind decoration, sharing the Adventurer Board's rock-wall anchors. */
-export type WallPortraitPlacement=RosterBoardPlacement;
-const snap=(value:number)=>Math.round(value*4)/4;
+export type WallPortraitPlacement=WallFurniturePlacement;
 const quarter=(value:number)=>Math.abs(value*4-Math.round(value*4))<1e-8;
 const width=1.08,half=width/2+.08;
 
@@ -14,12 +13,9 @@ export function wallPortraitAtWall(
   surface:string,hit:{readonly x:number;readonly z:number},
   room?:Level5Room,
 ):WallPortraitPlacement|null{
-  if(!Number.isFinite(hit.x)||!Number.isFinite(hit.z))return null;
-  if(surface==="back-wall")return {x:snap(hit.x),z:6.45,rotation:0};
-  return rosterBoardAtWall(surface,hit,room);
+  return wallFurnitureAtWall(surface,hit,room,true);
 }
 
-/** Used by preview, committed placement, strict saves and mining support. */
 export function wallPortraitProblem(
   pose:WallPortraitPlacement,layout:ShopLayout,room?:Level5Room,
   board:RosterBoardPlacement=DEFAULT_ROSTER_BOARD,
@@ -37,8 +33,6 @@ export function wallPortraitProblem(
   const onSide=side&&pose.z>=-7+half&&pose.z<=7-half;
   const rock=room&&room.expansionTier>0&&
     supportedExcavatedWall(pose,room,layout,width);
-  // Wall-normal coordinates are intentionally offset from the grid (e.g.
-  // x=7.22 or z=-6.45). Only the coordinate along the wall must be snapped.
   const snapped=front||back?quarter(pose.x):
     onSide?quarter(pose.z):quarter(pose.x)&&quarter(pose.z);
   if(!front&&!back&&!onSide&&!rock)
@@ -48,8 +42,7 @@ export function wallPortraitProblem(
     !supportedExcavatedWall(pose,room,layout,width))
     return "Move the portrait before excavating its supporting wall.";
   const box=furnitureBounds({id:"galvik-portrait",...pose});
-  if(layout.shelves.some(shelf=>
-    furnitureBoundsOverlap(box,shelfBounds(shelf),.10)))
+  if(layout.shelves.some(shelf=>furnitureBoundsOverlap(box,shelfBounds(shelf),.10)))
     return "The portrait would be covered by a shelf.";
   if(furnitureBoundsOverlap(box,
     furnitureBounds({id:"adventurer-board",...board}),.08))

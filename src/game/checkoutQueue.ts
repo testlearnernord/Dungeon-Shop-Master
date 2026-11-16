@@ -4,7 +4,7 @@ import { NPC_STATION_CLEARANCE } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
 import {
-  SHOP_FLOOR_FURNITURE,cashierServicePoint,turnShopOffset,
+  cashierServicePoint,shopFurnitureDefinition,turnShopOffset,
 } from "./furnitureRegistry.ts";
 
 export function checkoutQueueIds(carts: readonly ShopCart[]): readonly string[] {
@@ -18,12 +18,12 @@ export function checkoutQueueIndex(carts: readonly ShopCart[], heroId: string): 
 /** One physical line at the register; additional shoppers use the existing
  * safe checkout-overflow stands rather than surrounding the cash desk. */
 export const CHECKOUT_LINE_MAX_CUSTOMERS=
-  SHOP_FLOOR_FURNITURE.counter.service.queueCapacity;
+  shopFurnitureDefinition("counter").checkoutService.queueCapacity;
 /** Reserve enough real space for service claims, not just NPC collision.
  * 1.1m looked like a queue but the 1.18m service exclusion silently rejected
  * every adjacent cashier claim and forced customers into overflow. */
 export const CHECKOUT_QUEUE_SPACING=
-  SHOP_FLOOR_FURNITURE.counter.service.queueSpacing;
+  shopFurnitureDefinition("counter").checkoutService.queueSpacing;
 
 /** Candidate standing places are deliberately restricted to the shop floor.
  * Queue allocation is based on actual path endpoints, not desired coordinates:

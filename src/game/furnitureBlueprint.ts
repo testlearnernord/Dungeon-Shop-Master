@@ -1,5 +1,5 @@
 import type { CounterPlacement, ShelfId, ShelfPlacement } from "./shopLayout.ts";
-import {furnitureDefinition} from "./furnitureRegistry.ts";
+import {furnitureDefinition,type FurnitureSurface} from "./furnitureRegistry.ts";
 import {isShelfId} from "./shopLayout.ts";
 import type {BedroomFurnitureId,BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 import {isBedroomFurnitureId} from "./bedroomFurniture.ts";
@@ -7,8 +7,7 @@ import {rosterBoardAtWall,type RosterBoardPlacement} from "./rosterBoardPlacemen
 import {wallPortraitAtWall,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 
 export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait";
-export type BlueprintSurface=
-  "floor"|"ceiling"|"left-wall"|"right-wall"|"front-wall"|"back-wall"|"rock-wall";
+export type BlueprintSurface=FurnitureSurface;
 export type FurnitureDraft=ShelfPlacement|(CounterPlacement&{readonly id:"counter"})|BedroomFurniturePlacement|
   (RosterBoardPlacement&{readonly id:"adventurer-board"})|
   (WallPortraitPlacement&{readonly id:"galvik-portrait"});
@@ -17,32 +16,19 @@ export interface FurnitureDefinition {
   readonly id:FurnitureId;
   readonly label:string;
   readonly surfaces:readonly BlueprintSurface[];
-  /** Current model footprint. Future items register their own mounting rules. */
   readonly width:number;
   readonly depth:number;
   readonly height:number;
 }
 
-/** All visible sizes come from the same registry used by collision
- * and authoritative placement. Keep IDs and mounting faces explicit here.
- */
-const def=(id:FurnitureId)=>furnitureDefinition(id);
-const catalogEntry=(id:FurnitureId,label:string,
-  surfaces:readonly BlueprintSurface[]):FurnitureDefinition=>({
-    id,label,surfaces,width:def(id).width,depth:def(id).depth,
-    height:def(id).height,
-  });
-export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=[
-  catalogEntry("counter","Checkout counter",["floor"]),
-  catalogEntry("desk","Accounting desk + Book of Debts",["floor"]),
-  catalogEntry("chest","Storage chest",["floor"]),
-  catalogEntry("candle","Bedside candle + stool",["floor"]),
-  catalogEntry("bed","Galvik's bed",["floor"]),
-  catalogEntry("adventurer-board","Adventurer board",
-    ["front-wall","left-wall","right-wall","rock-wall"]),
-  catalogEntry("galvik-portrait","Portrait of Galvik's lost beloved",
-    ["front-wall","left-wall","right-wall","back-wall","rock-wall"]),
-] as const;
+const CATALOG_IDS:readonly Exclude<FurnitureId,ShelfId>[]=[
+  "counter","desk","chest","candle","bed","adventurer-board","galvik-portrait",
+];
+export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=CATALOG_IDS.map(id=>{
+  const definition=furnitureDefinition(id);
+  return {id,label:definition.label,surfaces:definition.surfaces,
+    width:definition.width,depth:definition.depth,height:definition.height};
+});
 
 export const snapQuarter=(value:number):number=>Math.round(value*4)/4;
 
@@ -50,8 +36,6 @@ export function surfaceFromMesh(name:string):BlueprintSurface|null {
   if(name==="stone-floor"||name==="bedroom-floor-skin"||
      /^excavated-floor--?\d+,-?\d+$/.test(name))return "floor";
   if(name==="stone-ceiling")return "ceiling";
-  // Only actual topology-generated stone faces are valid mounting hits.
-  // A similarly prefixed decorative or stale mesh must not become a wall.
   if(/^excavation-rock-face--?\d+(?:\.\d+)?:-?\d+(?:\.\d+)?:\d+(?:\.\d+)?:\d+(?:\.\d+)?:(?:-?\d+)?:(?:-?\d+)?:(?:true|false)$/.test(name))
     return "rock-wall";
   if(name==="left-wall")return "left-wall";
@@ -62,10 +46,6 @@ export function surfaceFromMesh(name:string):BlueprintSurface|null {
   return null;
 }
 
-/** Project a cursor hit on room surfaces into a saved furniture transform.
- * Geometry validity and actor occupancy remain authoritative elsewhere.
- * A ceiling-mounting object can be registered later without changing inputs.
- */
 export function blueprintAtSurface(
   id:FurnitureId,surface:BlueprintSurface,
   hit:{readonly x:number;readonly z:number},
@@ -73,9 +53,7 @@ export function blueprintAtSurface(
   room?:import("./level5Room.ts").Level5Room,
 ):FurnitureDraft|null {
   if(!Number.isFinite(hit.x)||!Number.isFinite(hit.z))return null;
-  const definition=FURNITURE_CATALOG.find(entry=>entry.id===id);
-  const permitted=definition?.surfaces??(isShelfId(id)?
-    ["floor","left-wall","right-wall","front-wall","back-wall"]:[]);
+  const permitted=furnitureDefinition(id).surfaces;
   if(!permitted.includes(surface))return null;
   if(id==="adventurer-board"){
     const wall=rosterBoardAtWall(surface,hit,room);
@@ -87,7 +65,7 @@ export function blueprintAtSurface(
   }
   if(surface==="floor"){
     const x=snapQuarter(hit.x),z=snapQuarter(hit.z);
-    return id==="counter"?{id,x,z,rotation}:{id,x,z,rotation};
+    return {id,x,z,rotation} as FurnitureDraft;
   }
   if(id==="counter"||isBedroomFurnitureId(id))return null;
   const wallAnchor:{[K in Exclude<BlueprintSurface,"floor"|"ceiling"|"rock-wall">]:

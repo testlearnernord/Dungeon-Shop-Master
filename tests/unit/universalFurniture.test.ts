@@ -31,8 +31,9 @@ test("all nine furniture types share one geometry and mounting registry",()=>{
     "shelf-1","shelf-2","counter","desk","chest","candle","bed",
     "adventurer-board","galvik-portrait",
   ];
-  assert.deepEqual(Object.keys(FURNITURE_REGISTRY),ids.slice(2),
-    "static registry lists unique furniture, not fabricated shelf instances");
+  assert.deepEqual(Object.keys(FURNITURE_REGISTRY),
+    ["shelf","counter","desk","chest","candle","bed","adventurer-board","galvik-portrait"],
+    "registry lists one shelf template plus unique furniture types");
   for(const id of ids){
     const def=furnitureDefinition(id);
     const visual=FURNITURE_CATALOG.find(x=>x.id===id);
@@ -119,7 +120,7 @@ test("universal wall furniture mounts to real mined wall, survives saves and blo
     id:"adventurer-board",x:-5.55,z:-6.45,rotation:2,
   }),"Adventurer board placed.");
   assert.equal(store.excavateShopCell({x:10,z:0}),"Rock excavated.");
-  assert(store.state.level5Room?.excavatedCells.includes("10,0"));
+  assert(store.state.level5Room.excavatedCells.includes("10,0"));
 });
 
 test("a single rock cell cannot support a wall-wide Adventurer Board",()=>{

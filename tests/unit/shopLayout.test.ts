@@ -1,11 +1,11 @@
 import {createStockedShopLayout,createStockedShopState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import {compactCounterBounds, COMPACT_COUNTER, counterOverlapsActor, createShopLayout, getCounterPlacement,
+import {compactCounterBounds, counterOverlapsActor, createShopLayout, getCounterPlacement,
   counterDockPoint,isAtCounterStaffDock,NEW_GAME_COUNTER_PLACEMENT,
   replaceCounterPlacement, replaceShelfPlacement,
   shopLayoutProblem, shelfBounds, shelfOverlapsActor, type ShelfPlacement} from "../../src/game/shopLayout.ts";
-import { turnShopOffset } from "../../src/game/furnitureRegistry.ts";
+import { shopFurnitureDefinition,turnShopOffset } from "../../src/game/furnitureRegistry.ts";
 import { advanceDay, createGameState, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
@@ -129,14 +129,14 @@ test("occupied floor space blocks shelf placement even when static geometry is l
 test("compact checkout candidate has deterministic quarter-turn clearance",()=>{
   const at={x:1,z:2,rotation:0 as const};
   assert.deepEqual(compactCounterBounds(at),{
-    minX:1-COMPACT_COUNTER.clearanceWidth/2,
-    maxX:1+COMPACT_COUNTER.clearanceWidth/2,
-    minZ:2-COMPACT_COUNTER.clearanceDepth/2,
-    maxZ:2+COMPACT_COUNTER.clearanceDepth/2,
+    minX:1-shopFurnitureDefinition("counter").footprint.maxX,
+    maxX:1+shopFurnitureDefinition("counter").footprint.maxX,
+    minZ:2-shopFurnitureDefinition("counter").footprint.maxZ,
+    maxZ:2+shopFurnitureDefinition("counter").footprint.maxZ,
   });
   const rotated=compactCounterBounds({...at,rotation:1 as const});
-  assert.ok(Math.abs(rotated.maxX-rotated.minX-COMPACT_COUNTER.clearanceDepth)<1e-9);
-  assert.ok(Math.abs(rotated.maxZ-rotated.minZ-COMPACT_COUNTER.clearanceWidth)<1e-9);
+  assert.ok(Math.abs(rotated.maxX-rotated.minX-(shopFurnitureDefinition("counter").footprint.maxZ-shopFurnitureDefinition("counter").footprint.minZ))<1e-9);
+  assert.ok(Math.abs(rotated.maxZ-rotated.minZ-(shopFurnitureDefinition("counter").footprint.maxX-shopFurnitureDefinition("counter").footprint.minX))<1e-9);
   assert.deepEqual(compactCounterBounds({...at,rotation:2 as const}),compactCounterBounds(at));
   assert.deepEqual(compactCounterBounds({...at,rotation:3 as const}),rotated);
   assert.deepEqual(createStockedShopLayout().shelves.map(s=>s.id),["shelf-1","shelf-2"]);
@@ -232,8 +232,8 @@ test("new-game corner counter keeps distinct visitor and staff docking sides",()
   const layout=createShopLayout();
   assert.deepEqual(layout.counter,NEW_GAME_COUNTER_PLACEMENT);
   assert.equal(shopLayoutProblem(layout),null);
-  assert(COMPACT_COUNTER.bodyWidth<1.5);
-  assert(COMPACT_COUNTER.topDepth<1);
+  assert(shopFurnitureDefinition("counter").body.width<1.5);
+  assert(shopFurnitureDefinition("counter").focus.depth<1);
   const staff=counterDockPoint(layout,"staff");
   const customer=counterDockPoint(layout,"customer");
   assert(staff.x<layout.counter!.x,"staff stands toward the side wall");

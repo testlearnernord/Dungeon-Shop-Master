@@ -8,7 +8,8 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Scene } from "@babylonjs/core/scene";
 import type { Interactable } from "./inventory";
-import { NEW_GAME_COUNTER_PLACEMENT, COMPACT_COUNTER } from "./shopLayout";
+import { NEW_GAME_COUNTER_PLACEMENT } from "./shopLayout";
+import {shopFurnitureDefinition} from "./furnitureRegistry.ts";
 import { buildBedroom } from "./bedroom";
 import { getDungeonSurfaces, tileLargeFloorUV } from "./dungeonSurfaces";
 
@@ -130,15 +131,16 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   level6PlayerBarrier.isPickable = false;
 
   const counter=NEW_GAME_COUNTER_PLACEMENT;
-  box(scene, "checkout-counter", { width: COMPACT_COUNTER.bodyWidth, height: 0.84, depth: COMPACT_COUNTER.bodyDepth },
+  const counterDefinition=shopFurnitureDefinition("counter");
+  box(scene, "checkout-counter", { width: counterDefinition.body.width, height: 0.84, depth: counterDefinition.body.depth },
     new Vector3(counter.x, 0.42, counter.z), new Color3(0.32, 0.2, 0.12), true, surfaces.wood);
-  box(scene, "counter-top", { width: COMPACT_COUNTER.topWidth, height: 0.12, depth: COMPACT_COUNTER.topDepth },
+  box(scene, "counter-top", { width: counterDefinition.focus.width, height: 0.12, depth: counterDefinition.focus.depth },
     new Vector3(counter.x, 0.90, counter.z), new Color3(0.42, 0.29, 0.17), true, surfaces.woodEdge);
   box(scene, "register-base", { width: 0.49, height: 0.17, depth: 0.39 },
-    new Vector3(counter.x+COMPACT_COUNTER.registerOffsetX, 1.05, counter.z+COMPACT_COUNTER.registerOffsetZ),
+    new Vector3(counter.x+counterDefinition.register.x, 1.05, counter.z+counterDefinition.register.z),
     new Color3(0.17, 0.2, 0.18), false);
   const register = box(scene, "cash-register", { width: 0.39, height: 0.26, depth: 0.18 },
-    new Vector3(counter.x+COMPACT_COUNTER.registerOffsetX, 1.22, counter.z+COMPACT_COUNTER.registerOffsetZ),
+    new Vector3(counter.x+counterDefinition.register.x, 1.22, counter.z+counterDefinition.register.z),
     new Color3(0.3, 0.48, 0.36), false);
   register.metadata = { kind: "register" };
   const bookMeshNames=["bedroom-account-book","bedroom-account-pages","bedroom-account-spine"];

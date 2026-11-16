@@ -2,11 +2,11 @@ import {createStockedShopLayout as createShopLayout} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  SHOP_FLOOR_FURNITURE,shopFixtureBounds,shopFixtureTouches,
+  FURNITURE_REGISTRY,shopFixtureBounds,shopFixtureTouches,
   shopFixtureBounds as bounds,shelfServicePoint,cashierServicePoint,
   turnShopOffset,pointTouchesShopBounds,SHELF_SLOT_COUNT,shelfSlotLocalZ,furnitureDefinition,
 } from "../../src/game/furnitureRegistry.ts";
-import { COMPACT_COUNTER, replaceShelfPlacement, replaceCounterPlacement, counterDockPoint, shelfBounds, compactCounterBounds, shopFloorFixtures,  } from "../../src/game/shopLayout.ts";
+import { replaceShelfPlacement, replaceCounterPlacement, counterDockPoint, shelfBounds, compactCounterBounds, shopFloorFixtures,  } from "../../src/game/shopLayout.ts";
 import {FURNITURE_CATALOG} from "../../src/game/furnitureBlueprint.ts";
 import {classifyFurnitureMesh} from "../../src/game/furnitureSelection.ts";
 import {level5FloorWalkable} from "../../src/game/level5Walkability.ts";
@@ -27,7 +27,7 @@ const entrance={x:-3.43,z:4.65};
 test("all quarter turns derive shop-floor placement and solid AABBs from registry",()=>{
   const p={x:1.25,z:-0.75,rotation:0 as 0|1|2|3};
   for(const kind of ["shelf","counter"] as const){
-    const original=SHOP_FLOOR_FURNITURE[kind].footprint;
+    const original=FURNITURE_REGISTRY[kind].footprint;
     const width=original.maxX-original.minX;
     const depth=original.maxZ-original.minZ;
     for(const rotation of [0,1,2,3] as const){
@@ -36,7 +36,7 @@ test("all quarter turns derive shop-floor placement and solid AABBs from registr
       near(box.maxX-box.minX,rotation%2===0?width:depth);
       near(box.maxZ-box.minZ,rotation%2===0?depth:width);
       const solid=shopFixtureBounds(kind,pose,"solid");
-      const model=SHOP_FLOOR_FURNITURE[kind].solid;
+      const model=FURNITURE_REGISTRY[kind].solid;
       near(solid.maxX-solid.minX,
         rotation%2===0?model.maxX-model.minX:model.maxZ-model.minZ);
       const center={x:(solid.minX+solid.maxX)/2,z:(solid.minZ+solid.maxZ)/2};
@@ -48,30 +48,26 @@ test("all quarter turns derive shop-floor placement and solid AABBs from registr
 
 test("the shelf and cashier's visible models, blueprints, focus and hitboxes have one definition",()=>{
   const layout=createShopLayout();
-  const visual=SHOP_FLOOR_FURNITURE.shelf.preview;
+  const visual=FURNITURE_REGISTRY.shelf.preview;
   const render=furnitureDefinition("shelf-1");
   assert.equal(render.width,visual.width);
   assert.equal(render.depth,visual.depth);
   assert.equal(render.height,visual.height);
   assert.equal(FURNITURE_CATALOG.some(x=>x.id==="shelf-1"),false);
   assert.deepEqual(classifyFurnitureMesh("shelf-2-plank")?.bounds,
-    SHOP_FLOOR_FURNITURE.shelf.focus);
+    FURNITURE_REGISTRY.shelf.focus);
   const counter=FURNITURE_CATALOG.find(x=>x.id==="counter")!;
-  assert.equal(counter.width,SHOP_FLOOR_FURNITURE.counter.preview.width);
-  assert.equal(counter.depth,SHOP_FLOOR_FURNITURE.counter.preview.depth);
-  assert.equal(counter.height,SHOP_FLOOR_FURNITURE.counter.preview.height);
+  assert.equal(counter.width,FURNITURE_REGISTRY.counter.preview.width);
+  assert.equal(counter.depth,FURNITURE_REGISTRY.counter.preview.depth);
+  assert.equal(counter.height,FURNITURE_REGISTRY.counter.preview.height);
   assert.deepEqual(classifyFurnitureMesh("counter-top")?.bounds,
-    SHOP_FLOOR_FURNITURE.counter.focus);
-  assert.equal(COMPACT_COUNTER.topWidth,SHOP_FLOOR_FURNITURE.counter.focus.width);
-  assert.equal(COMPACT_COUNTER.clearanceDepth,
-    SHOP_FLOOR_FURNITURE.counter.footprint.maxZ-
-    SHOP_FLOOR_FURNITURE.counter.footprint.minZ);
+    FURNITURE_REGISTRY.counter.focus);
   assert.deepEqual(compactCounterBounds(layout.counter!),bounds("counter",layout.counter!));
   for(const shelf of layout.shelves){
     assert.deepEqual(shelfBounds(shelf),bounds("shelf",shelf));
     for(let slot=0;slot<SHELF_SLOT_COUNT;slot++){
       const actual=shelfServicePoint(shelf,slot);
-      const local=turnShopOffset(SHOP_FLOOR_FURNITURE.shelf.service.outward,
+      const local=turnShopOffset(FURNITURE_REGISTRY.shelf.shelfService.outward,
         shelfSlotLocalZ(slot),shelf.rotation);
       assert.deepEqual(actual,{x:shelf.x+local.x,z:shelf.z+local.z});
     }
@@ -133,7 +129,7 @@ test("new registry drives persisted shelf in mined wing while keeping trade deci
   // a separate excavation regression already moves the till into the wing.
   const counter={x:0,z:2.25,rotation:1 as const};
   assert.equal(store.previewFurniturePlacement({...counter,id:"counter"}),null);
-  assert.equal(store.placeFurniture({id:"counter",...counter),"Counter placement saved."});
+  assert.equal(store.placeFurniture({id:"counter",...counter}),"Counter placement saved.");
   assert.equal(shopServiceReachabilityProblem(store.state.shopLayout,room),null);
   const service=shelfServicePoint(moved,2);
   assert(pathToShopGoal(entrance,service,store.state.shopLayout,room));

@@ -1,6 +1,6 @@
 import { isLevel5Air, type Level5Room } from "./level5Room.ts";
 import {
-  SHOP_FLOOR_FURNITURE,cashierServicePoint,shelfServicePoint,
+  cashierServicePoint,shelfServicePoint,
   shopFixtureBounds,shopFixtureTouches,
   type ShopFloorKind,type ShopFloorBounds,
 } from "./furnitureRegistry.ts";
@@ -33,19 +33,6 @@ export interface CounterPlacement {
   readonly z: number;
   readonly rotation: 0 | 1 | 2 | 3;
 }
-/** Backwards-compatible rendering interface, derived from the canonical
- * counter registry. No additional dimensions should be defined here. */
-const COUNTER=SHOP_FLOOR_FURNITURE.counter;
-export const COMPACT_COUNTER = Object.freeze({
-  bodyWidth:COUNTER.body.width,
-  bodyDepth:COUNTER.body.depth,
-  topWidth:COUNTER.focus.width,
-  topDepth:COUNTER.focus.depth,
-  clearanceWidth:COUNTER.footprint.maxX-COUNTER.footprint.minX,
-  clearanceDepth:COUNTER.footprint.maxZ-COUNTER.footprint.minZ,
-  registerOffsetX:COUNTER.register.x,
-  registerOffsetZ:COUNTER.register.z,
-});
 export function compactCounterBounds(placement: CounterPlacement):ShopFloorBounds {
   return shopFixtureBounds("counter",placement);
 }
