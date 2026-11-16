@@ -1,6 +1,7 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
 
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
@@ -675,7 +676,6 @@ export function inspectWallPortrait(){
   const plane=scene.getMeshByName("galvik-portrait-canvas");
   return {enabled:!!root?.isEnabled(),
     x:root?.position.x??null,z:root?.position.z??null,
-    textured:!!plane?.material&&
-      "diffuseTexture" in plane.material&&
+    textured:plane?.material instanceof StandardMaterial&&
       !!plane.material.diffuseTexture?.isReady()};
 }
