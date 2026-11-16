@@ -23,7 +23,14 @@ consequences in committed expeditions → make a better or greedier decision
 tomorrow. The player's actions affect stock and access; the heroes still
 choose what they buy.
 
-## Feature work package 1 (tentatively PR #153): Cashier feel and flow
+## Feature work package 1 (PR #153): Cashier feel and flow
+
+**Delivery status:** the continuous two-stage register, real paid receipt,
+item icons and explicit E-to-next-customer transition are implemented in
+PR #153. This is a change on the PR branch until merged, not evidence that
+`main` or the deployed build already contains it. The owner still reviews
+visual pacing and may request revisions. Subsequent package numbers are
+only tentative.
 
 **Player goal:** A complete checkout feels satisfying and is manageable
 with a queue, not repetitive button bureaucracy.
@@ -32,12 +39,15 @@ with a queue, not repetitive button bureaucracy.
   `src/cashierHud.ts` and `src/game/cashierChallenge.ts` in a busy shop.
 - Tighten visual presentation, input responsiveness, readable receipt
   totals, gold/stock confirmation and existing checkout audio. Keep player
-  feedback compact and within the current UI design system.
+  feedback compact and within the current UI design system. A paid receipt
+  must show actual collected gold/tips and offer E/Next for the next
+  physically admitted, unpaid customer in the *same* dialog; Esc exits.
 - Respect counter **staff-side** docking, real front-of-line admission,
   committed cart and receipt, one payment per shopper, and immediate
   physical departure on payment. Extra buyers stay at safe overflow spots.
 - Fix observed repetition/friction; do **not** invent a new cashier economy,
-  automate every sale, or introduce a second transaction path.
+  automate every sale, or introduce a second transaction path. Each cart
+  still requires its own two confirmed timing stages.
 
 **Acceptance:** A crowded live browser test pays several actual carts
 without overlapping register admission, duplicate gold, phantom receipts
