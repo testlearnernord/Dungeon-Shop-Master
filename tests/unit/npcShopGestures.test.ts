@@ -3,7 +3,7 @@ import test from "node:test";
 import {npcShopPose,type NpcShopGestureInput} from "../../src/game/npcShopGestures.ts";
 
 const base:Readonly<NpcShopGestureInput>={
-  phase:"queueing",shoppingPhase:"waiting-for-next-day",
+  phase:"queueing",shoppingPhase:"waiting-for-next-day",reason:"no-need",
   moving:false,time:4,slot:2,carrying:false,
   confirmedAction:null,confirmedSeconds:0,conversing:false,
 };
@@ -56,6 +56,10 @@ test("credit and restock customers have different, bounded, nonwalking gestures"
     assert.equal(item.gesture,"walking",
       "requests must not point upward while crossing an aisle");
   }
+  assert.equal(pose({shoppingPhase:"roaming-request",
+    reason:"cannot-afford"}).gesture,"credit");
+  assert.equal(pose({shoppingPhase:"roaming-request",
+    reason:"unavailable"}).gesture,"restock");
   const requestConversation=pose({conversing:true,moving:false});
   assert.equal(requestConversation.gesture,"conversation");
   assert(requestConversation.rightArm>0);
