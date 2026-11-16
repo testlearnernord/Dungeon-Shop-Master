@@ -12,6 +12,7 @@ import type { WorldInteractable } from "./world";
 
 export class InteractionSystem {
   private heldButton: number | null = null;
+  private heldSlotId: string | null = null;
   private nextRepeatAt = 0;
   private nextFocusAt = 0;
   private readonly repeatDelay = 320;
@@ -56,6 +57,7 @@ export class InteractionSystem {
   reset(): void {
     this.setMiningMode(false);
     this.heldButton = null;
+    this.heldSlotId = null;
     this.selectedIndex = 0;
     this.shop.select(ITEMS[0].id);
     this.message = "Campaign ready. Click to enter the shop.";
@@ -65,6 +67,7 @@ export class InteractionSystem {
   private setMiningMode(active:boolean):void {
     this.miningMode=active;
     this.heldButton=null;
+    this.heldSlotId=null;
     const indicator=document.querySelector<HTMLElement>("#mining-mode-indicator");
     if(indicator){
       indicator.hidden=!active;
@@ -92,14 +95,20 @@ export class InteractionSystem {
         this.publish();
         return;
       }
-      this.heldButton = event.button;
+      // Shift+click fills/clears only once, without the held-repeat timer.
+      const bulk = event.shiftKey && !this.miningMode && this.isShopActive();
+      this.heldButton = bulk ? null : event.button;
+      this.heldSlotId = null;
       this.nextRepeatAt = performance.now() + this.clickDelay;
-      this.performPointerAction(event.button, event.offsetX, event.offsetY);
+      this.performPointerAction(event.button, event.offsetX, event.offsetY, bulk);
       if (document.pointerLockElement !== this.canvas && !document.querySelector("dialog[open]")) {
         void this.canvas.requestPointerLock();
       }
     });
-    const releaseHeldButton = (): void => { this.heldButton = null; };
+    const releaseHeldButton = (): void => {
+      this.heldButton = null;
+      this.heldSlotId = null;
+    };
     window.addEventListener("pointerup", releaseHeldButton);
     window.addEventListener("pointercancel", releaseHeldButton);
     window.addEventListener("blur", () => { this.heldButton = null; });
@@ -166,11 +175,14 @@ export class InteractionSystem {
         return;
       }
       this.nextRepeatAt = performance.now() + this.repeatDelay;
-      this.performPointerAction(this.heldButton, 0, 0);
+      this.performPointerAction(this.heldButton, 0, 0, false, true);
     });
     this.scene.onPointerObservable.add((info) => {
       if (info.type !== PointerEventTypes.POINTERMOVE || this.heldButton === null) return;
-      if (info.event.buttons === 0) this.heldButton = null;
+      if (info.event.buttons === 0) {
+        this.heldButton = null;
+        this.heldSlotId = null;
+      }
     });
   }
 
@@ -210,7 +222,8 @@ export class InteractionSystem {
     panel.hidden=false;
   }
 
-  private performPointerAction(button: number, x: number, y: number): void {
+  private performPointerAction(button: number, x: number, y: number,
+    bulk = false, repeated = false): void {
     const rect = this.canvas.getBoundingClientRect();
     const locked = document.pointerLockElement === this.canvas;
     const pickX = locked ? rect.width / 2 : x;
@@ -230,14 +243,23 @@ export class InteractionSystem {
       this.publish();return;
     }
     const slot = this.shop.slotMeshes.get(hit.pickedMesh as Mesh);
+    // Normal held clicks must never spill stock into a neighboring slot.
+    if(repeated && this.heldSlotId && (!slot || slot.id!==this.heldSlotId)){
+      this.heldButton=null;
+      this.heldSlotId=null;
+      return;
+    }
     if (slot) {
+      if(!repeated && this.heldButton !== null) this.heldSlotId=slot.id;
       if (hit.distance > this.maxInteractionDistance) {
         this.message = "Move closer to reach that shelf slot.";
         this.publish();
         return;
       }
       const before=this.store?.state;
-      this.message = button === 0 ? this.shop.stock(slot) : this.shop.remove(slot);
+      this.message = button === 0
+        ? this.shop.stock(slot,bulk ? slot.capacity : 1)
+        : this.shop.remove(slot,bulk ? slot.capacity : 1);
       if(this.store && this.store.state!==before)this.onMerchantAction(button===0?"stock":"destock");
     } else {
       const target = this.worldItems.find(({ mesh }) => mesh === hit.pickedMesh);

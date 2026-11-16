@@ -200,7 +200,7 @@ function renderInventory(selectedItem: ItemId): void {
     store.state.shopEconomy.bag[selectedStock.id]+" in bag";
   inventoryHud.append(selectedStatus);
   const hint=document.createElement("span");hint.className="hotbar-hint";
-  hint.textContent="Wheel / 1–6 select · Click stock · Right-click remove";
+  hint.textContent="Wheel / 1–6 select · Click one · Shift+click fill / clear";
   inventoryHud.append(hint);
   if (focusedItemId) rows.get(focusedItemId)?.focus({ preventScroll: true });
 }

@@ -53,16 +53,16 @@ export function describeShelfFocus(
   if(item&&item.id!==selected){
     const key=ITEMS.findIndex(entry=>entry.id===item.id)+1;
     return {title,instruction:"Press "+key+" to select "+item.name+
-      " · Right-click to remove",tone:"warning"};
+      " · Right-click: remove one · Shift+right-click: clear slot",tone:"warning"};
   }
   if(slot.quantity>=slot.capacity)
-    return {title,instruction:"Shelf full · Right-click to return one item",
+    return {title,instruction:"Shelf full · Right-click: remove one · Shift+right-click: clear slot",
       tone:"blocked"};
   const inBag=bag[selected]??0;
   if(inBag<=0)
     return {title,instruction:"No "+selectedItem.name+" in bag · B: Wholesale"+
-      (item?" · Right-click to remove":""),tone:"warning"};
+      (item?" · Right-click: remove one · Shift+right-click: clear slot":""),tone:"warning"};
   return {title,instruction:"Left-click: stock "+selectedItem.name+
-    " ("+inBag+" in bag)"+
-    (item?" · Right-click: remove one":""),tone:"ready"};
+    " ("+inBag+" in bag) · Shift+left-click: fill slot"+
+    (item?" · Right-click: remove one · Shift+right-click: clear slot":""),tone:"ready"};
 }

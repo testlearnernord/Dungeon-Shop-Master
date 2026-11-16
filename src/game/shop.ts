@@ -58,11 +58,11 @@ export class Shop {
   }
 
   select(itemId: ItemId): void { this.selectedItemId = itemId; }
-  stock(slot: Slot): string {
-    return this.store.transfer(slot.id, this.selectedItemId, "stock");
+  stock(slot: Slot, units = 1): string {
+    return this.store.transfer(slot.id, this.selectedItemId, "stock", units);
   }
-  remove(slot: Slot): string {
-    return this.store.transfer(slot.id, slot.itemId ?? this.selectedItemId, "remove");
+  remove(slot: Slot, units = 1): string {
+    return this.store.transfer(slot.id, slot.itemId ?? this.selectedItemId, "remove", units);
   }
 
   /** For subsequent shopping/navigation AI: shelf position, never a hard-coded aisle. */

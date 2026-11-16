@@ -290,3 +290,43 @@ test("55-day JSON-reloaded merchant input replay is deterministic and admits new
   assert(stocking > 0);
   assert(removals > 0);
 });
+
+test("Shift-fill is one bounded, pure stock transfer with no generated gold",()=>{
+  const state=freeze(createGameState());
+  const slotId=state.shopEconomy.slots[0].id;
+  const placed=transferShelf(state,slotId,"healing-herb","stock",5);
+  assert.match(placed.message,/Placed 5 Healing Herb/);
+  assert.equal(placed.state.shopEconomy.slots[0].quantity,5);
+  assert.equal(placed.state.shopEconomy.bag["healing-herb"],0);
+  assert.equal(placed.state.shopEconomy.balance,state.shopEconomy.balance);
+  assert.equal(transferShelf(placed.state,slotId,"healing-herb","stock",5).state,placed.state);
+  const partial=transferShelf(state,state.shopEconomy.slots[1].id,"bread","stock",5);
+  assert.equal(partial.state.shopEconomy.slots[1].quantity,2);
+  assert.equal(partial.state.shopEconomy.bag.bread,0);
+  assert.equal(transferShelf(state,slotId,"healing-herb","stock").state.shopEconomy.slots[0].quantity,1);
+  for(const invalid of [0,-1,1.5,NaN,Infinity]){
+    assert.equal(transferShelf(state,slotId,"healing-herb","stock",invalid).state,state);
+  }
+});
+
+test("Shift-clear preserves reserved carts, bag limit and last-slot identity",()=>{
+  const state=freeze(createGameState());
+  const slotId=state.shopEconomy.slots[0].id;
+  const stocked=transferShelf(state,slotId,"healing-herb","stock",5).state;
+  const removed=transferShelf(stocked,slotId,"healing-herb","remove",5);
+  assert.equal(removed.state.shopEconomy.slots[0].quantity,0);
+  assert.equal(removed.state.shopEconomy.slots[0].itemId,null);
+  assert.deepEqual(removed.state,state);
+  const fullBag={...stocked,shopEconomy:{...stocked.shopEconomy,
+    bag:{...stocked.shopEconomy.bag,"iron-ore":19}}};
+  assert.equal(transferShelf(fullBag,slotId,"healing-herb","remove",5).state,fullBag);
+  const oneFree={...stocked,shopEconomy:{...stocked.shopEconomy,
+    bag:{...stocked.shopEconomy.bag,"iron-ore":18}}};
+  const partial=transferShelf(oneFree,slotId,"healing-herb","remove",5);
+  assert.equal(partial.state.shopEconomy.slots[0].quantity,4);
+  assert.equal(partial.state.shopEconomy.bag["healing-herb"],1);
+  const reserved={...stocked,shopCarts:[{heroId:"held",day:stocked.day,
+    lines:[{slotId,itemId:"healing-herb",quantity:1,subtotal:6}]}]};
+  assert.equal(transferShelf(reserved,slotId,"healing-herb","remove",5).state,reserved);
+  assert.equal(transferShelf(reserved,slotId,"healing-herb","stock",5).state,reserved);
+});

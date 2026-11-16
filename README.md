@@ -55,7 +55,9 @@ need human game testing. The next planned improvements target that experience.
 2. Press **N** to place a small four-slot shelf; rotate with **R**, confirm
    with left-click or cancel with right-click/Esc. A new shelf starts empty.
 3. Select a bag item with **1–6** or the mouse wheel; look at a real shelf
-   slot and **left-click to stock** or **right-click to remove**. The crosshair
+   slot and **left-click to stock** or **right-click to remove** one unit.
+   **Shift + left-click** fills that slot from your real bag; **Shift +
+   right-click** clears it as far as bag capacity allows. The crosshair
    prompt explains capacity, wrong-item selection and cart-related locks.
 4. Buy stock through **B** (wholesale). When a real customer asks for
    replenishment, the small service strip displays the expiring request;
@@ -79,7 +81,8 @@ need human game testing. The next planned improvements target that experience.
 | --- | --- |
 | WASD / mouse / Shift | Move, look, sprint |
 | 1–6 / wheel | Select a carried stocking item |
-| Left-click / right-click at shelf | Stock one / remove one; no bulk-stocking shortcut yet |
+| Left-click / right-click at shelf | Stock one / remove one; holding repeats on the same slot |
+| Shift + left-click / Shift + right-click at shelf | Fill / clear targeted slot, respecting bag capacity and customer reservations |
 | E | Contextual interaction; after a paid register receipt, serve the next physically ready buyer |
 | Hold E at bed | Finish day |
 | F | Select the earliest-expiring **live restock** item, if any |

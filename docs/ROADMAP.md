@@ -52,6 +52,8 @@ or unnecessary pointer-lock roundtrips. Human playtest judges pacing.
 
 ## Feature work package 2: Stocking ergonomics
 
+**Delivery status:** Implemented on the feature branch pending CI and review: Shift+click fills/clears the aimed slot atomically using existing transfer rules, normal clicks remain single-unit and held clicks never spill into adjacent slots. Existing hand motion and SFX are reused.
+
 **Player goal:** Respond to restock pressure quickly while still
 physically operating the shelves.
 
