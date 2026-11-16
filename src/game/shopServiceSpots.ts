@@ -172,31 +172,54 @@ export class ShopServiceSpots{
       case "roam": candidates=this.roam;break;
       default: candidates=this.idle;
     }
-    const start=(request.preferredIndex??0)%Math.max(1,candidates.length);
+    const count=Math.max(1,candidates.length);
+    const start=((request.preferredIndex??0)%count+count)%count;
     const ordered=[...candidates.slice(start),...candidates.slice(0,start)];
-    const routeTo=createShopRoutePlanner(layout,room);
-    // A shelf-waiter should wait close to its own shop shelf, rather than
-    // take the first free pocket across the entire shop.
+    // First-free sent a visitor across the entire cave despite an empty
+    // nearby waiting pocket. Check a few nearby reachable destinations and
+    // rank their real walking routes instead of cycling static slot numbers.
+    const ranked=role==="checkout"||role==="shelf-wait"?ordered:
+      ordered.map((point,index)=>({point,index})).sort((a,b)=>
+        dist(from,a.point)-dist(from,b.point)+(a.index-b.index)*.025)
+        .map(entry=>entry.point);
+    // Checkout is single file: settled/pending stations are temporary route
+    // obstacles, not merely exclusive final destinations. Never share this
+    // dynamic grid across NPCs or topology changes.
+    const checkoutBlockers=role==="checkout"
+      ?[...this.claims.values()].filter(claim=>
+        claim.heroId!==heroId&&claim.role==="checkout"&&
+        dist(from,claim.point)>.75).map(claim=>claim.point)
+      :[];
+    const routeTo=createShopRoutePlanner(layout,room,checkoutBlockers);
     let chosen:(ReservedShopRoute&{score:number})|null=null;
-    for(const point of ordered){
+    let validCount=0;
+    for(const point of ranked){
       if(!isFinitePoint(point)||isObstructed(point,layout,room)||
         request.avoid&&dist(point,request.avoid)<1.85||
         [...occupied,...otherClaims,...forbidden].some(p=>dist(point,p)<CLEARANCE))
+        continue;
+      // Restock/credit petitioners should not pace across the shop every
+      // few seconds. Try a nearby pocket, otherwise retain their last stand.
+      if(role==="roam"&&(dist(from,point)>3.8||
+        (from.x*point.x<0&&Math.abs(from.x)>1.3&&Math.abs(point.x)>1.3)))
         continue;
       const route=routeTo(from,point);
       if(!route)continue;
       const actual=route.waypoints.at(-1)??from;
       if(dist(actual,point)>0.17)continue;
-      if(role!=="shelf-wait"){
-        // Switching from a shelf to checkout/restock/roaming must not leave
-        // its previous exclusive shelf ownership behind.
+      if(role==="checkout"){
         this.release(heroId);
         this.claims.set(heroId,{heroId,role,point});
         return {point,route};
       }
-      const shelf=request.shelfAccess!;
-      const score=route.length*.5+dist(point,shelf)*.85+dist(from,point)*.25;
+      const score=role==="shelf-wait"
+        ?route.length*.5+dist(point,request.shelfAccess!)*.85+
+          dist(from,point)*.25
+        :route.length*.5+dist(from,point)*.35;
       if(!chosen||score<chosen.score)chosen={point,route,score};
+      // At most five verified, nearby alternatives for generic purposes.
+      // This allocation is event-driven, never executed per render frame.
+      if(++validCount>=5&&role!=="shelf-wait")break;
     }
     if(chosen){
       this.release(heroId);
@@ -207,7 +230,9 @@ export class ShopServiceSpots{
       this.ensureIdle(layout,room,100);
       return this.reserve(heroId,role,from,layout,room,request);
     }
-    this.release(heroId);
+    // If no local stroll is available, a requester must not lose their
+    // existing reserved spot or be ordered to teleport across the shop.
+    if(role!=="roam")this.release(heroId);
     return null;
   }
 }
