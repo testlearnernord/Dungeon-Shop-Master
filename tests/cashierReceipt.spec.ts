@@ -130,6 +130,10 @@ test("two customers are processed consecutively at one staffed register without 
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
+  // The browser fixture uses Babylon's current scene; Vite can finish
+  // navigation before the async campaign boot has created that scene.
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   const start=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/cashierHarness.ts"))
       .openCashierHarness("staff",2));
