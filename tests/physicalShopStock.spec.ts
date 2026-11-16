@@ -47,7 +47,13 @@ test("actual stocked shelf meshes follow saved quantities for all six products",
         return {...slot,itemId:id&&valid.has(id)
           ?id as typeof slot.itemId:null,quantity:counts[index]??0};
       });
-      await storage.saveGame({...base,shopEconomy:{...base.shopEconomy,slots}});
+      await storage.saveGame({...base,
+        // Keep autonomous buyers out of this exact-quantity visual fixture.
+        // Actual shopping and unpaid-cart conservation have separate tests.
+        adventurers:base.adventurers.map(hero=>({...hero,
+          status:"exploring" as const,floor:4 as const,shopStayDays:0})),
+        shopCarts:[],
+        shopEconomy:{...base.shopEconomy,slots}});
     },{ids,counts});
   const inspect=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))
