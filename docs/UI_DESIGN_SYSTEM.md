@@ -2,8 +2,8 @@
 
 > **Current implementation contract, reviewed 2026-11-16.** Read this
 > alongside [GAME_BIBLE](GAME_BIBLE.md), [ARCHITECTURE](ARCHITECTURE.md)
-> and [ROADMAP](ROADMAP.md). The next five planned gameplay work packages
-> are **not implemented** by this document; PR numbers are not reserved.
+> and [ROADMAP](ROADMAP.md). Implemented capabilities and future packages
+> are distinguished there; package numbers are not reserved.
 
 ## Purpose
 The Level 5 shop is a first-person **cave**, not a desktop dashboard. Gameplay,
@@ -67,7 +67,7 @@ This document is a maintainable implementation contract.
 | Merchant ledger | Cinematic day-end chapter experience, consistent tokens and metrics |
 | Cashier | Two-stage timed receipt overlay opened from the real staff socket; item pictograms, real collected gold and tip, paid receipt remains visible; **E** explicitly takes the next physically-ready customer's cart without a modal/pointer-lock roundtrip, **Esc** exits; the GameStore is the only payment authority |
 | Blueprint / placement / mining | Context prompt and real-world ghost; not a permanent sidebar |
-| World nameplates / request bubbles | Portrait, level, role, gold and HP; individual icon-based restock/credit requests with real deadlines |
+| World nameplates / request bubbles | Portrait, level, role, gold and HP; individual icon-based restock/credit requests with real deadlines; one optional short role/item-aware customer remark above a visible NPC at a time, without intercepting world input |
 | Level 6 / 7 spectator | Compact panels, optional controls legend, same focus style |
 | Audio / notifications / campaign | Minimal chrome, consistent buttons and persistent errors |
 
@@ -97,4 +97,4 @@ This document is a maintainable implementation contract.
   `shopHudLayout.spec.ts`, `controlsDisclosure.spec.ts` and the
   existing crowded-shop browser flow. This does not replace human
   assessment of legibility and repeated-action friction.
-- Batch shelf fill/clear is implemented through `GameStore.transfer`; further cashier feel polish and additional customer reactions remain in [ROADMAP](ROADMAP.md), not CURRENT functionality.
+- Batch shelf fill/clear is implemented through `GameStore.transfer`. Customer remarks use the same read-only world projection as request bubbles, but never replace their item icon or timer. One speaker is rendered at a time; the rate limit and short lifetime prevent dialogue walls. Additional narrative reactions and cashier polish remain subject to [ROADMAP](ROADMAP.md).

@@ -38,7 +38,7 @@ was mentioned in a roadmap.
 | --- | --- |
 | First-person shop | Walk/look, order wholesale goods, stock and remove physical shelf items, operate a staffed register and grant credit |
 | Furniture / expansion | Build compact 4-slot shelves, move registered furniture, hang Galvik's portrait, excavate Level 5 and place furniture on sufficiently cleared floor |
-| Shoppers | Individual needs, gold, gear and HP; real shelf pickups into unpaid carts; collision-aware browsing, a five-place physical checkout queue with overflow, local restock/credit requests and walkouts |
+| Shoppers | Individual needs, gold, gear and HP; real shelf pickups into unpaid carts; collision-aware browsing, a five-place physical checkout queue with overflow, local restock/credit requests and walkouts; short event-triggered character remarks in the physical shop |
 | Player service | Crosshair shelf details for actual stock and valid actions; compact live checkout/restock/credit status; **F** selects the most urgent requested item in the existing hotbar |
 | Money | Real bag/slot inventory, wholesale costs, fixed retail prices, credit debt book and manual receipts. Outstanding collected carts settle once at end of day |
 | Adventurers / dungeon | Persistent identities and equipment; deterministic offscreen Floors 1–4; individually authorized Floor 6 Cave Troll; Floor 7 observation/replay |
@@ -46,7 +46,7 @@ was mentioned in a roadmap.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
 functional behavior; customer acting, friction and interface placement still
-need human game testing. The next planned improvements target that experience.
+need human game testing. Shop remarks never alter sales or dungeon outcomes.
 
 ### First few minutes
 

@@ -486,3 +486,47 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
   expect((await read()).visitors.some(v=>v.id===ids.restock)).toBe(false);
   expect(errors).toEqual([]);
 });
+
+/** Real customer request -> world-anchored line, no fake sale or NPC action. */
+test("a real stockout produces one short, nonblocking customer comment",async({page})=>{
+  test.setTimeout(95000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  const heroId=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+    const state=createGameState(7351);
+    const hero=state.adventurers[0]!;
+    await new CampaignStorage().saveGame({...state,
+      adventurers:state.adventurers.map((entry,index)=>index===0
+        ?{...entry,status:"at-shop" as const,floor:5 as const,
+            gold:100,inventory:{...entry.inventory,bread:0,healing:0},
+            equipment:{weapon:null,armor:null}}
+        :{...entry,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
+    });
+    return hero.id;
+  });
+  await page.reload();
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const line=page.locator("#npc-customer-bark");
+  await expect.poll(async()=>{
+    const snapshot=await page.evaluate(async heroId=>{
+      const tools=await import("/Dungeon-Shop-Master/tests/scene.ts");
+      const shopper=tools.inspectNpcVisuals().visitors.find(v=>v.id===heroId);
+      if(shopper && (shopper.restockRemaining??0)>0)
+        tools.aimAtBeggingVisitor(heroId);
+      const bubble=document.querySelector<HTMLElement>("#npc-customer-bark");
+      return {request:!!shopper&&(shopper.restockRemaining??0)>0,
+        visible:!!bubble&&!bubble.hidden && bubble.dataset.kind==="restock",
+        text:bubble?.textContent??""};
+    },heroId);
+    return snapshot.request&&snapshot.visible&&snapshot.text.includes("Waybread");
+  },{timeout:80000,intervals:[300,500,800]}).toBe(true);
+  await expect(line).toBeVisible();
+  await expect(line).toHaveAttribute("data-kind","restock");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await expect(page.locator("#merchant-gold")).toHaveText("Merchant gold: 20g");
+  expect(await line.evaluate(element=>getComputedStyle(element).pointerEvents)).toBe("none");
+  expect(errors).toEqual([]);
+});

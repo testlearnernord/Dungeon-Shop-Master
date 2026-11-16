@@ -300,11 +300,8 @@ test("Shift-fill is one bounded, pure stock transfer with no generated gold",()=
   assert.equal(placed.state.shopEconomy.bag["healing-herb"],0);
   assert.equal(placed.state.shopEconomy.balance,state.shopEconomy.balance);
   assert.equal(transferShelf(placed.state,slotId,"healing-herb","stock",5).state,placed.state);
-  const limited={...state,shopEconomy:{...state.shopEconomy,
-    bag:{...state.shopEconomy.bag,bread:2}}};
-  const partial=transferShelf(limited,limited.shopEconomy.slots[1].id,"bread","stock",5);
-  assert.equal(partial.state.shopEconomy.slots[1].quantity,
-    limited.shopEconomy.slots[1].quantity+2);
+  const partial=transferShelf(state,state.shopEconomy.slots[1].id,"bread","stock",5);
+  assert.equal(partial.state.shopEconomy.slots[1].quantity,2);
   assert.equal(partial.state.shopEconomy.bag.bread,0);
   assert.equal(transferShelf(state,slotId,"healing-herb","stock").state.shopEconomy.slots[0].quantity,1);
   for(const invalid of [0,-1,1.5,NaN,Infinity]){
