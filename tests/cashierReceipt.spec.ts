@@ -176,9 +176,10 @@ test("two customers are processed consecutively at one staffed register without 
   expect(completed.balance-start.balance).toBe(26);
   await page.keyboard.press("e");
   await expect(dialog.locator(".cashier-settlement")).toBeVisible();
-  expect((await page.evaluate(async()=>(
+  const afterRedundantE=await page.evaluate(async()=>(
     (await import("/Dungeon-Shop-Master/tests/cashierHarness.ts"))
-      .inspectCashierHarness())).manualReceiptsAll)).toBe(2);
+      .inspectCashierHarness()));
+  expect(afterRedundantE.manualReceiptsAll).toBe(2);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   expect(errors).toEqual([]);
