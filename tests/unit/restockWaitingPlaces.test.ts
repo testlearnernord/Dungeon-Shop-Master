@@ -4,7 +4,7 @@ import { checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE } from "../../src/game/npcTraffic.ts";
 import { createShopLayout, replaceShelfPlacement, shelfBounds } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
-import { RESTOCK_WAIT_CLEARANCE,
+import { RESTOCK_WAIT_CLEARANCE, isQuietPetitionArea,
   restockWaitingPositions } from "../../src/game/restockWaitingPlaces.ts";
 
 const entrances=[{x:-3.43,z:4.65},{x:4.57,z:4.65}] as const;
@@ -16,6 +16,8 @@ test("request stations are generated from current reachable shop topology",()=>{
   const queues=checkoutQueuePoints(layout,{x:0,z:-1},12);
   for(const [i,point] of positions.entries()){
     assert(!isObstructed(point,layout));
+    assert(isQuietPetitionArea(point),
+      "petitioners must not wait in entrance approaches or central lanes");
     assert(queues.every(q=>Math.hypot(point.x-q.x,point.z-q.z)>=1.8));
     for(const origin of entrances){
       const route=pathToShopGoal(origin,point,layout);
@@ -47,4 +49,17 @@ test("moving shelves regenerates request stations without fixed cave pockets",()
     }
     for(const origin of entrances)assert(pathToShopGoal(origin,point,moved.layout));
   }
+});
+
+test("petitions may use side wings, but never the busy entrance or central aisle",()=>{
+  assert.equal(isQuietPetitionArea({x:-4,z:4.65}),false);
+  assert.equal(isQuietPetitionArea({x:4,z:3}),false);
+  assert.equal(isQuietPetitionArea({x:0,z:0}),false);
+  assert.equal(isQuietPetitionArea({x:0,z:-4}),false);
+  assert.equal(isQuietPetitionArea({x:8,z:0}),true,
+    "expanded shop wings must stay eligible for requests");
+  assert.equal(isQuietPetitionArea({x:2.5,z:-4}),true);
+  const spots=restockWaitingPositions(createShopLayout());
+  assert(spots.length>=2);
+  assert(spots.every(isQuietPetitionArea));
 });
