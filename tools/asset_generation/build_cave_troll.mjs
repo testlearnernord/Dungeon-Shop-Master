@@ -30,41 +30,62 @@ const buildCaveTrollGlb=function buildCaveTrollGlb(){
   };
   const surfaces=[];
   function buildSurface(name,profile,seed,hammer=false){
-    const sides=hammer?20:28;
+    const sides=hammer?28:44;
     const p=[],uv=[],color=[],indices=[];
-    const detail=(t,a)=>{
-      const faceted=hammer?Math.cos(a*6+seed*.14)*.028:0;
-      const muscle=Math.sin(a*3+seed*.31+t*2.7)*.022;
-      const tendon=Math.cos(a*7-seed*.12+t*5.9)*.012;
-      return 1+faceted+muscle+tendon;
-    };
-    for(let i=0;i<profile.length;i++){
-      const [h,rx,rz,cx,cz]=profile[i];
+    // Catmull-Rom ring interpolation: sculpted shoulder/leg contours without
+    // the telltale six-section cardboard silhouette of the first GLB.
+    const curve=(a,b,c,d,t)=>.5*((2*b)+(-a+c)*t+
+      (2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t);
+    const smoothed=[];
+    for(let k=0;k<profile.length-1;k++)for(let step=0;step<5;step++){
+      const t=step/5,p0=profile[Math.max(0,k-1)],
+        p1=profile[k],p2=profile[k+1],
+        p3=profile[Math.min(profile.length-1,k+2)];
+      smoothed.push(p1.map((v,index)=>curve(
+        p0[index],v,p2[index],p3[index],t)));
+    }
+    smoothed.push(profile[profile.length-1]);
+    for(let i=0;i<smoothed.length;i++){
+      const [h,rx,rz,cx,cz]=smoothed[i];
       for(let j=0;j<=sides;j++){
-        const a=j/sides*Math.PI*2, wave=detail(i,a);
-        const backBump=name==="bent-upper-back"&&Math.sin(a)<-.3?-.065*Math.sin(a):0;
-        const snout=name==="head"&&Math.sin(a)>.15?(.08+.08*Math.max(0,1-Math.abs(h+.23)*3))*Math.sin(a)**4:0;
-        const knuckle=name==="boulder-foot"&&Math.sin(a)>.5?Math.sin(a)*.075:0;
-        const x=cx+Math.cos(a)*rx*wave;
-        const z=cz+Math.sin(a)*rz*wave+backBump+snout+knuckle;
+        const a=j/sides*Math.PI*2;
+        const anatomy=Math.sin(a*3+seed*.31+h*2.7)*.022+
+          Math.cos(a*5-seed*.19+h*9.2)*.013;
+        const wrinkles=.006*Math.sin(a*13+h*18+seed*.2)*
+          Math.cos(a*7-h*13);
+        const faceted=hammer?Math.cos(a*7+seed*.14)*.040:0;
+        const irregular=1+anatomy+wrinkles+faceted;
+        const backBump=name==="bent-upper-back"&&Math.sin(a)<-.3
+          ?-.075*Math.sin(a):0;
+        const snout=name==="head"&&Math.sin(a)>.12
+          ?(.08+.13*Math.max(0,1-Math.abs(h+.26)*3))*Math.sin(a)**4:0;
+        const knuckle=name.includes("foot")&&Math.sin(a)>.4
+          ?Math.sin(a)*.05:0;
+        const bulge=name.startsWith("forearm")&&Math.sin(a)>.3&&h<.08
+          ?Math.sin(a)*(.05*Math.max(0,1-Math.abs(h+.22)*2)):0;
+        const x=cx+Math.cos(a)*rx*irregular;
+        const z=cz+Math.sin(a)*rz*irregular+backBump+snout+knuckle+bulge;
         const pos=hammer?[h,x,z]:[x,h,z];
-        p.push(...pos);uv.push(j/sides,i/(profile.length-1));
-        const contour=.88+.1*Math.max(0,Math.sin(a))+.06*Math.sin(h*9+a*3+seed);
-        const scar=.93+.07*Math.sin(i*2.1+j*1.7+seed*1.3);
-        const shade=Math.max(.61,Math.min(1.05,contour*scar));
-        color.push(shade,shade*.95,shade*.90,1);
+        p.push(...pos);
+        uv.push(j/sides,i/(smoothed.length-1));
+        // Grisaille skin pigment with faint vein/age variation, not orange
+        // toy coloring. Material tint and torchlight still apply in Babylon.
+        const shade=.89+.05*Math.max(0,Math.sin(a))+
+          .035*Math.sin(h*7+a*3+seed)+.028*Math.sin(a*11+h*21+seed);
+        const flesh=hammer?.85:shade;
+        color.push(flesh,flesh*.985,flesh*.965,1);
       }
     }
     const step=sides+1;
-    for(let i=0;i<profile.length-1;i++)for(let j=0;j<sides;j++){
+    for(let i=0;i<smoothed.length-1;i++)for(let j=0;j<sides;j++){
       const a=i*step+j,b=a+1,c=a+step,d=c+1;
       // Hammer oriented along X, side rings retain the same winding.
       if(hammer)indices.push(a,b,c,b,d,c);
       else indices.push(a,c,b,b,c,d);
     }
     // Close the two ends with physically modeled caps, not unsealed skins.
-    for(const end of [0,profile.length-1]){
-      const [h,, ,cx,cz]=profile[end],center=p.length/3;
+    for(const end of [0,smoothed.length-1]){
+      const [h,, ,cx,cz]=smoothed[end],center=p.length/3;
       if(hammer)p.push(h,cx,cz);
       else p.push(cx,h,cz);
       uv.push(.5,end===0?0:1);color.push(.75,.72,.68,1);
@@ -122,7 +143,7 @@ const buildCaveTrollGlb=function buildCaveTrollGlb(){
     nodes.push({name:"sculpt-"+m.name,mesh:meshes.length-1});
   }
   while(buffer.length%4)buffer.push(0);
-  const asset={asset:{version:"2.0",generator:"Dungeon Shop Master anatomical sculpt authoring v1"},scene:0,scenes:[{nodes:nodes.map((_,i)=>i)}],nodes,meshes,
+  const asset={asset:{version:"2.0",generator:"Dungeon Shop Master articulated organic sculpt v2"},scene:0,scenes:[{nodes:nodes.map((_,i)=>i)}],nodes,meshes,
     materials:[{name:"sculpt-preview-ash",doubleSided:true,pbrMetallicRoughness:{baseColorFactor:[.70,.67,.63,1],metallicFactor:0,roughnessFactor:1}}],
     buffers:[{byteLength:buffer.length}],bufferViews,accessors};
   const json=JSON.stringify(asset),jsonBytes=[];
