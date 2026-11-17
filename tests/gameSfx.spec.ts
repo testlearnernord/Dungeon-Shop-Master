@@ -94,3 +94,17 @@ test("SFX Lab is preview-only, supports independent solo/mute and cue audition",
   await page.locator("#close-arena").click();
   expect(errors).toEqual([]);
 });
+
+test("curated Troll MP3s resolve under the deployed base path",async({page})=>{
+  await page.goto("./");
+  for(const file of ["cave-troll-intro-roar-v1.mp3",
+    "cave-troll-fist-impact-short-v1.mp3","cave-troll-windup-grunt-a.mp3"]){
+    const response=await page.request.get("./audio/sfx/cave-troll/"+file);
+    expect(response.ok(),file).toBe(true);
+    expect(response.headers()["content-type"]).toContain("audio/");
+  }
+  await page.keyboard.press("v");
+  await page.locator("#arena-sfx-debug-toggle").click();
+  await expect(page.locator('#arena-sfx-debug-auditions [data-cue="troll-roar"]')).toContainText("MP3");
+  await expect(page.locator('#arena-sfx-debug-auditions [data-cue="troll-death"]')).toContainText("synth");
+});

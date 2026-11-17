@@ -3,6 +3,7 @@ import {
   type SfxAxis,type SfxOwner,type SfxFamily,
 } from "./sfxCatalog.ts";
 import type { GameSfx, SfxDebugEvent } from "./gameSfx.ts";
+import {hasRecordedSfx} from "./gameSfxSamples.ts";
 
 /**
  * Read-only Level 6 training audio workbench. No game simulation references.
@@ -43,7 +44,7 @@ export class Level6SfxDebugPanel {
       button.type="button";
       button.className="sfx-debug-audition";
       button.dataset.cue=entry.id;
-      button.textContent="▶ "+entry.label;
+      button.textContent="▶ "+entry.label+(hasRecordedSfx(entry.id)?" · MP3":" · synth");
       button.title="Play this one sound (ignores category filters, respects master SFX)";
       button.addEventListener("click",()=>{
         if(!this.available)return;
