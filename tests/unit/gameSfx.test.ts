@@ -32,7 +32,7 @@ import {
   SFX_CATALOG,SFX_OWNERS,SFX_FAMILIES,blankSfxDebugFilters,passesSfxDebugFilter,
 } from "../../src/sfxCatalog.ts";
 
-test("every synthesized effect has one explicit owner and audible category",()=>{
+test("every registered effect has one explicit owner and audible category",()=>{
   assert.equal(SFX_CATALOG.length,19);
   assert.equal(new Set(SFX_CATALOG.map(entry=>entry.id)).size,19);
   for(const entry of SFX_CATALOG){

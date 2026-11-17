@@ -1,4 +1,4 @@
-/** Human-readable, single source of truth for the Level 6 synthesized SFX. */
+/** Human-readable metadata for sample-backed and provisional synthesized Level 6 SFX. */
 export const SFX_OWNERS = [
   {id:"hero",label:"Hero"},
   {id:"troll",label:"Troll"},

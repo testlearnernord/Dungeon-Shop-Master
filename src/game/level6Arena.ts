@@ -803,7 +803,7 @@ export class Level6Arena {
       const boss=frame?{x:frame.bx,z:frame.bz}:this.motion.boss;
       const bossPhase=frame?.bossPhase??this.motion.bossPhase;
       this.sfx?.playCombatCue(cue,hero,boss,this.soundListener(),
-        bossPhase==="strike");
+        bossPhase==="strike",frame?.slam??this.motion.bossSlam);
       this.worldHud.pushCue(cue,this.motion);
     }
   }
@@ -845,7 +845,7 @@ export class Level6Arena {
     // Swings sound on the start of the actual animated strike, impacts on
     // authoritative hit/miss/parry cues. A windup alone is not a hit.
     if(state.bossPhase==="strike" && this.lastBossPhase!=="strike")
-      this.sfx?.play("troll-swing",state.boss,listener);
+      this.sfx?.play("troll-swing",state.boss,listener,false,state.bossSlam);
     if(state.heroPhase==="attack" && this.lastHeroPhase!=="attack")
       this.sfx?.play("hero-attack",state.hero,listener);
     this.lastBossPhase=state.bossPhase;

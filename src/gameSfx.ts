@@ -5,8 +5,11 @@ import {
   type GameSfxCue,type SfxAxis,type SfxOwner,type SfxFamily,type SfxDebugFilters,
 } from "./sfxCatalog.ts";
 export type { GameSfxCue } from "./sfxCatalog.ts";
+import {
+  SFX_SAMPLE_DIR,SFX_SAMPLE_FILES,hasRecordedSfx,selectSfxSample,
+} from "./gameSfxSamples.ts";
 
-export type SfxDebugStatus="triggered"|"filtered"|"muted"|"throttled"|"blocked";
+export type SfxDebugStatus="triggered"|"filtered"|"muted"|"throttled"|"loading"|"blocked";
 export interface SfxDebugEvent {
   readonly cue:GameSfxCue;
   readonly status:SfxDebugStatus;
@@ -14,9 +17,8 @@ export interface SfxDebugEvent {
 }
 
 /**
- * Original synthesized effects for the shop and the Level 6 boss.
- * Presentation-only, independent from the deterministic combat RNG and save.
- * These are replaceable prototype sounds, not recorded creature foley.
+ * Curated Cave Troll MP3s replace six synthetic cue branches; other sounds
+ * remain explicit prototypes. Presentation never modifies combat or replay.
  */
 export interface SoundPosition { readonly x: number; readonly z: number }
 export interface SoundListener extends SoundPosition { readonly yaw: number }
@@ -25,7 +27,7 @@ const STORAGE_KEY = "dungeon-shop-master-sfx-v1";
 const DEFAULT_VOLUME = 0.65;
 const SPACING: Partial<Record<GameSfxCue, number>> = {
   "troll-step": 0.19, "hero-step": 0.13, "troll-breath": 2.8,
-  "troll-grunt": 0.65, "lava-burn": 0.45, "rock-crumble": 0.15,
+  "troll-grunt": 0.65, "boss-hurt": 0.48, "lava-burn": 0.45, "rock-crumble": 0.15,
 };
 
 /** The same live or saved motor cue means the same sound; no guessed damage. */
@@ -66,6 +68,11 @@ export class GameSfx {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
+  private readonly sampleBuffers=new Map<string,AudioBuffer>();
+  private readonly sampleLoading=new Set<string>();
+  private readonly sampleFailures=new Set<string>();
+  private readonly sampleSources=new Set<AudioBufferSourceNode>();
+  private readonly sampleSequences=new Map<GameSfxCue,number>();
   private lavaSource: AudioBufferSourceNode | null = null;
   private lavaOscillator: OscillatorNode | null = null;
   private readonly toggle: HTMLButtonElement;
@@ -88,14 +95,14 @@ export class GameSfx {
     this.toggle.addEventListener("click", () => {
       this.enabled = !this.enabled;
       this.persist();
-      if (this.enabled) this.unlock();
+      if (this.enabled) this.preloadSamples();
       this.syncAmbient();
       this.render();
     });
     this.slider.addEventListener("input", () => {
       this.volume = Math.max(0, Math.min(1, Number(this.slider.value) / 100));
       this.persist();
-      if (this.enabled && this.volume > 0) this.unlock();
+      if (this.enabled && this.volume > 0) this.preloadSamples();
       this.syncMaster();
       this.syncAmbient();
       this.render();
@@ -103,7 +110,7 @@ export class GameSfx {
     const unlock = (event: Event) => {
       if (event instanceof KeyboardEvent &&
           (event.repeat || ["Tab", "Shift", "Control", "Alt", "Meta", "Escape"].includes(event.key))) return;
-      if (this.enabled) this.unlock();
+      if (this.enabled) this.preloadSamples();
     };
     // Real user gesture, capture phase: survives pointer lock and game controls.
     window.addEventListener("pointerdown", unlock, true);
@@ -254,6 +261,69 @@ export class GameSfx {
     return output;
   }
 
+  /** Decode each reviewed asset once after a user gesture. Never await the
+   * network in the deterministic motor or on the cinematic's sound tick. */
+  private preloadSamples():void {
+    const ctx=this.unlock();
+    if(!ctx)return;
+    for(const filename of SFX_SAMPLE_FILES)this.queueSample(filename,ctx);
+  }
+
+  private queueSample(filename:string,ctx:AudioContext):void {
+    if(this.sampleBuffers.has(filename)||this.sampleLoading.has(filename)||
+       this.sampleFailures.has(filename))return;
+    this.sampleLoading.add(filename);
+    void fetch(import.meta.env.BASE_URL+SFX_SAMPLE_DIR+encodeURIComponent(filename))
+      .then(response=>{
+        if(!response.ok)throw new Error("SFX HTTP "+response.status);
+        return response.arrayBuffer();
+      })
+      .then(bytes=>ctx.decodeAudioData(bytes))
+      .then(buffer=>{this.sampleBuffers.set(filename,buffer);})
+      .catch(error=>{
+        this.sampleFailures.add(filename);
+        console.warn("Cave Troll SFX unavailable:",filename,error);
+      })
+      .finally(()=>{this.sampleLoading.delete(filename);});
+  }
+
+  private stopSamples():void {
+    for(const source of this.sampleSources){
+      try{source.stop();}catch{ /* Already ended. */ }
+      source.disconnect();
+    }
+    this.sampleSources.clear();
+  }
+
+  /** Same master, limiter, stereo/distance routing and SFX Lab controls as synths. */
+  private playSample(cue:GameSfxCue,ctx:AudioContext,output:GainNode,
+    now:number,heavy:boolean):boolean {
+    const index=this.sampleSequences.get(cue)??0;
+    const spec=selectSfxSample(cue,index,heavy);
+    if(!spec)return false;
+    const buffer=this.sampleBuffers.get(spec.file);
+    if(!buffer)return false;
+    const source=ctx.createBufferSource();
+    source.buffer=buffer;
+    source.playbackRate.value=cue==="troll-roar"?1:0.985+(index%3)*0.015;
+    const envelope=ctx.createGain();
+    const duration=Math.min(spec.maxSeconds,buffer.duration/source.playbackRate.value);
+    const fade=Math.min(.13,duration*.23);
+    envelope.gain.setValueAtTime(spec.gain,now);
+    envelope.gain.setValueAtTime(spec.gain,now+Math.max(0,duration-fade));
+    envelope.gain.linearRampToValueAtTime(.0001,now+duration);
+    source.connect(envelope);envelope.connect(output);
+    source.onended=()=>{
+      this.sampleSources.delete(source);
+      source.disconnect();envelope.disconnect();output.disconnect();
+    };
+    source.start(now);
+    source.stop(now+duration+.005);
+    this.sampleSources.add(source);
+    this.sampleSequences.set(cue,index+1);
+    return true;
+  }
+
   private tone(
     out: AudioNode, at: number, duration: number,
     frequency: number, endFrequency: number, level: number,
@@ -296,7 +366,7 @@ export class GameSfx {
   }
 
   play(cue: GameSfxCue, position?: SoundPosition, listener?: SoundListener,
-    audition=false): void {
+    audition=false, heavy=false): void {
     const log=(status:SfxDebugStatus)=>
       this.logCue({cue,status,audition});
     if (!this.enabled || this.volume <= 0){log("muted");return;}
@@ -311,9 +381,24 @@ export class GameSfx {
     if (!audition && now - last < (SPACING[cue] ?? 0.045)){
       log("throttled");return;
     }
-    this.last.set(cue, now);
+    if(hasRecordedSfx(cue)){
+      const spec=selectSfxSample(cue,this.sampleSequences.get(cue)??0,heavy);
+      if(!spec){log("blocked");return;}
+      if(!this.sampleBuffers.has(spec.file)){
+        this.queueSample(spec.file,ctx);
+        log(this.sampleFailures.has(spec.file)?"blocked":"loading");
+        return;
+      }
+    }
     const output = this.route(position, listener);
     if (!output){log("blocked");return;}
+    if(hasRecordedSfx(cue)){
+      try{
+        if(!this.playSample(cue,ctx,output,now,heavy)){log("blocked");return;}
+      }catch(error){console.warn("Cave Troll SFX playback failed:",cue,error);log("blocked");return;}
+      this.last.set(cue,now);log("triggered");return;
+    }
+    this.last.set(cue,now);
     log("triggered");
     const variant = (this.variation++ % 5) - 2;
     const pitch = 1 + variant * 0.035;
@@ -322,35 +407,13 @@ export class GameSfx {
     const grit = (d: number, cutoff = 500, amp = 0.24) =>
       this.noise(output, now, d, cutoff, amp);
     switch (cue) {
-      case "troll-roar":
-        this.tone(output, now, 1.45, 92*pitch, 53*pitch, 0.35, "sawtooth");
-        this.tone(output, now+.11, 1.16, 60*pitch, 42*pitch, 0.26, "triangle");
-        this.noise(output, now+.08, 1.35, 430, 0.32, "bandpass", .68);
-        break;
       case "troll-breath":
         this.noise(output, now, .84, 190, .19, "lowpass", .67);
         this.tone(output, now, .75, 53*pitch, 48*pitch, .085, "triangle");
         break;
-      case "troll-grunt":
-        this.tone(output, now, .36, 118*pitch, 69*pitch, .24, "sawtooth");
-        this.noise(output, now, .27, 350, .22, "bandpass", .82);
-        break;
-      case "troll-step":
-        rumble(.24, 68, .32); grit(.14, 210, .25);
-        this.noise(output, now+.035, .22, 850, .09, "bandpass");
-        break;
       case "hero-step":
         this.noise(output, now, .12, 450, .12);
         this.tone(output, now, .09, 135*pitch, 78*pitch, .08, "triangle");
-        break;
-      case "troll-swing":
-        this.noise(output, now, .49, 740, .29, "bandpass", 1.15);
-        this.tone(output, now+.05, .35, 160*pitch, 58*pitch, .14, "sawtooth");
-        break;
-      case "troll-impact":
-        rumble(.62, 81, .38); grit(.47, 270, .39);
-        this.noise(output, now+.015, .36, 1700, .19, "bandpass");
-        this.tone(output, now, .20, 230, 45, .20, "triangle");
         break;
       case "hero-hurt":
         this.tone(output, now, .34, 240*pitch, 125*pitch, .20, "sawtooth");
@@ -359,10 +422,6 @@ export class GameSfx {
       case "hero-attack":
         this.noise(output, now, .24, 1350, .21, "bandpass", 1.45);
         this.tone(output, now, .12, 420*pitch, 220*pitch, .07, "triangle");
-        break;
-      case "boss-hurt":
-        this.tone(output, now, .47, 98*pitch, 60*pitch, .26, "sawtooth");
-        this.noise(output, now, .33, 570, .20, "bandpass");
         break;
       case "projectile":
         this.tone(output, now, .35, 640*pitch, 155*pitch, .16, "sine");
@@ -405,13 +464,13 @@ export class GameSfx {
   }
 
   playCombatCue(cue: ArenaCue, hero: SoundPosition, boss: SoundPosition,
-    listener?: SoundListener, bossStriking = true): void {
+    listener?: SoundListener, bossStriking = true, slam = false): void {
     const nearBoss = cue.kind === "windup" || cue.kind === "hero-hit" ||
       cue.kind === "stagger" || cue.kind === "victory";
     for (const id of arenaCueSfx(cue.kind, bossStriking)) {
       const anchor = id === "troll-impact" || id === "troll-grunt" ? boss :
         nearBoss ? boss : hero;
-      this.play(id, anchor, listener);
+      this.play(id, anchor, listener, false, slam && id==="troll-impact");
     }
   }
 
@@ -419,12 +478,14 @@ export class GameSfx {
     this.inArena = true;
     this.last.clear();
     this.stopAmbient();
+    this.preloadSamples();
     this.syncAmbient();
   }
 
   endArena(): void {
     this.inArena = false;
     this.stopAmbient();
+    this.stopSamples();
     this.last.clear();
   }
 
