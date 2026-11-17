@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  WALKABLE_RADIUS, createCombatPreview, stepCombatPreview,
+  WALKABLE_RADIUS, GRAPPLE_TIMING, createCombatPreview, stepCombatPreview,
   type CombatPreviewOptions, type CombatPreviewState, type ArenaCue,
 } from "../../src/game/arenaCombatMotion.ts";
 import {frameFromCombat, resolveSpatialBoss, validateBossReplay} from "../../src/game/bossCombatReplay.ts";
@@ -16,7 +16,7 @@ function poised(seed:number, rim=false):CombatPreviewState {
   s.hero=rim?{x:15,z:0}:{x:0,z:3};
   s.bossHeading=rim?Math.PI/2:0;
   s.lockedBossHeading=s.bossHeading;
-  s.bossPhase="grab"; s.bossAge=.13; s.bossAttacks=3;
+  s.bossPhase="grab"; s.bossAge=GRAPPLE_TIMING.grabContact-.01; s.bossAttacks=3;
   s.bossAttack="grab"; s.bossSlam=false;
   s.bossDamageApplied=false; s.heroCooldown=99;
   return s;
@@ -41,7 +41,7 @@ test("grapple is not a scripted cutscene: reach, roll, sword parry, and grip bre
   assert(tick(dodge).some(c=>c.kind==="dodge"));
   assert.equal(dodge.heroHp,120);
   assert.equal(dodge.dodgeCount,1);
-  assert.equal(dodge.bossPhase,"recover");
+  assert.equal(dodge.bossPhase,"grabMiss");
 
   const parry=poised(3);
   parry.heroPhase="parry";parry.heroAge=.18;
@@ -59,11 +59,48 @@ test("grapple is not a scripted cutscene: reach, roll, sword parry, and grip bre
   assert(captured>0 && escaped>0,"grip break and successful grab are both real");
 });
 
+test("missed grabs retract without ever entering the throw phase",()=>{
+  const s=poised(3);
+  s.hero.z=8;
+  assert(tick(s).some(c=>c.kind==="miss"));
+  assert.equal(s.bossPhase,"grabMiss");
+  assert(s.heroPhase!=="grabbed");
+  let thrown=false;
+  const elapsed:number[]=[];
+  for(let i=0;i<58;i++){
+    thrown ||= tick(s).some(c=>c.kind==="throw");
+    if(s.bossPhase==="grabMiss")elapsed.push(s.bossAge);
+  }
+  assert.equal(thrown,false,"no throw without a caught hero");
+  assert(elapsed.at(-1)! >= GRAPPLE_TIMING.missRecover-1/60);
+  assert.equal(s.bossPhase,"chase");
+  assert(s.bossCooldown>0,"miss recovery must not instantly restart the windup");
+});
+
+test("a caught hero stays held before a deliberately timed release and flight",()=>{
+  const s=caught();
+  const t0=s.time;
+  let releasedAt=0,landedAt=0;
+  let heldFrames=0,flightFrames=0;
+  for(let i=0;i<240 && !landedAt;i++){
+    const cues=tick(s);
+    if(s.heroPhase==="grabbed")heldFrames++;
+    if(s.heroPhase==="thrown")flightFrames++;
+    if(cues.some(c=>c.kind==="throw"))releasedAt=s.time-t0;
+    if(cues.some(c=>c.kind==="hit"))landedAt=s.time-t0;
+  }
+  assert(heldFrames>=65,"a catch must be readable, not instantaneously discarded");
+  assert(flightFrames>=40,"the hero must visibly fly rather than teleport");
+  assert(releasedAt>=GRAPPLE_TIMING.grab-GRAPPLE_TIMING.grabContact+
+    GRAPPLE_TIMING.throwRelease-1/60);
+  assert(landedAt>=releasedAt+GRAPPLE_TIMING.flight-1/60);
+});
+
 test("successful grab holds and throws a physical hero before a single landing hit",()=>{
   const s=caught();
   assert.equal(s.heroPhase,"grabbed");
   const cues:ArenaCue[]=[];
-  for(let i=0;i<112;i++)cues.push(...tick(s));
+  for(let i=0;i<180;i++)cues.push(...tick(s));
   assert(cues.some(c=>c.kind==="throw"),"throw release follows an actual catch");
   assert.equal(cues.filter(c=>c.kind==="hit").length,1);
   assert.equal(cues.filter(c=>c.kind==="lava").length,0);
@@ -75,7 +112,7 @@ test("successful grab holds and throws a physical hero before a single landing h
 test("an outward throw crosses the real lava boundary and burns once",()=>{
   const s=caught(true);
   const cues:ArenaCue[]=[];
-  for(let i=0;i<112;i++)cues.push(...tick(s));
+  for(let i=0;i<180;i++)cues.push(...tick(s));
   const landed=cues.filter(c=>c.kind==="hit");
   const lava=cues.filter(c=>c.kind==="lava");
   assert.equal(landed.length,1,"one physical landing");
