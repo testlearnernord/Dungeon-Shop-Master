@@ -269,6 +269,15 @@ export function inspectBossArena() {
     spikes: scene.meshes.filter(mesh => mesh.name.startsWith("cavern-stalagmite-")).length,
     heroPosition: hero ? { x: hero.position.x, z: hero.position.z } : null,
     bossPosition: boss ? { x: boss.position.x, z: boss.position.z } : null,
+    // Local troll front is +Z. The dot product detects backwards intro
+    // posing even before the combat motor has advanced its first frame.
+    bossFacingHero: hero && boss
+      ? (Math.sin(boss.rotation.y)*(hero.position.x-boss.position.x)+
+        Math.cos(boss.rotation.y)*(hero.position.z-boss.position.z))/
+        Math.max(0.0001,Math.hypot(hero.position.x-boss.position.x,
+          hero.position.z-boss.position.z))
+      : null,
+    bossYaw: boss?.rotation.y,
     heroPhase: hero?.metadata?.combatPhase as string | undefined,
     heroArmRotation: scene.transformNodes.find(node => node.name === `${hero?.name}-arm-1`)?.rotation.z,
     heroSwordEnabled: scene.getMeshByName(`${hero?.name}-equipped-iron-sword`)?.isEnabled() ?? false,
