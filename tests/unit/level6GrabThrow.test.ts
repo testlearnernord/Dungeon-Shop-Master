@@ -119,7 +119,9 @@ test("successful grab holds and throws a physical hero before a single landing h
   assert(cues.some(c=>c.kind==="throw"),"throw release follows an actual catch");
   assert.equal(cues.filter(c=>c.kind==="hit").length,1);
   assert.equal(cues.filter(c=>c.kind==="lava").length,0);
-  assert(s.heroHp<120);
+  assert(cues.some(c=>c.kind==="hit" && c.amount===34),
+    "armored tank must take a meaningful, mitigated 34-HP throw");
+  assert.equal(s.heroHp,86,"landing damage must happen exactly once");
   assert(["hurt","move"].includes(s.heroPhase));
   assert(Math.hypot(s.hero.x,s.hero.z)<WALKABLE_RADIUS);
 });
@@ -145,6 +147,24 @@ test("the boss can die while holding a hero without a stuck grabbed state",()=>{
   assert.equal(s.outcome,"victory");
   assert.equal(s.heroPhase,"move");
   assert.equal(s.heroHp,120);
+});
+
+test("grabs are frequent enough to matter but never mandatory contact",()=>{
+  let attempted=0, thrown=0, defended=0, finished=0;
+  const fight={...base,health:185,maxHealth:185,healingSupplies:2,
+    role:"DPS" as const,sword:true,armor:true};
+  for(let seed=0;seed<48;seed++){
+    const {replay,final}=resolveSpatialBoss("fighter",5,{...fight,tacticsSeed:seed});
+    validateBossReplay(replay,"replay","fighter",5,replay.outcome);
+    attempted+=replay.frames.filter(f=>f.attack==="grab" && f.bossPhase==="grab").length>0?1:0;
+    thrown+=replay.frames.some(f=>f.cues.some(c=>c.kind==="throw"))?1:0;
+    defended+=replay.frames.some(f=>f.bossPhase==="grabMiss")?1:0;
+    if(final.outcome!=="fighting")finished++;
+  }
+  assert(attempted>=8,"the troll must visibly attempt grabs in multiple duels");
+  assert(thrown>=3,"successful throws should actually occur in new duels");
+  assert(defended>0,"dodgeable/missable grabs must not become cutscene kills");
+  assert(finished>=20,"real fight outcomes must still resolve without an infinite grapple loop");
 });
 
 test("new clips are replayed from optional metadata without changing old v1 frames",()=>{
