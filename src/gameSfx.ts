@@ -1,17 +1,23 @@
 import type { ArenaCue } from "./game/arenaCombatMotion.ts";
+import {
+  blankSfxDebugFilters,passesSfxDebugFilter,sfxDetails,
+  SFX_OWNERS,SFX_FAMILIES,
+  type GameSfxCue,type SfxAxis,type SfxOwner,type SfxFamily,type SfxDebugFilters,
+} from "./sfxCatalog.ts";
+export type { GameSfxCue } from "./sfxCatalog.ts";
+
+export type SfxDebugStatus="triggered"|"filtered"|"muted"|"throttled"|"blocked";
+export interface SfxDebugEvent {
+  readonly cue:GameSfxCue;
+  readonly status:SfxDebugStatus;
+  readonly audition:boolean;
+}
 
 /**
  * Original synthesized effects for the shop and the Level 6 boss.
  * Presentation-only, independent from the deterministic combat RNG and save.
  * These are replaceable prototype sounds, not recorded creature foley.
  */
-export type GameSfxCue =
-  "troll-roar" | "troll-breath" | "troll-grunt" | "troll-step" |
-  "hero-step" | "troll-swing" | "troll-impact" | "hero-hurt" |
-  "hero-attack" | "boss-hurt" | "projectile" | "shield-parry" |
-  "dodge" | "stagger" | "heal" | "lava-burn" |
-  "troll-death" | "hero-death" | "rock-crumble";
-
 export interface SoundPosition { readonly x: number; readonly z: number }
 export interface SoundListener extends SoundPosition { readonly yaw: number }
 
@@ -69,6 +75,9 @@ export class GameSfx {
   private inArena = false;
   private variation = 0;
   private readonly last = new Map<GameSfxCue, number>();
+  private previewDebug = false;
+  private debugFilters:SfxDebugFilters=blankSfxDebugFilters();
+  private debugObserver:((event:SfxDebugEvent)=>void)|null=null;
 
   constructor() {
     const pref = loadSfxPreferences();
@@ -79,8 +88,8 @@ export class GameSfx {
     this.toggle.addEventListener("click", () => {
       this.enabled = !this.enabled;
       this.persist();
-      if (!this.enabled) this.stopAmbient();
-      else { this.unlock(); if (this.inArena) this.beginAmbient(); }
+      if (this.enabled) this.unlock();
+      this.syncAmbient();
       this.render();
     });
     this.slider.addEventListener("input", () => {
@@ -88,6 +97,7 @@ export class GameSfx {
       this.persist();
       if (this.enabled && this.volume > 0) this.unlock();
       this.syncMaster();
+      this.syncAmbient();
       this.render();
     });
     const unlock = (event: Event) => {
@@ -103,6 +113,79 @@ export class GameSfx {
 
   get soundEnabled(): boolean { return this.enabled; }
   get soundVolume(): number { return this.volume; }
+  get debugActive():boolean { return this.previewDebug; }
+  get previewFilters():SfxDebugFilters { return this.debugFilters; }
+
+  /** Debug mode is available only inside an unsaved Level 6 training preview.
+   * Filters reset on leaving, so no effect can leak into recorded battles/shop. */
+  setPreviewDebugActive(active:boolean):void {
+    if(this.previewDebug===active)return;
+    this.previewDebug=active;
+    this.debugFilters=blankSfxDebugFilters();
+    this.last.clear();
+    this.syncAmbient();
+  }
+
+  onPreviewCue(callback:((event:SfxDebugEvent)=>void)|null):void {
+    this.debugObserver=callback;
+  }
+
+  togglePreviewGroup(axis:"owner",id:SfxOwner,mode:"solo"|"mute"):void;
+  togglePreviewGroup(axis:"family",id:SfxFamily,mode:"solo"|"mute"):void;
+  togglePreviewGroup(axis:SfxAxis,id:SfxOwner|SfxFamily,mode:"solo"|"mute"):void {
+    if(!this.previewDebug)return;
+    if(axis==="owner"){
+      if(!SFX_OWNERS.some(item=>item.id===id))return;
+      const owner=id as SfxOwner;
+      if(mode==="solo"){
+        this.debugFilters={...this.debugFilters,
+          soloOwner:this.debugFilters.soloOwner===owner?null:owner,
+          mutedOwners:new Set([...this.debugFilters.mutedOwners].filter(item=>item!==owner))};
+      }else{
+        const muted=new Set(this.debugFilters.mutedOwners);
+        if(muted.has(owner))muted.delete(owner);else muted.add(owner);
+        this.debugFilters={...this.debugFilters,mutedOwners:muted,
+          soloOwner:muted.has(owner)&&this.debugFilters.soloOwner===owner
+            ?null:this.debugFilters.soloOwner};
+      }
+    }else{
+      if(!SFX_FAMILIES.some(item=>item.id===id))return;
+      const family=id as SfxFamily;
+      if(mode==="solo"){
+        this.debugFilters={...this.debugFilters,
+          soloFamily:this.debugFilters.soloFamily===family?null:family,
+          mutedFamilies:new Set([...this.debugFilters.mutedFamilies].filter(item=>item!==family))};
+      }else{
+        const muted=new Set(this.debugFilters.mutedFamilies);
+        if(muted.has(family))muted.delete(family);else muted.add(family);
+        this.debugFilters={...this.debugFilters,mutedFamilies:muted,
+          soloFamily:muted.has(family)&&this.debugFilters.soloFamily===family
+            ?null:this.debugFilters.soloFamily};
+      }
+    }
+    this.syncAmbient();
+  }
+
+  resetPreviewMix():void {
+    if(!this.previewDebug)return;
+    this.debugFilters=blankSfxDebugFilters();
+    this.syncAmbient();
+  }
+
+  /** Explicit A/B sample button: bypass temporary preview category filters,
+   * but respect the user's master SFX mute and volume setting. */
+  audition(cue:GameSfxCue):void {
+    if(!this.previewDebug)return;
+    this.play(cue,undefined,undefined,true);
+  }
+
+  private logCue(event:SfxDebugEvent):void {
+    if(this.previewDebug)this.debugObserver?.(event);
+  }
+
+  private passesPreviewMix(owner:SfxOwner,family:SfxFamily):boolean {
+    return !this.previewDebug||passesSfxDebugFilter(owner,family,this.debugFilters);
+  }
 
   private persist(): void {
     try {
@@ -212,16 +295,26 @@ export class GameSfx {
     source.start(at); source.stop(at + duration + 0.02);
   }
 
-  play(cue: GameSfxCue, position?: SoundPosition, listener?: SoundListener): void {
-    if (!this.enabled || this.volume <= 0) return;
+  play(cue: GameSfxCue, position?: SoundPosition, listener?: SoundListener,
+    audition=false): void {
+    const log=(status:SfxDebugStatus)=>
+      this.logCue({cue,status,audition});
+    if (!this.enabled || this.volume <= 0){log("muted");return;}
+    const details=sfxDetails(cue);
+    if(!audition&&!this.passesPreviewMix(details.owner,details.family)){
+      log("filtered");return;
+    }
     const ctx = this.unlock();
-    if (!ctx || ctx.state === "closed") return;
+    if (!ctx || ctx.state === "closed"){log("blocked");return;}
     const now = ctx.currentTime;
     const last = this.last.get(cue) ?? -Infinity;
-    if (now - last < (SPACING[cue] ?? 0.045)) return;
+    if (!audition && now - last < (SPACING[cue] ?? 0.045)){
+      log("throttled");return;
+    }
     this.last.set(cue, now);
     const output = this.route(position, listener);
-    if (!output) return;
+    if (!output){log("blocked");return;}
+    log("triggered");
     const variant = (this.variation++ % 5) - 2;
     const pitch = 1 + variant * 0.035;
     const rumble = (d: number, f = 65, amp = 0.28) =>
@@ -326,7 +419,7 @@ export class GameSfx {
     this.inArena = true;
     this.last.clear();
     this.stopAmbient();
-    this.beginAmbient();
+    this.syncAmbient();
   }
 
   endArena(): void {
@@ -335,8 +428,17 @@ export class GameSfx {
     this.last.clear();
   }
 
+  private syncAmbient():void {
+    if(!this.inArena||!this.enabled||this.volume<=0||
+      !this.passesPreviewMix("world","environment")){
+      this.stopAmbient();return;
+    }
+    this.beginAmbient();
+  }
+
   private beginAmbient(): void {
-    if (!this.inArena || !this.enabled || this.volume <= 0 || this.lavaSource) return;
+    if (!this.inArena || !this.enabled || this.volume <= 0 || this.lavaSource ||
+      !this.passesPreviewMix("world","environment")) return;
     const ctx = this.unlock();
     if (!ctx || !this.master || !this.noiseBuffer) return;
     const source = ctx.createBufferSource();
