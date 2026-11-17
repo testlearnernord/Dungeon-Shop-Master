@@ -22,6 +22,8 @@ export interface BossReplayFrame {
   readonly bh: number;
   readonly lock: number;
   readonly slam: boolean;
+  /** Present only for new grapples; absent in historical v1 replay frames. */
+  readonly attack?: "grab";
   readonly travel: number;
   readonly heroHp: number;
   readonly bossHp: number;
@@ -63,6 +65,7 @@ export function frameFromCombat(s: CombatPreviewState, cues: readonly ArenaCue[]
     bx: rounded(s.boss.x), bz: rounded(s.boss.z),
     hh: rounded(s.heroHeading), bh: rounded(s.bossHeading),
     lock: rounded(s.lockedBossHeading), slam: s.bossSlam,
+    ...(s.bossAttack==="grab"?{attack:"grab" as const}:{}),
     travel: rounded(s.distanceTraveled),
     heroHp: s.heroHp, bossHp: s.bossHp, stamina: rounded(s.stamina),
     heroPhase: s.heroPhase, heroAge: rounded(s.heroAge),
@@ -130,9 +133,9 @@ export function validateBossReplay(value: unknown, path: string,
       replay.frames.length > REPLAY_MAX_FRAMES) invalid("frame count invalid");
   const frames = replay.frames as unknown[];
   let previous = -1;
-  const actor = ["move","roll","parry","attack","cast","heal","hurt","dead"];
-  const boss = ["chase","windup","strike","recover","stagger","dead"];
-  const cueKinds = ["windup","dodge","parry","miss","hit","hero-hit","projectile",
+  const actor = ["move","roll","parry","attack","cast","heal","hurt","grabbed","thrown","dead"];
+  const boss = ["chase","windup","strike","grab","throw","recover","stagger","dead"];
+  const cueKinds = ["windup","dodge","parry","miss","hit","hero-hit","grab","throw","projectile",
     "heal","stagger","lava","victory","defeat"];
   for (let i = 0; i < frames.length; i++) {
     const prefix = "frames[" + i + "]";
@@ -141,7 +144,9 @@ export function validateBossReplay(value: unknown, path: string,
       "heroHp","bossHp","stamina",
       "heroPhase","heroAge","bossPhase","bossAge","projectiles",
       "dodgeCount","parryCount","landedHits","missedHits","cues",
+      ...((frames[i] as Record<string,unknown>)?.attack!==undefined?["attack"]:[]),
     ]);
+    if(frame.attack!==undefined && frame.attack!=="grab") invalid(prefix+" attack invalid");
     const t = num(frame.t,prefix+".t",0,REPLAY_MAX_SECONDS);
     if (t <= previous) invalid(prefix+" time must increase");
     previous=t;
