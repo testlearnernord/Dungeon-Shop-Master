@@ -62,26 +62,32 @@ export function sampleTripoBossPose(
       : { clip: "idle_combat", progress: wrap(input.time, 5), loop: true };
   }
   if (input.attackType === "grab") {
+    // Measured against the 5-second owner-provided source. The LEFT hand
+    // actually reaches forward at source ~2.3-2.6 seconds; contact must
+    // happen THERE, not while the wrist is still against the troll's hip.
     if (input.phase === "windup")
       return {clip:"grab_hero",
-        progress:.04+.16*clamp(input.phaseAge/GRAPPLE_TIMING.windup),loop:false};
+        progress:.06+.34*clamp(input.phaseAge/GRAPPLE_TIMING.windup),loop:false};
     if (input.phase === "grab")
       return {clip:"grab_hero",
-        progress:.20+.46*clamp(input.phaseAge/GRAPPLE_TIMING.grab),loop:false};
+        progress:.40+.28*clamp(input.phaseAge/GRAPPLE_TIMING.grab),loop:false};
     if (input.phase === "grabMiss") {
       // Retract from the actual hand-contact pose instead of abruptly
       // playing the throw animation with empty hands. Smooth reverse scrub.
-      const start=.20+.46*(GRAPPLE_TIMING.grabContact/GRAPPLE_TIMING.grab);
+      const start=.40+.28*(GRAPPLE_TIMING.grabContact/GRAPPLE_TIMING.grab);
       const t=clamp(input.phaseAge/GRAPPLE_TIMING.missRecover);
       const eased=t*t*(3-2*t);
-      return {clip:"grab_hero",progress:start-.12*eased,loop:false};
+      return {clip:"grab_hero",progress:start-.22*eased,loop:false};
     }
+    // The source throwing hand crests overhead around source 1.5s.
+    // Release at that actual pose (~30% of the original 5s clip), then
+    // show the complete follow-through without a second artificial throw.
     if (input.phase === "throw")
       return {clip:"throw_hero",
-        progress:.12+.74*clamp(input.phaseAge/GRAPPLE_TIMING.throw),loop:false};
+        progress:.06+.65*clamp(input.phaseAge/GRAPPLE_TIMING.throw),loop:false};
     if (input.phase === "recover")
       return {clip:"throw_hero",
-        progress:.86+.14*clamp(input.phaseAge/GRAPPLE_TIMING.recover),loop:false};
+        progress:.71+.16*clamp(input.phaseAge/GRAPPLE_TIMING.recover),loop:false};
   }
   const clip = "attack_2h_swing";
   if (input.phase === "windup")
