@@ -516,8 +516,10 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
     s.cues.push({ kind: "defeat" });
   } else if (s.bossHp <= 0) {
     // A projectile can finish the troll during the hold or in mid-flight.
-    if (s.heroPhase==="grabbed") beginHero(s,"move");
-    if (s.heroPhase==="thrown") landThrownHero(s,false);
+    if (s.heroPhase==="grabbed" || s.heroPhase==="thrown") {
+      clampToRadius(s.hero,SAFE_HERO_RADIUS);
+      beginHero(s,"move");
+    }
     s.outcome = "victory"; s.bossPhase = "dead";
     s.cues.push({ kind: "victory" });
   }
