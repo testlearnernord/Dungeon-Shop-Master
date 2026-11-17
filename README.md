@@ -21,8 +21,8 @@ continuously running dungeon simulation.
   furniture contracts, saves, replays and current code ownership.
 - [UI Design System](docs/UI_DESIGN_SYSTEM.md): the compact first-person
   interaction and visual language, including customer service hints.
-- [Development Roadmap](docs/ROADMAP.md): proposed next five PRs, success
-  criteria and deliberately excluded scope.
+- [Development Roadmap](docs/ROADMAP.md): current priorities, the animated
+  Cave Troll asset trial, acceptance criteria and deliberately excluded scope.
 - [Contributor/AI Guide](AGENTS.md): how to begin work and keep these files
   synchronized with the implementation.
 
@@ -192,13 +192,27 @@ The existing Babylon transform rig animates the imported geometry. This is
 
 ## Upcoming development
 
-The register flow (PR #153), restocking ergonomics (#156), customer remarks
-(#157) and music-led boss cinematic (#160) have shipped. The next quality
-gates are real character-art review, meaningful boss combat pacing, legible
-shop-to-dungeon consequences and a measured ten-day balance/playability
-pass. The optional cellar and deeper shop systems remain separately planned,
-not an automatic feature commitment. Check the live [ROADMAP](docs/ROADMAP.md)
-and PR list rather than treating old numbers as reservations.
+The staffed register (#153), physical item assets and stock improvements
+(#154–#156), customer remarks (#157), and the Cave Troll preview, cinematic,
+sculpt and impact presentation (#158–#162) have shipped. The merged #163
+addresses newly generated boss-fight fairness/pacing, opaque sculpt rendering
+and the spectator health/damage HUD. #164 reduced mandatory PR browser
+coverage to six tagged smoke scenarios while keeping the full suite manual.
+
+**Current next experiment, not yet merged:** test a Tripo AI-generated
+animated Cave Troll in the real Level 6 presentation. Another development
+chat is working on it. The current 17-part GLB and Babylon transform rig
+remain the shipped implementation until an actual PR and browser review
+validate an alternative. This one-model trial will determine whether a
+repeatable import/animation pipeline for future monsters or possibly hero
+models is worthwhile; it is **not** proof that such a pipeline already exists.
+
+After the asset test and a short boss playtest, prioritize understandable
+shop-to-dungeon consequences and a measured ten-day shop playthrough.
+Evaluate deeper economics from real playtesting; the optional cellar and
+repairable forge/pond concepts remain unapproved future explorations.
+Check [ROADMAP](docs/ROADMAP.md) and open PRs instead of relying on reserved
+numbers.
 
 
 Illustrations, previous brainstorms and historical conversations are

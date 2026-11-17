@@ -1,41 +1,66 @@
 # Dungeon Shop Master — Next Development Pass
 
-> **Working roadmap, reviewed 2026-11-17.** This is a prioritized,
-> owner-accepted direction. **PR #153 (cashier), #154 (physical
-> merchandise), #155 (runtime GLB loading), #156 (restocking),
-> #157 (customer remarks), #158 (Cave Troll rig) and #159 (Desperate
-> Measures soundtrack) are merged.**
-> Future package numbers are not reserved; GitHub numbers are authoritative.
-> This is **not** a list of completed gameplay changes or final approval
-> of every design detail. Inspect `main`, open PRs and CI before starting.
+> **Current planning reference, reviewed 2026-11-17.** GitHub source,
+> merged PRs and tests define implemented behavior. The merged work through
+> **#164** includes real shop service, customer presentation, the current
+> Cave Troll visual/duel improvements, and leaner PR CI.
+> Future PR numbers are **not reserved**. The next asset experiment is approved
+> for a trial, not already shipped. Check open PRs before starting work.
 
-## Current boss-art delivery and next art gate
+## Current state and the next asset gate
 
-The source-controlled **PR #160** cinematic/locomotion pass is merged:
-13.5-second musical introduction, grounded gait, a clearer hammer windup,
-visual-only animations, real preview/replay synchronization. It does not
-re-resolve fights or modify saved outcomes.
+**CURRENT on `main`:** #160 adds the 13.5-second score-led boss cinematic
+and locomotion, #161 imports the original 17-part vertex-painted
+`ashen-mauler-sculpt.glb` onto the Babylon transform rig, and #162 adds
+grounded impact effects. **#163** fixes the sculpt's alpha/depth rendering,
+makes newly generated boss encounters less vulnerable to lava-edge pathing,
+lengthens fights via actual combat balance, and adds hero/troll HP plates and
+cue-based floating damage/healing numbers. Existing committed battle replays
+remain immutable. Those fixes have been merged; do **not** list them as
+unimplemented tasks.
 
-Merged **PR #161** replaces **17 primitive anatomical surfaces** with an
-original checked-in, vertex-painted **Ashen Mauler GLB mesh set**, generated
-reproducibly using `tools/asset_generation/build_cave_troll.mjs`. These surfaces
-are grafted onto the existing Babylon rig, retaining the proven IK animation,
-cue timing, death, scene cleanup and fallback on asset failure.
+**CURRENT asset limitation:** the repository's generated 17-part GLB is
+still surface geometry driven by the existing runtime transform rig, **not**
+a unified skinned character with imported animation clips. The owner-approved
+Ashen Tunnel Mauler concept remains the visual target, not a claim of final
+in-game model quality. Human visual acceptance is still outstanding.
 
-Merged **PR #162** adds real-hit-time stone shockwaves, debris and impact light (plus grounded body recoil), without changing authoritative hits or the audio clock.
+**NEXT, approved experiment (external work in progress, NOT CURRENT):**
+another development chat is testing a **Tripo AI-generated Cave Troll with
+animations** as an alternative presentation asset in the existing Level 6
+fight. Do not claim it is imported, merged, playable, technically validated,
+or a reusable asset pipeline until the source, PR and browser results prove it.
 
-**Not done:** a cohesive artist-sculpted, skinned character with true
-deforming joints, baked/retargeted animation clips, and final in-game visual
-sign-off against the owner-approved turnaround. The current GLB is a segmented
-mesh improvement, not that full-quality asset. Human screenshot/playtest
-review is necessary before declaring the troll art finished.
+Acceptance of that **one model-pipeline trial** requires:
+- Actual model and animation clips import correctly; no invisible,
+  transparent, incorrectly facing, floating or badly scaled character.
+- Walk/chase, strike and death are readable and consistently driven by the
+  battle's existing authoritative phases. Identify which clips the asset
+  really provides; do not claim missing clips exist.
+- The music-led cinematic, preview, saved replay, hit timing, HP/damage HUD,
+  scene restart and cleanup still work. Never re-resolve saved outcomes,
+  add a second combat controller or change collision/damage just for visuals.
+- A real browser review compares the result with the concept and examines
+  walking, hammer impact, dying and camera framing. Targeted regression
+  covers import/fallback and lifecycle without inflating default PR CI.
+- Record model provenance and permitted use before treating the candidate
+  as a reusable production asset. Keep the previous working implementation
+  recoverable until the new asset is approved.
 
-**Current quality gate:** fix translucent sculpt-depth rendering, eliminate
-AI-assisted lava suicides, make new Level 6 fights long enough for the
-music, and show authoritative world-anchored HP/damage/healing information.
-Measure seeded fight duration and survival before merging. Historical saved
-combat stays immutable. Afterwards prioritize shop-to-dungeon
-consequence feedback and a measured first ten-day playthrough.
+**Decision after the trial:** if it works, evaluate a repeatable import/rig/
+animation process for future monsters and **possibly heroes**. That reuse is
+a goal to investigate, not yet an implemented general system. If it fails,
+keep the existing boss and return to gameplay work without endless sculpt
+micro-iterations.
+
+**After this asset gate:** do a short real-player Level 6 acceptance pass,
+then prioritize **shop-to-dungeon consequence feedback** and **ten-day
+playability/balance** using the existing systems. New shop economics and
+larger excavated areas/cellar activities remain separate, later decisions.
+
+**CI baseline:** merged #164 uses build, unit tests and six tagged
+Playwright PR smoke scenarios. The full browser suite and visual boss
+screenshots run through the manually dispatched regression workflow.
 
 ## Why this sequence
 
@@ -163,6 +188,12 @@ rather than a technically correct but repetitive loop.
 **Acceptance:** Ten-day deterministic progression can be reproduced
 and the player has understandable, consequential choices. Repeated
 campaigns and layouts do not reveal a hard lock or money duplication.
+
+**After measurement, not as an automatic next PR:** consider additional
+meaningful economic choices (investment in stock, furnishings, upgrades,
+eventually staffing) only where the ten-day experience needs them. The
+previously discussed diggable cellar, damaged forge and pond are exploratory
+concepts, not authorized game systems or a committed PR target.
 
 ## Work discipline for every upcoming PR
 

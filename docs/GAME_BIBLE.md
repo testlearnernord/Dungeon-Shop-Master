@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Game Bible
 
-> **Living design reference · reviewed 2026-11-16.** This document describes the currently valid game direction, not a chronological archive. Replace or delete superseded information in the same PR that changes it. Git history preserves previous drafts. The source code and tests, not this document, establish what is playable.
+> **Living design reference · reviewed 2026-11-17.** This document describes the currently valid game direction, not a chronological archive. Replace or delete superseded information in the same PR that changes it. Git history preserves previous drafts. The source code and tests, not this document, establish what is playable.
 
 ## Reading this document
 
@@ -38,7 +38,9 @@ The repository currently implements:
 - Deterministic day-based adventures on Floors 1–4, a Cave Troll encounter on Floor 6 and the shared Floor 7 exploration/replay systems. Later floors are not claimed as playable.
 - **Cave Troll presentation (CURRENT, design LOCKED):** The first boss uses the owner-approved **Ashen Tunnel Mauler** character direction: pale ash-scarred, long-armed, hunched cave brute, ferocious face, rusted twin mining canisters, miner harness and an oversized two-handed iron-bound stone maul. The Level 6 arena renders a real articulated Babylon 3D figure with a miner-cavern set; in both V training preview and saved replay, existing combat phases drive chase gait, windup, slam, stagger, recovery and progressive death posing. The artwork is an approved visual direction, not a promise of photorealistic, hand-sculpted GLB production quality. **Neither the boss motor nor recorded outcomes change** because of visual animation. The visual rig has distance-driven gait, an overhead hammer strike, and **17 original vertex-painted anatomical surfaces sourced from the checked-in `ashen-mauler-sculpt.glb`**: skull, neck, shoulders/back, torso, arms, thighs, shins, feet and stone maul core. The root now faces the hero before the cinematic begins, with the original combat/replay heading unchanged. The face has been lowered and tucked forward beneath a broad humped back, reducing the rounded belly and removing skull horns that read as mechanical props. The current refinement uses densely interpolated, smooth anatomical contours rather than six stacked blocky sections; the ash-grey face sits lower between the shoulders with smaller recessed glowing eyes, nostrils, swept grey scalp/jowl hair and a movable jaw. Rounded layered shoulder armour, curved frayed apron cloth, separately articulated fingers and an irregular stone maul with ring iron bands replace the worst rigid box details. Cooler face fill preserves lava contrast. The maul's existing locked-arc windup brightens progressively; a visual-only stone shockwave, reused flying debris, grounded torso-compression recoil and brief impact light start at the combat motor's actual strike tick (0.14 seconds) and fade naturally through recover in training and committed replay alike. These effects never spawn gameplay projectiles, change a hit or rewrite combat history. On load these replace the original primitive surfaces in-place while all animated limbs, accessory geometry, names and combat state remain under the existing Babylon transform rig. A failed import retains the old geometry and records the failure; browser acceptance explicitly rejects that fallback. **This is a segmented GLB mesh set animated by the existing runtime rig, not a professionally hand-sculpted, skin-weighted character with embedded GLB animation clips.** Visual approval against the accepted concept and a later unified skinned character remain open.
   - **Approved art source:** [Ashen Tunnel Mauler character turnaround and attack concept](assets/ashen-tunnel-mauler-concept.webp). The repository artwork is a *visual target*, not a rigged 3D asset.
-  - **Level 6 combat fairness (CURRENT):** New battles use the same deterministic, recorded 60 Hz duel with safe inward-steering and bounded dodge/knockback destinations, and the reachable molten ledge deals actual limited HP damage rather than an instant kill. Increased boss endurance, longer breathing space between attacks and earlier real heal windows provide a longer fight for *Desperate Measures*. These adjustments do not recompute already saved encounters; their historical boss HP and outcomes remain authentic.\n  - **Level 6 spectator HP / damage HUD (CURRENT):** compact world-anchored health bars over the real hero and Cave Troll; floating numbers only for real recorded/direct combat cues. Gold = hero damaging the boss, red = boss damaging the hero, orange = lava, green = healing. Historical lava events without an actual saved amount display only `LAVA!`, never an invented number. Hidden until the intro ends.\n  - **Boss soundtrack (CURRENT):** The Level 6 Cave Troll preview and recorded boss fights play **Desperate Measures** (female wordless vocals), loaded from `public/audio/desperate-measures.mp3`. The shop retains **The Lean Season** and the dungeon viewer currently retains **Beneath the Surface**. A **13.5-second cinematic introduction** presents the arena, troll, lone hero and boss before playback or training simulation begins on the first musical impact. The camera follows the actual audio playhead where available, falling back to wall time if muted/blocked. Space/Enter skips to the combat downbeat; V/Escape returns to the shop. Audio and cinematic timing never alter combat ticks, persisted events or replay outcomes.
+  - **Level 6 combat fairness (CURRENT):** New battles use the same deterministic, recorded 60 Hz duel with safe inward-steering and bounded dodge/knockback destinations, and the reachable molten ledge deals actual limited HP damage rather than an instant kill. Increased boss endurance, longer breathing space between attacks and earlier real heal windows provide a longer fight for *Desperate Measures*. These adjustments do not recompute already saved encounters; their historical boss HP and outcomes remain authentic.
+  - **Level 6 spectator HP / damage HUD (CURRENT):** compact world-anchored health bars over the real hero and Cave Troll; floating numbers only for real recorded/direct combat cues. Gold = hero damaging the boss, red = boss damaging the hero, orange = lava, green = healing. Historical lava events without an actual saved amount display only `LAVA!`, never an invented number. Hidden until the intro ends.
+  - **Boss soundtrack (CURRENT):** The Level 6 Cave Troll preview and recorded boss fights play **Desperate Measures** (female wordless vocals), loaded from `public/audio/desperate-measures.mp3`. The shop retains **The Lean Season** and the dungeon viewer currently retains **Beneath the Surface**. A **13.5-second cinematic introduction** presents the arena, troll, lone hero and boss before playback or training simulation begins on the first musical impact. The camera follows the actual audio playhead where available, falling back to wall time if muted/blocked. Space/Enter skips to the combat downbeat; V/Escape returns to the shop. Audio and cinematic timing never alter combat ticks, persisted events or replay outcomes.
 - Bed-based day close, four-part merchant ledger (reckoning, receipts, hero chronicle, sealed expedition recordings), and saved replay viewing that does not reroll outcomes.
 - A browser build deployed through GitHub Pages. Desktop distribution and any engine migration remain unapproved possibilities.
 
@@ -92,18 +94,28 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 - Meaningful short- and long-term shop decisions, possible player-controlled pricing (not in the current alpha), upgrades, helpers, money sinks and increasing demand.
 - How exploration, deeper floors and hero progression expand gameplay without requiring 100 hand-built or repetitive levels.
 - How to make early-floor (1–4) deaths observable or replay-backed. These floors currently simulate offscreen, and the ledger no longer showcases their unobserved casualties as a memorial.
+- Whether a successful Tripo AI animated-model test can become a repeatable
+  pipeline for future dungeon monsters and eventually hero models.
 - The long-term art/asset pipeline, optional desktop delivery and commercial release model.
 
 These are questions, not permissions to undertake a large rewrite.
 
-**Approved direction for the next development pass (not yet implemented):**
-improve the existing staffed cashier, physical stocking ergonomics, short
-customer reactions, observable shop-to-dungeon consequences and ten-day
-balance/testing, in that order. These five *unimplemented* work packages
-and their acceptance criteria are in [ROADMAP.md](ROADMAP.md); their
-future GitHub PR numbers are not reserved. This sequence does **not**
-approve an always-running simulation, automatic merchant labor, a new
-protagonist or a definitive curse backstory.
+**Approved near-term sequence (implementation is separately verified):**
+The staffed cashier, physical stocking improvements and short customer
+reactions are already implemented. The owner now wants **one trial** of an
+externally generated, animated **Tripo AI Cave Troll** integrated into the
+existing Level 6 fight. This work is being handled separately and is **not**
+CURRENT until merged and verified in the game. It does not automatically
+approve a general model pipeline, an engine change or additional bosses.
+The current rigged-by-code GLB stays the documented implemented baseline.
+
+After that trial, prioritize visual/gameplay acceptance of the boss,
+observable shop-to-dungeon consequences and a measured ten-day playthrough.
+Future economic improvements and a potentially excavated basement/forge/pond
+are still design discussions rather than implemented features. See the
+working [ROADMAP.md](ROADMAP.md). No always-running simulation,
+automatic merchant labor, new protagonist or definitive curse backstory has
+been approved by this priority change.
 
 ## 6. Explicit exclusions (REJECTED)
 
