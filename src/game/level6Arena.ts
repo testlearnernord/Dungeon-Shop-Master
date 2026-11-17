@@ -301,29 +301,38 @@ export class Level6Arena {
     this.sourceToggle.hidden = !saved;
     this.sourceToggle.textContent = this.replay ? "Preview current expedition" : "Watch last saved combat";
     this.panel.dataset.replay = this.replay ? "recorded" : "preview";
-    this.fighter = (this.replay
-      ? state.adventurers.find(hero => hero.id === this.replay!.heroId)
-      : null) ??
-      state.adventurers.find(hero => hero.status === "expedition") ??
-      state.adventurers.find(hero => hero.status === "at-shop") ??
-      state.adventurers.find(hero => hero.status !== "dead") ?? null;
+    this.fighter = this.replay
+      ? state.adventurers.find(hero => hero.id === this.replay!.heroId) ?? null
+      : state.adventurers.find(hero => hero.status === "expedition") ?? null;
+    const realExpedition = !this.replay && this.fighter?.status === "expedition";
+    // Presentation-only sparring partner: never enters GameStore or replays.
+    this.training = !this.replay && !realExpedition ? nextBossTrainingScenario() : null;
+    this.panel.dataset.trainingScenario=this.training?.id??"";
     this.motion = createCombatPreview({
-      role: this.replay?.role ?? this.fighter?.role ?? "tank",
-      sword: this.replay?.sword ?? (this.fighter?.equipment.weapon === "Iron Sword"),
-      armor: this.replay?.armor ?? (this.fighter?.equipment.armor === "Leather Vest"),
-      health: this.replay?.frames[0].heroHp ?? this.fighter?.health ?? 45,
-      maxHealth: this.replay?.maxHp ?? this.fighter?.stats.maxHealth ?? 50,
-      healingSupplies: this.fighter?.inventory.healing ?? 0,
+      role: this.replay?.role ?? this.training?.options.role ?? this.fighter?.role ?? "tank",
+      sword: this.replay?.sword ?? this.training?.options.sword ??
+        (this.fighter?.equipment.weapon === "Iron Sword"),
+      armor: this.replay?.armor ?? this.training?.options.armor ??
+        (this.fighter?.equipment.armor === "Leather Vest"),
+      health: this.replay?.frames[0].heroHp ?? this.training?.options.health ??
+        this.fighter?.health ?? 45,
+      maxHealth: this.replay?.maxHp ?? this.training?.options.maxHealth ??
+        this.fighter?.stats.maxHealth ?? 50,
+      healingSupplies: this.training?.options.healingSupplies ?? this.fighter?.inventory.healing ?? 0,
+      strength: this.training?.options.strength,
+      agility: this.training?.options.agility,
+      intellect: this.training?.options.intellect,
+      tacticsSeed: this.training?.options.tacticsSeed,
     });
     if (this.replay) this.applyReplayFrame(this.replay.frames[0]);
-    const realExpedition = this.fighter?.status === "expedition";
     const names = heroDisplayNames(state.adventurers);
     this.previewText.textContent = this.replay
       ? "RECORDED COMBAT · Day " + this.replay.day + " · " + this.replay.outcome +
         " · Exact saved fight, no additional damage or rewards."
       : realExpedition
         ? "EXPEDITION PREVIEW · Uncommitted training only. Confirm the day to record the real fight."
-        : "TRAINING PREVIEW · No hero on Level 6. This duel changes no saved state.";
+        : "TRAINING PREVIEW · " + this.training?.label +
+          " · New sparring match each restart. No saved gameplay changes.";
     const scene = new Scene(this.engine);
     scene.clearColor = new Color4(0.045, 0.035, 0.043, 1);
     this.scene = scene;
@@ -360,9 +369,11 @@ export class Level6Arena {
     lava.emissiveColor = Color3.FromHexString("#aa3318").scale(.34);
     const fire = makeMat("lava-fire", "#965632");
     paintCaveTrollFloor(scene,stone);
-    const visibleRole = this.replay?.role ?? this.fighter?.role;
-    const visibleSword = this.replay?.sword ?? (this.fighter?.equipment.weapon === "Iron Sword");
-    const visibleArmor = this.replay?.armor ?? (this.fighter?.equipment.armor === "Leather Vest");
+    const visibleRole = this.replay?.role ?? this.training?.options.role ?? this.fighter?.role;
+    const visibleSword = this.replay?.sword ?? this.training?.options.sword ??
+      (this.fighter?.equipment.weapon === "Iron Sword");
+    const visibleArmor = this.replay?.armor ?? this.training?.options.armor ??
+      (this.fighter?.equipment.armor === "Leather Vest");
     const platform = MeshBuilder.CreateCylinder("boss-arena-stone", {
       diameter: ROCK_RADIUS * 2, height: 0.65, tessellation: 96,
     }, scene);
@@ -452,7 +463,7 @@ export class Level6Arena {
 
     // The same geometry/identity factory is used by shop NPCs and future dungeons.
     // Recorded battles use their own historical gear snapshot, not today's gear.
-    const heroId = this.replay?.heroId ?? this.fighter?.id ?? "preview";
+    const heroId = this.replay?.heroId ?? this.training?.id ?? this.fighter?.id ?? "preview";
     const heroModel = createHeroVisual(scene, {
       id: heroId,
       role: visibleRole ?? "tank",
@@ -495,9 +506,9 @@ export class Level6Arena {
     };
     this.telegraph = createWarning("boss-active-attack-warning", false);
     this.slamTelegraph = createWarning("boss-slam-attack-warning", true);
-    const displayName = this.fighter ? names.get(this.fighter.id) ?? this.fighter.name : "Preview Hero";
+    const displayName = this.training?.label ?? (this.fighter ? names.get(this.fighter.id) ?? this.fighter.name : "Preview Hero");
     this.targets = [
-      { label: displayName + " · " + (this.fighter?.role ?? "tank"), node: hero,
+      { label: displayName + " · " + (visibleRole ?? "tank"), node: hero,
         vantage: new Vector3(4, 5, -8) },
       { label: "THE CAVE TROLL · BOSS", node: boss, vantage: new Vector3(5.5, 5.3, -7.0) },
     ];
