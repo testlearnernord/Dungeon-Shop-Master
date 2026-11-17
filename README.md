@@ -92,6 +92,7 @@ need human game testing. Shop remarks never alter sales or dungeon outcomes.
 | U | Mining mode; Shift+U is an alpha expansion-tier development control |
 | R (outside placement) | Adventurer roster |
 | V / G | Level 6 arena (13.5s music-led intro) / Level 7 dungeon viewer |
+| V with old footage available | Opens a fresh preview by default; use C / the spectator source button for saved footage. Opening a specific Ledger recording still shows that recording directly. |
 | Inspect Tripo GLB (inside Level 6) | Open a local-only model lab: select a rigged `.glb`, orbit/zoom and choose any embedded animation; Esc returns to the battle. Training-only fights with no authorized hero randomize on each restart. Saved replays never reroll. |
 | Space / Enter (during Level 6 intro) | Skip the cinematic and seek Desperate Measures to the 13.5s combat downbeat; V / Esc still returns to the shop |
 | M | Toggle mouse/HUD cursor mode |
