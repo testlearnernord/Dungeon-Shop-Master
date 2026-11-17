@@ -81,7 +81,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   spine.position.set(0,2.62,0);
   const head=new TransformNode("troll-rig-head",scene);
   head.parent=spine;
-  head.position.set(0,2.47,1.02); // low-set face under the heavy shoulder hump
+  head.position.set(0,1.98,1.10); // tucked beneath the shoulder hump, thrust forward
   // The mouth is a real sub-joint, not a flattened animation decal.
   const jaw=new TransformNode("troll-rig-jaw",scene);
   jaw.parent=head;
@@ -233,10 +233,10 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   };
   // The body is broad and deeply hunched, with three overlapping sculpted
   // masses rather than the former orange ball. Its material is ash-grey.
-  sculpt(sphere("barrel-torso",spine,[0,1.06,-.38],[3.62,3.18,2.29],skin,28),5,.095);
-  sculpt(sphere("bent-upper-back",spine,[0,1.90,-.62],[4.19,2.79,2.66],shadowSkin,22),12,.115);
-  sculpt(sphere("belly",spine,[0,.41,.23],[2.22,1.56,1.72],skin,20),19,.084);
-  sculpt(sphere("neck",spine,[0,2.58,.40],[1.90,1.19,1.55],shadowSkin),8,.095);
+  sculpt(sphere("barrel-torso",spine,[0,1.06,-.38],[3.48,3.12,2.25],skin,28),5,.055);
+  sculpt(sphere("bent-upper-back",spine,[0,1.90,-.62],[4.45,2.90,2.70],shadowSkin,26),12,.055);
+  sculpt(sphere("belly",spine,[0,.38,.18],[1.98,1.45,1.56],skin,24),19,.055);
+  sculpt(sphere("neck",spine,[0,1.98,.64],[1.82,1.34,1.48],shadowSkin,24),8,.045);
   // Underbelly leather belt and three torn cloth plates, all dimensional.
   cylinder("waist-belt",spine,[0,-.12,0],1.42,.23,darkLeather,15).scaling.z=.81;
   const apronPanels:Mesh[]=[];
@@ -296,18 +296,16 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
       [.035,.22+(i%3)*.045,.032],scar);
     m.rotation.z=.35+i*.13;
   }
-  // Broken stone growth around brow and neck prevents a symmetrical toy face:
-  // angular jagged plates form a hostile cave-dweller silhouette.
+  // Taut cheek tendons and a rough, asymmetrical brow replace the old
+  // protruding brow blocks and bone horns that made the face mechanical.
   for(const side of [-1,1]){
-    const browRidge=block("brow-stone-ridge-"+side,head,
-      [side*.57,.60,.96],[.59,.14,.24],shadowSkin);
-    browRidge.rotation.z=side*.26;
+    const browRidge=sphere("brow-bone-"+side,head,
+      [side*.57,.56,.86],[.55,.13,.24],shadowSkin,20);
+    browRidge.rotation.z=side*.23;
     const jawTendon=sphere("cheek-tendon-"+side,head,
       [side*.65,-.48,.50],[.28,.53,.42],shadowSkin,12);
     jawTendon.rotation.z=side*.35;
-    const horn=cone("temple-bone-spur-"+side,head,
-      [side*.88,.61,.25],.17,.48,bone);
-    horn.rotation.z=side*.85;
+    // Pointed ears and swept fur provide the silhouette: no extra horns.
   }
   for(let i=0;i<7;i++){
     const x=(i%4-1.5)*.41;
@@ -355,7 +353,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const mountCan=new TransformNode("troll-canister-rig-"+side,scene);
     canisterRigs.push({side,rig:mountCan});
     mountCan.parent=spine;
-    mountCan.position.set(side*1.20,4.08,-.46);
+    mountCan.position.set(side*1.20,3.74,-.54);
     mountCan.rotation.z=side*.32;
     mountCan.rotation.x=1.0;
     cylinder("canister-body-"+side,mountCan,[0,0,0],.40,1.72,rust,14);
@@ -371,7 +369,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     }
     cylinder("canister-center-hole-"+side,mountCan,[0,.87,0],.08,.03,ember);
     const anchor=block("canister-buckle-"+side,spine,
-      [side*1.20,3.32,-.56],[.54,.19,.72],leather);
+      [side*1.20,3.02,-.63],[.54,.19,.72],leather);
     anchor.rotation.z=side*.19;
   }
   // Three-dimensional overlapping rust plates on shoulders/back.
