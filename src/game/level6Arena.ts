@@ -734,7 +734,8 @@ export class Level6Arena {
     while (this.replayFrameIndex + 1 < frames.length &&
       frames[this.replayFrameIndex+1].t <= this.replayTime) {
       this.replayFrameIndex++;
-      for (const cue of frames[this.replayFrameIndex].cues) this.displayCue(cue);
+      for (const cue of frames[this.replayFrameIndex].cues)
+        this.displayCue(cue,frames[this.replayFrameIndex]);
     }
     const current = frames[this.replayFrameIndex];
     const next = frames[Math.min(this.replayFrameIndex+1,frames.length-1)];
@@ -768,7 +769,7 @@ export class Level6Arena {
     this.paintCombat(dt);
   }
 
-  private displayCue(cue: ArenaCue): void {
+  private displayCue(cue: ArenaCue, frame?: BossReplayFrame): void {
     const value = cue.amount === undefined ? "" : " (" + cue.amount + " HP)";
     const messages: Record<ArenaCue["kind"], string> = {
       windup: "TROLL WINDUP · Dodge the glowing attack lane!",
@@ -788,8 +789,13 @@ export class Level6Arena {
     };
     this.status.textContent = messages[cue.kind];
     if(this.motion){
-      this.sfx?.playCombatCue(cue,this.motion.hero,this.motion.boss,
-        this.soundListener(),this.motion.bossPhase==="strike");
+      // Replay audio uses the actual saved cue frame for origin/phase, not
+      // the previous frame which has not yet been applied for presentation.
+      const hero=frame?{x:frame.hx,z:frame.hz}:this.motion.hero;
+      const boss=frame?{x:frame.bx,z:frame.bz}:this.motion.boss;
+      const bossPhase=frame?.bossPhase??this.motion.bossPhase;
+      this.sfx?.playCombatCue(cue,hero,boss,this.soundListener(),
+        bossPhase==="strike");
       this.worldHud.pushCue(cue,this.motion);
     }
   }

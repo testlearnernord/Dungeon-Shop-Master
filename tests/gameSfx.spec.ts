@@ -24,6 +24,8 @@ test("independent SFX mute and volume survive reload and boss viewer lifecycle",
   await expect(page.locator("#arena-cinematic")).toBeVisible();
   await page.locator("#sfx-toggle").click();
   await expect(page.locator("#sfx-toggle")).toHaveText("SFX on");
+  // Arena shortcuts intentionally ignore focused audio controls.
+  await page.locator("#sfx-toggle").evaluate((button: HTMLButtonElement) => button.blur());
   await page.keyboard.press("Space");
   await expect(page.locator("#arena-cinematic")).toBeHidden();
   await page.locator("#restart-arena").click();
