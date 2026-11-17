@@ -32,6 +32,8 @@ export interface CaveTrollAnimation {
   phase: BossPhase;
   phaseAge: number;
   slam: boolean;
+  /** Visual selection only. Committed replay frames provide the same value. */
+  attackType?: "smash" | "slam" | "grab";
   time: number;
   moved: number;
   delta: number;
@@ -578,6 +580,21 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
         hammerX=lerp(-.20,.12,strike);
         hammerLift=lerp(.64,-.39,strike);
         hammerReach=.51*strike;
+        break;
+      }
+      case "grab":{
+        const t=ease(a.phaseAge/.80);
+        pitch=-.34;
+        hammerZ=-.55-t*.27;
+        hammerReach=.35+t*.20;
+        hammerLift=.22;
+        break;
+      }
+      case "throw":{
+        const t=ease(a.phaseAge/.75);
+        pitch=lerp(-.34,.20,t);
+        hammerZ=lerp(-.78,.82,t);
+        hammerReach=.55*(1-t);
         break;
       }
       case "recover":{
