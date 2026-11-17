@@ -123,7 +123,7 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
 });
 
 
-test("experimental Tripo boss uses live Level 6 motor while preserving the original",async({page})=>{
+test("experimental Tripo boss uses live Level 6 motor while preserving the original @ci-smoke",async({page})=>{
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
