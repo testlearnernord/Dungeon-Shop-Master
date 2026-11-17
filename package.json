@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node tools/asset_generation/merge_tripo_grab_throw.mjs",
     "dev": "vite",
+    "prebuild": "node tools/asset_generation/merge_tripo_grab_throw.mjs",
     "build": "tsc -b && vite build",
     "test": "playwright test",
     "test:smoke": "playwright test --grep @ci-smoke",
