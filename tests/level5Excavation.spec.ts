@@ -87,7 +87,7 @@ test("unlock, mine exposed rock and keep the opening after reloading",async({pag
   expect(errors).toEqual([]);
 });
 
-test("N builds then P moves the first compact shelf onto excavated floor",async({page})=>{
+test("N builds then P moves the first compact shelf onto excavated floor @ci-smoke",async({page})=>{
   test.setTimeout(120000);
   await page.goto("./");
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");

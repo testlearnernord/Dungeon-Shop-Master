@@ -24,7 +24,7 @@ async function stampAtMarker(page:import("@playwright/test").Page):Promise<boole
   });
 }
 
-test("the register verifies goods, seals receipt and only then transfers gold",async({page})=>{
+test("the register verifies goods, seals receipt and only then transfers gold @ci-smoke",async({page})=>{
   const errors:string[]=[];
   page.on("pageerror",e=>errors.push(e.message));
   await page.goto("./");

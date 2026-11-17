@@ -68,7 +68,7 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 ## 5. Verification and delivery
 
 - Local setup: `npm ci`, `npm run build`, `npm run test:unit`; browser tests use `npm test`. Node requirements and active scripts are described in [README](../README.md).
-- Pull-request CI builds the project, runs the unit suite and the existing small set of **five essential Playwright smoke specs**, including physical GLB stock: day clock, cashier receipt, Level 5 excavation and shopper flow. The full Playwright regression is manually runnable via the separate GitHub Actions workflow.
+- Pull-request CI builds the project, runs the entire quick Node unit suite and **six explicit `@ci-smoke` browser scenarios**, not entire Playwright spec files: day/ledger, cashier settlement, shelf build/placement on mined floor, persisted GLB stock, one relocated-register shopper route, and the Level 6 music-led intro. This keeps the blocking browser gate short; the high-cost crowd simulations and full boss/art checks remain available through the manually dispatched full-browser workflow. Successful boss preview screenshots are uploaded by that manual workflow, not each PR.
 - Add **focused tests** for affected invariants. Do not expand default CI just to increase the test count; keep browser checks targeted.
 - Build/test pass is necessary for code changes; documentation-only edits still receive the repository's configured PR checks. Never claim a check was run if it was not.
 - GitHub Pages deploys merged `main`. Verify deployment separately from the PR CI run.

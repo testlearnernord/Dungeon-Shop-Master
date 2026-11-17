@@ -127,7 +127,8 @@ npm run dev
 npm run build
 npm run test:unit
 npx playwright install chromium
-npm test
+npm run test:smoke  # six fast PR browser smoke scenarios
+npm test            # complete Playwright regression
 ```
 
 The project uses `npm run build` for the TypeScript/Vite production build,
@@ -136,12 +137,17 @@ Playwright's test runner may need a display or `xvfb-run` on headless Linux.
 
 ### GitHub workflows
 
-- **CI** on pull requests into `main`: build, unit tests and seven selected
-  Playwright specs (`dayClock`, `cashierReceipt`, `level5Excavation`,
-  `shopperFlowReliability`, `physicalShopStock`, `ashenTrollPreview`,
-  `soundtrack`). Each spec can contain multiple browser tests.
-- **Full browser regression**: manually dispatched GitHub Actions workflow,
-  not the default PR run.
+- **CI** on pull requests into `main`: production build, all unit tests,
+  and exactly six explicitly tagged `@ci-smoke` Playwright scenarios:
+  bed-based day closure and ledger, real cashier settlement, N/P shelf
+  placement on excavated floor, saved physical shop stock, a shopper's
+  path to a relocated register, and Level 6 intro/music handoff. Run them
+  locally with `npm run test:smoke`. Heavy multi-customer simulations and
+  complete boss visuals are **not** part of the automatic PR checks.
+- **Full browser regression**: manually dispatched GitHub Actions workflow
+  running `npm test` (all browser tests, including smoke scenarios).
+  Successful boss-training screenshots are uploaded here instead of on
+  every PR; browser failure diagnostics are still uploaded on failure.
 - **Deploy to GitHub Pages**: triggered by pushes to `main`. A green PR
   build is not proof that Pages has finished deploying; check its workflow.
 

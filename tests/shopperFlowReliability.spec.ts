@@ -2,7 +2,7 @@ import {expect,test} from "@playwright/test";
 
 /** Exercises arrival at the relocated cash register without bypassing NPC
  * pathfinding or marking a payment in the save. */
-test("a single buyer can reach and request service at a rotated register",async({page})=>{
+test("a single buyer can reach and request service at a rotated register @ci-smoke",async({page})=>{
   test.setTimeout(100000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));

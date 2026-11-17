@@ -123,7 +123,7 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
 });
 
 
-test("a playing Desperate Measures playhead starts the duel on its 13.5s drop",async({page})=>{
+test("a playing Desperate Measures playhead starts the duel on its 13.5s drop @ci-smoke",async({page})=>{
   await page.addInitScript(()=>{
     const state=(element:HTMLMediaElement)=>
       element as HTMLMediaElement&{__playhead?:number;__paused?:boolean};
