@@ -52,7 +52,7 @@ export async function applyCaveTrollSculpt(
       // Blended meshes skip ordinary depth writing and can reveal internal
       // limbs / backfaces through the body: the player's "transparent troll".
       // Preserve RGB vertex paint, but use the opaque render queue and depth.
-      target.hasVertexColors = true;
+      target.useVertexColors = true;
       target.hasVertexAlpha = false;
       const material = target.material;
       if (material) {
