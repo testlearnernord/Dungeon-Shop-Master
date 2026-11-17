@@ -25,7 +25,7 @@ test("Cave Troll sculpt is a complete independent 17-part GLB with original vert
   assert.equal(doc.scenes[0].nodes.length, expected.length);
   for (const mesh of doc.meshes) {
     const primitive = mesh.primitives[0];
-    assert.ok(doc.accessors[primitive.attributes.POSITION].count > 120,
+    assert.ok(doc.accessors[primitive.attributes.POSITION].count > 500,
       mesh.name + " has a volumetric anatomical surface");
     assert.ok(doc.accessors[primitive.indices].count > 250,
       mesh.name + " has actual triangles");
