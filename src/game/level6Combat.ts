@@ -2,6 +2,7 @@ import type { AdventurerState } from "./adventurers.ts";
 import type { WorldEvent } from "./gameState.ts";
 import { SeededRandom } from "./random.ts";
 import { resolveSpatialBoss } from "./bossCombatReplay.ts";
+import { BOSS_MAX_HP } from "./arenaCombatMotion.ts";
 
 export type Level6CombatOutcome = "victory" | "retreat" | "death";
 export type CombatActionKind = "approach" | "attack" | "ranged" | "windup" |
@@ -62,7 +63,7 @@ export function simulateLevel6Combat(
   };
   const actions: BossCombatAction[] = [{
     round: 0, actor: "hero", kind: "approach",
-    heroHp: hero.health, bossHp: 145, edgeDistance: 7,
+    heroHp: hero.health, bossHp: BOSS_MAX_HP, edgeDistance: 7,
   }];
   let round = 0;
   for (const frame of replay.frames) {
@@ -91,7 +92,7 @@ export function simulateLevel6Combat(
     type: "level6-combat", combatOutcome: outcome, day, adventurerId: hero.id,
     combatReplay: replay,
     message: hero.name + " faced the Cave Troll (Level 6, spatial combat): " + outcome +
-      ". Hero HP " + hero.health + "→" + final.heroHp + ", troll 145→" + final.bossHp +
+      ". Hero HP " + hero.health + "→" + final.heroHp + ", troll " + BOSS_MAX_HP + "→" + final.bossHp +
       "; " + actions.length + " recorded actions; XP +" + xpGain +
       ", gold +" + goldGain + ", loot +" + lootGain + ".",
   }];
