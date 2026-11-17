@@ -39,6 +39,9 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   await page.keyboard.press("Space");
   await expect(page.locator("#arena-cinematic")).toBeHidden();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-intro","false");
+  await expect(page.locator("#arena-world-hud")).toBeVisible();
+  await expect(page.locator("#arena-hero-bar-label")).toContainText("HERO");
+  await expect(page.locator("#arena-boss-bar-label")).toContainText("CAVE TROLL");
   expect((await inspect()).bossFacingHero).toBeGreaterThan(.98);
   // Pose must be produced by the real preview motor, not by a static loop.
   await expect.poll(async()=> (await inspect()).bossPhase,
