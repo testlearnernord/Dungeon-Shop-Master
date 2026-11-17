@@ -140,7 +140,7 @@ test("experimental Tripo boss uses live Level 6 motor while preserving the origi
   const imported=await inspect();
   expect(imported.trollVisualId).toBe("ashen-tunnel-mauler-tripo");
   expect(imported.tripoBoneCount).toBe(65);
-  expect(imported.tripoClipCount).toBe(12);
+  expect(imported.tripoClipCount).toBe(14);
   expect(imported.tripoFacingCorrectionRadians).toBe(0);
   expect(imported.tripoWeaponMeshCount).toBe(0);
   expect(imported.tripoWeaponMode).toBe("unarmed");
