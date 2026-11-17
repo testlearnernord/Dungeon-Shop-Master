@@ -8,9 +8,10 @@ import "@babylonjs/loaders/glTF/2.0";
 import { createCaveTrollVisual, type CaveTrollVisual, type CaveTrollAnimation } from "./caveTrollVisual.ts";
 import { sampleTripoBossPose, sampleTripoFade, sampleTripoTurnStride, TRIPO_FADE_SECONDS, type TripoClip, type TripoLocomotion } from "./tripoBossMotion.ts";
 
-const MODEL = "assets/models/ashen-tunnel-mauler-tripo.glb";
+const MODEL = "assets/models/ashen-tunnel-mauler-tripo-combat.glb";
 const REQUIRED_CLIPS: readonly TripoClip[] = [
   "idle_combat", "walk_heavy", "attack_2h_swing", "stagger", "roar", "death_fall",
+  "grab_hero", "throw_hero",
 ];
 
 type TripoBlend = { from: AnimationGroup; frame: number; elapsed: number };
