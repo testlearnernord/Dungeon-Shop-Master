@@ -37,6 +37,8 @@ Measure seeded fight duration and survival before merging. Historical saved
 combat stays immutable. Afterwards prioritize shop-to-dungeon
 consequence feedback and a measured first ten-day playthrough.
 
+**Current model experiment:** A Level 6 in-game model lab now allows local inspection of an exported Tripo `.glb` and its embedded animation clips without checking a private/bulky asset into the game. Training previews with no assigned Floor 6 hero rotate fictional fighter builds and tactics per restart. This does not integrate the new model into the actual bossfight. The next visual gate is evaluating the real rigged Tripo asset's 20 clips (foot planting, shoulders, armor, attacks, fall), selecting usable ones, and building an optimized, licensed runtime asset before swapping the shipped troll. Actual recorded fights remain immutable.
+
 ## Why this sequence
 
 The alpha has one shop, real movable furniture and excavation, autonomous
