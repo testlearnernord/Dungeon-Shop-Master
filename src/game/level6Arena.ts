@@ -26,6 +26,8 @@ import { buildCaveTrollArenaArt, paintCaveTrollFloor } from "./caveTrollArenaArt
 import { BOSS_INTRO_SECONDS, sampleBossIntro } from "./bossCinematic.ts";
 import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 import { BossCombatHud } from "./bossCombatHud.ts";
+import { BossModelLab } from "./bossModelLab.ts";
+import { nextBossTrainingScenario, type BossTrainingScenario } from "./bossTrainingScenario.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -52,6 +54,10 @@ export class Level6Arena {
   private replayFrameIndex = 0;
   private replayFinished = false;
   private forcePreview = false;
+  private training: BossTrainingScenario | null = null;
+  private modelLab: BossModelLab | null = null;
+  private readonly modelPanel: HTMLElement;
+  private readonly modelToggle: HTMLButtonElement;
   private readonly sourceToggle: HTMLButtonElement;
   private motionAccumulator = 0;
   private heroArm: TransformNode | null = null;
@@ -106,6 +112,9 @@ export class Level6Arena {
     this.staminaText = document.querySelector<HTMLElement>("#arena-stamina")!;
     this.combatInfo = document.querySelector<HTMLElement>("#arena-combat-info")!;
     this.sourceToggle = document.querySelector<HTMLButtonElement>("#arena-source-toggle")!;
+    this.modelPanel = document.querySelector<HTMLElement>("#arena-model-panel")!;
+    this.modelToggle = document.querySelector<HTMLButtonElement>("#arena-model-toggle")!;
+    this.modelToggle.addEventListener("click",()=>this.toggleModelLab());
     this.sourceToggle.addEventListener("click", () => {
       this.toggleSource();
     });
@@ -125,6 +134,14 @@ export class Level6Arena {
         }
         return;
       }
+      if(this.modelLab){
+        if(event.code==="Escape"||event.code==="KeyV"){
+          event.preventDefault();event.stopImmediatePropagation();
+          if(event.code==="Escape")this.toggleModelLab();
+          else this.close();
+        }
+        return;
+      }
       if (event.target instanceof Element && event.target.closest("#music-panel")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -141,7 +158,7 @@ export class Level6Arena {
       else this.pressed.add(event.code);
     }, true);
     window.addEventListener("keyup", (event) => {
-      if (!this.active) return;
+      if (!this.active || this.modelLab) return;
       if (event.target instanceof Element && event.target.closest("#music-panel")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -149,14 +166,14 @@ export class Level6Arena {
     }, true);
     window.addEventListener("blur", () => this.pressed.clear());
     canvas.addEventListener("pointerdown", (event) => {
-      if (!this.active) return;
+      if (!this.active || this.modelLab) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if(this.introActive)return;
       if (document.pointerLockElement !== canvas) void canvas.requestPointerLock();
     }, true);
     document.addEventListener("mousemove", (event) => {
-      if (!this.active || this.introActive ||
+      if (!this.active || this.modelLab || this.introActive ||
           document.pointerLockElement !== canvas || !this.camera) return;
       this.camera.rotation.y += event.movementX / 2700;
       this.camera.rotation.x = Math.max(-1.45, Math.min(1.45,
@@ -164,23 +181,51 @@ export class Level6Arena {
     }, true);
   }
 
-  get currentScene(): Scene | null { return this.active ? this.scene : null; }
+  get currentScene(): Scene | null { return this.active ? (this.modelLab?.scene ?? this.scene) : null; }
   get isActive(): boolean { return this.active; }
 
   private toggleSource(): void {
+    if(this.modelLab)return;
     this.forcePreview = !this.forcePreview;
     this.restart();
+  }
+
+  private toggleModelLab():void {
+    if(!this.active)return;
+    if(this.modelLab){
+      this.modelLab.dispose();
+      this.modelLab=null;
+      this.modelPanel.hidden=true;
+      this.panel.dataset.modelViewer="false";
+      this.modelToggle.textContent="Inspect Tripo GLB";
+      this.restart(); // reset presentation, preserve recorded source unchanged
+      return;
+    }
+    if(document.pointerLockElement)void document.exitPointerLock();
+    this.introActive=false;
+    this.cinematic.hidden=true;
+    this.panel.dataset.intro="false";
+    this.worldHud.reset();
+    this.pressed.clear();
+    this.modelPanel.hidden=false;
+    this.panel.dataset.modelViewer="true";
+    this.modelToggle.textContent="Return to battle";
+    this.modelLab=new BossModelLab(this.engine,this.canvas,this.modelPanel);
   }
 
   open(eventId?: string): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("dungeon-active")) return;
     this.requestedReplayId=eventId??null;
+    this.modelPanel.hidden=true;
+    this.panel.dataset.modelViewer="false";
     this.shopCamera.detachControl();
     if (document.pointerLockElement) void document.exitPointerLock();
     this.active = true;
     this.onActiveChange(true);
-    this.forcePreview = false;
+    // V always opens a fresh practice duel. Explicit ledger footage opens
+    // the immutable saved recording; the C control switches either way.
+    this.forcePreview = !eventId;
     this.pressed.clear();
     this.panel.hidden = false;
     document.body.classList.add("arena-active");
@@ -190,6 +235,11 @@ export class Level6Arena {
   close(): void {
     if (!this.active) return;
     this.active = false;
+    this.modelLab?.dispose();
+    this.modelLab=null;
+    this.modelPanel.hidden=true;
+    this.panel.dataset.modelViewer="false";
+    this.modelToggle.textContent="Inspect Tripo GLB";
     this.introActive=false;
     this.worldHud.reset();
     this.cinematic.hidden=true;
@@ -221,7 +271,7 @@ export class Level6Arena {
   }
 
   restart(): void {
-    if (!this.active) return;
+    if (!this.active || this.modelLab) return;
     this.scene?.dispose();
     this.worldHud.reset();
     this.heroLegs = [];
@@ -253,29 +303,38 @@ export class Level6Arena {
     this.sourceToggle.hidden = !saved;
     this.sourceToggle.textContent = this.replay ? "Preview current expedition" : "Watch last saved combat";
     this.panel.dataset.replay = this.replay ? "recorded" : "preview";
-    this.fighter = (this.replay
-      ? state.adventurers.find(hero => hero.id === this.replay!.heroId)
-      : null) ??
-      state.adventurers.find(hero => hero.status === "expedition") ??
-      state.adventurers.find(hero => hero.status === "at-shop") ??
-      state.adventurers.find(hero => hero.status !== "dead") ?? null;
+    this.fighter = this.replay
+      ? state.adventurers.find(hero => hero.id === this.replay!.heroId) ?? null
+      : state.adventurers.find(hero => hero.status === "expedition") ?? null;
+    const realExpedition = !this.replay && this.fighter?.status === "expedition";
+    // Presentation-only sparring partner: never enters GameStore or replays.
+    this.training = !this.replay && !realExpedition ? nextBossTrainingScenario() : null;
+    this.panel.dataset.trainingScenario=this.training?.id??"";
     this.motion = createCombatPreview({
-      role: this.replay?.role ?? this.fighter?.role ?? "tank",
-      sword: this.replay?.sword ?? (this.fighter?.equipment.weapon === "Iron Sword"),
-      armor: this.replay?.armor ?? (this.fighter?.equipment.armor === "Leather Vest"),
-      health: this.replay?.frames[0].heroHp ?? this.fighter?.health ?? 45,
-      maxHealth: this.replay?.maxHp ?? this.fighter?.stats.maxHealth ?? 50,
-      healingSupplies: this.fighter?.inventory.healing ?? 0,
+      role: this.replay?.role ?? this.training?.options.role ?? this.fighter?.role ?? "tank",
+      sword: this.replay?.sword ?? this.training?.options.sword ??
+        (this.fighter?.equipment.weapon === "Iron Sword"),
+      armor: this.replay?.armor ?? this.training?.options.armor ??
+        (this.fighter?.equipment.armor === "Leather Vest"),
+      health: this.replay?.frames[0].heroHp ?? this.training?.options.health ??
+        this.fighter?.health ?? 45,
+      maxHealth: this.replay?.maxHp ?? this.training?.options.maxHealth ??
+        this.fighter?.stats.maxHealth ?? 50,
+      healingSupplies: this.training?.options.healingSupplies ?? this.fighter?.inventory.healing ?? 0,
+      strength: this.training?.options.strength,
+      agility: this.training?.options.agility,
+      intellect: this.training?.options.intellect,
+      tacticsSeed: this.training?.options.tacticsSeed,
     });
     if (this.replay) this.applyReplayFrame(this.replay.frames[0]);
-    const realExpedition = this.fighter?.status === "expedition";
     const names = heroDisplayNames(state.adventurers);
     this.previewText.textContent = this.replay
       ? "RECORDED COMBAT · Day " + this.replay.day + " · " + this.replay.outcome +
         " · Exact saved fight, no additional damage or rewards."
       : realExpedition
         ? "EXPEDITION PREVIEW · Uncommitted training only. Confirm the day to record the real fight."
-        : "TRAINING PREVIEW · No hero on Level 6. This duel changes no saved state.";
+        : "TRAINING PREVIEW · " + this.training?.label +
+          " · New sparring match each restart. No saved gameplay changes.";
     const scene = new Scene(this.engine);
     scene.clearColor = new Color4(0.045, 0.035, 0.043, 1);
     this.scene = scene;
@@ -312,9 +371,11 @@ export class Level6Arena {
     lava.emissiveColor = Color3.FromHexString("#aa3318").scale(.34);
     const fire = makeMat("lava-fire", "#965632");
     paintCaveTrollFloor(scene,stone);
-    const visibleRole = this.replay?.role ?? this.fighter?.role;
-    const visibleSword = this.replay?.sword ?? (this.fighter?.equipment.weapon === "Iron Sword");
-    const visibleArmor = this.replay?.armor ?? (this.fighter?.equipment.armor === "Leather Vest");
+    const visibleRole = this.replay?.role ?? this.training?.options.role ?? this.fighter?.role;
+    const visibleSword = this.replay?.sword ?? this.training?.options.sword ??
+      (this.fighter?.equipment.weapon === "Iron Sword");
+    const visibleArmor = this.replay?.armor ?? this.training?.options.armor ??
+      (this.fighter?.equipment.armor === "Leather Vest");
     const platform = MeshBuilder.CreateCylinder("boss-arena-stone", {
       diameter: ROCK_RADIUS * 2, height: 0.65, tessellation: 96,
     }, scene);
@@ -404,7 +465,7 @@ export class Level6Arena {
 
     // The same geometry/identity factory is used by shop NPCs and future dungeons.
     // Recorded battles use their own historical gear snapshot, not today's gear.
-    const heroId = this.replay?.heroId ?? this.fighter?.id ?? "preview";
+    const heroId = this.replay?.heroId ?? this.training?.id ?? this.fighter?.id ?? "preview";
     const heroModel = createHeroVisual(scene, {
       id: heroId,
       role: visibleRole ?? "tank",
@@ -447,9 +508,9 @@ export class Level6Arena {
     };
     this.telegraph = createWarning("boss-active-attack-warning", false);
     this.slamTelegraph = createWarning("boss-slam-attack-warning", true);
-    const displayName = this.fighter ? names.get(this.fighter.id) ?? this.fighter.name : "Preview Hero";
+    const displayName = this.training?.label ?? (this.fighter ? names.get(this.fighter.id) ?? this.fighter.name : "Preview Hero");
     this.targets = [
-      { label: displayName + " · " + (this.fighter?.role ?? "tank"), node: hero,
+      { label: displayName + " · " + (visibleRole ?? "tank"), node: hero,
         vantage: new Vector3(4, 5, -8) },
       { label: "THE CAVE TROLL · BOSS", node: boss, vantage: new Vector3(5.5, 5.3, -7.0) },
     ];
@@ -543,6 +604,7 @@ export class Level6Arena {
 
   /** Preview combat advances at a fixed 60 Hz independent of render FPS. */
   update(deltaSeconds: number): void {
+    if (this.modelLab)return;
     if (!this.active || !this.scene || !this.camera || !this.hero || !this.boss || !this.motion) return;
     const frameDt = Math.min(0.1, Math.max(0, deltaSeconds));
     if(this.introActive){

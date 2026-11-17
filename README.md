@@ -92,6 +92,8 @@ need human game testing. Shop remarks never alter sales or dungeon outcomes.
 | U | Mining mode; Shift+U is an alpha expansion-tier development control |
 | R (outside placement) | Adventurer roster |
 | V / G | Level 6 arena (13.5s music-led intro) / Level 7 dungeon viewer |
+| V with old footage available | Opens a fresh preview by default; use C / the spectator source button for saved footage. Opening a specific Ledger recording still shows that recording directly. |
+| Inspect Tripo GLB (inside Level 6) | Open a local-only model lab: select a rigged `.glb`, orbit/zoom and choose any embedded animation; Esc returns to the battle. Training-only fights with no authorized hero randomize on each restart. Saved replays never reroll. |
 | Space / Enter (during Level 6 intro) | Skip the cinematic and seek Desperate Measures to the 13.5s combat downbeat; V / Esc still returns to the shop |
 | M | Toggle mouse/HUD cursor mode |
 | Esc | Release cursor or cancel/close the current interaction |
@@ -192,28 +194,30 @@ The existing Babylon transform rig animates the imported geometry. This is
 
 ## Upcoming development
 
-The staffed register (#153), physical item assets and stock improvements
-(#154–#156), customer remarks (#157), and the Cave Troll preview, cinematic,
-sculpt and impact presentation (#158–#162) have shipped. The merged #163
-addresses newly generated boss-fight fairness/pacing, opaque sculpt rendering
-and the spectator health/damage HUD. #164 reduced mandatory PR browser
-coverage to six tagged smoke scenarios while keeping the full suite manual.
+The staffed register (#153), physical stock and stocking improvements
+(#154–#156), customer remarks (#157), boss preview, cinematic, visual
+sculpt and impacts (#158–#162), and boss combat fairness, opacity and HUD
+(#163) have shipped. #164 reduced required PR browser CI to six tagged
+smoke scenarios; the larger suite remains available for manual regression.
 
-**Current next experiment, not yet merged:** test a Tripo AI-generated
-animated Cave Troll in the real Level 6 presentation. Another development
-chat is working on it. The current 17-part GLB and Babylon transform rig
-remain the shipped implementation until an actual PR and browser review
-validate an alternative. This one-model trial will determine whether a
-repeatable import/animation pipeline for future monsters or possibly hero
-models is worthwhile; it is **not** proof that such a pipeline already exists.
+**Implemented in #166:** Level 6 has a browser-local Tripo GLB inspection
+viewer and varied fictional training previews. The shipped Cave Troll in
+actual fights is **still the original 17-part GLB on the Babylon transform
+rig**, not the externally animated Tripo character.
 
-After the asset test and a short boss playtest, prioritize understandable
-shop-to-dungeon consequences and a measured ten-day shop playthrough.
-Evaluate deeper economics from real playtesting; the optional cellar and
-repairable forge/pond concepts remain unapproved future explorations.
-Check [ROADMAP](docs/ROADMAP.md) and open PRs instead of relying on reserved
-numbers.
+**Next art gate, not yet implemented:** evaluate the rigged Tripo model's
+walk, strikes and death clips in the local viewer, then import the approved
+skinned asset into the existing Level 6 presentation without replacing the
+combat logic or changing saved fight outcomes. Verify facing, foot contact,
+hammer attachment, visual quality, replay playback and cleanup in a real
+browser before replacing the existing boss. An automated pipeline for future
+monsters or heroes remains a possibility to evaluate, not a shipped system.
 
+After the art trial and a short Level 6 playtest, prioritize visible
+shop-to-dungeon consequences and a measured ten-day playability/balance pass.
+Deeper economic systems and an optional cellar, forge or pond are still
+design concepts. See [ROADMAP](docs/ROADMAP.md) and open PRs rather than
+reserving speculative numbers.
 
 Illustrations, previous brainstorms and historical conversations are
 references, not alternative canonical implementations.

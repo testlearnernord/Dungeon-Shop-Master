@@ -41,6 +41,7 @@ The repository currently implements:
   - **Level 6 combat fairness (CURRENT):** New battles use the same deterministic, recorded 60 Hz duel with safe inward-steering and bounded dodge/knockback destinations, and the reachable molten ledge deals actual limited HP damage rather than an instant kill. Increased boss endurance, longer breathing space between attacks and earlier real heal windows provide a longer fight for *Desperate Measures*. These adjustments do not recompute already saved encounters; their historical boss HP and outcomes remain authentic.
   - **Level 6 spectator HP / damage HUD (CURRENT):** compact world-anchored health bars over the real hero and Cave Troll; floating numbers only for real recorded/direct combat cues. Gold = hero damaging the boss, red = boss damaging the hero, orange = lava, green = healing. Historical lava events without an actual saved amount display only `LAVA!`, never an invented number. Hidden until the intro ends.
   - **Boss soundtrack (CURRENT):** The Level 6 Cave Troll preview and recorded boss fights play **Desperate Measures** (female wordless vocals), loaded from `public/audio/desperate-measures.mp3`. The shop retains **The Lean Season** and the dungeon viewer currently retains **Beneath the Surface**. A **13.5-second cinematic introduction** presents the arena, troll, lone hero and boss before playback or training simulation begins on the first musical impact. The camera follows the actual audio playhead where available, falling back to wall time if muted/blocked. Space/Enter skips to the combat downbeat; V/Escape returns to the shop. Audio and cinematic timing never alter combat ticks, persisted events or replay outcomes.
+- **Level 6 training and model lab (CURRENT):** V opens an unsaved preview by default, even when older footage exists (explicit Ledger footage and the C switch still show the identical recording). When no hero is authorized for Floor 6, every V training preview/restart chooses a different fictional combat setup (role, equipment, stats and tactics), never altering real heroes, day simulation or saved footage. Recorded combat restarts always show the identical committed frames. Inside the arena, **Inspect Tripo GLB** opens a browser-local 3D model viewer using the existing Babylon canvas; the player can load a `.glb` from disk, orbit/zoom and inspect its embedded animation clips. This is an asset trial, not a replacement of the shipped troll or an upload to GitHub.
 - Bed-based day close, four-part merchant ledger (reckoning, receipts, hero chronicle, sealed expedition recordings), and saved replay viewing that does not reroll outcomes.
 - A browser build deployed through GitHub Pages. Desktop distribution and any engine migration remain unapproved possibilities.
 
@@ -94,28 +95,28 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 - Meaningful short- and long-term shop decisions, possible player-controlled pricing (not in the current alpha), upgrades, helpers, money sinks and increasing demand.
 - How exploration, deeper floors and hero progression expand gameplay without requiring 100 hand-built or repetitive levels.
 - How to make early-floor (1–4) deaths observable or replay-backed. These floors currently simulate offscreen, and the ledger no longer showcases their unobserved casualties as a memorial.
-- Whether a successful Tripo AI animated-model test can become a repeatable
-  pipeline for future dungeon monsters and eventually hero models.
+- Whether the one-model Tripo AI trial can become a repeatable import, rigging and animation pipeline for future dungeon monsters and eventually heroes.
 - The long-term art/asset pipeline, optional desktop delivery and commercial release model.
 
 These are questions, not permissions to undertake a large rewrite.
 
 **Approved near-term sequence (implementation is separately verified):**
-The staffed cashier, physical stocking improvements and short customer
-reactions are already implemented. The owner now wants **one trial** of an
-externally generated, animated **Tripo AI Cave Troll** integrated into the
-existing Level 6 fight. This work is being handled separately and is **not**
-CURRENT until merged and verified in the game. It does not automatically
-approve a general model pipeline, an engine change or additional bosses.
-The current rigged-by-code GLB stays the documented implemented baseline.
+The staffed cashier, physical stocking improvements and customer reactions
+are already implemented. The local Tripo GLB inspection viewer and varied
+Level 6 training-only battles shipped in #166. They do **not** replace the
+actual boss model or establish a generalized animated-asset pipeline.
 
-After that trial, prioritize visual/gameplay acceptance of the boss,
-observable shop-to-dungeon consequences and a measured ten-day playthrough.
-Future economic improvements and a potentially excavated basement/forge/pond
-are still design discussions rather than implemented features. See the
-working [ROADMAP.md](ROADMAP.md). No always-running simulation,
-automatic merchant labor, new protagonist or definitive curse backstory has
-been approved by this priority change.
+The next approved trial is **one externally generated, skinned Tripo AI Cave
+Troll** in the existing Level 6 fight. It is **not CURRENT** until a verified
+PR actually imports and animates the candidate in gameplay. The shipped
+Babylon transform-rig Cave Troll stays the implemented baseline until then.
+
+After that trial, prioritize boss visual/gameplay acceptance, observable
+shop-to-dungeon consequences and a measured ten-day playthrough. Possible
+pricing/economy expansions or an excavated basement, forge and pond remain
+design discussions, not committed implementations. No always-running
+simulation, automated merchant, new protagonist or definitive curse lore
+has been approved by this priority change. See [ROADMAP.md](ROADMAP.md).
 
 ## 6. Explicit exclusions (REJECTED)
 

@@ -2,8 +2,8 @@
 
 > **Current planning reference, reviewed 2026-11-17.** GitHub source,
 > merged PRs and tests define implemented behavior. The merged work through
-> **#164** includes real shop service, customer presentation, the current
-> Cave Troll visual/duel improvements, and leaner PR CI.
+> **#166** includes real shop service, customer presentation, the current
+> Cave Troll visual/duel improvements, leaner PR CI and a local asset lab.
 > Future PR numbers are **not reserved**. The next asset experiment is approved
 > for a trial, not already shipped. Check open PRs before starting work.
 
@@ -25,11 +25,21 @@ a unified skinned character with imported animation clips. The owner-approved
 Ashen Tunnel Mauler concept remains the visual target, not a claim of final
 in-game model quality. Human visual acceptance is still outstanding.
 
-**NEXT, approved experiment (external work in progress, NOT CURRENT):**
-another development chat is testing a **Tripo AI-generated Cave Troll with
-animations** as an alternative presentation asset in the existing Level 6
-fight. Do not claim it is imported, merged, playable, technically validated,
-or a reusable asset pipeline until the source, PR and browser results prove it.
+**CURRENT model trial tooling (merged #166):** the Level 6 spectator
+offers **Inspect Tripo GLB**, a local-only model viewer using Babylon's
+scene and a selector for exported animation clips. Training-only fights
+randomize fictional hero roles, equipment and tactics on restart; V opens
+fresh practice by default, while the Ledger/C switch still exposes exact
+saved combat. The tool does **not** yet put the Tripo creature into real
+combat or check the private model into the repository.
+
+**NEXT, approved experiment (NOT CURRENT):** evaluate the skinned
+**Tripo AI-generated Cave Troll** and its usable embedded clips in the
+local model lab, then integrate an optimized, approved asset into the
+existing Level 6 visual rig while preserving authoritative combat and
+immutable saved footage. Do not claim the character is already shipped
+in the fight, technically validated there, or part of a reusable asset
+pipeline until an implementation PR and a real browser review prove it.
 
 Acceptance of that **one model-pipeline trial** requires:
 - Actual model and animation clips import correctly; no invisible,
@@ -188,12 +198,6 @@ rather than a technically correct but repetitive loop.
 **Acceptance:** Ten-day deterministic progression can be reproduced
 and the player has understandable, consequential choices. Repeated
 campaigns and layouts do not reveal a hard lock or money duplication.
-
-**After measurement, not as an automatic next PR:** consider additional
-meaningful economic choices (investment in stock, furnishings, upgrades,
-eventually staffing) only where the ten-day experience needs them. The
-previously discussed diggable cellar, damaged forge and pond are exploratory
-concepts, not authorized game systems or a committed PR target.
 
 ## Work discipline for every upcoming PR
 
