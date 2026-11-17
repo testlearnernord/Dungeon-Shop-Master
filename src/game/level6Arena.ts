@@ -355,7 +355,12 @@ export class Level6Arena {
     // exclusively to arenaCombatMotion.ts, not to these visual meshes.
     this.trollVisual = createCaveTrollVisual(scene);
     const boss = this.trollVisual.root;
-    boss.position.set(0,0,2);
+    // The sculpt's face points along local +Z. The hero initially stands
+    // at -Z, so orient the boss to the authoritative combat heading before
+    // the first cinematic frame. paintCombat() already applies this heading
+    // after the intro; previously the unrotated intro showed his back.
+    boss.position.set(this.motion.boss.x,0,this.motion.boss.z);
+    boss.rotation.y = this.motion.bossHeading;
     this.trollVisual.animate({
       phase:"chase",phaseAge:0,slam:false,time:0,moved:0,
       delta:0,hp:BOSS_HP,maxHp:BOSS_HP,
