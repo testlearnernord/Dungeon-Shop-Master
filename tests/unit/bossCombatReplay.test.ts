@@ -4,7 +4,8 @@ import { createGameState, advanceDay, setLevel6Permit } from "../../src/game/gam
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
 import { BOSS_MAX_HP } from "../../src/game/arenaCombatMotion.ts";
-import { REPLAY_KEEP_RECENT, validateBossReplay } from "../../src/game/bossCombatReplay.ts";
+import { REPLAY_KEEP_RECENT, frameFromCombat, validateBossReplay } from "../../src/game/bossCombatReplay.ts";
+import { createCombatPreview } from "../../src/game/arenaCombatMotion.ts";
 
 function recordedFight() {
   let state = setLevel6Permit(createGameState(), "adventurer-1", true);
@@ -103,4 +104,19 @@ test("old v7 combat events without recordings load and advance cleanly", () => {
   const loaded=parseSave(JSON.stringify(old));
   assert(loaded.events.some(e=>e.type==="level6-combat"&&!e.combatReplay));
   assert.deepEqual(advanceDay(loaded).state,advanceDay(parseSave(JSON.stringify(old))).state);
+});
+
+test("new replay frames never store negative zero that JSON silently changes",()=>{
+  const state=createCombatPreview({
+    role:"tank",sword:true,armor:true,
+    health:60,maxHealth:60,healingSupplies:0,
+  });
+  state.heroHeading=-0;
+  state.bossHeading=-0;
+  state.hero.x=-0.000001;
+  const frame=frameFromCombat(state);
+  assert.equal(Object.is(frame.hh,-0),false);
+  assert.equal(Object.is(frame.bh,-0),false);
+  assert.equal(Object.is(frame.hx,-0),false);
+  assert.deepEqual(JSON.parse(JSON.stringify(frame)),frame);
 });
