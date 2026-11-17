@@ -141,12 +141,14 @@ test("experimental Tripo boss uses live Level 6 motor while preserving the origi
   expect(imported.trollVisualId).toBe("ashen-tunnel-mauler-tripo");
   expect(imported.tripoBoneCount).toBe(65);
   expect(imported.tripoClipCount).toBe(12);
+  expect(imported.tripoFacingCorrectionRadians).toBe(0);
+  expect(imported.tripoWeaponMeshCount).toBeGreaterThanOrEqual(3);
   expect(imported.bossFacingHero).toBeGreaterThan(.98);
   await page.keyboard.press("Space");
   await expect(page.locator("#arena-cinematic")).toBeHidden();
   await expect.poll(async()=>(await inspect()).bossPhase,{timeout:20000}).toBe("windup");
   const animated=await inspect();
-  expect(["walk_heavy","idle_combat","attack_2h_swing","attack_slam"])
+  expect(["walk_heavy","idle_combat","attack_2h_swing"])
     .toContain(animated.tripoClip);
   await page.locator("#arena-tripo-toggle").click();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-boss-renderer","legacy");
