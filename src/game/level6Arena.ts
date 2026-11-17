@@ -223,7 +223,9 @@ export class Level6Arena {
     if (document.pointerLockElement) void document.exitPointerLock();
     this.active = true;
     this.onActiveChange(true);
-    this.forcePreview = false;
+    // V always opens a fresh practice duel. Explicit ledger footage opens
+    // the immutable saved recording; the C control switches either way.
+    this.forcePreview = !eventId;
     this.pressed.clear();
     this.panel.hidden = false;
     document.body.classList.add("arena-active");
