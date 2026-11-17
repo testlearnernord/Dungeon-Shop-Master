@@ -176,6 +176,39 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   const torus=(name:string,parent:TransformNode,p:[number,number,number],
     diameter:number,thickness:number,mat:StandardMaterial):Mesh=>mount(
       MeshBuilder.CreateTorus("troll-"+name,{diameter,thickness,tessellation:14},scene),parent,p,mat);
+  // Curved, double-sided, deliberately frayed textile. The old apron was
+  // literally a stack of rectangular boxes, hiding the silhouette.
+  const cloth=(name:string,parent:TransformNode,p:[number,number,number],
+    width:number,height:number,seed:number,mat:StandardMaterial):Mesh=>{
+    const mesh=new Mesh("troll-"+name,scene);
+    const positions:number[]=[],indices:number[]=[],normals:number[]=[],
+      uvs:number[]=[],colors:number[]=[];
+    const cols=9,rows=14;
+    for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
+      const t=j/rows,u=i/cols*2-1;
+      const taper=1-.19*t+.09*Math.sin(t*5.4+seed);
+      const rag=t>.73?(t-.73)/.27:0;
+      const torn=(.07+.09*Math.sin((i+seed)*3.1)+
+        .06*Math.cos(i*7.2+seed))*rag;
+      const x=u*width*.5*taper+.05*Math.sin(t*4+seed);
+      const y=-t*height+torn;
+      const z=Math.cos(u*1.65)*.14+Math.sin(t*7+u*3+seed)*(.035+.05*t);
+      positions.push(x,y,z);uvs.push(i/cols,t);
+      const shade=.84+.09*Math.sin(t*4+u*7+seed)+.05*Math.cos(u*11);
+      colors.push(shade,shade*.80,shade*.78,1);
+    }
+    for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){
+      const a=j*(cols+1)+i,b=a+1,c=a+cols+1,d=c+1;
+      indices.push(a,b,c,b,d,c);
+    }
+    VertexData.ComputeNormals(positions,indices,normals);
+    const data=new VertexData();
+    data.positions=positions;data.indices=indices;data.normals=normals;
+    data.uvs=uvs;data.colors=colors;
+    data.applyToMesh(mesh,true);
+    mat.backFaceCulling=false;
+    return mount(mesh,parent,p,mat);
+  };
   /** Deterministic sculpted vertex waviness and local skin-tone noise. */
   const sculpt=(m:Mesh,seed:number,amount=.045):void=>{
     const data=m.getVerticesData(VertexBuffer.PositionKind);
@@ -208,10 +241,10 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   cylinder("waist-belt",spine,[0,-.12,0],1.42,.23,darkLeather,15).scaling.z=.81;
   const apronPanels:Mesh[]=[];
   for(const x of [-.65,0,.65]){
-    const flap=block("apron-panel-"+x,spine,[x,-1.08,.94],[.64,1.66,.09],apron);
-    flap.rotation.z=x*.22;
+    const flap=cloth("apron-panel-"+x,spine,[x,-.12,1.03],
+      .83,1.94,8+x*5,apron);
+    flap.rotation.z=x*.12;
     apronPanels.push(flap);
-    cone("apron-torn-edge-"+x,spine,[x,-1.94,.93],.32,.43,apron).rotation.z=Math.PI;
   }
   for(let j=0;j<5;j++){
     const rivet=sphere("belt-stud-"+j,spine,[-1.02+j*.52,-.08,1.06],[.09,.09,.08],iron,8);
@@ -224,7 +257,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   cross2.rotation.z=-.72;
   // Layered neck/chest harness, supported by shoulders and crossing belt.
   for(const sign of [-1,1]){
-    const strap=block("chest-harness-"+sign,spine,[sign*.9,1.5,.93],[.29,2.75,.11],leather);
+    const strap=sphere("chest-harness-"+sign,spine,[sign*.9,1.5,.93],[.28,2.74,.15],leather,20);
     strap.rotation.z=sign*.38;
     for(let i=0;i<4;i++){
       sphere("harness-rivet-"+sign+"-"+i,spine,
@@ -234,28 +267,28 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   }
   torus("harness-ring",spine,[0,.88,1.29],.38,.09,copper).rotation.x=Math.PI/2;
   // Strong face silhouette. Front is +Z, matching the combat motor's +Z yaw.
-  sculpt(sphere("head",head,[0,.15,.23],[1.78,1.61,1.79],skin,24),24,.12);
-  sphere("heavy-brow",head,[0,.52,.95],[1.83,.26,.57],shadowSkin);
+  sculpt(sphere("head",head,[0,.15,.23],[1.66,1.52,1.72],skin,32),24,.035);
+  sphere("heavy-brow",head,[0,.51,.87],[1.70,.25,.57],shadowSkin,24);
   for(const side of [-1,1]){
-    sphere("cheek-"+side,head,[side*.58,-.10,.65],[.67,.62,.55],skin,15);
-    sphere("eye-socket-"+side,head,[side*.47,.38,.89],[.35,.21,.15],mouth,16);
-    sphere("eye-glow-"+side,head,[side*.47,.38,.985],[.12,.09,.065],ember,15);
-    sphere("eye-pupil-"+side,head,[side*.47,.38,1.03],[.043,.048,.022],pupil,10);
-    const eyebrow=sphere("furrow-"+side,head,[side*.49,.59,.90],[.67,.27,.34],skin,12);
+    sphere("cheek-"+side,head,[side*.55,-.17,.64],[.58,.47,.47],skin,22);
+    sphere("eye-socket-"+side,head,[side*.47,.36,.88],[.27,.15,.10],mouth,20);
+    sphere("eye-glow-"+side,head,[side*.47,.36,.955],[.082,.054,.032],ember,16);
+    sphere("eye-pupil-"+side,head,[side*.47,.36,.976],[.023,.025,.014],pupil,10);
+    const eyebrow=sphere("furrow-"+side,head,[side*.49,.54,.90],[.56,.17,.26],skin,18);
     eyebrow.rotation.z=side*.23;
     const ear=cone("pointed-ear-"+side,head,[side*1.00,.20,.01],.30,.68,shadowSkin);
     ear.rotation.z=side*Math.PI/2.8;
     // Obvious fangs give the open mouth a readable threatening expression.
-    const tusk=cone("tusk-"+side,head,[side*.52,-.58,1.22],.13,.43,bone);
+    const tusk=cone("tusk-"+side,head,[side*.48,-.55,1.16],.105,.38,bone);
     tusk.rotation.z=-side*.16;
   }
-  sculpt(sphere("nose",head,[0,-.10,1.25],[.64,.37,.65],nose,20),91,.065);
-  sphere("gaping-mouth",head,[0,-.58,1.06],[.84,.42,.19],mouth,16);
+  sculpt(sphere("nose",head,[0,-.08,1.16],[.60,.35,.51],nose,24),91,.027);
+  sphere("gaping-mouth",head,[0,-.56,1.04],[.82,.38,.17],mouth,22);
   for(let t=-2;t<=2;t++){
     const tooth=cone("tooth-"+t,head,[t*.135,-.43,1.055],.054,.14,bone);
     tooth.rotation.z=Math.PI;
   }
-  sphere("lower-jaw",jaw,[0,-.19,.16],[1.16,.27,.59],skin);
+  sphere("lower-jaw",jaw,[0,-.19,.16],[1.06,.24,.52],skin,24);
   // Roughly 1 in 5 scars read clearly even when the camera is far away.
   for(let i=0;i<9;i++){
     const x=Math.sin(i*2.17)*.71;
@@ -276,11 +309,11 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
       [side*.88,.61,.25],.17,.48,bone);
     horn.rotation.z=side*.85;
   }
-  for(let i=0;i<11;i++){
+  for(let i=0;i<7;i++){
     const x=(i%4-1.5)*.41;
     const y=(Math.floor(i/4)-1)*.28;
     const p=block("brow-skin-fissure-"+i,head,
-      [x,y+.53,.95],[.023,.17+i%3*.07,.029],scar);
+      [x,y+.53,.95],[.018,.12+i%3*.05,.025],scar);
     p.rotation.z=(i%5-2)*.24;
   }
   // Twin red vented mine canisters, the signature silhouette chosen in art.
