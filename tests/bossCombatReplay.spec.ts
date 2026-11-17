@@ -14,6 +14,8 @@ test("confirmed Level 6 combat becomes an actual saved replay without double res
   await expect(page.locator("#day")).toHaveText("Day 3");
   const balance=await page.locator("#merchant-gold").textContent();
   await page.locator("#open-arena").click();
+  await expect(page.locator("#arena-preview")).toContainText("TRAINING PREVIEW");
+  await page.locator("#arena-source-toggle").click();
   await expect(page.locator("#arena-preview")).toContainText("RECORDED COMBAT");
   await expect(page.locator("#arena-preview")).toContainText("Day 3");
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-replay","recorded");
@@ -38,6 +40,8 @@ test("confirmed Level 6 combat becomes an actual saved replay without double res
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 3");
   await page.locator("#open-arena").click();
+  await expect(page.locator("#arena-preview")).toContainText("TRAINING PREVIEW");
+  await page.locator("#arena-source-toggle").click();
   await expect(page.locator("#arena-preview")).toContainText("RECORDED COMBAT");
   await expect(page.locator("#arena-preview")).toContainText("Day 3");
   await page.locator("#close-arena").click();

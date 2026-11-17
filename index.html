@@ -138,6 +138,7 @@
           <div class="arena-actions">
             <button id="arena-source-toggle" type="button" aria-keyshortcuts="C" hidden>Watch last saved combat</button>
             <button id="restart-arena" type="button">Restart battle</button>
+            <button id="arena-model-toggle" type="button">Inspect Tripo GLB</button>
             <button id="close-arena" type="button">Return to shop (V / Esc)</button>
           </div>
         </header>
@@ -176,6 +177,18 @@
             <p>Intro: Space / Enter skip to music drop · During fight: WASD free fly · Shift turbo · Q / E up / down · Mouse look (click to capture) · TAB cycle hero / boss · M music controls · C switch replay source · V / Esc return</p>
           </details>
         </div>
+        <aside id="arena-model-panel" class="arena-model-panel" hidden aria-label="Local 3D model inspection">
+          <strong>MODEL LAB · ASHEN TUNNEL MAULER</strong>
+          <label for="arena-model-file">Load an exported, rigged .glb from your computer
+            <input id="arena-model-file" type="file" accept=".glb,model/gltf-binary" />
+          </label>
+          <label for="arena-model-clip">Animation
+            <select id="arena-model-clip" disabled aria-label="Choose imported animation"></select>
+          </label>
+          <p id="arena-model-info" role="status">No model loaded.</p>
+          <small>Drag with mouse to orbit · Wheel to zoom · Escape to return to battle.
+          Local experiment only. No combat, save or replay changes.</small>
+        </aside>
       </section>
       <section id="dungeon-hud" hidden aria-label="Level 7 dungeon observation and saved expedition replay">
         <header class="dungeon-toolbar">
