@@ -30,6 +30,7 @@ import { BossCombatHud } from "./bossCombatHud.ts";
 import { BossModelLab } from "./bossModelLab.ts";
 import { nextBossTrainingScenario, type BossTrainingScenario } from "./bossTrainingScenario.ts";
 import type { GameSfx, GameSfxCue, SoundListener } from "../gameSfx.ts";
+import { Level6SfxDebugPanel } from "../gameSfxDebug.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -79,6 +80,7 @@ export class Level6Arena {
   private heroLegs: TransformNode[] = [];
   private readonly panel: HTMLElement;
   private readonly worldHud: BossCombatHud;
+  private readonly sfxLab:Level6SfxDebugPanel;
   private readonly status: HTMLElement;
   private readonly focusText: HTMLElement;
   private readonly healthText: HTMLElement;
@@ -117,6 +119,7 @@ export class Level6Arena {
   ) {
     this.panel = document.querySelector<HTMLElement>("#arena-hud")!;
     this.worldHud = new BossCombatHud(this.panel,this.canvas,this.engine);
+    this.sfxLab = new Level6SfxDebugPanel(this.sfx);
     this.cinematic=document.querySelector<HTMLElement>("#arena-cinematic")!;
     this.cinematicLine=document.querySelector<HTMLElement>("#arena-cinematic-line")!;
     this.cinematicProgress=document.querySelector<HTMLElement>("#arena-cinematic-progress")!;
@@ -165,7 +168,8 @@ export class Level6Arena {
         }
         return;
       }
-      if (event.target instanceof Element && event.target.closest("#music-panel")) return;
+      if (event.target instanceof Element &&
+        event.target.closest("#music-panel, #arena-sfx-debug, #arena-sfx-debug-toggle")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.repeat) return;
@@ -182,7 +186,8 @@ export class Level6Arena {
     }, true);
     window.addEventListener("keyup", (event) => {
       if (!this.active || this.modelLab) return;
-      if (event.target instanceof Element && event.target.closest("#music-panel")) return;
+      if (event.target instanceof Element &&
+        event.target.closest("#music-panel, #arena-sfx-debug, #arena-sfx-debug-toggle")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       this.pressed.delete(event.code);
@@ -229,6 +234,7 @@ export class Level6Arena {
     this.cinematic.hidden=true;
     this.panel.dataset.intro="false";
     this.sfx?.endArena();
+    this.sfxLab.setAvailable(false);
     this.worldHud.reset();
     this.pressed.clear();
     this.modelPanel.hidden=false;
@@ -266,6 +272,7 @@ export class Level6Arena {
     this.modelToggle.textContent="Inspect Tripo GLB";
     this.introActive=false;
     this.sfx?.endArena();
+    this.sfxLab.setAvailable(false);
     this.worldHud.reset();
     this.cinematic.hidden=true;
     this.panel.dataset.intro="false";
@@ -337,6 +344,7 @@ export class Level6Arena {
     this.sourceToggle.hidden = !saved;
     this.sourceToggle.textContent = this.replay ? "Preview current expedition" : "Watch last saved combat";
     this.panel.dataset.replay = this.replay ? "recorded" : "preview";
+    this.sfxLab.setAvailable(!this.replay);
     this.fighter = this.replay
       ? state.adventurers.find(hero => hero.id === this.replay!.heroId) ?? null
       : state.adventurers.find(hero => hero.status === "expedition") ?? null;

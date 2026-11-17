@@ -1017,3 +1017,84 @@
 @media(prefers-reduced-motion:reduce){
   .arena-damage-number{will-change:auto}
 }
+
+
+/* The SFX Lab is an opt-in training-only overlay, never a combat HUD.
+ * Independent source/type filter lanes and a scrollable per-cue audition list. */
+#arena-sfx-debug-toggle[hidden],#arena-sfx-debug[hidden]{display:none!important}
+#arena-sfx-debug-toggle{border-color:rgba(143,205,192,.68)!important}
+#arena-sfx-debug{
+  position:absolute;top:102px;right:16px;z-index:12;
+  width:min(390px,calc(100vw - 32px));
+  max-height:calc(100dvh - 265px);
+  padding:13px 14px;overflow-y:auto;
+  pointer-events:auto;
+  background:rgba(13,20,23,.97);
+  border:1px solid rgba(132,184,176,.60);border-radius:12px;
+  box-shadow:0 15px 35px #000c;color:#eadfca;
+  font:500 11px/1.35 system-ui,sans-serif;
+  text-shadow:none;
+}
+#arena-sfx-debug .sfx-debug-heading{
+  display:flex;align-items:center;justify-content:space-between;gap:8px
+}
+#arena-sfx-debug .sfx-debug-heading strong{font-size:12px;letter-spacing:.055em;color:#d3efde}
+#arena-sfx-debug :is(h3,p){margin:7px 0}
+#arena-sfx-debug p,#arena-sfx-debug small{color:#b9c7c3;font-size:10px}
+#arena-sfx-debug h3{font:700 11px/1.2 system-ui,sans-serif;color:#e4c28c}
+#arena-sfx-debug :is(button,summary){
+  cursor:pointer;color:#f3e5cb;
+}
+#arena-sfx-debug button{
+  border:1px solid rgba(173,156,125,.40);
+  background:rgba(53,52,47,.68);border-radius:6px;
+  padding:5px 7px;font:600 10px/1.15 system-ui,sans-serif
+}
+#arena-sfx-debug button:focus-visible,
+#arena-sfx-debug summary:focus-visible{
+  outline:2px solid #8fe1cf;outline-offset:2px
+}
+#arena-sfx-debug .sfx-debug-section{margin:10px 0}
+#arena-sfx-debug .sfx-debug-groups{display:grid;gap:4px}
+#arena-sfx-debug .sfx-debug-group{
+  display:grid;grid-template-columns:minmax(85px,1fr) 52px 52px;
+  gap:5px;align-items:center;
+}
+#arena-sfx-debug .sfx-debug-group span{color:#ecdfc9;font-size:11px}
+#arena-sfx-debug button[data-mode="solo"][data-active="true"]{
+  background:rgba(46,123,102,.8);border-color:#a7ebcc;color:#effff6
+}
+#arena-sfx-debug button[data-mode="mute"][data-active="true"]{
+  background:rgba(143,62,51,.8);border-color:#ffb4a3;color:#fff0e5
+}
+#arena-sfx-debug-ambient{display:block;margin:8px 0 11px}
+#arena-sfx-debug .sfx-debug-library{border-top:1px solid #7c8c8250;padding-top:10px}
+#arena-sfx-debug .sfx-debug-library summary{font-weight:700;color:#f4d3a1}
+#arena-sfx-debug .sfx-debug-library p{margin:6px 0}
+#arena-sfx-debug-auditions{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:5px;margin-top:7px
+}
+#arena-sfx-debug .sfx-debug-audition{text-align:left;white-space:normal;min-height:29px}
+#arena-sfx-debug .sfx-debug-log-heading{
+  display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;
+  margin-top:14px;font-weight:700;color:#e6c38a
+}
+#arena-sfx-debug-events{
+  list-style:none;margin:7px 0;padding:0;display:grid;gap:4px;
+  max-height:145px;overflow:auto;font:500 10px/1.3 ui-monospace,monospace
+}
+#arena-sfx-debug-events li{
+  border-left:2px solid #799386;padding:3px 7px;background:#fff1;
+}
+#arena-sfx-debug-events li[data-status="filtered"]{border-color:#b88c72;color:#c7b1a5}
+#arena-sfx-debug-events li[data-status="triggered"]{border-color:#9dd8aa;color:#d8f1de}
+#arena-sfx-debug-events li[data-status="muted"],
+#arena-sfx-debug-events li[data-status="blocked"]{border-color:#db8b80;color:#e9bab5}
+@media(max-width:740px){
+  #arena-sfx-debug{right:8px;top:158px;width:min(370px,calc(100vw - 16px));
+    max-height:calc(100dvh - 255px);padding:9px 11px}
+}
+@media(max-height:620px){
+  #arena-sfx-debug{top:87px;max-height:calc(100dvh - 150px)}
+}
