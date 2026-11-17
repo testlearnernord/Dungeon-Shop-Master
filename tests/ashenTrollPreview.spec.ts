@@ -60,6 +60,7 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
     {timeout:15000,intervals:[150,250,400]}).toBe("ready");
   const sculpted=await inspect();
   expect(sculpted.sculptedPartCount).toBe(17);
+  expect(sculpted.opaqueSculptPartCount).toBe(17);
   expect(sculpted.scalpTuftCount).toBe(19);
   expect(sculpted.jowlFurCount).toBe(14);
   expect(sculpted.apronVertexCount).toBeGreaterThan(100);
