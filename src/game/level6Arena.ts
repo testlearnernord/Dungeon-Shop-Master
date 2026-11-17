@@ -26,6 +26,8 @@ import { buildCaveTrollArenaArt, paintCaveTrollFloor } from "./caveTrollArenaArt
 import { BOSS_INTRO_SECONDS, sampleBossIntro } from "./bossCinematic.ts";
 import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 import { BossCombatHud } from "./bossCombatHud.ts";
+import { BossModelLab } from "./bossModelLab.ts";
+import { nextBossTrainingScenario, type BossTrainingScenario } from "./bossTrainingScenario.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -52,6 +54,10 @@ export class Level6Arena {
   private replayFrameIndex = 0;
   private replayFinished = false;
   private forcePreview = false;
+  private training: BossTrainingScenario | null = null;
+  private modelLab: BossModelLab | null = null;
+  private readonly modelPanel: HTMLElement;
+  private readonly modelToggle: HTMLButtonElement;
   private readonly sourceToggle: HTMLButtonElement;
   private motionAccumulator = 0;
   private heroArm: TransformNode | null = null;
@@ -106,6 +112,9 @@ export class Level6Arena {
     this.staminaText = document.querySelector<HTMLElement>("#arena-stamina")!;
     this.combatInfo = document.querySelector<HTMLElement>("#arena-combat-info")!;
     this.sourceToggle = document.querySelector<HTMLButtonElement>("#arena-source-toggle")!;
+    this.modelPanel = document.querySelector<HTMLElement>("#arena-model-panel")!;
+    this.modelToggle = document.querySelector<HTMLButtonElement>("#arena-model-toggle")!;
+    this.modelToggle.addEventListener("click",()=>this.toggleModelLab());
     this.sourceToggle.addEventListener("click", () => {
       this.toggleSource();
     });
@@ -125,6 +134,14 @@ export class Level6Arena {
         }
         return;
       }
+      if(this.modelLab){
+        if(event.code==="Escape"||event.code==="KeyV"){
+          event.preventDefault();event.stopImmediatePropagation();
+          if(event.code==="Escape")this.toggleModelLab();
+          else this.close();
+        }
+        return;
+      }
       if (event.target instanceof Element && event.target.closest("#music-panel")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -141,7 +158,7 @@ export class Level6Arena {
       else this.pressed.add(event.code);
     }, true);
     window.addEventListener("keyup", (event) => {
-      if (!this.active) return;
+      if (!this.active || this.modelLab) return;
       if (event.target instanceof Element && event.target.closest("#music-panel")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -149,14 +166,14 @@ export class Level6Arena {
     }, true);
     window.addEventListener("blur", () => this.pressed.clear());
     canvas.addEventListener("pointerdown", (event) => {
-      if (!this.active) return;
+      if (!this.active || this.modelLab) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if(this.introActive)return;
       if (document.pointerLockElement !== canvas) void canvas.requestPointerLock();
     }, true);
     document.addEventListener("mousemove", (event) => {
-      if (!this.active || this.introActive ||
+      if (!this.active || this.modelLab || this.introActive ||
           document.pointerLockElement !== canvas || !this.camera) return;
       this.camera.rotation.y += event.movementX / 2700;
       this.camera.rotation.x = Math.max(-1.45, Math.min(1.45,
@@ -164,18 +181,44 @@ export class Level6Arena {
     }, true);
   }
 
-  get currentScene(): Scene | null { return this.active ? this.scene : null; }
+  get currentScene(): Scene | null { return this.active ? (this.modelLab?.scene ?? this.scene) : null; }
   get isActive(): boolean { return this.active; }
 
   private toggleSource(): void {
+    if(this.modelLab)return;
     this.forcePreview = !this.forcePreview;
     this.restart();
+  }
+
+  private toggleModelLab():void {
+    if(!this.active)return;
+    if(this.modelLab){
+      this.modelLab.dispose();
+      this.modelLab=null;
+      this.modelPanel.hidden=true;
+      this.panel.dataset.modelViewer="false";
+      this.modelToggle.textContent="Inspect Tripo GLB";
+      this.restart(); // reset presentation, preserve recorded source unchanged
+      return;
+    }
+    if(document.pointerLockElement)void document.exitPointerLock();
+    this.introActive=false;
+    this.cinematic.hidden=true;
+    this.panel.dataset.intro="false";
+    this.worldHud.reset();
+    this.pressed.clear();
+    this.modelPanel.hidden=false;
+    this.panel.dataset.modelViewer="true";
+    this.modelToggle.textContent="Return to battle";
+    this.modelLab=new BossModelLab(this.engine,this.canvas,this.modelPanel);
   }
 
   open(eventId?: string): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("dungeon-active")) return;
     this.requestedReplayId=eventId??null;
+    this.modelPanel.hidden=true;
+    this.panel.dataset.modelViewer="false";
     this.shopCamera.detachControl();
     if (document.pointerLockElement) void document.exitPointerLock();
     this.active = true;
@@ -190,6 +233,11 @@ export class Level6Arena {
   close(): void {
     if (!this.active) return;
     this.active = false;
+    this.modelLab?.dispose();
+    this.modelLab=null;
+    this.modelPanel.hidden=true;
+    this.panel.dataset.modelViewer="false";
+    this.modelToggle.textContent="Inspect Tripo GLB";
     this.introActive=false;
     this.worldHud.reset();
     this.cinematic.hidden=true;
@@ -221,7 +269,7 @@ export class Level6Arena {
   }
 
   restart(): void {
-    if (!this.active) return;
+    if (!this.active || this.modelLab) return;
     this.scene?.dispose();
     this.worldHud.reset();
     this.heroLegs = [];
@@ -543,6 +591,7 @@ export class Level6Arena {
 
   /** Preview combat advances at a fixed 60 Hz independent of render FPS. */
   update(deltaSeconds: number): void {
+    if (this.modelLab)return;
     if (!this.active || !this.scene || !this.camera || !this.hero || !this.boss || !this.motion) return;
     const frameDt = Math.min(0.1, Math.max(0, deltaSeconds));
     if(this.introActive){
