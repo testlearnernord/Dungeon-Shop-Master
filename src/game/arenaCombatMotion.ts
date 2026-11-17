@@ -61,9 +61,14 @@ export type CombatPreviewState = {
   landedHits: number;
   missedHits: number;
 };
-export const BOSS_MAX_HP = 145;
+// Longer actual encounters, not slowed playback or an artificial HP gate.
+export const BOSS_MAX_HP = 210;
 export const WALKABLE_RADIUS = 16.8;
 const HERO_RADIUS = 0.58;
+// Leave a real buffer between the hero's body and the molten arena ring.
+// All normal navigation, rolls and knockback respect this radius.
+export const SAFE_HERO_RADIUS = WALKABLE_RADIUS - HERO_RADIUS - 1.0;
+const LAVA_CONTACT_DAMAGE = 12;
 const TROLL_RADIUS = 1.8;
 const TAU = Math.PI * 2;
 const v = (x: number, z: number): Point2 => ({ x, z });
@@ -105,11 +110,29 @@ function beginBoss(s: CombatPreviewState, phase: BossPhase): void {
   s.bossPhase = phase; s.bossAge = 0;
   s.bossDamageApplied = false;
 }
+function clampToRadius(point: Point2, radius: number): void {
+  const d = Math.hypot(point.x, point.z);
+  if (d > radius && d > 0) {
+    point.x *= radius / d;
+    point.z *= radius / d;
+  }
+}
 function walk(s: CombatPreviewState, direction: Point2, meters: number): void {
   const startX = s.hero.x, startZ = s.hero.z;
   s.hero.x += direction.x * meters;
   s.hero.z += direction.z * meters;
+  clampToRadius(s.hero, SAFE_HERO_RADIUS);
   s.distanceTraveled += Math.hypot(s.hero.x - startX, s.hero.z - startZ);
+}
+/** Boundary contact is real, bounded damage, never a teleporting one-hit.
+ * The AI normally stays in the safe interior; slams can still throw a hero
+ * to the ledge and burn them. Historical saved combats are never re-run. */
+function lavaContact(s: CombatPreviewState): void {
+  const amount = Math.min(LAVA_CONTACT_DAMAGE, s.heroHp);
+  if (amount <= 0) return;
+  s.heroHp -= amount;
+  s.cues.push({ kind: "lava", amount });
+  clampToRadius(s.hero, SAFE_HERO_RADIUS);
 }
 function heroToBoss(s: CombatPreviewState): Point2 {
   return unit(s.boss.x - s.hero.x, s.boss.z - s.hero.z);
@@ -122,7 +145,15 @@ function maintainSpacing(s: CombatPreviewState, dt: number): void {
   const strafeSign = (Math.floor(s.time / 5.5) + ((s.options.tacticsSeed ?? 0) % 2)) % 2 === 0 ? 1 : -1;
   const tangent = v(-toBoss.z * strafeSign, toBoss.x * strafeSign);
   const radial = gap > desired + 0.4 ? 0.95 : gap < desired - 0.35 ? -1 : 0;
-  const direction = unit(tangent.x + toBoss.x * radial, tangent.z + toBoss.z * radial);
+  let direction = unit(tangent.x + toBoss.x * radial, tangent.z + toBoss.z * radial);
+  const distanceFromCenter = Math.hypot(s.hero.x,s.hero.z);
+  const edgeWeight = Math.max(0,Math.min(1,
+    (distanceFromCenter - (SAFE_HERO_RADIUS - 2.0)) / 2.0));
+  if (edgeWeight > 0) {
+    const inward = unit(-s.hero.x,-s.hero.z);
+    direction = unit(direction.x*(1-edgeWeight)+inward.x*edgeWeight*1.6,
+      direction.z*(1-edgeWeight)+inward.z*edgeWeight*1.6);
+  }
   const speed = s.options.role === "tank" ? 2.7 : 3.7;
   walk(s, direction, dt * speed);
 }
@@ -132,7 +163,19 @@ function startRoll(s: CombatPreviewState): void {
   const toward = heroToBoss(s);
   const side = s.bossAttacks % 2 === 0 ? 1 : -1;
   // Cross the monster's locked swing direction; not an in-place animation.
-  s.rollDirection = unit(-toward.z * side - toward.x * 0.3, toward.x * side - toward.z * 0.3);
+  const candidate = (sign:number) => unit(
+    -toward.z * sign - toward.x * 0.3,
+    toward.x * sign - toward.z * 0.3);
+  const intended = candidate(side), alternate = candidate(-side);
+  const projectedRadius = (dir:Point2) =>
+    Math.hypot(s.hero.x + dir.x * 5.565,s.hero.z + dir.z * 5.565);
+  s.rollDirection = projectedRadius(alternate) < projectedRadius(intended)
+    ? alternate : intended;
+  if (projectedRadius(s.rollDirection) > SAFE_HERO_RADIUS) {
+    const inward = unit(-s.hero.x,-s.hero.z);
+    s.rollDirection = unit(inward.x + s.rollDirection.x * .22,
+      inward.z + s.rollDirection.z * .22);
+  }
   beginHero(s, "roll");
 }
 function startParry(s: CombatPreviewState): void {
@@ -155,22 +198,25 @@ function resolveBossStrike(s: CombatPreviewState): void {
       inAttackArc(s.hero, s.heroHeading, s.boss, 6.8, 1.25)) {
     s.parryCount++;
     s.cues.push({ kind: "parry" }, { kind: "stagger" });
+    const before=s.bossHp;
     s.bossHp = Math.max(0, s.bossHp - (s.options.sword ? 8 : 3));
+    s.cues.push({kind:"hero-hit",amount:before-s.bossHp});
     beginBoss(s, "stagger");
     return;
   }
-  const raw = s.bossSlam ? 23 : 17;
+  const raw = s.bossSlam ? 21 : 15;
   const damage = Math.max(1, raw - (s.options.armor ? 7 : 0) -
     (s.options.role === "tank" ? 3 : 0));
+  const before=s.heroHp;
   s.heroHp = Math.max(0, s.heroHp - damage);
-  s.cues.push({ kind: "hit", amount: damage });
+  s.cues.push({ kind: "hit", amount: before-s.heroHp });
   const knockback = unit(s.hero.x - s.boss.x, s.hero.z - s.boss.z);
-  walk(s, knockback, s.bossSlam ? 3.6 : 1.5);
-  if (Math.hypot(s.hero.x, s.hero.z) > WALKABLE_RADIUS) {
-    s.heroHp = 0; s.cues.push({ kind: "lava" });
-  } else {
-    beginHero(s, "hurt");
-  }
+  const meters=s.bossSlam ? 3.6 : 1.5;
+  const landing={x:s.hero.x+knockback.x*meters,
+    z:s.hero.z+knockback.z*meters};
+  walk(s, knockback, meters);
+  if (Math.hypot(landing.x,landing.z)>WALKABLE_RADIUS) lavaContact(s);
+  if (s.heroHp>0) beginHero(s, "hurt");
 }
 function resolveHeroStrike(s: CombatPreviewState): void {
   const reach = s.options.sword ? 4.2 : 3.2;
@@ -181,8 +227,9 @@ function resolveHeroStrike(s: CombatPreviewState): void {
   }
   const amount = (s.options.sword ? 16 : 6) + (s.options.role === "DPS" ? 5 : 0) +
     Math.floor(Math.max(0, (s.options.strength ?? 6) - 6) / 3);
+  const before=s.bossHp;
   s.bossHp = Math.max(0, s.bossHp - amount);
-  s.landedHits++; s.cues.push({ kind: "hero-hit", amount });
+  s.landedHits++; s.cues.push({ kind: "hero-hit", amount: before-s.bossHp });
 }
 function progressHeroAction(s: CombatPreviewState, dt: number): void {
   if (s.heroPhase === "move" || s.heroPhase === "dead") return;
@@ -221,7 +268,7 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
       s.heroHp += restored;
       if (s.healingSupplies > 0) s.healingSupplies--;
       else s.magicHeals--;
-      s.cues.push({ kind: "heal", amount: restored });
+      if (restored > 0) s.cues.push({ kind: "heal", amount: restored });
     }
     if (s.heroAge >= 0.91) beginHero(s, "move");
   }
@@ -237,6 +284,7 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
       const tangent = v(toHero.z, -toHero.x);
       s.boss.x += (toHero.x * 3.25 + tangent.x * 0.45) * dt;
       s.boss.z += (toHero.z * 3.25 + tangent.z * 0.45) * dt;
+      clampToRadius(s.boss,WALKABLE_RADIUS-TROLL_RADIUS-.65);
     }
     s.bossCooldown -= dt;
     if (s.bossCooldown <= 0 && gap < 7.7) {
@@ -259,7 +307,7 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
   } else if (s.bossPhase === "recover") {
     if (s.bossAge >= 0.72) {
       beginBoss(s, "chase");
-      s.bossCooldown = 0.9;
+      s.bossCooldown = 1.35;
     }
   } else if (s.bossPhase === "stagger") {
     if (s.bossAge >= 1.6) {
@@ -275,8 +323,9 @@ function progressProjectiles(s: CombatPreviewState, dt: number): void {
     p.ttl -= dt;
     if (dist(p, s.boss) <= TROLL_RADIUS + 0.65) {
       p.ttl = 0;
+      const before=s.bossHp;
       s.bossHp = Math.max(0, s.bossHp - p.damage);
-      s.landedHits++; s.cues.push({ kind: "hero-hit", amount: p.damage });
+      s.landedHits++; s.cues.push({ kind: "hero-hit", amount: before-s.bossHp });
     }
   }
   s.projectiles = s.projectiles.filter(p => p.ttl > 0);
@@ -286,6 +335,10 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
   if (s.outcome !== "fighting") return s.cues;
   if (dt <= 0 || dt > 0.1) throw new RangeError("Action motor requires a fixed step of at most 100 ms.");
   s.time += dt;
+  // Legacy or externally displaced positions can touch the molten boundary.
+  // Apply bounded fire damage once and move back inside, rather than
+  // instantly wiping a perfectly healthy adventurer on the next step.
+  if (Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
   s.stamina = Math.min(100, s.stamina + 18 * dt);
   s.heroCooldown = Math.max(0, s.heroCooldown - dt);
   s.heroHeading = facing(s.hero, s.boss);
@@ -296,8 +349,9 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
       if (s.options.role === "tank" && s.options.sword && distance < 5.0) startParry(s);
       else startRoll(s);
     }
-    if (s.heroPhase === "move" && s.heroHp < s.options.maxHealth * 0.43 &&
-        s.healingSupplies + s.magicHeals > 0 && distance > 5.1) {
+    if (s.heroPhase === "move" && s.heroHp < s.options.maxHealth * 0.60 &&
+        s.healingSupplies + s.magicHeals > 0 &&
+        distance > (s.options.role === "healer" ? 3.6 : 4.7)) {
       beginHero(s, "heal");
     }
     if (s.heroPhase === "move" && s.heroCooldown <= 0 &&
@@ -314,9 +368,8 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
   progressHeroAction(s, dt);
   progressBossAction(s, dt);
   progressProjectiles(s, dt);
-  if (Math.hypot(s.hero.x, s.hero.z) > WALKABLE_RADIUS && s.heroHp > 0) {
-    s.heroHp = 0; s.cues.push({ kind: "lava" });
-  }
+  // Emergency guard for non-navigation motion added by future mechanics.
+  if (Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
   if (s.heroHp <= 0) {
     s.outcome = "defeat"; s.heroPhase = "dead";
     s.cues.push({ kind: "defeat" });
