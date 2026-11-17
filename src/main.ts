@@ -227,6 +227,8 @@ const soundtrack = setupSoundtrack();
 const sfx = setupGameSfx();
 const cashierSfx=createCashierSfx(()=>sfx.soundEnabled,()=>sfx.soundVolume);
 const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
+  soundtrack.setArenaMix(active);
+  sfx.setArenaMix(active);
   soundtrack.setScene(active ? "boss" : "shop");
 },()=>soundtrack.bossPlaybackSeconds,
   ()=>soundtrack.restartBossTheme(),
