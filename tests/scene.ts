@@ -307,6 +307,10 @@ export function inspectBossArena() {
     armRig: scene.getMeshByName("troll-upper-arm-1")?.position.asArray(),
     hammerSocket: scene.getTransformNodeByName("troll-rig-hammer")?.rotation.z,
     impactVisibility: scene.getMeshByName("troll-maul-impact-dust")?.visibility,
+    impactDebrisCount: scene.meshes.filter(mesh=>
+      mesh.name.startsWith("mauler-impact-debris-")).length,
+    impactFlashIntensity: scene.lights.find(light=>
+      light.name==="mauler-impact-flash")?.intensity ?? -1,
   };
 }
 
@@ -338,6 +342,7 @@ export async function inspectCaveTrollDeathPose():Promise<{
 export async function inspectCaveTrollMotion():Promise<{
   gaitMeters:number;footMinimum:number;footMaximum:number;
   windup:number;strike:number;liftAtWindup:number;jawAtWindup:number;
+  contactCompression:number;recoveredCompression:number;
 }> {
   const scene=Engine.LastCreatedScene!;
   const {createCaveTrollVisual}=await import("../src/game/caveTrollVisual.ts");
@@ -360,9 +365,14 @@ export async function inspectCaveTrollMotion():Promise<{
   for(let i=0;i<7;i++)model.animate({phase:"strike",phaseAge:i*.034,
     slam:true,time:4+i*.034,moved:0,delta:.034,hp:145,maxHp:145});
   const strike=model.root.metadata.hammerSwing as number;
+  const contactCompression=model.root.metadata.impactCompression as number;
+  model.animate({phase:"recover",phaseAge:.70,slam:true,time:4.8,
+    moved:0,delta:.05,hp:145,maxHp:145});
+  const recoveredCompression=model.root.metadata.impactCompression as number;
   model.root.dispose();
   return {gaitMeters,footMinimum:Math.min(...sample),
-    footMaximum:Math.max(...sample),windup,strike,liftAtWindup,jawAtWindup};
+    footMaximum:Math.max(...sample),windup,strike,liftAtWindup,jawAtWindup,
+    contactCompression,recoveredCompression};
 }
 
 /** Shared scene-agnostic visual identity inspection for browser tests. */

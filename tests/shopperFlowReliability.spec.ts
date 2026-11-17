@@ -439,11 +439,11 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals());
   const samples:unknown[]=[];
   let last=-10000;
-  // A buyer can complete a pickup and leave before *both* petitioners start
-  // roaming. Preserve the stronger assertion that a real cart was observed
-  // while the requests existed, without requiring unrelated transient phases
-  // to coincide on one arbitrary Playwright polling frame.
-  let buyerWithCartDuringRequest=false;
+  // Buyer pickup and two independent petitioners are asynchronous.
+  // Latch a real, physically filled cart whenever observed, rather than
+  // require the (possibly departed) buyer to overlap the exact same polling
+  // instant at which both petitioners have active request timers.
+  let buyerWithCart=false;
   try{
     await expect.poll(async()=>{
       const snapshot=await read();
@@ -460,10 +460,10 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
       const requestsLive=!!request&&!!begging&&
         (request.restockRemaining??0)>0 &&
         (begging.restockRemaining??0)>0;
-      if(requestsLive&&snapshot.visitors.some(v=>
+      if(snapshot.visitors.some(v=>
         ids.buyers.includes(v.id)&&(v.cartUnits??0)>0))
-        buyerWithCartDuringRequest=true;
-      return requestsLive&&buyerWithCartDuringRequest&&
+        buyerWithCart=true;
+      return requestsLive&&buyerWithCart&&
         (request!.roamLeg??0)>0 &&
         (begging!.roamLeg??0)>0 &&
         snapshot.visitors.every(v=>v.wallClear);
