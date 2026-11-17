@@ -197,8 +197,8 @@ def curate(source: Path, destination: Path, resize_color: bool = False) -> dict:
 
     doc.setdefault("asset", {}).setdefault("extras", {})["DSM_Curation"] = {
         "sourceSha256": hashlib.sha256(input_bytes).hexdigest(),
-        "qualityStatus": "candidate; inspect animation before assigning boss phases",
-        "policy": "no static-foot walking prompts; boss navigation owns world position",
+        "qualityStatus": "candidate; inspect all clips in game before assigning combat phases",
+        "policy": "No unverified walking prompts; root motion not used for boss navigation",
     }
     write_glb(doc, bytes(binary), destination)
     output_bytes = destination.read_bytes()
