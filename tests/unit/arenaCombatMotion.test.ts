@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  BOSS_MAX_HP, bossStrikeGeometry, createCombatPreview, inAttackArc,
+  BOSS_MAX_HP, WALKABLE_RADIUS, SAFE_HERO_RADIUS, bossStrikeGeometry, createCombatPreview, inAttackArc,
   parryActive, rollInvulnerable, stepCombatPreview, type CombatPreviewOptions,
 } from "../../src/game/arenaCombatMotion.ts";
 
@@ -47,10 +47,10 @@ function imminentSwing() {
 test("troll damage only applies at active hit frame within locked arc", () => {
   const hit=imminentSwing();
   tick(hit);
-  assert.equal(hit.heroHp,86);
+  assert.equal(hit.heroHp,88);
   assert.equal(hit.bossDamageApplied,true);
   tick(hit,4);
-  assert.equal(hit.heroHp,86,"single attack must not damage the hero every frame");
+  assert.equal(hit.heroHp,88,"single attack must not damage the hero every frame");
 
   const side=imminentSwing();
   side.hero={x:6,z:0};
@@ -150,12 +150,16 @@ test("projectiles move until collision, never instantly deliver ranged damage",(
   assert.equal(s.projectiles.length,0);
 });
 
-test("lava is lethal and interrupted heals cannot resolve",()=>{
+test("lava deals bounded real damage and interrupted heals cannot resolve",()=>{
   const lava=createCombatPreview(options);
   lava.hero={x:17.5,z:0};
   tick(lava);
-  assert.equal(lava.outcome,"defeat");
-  assert(lava.cues.some(c=>c.kind==="lava"));
+  assert.equal(lava.outcome,"fighting");
+  assert.equal(lava.heroHp,88);
+  assert.deepEqual(lava.cues.find(c=>c.kind==="lava"),{kind:"lava",amount:12});
+  assert(Math.hypot(lava.hero.x,lava.hero.z)<WALKABLE_RADIUS);
+  tick(lava,20);
+  assert.equal(lava.heroHp,88,"safe landing prevents repeated invisible lava ticks");
 
   const heal=imminentSwing();
   heal.heroPhase="heal"; heal.heroAge=0.30;
