@@ -717,6 +717,7 @@ export class Level6Arena {
     state.bossHeading = frame.bh;
     state.lockedBossHeading = frame.lock;
     state.bossSlam = frame.slam;
+    state.bossAttack = frame.attack==="grab" ? "grab" : frame.slam ? "slam" : "smash";
     state.distanceTraveled = frame.travel;
     state.heroHp = frame.heroHp;
     state.bossHp = frame.bossHp;
@@ -780,10 +781,14 @@ export class Level6Arena {
   private displayCue(cue: ArenaCue, frame?: BossReplayFrame): void {
     const value = cue.amount === undefined ? "" : " (" + cue.amount + " HP)";
     const messages: Record<ArenaCue["kind"], string> = {
-      windup: "TROLL WINDUP · Dodge the glowing attack lane!",
+      windup: (frame?.attack==="grab" || (!frame && this.motion?.bossAttack==="grab"))
+        ? "GRAB WARNING · The Troll is reaching for the hero!"
+        : "TROLL WINDUP · Dodge the glowing attack lane!",
       dodge: "DODGED · Hit avoided during real invulnerability frames.",
       parry: "PARRY! A timed, facing block staggered the Cave Troll.",
-      miss: "MISSED · Target outside the active strike range or arc.",
+      miss: "MISSED · Target escaped the attack lane or grip.",
+      grab: "GRABBED! · The Cave Troll has caught the hero.",
+      throw: "THROWN! · The hero is flying toward the arena edge.",
       hit: "TROLL HIT" + value + " · The strike made contact.",
       "hero-hit": "HERO HIT" + value + " · An attack reached its target.",
       projectile: "Spell fired! Moving projectile must reach the boss.",
@@ -803,7 +808,8 @@ export class Level6Arena {
       const boss=frame?{x:frame.bx,z:frame.bz}:this.motion.boss;
       const bossPhase=frame?.bossPhase??this.motion.bossPhase;
       this.sfx?.playCombatCue(cue,hero,boss,this.soundListener(),
-        bossPhase==="strike",frame?.slam??this.motion.bossSlam);
+        bossPhase==="strike" || (frame?.attack??this.motion.bossAttack)==="grab",
+        frame?.slam??this.motion.bossSlam);
       this.worldHud.pushCue(cue,this.motion);
     }
   }
@@ -814,7 +820,14 @@ export class Level6Arena {
     const hero = this.hero, boss = this.boss;
     const oldHeroX = hero.root.position.x, oldHeroZ = hero.root.position.z;
     const oldBossX = boss.root.position.x, oldBossZ = boss.root.position.z;
-    hero.root.position.set(state.hero.x, 0, state.hero.z);
+    // A captured hero hangs in the troll's hand, then follows the recorded
+    // horizontal throw with a visual-only airborne arc. The motor alone owns
+    // collision, HP, timing and the eventual lava landing.
+    const throwProgress=Math.max(0,Math.min(1,state.heroAge/.62));
+    const heroHeight=state.heroPhase==="grabbed" ? 2.45 :
+      state.heroPhase==="thrown"
+        ? 2.45*(1-throwProgress)+1.1*Math.sin(Math.PI*throwProgress) : 0;
+    hero.root.position.set(state.hero.x,heroHeight,state.hero.z);
     boss.root.position.set(state.boss.x, 0, state.boss.z);
     hero.root.rotation.y = state.heroHeading;
     boss.root.rotation.y = state.bossHeading;
@@ -858,6 +871,7 @@ export class Level6Arena {
       phase: state.bossPhase,
       phaseAge: state.bossAge,
       slam: state.bossSlam,
+      attackType: state.bossAttack,
       time: state.time,
       moved: movedBoss,
       delta: frameDt,
@@ -876,7 +890,13 @@ export class Level6Arena {
       this.heroWeapon.rotation.x = attacking ? -0.65 : 0;
     }
     // A roll actually translates the hero sideways, then rotates the body.
-    if (state.heroPhase === "roll") {
+    if (state.heroPhase === "thrown") {
+      hero.root.rotation.z = Math.PI * 1.5 * throwProgress;
+      hero.root.rotation.x = -.35*Math.sin(Math.PI*throwProgress);
+    } else if (state.heroPhase === "grabbed") {
+      hero.root.rotation.z = -.38;
+      hero.root.rotation.x = 0;
+    } else if (state.heroPhase === "roll") {
       hero.root.rotation.z = Math.sin(Math.min(1, state.heroAge / 0.53) * Math.PI) * 1.0;
       hero.root.rotation.x = Math.PI * 2 * Math.min(1, state.heroAge / 0.53);
     } else {
@@ -887,7 +907,10 @@ export class Level6Arena {
     // The impact happens at the actual 140ms hit tick and persists through
     // recover. All effects follow source frames in both preview and replay.
     // They never affect attacks, damage, navigation or stored outcomes.
-    const fx=sampleMaulerImpact(state.bossPhase,state.bossAge,state.bossSlam);
+    const fx=state.bossAttack==="grab"
+      ? sampleMaulerImpact(state.bossPhase==="windup"?"windup":"chase",
+          state.bossAge,false)
+      : sampleMaulerImpact(state.bossPhase,state.bossAge,state.bossSlam);
     const hammerReach=state.bossSlam?3.45:2.75;
     const impactX=state.boss.x+Math.sin(state.lockedBossHeading)*hammerReach;
     const impactZ=state.boss.z+Math.cos(state.lockedBossHeading)*hammerReach;
@@ -937,6 +960,7 @@ export class Level6Arena {
     hero.root.metadata.previewHp = state.heroHp;
     hero.root.metadata.distanceTraveled = state.distanceTraveled;
     boss.root.metadata.combatPhase = state.bossPhase;
+    boss.root.metadata.combatAttack = state.bossAttack;
     boss.root.metadata.previewHp = state.bossHp;
     boss.root.metadata.missedHits = state.missedHits;
     boss.root.metadata.dodgeCount = state.dodgeCount;
@@ -954,6 +978,7 @@ export class Level6Arena {
       this.staminaText.textContent = "STAMINA " + Math.round(this.motion.stamina) + "/100";
       this.combatInfo.textContent = "Hero: " + this.motion.heroPhase +
         " · Troll: " + this.motion.bossPhase +
+        " (" + this.motion.bossAttack + ")" +
         " · Dodges " + this.motion.dodgeCount + " · Parries " + this.motion.parryCount +
         " · Connected hits " + this.motion.landedHits;
     }
