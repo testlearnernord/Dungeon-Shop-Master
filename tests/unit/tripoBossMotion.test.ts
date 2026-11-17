@@ -25,8 +25,8 @@ test("one attack animation spans windup, strike and recover without resetting", 
     const recoverStart=sample("recover",0,slam);
     assert.equal(windupEnd.clip,strikeStart.clip);
     assert.equal(strikeStart.clip,recoverStart.clip);
-    assert.equal(windupEnd.progress,strikeStart.progress);
-    assert.equal(strikeEnd.progress,recoverStart.progress);
+    assert(Math.abs(windupEnd.progress-strikeStart.progress)<1e-10);
+    assert(Math.abs(strikeEnd.progress-recoverStart.progress)<1e-10);
     assert(contact.progress>strikeStart.progress);
     assert(contact.progress<strikeEnd.progress);
   }
@@ -37,10 +37,10 @@ test("overhead strike reaches the measured impact pose at the real 140ms tick",(
     const start=sample("strike",0,slam);
     const hit=sample("strike",.14,slam);
     const end=sample("strike",.38,slam);
-    assert.equal(start.progress,before.progress);
+    assert(Math.abs(start.progress-before.progress)<1e-10);
     assert(Math.abs(hit.progress*5-1.934)<.02);
     assert(hit.progress>before.progress && hit.progress<end.progress);
-    assert.equal(sample("recover",0,slam).progress,end.progress);
+    assert(Math.abs(sample("recover",0,slam).progress-end.progress)<1e-10);
   }
 });
 
@@ -48,7 +48,7 @@ test("looping walk is bounded; death holds its ending pose", () => {
   assert.equal(sample("chase",0,false,.1,2.375).progress,0);
   const sustained=sampleTripoBossPose({phase:"chase",phaseAge:0,slam:false,moved:0,time:2.375},0,{walking:true,distance:3.6});
   assert.equal(sustained.clip,"walk_heavy");
-  assert.equal(sustained.progress,.5);
+  assert(Math.abs(sustained.progress-.5)<1e-10);
   const stopped=sampleTripoBossPose({phase:"chase",phaseAge:0,slam:false,moved:.05,time:2.375},0,{walking:false,distance:3.6});
   assert.equal(stopped.clip,"idle_combat");
   assert.equal(sampleTripoBossPose({phase:"dead",phaseAge:100,slam:false,time:100,moved:0},4).progress,1);
