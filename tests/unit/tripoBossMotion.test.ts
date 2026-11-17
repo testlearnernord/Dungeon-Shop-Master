@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { sampleTripoBossPose } from "../../src/game/tripoBossMotion.ts";
+import { sampleTripoBossPose, sampleTripoFade, sampleTripoTurnStride, TRIPO_FADE_SECONDS } from "../../src/game/tripoBossMotion.ts";
 
 const sample = (phase: "chase"|"windup"|"strike"|"recover"|"stagger"|"dead",
   age=0, slam=false, moved=0, time=0) =>
@@ -42,6 +42,21 @@ test("overhead strike reaches the measured impact pose at the real 140ms tick",(
     assert(hit.progress>before.progress && hit.progress<end.progress);
     assert(Math.abs(sample("recover",0,slam).progress-end.progress)<1e-10);
   }
+});
+
+test("cross-fade weights are bounded and smooth at the endpoints",()=>{
+  assert.equal(sampleTripoFade(0),0);
+  assert.equal(sampleTripoFade(TRIPO_FADE_SECONDS),1);
+  assert.equal(sampleTripoFade(-1),0);
+  assert.equal(sampleTripoFade(100),1);
+  assert(Math.abs(sampleTripoFade(TRIPO_FADE_SECONDS/2)-.5)<1e-10);
+});
+test("on-the-spot heading changes generate visual footwork across the yaw wrap",()=>{
+  assert.equal(sampleTripoTurnStride(null,1),0);
+  assert.equal(sampleTripoTurnStride(0,0),0);
+  assert(Math.abs(sampleTripoTurnStride(Math.PI-.02,-Math.PI+.02)-.06)<1e-10);
+  assert(sampleTripoTurnStride(0,Math.PI/2)>0);
+  assert(sampleTripoTurnStride(0,Math.PI/2)<=.4050001);
 });
 
 test("looping walk is bounded; death holds its ending pose", () => {

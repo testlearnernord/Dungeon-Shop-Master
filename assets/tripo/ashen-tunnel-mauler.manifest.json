@@ -36,7 +36,7 @@
     "roar",
     "death_fall"
   ],
-  "qualityGate": "Follow-up corrects model yaw, stabilizes distance-driven gait, aligns overhead attack with original motor FX and adds provisional wrist-tracked stone maul; visual foot planting, grip, camera and replay acceptance remain with the owner.",
+  "qualityGate": "Player-rejected maul removed; unarmed renderer now blends clips over 0.19s and samples turning footsteps. Visual combat transitions, contact, foot planting and real positional circling remain unapproved.",
   "rootMotion": "Hips XZ translation remains zero in inspected clips. World navigation stays with existing combat motor.",
   "retainedRuntimeModel": "public/assets/models/ashen-mauler-sculpt.glb",
   "retainedViewer": "src/game/bossModelLab.ts",

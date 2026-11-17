@@ -1,5 +1,19 @@
 import type { CaveTrollAnimation } from "./caveTrollVisual.ts";
 
+/** Animation blending is presentation only, never a combat timer. */
+export const TRIPO_FADE_SECONDS = .19;
+export function sampleTripoFade(elapsed: number): number {
+  const t = Math.max(0, Math.min(1, Number.isFinite(elapsed)
+    ? elapsed / TRIPO_FADE_SECONDS : 0));
+  return t*t*(3-2*t);
+}
+/** Shortest yaw difference -> visible turning footsteps, NOT a new path. */
+export function sampleTripoTurnStride(previous: number | null, current: number): number {
+  if (previous===null || !Number.isFinite(previous) || !Number.isFinite(current)) return 0;
+  const turn=Math.atan2(Math.sin(current-previous),Math.cos(current-previous));
+  return Math.min(.27,Math.abs(turn))*1.5;
+}
+
 /** One-way visual pose sampling: all combat, damage and navigation live in the
  * unchanged Level 6 motor. Calibrated against the actual Tripo 12-clip GLB.
  */
@@ -18,10 +32,10 @@ const wrap = (n: number, length: number) =>
  * attack_2h_swing raises both hands at ~1.4-1.5 s and strikes downward at
  * ~1.9-2.1 s, in a 5.0-second source clip. The 'attack_slam' source clip
  * barely lowers the hands and looks like an air punch, so neither normal nor
- * heavy combat uses it. Both share the same overhead weapon motion for now.
+ * heavy combat uses it. Both use the existing overhead motion as an unarmed two-fist smash (no weapon mesh).
  *
  * The REAL hit remains 0.14 s into the motor's 'strike' phase. Sampling the
- * GLB at ~1.93 s at that exact tick aligns the hand/maul with existing debris
+ * GLB at ~1.93 s at that exact tick aligns the fists with existing debris
  * and flash; it never changes the authoritative hit or replay.
  */
 export function sampleTripoBossPose(

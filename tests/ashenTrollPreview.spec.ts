@@ -142,7 +142,8 @@ test("experimental Tripo boss uses live Level 6 motor while preserving the origi
   expect(imported.tripoBoneCount).toBe(65);
   expect(imported.tripoClipCount).toBe(12);
   expect(imported.tripoFacingCorrectionRadians).toBe(0);
-  expect(imported.tripoWeaponMeshCount).toBeGreaterThanOrEqual(3);
+  expect(imported.tripoWeaponMeshCount).toBe(0);
+  expect(imported.tripoWeaponMode).toBe("unarmed");
   expect(imported.bossFacingHero).toBeGreaterThan(.98);
   await page.keyboard.press("Space");
   await expect(page.locator("#arena-cinematic")).toBeHidden();

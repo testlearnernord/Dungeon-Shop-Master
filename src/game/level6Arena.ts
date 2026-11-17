@@ -741,7 +741,7 @@ export class Level6Arena {
       dodge: "DODGED · Hit avoided during real invulnerability frames.",
       parry: "PARRY! A timed, facing block staggered the Cave Troll.",
       miss: "MISSED · Target outside the active strike range or arc.",
-      hit: "TROLL HIT" + value + " · The club made contact.",
+      hit: "TROLL HIT" + value + " · The strike made contact.",
       "hero-hit": "HERO HIT" + value + " · An attack reached its target.",
       projectile: "Spell fired! Moving projectile must reach the boss.",
       heal: "HEALED" + value + " · The uninterrupted cast completed.",
