@@ -81,7 +81,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   spine.position.set(0,2.62,0);
   const head=new TransformNode("troll-rig-head",scene);
   head.parent=spine;
-  head.position.set(0,3.05,.69);
+  head.position.set(0,2.47,1.02); // low-set face under the heavy shoulder hump
   // The mouth is a real sub-joint, not a flattened animation decal.
   const jaw=new TransformNode("troll-rig-jaw",scene);
   jaw.parent=head;
@@ -99,46 +99,48 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     mat.backFaceCulling=true;
     return mat;
   };
-  const skin=makeMaterial("ashen-scarred-skin","#8f847c");
-  const shadowSkin=makeMaterial("shadow-skin","#665f5a");
-  const scar=makeMaterial("scars","#514641");
-  const nose=makeMaterial("nose","#765a51");
+  const skin=makeMaterial("ashen-scarred-skin","#bbb2ae");
+  const shadowSkin=makeMaterial("shadow-skin","#8d8784");
+  const scar=makeMaterial("scars","#6d524c");
+  const nose=makeMaterial("nose","#a38b7f");
   const leather=makeMaterial("leather","#50382c");
   const darkLeather=makeMaterial("stitch-leather","#312522");
-  const plated=makeMaterial("plated-iron","#595456",false);
-  const iron=makeMaterial("iron-edge","#827b77",false);
+  const plated=makeMaterial("plated-iron","#585052",false);
+  const iron=makeMaterial("iron-edge","#77716e",false);
   const copper=makeMaterial("rust","#a45338",false);
   const rust=makeMaterial("red-canisters","#803a2e");
   const apron=makeMaterial("mining-apron","#704038");
   const rope=makeMaterial("rope","#a4865f");
-  const bone=makeMaterial("teeth","#d2c4a0");
+  const bone=makeMaterial("teeth","#c8b9a1");
   const mouth=makeMaterial("mouth","#231b1b");
   const ember=makeMaterial("molten-eyes","#ff8b28",false,true);
   const pupil=makeMaterial("hot-pupils","#fff0a6",false,true);
-  const rock=makeMaterial("hammer-stone","#696764");
+  const rock=makeMaterial("hammer-stone","#5d5856");
   const wood=makeMaterial("hammer-haft","#624536");
+  const hair=makeMaterial("dirty-grey-fur","#675c56");
+  const furShade=makeMaterial("fur-shadow","#403d3b");
   // Stable procedural hand-painted texture for skin. Real UV shading keeps
   // veins, dirt and pigment variation visible across the 3D model instead
   // of returning to uniformly coloured Blender-style spheres.
   const skinTexture=new DynamicTexture("mauler-skin-pigment",
-    {width:256,height:256},scene,false);
+    {width:512,height:512},scene,false);
   const ctx=skinTexture.getContext() as CanvasRenderingContext2D;
-  const pixels=ctx.createImageData(256,256);
+  const pixels=ctx.createImageData(512,512);
   let seed=9321;
   const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
-  for(let y=0;y<256;y++)for(let x=0;x<256;x++){
-    const broad=Math.sin(x*.105+Math.cos(y*.031)*3.2)*5+
-      Math.sin(y*.071+x*.039)*7;
-    const grain=(random()-.5)*26;
-    const v=Math.max(145,Math.min(230,207+broad+grain));
-    const at=(y*256+x)*4;
-    pixels.data[at]=v; pixels.data[at+1]=v-5;
-    pixels.data[at+2]=v-13; pixels.data[at+3]=255;
+  for(let y=0;y<512;y++)for(let x=0;x<512;x++){
+    const broad=Math.sin(x*.047+Math.cos(y*.018)*2.3)*5+
+      Math.sin(y*.037+x*.021)*7;
+    const grain=(random()-.5)*20;
+    const v=Math.max(162,Math.min(238,222+broad+grain));
+    const at=(y*512+x)*4;
+    pixels.data[at]=v; pixels.data[at+1]=v-1;
+    pixels.data[at+2]=v+1; pixels.data[at+3]=255;
   }
   ctx.putImageData(pixels,0,0);
-  for(let n=0;n<150;n++){
-    const x=random()*256,y=random()*256;
-    ctx.strokeStyle=n%4===0?"rgba(85,62,52,.23)":"rgba(111,87,72,.15)";
+  for(let n=0;n<360;n++){
+    const x=random()*512,y=random()*512;
+    ctx.strokeStyle=n%4===0?"rgba(81,60,56,.31)":"rgba(119,93,88,.20)";
     ctx.lineWidth=n%5===0?1.7:.65;
     ctx.beginPath();ctx.moveTo(x,y);
     ctx.quadraticCurveTo(x+(random()-.5)*18,y+8,
@@ -149,7 +151,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   skin.diffuseTexture=skinTexture;
   shadowSkin.diffuseTexture=skinTexture;
   const materials=[skin,shadowSkin,scar,nose,leather,darkLeather,plated,iron,
-    copper,rust,apron,rope,bone,mouth,ember,pupil,rock,wood];
+    copper,rust,apron,rope,bone,mouth,ember,pupil,rock,wood,hair,furShade];
   const mount=(m:Mesh,parent:TransformNode,p:[number,number,number],mat:StandardMaterial):Mesh=>{
     m.parent=parent;m.position.set(...p);m.material=mat;
     m.isPickable=false;m.checkCollisions=false;
