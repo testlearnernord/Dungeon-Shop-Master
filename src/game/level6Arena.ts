@@ -411,7 +411,7 @@ export class Level6Arena {
     this.targets = [
       { label: displayName + " · " + (this.fighter?.role ?? "tank"), node: hero,
         vantage: new Vector3(4, 5, -8) },
-      { label: "THE CAVE TROLL · BOSS", node: boss, vantage: new Vector3(10, 7, -11) },
+      { label: "THE CAVE TROLL · BOSS", node: boss, vantage: new Vector3(5.5, 5.3, -7.0) },
     ];
     this.focusIndex = 0;
     this.focusCamera();
