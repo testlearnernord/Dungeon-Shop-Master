@@ -1,4 +1,5 @@
 import type { CaveTrollAnimation } from "./caveTrollVisual.ts";
+import { GRAPPLE_TIMING } from "./arenaCombatMotion.ts";
 
 /** Animation blending is presentation only, never a combat timer. */
 export const TRIPO_FADE_SECONDS = .19;
@@ -62,13 +63,25 @@ export function sampleTripoBossPose(
   }
   if (input.attackType === "grab") {
     if (input.phase === "windup")
-      return {clip:"grab_hero",progress:.07+.19*clamp(input.phaseAge/.90),loop:false};
+      return {clip:"grab_hero",
+        progress:.04+.16*clamp(input.phaseAge/GRAPPLE_TIMING.windup),loop:false};
     if (input.phase === "grab")
-      return {clip:"grab_hero",progress:.26+.56*clamp(input.phaseAge/.80),loop:false};
+      return {clip:"grab_hero",
+        progress:.20+.46*clamp(input.phaseAge/GRAPPLE_TIMING.grab),loop:false};
+    if (input.phase === "grabMiss") {
+      // Retract from the actual hand-contact pose instead of abruptly
+      // playing the throw animation with empty hands. Smooth reverse scrub.
+      const start=.20+.46*(GRAPPLE_TIMING.grabContact/GRAPPLE_TIMING.grab);
+      const t=clamp(input.phaseAge/GRAPPLE_TIMING.missRecover);
+      const eased=t*t*(3-2*t);
+      return {clip:"grab_hero",progress:start-.12*eased,loop:false};
+    }
     if (input.phase === "throw")
-      return {clip:"throw_hero",progress:.12+.74*clamp(input.phaseAge/.96),loop:false};
+      return {clip:"throw_hero",
+        progress:.12+.74*clamp(input.phaseAge/GRAPPLE_TIMING.throw),loop:false};
     if (input.phase === "recover")
-      return {clip:"throw_hero",progress:.86+.14*clamp(input.phaseAge/.72),loop:false};
+      return {clip:"throw_hero",
+        progress:.86+.14*clamp(input.phaseAge/GRAPPLE_TIMING.recover),loop:false};
   }
   const clip = "attack_2h_swing";
   if (input.phase === "windup")
