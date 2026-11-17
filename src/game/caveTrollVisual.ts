@@ -8,7 +8,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
-import type { BossPhase } from "./arenaCombatMotion.ts";
+import { GRAPPLE_TIMING, type BossPhase } from "./arenaCombatMotion.ts";
 import { applyCaveTrollSculpt } from "./caveTrollSculpt.ts";
 import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 
@@ -583,15 +583,23 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
         break;
       }
       case "grab":{
-        const t=ease(a.phaseAge/.80);
+        const t=ease(a.phaseAge/GRAPPLE_TIMING.grab);
         pitch=-.34;
-        hammerZ=-.55-t*.27;
-        hammerReach=.35+t*.20;
-        hammerLift=.22;
+        hammerZ=-.42-t*.36;
+        hammerReach=.30+t*.25;
+        hammerLift=.18+t*.06;
+        break;
+      }
+      case "grabMiss":{
+        const t=ease(a.phaseAge/GRAPPLE_TIMING.missRecover);
+        pitch=lerp(-.34,-.21,t);
+        hammerZ=lerp(-.50,-.08,t);
+        hammerReach=.30*(1-t);
+        hammerLift=.18*(1-t);
         break;
       }
       case "throw":{
-        const t=ease(a.phaseAge/.75);
+        const t=ease(a.phaseAge/GRAPPLE_TIMING.throw);
         pitch=lerp(-.34,.20,t);
         hammerZ=lerp(-.78,.82,t);
         hammerReach=.55*(1-t);
