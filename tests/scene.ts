@@ -291,6 +291,9 @@ export function inspectBossArena() {
     tripoClip: boss?.metadata?.animationClip as string | undefined,
     tripoBoneCount: boss?.metadata?.tripoBoneCount as number | undefined,
     tripoClipCount: boss?.metadata?.tripoClipCount as number | undefined,
+    tripoFacingCorrectionRadians: boss?.metadata?.facingCorrectionRadians as number | undefined,
+    tripoGaitDistance: boss?.metadata?.tripoGaitDistance as number | undefined,
+    tripoWeaponMeshCount: scene.meshes.filter(mesh=>mesh.name.startsWith("tripo-maul-")).length,
     sculptStatus: boss?.metadata?.sculptStatus as string | undefined,
     sculptSourceUrl: boss?.metadata?.sculptSourceUrl as string | undefined,
     sculptedPartCount: boss?.getChildMeshes(false).filter(

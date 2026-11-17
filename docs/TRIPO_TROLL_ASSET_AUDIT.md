@@ -61,6 +61,6 @@ The script selects twelve actual existing animations and renames them, removes u
 
 ## Merge gate and asset rights
 
-**The binary is checked in at the intended path** and selectable from the existing Model Lab. The functional combat model and generic local-import viewer remain unchanged. Runtime boss switching, weapon binding, replay stability and frame-to-frame animation quality are separate review gates.
+**The binary is checked in at the intended path** and selectable from the existing Model Lab. The live Level 6 trial now removes the incorrect 180-degree pivot correction, holds gait state across render frames and distance-samples its 2.375-second walk loop, uses the measured 1.9–2.1 s overhead impact pose for both normal and slam attacks (rather than the weak source `attack_slam` pose), and adds a temporary procedural stone maul positioned from both wrist joints. These are visual-only corrections awaiting player acceptance. The functional combat model and generic local-import viewer remain unchanged. Runtime boss switching, weapon binding, replay stability and frame-to-frame animation quality are separate review gates.
 
 The model was generated in the owner's Tripo AI account, with a paid subscription later canceled. Review the actual generation-time license before public distribution; no exclusivity is assumed.

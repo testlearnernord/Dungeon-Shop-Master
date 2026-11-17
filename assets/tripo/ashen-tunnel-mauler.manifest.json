@@ -36,7 +36,7 @@
     "roar",
     "death_fall"
   ],
-  "qualityGate": "Skinned Tripo candidate selectable in real Level 6 arena; visual foot planting, attack sync, weapon grip, front-facing direction, scale and replay acceptance still unverified by owner.",
+  "qualityGate": "Follow-up corrects model yaw, stabilizes distance-driven gait, aligns overhead attack with original motor FX and adds provisional wrist-tracked stone maul; visual foot planting, grip, camera and replay acceptance remain with the owner.",
   "rootMotion": "Hips XZ translation remains zero in inspected clips. World navigation stays with existing combat motor.",
   "retainedRuntimeModel": "public/assets/models/ashen-mauler-sculpt.glb",
   "retainedViewer": "src/game/bossModelLab.ts",
