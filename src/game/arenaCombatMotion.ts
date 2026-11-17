@@ -62,7 +62,7 @@ export type CombatPreviewState = {
   missedHits: number;
 };
 // Longer actual encounters, not slowed playback or an artificial HP gate.
-export const BOSS_MAX_HP = 210;
+export const BOSS_MAX_HP = 280;
 export const WALKABLE_RADIUS = 16.8;
 const HERO_RADIUS = 0.58;
 // Leave a real buffer between the hero's body and the molten arena ring.
@@ -204,7 +204,7 @@ function resolveBossStrike(s: CombatPreviewState): void {
     beginBoss(s, "stagger");
     return;
   }
-  const raw = s.bossSlam ? 21 : 15;
+  const raw = s.bossSlam ? 19 : 14;
   const damage = Math.max(1, raw - (s.options.armor ? 7 : 0) -
     (s.options.role === "tank" ? 3 : 0));
   const before=s.heroHp;
@@ -307,7 +307,7 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
   } else if (s.bossPhase === "recover") {
     if (s.bossAge >= 0.72) {
       beginBoss(s, "chase");
-      s.bossCooldown = 1.35;
+      s.bossCooldown = 1.50;
     }
   } else if (s.bossPhase === "stagger") {
     if (s.bossAge >= 1.6) {
