@@ -34,6 +34,8 @@ saved combat. The tool does **not** yet put the Tripo creature into real
 combat. The curated 12-clip candidate is now checked in alongside the
 archived 55-clip source and selectable in the existing Model Lab.
 
+**CURRENT audio prototype:** Level 6 now has a first Web Audio SFX layer with 19 distinct synthesized cues, a subtle lava bed, cue-accurate hits and locomotion-triggered footsteps. Music and sound effects have separate settings. This establishes hooks and mixing controls, **not finished creature Foley**: replace the synthesized roar, impact and footsteps with reviewed recordings/assets in a later sound-design pass. Avoid changing combat timing to fit sounds.
+
 **CURRENT experimental implementation:** The checked-in 12-clip candidate can now be selected for the existing Level 6 fight with the **Legacy boss · try Tripo** switch. The same simulation and immutable replay drive visual-only pose sampling, and the old boss remains the default and loading/error fallback. An animation-alignment follow-up fixes reversed rendering and frame-by-frame gait switching. After player review, the incompatible weapon prop was removed completely; this Tripo trial is **unarmed** with short clip cross-fades and visible turn-induced steps. True positional circling and dedicated unarmed attack curation remain future visual/AI work. Awaiting player visual acceptance. This is a **trial awaiting browser/owner visual acceptance**, not a finalized boss art replacement or a reusable creature pipeline. The Model Lab and its local `.glb` inspector are preserved.
 
 **NEXT, approved experiment (VISUAL ACCEPTANCE OPEN):** evaluate the skinned

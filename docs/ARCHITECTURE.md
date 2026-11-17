@@ -33,7 +33,7 @@ The current game is a **TypeScript/Vite** browser application rendered with **Ba
 | End-of-day book and spoiler-safe projections | `src/merchantLedger.ts`, `src/ledgerHeroChronicle.ts`, `src/ledgerSealedExpeditions.ts`, `src/ledgerViewState.ts` |
 | Campaign save validation | `src/game/campaignSave.ts` |
 | Player shop service and crosshair | `src/game/shopServiceFocus.ts` (pure shelf hints and urgent request ranking), `src/game/interactionSystem.ts` (throttled real shelf-ray hint), `src/shopHudLayout.ts` (compact status and F shortcut), `src/game/npcVisualSystem.ts` (read-only active requests and physical checkout readiness), `src/cashierHud.ts` (current two-stage staffed register) |
-| Shared interface and sound | `src/uiIcons.ts`, `src/immersiveUi.css`, `src/soundtrack.ts` (one scene-based mixer: shop `The Lean Season`, dungeon `Beneath the Surface`, Level 6 boss `Desperate Measures` from `public/audio/desperate-measures.mp3`; fades, mute, volume, restart on re-entry) |
+| Shared interface and sound | `src/uiIcons.ts`, `src/immersiveUi.css`, `src/soundtrack.ts` (scene music tracks, fade, restart and independent music preferences), `src/gameSfx.ts` (original Web Audio synthesis, 19 replaceable effect cues, Level 6 looped lava ambience, simple distance/stereo attenuation, independent persisted SFX preferences, no gameplay RNG). The `main.ts` setup uses the SFX preferences for existing checkout/merchant sounds too; `level6Arena.ts` maps existing live/replay motor cues, visible distance and cinematic time to effects without writing combat or saves |
 
 This is a **route map**. Before editing, inspect the named module, its imports, callers and relevant tests; do not assume the table guarantees an isolated interface.
 
