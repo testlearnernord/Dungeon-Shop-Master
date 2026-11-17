@@ -1,5 +1,6 @@
 import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { Material } from "@babylonjs/core/Materials/material";
 import { Scene } from "@babylonjs/core/scene";
 import { loadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0";
@@ -45,6 +46,23 @@ export async function applyCaveTrollSculpt(
     for (const { target, vertices } of grafts) {
       if (target.isDisposed()) return sourceUrl; // closed/restarted while loading
       vertices.applyToMesh(target, true);
+      target.refreshBoundingInfo();
+      // glTF COLOR_0 is RGBA even when every alpha is 1. Babylon may
+      // classify a mesh as blended after the vertex-buffer replacement.
+      // Blended meshes skip ordinary depth writing and can reveal internal
+      // limbs / backfaces through the body: the player's "transparent troll".
+      // Preserve RGB vertex paint, but use the opaque render queue and depth.
+      target.useVertexColors = true;
+      target.hasVertexAlpha = false;
+      const material = target.material;
+      if (material) {
+        material.alpha = 1;
+        material.transparencyMode = Material.MATERIAL_OPAQUE;
+        material.forceDepthWrite = true;
+        // Surface winding on imported segmented GLB parts must not cut
+        // holes at grazing angles while their original rig scales animate.
+        material.backFaceCulling = false;
+      }
       target.metadata = { ...target.metadata, sculpted: true, sourceUrl };
     }
     return sourceUrl;

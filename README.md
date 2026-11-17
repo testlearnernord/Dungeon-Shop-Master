@@ -41,7 +41,7 @@ was mentioned in a roadmap.
 | Shoppers | Individual needs, gold, gear and HP; real shelf pickups into unpaid carts; collision-aware browsing, a five-place physical checkout queue with overflow, local restock/credit requests and walkouts; short event-triggered character remarks in the physical shop |
 | Player service | Crosshair shelf details for actual stock and valid actions; compact live checkout/restock/credit status; **F** selects the most urgent requested item in the existing hotbar |
 | Money | Real bag/slot inventory, wholesale costs, fixed retail prices, credit debt book and manual receipts. Outstanding collected carts settle once at end of day |
-| Adventurers / dungeon | Persistent identities and equipment; deterministic offscreen Floors 1–4; individually authorized Floor 6 Cave Troll with a score-synchronized 13.5s entrance, an original 17-piece vertex-painted GLB surface sculpt on the existing animated rig, and visually grounded maul attacks; Floor 7 observation/replay |
+| Adventurers / dungeon | Persistent identities and equipment; deterministic offscreen Floors 1–4; individually authorized Floor 6 Cave Troll with a score-synchronized 13.5s entrance, an original 17-piece vertex-painted GLB surface sculpt on the existing animated rig, and visually grounded maul attacks; safe-edge boss duel with hero/troll HP plates and cue-colored floating damage, lava and healing; Floor 7 observation/replay |
 | Day / reports | End the day at Galvik's bed; merchant ledger, receipts, hero records and spoiler-safe sealed replay presentation; validated campaign save/load |
 
 **Implemented does not mean visually perfect.** The CI checks safety and

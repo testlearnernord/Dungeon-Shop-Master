@@ -50,7 +50,12 @@ export interface BossCombatReplay {
   readonly frames: readonly BossReplayFrame[];
 }
 
-const rounded = (x: number): number => Math.round(x * 1000) / 1000;
+// JSON serializes -0 as 0. Canonicalize saved coordinates/headings so
+// a fresh replay and its strict save/load round-trip are structurally equal.
+const rounded = (x: number): number => {
+  const value=Math.round(x*1000)/1000;
+  return Object.is(value,-0)?0:value;
+};
 export function frameFromCombat(s: CombatPreviewState, cues: readonly ArenaCue[] = []): BossReplayFrame {
   return {
     t: rounded(s.time),

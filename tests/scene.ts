@@ -291,6 +291,11 @@ export function inspectBossArena() {
     sculptSourceUrl: boss?.metadata?.sculptSourceUrl as string | undefined,
     sculptedPartCount: boss?.getChildMeshes(false).filter(
       mesh=>mesh.metadata?.sculpted===true).length ?? 0,
+    opaqueSculptPartCount: boss?.getChildMeshes(false).filter(
+      mesh=>mesh.metadata?.sculpted===true &&
+        mesh.hasVertexAlpha===false &&
+        mesh.material?.transparencyMode===0 &&
+        mesh.material?.forceDepthWrite===true).length ?? 0,
     scalpTuftCount: scene.meshes.filter(mesh=>mesh.name.startsWith("troll-scalp-tuft-")).length,
     jowlFurCount: scene.meshes.filter(mesh=>mesh.name.startsWith("troll-jowl-fur-")).length,
     apronVertexCount: scene.getMeshByName("troll-apron-panel-0")?.getTotalVertices()??0,

@@ -970,3 +970,49 @@
 @media(prefers-reduced-motion:reduce){
   .arena-cinematic-copy{filter:none}
 }
+
+/* Level 6 fight: world-anchored vitals and cue-driven, noninteractive damage.
+   The recorded outcome remains hidden until the musical intro finishes. */
+#arena-hud[data-intro="true"] .arena-world-hud,
+#arena-world-hud[hidden],
+.arena-actor-plate[hidden],
+.arena-damage-number[hidden]{display:none!important}
+.arena-world-hud{
+  position:absolute;inset:0;z-index:2;overflow:hidden;
+  pointer-events:none;font:700 12px/1.2 system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;
+}
+.arena-actor-plate{
+  position:absolute;transform:translate(-50%,-50%);width:clamp(110px,13vw,177px);
+  padding:4px 7px 6px;border:1px solid rgba(239,220,187,.45);
+  border-radius:7px;background:rgba(13,16,19,.79);
+  box-shadow:0 4px 12px #000a;text-align:center;
+  text-shadow:0 2px 4px #000;white-space:nowrap;
+}
+.arena-actor-plate[data-actor="boss"]{width:clamp(142px,17vw,204px);border-color:rgba(224,112,89,.65)}
+.arena-actor-label{display:block;font-size:clamp(9px,1.0vw,12px);letter-spacing:.025em;color:#fff1d5}
+.arena-health-track{
+  display:block;height:7px;margin-top:4px;border-radius:5px;
+  background:rgba(6,8,10,.9);overflow:hidden;
+  box-shadow:inset 0 0 0 1px #fff3;
+}
+.arena-health-fill{display:block;height:100%;width:100%;background:#88cba2;border-radius:5px}
+.arena-actor-plate[data-actor="boss"] .arena-health-fill{background:#d66d64}
+.arena-damage-numbers{position:absolute;inset:0;pointer-events:none}
+.arena-damage-number{
+  position:absolute;transform:translate(-50%,-50%);font-weight:900;
+  font-size:clamp(14px,1.65vw,25px);letter-spacing:.01em;
+  text-shadow:0 2px 2px #000,1px -1px 3px #000,0 0 10px #000a;
+  white-space:nowrap;will-change:transform,opacity;
+}
+.arena-damage-number[data-tone="hero"]{color:#ffe0a0}
+.arena-damage-number[data-tone="troll"]{color:#ff8178}
+.arena-damage-number[data-tone="lava"]{color:#ff9d4a}
+.arena-damage-number[data-tone="heal"]{color:#99e6b0}
+@media(max-width:640px){
+  .arena-actor-plate{padding:3px 5px 5px}
+  .arena-health-track{height:6px}
+}
+@media(prefers-reduced-motion:reduce){
+  .arena-damage-number{will-change:auto}
+}

@@ -25,6 +25,7 @@ import { createCaveTrollVisual, type CaveTrollVisual } from "./caveTrollVisual.t
 import { buildCaveTrollArenaArt, paintCaveTrollFloor } from "./caveTrollArenaArt.ts";
 import { BOSS_INTRO_SECONDS, sampleBossIntro } from "./bossCinematic.ts";
 import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
+import { BossCombatHud } from "./bossCombatHud.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -67,6 +68,7 @@ export class Level6Arena {
   private result: "fighting" | "victory" | "defeat" = "fighting";
   private heroLegs: TransformNode[] = [];
   private readonly panel: HTMLElement;
+  private readonly worldHud: BossCombatHud;
   private readonly status: HTMLElement;
   private readonly focusText: HTMLElement;
   private readonly healthText: HTMLElement;
@@ -91,6 +93,7 @@ export class Level6Arena {
     private readonly skipBossThemeTo:(seconds:number)=>void=()=>{},
   ) {
     this.panel = document.querySelector<HTMLElement>("#arena-hud")!;
+    this.worldHud = new BossCombatHud(this.panel,this.canvas,this.engine);
     this.cinematic=document.querySelector<HTMLElement>("#arena-cinematic")!;
     this.cinematicLine=document.querySelector<HTMLElement>("#arena-cinematic-line")!;
     this.cinematicProgress=document.querySelector<HTMLElement>("#arena-cinematic-progress")!;
@@ -188,6 +191,7 @@ export class Level6Arena {
     if (!this.active) return;
     this.active = false;
     this.introActive=false;
+    this.worldHud.reset();
     this.cinematic.hidden=true;
     this.panel.dataset.intro="false";
     this.onActiveChange(false);
@@ -219,6 +223,7 @@ export class Level6Arena {
   restart(): void {
     if (!this.active) return;
     this.scene?.dispose();
+    this.worldHud.reset();
     this.heroLegs = [];
     this.trollVisual = null;
     this.targets = [];
@@ -391,7 +396,11 @@ export class Level6Arena {
       phase:"chase",phaseAge:0,slam:false,time:0,moved:0,
       delta:0,hp:BOSS_HP,maxHp:BOSS_HP,
     });
-    this.boss = {root:boss,hp:BOSS_HP,max:BOSS_HP,alive:true};
+    // v1 recorded duels can begin at 145 HP even after a future balance
+    // change increases the health of *newly simulated* trolls. Never
+    // relabel or resimulate their original stored health scale.
+    const recordedBossMax=this.replay?.frames[0]?.bossHp??BOSS_HP;
+    this.boss = {root:boss,hp:recordedBossMax,max:recordedBossMax,alive:true};
 
     // The same geometry/identity factory is used by shop NPCs and future dungeons.
     // Recorded battles use their own historical gear snapshot, not today's gear.
@@ -496,7 +505,8 @@ export class Level6Arena {
     // Breathe/brace in front of the player, but never touch combat or replay.
     this.trollVisual?.animate({
       phase:"chase",phaseAge:0,slam:false,time:seconds,moved:0,
-      delta:dt,hp:BOSS_HP,maxHp:BOSS_HP,introTime:seconds,
+      delta:dt,hp:this.boss?.hp??BOSS_HP,
+      maxHp:this.boss?.max??BOSS_HP,introTime:seconds,
     });
   }
 
@@ -657,6 +667,7 @@ export class Level6Arena {
         "DEFEAT · Hero fell in combat. Preview only.",
     };
     this.status.textContent = messages[cue.kind];
+    if(this.motion)this.worldHud.pushCue(cue,this.motion);
   }
 
   private paintCombat(frameDt: number): void {
@@ -688,7 +699,7 @@ export class Level6Arena {
       moved: movedBoss,
       delta: frameDt,
       hp: state.bossHp,
-      maxHp: BOSS_HP,
+      maxHp: boss.max,
     });
     if (this.heroArm) {
       const attacking = state.heroPhase === "attack";
@@ -769,6 +780,7 @@ export class Level6Arena {
     boss.root.metadata.parryCount = state.parryCount;
     this.result = state.outcome;
     this.updateHud();
+    this.worldHud.render(this.scene,state,frameDt,boss.max);
   }
 
   private updateHud(): void {

@@ -39,6 +39,9 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   await page.keyboard.press("Space");
   await expect(page.locator("#arena-cinematic")).toBeHidden();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-intro","false");
+  await expect(page.locator("#arena-world-hud")).toBeVisible();
+  await expect(page.locator("#arena-hero-bar-label")).toContainText("HERO");
+  await expect(page.locator("#arena-boss-bar-label")).toContainText("CAVE TROLL");
   expect((await inspect()).bossFacingHero).toBeGreaterThan(.98);
   // Pose must be produced by the real preview motor, not by a static loop.
   await expect.poll(async()=> (await inspect()).bossPhase,
@@ -60,6 +63,7 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
     {timeout:15000,intervals:[150,250,400]}).toBe("ready");
   const sculpted=await inspect();
   expect(sculpted.sculptedPartCount).toBe(17);
+  expect(sculpted.opaqueSculptPartCount).toBe(17);
   expect(sculpted.scalpTuftCount).toBe(19);
   expect(sculpted.jowlFurCount).toBe(14);
   expect(sculpted.apronVertexCount).toBeGreaterThan(100);
@@ -105,7 +109,7 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
 
   // Restart clears all scene-owned meshes and reconstructs the same boss.
   await page.locator("#restart-arena").click();
-  await expect(page.locator("#arena-boss-health")).toContainText("145/145");
+  await expect(page.locator("#arena-boss-health")).toContainText("280/280");
   const restarted=await inspect();
   expect(restarted.trollMeshCount).toBe(initial.trollMeshCount);
   expect(restarted.bossFacingHero).toBeGreaterThan(.98);
@@ -152,7 +156,7 @@ test("a playing Desperate Measures playhead starts the duel on its 13.5s drop",a
   });
   await expect(page.locator("#arena-cinematic")).toBeHidden({timeout:4000});
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-intro","false");
-  await expect(page.locator("#arena-boss-health")).toContainText("145/145");
+  await expect(page.locator("#arena-boss-health")).toContainText("280/280");
   await page.keyboard.press("Escape");
   await expect(page.locator("#merchant-gold")).toHaveText(gold!);
 });

@@ -22,7 +22,7 @@ reproducibly using `tools/asset_generation/build_cave_troll.mjs`. These surfaces
 are grafted onto the existing Babylon rig, retaining the proven IK animation,
 cue timing, death, scene cleanup and fallback on asset failure.
 
-**Next presentation work (open PR):** the real 0.14-second strike gets a visual-only flash, shockwave and debris in preview and saved replay, with no new hit logic.
+Merged **PR #162** adds real-hit-time stone shockwaves, debris and impact light (plus grounded body recoil), without changing authoritative hits or the audio clock.
 
 **Not done:** a cohesive artist-sculpted, skinned character with true
 deforming joints, baked/retargeted animation clips, and final in-game visual
@@ -30,10 +30,11 @@ sign-off against the owner-approved turnaround. The current GLB is a segmented
 mesh improvement, not that full-quality asset. Human screenshot/playtest
 review is necessary before declaring the troll art finished.
 
-**After the current boss-presentation work:** evaluate Level 6 combat
-pacing, duration and readable counters against the soundtrack in a
-separate design/test PR. Keep all authoritative results deterministic, do
-not change already committed replay outcomes. Then prioritize shop-to-dungeon
+**Current quality gate:** fix translucent sculpt-depth rendering, eliminate
+AI-assisted lava suicides, make new Level 6 fights long enough for the
+music, and show authoritative world-anchored HP/damage/healing information.
+Measure seeded fight duration and survival before merging. Historical saved
+combat stays immutable. Afterwards prioritize shop-to-dungeon
 consequence feedback and a measured first ten-day playthrough.
 
 ## Why this sequence
