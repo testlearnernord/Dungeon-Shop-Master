@@ -21,8 +21,8 @@ continuously running dungeon simulation.
   furniture contracts, saves, replays and current code ownership.
 - [UI Design System](docs/UI_DESIGN_SYSTEM.md): the compact first-person
   interaction and visual language, including customer service hints.
-- [Development Roadmap](docs/ROADMAP.md): proposed next five PRs, success
-  criteria and deliberately excluded scope.
+- [Development Roadmap](docs/ROADMAP.md): current priorities, the animated
+  Cave Troll asset trial, acceptance criteria and deliberately excluded scope.
 - [Contributor/AI Guide](AGENTS.md): how to begin work and keep these files
   synchronized with the implementation.
 
@@ -194,14 +194,30 @@ The existing Babylon transform rig animates the imported geometry. This is
 
 ## Upcoming development
 
-The register flow (PR #153), restocking ergonomics (#156), customer remarks
-(#157) and music-led boss cinematic (#160) have shipped. The next quality
-gates are real character-art review, meaningful boss combat pacing, legible
-shop-to-dungeon consequences and a measured ten-day balance/playability
-pass. The optional cellar and deeper shop systems remain separately planned,
-not an automatic feature commitment. Check the live [ROADMAP](docs/ROADMAP.md)
-and PR list rather than treating old numbers as reservations.
+The staffed register (#153), physical stock and stocking improvements
+(#154–#156), customer remarks (#157), boss preview, cinematic, visual
+sculpt and impacts (#158–#162), and boss combat fairness, opacity and HUD
+(#163) have shipped. #164 reduced required PR browser CI to six tagged
+smoke scenarios; the larger suite remains available for manual regression.
 
+**Implemented in #166:** Level 6 has a browser-local Tripo GLB inspection
+viewer and varied fictional training previews. The shipped Cave Troll in
+actual fights is **still the original 17-part GLB on the Babylon transform
+rig**, not the externally animated Tripo character.
+
+**Next art gate, not yet implemented:** evaluate the rigged Tripo model's
+walk, strikes and death clips in the local viewer, then import the approved
+skinned asset into the existing Level 6 presentation without replacing the
+combat logic or changing saved fight outcomes. Verify facing, foot contact,
+hammer attachment, visual quality, replay playback and cleanup in a real
+browser before replacing the existing boss. An automated pipeline for future
+monsters or heroes remains a possibility to evaluate, not a shipped system.
+
+After the art trial and a short Level 6 playtest, prioritize visible
+shop-to-dungeon consequences and a measured ten-day playability/balance pass.
+Deeper economic systems and an optional cellar, forge or pond are still
+design concepts. See [ROADMAP](docs/ROADMAP.md) and open PRs rather than
+reserving speculative numbers.
 
 Illustrations, previous brainstorms and historical conversations are
 references, not alternative canonical implementations.
