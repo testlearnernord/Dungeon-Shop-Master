@@ -100,6 +100,8 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   expect(locomotion.strike-locomotion.windup).toBeGreaterThan(.85);
   expect(locomotion.liftAtWindup).toBeGreaterThan(.5);
   expect(locomotion.jawAtWindup).toBeGreaterThan(.25);
+  expect(locomotion.contactCompression).toBeGreaterThan(.08);
+  expect(locomotion.recoveredCompression).toBe(0);
 
   // Restart clears all scene-owned meshes and reconstructs the same boss.
   await page.locator("#restart-arena").click();
