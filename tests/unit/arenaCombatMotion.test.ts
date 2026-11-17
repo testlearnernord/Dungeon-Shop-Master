@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  BOSS_MAX_HP, WALKABLE_RADIUS, SAFE_HERO_RADIUS, bossStrikeGeometry, createCombatPreview, inAttackArc,
+  BOSS_MAX_HP, WALKABLE_RADIUS, bossStrikeGeometry, createCombatPreview, inAttackArc,
   parryActive, rollInvulnerable, stepCombatPreview, type CombatPreviewOptions,
 } from "../../src/game/arenaCombatMotion.ts";
 
