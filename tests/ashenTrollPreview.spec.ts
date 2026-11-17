@@ -123,6 +123,45 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
 });
 
 
+test("experimental Tripo boss uses live Level 6 motor while preserving the original",async({page})=>{
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#merchant-gold")).toContainText("Merchant gold:");
+  const gold=await page.locator("#merchant-gold").textContent();
+  await page.locator("#open-arena").click();
+  const scenario=await page.locator("#arena-hud").getAttribute("data-training-scenario");
+  await page.locator("#arena-tripo-toggle").click();
+  await expect(page.locator("#arena-hud")).toHaveAttribute("data-boss-renderer","tripo");
+  await expect(page.locator("#arena-hud")).toHaveAttribute("data-training-scenario",scenario!);
+  const inspect=()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBossArena());
+  await expect.poll(async()=>(await inspect()).tripoStatus,{timeout:40000}).toBe("ready");
+  const imported=await inspect();
+  expect(imported.trollVisualId).toBe("ashen-tunnel-mauler-tripo");
+  expect(imported.tripoBoneCount).toBe(65);
+  expect(imported.tripoClipCount).toBe(12);
+  expect(imported.bossFacingHero).toBeGreaterThan(.98);
+  await page.keyboard.press("Space");
+  await expect(page.locator("#arena-cinematic")).toBeHidden();
+  await expect.poll(async()=>(await inspect()).bossPhase,{timeout:20000}).toBe("windup");
+  const animated=await inspect();
+  expect(["walk_heavy","idle_combat","attack_2h_swing","attack_slam"])
+    .toContain(animated.tripoClip);
+  await page.locator("#arena-tripo-toggle").click();
+  await expect(page.locator("#arena-hud")).toHaveAttribute("data-boss-renderer","legacy");
+  await expect(page.locator("#arena-hud")).toHaveAttribute("data-training-scenario",scenario!);
+  expect((await inspect()).trollVisualId).toBe("ashen-tunnel-mauler");
+  await page.locator("#arena-model-toggle").click();
+  await expect(page.locator("#arena-model-panel")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#arena-model-panel")).toBeHidden();
+  await page.locator("#close-arena").click();
+  await expect(page.locator("#merchant-gold")).toHaveText(gold!);
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  expect(errors).toEqual([]);
+});
+
 test("a playing Desperate Measures playhead starts the duel on its 13.5s drop @ci-smoke",async({page})=>{
   await page.addInitScript(()=>{
     const state=(element:HTMLMediaElement)=>

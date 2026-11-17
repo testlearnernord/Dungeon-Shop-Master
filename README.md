@@ -207,7 +207,9 @@ rig**, not the externally animated Tripo character.
 
 **Curated candidate available, not an in-game boss:** the 55-clip source is archived at `assets/tripo/source/`. The twelve-clip selection is checked in at `public/assets/models/ashen-tunnel-mauler-tripo.glb` (details in `docs/TRIPO_TROLL_ASSET_AUDIT.md`). In Level 6 choose **Inspect Tripo GLB → Ashen Tunnel Mauler · curated** to inspect the repository asset. Local `.glb` uploads still work.
 
-**Next art gate, not yet implemented:** evaluate the rigged Tripo model's
+**Experimental Level 6 boss swap (awaiting visual approval):** in Level 6 use **Legacy boss · try Tripo** to switch between the shipped segmented boss and the skinned 12-clip Tripo candidate. It restarts the cinematic without rerolling the current training fighter, and also works on exact saved replays. Combat timing, damage, movement, music and campaign state do not change. The original model is the default and fallback; the local Model Lab remains available. `tripoBossMotion.ts` maps the fight phases to imported GLB poses, while `tripoCaveTrollVisual.ts` loads the model only when selected.
+
+**Next art gate, not yet implemented:** visually approve the rigged Tripo model's
 walk, strikes and death clips in the local viewer, then import the approved
 skinned asset into the existing Level 6 presentation without replacing the
 combat logic or changing saved fight outcomes. Verify facing, foot contact,

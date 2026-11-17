@@ -34,7 +34,9 @@ saved combat. The tool does **not** yet put the Tripo creature into real
 combat. The curated 12-clip candidate is now checked in alongside the
 archived 55-clip source and selectable in the existing Model Lab.
 
-**NEXT, approved experiment (NOT CURRENT):** evaluate the skinned
+**CURRENT experimental implementation:** The checked-in 12-clip candidate can now be selected for the existing Level 6 fight with the **Legacy boss · try Tripo** switch. The same simulation and immutable replay drive visual-only pose sampling, and the old boss remains the default and loading/error fallback. This is a **trial awaiting browser/owner visual acceptance**, not a finalized boss art replacement or a reusable creature pipeline. The Model Lab and its local `.glb` inspector are preserved.
+
+**NEXT, approved experiment (VISUAL ACCEPTANCE OPEN):** evaluate the skinned
 **Tripo AI-generated Cave Troll** and its usable embedded clips in the
 local model lab, then integrate an optimized, approved asset into the
 existing Level 6 visual rig while preserving authoritative combat and
