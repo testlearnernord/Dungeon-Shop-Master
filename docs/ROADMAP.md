@@ -25,28 +25,35 @@ a unified skinned character with imported animation clips. The owner-approved
 Ashen Tunnel Mauler concept remains the visual target, not a claim of final
 in-game model quality. Human visual acceptance is still outstanding.
 
-**CURRENT model trial tooling (merged #166):** the Level 6 spectator
-offers **Inspect Tripo GLB**, a local-only model viewer using Babylon's
-scene and a selector for exported animation clips. Training-only fights
-randomize fictional hero roles, equipment and tactics on restart; V opens
-fresh practice by default, while the Ledger/C switch still exposes exact
-saved combat. The tool does **not** yet put the Tripo creature into real
-combat. The curated 12-clip candidate is now checked in alongside the
-archived 55-clip source and selectable in the existing Model Lab.
+**CURRENT model trial tooling:** The preserved Model Lab can select the original
+12-clip Tripo character and inspect arbitrary local GLBs, including the 55-clip
+archive. The V arena can separately switch between the legacy boss and the
+experimental skinned Tripo model without changing the chosen hero or saved
+recordings. Preview sessions still randomize fictional fighters on restart.
 
 **CURRENT hybrid SFX:** Eleven player-selected Suno one-shots now live under `public/audio/sfx/cave-troll/`, not the repo root. Six Cave Troll cue types (roar, windup, steps, swing, impact, hurt) now use buffered MP3 audio instead of their former synthesized oscillator/noise branches. Alternative grunt/hurt takes rotate and heavy slams use dedicated longer swing/impact variants. The browser caches and plays sounds via existing Web Audio spatial/master controls, with short capped playback and sample cleanup on arena exit. The 13.5s cinematic, combat motor and music are untouched. Breathing, stagger, death, Hero and environment remain explicitly provisional synths. **NEXT:** evaluate sync and mix during real owner Tripo/fallback gameplay; generate missing recordings after Suno quota refresh.
 
 **CURRENT SFX review tooling:** The Level 6 unsaved training SFX Lab isolates all 19 cue types by Hero/Troll/World and Voice/Movement/Melee/Ranged/Magic/Environment, labels samples MP3 or synth, and logs triggered, loading, blocked, muted, filtered and throttled states. Auditions cycle alternate takes, while temporary filters reset outside training and cannot influence recorded combat, music or game state.
 
-**CURRENT experimental implementation:** The checked-in 12-clip candidate can now be selected for the existing Level 6 fight with the **Legacy boss · try Tripo** switch. The same simulation and immutable replay drive visual-only pose sampling, and the old boss remains the default and loading/error fallback. An animation-alignment follow-up fixes reversed rendering and frame-by-frame gait switching. After player review, the incompatible weapon prop was removed completely; this Tripo trial is **unarmed** with short clip cross-fades and visible turn-induced steps. True positional circling and dedicated unarmed attack curation remain future visual/AI work. Awaiting player visual acceptance. This is a **trial awaiting browser/owner visual acceptance**, not a finalized boss art replacement or a reusable creature pipeline. The Model Lab and its local `.glb` inspector are preserved.
+**CURRENT experimental implementation:** The Level 6 Tripo trial is an
+optional skinned renderer, not the final boss art. It uses fourteen clips:
+twelve curated originals and the owner's two new Grab/Throw animations,
+grafted into a single generated combat GLB at dev/build startup without
+a second mesh. The original segmented boss remains the default and fallback;
+the original Model Lab is retained. The authoritative combat motor now
+supports an occasional real, dodgeable/parryable grapple and physical throw
+with earned landing and limited edge-lava damage. Existing reviewed MP3
+grunts, swings, impacts and hurt sounds are reused; no new SFX required.
+New v1 replays may contain an optional grab attack tag while old stored
+fights are never resimulated. The 0.19s Tripo clip blending, stabilized
+gait and turning steps remain provisional; actual hand contact, character
+positioning and throw quality still need a human playtest.
 
-**NEXT, approved experiment (VISUAL ACCEPTANCE OPEN):** evaluate the skinned
-**Tripo AI-generated Cave Troll** and its usable embedded clips in the
-local model lab, then integrate an optimized, approved asset into the
-existing Level 6 visual rig while preserving authoritative combat and
-immutable saved footage. Do not claim the character is already shipped
-in the fight, technically validated there, or part of a reusable asset
-pipeline until an implementation PR and a real browser review prove it.
+**NEXT (VISUAL ACCEPTANCE OPEN):** Inspect several real Grab/Throw executions
+in V, including failed grabs, normal landings, lava landings, saved replays,
+sound sync and both renderer choices. Refine the animations only if these
+tests expose concrete errors. Do not claim the experimental Tripo character
+or broader reusable creature pipeline is visually approved.
 
 Acceptance of that **one model-pipeline trial** requires:
 - Actual model and animation clips import correctly; no invisible,
@@ -58,7 +65,7 @@ Acceptance of that **one model-pipeline trial** requires:
   scene restart and cleanup still work. Never re-resolve saved outcomes,
   add a second combat controller or change collision/damage just for visuals.
 - A real browser review compares the result with the concept and examines
-  walking, hammer impact, dying and camera framing. Targeted regression
+  walking, fists, grip, throw, dying and camera framing. Targeted regression
   covers import/fallback and lifecycle without inflating default PR CI.
 - Record model provenance and permitted use before treating the candidate
   as a reusable production asset. Keep the previous working implementation
@@ -75,8 +82,8 @@ then prioritize **shop-to-dungeon consequence feedback** and **ten-day
 playability/balance** using the existing systems. New shop economics and
 larger excavated areas/cellar activities remain separate, later decisions.
 
-**CI baseline:** merged #164 uses build, unit tests and six tagged
-Playwright PR smoke scenarios. The full browser suite and visual boss
+**CI baseline:** PR checks use build, unit tests and targeted tagged
+Playwright smoke scenarios, including the generated Tripo asset import. The full browser suite and visual boss
 screenshots run through the manually dispatched regression workflow.
 
 ## Why this sequence

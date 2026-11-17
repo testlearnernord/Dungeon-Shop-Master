@@ -123,7 +123,7 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
 });
 
 
-test("experimental Tripo boss uses live Level 6 motor while preserving the original",async({page})=>{
+test("experimental Tripo boss uses live Level 6 motor while preserving the original @ci-smoke",async({page})=>{
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
@@ -140,7 +140,7 @@ test("experimental Tripo boss uses live Level 6 motor while preserving the origi
   const imported=await inspect();
   expect(imported.trollVisualId).toBe("ashen-tunnel-mauler-tripo");
   expect(imported.tripoBoneCount).toBe(65);
-  expect(imported.tripoClipCount).toBe(12);
+  expect(imported.tripoClipCount).toBe(14);
   expect(imported.tripoFacingCorrectionRadians).toBe(0);
   expect(imported.tripoWeaponMeshCount).toBe(0);
   expect(imported.tripoWeaponMode).toBe("unarmed");

@@ -6,10 +6,13 @@ export type { Point2 } from "./combatGeometry.ts";
  * Existing Level-6 duel motor. It still resolves its authoritative recorded
  * fights; hit geometry and defense windows are now shared with group combat.
  */
-export type ActorPhase = "move" | "roll" | "parry" | "attack" | "cast" | "heal" | "hurt" | "dead";
-export type BossPhase = "chase" | "windup" | "strike" | "recover" | "stagger" | "dead";
+export type ActorPhase = "move" | "roll" | "parry" | "attack" | "cast" | "heal" | "hurt" |
+  "grabbed" | "thrown" | "dead";
+export type BossPhase = "chase" | "windup" | "strike" | "grab" | "throw" |
+  "recover" | "stagger" | "dead";
+export type BossAttack = "smash" | "slam" | "grab";
 export type CueKind = "windup" | "dodge" | "parry" | "miss" | "hit" | "hero-hit" |
-  "projectile" | "heal" | "stagger" | "lava" | "victory" | "defeat";
+  "grab" | "throw" | "projectile" | "heal" | "stagger" | "lava" | "victory" | "defeat";
 export type ArenaCue = { kind: CueKind; amount?: number };
 export type ArenaRole = "tank" | "DPS" | "healer";
 export type CombatPreviewOptions = {
@@ -52,6 +55,9 @@ export type CombatPreviewState = {
   bossDamageApplied: boolean;
   bossAttacks: number;
   bossSlam: boolean;
+  bossAttack: BossAttack;
+  /** Authoritative horizontal launch speed; stored replay only needs frame positions. */
+  throwVelocity: Point2;
   bossStamina: number;
   magicHeals: number;
   healingSupplies: number;
@@ -98,7 +104,8 @@ export function createCombatPreview(options: CombatPreviewOptions): CombatPrevie
     rollDirection: v(1, 0), lastDefenseAttack: -1, rollRisksLava: false,
     bossPhase: "chase", bossAge: 0,
     bossCooldown: 1.1 + ((options.tacticsSeed ?? 0) % 7) * 0.06,
-    bossDamageApplied: false, bossAttacks: 0, bossSlam: false, bossStamina: 0,
+    bossDamageApplied: false, bossAttacks: 0, bossSlam: false,
+    bossAttack: "smash", throwVelocity: v(0,0), bossStamina: 0,
     magicHeals: options.role === "healer" ? 2 : 0,
     healingSupplies: options.healingSupplies,
     projectiles: [], cues: [], outcome: "fighting",
@@ -249,6 +256,58 @@ function resolveBossStrike(s: CombatPreviewState): void {
   if (Math.hypot(landing.x,landing.z)>WALKABLE_RADIUS) lavaContact(s);
   if (s.heroHp>0) beginHero(s, "hurt");
 }
+/** A grab is a short-range physical contact, not a guaranteed cutscene.
+ * A hero can roll away, counter with a sword parry or break the grip. */
+function resolveBossGrab(s: CombatPreviewState): void {
+  const inReach = inAttackArc(s.boss, s.lockedBossHeading, s.hero, 4.8, 1.00);
+  if (!inReach) {
+    s.missedHits++; s.cues.push({kind:"miss"});
+    beginBoss(s,"recover");
+    return;
+  }
+  if (s.heroPhase === "roll" && rollInvulnerable(s.heroAge)) {
+    s.dodgeCount++; s.cues.push({kind:"dodge"});
+    beginBoss(s,"recover");
+    return;
+  }
+  if (s.heroPhase === "parry" && s.options.sword && parryActive(s.heroAge) &&
+      inAttackArc(s.hero,s.heroHeading,s.boss,6.8,1.25)) {
+    s.parryCount++;
+    s.cues.push({kind:"parry"},{kind:"stagger"});
+    const before=s.bossHp;
+    s.bossHp=Math.max(0,s.bossHp-8);
+    s.cues.push({kind:"hero-hit",amount:before-s.bossHp});
+    beginBoss(s,"stagger");
+    return;
+  }
+  const agility=s.options.agility??10;
+  const breakFree=Math.max(.06,Math.min(.33,.11+(agility-10)*.017));
+  if (combatRoll(s,0x5513)<breakFree) {
+    s.missedHits++;
+    s.cues.push({kind:"miss"});
+    beginBoss(s,"recover");
+    return;
+  }
+  beginHero(s,"grabbed");
+  s.hero.x=s.boss.x+Math.sin(s.lockedBossHeading)*2.15;
+  s.hero.z=s.boss.z+Math.cos(s.lockedBossHeading)*2.15;
+  s.cues.push({kind:"grab"});
+}
+
+/** Only real landing, not launch, subtracts HP. Rim contact causes one
+ * additional bounded lava tick and pushes the survivor onto safe rock. */
+function landThrownHero(s: CombatPreviewState, lava: boolean): void {
+  const raw=24;
+  const damage=Math.max(1,raw-(s.options.armor?6:0)-
+    (s.options.role==="tank"?2:0));
+  const before=s.heroHp;
+  s.heroHp=Math.max(0,s.heroHp-damage);
+  s.cues.push({kind:"hit",amount:before-s.heroHp});
+  if (lava && s.heroHp>0) lavaContact(s);
+  if (s.heroHp>0) beginHero(s,"hurt");
+  else s.heroPhase="dead";
+}
+
 function resolveHeroStrike(s: CombatPreviewState): void {
   const reach = s.options.sword ? 4.2 : 3.2;
   const hit = inAttackArc(s.hero, s.heroHeading, s.boss, reach + TROLL_RADIUS, 0.93);
@@ -265,7 +324,18 @@ function resolveHeroStrike(s: CombatPreviewState): void {
 function progressHeroAction(s: CombatPreviewState, dt: number): void {
   if (s.heroPhase === "move" || s.heroPhase === "dead") return;
   s.heroAge += dt;
-  if (s.heroPhase === "roll") {
+  if (s.heroPhase === "grabbed") {
+    s.hero.x=s.boss.x+Math.sin(s.lockedBossHeading)*2.15;
+    s.hero.z=s.boss.z+Math.cos(s.lockedBossHeading)*2.15;
+  } else if (s.heroPhase === "thrown") {
+    s.hero.x+=s.throwVelocity.x*dt;
+    s.hero.z+=s.throwVelocity.z*dt;
+    if (Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) {
+      landThrownHero(s,true);
+    } else if (s.heroAge>=.62) {
+      landThrownHero(s,false);
+    }
+  } else if (s.heroPhase === "roll") {
     walk(s, s.rollDirection, dt * 10.5, s.rollRisksLava);
     if (s.heroAge >= 0.53) beginHero(s, "move");
   } else if (s.heroPhase === "parry") {
@@ -320,15 +390,38 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
     s.bossCooldown -= dt;
     if (s.bossCooldown <= 0 && gap < 7.7) {
       s.bossAttacks++;
-      s.bossSlam = s.bossAttacks % 3 === 0;
+      // Roughly one in four melee windups attempts a grapple. Every miss,
+      // escape and landing still follows deterministic seeded motor rules.
+      s.bossAttack = gap < 5.2 && s.bossAttacks > 1 &&
+        combatRoll(s,0x7a91) < .27 ? "grab" :
+        s.bossAttacks % 3 === 0 ? "slam" : "smash";
+      s.bossSlam = s.bossAttack === "slam";
       s.lockedBossHeading = facing(s.boss, s.hero);
       s.bossHeading = s.lockedBossHeading;
       beginBoss(s, "windup");
       s.cues.push({ kind: "windup" });
     }
   } else if (s.bossPhase === "windup") {
-    // Heading locks at windup start. Dodging out of the cone *actually* avoids the swing.
-    if (s.bossAge >= (s.bossSlam ? 1.05 : 0.85)) beginBoss(s, "strike");
+    // The telegraph announces which real attack will follow.
+    if (s.bossAge >= (s.bossAttack==="grab" ? .90 : s.bossSlam ? 1.05 : .85))
+      beginBoss(s, s.bossAttack==="grab" ? "grab" : "strike");
+  } else if (s.bossPhase === "grab") {
+    if (s.bossAge >= .14 && !s.bossDamageApplied) {
+      s.bossDamageApplied=true;
+      resolveBossGrab(s);
+    }
+    if (s.bossPhase==="grab" && s.bossAge>=.80) beginBoss(s,"throw");
+  } else if (s.bossPhase === "throw") {
+    if (s.bossAge>=.30 && !s.bossDamageApplied) {
+      s.bossDamageApplied=true;
+      if (s.heroPhase==="grabbed") {
+        const direction=unit(s.hero.x-s.boss.x,s.hero.z-s.boss.z);
+        s.throwVelocity=v(direction.x*12,direction.z*12);
+        beginHero(s,"thrown");
+        s.cues.push({kind:"throw"});
+      }
+    }
+    if (s.bossAge>=.96) beginBoss(s,"recover");
   } else if (s.bossPhase === "strike") {
     if (s.bossAge >= 0.14 && !s.bossDamageApplied) {
       s.bossDamageApplied = true;
@@ -380,7 +473,7 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
       const agility = s.options.agility ?? 10;
       const read = combatRoll(s, 0xb220);
       const timing = read < 0.12 ? (s.bossSlam ? 0.40 : 0.22)
-        : (s.bossSlam ? 0.88 : 0.68);
+        : (s.bossAttack==="grab" ? .80 : s.bossSlam ? 0.88 : 0.68);
       if (s.bossAge >= timing) {
         s.lastDefenseAttack = s.bossAttacks;
         // A warning is not a guaranteed perfect reaction. Early blocks/rolls
@@ -416,11 +509,17 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
   progressBossAction(s, dt);
   progressProjectiles(s, dt);
   // Emergency guard for non-navigation motion added by future mechanics.
-  if (Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
+  if (s.heroPhase!=="thrown" &&
+      Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
   if (s.heroHp <= 0) {
     s.outcome = "defeat"; s.heroPhase = "dead";
     s.cues.push({ kind: "defeat" });
   } else if (s.bossHp <= 0) {
+    // A projectile can finish the troll during the hold or in mid-flight.
+    if (s.heroPhase==="grabbed" || s.heroPhase==="thrown") {
+      clampToRadius(s.hero,SAFE_HERO_RADIUS);
+      beginHero(s,"move");
+    }
     s.outcome = "victory"; s.bossPhase = "dead";
     s.cues.push({ kind: "victory" });
   }

@@ -39,6 +39,8 @@ export function arenaCueSfx(kind: ArenaCue["kind"], bossStriking = true): readon
     case "miss": return bossStriking ? ["troll-impact", "rock-crumble"] : ["hero-attack"];
     case "hit": return ["troll-impact", "hero-hurt"];
     case "hero-hit": return ["boss-hurt"];
+    case "grab": return ["troll-grunt", "hero-hurt"];
+    case "throw": return ["troll-swing"];
     case "projectile": return ["projectile"];
     case "heal": return ["heal"];
     case "stagger": return ["stagger"];
@@ -481,7 +483,8 @@ export class GameSfx {
 
   playCombatCue(cue: ArenaCue, hero: SoundPosition, boss: SoundPosition,
     listener?: SoundListener, bossStriking = true, slam = false): void {
-    const nearBoss = cue.kind === "windup" || cue.kind === "hero-hit" ||
+    const nearBoss = cue.kind === "windup" || cue.kind === "grab" ||
+      cue.kind === "throw" || cue.kind === "hero-hit" ||
       cue.kind === "stagger" || cue.kind === "victory";
     for (const id of arenaCueSfx(cue.kind, bossStriking)) {
       const anchor = id === "troll-impact" || id === "troll-grunt" ? boss :

@@ -6,7 +6,7 @@ import { BOSS_MAX_HP } from "./arenaCombatMotion.ts";
 
 export type Level6CombatOutcome = "victory" | "retreat" | "death";
 export type CombatActionKind = "approach" | "attack" | "ranged" | "windup" |
-  "dodge" | "parry" | "block" | "smash" | "heal" | "lava" | "stagger" | "finish" | "miss";
+  "dodge" | "parry" | "block" | "smash" | "grab" | "throw" | "heal" | "lava" | "stagger" | "finish" | "miss";
 export interface BossCombatAction {
   readonly round: number;
   readonly actor: "hero" | "troll";
@@ -77,7 +77,7 @@ export function simulateLevel6Combat(
         cue.kind === "victory" || cue.kind === "defeat" ? "finish" : cue.kind;
       const actor: BossCombatAction["actor"] =
         cue.kind === "hit" && kind === "block" ? "hero" :
-          ["windup","hit","miss","stagger","lava","defeat"].includes(cue.kind) ? "troll" : "hero";
+          ["windup","hit","miss","grab","throw","stagger","lava","defeat"].includes(cue.kind) ? "troll" : "hero";
       const action: BossCombatAction = {
         round, actor, kind, heroHp: frame.heroHp, bossHp: frame.bossHp,
         edgeDistance: Math.hypot(frame.hx,frame.hz),

@@ -40,5 +40,16 @@
   "rootMotion": "Hips XZ translation remains zero in inspected clips. World navigation stays with existing combat motor.",
   "retainedRuntimeModel": "public/assets/models/ashen-mauler-sculpt.glb",
   "retainedViewer": "src/game/bossModelLab.ts",
-  "licenseReview": "Confirm Tripo generation and use license for distribution. Do not assume exclusive rights."
-}
+  "licenseReview": "Confirm Tripo generation and use license for distribution. Do not assume exclusive rights.",
+  "combatBuild": {
+    "script": "tools/asset_generation/merge_tripo_grab_throw.mjs",
+    "sourceFile": "tripo_convert_ad846d87-3b98-4c37-a128-20fc302b37c7.glb",
+    "output": "public/assets/models/ashen-tunnel-mauler-tripo-combat.glb",
+    "clipCount": 14,
+    "addedAnimations": [
+      "grab_hero",
+      "throw_hero"
+    ],
+    "origin": "The original 12-clip curated GLB stays tracked and powers Model Lab; only matching 65-bone animation samples are grafted at predev/prebuild."
+  }
+}\n

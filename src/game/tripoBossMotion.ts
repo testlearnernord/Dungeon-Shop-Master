@@ -18,11 +18,11 @@ export function sampleTripoTurnStride(previous: number | null, current: number):
  * unchanged Level 6 motor. Calibrated against the actual Tripo 12-clip GLB.
  */
 export type TripoClip = "idle_combat" | "walk_heavy" | "attack_2h_swing" |
-  "stagger" | "roar" | "death_fall";
+  "stagger" | "roar" | "death_fall" | "grab_hero" | "throw_hero";
 export type TripoPose = { clip: TripoClip; progress: number; loop: boolean };
 export type TripoLocomotion = { walking: boolean; distance: number };
 type MotionInput = Pick<CaveTrollAnimation,
-  "phase" | "phaseAge" | "slam" | "time" | "moved" | "introTime">;
+  "phase" | "phaseAge" | "slam" | "attackType" | "time" | "moved" | "introTime">;
 
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 const wrap = (n: number, length: number) =>
@@ -59,6 +59,16 @@ export function sampleTripoBossPose(
           progress: locomotion ? wrap(locomotion.distance, 7.2) : wrap(input.time, 2.375),
           loop: true }
       : { clip: "idle_combat", progress: wrap(input.time, 5), loop: true };
+  }
+  if (input.attackType === "grab") {
+    if (input.phase === "windup")
+      return {clip:"grab_hero",progress:.07+.19*clamp(input.phaseAge/.90),loop:false};
+    if (input.phase === "grab")
+      return {clip:"grab_hero",progress:.26+.56*clamp(input.phaseAge/.80),loop:false};
+    if (input.phase === "throw")
+      return {clip:"throw_hero",progress:.12+.74*clamp(input.phaseAge/.96),loop:false};
+    if (input.phase === "recover")
+      return {clip:"throw_hero",progress:.86+.14*clamp(input.phaseAge/.72),loop:false};
   }
   const clip = "attack_2h_swing";
   if (input.phase === "windup")

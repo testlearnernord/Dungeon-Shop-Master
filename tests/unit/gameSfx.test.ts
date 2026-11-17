@@ -5,7 +5,7 @@ import type { ArenaCue } from "../../src/game/arenaCombatMotion.ts";
 
 test("Level 6 sound mapping covers every authoritative combat cue", () => {
   const kinds: ArenaCue["kind"][] = [
-    "windup", "dodge", "parry", "miss", "hit", "hero-hit", "projectile",
+    "windup", "dodge", "parry", "miss", "hit", "hero-hit", "grab", "throw", "projectile",
     "heal", "stagger", "lava", "victory", "defeat",
   ];
   for (const kind of kinds) {
@@ -19,6 +19,8 @@ test("windup is never a damage sound; contact, lava and death stay distinct", ()
   assert.deepEqual(arenaCueSfx("windup"), ["troll-grunt"]);
   assert.deepEqual(arenaCueSfx("hit"), ["troll-impact", "hero-hurt"]);
   assert.deepEqual(arenaCueSfx("hero-hit"), ["boss-hurt"]);
+  assert.deepEqual(arenaCueSfx("grab"), ["troll-grunt", "hero-hurt"]);
+  assert.deepEqual(arenaCueSfx("throw"), ["troll-swing"]);
   assert.deepEqual(arenaCueSfx("lava"), ["lava-burn"]);
   assert.deepEqual(arenaCueSfx("victory"), ["troll-death"]);
   assert.deepEqual(arenaCueSfx("defeat"), ["hero-death"]);
