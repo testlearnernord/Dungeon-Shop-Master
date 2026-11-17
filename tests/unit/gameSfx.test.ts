@@ -21,6 +21,8 @@ test("windup is never a damage sound; contact, lava and death stay distinct", ()
   assert.deepEqual(arenaCueSfx("hero-hit"), ["boss-hurt"]);
   assert.deepEqual(arenaCueSfx("grab"), ["troll-grunt", "hero-hurt"]);
   assert.deepEqual(arenaCueSfx("throw"), ["troll-swing"]);
+  assert.deepEqual(arenaCueSfx("miss",true,true),["troll-swing"],
+    "failed grips must not produce fake ground collisions");
   assert.deepEqual(arenaCueSfx("lava"), ["lava-burn"]);
   assert.deepEqual(arenaCueSfx("victory"), ["troll-death"]);
   assert.deepEqual(arenaCueSfx("defeat"), ["hero-death"]);

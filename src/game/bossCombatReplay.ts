@@ -134,7 +134,8 @@ export function validateBossReplay(value: unknown, path: string,
   const frames = replay.frames as unknown[];
   let previous = -1;
   const actor = ["move","roll","parry","attack","cast","heal","hurt","grabbed","thrown","dead"];
-  const boss = ["chase","windup","strike","grab","throw","recover","stagger","dead"];
+  const boss = ["chase","windup","strike","grab","throw","grabMiss",
+    "recover","stagger","dead"];
   const cueKinds = ["windup","dodge","parry","miss","hit","hero-hit","grab","throw","projectile",
     "heal","stagger","lava","victory","defeat"];
   for (let i = 0; i < frames.length; i++) {

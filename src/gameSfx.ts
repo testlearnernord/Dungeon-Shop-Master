@@ -31,12 +31,15 @@ const SPACING: Partial<Record<GameSfxCue, number>> = {
 };
 
 /** The same live or saved motor cue means the same sound; no guessed damage. */
-export function arenaCueSfx(kind: ArenaCue["kind"], bossStriking = true): readonly GameSfxCue[] {
+export function arenaCueSfx(
+  kind: ArenaCue["kind"], bossStriking = true, missedGrab = false,
+): readonly GameSfxCue[] {
   switch (kind) {
     case "windup": return ["troll-grunt"];
     case "dodge": return ["dodge", "troll-impact"];
     case "parry": return ["shield-parry"];
-    case "miss": return bossStriking ? ["troll-impact", "rock-crumble"] : ["hero-attack"];
+    case "miss": return missedGrab ? ["troll-swing"] :
+      bossStriking ? ["troll-impact", "rock-crumble"] : ["hero-attack"];
     case "hit": return ["troll-impact", "hero-hurt"];
     case "hero-hit": return ["boss-hurt"];
     case "grab": return ["troll-grunt", "hero-hurt"];
@@ -482,11 +485,12 @@ export class GameSfx {
   }
 
   playCombatCue(cue: ArenaCue, hero: SoundPosition, boss: SoundPosition,
-    listener?: SoundListener, bossStriking = true, slam = false): void {
+    listener?: SoundListener, bossStriking = true, slam = false,
+    missedGrab = false): void {
     const nearBoss = cue.kind === "windup" || cue.kind === "grab" ||
       cue.kind === "throw" || cue.kind === "hero-hit" ||
       cue.kind === "stagger" || cue.kind === "victory";
-    for (const id of arenaCueSfx(cue.kind, bossStriking)) {
+    for (const id of arenaCueSfx(cue.kind, bossStriking, missedGrab)) {
       const anchor = id === "troll-impact" || id === "troll-grunt" ? boss :
         nearBoss ? boss : hero;
       this.play(id, anchor, listener, false, slam && id==="troll-impact");

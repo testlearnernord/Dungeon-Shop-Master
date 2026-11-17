@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { GRAPPLE_TIMING } from "../../src/game/arenaCombatMotion.ts";
 import { sampleTripoBossPose, sampleTripoFade, sampleTripoTurnStride, TRIPO_FADE_SECONDS } from "../../src/game/tripoBossMotion.ts";
 
 const sample = (phase: "chase"|"windup"|"strike"|"recover"|"stagger"|"dead",
@@ -42,6 +43,34 @@ test("overhead strike reaches the measured impact pose at the real 140ms tick",(
     assert(hit.progress>before.progress && hit.progress<end.progress);
     assert(Math.abs(sample("recover",0,slam).progress-end.progress)<1e-10);
   }
+});
+
+test("Grab and Throw sample slow authored clips and visibly retract a miss",()=>{
+  const g=(phase: "windup"|"grab"|"grabMiss"|"throw"|"recover",age:number)=>
+    sampleTripoBossPose({phase,phaseAge:age,slam:false,attackType:"grab",moved:0,time:age});
+  const windupEnd=g("windup",GRAPPLE_TIMING.windup);
+  const reachStart=g("grab",0);
+  const gripContact=g("grab",GRAPPLE_TIMING.grabContact);
+  const missed=g("grabMiss",0);
+  const missEnd=g("grabMiss",GRAPPLE_TIMING.missRecover);
+  const holdEnd=g("grab",GRAPPLE_TIMING.grab);
+  const throwStart=g("throw",0);
+  const throwRelease=g("throw",GRAPPLE_TIMING.throwRelease);
+  const throwEnd=g("throw",GRAPPLE_TIMING.throw);
+  const recoverStart=g("recover",0);
+  assert.equal(windupEnd.clip,"grab_hero");
+  assert.equal(windupEnd.progress,reachStart.progress,"no pop at grab start");
+  assert(gripContact.progress>reachStart.progress);
+  assert.equal(missed.clip,"grab_hero","failed grips never play throw_hero");
+  assert(Math.abs(missed.progress-gripContact.progress)<1e-10,"retract from actual contact pose");
+  assert(missEnd.progress<missed.progress,"retract hand rather than jerk to throw");
+  assert(holdEnd.progress>gripContact.progress,"held victim gets a visible lift");
+  assert.equal(throwStart.clip,"throw_hero");
+  assert(throwRelease.progress>throwStart.progress);
+  assert(throwEnd.progress>throwRelease.progress);
+  assert.equal(throwEnd.progress,recoverStart.progress,"throw follow-through does not reset");
+  assert(GRAPPLE_TIMING.windup+GRAPPLE_TIMING.grab+
+    GRAPPLE_TIMING.throw+GRAPPLE_TIMING.recover>4.5);
 });
 
 test("cross-fade weights are bounded and smooth at the endpoints",()=>{
