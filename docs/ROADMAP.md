@@ -47,7 +47,10 @@ grunts, swings, impacts and hurt sounds are reused; no new SFX required.
 New v1 replays may contain an optional grab attack tag while old stored
 fights are never resimulated. The 0.19s Tripo clip blending, stabilized
 gait and turning steps remain provisional; actual hand contact, character
-positioning and throw quality still need a human playtest.
+positioning and throw quality still need a human playtest. The grab pacing now
+uses longer motor phases and slower flight, and missed catches play an explicit
+arm-retraction phase instead of a false empty-hand throw; balance and visual
+acceptance still depend on observing several complete live fights.
 
 **NEXT (VISUAL ACCEPTANCE OPEN):** Inspect several real Grab/Throw executions
 in V, including failed grabs, normal landings, lava landings, saved replays,
