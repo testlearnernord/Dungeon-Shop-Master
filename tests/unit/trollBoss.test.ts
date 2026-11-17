@@ -65,7 +65,7 @@ test("weak unarmed solo runs rarely win; gear deals meaningfully more real boss 
     "actual sword/armor should help more than an arbitrary lava death rate");
 });
 
-test("healer can self-heal and attack at range, tank can parry, DPS can dodge", () => {
+test("healer can self-heal and attack at range, tank can parry, DPS can fail defenses", () => {
   const original = expedition();
   const healer = { ...original, role: "healer" as const, health: 20,
     stats: { ...original.stats, maxHealth: 60, intellect: 25 },
@@ -100,7 +100,9 @@ test("healer can self-heal and attack at range, tank can parry, DPS can dodge", 
   const lethalParryTank = { ...tank, stats: { ...tank.stats, strength: 1 } };
   const lethalParry = simulateLevel6Combat(lethalParryTank, 3, 7);
   assert.equal(lethalParry.actions.at(-1)?.kind, "finish");
-  assert.equal(lethalParry.actions.at(-1)?.actor, "hero");
+  assert.equal(lethalParry.actions.at(-1)?.actor,
+    lethalParry.victory ? "hero" : "troll",
+    "the actual winner owns the finish; a weak tank is no longer guaranteed victory");
 });
 
 test("boss fights still obey single confirmed tick and legacy save compatibility", () => {
