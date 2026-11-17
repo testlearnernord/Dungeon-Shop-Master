@@ -1,7 +1,7 @@
 {
   "assetId": "ashen-tunnel-mauler-tripo",
   "version": "tripo-2026-11-17-curated-v1",
-  "status": "BINARY_NOT_YET_COMMITTED",
+  "status": "CURATED_BINARY_COMMITTED_PENDING_VISUAL_APPROVAL",
   "intendedRepositoryPath": "public/assets/models/ashen-tunnel-mauler-tripo.glb",
   "sourceFile": "tripo_convert_8abe2288-7e4b-485c-abf8-a983c3533dd9.glb",
   "sourceSha256": "8a5a8b2c63ce8a55d3ab6e3b250769556f69787faf60a71d2316eb9be45b6831",
