@@ -80,6 +80,7 @@ export const SAFE_HERO_RADIUS = WALKABLE_RADIUS - HERO_RADIUS - 1.0;
 /** Timing belongs to the combat motor; animated clips only sample its phases. */
 export const GRAPPLE_TIMING = Object.freeze({
   windup: 1.20,      // readable approach
+  trackUntil: 0.65,  // face the hero only early, then lock for counterplay
   grabContact: 0.30, // hand reaches the hero
   grab: 1.25,        // actual catch and deliberate lift
   throwRelease: 0.58,
@@ -415,7 +416,12 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
       s.cues.push({ kind: "windup" });
     }
   } else if (s.bossPhase === "windup") {
-    // The telegraph announces which real attack will follow.
+    // The troll visually follows a circling target during the early reach,
+    // then commits to a locked warning lane long enough to dodge or parry.
+    if (s.bossAttack==="grab" && s.bossAge<=GRAPPLE_TIMING.trackUntil) {
+      s.lockedBossHeading=facing(s.boss,s.hero);
+      s.bossHeading=s.lockedBossHeading;
+    }
     if (s.bossAge >= (s.bossAttack==="grab" ? GRAPPLE_TIMING.windup :
         s.bossSlam ? 1.05 : .85))
       beginBoss(s, s.bossAttack==="grab" ? "grab" : "strike");
