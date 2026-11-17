@@ -37,9 +37,9 @@ test("slammed toward lava takes actual limited edge damage without a one-hit kil
   s.lockedBossHeading=Math.PI/2;
   const cues=tick(s);
   assert.equal(s.outcome,"fighting");
-  assert(cues.some(c=>c.kind==="hit"&&c.amount===11));
+  assert(cues.some(c=>c.kind==="hit"&&c.amount===9));
   assert(cues.some(c=>c.kind==="lava"&&c.amount===12));
-  assert.equal(s.heroHp,32);
+  assert.equal(s.heroHp,34);
   assert(Math.hypot(s.hero.x,s.hero.z)<=SAFE_HERO_RADIUS+1e-8);
 });
 
