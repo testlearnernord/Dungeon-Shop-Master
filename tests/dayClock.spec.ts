@@ -22,7 +22,7 @@ async function moveToBed(page:import("@playwright/test").Page){
   await expect(page.locator("#sleep-bed-prompt")).toBeVisible();
 }
 
-test("Galvik closes a day by holding E at his bed, then reads the ledger",async({page})=>{
+test("Galvik closes a day by holding E at his bed, then reads the ledger @ci-smoke",async({page})=>{
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");

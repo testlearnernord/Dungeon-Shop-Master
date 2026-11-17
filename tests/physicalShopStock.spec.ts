@@ -40,7 +40,7 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
   expect(pageErrors).toEqual([]);
 });
 
-test("actual stocked shelf meshes follow saved quantities for all six products",async({page})=>{
+test("actual stocked shelf meshes follow saved quantities for all six products @ci-smoke",async({page})=>{
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
