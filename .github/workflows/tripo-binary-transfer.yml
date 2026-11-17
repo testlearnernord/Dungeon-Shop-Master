@@ -1,0 +1,46 @@
+name: One-time Tripo Cave Troll binary transfer
+
+on:
+  push:
+    branches: [assets/tripo-binary-transfer]
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reassemble and validate user-provided GLB
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .asset-staging/tripo-mauler/chunk_*.b64 | tr -d '\r\n \t' | base64 --decode > /tmp/ashen-tunnel-mauler-tripo.glb
+          printf 'bec72acdd049c90793595b5d39b6a1e48e7ff9ac1f8133a282fe4b4c8ed003af  /tmp/ashen-tunnel-mauler-tripo.glb\n' | sha256sum --check -
+          test "$(stat -c%s /tmp/ashen-tunnel-mauler-tripo.glb)" -eq 11343256
+      - name: Commit exact verified binary to feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin assets/ashen-mauler-tripo-curation
+          git switch -C assets/ashen-mauler-tripo-curation origin/assets/ashen-mauler-tripo-curation
+          mkdir -p public/assets/models
+          cp /tmp/ashen-tunnel-mauler-tripo.glb public/assets/models/ashen-tunnel-mauler-tripo.glb
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("assets/tripo/ashen-tunnel-mauler.manifest.json")
+          obj=json.loads(p.read_text())
+          assert obj["status"]=="BINARY_NOT_YET_COMMITTED"
+          obj["status"]="CURATED_BINARY_COMMITTED_PENDING_VISUAL_APPROVAL"
+          p.write_text(json.dumps(obj,indent=2,ensure_ascii=False)+"\n")
+          PY
+          git config user.name "dsm-tripo-transfer[bot]"
+          git config user.email "dsm-tripo-transfer@users.noreply.github.com"
+          git add public/assets/models/ashen-tunnel-mauler-tripo.glb assets/tripo/ashen-tunnel-mauler.manifest.json
+          git diff --cached --check
+          git commit -m "assets: add curated rigged Tripo Cave Troll with 12 motion clips"
+          git push origin HEAD:assets/ashen-mauler-tripo-curation
