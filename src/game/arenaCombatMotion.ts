@@ -311,7 +311,9 @@ function resolveBossGrab(s: CombatPreviewState): void {
 /** Only real landing, not launch, subtracts HP. Rim contact causes one
  * additional bounded lava tick and pushes the survivor onto safe rock. */
 function landThrownHero(s: CombatPreviewState, lava: boolean): void {
-  const raw=24;
+  // A full-body slam from a multi-metre throw is rarer and more dangerous
+  // than a basic fist hit. Armor still mitigates it; lava is separate damage.
+  const raw=42;
   const damage=Math.max(1,raw-(s.options.armor?6:0)-
     (s.options.role==="tank"?2:0));
   const before=s.heroHp;
@@ -404,10 +406,13 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
     s.bossCooldown -= dt;
     if (s.bossCooldown <= 0 && gap < 7.7) {
       s.bossAttacks++;
-      // Roughly one in four melee windups attempts a grapple. Every miss,
-      // escape and landing still follows deterministic seeded motor rules.
-      s.bossAttack = gap < 4.25 && s.bossAttacks > 1 &&
-        combatRoll(s,0x7a91) < .27 ? "grab" :
+      // Give the signature grab real screen time: melee-only, with a
+      // deterministic roughly 58% selection among eligible attacks. Every
+      // fourth attack is a guaranteed ATTEMPT, never a guaranteed capture.
+      // Real arc checks, dodge, parry and agility can still break the grip.
+      s.bossAttack = gap < 5.3 && s.bossAttacks > 1 &&
+        (s.bossAttacks % 4 === 0 || combatRoll(s,0x7a91) < .45)
+        ? "grab" :
         s.bossAttacks % 3 === 0 ? "slam" : "smash";
       s.bossSlam = s.bossAttack === "slam";
       s.lockedBossHeading = facing(s.boss, s.hero);
