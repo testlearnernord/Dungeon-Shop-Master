@@ -69,6 +69,7 @@ This document is a maintainable implementation contract.
 | Blueprint / placement / mining | Context prompt and real-world ghost; not a permanent sidebar |
 | World nameplates / request bubbles | Portrait, level, role, gold and HP; individual icon-based restock/credit requests with real deadlines; one optional short role/item-aware customer remark above a visible NPC at a time, without intercepting world input |
 | Level 6 / 7 spectator | Compact panels, optional controls legend, same focus style. Level 6 adds click-through world-projected hero/troll HP plates and cue-driven floating numbers: gold hero→boss, red boss→hero, orange lava, green healing. Numeric HP remains in the bottom HUD. |
+| Level 6 local model lab | In the existing spectator toolbar, `Inspect Tripo GLB` opens an explicit read-only asset inspection panel with a browser-local GLB file input, accessible animation selector, drag-orbit/zoom camera and Escape-to-return behavior. No saved fighter or combat details are written. The regular battle HUD and cinematic are hidden while inspecting. |
 | Audio / notifications / campaign | Minimal chrome, consistent buttons and persistent errors; Level 6 has one transient music-led cinematic overlay before the original HUD and combat data appear |
 
 ## Invariants and review gates
