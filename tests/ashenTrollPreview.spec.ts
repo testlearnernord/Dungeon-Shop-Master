@@ -109,7 +109,7 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
 
   // Restart clears all scene-owned meshes and reconstructs the same boss.
   await page.locator("#restart-arena").click();
-  await expect(page.locator("#arena-boss-health")).toContainText("210/210");
+  await expect(page.locator("#arena-boss-health")).toContainText("280/280");
   const restarted=await inspect();
   expect(restarted.trollMeshCount).toBe(initial.trollMeshCount);
   expect(restarted.bossFacingHero).toBeGreaterThan(.98);
@@ -156,7 +156,7 @@ test("a playing Desperate Measures playhead starts the duel on its 13.5s drop",a
   });
   await expect(page.locator("#arena-cinematic")).toBeHidden({timeout:4000});
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-intro","false");
-  await expect(page.locator("#arena-boss-health")).toContainText("210/210");
+  await expect(page.locator("#arena-boss-health")).toContainText("280/280");
   await page.keyboard.press("Escape");
   await expect(page.locator("#merchant-gold")).toHaveText(gold!);
 });
