@@ -17,7 +17,7 @@ test("confirmed Level 6 combat becomes an actual saved replay without double res
   await expect(page.locator("#arena-preview")).toContainText("RECORDED COMBAT");
   await expect(page.locator("#arena-preview")).toContainText("Day 3");
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-replay","recorded");
-  await expect(page.locator("#arena-boss-health")).toContainText("145/145");
+  await expect(page.locator("#arena-boss-health")).toContainText("210/210");
   await expect(page.locator("#arena-source-toggle")).toBeVisible();
   await page.locator("#restart-arena").click();
   await expect(page.locator("#arena-preview")).toContainText("RECORDED COMBAT");
