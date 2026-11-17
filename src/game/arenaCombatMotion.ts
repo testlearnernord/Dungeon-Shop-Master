@@ -9,7 +9,7 @@ export type { Point2 } from "./combatGeometry.ts";
 export type ActorPhase = "move" | "roll" | "parry" | "attack" | "cast" | "heal" | "hurt" |
   "grabbed" | "thrown" | "dead";
 export type BossPhase = "chase" | "windup" | "strike" | "grab" | "throw" |
-  "recover" | "stagger" | "dead";
+  "grabMiss" | "recover" | "stagger" | "dead";
 export type BossAttack = "smash" | "slam" | "grab";
 export type CueKind = "windup" | "dodge" | "parry" | "miss" | "hit" | "hero-hit" |
   "grab" | "throw" | "projectile" | "heal" | "stagger" | "lava" | "victory" | "defeat";
@@ -77,6 +77,17 @@ const HERO_RADIUS = 0.58;
 // Leave a real buffer between the hero's body and the molten arena ring.
 // All normal navigation, rolls and knockback respect this radius.
 export const SAFE_HERO_RADIUS = WALKABLE_RADIUS - HERO_RADIUS - 1.0;
+/** Timing belongs to the combat motor; animated clips only sample its phases. */
+export const GRAPPLE_TIMING = Object.freeze({
+  windup: 1.20,      // readable approach
+  grabContact: 0.30, // hand reaches the hero
+  grab: 1.25,        // actual catch and deliberate lift
+  throwRelease: 0.58,
+  throw: 1.55,       // full arm follow-through
+  flight: 0.90,      // same distance as the old throw, but airborne longer
+  missRecover: 0.62,
+  recover: 0.85,
+});
 const LAVA_CONTACT_DAMAGE = 12;
 const TROLL_RADIUS = 1.8;
 const TAU = Math.PI * 2;
@@ -259,15 +270,17 @@ function resolveBossStrike(s: CombatPreviewState): void {
 /** A grab is a short-range physical contact, not a guaranteed cutscene.
  * A hero can roll away, counter with a sword parry or break the grip. */
 function resolveBossGrab(s: CombatPreviewState): void {
-  const inReach = inAttackArc(s.boss, s.lockedBossHeading, s.hero, 4.8, 1.00);
+  // Slight arc tolerance for circling heroes; still requires real close
+  // contact and can be avoided spatially, with a roll or with a parry.
+  const inReach = inAttackArc(s.boss, s.lockedBossHeading, s.hero, 5.1, 1.18);
   if (!inReach) {
     s.missedHits++; s.cues.push({kind:"miss"});
-    beginBoss(s,"recover");
+    beginBoss(s,"grabMiss");
     return;
   }
   if (s.heroPhase === "roll" && rollInvulnerable(s.heroAge)) {
     s.dodgeCount++; s.cues.push({kind:"dodge"});
-    beginBoss(s,"recover");
+    beginBoss(s,"grabMiss");
     return;
   }
   if (s.heroPhase === "parry" && s.options.sword && parryActive(s.heroAge) &&
@@ -281,11 +294,11 @@ function resolveBossGrab(s: CombatPreviewState): void {
     return;
   }
   const agility=s.options.agility??10;
-  const breakFree=Math.max(.06,Math.min(.33,.11+(agility-10)*.017));
+  const breakFree=Math.max(.035,Math.min(.20,.065+(agility-10)*.012));
   if (combatRoll(s,0x5513)<breakFree) {
     s.missedHits++;
     s.cues.push({kind:"miss"});
-    beginBoss(s,"recover");
+    beginBoss(s,"grabMiss");
     return;
   }
   beginHero(s,"grabbed");
@@ -332,7 +345,7 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
     s.hero.z+=s.throwVelocity.z*dt;
     if (Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) {
       landThrownHero(s,true);
-    } else if (s.heroAge>=.62) {
+    } else if (s.heroAge>=GRAPPLE_TIMING.flight) {
       landThrownHero(s,false);
     }
   } else if (s.heroPhase === "roll") {
@@ -392,7 +405,7 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
       s.bossAttacks++;
       // Roughly one in four melee windups attempts a grapple. Every miss,
       // escape and landing still follows deterministic seeded motor rules.
-      s.bossAttack = gap < 5.2 && s.bossAttacks > 1 &&
+      s.bossAttack = gap < 4.25 && s.bossAttacks > 1 &&
         combatRoll(s,0x7a91) < .27 ? "grab" :
         s.bossAttacks % 3 === 0 ? "slam" : "smash";
       s.bossSlam = s.bossAttack === "slam";
@@ -403,25 +416,34 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
     }
   } else if (s.bossPhase === "windup") {
     // The telegraph announces which real attack will follow.
-    if (s.bossAge >= (s.bossAttack==="grab" ? .90 : s.bossSlam ? 1.05 : .85))
+    if (s.bossAge >= (s.bossAttack==="grab" ? GRAPPLE_TIMING.windup :
+        s.bossSlam ? 1.05 : .85))
       beginBoss(s, s.bossAttack==="grab" ? "grab" : "strike");
   } else if (s.bossPhase === "grab") {
-    if (s.bossAge >= .14 && !s.bossDamageApplied) {
+    if (s.bossAge >= GRAPPLE_TIMING.grabContact && !s.bossDamageApplied) {
       s.bossDamageApplied=true;
       resolveBossGrab(s);
     }
-    if (s.bossPhase==="grab" && s.bossAge>=.80) beginBoss(s,"throw");
+    if (s.bossPhase==="grab" && s.bossAge>=GRAPPLE_TIMING.grab)
+      beginBoss(s,"throw");
+  } else if (s.bossPhase === "grabMiss") {
+    // A failed catch retracts its hand. It must NEVER play the throw clip.
+    if (s.bossAge >= GRAPPLE_TIMING.missRecover) {
+      beginBoss(s,"chase");
+      s.bossCooldown=1.45;
+    }
   } else if (s.bossPhase === "throw") {
-    if (s.bossAge>=.30 && !s.bossDamageApplied) {
+    if (s.bossAge>=GRAPPLE_TIMING.throwRelease && !s.bossDamageApplied) {
       s.bossDamageApplied=true;
       if (s.heroPhase==="grabbed") {
         const direction=unit(s.hero.x-s.boss.x,s.hero.z-s.boss.z);
-        s.throwVelocity=v(direction.x*12,direction.z*12);
+        const speed=7.5/GRAPPLE_TIMING.flight;
+        s.throwVelocity=v(direction.x*speed,direction.z*speed);
         beginHero(s,"thrown");
         s.cues.push({kind:"throw"});
       }
     }
-    if (s.bossAge>=.96) beginBoss(s,"recover");
+    if (s.bossAge>=GRAPPLE_TIMING.throw) beginBoss(s,"recover");
   } else if (s.bossPhase === "strike") {
     if (s.bossAge >= 0.14 && !s.bossDamageApplied) {
       s.bossDamageApplied = true;
@@ -429,7 +451,7 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
     }
     if (s.bossPhase === "strike" && s.bossAge >= 0.38) beginBoss(s, "recover");
   } else if (s.bossPhase === "recover") {
-    if (s.bossAge >= 0.72) {
+    if (s.bossAge >= (s.bossAttack==="grab" ? GRAPPLE_TIMING.recover : 0.72)) {
       beginBoss(s, "chase");
       s.bossCooldown = 1.50;
     }
@@ -473,14 +495,16 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
       const agility = s.options.agility ?? 10;
       const read = combatRoll(s, 0xb220);
       const timing = read < 0.12 ? (s.bossSlam ? 0.40 : 0.22)
-        : (s.bossAttack==="grab" ? .80 : s.bossSlam ? 0.88 : 0.68);
+        : (s.bossAttack==="grab" ? GRAPPLE_TIMING.windup-0.04 :
+          s.bossSlam ? 0.88 : 0.68);
       if (s.bossAge >= timing) {
         s.lastDefenseAttack = s.bossAttacks;
         // A warning is not a guaranteed perfect reaction. Early blocks/rolls
         // expire before contact; some heroes hesitate and take the hit.
         const readiness = Math.max(0.38, Math.min(0.78,
           0.57 + (agility - 10) * 0.015 +
-          (s.options.role === "tank" ? 0.08 : 0)));
+          (s.options.role === "tank" ? 0.08 : 0) -
+          (s.bossAttack==="grab" ? 0.10 : 0)));
         if (read < readiness) {
           const parryBias = s.options.role === "tank" ? 0.82 : 0.28;
           if (s.options.sword && distance < 5.0 &&
