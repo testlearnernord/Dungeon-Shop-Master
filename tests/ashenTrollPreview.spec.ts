@@ -35,6 +35,10 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
     {timeout:15000,intervals:[150,250,400]}).toBe("ready");
   const initial=await inspect();
   expect(initial.sculptedPartCount).toBe(17);
+  expect(initial.scalpTuftCount).toBe(19);
+  expect(initial.jowlFurCount).toBe(14);
+  expect(initial.apronVertexCount).toBeGreaterThan(100);
+  expect(initial.roundedShoulderVertices).toBeGreaterThan(100);
   expect(initial.sculptSourceUrl).toBe(
     "/Dungeon-Shop-Master/assets/models/ashen-mauler-sculpt.glb");
   const sculpt=await page.request.get(initial.sculptSourceUrl!);
