@@ -287,6 +287,10 @@ export function inspectBossArena() {
     parryCount: boss?.metadata?.parryCount as number | undefined,
     missedHits: boss?.metadata?.missedHits as number | undefined,
     trollVisualId: boss?.metadata?.visualId as string | undefined,
+    tripoStatus: boss?.metadata?.tripoStatus as string | undefined,
+    tripoClip: boss?.metadata?.animationClip as string | undefined,
+    tripoBoneCount: boss?.metadata?.tripoBoneCount as number | undefined,
+    tripoClipCount: boss?.metadata?.tripoClipCount as number | undefined,
     sculptStatus: boss?.metadata?.sculptStatus as string | undefined,
     sculptSourceUrl: boss?.metadata?.sculptSourceUrl as string | undefined,
     sculptedPartCount: boss?.getChildMeshes(false).filter(

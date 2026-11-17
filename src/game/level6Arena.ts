@@ -22,6 +22,7 @@ import type { GameStore } from "./gameStore.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import { createHeroVisual } from "./heroVisual.ts";
 import { createCaveTrollVisual, type CaveTrollVisual } from "./caveTrollVisual.ts";
+import { createTripoCaveTrollVisual } from "./tripoCaveTrollVisual.ts";
 import { buildCaveTrollArenaArt, paintCaveTrollFloor } from "./caveTrollArenaArt.ts";
 import { BOSS_INTRO_SECONDS, sampleBossIntro } from "./bossCinematic.ts";
 import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
@@ -58,6 +59,8 @@ export class Level6Arena {
   private modelLab: BossModelLab | null = null;
   private readonly modelPanel: HTMLElement;
   private readonly modelToggle: HTMLButtonElement;
+  private readonly rendererToggle: HTMLButtonElement;
+  private useTripoModel = false;
   private readonly sourceToggle: HTMLButtonElement;
   private motionAccumulator = 0;
   private heroArm: TransformNode | null = null;
@@ -115,6 +118,12 @@ export class Level6Arena {
     this.modelPanel = document.querySelector<HTMLElement>("#arena-model-panel")!;
     this.modelToggle = document.querySelector<HTMLButtonElement>("#arena-model-toggle")!;
     this.modelToggle.addEventListener("click",()=>this.toggleModelLab());
+    this.rendererToggle = document.querySelector<HTMLButtonElement>("#arena-tripo-toggle")!;
+    this.rendererToggle.addEventListener("click",()=>{
+      if(!this.active || this.modelLab)return;
+      this.useTripoModel=!this.useTripoModel;
+      this.restart(true); // Same fighter/training scenario; restart only the spectator presentation.
+    });
     this.sourceToggle.addEventListener("click", () => {
       this.toggleSource();
     });
@@ -270,8 +279,11 @@ export class Level6Arena {
     this.canvas.focus();
   }
 
-  restart(): void {
+  restart(preserveTraining = false): void {
     if (!this.active || this.modelLab) return;
+    const previousTraining = this.training;
+    this.panel.dataset.bossRenderer=this.useTripoModel?"tripo":"legacy";
+    this.rendererToggle.textContent=this.useTripoModel?"Tripo loading… · switch to legacy":"Legacy boss · try Tripo";
     this.scene?.dispose();
     this.worldHud.reset();
     this.heroLegs = [];
@@ -308,7 +320,8 @@ export class Level6Arena {
       : state.adventurers.find(hero => hero.status === "expedition") ?? null;
     const realExpedition = !this.replay && this.fighter?.status === "expedition";
     // Presentation-only sparring partner: never enters GameStore or replays.
-    this.training = !this.replay && !realExpedition ? nextBossTrainingScenario() : null;
+    this.training = !this.replay && !realExpedition
+      ? (preserveTraining && previousTraining ? previousTraining : nextBossTrainingScenario()) : null;
     this.panel.dataset.trainingScenario=this.training?.id??"";
     this.motion = createCombatPreview({
       role: this.replay?.role ?? this.training?.options.role ?? this.fighter?.role ?? "tank",
@@ -445,7 +458,18 @@ export class Level6Arena {
     // Approved Ashen Tunnel Mauler design: a volumetric, art-directed,
     // phase-animated 3D boss. Combat ranges, hit ticks and saves still belong
     // exclusively to arenaCombatMotion.ts, not to these visual meshes.
-    this.trollVisual = createCaveTrollVisual(scene);
+    this.trollVisual = this.useTripoModel
+      ? createTripoCaveTrollVisual(scene) : createCaveTrollVisual(scene);
+    const visual=this.trollVisual;
+    if(this.useTripoModel) void visual.ready.then(()=>{
+      if(this.trollVisual!==visual || !this.active)return;
+      const status=visual.root.metadata?.tripoStatus;
+      this.rendererToggle.textContent=status==="ready"
+        ?"Tripo trial active · switch to legacy"
+        :"Tripo unavailable · legacy fallback";
+      this.rendererToggle.title=status==="fallback"
+        ?String(visual.root.metadata?.tripoError??"Tripo import failed"):"Experimental skinned 3D model";
+    });
     const boss = this.trollVisual.root;
     // The sculpt's face points along local +Z. The hero initially stands
     // at -Z, so orient the boss to the authoritative combat heading before

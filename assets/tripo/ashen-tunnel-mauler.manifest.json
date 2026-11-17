@@ -1,7 +1,7 @@
 {
   "assetId": "ashen-tunnel-mauler-tripo",
   "version": "tripo-2026-11-17-curated-v2",
-  "status": "CANDIDATE_CHECKED_IN_NOT_RUNTIME_BOSS",
+  "status": "EXPERIMENTAL_LEVEL6_RENDERER_PENDING_VISUAL_APPROVAL",
   "intendedRepositoryPath": "public/assets/models/ashen-tunnel-mauler-tripo.glb",
   "sourceFile": "tripo_convert_8abe2288-7e4b-485c-abf8-a983c3533dd9.glb",
   "sourceProvenance": "12-clip binary originally built from the earlier 33-clip Tripo export.",
@@ -36,7 +36,7 @@
     "roar",
     "death_fall"
   ],
-  "qualityGate": "Technical candidates only. Verify visual foot planting, weapon grip, animation transitions and arena scale in Model Lab.",
+  "qualityGate": "Skinned Tripo candidate selectable in real Level 6 arena; visual foot planting, attack sync, weapon grip, front-facing direction, scale and replay acceptance still unverified by owner.",
   "rootMotion": "Hips XZ translation remains zero in inspected clips. World navigation stays with existing combat motor.",
   "retainedRuntimeModel": "public/assets/models/ashen-mauler-sculpt.glb",
   "retainedViewer": "src/game/bossModelLab.ts",
