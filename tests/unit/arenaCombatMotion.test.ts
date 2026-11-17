@@ -47,10 +47,10 @@ function imminentSwing() {
 test("troll damage only applies at active hit frame within locked arc", () => {
   const hit=imminentSwing();
   tick(hit);
-  assert.equal(hit.heroHp,89);
+  assert.equal(hit.heroHp,70);
   assert.equal(hit.bossDamageApplied,true);
   tick(hit,4);
-  assert.equal(hit.heroHp,89,"single attack must not damage the hero every frame");
+  assert.equal(hit.heroHp,70,"single attack must not damage the hero every frame");
 
   const side=imminentSwing();
   side.hero={x:6,z:0};
@@ -163,11 +163,11 @@ test("lava deals bounded real damage and interrupted heals cannot resolve",()=>{
 
   const heal=imminentSwing();
   heal.heroPhase="heal"; heal.heroAge=0.30;
-  heal.heroHp=25; heal.healingSupplies=1;
+  heal.heroHp=55; heal.healingSupplies=1;
   tick(heal);
   assert.equal(heal.heroPhase,"hurt");
   assert.equal(heal.healingSupplies,1);
-  assert(heal.heroHp<25);
+  assert(heal.heroHp<55);
 });
 
 test("windup reads vary by fighter and attack: real hits, dodges and parries all occur", () => {
