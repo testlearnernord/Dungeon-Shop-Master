@@ -1,11 +1,13 @@
 import { AnimationGroup } from "@babylonjs/core/Animations/animationGroup";
 import { Material } from "@babylonjs/core/Materials/material";
+import { Quaternion } from "@babylonjs/core/Maths/math.vector";
+import { palmGripBetweenFingers } from "./tripoGripPresentation.ts";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { loadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
 import "@babylonjs/loaders/glTF/2.0";
-import { createCaveTrollVisual, type CaveTrollVisual, type CaveTrollAnimation } from "./caveTrollVisual.ts";
+import { createCaveTrollVisual, type CaveTrollVisual, type CaveTrollAnimation, type TrollGripPose } from "./caveTrollVisual.ts";
 import { sampleTripoBossPose, sampleTripoFade, sampleTripoTurnStride, TRIPO_FADE_SECONDS, type TripoClip, type TripoLocomotion } from "./tripoBossMotion.ts";
 
 const MODEL = "assets/models/ashen-tunnel-mauler-tripo-combat.glb";
@@ -44,6 +46,26 @@ export function createTripoCaveTrollVisual(scene: Scene): CaveTrollVisual {
   let travelled = 0;
   let quietTime = .3;
   let walking = false;
+  let gripJoints: { palm: TransformNode; index: TransformNode;
+    middle: TransformNode; thumb: TransformNode } | null = null;
+
+  /** The exported 65-bone Tripo source really animates LeftHand, its thumb,
+   * index and middle fingers. Read the *evaluated* Babylon world matrices
+   * after each animation sample; never approximate with the boss heading. */
+  const gripPose = (): TrollGripPose | null => {
+    if (!gripJoints || disposed || root.isDisposed()) return null;
+    const {palm,index,middle,thumb} = gripJoints;
+    const palmWorld = palm.getAbsolutePosition();
+    const fingerWorld = index.getAbsolutePosition();
+    const middleWorld = middle.getAbsolutePosition();
+    const thumbWorld = thumb.getAbsolutePosition();
+    const handRotation = Quaternion.Identity();
+    palm.computeWorldMatrix(true).decompose(undefined,handRotation,undefined);
+    return {
+      position: palmGripBetweenFingers(palmWorld,fingerWorld,middleWorld,thumbWorld),
+      handRotation,
+    };
+  };
 
   scene.onDisposeObservable.addOnce(() => { disposed = true; });
 
@@ -121,16 +143,33 @@ export function createTripoCaveTrollVisual(scene: Scene): CaveTrollVisual {
           mesh.material.forceDepthWrite = true;
         }
       }
+      const skeleton=staged.skeletons[0];
+      const lookup = (name:string): TransformNode | null => {
+        const joint=staged.transformNodes.find(node=>node.name===name);
+        if (joint) return joint;
+        const linked=skeleton.bones.find(b=>b.name===name)?.getTransformNode();
+        return linked??null;
+      };
+      const palm=lookup("mixamorig:LeftHand");
+      const index=lookup("mixamorig:LeftHandIndex1");
+      const middle=lookup("mixamorig:LeftHandMiddle1");
+      const thumb=lookup("mixamorig:LeftHandThumb2");
+      if (!palm || !index || !middle || !thumb)
+        throw new Error("Tripo left-hand grip bones are missing from the skinned rig");
+      gripJoints={palm,index,middle,thumb};
       loaded = staged;
       clips = available;
       root.metadata.tripoStatus = "ready";
       root.metadata.tripoUrl = url;
+      root.metadata.tripoGripAnchor = "mixamorig:LeftHand";
+      root.metadata.tripoGripReady = true;
       root.metadata.tripoBoneCount = staged.skeletons[0].bones.length;
       root.metadata.tripoClipCount = staged.animationGroups.length;
       root.metadata.geometryCount = candidates.length;
       fallback.root.setEnabled(false);
       if (lastInput) play(lastInput);
     } catch (error) {
+      gripJoints=null;
       if (staged && staged !== loaded) staged.dispose();
       if (disposed || root.isDisposed()) return;
       root.metadata.tripoStatus = "fallback";
@@ -145,6 +184,7 @@ export function createTripoCaveTrollVisual(scene: Scene): CaveTrollVisual {
       return (root.metadata.geometryCount as number) || fallback.geometryCount;
     },
     ready,
+    gripPose,
     animate(input: CaveTrollAnimation): void {
       lastInput = input;
       const dt=Math.max(0,Math.min(.1,input.delta));
