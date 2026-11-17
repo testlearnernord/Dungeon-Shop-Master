@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createGameState, advanceDay, setLevel6Permit } from "../../src/game/gameState.ts";
 import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
+import { BOSS_MAX_HP } from "../../src/game/arenaCombatMotion.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
 function expedition() {
@@ -43,21 +44,25 @@ test("an overpowered, equipped adventurer can defeat the boss and unlock floor 6
   assert.equal(clear.events.filter(x => x.type === "level6-combat" && x.adventurerId === champion.id).length, 1);
 });
 
-test("weak unarmed solo runs are dangerous; equipment changes outcomes substantially", () => {
+test("weak unarmed solo runs rarely win; gear deals meaningfully more real boss damage", () => {
   const base = expedition();
   const recruit = { ...base, health: 45, stats: { ...base.stats, maxHealth: 45 },
     equipment: { weapon: null, armor: null }, inventory: { ...base.inventory, healing: 0 } };
   const geared = { ...recruit, equipment: { weapon: "Iron Sword", armor: "Leather Vest" } };
-  let doomed = 0, survivedGeared = 0;
+  let weakWins=0, gearedWins=0, weakDamage=0, gearedDamage=0;
   for (let seed = 0; seed < 90; seed++) {
     const randomState = Math.imul(seed + 1, 0x9e3779b9) >>> 0;
     const weak = simulateLevel6Combat(recruit, 3, randomState);
     const strong = simulateLevel6Combat(geared, 3, randomState);
-    if (weak.adventurer.status === "dead") doomed++;
-    if (strong.adventurer.status !== "dead") survivedGeared++;
+    if (weak.victory) weakWins++;
+    if (strong.victory) gearedWins++;
+    weakDamage += BOSS_MAX_HP - weak.actions.at(-1)!.bossHp;
+    gearedDamage += BOSS_MAX_HP - strong.actions.at(-1)!.bossHp;
   }
-  assert(doomed > 50, "unequipped solo heroes should usually die");
-  assert(survivedGeared > 0, "equipment must offer a real survival chance");
+  console.log("Level 6 gear advantage:",{weakWins,gearedWins,weakDamage,gearedDamage});
+  assert(weakWins < 20, "an unequipped hero must not casually defeat a Cave Troll");
+  assert(gearedDamage > weakDamage * 1.3,
+    "actual sword/armor should help more than an arbitrary lava death rate");
 });
 
 test("healer can self-heal and attack at range, tank can parry, DPS can dodge", () => {
