@@ -10,6 +10,7 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import type { BossPhase } from "./arenaCombatMotion.ts";
 import { applyCaveTrollSculpt } from "./caveTrollSculpt.ts";
+import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 
 /** A real, articulated 3D boss. Its visual pose is *derived* from the existing
  * deterministic combat phases. It never makes combat, AI or save decisions.
@@ -616,6 +617,11 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     hammerPitch=lerp(hammerPitch,hammerZ,easing);
     hammerYaw=lerp(hammerYaw,hammerY,easing);
     hammerRoll=lerp(hammerRoll,hammerX,easing);
+    // Compress the heavy shoulders *into* the planted hips on contact,
+    // rather than levitating the feet or changing motor coordinates.
+    const impact=sampleMaulerImpact(a.phase,a.phaseAge,a.slam);
+    const impactCompression=Math.min(.18,impact.flash*.085);
+    spine.position.y=2.62-impactCompression;
     spine.rotation.x=bodyPitch;
     spine.rotation.z=bodyRoll;
     spine.rotation.y=twist;
@@ -666,6 +672,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     root.metadata.gaitDistance=gaitMeters;
     root.metadata.gaitBlend=gaitWeight;
     root.metadata.hammerLift=hammerLift;
+    root.metadata.impactCompression=impactCompression;
     root.metadata.jawOpen=jaw.rotation.x;
     root.metadata.animationClock=elapsed;
   };
