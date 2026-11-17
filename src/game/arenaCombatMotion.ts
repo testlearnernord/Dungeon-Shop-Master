@@ -234,7 +234,8 @@ function resolveBossStrike(s: CombatPreviewState): void {
     beginBoss(s, "stagger");
     return;
   }
-  const raw = s.bossSlam ? 19 : 14;
+  // An actual smash must threaten a well-equipped hero who misreads it.
+  const raw = s.bossSlam ? 47 : 33;
   const damage = Math.max(1, raw - (s.options.armor ? 7 : 0) -
     (s.options.role === "tank" ? 3 : 0));
   const before=s.heroHp;
