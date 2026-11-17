@@ -39,6 +39,8 @@ export class SceneSoundtrack {
   private scene: SoundtrackScene = "shop";
   private enabled: boolean;
   private volume: number;
+  private arenaMixActive = false;
+  private arenaVolume = 0.16;
   private started = false;
   private error: string | null = null;
   private transitionId = 0;
@@ -90,11 +92,12 @@ export class SceneSoundtrack {
       this.renderUi();
     });
     this.slider.addEventListener("input", () => {
-      this.volume = Math.max(0, Math.min(1, Number(this.slider.value) / 100));
-      this.savePreferences();
+      const value = Math.max(0, Math.min(1, Number(this.slider.value) / 100));
+      if (this.arenaMixActive) this.arenaVolume = value;
+      else { this.volume = value; this.savePreferences(); }
       if (this.enabled && !this.started) this.start();
       else if (this.enabled && this.animationFrame === null)
-        this.tracks[this.scene].volume = this.volume;
+        this.tracks[this.scene].volume = this.soundVolume;
       this.renderUi();
     });
 
@@ -111,7 +114,20 @@ export class SceneSoundtrack {
   }
 
   get soundEnabled():boolean { return this.enabled; }
-  get soundVolume():number { return this.volume; }
+  get soundVolume():number {
+    return this.arenaMixActive ? this.arenaVolume : this.volume;
+  }
+
+  /** V arena has its own temporary listening balance. Shop preferences and
+   * custom slider positions are restored on exit, without overwriting storage. */
+  setArenaMix(active: boolean): void {
+    if (active === this.arenaMixActive) return;
+    this.arenaMixActive = active;
+    if (active) this.arenaVolume = 0.16;
+    if (this.enabled && this.started && this.animationFrame === null)
+      this.tracks[this.scene].volume = this.soundVolume;
+    this.renderUi();
+  }
 
   /** Level-6 presentation uses the real music playhead for the 13.5s
    * cinematic beat. Null means muted, blocked or still buffering: then the
@@ -176,7 +192,7 @@ export class SceneSoundtrack {
         if (id !== this.transitionId) return;
         const progress = Math.min(1, (now - beginning) / FADE_DURATION_MS);
         incoming.volume = Math.max(0, Math.min(1,
-          fromIncoming + (this.volume - fromIncoming) * progress));
+          fromIncoming + (this.soundVolume - fromIncoming) * progress));
         outgoing.forEach((track, i) => {
           track.volume = Math.max(0, Math.min(1, fromOutgoing[i] * (1 - progress)));
         });
@@ -218,7 +234,7 @@ export class SceneSoundtrack {
     this.toggle.replaceChildren(uiIcon(this.enabled?"speaker":"mute"),
       document.createTextNode(this.enabled?"Mute":"Unmute"));
     this.toggle.setAttribute("aria-pressed", String(!this.enabled));
-    this.slider.value = String(Math.round(this.volume * 100));
+    this.slider.value = String(Math.round(this.soundVolume * 100));
     this.status.textContent = !this.enabled ? "Music off" : this.error ??
       (this.started ? "Playing" : "Starts after your first click or key press");
   }

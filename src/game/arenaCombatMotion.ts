@@ -43,6 +43,9 @@ export type CombatPreviewState = {
   heroCooldown: number;
   heroApplied: boolean;
   rollDirection: Point2;
+  /** Training/campaign tactics are deterministic, but each windup is read once. */
+  lastDefenseAttack: number;
+  rollRisksLava: boolean;
   bossPhase: BossPhase;
   bossAge: number;
   bossCooldown: number;
@@ -92,7 +95,7 @@ export function createCombatPreview(options: CombatPreviewOptions): CombatPrevie
     heroHeading: 0, bossHeading: Math.PI, lockedBossHeading: Math.PI,
     heroHp: options.health, bossHp: BOSS_MAX_HP, stamina: 100,
     heroPhase: "move", heroAge: 0, heroCooldown: 0, heroApplied: false,
-    rollDirection: v(1, 0),
+    rollDirection: v(1, 0), lastDefenseAttack: -1, rollRisksLava: false,
     bossPhase: "chase", bossAge: 0,
     bossCooldown: 1.1 + ((options.tacticsSeed ?? 0) % 7) * 0.06,
     bossDamageApplied: false, bossAttacks: 0, bossSlam: false, bossStamina: 0,
@@ -117,12 +120,32 @@ function clampToRadius(point: Point2, radius: number): void {
     point.z *= radius / d;
   }
 }
-function walk(s: CombatPreviewState, direction: Point2, meters: number): void {
+function walk(s: CombatPreviewState, direction: Point2, meters: number,
+  riskyRoll = false): void {
   const startX = s.hero.x, startZ = s.hero.z;
   s.hero.x += direction.x * meters;
   s.hero.z += direction.z * meters;
-  clampToRadius(s.hero, SAFE_HERO_RADIUS);
+  if (riskyRoll && Math.hypot(s.hero.x, s.hero.z) > WALKABLE_RADIUS) {
+    // The bad dodge really reached the molten edge. Burn once and redirect
+    // the remaining roll inward instead of inflicting damage every 60 Hz tick.
+    lavaContact(s);
+    s.rollDirection = unit(-s.hero.x, -s.hero.z);
+    s.rollRisksLava = false;
+  } else {
+    clampToRadius(s.hero, riskyRoll ? WALKABLE_RADIUS : SAFE_HERO_RADIUS);
+  }
   s.distanceTraveled += Math.hypot(s.hero.x - startX, s.hero.z - startZ);
+}
+/** Stable per-attack choices: never consume GameStore RNG or Math.random().
+ * No saving/replay format changes: only newly resolved fights sample tactics. */
+function combatRoll(s: CombatPreviewState, salt: number): number {
+  let n = ((s.options.tacticsSeed ?? 7) ^ Math.imul(s.bossAttacks, 0x9e3779b1) ^ salt) >>> 0;
+  n ^= n >>> 16;
+  n = Math.imul(n, 0x7feb352d);
+  n ^= n >>> 15;
+  n = Math.imul(n, 0x846ca68b);
+  n ^= n >>> 16;
+  return (n >>> 0) / 0x100000000;
 }
 /** Boundary contact is real, bounded damage, never a teleporting one-hit.
  * The AI normally stays in the safe interior; slams can still throw a hero
@@ -169,9 +192,16 @@ function startRoll(s: CombatPreviewState): void {
   const intended = candidate(side), alternate = candidate(-side);
   const projectedRadius = (dir:Point2) =>
     Math.hypot(s.hero.x + dir.x * 5.565,s.hero.z + dir.z * 5.565);
-  s.rollDirection = projectedRadius(alternate) < projectedRadius(intended)
-    ? alternate : intended;
-  if (projectedRadius(s.rollDirection) > SAFE_HERO_RADIUS) {
+  const agility = s.options.agility ?? 10;
+  const nearEdge = Math.hypot(s.hero.x,s.hero.z) > SAFE_HERO_RADIUS - 3.5;
+  // A panic dodge near the ledge can pick the dangerous outward lane.
+  // Skilled fighters do it less often. The safer lane stays the normal choice.
+  s.rollRisksLava = nearEdge && combatRoll(s, 0x33a8) <
+    Math.max(0.12, Math.min(0.48, 0.42 - (agility - 9) * 0.018));
+  s.rollDirection = s.rollRisksLava
+    ? (projectedRadius(alternate) > projectedRadius(intended) ? alternate : intended)
+    : (projectedRadius(alternate) < projectedRadius(intended) ? alternate : intended);
+  if (!s.rollRisksLava && projectedRadius(s.rollDirection) > SAFE_HERO_RADIUS) {
     const inward = unit(-s.hero.x,-s.hero.z);
     s.rollDirection = unit(inward.x + s.rollDirection.x * .22,
       inward.z + s.rollDirection.z * .22);
@@ -204,7 +234,8 @@ function resolveBossStrike(s: CombatPreviewState): void {
     beginBoss(s, "stagger");
     return;
   }
-  const raw = s.bossSlam ? 19 : 14;
+  // An actual smash must threaten a well-equipped hero who misreads it.
+  const raw = s.bossSlam ? 47 : 33;
   const damage = Math.max(1, raw - (s.options.armor ? 7 : 0) -
     (s.options.role === "tank" ? 3 : 0));
   const before=s.heroHp;
@@ -235,7 +266,7 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
   if (s.heroPhase === "move" || s.heroPhase === "dead") return;
   s.heroAge += dt;
   if (s.heroPhase === "roll") {
-    walk(s, s.rollDirection, dt * 10.5);
+    walk(s, s.rollDirection, dt * 10.5, s.rollRisksLava);
     if (s.heroAge >= 0.53) beginHero(s, "move");
   } else if (s.heroPhase === "parry") {
     if (s.heroAge >= 0.52) beginHero(s, "move");
@@ -344,10 +375,26 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
   s.heroHeading = facing(s.hero, s.boss);
   if (s.heroPhase === "move") {
     const distance = dist(s.hero, s.boss);
-    if (s.bossPhase === "windup" && s.bossAge >= (s.bossSlam ? 0.88 : 0.68) &&
+    if (s.bossPhase === "windup" && s.lastDefenseAttack !== s.bossAttacks &&
         distance < 7.2) {
-      if (s.options.role === "tank" && s.options.sword && distance < 5.0) startParry(s);
-      else startRoll(s);
+      const agility = s.options.agility ?? 10;
+      const read = combatRoll(s, 0xb220);
+      const timing = read < 0.12 ? (s.bossSlam ? 0.40 : 0.22)
+        : (s.bossSlam ? 0.88 : 0.68);
+      if (s.bossAge >= timing) {
+        s.lastDefenseAttack = s.bossAttacks;
+        // A warning is not a guaranteed perfect reaction. Early blocks/rolls
+        // expire before contact; some heroes hesitate and take the hit.
+        const readiness = Math.max(0.38, Math.min(0.78,
+          0.57 + (agility - 10) * 0.015 +
+          (s.options.role === "tank" ? 0.08 : 0)));
+        if (read < readiness) {
+          const parryBias = s.options.role === "tank" ? 0.82 : 0.28;
+          if (s.options.sword && distance < 5.0 &&
+              combatRoll(s, 0x8ba2) < parryBias) startParry(s);
+          else startRoll(s);
+        }
+      }
     }
     if (s.heroPhase === "move" && s.heroHp < s.options.maxHealth * 0.60 &&
         s.healingSupplies + s.magicHeals > 0 &&

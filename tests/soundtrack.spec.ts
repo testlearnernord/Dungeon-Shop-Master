@@ -123,3 +123,28 @@ test("failed incoming music stops the outgoing track", async ({ page }) => {
   await expect.poll(() => page.locator("#music-shop-audio").evaluate((audio: HTMLAudioElement) =>
     audio.paused)).toBe(true);
 });
+
+test("V arena temporarily balances Music / SFX without overwriting shop volumes @ci-smoke", async ({page}) => {
+  await page.goto("./");
+  const volume = async (selector: string, value: number) => {
+    await page.locator(selector).evaluate((input: HTMLInputElement, value: number) => {
+      input.value = String(value);
+      input.dispatchEvent(new Event("input", {bubbles:true}));
+    }, value);
+  };
+  await volume("#music-volume", 61);
+  await volume("#sfx-volume", 23);
+  await page.locator("#open-arena").click();
+  await expect(page.locator("#music-volume")).toHaveValue("16");
+  await expect(page.locator("#sfx-volume")).toHaveValue("40");
+  await volume("#music-volume", 19);
+  await volume("#sfx-volume", 48);
+  await expect(page.locator("#music-volume")).toHaveValue("19");
+  await expect(page.locator("#sfx-volume")).toHaveValue("48");
+  await page.locator("#close-arena").click();
+  await expect(page.locator("#music-volume")).toHaveValue("61");
+  await expect(page.locator("#sfx-volume")).toHaveValue("23");
+  await page.reload();
+  await expect(page.locator("#music-volume")).toHaveValue("61");
+  await expect(page.locator("#sfx-volume")).toHaveValue("23");
+});

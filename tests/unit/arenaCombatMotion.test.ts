@@ -47,10 +47,10 @@ function imminentSwing() {
 test("troll damage only applies at active hit frame within locked arc", () => {
   const hit=imminentSwing();
   tick(hit);
-  assert.equal(hit.heroHp,89);
+  assert.equal(hit.heroHp,70);
   assert.equal(hit.bossDamageApplied,true);
   tick(hit,4);
-  assert.equal(hit.heroHp,89,"single attack must not damage the hero every frame");
+  assert.equal(hit.heroHp,70,"single attack must not damage the hero every frame");
 
   const side=imminentSwing();
   side.hero={x:6,z:0};
@@ -163,9 +163,64 @@ test("lava deals bounded real damage and interrupted heals cannot resolve",()=>{
 
   const heal=imminentSwing();
   heal.heroPhase="heal"; heal.heroAge=0.30;
-  heal.heroHp=25; heal.healingSupplies=1;
+  heal.heroHp=55; heal.healingSupplies=1;
   tick(heal);
   assert.equal(heal.heroPhase,"hurt");
   assert.equal(heal.healingSupplies,1);
-  assert(heal.heroHp<25);
+  assert(heal.heroHp<55);
+});
+
+test("windup reads vary by fighter and attack: real hits, dodges and parries all occur", () => {
+  let damaged = 0, dodged = 0, parried = 0;
+  for (let seed = 0; seed < 96; seed++) {
+    const s = createCombatPreview({
+      ...options, role: seed % 2 ? "tank" : "DPS", tacticsSeed: seed,
+      agility: 9 + seed % 7, health: 170, maxHealth: 170,
+    });
+    s.boss = {x:0,z:0}; s.hero = {x:0,z:3};
+    s.bossPhase = "windup"; s.bossAge = 0.68;
+    s.bossAttacks = 1; s.lockedBossHeading = 0;
+    tick(s, 24);
+    if (s.heroHp < 170) damaged++;
+    if (s.dodgeCount > 0) dodged++;
+    if (s.parryCount > 0) parried++;
+  }
+  assert(damaged > 0, "not every warning can trigger an automatic perfect defense");
+  assert(dodged > 0, "correctly timed rolls still avoid real hits");
+  assert(parried > 0, "sword users can still parry");
+});
+
+test("rare risky rolls reach lava and burn once, rather than every frame", () => {
+  let found = false;
+  for (let seed = 0; seed < 160 && !found; seed++) {
+    const s = createCombatPreview({
+      ...options,role:"DPS", sword:false, tacticsSeed:seed,
+      agility:9, health:150,maxHealth:150,
+    });
+    s.boss={x:12,z:0}; s.hero={x:15,z:0};
+    s.bossPhase="windup"; s.bossAge=0.68; s.bossAttacks=1;
+    s.lockedBossHeading=Math.PI/2;
+    let burns = 0;
+    for (let i=0;i<50;i++) {
+      const cues=stepCombatPreview(s,1/60);
+      burns += cues.filter(c=>c.kind==="lava").length;
+    }
+    if (burns>0) {
+      found=true;
+      assert.equal(burns,1,"the same roll must not burn every frame");
+      assert(s.heroHp<150,"lava is real HP damage");
+      assert(Math.hypot(s.hero.x,s.hero.z)<WALKABLE_RADIUS);
+    }
+  }
+  assert(found,"some badly chosen edge dodges must reach the molten ring");
+});
+
+test("tactics choices remain identical for the same 60 Hz fight seed", () => {
+  const opts={...options,role:"DPS" as const,agility:12,tacticsSeed:13572};
+  const a=createCombatPreview(opts), b=createCombatPreview(opts);
+  for(let i=0;i<60*70 && a.outcome==="fighting" && b.outcome==="fighting";i++){
+    stepCombatPreview(a,1/60);
+    stepCombatPreview(b,1/60);
+  }
+  assert.deepEqual(a,b,"defense decisions and lava accidents must be replayable");
 });

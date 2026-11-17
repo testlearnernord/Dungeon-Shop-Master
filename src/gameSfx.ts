@@ -79,6 +79,8 @@ export class GameSfx {
   private readonly slider: HTMLInputElement;
   private enabled: boolean;
   private volume: number;
+  private arenaMixActive = false;
+  private arenaVolume = 0.40;
   private inArena = false;
   private variation = 0;
   private readonly last = new Map<GameSfxCue, number>();
@@ -100,9 +102,10 @@ export class GameSfx {
       this.render();
     });
     this.slider.addEventListener("input", () => {
-      this.volume = Math.max(0, Math.min(1, Number(this.slider.value) / 100));
-      this.persist();
-      if (this.enabled && this.volume > 0) this.preloadSamples();
+      const value = Math.max(0, Math.min(1, Number(this.slider.value) / 100));
+      if (this.arenaMixActive) this.arenaVolume = value;
+      else { this.volume = value; this.persist(); }
+      if (this.enabled && this.soundVolume > 0) this.preloadSamples();
       this.syncMaster();
       this.syncAmbient();
       this.render();
@@ -119,7 +122,20 @@ export class GameSfx {
   }
 
   get soundEnabled(): boolean { return this.enabled; }
-  get soundVolume(): number { return this.volume; }
+  get soundVolume(): number {
+    return this.arenaMixActive ? this.arenaVolume : this.volume;
+  }
+
+  /** The arena SFX preset changes only the active preview mix. Exiting V
+   * restores the exact shop settings, including any persisted custom volume. */
+  setArenaMix(active: boolean): void {
+    if (this.arenaMixActive === active) return;
+    this.arenaMixActive = active;
+    if (active) this.arenaVolume = 0.40;
+    this.syncMaster();
+    this.syncAmbient();
+    this.render();
+  }
   get debugActive():boolean { return this.previewDebug; }
   get previewFilters():SfxDebugFilters { return this.debugFilters; }
 
@@ -204,16 +220,16 @@ export class GameSfx {
   private render(): void {
     this.toggle.textContent = this.enabled ? "SFX on" : "SFX off";
     this.toggle.setAttribute("aria-pressed", String(!this.enabled));
-    this.slider.value = String(Math.round(this.volume * 100));
+    this.slider.value = String(Math.round(this.soundVolume * 100));
   }
 
   private syncMaster(): void {
-    if (this.master) this.master.gain.value = this.enabled ? this.volume * 0.58 : 0;
+    if (this.master) this.master.gain.value = this.enabled ? this.soundVolume * 0.58 : 0;
   }
 
   /** Allocate only on a browser gesture or an allowed play attempt. */
   private unlock(): AudioContext | null {
-    if (!this.enabled || this.volume === 0 || typeof AudioContext === "undefined") return null;
+    if (!this.enabled || this.soundVolume === 0 || typeof AudioContext === "undefined") return null;
     try {
       if (!this.context) {
         const ctx = new AudioContext();
@@ -369,7 +385,7 @@ export class GameSfx {
     audition=false, heavy=false): void {
     const log=(status:SfxDebugStatus)=>
       this.logCue({cue,status,audition});
-    if (!this.enabled || this.volume <= 0){log("muted");return;}
+    if (!this.enabled || this.soundVolume <= 0){log("muted");return;}
     const details=sfxDetails(cue);
     if(!audition&&!this.passesPreviewMix(details.owner,details.family)){
       log("filtered");return;
@@ -498,7 +514,7 @@ export class GameSfx {
   }
 
   private beginAmbient(): void {
-    if (!this.inArena || !this.enabled || this.volume <= 0 || this.lavaSource ||
+    if (!this.inArena || !this.enabled || this.soundVolume <= 0 || this.lavaSource ||
       !this.passesPreviewMix("world","environment")) return;
     const ctx = this.unlock();
     if (!ctx || !this.master || !this.noiseBuffer) return;
