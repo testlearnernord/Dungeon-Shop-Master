@@ -283,10 +283,10 @@ export class Level6Arena {
     lavaLight.range = 38;
     const warmRim = new PointLight("troll-ember-rim",new Vector3(-7,10,7),scene);
     warmRim.diffuse = Color3.FromHexString("#f08b54");
-    warmRim.intensity = 1.65; warmRim.range=26;
+    warmRim.intensity = 1.10; warmRim.range=26;
     const faceFill = new PointLight("troll-face-fill",new Vector3(5,8,-10),scene);
-    faceFill.diffuse=Color3.FromHexString("#e2d8c9");
-    faceFill.intensity=1.10; faceFill.range=31;
+    faceFill.diffuse=Color3.FromHexString("#c9d7e7");
+    faceFill.intensity=1.27; faceFill.range=31;
     const makeMat = (name: string, hex: string, emissive = false): StandardMaterial => {
       const mat = new StandardMaterial(name, scene);
       mat.diffuseColor = Color3.FromHexString(hex);
@@ -355,7 +355,12 @@ export class Level6Arena {
     // exclusively to arenaCombatMotion.ts, not to these visual meshes.
     this.trollVisual = createCaveTrollVisual(scene);
     const boss = this.trollVisual.root;
-    boss.position.set(0,0,2);
+    // The sculpt's face points along local +Z. The hero initially stands
+    // at -Z, so orient the boss to the authoritative combat heading before
+    // the first cinematic frame. paintCombat() already applies this heading
+    // after the intro; previously the unrotated intro showed his back.
+    boss.position.set(this.motion.boss.x,0,this.motion.boss.z);
+    boss.rotation.y = this.motion.bossHeading;
     this.trollVisual.animate({
       phase:"chase",phaseAge:0,slam:false,time:0,moved:0,
       delta:0,hp:BOSS_HP,maxHp:BOSS_HP,
@@ -411,7 +416,7 @@ export class Level6Arena {
     this.targets = [
       { label: displayName + " · " + (this.fighter?.role ?? "tank"), node: hero,
         vantage: new Vector3(4, 5, -8) },
-      { label: "THE CAVE TROLL · BOSS", node: boss, vantage: new Vector3(10, 7, -11) },
+      { label: "THE CAVE TROLL · BOSS", node: boss, vantage: new Vector3(5.5, 5.3, -7.0) },
     ];
     this.focusIndex = 0;
     this.focusCamera();

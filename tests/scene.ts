@@ -269,6 +269,15 @@ export function inspectBossArena() {
     spikes: scene.meshes.filter(mesh => mesh.name.startsWith("cavern-stalagmite-")).length,
     heroPosition: hero ? { x: hero.position.x, z: hero.position.z } : null,
     bossPosition: boss ? { x: boss.position.x, z: boss.position.z } : null,
+    // Local troll front is +Z. The dot product detects backwards intro
+    // posing even before the combat motor has advanced its first frame.
+    bossFacingHero: hero && boss
+      ? (Math.sin(boss.rotation.y)*(hero.position.x-boss.position.x)+
+        Math.cos(boss.rotation.y)*(hero.position.z-boss.position.z))/
+        Math.max(0.0001,Math.hypot(hero.position.x-boss.position.x,
+          hero.position.z-boss.position.z))
+      : null,
+    bossYaw: boss?.rotation.y,
     heroPhase: hero?.metadata?.combatPhase as string | undefined,
     heroArmRotation: scene.transformNodes.find(node => node.name === `${hero?.name}-arm-1`)?.rotation.z,
     heroSwordEnabled: scene.getMeshByName(`${hero?.name}-equipped-iron-sword`)?.isEnabled() ?? false,
@@ -278,6 +287,14 @@ export function inspectBossArena() {
     parryCount: boss?.metadata?.parryCount as number | undefined,
     missedHits: boss?.metadata?.missedHits as number | undefined,
     trollVisualId: boss?.metadata?.visualId as string | undefined,
+    sculptStatus: boss?.metadata?.sculptStatus as string | undefined,
+    sculptSourceUrl: boss?.metadata?.sculptSourceUrl as string | undefined,
+    sculptedPartCount: boss?.getChildMeshes(false).filter(
+      mesh=>mesh.metadata?.sculpted===true).length ?? 0,
+    scalpTuftCount: scene.meshes.filter(mesh=>mesh.name.startsWith("troll-scalp-tuft-")).length,
+    jowlFurCount: scene.meshes.filter(mesh=>mesh.name.startsWith("troll-jowl-fur-")).length,
+    apronVertexCount: scene.getMeshByName("troll-apron-panel-0")?.getTotalVertices()??0,
+    roundedShoulderVertices: scene.getMeshByName("troll-shoulder-plate-1-0")?.getTotalVertices()??0,
     trollMeshCount: boss?.metadata?.geometryCount as number | undefined,
     trollPhase: boss?.metadata?.animationPhase as string | undefined,
     trollAnimationClock: boss?.metadata?.animationClock as number | undefined,
@@ -320,7 +337,7 @@ export async function inspectCaveTrollDeathPose():Promise<{
  * No game store, replay or combat motor is mutated. */
 export async function inspectCaveTrollMotion():Promise<{
   gaitMeters:number;footMinimum:number;footMaximum:number;
-  windup:number;strike:number;liftAtWindup:number;
+  windup:number;strike:number;liftAtWindup:number;jawAtWindup:number;
 }> {
   const scene=Engine.LastCreatedScene!;
   const {createCaveTrollVisual}=await import("../src/game/caveTrollVisual.ts");
@@ -339,12 +356,13 @@ export async function inspectCaveTrollMotion():Promise<{
     slam:true,time:2+i*.09,moved:0,delta:.09,hp:145,maxHp:145});
   const windup=model.root.metadata.hammerSwing as number;
   const liftAtWindup=model.root.metadata.hammerLift as number;
+  const jawAtWindup=model.root.metadata.jawOpen as number;
   for(let i=0;i<7;i++)model.animate({phase:"strike",phaseAge:i*.034,
     slam:true,time:4+i*.034,moved:0,delta:.034,hp:145,maxHp:145});
   const strike=model.root.metadata.hammerSwing as number;
   model.root.dispose();
   return {gaitMeters,footMinimum:Math.min(...sample),
-    footMaximum:Math.max(...sample),windup,strike,liftAtWindup};
+    footMaximum:Math.max(...sample),windup,strike,liftAtWindup,jawAtWindup};
 }
 
 /** Shared scene-agnostic visual identity inspection for browser tests. */

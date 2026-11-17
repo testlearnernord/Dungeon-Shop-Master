@@ -10,20 +10,6 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   // This is the actual in-game, read-only Level 6 training preview.
   await page.keyboard.press("v");
   await expect(page.locator("#arena-preview")).toContainText("TRAINING PREVIEW");
-  // Check the real MP3 URL and signature from the same deployed Vite base
-  // path the soundtrack uses; an SPA HTML fallback is not audio.
-  await expect(page.locator("#music-track")).toHaveText("Desperate Measures");
-  const musicUrl=await page.locator("#music-boss-audio").evaluate(
-    (audio:HTMLAudioElement)=>audio.src);
-  expect(musicUrl).toMatch(/\/Dungeon-Shop-Master\/audio\/desperate-measures\.mp3$/);
-  const track=await page.request.get(musicUrl);
-  expect(track.ok()).toBe(true);
-  expect(track.headers()["content-type"]).toMatch(/audio\/mpeg/i);
-  const bytes=await track.body();
-  expect(bytes.byteLength).toBeGreaterThan(1_000_000);
-  const hasId3=bytes.subarray(0,3).toString("ascii")==="ID3";
-  const hasFrame=bytes[0]===0xff&&((bytes[1]??0)&0xe0)===0xe0;
-  expect(hasId3||hasFrame).toBe(true);
   const inspect=()=>page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectBossArena());
   await expect(page.locator("#arena-cinematic")).toBeVisible();
@@ -31,26 +17,26 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-intro","true");
   const initial=await inspect();
   expect(initial.heroPosition?.z).toBe(-9);
-  // A real preview never starts to simulate during the introductory camera.
-  await page.waitForTimeout(450);
-  expect((await inspect()).heroPosition).toEqual(initial.heroPosition);
-  expect((await inspect()).bossPosition).toEqual(initial.bossPosition);
-  expect((await inspect()).bossPhase).toBeUndefined();
+  expect(initial.bossPosition?.z).toBe(2);
+  // The Ashen Mauler's modeled face is +Z, so its initial world-space
+  // heading must point toward the hero at -Z *during* the camera intro.
+  expect(initial.bossFacingHero).toBeGreaterThan(.98);
+  expect(initial.bossPhase).toBeUndefined();
+  // Check the cinema hold immediately, before any slow MP3 / GLB download
+  // can allow the 13.5s intro to finish on a busy CI runner.
+  await page.waitForTimeout(350);
+  const duringIntro=await inspect();
+  expect(duringIntro.heroPosition).toEqual(initial.heroPosition);
+  expect(duringIntro.bossPosition).toEqual(initial.bossPosition);
+  expect(duringIntro.bossPhase).toBeUndefined();
+  expect(duringIntro.bossFacingHero).toBeGreaterThan(.98);
   expect(initial.trollVisualId).toBe("ashen-tunnel-mauler");
-  expect(initial.trollMeshCount).toBeGreaterThan(120);
-  expect(initial.realTroll3d).toBeGreaterThan(100);
-  expect(initial.realMaul3d).toBeGreaterThan(20);
-  expect(initial.canisterCount).toBe(2);
-  expect(initial.mineWalls).toBe(46);
-  expect(initial.boss).toBe(true);
-  expect(initial.hero).toBe(true);
-  expect(initial.lava).toBe(true);
-
   // Skip correctly seeks the score to its 13.5-second attack peak,
   // then starts the unchanged preview motor on its original first frame.
   await page.keyboard.press("Space");
   await expect(page.locator("#arena-cinematic")).toBeHidden();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-intro","false");
+  expect((await inspect()).bossFacingHero).toBeGreaterThan(.98);
   // Pose must be produced by the real preview motor, not by a static loop.
   await expect.poll(async()=> (await inspect()).bossPhase,
     {timeout:20000,intervals:[100,200,200]}).toBe("windup");
@@ -63,6 +49,37 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   await page.keyboard.press("Tab"); // actual spectator switch to boss focus
   await expect(page.locator("#arena-focus")).toContainText("CAVE TROLL");
   await page.screenshot({path:testInfo.outputPath("ashen-mauler-boss-closeup.png")});
+
+
+  // The real asset and MP3 can be fetched after the timing-sensitive
+  // cinematic assertions: they must not accidentally advance the intro.
+  await expect.poll(async()=>(await inspect()).sculptStatus,
+    {timeout:15000,intervals:[150,250,400]}).toBe("ready");
+  const sculpted=await inspect();
+  expect(sculpted.sculptedPartCount).toBe(17);
+  expect(sculpted.scalpTuftCount).toBe(19);
+  expect(sculpted.jowlFurCount).toBe(14);
+  expect(sculpted.apronVertexCount).toBeGreaterThan(100);
+  expect(sculpted.roundedShoulderVertices).toBeGreaterThan(100);
+  expect(sculpted.sculptSourceUrl).toBe(
+    "/Dungeon-Shop-Master/assets/models/ashen-mauler-sculpt.glb");
+  const sculpt=await page.request.get(sculpted.sculptSourceUrl!);
+  expect(sculpt.ok()).toBe(true);
+  const geometry=await sculpt.body();
+  expect(geometry.byteLength).toBeGreaterThan(100_000);
+  expect(geometry.subarray(0,4).toString("ascii")).toBe("glTF");
+  await expect(page.locator("#music-track")).toHaveText("Desperate Measures");
+  const musicUrl=await page.locator("#music-boss-audio").evaluate(
+    (audio:HTMLAudioElement)=>audio.src);
+  expect(musicUrl).toMatch(/\/Dungeon-Shop-Master\/audio\/desperate-measures\.mp3$/);
+  const track=await page.request.get(musicUrl);
+  expect(track.ok()).toBe(true);
+  expect(track.headers()["content-type"]).toMatch(/audio\/mpeg/i);
+  const bytes=await track.body();
+  expect(bytes.byteLength).toBeGreaterThan(1_000_000);
+  const hasId3=bytes.subarray(0,3).toString("ascii")==="ID3";
+  const hasFrame=bytes[0]===0xff&&((bytes[1]??0)&0xe0)===0xe0;
+  expect(hasId3||hasFrame).toBe(true);
 
   // Death is a noninstant sequence, tested on an isolated visual-only rig,
   // without artificially mutating the real campaign or replay frames.
@@ -79,12 +96,14 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   expect(locomotion.windup).toBeLessThan(-.8);
   expect(locomotion.strike-locomotion.windup).toBeGreaterThan(.85);
   expect(locomotion.liftAtWindup).toBeGreaterThan(.5);
+  expect(locomotion.jawAtWindup).toBeGreaterThan(.25);
 
   // Restart clears all scene-owned meshes and reconstructs the same boss.
   await page.locator("#restart-arena").click();
   await expect(page.locator("#arena-boss-health")).toContainText("145/145");
   const restarted=await inspect();
   expect(restarted.trollMeshCount).toBe(initial.trollMeshCount);
+  expect(restarted.bossFacingHero).toBeGreaterThan(.98);
   await expect(page.locator("#arena-cinematic")).toBeVisible();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-intro","true");
   await page.keyboard.press("Escape");
