@@ -810,7 +810,9 @@ export class Level6Arena {
       const bossPhase=frame?.bossPhase??this.motion.bossPhase;
       this.sfx?.playCombatCue(cue,hero,boss,this.soundListener(),
         bossPhase==="strike" || (frame?.attack??this.motion.bossAttack)==="grab",
-        frame?.slam??this.motion.bossSlam);
+        frame?.slam??this.motion.bossSlam,
+        cue.kind==="miss" &&
+          (frame?.attack??this.motion.bossAttack)==="grab");
       this.worldHud.pushCue(cue,this.motion);
     }
   }
