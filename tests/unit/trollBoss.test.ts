@@ -80,14 +80,16 @@ test("healer can self-heal and attack at range, tank can parry, DPS can dodge", 
     .find(x => x.kind === "ranged" && x.damage !== undefined)!;
   assert.equal(armedHealerHit.damage, unarmedHealerHit.damage! + 4);
   const tank = { ...original, role: "tank" as const, equipment: { weapon: "Iron Sword", armor: "Leather Vest" } };
-  // A melee DPS must dodge when the club actually enters range; an unarmed
-  // ranged DPS may sensibly kite instead of rolling under the troll.
+  // Melee DPS can now hesitate or mistime a warning and take real hits.
+  // Successful rolls/parries are tested over controlled windups in
+  // arenaCombatMotion; an unarmed ranged DPS may kite rather than roll.
   const dps = { ...original, role: "DPS" as const,
     equipment: { weapon: "Iron Sword", armor: null } };
   const tankActions = Array.from({length: 30},(_,seed)=>simulateLevel6Combat(tank,3,seed).actions).flat();
   const dpsActions = Array.from({length: 30},(_,seed)=>simulateLevel6Combat(dps,3,seed).actions).flat();
   assert(tankActions.some(x=>x.kind==="parry"));
-  assert(dpsActions.some(x=>x.kind==="dodge"));
+  assert(dpsActions.some(x=>x.kind==="smash" && x.actor==="troll"),
+    "real melee DPS fights must expose failed defense and incoming troll hits");
   assert(tankActions.filter(x=>x.kind==="smash").every(x=>x.actor==="troll"));
   assert(tankActions.filter(x=>x.kind==="block").every(x=>x.actor==="hero"));
   const unarmedDpsActions = Array.from({length: 30}, (_, seed) =>
