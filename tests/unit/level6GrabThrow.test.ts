@@ -59,6 +59,21 @@ test("grapple is not a scripted cutscene: reach, roll, sword parry, and grip bre
   assert(captured>0 && escaped>0,"grip break and successful grab are both real");
 });
 
+test("the troll tracks early during a grapple warning, then commits to a dodgeable lane",()=>{
+  const s=createCombatPreview({...base,tacticsSeed:14});
+  s.boss={x:0,z:0};s.hero={x:3,z:3};
+  s.bossAttack="grab";s.bossPhase="windup";s.bossAge=.2;
+  s.lockedBossHeading=0;s.bossAttacks=2;
+  tick(s);
+  assert(s.lockedBossHeading>.5,"the opening reach should follow a moving hero");
+  const locked=s.lockedBossHeading;
+  s.bossAge=GRAPPLE_TIMING.trackUntil+.10;
+  s.hero={x:-3,z:3};
+  tick(s);
+  assert.equal(s.lockedBossHeading,locked,
+    "the final warning must remain locked so dodges and parries still matter");
+});
+
 test("missed grabs retract without ever entering the throw phase",()=>{
   const s=poised(3);
   s.hero.z=8;
