@@ -24,6 +24,7 @@ import { createHeroVisual } from "./heroVisual.ts";
 import { createCaveTrollVisual, type CaveTrollVisual } from "./caveTrollVisual.ts";
 import { buildCaveTrollArenaArt, paintCaveTrollFloor } from "./caveTrollArenaArt.ts";
 import { BOSS_INTRO_SECONDS, sampleBossIntro } from "./bossCinematic.ts";
+import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -59,6 +60,8 @@ export class Level6Arena {
   private telegraph: AbstractMesh | null = null;
   private slamTelegraph: AbstractMesh | null = null;
   private impactShockwave: Mesh | null = null;
+  private impactDebris: Mesh[] = [];
+  private impactFlash: PointLight | null = null;
   private readonly staminaText: HTMLElement;
   private readonly combatInfo: HTMLElement;
   private result: "fighting" | "victory" | "defeat" = "fighting";
@@ -204,6 +207,8 @@ export class Level6Arena {
     this.telegraph = null;
     this.slamTelegraph = null;
     this.impactShockwave = null;
+    this.impactDebris = [];
+    this.impactFlash = null;
     this.heroArm = null;
     this.heroWeapon = null;
     this.trollVisual = null;
@@ -221,6 +226,8 @@ export class Level6Arena {
     this.telegraph = null;
     this.slamTelegraph = null;
     this.impactShockwave = null;
+    this.impactDebris = [];
+    this.impactFlash = null;
     this.heroArm = null;
     this.heroWeapon = null;
     this.motionAccumulator = 0;
@@ -329,6 +336,25 @@ export class Level6Arena {
     shockwave.isPickable=false;
     shockwave.checkCollisions=false;
     this.impactShockwave=shockwave;
+    // Reusable, scene-owned rock shards. They sample the authoritative boss
+    // phase/age each frame; no spawned-per-frame objects or extra hit events.
+    const rubbleMat=makeMat("mauler-impact-rubble","#6c625c");
+    const hotRubbleMat=makeMat("mauler-impact-rubble-hot","#ae8470");
+    for(let i=0;i<16;i++){
+      const shard=MeshBuilder.CreateSphere("mauler-impact-debris-"+i,{
+        diameter:.17+(i%4)*.075,segments:5,
+      },scene);
+      shard.material=i%5===0?hotRubbleMat:rubbleMat;
+      shard.visibility=0;
+      shard.isPickable=false;
+      shard.checkCollisions=false;
+      this.impactDebris.push(shard);
+    }
+    this.impactFlash=new PointLight("mauler-impact-flash",
+      new Vector3(0,1.2,0),scene);
+    this.impactFlash.diffuse=Color3.FromHexString("#edab75");
+    this.impactFlash.range=12;
+    this.impactFlash.intensity=0;
     // Stable geometry only, not simulation RNG; concentric stalagmites around the arena.
     for (let i = 0; i < 34; i++) {
       const angle = i * 2.399963229728653;
@@ -684,16 +710,38 @@ export class Level6Arena {
       hero.root.rotation.z = state.outcome === "defeat" ? Math.PI / 2
         : state.heroPhase === "hurt" ? -0.25 : 0;
     }
-    if(this.impactShockwave) {
-      const impact=state.bossPhase==="strike" ? Math.max(0,state.bossAge-.10) : -1;
-      this.impactShockwave.visibility=impact>=0&&impact<.36
-        ? .46*(1-impact/.36):0;
-      this.impactShockwave.scaling.setAll(1+Math.max(0,impact)*5.1);
-      this.impactShockwave.position.set(state.boss.x,.14,state.boss.z);
+    // The impact happens at the actual 140ms hit tick and persists through
+    // recover. All effects follow source frames in both preview and replay.
+    // They never affect attacks, damage, navigation or stored outcomes.
+    const fx=sampleMaulerImpact(state.bossPhase,state.bossAge,state.bossSlam);
+    const hammerReach=state.bossSlam?3.45:2.75;
+    const impactX=state.boss.x+Math.sin(state.lockedBossHeading)*hammerReach;
+    const impactZ=state.boss.z+Math.cos(state.lockedBossHeading)*hammerReach;
+    if(this.impactShockwave){
+      this.impactShockwave.visibility=fx.impact;
+      this.impactShockwave.scaling.setAll(fx.ringScale);
+      this.impactShockwave.position.set(impactX,.14,impactZ);
+    }
+    for(let i=0;i<this.impactDebris.length;i++){
+      const shard=this.impactDebris[i];
+      const angle=i*2.399963229728653+(i%3)*.17;
+      const radius=fx.debrisSpread*(.41+(i%5)*.15);
+      shard.visibility=fx.impact>0.02?Math.min(.95,fx.impact*1.65):0;
+      shard.position.set(
+        impactX+Math.cos(angle)*radius,
+        .14+fx.debrisRise*(.52+(i%4)*.17),
+        impactZ+Math.sin(angle)*radius,
+      );
+      shard.rotation.set(angle*.25,angle+fx.debrisSpread*.28,
+        angle*.18+fx.debrisSpread*.35);
+    }
+    if(this.impactFlash){
+      this.impactFlash.position.set(impactX,1.1,impactZ);
+      this.impactFlash.intensity=fx.flash;
     }
     for (const [telegraph, slam] of [[this.telegraph, false], [this.slamTelegraph, true]] as const) {
       if (!telegraph) continue;
-      telegraph.visibility = state.bossPhase === "windup" && state.bossSlam === slam ? 0.48 : 0;
+      telegraph.visibility = state.bossSlam === slam ? fx.telegraph : 0;
       telegraph.position.set(state.boss.x, 0, state.boss.z);
       telegraph.rotation.y = state.lockedBossHeading;
     }
