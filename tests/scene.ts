@@ -307,6 +307,10 @@ export function inspectBossArena() {
     armRig: scene.getMeshByName("troll-upper-arm-1")?.position.asArray(),
     hammerSocket: scene.getTransformNodeByName("troll-rig-hammer")?.rotation.z,
     impactVisibility: scene.getMeshByName("troll-maul-impact-dust")?.visibility,
+    impactDebrisCount: scene.meshes.filter(mesh=>
+      mesh.name.startsWith("mauler-impact-debris-")).length,
+    impactFlashIntensity: scene.lights.find(light=>
+      light.name==="mauler-impact-flash")?.intensity ?? -1,
   };
 }
 
