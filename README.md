@@ -205,6 +205,8 @@ viewer and varied fictional training previews. The shipped Cave Troll in
 actual fights is **still the original 17-part GLB on the Babylon transform
 rig**, not the externally animated Tripo character.
 
+**Curated candidate available, not an in-game boss:** the 55-clip source is archived at `assets/tripo/source/`. The twelve-clip selection is checked in at `public/assets/models/ashen-tunnel-mauler-tripo.glb` (details in `docs/TRIPO_TROLL_ASSET_AUDIT.md`). In Level 6 choose **Inspect Tripo GLB → Ashen Tunnel Mauler · curated** to inspect the repository asset. Local `.glb` uploads still work.
+
 **Next art gate, not yet implemented:** evaluate the rigged Tripo model's
 walk, strikes and death clips in the local viewer, then import the approved
 skinned asset into the existing Level 6 presentation without replacing the

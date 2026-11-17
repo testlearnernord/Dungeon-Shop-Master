@@ -31,7 +31,8 @@ scene and a selector for exported animation clips. Training-only fights
 randomize fictional hero roles, equipment and tactics on restart; V opens
 fresh practice by default, while the Ledger/C switch still exposes exact
 saved combat. The tool does **not** yet put the Tripo creature into real
-combat or check the private model into the repository.
+combat. The curated 12-clip candidate is now checked in alongside the
+archived 55-clip source and selectable in the existing Model Lab.
 
 **NEXT, approved experiment (NOT CURRENT):** evaluate the skinned
 **Tripo AI-generated Cave Troll** and its usable embedded clips in the

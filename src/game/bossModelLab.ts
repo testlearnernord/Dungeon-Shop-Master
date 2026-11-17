@@ -6,6 +6,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
 import { loadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
+import { MODEL_LAB_CATALOG } from "./modelLabCatalog.ts";
 import "@babylonjs/loaders/glTF/2.0";
 
 /** Local GLB inspection in the actual Babylon canvas, not a second game or
@@ -15,6 +16,7 @@ export class BossModelLab {
   readonly scene: Scene;
   private readonly camera: ArcRotateCamera;
   private readonly input: HTMLInputElement;
+  private readonly preset: HTMLSelectElement;
   private readonly clips: HTMLSelectElement;
   private readonly info: HTMLElement;
   private container: AssetContainer | null = null;
@@ -35,19 +37,33 @@ export class BossModelLab {
     this.scene.activeCamera = this.camera;
     this.camera.attachControl(canvas,true);
     this.input = panel.querySelector<HTMLInputElement>("#arena-model-file")!;
+    this.preset = panel.querySelector<HTMLSelectElement>("#arena-model-preset")!;
     this.clips = panel.querySelector<HTMLSelectElement>("#arena-model-clip")!;
     this.info = panel.querySelector<HTMLElement>("#arena-model-info")!;
     this.input.value = "";
+    this.preset.replaceChildren(new Option("Choose a checked-in model", ""));
+    for (const asset of MODEL_LAB_CATALOG) this.preset.add(new Option(asset.label, asset.id));
     this.clips.replaceChildren(new Option("Import a GLB to inspect its clips",""));
     this.clips.disabled = true;
-    this.info.textContent = "Load your exported Tripo .glb locally. The model is not uploaded or saved.";
+    this.info.textContent = "Choose the curated candidate or inspect a local .glb. Neither changes combat or saves.";
     this.input.addEventListener("change",this.onFile);
+    this.preset.addEventListener("change",this.onPreset);
     this.clips.addEventListener("change",this.onClip);
   }
 
   private readonly onFile = (): void => {
     const file = this.input.files?.[0];
-    if(file) void this.load(file);
+    if(file) {
+      this.preset.value = "";
+      void this.load(file, file.name);
+    }
+  };
+
+  private readonly onPreset = (): void => {
+    const selected = MODEL_LAB_CATALOG.find(asset => asset.id === this.preset.value);
+    if (!selected) return;
+    this.input.value = "";
+    void this.load(import.meta.env.BASE_URL + selected.path, selected.label);
   };
 
   private readonly onClip = (): void => {
@@ -62,20 +78,20 @@ export class BossModelLab {
       " · " + this.container.animationGroups.length + " imported clips · Local preview only";
   };
 
-  private async load(file: File): Promise<void> {
-    if(!/\.glb$/i.test(file.name)){
+  private async load(source: File | string, label: string): Promise<void> {
+    if(typeof source !== "string" && !/\.glb$/i.test(source.name)){
       this.info.textContent="Only exported .glb files are supported.";
       return;
     }
     const generation=++this.generation;
     this.clips.disabled=true;
     this.clips.replaceChildren(new Option("Loading model…",""));
-    this.info.textContent="Importing " + file.name + " · " +
-      (file.size/1024/1024).toFixed(1) + " MiB";
+    this.info.textContent="Importing " + label + " · " +
+      (typeof source === "string" ? "repository preset" : (source.size/1024/1024).toFixed(1) + " MiB");
     this.container?.dispose();
     this.container=null;
     try{
-      const container=await loadAssetContainerAsync(file,this.scene);
+      const container=await loadAssetContainerAsync(source,this.scene);
       if(this.disposed||generation!==this.generation){
         container.dispose();
         return;
@@ -126,6 +142,7 @@ export class BossModelLab {
     this.disposed=true;
     this.generation++;
     this.input.removeEventListener("change",this.onFile);
+    this.preset.removeEventListener("change",this.onPreset);
     this.clips.removeEventListener("change",this.onClip);
     this.camera.detachControl();
     this.container?.dispose();
