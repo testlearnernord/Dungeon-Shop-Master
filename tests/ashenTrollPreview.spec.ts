@@ -22,6 +22,9 @@ test("Ashen Tunnel Mauler has real animated geometry in the V training preview",
   // heading must point toward the hero at -Z *during* the camera intro.
   expect(initial.bossFacingHero).toBeGreaterThan(.98);
   expect(initial.bossPhase).toBeUndefined();
+  // Visual-only rocks and flash exist once and are silent during the intro.
+  expect(initial.impactDebrisCount).toBe(16);
+  expect(initial.impactFlashIntensity).toBe(0);
   // Check the cinema hold immediately, before any slow MP3 / GLB download
   // can allow the 13.5s intro to finish on a busy CI runner.
   await page.waitForTimeout(350);
