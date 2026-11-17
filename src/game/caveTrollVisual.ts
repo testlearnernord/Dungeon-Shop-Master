@@ -316,6 +316,38 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
       [x,y+.53,.95],[.018,.12+i%3*.05,.025],scar);
     p.rotation.z=(i%5-2)*.24;
   }
+  // Thin swept clumps follow the skull and jowls. Their irregular lengths
+  // keep the signature dishevelled, cave-dwelling silhouette in close shots.
+  // Real tubes, not camera-facing hair sprites or a new animation system.
+  for(let i=0;i<19;i++){
+    const side=i%2===0?-1:1;
+    const rank=Math.floor(i/2);
+    const x=side*(.07+rank*.075);
+    const path=[
+      V(x,.70-.035*rank,-.03),
+      V(x*1.08,.83-.032*rank,-.22),
+      V(x*1.26,.71-.027*rank,-.43-.03*(i%3)),
+      V(x*1.38,.57-.025*rank,-.49-.065*(i%4)),
+    ];
+    const tuft=MeshBuilder.CreateTube("troll-scalp-tuft-"+i,
+      {path,radius:.045+(i%3)*.009,tessellation:7},scene);
+    mount(tuft,head,[0,0,0],i%5===0?furShade:hair);
+  }
+  for(const side of [-1,1])for(let i=0;i<7;i++){
+    const x=side*(.56+i*.036);
+    const path=[V(x,-.17,.67),V(x*1.08,-.34,.73),
+      V(x*1.19,-.59-i*.023,.64),
+      V(x*1.22,-.72-i*.025,.57)];
+    mount(MeshBuilder.CreateTube("troll-jowl-fur-"+side+"-"+i,
+      {path,radius:.026+i*.002,tessellation:6},scene),
+      head,[0,0,0],i%3===0?furShade:hair);
+  }
+  for(const side of [-1,1]){
+    // Deep nostrils recess the muzzle and make it read like flesh, not a
+    // round brown potato attached to the middle of the face.
+    sphere("nostril-"+side,head,[side*.19,-.18,1.405],
+      [.115,.06,.037],mouth,14);
+  }
   // Twin red vented mine canisters, the signature silhouette chosen in art.
   // These are physical cylinders with armoured rims and recessed black ends.
   const canisterRigs:{side:number;rig:TransformNode}[]=[];
@@ -345,9 +377,10 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   // Three-dimensional overlapping rust plates on shoulders/back.
   for(const sign of [-1,1]){
     for(let i=0;i<3;i++){
-      const plate=block("shoulder-plate-"+sign+"-"+i,spine,
+      const plate=sphere("shoulder-plate-"+sign+"-"+i,spine,
         [sign*(1.45+i*.13),2.35-i*.13,-.36-i*.16],
-        [.85,.25,.98],i===1?iron:plated);
+        [.94,.25,1.07],i===1?iron:plated,24);
+      sculpt(plate,53+i+sign*4,.025);
       plate.rotation.z=sign*(.1+i*.11);
       for(const k of [-1,1])sphere("shoulder-rivet-"+sign+"-"+i+"-"+k,
         spine,[sign*(1.45+i*.13)+k*.26,2.52-i*.13,-.1-i*.16],
@@ -358,18 +391,18 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   // Broken angular scapula armour sits over the broad shoulder hump,
   // disrupting the former ball-shaped shoulder and plastic toy silhouette.
   for(const side of [-1,1]){
-    const cheekPlate=block("shoulder-iron-ridge-"+side,spine,
-      [side*1.80,2.43,.24],[.67,.26,1.15],plated);
+    const cheekPlate=sphere("shoulder-iron-ridge-"+side,spine,
+      [side*1.80,2.43,.24],[.72,.23,1.18],plated,22);
     cheekPlate.rotation.z=side*.29;
     cheekPlate.rotation.x=-.22;
     for(let i=0;i<3;i++){
-      const jag=block("shoulder-broken-flange-"+side+"-"+i,spine,
+      const jag=sphere("shoulder-broken-flange-"+side+"-"+i,spine,
         [side*(2.02+i*.12),2.22-i*.19,-.20-i*.14],
-        [.18,.39+i*.09,.56-i*.11],i===1?copper:plated);
+        [.17,.38+i*.11,.56-i*.11],i===1?copper:plated,20);
       jag.rotation.z=side*(.20+i*.12);
     }
-    const tendon=block("neck-harness-gusset-"+side,spine,
-      [side*.98,2.82,.94],[.45,.76,.09],leather);
+    const tendon=sphere("neck-harness-gusset-"+side,spine,
+      [side*.98,2.82,.94],[.40,.76,.12],leather,20);
     tendon.rotation.z=side*.49;
   }
 
@@ -381,14 +414,19 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     const lower=sphere("forearm-"+side,spine,[0,0,0],[1,1,1],skin,20);sculpt(lower,side+45,.095);
     const elbow=sphere("elbow-"+side,spine,[0,0,0],[.64,.59,.60],skin,14);
     const bracer=sphere("bracer-"+side,spine,[0,0,0],[1,1,1],plated,17);
-    const hand=sphere("giant-hand-"+side,spine,[0,0,0],[.73,.51,.69],skin,16);
+    const hand=sphere("giant-hand-"+side,spine,[0,0,0],[.80,.55,.72],skin,24);
     const wristBand=sphere("wrist-band-"+side,spine,[0,0,0],[1,1,1],leather,13);
     for(let f=0;f<4;f++){
       // Fingers are curled directly around the long timber shaft.
       const digit=sphere("hammer-grip-finger-"+side+"-"+f,hand,
-        [-.24+f*.17,-.22,.17],[.16,.26,.22],skin,9);
-      digit.rotation.x=.4;
+        [-.25+f*.17,-.23,.18],[.15,.31,.23],skin,16);
+      digit.rotation.x=.53;
+      sphere("hammer-grip-nail-"+side+"-"+f,digit,
+        [0,-.24,.10],[.11,.06,.075],bone,10);
     }
+    const thumb=sphere("hammer-grip-thumb-"+side,hand,
+      [side*.38,-.08,.28],[.24,.32,.21],skin,18);
+    thumb.rotation.z=-side*.42;
     return {side,shoulder,upper,lower,elbow,bracer,hand,wristBand};
   });
   // Arm and leg meshes are collision-free; the actual strike arc remains
@@ -402,7 +440,8 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     for(let t=0;t<4;t++){
       sphere("foot-claw-"+side+"-"+t,foot,[-.32+t*.21,-.15,.43],[.12,.16,.24],bone,9);
     }
-    const strap=block("ankle-leather-"+side,pose,[side*1.06,.7,.23],[.79,.17,.87],leather);
+    const strap=sphere("ankle-leather-"+side,pose,
+      [side*1.06,.7,.23],[.79,.18,.90],leather,20);
     return {side,hip,thigh,shin,kneecap,foot,strap};
   });
   // The hammer is *not* a cylinder head: irregular stone and iron cladding,
@@ -419,8 +458,9 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   }
   sculpt(block("maul-stone-core",weapon,[-2.44,-.03,.01],[1.50,1.68,1.55],rock),97,.055);
   for(const x of [-3.03,-1.84]){
-    const band=block("maul-riveted-iron-ring-"+x,weapon,[x,-.02,.01],[.20,1.80,1.70],plated);
-    band.rotation.z=x< -2.4?-.045:.04;
+    const band=torus("maul-riveted-iron-ring-"+x,weapon,
+      [x,-.02,.01],1.69,.20,plated);
+    band.rotation.z=Math.PI/2;
     for(const y of [-.65,.65])for(const z of [-.66,.66]){
       sphere("maul-rivet-"+x+"-"+y+"-"+z,weapon,[x,y,z],[.115,.115,.08],iron,8);
     }
@@ -434,7 +474,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
   // Hammer head damage catches torchlight with exposed 3D splinters.
   // These are fixed to the weapon socket, so attack and death poses keep
   // their shards properly attached to the real swinging maul.
-  for(let i=0;i<14;i++){
+  for(let i=0;i<8;i++){
     const x=-2.9+(i%4)*.34;
     const y=(i%5-2)*.19;
     const z=(i%2?1:-1)*.80;
@@ -447,7 +487,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
       [-2.67,side*.75,.58],.18,.49,iron);
     wedge.rotation.z=side*.85;
   }
-  const chipped=block("maul-chipped-corner",weapon,[-2.98,.62,.57],[.42,.36,.45],iron);
+  const chipped=sphere("maul-chipped-corner",weapon,[-2.98,.62,.57],[.39,.31,.43],iron,16);
   chipped.rotation.z=.38;
   for(const i of [-1,1]){
     cone("maul-striker-"+i,weapon,[-3.10,i*.50,0],.32,.38,rock).rotation.z=Math.PI/2;
