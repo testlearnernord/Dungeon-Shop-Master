@@ -283,10 +283,10 @@ export class Level6Arena {
     lavaLight.range = 38;
     const warmRim = new PointLight("troll-ember-rim",new Vector3(-7,10,7),scene);
     warmRim.diffuse = Color3.FromHexString("#f08b54");
-    warmRim.intensity = 1.65; warmRim.range=26;
+    warmRim.intensity = 1.10; warmRim.range=26;
     const faceFill = new PointLight("troll-face-fill",new Vector3(5,8,-10),scene);
-    faceFill.diffuse=Color3.FromHexString("#e2d8c9");
-    faceFill.intensity=1.10; faceFill.range=31;
+    faceFill.diffuse=Color3.FromHexString("#c9d7e7");
+    faceFill.intensity=1.27; faceFill.range=31;
     const makeMat = (name: string, hex: string, emissive = false): StandardMaterial => {
       const mat = new StandardMaterial(name, scene);
       mat.diffuseColor = Color3.FromHexString(hex);
