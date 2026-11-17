@@ -4,3 +4,4 @@ dist/
 *.tsbuildinfo
 test-results/
 playwright-report/
+public/assets/models/ashen-tunnel-mauler-tripo-combat.glb
