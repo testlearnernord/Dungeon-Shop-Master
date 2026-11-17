@@ -15,6 +15,7 @@ import {
   BOSS_MAX_HP, bossStrikeGeometry, createCombatPreview, stepCombatPreview,
   type CombatPreviewState, type ArenaCue,
 } from "./arenaCombatMotion.ts";
+import { GRAPPLE_TIMING } from "./arenaCombatMotion.ts";
 import type { AdventurerState } from "./adventurers.ts";
 import type { BossCombatReplay, BossReplayFrame } from "./bossCombatReplay.ts";
 import { observeReplay } from "../replayDisclosure.ts";
@@ -823,7 +824,8 @@ export class Level6Arena {
     // A captured hero hangs in the troll's hand, then follows the recorded
     // horizontal throw with a visual-only airborne arc. The motor alone owns
     // collision, HP, timing and the eventual lava landing.
-    const throwProgress=Math.max(0,Math.min(1,state.heroAge/.62));
+    const throwProgress=Math.max(0,
+      Math.min(1,state.heroAge/GRAPPLE_TIMING.flight));
     const heroHeight=state.heroPhase==="grabbed" ? 2.45 :
       state.heroPhase==="thrown"
         ? 2.45*(1-throwProgress)+1.1*Math.sin(Math.PI*throwProgress) : 0;
