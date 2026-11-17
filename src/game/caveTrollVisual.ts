@@ -20,8 +20,16 @@ import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
  * red canisters, red mining apron and the huge two-handed stone maul.
  * This is source-authored Babylon geometry, not a flat portrait/billboard.
  */
+/** A world-space socket measured on actual animated hand/finger joints.
+ * It is read by spectator presentation only, never by authoritative physics. */
+export interface TrollGripPose {
+  readonly position: Vector3;
+  readonly handRotation: Quaternion;
+}
 export interface CaveTrollVisual {
   readonly root: TransformNode;
+  /** Optional real skinned grip; older segmented renderers have no linked fingers. */
+  readonly gripPose?: () => TrollGripPose | null;
   /** Scene-owned 3D parts. The handle/torso/limbs all have real volume. */
   readonly geometryCount: number;
   /** Completes when the sculpted GLB geometry has been applied (or fallback recorded). */
