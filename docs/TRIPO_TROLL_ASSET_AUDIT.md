@@ -33,7 +33,7 @@ The earlier 33-clip source contained previous 20 clips plus later attempts. The 
 | `roar` | Enrage or shout |
 | `death_fall` | Non-looping death |
 
-The other 21 clips remain in the owner's full archival export, **not in the curated file**. They include failed walk prompts, alternative reactions, rocket attacks, lifting, jumping, scratching and fleeing.
+The earlier 33-clip export had 21 unselected animations; the newer **55-clip archive has 43 unselected animations**. They remain available for later comparison, not in the 12-clip preview asset. This includes failed walk prompts, alternate reactions, preset locomotion and attacks, rocket attacks, lifting, jumping, scratching and fleeing.
 
 **Measured real foot motion:** vertical travel of the left/right foot relative to the hips, model units:
 
