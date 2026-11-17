@@ -94,6 +94,7 @@ need human game testing. Shop remarks never alter sales or dungeon outcomes.
 | V / G | Level 6 arena (13.5s music-led intro) / Level 7 dungeon viewer |
 | V with old footage available | Opens a fresh preview by default; use C / the spectator source button for saved footage. Opening a specific Ledger recording still shows that recording directly. |
 | Inspect Tripo GLB (inside Level 6) | Open a local-only model lab: select a rigged `.glb`, orbit/zoom and choose any embedded animation; Esc returns to the battle. Training-only fights with no authorized hero randomize on each restart. Saved replays never reroll. |
+| Audio panel | Separate Music and Effects (SFX) mute/volume controls; each preference persists independently. The Level 6 synthetic SFX prototype includes troll vocals, footsteps, contact/defense/lava/healing/death cues and quiet lava ambience. These are provisional synthesized sounds, not final creature recordings. |
 | Space / Enter (during Level 6 intro) | Skip the cinematic and seek Desperate Measures to the 13.5s combat downbeat; V / Esc still returns to the shop |
 | M | Toggle mouse/HUD cursor mode |
 | Esc | Release cursor or cancel/close the current interaction |

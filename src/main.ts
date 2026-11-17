@@ -1,6 +1,7 @@
 import { createMerchantActions } from "./game/merchantActions.ts";
 import { createLevel5RoomVisuals } from "./game/level5RoomVisuals.ts";
 import { createCashierSfx } from "./cashierSfx.ts";
+import { setupGameSfx } from "./gameSfx.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { createFirstPersonCamera } from "./game/firstPersonController";
@@ -209,7 +210,7 @@ let isShopActive = () => true;
 let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
   ()=>isShopActive(),message=>{statusHud.textContent=message;});
-const merchantActions=createMerchantActions(scene,camera,()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume,()=>isShopActive(),()=>selectedItemId);
+const merchantActions=createMerchantActions(scene,camera,()=>sfx.soundEnabled,()=>sfx.soundVolume,()=>isShopActive(),()=>selectedItemId);
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;
@@ -223,12 +224,13 @@ setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),
   itemId=>interactions.selectItem(itemId));
 store.subscribe(() => renderInventory(selectedItemId));
 const soundtrack = setupSoundtrack();
-const cashierSfx=createCashierSfx(()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
+const sfx = setupGameSfx();
+const cashierSfx=createCashierSfx(()=>sfx.soundEnabled,()=>sfx.soundVolume);
 const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "boss" : "shop");
 },()=>soundtrack.bossPlaybackSeconds,
   ()=>soundtrack.restartBossTheme(),
-  seconds=>soundtrack.skipBossIntro(seconds));
+  seconds=>soundtrack.skipBossIntro(seconds),sfx);
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
 });
@@ -250,7 +252,7 @@ ledger=setupMerchantLedger(()=>{
     return selector.value===event.id;
   }
   return false;
-},()=>soundtrack.soundEnabled,()=>soundtrack.soundVolume);
+},()=>sfx.soundEnabled,()=>sfx.soundVolume);
 if(ledger.resumePending(store.state))camera.detachControl();
 bedtime=setupBedtime(scene,canvas,camera,
   ()=>!arena.isActive&&!dungeon.isActive,

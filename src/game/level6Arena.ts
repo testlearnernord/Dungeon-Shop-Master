@@ -29,6 +29,7 @@ import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 import { BossCombatHud } from "./bossCombatHud.ts";
 import { BossModelLab } from "./bossModelLab.ts";
 import { nextBossTrainingScenario, type BossTrainingScenario } from "./bossTrainingScenario.ts";
+import type { GameSfx, GameSfxCue, SoundListener } from "../gameSfx.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -90,6 +91,18 @@ export class Level6Arena {
   private introActive=false;
   private introWallSeconds=0;
   private introSeconds=0;
+  private introSfxIndex=0;
+  private bossStepDistance=0;
+  private heroStepDistance=0;
+  private lastBossPhase="chase";
+  private lastHeroPhase="move";
+
+  /** Camera position only affects the audible stereo image, never combat. */
+  private soundListener(): SoundListener | undefined {
+    return this.camera
+      ? { x:this.camera.position.x, z:this.camera.position.z, yaw:this.camera.rotation.y }
+      : undefined;
+  }
 
   constructor(
     private readonly engine: Engine,
@@ -100,6 +113,7 @@ export class Level6Arena {
     private readonly bossMusicSeconds:()=>number|null=()=>null,
     private readonly restartBossTheme:()=>void=()=>{},
     private readonly skipBossThemeTo:(seconds:number)=>void=()=>{},
+    private readonly sfx?:GameSfx,
   ) {
     this.panel = document.querySelector<HTMLElement>("#arena-hud")!;
     this.worldHud = new BossCombatHud(this.panel,this.canvas,this.engine);
@@ -214,6 +228,7 @@ export class Level6Arena {
     this.introActive=false;
     this.cinematic.hidden=true;
     this.panel.dataset.intro="false";
+    this.sfx?.endArena();
     this.worldHud.reset();
     this.pressed.clear();
     this.modelPanel.hidden=false;
@@ -250,6 +265,7 @@ export class Level6Arena {
     this.panel.dataset.modelViewer="false";
     this.modelToggle.textContent="Inspect Tripo GLB";
     this.introActive=false;
+    this.sfx?.endArena();
     this.worldHud.reset();
     this.cinematic.hidden=true;
     this.panel.dataset.intro="false";
@@ -284,6 +300,7 @@ export class Level6Arena {
     const previousTraining = this.training;
     this.panel.dataset.bossRenderer=this.useTripoModel?"tripo":"legacy";
     this.rendererToggle.textContent=this.useTripoModel?"Tripo loading… · switch to legacy":"Legacy boss · try Tripo";
+    this.sfx?.endArena();
     this.scene?.dispose();
     this.worldHud.reset();
     this.heroLegs = [];
@@ -304,6 +321,11 @@ export class Level6Arena {
     this.introActive=false;
     this.introWallSeconds=0;
     this.introSeconds=0;
+    this.introSfxIndex=0;
+    this.bossStepDistance=0;
+    this.heroStepDistance=0;
+    this.lastBossPhase="chase";
+    this.lastHeroPhase="move";
     this.result = "fighting";
     const state = this.store.state;
     const recorded = [...state.events].reverse()
@@ -576,6 +598,7 @@ export class Level6Arena {
     this.panel.dataset.introSeconds="0";
     this.cinematic.hidden=false;
     this.restartBossTheme();
+    this.sfx?.beginArena();
     this.paintCinematic(0,0);
   }
 
@@ -622,6 +645,17 @@ export class Level6Arena {
     if(this.introSeconds>=BOSS_INTRO_SECONDS){
       this.finishCinematic(false);
       return;
+    }
+    // Score-led foley landmarks; skipping the film never fires queued sounds.
+    const introSounds:readonly {at:number;id:GameSfxCue}[]=[
+      {at:1.8,id:"troll-breath"},
+      {at:5.9,id:"troll-roar"},
+      {at:11.2,id:"troll-breath"},
+    ];
+    while(this.introSfxIndex<introSounds.length &&
+      this.introSeconds>=introSounds[this.introSfxIndex].at){
+      const entry=introSounds[this.introSfxIndex++];
+      this.sfx?.play(entry.id,this.motion?.boss,this.soundListener());
     }
     this.paintCinematic(this.introSeconds,dt);
   }
@@ -753,7 +787,11 @@ export class Level6Arena {
         "DEFEAT · Hero fell in combat. Preview only.",
     };
     this.status.textContent = messages[cue.kind];
-    if(this.motion)this.worldHud.pushCue(cue,this.motion);
+    if(this.motion){
+      this.sfx?.playCombatCue(cue,this.motion.hero,this.motion.boss,
+        this.soundListener(),this.motion.bossPhase==="strike");
+      this.worldHud.pushCue(cue,this.motion);
+    }
   }
 
   private paintCombat(frameDt: number): void {
@@ -773,6 +811,31 @@ export class Level6Arena {
 
     const movedHero = Math.hypot(state.hero.x - oldHeroX, state.hero.z - oldHeroZ);
     const movedBoss = Math.hypot(state.boss.x - oldBossX, state.boss.z - oldBossZ);
+    const listener=this.soundListener();
+    // Footsteps follow visible travel, not a guessed timer or modified AI.
+    // Ignore initial teleports/replay seeks and avoid bursts on slow frames.
+    if(state.bossPhase==="chase" && movedBoss>.004 && movedBoss<.65){
+      this.bossStepDistance+=movedBoss;
+      if(this.bossStepDistance>=1.45){
+        this.bossStepDistance%=1.45;
+        this.sfx?.play("troll-step",state.boss,listener);
+      }
+    }else if(state.bossPhase!=="chase")this.bossStepDistance=0;
+    if(state.heroPhase==="move" && movedHero>.004 && movedHero<.65){
+      this.heroStepDistance+=movedHero;
+      if(this.heroStepDistance>=.88){
+        this.heroStepDistance%=.88;
+        this.sfx?.play("hero-step",state.hero,listener);
+      }
+    }else if(state.heroPhase!=="move")this.heroStepDistance=0;
+    // Swings sound on the start of the actual animated strike, impacts on
+    // authoritative hit/miss/parry cues. A windup alone is not a hit.
+    if(state.bossPhase==="strike" && this.lastBossPhase!=="strike")
+      this.sfx?.play("troll-swing",state.boss,listener);
+    if(state.heroPhase==="attack" && this.lastHeroPhase!=="attack")
+      this.sfx?.play("hero-attack",state.hero,listener);
+    this.lastBossPhase=state.bossPhase;
+    this.lastHeroPhase=state.heroPhase;
     for (const [index, leg] of this.heroLegs.entries()) {
       leg.rotation.x = movedHero > 0.005 && state.heroPhase === "move"
         ? Math.sin(state.time * 12 + index * Math.PI) * 0.50 : 0;

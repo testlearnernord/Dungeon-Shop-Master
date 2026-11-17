@@ -847,12 +847,13 @@
 #music-panel .music-heading small{font-size:8px}
 #music-panel .music-actions{gap:4px}
 #music-panel .music-actions button{padding:3px 5px;white-space:nowrap;font-size:9px}
-#music-panel #music-volume{width:64px}
+#music-panel #music-volume,#music-panel #sfx-volume{width:64px}
+#music-panel .sfx-actions{margin-top:3px}
 #music-panel .music-actions label{font-size:8px}
 @media(max-width:740px){
   #hud #shop-status-content{width:min(420px,calc(100vw - 18px));max-height:66dvh;left:0}
   #music-panel,#game #music-panel{right:8px!important;bottom:121px!important;width:148px!important}
-  #music-panel #music-volume{width:43px}
+  #music-panel #music-volume,#music-panel #sfx-volume{width:43px}
 }
 @media(max-height:650px){
   #hud #shop-status-content{max-height:57dvh}

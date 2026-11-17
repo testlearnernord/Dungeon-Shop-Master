@@ -240,15 +240,20 @@
           <small>Saved footage never changes outcomes. Full map is available only in the explicit development preview.</small>
         </footer>
       </section>
-      <aside id="music-panel" aria-label="Game music">
+      <aside id="music-panel" aria-label="Game audio controls">
         <div class="music-heading">
           <span aria-hidden="true">♫</span>
           <div><strong id="music-track">The Lean Season</strong><small id="music-status" role="status">Starts after your first click</small></div>
         </div>
         <div class="music-actions">
           <button id="music-toggle" type="button" aria-pressed="false">Mute</button>
-          <label for="music-volume">Volume</label>
+          <label for="music-volume">Music</label>
           <input id="music-volume" type="range" min="0" max="100" step="1" value="35" aria-label="Music volume" />
+        </div>
+        <div class="music-actions sfx-actions">
+          <button id="sfx-toggle" type="button" aria-label="Toggle sound effects" aria-pressed="false">SFX on</button>
+          <label for="sfx-volume">Effects</label>
+          <input id="sfx-volume" type="range" min="0" max="100" step="1" value="65" aria-label="Sound effects volume" />
         </div>
       </aside>
       <dialog id="roster-dialog" aria-labelledby="roster-title">
