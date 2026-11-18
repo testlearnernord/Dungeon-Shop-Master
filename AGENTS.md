@@ -63,8 +63,10 @@
   equipment is preserved in committed encounter records; older footage
   without this optional snapshot remains visually neutral. Level 7 regenerated room sentries at eligible site cycles
   may use the existing `grapple-throw` combat ability as ordinary renewable
-  elites. These are not unique Cave Trolls, new floor gates or a true
-  multi-hero campaign expedition; do not mark party progression finished.
+  elites. These are renewable ordinary-site enemies, not the unique
+  Cave Troll or a new floor gate. Real co-located multi-hero party
+  expeditions already work on Floors 1–4/7; do not mistake those
+  for the still-unfinished unique Boss party or full V.003 progression.
 - **CURRENT opportunistic party expedition (after this PR):**
   `dungeonParties.ts` joins only willing, living, not-yet-processed heroes
   standing on the *same physical tile and floor* at day start, max three.
@@ -75,6 +77,7 @@
   Split a chest's finite gold between living allies and award its one loot
   unit to one actual claimant; never pay monster gold or advance regeneration
   once per hero. Traps damage all who walk on the tile using their own gear.
+  Shared route voting uses each companion's actual explored neighbour proposals, majority, unknown-cell and stable grid tie-breaks, never a hidden map or the first array member's authority. After a committed group encounter, independent medium-term goals are preserved while `negotiatePartyFloorDecisions` may consensually stay, descend, or escort an ascent. Resupply is a hard veto, unprepared heroes cannot be forced deeper, and dissent still dissolves a party. The entire group's proposals are resolved before any member changes floors; no loot, HP, RNG, or existing replay is re-evaluated.
   `gameState.ts` caches each hero's outcome within that committed day and
   prevents a companion running a second encounter. Strict v13 replay
   validation accepts 1–3 hero actors with exactly one real site monster.

@@ -151,7 +151,9 @@ now also identifies every saved companion with real HP, role and
 founding day, all via one read-only relationship projection. No duplicate claims
 or fabricated teleports; old saves without the field remain valid.
 
-**Still open:** negotiated party goals/leader AI and longer social
+**Delivered after this PR:** shared travel uses each member's local mapped route proposals, with deterministic majority/ties; bounded post-encounter consent allows healthy companions to follow descent, patients to wait one real expedition day, and supportive climbers to escort a cautious ascent. No forced descents, vetoed resupply, leader orders or duplicated encounters.
+
+**Still open:** deeper long-horizon party goals/leader AI and longer social
 behaviour, the unique Cave Troll as an actual group campaign battle,
 Floors 8–10 and the individually gated Floor 10 pass. Full V.003
 milestone and cursed special-floor shop remain unfinished.
