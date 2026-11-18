@@ -1,10 +1,14 @@
 import { inAttackArc, parryActive, rollInvulnerable, type Point2 } from "./combatGeometry.ts";
+import {
+  applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
+} from "./combatVitality.ts";
 
 /**
  * MVP 1.2b: a deterministic, render-independent multi-actor encounter motor.
  * Future dungeon exploration supplies positions and an arena. Neither this
  * module nor its replay ever mutates the merchant GameState or browser scene.
- * The existing Level-6 duel is intentionally retained as a compatibility path.
+ * The Level-6 visual boss ability driver remains specialized while its
+ * damage and healing now share the exact same HP rules as these encounters.
  */
 export type CombatTeam = "heroes" | "monsters";
 export type GroupRole = "tank" | "DPS" | "healer" | "monster";
@@ -174,7 +178,9 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
     validNumber(spec.reach, 0.5, 30, spec.id + ".reach");
     const radius = spec.radius ?? 0.5;
     validNumber(radius, 0.1, 3, spec.id + ".radius");
-    const healCharges = spec.healCharges ?? (spec.role === "healer" ? 2 : 0);
+    // Healing Herbs are real player-sold consumables. Do not mint two
+    // imaginary items simply because an actor's role is healer.
+    const healCharges = spec.healCharges ?? 0;
     if (!Number.isSafeInteger(healCharges) || healCharges < 0 || healCharges > 10)
       throw new RangeError("healCharges must be between 0 and 10");
     if (!within(spec, options.bounds, radius) ||
@@ -271,7 +277,12 @@ function closestEnemy(s: GroupCombatState, actor: GroupActor): GroupActor | null
   return best;
 }
 function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | null {
-  if (actor.role !== "healer" || actor.healCharges <= 0) return null;
+  if (actor.healCharges <= 0 || actor.hp <= 0) return null;
+  // Any hero may spend a purchased Herb on their own wounds.
+  // Healers can also treat an injured teammate without transferring
+  // phantom items between inventories.
+  if (actor.role !== "healer")
+    return actor.hp < actor.maxHp * 0.60 ? actor : null;
   const candidates = s.actors.filter(other =>
     other.team === actor.team && other.hp > 0 &&
     other.hp < other.maxHp * 0.68 && distance(actor, other) <= 9);
@@ -309,8 +320,9 @@ function tryStrike(s: GroupCombatState, attacker: GroupActor,
 }
 function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupActor,
   batch: GroupCombatCue[]): void {
-  const dealt = Math.min(target.hp, Math.max(1, attacker.damage - target.armor));
-  target.hp = Math.max(0, target.hp - dealt);
+  const hit=applyCombatHit(target.hp,attacker.damage,target.armor);
+  const dealt=hit.amount;
+  target.hp=hit.hp;
   cue(batch,s,attacker,"hit",target.id,dealt);
   if (target.hp === 0) { phase(target,"dead"); cue(batch,s,target,"death",attacker.id); }
   else phase(target,"hurt");
@@ -397,10 +409,12 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       const friend = s.actors.find(other => other.id === a.targetId &&
         other.team === a.team && other.hp > 0);
       if (friend && a.healCharges > 0 && distance(a,friend) <= 9) {
-        const restored = Math.min(friend.maxHp-friend.hp, 20);
-        friend.hp += restored;
-        a.healCharges--;
-        cue(batch,s,a,"heal",friend.id,restored);
+        const heal=applyCombatHealing(friend.hp,friend.maxHp,HEALING_HERB_HP);
+        if (heal.amount>0) {
+          friend.hp=heal.hp;
+          a.healCharges--;
+          cue(batch,s,a,"heal",friend.id,heal.amount);
+        }
       }
     }
     if (a.phaseAge >= 0.92) phase(a,"move");
