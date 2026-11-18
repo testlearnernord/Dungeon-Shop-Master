@@ -48,3 +48,18 @@ export function grappleLaunchVelocity(
   const speed=distance/flight;
   return {x:direction.x*speed,z:direction.z*speed};
 }
+
+/** No global random consumption, and never sampled when a replay is viewed.
+ * A deterministic per-contact roll supports multiple heroes in the same
+ * world without making their array order affect the outcome. */
+export function deterministicGrappleSample(
+  attackerId:string,targetId:string,attackNumber:number,
+):number {
+  if(!attackerId||!targetId||!Number.isSafeInteger(attackNumber)||attackNumber<1)
+    throw new RangeError("Invalid grapple roll identity");
+  let hash=2166136261>>>0;
+  for(const char of attackerId+"|"+targetId+"|"+attackNumber){
+    hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+  }
+  return hash/0x100000000;
+}
