@@ -15,6 +15,10 @@ import {
   dungeonVisibleTiles, dungeonPlaybackAt, buildDungeonPlayback,
   type DungeonPlaybackTimeline, type DungeonPlaybackSnapshot,
 } from "./dungeonReplayPlayback.ts";
+import {
+  dungeonReplayCast, dungeonReplayFocusIds, visibleDungeonCombatActors,
+} from "./dungeonReplayCast.ts";
+import type { GroupPhase } from "./groupCombat.ts";
 
 const SPACING=2.5;
 const toWorld=(layout:DungeonLayout,p:DungeonPoint)=>
@@ -41,7 +45,9 @@ export class DungeonReplayScene {
   private replay:Level7Replay|null=null;
   private timeline:DungeonPlaybackTimeline|null=null;
   private hero:HeroVisual|null=null;
-  private enemy:Mesh|null=null;
+  private readonly companionHeroes=new Map<string,HeroVisual>();
+  private readonly enemies=new Map<string,Mesh>();
+  private readonly combatMaterials:StandardMaterial[]=[];
   private projectiles:Mesh[]=[];
   private lastVisibility="";
   private lastSnapshot:DungeonPlaybackSnapshot|null=null;
@@ -64,18 +70,29 @@ export class DungeonReplayScene {
   get currentReplay(){return this.replay;}
   get duration(){return this.timeline?.duration??0;}
   get snapshot(){return this.lastSnapshot;}
+  get visibleFocusIds():readonly string[] {
+    return this.replay?dungeonReplayFocusIds(this.replay,this.lastSnapshot):[];
+  }
+
+  private clearCombatModels():void {
+    this.hero?.root.dispose(false,true);
+    this.hero=null;
+    for(const model of this.companionHeroes.values())model.root.dispose(false,true);
+    this.companionHeroes.clear();
+    for(const mesh of this.enemies.values())mesh.dispose();
+    this.enemies.clear();
+    for(const mesh of this.projectiles)mesh.dispose();
+    this.projectiles=[];
+    for(const material of this.combatMaterials)material.dispose();
+    this.combatMaterials.length=0;
+  }
 
   setReplay(record:Level7Replay|null):void {
     this.replay=record;
     this.timeline=record?buildDungeonPlayback(record):null;
     this.lastSnapshot=null;
     this.lastVisibility="";
-    this.hero?.root.dispose(false,true);
-    this.hero=null;
-    this.enemy?.dispose();
-    this.enemy=null;
-    for(const p of this.projectiles)p.dispose();
-    this.projectiles=[];
+    this.clearCombatModels();
     if(this.heroPreview)this.heroPreview.root.setEnabled(!record);
     if(record){
       this.hero=createHeroVisual(this.scene,{
@@ -85,19 +102,47 @@ export class DungeonReplayScene {
       this.hero.root.metadata={
         ...this.hero.root.metadata,replayOnly:true,combatPhase:"move",
       };
-      this.enemy=MeshBuilder.CreateSphere("dungeon-combat-creature",{
-        diameter:1.35,segments:10,
-      },this.scene);
-      const enemyMaterial=new StandardMaterial("dungeon-replay-enemy-material",this.scene);
-      enemyMaterial.diffuseColor=Color3.FromHexString("#ad5b42");
-      enemyMaterial.emissiveColor=Color3.FromHexString("#58231d");
-      this.enemy.material=enemyMaterial;
-      this.enemy.setEnabled(false);
-      for(let i=0;i<8;i++){
+      const ordinary=new StandardMaterial("dungeon-replay-monster-material",this.scene);
+      ordinary.diffuseColor=Color3.FromHexString("#ad5b42");
+      ordinary.emissiveColor=Color3.FromHexString("#58231d");
+      const elite=new StandardMaterial("dungeon-replay-elite-material",this.scene);
+      elite.diffuseColor=Color3.FromHexString("#75362e");
+      elite.emissiveColor=Color3.FromHexString("#31100c");
+      this.combatMaterials.push(ordinary,elite);
+      for(const actor of dungeonReplayCast(record)){
+        if(actor.id===record.heroId)continue;
+        if(actor.team==="heroes" && actor.role!=="monster"){
+          // No invented historical equipment: only the lead hero's gear is
+          // recorded at present. Unknown companions use neutral silhouettes.
+          const model=createHeroVisual(this.scene,{
+            id:actor.id,role:actor.role,
+            equipment:{weapon:null,armor:null},
+          },"dungeon-companion-"+actor.id);
+          model.root.metadata={...model.root.metadata,replayOnly:true,
+            recordedEquipmentUnknown:true};
+          model.root.setEnabled(false);
+          this.companionHeroes.set(actor.id,model);
+        }else if(actor.team==="monsters"){
+          const boss=actor.specialAbility==="grapple-throw";
+          const enemy=MeshBuilder.CreateSphere("dungeon-enemy-"+actor.id,{
+            diameter:1.35,segments:12,
+          },this.scene);
+          enemy.material=boss?elite:ordinary;
+          enemy.isPickable=false;
+          enemy.metadata={replayOnly:true,recordedActorId:actor.id,
+            ...(boss?{specialAbility:actor.specialAbility}:{})};
+          enemy.setEnabled(false);
+          this.enemies.set(actor.id,enemy);
+        }
+      }
+      const maxProjectiles=Math.min(30,Math.max(0,...record.encounters.flatMap(
+        e=>e.combat.frames.map(f=>f.projectiles.length))));
+      for(let i=0;i<maxProjectiles;i++){
         const ball=MeshBuilder.CreateSphere("dungeon-combat-projectile-"+i,{
           diameter:0.28,segments:6,
         },this.scene);
-        ball.material=enemyMaterial;
+        ball.material=ordinary;
+        ball.isPickable=false;
         ball.setEnabled(false);
         this.projectiles.push(ball);
       }
@@ -113,45 +158,72 @@ export class DungeonReplayScene {
     }
   }
 
+  private animateHero(model:HeroVisual,pose:GroupPhase|"move",time:number):void {
+    model.root.metadata.combatPhase=pose;
+    const stride=pose==="move"?Math.sin(time*13)*0.55:0;
+    model.legs[0].rotation.x=stride;
+    model.legs[1].rotation.x=-stride;
+    const swing=pose==="strike"||pose==="windup"?-0.8:
+      pose==="grabbed"?-0.9:pose==="parry"?-0.45:
+      pose==="hurt"||pose==="thrown"?0.3:stride*0.4;
+    model.arms[0].rotation.x=swing;
+    model.arms[1].rotation.x=-swing;
+    model.weaponPivot.rotation.x=pose==="strike"?-1.1:0;
+    model.root.rotation.z=pose==="dead"?0.78:pose==="thrown"?0.25:0;
+  }
+
   show(elapsed:number):DungeonPlaybackSnapshot|null {
     if(!this.replay||!this.timeline||!this.hero)return null;
     const snapshot=dungeonPlaybackAt(this.replay,this.timeline,this.layout,elapsed);
     this.lastSnapshot=snapshot;
     const heroWorld=toWorld(this.layout,{x:snapshot.x,z:snapshot.z});
     this.hero.root.position.set(heroWorld.x,0.1,heroWorld.z);
-    const frame=snapshot.frame;
-    const actor=frame?.actors.find(a=>a.id===this.replay!.heroId);
-    const pose=actor?.phase??(snapshot.action==="walk"?"move":"recover");
-    if(actor)this.hero.root.rotation.y=actor.heading;
-    this.hero.root.metadata.combatPhase=pose;
-    const t=snapshot.time;
-    const stride=pose==="move"&&snapshot.action==="walk"?Math.sin(t*13)*0.55:0;
-    this.hero.legs[0].rotation.x=stride;
-    this.hero.legs[1].rotation.x=-stride;
-    const swing=pose==="strike"||pose==="windup"?-0.8:
-      pose==="parry"?-0.45:pose==="hurt"?0.3:stride*0.4;
-    this.hero.arms[0].rotation.x=swing;
-    this.hero.arms[1].rotation.x=-swing;
-    this.hero.weaponPivot.rotation.x=pose==="strike"?-1.1:0;
+    const actors=visibleDungeonCombatActors(snapshot);
+    const lead=actors.find(actor=>actor.id===this.replay!.heroId);
+    if(lead){
+      this.hero.root.rotation.y=lead.heading;
+      this.hero.root.metadata.hp=lead.hp;
+    }
+    this.animateHero(this.hero,lead?.phase??
+      (snapshot.action==="walk"?"move":"recover"),snapshot.time);
 
-    if(this.enemy)this.enemy.setEnabled(!!snapshot.encounter&&!!frame);
-    if(snapshot.encounter&&frame&&this.enemy){
+    for(const model of this.companionHeroes.values())model.root.setEnabled(false);
+    for(const enemy of this.enemies.values())enemy.setEnabled(false);
+    for(const mesh of this.projectiles)mesh.setEnabled(false);
+    if(snapshot.encounter&&snapshot.frame){
       const origin=toWorld(this.layout,snapshot.encounter);
-      const monster=frame.actors.find(a=>a.id!==this.replay!.heroId);
-      if(monster){
-        this.enemy.position.set(origin.x+monster.x,0.90,origin.z+monster.z);
-        this.enemy.rotation.y=monster.heading;
-        this.enemy.scaling.setAll(monster.hp>0?1:0.45);
-        this.enemy.metadata={combatPhase:monster.phase,hp:monster.hp};
+      for(const actor of actors){
+        if(actor.id===this.replay.heroId)continue;
+        const model=this.companionHeroes.get(actor.id);
+        if(model){
+          model.root.setEnabled(true);
+          model.root.position.set(origin.x+actor.x,0.1,origin.z+actor.z);
+          model.root.rotation.y=actor.heading;
+          model.root.metadata.hp=actor.hp;
+          this.animateHero(model,actor.phase,snapshot.time);
+        }
+        const enemy=this.enemies.get(actor.id);
+        if(enemy){
+          enemy.setEnabled(true);
+          const boss=actor.specialAbility==="grapple-throw";
+          enemy.position.set(origin.x+actor.x,
+            (boss?1.25:0.90),origin.z+actor.z);
+          enemy.rotation.y=actor.heading;
+          const size=Math.max(0.75,actor.radius*1.7);
+          enemy.scaling.set(
+            size*(actor.hp>0?1:0.65),
+            size*(boss?1.5:1)*(actor.hp>0?1:0.42),
+            size*(actor.hp>0?1:0.65),
+          );
+          enemy.metadata={...enemy.metadata,combatPhase:actor.phase,hp:actor.hp};
+        }
       }
       for(let i=0;i<this.projectiles.length;i++){
-        const projectile=frame.projectiles[i],mesh=this.projectiles[i];
+        const projectile=snapshot.frame.projectiles[i],mesh=this.projectiles[i];
         mesh.setEnabled(!!projectile);
         if(projectile)mesh.position.set(
           origin.x+projectile.x,1.2,origin.z+projectile.z);
       }
-    }else{
-      for(const mesh of this.projectiles)mesh.setEnabled(false);
     }
     this.updateVisibility(snapshot);
     return snapshot;
@@ -227,27 +299,22 @@ export class DungeonReplayScene {
     ctx.fillStyle="#a5ebc7";
     ctx.fillRect(Math.round(snapshot.x*cell)+1,Math.round(snapshot.z*cell)+1,cell-2,cell-2);
   }
-  /** The camera follows only when selected. Manual WASD always stays independent. */
-  follow(target:"hero"|"monster"="hero"):void {
-    if(!this.lastSnapshot)return;
+  /** Only explicitly selected visible recorded actors can steer the camera. */
+  follow(actorId:string):void {
+    if(!this.lastSnapshot||!this.replay)return;
     let p=toWorld(this.layout,this.lastSnapshot);
-    const frame=this.lastSnapshot.frame;
     const encounter=this.lastSnapshot.encounter;
-    if(target==="monster"&&frame&&encounter){
-      const monster=frame.actors.find(a=>a.id!==this.replay?.heroId);
-      if(monster){
-        const origin=toWorld(this.layout,encounter);
-        p=new Vector3(origin.x+monster.x,0,origin.z+monster.z);
-      }
+    const visible=visibleDungeonCombatActors(this.lastSnapshot);
+    const actor=visible.find(candidate=>candidate.id===actorId);
+    if(actor&&encounter){
+      const origin=toWorld(this.layout,encounter);
+      p=new Vector3(origin.x+actor.x,0,origin.z+actor.z);
     }
     this.camera.position.set(p.x,Math.max(22,this.camera.position.y),p.z-15);
     this.camera.setTarget(new Vector3(p.x,0,p.z));
   }
   dispose():void {
-    this.hero?.root.dispose(false,true);
-    this.enemy?.dispose();
-    for(const p of this.projectiles)p.dispose();
-    this.hero=null;this.enemy=null;this.projectiles=[];
+    this.clearCombatModels();
     this.replay=null;this.timeline=null;this.lastSnapshot=null;
   }
 }
