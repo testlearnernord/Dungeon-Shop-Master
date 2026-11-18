@@ -138,12 +138,21 @@ old v1 fights without snapshots remain visually neutral. Site regeneration,
 loot and finite gold apply once; strict v13 save validation
 accepts the real saved group cast.
 
-**Still open:** persistent autonomous multi-day parties sharing a single
-authoritative day encounter, applying every survivor's actual HP,
-consumables, XP, kills and site ownership exactly once. Preserve
-the original Cave Troll visuals and old boss replays. Integrate
-Floors 8–10 and the individually gated Floor 10 pass after design
-decisions; no V.003 release label yet.
+**Persistent party step (CURRENT after this PR):** voluntary,
+co-located groups of 2–3 are saved in an optional v13 relationship
+table and take precedence over transient outsiders. A unanimously
+chosen existing floor transition keeps the group together when
+the members' real destination positions agree; each hero's own
+goal, inventory, combat, injuries and replay remain independent.
+A casualty can leave a surviving pair, while dissent, shop return
+or divergent saved positions dissolve companionship. The existing
+Adventurer Board identifies actual parties. No duplicate claims
+or fabricated teleports; old saves without the field remain valid.
+
+**Still open:** negotiated party goals/leader AI and longer social
+behaviour, the unique Cave Troll as an actual group campaign battle,
+Floors 8–10 and the individually gated Floor 10 pass. Full V.003
+milestone and cursed special-floor shop remain unfinished.
 
 ### P2 — Meaningful real merchandise and combat
 
