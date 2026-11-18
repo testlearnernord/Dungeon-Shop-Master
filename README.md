@@ -101,6 +101,15 @@ and older saved replays stay valid. Signature grab/throw
 effects remain specialized; general multi-hero boss
 encounters still need additional work.
 
+**Multi-hero boss combat foundation (after this PR merges):**
+the real group encounter engine can simulate multiple heroes
+versus a boss monster with a physical, counterable
+grapple-and-throw. Boss/ordinary combat still use the same
+authoritative stepper and replay recorder; existing Troll
+duel/cinematic animations remain compatible. The party
+boss encounter has not been connected to the dungeon
+campaign or multi-hero 3D playback yet.
+
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
