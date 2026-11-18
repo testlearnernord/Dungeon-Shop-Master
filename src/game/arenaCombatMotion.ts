@@ -6,6 +6,10 @@ import {
 } from "./combatActionClock.ts";
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
+  chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
+  selectCombatTarget,
+} from "./combatTactics.ts";
+import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
 } from "./combatVitality.ts";
 export { inAttackArc, rollInvulnerable, parryActive } from "./combatGeometry.ts";
@@ -438,33 +442,42 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
   s.bossAge=tick.age;
   if (s.bossPhase === "dead") return;
   if (s.bossPhase === "chase") {
-    s.bossHeading = combatHeading(s.boss, s.hero);
-    const gap = dist(s.hero, s.boss);
-    if (gap > 3.5) {
-      const toHero = unit(s.hero.x - s.boss.x, s.hero.z - s.boss.z);
-      const tangent = v(toHero.z, -toHero.x);
+    // The target registry is the same one used by multi-actor fights.
+    // This particular encounter currently contains one hero, but the
+    // selector is already canonical and group-capable.
+    const target=selectCombatTarget(
+      {id:"cave-troll",team:"monsters",hp:s.bossHp,...s.boss},
+      [{id:"hero",team:"heroes",role:s.options.role,hp:s.heroHp,...s.hero}],
+    );
+    if(!target)return;
+    s.bossHeading=combatHeading(s.boss,target);
+    const gap=dist(target,s.boss);
+    s.bossCooldown=tickCombatCooldown(Math.max(0,s.bossCooldown),dt);
+    const posture=chooseCombatPosture({
+      distance:gap,ready:s.bossCooldown<=0,clearShot:true,
+      attackRange:7.7,approachBeyond:3.5,
+    });
+    if(posture.approach){
+      const toHero=unit(target.x-s.boss.x,target.z-s.boss.z);
+      const tangent=v(toHero.z,-toHero.x);
       const moved=moveCombatant(s.boss,{
         x:(toHero.x*3.25+tangent.x*0.45)*dt,
         z:(toHero.z*3.25+tangent.z*0.45)*dt,
       },{kind:"circle",radius:WALKABLE_RADIUS-TROLL_RADIUS-.65});
       s.boss.x=moved.x;s.boss.z=moved.z;
     }
-    s.bossCooldown=tickCombatCooldown(Math.max(0,s.bossCooldown),dt);
-    if (s.bossCooldown <= 0 && gap < 7.7) {
+    if(posture.attack){
       s.bossAttacks++;
-      // Give the signature grab real screen time: melee-only, with a
-      // deterministic roughly 58% selection among eligible attacks. Every
-      // fourth attack is a guaranteed ATTEMPT, never a guaranteed capture.
-      // Real arc checks, dodge, parry and agility can still break the grip.
-      s.bossAttack = gap < 5.3 && s.bossAttacks > 1 &&
-        (s.bossAttacks % 4 === 0 || combatRoll(s,0x7a91) < .45)
-        ? "grab" :
-        s.bossAttacks % 3 === 0 ? "slam" : "smash";
-      s.bossSlam = s.bossAttack === "slam";
-      s.lockedBossHeading = combatHeading(s.boss, s.hero);
-      s.bossHeading = s.lockedBossHeading;
-      beginBoss(s, "windup");
-      s.cues.push({ kind: "windup" });
+      const skill=chooseCombatAbility(
+        ["troll-smash","troll-slam","troll-grab"],
+        s.bossAttacks,gap,combatRoll(s,0x7a91));
+      s.bossAttack=skill==="troll-grab"?"grab":
+        skill==="troll-slam"?"slam":"smash";
+      s.bossSlam=s.bossAttack==="slam";
+      s.lockedBossHeading=combatHeading(s.boss,target);
+      s.bossHeading=s.lockedBossHeading;
+      beginBoss(s,"windup");
+      s.cues.push({kind:"windup"});
     }
   } else if (s.bossPhase === "windup") {
     // The troll visually follows a circling target during the early reach,
@@ -561,11 +574,16 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
           0.57 + (agility - 10) * 0.015 +
           (s.options.role === "tank" ? 0.08 : 0) -
           (s.bossAttack==="grab" ? 0.10 : 0)));
-        if (read < readiness) {
-          const parryBias = s.options.role === "tank" ? 0.82 : 0.28;
-          if (s.options.sword && distance < 5.0 &&
-              combatRoll(s, 0x8ba2) < parryBias) startParry(s);
-          else startRoll(s);
+        if(read<readiness){
+          const parryBias=s.options.role==="tank"?0.82:0.28;
+          const preferParry=s.options.sword && distance<5 &&
+            combatRoll(s,0x8ba2)<parryBias;
+          const reaction=chooseCombatDefense({
+            threatened:true,stamina:s.stamina,
+            preferParry,canParry:s.options.sword && distance<5,
+          });
+          if(reaction==="parry")startParry(s);
+          else if(reaction==="roll")startRoll(s);
         }
       }
     }
@@ -574,14 +592,18 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
         distance > (s.options.role === "healer" ? 3.6 : 4.7)) {
       beginHero(s, "heal");
     }
-    if (s.heroPhase === "move" && s.heroCooldown <= 0 &&
-        distance <= (s.options.role === "healer" ||
-          (s.options.role === "DPS" && !s.options.sword) ? 15 : 5.3) &&
-        s.stamina >= 13 && s.bossPhase !== "windup") {
-      s.stamina -= 13;
-      s.heroCooldown = s.options.role === "DPS" ? 1.05 : 1.4;
-      beginHero(s, s.options.role === "healer" ||
-        (s.options.role === "DPS" && !s.options.sword) ? "cast" : "attack");
+    const ranged=s.options.role==="healer"||
+      (s.options.role==="DPS"&&!s.options.sword);
+    const intent=chooseCombatPosture({
+      distance,ready:s.heroCooldown<=0&&s.stamina>=13 &&
+        s.bossPhase!=="windup",
+      clearShot:true,attackRange:ranged?15:5.3,
+      approachBeyond:ranged?8:3.15,
+    });
+    if(s.heroPhase==="move"&&intent.attack){
+      s.stamina-=13;
+      s.heroCooldown=s.options.role==="DPS"?1.05:1.4;
+      beginHero(s,ranged?"cast":"attack");
     }
     if (s.heroPhase === "move") maintainSpacing(s, dt);
   }
