@@ -301,7 +301,11 @@ function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | nul
 function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor | null {
   return s.actors.find(other =>
     other.team !== defender.team && other.hp > 0 &&
-    other.phase === "windup" && other.phaseAge >= 0.38 &&
+    other.phase === "windup" &&
+    other.phaseAge >= (other.meleeAbility==="heavy"
+      ? meleeAbilityProfile("heavy").windupSeconds +
+        meleeAbilityProfile("heavy").strikeDelaySeconds - 0.28
+      : 0.38) &&
     distance(other, defender) < other.reach + defender.radius + 0.8 +
       (other.meleeAbility==="heavy"?0.35:0) &&
     inAttackArc(other, other.lockedHeading, defender,
