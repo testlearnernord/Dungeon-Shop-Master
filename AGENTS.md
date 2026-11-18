@@ -50,7 +50,8 @@
   `GRAPPLE_TIMING`, but its existing cinematic and v1
   replay layout remain intact. Never create a second
   multi-hero fight resolver, apply throw damage before
-  landing, teleport through walls or mark this as
+  landing, teleport through walls, remove real stagger
+  resistance or mark this as
   playable campaign content before floor integration
   and group 3D viewer are finished. Optional group boss
   v1 replay fields are strict-save-validated.
