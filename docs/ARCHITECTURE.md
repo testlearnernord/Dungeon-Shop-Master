@@ -183,6 +183,41 @@ its unique grapple phases into reusable ability plugins
 remain later work. The game continues to label itself
 V.002; this is only the next V.003 foundation slice.
 
+## Group-capable boss special actions (CURRENT after this PR merges)
+
+The ordinary **`groupCombat.ts` engine** now accepts an optional
+`specialAbility: "grapple-throw"` on a configured melee monster.
+In an actual group encounter, the ability follows the same 60-Hz
+`combatEncounter.ts` pipeline as normal swings and heavy attacks:
+a telegraphed windup; real `combatMelee.ts` contact/dodge/parry;
+actor-stat and per-contact deterministic escape; physical hold
+synchronized to the attacker's locked orientation; real release,
+airborne travel with walls and other actors as obstacles; and a
+**single, armor-mitigated landing hit**. Configurable
+`staggerThreshold` prevents weak hits from interrupting every frame
+of a long boss windup, while strong hits and well-timed parries
+retain real counterplay. Dead grapplers release
+held victims without fake damage. Airborne victims must land
+before a concluded party victory is committed.
+
+**`combatGrapple.ts`** now owns the common grab escape, hand
+socket, launch velocity and **original authored Troll timing**,
+which the legacy cinematic duel directly imports. This is
+not a new simulator or an alternate special-boss damage table.
+`GroupCombatReplay` v1 records the actual `grab`, `throw`,
+`landing` and `escape` cues and actor phases; the strict
+v13 validation allows only these explicitly documented optional
+fields. Older recordings remain unchanged.
+
+**Boundary:** multi-hero-vs-boss combat is now genuinely
+supported by the existing *group* motor, including real
+grapple/throw effects, and is exercised in deterministic
+tests. The existing **Level 6 Cave Troll campaign path still
+uses its original one-hero cinematic replay and renderer**.
+Party boss encounters are NOT yet wired into the dungeon
+campaign, its special Floor 10 gate or a multi-hero 3D viewer.
+There is no implied V.003 release from this engine milestone.
+
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
 The next approved milestone is **V.003 ALPHA — The Living Dungeon**.

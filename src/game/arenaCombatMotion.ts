@@ -12,6 +12,11 @@ import {
 } from "./combatTactics.ts";
 import { traceCombatProjectile } from "./combatProjectile.ts";
 import {
+  grappleEscapeChance, grappleHoldPosition, grappleLaunchVelocity,
+  GRAPPLE_TIMING,
+} from "./combatGrapple.ts";
+export { GRAPPLE_TIMING } from "./combatGrapple.ts";
+import {
   stepCombatEncounter, encounterTeamOutcome, type EncounterPipeline,
 } from "./combatEncounter.ts";
 import {
@@ -96,17 +101,7 @@ const HERO_RADIUS = 0.58;
 // All normal navigation, rolls and knockback respect this radius.
 export const SAFE_HERO_RADIUS = WALKABLE_RADIUS - HERO_RADIUS - 1.0;
 /** Timing belongs to the combat motor; animated clips only sample its phases. */
-export const GRAPPLE_TIMING = Object.freeze({
-  windup: 1.20,      // readable approach
-  trackUntil: 0.65,  // face the hero only early, then lock for counterplay
-  grabContact: 0.30, // hand reaches the hero
-  grab: 1.25,        // actual catch and deliberate lift
-  throwRelease: 0.58,
-  throw: 1.55,       // full arm follow-through
-  flight: 0.90,      // same distance as the old throw, but airborne longer
-  missRecover: 0.62,
-  recover: 0.85,
-});
+
 const LAVA_CONTACT_DAMAGE = 12;
 const TROLL_RADIUS = 1.8;
 const TAU = Math.PI * 2;
@@ -349,7 +344,7 @@ function resolveBossGrab(s: CombatPreviewState): void {
     return;
   }
   const agility=s.options.agility??10;
-  const breakFree=Math.max(.035,Math.min(.20,.065+(agility-10)*.012));
+  const breakFree=grappleEscapeChance(agility);
   if (combatRoll(s,0x5513)<breakFree) {
     s.missedHits++;
     s.cues.push({kind:"miss"});
@@ -357,8 +352,9 @@ function resolveBossGrab(s: CombatPreviewState): void {
     return;
   }
   beginHero(s,"grabbed");
-  s.hero.x=s.boss.x+Math.sin(s.lockedBossHeading)*2.15;
-  s.hero.z=s.boss.z+Math.cos(s.lockedBossHeading)*2.15;
+  const held=grappleHoldPosition(s.boss,s.lockedBossHeading);
+  s.hero.x=held.x;
+  s.hero.z=held.z;
   s.cues.push({kind:"grab"});
 }
 
@@ -407,8 +403,9 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
   else if(s.heroPhase==="thrown")window={completeAt:GRAPPLE_TIMING.flight};
   const tick=advanceCombatActorPhase(bossEncounterActors(s)[0],dt,window);
   if (s.heroPhase === "grabbed") {
-    s.hero.x=s.boss.x+Math.sin(s.lockedBossHeading)*2.15;
-    s.hero.z=s.boss.z+Math.cos(s.lockedBossHeading)*2.15;
+    const held=grappleHoldPosition(s.boss,s.lockedBossHeading);
+    s.hero.x=held.x;
+    s.hero.z=held.z;
   } else if (s.heroPhase === "thrown") {
     s.hero.x+=s.throwVelocity.x*dt;
     s.hero.z+=s.throwVelocity.z*dt;
@@ -543,9 +540,8 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
     if (tick.contactDue) {
       s.bossDamageApplied=true;
       if (s.heroPhase==="grabbed") {
-        const direction=unit(s.hero.x-s.boss.x,s.hero.z-s.boss.z);
-        const speed=7.5/GRAPPLE_TIMING.flight;
-        s.throwVelocity=v(direction.x*speed,direction.z*speed);
+        s.throwVelocity=grappleLaunchVelocity(
+          s.boss,s.hero,7.5,GRAPPLE_TIMING.flight);
         beginHero(s,"thrown");
         s.cues.push({kind:"throw"});
       }

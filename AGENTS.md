@@ -41,6 +41,20 @@
   (a temporary new design gate, not today's `level6Permit`). Do not
   reinstate the rejected long backtrack, mandatory five-floor shops,
   two-door topology or an invented escape rope as accepted scope.
+- **CURRENT group-capable boss special ability (after this PR):**
+  `groupCombat.ts` supports a configured `grapple-throw`
+  monster against actual multi-hero parties. Contact, dodge
+  and parry MUST use `combatMelee.ts`; physical hold,
+  resistance and launch MUST use `combatGrapple.ts`.
+  The old Troll duel imports the very same authored
+  `GRAPPLE_TIMING`, but its existing cinematic and v1
+  replay layout remain intact. Never create a second
+  multi-hero fight resolver, apply throw damage before
+  landing, teleport through walls, remove real stagger
+  resistance or mark this as
+  playable campaign content before floor integration
+  and group 3D viewer are finished. Optional group boss
+  v1 replay fields are strict-save-validated.
 - **CURRENT live actor model (after this PR):**
   `combatActor.ts` owns the shared mutable `CombatActorRuntime`
   contract, phase transitions, action time and resource refresh.

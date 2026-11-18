@@ -66,7 +66,17 @@ campaign should visibly change all three tracks while preserving failure risk.
   are still physically simulated; historical group-v1 and
   boss-v1 replays stay immutable. Save version 13 remains.
 
-**Not implemented:** fully general multi-hero boss status/
+**Current engine extension (after this PR merges):** multi-hero boss
+encounters are now executable through the **existing group
+engine**, with a reusable, resistible, telegraphed
+`grapple-throw` ability and actual armor-mitigated flight/
+landing. The single-hero Troll cinematic uses the same
+authored grapple timing and geometry helpers; its old v1
+replays remain intact. **This is not yet an in-campaign
+multi-hero boss fight or a multi-hero Troll presentation**.
+
+**Not implemented:** the campaign integration and 3D replay of
+multi-hero boss combat, fully general status/
 ability effects, dungeon Floors 8–10, cursed out-of-number
 shop entrance, two-day hero standby, full Morning/Midday/
 Evening world snapshots or Adventurer Board 2.0.
