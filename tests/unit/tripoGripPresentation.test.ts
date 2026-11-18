@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {Vector3} from "@babylonjs/core/Maths/math.vector";
+import {Vector3} from "@babylonjs/core/Maths/math.vector.js";
 import {palmGripBetweenFingers,airborneRootFromGrip}
   from "../../src/game/tripoGripPresentation.ts";
 
