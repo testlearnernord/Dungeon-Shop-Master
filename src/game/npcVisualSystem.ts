@@ -1102,7 +1102,8 @@ export class NpcVisualSystem {
       const remaining=this.shopRequestClock?.remaining(npc.visitor.id);
       if(remaining!==null&&remaining!==undefined)npc.restockSeconds=remaining;
       this.showWish(npc,npc.intent.wantedItemId,begging);
-      npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
+      npc.root.metadata.restockRemaining=Math.ceil(
+        npc.restockSeconds??RESTOCK_WAIT_SECONDS);
       npc.root.metadata.shoppingTargetSlot=null;
       npc.root.metadata.checkoutQueueIndex=-1;
       npc.toQueue=true;
