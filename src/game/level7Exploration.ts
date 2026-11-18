@@ -158,7 +158,9 @@ function fightAgainst(
       armor:armored?5:1,
       speed:hero.role==="tank"?2.5:3.1,
       reach:1.75,
-      healCharges:hero.role==="healer"?Math.min(2,hero.inventory.healing):0,
+      // The actual hero-owned Healing Herbs can be consumed by every role.
+      // No role gets free Herbs just for joining an encounter.
+      healCharges:Math.min(2,hero.inventory.healing),
     },
     {
       id:monster.id,team:"monsters",role:"monster",style:"melee",
@@ -185,7 +187,7 @@ function fightAgainst(
     bounds:{minX:-8.75,maxX:8.75,minZ:-8.75,maxZ:8.75},
   },LEVEL7_COMBAT_SECONDS);
   const survivor=encounter.state.actors.find(a=>a.id===hero.id)!;
-  const initialHealCharges=hero.role==="healer"?Math.min(2,hero.inventory.healing):0;
+  const initialHealCharges=Math.min(2,hero.inventory.healing);
   return {
     hp:Math.max(0,Math.round(survivor.hp)),
     healsUsed:initialHealCharges-survivor.healCharges,

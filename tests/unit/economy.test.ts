@@ -238,10 +238,11 @@ test("no automatic subsidies during an empty shop day",()=>{
   assert.equal(result.state.shopEconomy.balance,0);
 });
 
-test("55-day JSON-reloaded merchant input replay is deterministic and admits newcomers after day49", () => {
+test("55-day JSON-reloaded merchant input replay is deterministic and admits newcomers when slots exist", () => {
   let first = createGameState(2026);
   let second = createGameState(2026);
   let lateArrivals = 0;
+  let lateDaysWithVacancies = 0;
   let purchases = 0;
   let stocking = 0;
   let removals = 0;
@@ -271,6 +272,8 @@ test("55-day JSON-reloaded merchant input replay is deterministic and admits new
       first = one.state;
       second = JSON.parse(JSON.stringify(two.state));
     }
+    if(day>49 && first.adventurers.filter(hero=>hero.status!=="dead").length <
+       first.populationConfig.maxActive) lateDaysWithVacancies++;
     const before = structuredClone(first);
     const held = freeze(first);
     const result = advanceDay(held);
@@ -284,7 +287,8 @@ test("55-day JSON-reloaded merchant input replay is deterministic and admits new
     assert(result.events.filter((event) => event.type === "influx").length <= first.populationConfig.dailyInflux);
     if (day > 49) lateArrivals += result.events.filter((event) => event.type === "influx").length;
   }
-  assert(lateArrivals > 0);
+  assert(lateArrivals>0 || lateDaysWithVacancies===0,
+    "late newcomer supply is required only when a living roster slot exists");
   assert(first.adventurers.length > 10,
     "a living dungeon can retain veteran heroes without an artificial death quota");
   assert(first.adventurers.length <= 10 + 55 * first.populationConfig.dailyInflux,

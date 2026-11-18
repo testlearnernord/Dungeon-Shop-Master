@@ -38,6 +38,18 @@ The repository currently implements:
 - **Player service focus:** aiming at a physical shelf slot reveals the **real** item, capacity, selected bag item, valid left/right-click actions, Shift+click fill/clear and blockers (wrong item, full slot, empty bag or unpaid customer cart). A small, translucent top-center service strip reports **physically present** register-ready buyers and live restock/credit requests; earliest-expiring restock takes priority. **F** (or its icon chip) only selects that item in the existing six-item hotbar. The player still goes to the shelf to stock, and to the staff side of the counter or nearby debtor to interact with E. There is no auto-buy, auto-stock or auto-pay.
 - **Contextual furniture placement:** shelves and compact checkout counter (new campaigns start at the corner near Galvik’s rest-room wall), plus bedroom desk/book, chest, candle/stool, bed, wall-mounted Adventurer Board and the placeable portrait of Galvik's lost beloved. Existing furniture is moved using P; new campaigns start with no shelves. Build Shelf (N) creates a compact, initially empty shelf with four persistent stock slots, bounded to 12 shelves for the current alpha. Starter merchandise lives in the bag until the player builds and stocks a shelf. The floor editor can target visible excavated wing surfaces from the original cave; preview and commit share one authoritative check. Previews are not saved until confirmed. Newly dug 1m cells can be used for furniture **once enough connected floor has been cleared for the entire object and customer access**.
 - Level 5 room excavation/expansion, persistence, hero identities and roster. Mining reuses unchanged cave geometry between strikes; the first-person pickaxe has a raised wooden shaft and overhead strike.
+- **Shared combat vitality and actual Herbs (CURRENT after this PR):**
+  `combatVitality.ts` is the common pure HP hit, mitigation and
+  restoration authority used by ordinary `groupCombat` and the Troll
+  boss motor. All roles (tank/DPS/healer) can spend **their own purchased
+  Healing Herbs** for exactly **18 HP** in real ordinary fights; every
+  completed use decrements actual supplies and is recorded with the
+  combat replay. Healing does not resurrect dead actors. The shop
+  catalogue uses the same authoritative Herb (+18) and Waybread (+8)
+  values. Boss role-healer's separate innate 25 HP magic heal remains
+  distinct from consumed 18 HP Herbs. The boss **behavior/ability motor
+  is still separate** from ordinary multi-actor combat; this PR has
+  not completed their full unification.
 - **Shared spatial expedition engine CURRENT (after this PR merge):** Floors **1–4 and 7** use the same seeded map walker, actual paths/traps/treasure, `groupCombat` encounters and replay data. Floor 1–4 daily random damage/progress placeholder has been **deleted**. The Floor 6 Troll boss still has a separate fight authority pending unification. Later floors are not claimed playable.
 - **Early-floor hero intentions CURRENT:** after genuine exploration, heroes choose short stay/ascend/descend/shop decisions based on health, equipment, loot, personal traits and explored locations. Floor 4 currently routes through the existing physical shop transition while the cursed special floor, shared gateway and two-day off-duty system remain **V.003 FUTURE**, not implemented.
 - **Floor 7 renewable ordinary sites (CURRENT after the regen PR merge):**

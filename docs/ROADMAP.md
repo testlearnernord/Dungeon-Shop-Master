@@ -108,6 +108,25 @@ the 1–4 placeholder; **Floor 6 remains distinct**.
 
 ### P2 — Meaningful real merchandise and combat
 
+**Integration delivered in the next PR (CURRENT only after merge):**
+`combatVitality.ts` supplies one pure HP damage/mitigation/heal rule
+to both recorded ordinary combat and the Cave Troll. Real purchased
+Healing Herbs now heal **18 HP for tank/DPS/healer alike** in group
+encounters, spend an actually carried unit and appear as committed
+`heal` cues in replay. The catalog's Herb/Waybread HP values are
+shared with combat; boss Herb healing is also 18 HP, separate from
+innate healer magic. Tests cover the cross-engine HP contract and
+inventory causality.
+
+**Still next:** consolidate the distinct movement, skill/ability
+and target-selection step loops into a **single group-capable
+encounter authority** with configurable boss abilities, preserving
+existing old v1 boss footage and exact presentational timings.
+Do not mistake a shared damage library for completed combat
+engine unification.
+
+
+
 - The first six stock items are the starting scope. Healing Herb (+18 HP)
   and Waybread (+8 HP) remain HP consumables, never hunger.
 - A sword affects recorded attacks; a vest affects damage/traps; a healing

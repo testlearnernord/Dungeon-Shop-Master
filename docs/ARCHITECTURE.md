@@ -11,6 +11,32 @@ The current game is a **TypeScript/Vite** browser application rendered with **Ba
 - Pure simulation functions must remain independent of Babylon meshes and the DOM. Scene objects and HUD projections are representations of authoritative game state, not additional sources of truth.
 - Scene transitions among the Level 5 shop, boss arena and dungeon viewer must not silently mutate the stored combat result.
 
+## Implemented common combat core (after this PR merges)
+
+`src/game/combatVitality.ts` now centralizes effective HP damage,
+armor mitigation, overkill clipping, restoration, the 18-HP purchased
+Healing Herb and 8-HP Waybread catalog constants. The physically
+recorded `groupCombat.ts` ordinary encounter and the boss's
+`arenaCombatMotion.ts` use **the same HP arithmetic**. The same
+existing `combatGeometry.ts` supplies arc, dodge and parry rules.
+
+Ordinary fights now accept real Healing Herb charges **for every role**,
+not only the healer; each completed heal restores at most 18 HP and
+spends one actor-owned supply, and `level7Exploration.ts` commits the
+supply decrement in the hero inventory. A healer no longer starts a
+group encounter with two imaginary potion charges. Boss healing
+spends actual Herbs at 18 HP; its separate role-healer magic action
+retains 25 HP where that resource exists. Non-item heal effects should
+be modeled as distinct class abilities rather than free item stock.
+
+**Still not unified:** `groupCombat.ts` and the boss-specific
+`arenaCombatMotion.ts` currently own separate motion/ability phase
+drivers and separate immutable v1 replay shapes. Refactoring the latter
+onto one group-capable encounter stepper while retaining grab/throw,
+Tripo playback and historical replays remains pending. Shared
+HP arithmetic is an incremental integration, not permission to
+instantiate a third combat resolver.
+
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
 The next approved milestone is **V.003 ALPHA — The Living Dungeon**.
