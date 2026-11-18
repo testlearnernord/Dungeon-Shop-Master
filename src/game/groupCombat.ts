@@ -1,4 +1,5 @@
-import { inAttackArc, parryActive, rollInvulnerable, type Point2 } from "./combatGeometry.ts";
+import { inAttackArc, type Point2 } from "./combatGeometry.ts";
+import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
 } from "./combatVitality.ts";
@@ -33,6 +34,8 @@ export interface CombatantSpec {
   readonly reach: number;
   readonly radius?: number;
   readonly healCharges?: number;
+  /** Optional telegraphed heavy strike; absent preserves historical ordinary attacks. */
+  readonly meleeAbility?: "heavy";
 }
 
 export interface CombatBounds {
@@ -57,6 +60,7 @@ export interface GroupActor {
   readonly speed: number;
   readonly reach: number;
   readonly radius: number;
+  readonly meleeAbility: "ordinary" | "heavy";
   x: number; z: number;
   hp: number; stamina: number;
   heading: number; lockedHeading: number;
@@ -176,6 +180,9 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
     validNumber(spec.armor, 0, 10000, spec.id + ".armor");
     validNumber(spec.speed, 0, 30, spec.id + ".speed");
     validNumber(spec.reach, 0.5, 30, spec.id + ".reach");
+    if(spec.meleeAbility!==undefined &&
+      (spec.meleeAbility!=="heavy" || spec.style!=="melee"))
+      throw new RangeError("meleeAbility requires a supported melee skill");
     const radius = spec.radius ?? 0.5;
     validNumber(radius, 0.1, 3, spec.id + ".radius");
     // Healing Herbs are real player-sold consumables. Do not mint two
@@ -189,7 +196,8 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
     return {
       id: spec.id, team: spec.team, role: spec.role, style: spec.style,
       maxHp: spec.maxHp, damage: spec.damage, armor: spec.armor,
-      speed: spec.speed, reach: spec.reach, radius, x: spec.x, z: spec.z,
+      speed: spec.speed, reach: spec.reach, radius,
+      meleeAbility:spec.meleeAbility??"ordinary", x: spec.x, z: spec.z,
       hp: spec.hp, stamina: 100, heading: 0, lockedHeading: 0,
       phase: "move" as GroupPhase, phaseAge: 0, cooldown: 0, applied: false,
       targetId: null, rollX: 0, rollZ: 0, healCharges, distanceTraveled: 0,
@@ -294,33 +302,44 @@ function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor |
   return s.actors.find(other =>
     other.team !== defender.team && other.hp > 0 &&
     other.phase === "windup" && other.phaseAge >= 0.38 &&
-    distance(other, defender) < other.reach + defender.radius + 0.8 &&
+    distance(other, defender) < other.reach + defender.radius + 0.8 +
+      (other.meleeAbility==="heavy"?0.35:0) &&
     inAttackArc(other, other.lockedHeading, defender,
-      other.reach + defender.radius + 1, 1.1)) ?? null;
+      other.reach + defender.radius + 1 +
+        (other.meleeAbility==="heavy"?0.35:0), 1.1)) ?? null;
 }
 function tryStrike(s: GroupCombatState, attacker: GroupActor,
   batch: GroupCombatCue[]): void {
   const target = s.actors.find(a => a.id === attacker.targetId && a.hp > 0);
-  if (!target || !inAttackArc(attacker, attacker.lockedHeading, target,
-    attacker.reach + target.radius, 0.91) || !lineClear(s, attacker, target)) {
+  if (!target) {
     cue(batch,s,attacker,"miss",attacker.targetId ?? undefined);
     return;
   }
-  if (target.phase === "roll" && rollInvulnerable(target.phaseAge)) {
-    cue(batch,s,target,"dodge",attacker.id); return;
+  const skill=meleeAbilityProfile(attacker.meleeAbility,
+    attacker.reach+target.radius);
+  const contact=resolveMeleeContact({
+    attacker,lockedHeading:attacker.lockedHeading,defender:target,
+    defenderHeading:target.heading,defenderPhase:target.phase,
+    defenderPhaseAge:target.phaseAge,ability:skill,
+    lineClear:lineClear(s,attacker,target),
+  });
+  if(contact==="miss"){
+    cue(batch,s,attacker,"miss",target.id);return;
   }
-  if (target.phase === "parry" && parryActive(target.phaseAge) &&
-      inAttackArc(target, target.heading, attacker, 4.0, 1.25)) {
+  if(contact==="dodge"){
+    cue(batch,s,target,"dodge",attacker.id);return;
+  }
+  if(contact==="parry"){
     cue(batch,s,target,"parry",attacker.id);
     phase(attacker,"hurt");
-    attacker.cooldown = Math.max(attacker.cooldown, 0.45);
+    attacker.cooldown=Math.max(attacker.cooldown,0.45);
     return;
   }
-  applyDamage(s, attacker, target, batch);
+  applyDamage(s,attacker,target,batch,skill.damageMultiplier);
 }
 function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupActor,
-  batch: GroupCombatCue[]): void {
-  const hit=applyCombatHit(target.hp,attacker.damage,target.armor);
+  batch: GroupCombatCue[], multiplier=1): void {
+  const hit=applyCombatHit(target.hp,Math.round(attacker.damage*multiplier),target.armor);
   const dealt=hit.amount;
   target.hp=hit.hp;
   cue(batch,s,attacker,"hit",target.id,dealt);
@@ -362,7 +381,9 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         lineClear(s,a,enemy)) {
         a.stamina -= 13; a.targetId = enemy.id;
         a.lockedHeading = a.heading;
-        a.cooldown = ranged ? 1.3 : (a.role === "DPS" ? 0.92 : 1.16);
+        a.cooldown = ranged ? 1.3 :
+          a.meleeAbility==="heavy" ? 1.62 :
+          (a.role === "DPS" ? 0.92 : 1.16);
         phase(a,ranged ? "cast" : "windup");
         cue(batch,s,a,ranged ? "cast" : "attack",enemy.id);
       } else {
@@ -373,13 +394,16 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       }
     }
   } else if (a.phase === "windup") {
-    if (a.phaseAge >= 0.62) phase(a,"strike");
+    const skill=meleeAbilityProfile(a.meleeAbility,a.reach);
+    if (a.phaseAge >= skill.windupSeconds) phase(a,"strike");
   } else if (a.phase === "strike") {
-    if (a.phaseAge >= 0.16 && !a.applied) {
+    const skill=meleeAbilityProfile(a.meleeAbility,a.reach);
+    if (a.phaseAge >= skill.strikeDelaySeconds && !a.applied) {
       a.applied = true;
       tryStrike(s,a,batch);
     }
-    if (a.phase === "strike" && a.phaseAge >= 0.33) phase(a,"recover");
+    if (a.phase === "strike" && a.phaseAge >= skill.strikeEndSeconds)
+      phase(a,"recover");
   } else if (a.phase === "cast") {
     if (a.phaseAge >= 0.40 && !a.applied) {
       a.applied = true;
