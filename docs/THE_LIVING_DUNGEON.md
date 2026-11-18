@@ -112,6 +112,14 @@ genuine destination tile. Each member proposes their next step from personally e
 separation, dissent, shop departure and casualty may dissolve
 the group. No player-issued party command, second combat motor,
 fabricated teleport, duplicated treasure or new save version.
+The existing opportunistic relationships are explicitly named
+**Temporary Parties**. On the physical Board, each group has the same
+compact numbered TP marker, explained by the legend. The R roster
+shows full Temporary Party membership and its founding day. Each real
+shared day's historical replay snapshots companion IDs, and the
+Dungeon observer displays those names with focused member highlighted.
+Only actual joins/leaves on committed days create feed entries.
+No stale status or unobserved fight outcome is filled in by the UI.
 The current physical Adventurer Board displays saved party sizes;
 the R roster additionally shows actual companion identities,
 roles, HP and founding day from that same historical relationship.
