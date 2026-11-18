@@ -74,7 +74,7 @@ test("sold-out customer displays requested bread icon and resumes buying after r
   expect(errors).toEqual([]);
 });
 
-test("expired stock request produces angry walkout and no next-day phantom sale",async({page})=>{
+test("expired stock request produces angry walkout and no next-day phantom sale @ci-smoke",async({page})=>{
   test.setTimeout(75000);
   const {heroId,inspect}=await seedEmptyShop(page);
   await page.evaluate(id=>{
