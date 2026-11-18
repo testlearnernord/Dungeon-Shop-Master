@@ -224,7 +224,8 @@ function validateLevel7Replay(
       const a=item+".combat.actors["+j+"]",actor=object(rawActor,a,[
         "id","team","role","style","x","z","hp","maxHp","damage",
         "armor","speed","reach",
-      ],["radius","healCharges","meleeAbility","specialAbility","agility","grappleDamage"]);
+      ],["radius","healCharges","meleeAbility","specialAbility","agility",
+        "grappleDamage","staggerThreshold"]);
       if(actor.meleeAbility!==undefined)
         choice(actor.meleeAbility,["heavy"],a+".meleeAbility");
       if(actor.specialAbility!==undefined)
@@ -233,6 +234,8 @@ function validateLevel7Replay(
         validNumber(actor.agility,a+".agility",0,1000);
       if(actor.grappleDamage!==undefined)
         validNumber(actor.grappleDamage,a+".grappleDamage",1,10000);
+      if(actor.staggerThreshold!==undefined)
+        validNumber(actor.staggerThreshold,a+".staggerThreshold",0,10000);
       const id=text(actor.id,a+".id");unique(id,actorIds,a+".id");
       choice(actor.team,["heroes","monsters"],a+".team");
       choice(actor.role,["tank","DPS","healer","monster"],a+".role");
