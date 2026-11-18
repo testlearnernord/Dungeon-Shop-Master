@@ -251,6 +251,7 @@ Before marking a PR ready, **review the three core documents** against its chang
 | [AGENTS](AGENTS.md) | Contributor procedure, coding/testing expectations, source-of-truth rules or project invariants change |
 | [UI Design System](docs/UI_DESIGN_SYSTEM.md) | HUD, dialogs, world hints, interaction patterns, accessible inputs, colors, layout or shared icons change |
 | [Roadmap](docs/ROADMAP.md) | Milestones are delivered, reprioritized, canceled or gain approved scope |
+| [Living World Clock](docs/LIVING_WORLD_CLOCK.md) | The agreed world-time, pause, sleep, event order, known-state/replay or save-migration contract changes |
 
 - Update impacted sections **with the feature PR**, not in an indefinite later cleanup.
 - **Replace/remove old descriptions** immediately when no longer true. Never keep competing “old/new” active instructions or append dated versions of the same section.
