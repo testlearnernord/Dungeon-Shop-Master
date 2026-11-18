@@ -218,8 +218,12 @@ function validateLevel7Replay(
     if(combat.version!==1)fail(item+".combat.version","is incompatible");
     choice(combat.outcome,["heroes","monsters","draw"],item+".combat.outcome");
     const actors=array(combat.actors,item+".combat.actors");
-    if(actors.length!==2)fail(item+".combat.actors","must represent the hero and one monster");
+    // Historical two-actor replays remain valid. New encounters may contain
+    // up to three actual heroes but always exactly one site monster.
+    if(actors.length<2||actors.length>4)
+      fail(item+".combat.actors","must contain 1–3 heroes and one monster");
     const actorIds=new Set<string | number>();
+    let monsterCount=0,heroCount=0;
     actors.forEach((rawActor,j)=>{
       const a=item+".combat.actors["+j+"]",actor=object(rawActor,a,[
         "id","team","role","style","x","z","hp","maxHp","damage",
@@ -239,14 +243,24 @@ function validateLevel7Replay(
       const id=text(actor.id,a+".id");unique(id,actorIds,a+".id");
       choice(actor.team,["heroes","monsters"],a+".team");
       choice(actor.role,["tank","DPS","healer","monster"],a+".role");
+      if(actor.team==="monsters"){
+        monsterCount++;
+        if(id!==feature.id||actor.role!=="monster")
+          fail(a,"only the real saved monster site can oppose the party");
+      }else{
+        heroCount++;
+        if(actor.role==="monster"||!/^adventurer-[1-9][0-9]*$/.test(id))
+          fail(a,"party members must be canonical adventurer heroes");
+      }
       choice(actor.style,["melee","ranged"],a+".style");
       for(const key of ["x","z","hp","maxHp","damage","armor","speed","reach"])
         validNumber(actor[key],a+"."+key,-10000,100000);
       if(actor.radius!==undefined)validNumber(actor.radius,a+".radius",0.1,3);
       if(actor.healCharges!==undefined)integer(actor.healCharges,a+".healCharges",0,10);
     });
-    if(!actorIds.has(heroId)||!actorIds.has(feature.id))
-      fail(item+".combat.actors","must contain the real hero and spawn");
+    if(heroCount!==actors.length-1||monsterCount!==1||
+      !actorIds.has(heroId)||!actorIds.has(feature.id))
+      fail(item+".combat.actors","must contain the lead hero and exactly one real monster");
     const bounds=object(combat.bounds,item+".combat.bounds",["minX","maxX","minZ","maxZ"]);
     for(const key of ["minX","maxX","minZ","maxZ"])
       validNumber(bounds[key],item+".combat.bounds."+key,-10000,10000);
@@ -266,17 +280,23 @@ function validateLevel7Replay(
       const t=validNumber(frame.t,fp+".t",0,26);
       if(t<lastFrame)fail(fp+".t","must be chronological");lastFrame=t;
       const snapshots=array(frame.actors,fp+".actors");
-      if(snapshots.length!==2)fail(fp+".actors","must match combat actors");
+      if(snapshots.length!==actors.length)
+        fail(fp+".actors","must match every recorded combatant");
+      const frameIds=new Set<string | number>();
       snapshots.forEach((a,k)=>{
         const ap=fp+".actors["+k+"]";
         const snapshot=object(a,ap,["id","x","z","hp","stamina","heading","phase"]);
-        if(!actorIds.has(snapshot.id as string))fail(ap+".id","must match a combat actor");
+        if(!actorIds.has(snapshot.id as string))
+          fail(ap+".id","must match a combat actor");
+        unique(snapshot.id as string,frameIds,ap+".id");
         for(const key of ["x","z","hp","stamina","heading"])
           validNumber(snapshot[key],ap+"."+key,-10000,100000);
         choice(snapshot.phase,["move","windup","strike","recover","cast",
           "heal","roll","parry","hurt","dead",
           "grab","grabMiss","throw","grabbed","thrown"],ap+".phase");
       });
+      if(frameIds.size!==actorIds.size)
+        fail(fp+".actors","must include all real fighters exactly once");
       const projectiles=array(frame.projectiles,fp+".projectiles");
       if(projectiles.length>30)fail(fp+".projectiles","is oversized");
       projectiles.forEach((p,k)=>{

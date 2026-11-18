@@ -64,6 +64,20 @@ The repository currently implements:
   Cave Troll or a Floor 10 boss. Current shop-day progression still
   resolves solo dungeon expeditions; the full autonomous multi-hero
   party campaign is not implemented.
+- **Autonomous co-located dungeon parties (CURRENT after this PR):**
+  On Floors 1–4 and 7, willing heroes who already share the same
+  physical tile can form an opportunistic group of up to three on
+  their next committed expedition day. Only one real traversal,
+  opponent, fight and site generation is resolved for that group.
+  Each hero has real independent HP, healing charges, individual
+  traps/armor effects, XP and replay POV; exactly one hero receives
+  a chest's one loot unit, and the finite gold is shared. Party
+  outcomes are cached for every hero during the day tick, not
+  re-resolved on their later roster turn. Characters can choose
+  different personal floor goals afterwards and separate again.
+  **Not yet implemented:** persistent party membership, long-lived
+  formation AI, coordinated floor transitions or group Cave Troll
+  campaign encounters. Shopkeepers do not command heroes.
 - **One live actor state interface (CURRENT after this PR):**
   `combatActor.ts` provides a common mutable HP/position/stamina/
   heading/phase/cooldown/contact contract. Ordinary `GroupActor`

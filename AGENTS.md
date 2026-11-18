@@ -65,6 +65,22 @@
   may use the existing `grapple-throw` combat ability as ordinary renewable
   elites. These are not unique Cave Trolls, new floor gates or a true
   multi-hero campaign expedition; do not mark party progression finished.
+- **CURRENT opportunistic party expedition (after this PR):**
+  `dungeonParties.ts` joins only willing, living, not-yet-processed heroes
+  standing on the *same physical tile and floor* at day start, max three.
+  `simulateSpatialDungeonPartyDay` is also the SOLO motor, never a
+  parallel expedition resolver. All party members traverse identical legal
+  edges and resolve ONE world site and ONE real group encounter; HP,
+  equipment, Herbs, XP, personal intentions and replay POVs stay per hero.
+  Split a chest's finite gold between living allies and award its one loot
+  unit to one actual claimant; never pay monster gold or advance regeneration
+  once per hero. Traps damage all who walk on the tile using their own gear.
+  `gameState.ts` caches each hero's outcome within that committed day and
+  prevents a companion running a second encounter. Strict v13 replay
+  validation accepts 1–3 hero actors with exactly one real site monster.
+  Formation is voluntary and ephemeral; this does NOT yet implement
+  persistent multi-day party membership, multi-floor coordinated travel,
+  true party-vs-Tripo Cave Troll, or all V.003 progression.
 - **CURRENT live actor model (after this PR):**
   `combatActor.ts` owns the shared mutable `CombatActorRuntime`
   contract, phase transitions, action time and resource refresh.

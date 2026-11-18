@@ -121,6 +121,17 @@ throws, rewards and frame data come from the existing encounter engine and
 v13 saved replays. This is a real solo expedition encounter, not the unique
 Cave Troll, a new floor gate or autonomous multi-hero party campaign.
 
+**Co-located hero parties (after this PR merges):**
+During a committed dungeon day, up to three willing heroes who already
+occupy the same tile may walk and fight together. Every actor has their
+own HP, equipment and real Healing Herbs, with one genuine group fight
+and one claimed monster/chest/trap site. Chest gold is split, a single
+loot item has one claimant, and every survivor's actual XP, inventory
+and personal route/recording are committed without rerolling combat.
+This is opportunistic per-day cooperation, not persistent party orders,
+coordinated multi-floor travel or a replacement for the unique Level 6
+Cave Troll cinematic. V.002 stays the playable version.
+
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
