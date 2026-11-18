@@ -132,7 +132,9 @@ but remains **one hero against a renewable elite**.
 up to three willing heroes who begin a day on the same tile can
 move and fight together using the single spatial-day/encounter
 motor. Each receives their own HP, Herb use, XP, gear effects,
-recorded viewpoint and later floor intention. Site regeneration,
+recorded viewpoint and later floor intention. New recordings also
+preserve the participants' historic purchased gear for 3D playback;
+old v1 fights without snapshots remain visually neutral. Site regeneration,
 loot and finite gold apply once; strict v13 save validation
 accepts the real saved group cast.
 
