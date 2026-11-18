@@ -259,9 +259,11 @@ v13 envelope while preserving old one-encounter tapes. The viewer
 reads the committed route and combat frames with no fake idle segments.
 `rosterBoard.ts` uses the pure `rosterBoardEquipment` projection to
 show empty/owned W/A slots and exact numeric HP on the physical board.
-These are presentation changes, not new shop phases. Actual
-Morning/Midday/Evening world snapshots and full Board 2.0 remain
-planned. No ordinary monster visual is complete: current subtype
+These are presentation changes, not a live world clock. The agreed
+V.003 target replaces mandatory three-phase snapshots with a single
+paced world-time/event ledger and a chronological known-state Board 2.0
+(see `docs/LIVING_WORLD_CLOCK.md`), neither of which is shipped.
+No ordinary monster visual is complete: current subtype
 encounters still render sphere placeholders until the separately
 reviewed concept/GLB/rig/animation/SFX pipeline in
 `docs/MONSTER_ASSET_PIPELINE.md` is delivered. Ghoul is not yet a spawn.
