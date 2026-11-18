@@ -165,6 +165,8 @@ test("real multi-day party strategy is reproducible after a v13 save/reload",()=
     const played=new Set(dayRecords.map(e=>e.adventurerId));
     assert.equal(dayRecords.length,played.size,
       "A hero cannot be re-simulated as both companion and solo traveler");
-    assert(dayRecords.every(e=>e.floorAction!==undefined||!e.dungeonReplay));
+    assert(dayRecords.every(e=>e.floorAction!==undefined||
+      !e.dungeonReplay||e.dungeonReplay.outcome==="death"),
+      "Only a dead hero can have actual expedition footage but no next floor choice");
   }
 });
