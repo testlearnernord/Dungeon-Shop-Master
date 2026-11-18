@@ -117,8 +117,9 @@ and projectile, with TAB cycling only through currently visible fighters.
 Historical purchased gear is drawn from a saved combat actor's
 equipment snapshot when present, never from today's roster. Older recordings
 without that optional v1 field stay deliberately neutral. On Floor 7, some room sentries in later deterministic
-respawn generations become stronger grapple/throw elites. Their HP, defenses,
-throws, rewards and frame data come from the existing encounter engine and
+respawn generations become armored heavy-strike elites. Their real HP,
+defenses, rewards and frame data come from the existing encounter engine;
+the unique Cave Troll's grapple/throw is reserved for authored bosses and
 v13 saved replays. This is a real solo expedition encounter, not the unique
 Cave Troll, a new floor gate or autonomous multi-hero party campaign.
 
@@ -141,6 +142,19 @@ the real companions' names, roles, HP and when the group formed.
 There are no player-issued orders or teleport
 corrections, and the unique Level 6 Cave Troll cinematic is unchanged.
 V.002 stays the playable version.
+
+**Authentic longer daily dungeon footage (after this PR):**
+An expedition now records up to 36 actual connected moves and two
+separate real encounters instead of ending automatically at the first
+won battle. A real defeat, unsafe lack of supplies or inaccessible
+route can still end the tape early. Older v1 records remain playable
+with the unchanged v13 save structure; no filler frames are added.
+The physical Adventurer Board now shows empty/owned W/A equipment
+slots plus numeric HP. Its three-phase timeline remains a target.
+Existing ordinary enemies are still spheres with combat subtypes,
+NOT completed creature artwork. Ghoul is only a candidate; the complete
+art, animation and SFX acceptance plan is in
+[Monster Asset Pipeline](docs/MONSTER_ASSET_PIPELINE.md).
 
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 
