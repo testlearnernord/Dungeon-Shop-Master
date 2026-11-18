@@ -1,6 +1,9 @@
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
-import { locationLabel, portraitIndex, rosterEntries, type RosterFilter } from "./game/rosterView.ts";
+import {
+  locationLabel, partySizeLabel, rosterPartyDetails, portraitIndex,
+  rosterEntries, type RosterFilter,
+} from "./game/rosterView.ts";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
 import {itemIcon,uiIcon,goldIcon} from "./uiIcons.ts";
 import {portraitCssFrame} from "./game/portraitAtlas.ts";
@@ -20,7 +23,9 @@ export function setupRosterBoardHud(
     const state = store.state;
     const active = state.adventurers.filter((hero) => hero.status !== "dead").length;
     const fallen = state.adventurers.length - active;
-    totals.textContent = active + " active · " + fallen + " fallen · Day " + state.day +
+    const partyCount=state.dungeonParties?.length??0;
+    totals.textContent = active + " active · " + fallen + " fallen · "+
+      partyCount+" parties · Day " + state.day +
       (filterValue === "fallen" && fallen > 40 ? " · Showing latest 40" : "");
     const expanded = new Set([...list.querySelectorAll<HTMLDetailsElement>("details[open][data-hero-id]")]
       .map((node) => node.dataset.heroId));
@@ -45,7 +50,8 @@ export function setupRosterBoardHud(
       const name = document.createElement("strong");
       name.textContent = (names.get(hero.id) ?? hero.name) + " · Lv " + hero.level + " " + hero.role;
       const location = document.createElement("small");
-      location.textContent = locationLabel(hero) + " · " + hero.status;
+      location.textContent = locationLabel(hero) +
+        partySizeLabel(state,hero.id) + " · " + hero.status;
       const bar = document.createElement("span");
       bar.className = "roster-hp";
       bar.setAttribute("role", "meter");
@@ -96,6 +102,28 @@ export function setupRosterBoardHud(
         itemChip("iron-ore","Loot "+hero.inventory.loot),
       );
       extended.append(stats, traits, items);
+      const party=rosterPartyDetails(state,hero.id);
+      if(party){
+        const companions=document.createElement("section");
+        companions.className="roster-party-details";
+        const title=document.createElement("h3");
+        title.textContent="Travel companions · together since Day "+party.formedDay;
+        const entries=document.createElement("ul");
+        for(const companion of party.members){
+          if(companion.id===hero.id)continue;
+          const entry=document.createElement("li");
+          const name=document.createElement("strong");
+          name.textContent=names.get(companion.id)??companion.name;
+          const description=document.createElement("span");
+          description.textContent=" · "+companion.role+" · HP "+
+            companion.health+"/"+companion.stats.maxHealth+
+            " · F"+companion.floor;
+          entry.append(name,description);
+          entries.append(entry);
+        }
+        companions.append(title,entries);
+        extended.append(companions);
+      }
       if (hero.status === "at-shop") {
         const permit = document.createElement("button");
         permit.type = "button";
