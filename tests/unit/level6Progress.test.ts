@@ -37,6 +37,12 @@ test("expedition event ledger remains accurate, bounded and stable over long cam
     assert(stats.recent.length <= 20);
     assert.equal(stats.firstClear, state.dungeonFloors.some(f => f.floor === 6 && f.cleared));
   }
+  const living=new Set(state.adventurers.filter(h=>h.status!=="dead").map(h=>h.id));
+  for(const floor of state.earlyDungeonWorlds??[]){
+    assert(floor.world.heroes.every(hero=>living.has(hero.heroId)),
+      "No long-dead explorer should occupy a renewable floor forever");
+  }
+  assert(state.level7World.heroes.every(hero=>living.has(hero.heroId)));
   const saved = parseSave(JSON.stringify(createSave(state)));
   assert.deepEqual(level6Progress(saved), level6Progress(state));
   assert.deepEqual(saved, state);
