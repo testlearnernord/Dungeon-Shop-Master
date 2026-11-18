@@ -337,6 +337,99 @@ function tryStrike(s: GroupCombatState, attacker: GroupActor,
   }
   applyDamage(s,attacker,target,batch,skill.damageMultiplier);
 }
+/** One real grapple contact, resolved using the same attack/defense rules
+ * as every boss smash and ordinary swing. Only actual actors can be held. */
+function tryGroupGrapple(
+  s:GroupCombatState,attacker:GroupActor,batch:GroupCombatCue[],
+):void {
+  const victim=s.actors.find(a=>a.id===attacker.targetId&&a.hp>0);
+  if(!victim){
+    cue(batch,s,attacker,"miss",attacker.targetId??undefined);
+    phase(attacker,"grabMiss");return;
+  }
+  const contact=resolveMeleeContact({
+    attacker,lockedHeading:attacker.lockedHeading,
+    defender:victim,defenderHeading:victim.heading,
+    defenderPhase:victim.phase,defenderPhaseAge:victim.phaseAge,
+    ability:meleeAbilityProfile("grapple"),
+    lineClear:lineClear(s,attacker,victim),
+  });
+  if(contact!=="hit"){
+    if(contact==="dodge"||contact==="parry")
+      cue(batch,s,victim,contact,attacker.id);
+    else cue(batch,s,attacker,"miss",victim.id);
+    phase(attacker,contact==="parry"?"hurt":"grabMiss");
+    return;
+  }
+  // Resistance is real character agility plus a contact-stable,
+  // order-independent roll, not an arbitrary scripted guaranteed catch.
+  const sample=deterministicGrappleSample(attacker.id,victim.id,
+    attacker.attacksStarted);
+  if(grappleEscapes(victim.agility,sample)){
+    cue(batch,s,victim,"escape",attacker.id);
+    phase(attacker,"grabMiss");return;
+  }
+  const held=grappleHoldPosition(attacker,attacker.lockedHeading);
+  // A grab cannot tunnel the hero through a wall in group encounters.
+  if(!within(held,s.bounds,victim.radius)||
+    s.obstacles.some(o=>insideObstacle(held,o,victim.radius))){
+    cue(batch,s,attacker,"miss",victim.id);
+    phase(attacker,"grabMiss");return;
+  }
+  attacker.grappleTargetId=victim.id;
+  victim.grabbedById=attacker.id;
+  phase(victim,"grabbed");
+  victim.x=held.x;victim.z=held.z;
+  cue(batch,s,attacker,"grab",victim.id);
+}
+
+function finishGroupLanding(
+  s:GroupCombatState,victim:GroupActor,batch:GroupCombatCue[],
+):void {
+  const thrower=s.actors.find(a=>a.id===victim.grabbedById);
+  const hit=applyCombatHit(victim.hp,thrower?.grappleDamage??0,victim.armor);
+  victim.hp=hit.hp;
+  victim.grabbedById=null;
+  victim.throwVelocity={x:0,z:0};
+  if(thrower)cue(batch,s,thrower,"landing",victim.id,hit.amount);
+  if(victim.hp===0){
+    phase(victim,"dead");
+    cue(batch,s,victim,"death",thrower?.id);
+  }else phase(victim,"hurt");
+}
+function progressGroupGrappleVictim(
+  s:GroupCombatState,victim:GroupActor,dt:number,
+  batch:GroupCombatCue[],complete:boolean,
+):void {
+  if(victim.phase==="grabbed"){
+    const holder=s.actors.find(a=>a.id===victim.grabbedById&&a.hp>0);
+    if(!holder||!(holder.phase==="grab"||holder.phase==="throw")){
+      victim.grabbedById=null;
+      phase(victim,"move");
+      return;
+    }
+    const held=grappleHoldPosition(holder,holder.lockedHeading);
+    if(within(held,s.bounds,victim.radius)&&
+      !s.obstacles.some(o=>insideObstacle(held,o,victim.radius))){
+      victim.x=held.x;victim.z=held.z;
+    }
+  }else if(victim.phase==="thrown"){
+    // Do not use the thrower's own radius as a blocker when departing
+    // the grip socket; walls, boundaries and unrelated actors still block.
+    const dx=victim.throwVelocity.x*dt,dz=victim.throwVelocity.z*dt;
+    const moved=moveCombatant(victim,{x:dx,z:dz},{kind:"walkable",
+      canOccupy:p=>within(p,s.bounds,victim.radius)&&
+        !s.obstacles.some(o=>insideObstacle(p,o,victim.radius))&&
+        !s.actors.some(a=>a!==victim&&a.id!==victim.grabbedById&&a.hp>0&&
+          distance(p,a)<victim.radius+a.radius-0.02),
+    });
+    victim.x=moved.x;victim.z=moved.z;
+    victim.distanceTraveled+=moved.distance;
+    if(complete || moved.distance<Math.hypot(dx,dz)-0.00001)
+      finishGroupLanding(s,victim,batch);
+  }
+}
+
 function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupActor,
   batch: GroupCombatCue[], multiplier=1): void {
   const hit=applyCombatHit(target.hp,Math.round(attacker.damage*multiplier),target.armor);
@@ -377,6 +470,10 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
   else if(a.phase==="hurt")window={completeAt:0.34};
   const tick=advanceCombatActorPhase(a,dt,window);
+  if(a.phase==="grabbed"||a.phase==="thrown"){
+    progressGroupGrappleVictim(s,a,dt,batch,tick.complete);
+    return;
+  }
   const enemy = closestEnemy(s, a);
   if (!enemy) return;
   if (a.phase === "move") {
@@ -553,8 +650,21 @@ const GROUP_PIPELINE: EncounterPipeline<GroupCombatState,GroupActor,GroupCombatC
   actors:state=>state.actors,
   updateActor:(state,actor,dt,frame)=>updateActor(state,actor,dt,frame.cues),
   projectiles:(state,dt,frame)=>updateProjectiles(state,dt,frame.cues),
-  finish:state=>{
-    state.outcome=encounterTeamOutcome(state.actors);
+  finish:(state,_,frame)=>{
+    // A dead boss immediately releases victims still in its grip.
+    // Already-airborne victims must actually land before the win is
+    // committed, otherwise the fall becomes free healing by cutscene.
+    for(const actor of state.actors){
+      if(actor.hp<=0||actor.phase!=="grabbed")continue;
+      const holder=state.actors.find(a=>a.id===actor.grabbedById);
+      if(!holder||holder.hp<=0){
+        actor.grabbedById=null;
+        phase(actor,"move");
+      }
+    }
+    const winner=encounterTeamOutcome(state.actors);
+    state.outcome=winner==="heroes"&&state.actors.some(a=>
+      a.hp>0&&a.phase==="thrown")?"fighting":winner;
   },
   commit:(state,frame)=>{
     state.events.push(...frame.cues);
