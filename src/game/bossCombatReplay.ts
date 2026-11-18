@@ -3,12 +3,12 @@ import {
   type ActorPhase, type BossPhase, type ArenaCue, type CombatPreviewOptions,
   type CombatPreviewState,
 } from "./arenaCombatMotion.ts";
+import { recordCombatEncounter } from "./combatEncounter.ts";
 
 export const REPLAY_FORMAT = 1;
 export const REPLAY_MAX_FRAMES = 700;
 export const REPLAY_MAX_SECONDS = 90;
 export const REPLAY_KEEP_RECENT = 3;
-const STEP = 1 / 60;
 const CAPTURE_EVERY = 8;
 
 /** Minimal snapshots of the *authoritative* spatial simulation, not rerolled video. */
@@ -81,18 +81,15 @@ export function frameFromCombat(s: CombatPreviewState, cues: readonly ArenaCue[]
 export function resolveSpatialBoss(
   heroId: string, day: number, options: CombatPreviewOptions,
 ): { replay: BossCombatReplay; final: CombatPreviewState } {
-  const state = createCombatPreview(options);
-  const frames: BossReplayFrame[] = [frameFromCombat(state)];
-  let pending: ArenaCue[] = [];
-  const ticks = REPLAY_MAX_SECONDS * 60;
-  for (let i = 1; i <= ticks && state.outcome === "fighting"; i++) {
-    const cues = stepCombatPreview(state, STEP);
-    pending.push(...cues);
-    if (i % CAPTURE_EVERY === 0 || state.outcome !== "fighting" || i === ticks) {
-      frames.push(frameFromCombat(state, pending));
-      pending = [];
-    }
-  }
+  const state=createCombatPreview(options);
+  // One authoritative capture loop for the existing boss v1 format and
+  // the GroupCombatReplay v1 format. Both record once; neither viewer
+  // executes gameplay code to reconstruct its frames.
+  const {frames}=recordCombatEncounter({
+    state,step:stepCombatPreview,capture:frameFromCombat,
+    captureEvery:CAPTURE_EVERY,maxSeconds:REPLAY_MAX_SECONDS,
+    isFighting:world=>world.outcome==="fighting",
+  });
   const outcome: BossReplayOutcome = state.outcome === "victory" ? "victory" :
     state.outcome === "defeat" ? "death" : "retreat";
   return {
