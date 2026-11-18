@@ -43,7 +43,7 @@ export function chooseHeroDungeonDecision(
   if(hero.floor===4 && enoughExperience)
     return {goal:"resupply",action:"shop"};
   if(hero.floor<4 && prepared && enoughExperience)
-    return {goal:hasGear?"progress":"progress",action:"descend"};
+    return {goal:"progress",action:"descend"};
   if(damaged)
     return {goal:"caution",action:"stay"};
   if(armed && hero.level<=3)
