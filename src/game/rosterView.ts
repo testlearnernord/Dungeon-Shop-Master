@@ -37,9 +37,19 @@ export function rosterPartyDetails(state:GameState,heroId:string):{
     members:members as AdventurerState[]};
 }
 
+/** Same ordinal is displayed on every member of a given current group. */
+export function temporaryPartyNumber(state:GameState,heroId:string):number|null {
+  const valid=rosterPartyDetails(state,heroId);
+  if(!valid)return null;
+  const index=state.dungeonParties?.findIndex(p=>p.memberIds.includes(heroId))??-1;
+  return index>=0?index+1:null;
+}
+
 export function partySizeLabel(state:GameState,heroId:string):string {
   const group=rosterPartyDetails(state,heroId);
-  return group?" · Party "+group.members.length:"";
+  const index=temporaryPartyNumber(state,heroId);
+  return group&&index!==null
+    ?" · Temporary Party #"+index+" ("+group.members.length+")":"";
 }
 
 /** Compact physical-board sockets come from actually equipped goods.

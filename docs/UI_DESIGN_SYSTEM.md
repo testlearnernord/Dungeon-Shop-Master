@@ -91,6 +91,16 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   project the actual hero equipment/health with no added AI, time
   phase or hidden replay outcome. Compact icons and three-phase
   timelines are still part of the full Board 2.0 target.
+- **CURRENT Temporary Party feedback:** the physical Board marks every
+  member of one actually saved group with the same numbered `TP1`
+  (legend: **Temporary Party**); the E/R roster writes the full name
+  plus current companion identities, role, HP and founding day.
+  The dungeon spectator shows participants from each *historical*
+  replay's optional saved party IDs, with the followed TAB member
+  highlighted and preview/solo mode hidden. Feed join/leave events
+  are attached to committed world transitions, never on UI refresh.
+  Older v1 tapes are valid without party metadata, and the player
+  cannot command the heroes. Full three-phase Board 2.0 remains open.
 - **CURRENT incremental party information:** the physical Adventurer Board
   appends a compact “Party 2/3” label only for a saved relationship.
   In the expanded R roster, the same read-only relationship exposes

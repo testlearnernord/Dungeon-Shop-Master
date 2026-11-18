@@ -14,6 +14,7 @@ import type { HeroVisual } from "./heroVisual.ts";
 import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type DungeonRoomDecoration } from "./dungeonReplayScene.ts";
 import type { Level7Replay } from "./level7Exploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
+import { heroDisplayNames } from "./heroIdentity.ts";
 import {
   generateExpeditionLayout, tileAt, type DungeonLayout,
   type DungeonFeature, type DungeonPoint,
@@ -62,6 +63,9 @@ export class DungeonViewer {
   private readonly minimapTitle = document.querySelector<HTMLElement>("#dungeon-minimap-heading")!;
   private readonly minimapNote = document.querySelector<HTMLElement>("#dungeon-minimap-note")!;
   private readonly musicToggle = document.querySelector<HTMLButtonElement>("#music-toggle")!;
+  private readonly temporaryPartyPanel = document.querySelector<HTMLElement>("#dungeon-temporary-party")!;
+  private readonly temporaryPartyHeading = document.querySelector<HTMLElement>("#dungeon-temporary-party-heading")!;
+  private readonly temporaryPartyMembers = document.querySelector<HTMLUListElement>("#dungeon-temporary-party-members")!;
 
   constructor(
     private readonly engine: Engine,
@@ -351,6 +355,8 @@ export class DungeonViewer {
     for(const entry of replays){
       this.replaySelector.add(new Option(
         "Day "+entry.record.day+" · F"+entry.record.floor+" · "+entry.name+
+        (entry.record.partyMemberIds?.length
+          ?" · Temporary Party ("+entry.record.partyMemberIds.length+")":"")+
         " · expedition footage",entry.id));
     }
     // Saved recordings take priority; never disclose the ending in the menu.
@@ -373,6 +379,7 @@ export class DungeonViewer {
     this.playing=!!record;
     this.followActor=record?record.heroId:null;
     this.playbackControls.hidden=!record;
+    this.renderTemporaryParty(record);
     this.modeDescription.textContent=record
       ?"Recorded Floor "+record.floor+" expedition · movements, combat and discoveries are historical, not re-simulated."
       :"Full development map preview · no replay selected.";
@@ -389,6 +396,34 @@ export class DungeonViewer {
       this.centerOn(0);
     }
   }
+  /** Identity is taken from THIS saved tape, never a later party. */
+  private renderTemporaryParty(record:Level7Replay|null):void {
+    const ids=record?.partyMemberIds??[];
+    this.temporaryPartyPanel.hidden=ids.length<2;
+    this.temporaryPartyMembers.replaceChildren();
+    if(ids.length<2)return;
+    this.temporaryPartyHeading.textContent=
+      "Temporary Party · "+ids.length+" adventurers · Day "+record!.day;
+    const names=heroDisplayNames(this.store.state.adventurers);
+    for(const id of ids){
+      const item=document.createElement("li");
+      item.dataset.heroId=id;
+      item.textContent=names.get(id)??id;
+      this.temporaryPartyMembers.append(item);
+    }
+    this.updateTemporaryPartyFocus();
+  }
+
+  private updateTemporaryPartyFocus():void {
+    for(const item of this.temporaryPartyMembers.children){
+      if(!(item instanceof HTMLElement))continue;
+      const isFocus=item.dataset.heroId===this.followActor;
+      item.dataset.focused=String(isFocus);
+      if(isFocus)item.setAttribute("aria-current","true");
+      else item.removeAttribute("aria-current");
+    }
+  }
+
   private togglePlayback():void {
     if(!this.replayScene?.currentReplay)return;
     if(this.playbackTime>=this.replayScene.duration)this.playbackTime=0;
@@ -418,6 +453,7 @@ export class DungeonViewer {
       ending;
     this.focusLabel.textContent="TAB focus: "+(this.followActor??"free camera")+
       " · "+(record.heroId);
+    this.updateTemporaryPartyFocus();
     if(this.followActor)scene.follow(this.followActor);
   }
   private resetCamera():void {

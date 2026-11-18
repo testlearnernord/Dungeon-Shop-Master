@@ -139,6 +139,18 @@ old v1 fights without snapshots remain visually neutral. Site regeneration,
 loot and finite gold apply once; strict v13 save validation
 accepts the real saved group cast.
 
+**Temporary Party presentation and feed (after this PR):**
+Real saved relationships are clearly named **Temporary Party**
+throughout the physical Adventurer Board (one matching numbered
+TP marker per group), expanded roster (full companions, HP,
+role and formation day), and saved dungeon footage (the actual
+historical members for that recorded day, with focused hero
+highlighted). Canonical join/leave events are committed once per
+real change and appear in the existing Dungeon feed. A stable
+party cannot re-join every morning; old replays without saved
+party metadata remain compatible. No temporary alliance grants
+player-issued orders or reveals unseen battle outcomes.
+
 **Persistent party step (CURRENT after this PR):** voluntary,
 co-located groups of 2–3 are saved in an optional v13 relationship
 table and take precedence over transient outsiders. A unanimously

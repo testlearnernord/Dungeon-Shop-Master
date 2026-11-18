@@ -109,7 +109,18 @@
   Never teleport party members to repair a split or override a dissenting
   hero's choice. The strict v13 validator rejects duplicate party members,
   inactive characters and mismatched saved locations; older saves omit
-  the optional field. Party size is displayed on the existing physical
+  the optional field. **Temporary Party** is the canonical player-facing
+  name. Current groups use one numbered TP marker on the physical board
+  (legend identifies it) and full member names in the R roster.
+  New group footage optionally saves immutable `partyMemberIds` for
+  its real co-travelers; the dungeon spectator shows those historical
+  names and TAB focus without querying today's changed group.
+  `temporaryPartyChanges` detects actual joins/leaves from previous
+  relationships, shared committed expeditions and settled groups,
+  once per member/action on a confirmed day; steady groups add no
+  daily feed noise. The dungeon feed hides sealed battle results.
+  Old replay tapes without `partyMemberIds` still load and show
+  no invented companions. Party size is displayed on the existing physical
   Adventurer Board. `rosterPartyDetails` is the single read-only source
   for the R roster's real companion names, roles, current HP and
   formation day; no inferred friendships, duplicate party state,

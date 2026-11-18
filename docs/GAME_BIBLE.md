@@ -94,8 +94,15 @@ The repository currently implements:
   newcomers at the same tile. A unanimous short-term stay/ascend/descend
   decision and a genuinely shared destination position preserve the
   group on Floors 1–4; individual dissent, separation, death or shop
-  return disbands it or removes casualties. The physical Adventurer
-  Board shows a real “Party N” indicator. Expanding the real
+  return disbands it or removes casualties. These are always labelled
+  **Temporary Parties**: each current group receives the same TP number
+  on the physical board, named by the legend, and a full entry in
+  the R roster. Historical dungeon recordings store the exact
+  temporary co-travelers and show them with TAB focus; loading
+  a later campaign state never rewrites who traveled together.
+  Confirmed group formations, changes and separations create real
+  join/leave Dungeon-feed events once per affected member, without
+  revealing unreplayed battle outcomes or spamming stable groups. Expanding the real
   hero's R roster card shows actual companion identities, roles,
   current HP and the stored group founding day. Historical save
   v13 remains readable without the optional relationship field. **Not yet

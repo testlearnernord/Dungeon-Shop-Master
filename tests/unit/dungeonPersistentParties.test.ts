@@ -126,7 +126,7 @@ test("new parties persist through a real confirmed floor transition and the foll
   const onFloor=firstDay.state.adventurers.filter(h=>
     pair.memberIds.includes(h.id));
   assert(onFloor.every(h=>h.floor===2&&h.status==="exploring"));
-  assert.equal(partySizeLabel(firstDay.state,first.id)," · Party 2");
+  assert.equal(partySizeLabel(firstDay.state,first.id)," · Temporary Party #1 (2)");
   assert.deepEqual(parseSave(JSON.stringify(createSave(firstDay.state))),
     firstDay.state);
   const continued=advanceDay(

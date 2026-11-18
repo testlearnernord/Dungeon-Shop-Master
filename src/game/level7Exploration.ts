@@ -64,6 +64,8 @@ export interface Level7Replay {
   /** Historical knowledge before this day; older v8 recordings may omit it. */
   readonly knownAtStart?: readonly number[];
   readonly resolvedAtStart?: readonly string[];
+  /** Companions who ACTUALLY shared this historical expedition day. */
+  readonly partyMemberIds?: readonly string[];
   readonly steps: readonly Level7ReplayStep[];
   readonly encounters: readonly Level7ReplayEncounter[];
   readonly outcome: Level7Outcome;
@@ -470,6 +472,7 @@ export function simulateSpatialDungeonPartyDay(
       appearance:{role:m.hero.role,equipment:{...m.hero.equipment}},
       knownAtStart:[...m.progress.visited],
       resolvedAtStart:[...refreshed.resolvedFeatureIds],
+      ...(party.length>1?{partyMemberIds:party.map(hero=>hero.id)}:{}),
       steps:m.steps,encounters,outcome:personalOutcome,
     };
     return {adventurer,replay,

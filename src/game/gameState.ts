@@ -8,7 +8,7 @@ import {
 import { generateExpeditionLayout } from "./dungeonLayout.ts";
 import {
   choosePersistentDungeonParty, negotiatePartyFloorDecisions,
-  settlePersistentDungeonParties,
+  settlePersistentDungeonParties, temporaryPartyChanges,
   type DungeonPartyState,
 } from "./dungeonParties.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
@@ -61,7 +61,7 @@ export interface WorldEvent {
     "sale" | "tip" | "healed" |
     "level6-departure" | "level6-combat" | "level6-return" |
     "level7-departure" | "level7-exploration" | "shop-credit" |
-    "dungeon-exploration";
+    "dungeon-exploration" | "temporary-party-join" | "temporary-party-leave";
   readonly day: number;
   readonly message: string;
   readonly adventurerId?: string;
@@ -372,6 +372,25 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       emptyLevel7World(),
     state.seed,day,floorChoices,
   );
+  // Emit one legitimate join/leave per member and kind, only on a
+  // committed day transition. No UI, replay playback or renderer can
+  // mutate this relationship or reroll its events.
+  const named=new Map(adventurers.map(hero=>[hero.id,hero.name]));
+  for(const change of temporaryPartyChanges(
+    state.dungeonParties??[],sharedEncounters,dungeonParties)){
+    const companions=change.memberIds.filter(id=>id!==change.heroId)
+      .map(id=>named.get(id)??id);
+    const name=named.get(change.heroId)??change.heroId;
+    const type=change.action==="join"
+      ?"temporary-party-join" as const:"temporary-party-leave" as const;
+    events.push({
+      id:`day-${day}:${change.heroId}:${type}`,
+      type,day,adventurerId:change.heroId,
+      message:change.action==="join"
+        ?`${name} joined a Temporary Party with ${companions.join(" and ")}.`
+        :`${name} left their Temporary Party.`,
+    });
+  }
   // Keep the full event history, but only a few heavy 3D recordings.
   // Removing an expired replay never changes its outcome/event/hero/RNG.
   const allEvents = [...state.events, ...events];

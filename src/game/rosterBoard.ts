@@ -9,7 +9,7 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { DEFAULT_ROSTER_BOARD } from "./rosterBoardPlacement.ts";
 import type { GameStore } from "./gameStore.ts";
 import {
-  locationLabel, partySizeLabel, portraitIndex,
+  locationLabel, temporaryPartyNumber, rosterPartyDetails, portraitIndex,
   rosterBoardEquipment, rosterEntries,
 } from "./rosterView.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
@@ -104,7 +104,11 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       ctx.font = "23px sans-serif";
       ctx.fillStyle = hero.status === "at-shop" ? "#a8e1b8" :
         hero.status === "expedition" ? "#e9ae67" : "#c0bcae";
-      ctx.fillText(locationLabel(hero)+partySizeLabel(state,hero.id),345,y+1,253);
+      const group=rosterPartyDetails(state,hero.id);
+      const number=temporaryPartyNumber(state,hero.id);
+      ctx.fillText(group&&number!==null
+        ?"F"+hero.floor+" · TP"+number+" ("+group.members.length+")"
+        :locationLabel(hero),345,y+1,253);
       // Actual empty/present weapon and armor sockets. Never treat a
       // higher character level as proof of bought equipment.
       const gear=rosterBoardEquipment(hero);
@@ -138,8 +142,8 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
     ctx.font = "22px sans-serif";
     ctx.fillText(heroes.length > 9 ? "+" + (heroes.length - 9) + " more" : heroes.length + " active", 46, 574);
     ctx.font="17px sans-serif";
-    ctx.fillText("W / A = weapon / armor · muted = empty",46,605);
-    ctx.fillText("PRESS E NEARBY OR R ANYWHERE", 575,605);
+    ctx.fillText("TP = Temporary Party · W/A = weapon/armor",46,605);
+    ctx.fillText("PRESS E / R FOR MEMBERS", 686,605);
     texture.update();
   }
   store.subscribe(draw);
