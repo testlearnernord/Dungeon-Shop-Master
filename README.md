@@ -83,6 +83,15 @@ phase runner remain to be migrated into a future
 group-capable encounter stepper; existing saved fights
 and the playable V.002 release label are unchanged.
 
+**Shared encounter simulation driver (after this PR merges):**
+`combatEncounter.ts` runs normal group encounters and the
+Cave Troll through one real fixed-step fight pipeline and replay
+recorder, with signature boss grab/throw effects injected
+rather than replacing their animations with ordinary monster
+attacks. Actor state/ability schemas and the planned cursed
+portal/Board systems remain unfinished; playable label
+stays V.002 Alpha.
+
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
