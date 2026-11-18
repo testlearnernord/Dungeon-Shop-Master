@@ -214,9 +214,35 @@ supported by the existing *group* motor, including real
 grapple/throw effects, and is exercised in deterministic
 tests. The existing **Level 6 Cave Troll campaign path still
 uses its original one-hero cinematic replay and renderer**.
-Party boss encounters are NOT yet wired into the dungeon
-campaign, its special Floor 10 gate or a multi-hero 3D viewer.
+The dungeon viewer is now capable of rendering any recorded
+group cast, and renewable solo Floor 7 elites exercise the skill.
+**True multi-hero party encounters** are NOT yet wired into
+campaign progression or the separate Floor 10 gate.
 There is no implied V.003 release from this engine milestone.
+
+## Recorded dungeon cast projection and regenerated elites (CURRENT after this PR)
+
+`dungeonReplayCast.ts` reads combat actor identities, teams, phases,
+radii and live-frame locations **only from the persisted replay**.
+`dungeonReplayScene.ts` draws every member of that cast and every
+recorded projectile, not the previous hard-coded one-hero/one-monster
+pair. The lead hero keeps historically recorded equipment. A secondary
+hero has an identity/role but no saved equipment snapshot yet and is
+shown without presumed purchases. TAB camera focus only exposes IDs
+from the currently visible frame; it must not disclose future combat
+actors while browsing previous footage. The spectator never owns
+HP, RNG, movement integration, contact or rewards.
+
+`level7Exploration.ts` chooses a deterministic, renewable elite
+**only** for a later generation of a Floor 7 sentry standing in a
+room (current tuning: cycle > 0, cycle modulo 4 = 1). This switches
+the actual `groupCombat.ts` monster spec to the already supported
+`grapple-throw`, bigger body/poise and honest XP/gold on victory.
+The committed replay persists the special-ability metadata under
+the existing strict v13 validator. Cycle zero and Floors 1–4
+retain their prior enemy behavior. This is not a unique defeated
+boss, the established Tripo Cave Troll, or a multi-hero campaign
+party system. No save migration and no second encounter simulator.
 
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
