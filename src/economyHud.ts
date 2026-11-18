@@ -214,8 +214,15 @@ export function setupEconomyHud(
     const summary = economy.dailySales;
     sales.textContent = `Last End Day: ${summary.units} sold · earned ${summary.revenue}g`;
   };
-  store.subscribe(render);
+  let priorEconomy:typeof store.state.shopEconomy|null=null;
+  const updateEconomy=()=>{
+    const economy=store.state.shopEconomy;
+    if(economy===priorEconomy)return;
+    priorEconomy=economy;
+    render();
+  };
+  store.subscribe(updateEconomy);
   updateFilter();
-  render();
+  updateEconomy();
   return toggle;
 }

@@ -149,14 +149,22 @@ export function setupDayHud(
   };
 
   let previousAdventurers = store.state.adventurers;
+  let previousDay=store.state.day;
+  let previousEvents=store.state.events;
   store.subscribe(() => {
-    if (store.state.adventurers !== previousAdventurers) {
+    const state=store.state;
+    if (state.adventurers !== previousAdventurers) {
       const currentVisitors = snapshotVisitors();
       onVisitorsChanged(currentVisitors, previousVisitors);
       previousVisitors = currentVisitors;
-      previousAdventurers = store.state.adventurers;
     }
-    render();
+    if(state.day!==previousDay||state.events!==previousEvents||
+       state.adventurers!==previousAdventurers){
+      previousDay=state.day;
+      previousEvents=state.events;
+      previousAdventurers=state.adventurers;
+      render();
+    }
   });
   window.addEventListener("expedition-observed",render);
   render();

@@ -42,8 +42,11 @@ export function setupBedroomFurnitureVisuals(scene:Scene,store:GameStore):void {
     }
     groups.set(base.id,root);
   }
+  let lastPlacement:typeof store.state.bedroomFurniture|null=null;
   const sync=()=>{
     const placements=store.state.bedroomFurniture;
+    if(placements===lastPlacement)return;
+    lastPlacement=placements;
     for(const base of BEDROOM_DEFAULTS){
       const root=groups.get(base.id)!;
       const p=getBedroomFurniture(placements,base.id);

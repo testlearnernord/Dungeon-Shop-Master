@@ -80,7 +80,13 @@ document.addEventListener("visibilitychange",()=>{
 });
 setupBedroomFurnitureVisuals(scene,store);
 const roomVisuals=createLevel5RoomVisuals(scene);
-const refreshRoom=()=>roomVisuals.update(store.state.level5Room);
+let lastDrawnRoom:typeof store.state.level5Room|null=null;
+const refreshRoom=()=>{
+  const room=store.state.level5Room;
+  if(room===lastDrawnRoom)return;
+  lastDrawnRoom=room;
+  roomVisuals.update(room);
+};
 store.subscribe(refreshRoom);
 refreshRoom();
 const shop = new Shop(scene, store);
@@ -255,7 +261,14 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
 setupControlsHotbarClearance();
 setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),
   itemId=>interactions.selectItem(itemId));
-store.subscribe(() => renderInventory(selectedItemId));
+let lastRenderedBag=store.state.shopEconomy.bag;
+store.subscribe(()=>{
+  const bag=store.state.shopEconomy.bag;
+  if(bag===lastRenderedBag)return;
+  lastRenderedBag=bag;
+  renderInventory(selectedItemId);
+});
+renderInventory(selectedItemId);
 const soundtrack = setupSoundtrack();
 const sfx = setupGameSfx();
 const cashierSfx=createCashierSfx(()=>sfx.soundEnabled,()=>sfx.soundVolume);

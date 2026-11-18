@@ -39,8 +39,11 @@ export function setupWallPortraitVisuals(scene:Scene,store:GameStore):void{
     add("side-"+side,.08,1.3,.12,side*.52,2.15,.05);
     add("edge-"+side,1.08,.08,.12,0,2.15+side*.63,.05);
   }
+  let lastPose:typeof store.state.wallPortrait|null=null;
   const sync=()=>{
     const pose=store.state.wallPortrait;
+    if(pose===lastPose)return;
+    lastPose=pose;
     root.setEnabled(!!pose);
     if(!pose)return;
     root.position.set(pose.x,0,pose.z);

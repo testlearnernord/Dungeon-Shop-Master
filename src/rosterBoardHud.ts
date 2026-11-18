@@ -178,7 +178,19 @@ export function setupRosterBoardHud(
     if (dialog.open) closeRoster();
     else if (!document.querySelector("dialog[open]")) openRoster();
   });
-  store.subscribe(render);
-  render();
+  let priorDay=0;
+  let priorHeroes:typeof store.state.adventurers|null=null;
+  let priorParties:typeof store.state.dungeonParties=null;
+  const updateOnRosterChange=()=>{
+    const state=store.state;
+    if(state.day===priorDay&&state.adventurers===priorHeroes&&
+       state.dungeonParties===priorParties)return;
+    priorDay=state.day;
+    priorHeroes=state.adventurers;
+    priorParties=state.dungeonParties;
+    render();
+  };
+  store.subscribe(updateOnRosterChange);
+  updateOnRosterChange();
   return openRoster;
 }

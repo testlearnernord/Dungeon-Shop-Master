@@ -43,7 +43,10 @@ test("manual checkout receipts are real and bedtime cannot sell stock by itself 
     state.shopEconomy.dailySales.units+" items sold · +"+state.shopEconomy.dailySales.revenue+"g");
   await expect(page.locator("#merchant-gold")).toHaveText(
     "Merchant gold: "+state.shopEconomy.balance+"g");
-  await page.locator(".shop-management-details").evaluate((el:HTMLDetailsElement)=>{el.open=true;});
+  // The complete shop disclosure is hidden behind the compact HUD toggle.
+  // Opening a nested <details> without opening its parent leaves it invisible.
+  await page.locator("#toggle-shop-status").click();
+  await expect(page.locator("#shop-status-content")).toBeVisible();
   await page.locator("#sales-ledger-summary").click();
   await expect(page.locator(".sales-receipt")).toHaveCount(receipts.length);
   for(const receipt of receipts){
