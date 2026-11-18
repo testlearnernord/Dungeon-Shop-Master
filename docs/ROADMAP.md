@@ -118,6 +118,16 @@ shared with combat; boss Herb healing is also 18 HP, separate from
 innate healer magic. Tests cover the cross-engine HP contract and
 inventory causality.
 
+**Next integration slice delivered after this PR merges:** common
+`combatMelee.ts` contracts now handle strike arc, reach, obstruction,
+roll invulnerability and parry for both generic enemies and the Cave
+Troll. A single profile list also defines ordinary, heavy, Troll smash,
+slam and grab attacks. Group combat now supports actual timed/damaging
+heavy attacks; regenerated skeletons may acquire them, and their
+optional profile survives recording and strict save validation.
+The old Troll grapple/replay clips retain their present physical
+effect and timings.
+
 **Still next:** consolidate the distinct movement, skill/ability
 and target-selection step loops into a **single group-capable
 encounter authority** with configurable boss abilities, preserving
