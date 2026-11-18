@@ -76,6 +76,7 @@ const eventTypes = [
   "level6-departure", "level6-combat", "level6-return",
   "level7-departure", "level7-exploration", "shop-credit",
   "dungeon-exploration",
+  "temporary-party-join","temporary-party-leave",
 ] as const;
 
 
@@ -148,7 +149,7 @@ function validateLevel7Replay(
 ): void {
   const record=object(raw,path,[
     "version","day","heroId","floor","appearance","steps","encounters","outcome",
-  ],["knownAtStart","resolvedAtStart"]);
+  ],["knownAtStart","resolvedAtStart","partyMemberIds"]);
   if(record.version!==1||record.floor!==expectedFloor||
      record.day!==day||record.heroId!==heroId)
     fail(path,"must match event day, hero and dungeon floor");
@@ -158,6 +159,21 @@ function validateLevel7Replay(
   const gear=object(appearance.equipment,path+".appearance.equipment",["weapon","armor"]);
   if(gear.weapon!==null && gear.weapon!=="Iron Sword")fail(path+".appearance.equipment.weapon","is not recognized");
   if(gear.armor!==null && gear.armor!=="Leather Vest")fail(path+".appearance.equipment.armor","is not recognized");
+  if(record.partyMemberIds!==undefined){
+    const ids=array(record.partyMemberIds,path+".partyMemberIds");
+    if(ids.length<2||ids.length>3)
+      fail(path+".partyMemberIds","must contain 2 or 3 real participants");
+    const seenMembers=new Set<string|number>();
+    ids.forEach((value,i)=>{
+      const name=path+".partyMemberIds["+i+"]";
+      const memberId=text(value,name);
+      if(!/^adventurer-[1-9][0-9]*$/.test(memberId))
+        fail(name,"must be a canonical adventurer ID");
+      unique(memberId,seenMembers,name);
+    });
+    if(!seenMembers.has(heroId))
+      fail(path+".partyMemberIds","must include this replay hero");
+  }
   const map=generateExpeditionLayout(campaignSeed,expectedFloor);
   const features=new Map(map.features.map(feature=>[feature.id,feature]));
   if(record.knownAtStart!==undefined){
@@ -695,7 +711,7 @@ function validateState(value: unknown): asserts value is GameState {
         allowed.push("dungeonReplay");
         const replay=object(event.dungeonReplay,path+".dungeonReplay",[
           "version","day","heroId","floor","appearance","steps","encounters","outcome",
-        ],["knownAtStart","resolvedAtStart"]);
+        ],["knownAtStart","resolvedAtStart","partyMemberIds"]);
         const floor=integer(replay.floor,path+".dungeonReplay.floor",1,4);
         validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
           event.adventurerId as string,eventDay,campaignSeed,floor);
