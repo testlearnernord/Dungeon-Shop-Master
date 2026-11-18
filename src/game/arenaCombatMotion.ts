@@ -13,7 +13,9 @@ import {
 import { traceCombatProjectile } from "./combatProjectile.ts";
 import {
   grappleEscapeChance, grappleHoldPosition, grappleLaunchVelocity,
+  GRAPPLE_TIMING,
 } from "./combatGrapple.ts";
+export { GRAPPLE_TIMING } from "./combatGrapple.ts";
 import {
   stepCombatEncounter, encounterTeamOutcome, type EncounterPipeline,
 } from "./combatEncounter.ts";
@@ -99,17 +101,7 @@ const HERO_RADIUS = 0.58;
 // All normal navigation, rolls and knockback respect this radius.
 export const SAFE_HERO_RADIUS = WALKABLE_RADIUS - HERO_RADIUS - 1.0;
 /** Timing belongs to the combat motor; animated clips only sample its phases. */
-export const GRAPPLE_TIMING = Object.freeze({
-  windup: 1.20,      // readable approach
-  trackUntil: 0.65,  // face the hero only early, then lock for counterplay
-  grabContact: 0.30, // hand reaches the hero
-  grab: 1.25,        // actual catch and deliberate lift
-  throwRelease: 0.58,
-  throw: 1.55,       // full arm follow-through
-  flight: 0.90,      // same distance as the old throw, but airborne longer
-  missRecover: 0.62,
-  recover: 0.85,
-});
+
 const LAVA_CONTACT_DAMAGE = 12;
 const TROLL_RADIUS = 1.8;
 const TAU = Math.PI * 2;
