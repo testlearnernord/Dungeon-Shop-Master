@@ -263,6 +263,8 @@ instructions. Formation is opportunistic; an established voluntary group is
   persisted in the optional v13 `GameState.dungeonParties` relationship
   table. This is NOT a merchant-controlled squad or a second world.
 
+Within the SAME spatial motor, `choosePartyDungeonStep` obtains each member's legal known-next-edge proposal before selecting a shared route through majority, unfamiliar-tile and stable grid tie-breaks. No player/viewer input or omniscient features choose paths. After the committed encounter, `gameState.ts` calculates all individual floor proposals from their own HP, gear, visited state and replay, then calls pure `negotiatePartyFloorDecisions`. It may change a voluntary next `floorAction` but never a hero's original `dungeonGoal`, site ownership, XP, fight result, or healing. A hard shop decision and unsafe descent are non-negotiable. Group decisions are cached BEFORE applying the first character's floor change to avoid roster-order bias.
+
 `level7Exploration.ts` exports `simulateSpatialDungeonPartyDay`:
 the existing `simulateSpatialDungeonDay` single-hero API delegates to
 it with one participant. Shared grid navigation, known-site resolution,
