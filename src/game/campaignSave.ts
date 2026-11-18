@@ -19,6 +19,7 @@ import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
   MAX_PENDING_WORLD_EVENTS,compareScheduledWorldEvents,
   type ScheduledWorldEvent } from "./worldClock.ts";
 import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
+import {forecastShoppingIntents} from "./shopperIntents.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -896,6 +897,19 @@ function validateState(value: unknown): asserts value is GameState {
       if(manualPaid.has((cart as RecordValue).heroId))
         fail("payload.shopCarts","cannot reserve goods for a customer already paid today");
     }
+  }
+  // Require that a saved petition is still a genuine, currently unpaid
+  // need. Without this guard a forged request for arbitrary stock could
+  // poison the event queue and expire a customer who never requested it.
+  if(shopRequests.length){
+    const plans=forecastShoppingIntents(state as unknown as GameState);
+    shopRequests.forEach((raw,i)=>{
+      const entry=raw as RecordValue;
+      const plan=plans.get(entry.heroId as string);
+      if(plan?.reason!==entry.reason||plan.wantedItemId!==entry.itemId)
+        fail("payload.shopRequests["+i+"].itemId",
+          "must match the customer's current physical shopping need");
+    });
   }
 }
 
