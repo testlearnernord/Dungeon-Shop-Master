@@ -118,6 +118,14 @@ compact numbered TP marker, explained by the legend. The R roster
 shows full Temporary Party membership and its founding day. Each real
 shared day's historical replay snapshots companion IDs, and the
 Dungeon observer displays those names with focused member highlighted.
+Every new group recording also preserves each adventurer's role and
+purchased gear at expedition commitment. The dungeon spectator
+can therefore show all authentic party member models walking and
+turning along the single recorded physical route, each marked with
+a shared gold TP ring. Visual spacing inside that tile is not
+separate pathfinding or new AI. Combat uses true individual saved
+positions and phases; casualties do not resume walking. Old
+footage remains valid when no companion appearance was saved.
 Only actual joins/leaves on committed days create feed entries.
 No stale status or unobserved fight outcome is filled in by the UI.
 The current physical Adventurer Board displays saved party sizes;
