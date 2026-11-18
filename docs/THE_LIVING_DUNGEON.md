@@ -57,9 +57,11 @@ campaign should visibly change all three tracks while preserving failure risk.
   clone an independent second simulation.
 - Each campaign's floors/room connections are determined by the campaign seed
   and persist for the save. Distinct rooms, corridors, traps, monsters, chests,
-  routes, shortcuts and gates have **shared** world state. Unique defeated
-  enemies and looted one-shot chests stay resolved; renewable resources need
-  explicit location/timer rules to avoid infinite free loot.
+  routes, shortcuts and gates have **shared** world state. Geometry, discovered
+  routes, milestones, individually gated access and **unique boss victories**
+  persist, while ordinary encounter sites are **renewable through deterministic
+  Dungeon Regeneration** (specified below). Do not treat all looted chests or
+  defeated common enemies as permanently cleared.
 - Draft target: the **first ten floors as one playable vertical slice**, with
   roughly **6–10 meaningful locations per floor**, not 100 empty maze floors.
   Room count and floor geometry are provisional balancing numbers, not canon.
@@ -73,6 +75,79 @@ campaign should visibly change all three tracks while preserving failure risk.
 - No random instant-kill table, hunger meter or arbitrary scarcity kill.
   Death follows authoritative damage reaching zero HP; escape and healing are
   real choices. Failure, caution and losses remain possible.
+
+### Dungeon Regeneration — APPROVED V.0003 DIRECTION, NOT CURRENT
+
+The dungeon is a **persistent place whose ordinary contents regenerate over
+time**. Players and heroes can revisit/farm earlier floors; exploration is not
+a single finite clearance checklist. Respawns are actual authoritative world
+events rather than visual resets or rerolled old fights.
+
+**Permanent and nonrenewable:**
+
+- Floor geometry, fixed stairs and routes, confirmed maps, unique major
+  discoveries, story progress and defeated one-off bosses remain persistent.
+  The temporary **per-hero Floor 10 pass** is not lost or bypassed by a
+  refresh. Unique quest objects and story treasures do not duplicate.
+- Historic kills, purchased items, earned loot, XP, deaths and immutable
+  encounter replays are never undone or replayed by regeneration.
+
+**Renewable normal contents:**
+
+- **Ordinary monsters:** population/encounter sites replenish after
+  time, with variety in creature types, group size and bounded strength
+  appropriate to that region. A room can be safer just after clearing and
+  threatening again later; rare wandering/elite spawns are possible at
+  lower frequencies.
+- **Ordinary treasure:** eligible sites may generate a *new chest with
+  genuinely new loot* after a cooldown. Previously looted chest instances
+  remain historically looted, not mysteriously "unlooted" in existing
+  records. Rare permanent/story treasure stays one-time.
+- **Traps:** reusable mechanisms may reset; new ordinary traps can occupy
+  valid predefined/hazard-compatible sites after a longer/different
+  interval. A recorded triggered trap is not retroactively reset.
+- **Optional ambient changes:** camps/patrols, local hazard intensity and
+  small resource nodes can rotate without restructuring the permanent
+  dungeon map.
+
+**How to schedule safely and predictably:**
+
+- Regeneration is calculated **per room / encounter site**, not a single
+  globally synchronized "all levels reset at midnight" action. On a
+  committed shop-day/expedition phase, an eligible site's saved cooldown,
+  elapsed world day and generation counter determine whether a *new*
+  population/treasure/trap generation spawns.
+- Seed variants from the **campaign seed + floor + stable site ID +
+  persisted regeneration cycle**, independently from camera/viewer RNG.
+  Persist the generated instance IDs, cooldowns and last-resolved times so
+  reloading, switching spectator scenes and repeating the same projection
+  never generates extra gold, monsters or chests.
+- Never respawn on top of an occupying hero/party, in a currently observed
+  combat, or as an unexplained sudden apparition in their visible room.
+  Defer eligible refresh at occupied sites until a safe unoccupied phase;
+  don't double-spawn afterward.
+- Reappearance does not mean easy free money. Reward volume, per-site
+  cooldown, difficulty, risk, injury, consumable costs and hero decisions
+  must keep **safe lower-floor farming** viable but not economically dominant.
+  Do not nerf merchant demand by making every hero self-sufficient.
+- The Board/dungeon map may show *last confirmed clear* or *last observed
+  activity*. It must **not automatically know** that a room has regenerated
+  when no hero has discovered the new contents. Actual fight, chest opening
+  and trap damage are only shown from recorded/known events.
+
+**Initial tuning hypothesis (OPEN, not locked):** ordinary monster sites
+could replenish roughly every **2–4 in-game days**, common chest sites
+less often (e.g. **4–6 days**), while trap reset windows vary by trap type.
+Different sites should stagger their schedules. These values require
+seeded ten-day playtests and may change; no fixed guaranteed reward every
+N days, no guaranteed rare chest and no entirely safe permanent farms.
+
+**Acceptance:** clear a common site, save/reload, advance several days,
+then verify a new deterministic encounter/chest/trap can appear there or
+at another eligible site without changing the map, duplicating old loot,
+reviving a unique boss, bypassing a Floor 10 pass or leaking unseen facts.
+Two independent heroes must encounter the **same actual generation** of
+that site and be unable to claim the same one-time chest twice.
 
 ### Explicit retirement of the old simulation/combat islands
 
@@ -359,13 +434,17 @@ slice** and not prerequisites to fix the expedition loop.
    feature, path, per-hero position, party, short-term floor direction,
    medium-term purpose, personal deepest depth, **cursed shop instance**,
    shared portal entry/exit, two-day off-duty states, per-hero Floor 10
-   permit, three-phase snapshots, knowledge and immutable event/replay records. Define v13 save compatibility
+   permit, **per-site regeneration schedules, cycle counters and instance
+   IDs**, three-phase snapshots, knowledge and immutable event/replay records. Define v13 save compatibility
    or an **explicit, tested** migration before changing schemas. Keep live and
    known snapshots separate.
-2. **Shared explorer:** incrementally replace `dungeonSimulation.ts`
-   Floor 1–4 coin flips with seeded navigation/encounters built from existing
-   `dungeonLayout.ts`, `level7Exploration.ts` and `groupCombat.ts`.
-   Validate feature ownership and multi-hero persistence. No 100-floor rewrite.
+2. **Shared explorer + regenerative sites:** incrementally replace
+   `dungeonSimulation.ts` Floor 1–4 coin flips with seeded navigation/
+   encounters built from existing `dungeonLayout.ts`,
+   `level7Exploration.ts` and `groupCombat.ts`. Each regular encounter,
+   chest and trap site can regenerate via one deterministic saved cooldown/
+   cycle, with occupancy protection and shared multi-hero ownership.
+   Boss/quest milestones never reset. No 100-floor rewrite.
 3. **Items and economy:** wire every ready-to-sell item to real persisted
    inventory and recorded fight/use logic; implement class resources only
    when fully specified. Check cash/credit/stock conservation and repeated
@@ -402,6 +481,11 @@ vertical integration rather than new disconnected framework islands.
 - Multiple heroes/parties share floor changes without duplicated loot,
   kills, shoppers, debt or softlocked corridors. A dead hero does not become
   alive just because the board or shop redraws.
+- **Regeneration acceptance:** common monsters/chests/traps can refresh
+  after independently staggered intervals without changing permanent maps,
+  unique boss kills, hero-specific Floor 10 access or saved historical
+  results; an unoccupied safe site receives at most one deterministic
+  generation per eligible cycle.
 - The same hero can stop on any depth, choose an **upward-transition exit**
   to the **single cursed shop**, purchase goods, physically leave through
   the **single portal**, spend two **complete** days off duty and return
@@ -422,7 +506,8 @@ vertical integration rather than new disconnected framework islands.
 
 Exact phase scheduling within a live shop day; whether the player can observe
 ongoing fights or only committed footage; number/types of rooms; thresholds
-for hero joining/retreating; new mana/ability model; mystical explanation
+for hero joining/retreating; exact per-site respawn cooldowns, loot weights,
+elite frequencies and farming balance; new mana/ability model; mystical explanation
 and visual detail of the shared portal; exact safe re-entry anchor after
 standby, HP recovery off duty and party-splitting semantics; eventual
 redesign of the temporary hero-specific Floor 10 pass; final Floor 10
