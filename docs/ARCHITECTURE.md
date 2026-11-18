@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Current Architecture
 
-> **Living technical map · reviewed 2026-11-16.** Navigational guidance, not a frozen API or history of refactors. If modules move, interfaces change or mechanics are removed, replace obsolete entries in the same PR. Source and tests remain the authority for implemented behavior.
+> **Living technical map · reviewed 2026-11-18.** Navigational guidance, not a frozen API or history of refactors. If modules move, interfaces change or mechanics are removed, replace obsolete entries in the same PR. Source and tests remain the authority for implemented behavior.
 
 ## 1. Runtime and ownership
 
@@ -10,6 +10,40 @@ The current game is a **TypeScript/Vite** browser application rendered with **Ba
 - `src/game/gameState.ts` defines persisted version-13 `GameState` and deterministic day progression. `src/game/gameStore.ts` owns validated player actions and subscriber notifications.
 - Pure simulation functions must remain independent of Babylon meshes and the DOM. Scene objects and HUD projections are representations of authoritative game state, not additional sources of truth.
 - Scene transitions among the Level 5 shop, boss arena and dungeon viewer must not silently mutate the stored combat result.
+
+## V.0003 target architecture (PLANNED, NOT CURRENT)
+
+The next approved milestone is **V.0003 ALPHA — The Living Dungeon**.
+See [the unified design contract](THE_LIVING_DUNGEON.md) and
+[the prioritized roadmap](ROADMAP.md). Current Floor 1–4 daily rolls,
+Level 6 arena and Floor 7 exploration remain **distinct implementations**.
+Do not claim the planned shared explorer or three daily phases exists yet.
+
+The redesign must preserve one deterministic GameState authority and introduce:
+- A shared seeded world with persisted floors/rooms/unique resolved features;
+  hero floor/position/intent, independently progressing character XP/level,
+  group membership, real supply counts and recorded encounter IDs.
+- Separate *world truth* from *merchant knowledge*: Morning/Midday/Evening
+  snapshots are committed once, tagged with available/reported information,
+  and do not leak sealed outcomes, secret deaths or future replay footage.
+- A single reusable simulation path for ordinary fights and boss-specific
+  mechanics, with Babylon/replay only rendering already resolved events.
+  Reuse `dungeonLayout.ts`, `level7Exploration.ts`, `groupCombat.ts` and
+  `arenaCombatMotion.ts` after inspecting existing ownership/compatibility.
+- One read-only Board projection shared by `rosterBoard.ts`,
+  `rosterBoardHud.ts` and `rosterView.ts`, preserving current mounted
+  furniture transforms, E/R interactions, HP and item icons; adding phase
+  history, accurate empty gear slots and a dungeon-depth map.
+- Explicit `SIMULATION_VERSION = 13` migration/compatibility and old
+  replay retention strategy **before** altering persistent schemas.
+  A content-release label **V.0003** does not mean save format version 3.
+  Likewise the separate npm package version `0.1.0` is not the UI label.
+
+The core technical acceptance test must carry one legitimate shop sale/credit
+through hero inventory, a deterministic combat item use, a known board status
+and an immutable saved/reloaded replay, preserving money/stock/HP. Exact
+phase timing, floor geometry, Floor 10 Troll placement and shop access
+remain design questions, not APIs in production.
 
 ## 2. Current module map
 
