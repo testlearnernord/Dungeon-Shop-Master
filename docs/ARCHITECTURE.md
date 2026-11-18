@@ -26,10 +26,22 @@ The redesign must preserve one deterministic GameState authority and introduce:
 - Separate *world truth* from *merchant knowledge*: Morning/Midday/Evening
   snapshots are committed once, tagged with available/reported information,
   and do not leak sealed outcomes, secret deaths or future replay footage.
-- A single reusable simulation path for ordinary fights and boss-specific
-  mechanics, with Babylon/replay only rendering already resolved events.
-  Reuse `dungeonLayout.ts`, `level7Exploration.ts`, `groupCombat.ts` and
-  `arenaCombatMotion.ts` after inspecting existing ownership/compatibility.
+- A **single deterministic combat authority**, for groups **and** bosses:
+  consolidate multi-actor/projectiles from `groupCombat.ts` and proven
+  telegraph/parry/dodge/hit and boss-ability mechanics from
+  `arenaCombatMotion.ts`. Remove separate authoritative fight paths
+  and the special Level 6 progression path from **new runs**, preserving
+  immutable historical replay playback via explicit read-only adapters.
+  Babylon scenes never resolve outcomes.
+- **Retire** `dungeonSimulation.ts` Floor 1–4 placeholder outcome rolls
+  from new-game progression and retire Floor 7-only separate exploration
+  ownership once shared seeded spatial travel covers all relevant floors.
+  Keep one world truth; do not merely wrap the old RNG in new UI.
+- **Shop visits are world navigation**, not a free return on day close:
+  the draft rule permits attempted access at any time, with real reachable
+  routes, phase/time cost, possible travel risk and later unlocked shortcut
+  entrances to the same physical shop. A future paid one-way escape item is
+  only a proposal; precise portal and timing rules remain OPEN.
 - One read-only Board projection shared by `rosterBoard.ts`,
   `rosterBoardHud.ts` and `rosterView.ts`, preserving current mounted
   furniture transforms, E/R interactions, HP and item icons; adding phase
