@@ -9,7 +9,8 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { DEFAULT_ROSTER_BOARD } from "./rosterBoardPlacement.ts";
 import type { GameStore } from "./gameStore.ts";
 import {
-  locationLabel, partySizeLabel, portraitIndex, rosterEntries,
+  locationLabel, partySizeLabel, portraitIndex,
+  rosterBoardEquipment, rosterEntries,
 } from "./rosterView.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {portraitSourceRect} from "./portraitAtlas.ts";
@@ -103,21 +104,42 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       ctx.font = "23px sans-serif";
       ctx.fillStyle = hero.status === "at-shop" ? "#a8e1b8" :
         hero.status === "expedition" ? "#e9ae67" : "#c0bcae";
-      ctx.fillText(locationLabel(hero)+partySizeLabel(state,hero.id),345,y+1,300);
-      ctx.fillStyle = "#352a20";
-      ctx.fillRect(756, y - 14, 173, 15);
-      ctx.fillStyle = hero.health / hero.stats.maxHealth < 0.3 ? "#d16b55" : "#8ab668";
-      ctx.fillRect(756, y - 14, 173 * hero.health / hero.stats.maxHealth, 15);
+      ctx.fillText(locationLabel(hero)+partySizeLabel(state,hero.id),345,y+1,253);
+      // Actual empty/present weapon and armor sockets. Never treat a
+      // higher character level as proof of bought equipment.
+      const gear=rosterBoardEquipment(hero);
+      for(const [socket,present,x] of [
+        ["W",gear.weapon,610],["A",gear.armor,645],
+      ] as const){
+        ctx.fillStyle=present?"#a2cbb4":"#343b3a";
+        ctx.fillRect(x,y-23,29,29);
+        ctx.strokeStyle=present?"#c6e5bc":"#7b806f";
+        ctx.lineWidth=1.5;
+        ctx.strokeRect(x+0.75,y-22.25,27.5,27.5);
+        ctx.fillStyle=present?"#1b2d28":"#b2ac9a";
+        ctx.font="bold 19px sans-serif";
+        ctx.fillText(socket,x+6,y-2);
+      }
       if(goldSymbol.complete&&goldSymbol.naturalWidth>0)
-        ctx.drawImage(goldSymbol,665,y-20,23,23);
+        ctx.drawImage(goldSymbol,689,y-20,23,23);
       ctx.fillStyle="#f5d59e";
-      ctx.font="bold 19px sans-serif";
-      ctx.fillText(hero.gold+"g",690,y+1,64);
+      ctx.font="bold 18px sans-serif";
+      ctx.fillText(hero.gold+"g",714,y+1,55);
+      const hpRatio=Math.max(0,Math.min(1,hero.health/hero.stats.maxHealth));
+      ctx.fillStyle = "#352a20";
+      ctx.fillRect(780, y - 20, 175, 12);
+      ctx.fillStyle = hpRatio < 0.3 ? "#d16b55" : "#8ab668";
+      ctx.fillRect(780, y - 20, 175 * hpRatio, 12);
+      ctx.fillStyle="#f0e4c9";
+      ctx.font="bold 15px sans-serif";
+      ctx.fillText(gear.hp+" HP",783,y+9,171);
     });
     ctx.fillStyle = "#c8ae7d";
     ctx.font = "22px sans-serif";
-    ctx.fillText(heroes.length > 9 ? "+" + (heroes.length - 9) + " more" : heroes.length + " active", 46, 585);
-    ctx.fillText("PRESS E NEARBY OR R ANYWHERE", 525, 605);
+    ctx.fillText(heroes.length > 9 ? "+" + (heroes.length - 9) + " more" : heroes.length + " active", 46, 574);
+    ctx.font="17px sans-serif";
+    ctx.fillText("W / A = weapon / armor · muted = empty",46,605);
+    ctx.fillText("PRESS E NEARBY OR R ANYWHERE", 575,605);
     texture.update();
   }
   store.subscribe(draw);
