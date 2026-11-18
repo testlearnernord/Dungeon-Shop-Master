@@ -78,6 +78,11 @@
   `gameState.ts` caches each hero's outcome within that committed day and
   prevents a companion running a second encounter. Strict v13 replay
   validation accepts 1–3 hero actors with exactly one real site monster.
+  New `GroupCombatReplay` actors may contain optional, strictly validated
+  hero `equipment` snapshots taken at fight commitment. Viewers must
+  show recorded weapons/armor and NEVER fetch today's mutable roster
+  to dress a historical companion. Old v1 records lacking the field
+  show neutral equipment. No save version bump.
   Formation is voluntary and ephemeral; this does NOT yet implement
   persistent multi-day party membership, multi-floor coordinated travel,
   true party-vs-Tripo Cave Troll, or all V.003 progression.
