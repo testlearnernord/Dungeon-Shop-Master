@@ -159,20 +159,21 @@ deterministic pipeline. Replay snapshots use the same capture
 scheduler but retain their old group-v1 and boss-v1 frame layouts.
 No two independent top-level combat loops remain.
 
-**Remaining before full engine convergence:** replace the still
-separate per-actor phase/state representations with one group-capable
-actor/ability data model that supports unique boss grip, launch
-and flight without duplicating generic movement or combat code.
-Replays remain read-only and old save v13 records remain valid.
+**Common live actor runtime delivered (CURRENT after this PR):**
+`combatActor.ts` now defines the single mutable combat-actor
+contract, the same phase transition and action clock helpers,
+and the same stamina/cooldown refresh used by GroupActor
+and the boss/hero's live adapters. Actor state writes reach
+authoritative HP and position rather than a second copy.
+The Troll keeps its historical flat save state and v1 replay
+animation phase names.
 
-**Next:** unify per-actor phase/state and signature abilities
-into a single group-capable data model. The shared encounter
-stepper, movement, timing, tactics, melee, projectile and HP
-authorities are already implemented; **boss-specific grip and
-throw phase effects still plug into the common encounter driver**.
-Preserve old v1 boss footage and exact presentational timings.
-Do not mistake one common top-level pipeline for complete
-actor-system unification.
+**Still next:** implement a general, saved group-capable actor
+registry for multi-hero boss encounters and reusable status/
+grapple/throw ability effects. The Troll's specific grab,
+release and flight code is still specialized, even though it
+uses the same encounter pipeline and actor lifecycle. Do not
+rewrite existing historical recordings or claim V.003 released.
 
 
 
