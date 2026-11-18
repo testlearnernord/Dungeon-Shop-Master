@@ -42,6 +42,18 @@ export function partySizeLabel(state:GameState,heroId:string):string {
   return group?" · Party "+group.members.length:"";
 }
 
+/** Compact physical-board sockets come from actually equipped goods.
+ * Empty sockets are intentionally visible, never guessed from level. */
+export function rosterBoardEquipment(hero:AdventurerState):{
+  readonly weapon:boolean;readonly armor:boolean;readonly hp:string;
+} {
+  return {
+    weapon:hero.equipment.weapon!==null,
+    armor:hero.equipment.armor!==null,
+    hp:hero.health+"/"+hero.stats.maxHealth,
+  };
+}
+
 export function locationLabel(hero: AdventurerState): string {
   if (hero.status === "dead") return "Fallen";
   if (hero.status === "at-shop") return "F5 · Shop";
