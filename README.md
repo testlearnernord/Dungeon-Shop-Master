@@ -70,18 +70,18 @@ system has been implemented in V.002.
 ordinary dungeon combat and the Cave Troll share physical actor
 movement/integration and a once-only timed-action scheduler in
 addition to their existing shared hit/heal/defense contracts.
-Boss-specific grab/throw, target AI and multi-actor combat behavior
-still require a final encounter-loop integration. No game release
-label or save format has changed.
+Boss-specific grab/throw and group-specific actor states
+remain distinct **inside the now-common encounter stepper**.
+No game release label or save format has changed.
 
 **Shared combat tactics and projectile collision (after this PR merges):**
 ordinary encounters and the Cave Troll use the same
 target-selection, engagement, defense and ability policy,
 plus physically swept projectile collision. The special
-Troll grab/throw action and separate top-level boss
-phase runner remain to be migrated into a future
-group-capable encounter stepper; existing saved fights
-and the playable V.002 release label are unchanged.
+Troll grab/throw special states remain intact as callbacks
+to the common encounter driver; merging their actor schema
+with group actors is future work. Saved fights and the
+playable V.002 release label are unchanged.
 
 **Shared encounter simulation driver (after this PR merges):**
 `combatEncounter.ts` runs normal group encounters and the
