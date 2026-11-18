@@ -457,7 +457,8 @@ export function inspectDungeonPlayback() {
        mesh.name.startsWith("dungeon-corridor-tile-")||
        mesh.name.startsWith("dungeon-room-tile-"))&&mesh.isVisible).length,
     hiddenTorches:scene.meshes.filter(mesh=>
-      mesh.name.startsWith("dungeon-torch-")&&!mesh.isEnabled()).length,
+      (mesh.name.startsWith("dungeon-torch-")||
+       mesh.name.startsWith("dungeon-crypt-room-"))&&!mesh.isEnabled()).length,
     disabledTorchLights:scene.lights.filter(light=>
       light.name.startsWith("dungeon-torchlight-")&&!light.isEnabled()).length,
     combatEnemyVisible:scene.getMeshByName("dungeon-combat-creature")?.isEnabled()??false,
