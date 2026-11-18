@@ -113,7 +113,7 @@ test("group grapple is counterable and never catches a rolling or escaping hero"
 
   // A stable sample < the high-agility cap yields a real escape.
   const escape=forcedGrab("hero43");
-  escape.hero.phase="hurt";escape.hero.agility; // the stat is immutable on actors
+  escape.hero.phase="hurt";
   assert(deterministicGrappleSample("boss","hero43",2)<0.065);
   const escaped=stepGroupCombat(escape.state);
   assert(escaped.some(c=>c.kind==="escape"&&c.actorId==="hero43"));
