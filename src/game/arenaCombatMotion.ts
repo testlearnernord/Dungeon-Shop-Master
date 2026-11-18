@@ -1,4 +1,9 @@
 import type { Point2 } from "./combatGeometry.ts";
+import { combatHeading, moveCombatant } from "./combatMovement.ts";
+import {
+  tickCombatAction, tickCombatCooldown, regenerateCombatStamina,
+  type CombatActionWindow,
+} from "./combatActionClock.ts";
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
@@ -102,8 +107,7 @@ const unit = (x: number, z: number): Point2 => {
   const d = Math.hypot(x, z);
   return d > 0.00001 ? v(x / d, z / d) : v(0, 1);
 };
-const facing = (from: Point2, to: Point2) =>
-  Math.atan2(to.x - from.x, to.z - from.z);
+
 export function bossStrikeGeometry(slam: boolean): BossStrikeGeometry {
   const ability=meleeAbilityProfile(slam?"troll-slam":"troll-smash");
   return {reach:ability.reach,halfAngleRadians:ability.halfAngleRadians};
@@ -135,27 +139,23 @@ function beginBoss(s: CombatPreviewState, phase: BossPhase): void {
   s.bossDamageApplied = false;
 }
 function clampToRadius(point: Point2, radius: number): void {
-  const d = Math.hypot(point.x, point.z);
-  if (d > radius && d > 0) {
-    point.x *= radius / d;
-    point.z *= radius / d;
-  }
+  const result=moveCombatant(point,{x:0,z:0},{kind:"circle",radius});
+  point.x=result.x;point.z=result.z;
 }
 function walk(s: CombatPreviewState, direction: Point2, meters: number,
   riskyRoll = false): void {
-  const startX = s.hero.x, startZ = s.hero.z;
-  s.hero.x += direction.x * meters;
-  s.hero.z += direction.z * meters;
-  if (riskyRoll && Math.hypot(s.hero.x, s.hero.z) > WALKABLE_RADIUS) {
-    // The bad dodge really reached the molten edge. Burn once and redirect
-    // the remaining roll inward instead of inflicting damage every 60 Hz tick.
+  const startX=s.hero.x,startZ=s.hero.z;
+  const result=moveCombatant(s.hero,
+    {x:direction.x*meters,z:direction.z*meters},
+    {kind:"circle",radius:riskyRoll?WALKABLE_RADIUS:SAFE_HERO_RADIUS});
+  s.hero.x=result.x;s.hero.z=result.z;
+  if(riskyRoll && result.crossedBoundary) {
+    // Real lava only on a boundary-crossing panic dodge, once per roll.
     lavaContact(s);
-    s.rollDirection = unit(-s.hero.x, -s.hero.z);
-    s.rollRisksLava = false;
-  } else {
-    clampToRadius(s.hero, riskyRoll ? WALKABLE_RADIUS : SAFE_HERO_RADIUS);
+    s.rollDirection=unit(-s.hero.x,-s.hero.z);
+    s.rollRisksLava=false;
   }
-  s.distanceTraveled += Math.hypot(s.hero.x - startX, s.hero.z - startZ);
+  s.distanceTraveled+=Math.hypot(s.hero.x-startX,s.hero.z-startZ);
 }
 /** Stable per-attack choices: never consume GameStore RNG or Math.random().
  * No saving/replay format changes: only newly resolved fights sample tactics. */
@@ -351,7 +351,16 @@ function resolveHeroStrike(s: CombatPreviewState): void {
 }
 function progressHeroAction(s: CombatPreviewState, dt: number): void {
   if (s.heroPhase === "move" || s.heroPhase === "dead") return;
-  s.heroAge += dt;
+  let window:CombatActionWindow={};
+  if(s.heroPhase==="attack")window={contactAt:0.28,completeAt:0.68};
+  else if(s.heroPhase==="cast")window={contactAt:0.31,completeAt:0.74};
+  else if(s.heroPhase==="heal")window={contactAt:0.72,completeAt:0.91};
+  else if(s.heroPhase==="roll")window={completeAt:0.53};
+  else if(s.heroPhase==="parry")window={completeAt:0.52};
+  else if(s.heroPhase==="hurt")window={completeAt:0.33};
+  else if(s.heroPhase==="thrown")window={completeAt:GRAPPLE_TIMING.flight};
+  const tick=tickCombatAction(s.heroAge,dt,s.heroApplied,window);
+  s.heroAge=tick.age;
   if (s.heroPhase === "grabbed") {
     s.hero.x=s.boss.x+Math.sin(s.lockedBossHeading)*2.15;
     s.hero.z=s.boss.z+Math.cos(s.lockedBossHeading)*2.15;
@@ -360,24 +369,24 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
     s.hero.z+=s.throwVelocity.z*dt;
     if (Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) {
       landThrownHero(s,true);
-    } else if (s.heroAge>=GRAPPLE_TIMING.flight) {
+    } else if (tick.complete) {
       landThrownHero(s,false);
     }
   } else if (s.heroPhase === "roll") {
     walk(s, s.rollDirection, dt * 10.5, s.rollRisksLava);
-    if (s.heroAge >= 0.53) beginHero(s, "move");
+    if (tick.complete) beginHero(s, "move");
   } else if (s.heroPhase === "parry") {
-    if (s.heroAge >= 0.52) beginHero(s, "move");
+    if (tick.complete) beginHero(s, "move");
   } else if (s.heroPhase === "hurt") {
-    if (s.heroAge >= 0.33) beginHero(s, "move");
+    if (tick.complete) beginHero(s, "move");
   } else if (s.heroPhase === "attack") {
-    if (s.heroAge >= 0.28 && !s.heroApplied) {
+    if (tick.contactDue) {
       s.heroApplied = true;
       resolveHeroStrike(s);
     }
-    if (s.heroAge >= 0.68) beginHero(s, "move");
+    if (tick.complete) beginHero(s, "move");
   } else if (s.heroPhase === "cast") {
-    if (s.heroAge >= 0.31 && !s.heroApplied) {
+    if (tick.contactDue) {
       s.heroApplied = true;
       const toBoss = heroToBoss(s);
       const dmg = (s.options.role === "healer" ? 9 : 12) + (s.options.sword ? 4 : 0) +
@@ -388,9 +397,9 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
       });
       s.cues.push({ kind: "projectile" });
     }
-    if (s.heroAge >= 0.74) beginHero(s, "move");
+    if (tick.complete) beginHero(s, "move");
   } else if (s.heroPhase === "heal") {
-    if (s.heroAge >= 0.72 && !s.heroApplied) {
+    if (tick.contactDue) {
       s.heroApplied = true;
       const consumesHerb=s.healingSupplies>0;
       // Owned Healing Herbs always heal exactly their catalog value.
@@ -404,23 +413,43 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
         s.cues.push({kind:"heal",amount:heal.amount});
       }
     }
-    if (s.heroAge >= 0.91) beginHero(s, "move");
+    if (tick.complete) beginHero(s, "move");
   }
 }
 function progressBossAction(s: CombatPreviewState, dt: number): void {
-  s.bossAge += dt;
+  let window:CombatActionWindow={};
+  if(s.bossPhase==="windup"){
+    window={completeAt:s.bossAttack==="grab"?GRAPPLE_TIMING.windup:
+      s.bossSlam?1.05:0.85};
+  }else if(s.bossPhase==="grab"){
+    window={contactAt:GRAPPLE_TIMING.grabContact,completeAt:GRAPPLE_TIMING.grab};
+  }else if(s.bossPhase==="throw"){
+    window={contactAt:GRAPPLE_TIMING.throwRelease,completeAt:GRAPPLE_TIMING.throw};
+  }else if(s.bossPhase==="strike"){
+    window={contactAt:0.14,completeAt:0.38};
+  }else if(s.bossPhase==="grabMiss"){
+    window={completeAt:GRAPPLE_TIMING.missRecover};
+  }else if(s.bossPhase==="recover"){
+    window={completeAt:s.bossAttack==="grab"?GRAPPLE_TIMING.recover:0.72};
+  }else if(s.bossPhase==="stagger"){
+    window={completeAt:1.6};
+  }
+  const tick=tickCombatAction(s.bossAge,dt,s.bossDamageApplied,window);
+  s.bossAge=tick.age;
   if (s.bossPhase === "dead") return;
   if (s.bossPhase === "chase") {
-    s.bossHeading = facing(s.boss, s.hero);
+    s.bossHeading = combatHeading(s.boss, s.hero);
     const gap = dist(s.hero, s.boss);
     if (gap > 3.5) {
       const toHero = unit(s.hero.x - s.boss.x, s.hero.z - s.boss.z);
       const tangent = v(toHero.z, -toHero.x);
-      s.boss.x += (toHero.x * 3.25 + tangent.x * 0.45) * dt;
-      s.boss.z += (toHero.z * 3.25 + tangent.z * 0.45) * dt;
-      clampToRadius(s.boss,WALKABLE_RADIUS-TROLL_RADIUS-.65);
+      const moved=moveCombatant(s.boss,{
+        x:(toHero.x*3.25+tangent.x*0.45)*dt,
+        z:(toHero.z*3.25+tangent.z*0.45)*dt,
+      },{kind:"circle",radius:WALKABLE_RADIUS-TROLL_RADIUS-.65});
+      s.boss.x=moved.x;s.boss.z=moved.z;
     }
-    s.bossCooldown -= dt;
+    s.bossCooldown=tickCombatCooldown(Math.max(0,s.bossCooldown),dt);
     if (s.bossCooldown <= 0 && gap < 7.7) {
       s.bossAttacks++;
       // Give the signature grab real screen time: melee-only, with a
@@ -432,7 +461,7 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
         ? "grab" :
         s.bossAttacks % 3 === 0 ? "slam" : "smash";
       s.bossSlam = s.bossAttack === "slam";
-      s.lockedBossHeading = facing(s.boss, s.hero);
+      s.lockedBossHeading = combatHeading(s.boss, s.hero);
       s.bossHeading = s.lockedBossHeading;
       beginBoss(s, "windup");
       s.cues.push({ kind: "windup" });
@@ -441,27 +470,26 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
     // The troll visually follows a circling target during the early reach,
     // then commits to a locked warning lane long enough to dodge or parry.
     if (s.bossAttack==="grab" && s.bossAge<=GRAPPLE_TIMING.trackUntil) {
-      s.lockedBossHeading=facing(s.boss,s.hero);
+      s.lockedBossHeading=combatHeading(s.boss,s.hero);
       s.bossHeading=s.lockedBossHeading;
     }
-    if (s.bossAge >= (s.bossAttack==="grab" ? GRAPPLE_TIMING.windup :
-        s.bossSlam ? 1.05 : .85))
+    if (tick.complete)
       beginBoss(s, s.bossAttack==="grab" ? "grab" : "strike");
   } else if (s.bossPhase === "grab") {
-    if (s.bossAge >= GRAPPLE_TIMING.grabContact && !s.bossDamageApplied) {
+    if (tick.contactDue) {
       s.bossDamageApplied=true;
       resolveBossGrab(s);
     }
-    if (s.bossPhase==="grab" && s.bossAge>=GRAPPLE_TIMING.grab)
+    if (s.bossPhase==="grab" && tick.complete)
       beginBoss(s,"throw");
   } else if (s.bossPhase === "grabMiss") {
     // A failed catch retracts its hand. It must NEVER play the throw clip.
-    if (s.bossAge >= GRAPPLE_TIMING.missRecover) {
+    if (tick.complete) {
       beginBoss(s,"chase");
       s.bossCooldown=1.45;
     }
   } else if (s.bossPhase === "throw") {
-    if (s.bossAge>=GRAPPLE_TIMING.throwRelease && !s.bossDamageApplied) {
+    if (tick.contactDue) {
       s.bossDamageApplied=true;
       if (s.heroPhase==="grabbed") {
         const direction=unit(s.hero.x-s.boss.x,s.hero.z-s.boss.z);
@@ -471,20 +499,20 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
         s.cues.push({kind:"throw"});
       }
     }
-    if (s.bossAge>=GRAPPLE_TIMING.throw) beginBoss(s,"recover");
+    if (tick.complete) beginBoss(s,"recover");
   } else if (s.bossPhase === "strike") {
-    if (s.bossAge >= 0.14 && !s.bossDamageApplied) {
+    if (tick.contactDue) {
       s.bossDamageApplied = true;
       resolveBossStrike(s);
     }
-    if (s.bossPhase === "strike" && s.bossAge >= 0.38) beginBoss(s, "recover");
+    if (s.bossPhase === "strike" && tick.complete) beginBoss(s, "recover");
   } else if (s.bossPhase === "recover") {
-    if (s.bossAge >= (s.bossAttack==="grab" ? GRAPPLE_TIMING.recover : 0.72)) {
+    if (tick.complete) {
       beginBoss(s, "chase");
       s.bossCooldown = 1.50;
     }
   } else if (s.bossPhase === "stagger") {
-    if (s.bossAge >= 1.6) {
+    if (tick.complete) {
       beginBoss(s, "chase");
       s.bossCooldown = 1.4;
     }
@@ -513,9 +541,9 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
   // Apply bounded fire damage once and move back inside, rather than
   // instantly wiping a perfectly healthy adventurer on the next step.
   if (Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
-  s.stamina = Math.min(100, s.stamina + 18 * dt);
-  s.heroCooldown = Math.max(0, s.heroCooldown - dt);
-  s.heroHeading = facing(s.hero, s.boss);
+  s.stamina=regenerateCombatStamina(s.stamina,dt,18);
+  s.heroCooldown=tickCombatCooldown(s.heroCooldown,dt);
+  s.heroHeading = combatHeading(s.hero, s.boss);
   if (s.heroPhase === "move") {
     const distance = dist(s.hero, s.boss);
     if (s.bossPhase === "windup" && s.lastDefenseAttack !== s.bossAttacks &&
