@@ -432,7 +432,9 @@ function validateState(value: unknown): asserts value is GameState {
     const heroId=text(entry.heroId,path+".heroId");
     unique(heroId,requestHeroes,path+".heroId");
     const hero=(state.adventurers as RecordValue[]).find(h=>h.id===heroId);
-    if(!hero||hero.status!=="at-shop"||!Number.isSafeInteger(hero.health)||hero.health<=0)
+    if(!hero||hero.status!=="at-shop"||
+      typeof hero.health!=="number"||!Number.isSafeInteger(hero.health)||
+      hero.health<=0)
       fail(path+".heroId","must be a living active shop visitor");
     choice(entry.reason,["unavailable","cannot-afford"],path+".reason");
     choice(entry.itemId,itemIds,path+".itemId");

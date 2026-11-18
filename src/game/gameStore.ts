@@ -13,7 +13,6 @@ import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
 import { advanceWorldUntil, lastWorldTickOfDay } from "./worldClock.ts";
 import {clearResolvedShopRequests,commitShopRequestEvent,closeShopRequests,
   requestRemainingTicks,shortenShopRequestForTest,startShopRequest} from "./shopRuntime.ts";
-import type {ShoppingReason} from "./shopperIntents.ts";
 
 export class GameStore {
   private current: GameState;
