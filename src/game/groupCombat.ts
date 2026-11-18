@@ -157,7 +157,12 @@ export interface GroupCombatReplay {
   readonly cues: readonly GroupCombatCue[];
   readonly outcome: Exclude<GroupOutcome, "fighting">;
 }
-const round = (n: number) => Math.round(n * 1000) / 1000;
+/** JSON has no negative-zero representation. Commit canonical coordinates
+ * so a saved/reloaded replay is bitwise equivalent to the live capture. */
+const round = (n: number) => {
+  const value=Math.round(n*1000)/1000;
+  return value===0?0:value;
+};
 const distance = (a: Point2, b: Point2) => Math.hypot(b.x - a.x, b.z - a.z);
 
 
