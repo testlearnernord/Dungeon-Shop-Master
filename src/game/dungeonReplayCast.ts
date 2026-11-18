@@ -55,8 +55,7 @@ export function visibleDungeonCombatActors(
 export function dungeonReplayFocusIds(
   replay: Level7Replay, snapshot: DungeonPlaybackSnapshot | null,
 ): readonly string[] {
-  return [replay.heroId, ...visibleDungeonCombatActors(snapshot ?? {
-    encounter:null,frame:null,
-  } as DungeonPlaybackSnapshot)
-    .filter(actor => actor.id !== replay.heroId).map(actor => actor.id)];
+  const actors=snapshot?visibleDungeonCombatActors(snapshot):[];
+  return [replay.heroId,
+    ...actors.filter(actor=>actor.id!==replay.heroId).map(actor=>actor.id)];
 }
