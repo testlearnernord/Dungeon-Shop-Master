@@ -226,6 +226,40 @@ function fightAgainst(
   };
 }
 
+/**
+ * Each companion proposes a legal next edge using only their own
+ * discovered tiles. Shared direction is chosen by majority support;
+ * tied proposals prefer an edge which is new to more companions and
+ * finally stable grid coordinates. A camera/roster order does not lead
+ * the group or reveal an unvisited hidden feature.
+ */
+export function choosePartyDungeonStep(
+  layout:DungeonLayout,
+  progress:readonly Level7HeroProgress[],
+):DungeonPoint|null {
+  if(!progress.length)return null;
+  if(progress.some(hero=>hero.x!==progress[0].x||
+    hero.z!==progress[0].z))
+    throw new RangeError("A party cannot vote on paths from separate tiles");
+  if(progress.length===1)return chooseLevel7Step(layout,progress[0]);
+  const counts=new Map<string,{point:DungeonPoint;votes:number;unknown:number}>();
+  for(const hero of progress){
+    const candidate=chooseLevel7Step(layout,hero);
+    if(!candidate)continue;
+    const key=candidate.x+":"+candidate.z;
+    const existing=counts.get(key);
+    counts.set(key,{point:candidate,votes:(existing?.votes??0)+1,unknown:0});
+  }
+  if(!counts.size)return null;
+  for(const item of counts.values()){
+    const index=tileIndex(layout,item.point);
+    item.unknown=progress.filter(hero=>!hero.visited.includes(index)).length;
+  }
+  return [...counts.values()].sort((a,b)=>
+    b.votes-a.votes||b.unknown-a.unknown||
+    byPoint(a.point,b.point))[0].point;
+}
+
 export interface Level7Tick {
   readonly adventurer: AdventurerState;
   readonly world: Level7World;
@@ -302,10 +336,12 @@ export function simulateSpatialDungeonPartyDay(
   };
 
   for(let t=1;t<=LEVEL7_STEP_BUDGET;t++){
-    const lead=members[0];
-    const next=chooseLevel7Step(layout,{
-      heroId:lead.hero.id,x:current.x,z:current.z,visited:lead.visitedOrder,
-    }) ?? chooseRenewedSiteStep(layout,current,lead.visited,resolved);
+    const next=choosePartyDungeonStep(layout,members.map(member=>({
+      heroId:member.hero.id,...current,visited:member.visitedOrder,
+    }))) ?? chooseRenewedSiteStep(layout,current,
+      // Only discovered tiles may steer the renewable-site fallback. A
+      // companion's actual knowledge is usable, never global fog of war.
+      new Set(members.flatMap(member=>member.visitedOrder)),resolved);
     if(!next){
       outcome="completed";
       step(t,"complete");
