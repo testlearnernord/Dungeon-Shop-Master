@@ -168,10 +168,17 @@ with the unchanged v13 save structure; no filler frames are added.
 The physical Adventurer Board now shows empty/owned W/A equipment
 slots plus numeric HP. Its chronological event/last-reported timeline
 remains a target, not three mandatory day phases.
-Existing ordinary enemies are still spheres with combat subtypes,
-NOT completed creature artwork. Ghoul is only a candidate; the complete
-art, animation and SFX acceptance plan is in
-[Monster Asset Pipeline](docs/MONSTER_ASSET_PIPELINE.md).
+**Ghoul first playable pass:** Generated ordinary encounters now use
+the owner's actual skinned Tripo Ghoul instead of placeholder
+Goblin/Skeleton/Slime/Cultist labels and sphere fighters. At build
+time, the 14-clip source is joined with the separately exported
+Combat Idle into one GLB; the Babylon spectator renders real Ghoul
+locomotion, attacks, hurt and death from committed replay frames.
+A new crypt/ruins environment decorates the EXISTING navigable
+rooms with tombs, broken pillars and ghostly lights, adding no
+second arena or gameplay collision authority. This needs final
+visual and original Ghoul SFX sign-off before calling the asset
+finished. See [Monster Asset Pipeline](docs/MONSTER_ASSET_PIPELINE.md).
 
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, shared paced world clock, event-timeline Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 
