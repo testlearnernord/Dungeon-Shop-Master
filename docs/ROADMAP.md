@@ -63,9 +63,11 @@ Do not overbuild extra content before this loop is both real and fun.
 
 ### P1 — One shared explorer for the first ten floors
 
-- Replace Floors 1–4's damage/progress coin-flip with actual reachable
-  travel and persistent shared features. Reuse current Floor 7 map,
-  level/room routing, encounters and group combat without parallel engines.
+- **Remove the Floor 1–4 placeholder** `dungeonSimulation.ts`
+  damage/progress coin-flip from active gameplay, not merely hide it behind
+  a new viewer. All floors use actual reachable travel, saved hero position,
+  encounters and shared features. Reuse existing Level 7 code where sound,
+  with no parallel authority.
 - Distinguish character **level/XP** from actual current **dungeon floor**.
   Heroes may progress, farm renewable opportunities, discover, fight,
   flee, recover, group and shop based on real state and temperament.
@@ -82,9 +84,13 @@ Do not overbuild extra content before this loop is both real and fun.
   use consumes an actual unit. Mana Potion gets a specified resource/ability
   loop before being treated as valuable; iron ore gets a defined downstream
   demand/use later rather than fake utility.
-- Shared group combat becomes the common authority for regular encounters.
-  Boss-specific mechanics (Cave Troll), graphics and SFX plug into it without
-  second sources of truth or replay replacement.
+- **One combat motor for both regular enemies and bosses**: fold
+  reusable telegraph, dodge/parry, hit, movement, resources and boss skills
+  from `arenaCombatMotion.ts` together with multi-actor/projectile support
+  from `groupCombat.ts`. Eliminate redundant authoritative combat islands
+  and the special Floor 6-only progression path after new fights and historical
+  replay adapters pass regression. Do **not** turn every party encounter into
+  a one-on-one Troll fight or remove valid saved boss footage.
 - No direct Galvik party control and no guarantee that equipping a hero
   makes them survive.
 
@@ -115,9 +121,14 @@ Do not overbuild extra content before this loop is both real and fun.
 - Candidate: move the Cave Troll to a more dramatic chapter boss region
   around Floor 10 after the unified progression is built. Keep original
   Floor 6 fight/replay assets and verify old records remain valid.
-- Investigate limited deeper shop access points to the *same physical shop*;
-  exact layout, transport cost and lore remain open. Avoid instant free
-  healing after every room.
+- **Shop access proposal (OPEN):** heroes can always choose to seek
+  Galvik, but must travel on reachable discovered routes at an actual
+  time/risk cost. Start with the physical Floor 5 shop; later unlocked
+  milestone shortcuts may reach the same shop (candidate: after the Floor
+  10 chapter boss), without universal every-five-level gates. Consider
+  an actual purchased/consumed one-way emergency escape item later; no
+  teleport straight back to the deep point of retreat. Balance against
+  free healing, trivial escapes and punishing arbitrary shop lockouts.
 - Make the player notice genuinely changing dungeon routes, customer
   behavior, supplies and commerce; prioritize legibility over more HUD.
 - Perform seeded economy/fight tests and genuine shop-to-dungeon browser
