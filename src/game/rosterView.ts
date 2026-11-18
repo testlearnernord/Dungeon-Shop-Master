@@ -22,7 +22,7 @@ export function rosterEntries(state: GameState, filter: RosterFilter): readonly 
 export function locationLabel(hero: AdventurerState): string {
   if (hero.status === "dead") return "Fallen";
   if (hero.status === "at-shop") return "F5 · Shop";
-  if (hero.status === "expedition") return "F6 · Expedition";
+  if (hero.status === "expedition") return "F" + hero.floor + " · Expedition";
   if (hero.status === "traveling") return "Returning to F5";
   if (hero.status === "returning") return "Leaving F5";
   return "F" + hero.floor + " · Exploring";
