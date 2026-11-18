@@ -146,12 +146,42 @@ recording loops have been removed. Source/CI must verify that the exact
 troll contact timing, Tripo visual phase names, saved v1 recordings,
 legacy v13 save formats, and 60Hz determinism remain compatible.
 
-**What remains:** the group and boss still hold *different actor state
-representations*, threat interpretation and boss-only grip/throw
-capabilities. The top-level encounter driver is now shared, but a
-single extensible actor/ability state machine across arbitrary heroes
-and bosses is **not** yet implemented. Do not claim the entire V.003
+**What remains:** the group and boss now share one **live actor
+interface**, but the boss still stores its fields in the older flat
+state and retains authored grip/throw phases. A truly generic
+multi-hero/boss actor registry with reusable status effects is
+still an OPEN implementation step. Do not claim the entire V.003
 dungeon/shop/release scope is complete.
+
+## One live combat actor contract (CURRENT after this PR)
+
+`src/game/combatActor.ts` defines **CombatActorRuntime**, one
+mutable actor contract for HP, maximum HP, physical position,
+stamina, heading, phase, phase age, cooldown and once-only
+contact status. `GroupActor` implements it directly. The
+Cave Troll and the boss-arena hero expose **live adapters**
+(`bossEncounterActors`) over their authoritative existing
+`CombatPreviewState` fields: writing an actor's HP,
+position, phase or resources changes the *original state*,
+not a copied second registry. The encounter driver
+iterates those real actor handles, and its winner check
+uses their actual HP.
+
+`enterCombatActorPhase`, `advanceCombatActorPhase`
+and `refreshCombatActorResources` own the lifecycle
+operations for **both** ordinary actors and boss actors.
+`combatActorActivity` groups the existing phases into
+semantic combat activities without renaming the original
+phase strings used by animations and v1 replay frames.
+
+**Still specialized:** a boss has authored `grabbed`,
+`thrown`, `grabMiss` and `throw` actions. It keeps
+its legacy flat field layout as the *one source of truth*
+until a deliberate save-format migration. Adding generic
+multi-hero participation in this boss fight and turning
+its unique grapple phases into reusable ability plugins
+remain later work. The game continues to label itself
+V.002; this is only the next V.003 foundation slice.
 
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
