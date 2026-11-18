@@ -52,14 +52,15 @@ test("visitors use exact projected need/stock/gold and travel toward the real sh
     return new CampaignStorage().loadGame();
   });
   expect(after).toEqual(before); // Viewing a forecast is not a paid transaction.
-  // Real sales still commit exactly once at the confirmed daily tick.
+  // A forecast is never a sale. Even if the buyer has visited a shelf,
+  // Galvik must still actually process the unpaid cart at the till.
   await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const saved=await new CampaignStorage().loadGame();
-    if(!saved?.events.some(event=>event.type==="sale"))
-      throw Error("No authoritative day-tick receipt after projected visit");
+    if(!saved||saved.events.some(event=>event.type==="sale"))
+      throw Error("Browsing or bedtime invented a payment without checkout.");
   });
   expect(errors).toEqual([]);
 });

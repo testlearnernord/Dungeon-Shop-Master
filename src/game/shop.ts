@@ -41,11 +41,21 @@ export class Shop {
     this.createShelves();
     this.syncPlacements();
     this.refresh();
+    let priorLayout=this.store.state.shopLayout;
+    let priorSlots=this.store.state.shopEconomy.slots;
     this.store.subscribe(() => {
-      // New saved instances have real meshes, slots and scene interactions
-      // before any customer/pathfinding view observes the updated store.
-      this.createShelves();
-      this.syncPlacements();
+      const {shopLayout,shopEconomy}=this.store.state;
+      const moved=priorLayout!==shopLayout;
+      const changedStock=priorSlots!==shopEconomy.slots;
+      if(!moved&&!changedStock)return; // World-clock ticks cannot rebuild a shelf.
+      priorLayout=shopLayout;
+      priorSlots=shopEconomy.slots;
+      if(moved){
+        // New saved instances have real meshes before dependent consumers
+        // observe the changed store geometry.
+        this.createShelves();
+        this.syncPlacements();
+      }
       this.refresh();
     });
     // Load real GLBs independently of game-state readiness. Newly stocked

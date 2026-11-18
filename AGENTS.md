@@ -237,7 +237,14 @@
   previously looted chest twice, override the Floor 10 pass or create
   a second farming/loot RNG authority. Cooldowns are tuning values,
   not approved constants.
-- **V.003 is a target, not current gameplay.** The playable in-game label is still V.002 ALPHA; npm package version `0.1.0` is independent. The approved shared-clock direction is defined in `docs/LIVING_WORLD_CLOCK.md`: one paced, deterministic, pausable world clock for both shop and dungeon while the shop is active; intentional bed-based overnight completion; ordered true vs last-known reports and replay event bookmarks. **Morning/Midday/Evening is NOT an authoritative three-phase engine/Board requirement.** PR #201 adds a saved clock/scheduler foundation only: `gameState.advanceDay` remains bed-batched for dungeon outcomes until #203 and current shop timers migrate in #202. Never claim the V.003 parallel simulation has shipped. No additional time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from design documents. **Newest owner decision: backward compatibility with old alpha/v13
+- **V.003 is a target, not current gameplay.** The playable in-game label is still V.002 ALPHA; npm package version `0.1.0` is independent. The approved shared-clock direction is defined in `docs/LIVING_WORLD_CLOCK.md`: one paced, deterministic, pausable world clock for both shop and dungeon while the shop is active; intentional bed-based overnight completion; ordered true vs last-known reports and replay event bookmarks. **Morning/Midday/Evening is NOT an authoritative three-phase engine/Board requirement.** PR #201 adds the saved world scheduler; PR #202 migrates petition deadlines
+  and expiry walkouts to persisted visitor events. Physical customer walking,
+  browsing, queueing and checkout waits are still driven from Babylon
+  visual frames, while bedtime automatic sales are deliberately REMOVED.
+  An unpaid cart is returned to its shelf at bed closure, never settled
+  as imaginary cash. Current version-15 saves intentionally reject old
+  version-14 campaigns because customer request state is newly required. `gameState.advanceDay` remains bed-batched
+  for dungeon outcomes until #203. Never claim the V.003 parallel simulation has shipped. No additional time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from design documents. **Newest owner decision: backward compatibility with old alpha/v13
   campaign saves is NOT required for the V.003 world-clock cutover.**
   A clean new save schema and fresh campaign may replace old data.
   New-version deterministic saves, no duplicated purchases/HP/loot,

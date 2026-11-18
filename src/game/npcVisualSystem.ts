@@ -13,7 +13,7 @@ import { heroPortraitIndex } from "./heroIdentity.ts";
 import {portraitSourceRect} from "./portraitAtlas.ts";
 import {goldIconUrl} from "../uiIcons.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
-import { RESTOCK_WAIT_SECONDS, restockWaitRemaining, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
+import { RESTOCK_WAIT_SECONDS, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
 import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble,
   createNpcCustomerBubble, positionNpcBubble,
   type NpcWishBubble, type NpcCustomerBubble } from "./npcWishBubble.ts";
@@ -35,6 +35,13 @@ import {getCounterPlacement} from "./shopLayout.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 import type { Shop } from "./shop.ts";
 
+/** Persisted petition deadlines are owned by GameStore, not Babylon. */
+interface ShopRequestClockAccess {
+  start(heroId:string,itemId:ItemId,reason:"unavailable"|"cannot-afford"):number|null;
+  remaining(heroId:string):number|null;
+  shortenE2E(heroId:string,seconds:number):void;
+  expiredWithoutStock(heroId:string):boolean;
+}
 interface NpcVisual {
   readonly root: TransformNode;
   readonly arms: readonly TransformNode[];
@@ -234,6 +241,9 @@ export class NpcVisualSystem {
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
+  private shopRequestClock:ShopRequestClockAccess|null=null;
+  private worldPaused=false;
+  setWorldPaused(paused:boolean):void{this.worldPaused=paused;}
   private readonly serviceSpots=new ShopServiceSpots();
   private carts:readonly ShopCart[]=[];
   /** Shopping-state notifications may happen without a new day. A committed
@@ -347,7 +357,9 @@ export class NpcVisualSystem {
     paidHeroIds:ReadonlySet<string>=new Set(),
     onWalkout?:((heroId:string,reason:ShoppingIntent["reason"])=>void),
     room?:Level5Room,
+    clock?:ShopRequestClockAccess,
   ):void {
+    this.shopRequestClock=clock??null;
     const hadProjection=this.layout!==null;
     const furnitureMoved=this.layout!==null&&(
       JSON.stringify(this.room)!==JSON.stringify(room)||
@@ -380,10 +392,15 @@ export class NpcVisualSystem {
       // A departing visitor has just paid by the confirmed Day Tick. Clear
       // the unpaid basket immediately, and show their updated true inventory.
       if(!isShopping){
-        if(npc.phase!=="leaving"){
-          this.clearWish(npc);
-          this.beginLeaving(npc);
-        }
+        const expired=!!this.shopRequestClock?.expiredWithoutStock(npc.visitor.id);
+        if(expired){
+          // The saved visitor event already committed the actual departure.
+          // Preserve the angry wish bubble without firing a second walkout.
+          npc.restockSeconds=0;
+          this.queueCustomerBark(npc,"unserved",npc.wishItem);
+        }else if(npc.phase!=="leaving")this.clearWish(npc);
+        if(npc.phase!=="leaving")this.beginLeaving(npc);
+        if(expired)npc.root.metadata.shoppingPhase="leaving-upset";
         if(changed)paintIdentity(npc,this.portraits);
         // Leaving visitors keep their route across regular economy refreshes,
         // but must replan when moved furniture would intersect a cached path.
@@ -521,7 +538,9 @@ export class NpcVisualSystem {
     if(!npc||npc.intent?.reason!=="unavailable"||
        npc.restockSeconds===null)
       throw new Error("Customer has no active restock request.");
-    npc.restockSeconds=seconds;
+    if(!this.shopRequestClock)throw new Error("Shop request clock is unavailable.");
+    this.shopRequestClock.shortenE2E(heroId,seconds);
+    npc.restockSeconds=this.shopRequestClock.remaining(heroId);
   }
 
   /** Interact with a nearby, facing petitioner even during a safe browsing
@@ -684,6 +703,7 @@ export class NpcVisualSystem {
   }
 
   private readonly update = (): void => {
+    if(this.worldPaused)return; // No decisions, movement or pickup while time is frozen.
     const delta = Math.min(this.scene.getEngine().getDeltaTime() / 1000, 0.1);
     const open: Record<GateSide, boolean> = { level4: false, level6: false };
     // Compute from the same snapshot for every visitor this frame. Otherwise
@@ -768,7 +788,8 @@ export class NpcVisualSystem {
       }
       if(npc.wishBubble&&this.wishBubblesVisible){
         updateNpcWishBubble(npc.wishBubble,this.scene,npc.root.position,
-          npc.restockSeconds??0,npc.root.metadata.shoppingPhase==="leaving-upset");
+          npc.restockSeconds??RESTOCK_WAIT_SECONDS,
+          npc.root.metadata.shoppingPhase==="leaving-upset");
       }
       if(npc.phase==="queueing"&&(
         npc.root.metadata.shoppingPhase==="restock-spot-full"||
@@ -806,13 +827,11 @@ export class NpcVisualSystem {
       ].includes(requestPhase);
       // A request expires even while its owner is walking around, or when
       // every station is full. Neither rerouting nor layout changes reset it.
-      if(npc.restockSeconds!==null&&
-         npc.phase!=="entering"&&npc.phase!=="leaving"){
-        npc.restockSeconds=restockWaitRemaining(npc.restockSeconds,delta);
+      if(npc.restockSeconds!==null){
+        const saved=this.shopRequestClock?.remaining(npc.visitor.id);
+        if(saved!==null&&saved!==undefined)npc.restockSeconds=saved;
         npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
-        if(npc.restockSeconds<=0){
-          this.leaveUnserved(npc);
-        }
+        // Only the scheduled world event can expire the real customer.
       }
       if(npc.phase==="queueing"&&waitingForRequest&&
          npc.restockSeconds!==null){
@@ -1077,9 +1096,14 @@ export class NpcVisualSystem {
       // side waiting destination instead of staying in the shelf aisle.
       const overflowRoute=waitRoute?null:this.serviceOverflowRoute(npc);
       const safeRoute=waitRoute??overflowRoute;
-      if(npc.restockSeconds===null)npc.restockSeconds=RESTOCK_WAIT_SECONDS;
+      // A real petition starts once the customer reaches a reserved safe
+      // waiting destination, not in the doorway or while rerouting.
+      // Saved requests retain their original deadline after reopening.
+      const remaining=this.shopRequestClock?.remaining(npc.visitor.id);
+      if(remaining!==null&&remaining!==undefined)npc.restockSeconds=remaining;
       this.showWish(npc,npc.intent.wantedItemId,begging);
-      npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
+      npc.root.metadata.restockRemaining=Math.ceil(
+        npc.restockSeconds??RESTOCK_WAIT_SECONDS);
       npc.root.metadata.shoppingTargetSlot=null;
       npc.root.metadata.checkoutQueueIndex=-1;
       npc.toQueue=true;
@@ -1299,6 +1323,10 @@ export class NpcVisualSystem {
           if(clearingShelf)npc.wait=0.7;
           if(npc.root.metadata.shoppingPhase==="walking-to-request-roam")
             npc.wait=8+(npc.slot%4)*1.4;
+          const arrivedAtRequestStation=[
+            "walking-to-restock-wait","walking-to-credit-wait",
+            "walking-to-restock-overflow","walking-to-credit-overflow",
+          ].includes(String(npc.root.metadata.shoppingPhase??""));
           npc.root.metadata.shoppingPhase=clearingShelf
             ?"waiting-for-shelf"
             :npc.root.metadata.shoppingPhase==="walking-to-shelf-retry-spot"
@@ -1317,6 +1345,13 @@ export class NpcVisualSystem {
               ?"checkout-overflow-wait"
             :checkoutQueueIndex(this.carts,npc.visitor.id)>=0
               ?"awaiting-checkout":"waiting-for-next-day";
+          if(arrivedAtRequestStation&&npc.restockSeconds===null&&
+             npc.intent?.wantedItemId&&
+             (npc.intent.reason==="unavailable"||npc.intent.reason==="cannot-afford")){
+            npc.restockSeconds=this.shopRequestClock?.start(npc.visitor.id,
+              npc.intent.wantedItemId,npc.intent.reason)??RESTOCK_WAIT_SECONDS;
+            npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
+          }
         }else{
           npc.phase="considering";
           npc.wait=1.1+(npc.slot%3)*0.35;

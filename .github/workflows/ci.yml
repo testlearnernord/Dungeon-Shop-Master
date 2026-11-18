@@ -25,7 +25,7 @@ jobs:
       - run: npm run build
       - run: npm run test:unit
       - run: npx playwright install chromium
-      # Six explicit browser smoke scenarios; expensive regression and art
+      # Selected browser smoke scenarios; expensive regression and art
       # preview tests stay manual in full-browser-ci.yml.
       - run: xvfb-run -a npm run test:smoke
       - name: Upload browser failure diagnostics

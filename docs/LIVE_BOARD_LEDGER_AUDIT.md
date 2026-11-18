@@ -95,12 +95,15 @@ footage to occupy an arbitrary full-day duration.
 ## Chosen clean break: no legacy saves required
 
 The owner does **not** require preserving old alpha saves. PR #201 has
-already raised `SIMULATION_VERSION` to 14 and established a **fresh
-campaign boundary** with a persisted tick and strict future-event queue.
-Older v13 saves are explicitly rejected and preserved, not migrated.
-The shop/dungeon day-batch motor remains transitional until #202/#203,
+introduced `SIMULATION_VERSION=14`, the first saved clock and ordered
+future-event queue. PR #202 deliberately bumps to version 15 with a required
+persisted customer request ledger; v14 and older saves are rejected and
+preserved, not migrated. PR #202 migrates customer petitions and expired
+unpaid walkouts to world events, and **retires bedtime auto-trading**:
+unpaid carts return to physical shelf stock, not paid receipts. Shop
+movement/checkout timing and the dungeon batch remain pending #202/#203,
 not an approved second permanent simulation authority. Do not implement
-v13→v14 conversion, deprecated fields, dual day motors or old four-folio
+old alpha/v14 conversion, deprecated fields, dual day motors or old four-folio
 session recovery merely to retain experimental saves.
 
 Still required:

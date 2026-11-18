@@ -1,7 +1,8 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { beginNextWorldDay, createWorldClock, MAX_WORLD_DAY, type WorldClockState } from "./worldClock.ts";
+import type {ShopRequest} from "./shopRuntime.ts";
 import { useHealingSupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
-import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
+import { createEconomy, type ItemId, type Slot } from "./economy.ts";
 import {
   chooseHeroDungeonDecision,
   type HeroDungeonDecision, type HeroDungeonGoal, type HeroFloorAction,
@@ -26,11 +27,11 @@ import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
 import { createBedroomFurnitureLayout, type BedroomFurnitureLayout } from "./bedroomFurniture.ts";
 import { DEFAULT_ROSTER_BOARD,type RosterBoardPlacement } from "./rosterBoardPlacement.ts";
 import type {WallPortraitPlacement} from "./wallPortraitPlacement.ts";
-import { settleHeldShopCarts, type ShopCart } from "./shopCarts.ts";
+import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 14;
+export const SIMULATION_VERSION = 15;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -65,6 +66,8 @@ export interface WorldEvent {
     "dungeon-exploration" | "temporary-party-join" | "temporary-party-leave";
   readonly day: number;
   readonly message: string;
+  readonly worldTick?: number;
+  readonly shopReason?: "unavailable"|"cannot-afford"|"no-need"|"interested";
   readonly adventurerId?: string;
   readonly outcome?: DungeonOutcome;
   readonly combatOutcome?: "victory" | "retreat" | "death";
@@ -95,6 +98,7 @@ export interface ShopDebt {
 export interface GameState {
   readonly day: number;
   readonly worldClock: WorldClockState;
+  readonly shopRequests: readonly ShopRequest[];
   readonly simulationVersion: number;
   readonly events: readonly WorldEvent[];
   readonly adventurers: readonly AdventurerState[];
@@ -136,6 +140,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
   return {
     day: 1,
     worldClock: createWorldClock(),
+    shopRequests: [],
     simulationVersion: SIMULATION_VERSION,
     events: [
       ...adventurers.slice(0, 3).map((hero) => arrivalEvent(hero, 1)),
@@ -172,28 +177,22 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   validatePopulation(state.populationConfig);
   let rngState = new SeededRandom(state.rngState).state;
   const events: WorldEvent[] = [{ id: `day-${day}:started`, type: "day-started", day, message: `Day ${day} begins.` }];
-  // Transitional settlement: picked goods were physically reserved during the
-  // previous shop day. Book them once before supplies/departures, but keep
-  // automatic legacy trading for heroes without reserved carts.
-  const settlement = settleHeldShopCarts(state, day);
-  const paidIds = new Set<string>(settlement.settledIds);
-  for (const event of state.events) {
-    if (event.type === "sale" && event.saleChannel === "manual" &&
-        event.day === state.day && event.adventurerId)
+  // PR #202: no invisible merchant business while Galvik sleeps.
+  // Physical pickup only reserves goods. If the cashier never accepted
+  // payment, return those goods to their original shelf at shop close.
+  // Manual checkout and issued credit are the ONLY daytime handovers.
+  const closed=returnUnpaidCartsAtClose(state);
+  const paidIds=new Set<string>();
+  for(const event of state.events){
+    if(event.type==="sale"&&event.saleChannel==="manual"&&
+       event.day===state.day&&event.adventurerId)
       paidIds.add(event.adventurerId);
   }
-  const tradeProjection = {
-    ...settlement.state,
-    adventurers: settlement.state.adventurers.map(hero => paidIds.has(hero.id)
-      ? {...hero, status: "returning" as const, floor: 4 as const,
-          shopStayDays: 0}
-      : hero),
+  const nextEconomy={
+    ...closed.shopEconomy,
+    dailySales:{day,units:0,revenue:0},
   };
-  const trade = tradeAtStartOfDay(tradeProjection, day);
-  const settledHeroes = new Map(settlement.state.adventurers.map(hero => [hero.id,hero]));
-  const postTradeHeroes = trade.adventurers.map(hero => paidIds.has(hero.id)
-    ? settledHeroes.get(hero.id)! : hero);
-  events.push(...settlement.events, ...trade.events);
+  const postTradeHeroes=closed.adventurers;
   let clearedLevel6 = state.dungeonFloors.some((entry) => entry.floor === 6 && entry.cleared);
   const level7UnlockedAtStart = clearedLevel6;
   let clearedLevel7 = state.dungeonFloors.some((entry) => entry.floor === 7 && entry.cleared);
@@ -424,7 +423,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   });
   return {
     state: {
-      ...settlement.state, day, worldClock, adventurers, rngState, shopEconomy: trade.economy,
+      ...closed, day, worldClock, adventurers, rngState, shopEconomy: nextEconomy,
       level7World,
       earlyDungeonWorlds,
       dungeonParties,

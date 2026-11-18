@@ -7,6 +7,7 @@ import {
 } from "../../src/game/campaignSave.ts";
 import { advanceDay, SIMULATION_VERSION, type GameState } from "../../src/game/gameState.ts";
 import { buyWholesale, discardBag, transferShelf } from "../../src/game/economy.ts";
+import {quoteCustomerCheckout,checkoutCustomer} from "../../src/game/customerCheckout.ts";
 
 function encoded(state = createGameState()): string {
   return JSON.stringify(createSave(state));
@@ -48,7 +49,8 @@ test("seeded 45-day spatial-dungeon continuation preserves history, RNG, legitim
       (hero.status==="dead")===(hero.health===0)));
     assert(resumed.events.some(event=>event.type==="dungeon-exploration"),
       "The campaign must still simulate real dungeon expeditions");
-    assert(resumed.events.some((event) => event.type === "sale"));
+    assert(!resumed.events.some((event) => event.type === "sale"),
+      "Wholesale and restocking without a real checkout must not mint sales");
   }
 });
 
@@ -155,7 +157,13 @@ test("rejects malformed envelopes and incompatible versions without migrations",
 });
 
 test("checks event-specific outcome, prices, quantities, links and chronology", () => {
-  let state = advanceDay(createGameState()).state;
+  const initial=createGameState(7351);
+  const buyer=initial.adventurers[0];
+  const ready={...initial,adventurers:initial.adventurers.map(hero=>
+    hero.id===buyer.id?{...hero,gold:100,inventory:{...hero.inventory,bread:0,healing:0}}:hero)};
+  const quote=quoteCustomerCheckout(ready,buyer.id);
+  assert(quote,"Fixture must contain a real checkout");
+  let state=advanceDay(checkoutCustomer(ready,quote).state).state;
   const mutateEvent = (type: string, mutate: (event: any) => void, message: RegExp) => {
     const envelope = JSON.parse(encoded(state));
     const event = envelope.payload.events.find((event: any) => event.type === type);

@@ -2,7 +2,7 @@ import type { GameStore } from "./game/gameStore.ts";
 import { currentDayReceipts } from "./game/saleView.ts";
 import {itemIcon,goldIcon} from "./uiIcons.ts";
 
-/** Live, replay-safe display of sales already booked by the global day tick. */
+/** Live receipt projection of actual committed payments, never phantom bedtime trades. */
 export function setupSalesHud(store: GameStore): void {
   const banner = document.querySelector<HTMLElement>("#sales-banner")!;
   const summary = document.querySelector<HTMLElement>("#sales-ledger-summary")!;
@@ -42,6 +42,18 @@ export function setupSalesHud(store: GameStore): void {
       list.append(note);
     }
   }
-  store.subscribe(render);
-  render();
+  let priorDay=0;
+  let priorEvents:typeof store.state.events|null=null;
+  let priorSales:typeof store.state.shopEconomy.dailySales|null=null;
+  const updateReceipts=()=>{
+    const state=store.state;
+    if(state.day===priorDay&&state.events===priorEvents&&
+       state.shopEconomy.dailySales===priorSales)return;
+    priorDay=state.day;
+    priorEvents=state.events;
+    priorSales=state.shopEconomy.dailySales;
+    render();
+  };
+  store.subscribe(updateReceipts);
+  updateReceipts();
 }

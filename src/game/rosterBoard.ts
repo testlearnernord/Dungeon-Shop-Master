@@ -63,8 +63,11 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
     mesh.computeWorldMatrix(true);
     mesh.setParent(root);
   }
+  let lastPlacement:typeof store.state.rosterBoard|null=null;
   const syncPlacement=()=>{
     const p=store.state.rosterBoard;
+    if(p===lastPlacement)return;
+    lastPlacement=p;
     root.position.set(p.x,0,p.z);
     // The original plane faces into the shop at rotation PI (turn 2).
     root.rotation.y=(p.rotation-2)*Math.PI/2;
@@ -146,7 +149,19 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
     ctx.fillText("PRESS E / R FOR MEMBERS", 686,605);
     texture.update();
   }
-  store.subscribe(draw);
-  draw();
+  let previousDay=0;
+  let previousHeroes:typeof store.state.adventurers|null=null;
+  let previousParties:typeof store.state.dungeonParties|null=null;
+  const redrawOnContentChange=()=>{
+    const state=store.state;
+    if(state.day===previousDay&&state.adventurers===previousHeroes&&
+      state.dungeonParties===previousParties)return;
+    previousDay=state.day;
+    previousHeroes=state.adventurers;
+    previousParties=state.dungeonParties;
+    draw();
+  };
+  store.subscribe(redrawOnContentChange);
+  redrawOnContentChange();
   return { mesh: board };
 }

@@ -56,7 +56,7 @@ test("sleep alone closes a day; pending daytime events cannot be silently skippe
 
 test("new-version save round-trips scheduled event identity and resumes deterministically",()=>{
   let clock=createWorldClock();
-  clock=scheduleWorldEvent(clock,"visitor",3,"guest");
+  clock=scheduleWorldEvent(clock,"report",3,"guest");
   clock=scheduleWorldEvent(clock,"expedition",5,"hero");
   const before={...createGameState(23),worldClock:clock};
   const restored=parseSave(JSON.stringify(createSave(before)));
