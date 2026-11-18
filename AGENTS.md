@@ -41,6 +41,19 @@
   (a temporary new design gate, not today's `level6Permit`). Do not
   reinstate the rejected long backtrack, mandatory five-floor shops,
   two-door topology or an invented escape rope as accepted scope.
+- **CURRENT unified encounter driver (after this PR):**
+  `combatEncounter.ts` is the **sole top-level 60-Hz
+  combat tick owner and immutable frame capture scheduler**
+  for `groupCombat.ts` and `arenaCombatMotion.ts`.
+  Encounter plugins supply canonical actors, environment,
+  projectiles, terminal outcome and saved cues; signature
+  Troll grip/lift/throw/flight remain actor-specific
+  effects, not separate fight loops. Never reintroduce
+  an independent boss clock, standalone outcome resolver,
+  replay capture loop or view-triggered RNG. Group and
+  boss-specific actor state representations are still
+  distinct; further changes must consolidate them
+  without corrupting v1 replays.
 - **CURRENT combat tactics/projectile authority (after this PR):**
   `combatTactics.ts` is the only decision layer for
   living enemy target selection, reach/line-of-sight attack
@@ -51,9 +64,9 @@
   Keep opponent-only projectile targets and deterministic
   ties. Don't reintroduce per-viewer target RNG, point-only
   projectile collision, or a separate attack-selection
-  table. The Boss's special grab/throw effects and high-level
-  stepper remain deliberately separate pending final
-  group-capable unification.
+  table. The Boss's special grab/throw effects remain
+  actor-specific callbacks within the shared encounter
+  pipeline, pending unified actor state modeling.
 - **CURRENT actor runtime shared across group and Troll combat (after
   this PR):** `combatMovement.ts` is the only combat position
   integrator and `combatActionClock.ts` is the only once-per-tick
@@ -63,7 +76,8 @@
   contact-window timers in a third boss/monster renderer; preserve
   the Troll's fixed-tick grab/throw and existing replay frames.
   Individual target-AI and special-boss effect policies are still
-  separate and require a future full encounter-loop unification.
+  registered with the shared encounter driver; only their
+  actor-specific state/ability policies await final unification.
 - **CURRENT shared melee attack contract (after this PR):**
   `combatMelee.ts` is the sole authority for hit arcs, reach,
   line-of-sight rejection, roll windows and facing-based parry,
@@ -74,7 +88,8 @@
   `meleeAbility` is strict-save validated. Troll grab/throw
   remains an animation-compatible boss-specific action after
   shared contact, and its original v1 recordings must never be
-  regenerated. The boss **motion scheduler** is still separate.
+  regenerated. The top-level scheduler is now unified,
+  but the Boss grip/flight actor phases remain specialized.
 - **CURRENT shared combat vitality (after this PR):**
   `src/game/combatVitality.ts` owns HP hit/mitigation/healing
   arithmetic and item heal constants for the ordinary and Troll

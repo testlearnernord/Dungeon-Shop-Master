@@ -29,13 +29,14 @@ spends actual Herbs at 18 HP; its separate role-healer magic action
 retains 25 HP where that resource exists. Non-item heal effects should
 be modeled as distinct class abilities rather than free item stock.
 
-**Still not unified:** `groupCombat.ts` and the boss-specific
-`arenaCombatMotion.ts` currently own separate motion/ability phase
-drivers and separate immutable v1 replay shapes. Refactoring the latter
-onto one group-capable encounter stepper while retaining grab/throw,
-Tripo playback and historical replays remains pending. Shared
-HP arithmetic is an incremental integration, not permission to
-instantiate a third combat resolver.
+**Shared encounter pipeline:** `groupCombat.ts` and
+`arenaCombatMotion.ts` retain different **actor-specific phase
+representations** and immutable v1 replay *schemas*, but both now
+register their actor updates, projectiles and outcome mapping
+with `combatEncounter.ts`. Their frame capture loops are also
+centralized. Troll grab/throw remains an encounter-specific ability
+callback; the remaining migration is a universal actor/ability
+state model, not another top-level fight clock.
 
 ## Implemented shared melee ability authority (after this PR merges)
 
@@ -57,11 +58,10 @@ on saved `GroupCombatReplay` actors; old actor/replay records remain valid.
 
 The boss's **signature grab lift/throw, knockback, lava edge,
 presentation timing and historical replay shape remain preserved**.
-Its independent position/motion/ability scheduler is **not yet**
-combined with the group step loop. This is meaningful combat-rule
-convergence, **not final unified group-capable boss simulation**.
-A future integration must preserve the settled Tripo visuals and
-historical replays rather than rewriting successful fights.
+Its signature ability behavior is registered within the **shared
+encounter stepper**, while individual boss/grapple states remain
+distinct from generic `GroupActor` states. The remaining
+migration must retain settled Tripo visuals and old recordings.
 
 ## Shared actor locomotion and timed-action scheduler (CURRENT after this PR)
 
@@ -85,14 +85,12 @@ cannot trigger multiple strikes from repeated frame updates.
 Existing numerical contact times, GRAPPLE_TIMING and replay formats
 remain untouched.
 
-**Still distinct:** the Boss owns its **special-ability selection and
-grabbed/thrown trajectory/effects**; group combat owns multi-actor
-targeting, obstruction and projectile collision. Those policy
-differences are deliberate while the general encounter loop is
-consolidated, rather than replacing the functioning troll with a
-generic two-actor duel. A later PR must bring these into one
-configurable group-capable encounter stepper. This migration is
-not yet that final step.
+**Still distinct:** the Troll has its own grip/flight/throw
+ability states; ordinary parties use group-specific actor states,
+obstacles and team targeting. They now feed the **same encounter
+pipeline** but have not yet become a fully universal group-capable
+actor state/ability model. Preserve the working grapple and
+presentation timings when consolidating their state schemas.
 
 ## Shared combat AI and projectile resolution (CURRENT after this PR)
 
@@ -118,15 +116,42 @@ only opposing team members. The Boss no longer tests only
 a projectile's final 60 Hz point, so fast projectiles cannot
 miss a physically crossed hitbox.
 
-**Full encounter motor migration remains incomplete:** shared
-tactics, position integration, action timing, melee contact,
-projectiles, and HP are already authoritative common modules.
-The boss retains its distinctive captured/airborne state,
-grab/throw execution and separate replay-compatible
-60 Hz phase driver. Ordinary multi-actor targeting and
-boss-specific effect orchestration must ultimately feed
-one group-capable stepper instead of two top-level drivers.
-No historical replay is ever reconstructed or rerolled.
+**Encounter motor status:** common tactics, movement, melee,
+projectiles and HP are already implemented. Both live actor streams now
+register with the **same top-level encounter step and frame recorder**.
+Boss-specific caught/thrown state and differing actor state shapes remain
+explicit extension work; saved historical recordings never reroll.
+
+## Unified encounter step and recording authority (CURRENT after this PR)
+
+**`src/game/combatEncounter.ts` now owns the top-level 60-Hz fight
+pipeline** for *both* ordinary multi-actor dungeon encounters and the
+Cave Troll: advance the world clock once, prepare tactical environment,
+iterate real actors, commit projectiles, resolve HP/team outcome, then
+append recorded cues. The same bounded `recordCombatEncounter` loop
+captures both existing immutable **v1 group frames** (every six ticks)
+and **v1 boss frames** (every eight ticks with pending cinematic cues).
+
+`groupCombat.ts` registers its canonical actor array and encounter
+obstruction/AI functions. `arenaCombatMotion.ts` registers the same
+hero-then-boss actor sequence, arena hazards and authentic boss signature
+effects (grip, throw, flight, impact) as callbacks to this driver.
+The **shared team-liveness outcome** applies to arbitrary parties and
+to the single-hero boss, with the boss-specific victory/defeat labels
+mapped for its existing replay contract. The boss effect code **does not
+get replaced with a generic two-actor group duel**.
+
+The old independent top-level loops, winner checks and duplicated
+recording loops have been removed. Source/CI must verify that the exact
+troll contact timing, Tripo visual phase names, saved v1 recordings,
+legacy v13 save formats, and 60Hz determinism remain compatible.
+
+**What remains:** the group and boss still hold *different actor state
+representations*, threat interpretation and boss-only grip/throw
+capabilities. The top-level encounter driver is now shared, but a
+single extensible actor/ability state machine across arbitrary heroes
+and bosses is **not** yet implemented. Do not claim the entire V.003
+dungeon/shop/release scope is complete.
 
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
