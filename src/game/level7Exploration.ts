@@ -183,6 +183,8 @@ function fightAgainst(
       damage:6+Math.floor((hero.role==="healer"?hero.stats.intellect:
         hero.role==="DPS"?hero.stats.agility:hero.stats.strength)/2)+(sword?5:0),
       armor:hero.equipment.armor==="Leather Vest"?5:1,
+      equipment:{weapon:sword?"Iron Sword":null,
+        armor:hero.equipment.armor==="Leather Vest"?"Leather Vest":null},
       agility:hero.stats.agility,
       speed:hero.role==="tank"?2.5:3.1,reach:1.75,
       healCharges:Math.min(2,hero.inventory.healing),

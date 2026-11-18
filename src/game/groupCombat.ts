@@ -55,6 +55,11 @@ export interface CombatantSpec {
   readonly reach: number;
   readonly radius?: number;
   readonly healCharges?: number;
+  /** Historical purchased equipment in new replays; absent in old v1 footage. */
+  readonly equipment?: {
+    readonly weapon:"Iron Sword"|null;
+    readonly armor:"Leather Vest"|null;
+  };
   /** Optional telegraphed heavy strike; absent preserves historical ordinary attacks. */
   readonly meleeAbility?: "heavy";
   /** Boss archetype uses the SAME group motor, not a second boss duel. */
@@ -214,6 +219,11 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       (spec.specialAbility!=="grapple-throw" ||
         spec.team!=="monsters"||spec.style!=="melee"))
       throw new RangeError("Grapple ability requires a melee monster");
+    if(spec.equipment!==undefined && (spec.team!=="heroes"||
+      spec.role==="monster"||
+      ![null,"Iron Sword"].includes(spec.equipment.weapon)||
+      ![null,"Leather Vest"].includes(spec.equipment.armor)))
+      throw new RangeError("Historical combat gear must be owned hero equipment");
     const agility=spec.agility??10;
     validNumber(agility,0,1000,spec.id+".agility");
     if(spec.grappleDamage!==undefined && spec.specialAbility===undefined)
@@ -718,7 +728,8 @@ export function resolveGroupCombat(options: GroupCombatOptions, maxSeconds=45):
   if(state.outcome==="fighting")state.outcome="draw";
   return {state,replay:{
     version:1,
-    actors:options.actors.map(a=>({...a})),
+    actors:options.actors.map(a=>({...a,
+      ...(a.equipment?{equipment:{...a.equipment}}:{})})),
     bounds:{...options.bounds},
     obstacles:(options.obstacles??[]).map(o=>({...o})),
     frames,cues:[...state.events],

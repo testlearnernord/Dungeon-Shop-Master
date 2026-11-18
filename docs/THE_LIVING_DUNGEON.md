@@ -89,6 +89,9 @@ willing co-located heroes can travel together for one committed
 day on Floors 1–4/7 and genuinely fight the same encountered
 monster with their own HP/Herbs, a single shared world-site
 claim, finite split gold and individual saved replay POVs.
+New replay actor specs retain historical Iron Sword/Leather Vest
+ownership for every participant's 3D model, without looking up
+the current roster or changing previous v1 recordings.
 They make independent post-day decisions, so companions may
 separate naturally. There is no player-issued party command,
 second combat motor or retroactively invented loot.

@@ -228,7 +228,7 @@ function validateLevel7Replay(
       const a=item+".combat.actors["+j+"]",actor=object(rawActor,a,[
         "id","team","role","style","x","z","hp","maxHp","damage",
         "armor","speed","reach",
-      ],["radius","healCharges","meleeAbility","specialAbility","agility",
+      ],["radius","healCharges","equipment","meleeAbility","specialAbility","agility",
         "grappleDamage","staggerThreshold"]);
       if(actor.meleeAbility!==undefined)
         choice(actor.meleeAbility,["heavy"],a+".meleeAbility");
@@ -243,6 +243,13 @@ function validateLevel7Replay(
       const id=text(actor.id,a+".id");unique(id,actorIds,a+".id");
       choice(actor.team,["heroes","monsters"],a+".team");
       choice(actor.role,["tank","DPS","healer","monster"],a+".role");
+      if(actor.equipment!==undefined){
+        if(actor.team!=="heroes"||actor.role==="monster")
+          fail(a+".equipment","is valid only for real hero combatants");
+        const gear=object(actor.equipment,a+".equipment",["weapon","armor"]);
+        choice(gear.weapon,[null,"Iron Sword"],a+".equipment.weapon");
+        choice(gear.armor,[null,"Leather Vest"],a+".equipment.armor");
+      }
       if(actor.team==="monsters"){
         monsterCount++;
         if(id!==feature.id||actor.role!=="monster")
