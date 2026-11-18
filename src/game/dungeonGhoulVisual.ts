@@ -1,6 +1,5 @@
 import {AnimationGroup} from "@babylonjs/core/Animations/animationGroup";
 import {Material} from "@babylonjs/core/Materials/material";
-import {Vector3} from "@babylonjs/core/Maths/math.vector";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
 import {Scene} from "@babylonjs/core/scene";
 import {loadAssetContainerAsync} from "@babylonjs/core/Loading/sceneLoader";
@@ -51,6 +50,7 @@ export function createDungeonGhoulVisual(scene:Scene,id:string):GhoulVisual{
   const root=new TransformNode("dungeon-ghoul-"+id,scene);
   root.metadata={replayOnly:true,recordedActorId:id,
     visualId:"tripo-ghoul",tripoStatus:"loading",animationClip:null};
+  root.setEnabled(false);
   let container:AssetContainer|null=null;
   let clips:AnimationGroup[]=[];
   let active:AnimationGroup|null=null;
