@@ -264,11 +264,14 @@ HP and one loaf of Waybread, yet he's heading into Floor 6." Therefore:
 
 | Hero | Morning | Midday | Evening | Readable gear |
 | --- | --- | --- | --- | --- |
-| Bram, Lv 6, 42/55 HP | F5 shopping | F6 fighting | F7 progressing | Sword, vest, Herbs ×2 |
-| Finn, Lv 4, 19/45 HP | F6 farming | F7 discovering | F7 fleeing | **No sword**, **no armor**, Bread ×1 |
-| Eira, Lv 5, 38/43 HP | F5 shopping | F6 grouping | F6 recovering | Vest, Herb ×1, Mana ×2 |
+| Bram, Lv 6, 42/55 HP | F6 fighting | F6 ascending | At cursed shop | Sword, vest, Herbs ×2 |
+| Finn, Lv 4, 19/45 HP | F7 farming | F8 discovering | F8 fleeing | **No sword**, **no armor**, Bread ×1 |
+| Eira, Lv 5, 38/43 HP | Off duty | Off duty | Off duty | Vest, Herb ×1, Mana ×2 |
 
 The table is a target **shape**, not three simulated example outcomes.
+"At cursed shop" is a **special-floor state**, never a numbered F5 tile;
+"off duty" is a complete day outside both dungeon and shop. Actual labels
+must honor the three committed phase snapshots and protected knowledge.
 
 ## First chapter, cursed shop instance and one entrance
 
