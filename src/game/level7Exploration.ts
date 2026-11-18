@@ -66,6 +66,13 @@ export interface Level7Replay {
   readonly resolvedAtStart?: readonly string[];
   /** Companions who ACTUALLY shared this historical expedition day. */
   readonly partyMemberIds?: readonly string[];
+  /** Each participant's authentic appearance at expedition commitment.
+   * Optional in old v1 tapes; never reconstructed from today's mutable roster. */
+  readonly partyAppearances?: readonly {
+    readonly id:string;
+    readonly role:AdventurerState["role"];
+    readonly equipment:AdventurerState["equipment"];
+  }[];
   readonly steps: readonly Level7ReplayStep[];
   readonly encounters: readonly Level7ReplayEncounter[];
   readonly outcome: Level7Outcome;
@@ -472,7 +479,12 @@ export function simulateSpatialDungeonPartyDay(
       appearance:{role:m.hero.role,equipment:{...m.hero.equipment}},
       knownAtStart:[...m.progress.visited],
       resolvedAtStart:[...refreshed.resolvedFeatureIds],
-      ...(party.length>1?{partyMemberIds:party.map(hero=>hero.id)}:{}),
+      ...(party.length>1?{
+        partyMemberIds:party.map(hero=>hero.id),
+        partyAppearances:party.map(hero=>({
+          id:hero.id,role:hero.role,equipment:{...hero.equipment},
+        })),
+      }:{}),
       steps:m.steps,encounters,outcome:personalOutcome,
     };
     return {adventurer,replay,

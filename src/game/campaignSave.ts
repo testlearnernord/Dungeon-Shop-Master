@@ -150,7 +150,7 @@ function validateLevel7Replay(
 ): void {
   const record=object(raw,path,[
     "version","day","heroId","floor","appearance","steps","encounters","outcome",
-  ],["knownAtStart","resolvedAtStart","partyMemberIds"]);
+  ],["knownAtStart","resolvedAtStart","partyMemberIds","partyAppearances"]);
   if(record.version!==1||record.floor!==expectedFloor||
      record.day!==day||record.heroId!==heroId)
     fail(path,"must match event day, hero and dungeon floor");
@@ -175,6 +175,34 @@ function validateLevel7Replay(
     });
     if(!seenMembers.has(heroId))
       fail(path+".partyMemberIds","must include this replay hero");
+  }
+  // New v1 footage can independently dress all actual co-travellers,
+  // including days without any battle. Historical party IDs, not the
+  // current roster, are the only authority for these visuals.
+  if(record.partyAppearances!==undefined){
+    if(record.partyMemberIds===undefined)
+      fail(path+".partyAppearances","requires recorded party membership");
+    const members=array(record.partyAppearances,path+".partyAppearances");
+    const ids=array(record.partyMemberIds,path+".partyMemberIds");
+    if(members.length!==ids.length)
+      fail(path+".partyAppearances","must describe every recorded member");
+    const seen=new Set<string|number>();
+    members.forEach((rawMember,i)=>{
+      const memberPath=path+".partyAppearances["+i+"]";
+      const member=object(rawMember,memberPath,["id","role","equipment"]);
+      const id=text(member.id,memberPath+".id");
+      if(id!==ids[i])fail(memberPath+".id","must match historical member order");
+      unique(id,seen,memberPath+".id");
+      choice(member.role,["tank","DPS","healer"],memberPath+".role");
+      const worn=object(member.equipment,memberPath+".equipment",
+        ["weapon","armor"]);
+      choice(worn.weapon,[null,"Iron Sword"],memberPath+".equipment.weapon");
+      choice(worn.armor,[null,"Leather Vest"],memberPath+".equipment.armor");
+      if(id===heroId&&(
+        member.role!==appearance.role||
+        worn.weapon!==gear.weapon||worn.armor!==gear.armor))
+        fail(memberPath,"must match replay hero's own recorded appearance");
+    });
   }
   const map=generateExpeditionLayout(campaignSeed,expectedFloor);
   const features=new Map(map.features.map(feature=>[feature.id,feature]));
@@ -713,7 +741,7 @@ function validateState(value: unknown): asserts value is GameState {
         allowed.push("dungeonReplay");
         const replay=object(event.dungeonReplay,path+".dungeonReplay",[
           "version","day","heroId","floor","appearance","steps","encounters","outcome",
-        ],["knownAtStart","resolvedAtStart","partyMemberIds"]);
+        ],["knownAtStart","resolvedAtStart","partyMemberIds","partyAppearances"]);
         const floor=integer(replay.floor,path+".dungeonReplay.floor",1,4);
         validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
           event.adventurerId as string,eventDay,campaignSeed,floor,heroIds);

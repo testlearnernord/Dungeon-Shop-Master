@@ -112,9 +112,19 @@
   the optional field. **Temporary Party** is the canonical player-facing
   name. Current groups use one numbered TP marker on the physical board
   (legend identifies it) and full member names in the R roster.
-  New group footage optionally saves immutable `partyMemberIds` for
-  its real co-travelers; the dungeon spectator shows those historical
-  names and TAB focus without querying today's changed group.
+  New group footage saves immutable `partyMemberIds` plus optional
+  `partyAppearances` with the actual role and equipped goods for EVERY
+  traveler, including a monster-free walk. In the dungeon spectator
+  `dungeonPartyFormation.ts` arranges these real historical co-travelers
+  within the same recorded tile with small stable cosmetic offsets,
+  animated shared walking and matching gold TP ground rings. During
+  combat the TRUE captured fighter positions and phases take priority;
+  after a recorded casualty the dead character must not resume walking.
+  Both the 3D scene and TAB follow work during ordinary travel, not only
+  during fights. No second path, encounter, RNG, collision or save-version
+  migration. Earlier recordings lacking these optional appearance
+  snapshots may show companions only when historically recorded combat
+  metadata exists, never from today's changed roster.
   `temporaryPartyChanges` detects actual joins/leaves from previous
   relationships, shared committed expeditions and settled groups,
   once per member/action on a confirmed day; steady groups add no

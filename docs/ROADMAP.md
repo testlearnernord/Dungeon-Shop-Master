@@ -139,6 +139,17 @@ old v1 fights without snapshots remain visually neutral. Site regeneration,
 loot and finite gold apply once; strict v13 save validation
 accepts the real saved group cast.
 
+**Visible Temporary Party formation during travel (after this PR):**
+New saved group expeditions preserve each companion's actual
+historical role and gear, including monster-free journeys.
+Their 3D models now visibly walk and turn together along the
+ONE recorded physical route, wearing matching Temporary Party
+ground rings. Purely cosmetic offsets stay inside the shared tile;
+actual battle frames always take control in fights and recorded
+dead characters never reappear walking. TAB can follow a companion
+outside combat. Old v1 records without visual snapshots remain
+readable without fabricating gear or monsters.
+
 **Temporary Party presentation and feed (after this PR):**
 Real saved relationships are clearly named **Temporary Party**
 throughout the physical Adventurer Board (one matching numbered

@@ -100,6 +100,13 @@ The repository currently implements:
   the R roster. Historical dungeon recordings store the exact
   temporary co-travelers and show them with TAB focus; loading
   a later campaign state never rewrites who traveled together.
+  Those companions now appear as real individual hero figures
+  during every recorded shared dungeon walk, with a subtle matching
+  gold Temporary Party ring. Their historical roles and merchant
+  equipment are captured when the expedition starts, even when
+  no monster is encountered. Only visual offsets within the same
+  recorded tile separate the figures; a real combat always uses
+  the individually recorded frame positions, including deaths.
   Confirmed group formations, changes and separations create real
   join/leave Dungeon-feed events once per affected member, without
   revealing unreplayed battle outcomes or spamming stable groups. Expanding the real
