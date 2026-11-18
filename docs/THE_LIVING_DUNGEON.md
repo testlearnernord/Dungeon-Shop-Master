@@ -92,13 +92,17 @@ claim, finite split gold and individual saved replay POVs.
 New replay actor specs retain historical Iron Sword/Leather Vest
 ownership for every participant's 3D model, without looking up
 the current roster or changing previous v1 recordings.
-They make independent post-day decisions, so companions may
-separate naturally. There is no player-issued party command,
-second combat motor or retroactively invented loot.
+An optional saved relationship now retains willing co-located
+groups across several days and *unanimous* already-supported
+floor transitions, provided all surviving members still share a
+genuine destination tile. They independently choose strategy;
+separation, dissent, shop departure and casualty may dissolve
+the group. No player-issued party command, second combat motor,
+fabricated teleport, duplicated treasure or new save version.
+The current physical Adventurer Board displays saved party sizes.
 
-**Not implemented:** persistent multi-day autonomous parties,
-coordinated floor transitions or party-vs-unique-Troll encounters
-and shared party loot/HP settlement, fully general status/
+**Not implemented:** long-term party negotiation/leadership,
+party-vs-unique-Troll campaign encounters, fully general status/
 ability effects, dungeon Floors 8–10, cursed out-of-number
 shop entrance, two-day hero standby, full Morning/Midday/
 Evening world snapshots or Adventurer Board 2.0.
