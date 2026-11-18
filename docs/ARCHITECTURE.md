@@ -418,8 +418,8 @@ The redesign must preserve one deterministic GameState authority and introduce:
   after standby is a new expedition with a safe anchor TBD.
 - **Medium-term hero goals** (safe farming, testing new gear, reckless
   progression, regroup/recover) bias navigation and shopping needs;
-  these are distinct from short-term floor direction and observed
-  actions in Morning/Midday/Evening snapshot events.
+  these are distinct from short-term floor direction and time-ordered,
+  genuinely reported observed actions in the shared event ledger.
 - **Floor 10 is gated per hero** by Galvik's granted pass until later
   redesign. Current `level6Permit` is V.002-only behavior and must be
   explicitly refactored/migrated; neither XP alone nor an ordinary floor
