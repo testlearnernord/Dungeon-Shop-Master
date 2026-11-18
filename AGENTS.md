@@ -28,6 +28,19 @@
 - Furniture previews are non-mutating; committed placement must preserve customer route/service access and movable interaction targets. The visible highlight must reflect the actual model, not the wider required pedestrian clearance. Temporary checkout, shelf, stockout/credit and idle destinations are exclusively reserved via `ShopServiceSpots`; candidate generators must not grow their own reservation APIs or fixed starter-cave waiting tables and invalidated on geometry updates; switching roles releases the former shelf claim. Reuse `createShopRoutePlanner` only within one immutable layout/room batch, never across edits or for moving NPC occupancy. The register is operated only from its staff docking side; customer queues use a separate facing socket. For U mining, retain original stonework until excavated, and validate P placement on a genuinely dug, sufficiently large floor in a real browser regression.
 - Source currently uses TypeScript/Vite/Babylon.js and strict save/version validation. Do not introduce an engine rewrite or save migration without a reason and current owner decision.
 - **Shop service is grounded in real transactions.** `shopServiceFocus.ts`, `shopHudLayout.ts` and crosshair hints are read-only presentations. F selects the most urgent *live* restock item in the existing hotbar; it never buys, reserves or stocks goods automatically. Cashier collection uses the real `payReservedCart` path after physical front-of-line/staff-side validation. The alternative quote-based `GameStore.checkout` API remains in the code; do not confuse it with the player's current register or delete it without investigating callers/tests.
+- **V.0003 planned shop transition is NOT a Floor-5 route.**
+  The agreed design moves Galvik's sole persistent shop onto a cursed
+  special floor outside dungeon numbering. Replace the current Floor 4
+  and Floor 6 physical entrances with ONE portal for both directions.
+  At any dungeon depth, a hero deciding to ascend can instead abort
+  to that shop. After physically leaving the shop, mark **two full game
+  days off duty** in neither shop nor dungeon; later reentry anchor is
+  still a balance decision. Short-term stay/up/down and medium-term
+  farming/progress/gear-test/caution intentions must remain distinguishable.
+  Floor 10 is blocked until an individual hero receives Galvik's pass
+  (a temporary new design gate, not today's `level6Permit`). Do not
+  reinstate the rejected long backtrack, mandatory five-floor shops,
+  two-door topology or an invented escape rope as accepted scope.
 - **V.0003 is a target, not current gameplay.** The playable in-game label is still V.002 ALPHA; npm package version `0.1.0` is independent. The Living Dungeon is the approved direction (shared seeded expedition world, actual shop-item causality and a three-phase, HP/equipment-visible Adventurer Board). No new time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from the design document. Protect old Floor 6/7 recordings and existing version-13 saves during staged migrations.
 - **Story causality remains OPEN.** The young hero, mercenary leader, transfer of the curse, Floor 100 and Galvik's eventual role are not final canon. The earlier **amulet mechanic is removed from the current design direction**, not an OPEN prerequisite; do not reintroduce it by accident. Short cynical Galvik-as-commentator sketches are likewise not a locked protagonist transition.
 
