@@ -122,7 +122,7 @@ without that optional v1 field stay deliberately neutral. On Floor 7, some room 
 respawn generations become armored heavy-strike elites. Their real HP,
 defenses, rewards and frame data come from the existing encounter engine;
 the unique Cave Troll's grapple/throw is reserved for authored bosses and
-v13 saved replays. Real solo heroes and co-located parties can encounter these ordinary renewable elites; they are neither the unique Cave Troll nor a new floor gate.
+saved dungeon replays. Real solo heroes and co-located parties can encounter these ordinary renewable elites; they are neither the unique Cave Troll nor a new floor gate.
 
 **Co-located hero parties (after this PR merges):**
 During a committed dungeon day, up to three willing heroes who already
@@ -165,7 +165,7 @@ An expedition now records up to 36 actual connected moves and two
 separate real encounters instead of ending automatically at the first
 won battle. A real defeat, unsafe lack of supplies or inaccessible
 route can still end the tape early. Older v1 records remain playable
-with the unchanged v13 save structure; no filler frames are added.
+with the unchanged combat replay schema; the outer campaign save is now v14. No filler frames are added.
 The physical Adventurer Board now shows empty/owned W/A equipment
 slots plus numeric HP. Its chronological event/last-reported timeline
 remains a target, not three mandatory day phases.
@@ -298,17 +298,18 @@ Prefer focused additional coverage over inflating the default CI.
 
 ### Saves and compatibility
 
-**Current V.002:** `SIMULATION_VERSION = 13` in
-`src/game/gameState.ts`. The present build still validates its saved
-campaigns and can reject earlier partial/giant-shelf formats.
+**Current playable V.002, world-clock foundation #201:** `SIMULATION_VERSION = 14`
+in `src/game/gameState.ts`. A new campaign now persists a monotonic
+in-game minute tick and a deterministically ordered future-event queue.
+Old alpha/v13 campaigns are deliberately **incompatible** and preserved
+when load fails; start a fresh campaign or import a v14 save. No migration
+adapter is supplied.
 
-**Future V.003:** the owner has explicitly waived backward
-compatibility with older alpha campaigns. The shared-clock cutover
-may require one fresh campaign with a clean new versioned format,
-not v13-to-v14 conversion adapters or a second simulation motor.
-Old stored data must be reported as incompatible rather than
-silently misinterpreted. Deterministic **new-version** save/resume,
-exactly-once payouts and correct cash/HP remain non-negotiable.
+**Still planned for V.003:** shop customer timers, dungeon expeditions and
+night skipping must migrate onto the saved clock. The current dungeon
+continues to resolve during the bed-based day transaction, so the clock
+foundation is **not yet** a live parallel dungeon. Deterministic v14
+save/resume, exactly-once payouts and correct gold/HP remain mandatory.
 
 ## Where to code
 
