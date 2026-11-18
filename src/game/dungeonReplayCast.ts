@@ -52,12 +52,18 @@ export function recordedTemporaryPartyVisuals(
   for(const id of ids){
     if(id===replay.heroId){
       projected.push({id,role:replay.appearance.role,
-        equipment:{...replay.appearance.equipment}});
+        equipment:{
+          weapon:replay.appearance.equipment.weapon==="Iron Sword"?"Iron Sword":null,
+          armor:replay.appearance.equipment.armor==="Leather Vest"?"Leather Vest":null,
+        }});
       continue;
     }
     const snap=fromStart.get(id);
     if(snap){
-      projected.push({id,role:snap.role,equipment:{...snap.equipment}});
+      projected.push({id,role:snap.role,equipment:{
+        weapon:snap.equipment.weapon==="Iron Sword"?"Iron Sword":null,
+        armor:snap.equipment.armor==="Leather Vest"?"Leather Vest":null,
+      }});
       continue;
     }
     const fighter=fromCombat.get(id);
