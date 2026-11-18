@@ -1,9 +1,10 @@
 import type { Point2 } from "./combatGeometry.ts";
 import { combatHeading, moveCombatant } from "./combatMovement.ts";
+import { tickCombatCooldown, type CombatActionWindow } from "./combatActionClock.ts";
 import {
-  tickCombatAction, tickCombatCooldown, regenerateCombatStamina,
-  type CombatActionWindow,
-} from "./combatActionClock.ts";
+  enterCombatActorPhase, advanceCombatActorPhase,
+  refreshCombatActorResources, type CombatActorRuntime,
+} from "./combatActor.ts";
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
@@ -139,12 +140,49 @@ export function createCombatPreview(options: CombatPreviewOptions): CombatPrevie
     landedHits: 0, missedHits: 0,
   };
 }
-function beginHero(s: CombatPreviewState, phase: ActorPhase): void {
-  s.heroPhase = phase; s.heroAge = 0; s.heroApplied = false;
+/**
+ * A pair of LIVE views over the one committed boss-combat state.
+ * No parallel HP, stamina, position or phase variables are created:
+ * writing to either actor mutates the original flat v1 state fields.
+ * Historical v1 replay frames and Tripo phase names stay unchanged.
+ */
+export function bossEncounterActors(s:CombatPreviewState):readonly [
+  CombatActorRuntime<ActorPhase>,
+  CombatActorRuntime<BossPhase>,
+] {
+  const hero:CombatActorRuntime<ActorPhase>={
+    id:"hero",team:"heroes",maxHp:s.options.maxHealth,
+    get x(){return s.hero.x;},set x(v){s.hero.x=v;},
+    get z(){return s.hero.z;},set z(v){s.hero.z=v;},
+    get hp(){return s.heroHp;},set hp(v){s.heroHp=v;},
+    get stamina(){return s.stamina;},set stamina(v){s.stamina=v;},
+    get heading(){return s.heroHeading;},set heading(v){s.heroHeading=v;},
+    get phase(){return s.heroPhase;},set phase(v){s.heroPhase=v;},
+    get phaseAge(){return s.heroAge;},set phaseAge(v){s.heroAge=v;},
+    get cooldown(){return s.heroCooldown;},set cooldown(v){s.heroCooldown=v;},
+    get applied(){return s.heroApplied;},set applied(v){s.heroApplied=v;},
+  };
+  const boss:CombatActorRuntime<BossPhase>={
+    id:"cave-troll",team:"monsters",maxHp:BOSS_MAX_HP,
+    get x(){return s.boss.x;},set x(v){s.boss.x=v;},
+    get z(){return s.boss.z;},set z(v){s.boss.z=v;},
+    get hp(){return s.bossHp;},set hp(v){s.bossHp=v;},
+    get stamina(){return s.bossStamina;},set stamina(v){s.bossStamina=v;},
+    get heading(){return s.bossHeading;},set heading(v){s.bossHeading=v;},
+    get phase(){return s.bossPhase;},set phase(v){s.bossPhase=v;},
+    get phaseAge(){return s.bossAge;},set phaseAge(v){s.bossAge=v;},
+    get cooldown(){return s.bossCooldown;},set cooldown(v){s.bossCooldown=v;},
+    get applied(){return s.bossDamageApplied;},
+    set applied(v){s.bossDamageApplied=v;},
+  };
+  return [hero,boss];
 }
-function beginBoss(s: CombatPreviewState, phase: BossPhase): void {
-  s.bossPhase = phase; s.bossAge = 0;
-  s.bossDamageApplied = false;
+
+function beginHero(s:CombatPreviewState, phase:ActorPhase):void {
+  enterCombatActorPhase(bossEncounterActors(s)[0],phase);
+}
+function beginBoss(s:CombatPreviewState, phase:BossPhase):void {
+  enterCombatActorPhase(bossEncounterActors(s)[1],phase);
 }
 function clampToRadius(point: Point2, radius: number): void {
   const result=moveCombatant(point,{x:0,z:0},{kind:"circle",radius});
@@ -367,8 +405,7 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
   else if(s.heroPhase==="parry")window={completeAt:0.52};
   else if(s.heroPhase==="hurt")window={completeAt:0.33};
   else if(s.heroPhase==="thrown")window={completeAt:GRAPPLE_TIMING.flight};
-  const tick=tickCombatAction(s.heroAge,dt,s.heroApplied,window);
-  s.heroAge=tick.age;
+  const tick=advanceCombatActorPhase(bossEncounterActors(s)[0],dt,window);
   if (s.heroPhase === "grabbed") {
     s.hero.x=s.boss.x+Math.sin(s.lockedBossHeading)*2.15;
     s.hero.z=s.boss.z+Math.cos(s.lockedBossHeading)*2.15;
@@ -442,8 +479,7 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
   }else if(s.bossPhase==="stagger"){
     window={completeAt:1.6};
   }
-  const tick=tickCombatAction(s.bossAge,dt,s.bossDamageApplied,window);
-  s.bossAge=tick.age;
+  const tick=advanceCombatActorPhase(bossEncounterActors(s)[1],dt,window);
   if (s.bossPhase === "dead") return;
   if (s.bossPhase === "chase") {
     // The target registry is the same one used by multi-actor fights.
@@ -570,8 +606,7 @@ const BOSS_PIPELINE:EncounterPipeline<
     // Apply bounded fire damage once and move back inside, rather than
     // instantly wiping a perfectly healthy adventurer on the next step.
     if (Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
-    s.stamina=regenerateCombatStamina(s.stamina,dt,18);
-    s.heroCooldown=tickCombatCooldown(s.heroCooldown,dt);
+    refreshCombatActorResources(bossEncounterActors(s)[0],dt,18);
     s.heroHeading = combatHeading(s.hero, s.boss);
     if (s.heroPhase === "move") {
       const distance = dist(s.hero, s.boss);
@@ -624,9 +659,9 @@ const BOSS_PIPELINE:EncounterPipeline<
       if (s.heroPhase === "move") maintainSpacing(s, dt);
     }
   },
-  actors:()=>["hero","boss"],
+  actors:state=>bossEncounterActors(state),
   updateActor:(s,actor,dt)=>{
-    if(actor==="hero")progressHeroAction(s,dt);
+    if(actor.team==="heroes")progressHeroAction(s,dt);
     else progressBossAction(s,dt);
   },
   projectiles:(s,dt)=>progressProjectiles(s,dt),
@@ -634,9 +669,7 @@ const BOSS_PIPELINE:EncounterPipeline<
     // Emergency guard for non-navigation motion added by future mechanics.
     if (s.heroPhase!=="thrown" &&
         Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
-    const winner=encounterTeamOutcome([
-      {team:"heroes",hp:s.heroHp},{team:"monsters",hp:s.bossHp},
-    ]);
+    const winner=encounterTeamOutcome(bossEncounterActors(s));
     if(winner==="monsters"||winner==="draw"){
       s.outcome="defeat";s.heroPhase="dead";
       s.cues.push({kind:"defeat"});
