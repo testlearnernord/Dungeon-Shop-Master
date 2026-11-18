@@ -13,7 +13,14 @@
 - **PR #201 world-clock foundation:** version-14 campaigns save an integer
   world minute and future-event queue. Foreground unblocked shop play advances
   that clock; sleep alone moves to the following day. Physical customer
-  timers and expedition commits still require the #202/#203 migration.
+  timers and expedition commits require the #202/#203 migration.
+
+- **PR #202 in progress (partial, not release accepted):** customer
+  restock/credit request deadlines and no-sale walkouts now use the saved
+  world tick, future-event queue and strict save validation. Modal/planning
+  pauses freeze physical traffic. Finish migration of customer motion,
+  shopping and checkout decisions and remove legacy day-close auto-trade
+  before marking the full shop-simulation milestone complete.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,

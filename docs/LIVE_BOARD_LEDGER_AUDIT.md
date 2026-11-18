@@ -98,7 +98,10 @@ The owner does **not** require preserving old alpha saves. PR #201 has
 already raised `SIMULATION_VERSION` to 14 and established a **fresh
 campaign boundary** with a persisted tick and strict future-event queue.
 Older v13 saves are explicitly rejected and preserved, not migrated.
-The shop/dungeon day-batch motor remains transitional until #202/#203,
+PR #202 migrates time-limited customer petitions to persisted
+world events and commits their unpaid walkouts once, but shopper locomotion,
+checkout and legacy bedtime auto-trading remain transitional. The full
+shop/dungeon day-batch motor remains pending #202/#203,
 not an approved second permanent simulation authority. Do not implement
 v13→v14 conversion, deprecated fields, dual day motors or old four-folio
 session recovery merely to retain experimental saves.

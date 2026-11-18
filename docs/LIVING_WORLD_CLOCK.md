@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design; PR #201 clock foundation, live gameplay still pending · 2026-11-18.**
+> **Approved design; PR #201 clock and PR #202 petition migration, full live shop/dungeon still pending · 2026-11-18.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -146,8 +146,11 @@ interactions, and replay viewing already reads immutable committed
 recordings. PR #201 introduces the persisted tick, deterministic future event
 scheduler, foreground pacing and strict version-14 save break. The existing
 `advanceDay()` still computes dungeon expeditions at bedtime; physical
-customer timers remain real-time until PR #202. Clock foundation is NOT
-yet a live parallel shop/dungeon simulation.
+restock/credit request deadlines and expiry walkouts are migrated in
+PR #202 to saved future `visitor` events with strict schema validation.
+Babylon NPC locomotion, browsing/checkout waits, stock pickups and the
+legacy bedtime auto-trade still need migration; the foundation is NOT yet
+a live deterministic shop or parallel live dungeon simulation.
 
 **Required migration strategy**:
 

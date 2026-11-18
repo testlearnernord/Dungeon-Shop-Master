@@ -395,8 +395,18 @@ The redesign must preserve one deterministic GameState authority and introduce:
   bed-only day boundary. `worldClockPacer.ts` converts foreground frame
   elapsed time into whole ticks without becoming a simulation authority.
   `GameStore.advanceWorldTime` commits the clock. The old `advanceDay`
-  dungeon resolver still runs at bed until PR #203; customer timers migrate
-  in #202. This is NOT parallel live dungeon simulation yet.
+  dungeon resolver still runs at bed until PR #203. PR #202 moves **customer
+  petition deadlines** to `shopRuntime.ts`: one scheduled `visitor` event
+  per waiting customer and real time-stamped walkout, persisted alongside
+  `GameState.shopRequests` and validated in `campaignSave.ts`. Stock or
+  credit changes cancel obsolete requests; restocking cannot restart a
+  countdown. `GameStore.endDay` fast-forwards due petitions through the
+  same event executor before closing. `NpcVisualSystem` reads remaining
+  ticks and freezes during modal/planning/hidden-tab pause.
+  **Remaining:** customer movement, path state, browsing/checkout waits and
+  pickup decisions still occur in Babylon render frames; bedtime still
+  contains the legacy automatic trade and dungeon batch. This is NOT a
+  completed, deterministic physical-shop migration or a live dungeon.
   The full migration must unify active shop/customer timers, dungeon/party
   events and site cooldowns
   on one deterministic saved in-game timeline. Use bounded event advances,
