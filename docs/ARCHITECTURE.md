@@ -118,15 +118,42 @@ only opposing team members. The Boss no longer tests only
 a projectile's final 60 Hz point, so fast projectiles cannot
 miss a physically crossed hitbox.
 
-**Full encounter motor migration remains incomplete:** shared
-tactics, position integration, action timing, melee contact,
-projectiles, and HP are already authoritative common modules.
-The boss retains its distinctive captured/airborne state,
-grab/throw execution and separate replay-compatible
-60 Hz phase driver. Ordinary multi-actor targeting and
-boss-specific effect orchestration must ultimately feed
-one group-capable stepper instead of two top-level drivers.
-No historical replay is ever reconstructed or rerolled.
+**Encounter motor status:** common tactics, movement, melee,
+projectiles and HP are already implemented. Both live actor streams now
+register with the **same top-level encounter step and frame recorder**.
+Boss-specific caught/thrown state and differing actor state shapes remain
+explicit extension work; saved historical recordings never reroll.
+
+## Unified encounter step and recording authority (CURRENT after this PR)
+
+**`src/game/combatEncounter.ts` now owns the top-level 60-Hz fight
+pipeline** for *both* ordinary multi-actor dungeon encounters and the
+Cave Troll: advance the world clock once, prepare tactical environment,
+iterate real actors, commit projectiles, resolve HP/team outcome, then
+append recorded cues. The same bounded `recordCombatEncounter` loop
+captures both existing immutable **v1 group frames** (every six ticks)
+and **v1 boss frames** (every eight ticks with pending cinematic cues).
+
+`groupCombat.ts` registers its canonical actor array and encounter
+obstruction/AI functions. `arenaCombatMotion.ts` registers the same
+hero-then-boss actor sequence, arena hazards and authentic boss signature
+effects (grip, throw, flight, impact) as callbacks to this driver.
+The **shared team-liveness outcome** applies to arbitrary parties and
+to the single-hero boss, with the boss-specific victory/defeat labels
+mapped for its existing replay contract. The boss effect code **does not
+get replaced with a generic two-actor group duel**.
+
+The old independent top-level loops, winner checks and duplicated
+recording loops have been removed. Source/CI must verify that the exact
+troll contact timing, Tripo visual phase names, saved v1 recordings,
+legacy v13 save formats, and 60Hz determinism remain compatible.
+
+**What remains:** the group and boss still hold *different actor state
+representations*, threat interpretation and boss-only grip/throw
+capabilities. The top-level encounter driver is now shared, but a
+single extensible actor/ability state machine across arbitrary heroes
+and bosses is **not** yet implemented. Do not claim the entire V.003
+dungeon/shop/release scope is complete.
 
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
