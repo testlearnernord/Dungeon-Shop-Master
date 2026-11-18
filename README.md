@@ -74,6 +74,15 @@ Boss-specific grab/throw, target AI and multi-actor combat behavior
 still require a final encounter-loop integration. No game release
 label or save format has changed.
 
+**Shared combat tactics and projectile collision (after this PR merges):**
+ordinary encounters and the Cave Troll use the same
+target-selection, engagement, defense and ability policy,
+plus physically swept projectile collision. The special
+Troll grab/throw action and separate top-level boss
+phase runner remain to be migrated into a future
+group-capable encounter stepper; existing saved fights
+and the playable V.002 release label are unchanged.
+
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
