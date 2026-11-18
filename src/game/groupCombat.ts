@@ -6,6 +6,10 @@ import {
 } from "./combatActionClock.ts";
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
+  chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
+  selectCombatTarget,
+} from "./combatTactics.ts";
+import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
 } from "./combatVitality.ts";
 
@@ -198,7 +202,9 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       id: spec.id, team: spec.team, role: spec.role, style: spec.style,
       maxHp: spec.maxHp, damage: spec.damage, armor: spec.armor,
       speed: spec.speed, reach: spec.reach, radius,
-      meleeAbility:spec.meleeAbility??("ordinary" as const), x: spec.x, z: spec.z,
+      meleeAbility:chooseCombatAbility(
+        [spec.meleeAbility??"ordinary"],1,0,0) as "ordinary"|"heavy",
+      x: spec.x, z: spec.z,
       hp: spec.hp, stamina: 100, heading: 0, lockedHeading: 0,
       phase: "move" as GroupPhase, phaseAge: 0, cooldown: 0, applied: false,
       targetId: null, rollX: 0, rollZ: 0, healCharges, distanceTraveled: 0,
@@ -272,15 +278,7 @@ function cue(batch: GroupCombatCue[], s: GroupCombatState, actor: GroupActor,
     ...(amount !== undefined ? { amount } : {}) });
 }
 function closestEnemy(s: GroupCombatState, actor: GroupActor): GroupActor | null {
-  let best: GroupActor | null = null, score = Infinity;
-  for (const other of s.actors) {
-    if (other.team === actor.team || other.hp <= 0) continue;
-    // Monsters slightly favor tanks, without locking targeting permanently.
-    const candidate = distance(actor, other) -
-      (actor.team === "monsters" && other.role === "tank" ? 0.65 : 0);
-    if (candidate < score - 1e-8) { score = candidate; best = other; }
-  }
-  return best;
+  return selectCombatTarget(actor,s.actors);
 }
 function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | null {
   if (actor.healCharges <= 0 || actor.hp <= 0) return null;
@@ -375,16 +373,20 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   if (a.phase === "move") {
     a.heading = combatHeading(a,enemy);
     const threat = attackerThreat(s,a);
-    if (threat && a.stamina >= 20 && a.role === "tank" && a.style === "melee") {
-      a.stamina -= 20;
-      a.heading = combatHeading(a,threat);
+    const reaction=chooseCombatDefense({
+      threatened:!!threat,stamina:a.stamina,
+      preferParry:a.role==="tank"&&a.style==="melee",
+      canParry:a.role==="tank"&&a.style==="melee",
+    });
+    if(threat&&reaction==="parry"){
+      a.stamina-=20;
+      a.heading=combatHeading(a,threat);
       phase(a,"parry");
-    } else if (threat && a.stamina >= 28) {
-      a.stamina -= 28;
-      const escape = combatDirection(threat,a);
-      const sign = a.id.localeCompare(threat.id) < 0 ? 1 : -1;
-      a.rollX = -escape.z * sign;
-      a.rollZ = escape.x * sign;
+    }else if(threat&&reaction==="roll"){
+      a.stamina-=28;
+      const escape=combatDirection(threat,a);
+      const sign=a.id.localeCompare(threat.id)<0?1:-1;
+      a.rollX=-escape.z*sign;a.rollZ=escape.x*sign;
       phase(a,"roll");
     }
     const friend = healingTarget(s,a);
@@ -392,23 +394,26 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       a.stamina -= 18; a.targetId = friend.id; phase(a,"heal");
     }
     if (a.phase === "move") {
-      const gap = distance(a,enemy);
-      const ranged = a.style === "ranged";
-      const reach = ranged ? 11 : a.reach + enemy.radius;
-      if (a.cooldown === 0 && gap <= reach && a.stamina >= 13 &&
-        lineClear(s,a,enemy)) {
-        a.stamina -= 13; a.targetId = enemy.id;
-        a.lockedHeading = a.heading;
-        a.cooldown = ranged ? 1.3 :
-          a.meleeAbility==="heavy" ? 1.62 :
-          (a.role === "DPS" ? 0.92 : 1.16);
-        phase(a,ranged ? "cast" : "windup");
-        cue(batch,s,a,ranged ? "cast" : "attack",enemy.id);
-      } else {
-        const desired = ranged ? 7 : a.reach + enemy.radius - 0.35;
-        const heading = combatDirection(a,enemy);
-        if (gap > desired + 0.15) move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
-        else if (ranged && gap < 4.5) move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
+      const gap=distance(a,enemy);
+      const ranged=a.style==="ranged";
+      const posture=chooseCombatPosture({
+        distance:gap,ready:a.cooldown===0&&a.stamina>=13,
+        clearShot:lineClear(s,a,enemy),
+        attackRange:ranged?11:a.reach+enemy.radius,
+        approachBeyond:(ranged?7:a.reach+enemy.radius-0.35)+0.15,
+        ...(ranged?{withdrawWithin:4.5}:{}),
+      });
+      if(posture.attack){
+        a.stamina-=13;a.targetId=enemy.id;
+        a.lockedHeading=a.heading;
+        a.cooldown=ranged?1.3:
+          a.meleeAbility==="heavy"?1.62:(a.role==="DPS"?0.92:1.16);
+        phase(a,ranged?"cast":"windup");
+        cue(batch,s,a,ranged?"cast":"attack",enemy.id);
+      }else{
+        const heading=combatDirection(a,enemy);
+        if(posture.approach)move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
+        else if(posture.withdraw)move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
       }
     }
   } else if (a.phase === "windup") {
