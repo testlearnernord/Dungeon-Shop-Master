@@ -23,6 +23,7 @@ import {
   recordedTemporaryPartyFormation, recordedPartyMemberAlive,
 } from "./dungeonPartyFormation.ts";
 import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts";
+import {ghoulRecordedPhaseAge} from "./ghoulMotion.ts";
 import type { GroupPhase } from "./groupCombat.ts";
 
 const SPACING=2.5;
@@ -294,7 +295,8 @@ export class DungeonReplayScene {
             ghoul.root.position.set(origin.x+actor.x,.08,origin.z+actor.z);
             ghoul.root.rotation.y=actor.heading;
             ghoul.root.metadata.hp=actor.hp;
-            ghoul.animate(actor.phase,snapshot.frame.t);
+            ghoul.animate(actor.phase,ghoulRecordedPhaseAge(
+              snapshot.encounter.combat.frames,actor.id,snapshot.frame.t));
           }else{
             enemy.setEnabled(true);
             const boss=actor.specialAbility==="grapple-throw";
