@@ -461,6 +461,19 @@ export function inspectDungeonPlayback() {
     disabledTorchLights:scene.lights.filter(light=>
       light.name.startsWith("dungeon-torchlight-")&&!light.isEnabled()).length,
     combatEnemyVisible:scene.getMeshByName("dungeon-combat-creature")?.isEnabled()??false,
+    temporaryPartyCompanions:scene.transformNodes.filter(node=>
+      node.name.startsWith("dungeon-companion-")&&
+      typeof node.metadata?.adventurerId==="string").map(node=>({
+        heroId:node.metadata?.adventurerId as string,
+        visible:node.isEnabled(),
+        x:node.position.x,z:node.position.z,
+        phase:node.metadata?.combatPhase as string|undefined,
+        weapon:node.metadata?.weapon as string|null|undefined,
+        armor:node.metadata?.armor as string|null|undefined,
+        temporaryParty:node.metadata?.temporaryParty===true,
+      })),
+    temporaryPartyRings:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-tp-ring-")&&mesh.isEnabled()).length,
   };
 }
 
