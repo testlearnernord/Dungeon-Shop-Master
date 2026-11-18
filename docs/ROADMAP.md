@@ -123,10 +123,11 @@ stunlock and immutable v1 recordings.
 **Delivered after this PR merges:** the existing Floor 1–4/7
 dungeon spectator projects every recorded group fighter, projectile
 and combat phase without rerolling anything; TAB can focus only visible
-participants. Regenerated Floor 7 room sentries can become deterministic
-grapple/throw elites, awarding real extra XP and gold on actual victory.
-This is the first campaign encounter using the new group-boss ability
-but remains **one hero against a renewable elite**.
+participants. Regenerated Floor 7 room sentries can become stronger heavy-strike
+elites, awarding real extra XP/gold without inheriting the Cave Troll's
+unique grab/throw. Real campaign parties of up to three heroes can
+encounter these sites. The engine still supports grappling for authored
+unique bosses; previous saved grapple footage remains compatible.
 
 **Co-located party settlement (CURRENT after this PR merges):**
 up to three willing heroes who begin a day on the same tile can
