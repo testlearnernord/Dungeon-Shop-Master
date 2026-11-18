@@ -259,8 +259,9 @@ world capacity during long-running campaigns.
 `dungeonParties.ts` selects at most three willing living heroes who
 already occupy the same tile on the same spatial floor; the consent
 check is derived from real role, traits and injury, not merchant
-instructions. Party membership is ephemeral and reevaluated on later
-days. It is NOT a saved party leader ordering subordinate units.
+instructions. Formation is opportunistic; an established voluntary group is
+  persisted in the optional v13 `GameState.dungeonParties` relationship
+  table. This is NOT a merchant-controlled squad or a second world.
 
 `level7Exploration.ts` exports `simulateSpatialDungeonPartyDay`:
 the existing `simulateSpatialDungeonDay` single-hero API delegates to
@@ -286,10 +287,23 @@ actors vs exactly one real site monster; every historical frame
 must contain the complete unique actor cast. Solo v1 replays
 and the v13 save structure are kept intact.
 
-**Not done:** durable party membership and longer social
-decisions, synchronized cross-floor travel, true party encounter
-with the unique cinematic Level 6 Cave Troll and full Floor 10
-boss/pass progression.
+`dungeonParties.ts` protects a verified saved group's members
+  from being claimed by an earlier unrelated explorer on the same tile.
+  The next committed day retains consenting survivors only when they
+  have a common real position, matching living status and unanimous
+  stay/ascend/descend choice; moving to another floor does not overwrite
+  any earlier personal route. `gameState.ts` stores the resulting party
+  with its original founding day. The strict `campaignSave.ts` validator
+  permits the optional v13 field, bounds its cardinality and confirms
+  unique members, actual active floor and saved co-location. Older
+  v13 saves without `dungeonParties` still load and form groups
+  naturally. The current Adventurer Board shows only stored group size,
+  not an inferred promise based on proximity.
+
+**Not done:** social leadership and negotiated long-term group goals,
+cross-floor unity when members choose different directions, actual
+group encounters with the unique cinematic Level 6 Cave Troll and
+the full Floor 10 boss/pass progression.
 
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
