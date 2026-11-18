@@ -361,9 +361,12 @@ silently veto that decision.
   without identifying every item, secret room or instantaneous death. Unverified
   heroes become **last seen / no signal** instead of retrospectively labeled
   "dead" before the result is legitimately discovered.
-- Saved Level 6 and Level 7 recordings and past combat results are immutable.
-  A compatibility/migration plan must be defined before replacing persisted
-  schemas. A new live run must not alter previous recorded footage.
+- Within any given campaign, already committed replays and fights
+  remain immutable. **Old alpha/v13 saves do not need compatibility**
+  when the new shared-clock V.003 state lands: a clean fresh campaign
+  is explicitly approved. New-version world, item and replay history
+  must remain deterministic and consistent. See
+  [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 
 ## Merchandising with real combat consequences
 
@@ -539,10 +542,12 @@ slice** and not prerequisites to fix the expedition loop.
    shared portal entry/exit, two-day off-duty states, per-hero Floor 10
    permit, **per-site regeneration schedules, cycle counters and instance
    IDs**, authoritative event time/order, last-reported knowledge and
-   immutable event/replay records. Define v13 save compatibility or an
-   **explicit, tested** migration before changing schemas. Keep real
-   world truth and merchant-known timelines separate. See
-   [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
+   immutable event/replay records. Use one clean new saved time and
+   observation schema; **no old v13 campaign migration required**.
+   Test exact new-version save/load and keep real world truth
+   separate from Galvik-known timelines. See
+   [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md) and
+   [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 2. **Shared explorer + regenerative sites:** incrementally replace
    `dungeonSimulation.ts` Floor 1–4 coin flips with seeded navigation/
    encounters built from existing `dungeonLayout.ts`,
