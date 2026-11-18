@@ -62,11 +62,25 @@
   visible combat frame, never enemies from a later scene. New hero
   equipment is preserved in committed encounter records; older footage
   without this optional snapshot remains visually neutral. Level 7 regenerated room sentries at eligible site cycles
-  may use the existing `grapple-throw` combat ability as ordinary renewable
-  elites. These are renewable ordinary-site enemies, not the unique
-  Cave Troll or a new floor gate. Real co-located multi-hero party
+  use a bounded heavy melee strike instead of the Troll's unique
+  `grapple-throw`. The ability is available within the common engine
+  for boss encounters, not automatically granted to ordinary elites.
+  Older v1 recordings with grapple-equipped sentries remain immutable. Real co-located multi-hero party
   expeditions already work on Floors 1–4/7; do not mistake those
   for the still-unfinished unique Boss party or full V.003 progression.
+- **CURRENT longer authentic shop-day expeditions (after this PR):**
+  `LEVEL7_STEP_BUDGET` now allows 36 true grid walks and
+  `LEVEL7_MAX_ENCOUNTERS` permits two actually reached monsters per day.
+  Victory does not force an early end; casualties, low unsupplied HP,
+  defeat and unavailable routes still end shorter days legitimately.
+  `campaignSave.ts` bounds both encounters without changing v13, and
+  `dungeonReplayPlayback.ts` replays the stored routes and encounter
+  frames unchanged, not artificial filler or time dilation. The
+  physical Board gains empty/filled weapon and armor sockets and numeric
+  HP alongside existing group labels. Morning/Midday/Evening world
+  snapshots are NOT implemented or fabricated. New ordinary monsters
+  require full concept, approved GLB, animation, SFX and visual tests
+  per `docs/MONSTER_ASSET_PIPELINE.md`; a Ghoul is only a candidate.
 - **CURRENT opportunistic party expedition (after this PR):**
   `dungeonParties.ts` joins only willing, living, not-yet-processed heroes
   standing on the *same physical tile and floor* at day start, max three.
