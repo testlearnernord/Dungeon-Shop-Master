@@ -26,7 +26,8 @@ continuously running dungeon simulation.
   interaction and visual language, including customer service hints.
 - [Development Roadmap](docs/ROADMAP.md): **V.003 ALPHA** implementation packages and release gates; supersedes the old post-#166 feature sequence.
 - [The Living Dungeon design](docs/THE_LIVING_DUNGEON.md): agreed future loop, persistent dungeon, item causality, autonomous heroes, and an event/last-known Adventurer Board 2.0 with HP and equipment icons.
-- [Living World Clock](docs/LIVING_WORLD_CLOCK.md): approved deterministic paced shared shop/dungeon clock, pauses, sleep, replay timestamps, observer knowledge and migration safeguards. **Design only, not shipped.**
+- [Living World Clock](docs/LIVING_WORLD_CLOCK.md): approved deterministic paced shared shop/dungeon clock, pauses, sleep, replay timestamps and observation boundaries. **Design only, not shipped.**
+- [Live Board & Ledger Audit](docs/LIVE_BOARD_LEDGER_AUDIT.md): chosen LIVE Adventurer Board, obsolete nighttime pages, retained accounts/receipts and approved clean old-save break. **Design only, not shipped.**
 - [Contributor/AI Guide](AGENTS.md): how to begin work and keep these files
   synchronized with the implementation.
 
@@ -297,12 +298,17 @@ Prefer focused additional coverage over inflating the default CI.
 
 ### Saves and compatibility
 
-`SIMULATION_VERSION = 13` in `src/game/gameState.ts`. Saves require the
-persisted Level 5 room, bedroom furniture, board, counter, all shelf
-instances and matching four-slot inventories. Version-12/partial or old
-five-slot giant-shelf campaigns **are not automatically migrated**. Invalid
-stored saves are not silently overwritten. Start a fresh campaign if an
-older alpha save cannot be loaded.
+**Current V.002:** `SIMULATION_VERSION = 13` in
+`src/game/gameState.ts`. The present build still validates its saved
+campaigns and can reject earlier partial/giant-shelf formats.
+
+**Future V.003:** the owner has explicitly waived backward
+compatibility with older alpha campaigns. The shared-clock cutover
+may require one fresh campaign with a clean new versioned format,
+not v13-to-v14 conversion adapters or a second simulation motor.
+Old stored data must be reported as incompatible rather than
+silently misinterpreted. Deterministic **new-version** save/resume,
+exactly-once payouts and correct cash/HP remain non-negotiable.
 
 ## Where to code
 
