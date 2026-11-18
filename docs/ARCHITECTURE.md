@@ -94,6 +94,40 @@ generic two-actor duel. A later PR must bring these into one
 configurable group-capable encounter stepper. This migration is
 not yet that final step.
 
+## Shared combat AI and projectile resolution (CURRENT after this PR)
+
+`src/game/combatTactics.ts` is now the **single render-independent
+decision layer** for choosing a living opponent, preferring nearby
+tanks for monsters, considering reach/line of sight/cooldown before
+attacking or approaching, defensive roll/parry stamina requirements,
+and selecting permitted melee abilities. The multi-actor engine
+and the Cave Troll's existing combat motor both call this policy.
+The Troll still has genuine authored **grab/smash/slam eligibility**
+(its conditional grab requires proximity, never as the opening
+attack; every fourth eligible attack is a grab attempt). Ordinary
+enemies choose only their configured ordinary/heavy ability.
+All actor/ability choices remain deterministic, not rerolled
+when a player opens a viewer.
+
+`src/game/combatProjectile.ts` owns **swept projectile collisions**
+for ordinary enemies and Troll encounters: physical segment
+intersection against living hostile hitboxes, optional dungeon
+walls, deterministic target tie-breaking and wall priority.
+The shared group motor still prevents friendly fire by passing
+only opposing team members. The Boss no longer tests only
+a projectile's final 60 Hz point, so fast projectiles cannot
+miss a physically crossed hitbox.
+
+**Full encounter motor migration remains incomplete:** shared
+tactics, position integration, action timing, melee contact,
+projectiles, and HP are already authoritative common modules.
+The boss retains its distinctive captured/airborne state,
+grab/throw execution and separate replay-compatible
+60 Hz phase driver. Ordinary multi-actor targeting and
+boss-specific effect orchestration must ultimately feed
+one group-capable stepper instead of two top-level drivers.
+No historical replay is ever reconstructed or rerolled.
+
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
 The next approved milestone is **V.003 ALPHA — The Living Dungeon**.

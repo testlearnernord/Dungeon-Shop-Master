@@ -38,6 +38,18 @@ The repository currently implements:
 - **Player service focus:** aiming at a physical shelf slot reveals the **real** item, capacity, selected bag item, valid left/right-click actions, Shift+click fill/clear and blockers (wrong item, full slot, empty bag or unpaid customer cart). A small, translucent top-center service strip reports **physically present** register-ready buyers and live restock/credit requests; earliest-expiring restock takes priority. **F** (or its icon chip) only selects that item in the existing six-item hotbar. The player still goes to the shelf to stock, and to the staff side of the counter or nearby debtor to interact with E. There is no auto-buy, auto-stock or auto-pay.
 - **Contextual furniture placement:** shelves and compact checkout counter (new campaigns start at the corner near Galvik’s rest-room wall), plus bedroom desk/book, chest, candle/stool, bed, wall-mounted Adventurer Board and the placeable portrait of Galvik's lost beloved. Existing furniture is moved using P; new campaigns start with no shelves. Build Shelf (N) creates a compact, initially empty shelf with four persistent stock slots, bounded to 12 shelves for the current alpha. Starter merchandise lives in the bag until the player builds and stocks a shelf. The floor editor can target visible excavated wing surfaces from the original cave; preview and commit share one authoritative check. Previews are not saved until confirmed. Newly dug 1m cells can be used for furniture **once enough connected floor has been cleared for the entire object and customer access**.
 - Level 5 room excavation/expansion, persistence, hero identities and roster. Mining reuses unchanged cave geometry between strikes; the first-person pickaxe has a raised wooden shaft and overhead strike.
+- **Shared fight decisions and projectiles (CURRENT after this PR):**
+  both ordinary monsters and the Cave Troll select living targets,
+  evaluate attack opportunity, react defensively and choose legal
+  skills through `combatTactics.ts`, not duplicated fight-specific
+  selection formulas. Group monsters can favor the nearest tank,
+  and the Troll can only attempt its signature grab when actually
+  in range and after the first attack. `combatProjectile.ts`
+  resolves real swept enemy hitbox collisions for both encounters,
+  with wall interception and no friendly fire in dungeon fights.
+  Boss grab/throw special effects and the top-level encounter
+  phase driver are **still distinct**, so do not claim complete
+  boss+group engine unification or convert old replays.
 - **Shared movement and actor action timeline (CURRENT after this PR):**
   both the ordinary group fights and the Cave Troll now use
   `combatMovement.ts` for real position integration with arena-specific
