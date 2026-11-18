@@ -159,7 +159,7 @@ test("real multihero boss encounters run through ordinary GroupCombat and record
     "a configurable boss ability should be part of recorded group gameplay");
   const old=resolveGroupCombat({
     bounds,actors:specs().map(a=>a.id==="boss"
-      ? {...a,specialAbility:undefined}:a),
+      ? {...a,specialAbility:undefined,grappleDamage:undefined}:a),
   },10);
   assert(old.replay.frames.every(f=>f.actors.every(a=>
     a.phase!=="grab"&&a.phase!=="thrown")),
