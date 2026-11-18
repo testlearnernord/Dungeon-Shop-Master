@@ -8,7 +8,9 @@ import { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { DEFAULT_ROSTER_BOARD } from "./rosterBoardPlacement.ts";
 import type { GameStore } from "./gameStore.ts";
-import { locationLabel, portraitIndex, rosterEntries } from "./rosterView.ts";
+import {
+  locationLabel, partySizeLabel, portraitIndex, rosterEntries,
+} from "./rosterView.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {portraitSourceRect} from "./portraitAtlas.ts";
 import {goldIconUrl} from "../uiIcons.ts";
@@ -101,7 +103,7 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       ctx.font = "23px sans-serif";
       ctx.fillStyle = hero.status === "at-shop" ? "#a8e1b8" :
         hero.status === "expedition" ? "#e9ae67" : "#c0bcae";
-      ctx.fillText(locationLabel(hero), 345, y + 1);
+      ctx.fillText(locationLabel(hero)+partySizeLabel(state,hero.id),345,y+1,300);
       ctx.fillStyle = "#352a20";
       ctx.fillRect(756, y - 14, 173, 15);
       ctx.fillStyle = hero.health / hero.stats.maxHealth < 0.3 ? "#d16b55" : "#8ab668";
