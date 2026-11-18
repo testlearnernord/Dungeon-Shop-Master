@@ -189,6 +189,9 @@ export function settleHeldShopCarts(
 export function returnUnpaidCartsAtClose(state:GameState):GameState {
   let current=state;
   for(const cart of state.shopCarts){
+    if(!cart.lines.every(line=>current.shopEconomy.slots.some(slot=>
+        slot.id===line.slotId)))
+      throw new Error("Unpaid cart references a missing shelf slot at shop close.");
     const result=returnShopCart(current,cart.heroId);
     if(result.state===current)throw new Error("Unpaid cart could not be returned at shop close.");
     current=result.state;
