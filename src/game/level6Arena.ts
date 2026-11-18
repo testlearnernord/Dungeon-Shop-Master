@@ -916,9 +916,10 @@ export class Level6Arena {
         Quaternion.Inverse(this.gripHandStart));
       const orientation=handDelta.multiply(this.gripHeroOrientation!);
       hero.root.rotationQuaternion=orientation;
+      const torsoRotation=Matrix.Identity();
+      Matrix.FromQuaternionToRef(orientation,torsoRotation);
       const torsoOffset=Vector3.TransformNormal(
-        new Vector3(0,1.14*hero.root.scaling.y,0),
-        Matrix.FromQuaternion(orientation));
+        new Vector3(0,1.14*hero.root.scaling.y,0),torsoRotation);
       const socketRoot=realGrip.position.subtract(torsoOffset);
       const catchProgress=Math.max(0,Math.min(1,state.heroAge/.16));
       const eased=catchProgress*catchProgress*(3-2*catchProgress);
