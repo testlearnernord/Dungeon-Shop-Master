@@ -95,7 +95,7 @@ sockets plus exact HP; proper Morning/Midday/Evening world snapshots
 still await a real three-phase day model. No shipped ordinary monster
 GLB exists yet: `MONSTER_ASSET_PIPELINE.md` defines concept, mesh,
 rig, transitions, sounds, Babylon inspection and acceptance gates.
-Ghoul is a candidate, not a generated or released monster.
+Ghoul has a candidate Tripo source GLB archived outside `public/`, but no curated/released monster or validated in-game renderer; see `TRIPO_GHOUL_ASSET_AUDIT.md`.
 
 **Current limited cooperative slice (after this PR merges):**
 willing co-located heroes can travel together for one committed
@@ -118,14 +118,6 @@ compact numbered TP marker, explained by the legend. The R roster
 shows full Temporary Party membership and its founding day. Each real
 shared day's historical replay snapshots companion IDs, and the
 Dungeon observer displays those names with focused member highlighted.
-Every new group recording also preserves each adventurer's role and
-purchased gear at expedition commitment. The dungeon spectator
-can therefore show all authentic party member models walking and
-turning along the single recorded physical route, each marked with
-a shared gold TP ring. Visual spacing inside that tile is not
-separate pathfinding or new AI. Combat uses true individual saved
-positions and phases; casualties do not resume walking. Old
-footage remains valid when no companion appearance was saved.
 Only actual joins/leaves on committed days create feed entries.
 No stale status or unobserved fight outcome is filled in by the UI.
 The current physical Adventurer Board displays saved party sizes;
