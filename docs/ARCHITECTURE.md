@@ -37,11 +37,28 @@ The redesign must preserve one deterministic GameState authority and introduce:
   from new-game progression and retire Floor 7-only separate exploration
   ownership once shared seeded spatial travel covers all relevant floors.
   Keep one world truth; do not merely wrap the old RNG in new UI.
-- **Shop visits are world navigation**, not a free return on day close:
-  the draft rule permits attempted access at any time, with real reachable
-  routes, phase/time cost, possible travel risk and later unlocked shortcut
-  entrances to the same physical shop. A future paid one-way escape item is
-  only a proposal; precise portal and timing rules remain OPEN.
+- **Shop is a cursed special floor, not dungeon Floor 5 (V.0003
+  TARGET ONLY).** Replace both old Floor 4/Floor 6 shop entrances and their
+  pathing, NPC spawning and furniture-reachability assumptions with **one
+  physically shared portal**. Keep the existing single shop scene,
+  furniture, sales and ledger; do not create duplicate shops per dungeon
+  level. The current Level-5 shop remains in shipped V.002.
+- **Shop visits are explicit expedition transitions**: short-term floor
+  intent is stay/up/down; an *upward* choice can end an expedition from
+  **any floor** and move the hero into the cursed shop instead of walking
+  every floor backward. A completed shop departure begins two **full**
+  off-duty game days outside the dungeon and shop. Store this status
+  independently of physical at-shop and expedition states; reentry
+  after standby is a new expedition with a safe anchor TBD.
+- **Medium-term hero goals** (safe farming, testing new gear, reckless
+  progression, regroup/recover) bias navigation and shopping needs;
+  these are distinct from short-term floor direction and observed
+  actions in Morning/Midday/Evening snapshot events.
+- **Floor 10 is gated per hero** by Galvik's granted pass until later
+  redesign. Current `level6Permit` is V.002-only behavior and must be
+  explicitly refactored/migrated; neither XP alone nor an ordinary floor
+  transition bypasses the gate. Future emergency-escape items are deferred,
+  not needed for standard shop access.
 - One read-only Board projection shared by `rosterBoard.ts`,
   `rosterBoardHud.ts` and `rosterView.ts`, preserving current mounted
   furniture transforms, E/R interactions, HP and item icons; adding phase
@@ -54,7 +71,8 @@ The redesign must preserve one deterministic GameState authority and introduce:
 The core technical acceptance test must carry one legitimate shop sale/credit
 through hero inventory, a deterministic combat item use, a known board status
 and an immutable saved/reloaded replay, preserving money/stock/HP. Exact
-phase timing, floor geometry, Floor 10 Troll placement and shop access
+phase timing, floor geometry, safe post-standby reentry anchor, HP recovery
+outside the dungeon, eventual pass redesign and Floor 10 Troll placement
 remain design questions, not APIs in production.
 
 ## 2. Current module map
