@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node tools/asset_generation/merge_tripo_grab_throw.mjs",
+    "predev": "node tools/asset_generation/merge_tripo_grab_throw.mjs && node tools/asset_generation/consolidate_tripo_ghoul.mjs public/assets/models/dungeon-ghoul-tripo.glb",
     "dev": "vite",
-    "prebuild": "node tools/asset_generation/merge_tripo_grab_throw.mjs",
+    "prebuild": "node tools/asset_generation/merge_tripo_grab_throw.mjs && node tools/asset_generation/consolidate_tripo_ghoul.mjs public/assets/models/dungeon-ghoul-tripo.glb",
     "build": "tsc -b && vite build",
     "test": "playwright test",
     "test:smoke": "playwright test --grep @ci-smoke",
