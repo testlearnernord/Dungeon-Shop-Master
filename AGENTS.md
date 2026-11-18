@@ -41,6 +41,15 @@
   (a temporary new design gate, not today's `level6Permit`). Do not
   reinstate the rejected long backtrack, mandatory five-floor shops,
   two-door topology or an invented escape rope as accepted scope.
+- **V.0003 recurring dungeon content:** floor geometry, unique
+  discoveries, story locks, past replays and unique boss victories remain
+  persistent. Ordinary monster groups, common treasure sites and
+  resettable traps must renew via one deterministic saved **per-site
+  regeneration cycle** on committed phase/day transitions. Never reroll
+  by opening a viewer, respawn inside an occupied encounter, award a
+  previously looted chest twice, override the Floor 10 pass or create
+  a second farming/loot RNG authority. Cooldowns are tuning values,
+  not approved constants.
 - **V.0003 is a target, not current gameplay.** The playable in-game label is still V.002 ALPHA; npm package version `0.1.0` is independent. The Living Dungeon is the approved direction (shared seeded expedition world, actual shop-item causality and a three-phase, HP/equipment-visible Adventurer Board). No new time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from the design document. Protect old Floor 6/7 recordings and existing version-13 saves during staged migrations.
 - **Story causality remains OPEN.** The young hero, mercenary leader, transfer of the curse, Floor 100 and Galvik's eventual role are not final canon. The earlier **amulet mechanic is removed from the current design direction**, not an OPEN prerequisite; do not reintroduce it by accident. Short cynical Galvik-as-commentator sketches are likewise not a locked protagonist transition.
 
