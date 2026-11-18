@@ -1,4 +1,9 @@
 import { inAttackArc, type Point2 } from "./combatGeometry.ts";
+import { combatDirection, combatHeading, moveCombatant } from "./combatMovement.ts";
+import {
+  tickCombatAction, tickCombatCooldown, regenerateCombatStamina,
+  type CombatActionWindow,
+} from "./combatActionClock.ts";
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
@@ -123,11 +128,7 @@ export interface GroupCombatReplay {
 const STEP = 1 / 60;
 const round = (n: number) => Math.round(n * 1000) / 1000;
 const distance = (a: Point2, b: Point2) => Math.hypot(b.x - a.x, b.z - a.z);
-const direction = (a: Point2, b: Point2) => {
-  const d = distance(a, b);
-  return d > 0.000001 ? { x: (b.x - a.x) / d, z: (b.z - a.z) / d } : { x: 0, z: 1 };
-};
-const face = (a: Point2, b: Point2) => Math.atan2(b.x - a.x, b.z - a.z);
+
 
 function validNumber(n: number, min: number, max: number, path: string) {
   if (!Number.isFinite(n) || n < min || n > max) throw new RangeError(path + " is out of range");
@@ -252,15 +253,12 @@ function movementAllowed(s: GroupCombatState, a: GroupActor, x: number, z: numbe
       Math.hypot(x - other.x, z - other.z) < a.radius + other.radius - 0.02);
 }
 function move(s: GroupCombatState, a: GroupActor, dx: number, dz: number): void {
-  const oldX = a.x, oldZ = a.z;
-  const x = oldX + dx, z = oldZ + dz;
-  // Sliding allows movement along walls; no teleporting through solid tiles.
-  if (movementAllowed(s, a, x, z)) { a.x = x; a.z = z; }
-  else {
-    if (movementAllowed(s, a, x, oldZ)) a.x = x;
-    if (movementAllowed(s, a, a.x, z)) a.z = z;
-  }
-  a.distanceTraveled += Math.hypot(a.x-oldX, a.z-oldZ);
+  const result=moveCombatant(a,{x:dx,z:dz},{
+    kind:"walkable",
+    canOccupy:p=>movementAllowed(s,a,p.x,p.z),
+  });
+  a.x=result.x;a.z=result.z;
+  a.distanceTraveled+=result.distance;
 }
 function phase(a: GroupActor, next: GroupPhase): void {
   a.phase = next;
@@ -353,21 +351,37 @@ function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupAct
 
 function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: GroupCombatCue[]): void {
   if (a.hp <= 0) return;
-  a.stamina = Math.min(100, a.stamina + 17 * dt);
-  a.cooldown = Math.max(0, a.cooldown - dt);
-  a.phaseAge += dt;
+  a.stamina=regenerateCombatStamina(a.stamina,dt,17);
+  a.cooldown=tickCombatCooldown(a.cooldown,dt);
+  // This is the same action clock used by the boss. Ability profiles
+  // decide when contact can happen, not each renderer's animation time.
+  let window:CombatActionWindow={};
+  if(a.phase==="windup"){
+    window={completeAt:meleeAbilityProfile(a.meleeAbility,a.reach).windupSeconds};
+  }else if(a.phase==="strike"){
+    const skill=meleeAbilityProfile(a.meleeAbility,a.reach);
+    window={contactAt:skill.strikeDelaySeconds,completeAt:skill.strikeEndSeconds};
+  }else if(a.phase==="cast"){
+    window={contactAt:0.40,completeAt:0.75};
+  }else if(a.phase==="heal"){
+    window={contactAt:0.62,completeAt:0.92};
+  }else if(a.phase==="recover")window={completeAt:0.38};
+  else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
+  else if(a.phase==="hurt")window={completeAt:0.34};
+  const tick=tickCombatAction(a.phaseAge,dt,a.applied,window);
+  a.phaseAge=tick.age;
   const enemy = closestEnemy(s, a);
   if (!enemy) return;
   if (a.phase === "move") {
-    a.heading = face(a,enemy);
+    a.heading = combatHeading(a,enemy);
     const threat = attackerThreat(s,a);
     if (threat && a.stamina >= 20 && a.role === "tank" && a.style === "melee") {
       a.stamina -= 20;
-      a.heading = face(a, threat);
+      a.heading = combatHeading(a,threat);
       phase(a,"parry");
     } else if (threat && a.stamina >= 28) {
       a.stamina -= 28;
-      const escape = direction(threat,a);
+      const escape = combatDirection(threat,a);
       const sign = a.id.localeCompare(threat.id) < 0 ? 1 : -1;
       a.rollX = -escape.z * sign;
       a.rollZ = escape.x * sign;
@@ -392,28 +406,26 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         cue(batch,s,a,ranged ? "cast" : "attack",enemy.id);
       } else {
         const desired = ranged ? 7 : a.reach + enemy.radius - 0.35;
-        const heading = direction(a,enemy);
+        const heading = combatDirection(a,enemy);
         if (gap > desired + 0.15) move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
         else if (ranged && gap < 4.5) move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
       }
     }
   } else if (a.phase === "windup") {
-    const skill=meleeAbilityProfile(a.meleeAbility,a.reach);
-    if (a.phaseAge >= skill.windupSeconds) phase(a,"strike");
+    if (tick.complete) phase(a,"strike");
   } else if (a.phase === "strike") {
-    const skill=meleeAbilityProfile(a.meleeAbility,a.reach);
-    if (a.phaseAge >= skill.strikeDelaySeconds && !a.applied) {
+    if (tick.contactDue) {
       a.applied = true;
       tryStrike(s,a,batch);
     }
-    if (a.phase === "strike" && a.phaseAge >= skill.strikeEndSeconds)
+    if (a.phase === "strike" && tick.complete)
       phase(a,"recover");
   } else if (a.phase === "cast") {
-    if (a.phaseAge >= 0.40 && !a.applied) {
+    if (tick.contactDue) {
       a.applied = true;
       const target = s.actors.find(other => other.id === a.targetId && other.hp > 0);
       if (target) {
-        const d = direction(a,target);
+        const d = combatDirection(a,target);
         s.projectiles.push({
           ownerId:a.id,team:a.team,x:a.x,z:a.z,
           vx:d.x*12,vz:d.z*12,damage:a.damage,ttl:1.6,
@@ -421,18 +433,18 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         cue(batch,s,a,"projectile",target.id);
       }
     }
-    if (a.phaseAge >= 0.75) phase(a,"move");
+    if (tick.complete) phase(a,"move");
   } else if (a.phase === "recover") {
-    if (a.phaseAge >= 0.38) phase(a,"move");
+    if (tick.complete) phase(a,"move");
   } else if (a.phase === "roll") {
     move(s,a,a.rollX*7.8*dt,a.rollZ*7.8*dt);
-    if (a.phaseAge >= 0.53) phase(a,"move");
+    if (tick.complete) phase(a,"move");
   } else if (a.phase === "parry") {
     if (a.phaseAge >= 0.53) phase(a,"move");
   } else if (a.phase === "hurt") {
-    if (a.phaseAge >= 0.34) phase(a,"move");
+    if (tick.complete) phase(a,"move");
   } else if (a.phase === "heal") {
-    if (a.phaseAge >= 0.62 && !a.applied) {
+    if (tick.contactDue) {
       a.applied = true;
       const friend = s.actors.find(other => other.id === a.targetId &&
         other.team === a.team && other.hp > 0);
@@ -445,7 +457,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         }
       }
     }
-    if (a.phaseAge >= 0.92) phase(a,"move");
+    if (tick.complete) phase(a,"move");
   }
 }
 function updateProjectiles(s: GroupCombatState, dt: number, batch: GroupCombatCue[]) {
