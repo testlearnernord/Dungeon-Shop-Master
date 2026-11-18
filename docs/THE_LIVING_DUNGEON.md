@@ -48,17 +48,23 @@ campaign should visibly change all three tracks while preserving failure risk.
 
 ## Delivery checkpoint (CURRENT vs planned)
 
-**First implementation slice:** the existing real Floor 7 explorer now uses
-`src/game/dungeonRegeneration.ts` to record the current generation, clear
-day and deterministic refresh of ordinary monster, trap and chest sites.
-The layout and historical records stay unchanged; old version-13 saves
-without site cycles continue to load. On a completely mapped floor, the
-existing walker can return along real walkable paths to refreshed sites.
-One captured and looted generation cannot pay twice, and no site respawns
-under an occupying hero. This is **CURRENT only on Floor 7 after this PR
-is merged**. It does **not** yet unify Floors 1–4/6, add three daily
-phases, the one-portal shop, two-day standby, hero goal planning, or the
-full V.003 release.
+**First shipped slice:** Floor 7 common monsters/chests/traps regenerate by
+real saved site cycles using `src/game/dungeonRegeneration.ts`.
+**Second slice (this PR, CURRENT only after merge):** Floors 1–4
+use the **same** seeded spatial explorer as Floor 7, including connected
+movement, actual traps/loot, `groupCombat` battles, item/HP effects,
+regeneration and preserved 3D footage. `dungeonSimulation.ts` is deleted.
+An optional `earlyDungeonWorlds` array extends version-13 saves without
+invalidating earlier ones. Heroes make a strategy-informed floor transition
+choice after the confirmed expedition, and actual early-floor recordings
+appear in the sealed ledger and dungeon viewer. The current shop continues
+to use the **existing Floor 5 and two-door behavior** until the larger
+cursed-portal/standby redesign is implemented.
+
+**NOT delivered yet:** unified Floor 6 boss encounter authority, cursed
+special-floor shop/one portal, post-shop two-day standby, a full
+morning/midday/evening Board 2.0, all new abilities and Floors 8–10.
+`V.003 Alpha` remains a **release target**, not a new playable label.
 
 ## Dungeon, heroes and pace
 
@@ -167,10 +173,11 @@ that site and be unable to claim the same one-time chest twice.
 
 **Mandatory implementation goal for V.003, not already done:**
 
-- Retire `src/game/dungeonSimulation.ts`'s Floor 1–4 placeholder
-  day-roll formula (one damage/advance/stay/retreat roll) from active campaign
-  progression. Floors 1–4 must use the **same spatial world, intent, real
-  encounters, supplies and save semantics** as subsequent floors.
+- **Completed for Floors 1–4:** deleted `dungeonSimulation.ts`
+  and replaced its daily damage/advance rolls with the same actual
+  `simulateSpatialDungeonDay` navigation, shared encounter, regeneration,
+  inventory, HP and replay path as Floor 7. Hero strategies decide
+  floor movement/return using real recorded states.
 - Eliminate **parallel authoritative combat resolvers**. The existing
   `arenaCombatMotion.ts` has valuable real-time telegraphs, parry/dodge,
   stagger, boss-specific grab, hit and damage semantics, while
