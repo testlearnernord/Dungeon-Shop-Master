@@ -108,7 +108,18 @@ grapple-and-throw. Boss/ordinary combat still use the same
 authoritative stepper and replay recorder; existing Troll
 duel/cinematic animations remain compatible. The party
 boss encounter has not been connected to the dungeon
-campaign or multi-hero 3D playback yet.
+campaign yet. The dungeon viewer can render the full saved
+multi-actor cast, but live expeditions still resolve one hero per fight.
+
+**Recorded-cast dungeon viewer and renewable elites (after this PR merges):**
+the Floor 1–4/7 footage viewer now displays every saved combat participant
+and projectile, with TAB cycling only through currently visible fighters.
+Historical gear is shown only when recorded; unknown companion equipment is
+not fabricated. On Floor 7, some room sentries in later deterministic
+respawn generations become stronger grapple/throw elites. Their HP, defenses,
+throws, rewards and frame data come from the existing encounter engine and
+v13 saved replays. This is a real solo expedition encounter, not the unique
+Cave Troll, a new floor gate or autonomous multi-hero party campaign.
 
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 

@@ -139,14 +139,19 @@ function chooseRenewedSiteStep(
 function fightAgainst(
   hero: AdventurerState, monster: DungeonFeature, campaignSeed: number,
   layout: DungeonLayout, approach: DungeonPoint, cycle = 0,
-): {hp:number;healsUsed:number;outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay} {
+): {hp:number;healsUsed:number;outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay;elite:boolean} {
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
     (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0, cycle));
   const sword=hero.equipment.weapon==="Iron Sword";
   const armored=hero.equipment.armor==="Leather Vest";
-  const monsterHp=layout.floor===7
+  // Regenerated room sentries can become uncommon elite brutes. These are
+  // renewable monsters, NOT the unique Cave Troll or a progression gate.
+  // Cycle zero retains every existing campaign's original encounter.
+  const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
+    tileAt(layout,monster.x,monster.z)==="room";
+  const monsterHp=(layout.floor===7
     ? 22+monsterRand.int(13)
-    : 12+layout.floor*3+monsterRand.int(7);
+    : 12+layout.floor*3+monsterRand.int(7))+(elite?24:0);
   const specs:CombatantSpec[]=[
     {
       id:hero.id,team:"heroes",role:hero.role,
@@ -156,6 +161,7 @@ function fightAgainst(
       damage:6+Math.floor((hero.role==="healer"?hero.stats.intellect:
         hero.role==="DPS"?hero.stats.agility:hero.stats.strength)/2)+(sword?5:0),
       armor:armored?5:1,
+      agility:hero.stats.agility,
       speed:hero.role==="tank"?2.5:3.1,
       reach:1.75,
       // The actual hero-owned Healing Herbs can be consumed by every role.
@@ -165,9 +171,12 @@ function fightAgainst(
     {
       id:monster.id,team:"monsters",role:"monster",style:"melee",
       x:0,z:0,hp:monsterHp,maxHp:monsterHp,
-      damage:layout.floor===7?8+monsterRand.int(4):2+layout.floor+monsterRand.int(3),
-      armor:monster.subtype==="skeleton"?3:1,
-      speed:2.6,reach:1.6,
+      damage:(layout.floor===7?8+monsterRand.int(4):2+layout.floor+monsterRand.int(3))+
+        (elite?4:0),
+      armor:(monster.subtype==="skeleton"?3:1)+(elite?4:0),
+      speed:elite?2.3:2.6,reach:elite?2:1.6,
+      ...(elite?{radius:1.05,specialAbility:"grapple-throw" as const,
+        grappleDamage:24,agility:8,staggerThreshold:12}:{}),
       // Regenerated skeleton patrols can gain a deliberately telegraphed
       // heavy attack. New site generation is saved and seeded; no random
       // attack archetypes are invented when watching a historical replay.
@@ -197,7 +206,7 @@ function fightAgainst(
     hp:Math.max(0,Math.round(survivor.hp)),
     healsUsed:initialHealCharges-survivor.healCharges,
     outcome:encounter.state.outcome==="fighting"?"draw":encounter.state.outcome,
-    combat:encounter.replay,
+    combat:encounter.replay,elite,
   };
 }
 
@@ -297,7 +306,7 @@ export function simulateSpatialDungeonDay(
       if(fight.outcome==="heroes"){
         resolved.add(feature.id);
         siteCycles=resolveDungeonSite(siteCycles,feature.id,day);
-        kills++;xp+=12;gold+=2;
+        kills++;xp+=fight.elite?28:12;gold+=fight.elite?6:2;
         steps.push({...current,t:t+0.2,action:"defeat-monster",featureId:feature.id,hp});
         // One combat at most per confirmed day; no simulated encounters offscreen.
         break;

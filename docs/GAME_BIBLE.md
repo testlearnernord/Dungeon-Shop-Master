@@ -52,7 +52,18 @@ The repository currently implements:
   are executable and replay-recorded in the group engine;
   **the campaign and current Floor 6 cinematic still use
   the one-hero encounter**. This does not yet add multi-hero
-  boss playback to the public game or decide the Floor 10 boss.
+  boss parties to live dungeon progression or decide the Floor 10 boss.
+- **Recorded group dungeon playback and renewable elites (CURRENT after this PR):**
+  The dungeon spectator projects *all* actors and projectiles from one
+  saved `GroupCombatReplay`; TAB focuses only a fighter visible in
+  the current combat frame. Other heroes get only historically known
+  equipment, never invented purchases. Floor 7 room sentries can return
+  on a deterministic later site generation as elite melee monsters with
+  genuine `grapple-throw` combat, physical collision, resistance and
+  replayable results. They are renewable monsters, **not** the unique
+  Cave Troll or a Floor 10 boss. Current shop-day progression still
+  resolves solo dungeon expeditions; the full autonomous multi-hero
+  party campaign is not implemented.
 - **One live actor state interface (CURRENT after this PR):**
   `combatActor.ts` provides a common mutable HP/position/stamina/
   heading/phase/cooldown/contact contract. Ordinary `GroupActor`
