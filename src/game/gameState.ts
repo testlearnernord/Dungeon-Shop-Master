@@ -3,13 +3,14 @@ import { useHealingSupplies, generateAdventurer, generateStartingPopulation, typ
 import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
 import { chooseHeroDungeonDecision, type HeroDungeonGoal, type HeroFloorAction } from "./dungeonDecisions.ts";
 import { generateExpeditionLayout } from "./dungeonLayout.ts";
+import { chooseCoLocatedDungeonParty } from "./dungeonParties.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
 import type { BossCombatReplay } from "./bossCombatReplay.ts";
 import { REPLAY_KEEP_RECENT } from "./bossCombatReplay.ts";
 import {
   emptyLevel7World, getLevel7Progress, LEVEL7_REPLAY_KEEP,
-  simulateLevel7Day, simulateSpatialDungeonDay,
-  type Level7Replay, type Level7World,
+  simulateSpatialDungeonPartyDay,
+  type Level7Replay, type Level7World, type Level7Tick,
 } from "./level7Exploration.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
@@ -184,28 +185,45 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   let level7World = state.level7World;
   let earlyDungeonWorlds: EarlyDungeonFloorWorld[] =
     [...(state.earlyDungeonWorlds??[])];
-  const adventurers = postTradeHeroes.map((hero) => {
-    // Only injuries trigger healing. Newly authorized departures cannot
-    // fight on their departure day.
-    const supplies = useHealingSupplies(hero, day);
-    events.push(...supplies.events);
-    const ready = supplies.adventurer;
-    if ((ready.status==="exploring" || ready.status==="returning") &&
-        ready.floor>=1 && ready.floor<=4) {
-      const explorer = ready.status==="returning"
-        ? {...ready,status:"exploring" as const} : ready;
-      const floor=explorer.floor as EarlyDungeonFloorWorld["floor"];
+  // Compute real pre-expedition healing for everyone before picking a party,
+  // including companions whose entries come later in the stable roster.
+  // Their healing events still commit once when each roster entry is visited.
+  const healed=postTradeHeroes.map(hero=>useHealingSupplies(hero,day));
+  const readyRoster=healed.map(result=>{
+    const ready=result.adventurer;
+    return ready.status==="returning"&&ready.floor>=1&&ready.floor<=4
+      ?{...ready,status:"exploring" as const}:ready;
+  });
+  const committedFights=new Map<string,Level7Tick>();
+  const processed=new Set<string>();
+  const adventurers = postTradeHeroes.map((hero,index) => {
+    // Newly authorized departures cannot fight on their departure day.
+    events.push(...healed[index].events);
+    const ready = readyRoster[index];
+    if(ready.status==="exploring"&&ready.floor>=1&&ready.floor<=4){
+      const floor=ready.floor as EarlyDungeonFloorWorld["floor"];
       const world=earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world ??
         emptyLevel7World();
-      const activeIds=new Set(postTradeHeroes.filter(person=>
-        (person.status==="exploring"||person.status==="returning") &&
-        person.floor===floor).map(person=>person.id));
-      const tick=simulateSpatialDungeonDay(explorer,world,state.seed,day,activeIds);
-      earlyDungeonWorlds=[
-        ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
-        {floor,world:tick.world},
-      ].sort((a,b)=>a.floor-b.floor);
-      const progress=getLevel7Progress(tick.world,explorer.id,
+      let tick=committedFights.get(ready.id);
+      if(!tick){
+        const layout=generateExpeditionLayout(state.seed,floor);
+        const group=chooseCoLocatedDungeonParty(ready,readyRoster,world,
+          layout,processed);
+        const activeIds=new Set(readyRoster.filter(person=>
+          person.status==="exploring"&&person.floor===floor).map(p=>p.id));
+        const result=simulateSpatialDungeonPartyDay(group,world,state.seed,
+          day,activeIds);
+        for(const individual of result.ticks){
+          committedFights.set(individual.adventurer.id,individual);
+          processed.add(individual.adventurer.id);
+        }
+        earlyDungeonWorlds=[
+          ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
+          {floor,world:result.world},
+        ].sort((a,b)=>a.floor-b.floor);
+        tick=committedFights.get(ready.id)!;
+      }
+      const progress=getLevel7Progress(tick.world,ready.id,
         generateExpeditionLayout(state.seed,floor));
       const decision=tick.adventurer.status==="dead"?null:
         chooseHeroDungeonDecision(tick.adventurer,progress,tick.replay);
@@ -217,29 +235,42 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         ? {...tick.adventurer,status:"traveling" as const,floor:4 as const}
         : tick.adventurer;
       events.push({
-        id:`day-${day}:${explorer.id}:dungeon-exploration`,
-        type:"dungeon-exploration",day,adventurerId:explorer.id,
+        id:`day-${day}:${ready.id}:dungeon-exploration`,
+        type:"dungeon-exploration",day,adventurerId:ready.id,
         dungeonReplay:tick.replay,
         ...(decision?{dungeonGoal:decision.goal,floorAction:decision.action}:{}),
-        message:`${explorer.name}'s Floor ${floor} expedition was recorded. Watch the saved footage to discover the outcome.`,
+        message:`${ready.name}'s Floor ${floor} expedition was recorded. Watch the saved footage to discover the outcome.`,
       });
-      const shop=scheduleShopVisit(moved,day,rngState,
-        paidIds.has(explorer.id));
+      const shop=scheduleShopVisit(moved,day,rngState,paidIds.has(ready.id));
       rngState=shop.rngState;
       events.push(...shop.events);
       return shop.adventurer;
     }
-    if (ready.status === "expedition" && ready.floor === 7) {
-      const exploration = simulateLevel7Day(ready, level7World, state.seed, day);
-      level7World = exploration.world;
-      if (exploration.replay.outcome === "completed") clearedLevel7 = true;
+    if(ready.status==="expedition"&&ready.floor===7){
+      let tick=committedFights.get(ready.id);
+      if(!tick){
+        const layout=generateExpeditionLayout(state.seed,7);
+        const group=chooseCoLocatedDungeonParty(ready,readyRoster,level7World,
+          layout,processed);
+        const activeIds=new Set(readyRoster.filter(person=>
+          person.status==="expedition"&&person.floor===7).map(p=>p.id));
+        const result=simulateSpatialDungeonPartyDay(group,level7World,
+          state.seed,day,activeIds);
+        for(const individual of result.ticks){
+          committedFights.set(individual.adventurer.id,individual);
+          processed.add(individual.adventurer.id);
+        }
+        level7World=result.world;
+        tick=committedFights.get(ready.id)!;
+      }
+      if(tick.replay.outcome==="completed")clearedLevel7=true;
       events.push({
-        id: `day-${day}:${ready.id}:level7-exploration`,
-        type: "level7-exploration", day, adventurerId: ready.id,
-        level7Replay: exploration.replay,
-        message: `${ready.name}'s Level 7 expedition was recorded. Watch the saved footage to discover what happened.`,
+        id:`day-${day}:${ready.id}:level7-exploration`,
+        type:"level7-exploration",day,adventurerId:ready.id,
+        level7Replay:tick.replay,
+        message:`${ready.name}'s Level 7 expedition was recorded. Watch the saved footage to discover what happened.`,
       });
-      return exploration.adventurer;
+      return tick.adventurer;
     }
     if (ready.status === "expedition" && ready.floor === 6) {
       const combat = simulateLevel6Combat(ready, day, rngState);
