@@ -485,10 +485,8 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
     // The target registry is the same one used by multi-actor fights.
     // This particular encounter currently contains one hero, but the
     // selector is already canonical and group-capable.
-    const target=selectCombatTarget(
-      {id:"cave-troll",team:"monsters",hp:s.bossHp,...s.boss},
-      [{id:"hero",team:"heroes",role:s.options.role,hp:s.heroHp,...s.hero}],
-    );
+    const [hero,boss]=bossEncounterActors(s);
+    const target=selectCombatTarget(boss,[hero]);
     if(!target)return;
     s.bossHeading=combatHeading(s.boss,target);
     const gap=dist(target,s.boss);
@@ -597,7 +595,7 @@ function progressProjectiles(s: CombatPreviewState, dt: number): void {
  * 60Hz clock ownership and phase ordering belong to combatEncounter.ts.
  */
 const BOSS_PIPELINE:EncounterPipeline<
-  CombatPreviewState,"hero"|"boss",ArenaCue
+  CombatPreviewState,CombatActorRuntime<ActorPhase|BossPhase>,ArenaCue
 >={
   beforeActors:(s,dt,frame)=>{
     // All boss-specific ability cues live in the common per-tick event buffer.
