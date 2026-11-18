@@ -249,7 +249,7 @@ function validateLevel7Replay(
           fail(a,"only the real saved monster site can oppose the party");
       }else{
         heroCount++;
-        if(actor.role==="monster"||!/^adventurer-[1-9]\\d*$/.test(id))
+        if(actor.role==="monster"||!/^adventurer-[1-9][0-9]*$/.test(id))
           fail(a,"party members must be canonical adventurer heroes");
       }
       choice(actor.style,["melee","ranged"],a+".style");
