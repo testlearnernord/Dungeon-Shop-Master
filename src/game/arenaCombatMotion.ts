@@ -1,4 +1,7 @@
 import { inAttackArc, rollInvulnerable, parryActive, type Point2 } from "./combatGeometry.ts";
+import {
+  applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
+} from "./combatVitality.ts";
 export { inAttackArc, rollInvulnerable, parryActive } from "./combatGeometry.ts";
 export type { Point2 } from "./combatGeometry.ts";
 
@@ -170,10 +173,10 @@ function combatRoll(s: CombatPreviewState, salt: number): number {
  * The AI normally stays in the safe interior; slams can still throw a hero
  * to the ledge and burn them. Historical saved combats are never re-run. */
 function lavaContact(s: CombatPreviewState): void {
-  const amount = Math.min(LAVA_CONTACT_DAMAGE, s.heroHp);
-  if (amount <= 0) return;
-  s.heroHp -= amount;
-  s.cues.push({ kind: "lava", amount });
+  const hit=applyCombatHit(s.heroHp,LAVA_CONTACT_DAMAGE,0,0);
+  if (hit.amount<=0) return;
+  s.heroHp=hit.hp;
+  s.cues.push({ kind: "lava", amount:hit.amount });
   clampToRadius(s.hero, SAFE_HERO_RADIUS);
 }
 function heroToBoss(s: CombatPreviewState): Point2 {
@@ -247,19 +250,18 @@ function resolveBossStrike(s: CombatPreviewState): void {
       inAttackArc(s.hero, s.heroHeading, s.boss, 6.8, 1.25)) {
     s.parryCount++;
     s.cues.push({ kind: "parry" }, { kind: "stagger" });
-    const before=s.bossHp;
-    s.bossHp = Math.max(0, s.bossHp - (s.options.sword ? 8 : 3));
-    s.cues.push({kind:"hero-hit",amount:before-s.bossHp});
+    const counter=applyCombatHit(s.bossHp,s.options.sword?8:3);
+    s.bossHp=counter.hp;
+    s.cues.push({kind:"hero-hit",amount:counter.amount});
     beginBoss(s, "stagger");
     return;
   }
   // An actual smash must threaten a well-equipped hero who misreads it.
   const raw = s.bossSlam ? 47 : 33;
-  const damage = Math.max(1, raw - (s.options.armor ? 7 : 0) -
-    (s.options.role === "tank" ? 3 : 0));
-  const before=s.heroHp;
-  s.heroHp = Math.max(0, s.heroHp - damage);
-  s.cues.push({ kind: "hit", amount: before-s.heroHp });
+  const hit=applyCombatHit(s.heroHp,raw,
+    (s.options.armor?7:0)+(s.options.role==="tank"?3:0));
+  s.heroHp=hit.hp;
+  s.cues.push({kind:"hit",amount:hit.amount});
   const knockback = unit(s.hero.x - s.boss.x, s.hero.z - s.boss.z);
   const meters=s.bossSlam ? 3.6 : 1.5;
   const landing={x:s.hero.x+knockback.x*meters,
@@ -288,9 +290,9 @@ function resolveBossGrab(s: CombatPreviewState): void {
       inAttackArc(s.hero,s.heroHeading,s.boss,6.8,1.25)) {
     s.parryCount++;
     s.cues.push({kind:"parry"},{kind:"stagger"});
-    const before=s.bossHp;
-    s.bossHp=Math.max(0,s.bossHp-8);
-    s.cues.push({kind:"hero-hit",amount:before-s.bossHp});
+    const counter=applyCombatHit(s.bossHp,8);
+    s.bossHp=counter.hp;
+    s.cues.push({kind:"hero-hit",amount:counter.amount});
     beginBoss(s,"stagger");
     return;
   }
@@ -314,11 +316,10 @@ function landThrownHero(s: CombatPreviewState, lava: boolean): void {
   // A full-body slam from a multi-metre throw is rarer and more dangerous
   // than a basic fist hit. Armor still mitigates it; lava is separate damage.
   const raw=42;
-  const damage=Math.max(1,raw-(s.options.armor?6:0)-
-    (s.options.role==="tank"?2:0));
-  const before=s.heroHp;
-  s.heroHp=Math.max(0,s.heroHp-damage);
-  s.cues.push({kind:"hit",amount:before-s.heroHp});
+  const hit=applyCombatHit(s.heroHp,raw,
+    (s.options.armor?6:0)+(s.options.role==="tank"?2:0));
+  s.heroHp=hit.hp;
+  s.cues.push({kind:"hit",amount:hit.amount});
   if (lava && s.heroHp>0) lavaContact(s);
   if (s.heroHp>0) beginHero(s,"hurt");
   else s.heroPhase="dead";
@@ -333,9 +334,9 @@ function resolveHeroStrike(s: CombatPreviewState): void {
   }
   const amount = (s.options.sword ? 16 : 6) + (s.options.role === "DPS" ? 5 : 0) +
     Math.floor(Math.max(0, (s.options.strength ?? 6) - 6) / 3);
-  const before=s.bossHp;
-  s.bossHp = Math.max(0, s.bossHp - amount);
-  s.landedHits++; s.cues.push({ kind: "hero-hit", amount: before-s.bossHp });
+  const hit=applyCombatHit(s.bossHp,amount);
+  s.bossHp=hit.hp;
+  s.landedHits++; s.cues.push({ kind: "hero-hit", amount: hit.amount });
 }
 function progressHeroAction(s: CombatPreviewState, dt: number): void {
   if (s.heroPhase === "move" || s.heroPhase === "dead") return;
@@ -380,12 +381,17 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
   } else if (s.heroPhase === "heal") {
     if (s.heroAge >= 0.72 && !s.heroApplied) {
       s.heroApplied = true;
-      const amount = s.options.role === "healer" ? 25 : 18;
-      const restored = Math.min(amount, s.options.maxHealth - s.heroHp);
-      s.heroHp += restored;
-      if (s.healingSupplies > 0) s.healingSupplies--;
-      else s.magicHeals--;
-      if (restored > 0) s.cues.push({ kind: "heal", amount: restored });
+      const consumesHerb=s.healingSupplies>0;
+      // Owned Healing Herbs always heal exactly their catalog value.
+      // A healer's innate magic remains its separate 25-HP class action.
+      const amount=consumesHerb?HEALING_HERB_HP:25;
+      const heal=applyCombatHealing(s.heroHp,s.options.maxHealth,amount);
+      s.heroHp=heal.hp;
+      if(heal.amount>0){
+        if(consumesHerb)s.healingSupplies--;
+        else s.magicHeals--;
+        s.cues.push({kind:"heal",amount:heal.amount});
+      }
     }
     if (s.heroAge >= 0.91) beginHero(s, "move");
   }
@@ -480,9 +486,9 @@ function progressProjectiles(s: CombatPreviewState, dt: number): void {
     p.ttl -= dt;
     if (dist(p, s.boss) <= TROLL_RADIUS + 0.65) {
       p.ttl = 0;
-      const before=s.bossHp;
-      s.bossHp = Math.max(0, s.bossHp - p.damage);
-      s.landedHits++; s.cues.push({ kind: "hero-hit", amount: before-s.bossHp });
+      const hit=applyCombatHit(s.bossHp,p.damage);
+      s.bossHp=hit.hp;
+      s.landedHits++; s.cues.push({ kind: "hero-hit", amount: hit.amount });
     }
   }
   s.projectiles = s.projectiles.filter(p => p.ttl > 0);
