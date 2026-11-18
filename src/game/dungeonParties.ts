@@ -141,6 +141,57 @@ export function settlePersistentDungeonParties(
   return next;
 }
 
+
+/** Real changes of companionship between committed expeditions and day end.
+ * Forming a pair emits join for its founders; keeping it produces no spam.
+ * A third hero joining an existing pair emits only THEIR join.
+ * Leaving a formed group (including after a same-day split) emits a leave.
+ * No hero can receive more than one event of each kind per day. */
+export interface TemporaryPartyChange {
+  readonly heroId:string;
+  readonly action:"join"|"leave";
+  readonly memberIds:readonly string[];
+}
+export function temporaryPartyChanges(
+  previous:readonly DungeonPartyState[],
+  encounters:readonly (readonly string[])[],
+  next:readonly DungeonPartyState[],
+):readonly TemporaryPartyChange[] {
+  const previousFor=(id:string)=>previous.find(group=>group.memberIds.includes(id))?.memberIds;
+  const encounteredFor=(id:string)=>encounters.find(group=>group.includes(id));
+  const nextFor=(id:string)=>next.find(group=>group.memberIds.includes(id))?.memberIds;
+  const sharesCompanion=(id:string,former:readonly string[]|undefined,
+    latter:readonly string[]|undefined):boolean=>
+    !!former&&!!latter&&former.some(peer=>peer!==id&&latter.includes(peer));
+  const leaves:TemporaryPartyChange[]=[],joins:TemporaryPartyChange[]=[];
+  const left=new Set<string>(),joined=new Set<string>();
+  const leave=(id:string,memberIds:readonly string[])=>{
+    if(!left.has(id)){
+      left.add(id);leaves.push({heroId:id,action:"leave",memberIds:[...memberIds]});
+    }
+  };
+  for(const group of previous)for(const id of group.memberIds){
+    if(!sharesCompanion(id,group.memberIds,encounteredFor(id)))
+      leave(id,group.memberIds);
+  }
+  for(const group of encounters)if(group.length>=2){
+    for(const id of group){
+      if(!sharesCompanion(id,previousFor(id),group)&&!joined.has(id)){
+        joined.add(id);
+        joins.push({heroId:id,action:"join",memberIds:[...group]});
+      }
+    }
+  }
+  const after:TemporaryPartyChange[]=[];
+  for(const group of encounters)if(group.length>=2){
+    for(const id of group)if(!sharesCompanion(id,group,nextFor(id))&&!left.has(id)){
+      left.add(id);
+      after.push({heroId:id,action:"leave",memberIds:[...group]});
+    }
+  }
+  return [...leaves,...joins,...after];
+}
+
 /**
  * Voluntary negotiation after ONE already-committed group encounter.
  * This modifies only the next-floor intentions, never combat, health,
