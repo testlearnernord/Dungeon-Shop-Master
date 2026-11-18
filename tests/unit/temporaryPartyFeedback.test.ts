@@ -93,6 +93,11 @@ test("day settlement commits real Temporary Party feed entries and historical me
   for(const event of recorded){
     assert.deepEqual(event.dungeonReplay?.partyMemberIds,[a,b]);
     assert(event.dungeonReplay?.partyMemberIds?.includes(event.adventurerId!));
+    assert.deepEqual(event.dungeonReplay?.partyAppearances?.map(hero=>hero.id),
+      [a,b],"A peaceful group expedition must still know both historical models");
+    assert(event.dungeonReplay?.partyAppearances?.every(hero=>
+      hero.equipment.weapon==="Iron Sword"&&
+      hero.equipment.armor==="Leather Vest"));
   }
   const partyNumber=temporaryPartyNumber(second.state,a);
   assert.equal(partyNumber,1);
@@ -107,8 +112,40 @@ test("day settlement commits real Temporary Party feed entries and historical me
   const firstTape=saved.payload.events.find(event=>event.dungeonReplay)?.dungeonReplay;
   assert(firstTape);
   delete (firstTape as {partyMemberIds?:readonly string[]}).partyMemberIds;
+  delete (firstTape as {partyAppearances?:unknown}).partyAppearances;
   assert.doesNotThrow(()=>parseSave(JSON.stringify(saved)),
     "Older v1 recordings with no historical party metadata still load");
+  const previousPhase=structuredClone(createSave(second.state));
+  const priorReplay=previousPhase.payload.events.find(event=>event.dungeonReplay)!
+    .dungeonReplay!;
+  delete (priorReplay as {partyAppearances?:unknown}).partyAppearances;
+  assert.doesNotThrow(()=>parseSave(JSON.stringify(previousPhase)),
+    "Earlier Temporary Party recordings without visual snapshots remain valid");
+
+  for(const mutate of [
+    (tape:NonNullable<typeof priorReplay>)=>{
+      (tape.partyAppearances![1].equipment as {armor:string|null}).armor="Dragon Plate";
+    },
+    (tape:NonNullable<typeof priorReplay>)=>{
+      (tape.partyAppearances![1] as {role:string}).role="monster";
+    },
+    (tape:NonNullable<typeof priorReplay>)=>{
+      (tape.partyAppearances as unknown[]).pop();
+    },
+    (tape:NonNullable<typeof priorReplay>)=>{
+      (tape.partyAppearances![0] as {id:string}).id=b;
+    },
+    (tape:NonNullable<typeof priorReplay>)=>{
+      (tape.partyAppearances![0] as {equipment:{weapon:string|null}}).equipment.weapon=null;
+    },
+  ]){
+    const tampered=structuredClone(createSave(second.state));
+    const tape=tampered.payload.events.find(event=>event.dungeonReplay)!
+      .dungeonReplay!;
+    mutate(tape);
+    assert.throws(()=>parseSave(JSON.stringify(tampered)),/partyAppearances/,
+      "Saved historical participant models must match actual party and purchased gear");
+  }
 
   for(const corrupt of [
     [a,a],
