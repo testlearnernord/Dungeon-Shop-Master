@@ -41,6 +41,16 @@
   (a temporary new design gate, not today's `level6Permit`). Do not
   reinstate the rejected long backtrack, mandatory five-floor shops,
   two-door topology or an invented escape rope as accepted scope.
+- **CURRENT actor runtime shared across group and Troll combat (after
+  this PR):** `combatMovement.ts` is the only combat position
+  integrator and `combatActionClock.ts` is the only once-per-tick
+  action timing/contact/cooldown/stamina helper. Dungeon fights pass
+  wall/actor collision; boss fights pass circle bounds and apply
+  their own genuine lava effect. Do not duplicate movement or
+  contact-window timers in a third boss/monster renderer; preserve
+  the Troll's fixed-tick grab/throw and existing replay frames.
+  Individual target-AI and special-boss effect policies are still
+  separate and require a future full encounter-loop unification.
 - **CURRENT shared melee attack contract (after this PR):**
   `combatMelee.ts` is the sole authority for hit arcs, reach,
   line-of-sight rejection, roll windows and facing-based parry,
