@@ -3,7 +3,7 @@ import test from "node:test";
 import { generateDungeonLayout } from "../../src/game/dungeonLayout.ts";
 import {
   dungeonSiteCooldown, dungeonGenerationSeed, refreshDungeonSites,
-  resolveDungeonSite,
+  resolveDungeonSite, type DungeonSiteCycle,
 } from "../../src/game/dungeonRegeneration.ts";
 import { createGameState } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
@@ -17,7 +17,9 @@ test("ordinary dungeon sites regenerate on staggered saved intervals without res
   const trap = map.features.find(site => site.kind === "trap")!;
   const sites = [monster, chest, trap];
   const cleared = sites.map(site => site.id);
-  const history = sites.reduce((records, site) => resolveDungeonSite(records, site.id, 4), []);
+  const history = sites.reduce<DungeonSiteCycle[]>(
+    (records, site) => resolveDungeonSite(records, site.id, 4), [],
+  );
   const world = {resolvedFeatureIds:cleared,heroes:[],siteCycles:history};
   const before = refreshDungeonSites(world,map,5);
   assert.deepEqual(before.resolvedFeatureIds,cleared);
