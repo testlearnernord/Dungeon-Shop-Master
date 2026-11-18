@@ -224,9 +224,15 @@ function validateLevel7Replay(
       const a=item+".combat.actors["+j+"]",actor=object(rawActor,a,[
         "id","team","role","style","x","z","hp","maxHp","damage",
         "armor","speed","reach",
-      ],["radius","healCharges","meleeAbility"]);
+      ],["radius","healCharges","meleeAbility","specialAbility","agility","grappleDamage"]);
       if(actor.meleeAbility!==undefined)
         choice(actor.meleeAbility,["heavy"],a+".meleeAbility");
+      if(actor.specialAbility!==undefined)
+        choice(actor.specialAbility,["grapple-throw"],a+".specialAbility");
+      if(actor.agility!==undefined)
+        validNumber(actor.agility,a+".agility",0,1000);
+      if(actor.grappleDamage!==undefined)
+        validNumber(actor.grappleDamage,a+".grappleDamage",1,10000);
       const id=text(actor.id,a+".id");unique(id,actorIds,a+".id");
       choice(actor.team,["heroes","monsters"],a+".team");
       choice(actor.role,["tank","DPS","healer","monster"],a+".role");
@@ -265,7 +271,8 @@ function validateLevel7Replay(
         for(const key of ["x","z","hp","stamina","heading"])
           validNumber(snapshot[key],ap+"."+key,-10000,100000);
         choice(snapshot.phase,["move","windup","strike","recover","cast",
-          "heal","roll","parry","hurt","dead"],ap+".phase");
+          "heal","roll","parry","hurt","dead",
+          "grab","grabMiss","throw","grabbed","thrown"],ap+".phase");
       });
       const projectiles=array(frame.projectiles,fp+".projectiles");
       if(projectiles.length>30)fail(fp+".projectiles","is oversized");
@@ -283,7 +290,8 @@ function validateLevel7Replay(
       if(cue.targetId!==undefined && !actorIds.has(cue.targetId as string))
         fail(cp+".targetId","is unknown");
       choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
-        "parry","heal","death","blocked"],cp+".kind");
+        "parry","heal","death","blocked",
+        "grab","throw","landing","escape"],cp+".kind");
       validNumber(cue.t,cp+".t",0,26);
       if(cue.amount!==undefined)validNumber(cue.amount,cp+".amount",0,100000);
     });
