@@ -77,8 +77,9 @@
   `dungeonReplayPlayback.ts` replays the stored routes and encounter
   frames unchanged, not artificial filler or time dilation. The
   physical Board gains empty/filled weapon and armor sockets and numeric
-  HP alongside existing group labels. Morning/Midday/Evening world
-  snapshots are NOT implemented or fabricated. New ordinary monsters
+  HP alongside existing group labels. The old fixed three-phase world
+  snapshot requirement is superseded by the chronological shared-clock
+  design in `docs/LIVING_WORLD_CLOCK.md` (not implemented). New ordinary monsters
   require full concept, approved GLB, animation, SFX and visual tests
   per `docs/MONSTER_ASSET_PIPELINE.md`; a Ghoul is only a candidate.
 - **CURRENT opportunistic party expedition (after this PR):**
