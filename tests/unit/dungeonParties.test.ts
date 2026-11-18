@@ -59,7 +59,7 @@ test("only willing physically co-located explorers autonomously join one party",
     new Set([heroes[1].id])).map(h=>h.id),[heroes[0].id,heroes[2].id]);
 });
 
-test("three real heroes fight one regenerated grapple elite with distinct HP/Herbs",()=>{
+test("three real heroes fight one regenerated heavy elite with distinct HP/Herbs",()=>{
   const heroes=party(),{world,featureId}=atUnresolvedSite(heroes,"monster",1);
   const before=structuredClone(world);
   const result=simulateSpatialDungeonPartyDay(heroes,world,SEED,12,
@@ -76,7 +76,9 @@ test("three real heroes fight one regenerated grapple elite with distinct HP/Her
   assert.equal(encounter.combat.actors.length,4);
   assert.equal(encounter.combat.actors.filter(a=>a.team==="monsters").length,1);
   assert.equal(encounter.combat.actors.find(a=>a.id===featureId)?.specialAbility,
-    "grapple-throw");
+    undefined,"The Troll's grab/throw remains a unique boss skill");
+  assert.equal(encounter.combat.actors.find(a=>a.id===featureId)?.meleeAbility,
+    "heavy");
   for(const hero of heroes){
     const recorded=encounter.combat.actors.find(actor=>actor.id===hero.id)!;
     assert.deepEqual(recorded.equipment,{

@@ -60,11 +60,22 @@ The repository currently implements:
   their actual historically purchased Iron Sword/Leather Vest (if any).
   Older v1 footage lacking equipment snapshots stays neutral. No replay
   may query today's changed shop roster to dress a historical fighter. Floor 7 room sentries can return
-  on a deterministic later site generation as elite melee monsters with
-  genuine `grapple-throw` combat, physical collision, resistance and
-  replayable results. They are renewable monsters, **not** the unique
+  on a deterministic later site generation as armored elite melee monsters
+  with a telegraphed heavy strike, never the Cave Troll's unique throw.
+  The shared grab/throw engine still supports authored bosses and
+  historical old v1 elite replays remain compatible. They are renewable monsters, **not** the unique
   Cave Troll or a Floor 10 boss. The group campaign now supports
   real co-located 1–3-hero encounters; full V.003 progression is incomplete.
+- **Authentic longer daily expeditions (CURRENT after this PR):**
+  Spatial parties may walk up to 36 actual tile edges each committed
+  day, continuing after the first won fight toward a second real
+  monster encounter. Injury, casualty, no viable route or safety
+  retreat can still stop the day's footage early. Time in a saved
+  replay is the length of recorded actions, not a fake full-day
+  timestamp. The physical Adventurer Board now displays real empty/
+  owned weapon and armor sockets and numeric HP as well as parties;
+  Morning/Midday/Evening snapshots are still future work. The named
+  Ghoul is only an art candidate; see MONSTER_ASSET_PIPELINE.md.
 - **Autonomous co-located dungeon parties (CURRENT after this PR):**
   On Floors 1–4 and 7, willing heroes who already share the same
   physical tile can form an opportunistic group of up to three on

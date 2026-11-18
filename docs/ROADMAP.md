@@ -123,10 +123,11 @@ stunlock and immutable v1 recordings.
 **Delivered after this PR merges:** the existing Floor 1–4/7
 dungeon spectator projects every recorded group fighter, projectile
 and combat phase without rerolling anything; TAB can focus only visible
-participants. Regenerated Floor 7 room sentries can become deterministic
-grapple/throw elites, awarding real extra XP and gold on actual victory.
-This is the first campaign encounter using the new group-boss ability
-but remains **one hero against a renewable elite**.
+participants. Regenerated Floor 7 room sentries can become stronger heavy-strike
+elites, awarding real extra XP/gold without inheriting the Cave Troll's
+unique grab/throw. Real campaign parties of up to three heroes can
+encounter these sites. The engine still supports grappling for authored
+unique bosses; previous saved grapple footage remains compatible.
 
 **Co-located party settlement (CURRENT after this PR merges):**
 up to three willing heroes who begin a day on the same tile can
@@ -244,6 +245,15 @@ rewrite existing historical recordings or claim V.003 released.
   a one-on-one Troll fight or remove valid saved boss footage.
 - No direct Galvik party control and no guarantee that equipping a hero
   makes them survive.
+
+**Current pacing and art gate (after this PR):** authentic spatial days
+have up to 36 connected steps and two actually reached fights; a winning
+party can continue instead of the first fight ending the day. Past replays
+remain unchanged. Current ordinary monsters are named combat specs and
+sphere placeholders, not finished creature models. The Ghoul candidate
+must pass the approved concept > GLB > rig/animation > original SFX >
+replay integration > visual/test gates in `MONSTER_ASSET_PIPELINE.md`
+before being offered as a shipped creature.
 
 ### P3 — Adventurer Board 2.0
 

@@ -10,9 +10,12 @@ import {
   resolveDungeonSite, type DungeonSiteCycle,
 } from "./dungeonRegeneration.ts";
 
-export const LEVEL7_STEP_BUDGET = 16;
+/** Real movement actions across one shop day. Longer footage comes from
+ * actual additional spatial exploration, not slowed-down replay clips. */
+export const LEVEL7_STEP_BUDGET = 36;
 export const LEVEL7_REPLAY_KEEP = 3;
-export const LEVEL7_MAX_ENCOUNTERS = 1;
+/** Bound battle frequency within a longer day without inventing encounters. */
+export const LEVEL7_MAX_ENCOUNTERS = 2;
 export const LEVEL7_COMBAT_SECONDS = 25;
 
 /** A durable, global shared dungeon world plus per-hero independent exploration. */
@@ -197,9 +200,11 @@ function fightAgainst(
       (elite?4:0),
     armor:(monster.subtype==="skeleton"?3:1)+(elite?4:0),
     speed:elite?2.3:2.6,reach:elite?2:1.6,
-    ...(elite?{radius:1.05,specialAbility:"grapple-throw" as const,
-      grappleDamage:24,agility:8,staggerThreshold:12}:{}),
-    ...(monster.subtype==="skeleton" && cycle>0 && cycle%2===1
+    // The grab-and-throw is the signature of the UNIQUE Cave Troll.
+    // The shared engine supports it, but renewable generic foes cannot
+    // acquire that boss art/ability merely by spawning as elites.
+    ...(elite?{radius:1.05,agility:8,staggerThreshold:12}:{}),
+    ...((elite || monster.subtype==="skeleton" && cycle>0 && cycle%2===1)
       ?{meleeAbility:"heavy" as const}:{}),
   });
   const obstacles=[];
@@ -321,6 +326,7 @@ export function simulateSpatialDungeonPartyDay(
   const encounters:Level7ReplayEncounter[]=[];
   let current:DungeonPoint={x:entry.x,z:entry.z};
   let outcome:Level7Outcome="exploring";
+  let encountersResolved=0;
 
   const step=(t:number,action:Level7Action,featureId?:string):void=>{
     for(const m of members)m.steps.push({
@@ -403,6 +409,7 @@ export function simulateSpatialDungeonPartyDay(
       encounters.push({featureId:feature.id,...current,
         siteCycle:dungeonSiteGeneration(siteCycles,feature.id),
         combat:fight.combat});
+      encountersResolved++;
       step(t+0.1,"combat",feature.id);
       if(fight.outcome==="heroes"){
         resolved.add(feature.id);
@@ -413,13 +420,28 @@ export function simulateSpatialDungeonPartyDay(
         shareGold(fight.elite?6:2);
         for(const m of members)m.steps.push({...current,t:t+0.2,
           action:m.hp===0?"death":"defeat-monster",featureId:feature.id,hp:m.hp});
+        // A fallen companion ends this outing. Living friends don't
+        // abandon the body and immediately charge into another battle.
+        const casualty=members.some(m=>m.hp===0);
+        const endangered=members.some(m=>m.hp>0 &&
+          m.hp/m.hero.stats.maxHealth<0.35 && m.healing===0);
+        if(casualty||endangered){
+          outcome="retreat";
+          for(const m of members)if(m.hp>0)m.steps.push({...current,t:t+0.3,
+            action:"retreat",hp:m.hp});
+          break;
+        }
+        // Battle victory does not magically end the day's exploration.
+        // Keep walking the real connected floor until the step or encounter
+        // budget is spent, or the party decides to retreat for safety.
+        if(encountersResolved>=LEVEL7_MAX_ENCOUNTERS)break;
+        continue;
       }else{
         outcome="retreat";
         for(const m of members)m.steps.push({...current,t:t+0.2,
           action:m.hp===0?"death":"retreat",hp:m.hp});
+        break;
       }
-      // Exactly one encounter/site/day, regardless of surviving party size.
-      break;
     }
   }
 

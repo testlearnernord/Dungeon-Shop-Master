@@ -84,6 +84,13 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   Herb, Waybread, Mana Potion and other carried quantities are readable.
   On limited wall texture space, prioritize health, dangerous missing gear,
   location and one current action; overflow detail goes to the E/R panel.
+- **CURRENT physical gear/HP glance (after this PR):** every row of the
+  placeable canvas board now has explicit W (weapon) and A (armor)
+  sockets, visibly muted when empty, and a numeric HP total next to
+  its genuine health bar. The legend names both sockets. These values
+  project the actual hero equipment/health with no added AI, time
+  phase or hidden replay outcome. Compact icons and three-phase
+  timelines are still part of the full Board 2.0 target.
 - **CURRENT incremental party information:** the physical Adventurer Board
   appends a compact “Party 2/3” label only for a saved relationship.
   In the expanded R roster, the same read-only relationship exposes

@@ -3,6 +3,7 @@ import test from "node:test";
 import { advanceDay, createGameState } from "../../src/game/gameState.ts";
 import {
   locationLabel, partySizeLabel, portraitIndex, rosterEntries, rosterPartyDetails,
+  rosterBoardEquipment,
 } from "../../src/game/rosterView.ts";
 
 test("roster entries show shop visitors first and stable portrait IDs", () => {
@@ -82,4 +83,20 @@ test("saved travel companions reveal identities, health and founding day without
   assert.equal(rosterPartyDetails(malformed,first.id),null,
     "A broken relationship must not be advertised on the board");
   assert.equal(partySizeLabel(malformed,first.id),"");
+});
+
+test("board shows only genuine weapon and armor slots plus exact numeric HP",()=>{
+  const state=createGameState(7351),hero=state.adventurers[0];
+  assert.deepEqual(rosterBoardEquipment(hero),{
+    weapon:false,armor:false,hp:hero.health+"/"+hero.stats.maxHealth,
+  });
+  const equipped={...hero,health:hero.stats.maxHealth-7,
+    equipment:{weapon:"Iron Sword",armor:"Leather Vest"}};
+  assert.deepEqual(rosterBoardEquipment(equipped),{
+    weapon:true,armor:true,hp:equipped.health+"/"+hero.stats.maxHealth,
+  });
+  assert.deepEqual(rosterBoardEquipment({...equipped,
+    equipment:{weapon:null,armor:"Leather Vest"}}),{
+    weapon:false,armor:true,hp:equipped.health+"/"+hero.stats.maxHealth,
+  });
 });
