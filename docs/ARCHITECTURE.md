@@ -193,7 +193,10 @@ a telegraphed windup; real `combatMelee.ts` contact/dodge/parry;
 actor-stat and per-contact deterministic escape; physical hold
 synchronized to the attacker's locked orientation; real release,
 airborne travel with walls and other actors as obstacles; and a
-**single, armor-mitigated landing hit**. Dead grapplers release
+**single, armor-mitigated landing hit**. Configurable
+`staggerThreshold` prevents weak hits from interrupting every frame
+of a long boss windup, while strong hits and well-timed parries
+retain real counterplay. Dead grapplers release
 held victims without fake damage. Airborne victims must land
 before a concluded party victory is committed.
 
