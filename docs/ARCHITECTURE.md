@@ -29,13 +29,14 @@ spends actual Herbs at 18 HP; its separate role-healer magic action
 retains 25 HP where that resource exists. Non-item heal effects should
 be modeled as distinct class abilities rather than free item stock.
 
-**Still not unified:** `groupCombat.ts` and the boss-specific
-`arenaCombatMotion.ts` currently own separate motion/ability phase
-drivers and separate immutable v1 replay shapes. Refactoring the latter
-onto one group-capable encounter stepper while retaining grab/throw,
-Tripo playback and historical replays remains pending. Shared
-HP arithmetic is an incremental integration, not permission to
-instantiate a third combat resolver.
+**Shared encounter pipeline:** `groupCombat.ts` and
+`arenaCombatMotion.ts` retain different **actor-specific phase
+representations** and immutable v1 replay *schemas*, but both now
+register their actor updates, projectiles and outcome mapping
+with `combatEncounter.ts`. Their frame capture loops are also
+centralized. Troll grab/throw remains an encounter-specific ability
+callback; the remaining migration is a universal actor/ability
+state model, not another top-level fight clock.
 
 ## Implemented shared melee ability authority (after this PR merges)
 
@@ -57,11 +58,10 @@ on saved `GroupCombatReplay` actors; old actor/replay records remain valid.
 
 The boss's **signature grab lift/throw, knockback, lava edge,
 presentation timing and historical replay shape remain preserved**.
-Its independent position/motion/ability scheduler is **not yet**
-combined with the group step loop. This is meaningful combat-rule
-convergence, **not final unified group-capable boss simulation**.
-A future integration must preserve the settled Tripo visuals and
-historical replays rather than rewriting successful fights.
+Its signature ability behavior is registered within the **shared
+encounter stepper**, while individual boss/grapple states remain
+distinct from generic `GroupActor` states. The remaining
+migration must retain settled Tripo visuals and old recordings.
 
 ## Shared actor locomotion and timed-action scheduler (CURRENT after this PR)
 
@@ -85,14 +85,12 @@ cannot trigger multiple strikes from repeated frame updates.
 Existing numerical contact times, GRAPPLE_TIMING and replay formats
 remain untouched.
 
-**Still distinct:** the Boss owns its **special-ability selection and
-grabbed/thrown trajectory/effects**; group combat owns multi-actor
-targeting, obstruction and projectile collision. Those policy
-differences are deliberate while the general encounter loop is
-consolidated, rather than replacing the functioning troll with a
-generic two-actor duel. A later PR must bring these into one
-configurable group-capable encounter stepper. This migration is
-not yet that final step.
+**Still distinct:** the Troll has its own grip/flight/throw
+ability states; ordinary parties use group-specific actor states,
+obstacles and team targeting. They now feed the **same encounter
+pipeline** but have not yet become a fully universal group-capable
+actor state/ability model. Preserve the working grapple and
+presentation timings when consolidating their state schemas.
 
 ## Shared combat AI and projectile resolution (CURRENT after this PR)
 
