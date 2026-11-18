@@ -788,7 +788,8 @@ export class NpcVisualSystem {
       }
       if(npc.wishBubble&&this.wishBubblesVisible){
         updateNpcWishBubble(npc.wishBubble,this.scene,npc.root.position,
-          npc.restockSeconds??0,npc.root.metadata.shoppingPhase==="leaving-upset");
+          npc.restockSeconds??RESTOCK_WAIT_SECONDS,
+          npc.root.metadata.shoppingPhase==="leaving-upset");
       }
       if(npc.phase==="queueing"&&(
         npc.root.metadata.shoppingPhase==="restock-spot-full"||
@@ -1095,14 +1096,11 @@ export class NpcVisualSystem {
       // side waiting destination instead of staying in the shelf aisle.
       const overflowRoute=waitRoute?null:this.serviceOverflowRoute(npc);
       const safeRoute=waitRoute??overflowRoute;
-      if(npc.restockSeconds===null){
-        const reason=begging?"cannot-afford":"unavailable";
-        const timed=this.shopRequestClock?.start(npc.visitor.id,npc.intent.wantedItemId,reason);
-        npc.restockSeconds=timed??RESTOCK_WAIT_SECONDS;
-      }else{
-        const remaining=this.shopRequestClock?.remaining(npc.visitor.id);
-        if(remaining!==null&&remaining!==undefined)npc.restockSeconds=remaining;
-      }
+      // A real petition starts once the customer reaches a reserved safe
+      // waiting destination, not in the doorway or while rerouting.
+      // Saved requests retain their original deadline after reopening.
+      const remaining=this.shopRequestClock?.remaining(npc.visitor.id);
+      if(remaining!==null&&remaining!==undefined)npc.restockSeconds=remaining;
       this.showWish(npc,npc.intent.wantedItemId,begging);
       npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
       npc.root.metadata.shoppingTargetSlot=null;
@@ -1324,6 +1322,10 @@ export class NpcVisualSystem {
           if(clearingShelf)npc.wait=0.7;
           if(npc.root.metadata.shoppingPhase==="walking-to-request-roam")
             npc.wait=8+(npc.slot%4)*1.4;
+          const arrivedAtRequestStation=[
+            "walking-to-restock-wait","walking-to-credit-wait",
+            "walking-to-restock-overflow","walking-to-credit-overflow",
+          ].includes(String(npc.root.metadata.shoppingPhase??""));
           npc.root.metadata.shoppingPhase=clearingShelf
             ?"waiting-for-shelf"
             :npc.root.metadata.shoppingPhase==="walking-to-shelf-retry-spot"
@@ -1342,6 +1344,13 @@ export class NpcVisualSystem {
               ?"checkout-overflow-wait"
             :checkoutQueueIndex(this.carts,npc.visitor.id)>=0
               ?"awaiting-checkout":"waiting-for-next-day";
+          if(arrivedAtRequestStation&&npc.restockSeconds===null&&
+             npc.intent?.wantedItemId&&
+             (npc.intent.reason==="unavailable"||npc.intent.reason==="cannot-afford")){
+            npc.restockSeconds=this.shopRequestClock?.start(npc.visitor.id,
+              npc.intent.wantedItemId,npc.intent.reason)??RESTOCK_WAIT_SECONDS;
+            npc.root.metadata.restockRemaining=Math.ceil(npc.restockSeconds);
+          }
         }else{
           npc.phase="considering";
           npc.wait=1.1+(npc.slot%3)*0.35;
