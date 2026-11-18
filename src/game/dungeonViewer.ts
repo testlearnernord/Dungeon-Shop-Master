@@ -14,9 +14,8 @@ import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type 
 import type { Level7Replay } from "./level7Exploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
-import {
-  CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL,createGhoulCryptRoom,
-} from "./ghoulCryptArt.ts";
+import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
+import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {
   generateExpeditionLayout, tileAt, type DungeonLayout,
   type DungeonFeature, type DungeonPoint,
