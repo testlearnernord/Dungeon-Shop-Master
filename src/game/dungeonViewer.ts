@@ -1,7 +1,6 @@
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
-import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
@@ -16,13 +15,16 @@ import type { Level7Replay } from "./level7Exploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {
+  CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL,createGhoulCryptRoom,
+} from "./ghoulCryptArt.ts";
+import {
   generateExpeditionLayout, tileAt, type DungeonLayout,
   type DungeonFeature, type DungeonPoint,
 } from "./dungeonLayout.ts";
 
 const TILE_SIZE = 2.5;
 const WALL_HEIGHT = 4.5;
-const MONSTER_COLOR = "#ad5b42";
+const MONSTER_COLOR = "#93ad7b";
 const getWorld = (map: DungeonLayout, p: DungeonPoint) => new Vector3(
   (p.x-(map.width-1)/2)*TILE_SIZE, 0, (p.z-(map.height-1)/2)*TILE_SIZE,
 );
@@ -184,7 +186,7 @@ export class DungeonViewer {
     this.scene?.dispose();
     const scene = new Scene(this.engine);
     this.scene = scene;
-    scene.clearColor = new Color4(0.035,0.038,0.043,1);
+    scene.clearColor = new Color4(0.025,0.033,0.030,1);
     const camera = new UniversalCamera("dungeon-camera",
       new Vector3(0,66,-22), scene);
     this.camera = camera;
@@ -203,13 +205,12 @@ export class DungeonViewer {
       if(emissive) mat.emissiveColor=Color3.FromHexString(hex).scale(0.55);
       return mat;
     };
-    const rock=makeMat("dungeon-rock","#323139");
-    const floor=makeMat("dungeon-corridor-floor","#555258");
-    const roomStone=makeMat("dungeon-room-floor","#67615a");
+    const rock=makeMat("dungeon-rock",CRYPT_WALL);
+    const floor=makeMat("dungeon-corridor-floor",CRYPT_FLOOR);
+    const roomStone=makeMat("dungeon-room-floor",CRYPT_STONE);
     const gold=makeMat("dungeon-gold","#d8a548",true);
     const spike=makeMat("dungeon-spikes","#b75a4b",true);
     const monster=makeMat("dungeon-monster",MONSTER_COLOR,true);
-    const brazier=makeMat("dungeon-torch","#f3b257",true);
     const underlay=MeshBuilder.CreateBox("dungeon-foundation",{
       width:layout.width*TILE_SIZE,height:0.35,depth:layout.height*TILE_SIZE,
     },scene);
@@ -259,21 +260,11 @@ export class DungeonViewer {
         replayTiles.push({x,z,mesh});
       }
     }
-    // Room torches are decoration only. No game RNG or hidden knowledge.
-    layout.rooms.forEach((room,i) => {
-      const pos=getWorld(layout,room);
-      if(i<6) {
-        const light=new PointLight("dungeon-torchlight-"+i,
-          new Vector3(pos.x,3,pos.z),scene);
-        light.diffuse=new Color3(1,0.6,0.3);
-        light.intensity=1.7;
-        light.range=14;
-        const ember=MeshBuilder.CreateSphere("dungeon-torch-"+i,
-          {diameter:0.45,segments:8},scene);
-        ember.position.set(pos.x,1.2,pos.z);
-        ember.material=brazier;
-        replayDecorations.push({x:room.x,z:room.z,mesh:ember,light});
-      }
+    // Burial crypt props are pure spectacle on the SAME saved dungeon
+    // tiles. No new arena teleport, obstacles, loot or simulation RNG.
+    layout.rooms.forEach((room,i)=>{
+      replayDecorations.push(createGhoulCryptRoom(
+        scene,room,getWorld(layout,room),i));
     });
 
     for(const feature of layout.features){
@@ -294,11 +285,14 @@ export class DungeonViewer {
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
           kind:feature.kind,mesh:marker});
       } else {
-        const enemy=MeshBuilder.CreateSphere("dungeon-monster-"+feature.id,
-          {diameter:0.95,segments:8},scene);
-        enemy.position.set(pos.x,0.8,pos.z);
+        // Development-map marker only; the ACTUAL encounter instantiates
+        // the animated skinned Ghoul in DungeonReplayScene.
+        const enemy=MeshBuilder.CreateCylinder("dungeon-monster-"+feature.id,
+          {diameterTop:.4,diameterBottom:.95,height:.36,tessellation:6},scene);
+        enemy.position.set(pos.x,.22,pos.z);
         enemy.material=monster;
-        enemy.metadata={kind:"spawn-marker",subtype:feature.subtype};
+        enemy.metadata={kind:"spawn-marker",subtype:feature.subtype,
+          label:"Ghoul presence (map marker, not fighter model)"};
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
           kind:feature.kind,mesh:enemy});
       }
