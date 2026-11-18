@@ -122,16 +122,40 @@ if(import.meta.env.VITE_E2E==="1"){
 }
 // The forecast is read-only. It uses exactly the same purchase decisions
 // as the confirmed next-day transaction. Stock changes trigger replanning.
-const refreshShoppingIntents = () => npcVisuals.setShoppingIntents(
-  forecastShoppingIntents(store.state),
+let lastShoppingState:typeof store.state|null=null;
+const refreshShoppingIntents = () => {
+  const state=store.state;
+  // World time changes every second. Replan physical routes ONLY if the
+  // buyer, money, stock, carts, events, layout or room actually changed.
+  // Saved petition countdowns are read directly through their clock accessor.
+  if(lastShoppingState&&lastShoppingState.adventurers===state.adventurers&&
+    lastShoppingState.shopEconomy===state.shopEconomy&&
+    lastShoppingState.shopCarts===state.shopCarts&&
+    lastShoppingState.shopLayout===state.shopLayout&&
+    lastShoppingState.level5Room===state.level5Room&&
+    lastShoppingState.events===state.events)return;
+  lastShoppingState=state;
+  npcVisuals.setShoppingIntents(
+  forecastShoppingIntents(state),
   store.state.shopLayout, shop, store.state.shopCarts,
   (heroId,slotId)=>{
     const previous=store.state;
     store.pickUpShopItem(heroId,slotId);
     return store.state!==previous;
   },
-  manuallyPaidVisitors(store.state.events,store.state.day),
-  (heroId,reason)=>store.walkOutWithoutPurchase(heroId,reason),store.state.level5Room);
+  manuallyPaidVisitors(state.events,state.day),
+  (heroId,reason)=>store.walkOutWithoutPurchase(heroId,reason),state.level5Room,{
+    start:(heroId,itemId,reason)=>{
+      const due=store.startShopRequest(heroId,itemId,reason);
+      return due===null?null:due-store.state.worldClock.tick;
+    },
+    remaining:heroId=>store.shopRequestRemaining(heroId),
+    shortenE2E:(heroId,seconds)=>store.shortenShopRequestForE2E(heroId,seconds),
+    expiredWithoutStock:heroId=>store.state.events.some(event=>
+      event.day===store.state.day&&event.type==="shop-walkout"&&
+      event.adventurerId===heroId&&event.shopReason==="unavailable"),
+  });
+};
 store.subscribe(refreshShoppingIntents);
 refreshShoppingIntents();
 setupSalesHud(store);
@@ -139,6 +163,8 @@ setupExpeditionHud(store);
 let selectedItemId: ItemId = ITEMS[0].id;
 setupCampaignHud(store, campaign, () => {
   npcVisuals.reconcile([], []);
+  lastShoppingState=null;
+  worldClockPacer.reset();
   bedtime?.reset();
   ledger?.close();
   resetReplayDisclosure();
@@ -289,6 +315,7 @@ engine.runRenderLoop(() => {
     !!document.querySelector("dialog[open]")||
     document.body.classList.contains("blueprint-active");
   worldClockPacer.step(frameMs,paused,ticks=>store.advanceWorldTime(ticks));
+  npcVisuals.setWorldPaused(paused);
   npcVisuals.setWishBubblesVisible(!arena.isActive&&!dungeon.isActive);
   if(ledger?.isSuspended&&!arena.isActive&&!dungeon.isActive){
     ledger.resumeIfReady();
