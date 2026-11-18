@@ -73,6 +73,7 @@ The repository currently implements:
   Each hero has real independent HP, healing charges, individual
   traps/armor effects, XP and replay POV; exactly one hero receives
   a chest's one loot unit, and the finite gold is shared. Party
+  Real group route selection now weighs each actual participant's explored-neighbour proposal (majority and deterministic ties), not the implicit first hero. After combat, independently chosen personal goals can yield consensual safe descent, staying with an injured friend, or a supportive escort upward. Hard resupply and unsafe progress cannot be outvoted; disagreement can still split a party. No free healing, merchant orders, or extra combat outcomes.
   outcomes are cached for every hero during the day tick, not
   re-resolved on their later roster turn. Characters can choose
   different personal floor goals afterwards and separate again.
