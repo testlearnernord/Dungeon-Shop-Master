@@ -139,6 +139,18 @@ while the same scheduler controls the combat contact moments.
 Tests lock deterministic boss and multi-actor motion/replay, collision
 and no duplicate hits.
 
+**Shared combat decisions + projectile integration (after this PR merges):**
+One `combatTactics.ts` owns deterministic enemy target preference,
+engagement, defensive choices and legal melee skill selection for
+ordinary encounters and the Cave Troll. One `combatProjectile.ts`
+resolves swept physical projectile contact (including dungeon walls,
+enemy-only damage and tie-breaking) on both paths. Special grab
+selection retains its existing distance, attack-index and tactic
+requirements; no free damage or rerolled encounter replay.
+Tests cover actual group aggro, boss attack rotation, tank reactions,
+fast projectile hits, wall obstruction, no friendly fire and
+deterministic full boss fight.
+
 **Still next:** consolidate the distinct movement, skill/ability
 and target-selection step loops into a **single group-capable
 encounter authority** with configurable boss abilities, preserving
