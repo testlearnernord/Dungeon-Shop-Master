@@ -128,6 +128,17 @@ optional profile survives recording and strict save validation.
 The old Troll grapple/replay clips retain their present physical
 effect and timings.
 
+**Shared actor/runtime integration (after this PR merges):**
+`combatMovement.ts` moves heroes and monsters using real world
+positions and one integration function, with per-arena collision
+policies (walls and actor separation vs circular Troll boundaries).
+`combatActionClock.ts` drives the deterministic one-time action
+contacts, completion, cooldown and stamina steps for group and Boss
+combat. The Troll's exact grab/throw animation timing is retained
+while the same scheduler controls the combat contact moments.
+Tests lock deterministic boss and multi-actor motion/replay, collision
+and no duplicate hits.
+
 **Still next:** consolidate the distinct movement, skill/ability
 and target-selection step loops into a **single group-capable
 encounter authority** with configurable boss abilities, preserving

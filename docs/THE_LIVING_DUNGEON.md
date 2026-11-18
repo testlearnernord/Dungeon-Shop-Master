@@ -89,6 +89,19 @@ still owns its animation-compatible grab/throw and independent
 movement/action scheduler; **full battle-loop unification remains
 an unfinished release gate**.
 
+**Fifth implementation slice (CURRENT only after this PR merges):**
+ordinary encounters and the Troll now share `combatMovement.ts`
+as their actual position integrator, with explicit collision
+policies for dungeon walls/other actors versus the circular boss
+cavern; the Boss lava hazard remains a consequence of crossing its
+real boundary. `combatActionClock.ts` drives the phase time,
+contact-once checks, action completion, cooldown and stamina
+for both motors. This replaces separate movement arithmetic and
+duplicated phase contact scheduling, **not** the Boss's complex
+AI, target selection, physical grab/throw effects or the final
+one-group-capable-encounter stepper. Preserve historical v1
+recordings; replay viewers never re-simulate.
+
 ## Dungeon, heroes and pace
 
 ### One shared dungeon rather than three incompatible mini-simulations

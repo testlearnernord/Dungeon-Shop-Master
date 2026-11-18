@@ -63,6 +63,37 @@ convergence, **not final unified group-capable boss simulation**.
 A future integration must preserve the settled Tripo visuals and
 historical replays rather than rewriting successful fights.
 
+## Shared actor locomotion and timed-action scheduler (CURRENT after this PR)
+
+The ordinary multi-actor motor and the Troll duel now **both use**
+`combatMovement.ts` to integrate real position changes. It owns the
+same X/Z world-space movement calculation, actual moved distance and
+collision policy for every actor: ordinary dungeon groups supply
+bounds/obstacle/other-actor occupancy and wall sliding; the Troll
+arena supplies a circular cavern boundary, with its existing lava
+hazard and safe radius still enforced as encounter-specific effects.
+Boss chase and hero strafe/roll no longer integrate positions through
+a separate code path.
+
+`combatActionClock.ts` is the common deterministic tick scheduler
+for phase age, once-only contact windows, completion windows,
+cooldown and stamina regeneration. It is called by **both** combat
+engines at actual simulation ticks. Ordinary windup/strike/cast/heal
+and Boss attack/cast/heal/grab/throw/recover action phases use its
+result; animations only sample committed frame phases. An action
+cannot trigger multiple strikes from repeated frame updates.
+Existing numerical contact times, GRAPPLE_TIMING and replay formats
+remain untouched.
+
+**Still distinct:** the Boss owns its **special-ability selection and
+grabbed/thrown trajectory/effects**; group combat owns multi-actor
+targeting, obstruction and projectile collision. Those policy
+differences are deliberate while the general encounter loop is
+consolidated, rather than replacing the functioning troll with a
+generic two-actor duel. A later PR must bring these into one
+configurable group-capable encounter stepper. This migration is
+not yet that final step.
+
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
 The next approved milestone is **V.003 ALPHA — The Living Dungeon**.
