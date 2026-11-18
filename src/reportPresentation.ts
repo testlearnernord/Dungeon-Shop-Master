@@ -7,7 +7,8 @@ const SHOP_TYPES=new Set<WorldEvent["type"]>([
 ]);
 const DUNGEON_TYPES=new Set<WorldEvent["type"]>([
   "dungeon-outcome","level6-departure","level6-combat","level6-return",
-  "level7-departure","level7-exploration","dungeon-exploration","healed"
+  "level7-departure","level7-exploration","dungeon-exploration","healed",
+  "temporary-party-join","temporary-party-leave"
 ]);
 export function reportCategory(event:Pick<WorldEvent,"type">):ReportCategory{
   if(SHOP_TYPES.has(event.type))return "shop";
