@@ -37,6 +37,32 @@ Tripo playback and historical replays remains pending. Shared
 HP arithmetic is an incremental integration, not permission to
 instantiate a third combat resolver.
 
+## Implemented shared melee ability authority (after this PR merges)
+
+`src/game/combatMelee.ts` is now the sole pure **melee contact
+arbitrator** for both the ordinary multi-actor motor and the Cave Troll:
+locked physical strike arc, weapon reach, obstruction, timed dodge and
+directional parry are resolved in that exact order, with one result
+(`miss`, `dodge`, `parry`, `hit`). The existing shared
+`combatVitality.ts` then applies actual HP changes and armor mitigation.
+
+Each attacker has an explicit **ability profile** with hit arc/reach,
+parry requirements and (for ordinary/Heavy attacks) telegraph and
+strike timings. `groupCombat.ts` now supports an optional, genuinely
+slower and harder **heavy** melee skill, while the Cave Troll's
+smash/slam/grab and the hero's sword/punch use the same contact resolver.
+Regenerated skeletons on the next saved world generation can use the
+heavy profile. The new optional `meleeAbility: "heavy"` is validated
+on saved `GroupCombatReplay` actors; old actor/replay records remain valid.
+
+The boss's **signature grab lift/throw, knockback, lava edge,
+presentation timing and historical replay shape remain preserved**.
+Its independent position/motion/ability scheduler is **not yet**
+combined with the group step loop. This is meaningful combat-rule
+convergence, **not final unified group-capable boss simulation**.
+A future integration must preserve the settled Tripo visuals and
+historical replays rather than rewriting successful fights.
+
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
 The next approved milestone is **V.003 ALPHA — The Living Dungeon**.

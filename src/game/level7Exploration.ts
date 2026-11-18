@@ -168,6 +168,11 @@ function fightAgainst(
       damage:layout.floor===7?8+monsterRand.int(4):2+layout.floor+monsterRand.int(3),
       armor:monster.subtype==="skeleton"?3:1,
       speed:2.6,reach:1.6,
+      // Regenerated skeleton patrols can gain a deliberately telegraphed
+      // heavy attack. New site generation is saved and seeded; no random
+      // attack archetypes are invented when watching a historical replay.
+      ...(monster.subtype==="skeleton" && cycle>0 && cycle%2===1
+        ? {meleeAbility:"heavy" as const} : {}),
     },
   ];
   // Translate the actual 7x7 dungeon cells around the spawn into physical

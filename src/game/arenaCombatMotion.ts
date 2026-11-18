@@ -1,4 +1,5 @@
-import { inAttackArc, rollInvulnerable, parryActive, type Point2 } from "./combatGeometry.ts";
+import type { Point2 } from "./combatGeometry.ts";
+import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
 } from "./combatVitality.ts";
@@ -104,10 +105,8 @@ const unit = (x: number, z: number): Point2 => {
 const facing = (from: Point2, to: Point2) =>
   Math.atan2(to.x - from.x, to.z - from.z);
 export function bossStrikeGeometry(slam: boolean): BossStrikeGeometry {
-  return {
-    reach: (slam ? 6.2 : 5.2) + HERO_RADIUS,
-    halfAngleRadians: slam ? 1.3 : 0.90,
-  };
+  const ability=meleeAbilityProfile(slam?"troll-slam":"troll-smash");
+  return {reach:ability.reach,halfAngleRadians:ability.halfAngleRadians};
 }
 export function createCombatPreview(options: CombatPreviewOptions): CombatPreviewState {
   return {
@@ -236,24 +235,28 @@ function startParry(s: CombatPreviewState): void {
   beginHero(s, "parry");
 }
 function resolveBossStrike(s: CombatPreviewState): void {
-  const { reach, halfAngleRadians } = bossStrikeGeometry(s.bossSlam);
-  const hit = inAttackArc(s.boss, s.lockedBossHeading, s.hero, reach, halfAngleRadians);
-  if (!hit) {
-    s.missedHits++; s.cues.push({ kind: "miss" });
+  const contact=resolveMeleeContact({
+    attacker:s.boss,lockedHeading:s.lockedBossHeading,
+    defender:s.hero,defenderHeading:s.heroHeading,
+    defenderPhase:s.heroPhase,defenderPhaseAge:s.heroAge,
+    defenderHasWeapon:s.options.sword,
+    ability:meleeAbilityProfile(s.bossSlam?"troll-slam":"troll-smash"),
+  });
+  if(contact==="miss"){
+    s.missedHits++;s.cues.push({kind:"miss"});
     return;
   }
-  if (s.heroPhase === "roll" && rollInvulnerable(s.heroAge)) {
-    s.dodgeCount++; s.cues.push({ kind: "dodge" });
+  if(contact==="dodge"){
+    s.dodgeCount++;s.cues.push({kind:"dodge"});
     return;
   }
-  if (s.heroPhase === "parry" && parryActive(s.heroAge) &&
-      inAttackArc(s.hero, s.heroHeading, s.boss, 6.8, 1.25)) {
+  if(contact==="parry"){
     s.parryCount++;
-    s.cues.push({ kind: "parry" }, { kind: "stagger" });
+    s.cues.push({kind:"parry"},{kind:"stagger"});
     const counter=applyCombatHit(s.bossHp,s.options.sword?8:3);
     s.bossHp=counter.hp;
     s.cues.push({kind:"hero-hit",amount:counter.amount});
-    beginBoss(s, "stagger");
+    beginBoss(s,"stagger");
     return;
   }
   // An actual smash must threaten a well-equipped hero who misreads it.
@@ -273,21 +276,24 @@ function resolveBossStrike(s: CombatPreviewState): void {
 /** A grab is a short-range physical contact, not a guaranteed cutscene.
  * A hero can roll away, counter with a sword parry or break the grip. */
 function resolveBossGrab(s: CombatPreviewState): void {
-  // Slight arc tolerance for circling heroes; still requires real close
-  // contact and can be avoided spatially, with a roll or with a parry.
-  const inReach = inAttackArc(s.boss, s.lockedBossHeading, s.hero, 5.1, 1.18);
-  if (!inReach) {
-    s.missedHits++; s.cues.push({kind:"miss"});
+  // Uses exactly the same geometric contact/defense arbitration as all
+  // other melee attacks; capture, struggle and airborne throw are a
+  // distinct boss ability invoked only after a successful contact.
+  const contact=resolveMeleeContact({
+    attacker:s.boss,lockedHeading:s.lockedBossHeading,
+    defender:s.hero,defenderHeading:s.heroHeading,
+    defenderPhase:s.heroPhase,defenderPhaseAge:s.heroAge,
+    defenderHasWeapon:s.options.sword,
+    ability:meleeAbilityProfile("troll-grab"),
+  });
+  if(contact==="miss" || contact==="dodge"){
+    if(contact==="dodge")s.dodgeCount++;
+    else s.missedHits++;
+    s.cues.push({kind:contact});
     beginBoss(s,"grabMiss");
     return;
   }
-  if (s.heroPhase === "roll" && rollInvulnerable(s.heroAge)) {
-    s.dodgeCount++; s.cues.push({kind:"dodge"});
-    beginBoss(s,"grabMiss");
-    return;
-  }
-  if (s.heroPhase === "parry" && s.options.sword && parryActive(s.heroAge) &&
-      inAttackArc(s.hero,s.heroHeading,s.boss,6.8,1.25)) {
+  if(contact==="parry"){
     s.parryCount++;
     s.cues.push({kind:"parry"},{kind:"stagger"});
     const counter=applyCombatHit(s.bossHp,8);
@@ -327,8 +333,13 @@ function landThrownHero(s: CombatPreviewState, lava: boolean): void {
 
 function resolveHeroStrike(s: CombatPreviewState): void {
   const reach = s.options.sword ? 4.2 : 3.2;
-  const hit = inAttackArc(s.hero, s.heroHeading, s.boss, reach + TROLL_RADIUS, 0.93);
-  if (!hit) {
+  const contact=resolveMeleeContact({
+    attacker:s.hero,lockedHeading:s.heroHeading,
+    defender:s.boss,defenderHeading:s.bossHeading,
+    defenderPhase:s.bossPhase,defenderPhaseAge:s.bossAge,
+    ability:meleeAbilityProfile("hero-strike",reach+TROLL_RADIUS),
+  });
+  if (contact!=="hit") {
     s.missedHits++; s.cues.push({ kind: "miss" });
     return;
   }

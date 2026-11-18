@@ -224,7 +224,9 @@ function validateLevel7Replay(
       const a=item+".combat.actors["+j+"]",actor=object(rawActor,a,[
         "id","team","role","style","x","z","hp","maxHp","damage",
         "armor","speed","reach",
-      ],["radius","healCharges"]);
+      ],["radius","healCharges","meleeAbility"]);
+      if(actor.meleeAbility!==undefined)
+        choice(actor.meleeAbility,["heavy"],a+".meleeAbility");
       const id=text(actor.id,a+".id");unique(id,actorIds,a+".id");
       choice(actor.team,["heroes","monsters"],a+".team");
       choice(actor.role,["tank","DPS","healer","monster"],a+".role");

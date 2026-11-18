@@ -77,6 +77,18 @@ grab/throw and skills engine is **not** yet replaced; that work
 remains the next integration task. Existing saved replays are never
 re-simulated.
 
+**Fourth implementation slice (this PR, CURRENT only after merge):**
+`combatMelee.ts` now owns ordinary and boss melee contact/defense
+arbitration using configurable ability profiles. Existing group
+combat and the Cave Troll use the same attack arcs, blocking, roll
+invulnerability and parry geometry. The group engine supports real
+telegraphed heavy monster hits; regenerated skeletons can use one
+in the ordinary shared dungeon. A recorded optional profile field is
+validated but old combat frames are not recalculated. The Troll
+still owns its animation-compatible grab/throw and independent
+movement/action scheduler; **full battle-loop unification remains
+an unfinished release gate**.
+
 ## Dungeon, heroes and pace
 
 ### One shared dungeon rather than three incompatible mini-simulations
