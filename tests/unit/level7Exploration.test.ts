@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateDungeonLayout, dungeonNeighbors } from "../../src/game/dungeonLayout.ts";
+import { generateDungeonLayout, dungeonNeighbors, tileAt } from "../../src/game/dungeonLayout.ts";
 import {
   emptyLevel7World, getLevel7Progress, simulateLevel7Day,
   chooseLevel7Step, LEVEL7_STEP_BUDGET,
@@ -186,4 +186,64 @@ test("a tank really spends purchased Herbs in a committed ordinary encounter",()
   assert.equal(first.adventurer.inventory.healing,2-cures.length);
   assert.deepEqual(world.heroes[0].heroId,tank.id,
     "the spatial encounter cannot mutate original world history");
+});
+
+test("regenerated Floor 7 room sentry becomes a real grapple elite in committed footage",()=>{
+  const seed=7351,day=12,layout=generateDungeonLayout(seed,7);
+  const eliteSite=layout.features.find(feature=>feature.kind==="monster"&&
+    tileAt(layout,feature.x,feature.z)==="room");
+  assert(eliteSite,"At least one room sentry must exist for this seeded dungeon");
+  const approach=dungeonNeighbors(layout,eliteSite)[0];
+  const index=eliteSite.z*layout.width+eliteSite.x;
+  const visited=layout.tiles.map((kind,i)=>kind!=="wall"&&i!==index?i:-1)
+    .filter(i=>i>=0);
+  const hero=dungeonHero();
+  const world:Level7World={
+    resolvedFeatureIds:layout.features.filter(f=>f.id!==eliteSite.id).map(f=>f.id),
+    heroes:[{heroId:hero.id,x:approach.x,z:approach.z,visited}],
+    siteCycles:[{id:eliteSite.id,cycle:1,resolvedDay:null}],
+  };
+  const first=simulateLevel7Day(hero,world,seed,day);
+  assert.deepEqual(first,simulateLevel7Day(hero,world,seed,day));
+  assert.equal(first.replay.encounters.length,1,"The room elite must be actually encountered");
+  const fight=first.replay.encounters[0].combat;
+  const enemy=fight.actors.find(actor=>actor.id===eliteSite.id)!;
+  assert.equal(enemy.specialAbility,"grapple-throw");
+  assert.equal(enemy.radius,1.05);
+  assert.equal(enemy.staggerThreshold,12);
+  assert(fight.frames.length>1);
+  assert.equal(fight.actors.length,2);
+  assert.deepEqual(world.heroes[0].visited,visited,"Exploration never mutates prior knowledge");
+  const initial=createGameState(seed);
+  const saved={
+    ...initial,day,adventurers:initial.adventurers.map(a=>
+      a.id===hero.id?first.adventurer:a),
+    level7World:first.world,
+    dungeonFloors:[{floor:6,cleared:true}],
+    events:[...initial.events,{
+      id:`day-${day}:${hero.id}:level7-exploration`,
+      day,type:"level7-exploration" as const,adventurerId:hero.id,
+      message:"Recorded Level 7 expedition.",level7Replay:first.replay,
+    }],
+  };
+  assert.deepEqual(parseSave(JSON.stringify(createSave(saved))),saved,
+    "v13 campaign saves must accept actual elite ability and historical frames");
+});
+
+test("ordinary first-generation Floor 7 encounters do not silently become bosses",()=>{
+  const layout=generateDungeonLayout(7351,7);
+  const monster=layout.features.find(f=>f.kind==="monster"&&
+    tileAt(layout,f.x,f.z)==="room")!;
+  const approach=dungeonNeighbors(layout,monster)[0];
+  const index=monster.z*layout.width+monster.x;
+  const world:Level7World={
+    resolvedFeatureIds:layout.features.filter(f=>f.id!==monster.id).map(f=>f.id),
+    heroes:[{heroId:dungeonHero().id,x:approach.x,z:approach.z,
+      visited:layout.tiles.map((kind,i)=>kind!=="wall"&&i!==index?i:-1)
+        .filter(i=>i>=0)}],
+  };
+  const result=simulateLevel7Day(dungeonHero(),world,7351,12);
+  assert.equal(result.replay.encounters.length,1);
+  assert.equal(result.replay.encounters[0].combat.actors.some(actor=>
+    actor.specialAbility==="grapple-throw"),false);
 });
