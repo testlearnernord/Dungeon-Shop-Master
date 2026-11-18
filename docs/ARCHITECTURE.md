@@ -313,6 +313,20 @@ and the v13 save structure are kept intact.
   v13 saves without `dungeonParties` still load and form groups
   naturally. The current Adventurer Board shows only stored group size,
   not an inferred promise based on proximity.
+  Current groups are explicitly labelled **Temporary Party**.
+  `temporaryPartyChanges` is a pure projection over previous saved
+  groups, actual same-day shared encounters and post-day persistent
+  groups. It emits no events while observing or reloading and
+  differentiates new joiners, unchanged companions, partner swaps
+  and departures (including same-day splits). `advanceDay` commits
+  canonical actor-scoped join/leave `WorldEvent`s only once, as
+  category `dungeon` in the day feed. Each group-replay v1 optionally
+  snapshots `partyMemberIds`; the strict v13 validator checks
+  cardinality, uniqueness, campaign identity and lead membership.
+  The Babylon spectator reads the immutable historical party roster,
+  not the current party table, and marks TAB camera focus. The physical
+  board uses numbered TP markers with a legend; the R roster uses
+  complete `Temporary Party #N` text and member names.
   `rosterView.rosterPartyDetails` is the shared read-only
   relationship projection used by the R roster; it returns only
   verified saved companion identities, role/HP and formation day.
