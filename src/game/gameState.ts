@@ -67,6 +67,7 @@ export interface WorldEvent {
   readonly day: number;
   readonly message: string;
   readonly worldTick?: number;
+  readonly shopReason?: "unavailable"|"cannot-afford"|"no-need"|"interested";
   readonly adventurerId?: string;
   readonly outcome?: DungeonOutcome;
   readonly combatOutcome?: "victory" | "retreat" | "death";

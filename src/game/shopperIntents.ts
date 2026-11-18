@@ -122,8 +122,8 @@ export function shopperVisualAction(
     ? "wait-restock":"leave-unserved";
 }
 
-/** Real seconds after arriving at the waiting spot; unrelated shop changes
- * must never renew this window. */
+/** Duration equivalent to 60 authoritative world ticks. Reroutes and UI
+ * projections cannot extend a persisted request deadline. */
 export const RESTOCK_WAIT_SECONDS=60;
 export function restockWaitRemaining(previous:number,elapsed:number):number {
   if(!Number.isFinite(previous)||!Number.isFinite(elapsed)||elapsed<0)

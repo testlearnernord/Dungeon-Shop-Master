@@ -748,7 +748,7 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
-      ["adventurerId", "worldTick", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
+      ["adventurerId", "worldTick", "shopReason", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
         "combatReplay", "level7Replay", "dungeonReplay",
         "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
@@ -765,8 +765,12 @@ function validateState(value: unknown): asserts value is GameState {
     const global = ["welcome", "day-started"].includes(event.type as string);
     if (!global && !heroIds.has(event.adventurerId as string)) fail(`${path}.adventurerId`, "must link to an existing hero");
     const allowed = ["id", "type", "day", "message",
-      ...(event.type==="shop-walkout"?["worldTick"]:[]),
+      ...(event.type==="shop-walkout"?["worldTick","shopReason"]:[]),
       ...(!global ? ["adventurerId"] : [])];
+    if(event.shopReason!==undefined){
+      if(event.type!=="shop-walkout")fail(path+".shopReason","is not supported");
+      choice(event.shopReason,["interested","unavailable","cannot-afford","no-need"],path+".shopReason");
+    }
     let suffix = event.type === "day-started" ? "started" : event.type;
     if (event.type === "dungeon-outcome") {
       allowed.push("outcome");
