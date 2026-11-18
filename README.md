@@ -47,6 +47,17 @@ was mentioned in a roadmap.
 | Adventurers / dungeon | Persistent identities and equipment; deterministic offscreen Floors 1–4; individually authorized Floor 6 Cave Troll with a score-synchronized 13.5s entrance, an original 17-piece vertex-painted GLB surface sculpt on the existing animated rig, and visually grounded maul attacks; deterministic boss duel with imperfect dodges, timed parries, real incoming hits, a breakable grab/throw with occasional real lava landings with hero/troll HP plates and cue-colored floating damage, lava and healing; Floor 7 observation/replay |
 | Day / reports | End the day at Galvik's bed; merchant ledger, receipts, hero records and spoiler-safe sealed replay presentation; validated campaign save/load |
 
+**For V.0003 design (NOT CURRENT):** Galvik's shop moves conceptually
+off the numbered dungeon floors to a single **cursed special floor**,
+served by one large supernatural entrance/exit rather than the existing
+two Floor-4/Floor-6 doors. Dungeon heroes choose stay/up/down; an ascent
+may terminate an expedition at the shop from any depth. When they
+physically leave, they are absent from both shop and dungeon for
+**two complete game days** before becoming eligible for a new expedition.
+Dungeon Floor 10 is blocked until Galvik gives **that hero** a pass;
+the current Floor-6 permit is not the future gate. These rules are
+documented, not implemented.
+
 **V.0003 is a target, not an implemented version.** The current gameplay still uses separate Floor 1–4, Floor 6 and Floor 7 simulation paths. The planned shared dungeon, three-phase board and hero/item causality upgrades are not yet shipped. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.0003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
