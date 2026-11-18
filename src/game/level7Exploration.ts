@@ -136,75 +136,89 @@ function chooseRenewedSiteStep(
   return available[0]?.[1] ?? null;
 }
 
+/** Real team fight, resolved once; every hero supplies their own stats and Herbs. */
 function fightAgainst(
-  hero: AdventurerState, monster: DungeonFeature, campaignSeed: number,
-  layout: DungeonLayout, approach: DungeonPoint, cycle = 0,
-): {hp:number;healsUsed:number;outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay;elite:boolean} {
+  party: readonly AdventurerState[], monster: DungeonFeature,
+  campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint, cycle = 0,
+): {
+  survivors: readonly {id:string;hp:number;healsUsed:number}[];
+  outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay;elite:boolean;
+} {
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
-    (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0, cycle));
-  const sword=hero.equipment.weapon==="Iron Sword";
-  const armored=hero.equipment.armor==="Leather Vest";
-  // Regenerated room sentries can become uncommon elite brutes. These are
-  // renewable monsters, NOT the unique Cave Troll or a progression gate.
-  // Cycle zero retains every existing campaign's original encounter.
+    (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0,cycle));
+  // Only renewable sentries can become elites. No unique boss is regenerated.
   const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
     tileAt(layout,monster.x,monster.z)==="room";
   const monsterHp=(layout.floor===7
-    ? 22+monsterRand.int(13)
-    : 12+layout.floor*3+monsterRand.int(7))+(elite?24:0);
-  const specs:CombatantSpec[]=[
-    {
+    ?22+monsterRand.int(13):12+layout.floor*3+monsterRand.int(7))+
+    (elite?24:0);
+
+  // Use distinct physically walkable grid cells inside this same 7x7 arena.
+  // In a narrow corridor spawning three bodies at the same point would be
+  // technically accepted by the constructor but visually and physically wrong.
+  const available:DungeonPoint[]=[approach];
+  const candidates:DungeonPoint[]=[];
+  for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){
+    const p={x:monster.x+dx,z:monster.z+dz};
+    if(tileAt(layout,p.x,p.z)==="wall"||
+      (p.x===monster.x&&p.z===monster.z)||
+      (p.x===approach.x&&p.z===approach.z))continue;
+    candidates.push(p);
+  }
+  candidates.sort((a,b)=>
+    (Math.abs(a.x-approach.x)+Math.abs(a.z-approach.z))-
+    (Math.abs(b.x-approach.x)+Math.abs(b.z-approach.z))||
+    a.z-b.z||a.x-b.x);
+  available.push(...candidates);
+  if(available.length<party.length)
+    throw new RangeError("Insufficient physical entry positions for this party");
+  const specs:CombatantSpec[]=party.map((hero,index)=>{
+    const spawn=available[index];
+    const sword=hero.equipment.weapon==="Iron Sword";
+    return {
       id:hero.id,team:"heroes",role:hero.role,
       style:hero.role==="healer"||hero.role==="DPS"&&!sword?"ranged":"melee",
-      x:(approach.x-monster.x)*2.5,z:(approach.z-monster.z)*2.5,
+      x:(spawn.x-monster.x)*2.5,z:(spawn.z-monster.z)*2.5,
       hp:hero.health,maxHp:hero.stats.maxHealth,
       damage:6+Math.floor((hero.role==="healer"?hero.stats.intellect:
         hero.role==="DPS"?hero.stats.agility:hero.stats.strength)/2)+(sword?5:0),
-      armor:armored?5:1,
+      armor:hero.equipment.armor==="Leather Vest"?5:1,
       agility:hero.stats.agility,
-      speed:hero.role==="tank"?2.5:3.1,
-      reach:1.75,
-      // The actual hero-owned Healing Herbs can be consumed by every role.
-      // No role gets free Herbs just for joining an encounter.
+      speed:hero.role==="tank"?2.5:3.1,reach:1.75,
       healCharges:Math.min(2,hero.inventory.healing),
-    },
-    {
-      id:monster.id,team:"monsters",role:"monster",style:"melee",
-      x:0,z:0,hp:monsterHp,maxHp:monsterHp,
-      damage:(layout.floor===7?8+monsterRand.int(4):2+layout.floor+monsterRand.int(3))+
-        (elite?4:0),
-      armor:(monster.subtype==="skeleton"?3:1)+(elite?4:0),
-      speed:elite?2.3:2.6,reach:elite?2:1.6,
-      ...(elite?{radius:1.05,specialAbility:"grapple-throw" as const,
-        grappleDamage:24,agility:8,staggerThreshold:12}:{}),
-      // Regenerated skeleton patrols can gain a deliberately telegraphed
-      // heavy attack. New site generation is saved and seeded; no random
-      // attack archetypes are invented when watching a historical replay.
-      ...(monster.subtype==="skeleton" && cycle>0 && cycle%2===1
-        ? {meleeAbility:"heavy" as const} : {}),
-    },
-  ];
-  // Translate the actual 7x7 dungeon cells around the spawn into physical
-  // wall collision. Coordinates remain local to the encounter marker so the
-  // later spectator can place the recorded actors back in the same chamber.
+    };
+  });
+  specs.push({
+    id:monster.id,team:"monsters",role:"monster",style:"melee",
+    x:0,z:0,hp:monsterHp,maxHp:monsterHp,
+    damage:(layout.floor===7?8+monsterRand.int(4):2+layout.floor+monsterRand.int(3))+
+      (elite?4:0),
+    armor:(monster.subtype==="skeleton"?3:1)+(elite?4:0),
+    speed:elite?2.3:2.6,reach:elite?2:1.6,
+    ...(elite?{radius:1.05,specialAbility:"grapple-throw" as const,
+      grappleDamage:24,agility:8,staggerThreshold:12}:{}),
+    ...(monster.subtype==="skeleton" && cycle>0 && cycle%2===1
+      ?{meleeAbility:"heavy" as const}:{}),
+  });
   const obstacles=[];
   for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){
     if(tileAt(layout,monster.x+dx,monster.z+dz)!=="wall")continue;
     const x=dx*2.5,z=dz*2.5;
-    obstacles.push({
-      id:"wall:"+dx+":"+dz,
-      minX:x-1.2,maxX:x+1.2,minZ:z-1.2,maxZ:z+1.2,
-    });
+    obstacles.push({id:"wall:"+dx+":"+dz,
+      minX:x-1.2,maxX:x+1.2,minZ:z-1.2,maxZ:z+1.2});
   }
   const encounter=resolveGroupCombat({
     actors:specs,obstacles,
     bounds:{minX:-8.75,maxX:8.75,minZ:-8.75,maxZ:8.75},
   },LEVEL7_COMBAT_SECONDS);
-  const survivor=encounter.state.actors.find(a=>a.id===hero.id)!;
-  const initialHealCharges=Math.min(2,hero.inventory.healing);
   return {
-    hp:Math.max(0,Math.round(survivor.hp)),
-    healsUsed:initialHealCharges-survivor.healCharges,
+    survivors:party.map(hero=>{
+      const actor=encounter.state.actors.find(a=>a.id===hero.id)!;
+      return {
+        id:hero.id,hp:Math.max(0,Math.round(actor.hp)),
+        healsUsed:Math.min(2,hero.inventory.healing)-actor.healCharges,
+      };
+    }),
     outcome:encounter.state.outcome==="fighting"?"draw":encounter.state.outcome,
     combat:encounter.replay,elite,
   };
