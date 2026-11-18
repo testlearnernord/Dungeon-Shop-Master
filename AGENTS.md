@@ -63,8 +63,10 @@
   equipment is preserved in committed encounter records; older footage
   without this optional snapshot remains visually neutral. Level 7 regenerated room sentries at eligible site cycles
   may use the existing `grapple-throw` combat ability as ordinary renewable
-  elites. These are not unique Cave Trolls, new floor gates or a true
-  multi-hero campaign expedition; do not mark party progression finished.
+  elites. These are renewable ordinary-site enemies, not the unique
+  Cave Troll or a new floor gate. Real co-located multi-hero party
+  expeditions already work on Floors 1–4/7; do not mistake those
+  for the still-unfinished unique Boss party or full V.003 progression.
 - **CURRENT opportunistic party expedition (after this PR):**
   `dungeonParties.ts` joins only willing, living, not-yet-processed heroes
   standing on the *same physical tile and floor* at day start, max three.
