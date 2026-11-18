@@ -5,7 +5,8 @@ import {
 } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
 import {
-  LEVEL7_STEP_BUDGET, getLevel7Progress, type Level7World,
+  LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS,
+  getLevel7Progress, type Level7World,
   type SpatialDungeonFloor,
 } from "./level7Exploration.ts";
 import { generateDungeonLayout, generateExpeditionLayout, tileAt } from "./dungeonLayout.ts";
@@ -207,7 +208,8 @@ function validateLevel7Replay(
     previous={x,z};
   });
   const encounters=array(record.encounters,path+".encounters");
-  if(encounters.length>1)fail(path+".encounters","must contain at most one encounter per day");
+  if(encounters.length>LEVEL7_MAX_ENCOUNTERS)
+    fail(path+".encounters","must contain only actual bounded day encounters");
   encounters.forEach((value,i)=>{
     const item=path+".encounters["+i+"]";
     const encounter=object(value,item,["featureId","x","z","combat"],["siteCycle"]);
