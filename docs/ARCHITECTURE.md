@@ -299,6 +299,12 @@ and the v13 save structure are kept intact.
   v13 saves without `dungeonParties` still load and form groups
   naturally. The current Adventurer Board shows only stored group size,
   not an inferred promise based on proximity.
+  `rosterView.rosterPartyDetails` is the shared read-only
+  relationship projection used by the R roster; it returns only
+  verified saved companion identities, role/HP and formation day.
+  `rosterBoardHud.ts` renders these from GameState without new
+  simulation ownership, inventing party commands or leaking
+  unrevealed battle outcomes into the sealed merchant ledger.
 
 **Not done:** social leadership and negotiated long-term group goals,
 cross-floor unity when members choose different directions, actual
