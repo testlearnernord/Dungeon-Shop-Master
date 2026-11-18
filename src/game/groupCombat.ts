@@ -197,7 +197,7 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       id: spec.id, team: spec.team, role: spec.role, style: spec.style,
       maxHp: spec.maxHp, damage: spec.damage, armor: spec.armor,
       speed: spec.speed, reach: spec.reach, radius,
-      meleeAbility:spec.meleeAbility??"ordinary", x: spec.x, z: spec.z,
+      meleeAbility:spec.meleeAbility??("ordinary" as const), x: spec.x, z: spec.z,
       hp: spec.hp, stamina: 100, heading: 0, lockedHeading: 0,
       phase: "move" as GroupPhase, phaseAge: 0, cooldown: 0, applied: false,
       targetId: null, rollX: 0, rollZ: 0, healCharges, distanceTraveled: 0,
