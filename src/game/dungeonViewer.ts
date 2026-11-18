@@ -15,7 +15,7 @@ import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type 
 import type { Level7Replay } from "./level7Exploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
 import {
-  generateDungeonLayout, tileAt, type DungeonLayout,
+  generateExpeditionLayout, tileAt, type DungeonLayout,
   type DungeonFeature, type DungeonPoint,
 } from "./dungeonLayout.ts";
 
@@ -145,7 +145,7 @@ export class DungeonViewer {
     this.keys.clear();
     document.body.classList.add("dungeon-active");
     this.panel.hidden = false;
-    this.layout = generateDungeonLayout(this.store.state.seed,7);
+    this.layout = generateExpeditionLayout(this.store.state.seed,7);
     this.createScene(this.layout);
     this.refreshReplaySelector();
     // A recording opens with accessible footage controls; the full-layout
@@ -331,9 +331,13 @@ export class DungeonViewer {
   }
 
   private availableReplays(): {id:string;record:Level7Replay;name:string}[] {
-    return this.store.state.events.filter(e=>e.type==="level7-exploration"&&e.level7Replay)
-      .slice(-3).reverse().map(e=>({
-        id:e.id,record:e.level7Replay!,
+    // Both early floors and Floor 7 are recorded by the SAME spatial engine.
+    // Outcomes remain sealed in this selection list.
+    return this.store.state.events.filter(e=>
+      (e.type==="level7-exploration"&&!!e.level7Replay) ||
+      (e.type==="dungeon-exploration"&&!!e.dungeonReplay))
+      .slice(-12).reverse().map(e=>({
+        id:e.id,record:(e.level7Replay??e.dungeonReplay)!,
         name:this.store.state.adventurers.find(h=>h.id===e.adventurerId)?.name ??
           e.adventurerId ?? "Unknown hero",
       }));
@@ -345,7 +349,8 @@ export class DungeonViewer {
     this.replaySelector.add(preview);
     for(const entry of replays){
       this.replaySelector.add(new Option(
-        "Day "+entry.record.day+" · "+entry.name+" · expedition footage",entry.id));
+        "Day "+entry.record.day+" · F"+entry.record.floor+" · "+entry.name+
+        " · expedition footage",entry.id));
     }
     // Saved recordings take priority; never disclose the ending in the menu.
     this.selectReplay(replays[0]?.id??"preview");
@@ -354,13 +359,21 @@ export class DungeonViewer {
     const record=this.availableReplays().find(e=>e.id===id)?.record??null;
     this.replaySelector.value=record?id:"preview";
     if(record)observeReplay(id);
+    // A historical early-floor recording needs its own saved floor geometry,
+    // never the Level 7 layout that the original viewer previewed.
+    const requestedFloor=record?.floor??7;
+    if(this.layout?.floor!==requestedFloor){
+      this.replayScene?.dispose();
+      this.layout=generateExpeditionLayout(this.store.state.seed,requestedFloor);
+      this.createScene(this.layout);
+    }
     this.replayScene?.setReplay(record);
     this.playbackTime=0;
     this.playing=!!record;
     this.followActor=record?"hero":null;
     this.playbackControls.hidden=!record;
     this.modeDescription.textContent=record
-      ?"Recorded expedition · movements, combat and discoveries are historical, not re-simulated."
+      ?"Recorded Floor "+record.floor+" expedition · movements, combat and discoveries are historical, not re-simulated."
       :"Full development map preview · no replay selected.";
     this.minimapTitle.textContent=record?"Hero knowledge · Fog of War":
       "Dungeon layout · development preview";
