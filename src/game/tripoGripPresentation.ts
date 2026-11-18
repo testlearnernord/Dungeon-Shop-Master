@@ -1,4 +1,4 @@
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 
 /**
  * The player's torso belongs in the pocket of the real animated LEFT hand:
