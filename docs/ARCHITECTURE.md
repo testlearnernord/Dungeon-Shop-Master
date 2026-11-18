@@ -254,6 +254,25 @@ when temporarily on another dungeon floor. This prevents expired
 navigation/occupancy records from accumulating past the strict v13
 world capacity during long-running campaigns.
 
+## Longer recorded expeditions and Board sockets (CURRENT after this PR)
+
+The SAME `simulateSpatialDungeonPartyDay` motor now permits a bounded
+36 real tile steps and up to two distinct actually-reached encounters.
+After a victory, heroes can continue walking and find another fight;
+casualty, an undersupplied dangerously injured companion, defeat,
+route exhaustion and fixed caps remain real stopping conditions.
+`campaignSave.ts` accepts two strictly validated v1 encounters in a
+v13 envelope while preserving old one-encounter tapes. The viewer
+reads the committed route and combat frames with no fake idle segments.
+`rosterBoard.ts` uses the pure `rosterBoardEquipment` projection to
+show empty/owned W/A slots and exact numeric HP on the physical board.
+These are presentation changes, not new shop phases. Actual
+Morning/Midday/Evening world snapshots and full Board 2.0 remain
+planned. No ordinary monster visual is complete: current subtype
+encounters still render sphere placeholders until the separately
+reviewed concept/GLB/rig/animation/SFX pipeline in
+`docs/MONSTER_ASSET_PIPELINE.md` is delivered. Ghoul is not yet a spawn.
+
 ## Co-located autonomous parties and single day settlement (CURRENT after this PR)
 
 `dungeonParties.ts` selects at most three willing living heroes who
