@@ -64,7 +64,8 @@ export function summarizeLedger(before: GameState, after: GameState): LedgerSumm
   });
   const expeditions = newlyBooked.filter(e =>
     (e.type === "level6-combat" && e.combatReplay) ||
-    (e.type === "level7-exploration" && e.level7Replay));
+    (e.type === "level7-exploration" && e.level7Replay) ||
+    (e.type === "dungeon-exploration" && e.dungeonReplay));
   // Do not announce death, victory, loot, health or exploration outcome here.
   const safeTypes: ReadonlySet<WorldEvent["type"]> = new Set([
     "shop-arrival","shop-departure","shop-stay","influx",
@@ -240,8 +241,9 @@ export function setupMerchantLedger(
         d.heroId===(event.adventurerId??null)&&
         d.day===event.day&&
         d.kind===(isCombat?"combat":"exploration")&&
-        d.floor===(isCombat?6:7)&&
-        d.title===(isCombat?"THE CAVE TROLL":"UNCHARTED DEPTHS")&&
+        d.floor===(isCombat?6:(event.dungeonReplay?.floor??7))&&
+        d.title===(isCombat?"THE CAVE TROLL":
+          event.type==="dungeon-exploration"?"THE EARLY DEPTHS":"UNCHARTED DEPTHS")&&
         d.category===(isCombat?"COMBAT RECORDING":"EXPLORATION RECORDING")&&
         typeof d.heroName==="string"&&d.heroName.length<=120&&
         (d.role===null||d.role==="tank"||d.role==="DPS"||d.role==="healer")&&
@@ -619,7 +621,7 @@ export function setupMerchantLedger(
       renderHeroChronicle(summary.heroes);
     }else{
       content.append(node("p","ledger-page-intro",
-        "Every sealed file holds a journey below the fifth floor. Break the seal to witness its truth."));
+        "Every sealed file holds an actual recorded dungeon journey. Break the seal to witness its truth."));
       renderSealedExpeditions();
     }
     if(animationSkipped){

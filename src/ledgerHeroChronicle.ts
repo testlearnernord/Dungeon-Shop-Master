@@ -87,7 +87,8 @@ export function buildLedgerHeroChronicle(
   }
   const hiddenRecordIds=new Set(newlyBooked.filter(e=>
     (e.type==="level6-combat"&&!!e.combatReplay)||
-    (e.type==="level7-exploration"&&!!e.level7Replay))
+    (e.type==="level7-exploration"&&!!e.level7Replay)||
+    (e.type==="dungeon-exploration"&&!!e.dungeonReplay))
     .map(e=>e.adventurerId).filter((id):id is string=>!!id));
   const purchases=new Map<string,{paidGold:number;units:number;goods:Map<ItemId,number>}>();
   for(const sale of sales){

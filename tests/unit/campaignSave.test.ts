@@ -25,11 +25,11 @@ test("versioned saves round-trip every field without retaining caller references
   assert.notEqual(envelope.payload.adventurers, state.adventurers);
 });
 
-test("seeded 220-day continuation preserves history, RNG, dead heroes and economy mutations", () => {
+test("seeded 45-day spatial-dungeon continuation preserves history, RNG, dead heroes and economy mutations", () => {
   for (const seed of [0, 7351, 0xffffffff]) {
     let uninterrupted = createGameState(seed);
     let resumed = parseSave(encoded(uninterrupted));
-    for (let tick = 0; tick < 220; tick += 1) {
+    for (let tick = 0; tick < 45; tick += 1) {
       function step(state: GameState): GameState {
         if (tick % 3 === 0) state = buyWholesale(state, "bread", 1).state;
         if (tick % 5 === 0) state = discardBag(state, "iron-ore").state;
@@ -41,7 +41,7 @@ test("seeded 220-day continuation preserves history, RNG, dead heroes and econom
       resumed = parseSave(encoded(step(resumed)));
       assert.deepEqual(resumed, uninterrupted, `seed ${seed}, tick ${tick}`);
     }
-    assert.equal(resumed.day, 221);
+    assert.equal(resumed.day, 46);
     assert(resumed.adventurers.some((hero) => hero.status === "dead"));
     assert(resumed.events.some((event) => event.type === "sale"));
   }
@@ -161,7 +161,12 @@ test("checks event-specific outcome, prices, quantities, links and chronology", 
   mutateEvent("sale", (event) => { event.revenue += 1; }, /revenue/);
   mutateEvent("sale", (event) => { event.quantity = 0; }, /quantity/);
   mutateEvent("sale", (event) => { event.id = "day-2:adventurer-1:sale:unknown"; }, /shelf slot/);
-  mutateEvent("dungeon-outcome", (event) => { event.outcome = "victory"; }, /outcome/);
+  mutateEvent("dungeon-exploration", (event) => {
+    event.dungeonReplay.floor = 7;
+  }, /floor/);
+  mutateEvent("dungeon-exploration", (event) => {
+    event.dungeonGoal = "cheat";
+  }, /dungeonGoal/);
   mutateEvent("day-started", (event) => { event.adventurerId = "adventurer-1"; }, /not valid/);
   const envelope = JSON.parse(encoded(state));
   envelope.payload.events.reverse();

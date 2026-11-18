@@ -1,12 +1,14 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { useHealingSupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
 import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
-import { simulateDungeon, type DungeonOutcome } from "./dungeonSimulation.ts";
+import { chooseHeroDungeonDecision, type HeroDungeonGoal, type HeroFloorAction } from "./dungeonDecisions.ts";
+import { generateExpeditionLayout } from "./dungeonLayout.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
 import type { BossCombatReplay } from "./bossCombatReplay.ts";
 import { REPLAY_KEEP_RECENT } from "./bossCombatReplay.ts";
 import {
-  emptyLevel7World, LEVEL7_REPLAY_KEEP, simulateLevel7Day,
+  emptyLevel7World, getLevel7Progress, LEVEL7_REPLAY_KEEP,
+  simulateLevel7Day, simulateSpatialDungeonDay,
   type Level7Replay, type Level7World,
 } from "./level7Exploration.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
@@ -19,6 +21,13 @@ import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
 export const SIMULATION_VERSION = 13;
+
+/** Kept for read-only historical v13 outcome records. No live roll simulation. */
+export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
+export interface EarlyDungeonFloorWorld {
+  readonly floor: 1 | 2 | 3 | 4;
+  readonly world: Level7World;
+}
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -42,7 +51,8 @@ export interface WorldEvent {
   readonly type: "welcome" | "day-started" | "dungeon-outcome" | "shop-arrival" | "shop-stay" | "shop-departure" | "shop-walkout" | "influx" |
     "sale" | "tip" | "healed" |
     "level6-departure" | "level6-combat" | "level6-return" |
-    "level7-departure" | "level7-exploration" | "shop-credit";
+    "level7-departure" | "level7-exploration" | "shop-credit" |
+    "dungeon-exploration";
   readonly day: number;
   readonly message: string;
   readonly adventurerId?: string;
@@ -52,6 +62,11 @@ export interface WorldEvent {
   readonly combatReplay?: BossCombatReplay;
   /** Committed path and battles of one Level 7 day. */
   readonly level7Replay?: Level7Replay;
+  /** Same shared spatial engine/format on an earlier numbered floor. */
+  readonly dungeonReplay?: Level7Replay;
+  /** Autonomous strategy and directional choice after the day's real exploration. */
+  readonly dungeonGoal?: HeroDungeonGoal;
+  readonly floorAction?: HeroFloorAction;
   readonly itemId?: ItemId;
   readonly quantity?: number;
   readonly revenue?: number;
@@ -83,6 +98,8 @@ export interface GameState {
   readonly shopDebts: readonly ShopDebt[];
   readonly dungeonFloors: readonly DungeonFloorProgress[];
   readonly level7World: Level7World;
+  /** v13-compatible optional extension; no independent early-floor RNG engine. */
+  readonly earlyDungeonWorlds?: readonly EarlyDungeonFloorWorld[];
   readonly seed: number;
   readonly rngState: number;
   readonly populationConfig: PopulationConfig;
@@ -120,6 +137,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     shopDebts: [],
     dungeonFloors: [],
     level7World: emptyLevel7World(),
+    earlyDungeonWorlds: [],
     seed,
     rngState: generated.rngState,
     populationConfig,
@@ -164,12 +182,53 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   const level7UnlockedAtStart = clearedLevel6;
   let clearedLevel7 = state.dungeonFloors.some((entry) => entry.floor === 7 && entry.cleared);
   let level7World = state.level7World;
+  let earlyDungeonWorlds: EarlyDungeonFloorWorld[] =
+    [...(state.earlyDungeonWorlds??[])];
   const adventurers = postTradeHeroes.map((hero) => {
     // Only injuries trigger healing. Newly authorized departures cannot
     // fight on their departure day.
     const supplies = useHealingSupplies(hero, day);
     events.push(...supplies.events);
     const ready = supplies.adventurer;
+    if ((ready.status==="exploring" || ready.status==="returning") &&
+        ready.floor>=1 && ready.floor<=4) {
+      const explorer = ready.status==="returning"
+        ? {...ready,status:"exploring" as const} : ready;
+      const floor=explorer.floor as EarlyDungeonFloorWorld["floor"];
+      const world=earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world ??
+        emptyLevel7World();
+      const activeIds=new Set(postTradeHeroes.filter(person=>
+        (person.status==="exploring"||person.status==="returning") &&
+        person.floor===floor).map(person=>person.id));
+      const tick=simulateSpatialDungeonDay(explorer,world,state.seed,day,activeIds);
+      earlyDungeonWorlds=[
+        ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
+        {floor,world:tick.world},
+      ].sort((a,b)=>a.floor-b.floor);
+      const progress=getLevel7Progress(tick.world,explorer.id,
+        generateExpeditionLayout(state.seed,floor));
+      const decision=tick.adventurer.status==="dead"?null:
+        chooseHeroDungeonDecision(tick.adventurer,progress,tick.replay);
+      const moved=decision?.action==="descend"&&floor<4
+        ? {...tick.adventurer,floor:(floor+1) as EarlyDungeonFloorWorld["floor"]}
+        : decision?.action==="ascend"&&floor>1
+        ? {...tick.adventurer,floor:(floor-1) as EarlyDungeonFloorWorld["floor"]}
+        : decision?.action==="shop"
+        ? {...tick.adventurer,status:"traveling" as const,floor:4 as const}
+        : tick.adventurer;
+      events.push({
+        id:`day-${day}:${explorer.id}:dungeon-exploration`,
+        type:"dungeon-exploration",day,adventurerId:explorer.id,
+        dungeonReplay:tick.replay,
+        ...(decision?{dungeonGoal:decision.goal,floorAction:decision.action}:{}),
+        message:`${explorer.name}'s Floor ${floor} expedition was recorded. Watch the saved footage to discover the outcome.`,
+      });
+      const shop=scheduleShopVisit(moved,day,rngState,
+        paidIds.has(explorer.id));
+      rngState=shop.rngState;
+      events.push(...shop.events);
+      return shop.adventurer;
+    }
     if (ready.status === "expedition" && ready.floor === 7) {
       const exploration = simulateLevel7Day(ready, level7World, state.seed, day);
       level7World = exploration.world;
@@ -206,11 +265,11 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       });
       return { ...ready, status: "expedition" as const, floor: 6 as const, shopStayDays: 0 };
     }
-    const dungeon = simulateDungeon(ready, day, rngState);
-    const shop = scheduleShopVisit(dungeon.adventurer, day, dungeon.rngState,
-      paidIds.has(hero.id));
-    rngState = shop.rngState;
-    events.push(...dungeon.events, ...shop.events);
+    // The old Floors 1–4 damage/progress dice were retired; live early
+    // explorers were already processed by the spatial engine above.
+    const shop=scheduleShopVisit(ready,day,rngState,paidIds.has(hero.id));
+    rngState=shop.rngState;
+    events.push(...shop.events);
     return shop.adventurer;
   });
   const active = adventurers.filter((hero) => hero.status !== "dead").length;
@@ -235,22 +294,29 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   const keepDungeon = new Set(allEvents.filter(event =>
     event.type === "level7-exploration" && event.level7Replay)
     .slice(-LEVEL7_REPLAY_KEEP).map(event => event.id));
+  const keepEarlyDungeon = new Set(allEvents.filter(event =>
+    event.type==="dungeon-exploration"&&event.dungeonReplay)
+    .slice(-8).map(event=>event.id));
   const compactedEvents = allEvents.map(event => {
     if ((!event.combatReplay || keepBoss.has(event.id)) &&
-        (!event.level7Replay || keepDungeon.has(event.id))) return event;
+        (!event.level7Replay || keepDungeon.has(event.id)) &&
+        (!event.dungeonReplay || keepEarlyDungeon.has(event.id))) return event;
     const {
       combatReplay: _expiredBoss, level7Replay: _expiredDungeon,
+      dungeonReplay: _expiredEarly,
       ...smallEvent
     } = event;
     return {...smallEvent,
       ...(event.combatReplay && keepBoss.has(event.id) ? {combatReplay:event.combatReplay}:{ }),
       ...(event.level7Replay && keepDungeon.has(event.id) ? {level7Replay:event.level7Replay}:{ }),
+      ...(event.dungeonReplay && keepEarlyDungeon.has(event.id) ? {dungeonReplay:event.dungeonReplay}:{}),
     };
   });
   return {
     state: {
       ...settlement.state, day, adventurers, rngState, shopEconomy: trade.economy,
       level7World,
+      earlyDungeonWorlds,
       dungeonFloors: [
         ...state.dungeonFloors,
         ...(clearedLevel6 && !state.dungeonFloors.some(f=>f.floor===6&&f.cleared)

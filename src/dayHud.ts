@@ -35,7 +35,8 @@ export function setupDayHud(
     });
   }
   const visibleMessage=(event:typeof store.state.events[number]):string=>
-    (event.type==="level6-combat"||event.type==="level7-exploration")&&
+    (event.type==="level6-combat"||event.type==="level7-exploration"||
+      event.type==="dungeon-exploration")&&
       !hasObservedReplay(event.id)
       ?"An expedition recording has been sealed. Watch the saved footage to learn its outcome."
       :event.message;

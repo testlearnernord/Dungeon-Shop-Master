@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { advanceDay, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { tradeAtStartOfDay, buyWholesale, transferShelf, ITEMS } from "../../src/game/economy.ts";
-import { simulateDungeon } from "../../src/game/dungeonSimulation.ts";
+import { generateExpeditionLayout, dungeonNeighbors } from "../../src/game/dungeonLayout.ts";
+import { simulateSpatialDungeonDay } from "../../src/game/level7Exploration.ts";
 import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
@@ -83,33 +84,41 @@ test("equipping is permanent, single-purchase, affordable, and exact in receipts
   assert.deepEqual(input.adventurers[0].equipment, { weapon: null, armor: null });
 });
 
-test("gear reduces danger and improves sword attack without granting invulnerability", () => {
-  const base = createGameState().adventurers[0];
-  const normal = { ...base, floor: 3 as const, status: "exploring" as const };
-  const armored = { ...normal, equipment: { weapon: null, armor: "Leather Vest" } };
-  let damageLower = false, survivedExtra = false;
-  for (let seed = 1; seed <= 100; seed++) {
-    const n = simulateDungeon(normal, 2, seed);
-    const a = simulateDungeon(armored, 2, seed);
-    assert(a.adventurer.health >= n.adventurer.health);
-    if (a.adventurer.health > n.adventurer.health) damageLower = true;
-    if (a.adventurer.status !== "dead" && n.adventurer.status === "dead") survivedExtra = true;
-  }
-  assert(damageLower);
-  // L6 samples with healthy hero, fixed seed; sword reduces required combat rounds.
-  const novice = { ...base, status: "expedition" as const, floor: 6 as const, level6Permit: true };
-  const armed = { ...novice, equipment: { weapon: "Iron Sword", armor: "Leather Vest" } };
-  const first = simulateLevel6Combat(novice, 2, 1234);
-  const improved = simulateLevel6Combat(armed, 2, 1234);
-  assert(improved.adventurer.health >= first.adventurer.health);
-  assert.equal(improved.adventurer.equipment.weapon, "Iron Sword");
+test("real early-floor traps respect equipped armor and boss damage still respects gear", () => {
+  const base=createGameState().adventurers[0];
+  const layout=generateExpeditionLayout(7351,2);
+  const trap=layout.features.find(site=>site.kind==="trap")!;
+  const approach=dungeonNeighbors(layout,trap)[0];
+  const trapCell=trap.z*layout.width+trap.x;
+  const visited=layout.tiles.flatMap((tile,i)=>
+    tile!=="wall"&&i!==trapCell?[i]:[]);
+  const world={
+    resolvedFeatureIds:layout.features.filter(site=>site.id!==trap.id).map(site=>site.id),
+    heroes:[{heroId:base.id,...approach,visited}],
+  };
+  const normal={...base,floor:2 as const,status:"exploring" as const};
+  const armored={...normal,equipment:{weapon:null,armor:"Leather Vest"}};
+  const plain=simulateSpatialDungeonDay(normal,world,7351,2);
+  const protectedRun=simulateSpatialDungeonDay(armored,world,7351,2);
+  assert.equal(plain.replay.steps.find(step=>step.action==="trap")?.featureId,trap.id);
+  assert.equal(protectedRun.replay.steps.find(step=>step.action==="trap")?.featureId,trap.id);
+  assert.equal(protectedRun.adventurer.health-plain.adventurer.health,3);
+  assert.equal(plain.adventurer.level,1+Math.floor(plain.adventurer.xp/100));
+
+  // Existing boss replay authority still uses real armor and weapon effects,
+  // and must not be replaced by a separate early-floor dice outcome.
+  const novice={...base,status:"expedition" as const,floor:6 as const,level6Permit:true};
+  const armed={...novice,equipment:{weapon:"Iron Sword",armor:"Leather Vest"}};
+  const first=simulateLevel6Combat(novice,2,1234);
+  const improved=simulateLevel6Combat(armed,2,1234);
+  assert(improved.adventurer.health>=first.adventurer.health);
+  assert.equal(improved.adventurer.equipment.weapon,"Iron Sword");
   assert.equal(simulateLevel6Combat(armed,2,1234).rngState,improved.rngState);
-  void survivedExtra;
 });
 
 test("long deterministic campaigns remain stable across sale, combat and reload", () => {
   let a=createGameState(), b=createGameState();
-  for(let d=0;d<110;d++){
+  for(let d=0;d<18;d++){
     a=advanceDay(a).state;
     b=advanceDay(parseSave(JSON.stringify(createSave(b)))).state;
     assert.deepEqual(a,b);

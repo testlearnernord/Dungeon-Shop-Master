@@ -245,7 +245,8 @@ ledger=setupMerchantLedger(()=>{
     arena.open(event.id);
     return arena.isActive;
   }
-  if(event.type==="level7-exploration"&&event.level7Replay){
+  if((event.type==="level7-exploration"&&event.level7Replay) ||
+     (event.type==="dungeon-exploration"&&event.dungeonReplay)){
     dungeon.open();
     if(!dungeon.isActive)return false;
     const selector=document.querySelector<HTMLSelectElement>("#dungeon-replay-select")!;
