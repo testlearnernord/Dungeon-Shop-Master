@@ -1,9 +1,10 @@
 import { inAttackArc, type Point2 } from "./combatGeometry.ts";
 import { combatDirection, combatHeading, moveCombatant } from "./combatMovement.ts";
+import type { CombatActionWindow } from "./combatActionClock.ts";
 import {
-  tickCombatAction, tickCombatCooldown, regenerateCombatStamina,
-  type CombatActionWindow,
-} from "./combatActionClock.ts";
+  enterCombatActorPhase, advanceCombatActorPhase,
+  refreshCombatActorResources, type CombatActorRuntime,
+} from "./combatActor.ts";
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
@@ -63,23 +64,16 @@ export interface GroupCombatOptions {
   readonly obstacles?: readonly CombatObstacle[];
 }
 
-export interface GroupActor {
-  readonly id: string;
-  readonly team: CombatTeam;
+export interface GroupActor extends CombatActorRuntime<GroupPhase> {
   readonly role: GroupRole;
   readonly style: AttackStyle;
-  readonly maxHp: number;
   readonly damage: number;
   readonly armor: number;
   readonly speed: number;
   readonly reach: number;
   readonly radius: number;
   readonly meleeAbility: "ordinary" | "heavy";
-  x: number; z: number;
-  hp: number; stamina: number;
-  heading: number; lockedHeading: number;
-  phase: GroupPhase; phaseAge: number;
-  cooldown: number; applied: boolean;
+  lockedHeading: number;
   targetId: string | null;
   rollX: number; rollZ: number;
   healCharges: number;
@@ -239,9 +233,7 @@ function move(s: GroupCombatState, a: GroupActor, dx: number, dz: number): void 
   a.distanceTraveled+=result.distance;
 }
 function phase(a: GroupActor, next: GroupPhase): void {
-  a.phase = next;
-  a.phaseAge = 0;
-  a.applied = false;
+  enterCombatActorPhase(a,next);
 }
 function cue(batch: GroupCombatCue[], s: GroupCombatState, actor: GroupActor,
   kind: GroupCueKind, targetId?: string, amount?: number): void {
@@ -321,8 +313,7 @@ function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupAct
 
 function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: GroupCombatCue[]): void {
   if (a.hp <= 0) return;
-  a.stamina=regenerateCombatStamina(a.stamina,dt,17);
-  a.cooldown=tickCombatCooldown(a.cooldown,dt);
+  refreshCombatActorResources(a,dt,17);
   // This is the same action clock used by the boss. Ability profiles
   // decide when contact can happen, not each renderer's animation time.
   let window:CombatActionWindow={};
@@ -338,8 +329,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   }else if(a.phase==="recover")window={completeAt:0.38};
   else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
   else if(a.phase==="hurt")window={completeAt:0.34};
-  const tick=tickCombatAction(a.phaseAge,dt,a.applied,window);
-  a.phaseAge=tick.age;
+  const tick=advanceCombatActorPhase(a,dt,window);
   const enemy = closestEnemy(s, a);
   if (!enemy) return;
   if (a.phase === "move") {
