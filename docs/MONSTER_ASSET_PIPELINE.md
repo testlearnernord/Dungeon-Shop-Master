@@ -59,15 +59,18 @@ accepts `monster`. Before any new species can be called implemented:
   a specific authored identity, distinct animation/sounds and explicit
   approved design. Capability flags are not random loot tables.
 
-## Ghoul candidate: NOT integrated
+## Ghoul candidate: Tripo source archived, NOT integrated
 
-The Ghoul is a **proposed first ordinary monster asset**, not an approved
-final design, shipped GLB or executable animation. Its exact look, role,
-attacks, floor placement and audio are still open for art review. Avoid
-adding `ghoul` to the generation pool or pretending an untextured sphere
-is a playable Ghoul before the six stages above are completed. Creature
-specific animation and SFX must be produced separately, rather than
-recycling the Cave Troll's motion or vocal personality.
+The owner selected a retopologized Ghoul look and supplied a rigged Tripo GLB
+with 14 raw animation clips. The **unaltered source**, its SHA-256 and the
+candidate/rejected clip index are documented in
+[`TRIPO_GHOUL_ASSET_AUDIT.md`](TRIPO_GHOUL_ASSET_AUDIT.md) and
+[`assets/tripo/ghoul.manifest.json`](../assets/tripo/ghoul.manifest.json).
+This is **source asset progress only**, not a shipped monster, a validated
+runtime animation set, approved final combat role, or a spawn-pool change.
+The original is archived outside `public/`; a future curated runtime GLB,
+Idle, unique SFX, actual Babylon preview and replay tests are still needed.
+Do not recycle the Cave Troll's animations or audio for the Ghoul.
 
 ## Replay and daily pacing contract
 

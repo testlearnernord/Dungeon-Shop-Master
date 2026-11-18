@@ -1,0 +1,170 @@
+{
+  "assetId": "dungeon-ghoul-tripo",
+  "status": "SOURCE_ARCHIVED_NOT_INTEGRATED",
+  "date": "2026-11-18",
+  "source": {
+    "path": "assets/tripo/source/tripo_convert_2f6b9c66-0c5e-4c3b-8410-2277a099e788.glb",
+    "originalUploadName": "tripo_convert_2f6b9c66-0c5e-4c3b-8410-2277a099e788 (1).glb",
+    "originalTripoGenerationId": "2f6b9c66-0c5e-4c3b-8410-2277a099e788",
+    "byteLength": 8196428,
+    "sha256": "966c8d9f9911989073a8c062ea5d26f51ec7b1a18309f4677e771c0cd3776c83",
+    "gitBlobSha": "923e16bae158cc3f4eb6e9ce4ca24db5908d4b05"
+  },
+  "geometry": {
+    "meshes": 1,
+    "triangles": 19789,
+    "positionAccessorVertices": 26973,
+    "topology": "triangles",
+    "materials": 1,
+    "textures": 3,
+    "baseColorResolution": [
+      4096,
+      4096
+    ],
+    "normalResolution": [
+      2048,
+      2048
+    ],
+    "roughnessMetallicResolution": [
+      2048,
+      2048
+    ]
+  },
+  "rig": {
+    "skins": 1,
+    "joints": 65,
+    "naming": "mixamorig: Mixamo-style"
+  },
+  "animation": {
+    "clipCount": 14,
+    "missing": [
+      "idle_combat"
+    ],
+    "note": "The complete Tripo export remains authoritative and unmodified. Semantic names below are catalog aliases, not actual GLB animation names. Do not assume loop or hit-frame quality until Babylon preview.",
+    "clips": [
+      {
+        "index": 0,
+        "sourceName": "A feral undead ghoul stalks forward with slow, predatory, uneve",
+        "alias": "walk_predatory_v1",
+        "status": "rejected",
+        "notes": "Owner reported poor result; archive only",
+        "durationSeconds": 4.958
+      },
+      {
+        "index": 1,
+        "sourceName": "The feral ghoul lowers into a deep crouch, bending both knees, ",
+        "alias": "attack_leap_a",
+        "status": "candidate",
+        "notes": "Multistage attack candidate; confirm contact and landing",
+        "durationSeconds": 3.958
+      },
+      {
+        "index": 2,
+        "sourceName": "A feral ghoul performs a fast claw slash attack from a hunched ",
+        "alias": "attack_claw_left_initial",
+        "status": "alternate",
+        "notes": "Longer initial left-arm slash; compare against clip 8",
+        "durationSeconds": 2.958
+      },
+      {
+        "index": 3,
+        "sourceName": "A feral undead ghoul reacts violently to a powerful hit in the ",
+        "alias": "hit_stagger",
+        "status": "candidate",
+        "notes": "Short hit reaction; inspect recovery",
+        "durationSeconds": 1.958
+      },
+      {
+        "index": 4,
+        "sourceName": "jump_down",
+        "alias": "jump_down_preset",
+        "status": "unused",
+        "notes": "Do not use as Ghoul jump without visual inspection",
+        "durationSeconds": 3.708
+      },
+      {
+        "index": 5,
+        "sourceName": "walk",
+        "alias": "walk_preset",
+        "status": "fallback",
+        "notes": "Humanoid preset; owner found preset gait too human",
+        "durationSeconds": 2.333
+      },
+      {
+        "index": 6,
+        "sourceName": "dribble",
+        "alias": "dribble_preset",
+        "status": "unused",
+        "notes": "Unrelated preset",
+        "durationSeconds": 9.292
+      },
+      {
+        "index": 7,
+        "sourceName": "A feral ghoul performs a fast claw slash attack from a hunc.001",
+        "alias": "attack_claw_right",
+        "status": "candidate",
+        "notes": "Measured right arm and forearm rotation dominates",
+        "durationSeconds": 1.958
+      },
+      {
+        "index": 8,
+        "sourceName": "A feral ghoul performs a fast claw slash attack from a hunc.002",
+        "alias": "attack_claw_left",
+        "status": "candidate",
+        "notes": "Measured left arm and forearm rotation dominates",
+        "durationSeconds": 1.958
+      },
+      {
+        "index": 9,
+        "sourceName": "A feral ghoul is struck down and dies. It recoils in pain, lose",
+        "alias": "death_fall",
+        "status": "candidate",
+        "notes": "Non-looping death; check final floor contact",
+        "durationSeconds": 3.958
+      },
+      {
+        "index": 10,
+        "sourceName": "The feral ghoul lowers into a deep crouch, bending both kne.001",
+        "alias": "attack_leap_b",
+        "status": "alternate",
+        "notes": "Alternate multistage leap; compare against clip 1",
+        "durationSeconds": 3.958
+      },
+      {
+        "index": 11,
+        "sourceName": "A feral ghoul sprints forward aggressively in a hunched posture",
+        "alias": "run_aggressive",
+        "status": "candidate",
+        "notes": "Inspect actual leg motion and loop seam",
+        "durationSeconds": 1.958
+      },
+      {
+        "index": 12,
+        "sourceName": "A feral ghoul bursts into a short aggressive charge from its hu",
+        "alias": "attack_charge",
+        "status": "candidate",
+        "notes": "Short rush, not a substitute for repeatable run",
+        "durationSeconds": 1.958
+      },
+      {
+        "index": 13,
+        "sourceName": "A feral ghoul walks with a hunched back and bent knees. It take",
+        "alias": "walk_feral_v2",
+        "status": "candidate",
+        "notes": "Later shortened prompt; owner reported improvement",
+        "durationSeconds": 4.958
+      }
+    ]
+  },
+  "futureRuntime": {
+    "enabled": false,
+    "proposedPath": "public/assets/models/dungeon-ghoul-tripo.glb",
+    "note": "Export/curate and verify semantic clips, joints, textures and loop quality before shipping. Keep source GLB out of public/ until integrated."
+  },
+  "review": {
+    "visual": "Owner accepted retopologized Ghoul as an asset candidate in Tripo. This is not approval of all 14 motion clips or a shipped monster.",
+    "audio": "Not produced; unique Ghoul SFX required",
+    "engine": "No Babylon integration, in-game spectator verification or spawn mapping yet",
+    "rights": "Review actual Tripo license and generation terms before distribution"
+  }
+}

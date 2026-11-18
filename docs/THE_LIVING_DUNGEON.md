@@ -95,7 +95,7 @@ sockets plus exact HP; proper Morning/Midday/Evening world snapshots
 still await a real three-phase day model. No shipped ordinary monster
 GLB exists yet: `MONSTER_ASSET_PIPELINE.md` defines concept, mesh,
 rig, transitions, sounds, Babylon inspection and acceptance gates.
-Ghoul is a candidate, not a generated or released monster.
+Ghoul has a candidate Tripo source GLB archived outside `public/`, but no curated/released monster or validated in-game renderer; see `TRIPO_GHOUL_ASSET_AUDIT.md`.
 
 **Current limited cooperative slice (after this PR merges):**
 willing co-located heroes can travel together for one committed
