@@ -11,6 +11,10 @@ import {
 } from "./combatTactics.ts";
 import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
 import {
+  COMBAT_STEP_SECONDS, stepCombatEncounter, recordCombatEncounter,
+  encounterTeamOutcome, type EncounterPipeline,
+} from "./combatEncounter.ts";
+import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
 } from "./combatVitality.ts";
 
@@ -130,7 +134,6 @@ export interface GroupCombatReplay {
   readonly cues: readonly GroupCombatCue[];
   readonly outcome: Exclude<GroupOutcome, "fighting">;
 }
-const STEP = 1 / 60;
 const round = (n: number) => Math.round(n * 1000) / 1000;
 const distance = (a: Point2, b: Point2) => Math.hypot(b.x - a.x, b.z - a.z);
 
@@ -464,22 +467,28 @@ function updateProjectiles(s: GroupCombatState, dt: number, batch: GroupCombatCu
   s.projectiles.splice(0,s.projectiles.length,...remaining);
 }
 
-/** All authoritative results derive exclusively from physical actions, at 60 Hz. */
-export function stepGroupCombat(s: GroupCombatState, dt=STEP): readonly GroupCombatCue[] {
-  if (!Number.isFinite(dt) || dt <= 0 || dt > 0.1)
-    throw new RangeError("Combat step must be within (0, 0.1] seconds");
-  if (s.outcome !== "fighting") return [];
-  s.time+=dt;
-  const batch: GroupCombatCue[]=[];
-  // Canonical order means input array iteration cannot change results.
-  for (const actor of s.actors) updateActor(s,actor,dt,batch);
-  updateProjectiles(s,dt,batch);
-  const heroes=s.actors.some(a=>a.team==="heroes" && a.hp>0);
-  const monsters=s.actors.some(a=>a.team==="monsters" && a.hp>0);
-  if (!heroes || !monsters)
-    s.outcome = heroes ? "heroes" : monsters ? "monsters" : "draw";
-  s.events.push(...batch);
-  return batch;
+/**
+ * The ordinary dungeon actor behaviors plug into the SAME encounter frame
+ * driver as boss hero/grapple actions. Canonical actor ordering is set
+ * when the group is created, not when its viewer loads a replay.
+ */
+const GROUP_PIPELINE: EncounterPipeline<GroupCombatState,GroupActor,GroupCombatCue>={
+  actors:state=>state.actors,
+  updateActor:(state,actor,dt,frame)=>updateActor(state,actor,dt,frame.cues),
+  projectiles:(state,dt,frame)=>updateProjectiles(state,dt,frame.cues),
+  finish:state=>{
+    state.outcome=encounterTeamOutcome(state.actors);
+  },
+  commit:(state,frame)=>{
+    state.events.push(...frame.cues);
+  },
+};
+
+/** Authoritative 60 Hz gameplay, never executed while watching a recording. */
+export function stepGroupCombat(
+  s:GroupCombatState,dt=COMBAT_STEP_SECONDS,
+):readonly GroupCombatCue[] {
+  return stepCombatEncounter(s,dt,GROUP_PIPELINE);
 }
 function capture(s: GroupCombatState): GroupReplayFrame {
   return { t:round(s.time),
@@ -501,12 +510,11 @@ export function resolveGroupCombat(options: GroupCombatOptions, maxSeconds=45):
   if (!Number.isSafeInteger(maxSeconds) || maxSeconds < 1 || maxSeconds > 90)
     throw new RangeError("Group encounters must be bounded to 1-90 seconds");
   const state=createGroupCombat(options);
-  const frames:GroupReplayFrame[]=[capture(state)];
-  for(let i=1;i<=maxSeconds*60 && state.outcome==="fighting";i++) {
-    stepGroupCombat(state,STEP);
-    if(i%6===0 || state.outcome!=="fighting") frames.push(capture(state));
-  }
-  if(state.outcome==="fighting") state.outcome="draw";
+  const {frames}=recordCombatEncounter({
+    state,step:stepGroupCombat,capture, captureEvery:6,maxSeconds,
+    isFighting:world=>world.outcome==="fighting",
+  });
+  if(state.outcome==="fighting")state.outcome="draw";
   return {state,replay:{
     version:1,
     actors:options.actors.map(a=>({...a})),
