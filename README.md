@@ -129,6 +129,7 @@ own HP, equipment and real Healing Herbs, with one genuine group fight
 and one claimed monster/chest/trap site. Chest gold is split, a single
 loot item has one claimant, and every survivor's actual XP, inventory
 and personal route/recording are committed without rerolling combat.
+Group routes are selected from every present hero's own known next steps, with deterministic majority voting and no unseen map information. Following one real battle, armed and healthy companions may agree to descend, patient explorers may wait for a cautious friend, or a healer/generous ally may escort someone upward. No hero is forced into an unsafe descent or prevented from resupplying; personal goals remain distinct.
 Established, willing parties now survive multiple committed days in
 a saved relationship record. They can keep their formation after a
 unanimous transition to a neighboring early dungeon floor **only**
