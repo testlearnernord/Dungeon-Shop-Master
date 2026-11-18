@@ -23,7 +23,14 @@ test("ordinary dungeon sites regenerate on staggered saved intervals without res
   const world = {resolvedFeatureIds:cleared,heroes:[],siteCycles:history};
   const before = refreshDungeonSites(world,map,5);
   assert.deepEqual(before.resolvedFeatureIds,cleared);
-  assert.deepEqual(before.siteCycles,history);
+  assert.deepEqual(
+    before.siteCycles.map(site=>site.id).sort(),
+    history.map(site=>site.id).sort(),
+    "canonical site records may use layout order rather than action order",
+  );
+  assert(before.siteCycles.every(site =>
+    history.some(original => original.id===site.id &&
+      original.cycle===site.cycle && original.resolvedDay===site.resolvedDay)));
   const futureDay = 4 + Math.max(...sites.map(s => dungeonSiteCooldown(map,s)));
   const refreshed = refreshDungeonSites(world,map,futureDay);
   assert.deepEqual(refreshed.resolvedFeatureIds,[]);
