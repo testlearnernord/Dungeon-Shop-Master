@@ -218,7 +218,7 @@ test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Trol
   assert.deepEqual(world.heroes[0].visited,visited,"Exploration never mutates prior knowledge");
   const initial=createGameState(seed);
   const saved={
-    ...initial,day,
+    ...initial,day,worldClock:{...initial.worldClock,tick:(day-1)*1440},
     shopEconomy:{...initial.shopEconomy,
       dailySales:{...initial.shopEconomy.dailySales,day}},
     adventurers:initial.adventurers.map(a=>
@@ -232,7 +232,7 @@ test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Trol
     }],
   };
   assert.deepEqual(parseSave(JSON.stringify(createSave(saved))),saved,
-    "v13 campaign saves must accept actual elite ability and historical frames");
+    "v14 campaign saves must accept actual elite ability and historical frames");
 });
 
 test("ordinary first-generation Floor 7 encounters do not silently become bosses",()=>{

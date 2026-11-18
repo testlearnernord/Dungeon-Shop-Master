@@ -70,7 +70,7 @@ export function advanceWorldUntil<T extends {readonly day:number;readonly worldC
     if(event.dueTick>targetTick)break;
     if(++processed>MAX_EVENTS_PER_ADVANCE)
       throw new RangeError("World event advance exceeded its bounded budget.");
-    if(event.dueTick<=current.worldClock.tick)
+    if(event.dueTick<current.worldClock.tick)
       throw new RangeError("World event queue contains an already-due event.");
     const staged={...current,worldClock:{...current.worldClock,
       tick:event.dueTick,pending:current.worldClock.pending.slice(1)}} as T;
