@@ -48,91 +48,32 @@ campaign should visibly change all three tracks while preserving failure risk.
 
 ## Delivery checkpoint (CURRENT vs planned)
 
-**First shipped slice:** Floor 7 common monsters/chests/traps regenerate by
-real saved site cycles using `src/game/dungeonRegeneration.ts`.
-**Second slice (this PR, CURRENT only after merge):** Floors 1–4
-use the **same** seeded spatial explorer as Floor 7, including connected
-movement, actual traps/loot, `groupCombat` battles, item/HP effects,
-regeneration and preserved 3D footage. `dungeonSimulation.ts` is deleted.
-An optional `earlyDungeonWorlds` array extends version-13 saves without
-invalidating earlier ones. Heroes make a strategy-informed floor transition
-choice after the confirmed expedition, and actual early-floor recordings
-appear in the sealed ledger and dungeon viewer. The current shop continues
-to use the **existing Floor 5 and two-door behavior** until the larger
-cursed-portal/standby redesign is implemented.
+**Implemented in code (as of this feature branch, pending merge):**
 
-**NOT delivered yet:** unified Floor 6 boss encounter authority, cursed
-special-floor shop/one portal, post-shop two-day standby, a full
-morning/midday/evening Board 2.0, all new abilities and Floors 8–10.
-`V.003 Alpha` remains a **release target**, not a new playable label.
+- Floors 1–4 and 7 share the same seeded spatial walker,
+  ordinary enemies/loot/traps, deterministic site regeneration
+  and saved real group fights. The old 1–4 RNG placeholder is deleted.
+- Every new fight uses the common `combatEncounter.ts`
+  fixed-step actor/projectile/outcome pipeline and replay
+  recorder. Ordinary enemies and the Cave Troll share HP/
+  healing, melee contact, movement, action clocks, tactical
+  decisions and swept projectile collision.
+- `combatActor.ts` unifies the **live mutable actor contract**
+  and phase/resource lifecycle. `GroupActor` implements
+  it directly; the Troll and boss hero use live state adapters
+  with no duplicated HP, position, stamina or phase.
+- Existing boss grab/lift/throw and Tripo presentation
+  are still physically simulated; historical group-v1 and
+  boss-v1 replays stay immutable. Save version 13 remains.
 
-**Third implementation slice (this PR, CURRENT only after merge):**
-the HP/mitigation/healing rules are no longer calculated independently
-by the ordinary encounter and Troll motor; both consume
-`combatVitality.ts`. Real bought Healing Herbs now work for all hero
-roles during ordinary fights and heal exactly +18 HP on both
-combat paths. Every actual use is deducted from owned supplies and
-exposed in an immutable replay. The boss's independent movement,
-grab/throw and skills engine is **not** yet replaced; that work
-remains the next integration task. Existing saved replays are never
-re-simulated.
+**Not implemented:** fully general multi-hero boss status/
+ability effects, dungeon Floors 8–10, cursed out-of-number
+shop entrance, two-day hero standby, full Morning/Midday/
+Evening world snapshots or Adventurer Board 2.0.
+The old Floor 6 boss progression remains separately routed.
 
-**Fourth implementation slice (this PR, CURRENT only after merge):**
-`combatMelee.ts` now owns ordinary and boss melee contact/defense
-arbitration using configurable ability profiles. Existing group
-combat and the Cave Troll use the same attack arcs, blocking, roll
-invulnerability and parry geometry. The group engine supports real
-telegraphed heavy monster hits; regenerated skeletons can use one
-in the ordinary shared dungeon. A recorded optional profile field is
-validated but old combat frames are not recalculated. The Troll
-still owns its animation-compatible grab/throw and independent
-movement/action scheduler; **full battle-loop unification remains
-an unfinished release gate**.
-
-**Fifth implementation slice (CURRENT only after this PR merges):**
-ordinary encounters and the Troll now share `combatMovement.ts`
-as their actual position integrator, with explicit collision
-policies for dungeon walls/other actors versus the circular boss
-cavern; the Boss lava hazard remains a consequence of crossing its
-real boundary. `combatActionClock.ts` drives the phase time,
-contact-once checks, action completion, cooldown and stamina
-for both motors. This replaces separate movement arithmetic and
-duplicated phase contact scheduling, **not** the Boss's complex
-AI, target selection, physical grab/throw effects or the final
-one-group-capable-encounter stepper. Preserve historical v1
-recordings; replay viewers never re-simulate.
-
-**Sixth combat integration slice (CURRENT only after this PR merges):**
-`combatTactics.ts` now drives the same autonomous
-opponent targeting, attack/approach/retreat feasibility,
-defense choice and legal ability selection for the
-multi-actor system and Troll encounter. `combatProjectile.ts`
-resolves swept real line hits for both, with wall
-precedence and deterministic target ties. This retires
-duplicate selection and projectile-hit islands while
-preserving the Troll's authored signature move
-timing and fully saved historical replay format.
-The **last remaining major combat rewrite** is the
-shared top-level group-capable encounter stepper
-and boss-specific grab/throw effect plugin; neither
-has been falsely marked implemented.
-
-**Seventh combat integration slice (CURRENT only after this PR merges):**
-`combatEncounter.ts` now drives the **same authoritative
-60-Hz actor/projectile/outcome pipeline** and **same bounded
-recording scheduler** for the ordinary group motor and the
-Cave Troll. The latter registers its real hero/boss actor
-sequence and physical grip/throw/lava handlers as encounter
-extensions; it no longer owns a separate top-level simulation
-clock, victory rule or replay capture loop. Both immutable
-old-style v1 replay schemas remain in place.
-
-**Still open:** unify all actor state schemas and boss-only
-ability progression/party AI under one extensible actor
-model. A shared encounter stepper is real progress,
-**not a claim of a completely universal group-plus-boss actor
-FSM**, nor a claim that the V.003 shop/portal/Board design is
-playable.
+**Release label:** V.003 Alpha is the **future milestone**.
+The playable game still identifies as **V.002 Alpha**.
 
 ## Dungeon, heroes and pace
 
