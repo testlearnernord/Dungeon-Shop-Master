@@ -25,12 +25,19 @@ The player can recognize that causal chain from observable returns and recording
    make plans, find companions, depart or reconsider. Galvik does not assign
    party members, routes or attack commands.
 3. **Expedition:** persistent individual heroes (and optional small parties)
-   explore a single shared seeded world; encounter enemies, traps and treasure;
-   choose to farm, discover, push deeper, recover or flee.
-4. **Observe legitimate consequences:** morning/noon/evening board snapshots,
+   explore a single shared seeded world. A short-term navigation choice
+   (stay, descend or ascend) follows their medium-term purpose (farm money,
+   test new gear, explore, progress cautiously, recover, avoid overpowered
+   enemies). On an **upward floor transition** they may end the expedition
+   and enter Galvik's cursed shop regardless of dungeon depth.
+4. **Shop visit and outside-world rotation:** purchase, sell, seek credit
+   and then depart via the *same* portal. After leaving the shop, the hero
+   spends **two complete game days outside both shop and dungeon** (e.g.
+   village, family, rest), then may start a new expedition.
+5. **Observe legitimate consequences:** morning/noon/evening board snapshots,
    returning characters, discovered information and committed recordings reveal
    what the player's goods did. Unknown/offscreen outcomes remain unknown.
-5. **Advance all three progress tracks:** deeper access and altered dungeon
+6. **Advance all three progress tracks:** deeper access and altered dungeon
    rooms, surviving/leveling heroes, a richer shop with new demand and choices.
    Every day should present an understandable next decision, not just +1 day.
 
@@ -99,7 +106,26 @@ campaign should visibly change all three tracks while preserving failure risk.
   day transition should silently invoke a removed simulator. Enforce
   exactly-once HP, item consumption, loot, XP, sales and deaths.
 
-### Decision-making, not player-directed adventurers
+### Two layers of autonomous hero decisions
+
+**Short term (at each meaningful expedition/navigation decision):**
+`stay` on the current floor, `descend` one dungeon floor, or `ascend`
+one floor. When choosing an upward transition, a hero can instead finish the
+expedition and enter the **cursed shop instance**, from any dungeon depth.
+The ascent/abort decision is a **choice**, not forced by floor count, no
+all-floor backtracking required and no free in-combat teleport. A deeper gate
+that is not unlocked cannot be passed, even by a high-level hero.
+
+**Medium term (planning across successive phases/days):** the hero forms
+a goal from its actual condition, temperament and equipment; e.g. "I need
+gold, farm safer floors", "I just bought a sword, test it", "I'm under-equipped
+and should be cautious", "I am strong enough to progress", "these enemies
+are too dangerous, leave", or "find a healer/group". A medium-term goal
+biases successive short-term moves and supplies purchase intent, but may
+change after a serious injury, new loot, death of an ally or a newly
+discovered route. Character level/XP and dungeon floor are separate.
+
+**Observable activities (not a second decision-making AI):**
 
 - **Farm:** revisit known **renewable** reward opportunities for modest income
   or supplies; capped and risky enough not to replace shop purchases.
@@ -110,8 +136,13 @@ campaign should visibly change all three tracks while preserving failure risk.
 - **Recover:** use legitimate restorative items/resources and take a safer plan;
   never a disguised hunger mechanic.
 - **Group:** join/travel with allies when compatible; roles affect cooperation.
-- **Shop:** visit Galvik and autonomously evaluate prices, need and available
+- **Shop:** following the hero's upward-transition/expedition-abort choice,
+  visit Galvik and autonomously evaluate prices, needs and available
   goods rather than following player orders.
+- **Off-duty:** after physically departing the shop, spend two complete game
+  days outside **both** the dungeon and Galvik's shop before expedition
+  eligibility resumes. This is not a shop customer's waiting timer, nor an
+  HP hunger mechanic.
 
 Decisions reflect personality (careful/reckless/greedy), level, HP, relative
 enemy threat, carried consumables, class role and party state. Avoid purely
@@ -131,9 +162,23 @@ silently veto that decision.
   seeded RNG. Resolve events **once**, store them and show read-only board,
   ledger, combat and exploration views from those committed events. Camera,
   focus, reload or opening the board must never advance/roll the dungeon.
-- A single expedition can last across several days and snapshots without
-  a forced return to Floor 4/5. Position and supplies persist. Shop visits
-  remain real commerce, with no free restocks/teleports.
+- A single expedition can last across several days and snapshots. There is
+  **no forced return to Floor 4/5** and no traverse-all-floors return trip.
+  A hero leaves by a deliberate upward-transition/shop choice from their
+  current depth; commerce is real and free restocks are forbidden.
+- Shop visits and **outside-world standby** are explicit, mutually exclusive
+  lifecycle states. **Two full days after physically leaving the shop** are
+  spent away from the shop and away from the dungeon. Example: exit shop on
+  Day 4, away Days 5 and 6, eligible for a new expedition from Day 7.
+  Board snapshots display off-duty/last known accurately. The exact
+  moment of arriving at/departing through the shared portal follows the
+  deterministic day-phase contract; no extra sale or customer spawn.
+- Preserve the hero's personal deepest floor and dungeon discoveries across
+  visits. A proposed re-entry rule is a **safe known entrance/checkpoint on
+  the last reachable depth**, not a teleport directly into the last fight
+  room. This precise placement, any injuries recovered while away, and
+  how parties resume are still balancing decisions. Standby does not by
+  itself confer full free HP or inventory replenishment.
 - Player knowledge is separate from truth: a spell-bound board **might**
   report rough location/activity (accepted as design direction for the Board)
   without identifying every item, secret room or instantaneous death. Unverified
@@ -225,68 +270,93 @@ HP and one loaf of Waybread, yet he's heading into Floor 6." Therefore:
 
 The table is a target **shape**, not three simulated example outcomes.
 
-## The first chapter and shop access
+## First chapter, cursed shop instance and one entrance
 
-- The candidate **first ten floors** form an escalating chapter of risks,
-  unique rooms, progress discoveries and profitable demand. The Cave Troll
-  is a potential **Floor 10 chapter boss** rather than permanently tied to
-  Floor 6. **Boss placement and mandatory unlock rules remain a specific
-  design choice to validate**, not new implemented canon.
-- The previous music-led Troll arena, its Tripo hand/grab/throw work, sound,
-  and historical replays remain useful. Boss mechanics should become reusable
-  encounters on the common combat authority, retaining boss-specific
-  animations/abilities.
-- **Shop access (PREFERRED OPTION UNDER DISCUSSION, NOT LOCKED):** every
-  living hero can **attempt to return** to Galvik rather than being forbidden
-  to shop by a cooldown or every-five-floor rule. Getting back is not free:
-  they must traverse a real known/reachable route, or use an actual unlocked
-  safe access point. Travel consumes morning/midday/evening opportunities
-  and can involve hazards where applicable. Checkpoints and routes persist
-  in the shared world; an ended expedition does not put the hero straight
-  back at its prior deep coordinate.
-- **First playable chapter candidate:** the physical shop stays on Floor 5.
-  Prior to unlocking deeper connections, a Floor 6–10 hero returns through
-  traversable corridors to Floor 5. Reaching/clearing a later milestone
-  (possibly after the first chapter boss on Floor 10) may permanently
-  reveal a shortcut from a safe outpost to the **same physical shop**.
-  This is *not* five duplicate shops and not a portal beside every fight.
-  The precise threshold and route remain OPEN.
-- **Future optional emergency-escape item (PITCH, NOT APPROVED):** a
-  priced, consumable **one-way return to the last usable safe shop
-  access**. It saves the hero from a dangerous retreat if activated in time,
-  but ends/intercepts the current expedition and does **not** teleport
-  them back to their deep location afterward. There must be a real
-  inventory transaction, legitimate use timing and a meaningful
-  exploration/time opportunity cost. No free respawns or zero-cost resets.
-- **Economic design check:** convenient return travel must not remove
-  inventory pressure, danger, meaningful party decisions or deep-dungeon
-  logistics. Conversely, arbitrary shop lockouts should not suppress the
-  very sales/returns that make the merchant game engaging.
-- **For debate:** whether fleeing heroes can reach *unknown* paths;
-  danger/cost of traversing previously cleared corridors; when a portal
-  is unlocked; how party members split on retreat; if and when the
-  emergency item can be used during combat; and how to show an expected
-  route/time without leaking a secret map.
+**Approved V.0003 direction (supersedes all Floor-5-location and return-path
+proposals in earlier planning):**
 
-- Expansion of Galvik's basement, forge/pond, player-controlled prices, lore
-  resolution and a full hundred floors are **outside the first vertical
-  slice** and not prerequisites to fix the expedition loop.
+- **Galvik's physical shop is a cursed SPECIAL FLOOR**, outside the
+  numbered dungeon progression. Its sales floor, bedroom, excavated areas,
+  furniture and inventory are one shared persistent space. It is no longer
+  "on Floor 5". Numerically counted dungeon floors contain exploration
+  rather than a compulsory mid-run merchant level.
+- **One large cursed gateway** replaces the present separate Floor 4 and
+  Floor 6 entrances to the shop. All entering and departing adventurers
+  use the same supernatural portal and must still obey queue/traffic,
+  player-access and shop-layout collision checks. Visual direction to
+  explore: an ominous swirling instance-style vortex with rune/light
+  ambience, **not** a final art asset or approved exact appearance.
+  Do not build one physically duplicated shop for every dungeon floor.
+- **Any-floor shop access is conditional on a hero deciding to ascend:**
+  after choosing to move up from their current dungeon floor, the hero
+  may instead end the expedition and go directly to the cursed shop.
+  They do **not** have to backtrack from Floor 8 to Floor 5. Choosing
+  stay, deeper, or higher normally still changes real floor/position.
+  Ending an expedition does not let a hero teleport out mid-attack.
+- **Two-day post-shop absence (approved balancing direction):** when
+  a hero physically leaves Galvik's shop, they spend the next **two
+  full game days** away from both shop and dungeon (town, family, holiday,
+  etc. are narrative labels, not a separately simulated village).
+  Their avatar cannot instantly reappear at a shelf or dungeon fight.
+  They may start another expedition afterward, retaining character
+  advancement, gear, legitimate supplies and recorded discoveries.
+  This rotation creates a natural flow of returning and absent customers
+  without arbitrary "you can shop only every five floors" rules.
+- **Return location proposal:** resume at a safe known floor-entry/anchor,
+  not the last combat coordinate, with no hard reset of explored dungeon
+  topology. Exact anchor selection and whether/how HP recovers during
+  outside-world days remain OPEN and need economic/balance tests.
+- **Floor 10 progression is BLOCKED until Galvik grants that specific
+  hero a pass.** Treat this as the accepted temporary gate rule for
+  the first chapter, regardless of that hero's strength or discoveries.
+  The owner intends to redesign the permit system separately later.
+  The *current implementation* uses a different `level6Permit` flag
+  for Floor 6, so the V.0003 design must explicitly migrate/replace the
+  permit gate; never call the new Floor 10 restriction implemented.
+- The **Cave Troll is a possible boss around Floor 10** in the new chapter.
+  Floor 10 pass gate and boss placement are distinct questions: the
+  former remains blocked pending a player-granted pass, the latter is
+  not final until approved. The original Floor 6 audio, Tripo rig,
+  grab/throw skills and immutable old fights remain valuable components
+  for the unified encounter motor.
+- The shop's single entrance must be designed with actual NPC spawn,
+  queue, movement, restock, checkout and departure throughput. Replace
+  legacy two-gate route assumptions in shop navigation, furniture
+  reachability, tests and visuals rather than retaining dead "Floor 4/
+  Floor 6" door logic with the new portal hidden on top.
+- **No escape-rope item in this scope**: the previously proposed
+  emergency extraction item is not needed to make returning practical
+  and is deferred. The normal ascension/shop choice already provides
+  travel access; consumable escapes can be reconsidered only if
+  playtesting reveals a meaningful distinct role.
 
-## Design test: is a shop trip worth it?
+**Balancing check:** leaving to shop must be attractive but not optimal
+after *every* encounter. The full two-day absence and need to restart
+a later expedition supply an opportunity cost. If shop visits become
+rare, revisit decision weights and merchant traffic before imposing an
+arbitrary floor lock. If the cooldown empties the shop, tune population
+rotation and progression, **not** fake customer spawns.
 
-A low-HP, unarmed hero on Floor 8 should be **allowed** to choose one more
-room, a cautious journey back toward Floor 5 or an emergency extraction if
-a purchased item is available. Each choice changes **actual time, danger,
-position and stock**, without a scripted forced visit. A newly discovered
-outpost shortcut later shortens the route for everyone and creates new
-shop traffic. Galvik benefits from being reachable, but supply and route
-costs still make a deep expedition genuinely risky.
+**Example hero story (illustrative, not current gameplay):** Finn farms Floor
+3 for gold, buys a sword on his first shop visit, spends two full days with
+family outside the game world, then returns and tests it. Much later on Floor
+8, he takes damage, chooses to ascend, elects to end his expedition at
+Galvik's special-floor portal and buys herbs. During the next two days he
+is visibly **off duty**, not simultaneously counted as dungeon-active or a
+shop customer. He remains personally blocked from Floor 10 until he receives
+Galvik's pass.
+
+Expansion of Galvik's basement, forge/pond, player-controlled prices, lore
+resolution and a full hundred floors are **outside the first vertical
+slice** and not prerequisites to fix the expedition loop.
 
 ## Architecture work packages (planned, no PR numbers reserved)
 
 1. **World schema and contracts:** enumerate authoritative floor, room,
-   feature, path, per-hero position, party, intent, three-phase snapshots,
-   knowledge and immutable event/replay records. Define v13 save compatibility
+   feature, path, per-hero position, party, short-term floor direction,
+   medium-term purpose, personal deepest depth, **cursed shop instance**,
+   shared portal entry/exit, two-day off-duty states, per-hero Floor 10
+   permit, three-phase snapshots, knowledge and immutable event/replay records. Define v13 save compatibility
    or an **explicit, tested** migration before changing schemas. Keep live and
    known snapshots separate.
 2. **Shared explorer:** incrementally replace `dungeonSimulation.ts`
@@ -300,13 +370,17 @@ costs still make a deep expedition genuinely risky.
 4. **Board vertical slice:** move `rosterBoard.ts`, `rosterBoardHud.ts`,
    `rosterView.ts` onto one read-only snapshot projection. Show three
    phases, true/last-known status, HP, visible equipment sockets/icons,
-   intent and depth markers. Reuse mounted board/roster controls.
+   short direction, medium-term goal, **at shop / off duty / dungeon**,
+   personal Floor 10 gate, and depth markers. Reuse mounted board/roster
+   controls.
 5. **Unified combat + observation:** expand reusable group combat with
    monster/boss skills, align actual item effects, generate and **keep**
    immutable replay metadata, and expose honest viewed recordings.
-6. **Playable first chapter:** content/encounter pacing for Floors 1–10,
-   realistic preparation and returns, possible Floor 10 Troll integration,
-   economy balance, repeated ten-day runs and owner visual acceptance.
+6. **Playable first chapter and one portal:** content/encounter pacing for
+   Floors 1–10, real ascending/abort/shop/standby/new-run rotation, one
+   physical swirling shop entrance replacing both old doors, the hero-specific
+   Floor 10 pass gate, possible Floor 10 Troll integration, economy balance,
+   repeated ten-day runs and owner visual acceptance.
 
 These are **coherent development packages**, not a mandate for six tiny PRs.
 Combine tightly coupled contracts into larger, testable changes; prefer
@@ -325,6 +399,13 @@ vertical integration rather than new disconnected framework islands.
 - Multiple heroes/parties share floor changes without duplicated loot,
   kills, shoppers, debt or softlocked corridors. A dead hero does not become
   alive just because the board or shop redraws.
+- The same hero can stop on any depth, choose an **upward-transition exit**
+  to the **single cursed shop**, purchase goods, physically leave through
+  the **single portal**, spend two **complete** days off duty and return
+  later without a free in-combat escape or duplicate presence. No hero
+  enters **Floor 10** unless that hero has been granted Galvik's pass.
+  Both legacy floor-labeled shop doors and associated two-route layout
+  requirements are retired in the new shop topology.
 - Ten days of shop operation remain enjoyable and comprehensible; walking,
   furniture, cashier, excavation, save/load, ledger and training viewers
   work. A player can recognize three sorts of progress without being
@@ -338,9 +419,12 @@ vertical integration rather than new disconnected framework islands.
 
 Exact phase scheduling within a live shop day; whether the player can observe
 ongoing fights or only committed footage; number/types of rooms; thresholds
-for hero joining/retreating; new mana/ability model; shop access magic and
-depth; final Floor 10 boss placement; difficulty and economy values;
-the game's larger curse lore; future full real-time simulation.
+for hero joining/retreating; new mana/ability model; mystical explanation
+and visual detail of the shared portal; exact safe re-entry anchor after
+standby, HP recovery off duty and party-splitting semantics; eventual
+redesign of the temporary hero-specific Floor 10 pass; final Floor 10
+boss placement; difficulty and economy values; the game's larger curse
+lore; future full real-time simulation.
 
 **Design approval does not mean those details are final.** Prefer an
 observable, grounded vertical slice before expanding the world further.
