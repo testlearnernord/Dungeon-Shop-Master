@@ -114,8 +114,9 @@ multi-actor cast, but live expeditions still resolve one hero per fight.
 **Recorded-cast dungeon viewer and renewable elites (after this PR merges):**
 the Floor 1–4/7 footage viewer now displays every saved combat participant
 and projectile, with TAB cycling only through currently visible fighters.
-Historical gear is shown only when recorded; unknown companion equipment is
-not fabricated. On Floor 7, some room sentries in later deterministic
+Historical purchased gear is drawn from a saved combat actor's
+equipment snapshot when present, never from today's roster. Older recordings
+without that optional v1 field stay deliberately neutral. On Floor 7, some room sentries in later deterministic
 respawn generations become stronger grapple/throw elites. Their HP, defenses,
 throws, rewards and frame data come from the existing encounter engine and
 v13 saved replays. This is a real solo expedition encounter, not the unique
