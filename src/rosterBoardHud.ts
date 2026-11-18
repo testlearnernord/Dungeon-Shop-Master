@@ -1,7 +1,8 @@
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import {
-  locationLabel, partySizeLabel, rosterPartyDetails, portraitIndex,
+  locationLabel, partySizeLabel, rosterPartyDetails,
+  temporaryPartyNumber, portraitIndex,
   rosterEntries, type RosterFilter,
 } from "./game/rosterView.ts";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
@@ -25,7 +26,7 @@ export function setupRosterBoardHud(
     const fallen = state.adventurers.length - active;
     const partyCount=state.dungeonParties?.length??0;
     totals.textContent = active + " active · " + fallen + " fallen · "+
-      partyCount+" parties · Day " + state.day +
+      partyCount+" Temporary Parties · Day " + state.day +
       (filterValue === "fallen" && fallen > 40 ? " · Showing latest 40" : "");
     const expanded = new Set([...list.querySelectorAll<HTMLDetailsElement>("details[open][data-hero-id]")]
       .map((node) => node.dataset.heroId));
@@ -36,6 +37,8 @@ export function setupRosterBoardHud(
       card.className = "roster-card";
       card.dataset.heroId = hero.id;
       card.dataset.status = hero.status;
+      const partyNumber=temporaryPartyNumber(state,hero.id);
+      if(partyNumber!==null)card.dataset.temporaryParty=String(partyNumber);
       card.open = expanded.has(hero.id);
       const summary = document.createElement("summary");
       const portrait = document.createElement("span");
@@ -107,7 +110,8 @@ export function setupRosterBoardHud(
         const companions=document.createElement("section");
         companions.className="roster-party-details";
         const title=document.createElement("h3");
-        title.textContent="Travel companions · together since Day "+party.formedDay;
+        title.textContent="Temporary Party #"+partyNumber+
+          " · "+party.members.length+" heroes · together since Day "+party.formedDay;
         const entries=document.createElement("ul");
         for(const companion of party.members){
           if(companion.id===hero.id)continue;
