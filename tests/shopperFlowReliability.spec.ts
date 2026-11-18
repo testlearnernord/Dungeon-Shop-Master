@@ -63,7 +63,7 @@ test("a single buyer can reach and request service at a rotated register @ci-smo
 /** Browser-only crowd test. Deliberately combines relocated furniture, eight
  * simultaneous customer spawns, and limited Waybread stock. This catches
  * actual Babylon movement failures missed by pure route allocation tests. */
-test("eight incoming customers progress, settle their carts at bed-close and reload without duplicate sales",async({page})=>{
+test("eight incoming customers return unpaid carts at bed-close without phantom sales",async({page})=>{
   test.setTimeout(150000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
@@ -212,10 +212,9 @@ test("eight incoming customers progress, settle their carts at bed-close and rel
   }
   expect(carriedAtLeastOnce).toBe(true);
 
-  // Continue this SAME actual crowded browser session through the player's
-  // bed interaction, the economic day tick, the visible ledger and reload.
-  // A stock reservation must become exactly one booked sale, never an
-  // orphaned cart or a second sale after the ledger is restored.
+  // Continue this SAME crowded browser session through bedtime and reload.
+  // Shelf pickup is NOT payment. Until a real cashier completes checkout,
+  // every unpaid cart must return its stock and cannot mint merchant gold.
   const snapshot=()=>page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const state=await new CampaignStorage().loadGame();
@@ -223,10 +222,11 @@ test("eight incoming customers progress, settle their carts at bed-close and rel
     return {day:state.day,balance:state.shopEconomy.balance,
       carts:state.shopCarts.map(cart=>({
         id:cart.heroId,units:cart.lines.reduce((sum,line)=>sum+line.quantity,0),
+        lines:cart.lines.map(line=>({slotId:line.slotId,units:line.quantity})),
       })).filter(cart=>cart.units>0),
       sales:state.events.filter(event=>event.type==="sale")
         .map(event=>({id:event.id,day:event.day,hero:event.adventurerId})),
-      stocks:state.shopEconomy.slots.map(slot=>slot.quantity)};
+      stocks:state.shopEconomy.slots.map(slot=>({id:slot.id,units:slot.quantity}))};
   });
   await expect.poll(async()=> (await snapshot()).carts.length,{
     timeout:12000,intervals:[250,500,900],
@@ -243,14 +243,16 @@ test("eight incoming customers progress, settle their carts at bed-close and rel
   const afterClose=await snapshot();
   expect(afterClose.day).toBe(2);
   expect(afterClose.carts).toEqual([]);
-  expect(afterClose.balance).toBeGreaterThan(beforeClose.balance);
-  expect(afterClose.stocks.every(stock=>stock>=0)).toBe(true);
-  const receipts=afterClose.sales.filter(sale=>sale.day===2);
-  for(const cart of beforeClose.carts){
-    expect(receipts.filter(sale=>sale.hero===cart.id).length,
-      "an actual held cart must settle into one or more daily sale lines")
-      .toBeGreaterThanOrEqual(1);
-  }
+  expect(afterClose.balance).toBe(beforeClose.balance);
+  expect(afterClose.stocks.every(stock=>stock.units>=0)).toBe(true);
+  expect(afterClose.sales).toEqual(beforeClose.sales);
+  const quantityBefore=new Map(beforeClose.stocks.map(slot=>[slot.id,slot.units]));
+  const restoredUnits=new Map<string,number>();
+  for(const cart of beforeClose.carts)for(const line of cart.lines)
+    restoredUnits.set(line.slotId,(restoredUnits.get(line.slotId)??0)+line.units);
+  for(const slot of afterClose.stocks)expect(slot.units,
+    "Unpaid shelf reservation must return at bed: "+slot.id)
+    .toBe((quantityBefore.get(slot.id)??0)+(restoredUnits.get(slot.id)??0));
   expect(new Set(afterClose.sales.map(sale=>sale.id)).size)
     .toBe(afterClose.sales.length);
   await page.reload();

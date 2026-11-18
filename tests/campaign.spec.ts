@@ -90,7 +90,9 @@ test("committed economy and day state autosave, reload exactly and continue dete
   const saved = await exportSave(page);
   expect(persisted).toEqual(saved.payload);
   expect(saved.payload.shopEconomy.dailySales.day).toBe(12);
-  expect(saved.payload.events.some((event: { type: string }) => event.type === "sale")).toBe(true);
+  expect(saved.payload.events.some((event: { type: string }) => event.type === "sale")).toBe(false);
+  // Buying wholesale and sleeping through twelve shop days are not sales.
+  // No hero physically visited the checkout in this browser test.
   const expectedNext = await page.evaluate(async (state) => {
     const path = "/Dungeon-Shop-Master/src/game/gameState.ts";
     return (await import(path)).advanceDay(state).state;
