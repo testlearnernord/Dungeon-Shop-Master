@@ -1057,7 +1057,8 @@ export class Level6Arena {
     boss.root.metadata.parryCount = state.parryCount;
     this.result = state.outcome;
     this.updateHud();
-    this.worldHud.render(this.scene,state,frameDt,boss.max);
+    this.worldHud.render(this.scene,state,frameDt,boss.max,
+      hero.root.position.clone());
   }
 
   private updateHud(): void {
