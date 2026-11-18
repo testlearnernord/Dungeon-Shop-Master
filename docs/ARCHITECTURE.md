@@ -214,10 +214,7 @@ supported by the existing *group* motor, including real
 grapple/throw effects, and is exercised in deterministic
 tests. The existing **Level 6 Cave Troll campaign path still
 uses its original one-hero cinematic replay and renderer**.
-The dungeon viewer is now capable of rendering any recorded
-group cast, and renewable solo Floor 7 elites exercise the skill.
-**True multi-hero party encounters** are NOT yet wired into
-campaign progression or the separate Floor 10 gate.
+The dungeon viewer renders the full recorded group cast. Real 1–3 hero parties already fight renewable elites on their campaign expeditions. Only the unique Cave Troll retains grapple/throw in newly simulated encounters; the separate Level 6 cinematic and Floor 10 gate are still incomplete.
 There is no implied V.003 release from this engine milestone.
 
 ## Recorded dungeon cast projection and regenerated elites (CURRENT after this PR)
@@ -237,11 +234,7 @@ HP, RNG, movement integration, contact or rewards.
 
 `level7Exploration.ts` chooses a deterministic, renewable elite
 **only** for a later generation of a Floor 7 sentry standing in a
-room (current tuning: cycle > 0, cycle modulo 4 = 1). This switches
-the actual `groupCombat.ts` monster spec to the already supported
-`grapple-throw`, bigger body/poise and honest XP/gold on victory.
-The committed replay persists the special-ability metadata under
-the existing strict v13 validator. Cycle zero and Floors 1–4
+room (current tuning: cycle > 0, cycle modulo 4 = 1). This increases the creature's HP, armor/body radius and supplies a normal telegraphed `heavy` attack, without the Troll's signature throw. Actual victory still awards finite bonus XP/gold. Old v1 recordings with legacy grapple metadata are kept unchanged under the strict v13 validator. Cycle zero and Floors 1–4
 retain their prior enemy behavior. This is not a unique defeated
 boss, the established Tripo Cave Troll, or a multi-hero campaign
 party system. No save migration and no second encounter simulator.
