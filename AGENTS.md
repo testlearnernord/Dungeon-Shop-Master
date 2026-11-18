@@ -41,6 +41,19 @@
   (a temporary new design gate, not today's `level6Permit`). Do not
   reinstate the rejected long backtrack, mandatory five-floor shops,
   two-door topology or an invented escape rope as accepted scope.
+- **CURRENT combat tactics/projectile authority (after this PR):**
+  `combatTactics.ts` is the only decision layer for
+  living enemy target selection, reach/line-of-sight attack
+  opportunity, approach/withdrawal and stamina-aware defense,
+  plus regular/heavy/Troll grab-slam-smash selection.
+  `combatProjectile.ts` owns swept segment hitbox and
+  optional wall collision for both bosses and groups.
+  Keep opponent-only projectile targets and deterministic
+  ties. Don't reintroduce per-viewer target RNG, point-only
+  projectile collision, or a separate attack-selection
+  table. The Boss's special grab/throw effects and high-level
+  stepper remain deliberately separate pending final
+  group-capable unification.
 - **CURRENT actor runtime shared across group and Troll combat (after
   this PR):** `combatMovement.ts` is the only combat position
   integrator and `combatActionClock.ts` is the only once-per-tick
