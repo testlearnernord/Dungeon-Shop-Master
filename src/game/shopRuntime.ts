@@ -1,6 +1,6 @@
 import type {GameState} from "./gameState.ts";
 import {walkOutWithoutPurchase} from "./shopWalkout.ts";
-import {forecastShoppingIntents,type ShoppingReason} from "./shopperIntents.ts";
+import {forecastShoppingIntents,RESTOCK_WAIT_SECONDS,type ShoppingReason} from "./shopperIntents.ts";
 import {scheduleWorldEvent,type ScheduledWorldEvent} from "./worldClock.ts";
 import type {ItemId} from "./economy.ts";
 
@@ -16,7 +16,7 @@ export interface ShopRequest {
   readonly dueTick:number;
   readonly eventId:string;
 }
-export const SHOP_REQUEST_TICKS=60;
+export const SHOP_REQUEST_TICKS=RESTOCK_WAIT_SECONDS;
 
 export function requestRemainingTicks(state:GameState,heroId:string):number|null {
   const request=state.shopRequests.find(item=>item.heroId===heroId);

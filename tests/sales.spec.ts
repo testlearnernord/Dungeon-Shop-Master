@@ -3,7 +3,7 @@ import { advanceTestDay } from "./advanceTestDay";
 import type { GameState } from "../src/game/gameState";
 import { currentDayReceipts } from "../src/game/saleView";
 
-test("manual checkout receipts are real and bedtime cannot sell stock by itself", async ({ page }) => {
+test("manual checkout receipts are real and bedtime cannot sell stock by itself @ci-smoke", async ({ page }) => {
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");

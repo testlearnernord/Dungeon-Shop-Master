@@ -111,6 +111,7 @@ test("forged or orphaned shop request queues fail strict save validation",()=>{
   };
   tamper(s=>{s.shopRequests[0].eventId="clock-999";},/eventId/);
   tamper(s=>{s.shopRequests[0].dueTick=100000;},/dueTick/);
+  tamper(s=>{s.shopRequests[0].itemId="healing-herb";},/itemId/);
   tamper(s=>{s.shopRequests.push(s.shopRequests[0]);},/unique/);
   tamper(s=>{s.shopRequests=[];},/orphaned visitor/);
   assert.deepEqual(clearResolvedShopRequests(valid),valid);
