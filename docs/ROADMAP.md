@@ -47,7 +47,7 @@ Do not overbuild extra content before this loop is both real and fun.
 
 ## Prioritized implementation packages (cohesive, not micro-PR mandates)
 
-### P0 — Contracts, migration plan and first end-to-end example
+### P0 — Contracts, clean world-clock cutover and first end-to-end example
 
 - Define one authoritative dungeon-world/hero-expedition schema with shared
   seeded rooms/feature resolution, per-hero locations, group membership,
@@ -65,9 +65,17 @@ Do not overbuild extra content before this loop is both real and fun.
   Separate world truth from Galvik's observed/last-known reports.
   No forced Morning/Midday/Evening phases. See
   [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md) for acceptance gates.
-- Define compatibility/migration for existing `SIMULATION_VERSION = 13` and
-  recorded Floor 6/7 fights **before** changing save fields. Neither
-  historical replays nor old outcomes can be silently recalculated.
+- **No old alpha campaign compatibility requirement** for the V.003
+  world-clock cutover. Replace the v13 day-batched model with one clean
+  versioned new-campaign state, reject incompatible old saves clearly,
+  and test new-version deterministic save/resume and exact-once
+  inventory/HP/loot. No dual day motors or conversion shims.
+- Make the existing physical Board and E/R roster truly **LIVE** from
+  permitted observed reports while Galvik operates the shop, including
+  report origin and freshness. Refactor night-only `The Living` and
+  mandatory `Sealed Expeditions` into the continuously available Board
+  and Archive, without deleting functions before replacements ship.
+  See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 - Build one reproducible example: paid or credited herb → hero inventory →
   authoritative consumption in an encounter → preserved recording and
   board-readable effect. Validate cash, stock, debt, item and HP accounting.
