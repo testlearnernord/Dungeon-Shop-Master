@@ -11,6 +11,11 @@
 - Embedded images: 4096×4096 base color, 2048×2048 normal, 2048×2048 metallic/roughness. For runtime consider 2K base color, with visual approval.
 - Semantic clip map and all exact source names live in [`assets/tripo/ghoul.manifest.json`](../assets/tripo/ghoul.manifest.json). Catalog aliases are NOT yet names written inside the archived GLB.
 
+## Later Idle export: inspection in progress
+
+- User subsequently uploaded `tripo_convert_6edd4581-b0ef-49c3-9b0d-ebbee934e866.glb` (7,106,304 bytes). Store the export in `assets/tripo/source/` **in addition to** the 14-clip original. The smaller size means clip preservation **must not be presumed**.
+- `tests/unit/ghoulSourceAsset.test.ts` inspects the GLB metadata directly in CI and records the exact clip names. This section is not confirmation that the new file contains all old animations.
+
 ## Animation candidates (source indices, zero-based)
 
 | Clip | Alias | Duration | Assessment |

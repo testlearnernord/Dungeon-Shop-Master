@@ -166,5 +166,16 @@
     "audio": "Not produced; unique Ghoul SFX required",
     "engine": "No Babylon integration, in-game spectator verification or spawn mapping yet",
     "rights": "Review actual Tripo license and generation terms before distribution"
-  }
+  },
+  "additionalExports": [
+    {
+      "path": "assets/tripo/source/tripo_convert_6edd4581-b0ef-49c3-9b0d-ebbee934e866.glb",
+      "originalUploadName": "tripo_convert_6edd4581-b0ef-49c3-9b0d-ebbee934e866.glb",
+      "gitBlobSha": "28a716469aaab2e23ed98a3df23ffd5ce5183e13",
+      "byteLength": 7106304,
+      "status": "NEWER_USER_EXPORT_PENDING_CLIP_AUDIT",
+      "purpose": "Idle generation, retain separately pending comparison with existing 14 clip source",
+      "note": "Smaller file size does not prove preserved animation clips. CI asset test prints clip names to verify export."
+    }
+  ]
 }
