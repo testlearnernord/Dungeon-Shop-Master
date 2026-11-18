@@ -441,8 +441,16 @@ The redesign must preserve one deterministic GameState authority and introduce:
   `rosterBoardHud.ts` and `rosterView.ts`, preserving current mounted
   furniture transforms, E/R interactions, HP and item icons; adding phase
   history, accurate empty gear slots and a dungeon-depth map.
-- Explicit `SIMULATION_VERSION = 13` migration/compatibility and old
-  replay retention strategy **before** altering persistent schemas.
+- **Owner-approved clean break:** old `SIMULATION_VERSION = 13` alpha
+  campaigns need NOT migrate with the new living-world clock.
+  Use one new deterministic versioned state schema, no adapters or
+  duplicate night/active resolvers; report an incompatible old save
+  clearly. The physical Board and E/R roster must read one
+  **known-state event timeline** rather than remote hero truth.
+  Preserve genuine night accounts, but retire redundant nightly
+  `The Living` and mandatory `Sealed Expeditions` only after the
+  continuous Board/recording archive are implemented. See
+  `docs/LIVE_BOARD_LEDGER_AUDIT.md`.
   A content-release label **V.003** does not mean save format version 3.
   Likewise the separate npm package version `0.1.0` is not the UI label.
 
