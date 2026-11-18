@@ -79,10 +79,23 @@ multi-hero boss fight or a multi-hero Troll presentation**.
 the existing 3D dungeon replay viewer renders all saved group
 actors and projectiles from the same immutable combat frames,
 with spoiler-safe focus. On Floor 7, some later-generation room
-sentries now fight as genuinely stronger, resistible grapple/throw
-elites in the actual solo expedition day and receive real
-recorded loot/XP accounting. They are renewable monster sites,
+sentries now fight as armored heavy-strike elites in real solo
+and party expeditions, without stealing the unique Troll's signature
+throw. Their real recorded fights/rewards still use the same engine. They are renewable monster sites,
 not unique boss kills, and use no new replay/save version.
+
+**Longer genuine daily journeys (after this PR merges):** a spatial
+shop day permits up to 36 physically connected moves and two
+actually encountered monster fights. A victory can be followed by
+further exploration; casualties, real injuries/short supplies,
+route completion or defeat still stop footage earlier. Playback
+never pads artificial idle or re-rolls the world's outcomes.
+The real physical Board displays equipped/empty weapon and armor
+sockets plus exact HP; proper Morning/Midday/Evening world snapshots
+still await a real three-phase day model. No shipped ordinary monster
+GLB exists yet: `MONSTER_ASSET_PIPELINE.md` defines concept, mesh,
+rig, transitions, sounds, Babylon inspection and acceptance gates.
+Ghoul is a candidate, not a generated or released monster.
 
 **Current limited cooperative slice (after this PR merges):**
 willing co-located heroes can travel together for one committed
