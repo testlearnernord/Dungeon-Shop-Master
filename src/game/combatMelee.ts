@@ -11,7 +11,7 @@ import {
  * intentionally not re-resolved when these profiles change.
  */
 export type MeleeAbilityId =
-  "ordinary" | "heavy" | "hero-strike" | "troll-smash" | "troll-slam" | "troll-grab";
+  "ordinary" | "heavy" | "grapple" | "hero-strike" | "troll-smash" | "troll-slam" | "troll-grab";
 
 export interface MeleeAbilityProfile {
   readonly id: MeleeAbilityId;
@@ -64,6 +64,13 @@ export function meleeAbilityProfile(
       return {
         ...ordinary, id, reach:6.2+0.58,
         halfAngleRadians:1.30, parryReach:6.8,
+      };
+    case "grapple":
+      // Same physical reach/arc as the Troll grip. A generic monster
+      // must not assume a hero owns a weapon merely from their class.
+      return {
+        ...ordinary,id,reach:5.1,halfAngleRadians:1.18,
+        parryReach:6.8,parryRequiresWeapon:false,
       };
     case "troll-grab":
       return {
