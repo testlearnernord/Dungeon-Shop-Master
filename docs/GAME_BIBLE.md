@@ -125,6 +125,14 @@ This does **not** declare an implemented system or a shipped version.
   depth, hero survivorship/leveling/relationships, and shop goods/demand/
   revenue/expansion. A substantive ten-day vertical slice should make these
   visible through returns, true combat replays and meaningful new decisions.
+- **Regenerative dungeon ecology:** permanent seeded floor geometry, discovered
+  paths, story encounters and unique boss victories **remain persistent**.
+  Ordinary monster groups, valid common treasure sites and resettable traps
+  **repopulate after staggered in-world intervals** (stored site/cycle state).
+  Farming earlier floors remains possible with bounded loot and danger.
+  Respawn cannot duplicate a past reward, appear in an occupied encounter,
+  silently resurrect a unique boss, reveal unseen contents on the Board or
+  bypass a hero's Floor 10 pass. Exact cooldowns remain balance parameters.
 - **Adventurer Board 2.0 is a central feature**, reusing the existing physical
   movable board and E/R roster. Both glance and expanded presentation keep
   numeric current/known **HP**, **character level**, **floor**, **current or
@@ -168,9 +176,10 @@ restriction itself remains in the first V.0003 chapter. Today's different
 Cave Troll to Floor 10 is a separate still-open placement choice.
 
 **Still OPEN within that direction:** exact room count and floor geometry,
-day-phase triggers, group formation rules, shop-portal visual/lore,
-post-standby safe reentry anchor, downtime HP recovery, later Floor 10
-permit redesign and possible Troll placement, mana/class resource model, new supply chains,
+day-phase triggers, group formation rules, regenerative-site timing,
+loot tables and economy balance, shop-portal visual/lore, post-standby
+safe reentry anchor, downtime HP recovery, later Floor 10 permit redesign
+and possible Troll placement, mana/class resource model, new supply chains,
 economic balance, visual asset reuse, full real-time progression and curse lore.
 They remain proposals until worked through and approved.
 
