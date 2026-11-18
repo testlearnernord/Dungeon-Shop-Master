@@ -151,12 +151,28 @@ Tests cover actual group aggro, boss attack rotation, tank reactions,
 fast projectile hits, wall obstruction, no friendly fire and
 deterministic full boss fight.
 
-**Still next:** consolidate the distinct movement, skill/ability
-and target-selection step loops into a **single group-capable
-encounter authority** with configurable boss abilities, preserving
-existing old v1 boss footage and exact presentational timings.
-Do not mistake a shared damage library for completed combat
-engine unification.
+**Shared encounter stepper delivered (after this PR merges):**
+`combatEncounter.ts` is the one 60-Hz tick and recording driver
+for normal groups and the Cave Troll. Both register actor updates,
+projectile resolution, world effects and outcome mapping in a
+deterministic pipeline. Replay snapshots use the same capture
+scheduler but retain their old group-v1 and boss-v1 frame layouts.
+No two independent top-level combat loops remain.
+
+**Remaining before full engine convergence:** replace the still
+separate per-actor phase/state representations with one group-capable
+actor/ability data model that supports unique boss grip, launch
+and flight without duplicating generic movement or combat code.
+Replays remain read-only and old save v13 records remain valid.
+
+**Next:** unify per-actor phase/state and signature abilities
+into a single group-capable data model. The shared encounter
+stepper, movement, timing, tactics, melee, projectile and HP
+authorities are already implemented; **boss-specific grip and
+throw phase effects still plug into the common encounter driver**.
+Preserve old v1 boss footage and exact presentational timings.
+Do not mistake one common top-level pipeline for complete
+actor-system unification.
 
 
 
