@@ -120,11 +120,20 @@ Tests include party combat, actual grabs and throw damage,
 early termination, configurable boss poise against weak-hit
 stunlock and immutable v1 recordings.
 
-**Still open:** connect the group-capable boss encounter to
-actual dungeon floor progression and a 3D group replay viewer,
-without replacing the approved Troll art with an unreviewed
-generic monster. Integrate floor 8–10 world semantics and
-the Level 10 pass when their game design is decided.
+**Delivered after this PR merges:** the existing Floor 1–4/7
+dungeon spectator projects every recorded group fighter, projectile
+and combat phase without rerolling anything; TAB can focus only visible
+participants. Regenerated Floor 7 room sentries can become deterministic
+grapple/throw elites, awarding real extra XP and gold on actual victory.
+This is the first campaign encounter using the new group-boss ability
+but remains **one hero against a renewable elite**.
+
+**Still open:** autonomous multi-hero parties sharing a single
+authoritative day encounter, applying every survivor's actual HP,
+consumables, XP, kills and site ownership exactly once. Preserve
+the original Cave Troll visuals and old boss replays. Integrate
+Floors 8–10 and the individually gated Floor 10 pass after design
+decisions; no V.003 release label yet.
 
 ### P2 — Meaningful real merchandise and combat
 
