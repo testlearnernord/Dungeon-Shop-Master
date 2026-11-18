@@ -12,6 +12,11 @@ import {
 } from "./combatTactics.ts";
 import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
 import {
+  grappleEscapeChance, grappleEscapes, grappleHoldPosition,
+  grappleLaunchVelocity, deterministicGrappleSample,
+  GRAPPLE_FLIGHT_SECONDS,
+} from "./combatGrapple.ts";
+import {
   COMBAT_STEP_SECONDS, stepCombatEncounter, recordCombatEncounter,
   encounterTeamOutcome, type EncounterPipeline,
 } from "./combatEncounter.ts";
@@ -30,7 +35,8 @@ export type CombatTeam = "heroes" | "monsters";
 export type GroupRole = "tank" | "DPS" | "healer" | "monster";
 export type AttackStyle = "melee" | "ranged";
 export type GroupPhase = "move" | "windup" | "strike" | "recover" |
-  "cast" | "heal" | "roll" | "parry" | "hurt" | "dead";
+  "cast" | "heal" | "roll" | "parry" | "hurt" | "dead" |
+  "grab" | "grabMiss" | "throw" | "grabbed" | "thrown";
 export type GroupOutcome = "fighting" | "heroes" | "monsters" | "draw";
 
 export interface CombatantSpec {
@@ -51,6 +57,10 @@ export interface CombatantSpec {
   readonly healCharges?: number;
   /** Optional telegraphed heavy strike; absent preserves historical ordinary attacks. */
   readonly meleeAbility?: "heavy";
+  /** Boss archetype uses the SAME group motor, not a second boss duel. */
+  readonly specialAbility?: "grapple-throw";
+  /** Real actor resistance, if known (e.g. hero stats); default 10. */
+  readonly agility?: number;
 }
 
 export interface CombatBounds {
@@ -73,7 +83,14 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
   readonly reach: number;
   readonly radius: number;
   readonly meleeAbility: "ordinary" | "heavy";
+  readonly specialAbility?: "grapple-throw";
+  readonly agility: number;
   lockedHeading: number;
+  attacksStarted: number;
+  activeMeleeAbility: "ordinary" | "heavy" | "grapple";
+  grappleTargetId: string | null;
+  grabbedById: string | null;
+  throwVelocity: Point2;
   targetId: string | null;
   rollX: number; rollZ: number;
   healCharges: number;
@@ -81,7 +98,8 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
 }
 
 export type GroupCueKind = "attack" | "cast" | "projectile" | "hit" |
-  "miss" | "dodge" | "parry" | "heal" | "death" | "blocked";
+  "miss" | "dodge" | "parry" | "heal" | "death" | "blocked" |
+  "grab" | "throw" | "landing" | "escape";
 export interface GroupCombatCue {
   readonly t: number;
   readonly actorId: string;
@@ -186,6 +204,12 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
     if(spec.meleeAbility!==undefined &&
       (spec.meleeAbility!=="heavy" || spec.style!=="melee"))
       throw new RangeError("meleeAbility requires a supported melee skill");
+    if(spec.specialAbility!==undefined &&
+      (spec.specialAbility!=="grapple-throw" ||
+        spec.team!=="monsters"||spec.style!=="melee"))
+      throw new RangeError("Grapple ability requires a melee monster");
+    const agility=spec.agility??10;
+    validNumber(agility,0,1000,spec.id+".agility");
     const radius = spec.radius ?? 0.5;
     validNumber(radius, 0.1, 3, spec.id + ".radius");
     // Healing Herbs are real player-sold consumables. Do not mint two
@@ -202,6 +226,11 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       speed: spec.speed, reach: spec.reach, radius,
       meleeAbility:chooseCombatAbility(
         [spec.meleeAbility??"ordinary"],1,0,0) as "ordinary"|"heavy",
+      ...(spec.specialAbility?{specialAbility:spec.specialAbility}:{}),
+      agility,
+      attacksStarted:0,activeMeleeAbility:spec.meleeAbility??"ordinary",
+      grappleTargetId:null,grabbedById:null,
+      throwVelocity:{x:0,z:0},
       x: spec.x, z: spec.z,
       hp: spec.hp, stamina: 100, heading: 0, lockedHeading: 0,
       phase: "move" as GroupPhase, phaseAge: 0, cooldown: 0, applied: false,
