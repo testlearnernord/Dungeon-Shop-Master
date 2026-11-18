@@ -244,6 +244,14 @@ retain their prior enemy behavior. This is not a unique defeated
 boss, the established Tripo Cave Troll, or a multi-hero campaign
 party system. No save migration and no second encounter simulator.
 
+At the end of a committed day, `gameState.ts` prunes navigation
+progress for dead heroes from early-floor and Floor 7 worlds. The
+dead hero's existing historical events and immutable recordings
+remain saved; living heroes keep their personally visited routes even
+when temporarily on another dungeon floor. This prevents expired
+navigation/occupancy records from accumulating past the strict v13
+world capacity during long-running campaigns.
+
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
 The next approved milestone is **V.003 ALPHA — The Living Dungeon**.
