@@ -44,7 +44,7 @@ was mentioned in a roadmap.
 | Shoppers | Individual needs, gold, gear and HP; real shelf pickups into unpaid carts; collision-aware browsing, a five-place physical checkout queue with overflow, local restock/credit requests and walkouts; short event-triggered character remarks in the physical shop |
 | Player service | Crosshair shelf details for actual stock and valid actions; compact live checkout/restock/credit status; **F** selects the most urgent requested item in the existing hotbar |
 | Money | Real bag/slot inventory, wholesale costs, fixed retail prices, credit debt book and manual receipts. Outstanding collected carts settle once at end of day |
-| Adventurers / dungeon | Persistent identities and equipment; real deterministic regenerated common monster/chest/trap sites on Floor 7 with recorded site cycles and replay-safe save support; deterministic offscreen Floors 1–4; individually authorized Floor 6 Cave Troll with a score-synchronized 13.5s entrance, an original 17-piece vertex-painted GLB surface sculpt on the existing animated rig, and visually grounded maul attacks; deterministic boss duel with imperfect dodges, timed parries, real incoming hits, a breakable grab/throw with occasional real lava landings with hero/troll HP plates and cue-colored floating damage, lava and healing; Floor 7 observation/replay |
+| Adventurers / dungeon | Persistent identities and equipment; **Floors 1–4 and 7** now use real seeded map exploration, renewable common monster/chest/trap sites, committed group fights and 3D replay recordings (Floors 1–4 share the Level 7 explorer, without the old random outcome formula); individually authorized Floor 6 Cave Troll with a score-synchronized 13.5s entrance, an original 17-piece vertex-painted GLB surface sculpt on the existing animated rig, and visually grounded maul attacks; deterministic boss duel with imperfect dodges, timed parries, real incoming hits, a breakable grab/throw with occasional real lava landings with hero/troll HP plates and cue-colored floating damage, lava and healing; Floor 7 observation/replay |
 | Day / reports | End the day at Galvik's bed; merchant ledger, receipts, hero records and spoiler-safe sealed replay presentation; validated campaign save/load |
 
 **For V.003 design (NOT CURRENT):** Galvik's shop moves conceptually
@@ -66,7 +66,7 @@ without resetting bosses or duplicating historical loot. Exact day
 intervals and reward balance still require testing; no regeneration
 system has been implemented in V.002.
 
-**V.003 is a target, not an implemented version.** The current gameplay still uses separate Floor 1–4, Floor 6 and Floor 7 simulation paths. The planned shared dungeon, three-phase board and hero/item causality upgrades are not yet shipped. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
+**V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
 functional behavior; customer acting, friction and interface placement still
@@ -199,7 +199,7 @@ older alpha save cannot be loaded.
 | NPC intents and visual traffic | `src/game/shopperIntents.ts`, `src/game/npcVisualSystem.ts`, `src/game/shopServiceSpots.ts`, `src/game/shopperNavigation.ts` |
 | Furniture and mining | `src/game/furnitureRegistry.ts`, `src/game/furniturePlacement.ts`, `src/blueprintHud.ts`, `src/game/level5Room.ts` |
 | Player UX | `src/game/interactionSystem.ts`, `src/game/shopServiceFocus.ts`, `src/shopHudLayout.ts`, `src/uiIcons.ts`, `src/immersiveUi.css` |
-| Dungeon / observation | `src/game/dungeonSimulation.ts`, `src/game/level6Combat.ts`, `src/game/level7Exploration.ts`, `src/game/level6Arena.ts`, `src/game/dungeonViewer.ts` |
+| Dungeon / observation | `src/game/level7Exploration.ts`, `src/game/dungeonDecisions.ts`, `src/game/dungeonRegeneration.ts`, `src/game/level6Combat.ts`, `src/game/level6Arena.ts`, `src/game/dungeonViewer.ts` |
 | Saved results / ledger | `src/game/campaignSave.ts`, `src/merchantLedger.ts`, `src/ledgerViewState.ts` |
 
 For details and non-negotiable invariants, use the
