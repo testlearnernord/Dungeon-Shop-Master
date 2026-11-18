@@ -32,7 +32,9 @@ export function airborneRootFromGrip(
     motorNow.x-releaseMotor.x,0,motorNow.z-releaseMotor.z));
   const grounded = new Vector3(motorNow.x,0,motorNow.z);
   const result = Vector3.Lerp(displaced,grounded,p*p);
-  result.y = Math.max(0,releasedRoot.y)*(1-p) +
+  // Canonical ground contact: sin(PI) leaves a tiny floating-point
+  // residue that would make a landed character hover microscopically.
+  result.y = p >= 1 ? 0 : Math.max(0,releasedRoot.y)*(1-p) +
     1.0*Math.sin(Math.PI*p);
   return result;
 }
