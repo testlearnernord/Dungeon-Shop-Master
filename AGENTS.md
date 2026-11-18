@@ -41,6 +41,16 @@
   (a temporary new design gate, not today's `level6Permit`). Do not
   reinstate the rejected long backtrack, mandatory five-floor shops,
   two-door topology or an invented escape rope as accepted scope.
+- **CURRENT shared combat vitality (after this PR):**
+  `src/game/combatVitality.ts` owns HP hit/mitigation/healing
+  arithmetic and item heal constants for the ordinary and Troll
+  motor. Preserve real owned Healing Herb use (+18 HP) across **all
+  hero roles** in group combat; `level7Exploration.ts` must debit
+  exactly the recorded charges and never invent free healer items.
+  Healer magic is a distinct ability from purchased Herbs.
+  The boss's complex grab/throw and animation-compatible 60 Hz
+  phase system still needs to be integrated with the group-capable
+  resolver: **shared HP math alone is NOT a merged combat motor**.
 - **CURRENT spatial engine for Floors 1–4 and 7:** one
   `simulateSpatialDungeonDay` function in `level7Exploration.ts` owns
   path walking, real `groupCombat`, loot/traps, recorded footage and
