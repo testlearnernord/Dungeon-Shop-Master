@@ -540,6 +540,44 @@
   color:var(--ui-muted);font-size:10px
 }
 #dungeon-hud .dungeon-minimap-panel{background:rgba(13,18,21,.77)}
+#dungeon-temporary-party[hidden]{display:none}
+#dungeon-hud .dungeon-temporary-party{
+  position:absolute;top:164px;left:16px;
+  width:min(255px,calc(100vw - 32px));padding:10px 12px;
+  color:var(--ui-text);border:1px solid rgba(205,167,103,.35);
+  border-radius:12px;background:rgba(16,24,25,.78);
+  backdrop-filter:blur(9px);pointer-events:none;
+  box-shadow:0 8px 22px rgba(0,0,0,.28)
+}
+#dungeon-hud .dungeon-temporary-party strong{
+  display:block;color:#e4c48c;font-size:12px;letter-spacing:.025em
+}
+#dungeon-hud .dungeon-temporary-party ul{
+  padding:0;margin:7px 0;list-style:none;display:grid;gap:4px;
+  font:12px/1.4 system-ui,sans-serif
+}
+#dungeon-hud .dungeon-temporary-party li{
+  padding:3px 6px;border-radius:5px;border-left:2px solid #837257;
+  background:rgba(255,255,255,.035)
+}
+#dungeon-hud .dungeon-temporary-party li[data-focused="true"]{
+  border-left-color:#eac987;color:#ffe8b9;background:rgba(218,170,89,.15)
+}
+#dungeon-hud .dungeon-temporary-party small{
+  color:var(--ui-muted);font-size:10px;line-height:1.35
+}
+@media(max-width:700px){
+  #dungeon-hud .dungeon-temporary-party{
+    top:194px;left:6px;width:min(175px,calc(100vw - 150px));
+    padding:7px;font-size:10px
+  }
+}
+#roster-dialog .roster-card[data-temporary-party]{
+  border-left:3px solid #d0ae72!important;opacity:1!important
+}
+#roster-dialog .roster-card[data-temporary-party] .roster-card-primary small{
+  color:#ead2a2
+}
 #music-panel{
   top:12px;width:auto;min-width:0;max-width:min(285px,calc(100vw - 24px));
   padding:5px 9px;border:1px solid rgba(206,162,93,.24);
