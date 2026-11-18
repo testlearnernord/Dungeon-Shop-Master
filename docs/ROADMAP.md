@@ -13,10 +13,11 @@
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,
   special requests, excavation, furniture and persistently saved days.
-- Persistent hero identities/HP/equipment, but **three separate dungeon
-  paths**: a simple day-resolution of Floors 1–4; individually authorized
-  Floor 6 Cave Troll combat; and shared seeded Floor 7 exploration with
-  spatial group encounters and saved replays.
+- Persistent hero identities/HP/equipment. **Floors 1–4 and 7 now
+  share** one seeded map-exploration, regeneration, group-combat and replay
+  implementation; the old 1–4 damage/progress day-roll module is deleted.
+  The individually authorized Floor 6 Cave Troll remains a separate
+  combat/progression authority pending consolidation.
 - A physical placeable Adventurer Board and expanded E/R roster with HP,
   item icons, hero identity and known status, **without** a saved three-phase
   daily itinerary, unified floor/intent projection or depth visualization.
@@ -72,15 +73,18 @@ Do not overbuild extra content before this loop is both real and fun.
 merge):** deterministic per-site monster/chest/trap regeneration integrated
 with the real Floor 7 explorer, strict v13 save validation, legacy-save
 compatibility, visited-floor farming route fallback, and unit tests.
-This does **not** replace the Floors 1–4 roll simulator or unify boss
-combat yet. The next implementation must reuse this site authority
-across the remaining floors, not fork it.
+**Second implementation slice:** remove the old Floor 1–4 roll
+simulator entirely and route every early floor through the existing
+Floor 7 map/regen/`groupCombat` code. Add shared persisted early worlds,
+actual hero strategic decisions, sealed saved encounter footage, dynamic
+multi-floor viewer and v13-compatible validation. That slice now replaces
+the 1–4 placeholder; **Floor 6 remains distinct**.
 
-- **Remove the Floor 1–4 placeholder** `dungeonSimulation.ts`
-  damage/progress coin-flip from active gameplay, not merely hide it behind
-  a new viewer. All floors use actual reachable travel, saved hero position,
-  encounters and shared features. Reuse existing Level 7 code where sound,
-  with no parallel authority.
+- **DONE in this slice:** removed the Floor 1–4
+  `dungeonSimulation.ts` damage/progress coin flip entirely and reused
+  the actual Level 7 spatial engine with floor-specific maps, saved
+  shared locations, combat, regeneration and replay. Keep the remaining
+  Floor 6 boss migration and Floors 8–10 as separate unfinished tasks.
 - Distinguish character **level/XP** from current **dungeon floor**.
   At decision points choose stay, descend or ascend; when choosing to
   ascend, heroes can **abort from any depth and enter the cursed shop**
