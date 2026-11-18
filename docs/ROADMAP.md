@@ -117,7 +117,8 @@ with walls and real HP damage occurs at landing only.
 The authored Troll timings are shared with the original
 single-hero cinematic, which remains replay-compatible.
 Tests include party combat, actual grabs and throw damage,
-early termination and immutable v1 recordings.
+early termination, configurable boss poise against weak-hit
+stunlock and immutable v1 recordings.
 
 **Still open:** connect the group-capable boss encounter to
 actual dungeon floor progression and a 3D group replay viewer,
