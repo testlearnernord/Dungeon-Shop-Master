@@ -161,3 +161,33 @@ test("malformed actors/obstacles and unbounded replays are rejected", () => {
     {...actors[0],x:NaN},actors[1],
   ]}),/outside arena/);
 });
+
+test("a wounded unarmed DPS and tank can use purchased Herbs, not magic or imaginary stock",()=>{
+  for(const role of ["DPS","tank"] as const){
+    const s=createGroupCombat({bounds,actors:[
+      fighter("hero","heroes",-3,0,{
+        role,style:"melee",hp:30,maxHp:100,healCharges:1,
+        damage:8,armor:2,speed:2.8,
+      }),
+      fighter("monster","monsters",9,9,{
+        hp:180,maxHp:180,speed:0,damage:1,
+      }),
+    ]});
+    const hero=s.actors.find(actor=>actor.id==="hero")!;
+    for(let i=0;i<65;i++) stepGroupCombat(s);
+    const uses=s.events.filter(cue=>cue.kind==="heal"&&cue.actorId==="hero");
+    assert.equal(uses.length,1,role+" consumes one physically owned herb");
+    assert.equal(uses[0].amount,18);
+    assert.equal(uses[0].targetId,"hero");
+    assert.equal(hero.healCharges,0);
+    assert(hero.hp>=48,"healing really changes persistent combat HP");
+  }
+  const bare=createGroupCombat({bounds,actors:[
+    fighter("hero","heroes",-3,0,{role:"healer",hp:30,maxHp:100}),
+    fighter("monster","monsters",9,9,{speed:0}),
+  ]});
+  for(let i=0;i<65;i++)stepGroupCombat(bare);
+  assert.equal(bare.actors.find(actor=>actor.id==="hero")!.healCharges,0);
+  assert.equal(bare.events.filter(cue=>cue.kind==="heal").length,0,
+    "a healer must not magically mint an item that was never bought");
+});
