@@ -252,6 +252,43 @@ when temporarily on another dungeon floor. This prevents expired
 navigation/occupancy records from accumulating past the strict v13
 world capacity during long-running campaigns.
 
+## Co-located autonomous parties and single day settlement (CURRENT after this PR)
+
+`dungeonParties.ts` selects at most three willing living heroes who
+already occupy the same tile on the same spatial floor; the consent
+check is derived from real role, traits and injury, not merchant
+instructions. Party membership is ephemeral and reevaluated on later
+days. It is NOT a saved party leader ordering subordinate units.
+
+`level7Exploration.ts` exports `simulateSpatialDungeonPartyDay`:
+the existing `simulateSpatialDungeonDay` single-hero API delegates to
+it with one participant. Shared grid navigation, known-site resolution,
+per-site regeneration and `resolveGroupCombat` are executed only once
+for a group. Distinct verified map cells seed the separate fighter
+spawn locations. Each participant uses their own physical stats,
+purchased gear/Healing Herbs, HP, XP and independently recorded
+replay POV. The finite chest/monster gold is split once, one chest
+loot unit has one claimant, and traps strike each physically
+present traveler with personal armor mitigation. Every member's
+real combat HP and consumed Herb charges are settled from the
+ONE recorded group fight. The original 25-second/60Hz engine
+still owns outcomes and captured frames.
+
+`gameState.ts` computes ready-to-expedition healing, caches each
+party member's committed tick and reuses it when that member is
+later visited in the same roster/day. Individual intentions and
+shop transitions still resolve per hero, with no duplicate world
+ticks, extra combat rolls, XP from thin air or extra site claims.
+`campaignSave.ts` accepts v1 recordings of 1–3 real adventurer
+actors vs exactly one real site monster; every historical frame
+must contain the complete unique actor cast. Solo v1 replays
+and the v13 save structure are kept intact.
+
+**Not done:** durable party membership and longer social
+decisions, synchronized cross-floor travel, true party encounter
+with the unique cinematic Level 6 Cave Troll and full Floor 10
+boss/pass progression.
+
 ## V.003 target architecture (PLANNED, NOT CURRENT)
 
 The next approved milestone is **V.003 ALPHA — The Living Dungeon**.
