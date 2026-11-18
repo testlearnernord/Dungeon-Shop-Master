@@ -105,7 +105,7 @@ roles, HP and founding day from that same historical relationship.
 This is still only a foundation for Board 2.0, not its full
 three-phase timeline.
 
-**Not implemented:** long-term party negotiation/leadership,
+**Not implemented:** advanced long-term party negotiation/leadership (bounded voluntary post-encounter floor coordination is now present),
 party-vs-unique-Troll campaign encounters, fully general status/
 ability effects, dungeon Floors 8–10, cursed out-of-number
 shop entrance, two-day hero standby, full Morning/Midday/
