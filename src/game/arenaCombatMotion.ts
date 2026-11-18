@@ -566,63 +566,6 @@ const BOSS_PIPELINE:EncounterPipeline<
   beforeActors:(s,dt,frame)=>{
     // All boss-specific ability cues live in the common per-tick event buffer.
     s.cues=frame.cues;
-  // Legacy or externally displaced positions can touch the molten boundary.
-  // Apply bounded fire damage once and move back inside, rather than
-  // instantly wiping a perfectly healthy adventurer on the next step.
-  if (Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
-  s.stamina=regenerateCombatStamina(s.stamina,dt,18);
-  s.heroCooldown=tickCombatCooldown(s.heroCooldown,dt);
-  s.heroHeading = combatHeading(s.hero, s.boss);
-  if (s.heroPhase === "move") {
-    const distance = dist(s.hero, s.boss);
-    if (s.bossPhase === "windup" && s.lastDefenseAttack !== s.bossAttacks &&
-        distance < 7.2) {
-      const agility = s.options.agility ?? 10;
-      const read = combatRoll(s, 0xb220);
-      const timing = read < 0.12 ? (s.bossSlam ? 0.40 : 0.22)
-        : (s.bossAttack==="grab" ? GRAPPLE_TIMING.windup-0.04 :
-          s.bossSlam ? 0.88 : 0.68);
-      if (s.bossAge >= timing) {
-        s.lastDefenseAttack = s.bossAttacks;
-        // A warning is not a guaranteed perfect reaction. Early blocks/rolls
-        // expire before contact; some heroes hesitate and take the hit.
-        const readiness = Math.max(0.38, Math.min(0.78,
-          0.57 + (agility - 10) * 0.015 +
-          (s.options.role === "tank" ? 0.08 : 0) -
-          (s.bossAttack==="grab" ? 0.10 : 0)));
-        if(read<readiness){
-          const parryBias=s.options.role==="tank"?0.82:0.28;
-          const preferParry=s.options.sword && distance<5 &&
-            combatRoll(s,0x8ba2)<parryBias;
-          const reaction=chooseCombatDefense({
-            threatened:true,stamina:s.stamina,
-            preferParry,canParry:s.options.sword && distance<5,
-          });
-          if(reaction==="parry")startParry(s);
-          else if(reaction==="roll")startRoll(s);
-        }
-      }
-    }
-    if (s.heroPhase === "move" && s.heroHp < s.options.maxHealth * 0.60 &&
-        s.healingSupplies + s.magicHeals > 0 &&
-        distance > (s.options.role === "healer" ? 3.6 : 4.7)) {
-      beginHero(s, "heal");
-    }
-    const ranged=s.options.role==="healer"||
-      (s.options.role==="DPS"&&!s.options.sword);
-    const intent=chooseCombatPosture({
-      distance,ready:s.heroCooldown<=0&&s.stamina>=13 &&
-        s.bossPhase!=="windup",
-      clearShot:true,attackRange:ranged?15:5.3,
-      approachBeyond:ranged?8:3.15,
-    });
-    if(s.heroPhase==="move"&&intent.attack){
-      s.stamina-=13;
-      s.heroCooldown=s.options.role==="DPS"?1.05:1.4;
-      beginHero(s,ranged?"cast":"attack");
-    }
-    if (s.heroPhase === "move") maintainSpacing(s, dt);
-  }
     // Legacy or externally displaced positions can touch the molten boundary.
     // Apply bounded fire damage once and move back inside, rather than
     // instantly wiping a perfectly healthy adventurer on the next step.
@@ -688,24 +631,6 @@ const BOSS_PIPELINE:EncounterPipeline<
   },
   projectiles:(s,dt)=>progressProjectiles(s,dt),
   finish:(s)=>{
-  // Emergency guard for non-navigation motion added by future mechanics.
-  if (s.heroPhase!=="thrown" &&
-      Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
-  const winner=encounterTeamOutcome([
-    {team:"heroes",hp:s.heroHp},{team:"monsters",hp:s.bossHp},
-  ]);
-  if(winner==="monsters"||winner==="draw"){
-    s.outcome="defeat";s.heroPhase="dead";
-    s.cues.push({kind:"defeat"});
-  }else if(winner==="heroes"){
-    // A projectile can finish the troll during the hold or in mid-flight.
-    if (s.heroPhase==="grabbed" || s.heroPhase==="thrown") {
-      clampToRadius(s.hero,SAFE_HERO_RADIUS);
-      beginHero(s,"move");
-    }
-    s.outcome = "victory"; s.bossPhase = "dead";
-    s.cues.push({ kind: "victory" });
-  }
     // Emergency guard for non-navigation motion added by future mechanics.
     if (s.heroPhase!=="thrown" &&
         Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
