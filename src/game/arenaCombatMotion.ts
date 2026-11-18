@@ -173,10 +173,10 @@ function combatRoll(s: CombatPreviewState, salt: number): number {
  * The AI normally stays in the safe interior; slams can still throw a hero
  * to the ledge and burn them. Historical saved combats are never re-run. */
 function lavaContact(s: CombatPreviewState): void {
-  const hit=applyCombatHit(s.heroHp,LAVA_CONTACT_DAMAGE,0,0);
-  if (hit.amount<=0) return;
-  s.heroHp=hit.hp;
-  s.cues.push({ kind: "lava", amount:hit.amount });
+  const damageResult=applyCombatHit(s.heroHp,LAVA_CONTACT_DAMAGE,0,0);
+  if (damageResult.amount<=0) return;
+  s.heroHp=damageResult.hp;
+  s.cues.push({ kind: "lava", amount:damageResult.amount });
   clampToRadius(s.hero, SAFE_HERO_RADIUS);
 }
 function heroToBoss(s: CombatPreviewState): Point2 {
@@ -258,10 +258,10 @@ function resolveBossStrike(s: CombatPreviewState): void {
   }
   // An actual smash must threaten a well-equipped hero who misreads it.
   const raw = s.bossSlam ? 47 : 33;
-  const hit=applyCombatHit(s.heroHp,raw,
+  const damageResult=applyCombatHit(s.heroHp,raw,
     (s.options.armor?7:0)+(s.options.role==="tank"?3:0));
-  s.heroHp=hit.hp;
-  s.cues.push({kind:"hit",amount:hit.amount});
+  s.heroHp=damageResult.hp;
+  s.cues.push({kind:"hit",amount:damageResult.amount});
   const knockback = unit(s.hero.x - s.boss.x, s.hero.z - s.boss.z);
   const meters=s.bossSlam ? 3.6 : 1.5;
   const landing={x:s.hero.x+knockback.x*meters,
@@ -316,10 +316,10 @@ function landThrownHero(s: CombatPreviewState, lava: boolean): void {
   // A full-body slam from a multi-metre throw is rarer and more dangerous
   // than a basic fist hit. Armor still mitigates it; lava is separate damage.
   const raw=42;
-  const hit=applyCombatHit(s.heroHp,raw,
+  const damageResult=applyCombatHit(s.heroHp,raw,
     (s.options.armor?6:0)+(s.options.role==="tank"?2:0));
-  s.heroHp=hit.hp;
-  s.cues.push({kind:"hit",amount:hit.amount});
+  s.heroHp=damageResult.hp;
+  s.cues.push({kind:"hit",amount:damageResult.amount});
   if (lava && s.heroHp>0) lavaContact(s);
   if (s.heroHp>0) beginHero(s,"hurt");
   else s.heroPhase="dead";
@@ -334,9 +334,9 @@ function resolveHeroStrike(s: CombatPreviewState): void {
   }
   const amount = (s.options.sword ? 16 : 6) + (s.options.role === "DPS" ? 5 : 0) +
     Math.floor(Math.max(0, (s.options.strength ?? 6) - 6) / 3);
-  const hit=applyCombatHit(s.bossHp,amount);
-  s.bossHp=hit.hp;
-  s.landedHits++; s.cues.push({ kind: "hero-hit", amount: hit.amount });
+  const damageResult=applyCombatHit(s.bossHp,amount);
+  s.bossHp=damageResult.hp;
+  s.landedHits++; s.cues.push({ kind: "hero-hit", amount: damageResult.amount });
 }
 function progressHeroAction(s: CombatPreviewState, dt: number): void {
   if (s.heroPhase === "move" || s.heroPhase === "dead") return;
@@ -486,9 +486,9 @@ function progressProjectiles(s: CombatPreviewState, dt: number): void {
     p.ttl -= dt;
     if (dist(p, s.boss) <= TROLL_RADIUS + 0.65) {
       p.ttl = 0;
-      const hit=applyCombatHit(s.bossHp,p.damage);
-      s.bossHp=hit.hp;
-      s.landedHits++; s.cues.push({ kind: "hero-hit", amount: hit.amount });
+      const damageResult=applyCombatHit(s.bossHp,p.damage);
+      s.bossHp=damageResult.hp;
+      s.landedHits++; s.cues.push({ kind: "hero-hit", amount: damageResult.amount });
     }
   }
   s.projectiles = s.projectiles.filter(p => p.ttl > 0);
