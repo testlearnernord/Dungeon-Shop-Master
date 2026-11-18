@@ -83,9 +83,18 @@
   show recorded weapons/armor and NEVER fetch today's mutable roster
   to dress a historical companion. Old v1 records lacking the field
   show neutral equipment. No save version bump.
-  Formation is voluntary and ephemeral; this does NOT yet implement
-  persistent multi-day party membership, multi-floor coordinated travel,
-  true party-vs-Tripo Cave Troll, or all V.003 progression.
+  CURRENT: `GameState.dungeonParties` optionally persists established
+  willing groups across confirmed days and consensual floor transitions.
+  `choosePersistentDungeonParty` reserves living, co-located saved
+  companions ahead of transient outsiders. `settlePersistentDungeonParties`
+  retains membership only if living survivors still occupy one real tile
+  and autonomously agree on the same floor action; otherwise it disbands.
+  Never teleport party members to repair a split or override a dissenting
+  hero's choice. The strict v13 validator rejects duplicate party members,
+  inactive characters and mismatched saved locations; older saves omit
+  the optional field. Party size is displayed on the existing physical
+  Adventurer Board. This is NOT permanent squad command, social diplomacy,
+  a new Floor 6 boss party, or the fully redesigned V.003 world.
 - **CURRENT live actor model (after this PR):**
   `combatActor.ts` owns the shared mutable `CombatActorRuntime`
   contract, phase transitions, action time and resource refresh.
@@ -157,7 +166,7 @@
   phase system still needs to be integrated with the group-capable
   resolver: **shared HP math alone is NOT a merged combat motor**.
 - **CURRENT spatial engine for Floors 1–4 and 7:** one
-  `simulateSpatialDungeonDay` function in `level7Exploration.ts` owns
+  `simulateSpatialDungeonPartyDay` function in `level7Exploration.ts` owns
   path walking, real `groupCombat`, loot/traps, recorded footage and
   `dungeonRegeneration.ts` site refresh. `dungeonDecisions.ts`
   supplies autonomous medium-term goals and short-term floor choices.
