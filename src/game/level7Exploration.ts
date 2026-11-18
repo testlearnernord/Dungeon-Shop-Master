@@ -387,7 +387,7 @@ export function simulateSpatialDungeonPartyDay(
 
   const partyIds=new Set(party.map(h=>h.id));
   const survivors=world.heroes.filter(progress=>!partyIds.has(progress.heroId));
-  const ticks:Level7Tick[]=members.map(m=>{
+  const outcomes:Omit<Level7Tick,"world">[]=members.map(m=>{
     const dead=m.hp<=0;
     const personalOutcome:Level7Outcome=dead?"death":outcome;
     const returning=floor===7 && !dead &&
@@ -412,7 +412,7 @@ export function simulateSpatialDungeonPartyDay(
       resolvedAtStart:[...refreshed.resolvedFeatureIds],
       steps:m.steps,encounters,outcome:personalOutcome,
     };
-    return {adventurer,world:undefined as never,replay,
+    return {adventurer,replay,
       gainedGold:m.gold,gainedLoot:m.loot,defeatedMonsters:m.kills};
   });
   const updatedWorld:Level7World={
@@ -421,7 +421,7 @@ export function simulateSpatialDungeonPartyDay(
   // Every viewpoint references the SAME settled world, not separate copies
   // that could independently claim the chest or revive the encounter.
   return {world:updatedWorld,
-    ticks:ticks.map(tick=>({...tick,world:updatedWorld}))};
+    ticks:outcomes.map(tick=>({...tick,world:updatedWorld}))};
 }
 
 /** The existing one-hero public API is now just the size-one party path. */
