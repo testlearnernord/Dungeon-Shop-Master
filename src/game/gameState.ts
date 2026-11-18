@@ -3,7 +3,10 @@ import { useHealingSupplies, generateAdventurer, generateStartingPopulation, typ
 import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
 import { chooseHeroDungeonDecision, type HeroDungeonGoal, type HeroFloorAction } from "./dungeonDecisions.ts";
 import { generateExpeditionLayout } from "./dungeonLayout.ts";
-import { chooseCoLocatedDungeonParty } from "./dungeonParties.ts";
+import {
+  choosePersistentDungeonParty, settlePersistentDungeonParties,
+  type DungeonPartyState,
+} from "./dungeonParties.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
 import type { BossCombatReplay } from "./bossCombatReplay.ts";
 import { REPLAY_KEEP_RECENT } from "./bossCombatReplay.ts";
@@ -11,6 +14,7 @@ import {
   emptyLevel7World, getLevel7Progress, LEVEL7_REPLAY_KEEP,
   simulateSpatialDungeonPartyDay,
   type Level7Replay, type Level7World, type Level7Tick,
+  type SpatialDungeonFloor,
 } from "./level7Exploration.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
@@ -101,6 +105,8 @@ export interface GameState {
   readonly level7World: Level7World;
   /** v13-compatible optional extension; no independent early-floor RNG engine. */
   readonly earlyDungeonWorlds?: readonly EarlyDungeonFloorWorld[];
+  /** Optional v13-compatible, saved voluntary multi-day dungeon groups. */
+  readonly dungeonParties?: readonly DungeonPartyState[];
   readonly seed: number;
   readonly rngState: number;
   readonly populationConfig: PopulationConfig;
@@ -139,6 +145,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     dungeonFloors: [],
     level7World: emptyLevel7World(),
     earlyDungeonWorlds: [],
+    dungeonParties: [],
     seed,
     rngState: generated.rngState,
     populationConfig,
@@ -196,6 +203,8 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   });
   const committedFights=new Map<string,Level7Tick>();
   const processed=new Set<string>();
+  const sharedEncounters:string[][]=[];
+  const floorChoices=new Map<string,HeroFloorAction>();
   const adventurers = postTradeHeroes.map((hero,index) => {
     // Newly authorized departures cannot fight on their departure day.
     events.push(...healed[index].events);
@@ -207,8 +216,9 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       let tick=committedFights.get(ready.id);
       if(!tick){
         const layout=generateExpeditionLayout(state.seed,floor);
-        const group=chooseCoLocatedDungeonParty(ready,readyRoster,world,
-          layout,processed);
+        const group=choosePersistentDungeonParty(ready,readyRoster,world,
+          layout,processed,state.dungeonParties??[]);
+        if(group.length>1)sharedEncounters.push(group.map(member=>member.id));
         const activeIds=new Set(readyRoster.filter(person=>
           person.status==="exploring"&&person.floor===floor).map(p=>p.id));
         const result=simulateSpatialDungeonPartyDay(group,world,state.seed,
@@ -227,6 +237,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         generateExpeditionLayout(state.seed,floor));
       const decision=tick.adventurer.status==="dead"?null:
         chooseHeroDungeonDecision(tick.adventurer,progress,tick.replay);
+      if(decision)floorChoices.set(ready.id,decision.action);
       const moved=decision?.action==="descend"&&floor<4
         ? {...tick.adventurer,floor:(floor+1) as EarlyDungeonFloorWorld["floor"]}
         : decision?.action==="ascend"&&floor>1
@@ -250,8 +261,9 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       let tick=committedFights.get(ready.id);
       if(!tick){
         const layout=generateExpeditionLayout(state.seed,7);
-        const group=chooseCoLocatedDungeonParty(ready,readyRoster,level7World,
-          layout,processed);
+        const group=choosePersistentDungeonParty(ready,readyRoster,level7World,
+          layout,processed,state.dungeonParties??[]);
+        if(group.length>1)sharedEncounters.push(group.map(member=>member.id));
         const activeIds=new Set(readyRoster.filter(person=>
           person.status==="expedition"&&person.floor===7).map(p=>p.id));
         const result=simulateSpatialDungeonPartyDay(group,level7World,
@@ -329,6 +341,16 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
     ...entry,world:{...entry.world,
       heroes:entry.world.heroes.filter(progress=>livingIds.has(progress.heroId))},
   }));
+  // Durable party links survive a day and a consensual floor transition
+  // only when every surviving member still occupies the SAME tile on the
+  // SAME numbered floor. Individual choices can dissolve a relationship.
+  const dungeonParties=settlePersistentDungeonParties(
+    state.dungeonParties??[],sharedEncounters,adventurers,
+    (floor:SpatialDungeonFloor)=>floor===7?level7World:
+      earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
+      emptyLevel7World(),
+    state.seed,day,floorChoices,
+  );
   // Keep the full event history, but only a few heavy 3D recordings.
   // Removing an expired replay never changes its outcome/event/hero/RNG.
   const allEvents = [...state.events, ...events];
@@ -361,6 +383,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       ...settlement.state, day, adventurers, rngState, shopEconomy: trade.economy,
       level7World,
       earlyDungeonWorlds,
+      dungeonParties,
       dungeonFloors: [
         ...state.dungeonFloors,
         ...(clearedLevel6 && !state.dungeonFloors.some(f=>f.floor===6&&f.cleared)
