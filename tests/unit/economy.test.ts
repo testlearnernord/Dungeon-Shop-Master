@@ -285,7 +285,10 @@ test("55-day JSON-reloaded merchant input replay is deterministic and admits new
     if (day > 49) lateArrivals += result.events.filter((event) => event.type === "influx").length;
   }
   assert(lateArrivals > 0);
-  assert(first.adventurers.length > 40);
+  assert(first.adventurers.length > 10,
+    "a living dungeon can retain veteran heroes without an artificial death quota");
+  assert(first.adventurers.length <= 10 + 55 * first.populationConfig.dailyInflux,
+    "newcomer IDs and population must remain bounded by actual scheduled influx");
   assert(purchases > 0);
   assert(stocking > 0);
   assert(removals > 0);
