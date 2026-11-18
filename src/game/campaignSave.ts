@@ -146,6 +146,7 @@ function validateLevel7World(
 function validateLevel7Replay(
   raw: unknown, path: string, heroId: string, day: number,
   campaignSeed: number, expectedFloor=7,
+  knownHeroIds?:ReadonlySet<string|number>,
 ): void {
   const record=object(raw,path,[
     "version","day","heroId","floor","appearance","steps","encounters","outcome",
@@ -167,8 +168,9 @@ function validateLevel7Replay(
     ids.forEach((value,i)=>{
       const name=path+".partyMemberIds["+i+"]";
       const memberId=text(value,name);
-      if(!/^adventurer-[1-9][0-9]*$/.test(memberId))
-        fail(name,"must be a canonical adventurer ID");
+      if(!/^adventurer-[1-9][0-9]*$/.test(memberId)||
+        (knownHeroIds&&!knownHeroIds.has(memberId)))
+        fail(name,"must be a real campaign adventurer");
       unique(memberId,seenMembers,name);
     });
     if(!seenMembers.has(heroId))
@@ -694,7 +696,7 @@ function validateState(value: unknown): asserts value is GameState {
     if(event.type === "level7-exploration" && event.level7Replay !== undefined) {
       allowed.push("level7Replay");
       validateLevel7Replay(event.level7Replay,`${path}.level7Replay`,
-        event.adventurerId as string,eventDay,campaignSeed);
+        event.adventurerId as string,eventDay,campaignSeed,7,heroIds);
     }
     if(event.type==="dungeon-exploration"){
       if(event.dungeonGoal!==undefined){
@@ -714,7 +716,7 @@ function validateState(value: unknown): asserts value is GameState {
         ],["knownAtStart","resolvedAtStart","partyMemberIds"]);
         const floor=integer(replay.floor,path+".dungeonReplay.floor",1,4);
         validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
-          event.adventurerId as string,eventDay,campaignSeed,floor);
+          event.adventurerId as string,eventDay,campaignSeed,floor,heroIds);
       }
     }
     if (event.type === "sale" || event.type === "healed") {
