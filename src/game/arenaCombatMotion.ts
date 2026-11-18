@@ -9,6 +9,7 @@ import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
   selectCombatTarget,
 } from "./combatTactics.ts";
+import { traceCombatProjectile } from "./combatProjectile.ts";
 import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
 } from "./combatVitality.ts";
@@ -532,18 +533,23 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
   }
 }
 function progressProjectiles(s: CombatPreviewState, dt: number): void {
-  for (const p of s.projectiles) {
-    p.x += p.dx * 13 * dt;
-    p.z += p.dz * 13 * dt;
-    p.ttl -= dt;
-    if (dist(p, s.boss) <= TROLL_RADIUS + 0.65) {
-      p.ttl = 0;
-      const damageResult=applyCombatHit(s.bossHp,p.damage);
-      s.bossHp=damageResult.hp;
-      s.landedHits++; s.cues.push({ kind: "hero-hit", amount: damageResult.amount });
+  for(const p of s.projectiles){
+    const trace=traceCombatProjectile(
+      p,{x:p.dx*13*dt,z:p.dz*13*dt},
+      s.bossHp>0?[{id:"cave-troll",x:s.boss.x,z:s.boss.z,
+        radius:TROLL_RADIUS+0.65}]:[],
+    );
+    p.x=trace.end.x;p.z=trace.end.z;
+    p.ttl-=dt;
+    if(trace.hitId==="cave-troll"){
+      p.ttl=0;
+      const hit=applyCombatHit(s.bossHp,p.damage);
+      s.bossHp=hit.hp;
+      s.landedHits++;
+      s.cues.push({kind:"hero-hit",amount:hit.amount});
     }
   }
-  s.projectiles = s.projectiles.filter(p => p.ttl > 0);
+  s.projectiles=s.projectiles.filter(p=>p.ttl>0);
 }
 export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly ArenaCue[] {
   s.cues = [];
