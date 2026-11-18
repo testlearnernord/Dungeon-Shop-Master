@@ -9,6 +9,7 @@ import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
   selectCombatTarget,
 } from "./combatTactics.ts";
+import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
 import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
 } from "./combatVitality.ts";
@@ -217,40 +218,8 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
   };
 }
 
-/** Segment-to-AABB entry time, used for both projectiles and line of sight. */
-function segmentBox(a: Point2, b: Point2, box: CombatBounds, padding = 0): number | null {
-  let near = 0, far = 1;
-  for (const [axis, lo, hi] of [
-    ["x", box.minX - padding, box.maxX + padding],
-    ["z", box.minZ - padding, box.maxZ + padding],
-  ] as const) {
-    const p = a[axis], delta = b[axis] - p;
-    if (Math.abs(delta) < 1e-9) {
-      if (p < lo || p > hi) return null;
-    } else {
-      const t1 = (lo - p) / delta, t2 = (hi - p) / delta;
-      near = Math.max(near, Math.min(t1, t2));
-      far = Math.min(far, Math.max(t1, t2));
-      if (near > far) return null;
-    }
-  }
-  return near;
-}
-function segmentCircle(a: Point2, b: Point2, center: Point2, radius: number): number | null {
-  const dx = b.x - a.x, dz = b.z - a.z;
-  const ox = a.x - center.x, oz = a.z - center.z;
-  const aa = dx * dx + dz * dz;
-  if (aa < 1e-12) return ox * ox + oz * oz <= radius * radius ? 0 : null;
-  const bb = 2 * (ox * dx + oz * dz);
-  const cc = ox * ox + oz * oz - radius * radius;
-  if (cc <= 0) return 0;
-  const disc = bb * bb - 4 * aa * cc;
-  if (disc < 0) return null;
-  const t = (-bb - Math.sqrt(disc)) / (2 * aa);
-  return t >= 0 && t <= 1 ? t : null;
-}
 function lineClear(s: GroupCombatState, a: Point2, b: Point2): boolean {
-  return !s.obstacles.some(o => segmentBox(a, b, o) !== null);
+  return !s.obstacles.some(o => combatSegmentBox(a, b, o) !== null);
 }
 function movementAllowed(s: GroupCombatState, a: GroupActor, x: number, z: number): boolean {
   return within({x,z}, s.bounds, a.radius) &&
@@ -469,28 +438,27 @@ function updateProjectiles(s: GroupCombatState, dt: number, batch: GroupCombatCu
   const remaining: GroupProjectile[] = [];
   for (const p of s.projectiles) {
     if (p.ttl <= 0) continue;
-    const start={x:p.x,z:p.z};
-    const end={x:p.x+p.vx*dt,z:p.z+p.vz*dt};
-    let impact=Infinity, victim: GroupActor | null = null;
-    const wallT = s.obstacles.reduce((min,o) =>
-      Math.min(min,segmentBox(start,end,o) ?? Infinity),Infinity);
-    for (const a of s.actors) {
-      if (a.team === p.team || a.hp <= 0) continue;
-      const t=segmentCircle(start,end,a,a.radius+0.18);
-      if (t !== null && t < impact) { impact=t; victim=a; }
-    }
-    if (wallT <= impact && wallT <= 1) {
+    // Both Boss and group projectiles use this physically swept trace.
+    // Only enemies are eligible, so no accidental friendly-fire invention.
+    const trace=traceCombatProjectile(
+      p,{x:p.vx*dt,z:p.vz*dt},
+      s.actors.filter(a=>a.team!==p.team&&a.hp>0).map(a=>({
+        id:a.id,x:a.x,z:a.z,radius:a.radius+0.18,
+      })),
+      s.obstacles,
+    );
+    if(trace.blocked){
       p.ttl=0;
       const owner=s.actors.find(a=>a.id===p.ownerId)!;
       cue(batch,s,owner,"blocked");
-    } else if (victim && impact <= 1) {
+    }else if(trace.hitId!==null){
       p.ttl=0;
       const owner=s.actors.find(a=>a.id===p.ownerId)!;
-      // Ranged hits never damage their own team.
+      const victim=s.actors.find(a=>a.id===trace.hitId)!;
       applyDamage(s,owner,victim,batch);
-    } else {
-      p.x=end.x; p.z=end.z; p.ttl-=dt;
-      if (p.ttl>0 && within(end,s.bounds)) remaining.push(p);
+    }else{
+      p.x=trace.end.x;p.z=trace.end.z;p.ttl-=dt;
+      if(p.ttl>0&&within(trace.end,s.bounds))remaining.push(p);
     }
   }
   s.projectiles.splice(0,s.projectiles.length,...remaining);
