@@ -263,10 +263,20 @@ These are presentation changes, not a live world clock. The agreed
 V.003 target replaces mandatory three-phase snapshots with a single
 paced world-time/event ledger and a chronological known-state Board 2.0
 (see `docs/LIVING_WORLD_CLOCK.md`), neither of which is shipped.
-No ordinary monster visual is complete: current subtype
-encounters still render sphere placeholders until the separately
-reviewed concept/GLB/rig/animation/SFX pipeline in
-`docs/MONSTER_ASSET_PIPELINE.md` is delivered. Ghoul is not yet a spawn.
+The Ghoul is now the first generated ordinary monster subtype
+(`dungeonLayout.ts`) across spatial Floors 1–4/7.
+`tools/asset_generation/consolidate_tripo_ghoul.mjs` combines the
+unchanged 14-clip authored source with the separate idle GLB during
+`predev/prebuild` into `public/assets/models/dungeon-ghoul-tripo.glb`.
+`dungeonGhoulVisual.ts` loads and animates the actual skinned mesh
+from `GroupCombatReplay` phase ages, replacing the sphere fallback
+when ready; no new fight motor, hit resolution, loot or hero navigation.
+`ghoulCryptArt.ts` builds crypt lighting, tombs and broken pillars
+in the SAME deterministic rooms, and fog visibility still controls
+those props. Failed/missing art leaves an explicit fallback and
+metadata for debugging. This is the FIRST functional pass, not
+final model scale/facing, clip contact, SFX, texture optimization or
+human visual acceptance. See MONSTER_ASSET_PIPELINE.md.
 
 ## Co-located autonomous parties and single day settlement (CURRENT after this PR)
 
