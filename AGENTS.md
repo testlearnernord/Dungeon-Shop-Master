@@ -93,7 +93,11 @@
   hero's choice. The strict v13 validator rejects duplicate party members,
   inactive characters and mismatched saved locations; older saves omit
   the optional field. Party size is displayed on the existing physical
-  Adventurer Board. This is NOT permanent squad command, social diplomacy,
+  Adventurer Board. `rosterPartyDetails` is the single read-only source
+  for the R roster's real companion names, roles, current HP and
+  formation day; no inferred friendships, duplicate party state,
+  hidden ledger spoilers or Galvik controls. This is NOT permanent
+  squad command, social diplomacy,
   a new Floor 6 boss party, or the fully redesigned V.003 world.
 - **CURRENT live actor model (after this PR):**
   `combatActor.ts` owns the shared mutable `CombatActorRuntime`
