@@ -83,8 +83,10 @@ The repository currently implements:
   decision and a genuinely shared destination position preserve the
   group on Floors 1–4; individual dissent, separation, death or shop
   return disbands it or removes casualties. The physical Adventurer
-  Board shows a real “Party N” indicator. Historical save v13 remains
-  readable without the optional relationship field. **Not yet
+  Board shows a real “Party N” indicator. Expanding the real
+  hero's R roster card shows actual companion identities, roles,
+  current HP and the stored group founding day. Historical save
+  v13 remains readable without the optional relationship field. **Not yet
   implemented:** social leadership/diplomacy, coordinated Floor 6 or
   8–10 progression, or a group Cave Troll campaign encounter.
   Shopkeepers do not command heroes.

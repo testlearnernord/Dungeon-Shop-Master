@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { advanceDay, createGameState } from "../../src/game/gameState.ts";
-import { locationLabel, portraitIndex, rosterEntries } from "../../src/game/rosterView.ts";
+import {
+  locationLabel, partySizeLabel, portraitIndex, rosterEntries, rosterPartyDetails,
+} from "../../src/game/rosterView.ts";
 
 test("roster entries show shop visitors first and stable portrait IDs", () => {
   const state = createGameState();
@@ -50,4 +52,34 @@ test("fallen roster is ordered by latest event before limiting to 40 heroes", ()
   assert.equal(fallen[0].id, "adventurer-1");
   assert.equal(fallen.at(-1)?.id, "adventurer-3");
   assert(!fallen.some((hero) => hero.id === "adventurer-2"));
+});
+
+test("saved travel companions reveal identities, health and founding day without inventing a party",()=>{
+  const initial=createGameState(7351);
+  const first=initial.adventurers[0],second=initial.adventurers[1];
+  const state={...initial,
+    adventurers:initial.adventurers.map(hero=>[first.id,second.id].includes(hero.id)
+      ?{...hero, status:"exploring" as const,floor:1 as const}:hero),
+    dungeonParties:[{memberIds:[first.id,second.id],floor:1 as const,formedDay:1}],
+  };
+  const frozen=structuredClone(state);
+  const details=rosterPartyDetails(state,first.id);
+  assert.equal(details?.floor,1);
+  assert.equal(details?.formedDay,1);
+  assert.deepEqual(details?.members.map(hero=>hero.id),[first.id,second.id]);
+  assert.equal(details?.members[1].health,second.health);
+  assert.equal(details?.members[1].stats.maxHealth,second.stats.maxHealth);
+  assert.equal(partySizeLabel(state,first.id)," · Party 2");
+  assert.equal(partySizeLabel(state,second.id)," · Party 2");
+  assert.equal(rosterPartyDetails(state,initial.adventurers[2].id),null);
+  assert.equal(rosterPartyDetails(initial,first.id),null,
+    "Sharing a floor without a saved relationship is not friendship");
+  assert.deepEqual(state,frozen,"Read-only roster projections never mutate game state");
+
+  const malformed={...state,dungeonParties:[{
+    memberIds:[first.id,initial.adventurers[2].id],floor:1 as const,formedDay:1,
+  }]};
+  assert.equal(rosterPartyDetails(malformed,first.id),null,
+    "A broken relationship must not be advertised on the board");
+  assert.equal(partySizeLabel(malformed,first.id),"");
 });

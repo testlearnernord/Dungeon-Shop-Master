@@ -302,6 +302,21 @@
 #roster-dialog .roster-card{padding:12px;border-color:rgba(205,166,110,.24)!important}
 #roster-dialog .roster-card[data-status="at-shop"]{border-left:3px solid #9ac49d!important}
 #roster-dialog .roster-card[data-status="dead"]{border-left:3px solid var(--ui-danger)!important}
+#roster-dialog .roster-party-details{
+  margin:10px 0 4px;padding:11px 12px;
+  border:1px solid rgba(204,171,111,.22);border-radius:9px;
+  background:rgba(26,37,31,.60);color:var(--ui-text)
+}
+#roster-dialog .roster-party-details h3{
+  margin:0 0 7px;color:#dfc28f;font:600 13px/1.35 system-ui,sans-serif;
+  letter-spacing:.02em
+}
+#roster-dialog .roster-party-details ul{
+  padding-left:18px;margin:0;display:grid;gap:5px;
+  font:12px/1.5 system-ui,sans-serif
+}
+#roster-dialog .roster-party-details li span{color:var(--ui-muted)}
+#roster-dialog .roster-party-details strong{font-weight:650}
 #roster-dialog .roster-item-chip{
   display:inline-flex;gap:6px;padding:4px 8px;border-radius:8px;
   background:rgba(18,25,27,.62);border:1px solid rgba(185,154,102,.18)

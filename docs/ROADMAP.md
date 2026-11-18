@@ -146,7 +146,9 @@ the members' real destination positions agree; each hero's own
 goal, inventory, combat, injuries and replay remain independent.
 A casualty can leave a surviving pair, while dissent, shop return
 or divergent saved positions dissolve companionship. The existing
-Adventurer Board identifies actual parties. No duplicate claims
+Adventurer Board identifies actual parties; the expanded R roster
+now also identifies every saved companion with real HP, role and
+founding day, all via one read-only relationship projection. No duplicate claims
 or fabricated teleports; old saves without the field remain valid.
 
 **Still open:** negotiated party goals/leader AI and longer social

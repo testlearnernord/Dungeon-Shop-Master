@@ -99,7 +99,11 @@ genuine destination tile. They independently choose strategy;
 separation, dissent, shop departure and casualty may dissolve
 the group. No player-issued party command, second combat motor,
 fabricated teleport, duplicated treasure or new save version.
-The current physical Adventurer Board displays saved party sizes.
+The current physical Adventurer Board displays saved party sizes;
+the R roster additionally shows actual companion identities,
+roles, HP and founding day from that same historical relationship.
+This is still only a foundation for Board 2.0, not its full
+three-phase timeline.
 
 **Not implemented:** long-term party negotiation/leadership,
 party-vs-unique-Troll campaign encounters, fully general status/

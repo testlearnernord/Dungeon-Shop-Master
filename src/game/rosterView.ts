@@ -19,10 +19,27 @@ export function rosterEntries(state: GameState, filter: RosterFilter): readonly 
   return state.adventurers.filter((hero) => hero.status !== "dead")
     .sort((a, b) => PRIORITY[a.status] - PRIORITY[b.status] || a.id.localeCompare(b.id, undefined, { numeric: true }));
 }
-/** Current saved relationship, not an inferred party from coincidental proximity. */
-export function partySizeLabel(state:GameState,heroId:string):string {
+/** A safe read-only view over the actual saved party, never proximity. */
+export function rosterPartyDetails(state:GameState,heroId:string):{
+  readonly formedDay:number;
+  readonly floor:number;
+  readonly members:readonly AdventurerState[];
+}|null {
   const party=state.dungeonParties?.find(p=>p.memberIds.includes(heroId));
-  return party?" · Party "+party.memberIds.length:"";
+  if(!party||party.memberIds.length<2||party.memberIds.length>3)return null;
+  const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
+  const members=party.memberIds.map(id=>byId.get(id));
+  if(members.some(member=>!member||member.health<=0||
+    member.floor!==party.floor||
+    member.status!==(party.floor===7?"expedition":"exploring")))
+    return null;
+  return {formedDay:party.formedDay,floor:party.floor,
+    members:members as AdventurerState[]};
+}
+
+export function partySizeLabel(state:GameState,heroId:string):string {
+  const group=rosterPartyDetails(state,heroId);
+  return group?" · Party "+group.members.length:"";
 }
 
 export function locationLabel(hero: AdventurerState): string {
