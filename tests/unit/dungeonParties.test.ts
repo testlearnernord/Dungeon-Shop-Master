@@ -77,6 +77,14 @@ test("three real heroes fight one regenerated grapple elite with distinct HP/Her
   assert.equal(encounter.combat.actors.filter(a=>a.team==="monsters").length,1);
   assert.equal(encounter.combat.actors.find(a=>a.id===featureId)?.specialAbility,
     "grapple-throw");
+  for(const hero of heroes){
+    const recorded=encounter.combat.actors.find(actor=>actor.id===hero.id)!;
+    assert.deepEqual(recorded.equipment,{
+      weapon:"Iron Sword",armor:"Leather Vest",
+    },"Companion purchases must be historical, not queried from today's roster");
+  }
+  assert.equal(encounter.combat.actors.find(a=>a.id===featureId)?.equipment,
+    undefined,"Monsters must never get fabricated shop inventory");
   assert.equal(encounter.combat.frames[0].actors.length,4);
   assert(records.every(r=>r.encounters[0].combat===encounter.combat),
     "All three event viewpoints must reference one committed encounter");
@@ -132,6 +140,20 @@ test("one party day commits all member outcomes into v13 campaign replays",()=>{
     }))],
   };
   assert.deepEqual(parseSave(JSON.stringify(createSave(updated))),updated);
+  const oldV1=structuredClone(createSave(updated));
+  for(const event of oldV1.payload.events){
+    for(const entry of event.level7Replay?.encounters??[])
+      for(const actor of entry.combat.actors)delete (actor as any).equipment;
+  }
+  assert.doesNotThrow(()=>parseSave(JSON.stringify(oldV1)),
+    "Old v1 fight recordings without a gear snapshot must remain readable");
+  const wrongGear=structuredClone(createSave(updated));
+  const firstFight=wrongGear.payload.events.find(e=>e.level7Replay)!
+    .level7Replay!.encounters[0].combat;
+  (firstFight.actors.find(a=>a.team==="heroes")!.equipment as any).armor=
+    "Invented Dragon Plate";
+  assert.throws(()=>parseSave(JSON.stringify(wrongGear)),/equipment.armor/,
+    "Forged purchased equipment must not enter historical recordings");
   const forged=structuredClone(createSave(updated));
   const record=forged.payload.events.find(e=>e.level7Replay)!.level7Replay!;
   (record.encounters[0].combat.frames[0].actors as any)[1]=
