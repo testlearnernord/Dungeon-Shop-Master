@@ -85,6 +85,15 @@ test("one real committed day can contain two DISTINCT fights without repeated re
   const timeline=buildDungeonPlayback(tape);
   assert.equal(timeline.segments.filter(s=>s.kind==="combat").length,2);
   assert.equal(tape.encounters.length,2);
+  for(const encounter of tape.encounters)for(const frame of encounter.combat.frames){
+    for(const actor of frame.actors){
+      assert(!Object.is(actor.x,-0)&&!Object.is(actor.z,-0),
+        "Committed actor coordinates cannot contain negative zero");
+    }
+    for(const projectile of frame.projectiles){
+      assert(!Object.is(projectile.x,-0)&&!Object.is(projectile.z,-0));
+    }
+  }
   assert.deepEqual(first.world.resolvedFeatureIds.filter(id=>
     id===a.id||id===b.id).sort(),[a.id,b.id].sort());
 
