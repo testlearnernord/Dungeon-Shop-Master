@@ -66,6 +66,17 @@ special-floor shop/one portal, post-shop two-day standby, a full
 morning/midday/evening Board 2.0, all new abilities and Floors 8–10.
 `V.003 Alpha` remains a **release target**, not a new playable label.
 
+**Third implementation slice (this PR, CURRENT only after merge):**
+the HP/mitigation/healing rules are no longer calculated independently
+by the ordinary encounter and Troll motor; both consume
+`combatVitality.ts`. Real bought Healing Herbs now work for all hero
+roles during ordinary fights and heal exactly +18 HP on both
+combat paths. Every actual use is deducted from owned supplies and
+exposed in an immutable replay. The boss's independent movement,
+grab/throw and skills engine is **not** yet replaced; that work
+remains the next integration task. Existing saved replays are never
+re-simulated.
+
 ## Dungeon, heroes and pace
 
 ### One shared dungeon rather than three incompatible mini-simulations
