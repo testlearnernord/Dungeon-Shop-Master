@@ -156,20 +156,24 @@ implemented yet**.
 2. Separate opening/closing service actions, visitor arrivals,
    transaction commit and overnight advancement from the
    current all-in-one day roll. Preserve existing state/rng and
-   recording compatibility with explicit tested migration from v13
-   if the saved schema must change; never silently reroll old records.
+   **owner-approved fresh V.003 campaign boundary** if the save schema changes. Old alpha/v13 compatibility is not required; no conversion adapters or second day motor. New-version saves still require exact-once deterministic state and clear incompatible-save handling.
 3. Keep the dungeon's real site/hero progress, group encounter caches,
    company, hero autonomy, combat frames and reward conservation;
    the duration of a day is no longer an arbitrary `36 walk steps`
    *when migrated*. Until migration, current limits remain unchanged.
 4. Move game-critical shop timers onto the same saved timebase with
    pausing and protection against dropped browser frames.
-5. Replace planned three-phase Board 2.0 views with one ordered,
-   knowledge-safe **event/last-known status timeline**, compact physical
-   gear/HP/Temporary Party status and jump-to-recording bookmarks.
-6. Add one authoritative physical clock visual only after time is
-   actually committed; do not ship three magical labels with no
-   meaningful temporal mechanics.
+5. Replace planned three-phase Board 2.0 views with one genuinely
+   **LIVE event/last-known status timeline** on the physical Board and
+   expanded E/R roster. Both use one knowledge-safe observation source,
+   not raw remote hero state or a repaint every rendered frame.
+   See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
+6. Simplify bedtime into real closing accounts/receipts and optional
+   recorded-journey review. Retire the separate night-only `The Living`
+   hero dashboard and compulsory `Sealed Expeditions` gate when their
+   LIVE Board and always-accessible archive replacements work. See
+   [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
+   Add a physical clock only after time is actually committed.
 
 ## Acceptance gates: player fun AND technical correctness
 
