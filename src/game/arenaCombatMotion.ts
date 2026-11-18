@@ -11,6 +11,9 @@ import {
 } from "./combatTactics.ts";
 import { traceCombatProjectile } from "./combatProjectile.ts";
 import {
+  stepCombatEncounter, encounterTeamOutcome, type EncounterPipeline,
+} from "./combatEncounter.ts";
+import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP,
 } from "./combatVitality.ts";
 export { inAttackArc, rollInvulnerable, parryActive } from "./combatGeometry.ts";
@@ -551,11 +554,18 @@ function progressProjectiles(s: CombatPreviewState, dt: number): void {
   }
   s.projectiles=s.projectiles.filter(p=>p.ttl>0);
 }
-export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly ArenaCue[] {
-  s.cues = [];
-  if (s.outcome !== "fighting") return s.cues;
-  if (dt <= 0 || dt > 0.1) throw new RangeError("Action motor requires a fixed step of at most 100 ms.");
-  s.time += dt;
+/**
+ * The Boss contributes signature hero/boss action handlers to the exact
+ * SAME group-capable encounter stepper as ordinary dungeon monsters.
+ * The existing physical grapple/throw effects remain a Boss plugin, while
+ * 60Hz clock ownership and phase ordering belong to combatEncounter.ts.
+ */
+const BOSS_PIPELINE:EncounterPipeline<
+  CombatPreviewState,"hero"|"boss",ArenaCue
+>={
+  beforeActors:(s,dt,frame)=>{
+    // All boss-specific ability cues live in the common per-tick event buffer.
+    s.cues=frame.cues;
   // Legacy or externally displaced positions can touch the molten boundary.
   // Apply bounded fire damage once and move back inside, rather than
   // instantly wiping a perfectly healthy adventurer on the next step.
@@ -613,16 +623,24 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
     }
     if (s.heroPhase === "move") maintainSpacing(s, dt);
   }
-  progressHeroAction(s, dt);
-  progressBossAction(s, dt);
-  progressProjectiles(s, dt);
+  },
+  actors:()=>["hero","boss"],
+  updateActor:(s,actor,dt)=>{
+    if(actor==="hero")progressHeroAction(s,dt);
+    else progressBossAction(s,dt);
+  },
+  projectiles:(s,dt)=>progressProjectiles(s,dt),
+  finish:(s)=>{
   // Emergency guard for non-navigation motion added by future mechanics.
   if (s.heroPhase!=="thrown" &&
       Math.hypot(s.hero.x,s.hero.z)>WALKABLE_RADIUS) lavaContact(s);
-  if (s.heroHp <= 0) {
-    s.outcome = "defeat"; s.heroPhase = "dead";
-    s.cues.push({ kind: "defeat" });
-  } else if (s.bossHp <= 0) {
+  const winner=encounterTeamOutcome([
+    {team:"heroes",hp:s.heroHp},{team:"monsters",hp:s.bossHp},
+  ]);
+  if(winner==="monsters"||winner==="draw"){
+    s.outcome="defeat";s.heroPhase="dead";
+    s.cues.push({kind:"defeat"});
+  }else if(winner==="heroes"){
     // A projectile can finish the troll during the hold or in mid-flight.
     if (s.heroPhase==="grabbed" || s.heroPhase==="thrown") {
       clampToRadius(s.hero,SAFE_HERO_RADIUS);
@@ -631,5 +649,16 @@ export function stepCombatPreview(s: CombatPreviewState, dt: number): readonly A
     s.outcome = "victory"; s.bossPhase = "dead";
     s.cues.push({ kind: "victory" });
   }
-  return s.cues;
+  },
+};
+
+/** Canonical combat step for the Troll and ordinary group fights. The
+ * high-level driver is shared; only scripted boss ability effects differ. */
+export function stepCombatPreview(
+  s:CombatPreviewState,dt:number,
+):readonly ArenaCue[] {
+  s.cues=[];
+  if(s.outcome!=="fighting")return s.cues;
+  return stepCombatEncounter(s,dt,BOSS_PIPELINE);
 }
+
