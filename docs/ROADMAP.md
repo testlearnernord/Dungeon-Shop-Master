@@ -128,7 +128,15 @@ grapple/throw elites, awarding real extra XP and gold on actual victory.
 This is the first campaign encounter using the new group-boss ability
 but remains **one hero against a renewable elite**.
 
-**Still open:** autonomous multi-hero parties sharing a single
+**Co-located party settlement (CURRENT after this PR merges):**
+up to three willing heroes who begin a day on the same tile can
+move and fight together using the single spatial-day/encounter
+motor. Each receives their own HP, Herb use, XP, gear effects,
+recorded viewpoint and later floor intention. Site regeneration,
+loot and finite gold apply once; strict v13 save validation
+accepts the real saved group cast.
+
+**Still open:** persistent autonomous multi-day parties sharing a single
 authoritative day encounter, applying every survivor's actual HP,
 consumables, XP, kills and site ownership exactly once. Preserve
 the original Cave Troll visuals and old boss replays. Integrate
