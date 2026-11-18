@@ -20,9 +20,21 @@ Level 6 arena and Floor 7 exploration remain **distinct implementations**.
 Do not claim the planned shared explorer or three daily phases exists yet.
 
 The redesign must preserve one deterministic GameState authority and introduce:
-- A shared seeded world with persisted floors/rooms/unique resolved features;
-  hero floor/position/intent, independently progressing character XP/level,
-  group membership, real supply counts and recorded encounter IDs.
+- A shared seeded world with **permanent floor/route structure**,
+  persistent story milestones and unique boss resolution, plus separate
+  **regenerating regular encounter/chest/trap site state**. Each site
+  records stable site ID, next eligible day/phase, regeneration cycle,
+  currently active instance/loot IDs, occupancy constraints and
+  generation source, so several heroes see the **same** current spawn
+  rather than rerolling it. Hero floor/position/intent, separate XP/level,
+  groups, real supplies and recorded encounter IDs all persist.
+- **Regeneration is an authoritative committed phase operation**, not a
+  viewer trigger, a full-map reconstruction or re-run of old encounters.
+  Seed from campaign, floor, site ID and cycle; defer spawns in occupied
+  rooms/active fights. Prevent duplicate loot claims, automatic
+  resurrection of unique bosses and retroactive changes to recorded
+  fights, reward events or maps. Keep farming rewards bounded and
+  distinguish true spawn state from Galvik's known/last-seen reports.
 - Separate *world truth* from *merchant knowledge*: Morning/Midday/Evening
   snapshots are committed once, tagged with available/reported information,
   and do not leak sealed outcomes, secret deaths or future replay footage.
