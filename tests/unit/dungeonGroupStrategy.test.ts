@@ -108,7 +108,10 @@ test("route voting uses only known lawful edges and is deterministic under roste
   const majority=choosePartyDungeonStep(layout,[
     voteRight,voteLeft,{...voteRight,heroId:"adventurer-3"},
   ]);
-  assert.deepEqual(majority,left);
+  assert.deepEqual(majority,right,
+    "Two votes for the other direction must beat the coordinate tie-break");
+  assert.notDeepEqual(majority,tie,
+    "Consensus must genuinely differ from a split vote");
   assert.deepEqual(choosePartyDungeonStep(layout,[
     {...voteRight,heroId:"adventurer-3"},voteLeft,voteRight,
   ]),majority,"Voting must not change when the roster is re-sorted");
