@@ -316,8 +316,11 @@ This does **not** declare an implemented system or a shipped version.
   [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
   **After leaving the shop**, a hero spends
   **two complete game days off duty**, neither in the dungeon nor in the
-  shop, before being eligible to return. Replays remain immutable. Any save
-  migration or altered day clock must be deliberate and tested.
+  shop, before being eligible to return. Replays remain immutable
+  within the active new-format campaign. The owner expressly waived
+  compatibility with old alpha/v13 saves when the shared-clock V.003
+  replaces its day-batched model. Correct new saves remain essential.
+  See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 - **Small first chapter rather than fake 100-floor coverage:** investigate a
   playable first ten-floor vertical slice with the Cave Troll as a likely
   later chapter boss. Current Floor 6/7 recordings remain truthful history.

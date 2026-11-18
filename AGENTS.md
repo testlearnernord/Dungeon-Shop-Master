@@ -237,7 +237,15 @@
   previously looted chest twice, override the Floor 10 pass or create
   a second farming/loot RNG authority. Cooldowns are tuning values,
   not approved constants.
-- **V.003 is a target, not current gameplay.** The playable in-game label is still V.002 ALPHA; npm package version `0.1.0` is independent. The approved shared-clock direction is defined in `docs/LIVING_WORLD_CLOCK.md`: one paced, deterministic, pausable world clock for both shop and dungeon while the shop is active; intentional bed-based overnight completion; ordered true vs last-known reports and replay event bookmarks. **Morning/Midday/Evening is NOT an authoritative three-phase engine/Board requirement.** Existing `gameState.advanceDay` remains bed-batched until a tested migration; never claim this clock is shipped. No additional time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from design documents. Protect old Floor 6/7 recordings and version-13 saves during staged migrations.
+- **V.003 is a target, not current gameplay.** The playable in-game label is still V.002 ALPHA; npm package version `0.1.0` is independent. The approved shared-clock direction is defined in `docs/LIVING_WORLD_CLOCK.md`: one paced, deterministic, pausable world clock for both shop and dungeon while the shop is active; intentional bed-based overnight completion; ordered true vs last-known reports and replay event bookmarks. **Morning/Midday/Evening is NOT an authoritative three-phase engine/Board requirement.** Existing `gameState.advanceDay` remains bed-batched until a tested migration; never claim this clock is shipped. No additional time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from design documents. **Newest owner decision: backward compatibility with old alpha/v13
+  campaign saves is NOT required for the V.003 world-clock cutover.**
+  A clean new save schema and fresh campaign may replace old data.
+  New-version deterministic saves, no duplicated purchases/HP/loot,
+  and clear incompatible-save reporting remain mandatory. The physical
+  Board is to be genuinely LIVE and knowledge-safe during shop play.
+  Simplify the redundant `The Living` and mandatory `Sealed Expeditions`
+  nighttime pages only after the new Board/Archive replaces them.
+  See `docs/LIVE_BOARD_LEDGER_AUDIT.md`.
 - **Story causality remains OPEN.** The young hero, mercenary leader, transfer of the curse, Floor 100 and Galvik's eventual role are not final canon. The earlier **amulet mechanic is removed from the current design direction**, not an OPEN prerequisite; do not reintroduce it by accident. Short cynical Galvik-as-commentator sketches are likewise not a locked protagonist transition.
 
 ## How to implement changes
@@ -261,7 +269,8 @@ Before marking a PR ready, **review the three core documents** against its chang
 | [AGENTS](AGENTS.md) | Contributor procedure, coding/testing expectations, source-of-truth rules or project invariants change |
 | [UI Design System](docs/UI_DESIGN_SYSTEM.md) | HUD, dialogs, world hints, interaction patterns, accessible inputs, colors, layout or shared icons change |
 | [Roadmap](docs/ROADMAP.md) | Milestones are delivered, reprioritized, canceled or gain approved scope |
-| [Living World Clock](docs/LIVING_WORLD_CLOCK.md) | The agreed world-time, pause, sleep, event order, known-state/replay or save-migration contract changes |
+| [Living World Clock](docs/LIVING_WORLD_CLOCK.md) | The agreed world-time, pause, sleep, event order and knowledge contract changes |
+| [Live Board and Ledger Audit](docs/LIVE_BOARD_LEDGER_AUDIT.md) | Live Board observations, nighttime accounts, replay archive and approved old-save break change |
 
 - Update impacted sections **with the feature PR**, not in an indefinite later cleanup.
 - **Replace/remove old descriptions** immediately when no longer true. Never keep competing “old/new” active instructions or append dated versions of the same section.
