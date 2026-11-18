@@ -137,7 +137,7 @@ Still required:
 returning Temporary Party, physical replenishment through a paid or
 credited shop visit, stable paused/hidden behavior, deterministic
 repeated runs and fresh saves, reliable no-spoiler Board reports,
-readable performance on a 35h shopkeeper's ordinary gaming PC, and
+readable performance on ordinary midrange gaming hardware, and
 no irrelevant end-of-day hero card wall.
 
 This is a **future migration plan**, not a claim of a shipped live
