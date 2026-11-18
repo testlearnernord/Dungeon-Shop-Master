@@ -136,7 +136,7 @@ test("one party day commits all member outcomes into v13 campaign replays",()=>{
   const record=forged.payload.events.find(e=>e.level7Replay)!.level7Replay!;
   (record.encounters[0].combat.frames[0].actors as any)[1]=
     {...record.encounters[0].combat.frames[0].actors[0]};
-  assert.throws(()=>parseSave(JSON.stringify(forged)),/duplicate|exactly once/i,
+  assert.throws(()=>parseSave(JSON.stringify(forged)),/unique|duplicate|exactly once/i,
     "A forged duplicate actor must never pass strict v13 validation");
 });
 
@@ -160,4 +160,27 @@ test("normal committed day uses a single group encounter for co-located heroes",
   assert.equal(fights[0]!.actors.length,3);
   assert.deepEqual(parseSave(JSON.stringify(createSave(result.state))),
     result.state);
+});
+
+test("a real triggered trap can kill one party member while companions survive",()=>{
+  const regular=party(1),heroes=[
+    {...regular[0],health:1},regular[1],regular[2],
+  ];
+  const {world,featureId}=atUnresolvedSite(heroes,"trap");
+  const result=simulateSpatialDungeonPartyDay(heroes,world,SEED,12,
+    new Set(heroes.map(h=>h.id)));
+  assert(result.ticks[0].replay.steps.some(step=>
+    step.featureId===featureId&&step.action==="trap"));
+  assert.equal(result.ticks[0].adventurer.health,0);
+  assert.equal(result.ticks[0].adventurer.status,"dead");
+  for(const tick of result.ticks.slice(1)){
+    assert(tick.adventurer.health>0);
+    assert.equal(tick.replay.outcome,"retreat");
+    assert.equal(tick.adventurer.status,"exploring");
+  }
+  assert.equal(result.ticks.every(tick=>
+    tick.replay.encounters.length===0),true,"Traps aren't fake fights");
+  assert(result.world.resolvedFeatureIds.includes(featureId));
+  assert.deepEqual(result,simulateSpatialDungeonPartyDay(heroes,world,SEED,12,
+    new Set(heroes.map(h=>h.id))));
 });
