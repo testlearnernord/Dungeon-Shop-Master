@@ -59,9 +59,9 @@
   `dungeonReplayCast.ts` projects only actually saved combat actors.
   `dungeonReplayScene.ts` renders all recorded heroes/monsters/projectiles
   without recomputing fights. TAB focus reveals only actors in the currently
-  visible combat frame, never enemies from a later scene. Secondary hero
-  equipment is not recorded yet; show neutral gear rather than invent
-  purchases. Level 7 regenerated room sentries at eligible site cycles
+  visible combat frame, never enemies from a later scene. New hero
+  equipment is preserved in committed encounter records; older footage
+  without this optional snapshot remains visually neutral. Level 7 regenerated room sentries at eligible site cycles
   may use the existing `grapple-throw` combat ability as ordinary renewable
   elites. These are not unique Cave Trolls, new floor gates or a true
   multi-hero campaign expedition; do not mark party progression finished.
