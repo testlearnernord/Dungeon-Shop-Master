@@ -108,7 +108,11 @@ This does **not** declare an implemented system or a shipped version.
   exploration. Individual heroes and possible groups travel, discover,
   revisit, progress, recover or flee; the same world's rooms, enemies and
   resolved unique features persist. **Dungeon floor** and **hero level/XP**
-  represent different kinds of progression.
+  represent different kinds of progression. **Remove** the old Floors 1–4
+  roll-based placeholder and redundant authoritative dungeon/combat
+  implementations after migration. A universal, deterministic encounter motor
+  must support **both** multi-hero/multi-monster fights and boss abilities;
+  retain historical replay compatibility rather than a second live resolver.
 - **Autonomous hero decisions, not merchant commands.** Galvik remains the
   physically operated shopkeeper. Real sale/credit, equipment, HP and resource
   values influence genuine actions and combats, and can be observed later.
@@ -136,6 +140,14 @@ This does **not** declare an implemented system or a shipped version.
 - **Small first chapter rather than fake 100-floor coverage:** investigate a
   playable first ten-floor vertical slice with the Cave Troll as a likely
   later chapter boss. Current Floor 6/7 recordings remain truthful history.
+
+**Shop access option under discussion (NOT LOCKED):** every hero can try
+to return to Galvik via reachable paths; the distance, travel phase and
+real hazards make the decision costly. The current physical Floor 5 shop
+remains, with possible later unlocked milestone shortcuts to that **same**
+shop, not artificial five-floor shopping lockouts. A paid one-way emergency
+escape item might later rescue an expedition without returning its hero
+instantly to the deep dungeon. Exact rules remain undecided.
 
 **Still OPEN within that direction:** exact room count and floor geometry,
 day-phase triggers, group formation rules, magic shop entry access, permanent
