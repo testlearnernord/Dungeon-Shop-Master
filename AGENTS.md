@@ -41,6 +41,17 @@
   (a temporary new design gate, not today's `level6Permit`). Do not
   reinstate the rejected long backtrack, mandatory five-floor shops,
   two-door topology or an invented escape rope as accepted scope.
+- **CURRENT shared melee attack contract (after this PR):**
+  `combatMelee.ts` is the sole authority for hit arcs, reach,
+  line-of-sight rejection, roll windows and facing-based parry,
+  with ordinary/heavy/Troll smash/slam/grab/hero-strike ability profiles.
+  Any ordinary/boss ability must call its pure contact resolver,
+  not fork its own arc/dodge/parry decision table. Heavy monster
+  attacks are real timed GroupCombat actions; optional recorded
+  `meleeAbility` is strict-save validated. Troll grab/throw
+  remains an animation-compatible boss-specific action after
+  shared contact, and its original v1 recordings must never be
+  regenerated. The boss **motion scheduler** is still separate.
 - **CURRENT shared combat vitality (after this PR):**
   `src/game/combatVitality.ts` owns HP hit/mitigation/healing
   arithmetic and item heal constants for the ordinary and Troll
