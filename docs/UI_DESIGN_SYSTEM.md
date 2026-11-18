@@ -74,6 +74,25 @@ This document is a maintainable implementation contract.
 
 ## V.003 Adventurer Board 2.0 — APPROVED TARGET, NOT SHIPPED
 
+**LIVE status is required** once the shared world clock ships: real
+legitimate reports reach the existing physical board and expanded E/R
+view throughout an active shop day, not only when Galvik sleeps.
+Both read ONE event-based known-state selector with report time,
+source and last-confirmed/unknown status, never the hidden current
+HP/death/loot of distant heroes. The board does not need a UI timer
+or full canvas repaint at every rendered frame. Preview/replay pauses
+the world clock. A physical cursed clock may display saved world time.
+
+**Nightly book cutover:** keep the dark Book of Debts visual identity,
+actual closing balance, itemized receipts and credit; retire the
+duplicate `The Living` night roster and compulsory `Sealed Expeditions`
+viewer lock once the live board and continuously accessible recording
+archive are in place. The sleep ritual remains deliberate, but
+watching past footage can never change yesterday's physical outcome.
+The owner's old-alpha-save-compatibility requirement has been waived
+for this clean V.003 cutover, while new-save correctness remains essential.
+See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
+
 The existing wall-mounted board and E/R roster are the physical entry points.
 Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
 
