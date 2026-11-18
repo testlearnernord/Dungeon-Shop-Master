@@ -38,6 +38,17 @@ The repository currently implements:
 - **Player service focus:** aiming at a physical shelf slot reveals the **real** item, capacity, selected bag item, valid left/right-click actions, Shift+click fill/clear and blockers (wrong item, full slot, empty bag or unpaid customer cart). A small, translucent top-center service strip reports **physically present** register-ready buyers and live restock/credit requests; earliest-expiring restock takes priority. **F** (or its icon chip) only selects that item in the existing six-item hotbar. The player still goes to the shelf to stock, and to the staff side of the counter or nearby debtor to interact with E. There is no auto-buy, auto-stock or auto-pay.
 - **Contextual furniture placement:** shelves and compact checkout counter (new campaigns start at the corner near Galvik’s rest-room wall), plus bedroom desk/book, chest, candle/stool, bed, wall-mounted Adventurer Board and the placeable portrait of Galvik's lost beloved. Existing furniture is moved using P; new campaigns start with no shelves. Build Shelf (N) creates a compact, initially empty shelf with four persistent stock slots, bounded to 12 shelves for the current alpha. Starter merchandise lives in the bag until the player builds and stocks a shelf. The floor editor can target visible excavated wing surfaces from the original cave; preview and commit share one authoritative check. Previews are not saved until confirmed. Newly dug 1m cells can be used for furniture **once enough connected floor has been cleared for the entire object and customer access**.
 - Level 5 room excavation/expansion, persistence, hero identities and roster. Mining reuses unchanged cave geometry between strikes; the first-person pickaxe has a raised wooden shaft and overhead strike.
+- **Shared melee contact/ability profiles (CURRENT after this PR):**
+  `combatMelee.ts` now resolves physical attack arc, line of sight,
+  dodges and directional parries for ordinary group combat and the
+  Cave Troll's smash, slam and sword-parryable grab. The same rules
+  also govern the hero's own boss melee hit. A regenerating skeleton
+  can gain a slower, wider-reaching and harder-hitting telegraphed
+  `heavy` attack, with one real recorded strike and optional saved
+  ability identity. The Troll's physical grab/throw/airborne landing
+  remains an intentional boss-specific effect. Shared contact and
+  HP rules **do not mean the two motion/targeting loops are fully
+  unified yet**, nor do they alter previous v1 replay footage.
 - **Shared combat vitality and actual Herbs (CURRENT after this PR):**
   `combatVitality.ts` is the common pure HP hit, mitigation and
   restoration authority used by ordinary `groupCombat` and the Troll
