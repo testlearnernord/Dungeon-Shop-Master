@@ -18,6 +18,7 @@ import {bedroomFurnitureProblem,type BedroomFurniturePlacement} from "./bedroomF
 import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
   MAX_PENDING_WORLD_EVENTS,compareScheduledWorldEvents,
   type ScheduledWorldEvent } from "./worldClock.ts";
+import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -386,7 +387,7 @@ function validateLevel7Replay(
 
 function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
-    "day", "worldClock", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
+    "day", "worldClock", "shopRequests", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
     "level5Room","bedroomFurniture","rosterBoard",
@@ -421,6 +422,32 @@ function validateState(value: unknown): asserts value is GameState {
     previous=scheduled;
   }
   if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
+  const shopRequests=array(state.shopRequests,"payload.shopRequests");
+  if(shopRequests.length>100)fail("payload.shopRequests","is oversized");
+  const requestHeroes=new Set<string|number>();
+  const pendingById=new Map(pending.map(entry=>[String((entry as RecordValue).id),entry as RecordValue]));
+  for(const [i,value] of shopRequests.entries()){
+    const path="payload.shopRequests["+i+"]";
+    const entry=object(value,path,["heroId","reason","itemId","startedTick","dueTick","eventId"]);
+    const heroId=text(entry.heroId,path+".heroId");
+    unique(heroId,requestHeroes,path+".heroId");
+    const hero=(state.adventurers as RecordValue[]).find(h=>h.id===heroId);
+    if(!hero||hero.status!=="at-shop"||!Number.isSafeInteger(hero.health)||hero.health<=0)
+      fail(path+".heroId","must be a living active shop visitor");
+    choice(entry.reason,["unavailable","cannot-afford"],path+".reason");
+    choice(entry.itemId,itemIds,path+".itemId");
+    const started=integer(entry.startedTick,path+".startedTick",
+      firstWorldTickOfDay(day),clockTick);
+    const due=integer(entry.dueTick,path+".dueTick",clockTick+1,started+SHOP_REQUEST_TICKS);
+    const eventId=text(entry.eventId,path+".eventId");
+    const scheduled=pendingById.get(eventId);
+    if(!scheduled||scheduled.lane!=="visitor"||scheduled.subjectId!==heroId||
+      scheduled.dueTick!==due)
+      fail(path+".eventId","must reference its scheduled visitor event");
+  }
+  for(const entry of pending)if((entry as RecordValue).lane==="visitor" &&
+      !shopRequests.some(value=>(value as RecordValue).eventId===(entry as RecordValue).id))
+    fail("payload.worldClock.pending","has an orphaned visitor event");
   const campaignSeed = integer(state.seed, "payload.seed", 0, 0xffffffff);
   integer(state.rngState, "payload.rngState", 0, 0xffffffff);
   const population = object(state.populationConfig, "payload.populationConfig", ["dailyInflux", "maxActive"]);
@@ -721,18 +748,25 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
-      ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
+      ["adventurerId", "worldTick", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
         "combatReplay", "level7Replay", "dungeonReplay",
         "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
+    if(event.worldTick!==undefined){
+      integer(event.worldTick,path+".worldTick",firstWorldTickOfDay(eventDay),
+        eventDay===day?clockTick:lastWorldTickOfDay(eventDay));
+      if(event.type!=="shop-walkout")fail(path+".worldTick","is not allowed for this event type");
+    }
     lastDay = eventDay;
     text(event.message, `${path}.message`);
     const id = text(event.id, `${path}.id`);
     unique(id, eventIds, `${path}.id`);
     const global = ["welcome", "day-started"].includes(event.type as string);
     if (!global && !heroIds.has(event.adventurerId as string)) fail(`${path}.adventurerId`, "must link to an existing hero");
-    const allowed = ["id", "type", "day", "message", ...(!global ? ["adventurerId"] : [])];
+    const allowed = ["id", "type", "day", "message",
+      ...(event.type==="shop-walkout"?["worldTick"]:[]),
+      ...(!global ? ["adventurerId"] : [])];
     let suffix = event.type === "day-started" ? "started" : event.type;
     if (event.type === "dungeon-outcome") {
       allowed.push("outcome");

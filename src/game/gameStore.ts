@@ -11,6 +11,9 @@ import type { ShoppingReason } from "./shopperIntents.ts";
 import {rosterBoardProblem} from "./rosterBoardPlacement.ts";
 import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
 import { advanceWorldUntil, lastWorldTickOfDay } from "./worldClock.ts";
+import {clearResolvedShopRequests,commitShopRequestEvent,closeShopRequests,
+  requestRemainingTicks,shortenShopRequestForTest,startShopRequest} from "./shopRuntime.ts";
+import type {ShoppingReason} from "./shopperIntents.ts";
 
 export class GameStore {
   private current: GameState;
@@ -37,7 +40,13 @@ export class GameStore {
 
   private replace(state: GameState): void {
     if (state === this.current) return;
-    this.current = state;
+    // Pure shop request reconciliation after meaningful state changes only.
+    // One clock tick must not re-run all shopping forecasts.
+    const needsRefresh=state.adventurers!==this.current.adventurers||
+      state.shopEconomy!==this.current.shopEconomy||
+      state.shopCarts!==this.current.shopCarts||
+      state.events!==this.current.events||state.shopDebts!==this.current.shopDebts;
+    this.current=needsRefresh?clearResolvedShopRequests(state):state;
     for (const listener of this.listeners) listener();
   }
 
@@ -152,19 +161,40 @@ export class GameStore {
     return true;
   }
 
-  /** Commits only the clock. Event handlers migrate with shop/dungeon in #202/#203. */
+  /** Register a real physical visitor's restock/credit petition. */
+  startShopRequest(heroId:string,itemId:ItemId,reason:ShoppingReason):number|null{
+    this.replace(startShopRequest(this.current,heroId,itemId,reason));
+    const request=this.current.shopRequests.find(r=>r.heroId===heroId);
+    return request?.dueTick??null;
+  }
+  shopRequestRemaining(heroId:string):number|null{
+    return requestRemainingTicks(this.current,heroId);
+  }
+  /** Test-only override; production never shortens or resets patience. */
+  shortenShopRequestForE2E(heroId:string,remainingSeconds:number):void{
+    if(import.meta.env.VITE_E2E!=="1"||!Number.isFinite(remainingSeconds)||
+       remainingSeconds<=0)throw new Error("Shop request test hook disabled.");
+    this.replace(shortenShopRequestForTest(this.current,heroId,
+      Math.max(1,Math.ceil(remainingSeconds))));
+  }
+
+  /** Clock events and customer walkouts commit on the same world timeline.
+   * Dungeon and customer movement owners migrate with #203 and later work.
+   */
   advanceWorldTime(ticks:number):void {
     if(!Number.isSafeInteger(ticks)||ticks<0||ticks>100000)
       throw new RangeError("World tick advance must be a bounded nonnegative integer.");
     const oldTick=this.current.worldClock.tick;
     const target=Math.min(lastWorldTickOfDay(this.current.day),oldTick+ticks);
     if(target===oldTick)return;
-    this.replace(advanceWorldUntil(this.current,target,(_state,event)=>{
-      throw new Error("No simulation handler installed for world event "+event.id+".");
-    }));
+    this.replace(advanceWorldUntil(this.current,target,commitShopRequestEvent));
   }
 
   endDay(): void {
-    this.replace(advanceDay(this.current).state);
+    // Fast-forward pending visitor deadlines using the SAME event executor.
+    // No late-night unserved customer can buy stock on the following morning.
+    const atClose=advanceWorldUntil(this.current,
+      lastWorldTickOfDay(this.current.day),commitShopRequestEvent);
+    this.replace(advanceDay(closeShopRequests(atClose)).state);
   }
 }

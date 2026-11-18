@@ -18,7 +18,7 @@ export function walkOutWithoutPurchase(
   if(already)return state;
   const walkout:WorldEvent={
     id:`day-${state.day}:${heroId}:shop-walkout`,
-    type:"shop-walkout",day:state.day,adventurerId:heroId,
+    type:"shop-walkout",day:state.day,worldTick:state.worldClock.tick,adventurerId:heroId,
     message: reason==="unavailable"
       ?`${hero.name} left the shop angry: their supplies were sold out.`
       :reason==="cannot-afford"

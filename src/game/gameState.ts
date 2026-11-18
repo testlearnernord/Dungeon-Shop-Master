@@ -1,5 +1,6 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { beginNextWorldDay, createWorldClock, MAX_WORLD_DAY, type WorldClockState } from "./worldClock.ts";
+import type {ShopRequest} from "./shopRuntime.ts";
 import { useHealingSupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
 import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
 import {
@@ -65,6 +66,7 @@ export interface WorldEvent {
     "dungeon-exploration" | "temporary-party-join" | "temporary-party-leave";
   readonly day: number;
   readonly message: string;
+  readonly worldTick?: number;
   readonly adventurerId?: string;
   readonly outcome?: DungeonOutcome;
   readonly combatOutcome?: "victory" | "retreat" | "death";
@@ -95,6 +97,7 @@ export interface ShopDebt {
 export interface GameState {
   readonly day: number;
   readonly worldClock: WorldClockState;
+  readonly shopRequests: readonly ShopRequest[];
   readonly simulationVersion: number;
   readonly events: readonly WorldEvent[];
   readonly adventurers: readonly AdventurerState[];
@@ -136,6 +139,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
   return {
     day: 1,
     worldClock: createWorldClock(),
+    shopRequests: [],
     simulationVersion: SIMULATION_VERSION,
     events: [
       ...adventurers.slice(0, 3).map((hero) => arrivalEvent(hero, 1)),
