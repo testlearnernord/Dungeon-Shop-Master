@@ -4,6 +4,19 @@ import type { Point2 } from "./combatGeometry.ts";
  * multi-actor boss ability. The owner of an encounter still decides
  * who may grapple, when the contact window opens and whether they
  * have actually bought equipment; visuals never decide a catch. */
+/** Shared authored timing; existing Cave Troll glTF animation contracts
+ * still consume the same constants, not an improvised second timeline. */
+export const GRAPPLE_TIMING = Object.freeze({
+  windup: 1.20,
+  trackUntil: 0.65,
+  grabContact: 0.30,
+  grab: 1.25,
+  throwRelease: 0.58,
+  throw: 1.55,
+  flight: 0.90,
+  missRecover: 0.62,
+  recover: 0.85,
+});
 export const GRAPPLE_HOLD_OFFSET = 2.15;
 export const GRAPPLE_THROW_DISTANCE = 7.5;
 export const GRAPPLE_FLIGHT_SECONDS = 0.90;
