@@ -75,8 +75,17 @@ authored grapple timing and geometry helpers; its old v1
 replays remain intact. **This is not yet an in-campaign
 multi-hero boss fight or a multi-hero Troll presentation**.
 
-**Not implemented:** the campaign integration and 3D replay of
-multi-hero boss combat, fully general status/
+**Next tested integration (after this PR merges):**
+the existing 3D dungeon replay viewer renders all saved group
+actors and projectiles from the same immutable combat frames,
+with spoiler-safe focus. On Floor 7, some later-generation room
+sentries now fight as genuinely stronger, resistible grapple/throw
+elites in the actual solo expedition day and receive real
+recorded loot/XP accounting. They are renewable monster sites,
+not unique boss kills, and use no new replay/save version.
+
+**Not implemented:** autonomous multi-hero campaign parties
+and shared party loot/HP settlement, fully general status/
 ability effects, dungeon Floors 8–10, cursed out-of-number
 shop entrance, two-day hero standby, full Morning/Midday/
 Evening world snapshots or Adventurer Board 2.0.
