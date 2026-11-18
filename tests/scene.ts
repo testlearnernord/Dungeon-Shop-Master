@@ -474,6 +474,20 @@ export function inspectDungeonPlayback() {
       })),
     temporaryPartyRings:scene.meshes.filter(mesh=>
       mesh.name.startsWith("dungeon-tp-ring-")&&mesh.isEnabled()).length,
+    ghoulActors:scene.transformNodes.filter(node=>
+      node.name.startsWith("dungeon-ghoul-")&&
+      node.metadata?.visualId==="tripo-ghoul").map(node=>({
+        actorId:node.metadata?.recordedActorId as string,
+        visible:node.isEnabled(),status:node.metadata?.tripoStatus as string,
+        geometryCount:node.metadata?.geometryCount as number|undefined,
+        animationClip:node.metadata?.animationClip as string|null,
+        boneCount:node.metadata?.tripoBoneCount as number|undefined,
+        error:node.metadata?.tripoError as string|undefined,
+      })),
+    cryptRelics:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-crypt-room-")).length,
+    ghoulFallbacks:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-enemy-")&&mesh.isEnabled()).length,
   };
 }
 
