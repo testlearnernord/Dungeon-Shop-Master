@@ -1,6 +1,6 @@
 # Dungeon Shop Master · Immersive UI Contract
 
-> **Current implementation contract, reviewed 2026-11-16.** Read this
+> **Current implementation contract, reviewed 2026-11-18.** Read this
 > alongside [GAME_BIBLE](GAME_BIBLE.md), [ARCHITECTURE](ARCHITECTURE.md)
 > and [ROADMAP](ROADMAP.md). Implemented capabilities and future packages
 > are distinguished there; package numbers are not reserved.
@@ -71,6 +71,42 @@ This document is a maintainable implementation contract.
 | Level 6 / 7 spectator | Compact panels, optional controls legend, same focus style. Level 6 adds click-through world-projected hero/troll HP plates and cue-driven floating numbers: gold hero→boss, red boss→hero, orange lava, green healing. Numeric HP remains in the bottom HUD. |
 | Level 6 local model lab | In the existing spectator toolbar, `Inspect Tripo GLB` opens an explicit read-only asset inspection panel with a browser-local GLB file input, accessible animation selector, drag-orbit/zoom camera and Escape-to-return behavior. No saved fighter or combat details are written. The regular battle HUD and cinematic are hidden while inspecting. |
 | Audio / notifications / campaign | Minimal chrome, consistent buttons and persistent errors; Level 6 has one transient music-led cinematic overlay before the original HUD and combat data appear |
+
+## V.0003 Adventurer Board 2.0 — APPROVED TARGET, NOT SHIPPED
+
+The existing wall-mounted board and E/R roster are the physical entry points.
+Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
+
+- **Physical glance:** portrait/name, character level, dungeon floor (or last
+  *known* floor), **numeric HP and HP bar**, intended/observed activity icon,
+  and Morning/Midday/Evening trail. Item icons are from the existing item
+  atlas. Show weapon and armor sockets even when **empty**; actual Healing
+  Herb, Waybread, Mana Potion and other carried quantities are readable.
+  On limited wall texture space, prioritize health, dangerous missing gear,
+  location and one current action; overflow detail goes to the E/R panel.
+- **Expanded roster:** readable phase-column timeline per hero, filter/sort,
+  compact vertical dungeon-depth/party markers, hero profile and verified
+  history of actual bought/consumed goods and recorded encounters. Use
+  stable real identity, actual quantities and recorded snapshots; no
+  second gameplay state owned by the interface.
+- **Activity vocabulary:** farming, progressing, discovering, fighting,
+  fleeing, recovering, grouping, shopping, unknown/last-known. A distinct
+  real state or committed intent must back each icon. Extend the existing
+  semantic sprite atlas deliberately, not with decorative emoji controls.
+  All icons retain accessible text/legend and never become the sole means
+  to interpret urgent equipment/HP information.
+- **Knowledge safety:** no future-state backfill of morning/noon,
+  guaranteed fatality labels for missing heroes, leaked sealed outcomes or
+  extrapolated success odds. Warnings such as "unarmed" and "low HP"
+  inform the merchant without redirecting autonomous hero decisions.
+- **UX constraints:** physical board remains placeable without breaking
+  wall support or player access; E/R keyboard and pointer-lock recovery
+  continue; expanded UI supports many heroes and responsive widths.
+  Contrast and reduced-motion settings must stay useful in the dark cave.
+
+This is a **future interaction contract**; the current game still uses
+a nine-hero wall texture and current roster details without a daily
+three-phase timeline.
 
 ## Invariants and review gates
 - Never hide a campaign save **error** behind a collapsed panel.
