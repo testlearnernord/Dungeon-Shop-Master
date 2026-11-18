@@ -120,8 +120,7 @@ without that optional v1 field stay deliberately neutral. On Floor 7, some room 
 respawn generations become armored heavy-strike elites. Their real HP,
 defenses, rewards and frame data come from the existing encounter engine;
 the unique Cave Troll's grapple/throw is reserved for authored bosses and
-v13 saved replays. This is a real solo expedition encounter, not the unique
-Cave Troll, a new floor gate or autonomous multi-hero party campaign.
+v13 saved replays. Real solo heroes and co-located parties can encounter these ordinary renewable elites; they are neither the unique Cave Troll nor a new floor gate.
 
 **Co-located hero parties (after this PR merges):**
 During a committed dungeon day, up to three willing heroes who already
