@@ -30,11 +30,9 @@ export function createDungeonGhoulVisual(scene:Scene,id:string):GhoulVisual{
   let clips:AnimationGroup[]=[];
   let active:AnimationGroup|null=null;
   let disposed=false;
-  let latest:{phase:GroupPhase;time:number}|null=null;
   scene.onDisposeObservable.addOnce(()=>{disposed=true;});
 
   const animate=(phase:GroupPhase,time:number)=>{
-    latest={phase,time};
     if(disposed||!clips.length)return;
     const motion=ghoulMotionForPhase(phase);
     const next=clips[GHOUL_CLIP_INDICES[motion.clip]];
@@ -92,7 +90,6 @@ export function createDungeonGhoulVisual(scene:Scene,id:string):GhoulVisual{
       root.metadata.tripoClipCount=clips.length;
       root.metadata.tripoBoneCount=65;
       root.metadata.visualHeight=1.95;
-      if(latest)animate(latest.phase,latest.time);
       return true;
     }catch(error){
       if(staged&&staged!==container)staged.dispose();
