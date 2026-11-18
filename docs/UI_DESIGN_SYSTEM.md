@@ -97,7 +97,13 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   plus current companion identities, role, HP and founding day.
   The dungeon spectator shows participants from each *historical*
   replay's optional saved party IDs, with the followed TAB member
-  highlighted and preview/solo mode hidden. Feed join/leave events
+  highlighted and preview/solo mode hidden. New recordings also
+  include the original roles and equipped gear for companions,
+  allowing all co-travelers to be physically visible while walking
+  on their ONE shared recorded route. Matching gold TP ground rings
+  are visible on the characters; camera TAB focus may follow any
+  recorded companion during travel. Actual combat positions
+  override purely visual within-tile formation spacing. Feed join/leave events
   are attached to committed world transitions, never on UI refresh.
   Older v1 tapes are valid without party metadata, and the player
   cannot command the heroes. Full three-phase Board 2.0 remains open.

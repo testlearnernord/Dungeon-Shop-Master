@@ -324,7 +324,21 @@ and the v13 save structure are kept intact.
   snapshots `partyMemberIds`; the strict v13 validator checks
   cardinality, uniqueness, campaign identity and lead membership.
   The Babylon spectator reads the immutable historical party roster,
-  not the current party table, and marks TAB camera focus. The physical
+  not the current party table, and marks TAB camera focus. Every new
+  shared expedition optionally saves `partyAppearances` aligned with
+  `partyMemberIds`: verified historical role/gear for the entire
+  group regardless of combat. The ONE playback timeline projects the
+  actual committed group route; `dungeonPartyFormation.ts` applies
+  small cosmetic offsets in the current tile, avoiding overlapping
+  meshes without inventing new paths or actor AI. All co-travelers
+  walk and turn together and carry matching TP rings. At fight time,
+  recorded `GroupCombatReplay` actor coordinates/poses replace the
+  cosmetic formation. TAB can follow genuine walking companions.
+  Dead actors do not resume traveling after committed combat.
+  The v13 validator checks appearance order, owned gear, actual
+  campaign member IDs and lead appearance; old v1 recordings lacking
+  these optional fields remain playable with neutral or absent
+  unknown-identity companions. The physical
   board uses numbered TP markers with a legend; the R roster uses
   complete `Temporary Party #N` text and member names.
   `rosterView.rosterPartyDetails` is the shared read-only

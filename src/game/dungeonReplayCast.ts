@@ -30,6 +30,52 @@ export function dungeonReplayCast(replay: Level7Replay): readonly CombatantSpec[
   return [...cast.values()];
 }
 
+/** Original group companions exist before combat. A new recording
+ * captures their exact historical appearance even when the party never
+ * finds a monster. Older recordings can use authentic recorded fighters;
+ * without either record, no fake equipped companion model is created. */
+export function recordedTemporaryPartyVisuals(
+  replay:Level7Replay,
+):readonly {
+  id:string;role:"tank"|"DPS"|"healer";
+  equipment:{weapon:"Iron Sword"|null;armor:"Leather Vest"|null};
+}[] {
+  const ids=replay.partyMemberIds??[];
+  if(ids.length<2||!ids.includes(replay.heroId))return [];
+  const fromStart=new Map(replay.partyAppearances?.map(hero=>[hero.id,hero])??[]);
+  const fromCombat=new Map(dungeonReplayCast(replay).filter(actor=>
+    actor.team==="heroes"&&actor.role!=="monster").map(actor=>[actor.id,actor]));
+  const projected: {
+    id:string;role:"tank"|"DPS"|"healer";
+    equipment:{weapon:"Iron Sword"|null;armor:"Leather Vest"|null};
+  }[]=[];
+  for(const id of ids){
+    if(id===replay.heroId){
+      projected.push({id,role:replay.appearance.role,
+        equipment:{
+          weapon:replay.appearance.equipment.weapon==="Iron Sword"?"Iron Sword":null,
+          armor:replay.appearance.equipment.armor==="Leather Vest"?"Leather Vest":null,
+        }});
+      continue;
+    }
+    const snap=fromStart.get(id);
+    if(snap){
+      projected.push({id,role:snap.role,equipment:{
+        weapon:snap.equipment.weapon==="Iron Sword"?"Iron Sword":null,
+        armor:snap.equipment.armor==="Leather Vest"?"Leather Vest":null,
+      }});
+      continue;
+    }
+    const fighter=fromCombat.get(id);
+    if(fighter&&fighter.role!=="monster"){
+      projected.push({id,role:fighter.role,
+        equipment:fighter.equipment?{...fighter.equipment}:
+          {weapon:null,armor:null}});
+    }
+  }
+  return projected;
+}
+
 /** Do not expose enemies or companions before the encounter footage starts. */
 export function visibleDungeonCombatActors(
   snapshot: DungeonPlaybackSnapshot,
@@ -56,6 +102,9 @@ export function dungeonReplayFocusIds(
   replay: Level7Replay, snapshot: DungeonPlaybackSnapshot | null,
 ): readonly string[] {
   const actors=snapshot?visibleDungeonCombatActors(snapshot):[];
-  return [replay.heroId,
-    ...actors.filter(actor=>actor.id!==replay.heroId).map(actor=>actor.id)];
+  const companions=recordedTemporaryPartyVisuals(replay).map(actor=>actor.id)
+    .filter(id=>id!==replay.heroId);
+  const already=new Set([replay.heroId,...companions]);
+  return [replay.heroId,...companions,
+    ...actors.filter(actor=>!already.has(actor.id)).map(actor=>actor.id)];
 }

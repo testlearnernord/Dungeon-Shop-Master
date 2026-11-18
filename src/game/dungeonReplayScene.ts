@@ -17,7 +17,11 @@ import {
 } from "./dungeonReplayPlayback.ts";
 import {
   dungeonReplayCast, dungeonReplayFocusIds, visibleDungeonCombatActors,
+  recordedTemporaryPartyVisuals,
 } from "./dungeonReplayCast.ts";
+import {
+  recordedTemporaryPartyFormation, recordedPartyMemberAlive,
+} from "./dungeonPartyFormation.ts";
 import type { GroupPhase } from "./groupCombat.ts";
 
 const SPACING=2.5;
@@ -109,9 +113,36 @@ export class DungeonReplayScene {
       elite.diffuseColor=Color3.FromHexString("#75362e");
       elite.emissiveColor=Color3.FromHexString("#31100c");
       this.combatMaterials.push(ordinary,elite);
+      // Real companions are part of the expedition BEFORE the first
+      // fight. New tapes snapshot their role and purchased gear at the
+      // start, so a peaceful run still displays the full party.
+      for(const member of recordedTemporaryPartyVisuals(record)){
+        if(member.id===record.heroId)continue;
+        const model=createHeroVisual(this.scene,{
+          id:member.id,role:member.role,equipment:member.equipment,
+        },"dungeon-companion-"+member.id);
+        model.root.metadata={...model.root.metadata,replayOnly:true,
+          recordedEquipmentUnknown:record.partyAppearances===undefined &&
+            !dungeonReplayCast(record).find(actor=>actor.id===member.id)?.equipment};
+        model.root.setEnabled(false);
+        this.companionHeroes.set(member.id,model);
+      }
+      const partyMembers=recordedTemporaryPartyVisuals(record);
+      if(partyMembers.length>1){
+        const gold=new StandardMaterial("dungeon-tp-ring-material",this.scene);
+        gold.diffuseColor=Color3.FromHexString("#d5af68");
+        gold.emissiveColor=Color3.FromHexString("#6b542d");
+        this.combatMaterials.push(gold);
+        if(this.hero)this.addPartyRing(this.hero,gold);
+        for(const member of partyMembers)if(member.id!==record.heroId){
+          const model=this.companionHeroes.get(member.id);
+          if(model)this.addPartyRing(model,gold);
+        }
+      }
       for(const actor of dungeonReplayCast(record)){
         if(actor.id===record.heroId)continue;
         if(actor.team==="heroes" && actor.role!=="monster"){
+          if(this.companionHeroes.has(actor.id))continue;
           // Read equipment from committed historical actor metadata, not
           // the current roster (the player may have sold gear since then).
           // Old v1 records without this optional field stay visually neutral.
@@ -159,6 +190,20 @@ export class DungeonReplayScene {
     }
   }
 
+  private addPartyRing(model:HeroVisual,material:StandardMaterial):void {
+    const ring=MeshBuilder.CreateTorus(
+      "dungeon-tp-ring-"+model.root.metadata.adventurerId,
+      {diameter:0.92,thickness:0.06,tessellation:20},this.scene);
+    ring.parent=model.root;
+    ring.position.y=0.08;
+    ring.material=material;
+    ring.isPickable=false;
+    ring.checkCollisions=false;
+    ring.metadata={replayOnly:true,temporaryParty:true,
+      recordedActorId:model.root.metadata.adventurerId};
+    model.root.metadata.temporaryParty=true;
+  }
+
   private animateHero(model:HeroVisual,pose:GroupPhase|"move",time:number):void {
     model.root.metadata.combatPhase=pose;
     const stride=pose==="move"?Math.sin(time*13)*0.55:0;
@@ -178,7 +223,12 @@ export class DungeonReplayScene {
     const snapshot=dungeonPlaybackAt(this.replay,this.timeline,this.layout,elapsed);
     this.lastSnapshot=snapshot;
     const heroWorld=toWorld(this.layout,{x:snapshot.x,z:snapshot.z});
-    this.hero.root.position.set(heroWorld.x,0.1,heroWorld.z);
+    const formation=recordedTemporaryPartyFormation(
+      this.replay,this.timeline,snapshot);
+    const leadOffset=formation.find(member=>member.id===this.replay!.heroId);
+    this.hero.root.position.set(heroWorld.x+(leadOffset?.offsetX??0),
+      0.1,heroWorld.z+(leadOffset?.offsetZ??0));
+    if(leadOffset)this.hero.root.rotation.y=leadOffset.heading;
     const actors=visibleDungeonCombatActors(snapshot);
     const lead=actors.find(actor=>actor.id===this.replay!.heroId);
     if(lead){
@@ -186,9 +236,22 @@ export class DungeonReplayScene {
       this.hero.root.metadata.hp=lead.hp;
     }
     this.animateHero(this.hero,lead?.phase??
-      (snapshot.action==="walk"?"move":"recover"),snapshot.time);
+      (snapshot.action==="walk"?"move":
+        snapshot.action==="death"?"dead":"recover"),snapshot.time);
 
     for(const model of this.companionHeroes.values())model.root.setEnabled(false);
+    for(const member of formation){
+      if(member.id===this.replay.heroId ||
+        !recordedPartyMemberAlive(this.timeline,snapshot,member.id))continue;
+      const model=this.companionHeroes.get(member.id);
+      if(!model)continue;
+      model.root.setEnabled(true);
+      model.root.position.set(heroWorld.x+member.offsetX,0.1,
+        heroWorld.z+member.offsetZ);
+      model.root.rotation.y=member.heading;
+      this.animateHero(model,member.walking?"move":"recover",
+        snapshot.time);
+    }
     for(const enemy of this.enemies.values())enemy.setEnabled(false);
     for(const mesh of this.projectiles)mesh.setEnabled(false);
     if(snapshot.encounter&&snapshot.frame){
@@ -310,6 +373,11 @@ export class DungeonReplayScene {
     if(actor&&encounter){
       const origin=toWorld(this.layout,encounter);
       p=new Vector3(origin.x+actor.x,0,origin.z+actor.z);
+    }else{
+      const model=actorId===this.replay.heroId?this.hero:
+        this.companionHeroes.get(actorId);
+      if(model?.root.isEnabled())
+        p=new Vector3(model.root.position.x,0,model.root.position.z);
     }
     this.camera.position.set(p.x,Math.max(22,this.camera.position.y),p.z-15);
     this.camera.setTarget(new Vector3(p.x,0,p.z));
