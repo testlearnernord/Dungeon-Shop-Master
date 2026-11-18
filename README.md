@@ -66,6 +66,14 @@ without resetting bosses or duplicating historical loot. Exact day
 intervals and reward balance still require testing; no regeneration
 system has been implemented in V.002.
 
+**New shared combat runtime (after the current PR merges):**
+ordinary dungeon combat and the Cave Troll share physical actor
+movement/integration and a once-only timed-action scheduler in
+addition to their existing shared hit/heal/defense contracts.
+Boss-specific grab/throw, target AI and multi-actor combat behavior
+still require a final encounter-loop integration. No game release
+label or save format has changed.
+
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
