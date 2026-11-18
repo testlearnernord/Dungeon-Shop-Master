@@ -1,12 +1,13 @@
 import type { AdventurerState } from "./adventurers.ts";
+import { HEALING_HERB_HP, WAYBREAD_HP } from "./combatVitality.ts";
 import {SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 import type { GameState, ShopEconomyState, WorldEvent } from "./gameState.ts";
 
 export const ITEMS = [
-  { id: "healing-herb", name: "Healing Herb", color: "#64a84b", wholesaleCost: 3, salePrice: 6, kind: "healing", healing: 18 },
+  { id: "healing-herb", name: "Healing Herb", color: "#64a84b", wholesaleCost: 3, salePrice: 6, kind: "healing", healing: HEALING_HERB_HP },
   { id: "mana-potion", name: "Mana Potion", color: "#548bd2", wholesaleCost: 4, salePrice: 7, kind: "supply", healing: 0 },
   { id: "iron-ore", name: "Iron Ore", color: "#9a9289", wholesaleCost: 2, salePrice: 3, kind: "material", healing: 0 },
-  { id: "bread", name: "Waybread", color: "#c79246", wholesaleCost: 2, salePrice: 4, kind: "healing", healing: 8 },
+  { id: "bread", name: "Waybread", color: "#c79246", wholesaleCost: 2, salePrice: 4, kind: "healing", healing: WAYBREAD_HP },
   { id: "iron-sword", name: "Iron Sword", color: "#a4b4c3", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0 },
   { id: "leather-vest", name: "Leather Vest", color: "#805338", wholesaleCost: 5, salePrice: 8, kind: "armor", healing: 0 },
 ] as const;
