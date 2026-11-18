@@ -226,9 +226,11 @@ There is no implied V.003 release from this engine milestone.
 radii and live-frame locations **only from the persisted replay**.
 `dungeonReplayScene.ts` draws every member of that cast and every
 recorded projectile, not the previous hard-coded one-hero/one-monster
-pair. The lead hero keeps historically recorded equipment. A secondary
-hero has an identity/role but no saved equipment snapshot yet and is
-shown without presumed purchases. TAB camera focus only exposes IDs
+pair. The lead hero keeps historically recorded equipment. New `GroupCombatReplay` actors optionally snapshot their own
+purchased gear at encounter commitment, and the renderer uses that
+immutable field for each companion. Older v1 records without gear
+remain visually neutral. The spectator must never use current mutable
+hero inventory to dress historic footage. TAB camera focus only exposes IDs
 from the currently visible frame; it must not disclose future combat
 actors while browsing previous footage. The spectator never owns
 HP, RNG, movement integration, contact or rewards.
