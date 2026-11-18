@@ -90,11 +90,27 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   stable real identity, actual quantities and recorded snapshots; no
   second gameplay state owned by the interface.
 - **Activity vocabulary:** farming, progressing, discovering, fighting,
-  fleeing, recovering, grouping, shopping, unknown/last-known. A distinct
+  fleeing, recovering, grouping, shopping, **off duty** and unknown/last-known. A distinct
   real state or committed intent must back each icon. Extend the existing
   semantic sprite atlas deliberately, not with decorative emoji controls.
   All icons retain accessible text/legend and never become the sole means
   to interpret urgent equipment/HP information.
+- **Special-floor status:** don't label the shop as dungeon F5
+  in V.0003. Show **At Galvik's shop**, **Outside world · off duty**
+  (with actual two-day cooldown/return eligibility when known), or
+  **Dungeon Floor N** as mutually exclusive states. For dungeon-active
+  heroes, expose short move direction and medium-term goal where known;
+  label absent heroes accurately, without implying they are present
+  at shelves or currently fighting.
+- **One portal visual and service contract:** both customer arrivals
+  and exits share a single legible cursed vortex/doorway in the physical
+  shop; do not keep legacy two-door Floor 4/Floor 6 wayfinding,
+  unreachable checkout lines or blocked entry paths. Placement and
+  reachability tests must follow the new geometry. A swirling instance
+  portal is the proposed visual direction, not a finished asset.
+- **Floor 10 gate:** when a pass is absent, show a truthful blocked-floor
+  state without spoiling bosses or overriding the hero's autonomous
+  medium-term goals. Permit remains a temporary per-hero merchant decision.
 - **Knowledge safety:** no future-state backfill of morning/noon,
   guaranteed fatality labels for missing heroes, leaked sealed outcomes or
   extrapolated success odds. Warnings such as "unarmed" and "low HP"
