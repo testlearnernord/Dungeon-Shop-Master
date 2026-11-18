@@ -216,7 +216,10 @@ test("regenerated Floor 7 room sentry becomes a real grapple elite in committed 
   assert.deepEqual(world.heroes[0].visited,visited,"Exploration never mutates prior knowledge");
   const initial=createGameState(seed);
   const saved={
-    ...initial,day,adventurers:initial.adventurers.map(a=>
+    ...initial,day,
+    shopEconomy:{...initial.shopEconomy,
+      dailySales:{...initial.shopEconomy.dailySales,day}},
+    adventurers:initial.adventurers.map(a=>
       a.id===hero.id?first.adventurer:a),
     level7World:first.world,
     dungeonFloors:[{floor:6,cleared:true}],
