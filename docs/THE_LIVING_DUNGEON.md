@@ -95,7 +95,7 @@ the current roster or changing previous v1 recordings.
 An optional saved relationship now retains willing co-located
 groups across several days and *unanimous* already-supported
 floor transitions, provided all surviving members still share a
-genuine destination tile. They independently choose strategy;
+genuine destination tile. Each member proposes their next step from personally explored tiles; the group selects a legal route by majority and deterministic tie-breaking, never an automatic leader. After the encounter they may consent to descend together, continue exploring while a cautious friend prepares, or escort a worried climber. Hard resupply or genuine dissent always wins; waiting does not heal, add loot, or reroll combat. They independently choose strategy;
 separation, dissent, shop departure and casualty may dissolve
 the group. No player-issued party command, second combat motor,
 fabricated teleport, duplicated treasure or new save version.
