@@ -135,7 +135,13 @@ Adventurer Board shows a common numbered `TP` marker for heroes
 travelling together (TP = Temporary Party), and the expanded R
 roster shows the full group and individual companions. Dungeon
 footage shows the *historical* members of the recorded day and
-highlights the TAB-followed character. The Dungeon feed receives
+highlights the TAB-followed character. All members with
+historically recorded appearances are now physically rendered
+walking and turning along the shared saved dungeon route, with
+matching gold TP rings. The camera can follow companions before
+combat, while real fight footage uses independent actual recorded
+positions. No new pathfinding, equipment guesses or hidden state
+is invented; old v1 tapes stay compatible. The Dungeon feed receives
 actual join and leave messages when a confirmed day changes a party,
 without inventing a relationship from proximity or announcing
 combat outcomes. Solo/older recordings retain their existing view.
