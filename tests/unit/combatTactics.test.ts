@@ -87,7 +87,9 @@ test("real group enemies target a wounded tank from the shared target-selection 
   stepGroupCombat(state);
   // The monster has slightly more Euclidean distance to the tank, but
   // its aggro preference is a real selection rule in the live engine.
-  assert.equal(selectCombatTarget(state.actors[0],state.actors)?.id,"tank");
+  assert.equal(selectCombatTarget(
+    state.actors.find(actor=>actor.id==="monster")!,state.actors,
+  )?.id,"tank");
   assert.deepEqual(createGroupCombat({actors,bounds:state.bounds}).actors,
     createGroupCombat({actors:[...actors].reverse(),bounds:state.bounds}).actors);
 });
