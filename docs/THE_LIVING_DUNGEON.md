@@ -67,6 +67,38 @@ campaign should visibly change all three tracks while preserving failure risk.
   Death follows authoritative damage reaching zero HP; escape and healing are
   real choices. Failure, caution and losses remain possible.
 
+### Explicit retirement of the old simulation/combat islands
+
+**Mandatory implementation goal for V.0003, not already done:**
+
+- Retire `src/game/dungeonSimulation.ts`'s Floor 1–4 placeholder
+  day-roll formula (one damage/advance/stay/retreat roll) from active campaign
+  progression. Floors 1–4 must use the **same spatial world, intent, real
+  encounters, supplies and save semantics** as subsequent floors.
+- Eliminate **parallel authoritative combat resolvers**. The existing
+  `arenaCombatMotion.ts` has valuable real-time telegraphs, parry/dodge,
+  stagger, boss-specific grab, hit and damage semantics, while
+  `groupCombat.ts` already supports multiple actors and projectiles.
+  Design a **single deterministic encounter motor** that supports both
+  normal multi-actor fights and configurable boss abilities. Reuse proven
+  mechanics from both; do **not** simply replace group fights with the
+  current one-on-one boss controller.
+- Retire `level6Combat.ts`-only progression and
+  `level7Exploration.ts`-only expedition ownership as separate current
+  gameplay paths **after** their behavior is integrated into the unified
+  world and combat authority. Remove dead code, redundant entrypoints,
+  obsolete fixtures and stale docs, not just add a fourth new path next to
+  the old three.
+- Keep old *committed replay records* valid even if legacy simulation and
+  visual adapters survive only as explicitly bounded, read-only
+  compatibility renderers. Never use legacy outcome code for new runs.
+  Preserve the Tripo Troll assets/skills and training tooling without
+  preserving a separate live combat RNG/HP authority.
+- Verify by search/tests that new Floor 1–4 combat and boss encounters
+  commit through the same engine; no dormant import, debug toggle or
+  day transition should silently invoke a removed simulator. Enforce
+  exactly-once HP, item consumption, loot, XP, sales and deaths.
+
 ### Decision-making, not player-directed adventurers
 
 - **Farm:** revisit known **renewable** reward opportunities for modest income
@@ -204,14 +236,51 @@ The table is a target **shape**, not three simulated example outcomes.
   and historical replays remain useful. Boss mechanics should become reusable
   encounters on the common combat authority, retaining boss-specific
   animations/abilities.
-- A **single physical Galvik shop with later unlockable dungeon access
-  points** is the favored concept for deeper regions; it must not give all
-  heroes free healing after every room. Exact entrance distribution, travel
-  cost and curse explanation are **OPEN**. Current physical Floor 5 shop
-  remains until a separate approved implementation changes it.
+- **Shop access (PREFERRED OPTION UNDER DISCUSSION, NOT LOCKED):** every
+  living hero can **attempt to return** to Galvik rather than being forbidden
+  to shop by a cooldown or every-five-floor rule. Getting back is not free:
+  they must traverse a real known/reachable route, or use an actual unlocked
+  safe access point. Travel consumes morning/midday/evening opportunities
+  and can involve hazards where applicable. Checkpoints and routes persist
+  in the shared world; an ended expedition does not put the hero straight
+  back at its prior deep coordinate.
+- **First playable chapter candidate:** the physical shop stays on Floor 5.
+  Prior to unlocking deeper connections, a Floor 6–10 hero returns through
+  traversable corridors to Floor 5. Reaching/clearing a later milestone
+  (possibly after the first chapter boss on Floor 10) may permanently
+  reveal a shortcut from a safe outpost to the **same physical shop**.
+  This is *not* five duplicate shops and not a portal beside every fight.
+  The precise threshold and route remain OPEN.
+- **Future optional emergency-escape item (PITCH, NOT APPROVED):** a
+  priced, consumable **one-way return to the last usable safe shop
+  access**. It saves the hero from a dangerous retreat if activated in time,
+  but ends/intercepts the current expedition and does **not** teleport
+  them back to their deep location afterward. There must be a real
+  inventory transaction, legitimate use timing and a meaningful
+  exploration/time opportunity cost. No free respawns or zero-cost resets.
+- **Economic design check:** convenient return travel must not remove
+  inventory pressure, danger, meaningful party decisions or deep-dungeon
+  logistics. Conversely, arbitrary shop lockouts should not suppress the
+  very sales/returns that make the merchant game engaging.
+- **For debate:** whether fleeing heroes can reach *unknown* paths;
+  danger/cost of traversing previously cleared corridors; when a portal
+  is unlocked; how party members split on retreat; if and when the
+  emergency item can be used during combat; and how to show an expected
+  route/time without leaking a secret map.
+
 - Expansion of Galvik's basement, forge/pond, player-controlled prices, lore
   resolution and a full hundred floors are **outside the first vertical
   slice** and not prerequisites to fix the expedition loop.
+
+## Design test: is a shop trip worth it?
+
+A low-HP, unarmed hero on Floor 8 should be **allowed** to choose one more
+room, a cautious journey back toward Floor 5 or an emergency extraction if
+a purchased item is available. Each choice changes **actual time, danger,
+position and stock**, without a scripted forced visit. A newly discovered
+outpost shortcut later shortens the route for everyone and creates new
+shop traffic. Galvik benefits from being reachable, but supply and route
+costs still make a deep expedition genuinely risky.
 
 ## Architecture work packages (planned, no PR numbers reserved)
 
