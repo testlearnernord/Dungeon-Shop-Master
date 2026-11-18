@@ -59,18 +59,34 @@ accepts `monster`. Before any new species can be called implemented:
   a specific authored identity, distinct animation/sounds and explicit
   approved design. Capability flags are not random loot tables.
 
-## Ghoul candidate: Tripo source archived, NOT integrated
+## Ghoul first playable runtime pass: still needs visual and audio approval
 
-The owner selected a retopologized Ghoul look and supplied a rigged Tripo GLB
-with 14 raw animation clips. The **unaltered source**, its SHA-256 and the
-candidate/rejected clip index are documented in
+The owner supplied a rigged retopologized Tripo Ghoul GLB with 14 clips,
+plus a later **separate** 1-clip `idle_combat` export.
+Both original source GLBs and their hashes remain archived in
 [`TRIPO_GHOUL_ASSET_AUDIT.md`](TRIPO_GHOUL_ASSET_AUDIT.md) and
 [`assets/tripo/ghoul.manifest.json`](../assets/tripo/ghoul.manifest.json).
-This is **source asset progress only**, not a shipped monster, a validated
-runtime animation set, approved final combat role, or a spawn-pool change.
-The original is archived outside `public/`; a future curated runtime GLB,
-Idle, unique SFX, actual Babylon preview and replay tests are still needed.
-Do not recycle the Cave Troll's animations or audio for the Ghoul.
+`predev/prebuild` now losslessly consolidates all 15 animations into
+`public/assets/models/dungeon-ghoul-tripo.glb`; no altered source
+archives or throwaway generated code enter version control.
+
+**CURRENT runtime:** `dungeonLayout.ts` spawns only Ghouls in ordinary
+spatial encounter sites across Floors 1–4/7. `dungeonGhoulVisual.ts`
+loads the actual 65-joint textured rig in recorded combat, chooses
+walk, windup/leap, claw, stagger, death or idle clips from the REAL
+`GroupCombatReplay` phase age, and hides the primitive loading fallback
+once ready. The room layout keeps its genuine walkable graph and
+combat collision authority, with separate crypt tomb/pillar/ghostflame
+cosmetics in `ghoulCryptArt.ts`.
+
+**Still required for the finished monster:** actual player screenshot
+approval of model direction, height, feet/ground contact, which side
+each claw strikes, animation transitions and visual hit timing;
+Ghoul-specific attack, movement, hurt and death SFX; texture-size
+optimization and browser/performance spot-check on real hardware.
+The emitted 15-clip runtime is a playable **first integration**, not
+a declaration that every clip is polished. The Cave Troll's authored
+grapple/throw remains exclusively his; the Ghoul has no inherited throw.
 
 ## Replay and daily pacing contract
 

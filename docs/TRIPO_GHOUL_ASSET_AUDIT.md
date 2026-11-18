@@ -1,6 +1,17 @@
 # Ghoul (ordinary monster) · Tripo source audit
 
-**Status: archived source only, NOT integrated into the game.** This is the user's current Tripo export, not a final Babylon-ready curated GLB. Keep the complete original for future animation selection. The existing ordinary monster spheres and combat data remain unchanged.
+**Status: first playable runtime integration, final visual/audio sign-off pending.**
+The author's two unmodified Tripo source exports are both preserved.
+Predev/prebuild now losslessly grafts the standalone Idle into the
+14-clip source to produce
+`public/assets/models/dungeon-ghoul-tripo.glb`.
+The ordinary spatial dungeon now spawns only Ghouls and the
+Babylon replay loads their real skinned 65-joint 15-clip visual,
+driven by actual recorded fight frames (no new battle motor).
+The surrounding dungeon has an independent burial crypt art style.
+Until the player inspects actual screenshots/animations we do not
+claim correct foot planting, scale, facing, attack alignment or
+complete unique Ghoul SFX.
 
 ## Verified original
 

@@ -457,7 +457,8 @@ export function inspectDungeonPlayback() {
        mesh.name.startsWith("dungeon-corridor-tile-")||
        mesh.name.startsWith("dungeon-room-tile-"))&&mesh.isVisible).length,
     hiddenTorches:scene.meshes.filter(mesh=>
-      mesh.name.startsWith("dungeon-torch-")&&!mesh.isEnabled()).length,
+      (mesh.name.startsWith("dungeon-torch-")||
+       mesh.name.startsWith("dungeon-crypt-room-"))&&!mesh.isEnabled()).length,
     disabledTorchLights:scene.lights.filter(light=>
       light.name.startsWith("dungeon-torchlight-")&&!light.isEnabled()).length,
     combatEnemyVisible:scene.getMeshByName("dungeon-combat-creature")?.isEnabled()??false,
@@ -474,6 +475,20 @@ export function inspectDungeonPlayback() {
       })),
     temporaryPartyRings:scene.meshes.filter(mesh=>
       mesh.name.startsWith("dungeon-tp-ring-")&&mesh.isEnabled()).length,
+    ghoulActors:scene.transformNodes.filter(node=>
+      node.name.startsWith("dungeon-ghoul-")&&
+      node.metadata?.visualId==="tripo-ghoul").map(node=>({
+        actorId:node.metadata?.recordedActorId as string,
+        visible:node.isEnabled(),status:node.metadata?.tripoStatus as string,
+        geometryCount:node.metadata?.geometryCount as number|undefined,
+        animationClip:node.metadata?.animationClip as string|null,
+        boneCount:node.metadata?.tripoBoneCount as number|undefined,
+        error:node.metadata?.tripoError as string|undefined,
+      })),
+    cryptRelics:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-crypt-room-")).length,
+    ghoulFallbacks:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-enemy-")&&mesh.isEnabled()).length,
   };
 }
 

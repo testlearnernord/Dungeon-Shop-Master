@@ -81,7 +81,17 @@
   snapshot requirement is superseded by the chronological shared-clock
   design in `docs/LIVING_WORLD_CLOCK.md` (not implemented). New ordinary monsters
   require full concept, approved GLB, animation, SFX and visual tests
-  per `docs/MONSTER_ASSET_PIPELINE.md`; a Ghoul is only a candidate.
+  per `docs/MONSTER_ASSET_PIPELINE.md`. The first real Ghoul vertical
+  slice now replaces generated ordinary enemy placeholder subtypes:
+  `dungeonLayout.ts` places `ghoul`, and `dungeonGhoulVisual.ts`
+  loads the owner's authored 14+1 Tripo clips from the deterministic
+  `prebuild/predev` GLB assembly (original sources unchanged).
+  `ghoulCryptArt.ts` decorates the existing actual world rooms:
+  no extra arena, collision authority or combat. Render poses consume
+  actual recorded GroupCombat frames and their phase changes, not new
+  damage/HP. This is a FIRST VISUAL PASS pending artist-reviewed
+  facing, foot contact, contact timing, size and original Ghoul SFX.
+  Do not describe it as a fully approved polished monster.
 - **CURRENT opportunistic party expedition (after this PR):**
   `dungeonParties.ts` joins only willing, living, not-yet-processed heroes
   standing on the *same physical tile and floor* at day start, max three.

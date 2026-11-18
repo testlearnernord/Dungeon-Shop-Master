@@ -277,11 +277,17 @@ rewrite existing historical recordings or claim V.003 released.
 **Current pacing and art gate (after this PR):** authentic spatial days
 have up to 36 connected steps and two actually reached fights; a winning
 party can continue instead of the first fight ending the day. Past replays
-remain unchanged. Current ordinary monsters are named combat specs and
-sphere placeholders, not finished creature models. The Ghoul candidate
-must pass the approved concept > GLB > rig/animation > original SFX >
-replay integration > visual/test gates in `MONSTER_ASSET_PIPELINE.md`
-before being offered as a shipped creature.
+remain unchanged. **Ghoul first playable integration:** new seeded
+ordinary monster sites use the owner's actual skinned Ghoul model
+(14 combat clips + separately exported Idle combined during build).
+Dungeon recordings display authored attacks, reactions, walking
+and deaths using the saved fight phase times. Existing physical
+rooms receive a separate crypt/tomb/pillar/fog aesthetic instead
+of the prototype bare stone. Remaining work before FINAL visual
+acceptance: explicit player screenshot approval of scale, orientation,
+foot planting, animation contact/transition, original Ghoul SFX,
+and GLB texture/performance optimization. The Cave Troll's unique
+grapple remains unrelated. See MONSTER_ASSET_PIPELINE.md.
 
 ### P3 — Adventurer Board 2.0
 

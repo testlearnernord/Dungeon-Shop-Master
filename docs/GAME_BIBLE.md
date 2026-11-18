@@ -77,8 +77,12 @@ The repository currently implements:
   Fixed Morning/Midday/Evening simulation snapshots have been superseded
   in the agreed V.003 design by one paced, pausable shared world clock
   with ordered event/last-known reports. This time system is NOT yet
-  implemented. See LIVING_WORLD_CLOCK.md. The named Ghoul is only
-  an art candidate; see MONSTER_ASSET_PIPELINE.md.
+  implemented. See LIVING_WORLD_CLOCK.md. The first ordinary
+  Ghoul is now generated on Floors 1–4/7 and rendered with its original
+  skinned Tripo animation clips in recorded fights, and these rooms
+  use a procedural burial-crypt visual theme. This is an initial
+  playable art pass, NOT final animation/facing review or finished
+  Ghoul SFX. See MONSTER_ASSET_PIPELINE.md and TRIPO_GHOUL_ASSET_AUDIT.md.
 - **Autonomous co-located dungeon parties (CURRENT after this PR):**
   On Floors 1–4 and 7, willing heroes who already share the same
   physical tile can form an opportunistic group of up to three on

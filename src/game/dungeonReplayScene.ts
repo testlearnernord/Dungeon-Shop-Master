@@ -22,6 +22,8 @@ import {
 import {
   recordedTemporaryPartyFormation, recordedPartyMemberAlive,
 } from "./dungeonPartyFormation.ts";
+import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts";
+import {ghoulRecordedPhaseAge} from "./ghoulMotion.ts";
 import type { GroupPhase } from "./groupCombat.ts";
 
 const SPACING=2.5;
@@ -51,6 +53,7 @@ export class DungeonReplayScene {
   private hero:HeroVisual|null=null;
   private readonly companionHeroes=new Map<string,HeroVisual>();
   private readonly enemies=new Map<string,Mesh>();
+  private readonly ghouls=new Map<string,GhoulVisual>();
   private readonly combatMaterials:StandardMaterial[]=[];
   private projectiles:Mesh[]=[];
   private lastVisibility="";
@@ -85,6 +88,8 @@ export class DungeonReplayScene {
     this.companionHeroes.clear();
     for(const mesh of this.enemies.values())mesh.dispose();
     this.enemies.clear();
+    for(const visual of this.ghouls.values())visual.dispose();
+    this.ghouls.clear();
     for(const mesh of this.projectiles)mesh.dispose();
     this.projectiles=[];
     for(const material of this.combatMaterials)material.dispose();
@@ -159,12 +164,26 @@ export class DungeonReplayScene {
           const enemy=MeshBuilder.CreateSphere("dungeon-enemy-"+actor.id,{
             diameter:1.35,segments:12,
           },this.scene);
+          // The primitive is a loading/error FALLBACK, never the shipped
+          // ordinary monster visual when a valid Tripo model is available.
           enemy.material=boss?elite:ordinary;
           enemy.isPickable=false;
           enemy.metadata={replayOnly:true,recordedActorId:actor.id,
+            fallbackOnly:true,
             ...(boss?{specialAbility:actor.specialAbility}:{})};
           enemy.setEnabled(false);
           this.enemies.set(actor.id,enemy);
+          const feature=this.layout.features.find(f=>f.id===actor.id);
+          if(feature?.kind==="monster"&&feature.subtype==="ghoul"){
+            const ghoul=createDungeonGhoulVisual(this.scene,actor.id);
+            this.ghouls.set(actor.id,ghoul);
+            void ghoul.ready.then(()=>{
+              // If paused on a saved fight, replace the fallback as soon
+              // as the asset loads; no new simulation step is needed.
+              if(this.replay===record&&this.lastSnapshot)
+                this.show(this.lastSnapshot.time);
+            });
+          }
         }
       }
       const maxProjectiles=Math.min(30,Math.max(0,...record.encounters.flatMap(
@@ -253,6 +272,7 @@ export class DungeonReplayScene {
         snapshot.time);
     }
     for(const enemy of this.enemies.values())enemy.setEnabled(false);
+    for(const visual of this.ghouls.values())visual.root.setEnabled(false);
     for(const mesh of this.projectiles)mesh.setEnabled(false);
     if(snapshot.encounter&&snapshot.frame){
       const origin=toWorld(this.layout,snapshot.encounter);
@@ -268,18 +288,29 @@ export class DungeonReplayScene {
         }
         const enemy=this.enemies.get(actor.id);
         if(enemy){
-          enemy.setEnabled(true);
-          const boss=actor.specialAbility==="grapple-throw";
-          enemy.position.set(origin.x+actor.x,
-            (boss?1.25:0.90),origin.z+actor.z);
-          enemy.rotation.y=actor.heading;
-          const size=Math.max(0.75,actor.radius*1.7);
-          enemy.scaling.set(
-            size*(actor.hp>0?1:0.65),
-            size*(boss?1.5:1)*(actor.hp>0?1:0.42),
-            size*(actor.hp>0?1:0.65),
-          );
-          enemy.metadata={...enemy.metadata,combatPhase:actor.phase,hp:actor.hp};
+          const ghoul=this.ghouls.get(actor.id);
+          const skinned=ghoul?.root.metadata?.tripoStatus==="ready";
+          if(skinned&&ghoul){
+            ghoul.root.setEnabled(true);
+            ghoul.root.position.set(origin.x+actor.x,.08,origin.z+actor.z);
+            ghoul.root.rotation.y=actor.heading;
+            ghoul.root.metadata.hp=actor.hp;
+            ghoul.animate(actor.phase,ghoulRecordedPhaseAge(
+              snapshot.encounter.combat.frames,actor.id,snapshot.frame.t));
+          }else{
+            enemy.setEnabled(true);
+            const boss=actor.specialAbility==="grapple-throw";
+            enemy.position.set(origin.x+actor.x,
+              (boss?1.25:0.90),origin.z+actor.z);
+            enemy.rotation.y=actor.heading;
+            const size=Math.max(.75,actor.radius*1.7);
+            enemy.scaling.set(
+              size*(actor.hp>0?1:.65),
+              size*(boss?1.5:1)*(actor.hp>0?1:.42),
+              size*(actor.hp>0?1:.65),
+            );
+            enemy.metadata={...enemy.metadata,combatPhase:actor.phase,hp:actor.hp};
+          }
         }
       }
       for(let i=0;i<this.projectiles.length;i++){

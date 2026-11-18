@@ -1,6 +1,6 @@
 {
   "assetId": "dungeon-ghoul-tripo",
-  "status": "SOURCE_ARCHIVED_NOT_INTEGRATED",
+  "status": "FIRST_RUNTIME_VISUAL_PASS_PENDING_PLAYER_REVIEW",
   "date": "2026-11-18",
   "source": {
     "path": "assets/tripo/source/tripo_convert_2f6b9c66-0c5e-4c3b-8410-2277a099e788.glb",
@@ -165,14 +165,14 @@
     ]
   },
   "futureRuntime": {
-    "enabled": false,
+    "enabled": true,
     "proposedPath": "public/assets/models/dungeon-ghoul-tripo.glb",
-    "note": "The deterministic tools/asset_generation/consolidate_tripo_ghoul.mjs joins the original 14 clips with the new idle into one candidate GLB for Babylon inspection. Do not ship or spawn until visual + SFX acceptance."
+    "note": "Now generated deterministically by predev/prebuild from two untouched source GLBs; real encounters on spatial floors 1-4/7 display Ghoul model. Final scale, facing, animation contact and Ghoul SFX not approved."
   },
   "review": {
     "visual": "Owner accepted retopologized Ghoul as an asset candidate in Tripo. This is not approval of all 14 motion clips or a shipped monster.",
-    "audio": "Not produced; unique Ghoul SFX required",
-    "engine": "Source archive complete and merge tool/test committed. Gameplay remains unmodified; Babylon visual sign-off and spawn mapping still missing.",
+    "audio": "Original unique Ghoul SFX not yet produced or integrated; final species approval blocked on them.",
+    "engine": "First playable runtime art integration with existing authoritative group combat; authored clips play in dungeon recorded fights. New crypt decorations are visual only. Needs screenshot/motion and performance acceptance.",
     "rights": "Review actual Tripo license and generation terms before distribution"
   },
   "additionalExports": [

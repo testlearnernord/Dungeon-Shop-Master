@@ -94,10 +94,16 @@ never pads artificial idle or re-rolls the world's outcomes.
 The real physical Board displays equipped/empty weapon and armor
 sockets plus exact HP; the approved V.003 Board instead needs an
 ordered, knowledge-safe event/last-reported timeline backed by the
-planned single world clock. No mandatory three phases. No shipped ordinary monster
-GLB exists yet: `MONSTER_ASSET_PIPELINE.md` defines concept, mesh,
-rig, transitions, sounds, Babylon inspection and acceptance gates.
-Ghoul has a candidate Tripo source GLB archived outside `public/`, but no curated/released monster or validated in-game renderer; see `TRIPO_GHOUL_ASSET_AUDIT.md`.
+planned single world clock. No mandatory three phases. The first regular dungeon Ghoul
+now uses its actual 14+Idle original Tripo rig and authored
+animation clips as a FIRST playable visual pass, replacing
+prototype ordinary monster spheres when its GLB loads. All
+generated ordinary sites now choose Ghoul; replay combat HP,
+collisions, death, treasure and time are unchanged in authority.
+The existing maze/arena rooms get a cosmetic burial-crypt treatment.
+Final human approval of facing, motion, hit timing and Ghoul SFX
+remains open; see `MONSTER_ASSET_PIPELINE.md` and
+`TRIPO_GHOUL_ASSET_AUDIT.md`.
 
 **Current limited cooperative slice (after this PR merges):**
 willing co-located heroes can travel together for one committed

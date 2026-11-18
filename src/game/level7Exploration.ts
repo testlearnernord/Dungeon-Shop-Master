@@ -207,14 +207,13 @@ function fightAgainst(
     x:0,z:0,hp:monsterHp,maxHp:monsterHp,
     damage:(layout.floor===7?8+monsterRand.int(4):2+layout.floor+monsterRand.int(3))+
       (elite?4:0),
-    armor:(monster.subtype==="skeleton"?3:1)+(elite?4:0),
-    speed:elite?2.3:2.6,reach:elite?2:1.6,
+    armor:1+(elite?4:0),
+    speed:elite?2.7:3.0,reach:elite?2:1.6,
     // The grab-and-throw is the signature of the UNIQUE Cave Troll.
     // The shared engine supports it, but renewable generic foes cannot
     // acquire that boss art/ability merely by spawning as elites.
     ...(elite?{radius:1.05,agility:8,staggerThreshold:12}:{}),
-    ...((elite || monster.subtype==="skeleton" && cycle>0 && cycle%2===1)
-      ?{meleeAbility:"heavy" as const}:{}),
+    ...(elite?{meleeAbility:"heavy" as const}:{}),
   });
   const obstacles=[];
   for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){

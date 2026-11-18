@@ -185,8 +185,10 @@ export function generateDungeonLayout(
   for(const p of monsters){
     if(features.filter(f=>f.kind==="monster").length>=8)break;
     if(Math.abs(p.x-1)+Math.abs(p.z-1)<6)continue;
-    const types=["goblin","skeleton","slime","cultist"];
-    reserve("monster",p,types[random.int(types.length)]);
+    // The first authored ordinary species now replaces the four
+    // placeholder labels. A future species must arrive with its own
+    // 3D rig/animations/encounter identity, not another generic sphere.
+    reserve("monster",p,"ghoul");
   }
 
   // Fill in spare dead ends if any of the initial chosen positions were occupied.
