@@ -144,8 +144,9 @@ export function createTripoCaveTrollVisual(scene: Scene): CaveTrollVisual {
         }
       }
       const skeleton=staged.skeletons[0];
+      const importedNodes=staged.transformNodes;
       const lookup = (name:string): TransformNode | null => {
-        const joint=staged.transformNodes.find(node=>node.name===name);
+        const joint=importedNodes.find(node=>node.name===name);
         if (joint) return joint;
         const linked=skeleton.bones.find(b=>b.name===name)?.getTransformNode();
         return linked??null;
