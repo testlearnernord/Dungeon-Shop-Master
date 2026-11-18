@@ -52,9 +52,19 @@
   multi-hero fight resolver, apply throw damage before
   landing, teleport through walls, remove real stagger
   resistance or mark this as
-  playable campaign content before floor integration
-  and group 3D viewer are finished. Optional group boss
+  multi-hero campaign content before party progression
+  and save ownership are integrated. Optional group boss
   v1 replay fields are strict-save-validated.
+- **CURRENT recorded dungeon presentation (after this PR):**
+  `dungeonReplayCast.ts` projects only actually saved combat actors.
+  `dungeonReplayScene.ts` renders all recorded heroes/monsters/projectiles
+  without recomputing fights. TAB focus reveals only actors in the currently
+  visible combat frame, never enemies from a later scene. Secondary hero
+  equipment is not recorded yet; show neutral gear rather than invent
+  purchases. Level 7 regenerated room sentries at eligible site cycles
+  may use the existing `grapple-throw` combat ability as ordinary renewable
+  elites. These are not unique Cave Trolls, new floor gates or a true
+  multi-hero campaign expedition; do not mark party progression finished.
 - **CURRENT live actor model (after this PR):**
   `combatActor.ts` owns the shared mutable `CombatActorRuntime`
   contract, phase transitions, action time and resource refresh.
