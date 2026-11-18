@@ -56,8 +56,10 @@ The repository currently implements:
 - **Recorded group dungeon playback and renewable elites (CURRENT after this PR):**
   The dungeon spectator projects *all* actors and projectiles from one
   saved `GroupCombatReplay`; TAB focuses only a fighter visible in
-  the current combat frame. Other heroes get only historically known
-  equipment, never invented purchases. Floor 7 room sentries can return
+  the current combat frame. Newly recorded companions visibly carry
+  their actual historically purchased Iron Sword/Leather Vest (if any).
+  Older v1 footage lacking equipment snapshots stays neutral. No replay
+  may query today's changed shop roster to dress a historical fighter. Floor 7 room sentries can return
   on a deterministic later site generation as elite melee monsters with
   genuine `grapple-throw` combat, physical collision, resistance and
   replayable results. They are renewable monsters, **not** the unique
