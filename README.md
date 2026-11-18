@@ -130,6 +130,16 @@ and one claimed monster/chest/trap site. Chest gold is split, a single
 loot item has one claimant, and every survivor's actual XP, inventory
 and personal route/recording are committed without rerolling combat.
 Group routes are selected from every present hero's own known next steps, with deterministic majority voting and no unseen map information. Following one real battle, armed and healthy companions may agree to descend, patient explorers may wait for a cautious friend, or a healer/generous ally may escort someone upward. No hero is forced into an unsafe descent or prevented from resupplying; personal goals remain distinct.
+**Temporary Party feedback (after this PR):** the wall-mounted
+Adventurer Board shows a common numbered `TP` marker for heroes
+travelling together (TP = Temporary Party), and the expanded R
+roster shows the full group and individual companions. Dungeon
+footage shows the *historical* members of the recorded day and
+highlights the TAB-followed character. The Dungeon feed receives
+actual join and leave messages when a confirmed day changes a party,
+without inventing a relationship from proximity or announcing
+combat outcomes. Solo/older recordings retain their existing view.
+
 Established, willing parties now survive multiple committed days in
 a saved relationship record. They can keep their formation after a
 unanimous transition to a neighboring early dungeon floor **only**
