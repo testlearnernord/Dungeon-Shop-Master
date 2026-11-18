@@ -79,7 +79,8 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
 
 - **Physical glance:** portrait/name, character level, dungeon floor (or last
   *known* floor), **numeric HP and HP bar**, intended/observed activity icon,
-  and Morning/Midday/Evening trail. Item icons are from the existing item
+  and an event-driven, last-reported status/recency cue instead of three
+  fixed time columns. Item icons come from the existing item
   atlas. Show weapon and armor sockets even when **empty**; actual Healing
   Herb, Waybread, Mana Potion and other carried quantities are readable.
   On limited wall texture space, prioritize health, dangerous missing gear,
@@ -89,8 +90,9 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   sockets, visibly muted when empty, and a numeric HP total next to
   its genuine health bar. The legend names both sockets. These values
   project the actual hero equipment/health with no added AI, time
-  phase or hidden replay outcome. Compact icons and three-phase
-  timelines are still part of the full Board 2.0 target.
+  phase or hidden replay outcome. The full Board 2.0 target now uses
+  chronological real reports and last-known timestamps, not three
+  mandatory phase columns.
 - **CURRENT Temporary Party feedback:** the physical Board marks every
   member of one actually saved group with the same numbered `TP1`
   (legend: **Temporary Party**); the E/R roster writes the full name
@@ -106,7 +108,7 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   override purely visual within-tile formation spacing. Feed join/leave events
   are attached to committed world transitions, never on UI refresh.
   Older v1 tapes are valid without party metadata, and the player
-  cannot command the heroes. Full three-phase Board 2.0 remains open.
+  cannot command the heroes. Full event-timeline Board 2.0 remains open.
 - **CURRENT incremental party information:** the physical Adventurer Board
   appends a compact “Party 2/3” label only for a saved relationship.
   In the expanded R roster, the same read-only relationship exposes
