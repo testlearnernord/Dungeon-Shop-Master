@@ -63,6 +63,8 @@ export interface CombatantSpec {
   readonly agility?: number;
   /** Tunable physical throw damage before actual defender armor. */
   readonly grappleDamage?: number;
+  /** Hits below poise do damage but do not cancel this actor's attack. */
+  readonly staggerThreshold?: number;
 }
 
 export interface CombatBounds {
@@ -88,6 +90,7 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
   readonly specialAbility?: "grapple-throw";
   readonly agility: number;
   readonly grappleDamage: number;
+  readonly staggerThreshold: number;
   lockedHeading: number;
   attacksStarted: number;
   activeMeleeAbility: "ordinary" | "heavy" | "grapple";
@@ -217,6 +220,10 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       throw new RangeError("Throw damage requires a grapple ability");
     const grappleDamage=spec.grappleDamage??Math.round(spec.damage*1.5);
     validNumber(grappleDamage,1,10000,spec.id+".grappleDamage");
+    const staggerThreshold=spec.staggerThreshold??
+      (spec.specialAbility==="grapple-throw"
+        ? Math.max(10,Math.round(spec.damage/2)):0);
+    validNumber(staggerThreshold,0,10000,spec.id+".staggerThreshold");
     const radius = spec.radius ?? 0.5;
     validNumber(radius, 0.1, 3, spec.id + ".radius");
     // Healing Herbs are real player-sold consumables. Do not mint two
@@ -234,7 +241,7 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       meleeAbility:chooseCombatAbility(
         [spec.meleeAbility??"ordinary"],1,0,0) as "ordinary"|"heavy",
       ...(spec.specialAbility?{specialAbility:spec.specialAbility}:{}),
-      agility,grappleDamage,
+      agility,grappleDamage,staggerThreshold,
       attacksStarted:0,
       activeMeleeAbility:(spec.meleeAbility??"ordinary") as "ordinary"|"heavy",
       grappleTargetId:null,grabbedById:null,
@@ -437,8 +444,14 @@ function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupAct
   const dealt=hit.amount;
   target.hp=hit.hp;
   cue(batch,s,attacker,"hit",target.id,dealt);
-  if (target.hp === 0) { phase(target,"dead"); cue(batch,s,target,"death",attacker.id); }
-  else phase(target,"hurt");
+  if (target.hp === 0) {
+    phase(target,"dead");cue(batch,s,target,"death",attacker.id);
+  } else if (dealt>=target.staggerThreshold) {
+    // A boss still takes genuine damage from weak hits. Only *interruption*
+    // requires sufficient impact, otherwise three cheap arrows can keep a
+    // giant in "hurt" forever and no boss special ever finishes winding up.
+    phase(target,"hurt");
+  }
 }
 
 function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: GroupCombatCue[]): void {
