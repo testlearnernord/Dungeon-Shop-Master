@@ -1,6 +1,6 @@
 import type { AdventurerState } from "./adventurers.ts";
 import {
-  dungeonNeighbors, dungeonShortestPath, generateDungeonLayout, tileAt,
+  dungeonNeighbors, dungeonShortestPath, generateExpeditionLayout, tileAt,
   type DungeonFeature, type DungeonLayout, type DungeonPoint,
 } from "./dungeonLayout.ts";
 import { resolveGroupCombat, type CombatantSpec, type GroupCombatReplay } from "./groupCombat.ts";
@@ -47,11 +47,13 @@ export interface Level7ReplayEncounter {
   /** Actual fixed-step combat output. Do not resimulate on playback. */
   readonly combat: GroupCombatReplay;
 }
+/** Replays from all spatial early floors share the same immutable frame schema. */
+export type SpatialDungeonFloor = 1 | 2 | 3 | 4 | 7;
 export interface Level7Replay {
   readonly version: 1;
   readonly day: number;
   readonly heroId: string;
-  readonly floor: 7;
+  readonly floor: SpatialDungeonFloor;
   readonly appearance: {
     readonly role: AdventurerState["role"];
     readonly equipment: AdventurerState["equipment"];
@@ -142,7 +144,9 @@ function fightAgainst(
     (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0, cycle));
   const sword=hero.equipment.weapon==="Iron Sword";
   const armored=hero.equipment.armor==="Leather Vest";
-  const monsterHp=22+monsterRand.int(13);
+  const monsterHp=layout.floor===7
+    ? 22+monsterRand.int(13)
+    : 12+layout.floor*3+monsterRand.int(7);
   const specs:CombatantSpec[]=[
     {
       id:hero.id,team:"heroes",role:hero.role,
@@ -159,7 +163,8 @@ function fightAgainst(
     {
       id:monster.id,team:"monsters",role:"monster",style:"melee",
       x:0,z:0,hp:monsterHp,maxHp:monsterHp,
-      damage:8+monsterRand.int(4),armor:monster.subtype==="skeleton"?3:1,
+      damage:layout.floor===7?8+monsterRand.int(4):2+layout.floor+monsterRand.int(3),
+      armor:monster.subtype==="skeleton"?3:1,
       speed:2.6,reach:1.6,
     },
   ];
@@ -198,20 +203,29 @@ export interface Level7Tick {
   readonly defeatedMonsters: number;
 }
 /**
- * Exactly one bounded, authoritative Level 7 run per confirmed day.
- * This function is pure: it returns new state, the event's replay and rewards;
- * it never writes to the shop or calls rendering APIs.
+ * One bounded spatial expedition step for Floors 1–4 AND Level 7.
+ * All of them use the same real navigation, seeded site regeneration,
+ * treasury/trap resolution, groupCombat motor and immutable replay schema.
+ * This is pure and does not access the shop, DOM, camera or global RNG.
  */
-export function simulateLevel7Day(
+export function simulateSpatialDungeonDay(
   hero: AdventurerState, world: Level7World, campaignSeed: number, day: number,
+  occupiedHeroIds?: ReadonlySet<string>,
 ): Level7Tick {
-  if(hero.status!=="expedition"||hero.floor!==7||hero.health<=0)
-    throw new RangeError("Level 7 run requires a living F7 expedition hero");
-  const layout=generateDungeonLayout(campaignSeed,7);
+  const floor=hero.floor;
+  if(!([1,2,3,4,7] as readonly number[]).includes(floor) ||
+     (floor===7 ? hero.status!=="expedition" : hero.status!=="exploring") ||
+     hero.health<=0)
+    throw new RangeError("A living hero on spatial Floor 1–4 or 7 is required");
+  const layout=generateExpeditionLayout(campaignSeed,floor);
   const progress=getLevel7Progress(world,hero.id,layout);
   if(tileAt(layout,progress.x,progress.z)==="wall")
     throw new RangeError("Saved Level 7 hero position is not walkable");
-  const refreshed=refreshDungeonSites(world,layout,day);
+  // Remember old exploration for returning heroes, but don't treat heroes
+  // on a different floor as physically occupying a respawn location.
+  const occupied = occupiedHeroIds === undefined ? world :
+    {...world,heroes:world.heroes.filter(h=>occupiedHeroIds.has(h.heroId))};
+  const refreshed=refreshDungeonSites(occupied,layout,day);
   const resolved=new Set(refreshed.resolvedFeatureIds);
   let siteCycles=refreshed.siteCycles;
   const visited=new Set(progress.visited);
@@ -289,12 +303,12 @@ export function simulateLevel7Day(
   const xpTotal=hero.xp+xp;
   const dead=hp<=0;
   const finished=outcome==="completed";
-  const returning=outcome==="retreat"||finished;
+  const returning=floor===7 && (outcome==="retreat"||finished);
   const adventurer:AdventurerState={
     ...hero,health:hp,gold:hero.gold+gold,xp:xpTotal,
     level:1+Math.floor(xpTotal/100),
-    floor:(returning?4:7),
-    status:dead?"dead":returning?"traveling":"expedition",
+    floor:(returning?4:floor),
+    status:dead?"dead":returning?"traveling":floor===7?"expedition":"exploring",
     inventory:{...hero.inventory,loot:hero.inventory.loot+loot,healing:healingSupplies},
   };
   // Death leaves the world intact but removes that hero from active progress.
@@ -304,7 +318,7 @@ export function simulateLevel7Day(
   const heroes=world.heroes.filter(x=>x.heroId!==hero.id);
   if(!dead&&!returning)heroes.push(updated);
   const replay:Level7Replay={
-    version:1,day,heroId:hero.id,floor:7,
+    version:1,day,heroId:hero.id,floor:floor as SpatialDungeonFloor,
     appearance:{role:hero.role,equipment:{...hero.equipment}},
     knownAtStart:[...progress.visited],
     resolvedAtStart:[...refreshed.resolvedFeatureIds],
@@ -315,4 +329,13 @@ export function simulateLevel7Day(
     world:{resolvedFeatureIds:[...resolved],heroes,siteCycles},
     replay,gainedGold:gold,gainedLoot:loot,defeatedMonsters:kills,
   };
+}
+
+/** Legacy Level 7 API remains a strict wrapper over the SAME motor. */
+export function simulateLevel7Day(
+  hero: AdventurerState, world: Level7World, campaignSeed: number, day: number,
+): Level7Tick {
+  if(hero.status!=="expedition"||hero.floor!==7||hero.health<=0)
+    throw new RangeError("Level 7 run requires a living F7 expedition hero");
+  return simulateSpatialDungeonDay(hero,world,campaignSeed,day);
 }
