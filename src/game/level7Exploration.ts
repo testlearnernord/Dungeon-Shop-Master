@@ -1,10 +1,14 @@
 import type { AdventurerState } from "./adventurers.ts";
 import {
-  dungeonNeighbors, generateDungeonLayout, tileAt,
+  dungeonNeighbors, dungeonShortestPath, generateDungeonLayout, tileAt,
   type DungeonFeature, type DungeonLayout, type DungeonPoint,
 } from "./dungeonLayout.ts";
 import { resolveGroupCombat, type CombatantSpec, type GroupCombatReplay } from "./groupCombat.ts";
 import { SeededRandom } from "./random.ts";
+import {
+  dungeonGenerationSeed, dungeonSiteGeneration, refreshDungeonSites,
+  resolveDungeonSite, type DungeonSiteCycle,
+} from "./dungeonRegeneration.ts";
 
 export const LEVEL7_STEP_BUDGET = 16;
 export const LEVEL7_REPLAY_KEEP = 3;
@@ -22,6 +26,8 @@ export interface Level7HeroProgress {
 export interface Level7World {
   readonly resolvedFeatureIds: readonly string[];
   readonly heroes: readonly Level7HeroProgress[];
+  /** Version-13 backwards compatible; each ordinary site's current generation. */
+  readonly siteCycles?: readonly DungeonSiteCycle[];
 }
 export type Level7Outcome = "exploring" | "retreat" | "death" | "completed";
 export type Level7Action = "enter" | "walk" | "treasure" | "trap" |
@@ -36,6 +42,8 @@ export interface Level7ReplayEncounter {
   readonly featureId: string;
   readonly x: number;
   readonly z: number;
+  /** Optional site generation. Older recordings without it are cycle zero. */
+  readonly siteCycle?: number;
   /** Actual fixed-step combat output. Do not resimulate on playback. */
   readonly combat: GroupCombatReplay;
 }
@@ -106,12 +114,32 @@ export function chooseLevel7Step(
   return null;
 }
 
+/**
+ * Once a floor is completely mapped, re-visit actually renewed unresolved
+ * feature sites. The same BFS/path rules apply: never walk through unknown
+ * stone or teleport to a newly spawned reward.
+ */
+function chooseRenewedSiteStep(
+  layout: DungeonLayout, current: DungeonPoint,
+  visited: ReadonlySet<number>, resolved: ReadonlySet<string>,
+): DungeonPoint | null {
+  const available = layout.features
+    .filter(feature => !resolved.has(feature.id) &&
+      visited.has(tileIndex(layout,feature)) &&
+      (feature.x !== current.x || feature.z !== current.z))
+    .map(feature => dungeonShortestPath(layout,current,feature))
+    .filter(route => route.length > 1)
+    .sort((a,b) => a.length-b.length ||
+      tileIndex(layout,a.at(-1)!)-tileIndex(layout,b.at(-1)!));
+  return available[0]?.[1] ?? null;
+}
+
 function fightAgainst(
   hero: AdventurerState, monster: DungeonFeature, campaignSeed: number,
-  layout: DungeonLayout, approach: DungeonPoint,
+  layout: DungeonLayout, approach: DungeonPoint, cycle = 0,
 ): {hp:number;healsUsed:number;outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay} {
-  const monsterRand=new SeededRandom(
-    (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0);
+  const monsterRand=new SeededRandom(dungeonGenerationSeed(
+    (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0, cycle));
   const sword=hero.equipment.weapon==="Iron Sword";
   const armored=hero.equipment.armor==="Leather Vest";
   const monsterHp=22+monsterRand.int(13);
@@ -183,7 +211,9 @@ export function simulateLevel7Day(
   const progress=getLevel7Progress(world,hero.id,layout);
   if(tileAt(layout,progress.x,progress.z)==="wall")
     throw new RangeError("Saved Level 7 hero position is not walkable");
-  const resolved=new Set(world.resolvedFeatureIds);
+  const refreshed=refreshDungeonSites(world,layout,day);
+  const resolved=new Set(refreshed.resolvedFeatureIds);
+  let siteCycles=refreshed.siteCycles;
   const visited=new Set(progress.visited);
   const orderedVisited=[...progress.visited];
   const steps:Level7ReplayStep[]=[
@@ -197,7 +227,7 @@ export function simulateLevel7Day(
   for(let t=1;t<=LEVEL7_STEP_BUDGET;t++){
     const next=chooseLevel7Step(layout,{
       heroId:hero.id,x:current.x,z:current.z,visited:orderedVisited,
-    });
+    }) ?? chooseRenewedSiteStep(layout,current,visited,resolved);
     if(!next){
       outcome="completed";
       steps.push({...current,t,action:"complete",hp});
@@ -214,28 +244,38 @@ export function simulateLevel7Day(
     const feature=layout.features.find(f=>f.x===current.x&&f.z===current.z);
     if(!feature||resolved.has(feature.id))continue;
     if(feature.kind==="treasure"){
-      const treasureRng=new SeededRandom((layout.seed^Math.imul(idx,1597334677))>>>0);
+      const treasureRng=new SeededRandom(dungeonGenerationSeed(
+        (layout.seed^Math.imul(idx,1597334677))>>>0,
+        dungeonSiteGeneration(siteCycles,feature.id)));
       const gain=7+treasureRng.int(9);
       gold+=gain;loot++;xp+=8;
       resolved.add(feature.id);
+      siteCycles=resolveDungeonSite(siteCycles,feature.id,day);
       steps.push({...current,t:t+0.1,action:"treasure",featureId:feature.id,hp});
     }else if(feature.kind==="trap"){
-      const roll=new SeededRandom((layout.seed^Math.imul(idx,3266489917))>>>0);
+      const roll=new SeededRandom(dungeonGenerationSeed(
+        (layout.seed^Math.imul(idx,3266489917))>>>0,
+        dungeonSiteGeneration(siteCycles,feature.id)));
       const damage=Math.max(1,5+roll.int(7)-(hero.equipment.armor==="Leather Vest"?3:0));
       hp=Math.max(0,hp-damage);
       resolved.add(feature.id);
+      siteCycles=resolveDungeonSite(siteCycles,feature.id,day);
       steps.push({...current,t:t+0.1,action:"trap",featureId:feature.id,hp});
       if(hp===0){outcome="death";steps.push({...current,t:t+0.2,action:"death",hp});break;}
     }else {
       const fight=fightAgainst({
         ...hero,health:hp,inventory:{...hero.inventory,healing:healingSupplies},
-      },feature,layout.seed,layout,previous);
+      },feature,layout.seed,layout,previous,
+        dungeonSiteGeneration(siteCycles,feature.id));
       healingSupplies=Math.max(0,healingSupplies-fight.healsUsed);
-      encounters.push({featureId:feature.id,...current,combat:fight.combat});
+      encounters.push({featureId:feature.id,...current,
+        siteCycle:dungeonSiteGeneration(siteCycles,feature.id),
+        combat:fight.combat});
       hp=fight.hp;
       steps.push({...current,t:t+0.1,action:"combat",featureId:feature.id,hp});
       if(fight.outcome==="heroes"){
         resolved.add(feature.id);
+        siteCycles=resolveDungeonSite(siteCycles,feature.id,day);
         kills++;xp+=12;gold+=2;
         steps.push({...current,t:t+0.2,action:"defeat-monster",featureId:feature.id,hp});
         // One combat at most per confirmed day; no simulated encounters offscreen.
@@ -267,12 +307,12 @@ export function simulateLevel7Day(
     version:1,day,heroId:hero.id,floor:7,
     appearance:{role:hero.role,equipment:{...hero.equipment}},
     knownAtStart:[...progress.visited],
-    resolvedAtStart:[...world.resolvedFeatureIds],
+    resolvedAtStart:[...refreshed.resolvedFeatureIds],
     steps,encounters,outcome,
   };
   return {
     adventurer,
-    world:{resolvedFeatureIds:[...resolved],heroes},
+    world:{resolvedFeatureIds:[...resolved],heroes,siteCycles},
     replay,gainedGold:gold,gainedLoot:loot,defeatedMonsters:kills,
   };
 }
