@@ -15,7 +15,7 @@
 
 **Identity (LOCKED):** An atmospheric, dark-fantasy shopkeeping simulator in a dangerous dungeon. The shop is physically operated, rather than being a menu. Adventurers are autonomous customers with identities and uncertain futures. Commerce, greed, survival and long-term consequences belong together.
 
-**The shop:** A small, rough, inhabited cursed cave, not a fully equipped city storefront. **CURRENT V.002:** its game-space is mapped to Floor 5. **APPROVED V.0003 DIRECTION:** Galvik's same physical shop becomes a **cursed special floor outside the numbered dungeon**, entered and left through one supernatural gateway regardless of where a hero abandoned an expedition. Galvik is a sharp-tongued, selfish, deeply greedy merchant. His black humor and lack of scruples are part of the intended character, not an instruction to make the player's UI hostile.
+**The shop:** A small, rough, inhabited cursed cave, not a fully equipped city storefront. **CURRENT V.002:** its game-space is mapped to Floor 5. **APPROVED V.003 DIRECTION:** Galvik's same physical shop becomes a **cursed special floor outside the numbered dungeon**, entered and left through one supernatural gateway regardless of where a hero abandoned an expedition. Galvik is a sharp-tongued, selfish, deeply greedy merchant. His black humor and lack of scruples are part of the intended character, not an instruction to make the player's UI hostile.
 
 **The central choice:** The player controls what is ordered, stocked, arranged and made available. Heroes choose their own purchases. A good shop can help them survive; selling rubbish for a profit can have consequences. Retail prices are currently fixed in the item catalog, not player-adjustable.
 
@@ -23,7 +23,7 @@
 
 ## 2. Current playable alpha (CURRENT)
 
-**Version distinction:** the currently published game is **V.002 ALPHA**. **V.0003 ALPHA — The Living Dungeon** is the **approved next design/release milestone**, not yet shipped. Its detailed target and acceptance criteria are in [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md). The independent npm `package.json` metadata version is not a playable content claim.
+**Version distinction:** the currently published game is **V.002 ALPHA**. **V.003 ALPHA — The Living Dungeon** is the **approved next design/release milestone**, not yet shipped. Its detailed target and acceptance criteria are in [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md). The independent npm `package.json` metadata version is not a playable content claim.
 
 
 The repository currently implements:
@@ -39,6 +39,14 @@ The repository currently implements:
 - **Contextual furniture placement:** shelves and compact checkout counter (new campaigns start at the corner near Galvik’s rest-room wall), plus bedroom desk/book, chest, candle/stool, bed, wall-mounted Adventurer Board and the placeable portrait of Galvik's lost beloved. Existing furniture is moved using P; new campaigns start with no shelves. Build Shelf (N) creates a compact, initially empty shelf with four persistent stock slots, bounded to 12 shelves for the current alpha. Starter merchandise lives in the bag until the player builds and stocks a shelf. The floor editor can target visible excavated wing surfaces from the original cave; preview and commit share one authoritative check. Previews are not saved until confirmed. Newly dug 1m cells can be used for furniture **once enough connected floor has been cleared for the entire object and customer access**.
 - Level 5 room excavation/expansion, persistence, hero identities and roster. Mining reuses unchanged cave geometry between strikes; the first-person pickaxe has a raised wooden shaft and overhead strike.
 - Deterministic day-based adventures on Floors 1–4, a Cave Troll encounter on Floor 6 and the shared Floor 7 exploration/replay systems. Later floors are not claimed as playable.
+- **Floor 7 renewable ordinary sites (CURRENT after the regen PR merge):**
+  spatial monster encounters, common chests and resettable traps use
+  independently staggered saved regeneration cycles. Site IDs, generation
+  count and resolved day are persistent; observed fights, paid rewards,
+  exploration geometry and old replays remain unchanged. An occupied
+  site cannot respawn underneath a hero. The autonomous walker can revisit
+  regenerated sites after a floor has been explored. Other dungeon floors
+  still use their existing separate implementations until unified.
 - **Cave Troll presentation (CURRENT, design LOCKED):** The first boss uses the owner-approved **Ashen Tunnel Mauler** character direction: pale ash-scarred, long-armed, hunched cave brute, ferocious face, rusted twin mining canisters, miner harness and an oversized two-handed iron-bound stone maul. The Level 6 arena renders a real articulated Babylon 3D figure with a miner-cavern set; in both V training preview and saved replay, existing combat phases drive chase gait, windup, slam, stagger, recovery and progressive death posing. The artwork is an approved visual direction, not a promise of photorealistic, hand-sculpted GLB production quality. **Neither the boss motor nor recorded outcomes change** because of visual animation. The visual rig has distance-driven gait, an overhead hammer strike, and **17 original vertex-painted anatomical surfaces sourced from the checked-in `ashen-mauler-sculpt.glb`**: skull, neck, shoulders/back, torso, arms, thighs, shins, feet and stone maul core. The root now faces the hero before the cinematic begins, with the original combat/replay heading unchanged. The face has been lowered and tucked forward beneath a broad humped back, reducing the rounded belly and removing skull horns that read as mechanical props. The current refinement uses densely interpolated, smooth anatomical contours rather than six stacked blocky sections; the ash-grey face sits lower between the shoulders with smaller recessed glowing eyes, nostrils, swept grey scalp/jowl hair and a movable jaw. Rounded layered shoulder armour, curved frayed apron cloth, separately articulated fingers and an irregular stone maul with ring iron bands replace the worst rigid box details. Cooler face fill preserves lava contrast. The maul's existing locked-arc windup brightens progressively; a visual-only stone shockwave, reused flying debris, grounded torso-compression recoil and brief impact light start at the combat motor's actual strike tick (0.14 seconds) and fade naturally through recover in training and committed replay alike. These effects never spawn gameplay projectiles, change a hit or rewrite combat history. On load these replace the original primitive surfaces in-place while all animated limbs, accessory geometry, names and combat state remain under the existing Babylon transform rig. A failed import retains the old geometry and records the failure; browser acceptance explicitly rejects that fallback. **This is a segmented GLB mesh set animated by the existing runtime rig, not a professionally hand-sculpted, skin-weighted character with embedded GLB animation clips.** Visual approval against the accepted concept and a later unified skinned character remain open.
   - **Approved art source:** [Ashen Tunnel Mauler character turnaround and attack concept](assets/ashen-tunnel-mauler-concept.webp). The repository artwork is a *visual target*, not a rigged 3D asset.
   - **Level 6 combat fairness (CURRENT):** New battles use a deterministic, recorded 60 Hz duel with **imperfect**, class/stat/tactics-seeded reaction reads: correct dodges and timed sword parries can prevent real hits, while hesitation and premature defense allow Cave Troll blows through. Standard and slam hits are dangerous even against armor. Ordinary navigation still steers inward, but an occasional poor dodge near the molten ledge can go outward, take one bounded 12-HP lava contact and recover inward; knockback can also reach lava. No repeated damage from one roll and no arbitrary instant-kill roll. The troll now attempts its signature **grab** on roughly 59% of eligible close-range attacks (a seeded chance plus every fourth attack as an attempt, not a guaranteed capture), tracks the hero only during the first 0.65s of its windup, and then locks the final attack lane to preserve real spatial escapes, dodges, parries and occasional agility breaks. An unsuccessful reach enters its own brief **grabMiss** retraction, never an empty-hand throw animation. Successful catches use a deliberate 1.20s warning, 1.25s grab/lift, 1.55s throw/release and 0.90s airborne flight, all from one authoritative 60 Hz timeline. A successful grapple suspends hero actions and throws them outward with a fixed-tick trajectory; landing deals 42 raw HP damage (34 HP to a sword-and-armor tank after mitigation), plus one capped 12-HP lava hit only when the real flight reaches the molten boundary. Actual contact, parries, early mistakes and final outcomes remain deterministic. No scripted kill or forced win. The 280-HP boss, readable windups and actual heal opportunities remain; final encounter outcomes are earned, not forced. Historical saved fights are never re-resolved. These adjustments do not recompute already saved encounters; their historical boss HP and outcomes remain authentic.
@@ -94,10 +102,10 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 
 **Writing rule:** Short dialogue sketches, dark jokes and prototypes can be explored without declaring the entire scenario canon. Only promote story details to LOCKED after an explicit project decision.
 
-## 5. V.0003 ALPHA — The Living Dungeon (APPROVED DIRECTION, NOT CURRENT)
+## 5. V.003 ALPHA — The Living Dungeon (APPROVED DIRECTION, NOT CURRENT)
 
 The owner has designated **The Living Dungeon** as the next major redesign
-and the target for **V.0003 ALPHA**. Full scope, proposed contracts, open
+and the target for **V.003 ALPHA**. Full scope, proposed contracts, open
 parameters and release gates: [The Living Dungeon design](THE_LIVING_DUNGEON.md).
 This does **not** declare an implemented system or a shipped version.
 
@@ -155,7 +163,7 @@ This does **not** declare an implemented system or a shipped version.
   playable first ten-floor vertical slice with the Cave Troll as a likely
   later chapter boss. Current Floor 6/7 recordings remain truthful history.
 
-**Approved V.0003 special-floor/shop access direction (NOT CURRENT):**
+**Approved V.003 special-floor/shop access direction (NOT CURRENT):**
 Galvik's shop is **not a numbered dungeon level**. The current separate
 Floor-4 and Floor-6 shop entrances are to be replaced by **one large cursed
 portal** for all arriving/departing heroes. Heroes can decide to **abort
@@ -171,7 +179,7 @@ physical portal, without silent legacy two-entrance assumptions.
 **Temporary Floor 10 restriction (APPROVED TARGET, NOT IMPLEMENTED):**
 Level 10 remains inaccessible to an individual hero until **Galvik grants
 that hero a pass**. The permit mechanic may be redesigned later, but the
-restriction itself remains in the first V.0003 chapter. Today's different
+restriction itself remains in the first V.003 chapter. Today's different
 `level6Permit` gameplay remains CURRENT only until migrated. Moving the
 Cave Troll to Floor 10 is a separate still-open placement choice.
 

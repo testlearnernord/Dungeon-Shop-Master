@@ -79,9 +79,10 @@ function validNumber(value: unknown, path: string, low: number, high: number): n
   return value as number;
 }
 function validateLevel7World(
-  raw: unknown, path: string, campaignSeed: number, heroIds: Set<string | number>,
+  raw: unknown, path: string, campaignSeed: number,
+  heroIds: Set<string | number>, day: number,
 ): void {
-  const world=object(raw,path,["resolvedFeatureIds","heroes"]);
+  const world=object(raw,path,["resolvedFeatureIds","heroes"],["siteCycles"]);
   const map=generateDungeonLayout(campaignSeed,7);
   const knownFeatures=new Set(map.features.map(f=>f.id));
   const resolved=new Set<string | number>();
@@ -92,6 +93,23 @@ function validateLevel7World(
     if(!knownFeatures.has(id))fail(path+".resolvedFeatureIds["+i+"]","must refer to a real feature");
     unique(id,resolved,path+".resolvedFeatureIds["+i+"]");
   });
+  if(world.siteCycles!==undefined){
+    const sites=array(world.siteCycles,path+".siteCycles");
+    if(sites.length>map.features.length)
+      fail(path+".siteCycles","is oversized");
+    const seenSites=new Set<string|number>();
+    sites.forEach((value,i)=>{
+      const item=path+".siteCycles["+i+"]";
+      const site=object(value,item,["id","cycle","resolvedDay"]);
+      const id=text(site.id,item+".id");
+      if(!knownFeatures.has(id))fail(item+".id","must be a real ordinary feature");
+      unique(id,seenSites,item+".id");
+      integer(site.cycle,item+".cycle",0,100000);
+      if(site.resolvedDay!==null)integer(site.resolvedDay,item+".resolvedDay",1,day);
+      if((site.resolvedDay!==null)!==resolved.has(id))
+        fail(item,"resolvedDay must agree with current generation resolution");
+    });
+  }
   const progress=array(world.heroes,path+".heroes");
   if(progress.length>100)fail(path+".heroes","is oversized");
   const seenHeroes=new Set<string | number>();
@@ -184,7 +202,9 @@ function validateLevel7Replay(
   if(encounters.length>1)fail(path+".encounters","must contain at most one encounter per day");
   encounters.forEach((value,i)=>{
     const item=path+".encounters["+i+"]";
-    const encounter=object(value,item,["featureId","x","z","combat"]);
+    const encounter=object(value,item,["featureId","x","z","combat"],["siteCycle"]);
+    if(encounter.siteCycle!==undefined)
+      integer(encounter.siteCycle,item+".siteCycle",0,100000);
     const feature=features.get(text(encounter.featureId,item+".featureId"));
     if(!feature||feature.kind!=="monster")fail(item+".featureId","must refer to a monster");
     if(encounter.x!==feature.x||encounter.z!==feature.z)
@@ -337,7 +357,7 @@ function validateState(value: unknown): asserts value is GameState {
     }
   });
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
-  validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds);
+  validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds,day);
   let parsedShopLayout:ShopLayout;
   {
     const layout=object(state.shopLayout,"payload.shopLayout",["shelves","counter"]);

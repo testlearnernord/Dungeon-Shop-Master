@@ -1,10 +1,10 @@
-# The Living Dungeon — V.0003 ALPHA design target
+# The Living Dungeon — V.003 ALPHA design target
 
 > **Approved direction, not implemented gameplay · 2026-11-18.**
-> Dungeon Shop Master's next named milestone is **V.0003 ALPHA — The Living Dungeon**.
+> Dungeon Shop Master's next named milestone is **V.003 ALPHA — The Living Dungeon**.
 > The existing published build still displays **V.002 ALPHA** and the npm package
 > still has independent metadata `0.1.0`. Do not bump the in-game release label
-> or claim V.0003 is playable until its release acceptance gates are met.
+> or claim V.003 is playable until its release acceptance gates are met.
 > Current code/tests and the Game Bible govern implemented mechanics; this
 > document governs the **agreed design goals** and identifies proposals to test.
 
@@ -46,6 +46,20 @@ can later identify an authentic recorded use/hit/defense (when observed) rather
 than being shown a fabricated "your purchase saved them" reward. A ten-day
 campaign should visibly change all three tracks while preserving failure risk.
 
+## Delivery checkpoint (CURRENT vs planned)
+
+**First implementation slice:** the existing real Floor 7 explorer now uses
+`src/game/dungeonRegeneration.ts` to record the current generation, clear
+day and deterministic refresh of ordinary monster, trap and chest sites.
+The layout and historical records stay unchanged; old version-13 saves
+without site cycles continue to load. On a completely mapped floor, the
+existing walker can return along real walkable paths to refreshed sites.
+One captured and looted generation cannot pay twice, and no site respawns
+under an occupying hero. This is **CURRENT only on Floor 7 after this PR
+is merged**. It does **not** yet unify Floors 1–4/6, add three daily
+phases, the one-portal shop, two-day standby, hero goal planning, or the
+full V.003 release.
+
 ## Dungeon, heroes and pace
 
 ### One shared dungeon rather than three incompatible mini-simulations
@@ -76,7 +90,7 @@ campaign should visibly change all three tracks while preserving failure risk.
   Death follows authoritative damage reaching zero HP; escape and healing are
   real choices. Failure, caution and losses remain possible.
 
-### Dungeon Regeneration — APPROVED V.0003 DIRECTION, NOT CURRENT
+### Dungeon Regeneration — APPROVED V.003 DIRECTION, NOT CURRENT
 
 The dungeon is a **persistent place whose ordinary contents regenerate over
 time**. Players and heroes can revisit/farm earlier floors; exploration is not
@@ -151,7 +165,7 @@ that site and be unable to claim the same one-time chest twice.
 
 ### Explicit retirement of the old simulation/combat islands
 
-**Mandatory implementation goal for V.0003, not already done:**
+**Mandatory implementation goal for V.003, not already done:**
 
 - Retire `src/game/dungeonSimulation.ts`'s Floor 1–4 placeholder
   day-roll formula (one damage/advance/stay/retreat roll) from active campaign
@@ -350,7 +364,7 @@ must honor the three committed phase snapshots and protected knowledge.
 
 ## First chapter, cursed shop instance and one entrance
 
-**Approved V.0003 direction (supersedes all Floor-5-location and return-path
+**Approved V.003 direction (supersedes all Floor-5-location and return-path
 proposals in earlier planning):**
 
 - **Galvik's physical shop is a cursed SPECIAL FLOOR**, outside the
@@ -389,7 +403,7 @@ proposals in earlier planning):**
   the first chapter, regardless of that hero's strength or discoveries.
   The owner intends to redesign the permit system separately later.
   The *current implementation* uses a different `level6Permit` flag
-  for Floor 6, so the V.0003 design must explicitly migrate/replace the
+  for Floor 6, so the V.003 design must explicitly migrate/replace the
   permit gate; never call the new Floor 10 restriction implemented.
 - The **Cave Troll is a possible boss around Floor 10** in the new chapter.
   Floor 10 pass gate and boss placement are distinct questions: the
@@ -468,7 +482,7 @@ These are **coherent development packages**, not a mandate for six tiny PRs.
 Combine tightly coupled contracts into larger, testable changes; prefer
 vertical integration rather than new disconnected framework islands.
 
-## Release acceptance: when V.0003 ALPHA can replace V.002
+## Release acceptance: when V.003 ALPHA can replace V.002
 
 - Fresh campaign: sale/credit → physical inventory → real expedition decision
   → real combat/item effect → board and returned-hero feedback, verified in a

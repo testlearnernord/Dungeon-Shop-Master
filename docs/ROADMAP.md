@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Development Roadmap
 
-> **Reviewed 2026-11-18 · next release target: V.0003 ALPHA —
+> **Reviewed 2026-11-18 · next release target: V.003 ALPHA —
 > The Living Dungeon (DESIGN APPROVED, NOT YET SHIPPED).**
 > Source, tests and merged PRs define what is actually playable. Do not
 > promote this target to the in-game version label before acceptance.
@@ -67,6 +67,14 @@ Do not overbuild extra content before this loop is both real and fun.
   board-readable effect. Validate cash, stock, debt, item and HP accounting.
 
 ### P1 — One shared explorer for the first ten floors
+
+**First implementation slice (code in this feature PR; CURRENT only after
+merge):** deterministic per-site monster/chest/trap regeneration integrated
+with the real Floor 7 explorer, strict v13 save validation, legacy-save
+compatibility, visited-floor farming route fallback, and unit tests.
+This does **not** replace the Floors 1–4 roll simulator or unify boss
+combat yet. The next implementation must reuse this site authority
+across the remaining floors, not fork it.
 
 - **Remove the Floor 1–4 placeholder** `dungeonSimulation.ts`
   damage/progress coin-flip from active gameplay, not merely hide it behind
@@ -163,7 +171,7 @@ Do not overbuild extra content before this loop is both real and fun.
   playthroughs. Measure ten days for dead periods, exploit farming,
   unfinished sales, hopeless early parties and save/replay discrepancies.
 
-## V.0003 ALPHA release gates
+## V.003 ALPHA release gates
 
 1. **Real visible causality:** at least one real bought item measurably
    changes recorded HP/damage/ability, without fabricated post-hoc bonuses.
