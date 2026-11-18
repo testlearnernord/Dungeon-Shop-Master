@@ -19,7 +19,7 @@ export const GRAPPLE_TIMING = Object.freeze({
 });
 export const GRAPPLE_HOLD_OFFSET = 2.15;
 export const GRAPPLE_THROW_DISTANCE = 7.5;
-export const GRAPPLE_FLIGHT_SECONDS = 0.90;
+export const GRAPPLE_FLIGHT_SECONDS = GRAPPLE_TIMING.flight;
 
 export function grappleEscapeChance(agility:number):number {
   if(!Number.isFinite(agility)||agility<0||agility>1000)
