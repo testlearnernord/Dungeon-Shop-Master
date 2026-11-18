@@ -77,8 +77,9 @@
   `dungeonReplayPlayback.ts` replays the stored routes and encounter
   frames unchanged, not artificial filler or time dilation. The
   physical Board gains empty/filled weapon and armor sockets and numeric
-  HP alongside existing group labels. Morning/Midday/Evening world
-  snapshots are NOT implemented or fabricated. New ordinary monsters
+  HP alongside existing group labels. The old fixed three-phase world
+  snapshot requirement is superseded by the chronological shared-clock
+  design in `docs/LIVING_WORLD_CLOCK.md` (not implemented). New ordinary monsters
   require full concept, approved GLB, animation, SFX and visual tests
   per `docs/MONSTER_ASSET_PIPELINE.md`; a Ghoul is only a candidate.
 - **CURRENT opportunistic party expedition (after this PR):**
@@ -226,7 +227,7 @@
   previously looted chest twice, override the Floor 10 pass or create
   a second farming/loot RNG authority. Cooldowns are tuning values,
   not approved constants.
-- **V.003 is a target, not current gameplay.** The playable in-game label is still V.002 ALPHA; npm package version `0.1.0` is independent. The Living Dungeon is the approved direction (shared seeded expedition world, actual shop-item causality and a three-phase, HP/equipment-visible Adventurer Board). No new time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from the design document. Protect old Floor 6/7 recordings and existing version-13 saves during staged migrations.
+- **V.003 is a target, not current gameplay.** The playable in-game label is still V.002 ALPHA; npm package version `0.1.0` is independent. The approved shared-clock direction is defined in `docs/LIVING_WORLD_CLOCK.md`: one paced, deterministic, pausable world clock for both shop and dungeon while the shop is active; intentional bed-based overnight completion; ordered true vs last-known reports and replay event bookmarks. **Morning/Midday/Evening is NOT an authoritative three-phase engine/Board requirement.** Existing `gameState.advanceDay` remains bed-batched until a tested migration; never claim this clock is shipped. No additional time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from design documents. Protect old Floor 6/7 recordings and version-13 saves during staged migrations.
 - **Story causality remains OPEN.** The young hero, mercenary leader, transfer of the curse, Floor 100 and Galvik's eventual role are not final canon. The earlier **amulet mechanic is removed from the current design direction**, not an OPEN prerequisite; do not reintroduce it by accident. Short cynical Galvik-as-commentator sketches are likewise not a locked protagonist transition.
 
 ## How to implement changes
@@ -250,6 +251,7 @@ Before marking a PR ready, **review the three core documents** against its chang
 | [AGENTS](AGENTS.md) | Contributor procedure, coding/testing expectations, source-of-truth rules or project invariants change |
 | [UI Design System](docs/UI_DESIGN_SYSTEM.md) | HUD, dialogs, world hints, interaction patterns, accessible inputs, colors, layout or shared icons change |
 | [Roadmap](docs/ROADMAP.md) | Milestones are delivered, reprioritized, canceled or gain approved scope |
+| [Living World Clock](docs/LIVING_WORLD_CLOCK.md) | The agreed world-time, pause, sleep, event order, known-state/replay or save-migration contract changes |
 
 - Update impacted sections **with the feature PR**, not in an indefinite later cleanup.
 - **Replace/remove old descriptions** immediately when no longer true. Never keep competing “old/new” active instructions or append dated versions of the same section.

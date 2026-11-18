@@ -79,7 +79,8 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
 
 - **Physical glance:** portrait/name, character level, dungeon floor (or last
   *known* floor), **numeric HP and HP bar**, intended/observed activity icon,
-  and Morning/Midday/Evening trail. Item icons are from the existing item
+  and an event-driven, last-reported status/recency cue instead of three
+  fixed time columns. Item icons come from the existing item
   atlas. Show weapon and armor sockets even when **empty**; actual Healing
   Herb, Waybread, Mana Potion and other carried quantities are readable.
   On limited wall texture space, prioritize health, dangerous missing gear,
@@ -89,8 +90,9 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   sockets, visibly muted when empty, and a numeric HP total next to
   its genuine health bar. The legend names both sockets. These values
   project the actual hero equipment/health with no added AI, time
-  phase or hidden replay outcome. Compact icons and three-phase
-  timelines are still part of the full Board 2.0 target.
+  phase or hidden replay outcome. The full Board 2.0 target now uses
+  chronological real reports and last-known timestamps, not three
+  mandatory phase columns.
 - **CURRENT Temporary Party feedback:** the physical Board marks every
   member of one actually saved group with the same numbered `TP1`
   (legend: **Temporary Party**); the E/R roster writes the full name
@@ -106,15 +108,15 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   override purely visual within-tile formation spacing. Feed join/leave events
   are attached to committed world transitions, never on UI refresh.
   Older v1 tapes are valid without party metadata, and the player
-  cannot command the heroes. Full three-phase Board 2.0 remains open.
+  cannot command the heroes. Full event-timeline Board 2.0 remains open.
 - **CURRENT incremental party information:** the physical Adventurer Board
   appends a compact “Party 2/3” label only for a saved relationship.
   In the expanded R roster, the same read-only relationship exposes
   companion names, roles, health and the original formation day.
   Companions are not clickable player-issued orders. Never infer a
   party from proximity, fabricate hidden combat outcomes in a sealed
-  ledger or imply the full Morning/Midday/Evening Board 2.0 shipped.
-- **Expanded roster:** readable phase-column timeline per hero, filter/sort,
+  ledger or imply the full chronological Board 2.0 shipped.
+- **Expanded roster:** readable event/last-report timeline per hero, filter/sort,
   compact vertical dungeon-depth/party markers, hero profile and verified
   history of actual bought/consumed goods and recorded encounters. Use
   stable real identity, actual quantities and recorded snapshots; no
@@ -141,7 +143,7 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
 - **Floor 10 gate:** when a pass is absent, show a truthful blocked-floor
   state without spoiling bosses or overriding the hero's autonomous
   medium-term goals. Permit remains a temporary per-hero merchant decision.
-- **Knowledge safety:** no future-state backfill of morning/noon,
+- **Knowledge safety:** no future-state backfill of earlier reports,
   guaranteed fatality labels for missing heroes, leaked sealed outcomes or
   extrapolated success odds. Warnings such as "unarmed" and "low HP"
   inform the merchant without redirecting autonomous hero decisions.
@@ -151,8 +153,9 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   Contrast and reduced-motion settings must stay useful in the dark cave.
 
 This is a **future interaction contract**; the current game still uses
-a nine-hero wall texture and current roster details without a daily
-three-phase timeline.
+a nine-hero wall texture and current roster details without an
+event-based known-state timeline or a unified live shop/dungeon clock.
+The latter is defined in [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 
 ## Invariants and review gates
 - Never hide a campaign save **error** behind a collapsed panel.

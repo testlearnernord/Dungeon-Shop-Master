@@ -34,9 +34,10 @@ The player can recognize that causal chain from observable returns and recording
    and then depart via the *same* portal. After leaving the shop, the hero
    spends **two complete game days outside both shop and dungeon** (e.g.
    village, family, rest), then may start a new expedition.
-5. **Observe legitimate consequences:** morning/noon/evening board snapshots,
-   returning characters, discovered information and committed recordings reveal
-   what the player's goods did. Unknown/offscreen outcomes remain unknown.
+5. **Observe legitimate consequences:** committed, time-ordered world
+   events, last-known board updates, returning characters and replay
+   bookmarks reveal what the player's goods did. Unknown/offscreen
+   outcomes remain unknown. No mandatory three daily phases.
 6. **Advance all three progress tracks:** deeper access and altered dungeon
    rooms, surviving/leveling heroes, a richer shop with new demand and choices.
    Every day should present an understandable next decision, not just +1 day.
@@ -91,8 +92,9 @@ further exploration; casualties, real injuries/short supplies,
 route completion or defeat still stop footage earlier. Playback
 never pads artificial idle or re-rolls the world's outcomes.
 The real physical Board displays equipped/empty weapon and armor
-sockets plus exact HP; proper Morning/Midday/Evening world snapshots
-still await a real three-phase day model. No shipped ordinary monster
+sockets plus exact HP; the approved V.003 Board instead needs an
+ordered, knowledge-safe event/last-reported timeline backed by the
+planned single world clock. No mandatory three phases. No shipped ordinary monster
 GLB exists yet: `MONSTER_ASSET_PIPELINE.md` defines concept, mesh,
 rig, transitions, sounds, Babylon inspection and acceptance gates.
 Ghoul has a candidate Tripo source GLB archived outside `public/`, but no curated/released monster or validated in-game renderer; see `TRIPO_GHOUL_ASSET_AUDIT.md`.
@@ -124,13 +126,13 @@ The current physical Adventurer Board displays saved party sizes;
 the R roster additionally shows actual companion identities,
 roles, HP and founding day from that same historical relationship.
 This is still only a foundation for Board 2.0, not its full
-three-phase timeline.
+chronological event/last-known status timeline.
 
 **Not implemented:** advanced long-term party negotiation/leadership (bounded voluntary post-encounter floor coordination is now present),
 party-vs-unique-Troll campaign encounters, fully general status/
 ability effects, dungeon Floors 8–10, cursed out-of-number
-shop entrance, two-day hero standby, full Morning/Midday/
-Evening world snapshots or Adventurer Board 2.0.
+shop entrance, two-day hero standby, a shared deterministic
+shop/dungeon world clock or the full event-based Adventurer Board 2.0.
 The old Floor 6 boss progression remains separately routed.
 
 **Release label:** V.003 Alpha is the **future milestone**.
@@ -319,26 +321,29 @@ silently veto that decision.
 
 ### Time and deterministic recording
 
-- **Initial design: retain shop days**, with **Morning, Midday and Evening**
-  as three explicit expedition snapshots/commit windows. This is a design
-  target, not a claim of continuous runtime. Actual timing relative to the
-  physical shop day and bed transition must be established without replay
-  spoilers, double-settlement or time-dependent frame-rate results.
+- **Locked direction: one paced shared world clock, no three fixed phases.**
+  Shop service and dungeon movement progress on the same deterministic
+  game-time event schedule during actual shop operation. Deliberate pause,
+  background-tab pause and bed-based overnight advancement protect the
+  shopkeeper from real-time pressure. Detailed timing, authority,
+  causality, save migration and replay boundaries are specified in
+  [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md). This is not yet
+  implemented in the current day-batched simulation.
 - Only one authoritative engine advances the world and consumes the relevant
   seeded RNG. Resolve events **once**, store them and show read-only board,
   ledger, combat and exploration views from those committed events. Camera,
   focus, reload or opening the board must never advance/roll the dungeon.
-- A single expedition can last across several days and snapshots. There is
-  **no forced return to Floor 4/5** and no traverse-all-floors return trip.
+- A single expedition can last across several in-game days and committed
+  event records. There is **no forced return to Floor 4/5** and no traverse-all-floors return trip.
   A hero leaves by a deliberate upward-transition/shop choice from their
   current depth; commerce is real and free restocks are forbidden.
 - Shop visits and **outside-world standby** are explicit, mutually exclusive
   lifecycle states. **Two full days after physically leaving the shop** are
   spent away from the shop and away from the dungeon. Example: exit shop on
   Day 4, away Days 5 and 6, eligible for a new expedition from Day 7.
-  Board snapshots display off-duty/last known accurately. The exact
-  moment of arriving at/departing through the shared portal follows the
-  deterministic day-phase contract; no extra sale or customer spawn.
+  The known-state Board displays off-duty/last seen accurately. Exact
+  arrival/departure uses the authoritative event clock, not an invented
+  morning/noon/evening transition; no extra sale or customer spawn.
 - Preserve the hero's personal deepest floor and dungeon discoveries across
   visits. A proposed re-entry rule is a **safe known entrance/checkpoint on
   the last reachable depth**, not a teleport directly into the last fight
@@ -389,16 +394,16 @@ new independent roster/state owner.
 
 1. **Physical board in the shop:** glance-readable hero portraits/identities;
    current or **last known** dungeon floor; one clear intent/activity symbol;
-   compact three-phase day trail, **visible HP meter with current/max values**,
-   and actual **item-atlas icons** for weapon, armor and carried consumables
-   with counts. Keep empty weapon and armor sockets plainly visible.
-2. **Expanded E/R board:** scannable Morning / Midday / Evening columns,
-   scroll/filter/sort by hero, floor, group, risk, last contact and status;
-   a compact vertical dungeon-depth overview with hero/group markers;
-   hero detail card with equipment/HP/level/intent, actual item acquisition,
-   uses, last confirmed reports and links to **available verified** fight/
-   exploration replays. Portraits move across floors only when real events
-   resolve. It must remain readable for many heroes, not become a wall of text.
+   an unobtrusive **last-reported time / recent-event cue**, a visible HP
+   meter with current/max values and actual item-atlas icons for weapon,
+   armor and consumables with counts. Empty gear sockets stay explicit.
+2. **Expanded E/R board:** scannable chronological **event/known-status
+   timeline** with timestamps, filter/sort by hero, floor, Temporary Party,
+   risk, last contact and status; a compact vertical dungeon-depth overview
+   with grounded hero/group markers; hero detail with HP/equipment/intent,
+   actual item acquisition/uses and links to **already committed and
+   legitimately revealable** replays. No fixed three columns. Portraits
+   change floors only on actual committed events.
 
 **Activity language:** farming, progressing, discovering, fighting, fleeing,
 recovering, grouping, shopping, missing/unknown. Each icon has accessible
@@ -419,25 +424,26 @@ HP and one loaf of Waybread, yet he's heading into Floor 6." Therefore:
 - Warnings such as "unarmed", "low HP", "no healing" or "dangerous depth"
   are **informational**, derived from known values. No synthetic guaranteed
   death odds and no automatic hero-course correction.
-- A three-phase cell shows reported floor, action **and information recency**.
-  Never use future state to fill morning retroactively, reveal sealed
-  recordings or make a missing hero visibly dead before that is known.
+- Each chronological status report shows **its source, time and recency**.
+  Never backfill older timestamps from future knowledge, reveal sealed
+  recordings or label a missing hero dead before learning it legitimately.
 - Board opens are read-only and do not alter combat, RNG, movement, purchases,
   money or saved replays. Text labels and keyboard access must work without
   pointer lock; keep the existing mounted-board placement and collision.
 
 ### Suggested minimal example (illustrative, NOT a real save)
 
-| Hero | Morning | Midday | Evening | Readable gear |
-| --- | --- | --- | --- | --- |
-| Bram, Lv 6, 42/55 HP | F6 fighting | F6 ascending | At cursed shop | Sword, vest, Herbs ×2 |
-| Finn, Lv 4, 19/45 HP | F7 farming | F8 discovering | F8 fleeing | **No sword**, **no armor**, Bread ×1 |
-| Eira, Lv 5, 38/43 HP | Off duty | Off duty | Off duty | Vest, Herb ×1, Mana ×2 |
+| Hero | Latest confirmed / last-known report | Earlier recorded event | Readable gear |
+| --- | --- | --- | --- |
+| Bram, Lv 6, 42/55 HP | F6 ascending · report at 16:10 | F6 combat · 13:40, if revealable | Sword, vest, Herbs ×2 |
+| Finn, Lv 4, 19/45 HP | Last seen F7 · report at 14:20 | F7 farming · 10:15 | **No sword**, **no armor**, Bread ×1 |
+| Eira, Lv 5, 38/43 HP | Off duty · report on Day 6 | Shop exit · Day 4 | Vest, Herb ×1, Mana ×2 |
 
-The table is a target **shape**, not three simulated example outcomes.
-"At cursed shop" is a **special-floor state**, never a numbered F5 tile;
-"off duty" is a complete day outside both dungeon and shop. Actual labels
-must honor the three committed phase snapshots and protected knowledge.
+This table is an **illustrative target, not actual game data**. Timestamps
+are fictional example in-game labels, never inferred from replay seconds.
+"At cursed shop" is a special-floor state, not dungeon Floor 5;
+"off duty" means absence from both the dungeon and shop. Any entry
+requires a legitimate committed event and knowledge provenance.
 
 ## First chapter, cursed shop instance and one entrance
 
@@ -526,9 +532,11 @@ slice** and not prerequisites to fix the expedition loop.
    medium-term purpose, personal deepest depth, **cursed shop instance**,
    shared portal entry/exit, two-day off-duty states, per-hero Floor 10
    permit, **per-site regeneration schedules, cycle counters and instance
-   IDs**, three-phase snapshots, knowledge and immutable event/replay records. Define v13 save compatibility
-   or an **explicit, tested** migration before changing schemas. Keep live and
-   known snapshots separate.
+   IDs**, authoritative event time/order, last-reported knowledge and
+   immutable event/replay records. Define v13 save compatibility or an
+   **explicit, tested** migration before changing schemas. Keep real
+   world truth and merchant-known timelines separate. See
+   [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 2. **Shared explorer + regenerative sites:** incrementally replace
    `dungeonSimulation.ts` Floor 1–4 coin flips with seeded navigation/
    encounters built from existing `dungeonLayout.ts`,
@@ -541,11 +549,11 @@ slice** and not prerequisites to fix the expedition loop.
    when fully specified. Check cash/credit/stock conservation and repeated
    day transitions.
 4. **Board vertical slice:** move `rosterBoard.ts`, `rosterBoardHud.ts`,
-   `rosterView.ts` onto one read-only snapshot projection. Show three
-   phases, true/last-known status, HP, visible equipment sockets/icons,
-   short direction, medium-term goal, **at shop / off duty / dungeon**,
-   personal Floor 10 gate, and depth markers. Reuse mounted board/roster
-   controls.
+   `rosterView.ts` onto one read-only known-state/event projection.
+   Show chronological reported actions and recency, HP, visible
+   equipment sockets/icons, short direction, medium-term goal,
+   **at shop / off duty / dungeon**, personal Floor 10 gate and
+   depth markers. Reuse mounted board/roster controls.
 5. **Unified combat + observation:** expand reusable group combat with
    monster/boss skills, align actual item effects, generate and **keep**
    immutable replay metadata, and expose honest viewed recordings.
@@ -588,22 +596,23 @@ vertical integration rather than new disconnected framework islands.
   furniture, cashier, excavation, save/load, ledger and training viewers
   work. A player can recognize three sorts of progress without being
   forced to study an event log.
-- Automated checks stay targeted: seeded world/decision/gear/phase contract
+- Automated checks stay targeted: seeded world/decision/gear/time contract
   tests, replay/save regression, shop-economy invariants and a real browser
   Board + transaction + expedition path. Human 3D/readability checks remain
   necessary. Update current docs when each package actually ships.
 
 ## Explicitly unresolved
 
-Exact phase scheduling within a live shop day; whether the player can observe
-ongoing fights or only committed footage; number/types of rooms; thresholds
+Exact speed and in-day time budget of the locked shared world clock,
+pause/AFK thresholds and report delivery rules; whether the player can
+observe ongoing fights or only committed footage; number/types of rooms; thresholds
 for hero joining/retreating; exact per-site respawn cooldowns, loot weights,
 elite frequencies and farming balance; new mana/ability model; mystical explanation
 and visual detail of the shared portal; exact safe re-entry anchor after
 standby, HP recovery off duty and party-splitting semantics; eventual
 redesign of the temporary hero-specific Floor 10 pass; final Floor 10
-boss placement; difficulty and economy values; the game's larger curse
-lore; future full real-time simulation.
+boss placement; difficulty and economy values; the game's larger curse lore; optional atmosphere for the magical clock.
+**Three mandatory day phases and uncontrolled offline realtime are not targets.**
 
 **Design approval does not mean those details are final.** Prefer an
 observable, grounded vertical slice before expanding the world further.

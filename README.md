@@ -25,7 +25,8 @@ continuously running dungeon simulation.
 - [UI Design System](docs/UI_DESIGN_SYSTEM.md): the compact first-person
   interaction and visual language, including customer service hints.
 - [Development Roadmap](docs/ROADMAP.md): **V.003 ALPHA** implementation packages and release gates; supersedes the old post-#166 feature sequence.
-- [The Living Dungeon design](docs/THE_LIVING_DUNGEON.md): agreed future loop, persistent dungeon, item causality, autonomous heroes, and Adventurer Board 2.0 with morning/midday/evening progress, HP and equipment icons.
+- [The Living Dungeon design](docs/THE_LIVING_DUNGEON.md): agreed future loop, persistent dungeon, item causality, autonomous heroes, and an event/last-known Adventurer Board 2.0 with HP and equipment icons.
+- [Living World Clock](docs/LIVING_WORLD_CLOCK.md): approved deterministic paced shared shop/dungeon clock, pauses, sleep, replay timestamps, observer knowledge and migration safeguards. **Design only, not shipped.**
 - [Contributor/AI Guide](AGENTS.md): how to begin work and keep these files
   synchronized with the implementation.
 
@@ -165,13 +166,14 @@ won battle. A real defeat, unsafe lack of supplies or inaccessible
 route can still end the tape early. Older v1 records remain playable
 with the unchanged v13 save structure; no filler frames are added.
 The physical Adventurer Board now shows empty/owned W/A equipment
-slots plus numeric HP. Its three-phase timeline remains a target.
+slots plus numeric HP. Its chronological event/last-reported timeline
+remains a target, not three mandatory day phases.
 Existing ordinary enemies are still spheres with combat subtypes,
 NOT completed creature artwork. Ghoul is only a candidate; the complete
 art, animation and SFX acceptance plan is in
 [Monster Asset Pipeline](docs/MONSTER_ASSET_PIPELINE.md).
 
-**V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
+**V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, shared paced world clock, event-timeline Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
 functional behavior; customer acting, friction and interface placement still

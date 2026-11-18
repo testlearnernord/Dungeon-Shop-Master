@@ -74,8 +74,11 @@ The repository currently implements:
   replay is the length of recorded actions, not a fake full-day
   timestamp. The physical Adventurer Board now displays real empty/
   owned weapon and armor sockets and numeric HP as well as parties;
-  Morning/Midday/Evening snapshots are still future work. The named
-  Ghoul is only an art candidate; see MONSTER_ASSET_PIPELINE.md.
+  Fixed Morning/Midday/Evening simulation snapshots have been superseded
+  in the agreed V.003 design by one paced, pausable shared world clock
+  with ordered event/last-known reports. This time system is NOT yet
+  implemented. See LIVING_WORLD_CLOCK.md. The named Ghoul is only
+  an art candidate; see MONSTER_ASSET_PIPELINE.md.
 - **Autonomous co-located dungeon parties (CURRENT after this PR):**
   On Floors 1–4 and 7, willing heroes who already share the same
   physical tile can form an opportunistic group of up to three on
@@ -292,16 +295,22 @@ This does **not** declare an implemented system or a shipped version.
   numeric current/known **HP**, **character level**, **floor**, **current or
   last known intent**, **real weapon/armor item sockets** (including conspicuous
   empty slots) and the existing **item icons with consumable quantities**.
-  Morning/Midday/Evening present stored intent/activity/floor snapshots,
-  supported by a dungeon-depth map, party markers and hero detail/history.
+  A chronological event/last-known status timeline replaces mandatory
+  Morning/Midday/Evening columns, supported by a dungeon-depth map,
+  party markers and grounded hero detail/history. This needs real
+  committed event times and sources, not extrapolated activity.
   Warnings such as unarmed/low HP are honest information, not automatic orders.
 - **No fabricated causality or omniscience.** The player can see a bought Herb
   genuinely heal a recorded fighter, or armor mitigate a real blow, but the
   UI must not invent an unseen event, predict certain survival or expose
   sealed results. A missing hero is *last known / unknown* until reported.
-- **Initially retain a shop-day structure**, with morning/midday/evening
-  expedition phases as the design target rather than silently committing to a
-  free-running 24-hour simulation. **After leaving the shop**, a hero spends
+- **Approved time design (not implemented):** retain deliberate shop days
+  and sleeping, but advance the dungeon alongside active shop play on
+  one deterministic, pausable in-game event clock. Bedtime completes
+  unsupervised time exactly once and opens read-only recordings; there
+  are no compulsory three daily phases or off-line progression. See
+  [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
+  **After leaving the shop**, a hero spends
   **two complete game days off duty**, neither in the dungeon nor in the
   shop, before being eligible to return. Replays remain immutable. Any save
   migration or altered day clock must be deliberate and tested.

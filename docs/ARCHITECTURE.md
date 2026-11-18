@@ -259,9 +259,11 @@ v13 envelope while preserving old one-encounter tapes. The viewer
 reads the committed route and combat frames with no fake idle segments.
 `rosterBoard.ts` uses the pure `rosterBoardEquipment` projection to
 show empty/owned W/A slots and exact numeric HP on the physical board.
-These are presentation changes, not new shop phases. Actual
-Morning/Midday/Evening world snapshots and full Board 2.0 remain
-planned. No ordinary monster visual is complete: current subtype
+These are presentation changes, not a live world clock. The agreed
+V.003 target replaces mandatory three-phase snapshots with a single
+paced world-time/event ledger and a chronological known-state Board 2.0
+(see `docs/LIVING_WORLD_CLOCK.md`), neither of which is shipped.
+No ordinary monster visual is complete: current subtype
 encounters still render sphere placeholders until the separately
 reviewed concept/GLB/rig/animation/SFX pipeline in
 `docs/MONSTER_ASSET_PIPELINE.md` is delivered. Ghoul is not yet a spawn.
@@ -377,9 +379,17 @@ The redesign must preserve one deterministic GameState authority and introduce:
   resurrection of unique bosses and retroactive changes to recorded
   fights, reward events or maps. Keep farming rewards bounded and
   distinguish true spawn state from Galvik's known/last-seen reports.
-- Separate *world truth* from *merchant knowledge*: Morning/Midday/Evening
-  snapshots are committed once, tagged with available/reported information,
-  and do not leak sealed outcomes, secret deaths or future replay footage.
+- **Single paced world clock (V.003 TARGET, not yet implemented):**
+  unify active shop/customer timers, dungeon/party events and site cooldowns
+  on one deterministic saved in-game timeline. Use bounded event advances,
+  clear same-timestamp ordering, safe pauses on planning/reviews/background,
+  deliberate bed settlement/overnight fast-forward, and no offline world
+  progress. Do not resolve every offscreen combat at 60 Hz per render frame.
+  See [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
+- Separate *world truth* from *merchant knowledge*: only genuine
+  chronologically committed reports with source/time/recency reach Galvik.
+  They cannot reveal sealed outcomes, secret deaths or future replay footage.
+  The new Board uses a read-only known-state timeline, not three phase grids.
 - A **single deterministic combat authority**, for groups **and** bosses:
   consolidate multi-actor/projectiles from `groupCombat.ts` and proven
   telegraph/parry/dodge/hit and boss-ability mechanics from
@@ -410,8 +420,8 @@ The redesign must preserve one deterministic GameState authority and introduce:
   after standby is a new expedition with a safe anchor TBD.
 - **Medium-term hero goals** (safe farming, testing new gear, reckless
   progression, regroup/recover) bias navigation and shopping needs;
-  these are distinct from short-term floor direction and observed
-  actions in Morning/Midday/Evening snapshot events.
+  these are distinct from short-term floor direction and time-ordered,
+  genuinely reported observed actions in the shared event ledger.
 - **Floor 10 is gated per hero** by Galvik's granted pass until later
   redesign. Current `level6Permit` is V.002-only behavior and must be
   explicitly refactored/migrated; neither XP alone nor an ordinary floor
