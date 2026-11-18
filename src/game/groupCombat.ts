@@ -650,7 +650,7 @@ const GROUP_PIPELINE: EncounterPipeline<GroupCombatState,GroupActor,GroupCombatC
   actors:state=>state.actors,
   updateActor:(state,actor,dt,frame)=>updateActor(state,actor,dt,frame.cues),
   projectiles:(state,dt,frame)=>updateProjectiles(state,dt,frame.cues),
-  finish:(state,_,frame)=>{
+  finish:state=>{
     // A dead boss immediately releases victims still in its grip.
     // Already-airborne victims must actually land before the win is
     // committed, otherwise the fall becomes free healing by cutscene.
