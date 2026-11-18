@@ -63,9 +63,8 @@ The repository currently implements:
   on a deterministic later site generation as elite melee monsters with
   genuine `grapple-throw` combat, physical collision, resistance and
   replayable results. They are renewable monsters, **not** the unique
-  Cave Troll or a Floor 10 boss. Current shop-day progression still
-  resolves solo dungeon expeditions; the full autonomous multi-hero
-  party campaign is not implemented.
+  Cave Troll or a Floor 10 boss. The group campaign now supports
+  real co-located 1–3-hero encounters; full V.003 progression is incomplete.
 - **Autonomous co-located dungeon parties (CURRENT after this PR):**
   On Floors 1–4 and 7, willing heroes who already share the same
   physical tile can form an opportunistic group of up to three on
@@ -77,9 +76,18 @@ The repository currently implements:
   outcomes are cached for every hero during the day tick, not
   re-resolved on their later roster turn. Characters can choose
   different personal floor goals afterwards and separate again.
-  **Not yet implemented:** persistent party membership, long-lived
-  formation AI, coordinated floor transitions or group Cave Troll
-  campaign encounters. Shopkeepers do not command heroes.
+  **Persistent companionship (CURRENT after this PR):** an optional
+  saved `dungeonParties` record keeps a consenting 2–3-hero group
+  across multiple days. Existing companions take precedence over
+  newcomers at the same tile. A unanimous short-term stay/ascend/descend
+  decision and a genuinely shared destination position preserve the
+  group on Floors 1–4; individual dissent, separation, death or shop
+  return disbands it or removes casualties. The physical Adventurer
+  Board shows a real “Party N” indicator. Historical save v13 remains
+  readable without the optional relationship field. **Not yet
+  implemented:** social leadership/diplomacy, coordinated Floor 6 or
+  8–10 progression, or a group Cave Troll campaign encounter.
+  Shopkeepers do not command heroes.
 - **One live actor state interface (CURRENT after this PR):**
   `combatActor.ts` provides a common mutable HP/position/stamina/
   heading/phase/cooldown/contact contract. Ordinary `GroupActor`

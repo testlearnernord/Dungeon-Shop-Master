@@ -1,8 +1,13 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots } from "./economy.ts";
-import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
+import {
+  SIMULATION_VERSION, type GameState, type EarlyDungeonFloorWorld,
+} from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
-import { LEVEL7_STEP_BUDGET } from "./level7Exploration.ts";
+import {
+  LEVEL7_STEP_BUDGET, getLevel7Progress, type Level7World,
+  type SpatialDungeonFloor,
+} from "./level7Exploration.ts";
 import { generateDungeonLayout, generateExpeditionLayout, tileAt } from "./dungeonLayout.ts";
 import {isShelfId,MAX_SHOP_SHELVES,shopLayoutProblem,
   type ShelfPlacement,type ShopLayout} from "./shopLayout.ts";
@@ -334,7 +339,7 @@ function validateState(value: unknown): asserts value is GameState {
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
     "level5Room","bedroomFurniture","rosterBoard",
-  ], ["wallPortrait","earlyDungeonWorlds"]);
+  ], ["wallPortrait","earlyDungeonWorlds","dungeonParties"]);
   const room=state.level5Room;
   if (!isValidLevel5Room(room))
     fail("payload.level5Room", "has invalid excavation geometry");
@@ -411,6 +416,51 @@ function validateState(value: unknown): asserts value is GameState {
       const floor=integer(entry.floor,path+".floor",1,4);
       unique(floor,seenFloors,path+".floor");
       validateLevel7World(entry.world,path+".world",campaignSeed,heroIds,day,floor);
+    });
+  }
+  // Optional v13 party relationships cannot invent explorers, create a
+  // leaderless group, overlap membership or assert a shared location that
+  // the actual per-floor world never recorded. Old saves may omit this field.
+  if(state.dungeonParties!==undefined){
+    const groups=array(state.dungeonParties,"payload.dungeonParties");
+    if(groups.length>50)fail("payload.dungeonParties","is oversized");
+    const assigned=new Set<string|number>();
+    const heroes=new Map(array(state.adventurers,"payload.adventurers")
+      .map(raw=>{const hero=raw as RecordValue;
+        return [hero.id as string,hero] as const;}));
+    groups.forEach((raw,i)=>{
+      const path="payload.dungeonParties["+i+"]";
+      const group=object(raw,path,["memberIds","floor","formedDay"]);
+      const floor=integer(group.floor,path+".floor",1,7);
+      if(floor===5||floor===6)fail(path+".floor","must be a shared spatial floor");
+      integer(group.formedDay,path+".formedDay",1,day);
+      const ids=array(group.memberIds,path+".memberIds");
+      if(ids.length<2||ids.length>3)
+        fail(path+".memberIds","must contain two or three actual heroes");
+      const perGroup=new Set<string|number>();
+      const members=ids.map((rawId,j)=>{
+        const p=path+".memberIds["+j+"]";
+        const id=text(rawId,p);
+        unique(id,perGroup,p);
+        unique(id,assigned,p);
+        const hero=heroes.get(id);
+        if(!hero||hero.floor!==floor||
+          hero.status!==(floor===7?"expedition":"exploring")||
+          (hero.health as number)<=0)
+          fail(p,"must be a living explorer on the party floor");
+        return hero;
+      });
+      const savedWorld=floor===7?state.level7World as Level7World:
+        ((state.earlyDungeonWorlds??[]) as EarlyDungeonFloorWorld[])
+          .find(entry=>entry.floor===floor)?.world ??
+          {resolvedFeatureIds:[],heroes:[]};
+      const layout=generateExpeditionLayout(campaignSeed,floor);
+      const first=getLevel7Progress(savedWorld,
+        members[0].id as string,layout);
+      if(members.some(hero=>{
+        const position=getLevel7Progress(savedWorld,hero.id as string,layout);
+        return position.x!==first.x||position.z!==first.z;
+      }))fail(path+".memberIds","must physically share the saved dungeon tile");
     });
   }
   let parsedShopLayout:ShopLayout;

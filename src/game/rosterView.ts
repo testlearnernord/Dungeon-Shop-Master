@@ -19,6 +19,12 @@ export function rosterEntries(state: GameState, filter: RosterFilter): readonly 
   return state.adventurers.filter((hero) => hero.status !== "dead")
     .sort((a, b) => PRIORITY[a.status] - PRIORITY[b.status] || a.id.localeCompare(b.id, undefined, { numeric: true }));
 }
+/** Current saved relationship, not an inferred party from coincidental proximity. */
+export function partySizeLabel(state:GameState,heroId:string):string {
+  const party=state.dungeonParties?.find(p=>p.memberIds.includes(heroId));
+  return party?" · Party "+party.memberIds.length:"";
+}
+
 export function locationLabel(hero: AdventurerState): string {
   if (hero.status === "dead") return "Fallen";
   if (hero.status === "at-shop") return "F5 · Shop";

@@ -1,21 +1,32 @@
 import type { AdventurerState } from "./adventurers.ts";
 import type { DungeonLayout } from "./dungeonLayout.ts";
+import { generateExpeditionLayout } from "./dungeonLayout.ts";
 import {
-  getLevel7Progress, type Level7World,
+  getLevel7Progress, type Level7World, type SpatialDungeonFloor,
 } from "./level7Exploration.ts";
+import type { HeroFloorAction } from "./dungeonDecisions.ts";
 
 /**
- * Opportunistic, autonomous parties: no Galvik orders or invisible teleport.
- * Companions must be living, willing, unprocessed, and already standing on
- * exactly the same tile and floor at the beginning of a committed day.
- * Membership is intentionally ephemeral and can change after each day.
+ * Persistent but voluntary companionship. This is a campaign relationship,
+ * never an order from the merchant or a second exploration world.
+ * A two-or-three-person party has no artificial bonus or shared HP pool.
  */
+export interface DungeonPartyState {
+  readonly memberIds: readonly string[];
+  readonly floor: SpatialDungeonFloor;
+  readonly formedDay: number;
+}
+
 export function willingToTravelTogether(hero:AdventurerState):boolean {
   return hero.health>0 &&
     (hero.role==="healer" || hero.traits.negative!=="reckless" ||
       hero.health/hero.stats.maxHealth<0.6);
 }
 
+/**
+ * The original opportunistic formation remains the fallback for old saves,
+ * newly arriving explorers and parties which have naturally broken up.
+ */
 export function chooseCoLocatedDungeonParty(
   leader:AdventurerState, roster:readonly AdventurerState[],
   world:Level7World, layout:DungeonLayout,
@@ -35,4 +46,95 @@ export function chooseCoLocatedDungeonParty(
   companions.sort((a,b)=>Number(a.role===leader.role)-
     Number(b.role===leader.role)||a.id.localeCompare(b.id));
   return [leader,...companions.slice(0,2)];
+}
+
+function availableOldMembers(
+  party:DungeonPartyState,
+  roster:readonly AdventurerState[],
+  world:Level7World, layout:DungeonLayout,
+  processed:ReadonlySet<string>,
+):readonly AdventurerState[]|null {
+  if(party.floor!==layout.floor||party.memberIds.length<2||
+    party.memberIds.length>3)return null;
+  const expectedStatus=layout.floor===7?"expedition":"exploring";
+  const members=party.memberIds.map(id=>roster.find(hero=>hero.id===id));
+  if(members.some(hero=>!hero||processed.has(hero.id)||
+    hero.floor!==layout.floor||hero.status!==expectedStatus||
+    !willingToTravelTogether(hero)))return null;
+  const ready=members as AdventurerState[];
+  const start=getLevel7Progress(world,ready[0].id,layout);
+  return ready.every(hero=>{
+    const p=getLevel7Progress(world,hero.id,layout);
+    return p.x===start.x&&p.z===start.z;
+  })?ready:null;
+}
+
+/**
+ * Existing willing parties get first claim to their actual companions,
+ * even when a new outsider appears earlier in roster iteration order.
+ * This prevents a transient bystander stealing an established partner.
+ */
+export function choosePersistentDungeonParty(
+  leader:AdventurerState, roster:readonly AdventurerState[],
+  world:Level7World, layout:DungeonLayout,
+  processed:ReadonlySet<string>,
+  saved:readonly DungeonPartyState[],
+):readonly AdventurerState[] {
+  const protectedIds=new Set<string>();
+  for(const prior of saved){
+    const members=availableOldMembers(prior,roster,world,layout,processed);
+    if(!members)continue;
+    if(members.some(member=>member.id===leader.id))return members;
+    for(const member of members)protectedIds.add(member.id);
+  }
+  return chooseCoLocatedDungeonParty(leader,
+    roster.filter(hero=>hero.id===leader.id||!protectedIds.has(hero.id)),
+    world,layout,processed);
+}
+
+/** A committed day may keep companionship across a shared floor transition. */
+export function settlePersistentDungeonParties(
+  previous:readonly DungeonPartyState[],
+  sharedEncounters:readonly (readonly string[])[],
+  roster:readonly AdventurerState[],
+  worldForFloor:(floor:SpatialDungeonFloor)=>Level7World,
+  campaignSeed:number, day:number,
+  decisions:ReadonlyMap<string,HeroFloorAction>,
+):readonly DungeonPartyState[] {
+  const byId=new Map(roster.map(hero=>[hero.id,hero]));
+  const occupied=new Set<string>();
+  const next:DungeonPartyState[]=[];
+  for(const group of sharedEncounters){
+    // A casualty can leave two survivors from a three-person party.
+    const members=group.map(id=>byId.get(id)).filter(
+      (hero):hero is AdventurerState=>!!hero&&hero.health>0&&
+        (hero.status==="exploring"||hero.status==="expedition"));
+    if(members.length<2||members.length>3)continue;
+    const floor=members[0].floor;
+    if(!([1,2,3,4,7] as readonly number[]).includes(floor) ||
+      members.some(hero=>hero.floor!==floor||
+        hero.status!==members[0].status||occupied.has(hero.id)))continue;
+    const firstAction=decisions.get(members[0].id);
+    // A group stays together only if its living explorers autonomously
+    // chose the SAME transition. "shop" always ends that expedition.
+    if(floor!==7 && (firstAction===undefined||firstAction==="shop"||
+      members.some(hero=>decisions.get(hero.id)!==firstAction)))continue;
+    if(floor===7 && members[0].status!=="expedition")continue;
+    const sharedFloor=floor as SpatialDungeonFloor;
+    const world=worldForFloor(sharedFloor);
+    const layout=generateExpeditionLayout(campaignSeed,sharedFloor);
+    const first=getLevel7Progress(world,members[0].id,layout);
+    if(!members.every(hero=>{
+      const position=getLevel7Progress(world,hero.id,layout);
+      return position.x===first.x&&position.z===first.z;
+    }))continue;
+    const memberIds=members.map(hero=>hero.id);
+    const prior=previous.find(party=>
+      memberIds.every(id=>party.memberIds.includes(id)));
+    next.push({
+      memberIds,floor:sharedFloor,formedDay:prior?.formedDay??day,
+    });
+    memberIds.forEach(id=>occupied.add(id));
+  }
+  return next;
 }

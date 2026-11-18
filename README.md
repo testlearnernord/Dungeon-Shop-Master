@@ -129,9 +129,15 @@ own HP, equipment and real Healing Herbs, with one genuine group fight
 and one claimed monster/chest/trap site. Chest gold is split, a single
 loot item has one claimant, and every survivor's actual XP, inventory
 and personal route/recording are committed without rerolling combat.
-This is opportunistic per-day cooperation, not persistent party orders,
-coordinated multi-floor travel or a replacement for the unique Level 6
-Cave Troll cinematic. V.002 stays the playable version.
+Established, willing parties now survive multiple committed days in
+a saved relationship record. They can keep their formation after a
+unanimous transition to a neighboring early dungeon floor **only**
+when every survivor really arrives at the same saved tile; individual
+choices, casualties, separation and returns to the shop can dissolve
+the group. The physical Adventurer Board displays “Party 2/3” on
+actual members. There are no player-issued orders or teleport
+corrections, and the unique Level 6 Cave Troll cinematic is unchanged.
+V.002 stays the playable version.
 
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, three-phase Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
 

@@ -84,6 +84,11 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   Herb, Waybread, Mana Potion and other carried quantities are readable.
   On limited wall texture space, prioritize health, dangerous missing gear,
   location and one current action; overflow detail goes to the E/R panel.
+- **CURRENT incremental party cue:** the physical Adventurer Board
+  appends a compact “Party 2/3” label to a living hero's location
+  only when the relationship exists in the saved campaign. It does
+  not infer a party from mere proximity or claim that the full
+  Morning/Midday/Evening Board 2.0 is implemented.
 - **Expanded roster:** readable phase-column timeline per hero, filter/sort,
   compact vertical dungeon-depth/party markers, hero profile and verified
   history of actual bought/consumed goods and recorded encounters. Use
