@@ -80,8 +80,17 @@ Do not overbuild extra content before this loop is both real and fun.
   test equipment, cautious play, progress) inform real intentions.
   Do not let the dungeon advance a hero into Floor 10 without Galvik's
   **hero-specific pass**.
-- Keep rooms/unique encounters persistent; avoid duplicated treasure,
-  infinitely safe farming, softlocked progression and arbitrary HP deaths.
+- **Dungeon Regeneration:** keep floor geometry, explored routes,
+  story gates and unique boss defeats persistent, while ordinary monster
+  sites, eligible common chests and resettable traps repopulate at
+  **staggered site-specific day/phase intervals**. Persist generation
+  cycle, cooldown, spawned instance IDs and occupancy safeguards; refresh
+  only safely unoccupied sites. Use saved deterministic seed/phase logic,
+  never a new roll on opening the map or Board.
+- Ensure safe early-floor farming remains possible but balanced against
+  danger, consumable costs and the real shop economy; no duplicated
+  treasure, endlessly free income, softlocked progress, retroactive
+  drops, unique boss respawns or arbitrary HP deaths.
 - Validate seeded multi-hero shared-world behavior across several days;
   a deep hero does not teleport to Floor 4 just because evening arrived.
 
@@ -161,9 +170,11 @@ Do not overbuild extra content before this loop is both real and fun.
 2. **Readable status at the physical board:** exact/known HP and equipment
    (including missing gear), actual item icons/counts, floor and intent;
    recorded three daily phases; expanded depth/hero view.
-3. **One authoritative expedition world:** heroes share persistent seeded
-   floors and unique resolved events; character levels progress separately;
-   groups/retreats and travel have deterministic outcomes.
+3. **One authoritative renewable expedition world:** heroes share
+   seeded persistent floors and distinct generations of ordinary
+   enemies/chests/traps; map/story milestones and unique boss deaths never
+   reset. Character levels progress separately; groups/retreats, travel
+   and time-based refresh are deterministic and saved/reloaded identically.
 4. **Special-floor/shop lifecycle:** one portal instead of the old
    Floor-4/Floor-6 entrances, abort-to-shop from any floor at the upward
    choice, two **complete** post-shop off-duty days, safe new-expedition
