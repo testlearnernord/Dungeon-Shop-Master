@@ -3,7 +3,7 @@ import { ECONOMY, ITEMS,createEmptyShelfSlots } from "./economy.ts";
 import { SIMULATION_VERSION, type GameState } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
 import { LEVEL7_STEP_BUDGET } from "./level7Exploration.ts";
-import { generateDungeonLayout, tileAt } from "./dungeonLayout.ts";
+import { generateDungeonLayout, generateExpeditionLayout, tileAt } from "./dungeonLayout.ts";
 import {isShelfId,MAX_SHOP_SHELVES,shopLayoutProblem,
   type ShelfPlacement,type ShopLayout} from "./shopLayout.ts";
 import {rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
@@ -69,6 +69,7 @@ const eventTypes = [
   "influx", "sale", "tip", "healed",
   "level6-departure", "level6-combat", "level6-return",
   "level7-departure", "level7-exploration", "shop-credit",
+  "dungeon-exploration",
 ] as const;
 
 
@@ -80,10 +81,10 @@ function validNumber(value: unknown, path: string, low: number, high: number): n
 }
 function validateLevel7World(
   raw: unknown, path: string, campaignSeed: number,
-  heroIds: Set<string | number>, day: number,
+  heroIds: Set<string | number>, day: number, floor=7,
 ): void {
   const world=object(raw,path,["resolvedFeatureIds","heroes"],["siteCycles"]);
-  const map=generateDungeonLayout(campaignSeed,7);
+  const map=generateExpeditionLayout(campaignSeed,floor);
   const knownFeatures=new Set(map.features.map(f=>f.id));
   const resolved=new Set<string | number>();
   const entries=array(world.resolvedFeatureIds,path+".resolvedFeatureIds");
@@ -136,20 +137,22 @@ function validateLevel7World(
   });
 }
 function validateLevel7Replay(
-  raw: unknown, path: string, heroId: string, day: number, campaignSeed: number,
+  raw: unknown, path: string, heroId: string, day: number,
+  campaignSeed: number, expectedFloor=7,
 ): void {
   const record=object(raw,path,[
     "version","day","heroId","floor","appearance","steps","encounters","outcome",
   ],["knownAtStart","resolvedAtStart"]);
-  if(record.version!==1||record.floor!==7||record.day!==day||record.heroId!==heroId)
-    fail(path,"must match event day, hero and Level 7");
+  if(record.version!==1||record.floor!==expectedFloor||
+     record.day!==day||record.heroId!==heroId)
+    fail(path,"must match event day, hero and dungeon floor");
   choice(record.outcome,["exploring","retreat","death","completed"],path+".outcome");
   const appearance=object(record.appearance,path+".appearance",["role","equipment"]);
   choice(appearance.role,["tank","DPS","healer"],path+".appearance.role");
   const gear=object(appearance.equipment,path+".appearance.equipment",["weapon","armor"]);
   if(gear.weapon!==null && gear.weapon!=="Iron Sword")fail(path+".appearance.equipment.weapon","is not recognized");
   if(gear.armor!==null && gear.armor!=="Leather Vest")fail(path+".appearance.equipment.armor","is not recognized");
-  const map=generateDungeonLayout(campaignSeed,7);
+  const map=generateExpeditionLayout(campaignSeed,expectedFloor);
   const features=new Map(map.features.map(feature=>[feature.id,feature]));
   if(record.knownAtStart!==undefined){
     const initial=array(record.knownAtStart,path+".knownAtStart");
@@ -291,7 +294,7 @@ function validateState(value: unknown): asserts value is GameState {
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
     "level5Room","bedroomFurniture","rosterBoard",
-  ], ["wallPortrait"]);
+  ], ["wallPortrait","earlyDungeonWorlds"]);
   const room=state.level5Room;
   if (!isValidLevel5Room(room))
     fail("payload.level5Room", "has invalid excavation geometry");
@@ -358,6 +361,18 @@ function validateState(value: unknown): asserts value is GameState {
   });
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
   validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds,day);
+  if(state.earlyDungeonWorlds!==undefined){
+    const worlds=array(state.earlyDungeonWorlds,"payload.earlyDungeonWorlds");
+    if(worlds.length>4)fail("payload.earlyDungeonWorlds","must cover at most four floors");
+    const seenFloors=new Set<string|number>();
+    worlds.forEach((value,i)=>{
+      const path="payload.earlyDungeonWorlds["+i+"]";
+      const entry=object(value,path,["floor","world"]);
+      const floor=integer(entry.floor,path+".floor",1,4);
+      unique(floor,seenFloors,path+".floor");
+      validateLevel7World(entry.world,path+".world",campaignSeed,heroIds,day,floor);
+    });
+  }
   let parsedShopLayout:ShopLayout;
   {
     const layout=object(state.shopLayout,"payload.shopLayout",["shelves","counter"]);
@@ -541,7 +556,8 @@ function validateState(value: unknown): asserts value is GameState {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
       ["adventurerId", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
-        "combatReplay", "level7Replay", "saleChannel", "debtGold"]);
+        "combatReplay", "level7Replay", "dungeonReplay",
+        "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
     lastDay = eventDay;
@@ -571,6 +587,27 @@ function validateState(value: unknown): asserts value is GameState {
       allowed.push("level7Replay");
       validateLevel7Replay(event.level7Replay,`${path}.level7Replay`,
         event.adventurerId as string,eventDay,campaignSeed);
+    }
+    if(event.type==="dungeon-exploration"){
+      if(event.dungeonGoal!==undefined){
+        allowed.push("dungeonGoal");
+        choice(event.dungeonGoal,["farm","progress","test-gear","caution","resupply"],
+          path+".dungeonGoal");
+      }
+      if(event.floorAction!==undefined){
+        allowed.push("floorAction");
+        choice(event.floorAction,["stay","ascend","descend","shop"],
+          path+".floorAction");
+      }
+      if(event.dungeonReplay!==undefined){
+        allowed.push("dungeonReplay");
+        const replay=object(event.dungeonReplay,path+".dungeonReplay",[
+          "version","day","heroId","floor","appearance","steps","encounters","outcome",
+        ],["knownAtStart","resolvedAtStart"]);
+        const floor=integer(replay.floor,path+".dungeonReplay.floor",1,4);
+        validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
+          event.adventurerId as string,eventDay,campaignSeed,floor);
+      }
     }
     if (event.type === "sale" || event.type === "healed") {
       allowed.push("itemId", "quantity");
