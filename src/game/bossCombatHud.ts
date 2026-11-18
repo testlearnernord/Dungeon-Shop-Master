@@ -69,7 +69,8 @@ export class BossCombatHud {
     while(this.floats.length>14)this.floats.shift()!.element.remove();
   }
 
-  render(scene:Scene,state:CombatPreviewState,dt:number,bossMax:number):void{
+  render(scene:Scene,state:CombatPreviewState,dt:number,bossMax:number,
+    visibleHeroRoot?:Vector3):void{
     const visible=!this.panel.hidden&&this.panel.dataset.intro!=="true";
     this.world.hidden=!visible;
     if(!visible)return;
@@ -105,8 +106,11 @@ export class BossCombatHud {
         plate.style.top=point.y+"px";
       }
     };
+    // Health plate follows the actually animated and airborne hero model;
+    // the numeric HP still comes ONLY from the authoritative motor/replay.
     showPlate(this.heroPlate,this.heroFill,this.heroText,
-      new Vector3(state.hero.x,3.25,state.hero.z),
+      visibleHeroRoot ? visibleHeroRoot.add(new Vector3(0,3.25,0))
+        : new Vector3(state.hero.x,3.25,state.hero.z),
       state.heroHp,state.options.maxHealth,"HERO");
     showPlate(this.bossPlate,this.bossFill,this.bossText,
       new Vector3(state.boss.x,7.4,state.boss.z),

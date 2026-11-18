@@ -3,7 +3,7 @@ import { Engine } from "@babylonjs/core/Engines/engine";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Matrix, Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
@@ -24,6 +24,7 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 import { createHeroVisual } from "./heroVisual.ts";
 import { createCaveTrollVisual, type CaveTrollVisual } from "./caveTrollVisual.ts";
 import { createTripoCaveTrollVisual } from "./tripoCaveTrollVisual.ts";
+import { airborneRootFromGrip } from "./tripoGripPresentation.ts";
 import { buildCaveTrollArenaArt, paintCaveTrollFloor } from "./caveTrollArenaArt.ts";
 import { BOSS_INTRO_SECONDS, sampleBossIntro } from "./bossCinematic.ts";
 import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
@@ -99,6 +100,24 @@ export class Level6Arena {
   private heroStepDistance=0;
   private lastBossPhase="chase";
   private lastHeroPhase="move";
+  // Pure spectator pose state, not serialized or used by combat collision.
+  private gripHandStart:Quaternion|null=null;
+  private gripHeroOrientation:Quaternion|null=null;
+  private gripApproach:Vector3|null=null;
+  private lastHeldRoot:Vector3|null=null;
+  private launchVisualRoot:Vector3|null=null;
+  private launchMotorRoot:Vector3|null=null;
+  private launchVisualRotation:Quaternion|null=null;
+
+  private resetGripPresentation():void {
+    this.gripHandStart=null;
+    this.gripHeroOrientation=null;
+    this.gripApproach=null;
+    this.lastHeldRoot=null;
+    this.launchVisualRoot=null;
+    this.launchMotorRoot=null;
+    this.launchVisualRotation=null;
+  }
 
   /** Camera position only affects the audible stereo image, never combat. */
   private soundListener(): SoundListener | undefined {
@@ -287,6 +306,7 @@ export class Level6Arena {
     this.camera = null;
     this.hero = null;
     this.boss = null;
+    this.resetGripPresentation();
     this.motion = null;
     this.replay = null;
     this.requestedReplayId=null;
@@ -334,6 +354,7 @@ export class Level6Arena {
     this.heroStepDistance=0;
     this.lastBossPhase="chase";
     this.lastHeroPhase="move";
+    this.resetGripPresentation();
     this.result = "fighting";
     const state = this.store.state;
     const recorded = [...state.events].reverse()
@@ -823,15 +844,11 @@ export class Level6Arena {
     const hero = this.hero, boss = this.boss;
     const oldHeroX = hero.root.position.x, oldHeroZ = hero.root.position.z;
     const oldBossX = boss.root.position.x, oldBossZ = boss.root.position.z;
-    // A captured hero hangs in the troll's hand, then follows the recorded
-    // horizontal throw with a visual-only airborne arc. The motor alone owns
-    // collision, HP, timing and the eventual lava landing.
+    // Start with authoritative ground-space coordinates. The real skinned
+    // finger pose is sampled later, AFTER the GLB pose has advanced.
     const throwProgress=Math.max(0,
       Math.min(1,state.heroAge/GRAPPLE_TIMING.flight));
-    const heroHeight=state.heroPhase==="grabbed" ? 2.45 :
-      state.heroPhase==="thrown"
-        ? 2.45*(1-throwProgress)+1.1*Math.sin(Math.PI*throwProgress) : 0;
-    hero.root.position.set(state.hero.x,heroHeight,state.hero.z);
+    hero.root.position.set(state.hero.x,0,state.hero.z);
     boss.root.position.set(state.boss.x, 0, state.boss.z);
     hero.root.rotation.y = state.heroHeading;
     boss.root.rotation.y = state.bossHeading;
@@ -882,6 +899,74 @@ export class Level6Arena {
       hp: state.bossHp,
       maxHp: boss.max,
     });
+    // Grip follows the actual animated LeftHand/Index/Middle/Thumb bones.
+    // When the authoritative "throw" cue releases the victim, detach from
+    // the last real socket and blend to the MOTOR's actual landing point.
+    // The animation never controls game coordinates or causes extra hits.
+    const gripping = state.heroPhase==="grabbed";
+    const realGrip = gripping ? this.trollVisual?.gripPose?.() : null;
+    if (gripping && realGrip) {
+      if (!this.gripHandStart) {
+        this.gripHandStart=realGrip.handRotation.clone();
+        this.gripHeroOrientation=Quaternion.RotationYawPitchRoll(
+          state.heroHeading,0,-.38);
+        this.gripApproach=new Vector3(state.hero.x,0,state.hero.z);
+      }
+      const handDelta=realGrip.handRotation.multiply(
+        Quaternion.Inverse(this.gripHandStart));
+      const orientation=handDelta.multiply(this.gripHeroOrientation!);
+      hero.root.rotationQuaternion=orientation;
+      const torsoRotation=Matrix.Identity();
+      Matrix.FromQuaternionToRef(orientation,torsoRotation);
+      const torsoOffset=Vector3.TransformNormal(
+        new Vector3(0,1.14*hero.root.scaling.y,0),torsoRotation);
+      const socketRoot=realGrip.position.subtract(torsoOffset);
+      const catchProgress=Math.max(0,Math.min(1,state.heroAge/.16));
+      const eased=catchProgress*catchProgress*(3-2*catchProgress);
+      hero.root.position.copyFrom(Vector3.Lerp(
+        this.gripApproach!,socketRoot,eased));
+      this.lastHeldRoot=hero.root.position.clone();
+      hero.root.metadata.gripAttached=catchProgress>=1;
+      hero.root.metadata.gripJoint="mixamorig:LeftHand";
+      // Recheck actual model-space torso, not the floating character root.
+      const torsoWorld=hero.root.position.add(torsoOffset);
+      hero.root.metadata.gripTorsoError=Vector3.Distance(
+        torsoWorld,realGrip.position);
+    } else if (gripping) {
+      // Legacy renderer has no finger bones. Never fake a skinned binding.
+      hero.root.rotationQuaternion=null;
+      hero.root.position.y=2.45;
+      this.lastHeldRoot=hero.root.position.clone();
+      hero.root.metadata.gripAttached=false;
+      hero.root.metadata.gripJoint=null;
+      hero.root.metadata.gripTorsoError=null;
+    } else if (state.heroPhase==="thrown") {
+      if (!this.launchVisualRoot) {
+        this.launchVisualRoot=this.lastHeldRoot?.clone() ??
+          new Vector3(state.hero.x,2.45,state.hero.z);
+        this.launchMotorRoot=new Vector3(state.hero.x,0,state.hero.z);
+        this.launchVisualRotation=hero.root.rotationQuaternion?.clone() ??
+          Quaternion.RotationYawPitchRoll(state.heroHeading,0,-.38);
+      }
+      hero.root.position.copyFrom(airborneRootFromGrip(
+        this.launchVisualRoot,this.launchMotorRoot!,
+        new Vector3(state.hero.x,0,state.hero.z),throwProgress));
+      const tumble=Quaternion.RotationYawPitchRoll(
+        state.heroHeading,-.35*Math.sin(Math.PI*throwProgress),
+        2*Math.PI*throwProgress);
+      hero.root.rotationQuaternion=Quaternion.Slerp(
+        this.launchVisualRotation!,tumble,Math.min(1,throwProgress/.18));
+      hero.root.metadata.gripAttached=false;
+      hero.root.metadata.gripJoint=null;
+      hero.root.metadata.gripTorsoError=null;
+    } else {
+      this.resetGripPresentation();
+      hero.root.rotationQuaternion=null;
+      hero.root.metadata.gripAttached=false;
+      hero.root.metadata.gripJoint=null;
+      hero.root.metadata.gripTorsoError=null;
+    }
+
     if (this.heroArm) {
       const attacking = state.heroPhase === "attack";
       const casting = state.heroPhase === "cast" || state.heroPhase === "heal";
@@ -894,9 +979,10 @@ export class Level6Arena {
       this.heroWeapon.rotation.x = attacking ? -0.65 : 0;
     }
     // A roll actually translates the hero sideways, then rotates the body.
-    if (state.heroPhase === "thrown") {
-      hero.root.rotation.z = Math.PI * 1.5 * throwProgress;
-      hero.root.rotation.x = -.35*Math.sin(Math.PI*throwProgress);
+    if (state.heroPhase==="grabbed" && realGrip) {
+      // Quaternion above owns the entire orientation, including wrist twist.
+    } else if (state.heroPhase==="thrown") {
+      // Flight blends from the last hand orientation toward a full tumble.
     } else if (state.heroPhase === "grabbed") {
       hero.root.rotation.z = -.38;
       hero.root.rotation.x = 0;
@@ -971,7 +1057,8 @@ export class Level6Arena {
     boss.root.metadata.parryCount = state.parryCount;
     this.result = state.outcome;
     this.updateHud();
-    this.worldHud.render(this.scene,state,frameDt,boss.max);
+    this.worldHud.render(this.scene,state,frameDt,boss.max,
+      hero.root.position.clone());
   }
 
   private updateHud(): void {

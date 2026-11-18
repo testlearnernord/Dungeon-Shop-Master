@@ -67,6 +67,11 @@ test("Grab and Throw sample slow authored clips and visibly retract a miss",()=>
   assert(holdEnd.progress>gripContact.progress,"held victim gets a visible lift");
   assert.equal(throwStart.clip,"throw_hero");
   assert(throwRelease.progress>throwStart.progress);
+  // Source GLB: LeftHand stretches out around 2.3–2.6s in grab_hero
+  // and reaches overhead around 1.5s in throw_hero.
+  const contact=g("grab",GRAPPLE_TIMING.grabContact);
+  assert(contact.progress>.45 && contact.progress<.55);
+  assert(throwRelease.progress>.26 && throwRelease.progress<.35);
   assert(throwEnd.progress>throwRelease.progress);
   assert.equal(throwEnd.progress,recoverStart.progress,"throw follow-through does not reset");
   assert(GRAPPLE_TIMING.windup+GRAPPLE_TIMING.grab+
