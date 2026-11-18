@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateDungeonLayout } from "../../src/game/dungeonLayout.ts";
+import { generateDungeonLayout, dungeonNeighbors } from "../../src/game/dungeonLayout.ts";
 import {
   dungeonSiteCooldown, dungeonGenerationSeed, refreshDungeonSites,
   resolveDungeonSite, type DungeonSiteCycle,
@@ -104,4 +104,44 @@ test("Floor 7 uses persistent saved generations and rejects forged save cycles",
     ...state,level7World:{...state.level7World,
       siteCycles:[{id:"invented-feature",cycle:0,resolvedDay:2}]},
   }))),/ordinary feature/);
+});
+
+test("renewed monster and chest really re-enter the existing recorded Floor 7 explorer", () => {
+  const initial = createGameState(7351);
+  const base=initial.adventurers[0];
+  const hero={...base,role:"tank" as const,
+    status:"expedition" as const,floor:7 as const,level6Permit:true,
+    health:base.stats.maxHealth,
+    equipment:{weapon:"Iron Sword",armor:"Leather Vest"}};
+  for(const kind of ["monster","treasure"] as const) {
+    const target=map.features.find(site=>site.kind===kind)!;
+    const approach=dungeonNeighbors(map,target)[0];
+    const targetCell=target.z*map.width+target.x;
+    const visited=map.tiles.flatMap((tile,i)=>
+      tile!=="wall" && i!==targetCell ? [i] : []);
+    const world={
+      resolvedFeatureIds:map.features.map(site=>site.id),
+      siteCycles:map.features.map(site=>({
+        id:site.id,cycle:0,resolvedDay:site.id===target.id?1:12,
+      })),
+      heroes:[{heroId:hero.id,...approach,visited}],
+    };
+    const first=simulateLevel7Day(hero,world,7351,12);
+    const again=simulateLevel7Day(hero,world,7351,12);
+    assert.deepEqual(first,again);
+    const record=first.world.siteCycles?.find(site=>site.id===target.id);
+    assert(record && record.cycle===1,
+      "the cooldown must create one real new site generation");
+    if(kind==="monster") {
+      assert.equal(first.replay.encounters[0]?.featureId,target.id);
+      assert.equal(first.replay.encounters[0]?.siteCycle,1);
+      assert(first.replay.encounters[0].combat.frames.length>1);
+    } else {
+      assert(first.replay.steps.some(step=>
+        step.action==="treasure"&&step.featureId===target.id),
+        "the new chest must award real on-path loot");
+      assert.equal(record.resolvedDay,12);
+      assert(first.gainedLoot>0);
+    }
+  }
 });
