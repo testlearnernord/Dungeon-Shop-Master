@@ -157,3 +157,33 @@ test("dungeon healer pays a real supply for each actual fixed-step healing actio
   assert.equal(result.adventurer.inventory.healing,3-healingCues.length);
   assert(healingCues.length<=2,"No more than two charges per encounter");
 });
+
+test("a tank really spends purchased Herbs in a committed ordinary encounter",()=>{
+  const map=generateDungeonLayout(7351,7);
+  const monster=map.features.find(feature=>feature.kind==="monster")!;
+  const approach=dungeonNeighbors(map,monster)[0];
+  const monsterIndex=monster.z*map.width+monster.x;
+  const visited=map.tiles.map((kind,index)=>kind!=="wall"&&index!==monsterIndex?index:-1)
+    .filter(index=>index>=0);
+  const base=dungeonHero();
+  const tank:AdventurerState={
+    ...base,role:"tank",health:Math.floor(base.stats.maxHealth/2),
+    inventory:{...base.inventory,healing:2},
+  };
+  const world:Level7World={
+    resolvedFeatureIds:map.features.filter(feature=>feature.id!==monster.id)
+      .map(feature=>feature.id),
+    heroes:[{heroId:tank.id,x:approach.x,z:approach.z,visited}],
+  };
+  const first=simulateLevel7Day(tank,world,7351,12);
+  const same=simulateLevel7Day(tank,world,7351,12);
+  assert.deepEqual(first,same);
+  assert.equal(first.replay.encounters.length,1);
+  const cures=first.replay.encounters[0].combat.cues.filter(cue=>
+    cue.kind==="heal"&&cue.actorId===tank.id&&cue.targetId===tank.id);
+  assert(cures.length>0,"a tank should use a bought Healing Herb in combat");
+  assert(cures.every(cue=>cue.amount>0 && cue.amount<=18));
+  assert.equal(first.adventurer.inventory.healing,2-cures.length);
+  assert.deepEqual(world.heroes[0].heroId,tank.id,
+    "the spatial encounter cannot mutate original world history");
+});
