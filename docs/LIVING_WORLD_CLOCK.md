@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design direction, not current implemented gameplay · 2026-11-18.**
+> **Approved design; PR #201 clock foundation, live gameplay still pending · 2026-11-18.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -143,8 +143,11 @@ advances all ordinary dungeon expeditions in one day transition;
 `src/dayHud.ts` invokes it via the bed controller and then opens the
 day report. The actual shop has live physical customers and service
 interactions, and replay viewing already reads immutable committed
-recordings. The newly agreed shared in-day world clock is **not
-implemented yet**.
+recordings. PR #201 introduces the persisted tick, deterministic future event
+scheduler, foreground pacing and strict version-14 save break. The existing
+`advanceDay()` still computes dungeon expeditions at bedtime; physical
+customer timers remain real-time until PR #202. Clock foundation is NOT
+yet a live parallel shop/dungeon simulation.
 
 **Required migration strategy**:
 

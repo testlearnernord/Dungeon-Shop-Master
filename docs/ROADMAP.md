@@ -10,6 +10,11 @@
 
 ## Current foundation (playable V.002 ALPHA)
 
+- **PR #201 world-clock foundation:** version-14 campaigns save an integer
+  world minute and future-event queue. Foreground unblocked shop play advances
+  that clock; sleep alone moves to the following day. Physical customer
+  timers and expedition commits still require the #202/#203 migration.
+
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,
   special requests, excavation, furniture and persistently saved days.

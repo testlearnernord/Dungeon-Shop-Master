@@ -94,11 +94,14 @@ footage to occupy an arbitrary full-day duration.
 
 ## Chosen clean break: no legacy saves required
 
-The owner does **not** require preserving old alpha saves. When the
-world-clock implementation is ready, bump the simulation/save version
-and declare a **fresh campaign boundary**. Do not implement v13→v14
-migration, deprecated fields, dual day motors, conversion shims or old
-four-folio session recovery merely to keep experimental saves alive.
+The owner does **not** require preserving old alpha saves. PR #201 has
+already raised `SIMULATION_VERSION` to 14 and established a **fresh
+campaign boundary** with a persisted tick and strict future-event queue.
+Older v13 saves are explicitly rejected and preserved, not migrated.
+The shop/dungeon day-batch motor remains transitional until #202/#203,
+not an approved second permanent simulation authority. Do not implement
+v13→v14 conversion, deprecated fields, dual day motors or old four-folio
+session recovery merely to retain experimental saves.
 
 Still required:
 - A clear, non-destructive **"Old alpha campaign incompatible; start

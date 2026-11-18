@@ -8,6 +8,7 @@ import { createFirstPersonCamera } from "./game/firstPersonController";
 import { ITEMS, type ItemId } from "./game/inventory";
 import { ECONOMY } from "./game/economy";
 import { GameStore } from "./game/gameStore";
+import { WorldClockPacer } from "./game/worldClockPacer.ts";
 import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
 import { manuallyPaidVisitors } from "./game/npcVisitors.ts";
@@ -71,6 +72,12 @@ const scene = new Scene(engine);
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
+const worldClockPacer = new WorldClockPacer();
+let ignoreNextClockFrame=false;
+document.addEventListener("visibilitychange",()=>{
+  worldClockPacer.reset();
+  ignoreNextClockFrame=true;
+});
 setupBedroomFurnitureVisuals(scene,store);
 const roomVisuals=createLevel5RoomVisuals(scene);
 const refreshRoom=()=>roomVisuals.update(store.state.level5Room);
@@ -262,6 +269,7 @@ bedtime=setupBedtime(scene,canvas,camera,
   ()=>{
     const before=store.state;
     dayClock.endDayFromBed();
+    worldClockPacer.reset();
     ledger!.open(before,store.state);
     statusHud.textContent="Day closed. The merchant's ledger is open.";
   },
@@ -275,6 +283,12 @@ cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId()
   },message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
 
 engine.runRenderLoop(() => {
+  const frameMs=ignoreNextClockFrame?0:engine.getDeltaTime();
+  ignoreNextClockFrame=false;
+  const paused=document.hidden||!isShopActive()||
+    !!document.querySelector("dialog[open]")||
+    document.body.classList.contains("blueprint-active");
+  worldClockPacer.step(frameMs,paused,ticks=>store.advanceWorldTime(ticks));
   npcVisuals.setWishBubblesVisible(!arena.isActive&&!dungeon.isActive);
   if(ledger?.isSuspended&&!arena.isActive&&!dungeon.isActive){
     ledger.resumeIfReady();

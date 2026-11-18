@@ -123,13 +123,13 @@ test("one chest is settled once, with no duplicated loot or gold for a party",()
     s.action==="treasure"&&s.featureId===featureId)));
 });
 
-test("one party day commits all member outcomes into v13 campaign replays",()=>{
+test("one party day commits all member outcomes into v14 campaign replays",()=>{
   const heroes=party(7),{world}=atUnresolvedSite(heroes,"monster",1);
   const result=simulateSpatialDungeonPartyDay(heroes,world,SEED,12,
     new Set(heroes.map(h=>h.id)));
   const base=createGameState(SEED);
   const updated={
-    ...base,day:12,shopEconomy:{...base.shopEconomy,
+    ...base,day:12,worldClock:{...base.worldClock,tick:11*1440},shopEconomy:{...base.shopEconomy,
       dailySales:{...base.shopEconomy.dailySales,day:12}},
     adventurers:base.adventurers.map(h=>
       result.ticks.find(t=>t.adventurer.id===h.id)?.adventurer??h),

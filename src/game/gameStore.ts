@@ -10,6 +10,7 @@ import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
 import {rosterBoardProblem} from "./rosterBoardPlacement.ts";
 import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
+import { advanceWorldUntil, lastWorldTickOfDay } from "./worldClock.ts";
 
 export class GameStore {
   private current: GameState;
@@ -149,6 +150,18 @@ export class GameStore {
     if (result === this.current) return false;
     this.replace(result);
     return true;
+  }
+
+  /** Commits only the clock. Event handlers migrate with shop/dungeon in #202/#203. */
+  advanceWorldTime(ticks:number):void {
+    if(!Number.isSafeInteger(ticks)||ticks<0||ticks>100000)
+      throw new RangeError("World tick advance must be a bounded nonnegative integer.");
+    const oldTick=this.current.worldClock.tick;
+    const target=Math.min(lastWorldTickOfDay(this.current.day),oldTick+ticks);
+    if(target===oldTick)return;
+    this.replace(advanceWorldUntil(this.current,target,(_state,event)=>{
+      throw new Error("No simulation handler installed for world event "+event.id+".");
+    }));
   }
 
   endDay(): void {

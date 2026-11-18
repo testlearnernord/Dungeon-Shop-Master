@@ -15,6 +15,9 @@ import {isShelfId,MAX_SHOP_SHELVES,shopLayoutProblem,
 import {rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 import {wallPortraitProblem,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 import {bedroomFurnitureProblem,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
+import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
+  MAX_PENDING_WORLD_EVENTS,compareScheduledWorldEvents,
+  type ScheduledWorldEvent } from "./worldClock.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -383,7 +386,7 @@ function validateLevel7Replay(
 
 function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
-    "day", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
+    "day", "worldClock", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
     "level5Room","bedroomFurniture","rosterBoard",
@@ -391,7 +394,32 @@ function validateState(value: unknown): asserts value is GameState {
   const room=state.level5Room;
   if (!isValidLevel5Room(room))
     fail("payload.level5Room", "has invalid excavation geometry");
-  const day = integer(state.day, "payload.day", 1, Number.MAX_SAFE_INTEGER - 1);
+  const day = integer(state.day, "payload.day", 1, MAX_WORLD_DAY);
+  const clock=object(state.worldClock,"payload.worldClock",["tick","nextSequence","pending"]);
+  const clockTick=integer(clock.tick,"payload.worldClock.tick",
+    firstWorldTickOfDay(day),lastWorldTickOfDay(day));
+  const nextSequence=integer(clock.nextSequence,"payload.worldClock.nextSequence",1);
+  const pending=array(clock.pending,"payload.worldClock.pending");
+  if(pending.length>MAX_PENDING_WORLD_EVENTS)
+    fail("payload.worldClock.pending","is oversized");
+  const ids=new Set<string|number>();
+  let previous:ScheduledWorldEvent|null=null;
+  for(const [i,value] of pending.entries()){
+    const path="payload.worldClock.pending["+i+"]";
+    const entry=object(value,path,["id","dueTick","lane","subjectId","sequence"]);
+    const seq=integer(entry.sequence,path+".sequence",1,nextSequence-1);
+    const id=text(entry.id,path+".id");
+    if(id!=="clock-"+seq)fail(path+".id","must match sequence");
+    unique(id,ids,path+".id");
+    integer(entry.dueTick,path+".dueTick",clockTick+1);
+    choice(entry.lane,["shop-command","visitor","expedition","regeneration","report"],path+".lane");
+    if(text(entry.subjectId,path+".subjectId").length>120)
+      fail(path+".subjectId","is too long");
+    const scheduled=entry as unknown as ScheduledWorldEvent;
+    if(previous&&compareScheduledWorldEvents(previous,scheduled)>0)
+      fail(path,"must retain due-tick, priority and sequence order");
+    previous=scheduled;
+  }
   if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
   const campaignSeed = integer(state.seed, "payload.seed", 0, 0xffffffff);
   integer(state.rngState, "payload.rngState", 0, 0xffffffff);

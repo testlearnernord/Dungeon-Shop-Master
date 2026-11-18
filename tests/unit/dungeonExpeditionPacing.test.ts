@@ -99,7 +99,7 @@ test("one real committed day can contain two DISTINCT fights without repeated re
 
   const base=createGameState(seed);
   const saved={
-    ...base,day:2,
+    ...base,day:2,worldClock:{...base.worldClock,tick:1440},
     shopEconomy:{...base.shopEconomy,
       dailySales:{...base.shopEconomy.dailySales,day:2}},
     adventurers:base.adventurers.map(h=>first.ticks.find(t=>
@@ -113,7 +113,7 @@ test("one real committed day can contain two DISTINCT fights without repeated re
     }))],
   };
   assert.deepEqual(parseSave(JSON.stringify(createSave(saved))),saved,
-    "Unchanged v13 envelope must validate TWO genuine encounters");
+    "v14 campaign must validate TWO genuine encounters");
 });
 
 test("historical one-encounter recordings remain playable and verify unchanged",()=>{
