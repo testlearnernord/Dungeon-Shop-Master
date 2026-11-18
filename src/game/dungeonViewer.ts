@@ -51,7 +51,7 @@ export class DungeonViewer {
   private playing = false;
   private playbackTime = 0;
   private playbackSpeed = 1;
-  private followActor: "hero" | "monster" | null = null;
+  private followActor: string | null = null;
   private readonly replaySelector = document.querySelector<HTMLSelectElement>("#dungeon-replay-select")!;
   private readonly playbackControls = document.querySelector<HTMLElement>("#dungeon-playback-controls")!;
   private readonly playbackButton = document.querySelector<HTMLButtonElement>("#dungeon-play")!;
@@ -102,8 +102,9 @@ export class DungeonViewer {
       if (event.code === "KeyG" || event.code === "Escape") this.close();
       else if (event.code === "Tab" && !event.repeat) {
         if(this.replayScene?.currentReplay){
-          this.followActor=this.followActor==="hero"?"monster":
-            this.followActor==="monster"?null:"hero";
+          const order=[...this.replayScene.visibleFocusIds,null];
+          const previous=order.indexOf(this.followActor);
+          this.followActor=order[(previous+1)%order.length]??null;
           this.paintPlayback();
         }else this.centerOn(this.focus+1);
       }
@@ -370,7 +371,7 @@ export class DungeonViewer {
     this.replayScene?.setReplay(record);
     this.playbackTime=0;
     this.playing=!!record;
-    this.followActor=record?"hero":null;
+    this.followActor=record?record.heroId:null;
     this.playbackControls.hidden=!record;
     this.modeDescription.textContent=record
       ?"Recorded Floor "+record.floor+" expedition · movements, combat and discoveries are historical, not re-simulated."
@@ -382,7 +383,7 @@ export class DungeonViewer {
       :"Green: entrance · Orange: monsters · Gold: chests · Red: traps";
     if(record){
       this.paintPlayback();
-      this.replayScene?.follow("hero");
+      this.replayScene?.follow(record.heroId);
     }else{
       this.playbackStatus.textContent="No expedition replay selected.";
       this.centerOn(0);
@@ -398,7 +399,7 @@ export class DungeonViewer {
     if(!this.replayScene?.currentReplay)return;
     this.playbackTime=0;
     this.playing=true;
-    this.followActor="hero";
+    this.followActor=this.replayScene.currentReplay.heroId;
     this.paintPlayback();
   }
   private paintPlayback():void {
@@ -413,7 +414,7 @@ export class DungeonViewer {
     const ending=frame.finished?" · Expedition ended: "+record.outcome:"";
     this.playbackStatus.textContent="Recorded "+frame.action+
       " · HP "+Math.round(frame.hp)+
-      (frame.encounter?" · Actual monster-combat frames":"")+
+      (frame.frame?" · "+frame.frame.actors.length+" recorded fighters":"")+
       ending;
     this.focusLabel.textContent="TAB focus: "+(this.followActor??"free camera")+
       " · "+(record.heroId);
@@ -421,7 +422,7 @@ export class DungeonViewer {
   }
   private resetCamera():void {
     if(this.replayScene?.currentReplay){
-      this.followActor="hero";
+      this.followActor=this.replayScene.currentReplay.heroId;
       this.paintPlayback();
     }else this.centerOn(0);
   }
