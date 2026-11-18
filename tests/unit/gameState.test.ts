@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {createStockedShopState} from "./shopFixtures.ts";
 import {
   advanceDay,
   createGameState,
@@ -115,8 +116,8 @@ test("manual payment closes a shop visit instead of randomly sending the buyer b
   assert.deepEqual(advanceDay(state),next,"a saved day tick must not reroll customer departures");
 });
 
-test("an unpaid cart settled at day close also departs; an L6 pass still takes precedence",()=>{
-  const initial=createGameState(9321);
+test("bed returns unpaid stock without a sale; an L6 pass still takes precedence",()=>{
+  const initial=createStockedShopState(9321);
   const buyer=initial.adventurers[0];
   const visiting={...initial,
     adventurers:initial.adventurers.map(person=>person.id===buyer.id
@@ -125,11 +126,14 @@ test("an unpaid cart settled at day close also departs; an L6 pass still takes p
     shopCarts:[{heroId:buyer.id,day:1,
       lines:[{itemId:"bread" as const,slotId:"shelf-1-slot-2",
         quantity:1,subtotal:4}]}],
+    shopEconomy:{...initial.shopEconomy,slots:initial.shopEconomy.slots.map(slot=>
+      slot.id==="shelf-1-slot-2"?{...slot,quantity:2}:slot)},
   };
   const settled=advanceDay(visiting);
-  assert.equal(settled.state.adventurers.find(person=>person.id===buyer.id)?.status,"returning");
-  assert(settled.events.some(e=>e.adventurerId===buyer.id&&e.type==="shop-departure"));
-  assert(!settled.events.some(e=>e.adventurerId===buyer.id&&e.type==="shop-stay"));
+  assert.equal(settled.state.shopCarts.length,0);
+  assert.equal(settled.state.shopEconomy.slots.find(s=>s.id==="shelf-1-slot-2")!.quantity,3);
+  assert(!settled.events.some(e=>e.type==="sale"),
+    "An unprocessed cart cannot pay itself while Galvik sleeps");
   const permitted={...visiting,
     adventurers:visiting.adventurers.map(person=>person.id===buyer.id
       ?{...person,level6Permit:true}:person),

@@ -4,6 +4,7 @@ import test from "node:test";
 import { useHealingSupplies, generateAdventurer, type AdventurerState } from "../../src/game/adventurers.ts";
 import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
 import { advanceDay, type GameState } from "../../src/game/gameState.ts";
+import {quoteCustomerCheckout,checkoutCustomer} from "../../src/game/customerCheckout.ts";
 
 function freeze<T>(value: T): T {
   if (value !== null && typeof value === "object") {
@@ -170,7 +171,7 @@ test("needs, funds and carried supplies bound sales across multiple shelves", ()
   assert.equal(trade.economy.dailySales.units, 1);
 });
 
-test("only current at-shop heroes buy; arrivals and newcomers wait until the following tick", () => {
+test("day transitions bring visitors but never perform invisible sales", () => {
   const heroes = [
     customer(1, { status: "traveling", floor: 4 }),
     customer(2, { status: "exploring", floor: 4 }),
@@ -183,7 +184,8 @@ test("only current at-shop heroes buy; arrivals and newcomers wait until the fol
   assert.equal(result.state.adventurers[0].status, "at-shop");
   assert.equal(result.state.adventurers[0].inventory.bread, 0);
   assert.equal(result.state.adventurers[3], heroes[3]);
-  assert(advanceDay(result.state).events.some((event) => event.type === "sale" && event.adventurerId === heroes[0].id));
+  assert(!advanceDay(result.state).events.some(event=>event.type==="sale"),
+    "Merchandise can only leave the shop after a physical payment or credit");
 });
 
 test("healing only happens to injured adventurers and consumes one item",()=>{
@@ -202,18 +204,21 @@ test("healing only happens to injured adventurers and consumes one item",()=>{
   const empty={...hero,inventory:{...hero.inventory,bread:0,healing:0}};
   assert.deepEqual(useHealingSupplies(empty,3),{adventurer:empty,events:[]});
 });
-test("Waybread and herbs both sell as healing supplies, at their existing prices",()=>{
-  const hero=customer(1,{health:10});
+test("actual cashier sells Waybread and herbs at catalog prices without applying remote healing",()=>{
+  const hero=customer(1,{health:10,
+    inventory:{bread:0,healing:0,loot:0},
+    equipment:{weapon:"Iron Sword",armor:"Leather Vest"}});
   let state=stock(market([hero]),"bread",1);
   state=freeze(stock(state,"healing-herb",1,1));
-  const result=advanceDay(state);
+  const quote=quoteCustomerCheckout(state,hero.id);
+  assert(quote);
+  const result=checkoutCustomer(state,quote);
   const next=result.state.adventurers[0];
-  assert.equal(next.health,28);
+  assert.equal(next.health,10,"Buying supplies must not heal the hero retroactively");
   assert.equal(next.inventory.bread,1);
-  assert.equal(next.inventory.healing,0);
+  assert.equal(next.inventory.healing,1);
   assert.equal(next.gold,hero.gold-10);
-  assert.deepEqual(result.events.filter(event=>event.type==="sale")
-    .map(event=>event.itemId),["bread","healing-herb"]);
+  assert.deepEqual(result.events.map(event=>event.itemId),["bread","healing-herb"]);
 });
 test("injuries without stocked healing supplies cause no passive HP loss",()=>{
   const hero=customer(1,{health:7});
@@ -222,12 +227,17 @@ test("injuries without stocked healing supplies cause no passive HP loss",()=>{
   assert.notEqual(result.state.adventurers[0].status,"dead");
 });
 
-test("daily sales reset instead of accumulating", () => {
-  const state = stock(market(), "bread", 1);
-  const first = advanceDay(state).state;
-  assert.equal(first.shopEconomy.dailySales.units, 1);
-  const second = advanceDay(first).state;
-  assert.deepEqual(second.shopEconomy.dailySales, { day: 3, units: 0, revenue: 0 });
+test("manual revenue belongs only to the paid day and resets on next day", () => {
+  const hero=customer(1,{inventory:{bread:0,healing:0,loot:0}});
+  const state=stock(market([hero]),"bread",1);
+  const quote=quoteCustomerCheckout(state,hero.id);
+  assert(quote);
+  const paid=checkoutCustomer(state,quote).state;
+  assert.equal(paid.shopEconomy.dailySales.units,1);
+  const first=advanceDay(paid).state;
+  assert.deepEqual(first.shopEconomy.dailySales,{day:2,units:0,revenue:0});
+  const second=advanceDay(first).state;
+  assert.deepEqual(second.shopEconomy.dailySales,{day:3,units:0,revenue:0});
 });
 
 test("no automatic subsidies during an empty shop day",()=>{
