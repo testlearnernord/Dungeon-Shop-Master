@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {readFileSync} from "node:fs";
+import {readFileSync, mkdtempSync, rmSync} from "node:fs";
+import {execFileSync} from "node:child_process";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {resolve} from "node:path";
 
 type GLBJson = {
@@ -48,4 +51,22 @@ test("Ghoul source archives preserve actual authored animation exports",()=>{
     addedNames:latest.clips.filter(c=>!original.clips.some(n=>n.name===c.name)).map(c=>c.name),
   }));
   assert(latest.clips.length>0);
+});
+
+test("Ghoul Idle is grafted into the original rig without dropping attack clips",()=>{
+  const directory=mkdtempSync(join(tmpdir(),"dsm-ghoul-"));
+  try{
+    const output=join(directory,"ghoul-candidate.glb");
+    execFileSync(process.execPath,[
+      resolve("tools/asset_generation/consolidate_tripo_ghoul.mjs"),output,
+    ]);
+    const result=readGLB(output);
+    const initial=readGLB("assets/tripo/source/tripo_convert_2f6b9c66-0c5e-4c3b-8410-2277a099e788.glb");
+    assert.equal(result.clips.length,15);
+    assert.deepEqual(result.clips.slice(0,14).map(x=>x.name),initial.clips.map(x=>x.name));
+    assert.equal(result.clips[14].name,"idle_combat");
+    assert.equal(result.doc.skins?.[0]?.joints.length,65);
+    assert.equal(result.triangleCount,19789);
+    assert.equal(result.clips[14].samplers,195);
+  }finally{rmSync(directory,{recursive:true,force:true});}
 });

@@ -37,10 +37,8 @@
   },
   "animation": {
     "clipCount": 14,
-    "missing": [
-      "idle_combat"
-    ],
-    "note": "The complete Tripo export remains authoritative and unmodified. Semantic names below are catalog aliases, not actual GLB animation names. Do not assume loop or hit-frame quality until Babylon preview.",
+    "missing": [],
+    "note": "14 original clips are stored in source.path. One additional combat Idle exists in additionalExports[0]. These must be grafted together; the later Tripo file alone is NOT a complete export. Semantic names in clips remain provisional until visually approved.",
     "clips": [
       {
         "index": 0,
@@ -154,17 +152,27 @@
         "notes": "Later shortened prompt; owner reported improvement",
         "durationSeconds": 4.958
       }
+    ],
+    "catalogTotalAcrossExports": 15,
+    "addedClips": [
+      {
+        "sourceExport": "assets/tripo/source/tripo_convert_6edd4581-b0ef-49c3-9b0d-ebbee934e866.glb",
+        "sourceName": "A feral undead ghoul stands in a low, hunched combat stance, br",
+        "alias": "idle_combat",
+        "status": "candidate",
+        "notes": "Combat breathing/twitch stance. Verify loop in Babylon; Tripo export contains this clip alone."
+      }
     ]
   },
   "futureRuntime": {
     "enabled": false,
     "proposedPath": "public/assets/models/dungeon-ghoul-tripo.glb",
-    "note": "Export/curate and verify semantic clips, joints, textures and loop quality before shipping. Keep source GLB out of public/ until integrated."
+    "note": "The deterministic tools/asset_generation/consolidate_tripo_ghoul.mjs joins the original 14 clips with the new idle into one candidate GLB for Babylon inspection. Do not ship or spawn until visual + SFX acceptance."
   },
   "review": {
     "visual": "Owner accepted retopologized Ghoul as an asset candidate in Tripo. This is not approval of all 14 motion clips or a shipped monster.",
     "audio": "Not produced; unique Ghoul SFX required",
-    "engine": "No Babylon integration, in-game spectator verification or spawn mapping yet",
+    "engine": "Source archive complete and merge tool/test committed. Gameplay remains unmodified; Babylon visual sign-off and spawn mapping still missing.",
     "rights": "Review actual Tripo license and generation terms before distribution"
   },
   "additionalExports": [
@@ -173,9 +181,12 @@
       "originalUploadName": "tripo_convert_6edd4581-b0ef-49c3-9b0d-ebbee934e866.glb",
       "gitBlobSha": "28a716469aaab2e23ed98a3df23ffd5ce5183e13",
       "byteLength": 7106304,
-      "status": "NEWER_USER_EXPORT_PENDING_CLIP_AUDIT",
-      "purpose": "Idle generation, retain separately pending comparison with existing 14 clip source",
-      "note": "Smaller file size does not prove preserved animation clips. CI asset test prints clip names to verify export."
+      "status": "INSPECTED_IDLE_ONLY",
+      "purpose": "Contains standalone Ghoul combat Idle, source for lossless animation graft into the original 14-clip rig.",
+      "clipCount": 1,
+      "animationNames": [
+        "A feral undead ghoul stands in a low, hunched combat stance, br"
+      ]
     }
   ]
 }

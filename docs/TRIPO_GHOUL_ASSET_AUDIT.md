@@ -11,10 +11,11 @@
 - Embedded images: 4096×4096 base color, 2048×2048 normal, 2048×2048 metallic/roughness. For runtime consider 2K base color, with visual approval.
 - Semantic clip map and all exact source names live in [`assets/tripo/ghoul.manifest.json`](../assets/tripo/ghoul.manifest.json). Catalog aliases are NOT yet names written inside the archived GLB.
 
-## Later Idle export: inspection in progress
+## Later Idle export: verified, one clip only
 
-- User subsequently uploaded `tripo_convert_6edd4581-b0ef-49c3-9b0d-ebbee934e866.glb` (7,106,304 bytes). Store the export in `assets/tripo/source/` **in addition to** the 14-clip original. The smaller size means clip preservation **must not be presumed**.
-- `tests/unit/ghoulSourceAsset.test.ts` inspects the GLB metadata directly in CI and records the exact clip names. This section is not confirmation that the new file contains all old animations.
+- Later user upload: `tripo_convert_6edd4581-b0ef-49c3-9b0d-ebbee934e866.glb` (7,106,304 bytes) archived **in addition to** the full 14-clip original. Git blob SHA: `28a716469aaab2e23ed98a3df23ffd5ce5183e13`.
+- **CI inspected the binary:** 19,789 triangles, 65 skin joints, **exactly one new animation** named `A feral undead ghoul stands in a low, hunched combat stance, br` (Tripo's truncated label). It is the requested Combat Idle. None of the previous 14 clips are in this later export. The original export preserves them.
+- Candidate assembly is reproducible by `node tools/asset_generation/consolidate_tripo_ghoul.mjs <output.glb>`; it grafts only the Idle animation samples into the 14-clip source and renames the appended track `idle_combat`. It does not put a finished Ghoul into the game or modify either archived original.
 
 ## Animation candidates (source indices, zero-based)
 
@@ -35,14 +36,14 @@
 | 12 | `attack_charge` | 1.958 s | candidate: Short rush, not a substitute for repeatable run |
 | 13 | `walk_feral_v2` | 4.958 s | candidate: Later shortened prompt; owner reported improvement |
 
-**Important:** The initial `predatory_stalk_v1` walk was rejected by the owner. The humanoid preset `walk_preset` is fallback only. `walk_feral_v2` is the later improved walk. `attack_claw_right`/`attack_claw_left` are **tentative arm assignments based on measured joint-rotation magnitudes**, not manually approved strike direction or timings. A separate proper combat idle was **not** found in this archive.
+**Important:** The initial `predatory_stalk_v1` walk was rejected by the owner. The humanoid preset `walk_preset` is fallback only. `walk_feral_v2` is the later improved walk. `attack_claw_right`/`attack_claw_left` are **tentative arm assignments based on measured joint-rotation magnitudes**, not manually approved strike direction or timings. The original 14-clip source contains no idle; the newer standalone 1-clip source **does** provide combat Idle and can be grafted into this rig.
 
 ## Quality / integration gates still open
 
 - Inspect front, side and rear model orientation, floor origin, collision radius, silhouette and skin weights in Babylon.
 - Visually inspect all candidate clips, including whether left/right claw attacks contact a hero, and verify clean walking/sprinting loops. Source clip durations do not prove seamless loops.
 - Root hip X/Z translation is near zero for most clips, but root position alone does **not** prove foot planting: bone rotations can still produce skating. Keep movement owned by the existing combat/navigation motor.
-- Curate the candidate clips into a separate runtime GLB with stable semantic names; don't edit or prune the archived source. `public/assets/models/dungeon-ghoul-tripo.glb` is only a proposed output path, **not a committed artifact**.
+- Review the **15-clip assembled candidate** using the reproducible merge script. Later curate approved candidates into a compact runtime GLB with stable semantic names; do not edit or prune the archived sources. `public/assets/models/dungeon-ghoul-tripo.glb` remains a proposed runtime path, **not committed or shipped**.
 - Produce, approve and integrate original Ghoul movement, attack, hit, vocal and death SFX; run actual spectator replay and performance tests before spawning any Ghoul.
 - Cave Troll's existing archive, gameplay and model viewer remain untouched.
 
