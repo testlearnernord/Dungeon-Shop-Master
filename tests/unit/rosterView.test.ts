@@ -70,8 +70,8 @@ test("saved travel companions reveal identities, health and founding day without
   assert.deepEqual(details?.members.map(hero=>hero.id),[first.id,second.id]);
   assert.equal(details?.members[1].health,second.health);
   assert.equal(details?.members[1].stats.maxHealth,second.stats.maxHealth);
-  assert.equal(partySizeLabel(state,first.id)," · Party 2");
-  assert.equal(partySizeLabel(state,second.id)," · Party 2");
+  assert.equal(partySizeLabel(state,first.id)," · Temporary Party #1 (2)");
+  assert.equal(partySizeLabel(state,second.id)," · Temporary Party #1 (2)");
   assert.equal(rosterPartyDetails(state,initial.adventurers[2].id),null);
   assert.equal(rosterPartyDetails(initial,first.id),null,
     "Sharing a floor without a saved relationship is not friendship");
