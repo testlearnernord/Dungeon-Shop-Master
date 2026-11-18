@@ -92,8 +92,9 @@ further exploration; casualties, real injuries/short supplies,
 route completion or defeat still stop footage earlier. Playback
 never pads artificial idle or re-rolls the world's outcomes.
 The real physical Board displays equipped/empty weapon and armor
-sockets plus exact HP; proper Morning/Midday/Evening world snapshots
-still await a real three-phase day model. No shipped ordinary monster
+sockets plus exact HP; the approved V.003 Board instead needs an
+ordered, knowledge-safe event/last-reported timeline backed by the
+planned single world clock. No mandatory three phases. No shipped ordinary monster
 GLB exists yet: `MONSTER_ASSET_PIPELINE.md` defines concept, mesh,
 rig, transitions, sounds, Babylon inspection and acceptance gates.
 Ghoul is a candidate, not a generated or released monster.
@@ -133,13 +134,13 @@ The current physical Adventurer Board displays saved party sizes;
 the R roster additionally shows actual companion identities,
 roles, HP and founding day from that same historical relationship.
 This is still only a foundation for Board 2.0, not its full
-three-phase timeline.
+chronological event/last-known status timeline.
 
 **Not implemented:** advanced long-term party negotiation/leadership (bounded voluntary post-encounter floor coordination is now present),
 party-vs-unique-Troll campaign encounters, fully general status/
 ability effects, dungeon Floors 8–10, cursed out-of-number
-shop entrance, two-day hero standby, full Morning/Midday/
-Evening world snapshots or Adventurer Board 2.0.
+shop entrance, two-day hero standby, a shared deterministic
+shop/dungeon world clock or the full event-based Adventurer Board 2.0.
 The old Floor 6 boss progression remains separately routed.
 
 **Release label:** V.003 Alpha is the **future milestone**.
@@ -540,9 +541,11 @@ slice** and not prerequisites to fix the expedition loop.
    medium-term purpose, personal deepest depth, **cursed shop instance**,
    shared portal entry/exit, two-day off-duty states, per-hero Floor 10
    permit, **per-site regeneration schedules, cycle counters and instance
-   IDs**, three-phase snapshots, knowledge and immutable event/replay records. Define v13 save compatibility
-   or an **explicit, tested** migration before changing schemas. Keep live and
-   known snapshots separate.
+   IDs**, authoritative event time/order, last-reported knowledge and
+   immutable event/replay records. Define v13 save compatibility or an
+   **explicit, tested** migration before changing schemas. Keep real
+   world truth and merchant-known timelines separate. See
+   [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 2. **Shared explorer + regenerative sites:** incrementally replace
    `dungeonSimulation.ts` Floor 1–4 coin flips with seeded navigation/
    encounters built from existing `dungeonLayout.ts`,
