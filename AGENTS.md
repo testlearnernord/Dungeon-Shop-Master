@@ -41,13 +41,16 @@
   (a temporary new design gate, not today's `level6Permit`). Do not
   reinstate the rejected long backtrack, mandatory five-floor shops,
   two-door topology or an invented escape rope as accepted scope.
-- **CURRENT scoped Floor 7 regeneration:** `dungeonRegeneration.ts`
-  is the only reusable per-site refresh authority; `level7Exploration.ts`
-  invokes it during committed day resolution. Optional persisted
-  `level7World.siteCycles` preserves old version-13 saves and
-  `campaignSave.ts` validates it strictly. Reuse this module when
-  generalizing Floors 1–4 instead of creating separate respawn schedulers.
-  Don't claim the V.003 shared-world milestone is complete.
+- **CURRENT spatial engine for Floors 1–4 and 7:** one
+  `simulateSpatialDungeonDay` function in `level7Exploration.ts` owns
+  path walking, real `groupCombat`, loot/traps, recorded footage and
+  `dungeonRegeneration.ts` site refresh. `dungeonDecisions.ts`
+  supplies autonomous medium-term goals and short-term floor choices.
+  `gameState.earlyDungeonWorlds` is an optional v13-compatible set
+  of shared floor worlds; `level7World` remains compatible. The old
+  `dungeonSimulation.ts` has been deleted. New ordinary-floor combat
+  MUST reuse this motor, not reintroduce dice/outcome islands.
+  The Floor 6 boss and special-floor shop remain separate unfinished work.
 - **V.003 recurring dungeon content:** floor geometry, unique
   discoveries, story locks, past replays and unique boss victories remain
   persistent. Ordinary monster groups, common treasure sites and
