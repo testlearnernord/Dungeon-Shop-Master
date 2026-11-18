@@ -377,9 +377,17 @@ The redesign must preserve one deterministic GameState authority and introduce:
   resurrection of unique bosses and retroactive changes to recorded
   fights, reward events or maps. Keep farming rewards bounded and
   distinguish true spawn state from Galvik's known/last-seen reports.
-- Separate *world truth* from *merchant knowledge*: Morning/Midday/Evening
-  snapshots are committed once, tagged with available/reported information,
-  and do not leak sealed outcomes, secret deaths or future replay footage.
+- **Single paced world clock (V.003 TARGET, not yet implemented):**
+  unify active shop/customer timers, dungeon/party events and site cooldowns
+  on one deterministic saved in-game timeline. Use bounded event advances,
+  clear same-timestamp ordering, safe pauses on planning/reviews/background,
+  deliberate bed settlement/overnight fast-forward, and no offline world
+  progress. Do not resolve every offscreen combat at 60 Hz per render frame.
+  See [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
+- Separate *world truth* from *merchant knowledge*: only genuine
+  chronologically committed reports with source/time/recency reach Galvik.
+  They cannot reveal sealed outcomes, secret deaths or future replay footage.
+  The new Board uses a read-only known-state timeline, not three phase grids.
 - A **single deterministic combat authority**, for groups **and** bosses:
   consolidate multi-actor/projectiles from `groupCombat.ts` and proven
   telegraph/parry/dodge/hit and boss-ability mechanics from
