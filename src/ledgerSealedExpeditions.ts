@@ -17,7 +17,7 @@ export interface SealedExpeditionDossier {
   readonly knownLevel:number|null;
   readonly portrait:number|null;
   readonly day:number;
-  readonly floor:6|7;
+  readonly floor:1|2|3|4|6|7;
   readonly kind:"combat"|"exploration";
   readonly title:string;
   readonly category:string;
@@ -40,7 +40,8 @@ export function sealedExpeditionDossiers(
   const names=heroDisplayNames([...before.adventurers,
     ...after.adventurers.filter(hero=>!beforeHeroes.has(hero.id))]);
   return recordings.map(event=>{
-    if(event.type!=="level6-combat"&&event.type!=="level7-exploration")
+    if(event.type!=="level6-combat"&&event.type!=="level7-exploration"&&
+       event.type!=="dungeon-exploration")
       throw new RangeError("Expedition dossier requires a replay event");
     const combat=event.type==="level6-combat";
     const id=event.adventurerId??null;
@@ -56,9 +57,10 @@ export function sealedExpeditionDossiers(
       portrait:id!==null&&(earlier!==undefined||person!==undefined)
         ?heroPortraitIndex(id):null,
       day:event.day,
-      floor:combat?6:7,
+      floor:combat?6:(event.dungeonReplay?.floor??7),
       kind:combat?"combat":"exploration",
-      title:combat?"THE CAVE TROLL":"UNCHARTED DEPTHS",
+      title:combat?"THE CAVE TROLL":
+        event.type==="dungeon-exploration"?"THE EARLY DEPTHS":"UNCHARTED DEPTHS",
       category:combat?"COMBAT RECORDING":"EXPLORATION RECORDING",
     };
   });
