@@ -112,14 +112,15 @@ export class DungeonReplayScene {
       for(const actor of dungeonReplayCast(record)){
         if(actor.id===record.heroId)continue;
         if(actor.team==="heroes" && actor.role!=="monster"){
-          // No invented historical equipment: only the lead hero's gear is
-          // recorded at present. Unknown companions use neutral silhouettes.
+          // Read equipment from committed historical actor metadata, not
+          // the current roster (the player may have sold gear since then).
+          // Old v1 records without this optional field stay visually neutral.
           const model=createHeroVisual(this.scene,{
             id:actor.id,role:actor.role,
-            equipment:{weapon:null,armor:null},
+            equipment:actor.equipment??{weapon:null,armor:null},
           },"dungeon-companion-"+actor.id);
           model.root.metadata={...model.root.metadata,replayOnly:true,
-            recordedEquipmentUnknown:true};
+            recordedEquipmentUnknown:actor.equipment===undefined};
           model.root.setEnabled(false);
           this.companionHeroes.set(actor.id,model);
         }else if(actor.team==="monsters"){
