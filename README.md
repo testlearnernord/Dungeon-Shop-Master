@@ -58,6 +58,14 @@ Dungeon Floor 10 is blocked until Galvik gives **that hero** a pass;
 the current Floor-6 permit is not the future gate. These rules are
 documented, not implemented.
 
+**Dungeon Regeneration (V.0003 planned):** the world's geometry,
+known paths, unique victories and story milestones remain saved while
+ordinary monsters, common chests and resettable traps renew at
+staggered, deterministic per-site intervals. This keeps farming viable
+without resetting bosses or duplicating historical loot. Exact day
+intervals and reward balance still require testing; no regeneration
+system has been implemented in V.002.
+
 **V.0003 is a target, not an implemented version.** The current gameplay still uses separate Floor 1–4, Floor 6 and Floor 7 simulation paths. The planned shared dungeon, three-phase board and hero/item causality upgrades are not yet shipped. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.0003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
