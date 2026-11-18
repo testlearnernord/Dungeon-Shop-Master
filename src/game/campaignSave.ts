@@ -906,7 +906,7 @@ function validateState(value: unknown): asserts value is GameState {
     shopRequests.forEach((raw,i)=>{
       const entry=raw as RecordValue;
       const plan=plans.get(entry.heroId as string);
-      if(plan?.reason!==entry.reason||plan.wantedItemId!==entry.itemId)
+      if(plan?.reason!==entry.reason||plan?.wantedItemId!==entry.itemId)
         fail("payload.shopRequests["+i+"].itemId",
           "must match the customer's current physical shopping need");
     });
