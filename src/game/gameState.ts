@@ -1,10 +1,14 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { useHealingSupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
 import { createEconomy, tradeAtStartOfDay, type ItemId, type Slot } from "./economy.ts";
-import { chooseHeroDungeonDecision, type HeroDungeonGoal, type HeroFloorAction } from "./dungeonDecisions.ts";
+import {
+  chooseHeroDungeonDecision,
+  type HeroDungeonDecision, type HeroDungeonGoal, type HeroFloorAction,
+} from "./dungeonDecisions.ts";
 import { generateExpeditionLayout } from "./dungeonLayout.ts";
 import {
-  choosePersistentDungeonParty, settlePersistentDungeonParties,
+  choosePersistentDungeonParty, negotiatePartyFloorDecisions,
+  settlePersistentDungeonParties,
   type DungeonPartyState,
 } from "./dungeonParties.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
@@ -202,6 +206,9 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       ?{...ready,status:"exploring" as const}:ready;
   });
   const committedFights=new Map<string,Level7Tick>();
+  // Propose and negotiate as a group immediately after the ONE fight,
+  // before roster ordering can cause the first hero to depart early.
+  const coordinatedDecisions=new Map<string,HeroDungeonDecision>();
   const processed=new Set<string>();
   const sharedEncounters:string[][]=[];
   const floorChoices=new Map<string,HeroFloorAction>();
@@ -223,10 +230,23 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
           person.status==="exploring"&&person.floor===floor).map(p=>p.id));
         const result=simulateSpatialDungeonPartyDay(group,world,state.seed,
           day,activeIds);
+        const proposals=new Map<string,HeroDungeonDecision>();
         for(const individual of result.ticks){
           committedFights.set(individual.adventurer.id,individual);
           processed.add(individual.adventurer.id);
+          if(individual.adventurer.status==="exploring"){
+            const progress=getLevel7Progress(result.world,
+              individual.adventurer.id,layout);
+            proposals.set(individual.adventurer.id,
+              chooseHeroDungeonDecision(individual.adventurer,
+                progress,individual.replay));
+          }
         }
+        const negotiations=negotiatePartyFloorDecisions(
+          result.ticks.filter(t=>proposals.has(t.adventurer.id))
+            .map(t=>t.adventurer),proposals);
+        for(const [id,decision] of negotiations)
+          coordinatedDecisions.set(id,decision);
         earlyDungeonWorlds=[
           ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
           {floor,world:result.world},
@@ -236,6 +256,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       const progress=getLevel7Progress(tick.world,ready.id,
         generateExpeditionLayout(state.seed,floor));
       const decision=tick.adventurer.status==="dead"?null:
+        coordinatedDecisions.get(ready.id) ??
         chooseHeroDungeonDecision(tick.adventurer,progress,tick.replay);
       if(decision)floorChoices.set(ready.id,decision.action);
       const moved=decision?.action==="descend"&&floor<4
