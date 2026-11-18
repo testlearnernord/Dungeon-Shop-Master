@@ -4,7 +4,9 @@ import { generateExpeditionLayout } from "./dungeonLayout.ts";
 import {
   getLevel7Progress, type Level7World, type SpatialDungeonFloor,
 } from "./level7Exploration.ts";
-import type { HeroFloorAction } from "./dungeonDecisions.ts";
+import type {
+  HeroDungeonDecision, HeroFloorAction,
+} from "./dungeonDecisions.ts";
 
 /**
  * Persistent but voluntary companionship. This is a campaign relationship,
@@ -137,4 +139,76 @@ export function settlePersistentDungeonParties(
     memberIds.forEach(id=>occupied.add(id));
   }
   return next;
+}
+
+/**
+ * Voluntary negotiation after ONE already-committed group encounter.
+ * This modifies only the next-floor intentions, never combat, health,
+ * equipment, site rewards, the world, or an individual's medium-term goal.
+ *
+ * A hard resupply request is never vetoed. Nobody is forced into a
+ * dangerous descent; an eligible hero may voluntarily keep exploring
+ * with a confident companion or a patient hero may wait on this floor.
+ * A caring ally may escort a cautious climber. Otherwise they split.
+ */
+export function negotiatePartyFloorDecisions(
+  members:readonly AdventurerState[],
+  independent:ReadonlyMap<string,HeroDungeonDecision>,
+):ReadonlyMap<string,HeroDungeonDecision> {
+  const decisions=new Map(independent);
+  if(members.length<2||members.length>3||
+    members.some(member=>member.status!=="exploring"||
+      member.health<=0||member.floor!==members[0].floor||
+      !decisions.has(member.id)))return decisions;
+  const actions=members.map(member=>decisions.get(member.id)!.action);
+  if(actions.some(action=>action==="shop")||
+    actions.every(action=>action===actions[0]))return decisions;
+
+  const change=(target:HeroFloorAction):ReadonlyMap<string,HeroDungeonDecision>=>{
+    for(const member of members){
+      const current=decisions.get(member.id)!;
+      decisions.set(member.id,{...current,action:target});
+    }
+    return decisions;
+  };
+  const distinct=new Set(actions);
+  if(distinct.size!==2||!distinct.has("stay"))return decisions;
+
+  if(distinct.has("ascend")){
+    // A genuinely supportive explorer may accompany a companion who needs
+    // to retreat upward, but never against a personal resupply/descend goal.
+    if(members.every(member=>decisions.get(member.id)!.action==="ascend"||
+      (member.role==="healer"||member.traits.positive==="generous")&&
+        member.health/member.stats.maxHealth>=0.55))
+      return change("ascend");
+    return decisions;
+  }
+  if(!distinct.has("descend"))return decisions;
+
+  const stayers=members.filter(member=>
+    decisions.get(member.id)!.action==="stay");
+  const descenders=members.filter(member=>
+    decisions.get(member.id)!.action==="descend");
+
+  // Caution or the need to farm money is a genuine preference, not an
+  // obligation to race after an impatient companion.
+  const canFollow=stayers.every(member=>{
+    const goal=decisions.get(member.id)!.goal;
+    const health=member.health/member.stats.maxHealth;
+    const equipped=member.equipment.weapon!==null||
+      member.equipment.armor!==null;
+    const threshold=member.traits.positive==="careful"?0.92:0.78;
+    return goal!=="caution"&&goal!=="resupply"&&
+      goal!=="farm"&&equipped&&health>=threshold;
+  });
+  if(canFollow)return change("descend");
+
+  // Patient companions can put off a desired descent for one more
+  // real expedition day. Waiting does not heal anyone or create loot.
+  const willingToWait=descenders.every(member=>
+    member.traits.negative!=="reckless"&&
+    (member.traits.positive==="generous"||
+      member.traits.positive==="careful"||member.role==="healer"));
+  if(willingToWait)return change("stay");
+  return decisions;
 }
