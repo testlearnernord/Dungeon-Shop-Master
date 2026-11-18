@@ -342,8 +342,7 @@ silently veto that decision.
   ledger, combat and exploration views from those committed events. Camera,
   focus, reload or opening the board must never advance/roll the dungeon.
 - A single expedition can last across several in-game days and committed
-  event records. There is
-  **no forced return to Floor 4/5** and no traverse-all-floors return trip.
+  event records. There is **no forced return to Floor 4/5** and no traverse-all-floors return trip.
   A hero leaves by a deliberate upward-transition/shop choice from their
   current depth; commerce is real and free restocks are forbidden.
 - Shop visits and **outside-world standby** are explicit, mutually exclusive
@@ -605,7 +604,7 @@ vertical integration rather than new disconnected framework islands.
   furniture, cashier, excavation, save/load, ledger and training viewers
   work. A player can recognize three sorts of progress without being
   forced to study an event log.
-- Automated checks stay targeted: seeded world/decision/gear/phase contract
+- Automated checks stay targeted: seeded world/decision/gear/time contract
   tests, replay/save regression, shop-economy invariants and a real browser
   Board + transaction + expedition path. Human 3D/readability checks remain
   necessary. Update current docs when each package actually ships.
