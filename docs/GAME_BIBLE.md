@@ -15,7 +15,7 @@
 
 **Identity (LOCKED):** An atmospheric, dark-fantasy shopkeeping simulator in a dangerous dungeon. The shop is physically operated, rather than being a menu. Adventurers are autonomous customers with identities and uncertain futures. Commerce, greed, survival and long-term consequences belong together.
 
-**The shop:** A small, rough, inhabited cave on **Floor 5**, not a fully equipped city storefront. Galvik is a sharp-tongued, selfish, deeply greedy merchant. His black humor and lack of scruples are part of the intended character, not an instruction to make the player's UI hostile.
+**The shop:** A small, rough, inhabited cursed cave, not a fully equipped city storefront. **CURRENT V.002:** its game-space is mapped to Floor 5. **APPROVED V.0003 DIRECTION:** Galvik's same physical shop becomes a **cursed special floor outside the numbered dungeon**, entered and left through one supernatural gateway regardless of where a hero abandoned an expedition. Galvik is a sharp-tongued, selfish, deeply greedy merchant. His black humor and lack of scruples are part of the intended character, not an instruction to make the player's UI hostile.
 
 **The central choice:** The player controls what is ordered, stocked, arranged and made available. Heroes choose their own purchases. A good shop can help them survive; selling rubbish for a profit can have consequences. Retail prices are currently fixed in the item catalog, not player-adjustable.
 
@@ -113,10 +113,14 @@ This does **not** declare an implemented system or a shipped version.
   implementations after migration. A universal, deterministic encounter motor
   must support **both** multi-hero/multi-monster fights and boss abilities;
   retain historical replay compatibility rather than a second live resolver.
-- **Autonomous hero decisions, not merchant commands.** Galvik remains the
-  physically operated shopkeeper. Real sale/credit, equipment, HP and resource
-  values influence genuine actions and combats, and can be observed later.
-  The hero's reckless decision to explore underprepared must remain possible.
+- **Autonomous two-layer hero decisions, not merchant commands.**
+  Short-term, heroes choose **stay / go deeper / go higher**. Medium-term,
+  they pursue real goals like farming money on easier floors, testing
+  newly bought gear, cautious survival, or progressing when strong enough.
+  Their current HP, equipment, class, personality and danger inform those
+  decisions without eliminating reckless choices. Real sale/credit and
+  consumable usage influence genuinely recorded outcomes. Galvik still
+  operates the shop, not the party's movement and combat controls.
 - **Three recognizable progress tracks:** persistent dungeon discoveries and
   depth, hero survivorship/leveling/relationships, and shop goods/demand/
   revenue/expansion. A substantive ten-day vertical slice should make these
@@ -135,23 +139,38 @@ This does **not** declare an implemented system or a shipped version.
   sealed results. A missing hero is *last known / unknown* until reported.
 - **Initially retain a shop-day structure**, with morning/midday/evening
   expedition phases as the design target rather than silently committing to a
-  free-running 24-hour simulation. Replays remain immutable. Any save
+  free-running 24-hour simulation. **After leaving the shop**, a hero spends
+  **two complete game days off duty**, neither in the dungeon nor in the
+  shop, before being eligible to return. Replays remain immutable. Any save
   migration or altered day clock must be deliberate and tested.
 - **Small first chapter rather than fake 100-floor coverage:** investigate a
   playable first ten-floor vertical slice with the Cave Troll as a likely
   later chapter boss. Current Floor 6/7 recordings remain truthful history.
 
-**Shop access option under discussion (NOT LOCKED):** every hero can try
-to return to Galvik via reachable paths; the distance, travel phase and
-real hazards make the decision costly. The current physical Floor 5 shop
-remains, with possible later unlocked milestone shortcuts to that **same**
-shop, not artificial five-floor shopping lockouts. A paid one-way emergency
-escape item might later rescue an expedition without returning its hero
-instantly to the deep dungeon. Exact rules remain undecided.
+**Approved V.0003 special-floor/shop access direction (NOT CURRENT):**
+Galvik's shop is **not a numbered dungeon level**. The current separate
+Floor-4 and Floor-6 shop entrances are to be replaced by **one large cursed
+portal** for all arriving/departing heroes. Heroes can decide to **abort
+an expedition from any floor when choosing an upward floor transition**,
+enter the same shop, buy/sell as real customers, then leave to spend
+**two complete days off duty** in the outside world. No full-dungeon
+backtrack, arbitrary every-five-floors access rule, duplicated shop
+instances or instant reentry into the just-abandoned fight. After standby
+they may start a new expedition; the safe return/reentry anchor is OPEN.
+All new shop gate/queue/furniture reachability must be rebuilt for one
+physical portal, without silent legacy two-entrance assumptions.
+
+**Temporary Floor 10 restriction (APPROVED TARGET, NOT IMPLEMENTED):**
+Level 10 remains inaccessible to an individual hero until **Galvik grants
+that hero a pass**. The permit mechanic may be redesigned later, but the
+restriction itself remains in the first V.0003 chapter. Today's different
+`level6Permit` gameplay remains CURRENT only until migrated. Moving the
+Cave Troll to Floor 10 is a separate still-open placement choice.
 
 **Still OPEN within that direction:** exact room count and floor geometry,
-day-phase triggers, group formation rules, magic shop entry access, permanent
-Floor 10 boss placement, mana/class resource model, new supply chains,
+day-phase triggers, group formation rules, shop-portal visual/lore,
+post-standby safe reentry anchor, downtime HP recovery, later Floor 10
+permit redesign and possible Troll placement, mana/class resource model, new supply chains,
 economic balance, visual asset reuse, full real-time progression and curse lore.
 They remain proposals until worked through and approved.
 
