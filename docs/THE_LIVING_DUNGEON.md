@@ -84,7 +84,17 @@ elites in the actual solo expedition day and receive real
 recorded loot/XP accounting. They are renewable monster sites,
 not unique boss kills, and use no new replay/save version.
 
-**Not implemented:** autonomous multi-hero campaign parties
+**Current limited cooperative slice (after this PR merges):**
+willing co-located heroes can travel together for one committed
+day on Floors 1–4/7 and genuinely fight the same encountered
+monster with their own HP/Herbs, a single shared world-site
+claim, finite split gold and individual saved replay POVs.
+They make independent post-day decisions, so companions may
+separate naturally. There is no player-issued party command,
+second combat motor or retroactively invented loot.
+
+**Not implemented:** persistent multi-day autonomous parties,
+coordinated floor transitions or party-vs-unique-Troll encounters
 and shared party loot/HP settlement, fully general status/
 ability effects, dungeon Floors 8–10, cursed out-of-number
 shop entrance, two-day hero standby, full Morning/Midday/
