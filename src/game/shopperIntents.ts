@@ -1,8 +1,9 @@
 import { ECONOMY, ITEMS, tradeAtStartOfDay, type ItemId } from "./economy.ts";
 import type { GameState } from "./gameState.ts";
 
-/** A read-only forecast of the *same* authoritative day-tick purchase logic.
- * No stock is reserved/removed and no funds are transferred until End Day.
+/** Read-only shopping intent planning based on the deterministic inventory
+ * preferences of the former day projection. The projection NEVER sells or
+ * settles goods; only the physical cart and cashier commit real business.
  */
 export interface ShoppingInterest {
   readonly itemId: ItemId;
@@ -110,7 +111,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
   return results;
 }
 
-/** Visual-only intent, kept separate from the authoritative day-tick trade. */
+/** Intent classification only; no shop purchases happen by forecasting. */
 export type ShopperVisualAction = "shop"|"checkout"|"wait-restock"|"beg"|"leave-unserved";
 export function shopperVisualAction(
   intent: ShoppingIntent | null, hasUnpaidCart: boolean,

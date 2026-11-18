@@ -110,11 +110,8 @@ export function returnShopCart(
   };
 }
 
-/**
- * Interim bridge until the interactive cashier is available.
- * The reserved cart is settled exactly once when End Day is confirmed.
- * Its sale events use the new day so receipts retain chronological order and
- * the existing strict save/event schemas accept them unchanged.
+/** Legacy core used by the actual staffed cash register ONLY. End Day
+ * must never call this function to fabricate a purchase.
  */
 export function settleHeldShopCarts(
   state: GameState, nextDay: number,
@@ -183,6 +180,20 @@ export function settleHeldShopCarts(
     settledIds.add(hero.id);
   }
   return {state:{...result, shopCarts: []}, events, settledIds};
+}
+
+/** Return every outstanding unpaid cart before bed-based closing.
+ * The player never receives money for goods that weren't checked out.
+ * Failure is explicit and atomic: no partial shop closing may drop stock.
+ */
+export function returnUnpaidCartsAtClose(state:GameState):GameState {
+  let current=state;
+  for(const cart of state.shopCarts){
+    const result=returnShopCart(current,cart.heroId);
+    if(result.state===current)throw new Error("Unpaid cart could not be returned at shop close.");
+    current=result.state;
+  }
+  return current;
 }
 
 /**
