@@ -115,8 +115,8 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   companion names, roles, health and the original formation day.
   Companions are not clickable player-issued orders. Never infer a
   party from proximity, fabricate hidden combat outcomes in a sealed
-  ledger or imply the full Morning/Midday/Evening Board 2.0 shipped.
-- **Expanded roster:** readable phase-column timeline per hero, filter/sort,
+  ledger or imply the full chronological Board 2.0 shipped.
+- **Expanded roster:** readable event/last-report timeline per hero, filter/sort,
   compact vertical dungeon-depth/party markers, hero profile and verified
   history of actual bought/consumed goods and recorded encounters. Use
   stable real identity, actual quantities and recorded snapshots; no
@@ -143,7 +143,7 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
 - **Floor 10 gate:** when a pass is absent, show a truthful blocked-floor
   state without spoiling bosses or overriding the hero's autonomous
   medium-term goals. Permit remains a temporary per-hero merchant decision.
-- **Knowledge safety:** no future-state backfill of morning/noon,
+- **Knowledge safety:** no future-state backfill of earlier reports,
   guaranteed fatality labels for missing heroes, leaked sealed outcomes or
   extrapolated success odds. Warnings such as "unarmed" and "low HP"
   inform the merchant without redirecting autonomous hero decisions.
@@ -153,8 +153,9 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   Contrast and reduced-motion settings must stay useful in the dark cave.
 
 This is a **future interaction contract**; the current game still uses
-a nine-hero wall texture and current roster details without a daily
-three-phase timeline.
+a nine-hero wall texture and current roster details without an
+event-based known-state timeline or a unified live shop/dungeon clock.
+The latter is defined in [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 
 ## Invariants and review gates
 - Never hide a campaign save **error** behind a collapsed panel.
