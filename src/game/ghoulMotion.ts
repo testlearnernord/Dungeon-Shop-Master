@@ -1,4 +1,4 @@
-import type {GroupPhase} from "./groupCombat.ts";
+import type {GroupPhase,GroupReplayFrame} from "./groupCombat.ts";
 
 /** 14 authored animation clips plus the separate combat idle, losslessly
  * consolidated by predev/prebuild. Source archives are never overwritten. */
@@ -15,9 +15,9 @@ export interface GhoulMotion {readonly clip:GhoulClip;readonly loop:boolean;read
 export function ghoulMotionForPhase(phase:GroupPhase):GhoulMotion {
   switch(phase){
     case "move":return {clip:"walk_feral",loop:true,length:4.958};
-    case "windup":return {clip:"attack_leap",loop:false,length:3.958};
-    case "strike":return {clip:"attack_claw_right",loop:false,length:1.958};
-    case "hurt":case "thrown":return {clip:"hit_stagger",loop:false,length:1.958};
+    case "windup":return {clip:"attack_leap",loop:false,length:.85};
+    case "strike":return {clip:"attack_claw_right",loop:false,length:.38};
+    case "hurt":case "thrown":return {clip:"hit_stagger",loop:false,length:.50};
     case "dead":return {clip:"death_fall",loop:false,length:3.958};
     case "roll":return {clip:"run_aggressive",loop:true,length:1.958};
     case "grab":return {clip:"attack_charge",loop:false,length:1.958};
@@ -28,4 +28,23 @@ export function ghoulMotionForPhase(phase:GroupPhase):GhoulMotion {
 export function ghoulClipProgress(time:number,motion:GhoulMotion):number {
   if(!Number.isFinite(time)||time<=0)return 0;
   return motion.loop?(time/motion.length)%1:Math.min(1,time/motion.length);
+}
+
+/** Local phase time is derived from committed combat frames, NOT the
+ * player's elapsed video time. Seeking backwards gives the same pose. */
+export function ghoulRecordedPhaseAge(
+  frames:readonly GroupReplayFrame[],actorId:string,time:number,
+):number {
+  let from=time;
+  let phase:string|undefined;
+  for(let i=frames.length-1;i>=0;i--){
+    const frame=frames[i];
+    if(frame.t>time+1e-6)continue;
+    const actor=frame.actors.find(a=>a.id===actorId);
+    if(!actor)continue;
+    if(phase===undefined)phase=actor.phase;
+    if(actor.phase!==phase)break;
+    from=frame.t;
+  }
+  return Math.max(0,time-from);
 }
