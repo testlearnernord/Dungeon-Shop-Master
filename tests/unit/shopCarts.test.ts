@@ -84,7 +84,7 @@ test("multiple items accumulate and can be returned without money or inventory l
   assert.deepEqual(latest,before);
   assert.deepEqual(parseSave(JSON.stringify(createSave(returned.state))),returned.state);
 });
-test("transition settles held goods once, records day+1 receipts and preserves existing dungeon RNG",()=>{
+test("bedtime returns held goods without a receipt; manual settlement stays separate",()=>{
   const state=customers();
   const first=state.adventurers[0];
   const firstLine=forecastShoppingIntents(state).get(first.id)!.items[0];
@@ -101,10 +101,14 @@ test("transition settles held goods once, records day+1 receipts and preserves e
   const transition=advanceDay(reserved);
   assert.equal(transition.state.shopCarts.length,0);
   assert.equal(transition.state.shopEconomy.dailySales.day,2);
-  assert(transition.state.shopEconomy.dailySales.revenue>=firstLine.subtotal);
+  assert.equal(transition.state.shopEconomy.dailySales.revenue,0);
+  assert.equal(transition.state.shopEconomy.balance,reserved.shopEconomy.balance);
   assert.equal(transition.events.filter(event=>event.type==="sale"&&
-    event.adventurerId===first.id).length,1,
-    "The picked hero should not purchase a second automatic cart.");
+    event.adventurerId===first.id).length,0,
+    "The picked hero has not passed the register; no payment exists.");
+  const restored=transition.state.shopEconomy.slots.find(slot=>slot.id===firstLine.slotId)!;
+  const original=state.shopEconomy.slots.find(slot=>slot.id===firstLine.slotId)!;
+  assert.equal(restored.quantity,original.quantity);
   const ids=transition.state.events.map(event=>event.id);
   assert.equal(new Set(ids).size,ids.length);
   assert.deepEqual(parseSave(JSON.stringify(createSave(transition.state))),transition.state);
@@ -148,16 +152,15 @@ test("GameStore emits one update per real pickup and preserves carts over export
   assert.equal(notifications,2);
 });
 
-test("Copilot regression: previous day's reserved receipt never blocks another shop visit",()=>{
+test("unpaid items are returned at bed and do not block later shop visits",()=>{
   const state=customers();
   const hero=state.adventurers[0];
   const first=forecastShoppingIntents(state).get(hero.id)!.items[0];
   const reserved=pickUpShopItem(state,hero.id,first.slotId).state;
   const day2=advanceDay(reserved).state;
   const receipt=day2.events.find(event=>event.type==="sale"&&
-    event.saleChannel==="reserved"&&event.adventurerId===hero.id);
-  assert(receipt);
-  assert.equal(receipt.day,2);
+    event.adventurerId===hero.id);
+  assert.equal(receipt,undefined,"A cart never settled at the till is not a sale.");
   // Simulate a subsequent shop visit with empty supplies and fresh stock.
   const visiting={...day2,adventurers:day2.adventurers.map(h=>h.id===hero.id
     ? {...h,status:"at-shop" as const,floor:5 as const,

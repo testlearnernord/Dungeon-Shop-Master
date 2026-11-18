@@ -5,11 +5,17 @@ import { advanceDay } from "../../src/game/gameState.ts";
 import { currentDayReceipts, salesByHero } from "../../src/game/saleView.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { ITEMS } from "../../src/game/economy.ts";
+import {quoteCustomerCheckout,checkoutCustomer} from "../../src/game/customerCheckout.ts";
 
 test("receipts exactly match the authoritative day sales, buyers and item prices", () => {
   const initial = createGameState();
   assert.deepEqual(currentDayReceipts(initial), []);
-  const state = advanceDay(initial).state;
+  const buyer=initial.adventurers[0];
+  const ready={...initial,adventurers:initial.adventurers.map(hero=>hero.id===buyer.id
+    ?{...hero,gold:100,inventory:{...hero.inventory,bread:0,healing:0}}:hero)};
+  const quote=quoteCustomerCheckout(ready,buyer.id);
+  assert(quote,"The test needs a real physical checkout quote.");
+  const state=checkoutCustomer(ready,quote).state;
   const snapshot = structuredClone(state);
   const receipts = currentDayReceipts(state);
   assert(receipts.length > 0);

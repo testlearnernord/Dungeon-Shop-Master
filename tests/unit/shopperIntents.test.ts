@@ -19,7 +19,7 @@ function prepared() {
         equipment:{weapon:null,armor:null}}:hero),
   };
 }
-test("read-only projected shopping decisions equal actual confirmed day sales",()=>{
+test("read-only shopper preferences never create automatic bedtime receipts",()=>{
   const state=prepared();
   const pristine=structuredClone(state);
   const plans=forecastShoppingIntents(state);
@@ -30,14 +30,8 @@ test("read-only projected shopping decisions equal actual confirmed day sales",(
     heroId:plan.heroId,slotId:item.slotId,itemId:item.itemId,
     quantity:item.quantity,revenue:item.subtotal,
   })));
-  const booked=actual.map(event=>({
-    heroId:event.adventurerId,
-    slotId:event.id.substring(event.id.lastIndexOf(":sale:")+6),
-    itemId:event.itemId,
-    quantity:event.quantity,
-    revenue:event.revenue,
-  }));
-  assert.deepEqual(predicted,booked,"No second AI with different needs, stock or buying order");
+  assert.equal(actual.length,0,
+    "The old day forecast cannot issue sales unless a hero really pays.");
   assert(predicted.some(entry=>entry.itemId==="bread"));
   assert(predicted.every(entry=>entry.quantity!>0&&entry.revenue!>0));
   assert.equal(state.shopEconomy.balance,pristine.shopEconomy.balance);
