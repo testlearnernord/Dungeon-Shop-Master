@@ -106,6 +106,25 @@ the 1–4 placeholder; **Floor 6 remains distinct**.
 - Validate seeded multi-hero shared-world behavior across several days;
   a deep hero does not teleport to Floor 4 just because evening arrived.
 
+**Group-capable special-boss ability (after this PR merges):**
+the existing ordinary `groupCombat` motor supports a real
+`grapple-throw` skill for a configured melee boss against
+multiple independently acting heroes. It uses the common
+contact/defense, actor state, timing, positioning, hit and
+recording authorities. Resistance depends on actor agility,
+grips can be dodged/parried/escaped, throw flight collides
+with walls and real HP damage occurs at landing only.
+The authored Troll timings are shared with the original
+single-hero cinematic, which remains replay-compatible.
+Tests include party combat, actual grabs and throw damage,
+early termination and immutable v1 recordings.
+
+**Still open:** connect the group-capable boss encounter to
+actual dungeon floor progression and a 3D group replay viewer,
+without replacing the approved Troll art with an unreviewed
+generic monster. Integrate floor 8–10 world semantics and
+the Level 10 pass when their game design is decided.
+
 ### P2 — Meaningful real merchandise and combat
 
 **Integration delivered in the next PR (CURRENT only after merge):**
