@@ -64,9 +64,9 @@
   Keep opponent-only projectile targets and deterministic
   ties. Don't reintroduce per-viewer target RNG, point-only
   projectile collision, or a separate attack-selection
-  table. The Boss's special grab/throw effects and high-level
-  stepper remain deliberately separate pending final
-  group-capable unification.
+  table. The Boss's special grab/throw effects remain
+  actor-specific callbacks within the shared encounter
+  pipeline, pending unified actor state modeling.
 - **CURRENT actor runtime shared across group and Troll combat (after
   this PR):** `combatMovement.ts` is the only combat position
   integrator and `combatActionClock.ts` is the only once-per-tick
@@ -88,7 +88,8 @@
   `meleeAbility` is strict-save validated. Troll grab/throw
   remains an animation-compatible boss-specific action after
   shared contact, and its original v1 recordings must never be
-  regenerated. The boss **motion scheduler** is still separate.
+  regenerated. The top-level scheduler is now unified,
+  but the Boss grip/flight actor phases remain specialized.
 - **CURRENT shared combat vitality (after this PR):**
   `src/game/combatVitality.ts` owns HP hit/mitigation/healing
   arithmetic and item heal constants for the ordinary and Troll
