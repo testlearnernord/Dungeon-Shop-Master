@@ -285,6 +285,19 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       message: `${hero.name} entered the dungeon on floor 1.`,
     });
   }
+  // Persistent visited routes belong to living heroes even after moving
+  // between floors. Dead heroes cannot return to any floor, however: leaving
+  // their historical navigation records in every old world eventually
+  // exceeds the strict save cap and misrepresents physical occupancy.
+  // Their committed event/replay history remains untouched.
+  const livingIds=new Set(adventurers.filter(hero=>hero.status!=="dead")
+    .map(hero=>hero.id));
+  level7World={...level7World,
+    heroes:level7World.heroes.filter(progress=>livingIds.has(progress.heroId))};
+  earlyDungeonWorlds=earlyDungeonWorlds.map(entry=>({
+    ...entry,world:{...entry.world,
+      heroes:entry.world.heroes.filter(progress=>livingIds.has(progress.heroId))},
+  }));
   // Keep the full event history, but only a few heavy 3D recordings.
   // Removing an expired replay never changes its outcome/event/hero/RNG.
   const allEvents = [...state.events, ...events];
