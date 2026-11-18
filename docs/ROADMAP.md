@@ -19,8 +19,9 @@
   The individually authorized Floor 6 Cave Troll remains a separate
   combat/progression authority pending consolidation.
 - A physical placeable Adventurer Board and expanded E/R roster with HP,
-  item icons, hero identity and known status, **without** a saved three-phase
-  daily itinerary, unified floor/intent projection or depth visualization.
+  item icons, hero identity and known status, **without** the planned
+  unified event/last-known timeline or dungeon depth visualization.
+  Mandatory three-phase columns were superseded by the shared-clock design.
 - The Level 6 experimental Tripo Troll now has 14 animation clips including
   a real grapple/finger-following release and stronger throws (merged through
   PR #177). The legacy segmented renderer remains as fallback. Automatic
@@ -56,10 +57,14 @@ Do not overbuild extra content before this loop is both real and fun.
   **two-day off-duty status after shop exit**, real gear/supplies and event IDs.
   Level 10 requires **individual Galvik-granted access**, separate from
   character XP and the existing live Floor 6 permit.
-- Define a **Morning / Midday / Evening** phase ledger and a distinction
-  between *world truth* and *Galvik's observed knowledge*. Determine actual
-  day-clock commit points without retroactive leaks, frame dependence or
-  phantom simulated activity when the viewer opens.
+- **Approved shared-time direction:** migrate shop, customer deadlines
+  and dungeon movement onto one paced deterministic event clock that
+  advances alongside actual shop activity. Pause during planning,
+  reviews and background tabs; deliberate bedtime closes the day
+  and advances unsupervised overnight events without automatic sales.
+  Separate world truth from Galvik's observed/last-known reports.
+  No forced Morning/Midday/Evening phases. See
+  [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md) for acceptance gates.
 - Define compatibility/migration for existing `SIMULATION_VERSION = 13` and
   recorded Floor 6/7 fights **before** changing save fields. Neither
   historical replays nor old outcomes can be silently recalculated.
@@ -281,10 +286,11 @@ before being offered as a shipped creature.
 ### P3 — Adventurer Board 2.0
 
 - Preserve the **physical wall board**, movement/placement, and **E/R**
-  access. Upgrade it to a readable three-phase visual timeline showing each
-  hero's Morning / Midday / Evening floor and actual or intended activity
-  (farming, progressing, discovering, fighting, fleeing, recovering,
-  grouping, shopping or last known/unknown).
+  access. Upgrade it to an ordered, knowledge-safe **event timeline**:
+  the hero's last confirmed location, source/time/recency of reports,
+  actual or intended activity (farming, progressing, discovering,
+  fighting, fleeing, recovering, Temporary Party, shopping or unknown).
+  Do not require fabricated morning/noon/evening entries.
 - Keep **HP bar + exact HP, character level, dungeon floor and equipment
   icons visible without opening a card**. Show **empty sword/armor sockets**,
   plus carried Healing Herb, Waybread, Mana Potion and other meaningful
@@ -335,7 +341,8 @@ before being offered as a shipped creature.
    changes recorded HP/damage/ability, without fabricated post-hoc bonuses.
 2. **Readable status at the physical board:** exact/known HP and equipment
    (including missing gear), actual item icons/counts, floor and intent;
-   recorded three daily phases; expanded depth/hero view.
+   ordered real/last-known reports with recency and a useful expanded
+   depth/hero view, not three artificial phase snapshots.
 3. **One authoritative renewable expedition world:** heroes share
    seeded persistent floors and distinct generations of ordinary
    enemies/chests/traps; map/story milestones and unique boss deaths never
