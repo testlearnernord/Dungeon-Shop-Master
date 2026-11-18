@@ -199,3 +199,13 @@ export function generateDungeonLayout(
   }
   return {...draft,features};
 }
+
+/** One seeded geometry contract for ordinary early floors and the existing
+ * Level 7 viewer. Smaller early maps keep progression playable in shop days. */
+export function generateExpeditionLayout(
+  campaignSeed: number, floor: number,
+): DungeonLayout {
+  return floor >= 1 && floor <= 4
+    ? generateDungeonLayout(campaignSeed, floor, 19, 19)
+    : generateDungeonLayout(campaignSeed, floor);
+}
