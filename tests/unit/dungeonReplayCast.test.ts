@@ -14,7 +14,8 @@ const encounter = resolveGroupCombat({
     {id:"hero-1",team:"heroes",role:"tank",style:"melee",
       x:-4,z:0,hp:120,maxHp:120,damage:14,armor:5,speed:3,reach:1.8},
     {id:"hero-2",team:"heroes",role:"healer",style:"ranged",
-      x:-3,z:2,hp:70,maxHp:70,damage:9,armor:2,speed:3,reach:2},
+      x:-3,z:2,hp:70,maxHp:70,damage:9,armor:2,speed:3,reach:2,
+      equipment:{weapon:"Iron Sword",armor:"Leather Vest"}},
     {id:"elite",team:"monsters",role:"monster",style:"melee",
       x:2,z:0,hp:230,maxHp:230,damage:20,armor:8,
       speed:2.4,reach:2,radius:1.0,specialAbility:"grapple-throw"},
@@ -54,6 +55,9 @@ test("all genuine group participants project into saved dungeon footage without 
     new Set(["hero-1","hero-2","elite"]));
   assert.equal(visible.find(actor=>actor.id==="elite")?.specialAbility,"grapple-throw");
   assert.equal(visible.find(actor=>actor.id==="elite")?.radius,1);
+  assert.deepEqual(cast.find(actor=>actor.id==="hero-2")?.equipment,
+    {weapon:"Iron Sword",armor:"Leather Vest"},
+    "The renderer must get a genuine historical companion gear snapshot");
   assert.deepEqual(visible.map(a=>a.hp),
     during.frame!.actors.map(a=>a.hp));
   assert.deepEqual(dungeonReplayFocusIds(replay,during),
