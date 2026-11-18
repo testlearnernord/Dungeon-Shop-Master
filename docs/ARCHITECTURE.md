@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Current Architecture
 
-> **Living technical map · reviewed 2026-11-16.** Navigational guidance, not a frozen API or history of refactors. If modules move, interfaces change or mechanics are removed, replace obsolete entries in the same PR. Source and tests remain the authority for implemented behavior.
+> **Living technical map · reviewed 2026-11-18.** Navigational guidance, not a frozen API or history of refactors. If modules move, interfaces change or mechanics are removed, replace obsolete entries in the same PR. Source and tests remain the authority for implemented behavior.
 
 ## 1. Runtime and ownership
 
@@ -10,6 +10,82 @@ The current game is a **TypeScript/Vite** browser application rendered with **Ba
 - `src/game/gameState.ts` defines persisted version-13 `GameState` and deterministic day progression. `src/game/gameStore.ts` owns validated player actions and subscriber notifications.
 - Pure simulation functions must remain independent of Babylon meshes and the DOM. Scene objects and HUD projections are representations of authoritative game state, not additional sources of truth.
 - Scene transitions among the Level 5 shop, boss arena and dungeon viewer must not silently mutate the stored combat result.
+
+## V.0003 target architecture (PLANNED, NOT CURRENT)
+
+The next approved milestone is **V.0003 ALPHA — The Living Dungeon**.
+See [the unified design contract](THE_LIVING_DUNGEON.md) and
+[the prioritized roadmap](ROADMAP.md). Current Floor 1–4 daily rolls,
+Level 6 arena and Floor 7 exploration remain **distinct implementations**.
+Do not claim the planned shared explorer or three daily phases exists yet.
+
+The redesign must preserve one deterministic GameState authority and introduce:
+- A shared seeded world with **permanent floor/route structure**,
+  persistent story milestones and unique boss resolution, plus separate
+  **regenerating regular encounter/chest/trap site state**. Each site
+  records stable site ID, next eligible day/phase, regeneration cycle,
+  currently active instance/loot IDs, occupancy constraints and
+  generation source, so several heroes see the **same** current spawn
+  rather than rerolling it. Hero floor/position/intent, separate XP/level,
+  groups, real supplies and recorded encounter IDs all persist.
+- **Regeneration is an authoritative committed phase operation**, not a
+  viewer trigger, a full-map reconstruction or re-run of old encounters.
+  Seed from campaign, floor, site ID and cycle; defer spawns in occupied
+  rooms/active fights. Prevent duplicate loot claims, automatic
+  resurrection of unique bosses and retroactive changes to recorded
+  fights, reward events or maps. Keep farming rewards bounded and
+  distinguish true spawn state from Galvik's known/last-seen reports.
+- Separate *world truth* from *merchant knowledge*: Morning/Midday/Evening
+  snapshots are committed once, tagged with available/reported information,
+  and do not leak sealed outcomes, secret deaths or future replay footage.
+- A **single deterministic combat authority**, for groups **and** bosses:
+  consolidate multi-actor/projectiles from `groupCombat.ts` and proven
+  telegraph/parry/dodge/hit and boss-ability mechanics from
+  `arenaCombatMotion.ts`. Remove separate authoritative fight paths
+  and the special Level 6 progression path from **new runs**, preserving
+  immutable historical replay playback via explicit read-only adapters.
+  Babylon scenes never resolve outcomes.
+- **Retire** `dungeonSimulation.ts` Floor 1–4 placeholder outcome rolls
+  from new-game progression and retire Floor 7-only separate exploration
+  ownership once shared seeded spatial travel covers all relevant floors.
+  Keep one world truth; do not merely wrap the old RNG in new UI.
+- **Shop is a cursed special floor, not dungeon Floor 5 (V.0003
+  TARGET ONLY).** Replace both old Floor 4/Floor 6 shop entrances and their
+  pathing, NPC spawning and furniture-reachability assumptions with **one
+  physically shared portal**. Keep the existing single shop scene,
+  furniture, sales and ledger; do not create duplicate shops per dungeon
+  level. The current Level-5 shop remains in shipped V.002.
+- **Shop visits are explicit expedition transitions**: short-term floor
+  intent is stay/up/down; an *upward* choice can end an expedition from
+  **any floor** and move the hero into the cursed shop instead of walking
+  every floor backward. A completed shop departure begins two **full**
+  off-duty game days outside the dungeon and shop. Store this status
+  independently of physical at-shop and expedition states; reentry
+  after standby is a new expedition with a safe anchor TBD.
+- **Medium-term hero goals** (safe farming, testing new gear, reckless
+  progression, regroup/recover) bias navigation and shopping needs;
+  these are distinct from short-term floor direction and observed
+  actions in Morning/Midday/Evening snapshot events.
+- **Floor 10 is gated per hero** by Galvik's granted pass until later
+  redesign. Current `level6Permit` is V.002-only behavior and must be
+  explicitly refactored/migrated; neither XP alone nor an ordinary floor
+  transition bypasses the gate. Future emergency-escape items are deferred,
+  not needed for standard shop access.
+- One read-only Board projection shared by `rosterBoard.ts`,
+  `rosterBoardHud.ts` and `rosterView.ts`, preserving current mounted
+  furniture transforms, E/R interactions, HP and item icons; adding phase
+  history, accurate empty gear slots and a dungeon-depth map.
+- Explicit `SIMULATION_VERSION = 13` migration/compatibility and old
+  replay retention strategy **before** altering persistent schemas.
+  A content-release label **V.0003** does not mean save format version 3.
+  Likewise the separate npm package version `0.1.0` is not the UI label.
+
+The core technical acceptance test must carry one legitimate shop sale/credit
+through hero inventory, a deterministic combat item use, a known board status
+and an immutable saved/reloaded replay, preserving money/stock/HP. Exact
+phase timing, floor geometry, safe post-standby reentry anchor, HP recovery
+outside the dungeon, eventual pass redesign and Floor 10 Troll placement
+remain design questions, not APIs in production.
 
 ## 2. Current module map
 

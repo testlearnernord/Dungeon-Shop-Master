@@ -3,6 +3,9 @@
 **Playable browser alpha:** https://testlearnernord.github.io/Dungeon-Shop-Master/  
 **Repository:** https://github.com/testlearnernord/Dungeon-Shop-Master
 
+**Current playable release:** V.002 ALPHA  
+**Next approved design milestone:** **V.0003 ALPHA — The Living Dungeon** (**planned, not shipped**). See [The Living Dungeon design](docs/THE_LIVING_DUNGEON.md).
+
 A first-person, dark-fantasy shopkeeping game built with TypeScript, Vite and
 Babylon.js. The player currently controls Galvik, the cursed proprietor of
 a physical shop on **Floor 5**. Autonomous adventurers from the upper floors
@@ -21,8 +24,8 @@ continuously running dungeon simulation.
   furniture contracts, saves, replays and current code ownership.
 - [UI Design System](docs/UI_DESIGN_SYSTEM.md): the compact first-person
   interaction and visual language, including customer service hints.
-- [Development Roadmap](docs/ROADMAP.md): current priorities, the animated
-  Cave Troll asset trial, acceptance criteria and deliberately excluded scope.
+- [Development Roadmap](docs/ROADMAP.md): **V.0003 ALPHA** implementation packages and release gates; supersedes the old post-#166 feature sequence.
+- [The Living Dungeon design](docs/THE_LIVING_DUNGEON.md): agreed future loop, persistent dungeon, item causality, autonomous heroes, and Adventurer Board 2.0 with morning/midday/evening progress, HP and equipment icons.
 - [Contributor/AI Guide](AGENTS.md): how to begin work and keep these files
   synchronized with the implementation.
 
@@ -43,6 +46,27 @@ was mentioned in a roadmap.
 | Money | Real bag/slot inventory, wholesale costs, fixed retail prices, credit debt book and manual receipts. Outstanding collected carts settle once at end of day |
 | Adventurers / dungeon | Persistent identities and equipment; deterministic offscreen Floors 1–4; individually authorized Floor 6 Cave Troll with a score-synchronized 13.5s entrance, an original 17-piece vertex-painted GLB surface sculpt on the existing animated rig, and visually grounded maul attacks; deterministic boss duel with imperfect dodges, timed parries, real incoming hits, a breakable grab/throw with occasional real lava landings with hero/troll HP plates and cue-colored floating damage, lava and healing; Floor 7 observation/replay |
 | Day / reports | End the day at Galvik's bed; merchant ledger, receipts, hero records and spoiler-safe sealed replay presentation; validated campaign save/load |
+
+**For V.0003 design (NOT CURRENT):** Galvik's shop moves conceptually
+off the numbered dungeon floors to a single **cursed special floor**,
+served by one large supernatural entrance/exit rather than the existing
+two Floor-4/Floor-6 doors. Dungeon heroes choose stay/up/down; an ascent
+may terminate an expedition at the shop from any depth. When they
+physically leave, they are absent from both shop and dungeon for
+**two complete game days** before becoming eligible for a new expedition.
+Dungeon Floor 10 is blocked until Galvik gives **that hero** a pass;
+the current Floor-6 permit is not the future gate. These rules are
+documented, not implemented.
+
+**Dungeon Regeneration (V.0003 planned):** the world's geometry,
+known paths, unique victories and story milestones remain saved while
+ordinary monsters, common chests and resettable traps renew at
+staggered, deterministic per-site intervals. This keeps farming viable
+without resetting bosses or duplicating historical loot. Exact day
+intervals and reward balance still require testing; no regeneration
+system has been implemented in V.002.
+
+**V.0003 is a target, not an implemented version.** The current gameplay still uses separate Floor 1–4, Floor 6 and Floor 7 simulation paths. The planned shared dungeon, three-phase board and hero/item causality upgrades are not yet shipped. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.0003 release labels.
 
 **Implemented does not mean visually perfect.** The CI checks safety and
 functional behavior; customer acting, friction and interface placement still

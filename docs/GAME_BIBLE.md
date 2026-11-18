@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Game Bible
 
-> **Living design reference · reviewed 2026-11-17.** This document describes the currently valid game direction, not a chronological archive. Replace or delete superseded information in the same PR that changes it. Git history preserves previous drafts. The source code and tests, not this document, establish what is playable.
+> **Living design reference · reviewed 2026-11-18.** This document describes the currently valid game direction, not a chronological archive. Replace or delete superseded information in the same PR that changes it. Git history preserves previous drafts. The source code and tests, not this document, establish what is playable.
 
 ## Reading this document
 
@@ -15,13 +15,16 @@
 
 **Identity (LOCKED):** An atmospheric, dark-fantasy shopkeeping simulator in a dangerous dungeon. The shop is physically operated, rather than being a menu. Adventurers are autonomous customers with identities and uncertain futures. Commerce, greed, survival and long-term consequences belong together.
 
-**The shop:** A small, rough, inhabited cave on **Floor 5**, not a fully equipped city storefront. Galvik is a sharp-tongued, selfish, deeply greedy merchant. His black humor and lack of scruples are part of the intended character, not an instruction to make the player's UI hostile.
+**The shop:** A small, rough, inhabited cursed cave, not a fully equipped city storefront. **CURRENT V.002:** its game-space is mapped to Floor 5. **APPROVED V.0003 DIRECTION:** Galvik's same physical shop becomes a **cursed special floor outside the numbered dungeon**, entered and left through one supernatural gateway regardless of where a hero abandoned an expedition. Galvik is a sharp-tongued, selfish, deeply greedy merchant. His black humor and lack of scruples are part of the intended character, not an instruction to make the player's UI hostile.
 
 **The central choice:** The player controls what is ordered, stocked, arranged and made available. Heroes choose their own purchases. A good shop can help them survive; selling rubbish for a profit can have consequences. Retail prices are currently fixed in the item catalog, not player-adjustable.
 
 **Scale:** A dungeon of up to 100 floors is the long-term fiction/ambition. It does **not** imply that 100 playable levels exist, or that a specific release scope or real-time simulation model has been approved.
 
 ## 2. Current playable alpha (CURRENT)
+
+**Version distinction:** the currently published game is **V.002 ALPHA**. **V.0003 ALPHA — The Living Dungeon** is the **approved next design/release milestone**, not yet shipped. Its detailed target and acceptance criteria are in [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md). The independent npm `package.json` metadata version is not a playable content claim.
+
 
 The repository currently implements:
 
@@ -91,35 +94,101 @@ For exact prices, damage, timers, controls, available rooms and release behavior
 
 **Writing rule:** Short dialogue sketches, dark jokes and prototypes can be explored without declaring the entire scenario canon. Only promote story details to LOCKED after an explicit project decision.
 
-## 5. Design questions still open (OPEN)
+## 5. V.0003 ALPHA — The Living Dungeon (APPROVED DIRECTION, NOT CURRENT)
 
-- How to keep watching autonomous dungeon expeditions engaging, and what indirect powers the player gains over routes, traps, hazards or boss encounters.
-- Whether, when and how shop time and dungeon activity should interact continuously instead of only at committed day transitions. **No 24-hour concurrent simulation has been approved.**
-- Meaningful short- and long-term shop decisions, possible player-controlled pricing (not in the current alpha), upgrades, helpers, money sinks and increasing demand.
-- How exploration, deeper floors and hero progression expand gameplay without requiring 100 hand-built or repetitive levels.
-- How to make early-floor (1–4) deaths observable or replay-backed. These floors currently simulate offscreen, and the ledger no longer showcases their unobserved casualties as a memorial.
-- Whether the one-model Tripo AI trial can become a repeatable import, rigging and animation pipeline for future dungeon monsters and eventually heroes.
-- The long-term art/asset pipeline, optional desktop delivery and commercial release model.
+The owner has designated **The Living Dungeon** as the next major redesign
+and the target for **V.0003 ALPHA**. Full scope, proposed contracts, open
+parameters and release gates: [The Living Dungeon design](THE_LIVING_DUNGEON.md).
+This does **not** declare an implemented system or a shipped version.
 
-These are questions, not permissions to undertake a large rewrite.
+**Direction accepted:**
 
-**Approved near-term sequence (implementation is separately verified):**
-The staffed cashier, physical stocking improvements and customer reactions
-are already implemented. The local Tripo GLB inspection viewer and varied
-Level 6 training-only battles shipped in #166. They do **not** replace the
-actual boss model or establish a generalized animated-asset pipeline.
+- **One persistent, seeded, shared dungeon**, rather than unrelated Floor 1–4
+  daily RNG outcomes, a special Floor 6 progression path and separate Floor 7
+  exploration. Individual heroes and possible groups travel, discover,
+  revisit, progress, recover or flee; the same world's rooms, enemies and
+  resolved unique features persist. **Dungeon floor** and **hero level/XP**
+  represent different kinds of progression. **Remove** the old Floors 1–4
+  roll-based placeholder and redundant authoritative dungeon/combat
+  implementations after migration. A universal, deterministic encounter motor
+  must support **both** multi-hero/multi-monster fights and boss abilities;
+  retain historical replay compatibility rather than a second live resolver.
+- **Autonomous two-layer hero decisions, not merchant commands.**
+  Short-term, heroes choose **stay / go deeper / go higher**. Medium-term,
+  they pursue real goals like farming money on easier floors, testing
+  newly bought gear, cautious survival, or progressing when strong enough.
+  Their current HP, equipment, class, personality and danger inform those
+  decisions without eliminating reckless choices. Real sale/credit and
+  consumable usage influence genuinely recorded outcomes. Galvik still
+  operates the shop, not the party's movement and combat controls.
+- **Three recognizable progress tracks:** persistent dungeon discoveries and
+  depth, hero survivorship/leveling/relationships, and shop goods/demand/
+  revenue/expansion. A substantive ten-day vertical slice should make these
+  visible through returns, true combat replays and meaningful new decisions.
+- **Regenerative dungeon ecology:** permanent seeded floor geometry, discovered
+  paths, story encounters and unique boss victories **remain persistent**.
+  Ordinary monster groups, valid common treasure sites and resettable traps
+  **repopulate after staggered in-world intervals** (stored site/cycle state).
+  Farming earlier floors remains possible with bounded loot and danger.
+  Respawn cannot duplicate a past reward, appear in an occupied encounter,
+  silently resurrect a unique boss, reveal unseen contents on the Board or
+  bypass a hero's Floor 10 pass. Exact cooldowns remain balance parameters.
+- **Adventurer Board 2.0 is a central feature**, reusing the existing physical
+  movable board and E/R roster. Both glance and expanded presentation keep
+  numeric current/known **HP**, **character level**, **floor**, **current or
+  last known intent**, **real weapon/armor item sockets** (including conspicuous
+  empty slots) and the existing **item icons with consumable quantities**.
+  Morning/Midday/Evening present stored intent/activity/floor snapshots,
+  supported by a dungeon-depth map, party markers and hero detail/history.
+  Warnings such as unarmed/low HP are honest information, not automatic orders.
+- **No fabricated causality or omniscience.** The player can see a bought Herb
+  genuinely heal a recorded fighter, or armor mitigate a real blow, but the
+  UI must not invent an unseen event, predict certain survival or expose
+  sealed results. A missing hero is *last known / unknown* until reported.
+- **Initially retain a shop-day structure**, with morning/midday/evening
+  expedition phases as the design target rather than silently committing to a
+  free-running 24-hour simulation. **After leaving the shop**, a hero spends
+  **two complete game days off duty**, neither in the dungeon nor in the
+  shop, before being eligible to return. Replays remain immutable. Any save
+  migration or altered day clock must be deliberate and tested.
+- **Small first chapter rather than fake 100-floor coverage:** investigate a
+  playable first ten-floor vertical slice with the Cave Troll as a likely
+  later chapter boss. Current Floor 6/7 recordings remain truthful history.
 
-The next approved trial is **one externally generated, skinned Tripo AI Cave
-Troll** in the existing Level 6 fight. It is **not CURRENT** until a verified
-PR actually imports and animates the candidate in gameplay. The shipped
-Babylon transform-rig Cave Troll stays the implemented baseline until then.
+**Approved V.0003 special-floor/shop access direction (NOT CURRENT):**
+Galvik's shop is **not a numbered dungeon level**. The current separate
+Floor-4 and Floor-6 shop entrances are to be replaced by **one large cursed
+portal** for all arriving/departing heroes. Heroes can decide to **abort
+an expedition from any floor when choosing an upward floor transition**,
+enter the same shop, buy/sell as real customers, then leave to spend
+**two complete days off duty** in the outside world. No full-dungeon
+backtrack, arbitrary every-five-floors access rule, duplicated shop
+instances or instant reentry into the just-abandoned fight. After standby
+they may start a new expedition; the safe return/reentry anchor is OPEN.
+All new shop gate/queue/furniture reachability must be rebuilt for one
+physical portal, without silent legacy two-entrance assumptions.
 
-After that trial, prioritize boss visual/gameplay acceptance, observable
-shop-to-dungeon consequences and a measured ten-day playthrough. Possible
-pricing/economy expansions or an excavated basement, forge and pond remain
-design discussions, not committed implementations. No always-running
-simulation, automated merchant, new protagonist or definitive curse lore
-has been approved by this priority change. See [ROADMAP.md](ROADMAP.md).
+**Temporary Floor 10 restriction (APPROVED TARGET, NOT IMPLEMENTED):**
+Level 10 remains inaccessible to an individual hero until **Galvik grants
+that hero a pass**. The permit mechanic may be redesigned later, but the
+restriction itself remains in the first V.0003 chapter. Today's different
+`level6Permit` gameplay remains CURRENT only until migrated. Moving the
+Cave Troll to Floor 10 is a separate still-open placement choice.
+
+**Still OPEN within that direction:** exact room count and floor geometry,
+day-phase triggers, group formation rules, regenerative-site timing,
+loot tables and economy balance, shop-portal visual/lore, post-standby
+safe reentry anchor, downtime HP recovery, later Floor 10 permit redesign
+and possible Troll placement, mana/class resource model, new supply chains,
+economic balance, visual asset reuse, full real-time progression and curse lore.
+They remain proposals until worked through and approved.
+
+**Out of scope for this milestone:** basement forge/pond implementation,
+full Floor 100, hunger, a protagonist switch or an engine rewrite.
+The recently merged experimental 14-clip Tripo Troll renderer and real
+grab/throw are CURRENT as a **trial**; appearance and timing still require
+the owner's actual visual acceptance. The old segmented renderer remains a
+fallback. They are not evidence that the Living Dungeon itself exists.
 
 ## 6. Explicit exclusions (REJECTED)
 
