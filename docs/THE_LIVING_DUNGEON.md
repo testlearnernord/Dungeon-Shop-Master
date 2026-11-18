@@ -102,6 +102,21 @@ AI, target selection, physical grab/throw effects or the final
 one-group-capable-encounter stepper. Preserve historical v1
 recordings; replay viewers never re-simulate.
 
+**Sixth combat integration slice (CURRENT only after this PR merges):**
+`combatTactics.ts` now drives the same autonomous
+opponent targeting, attack/approach/retreat feasibility,
+defense choice and legal ability selection for the
+multi-actor system and Troll encounter. `combatProjectile.ts`
+resolves swept real line hits for both, with wall
+precedence and deterministic target ties. This retires
+duplicate selection and projectile-hit islands while
+preserving the Troll's authored signature move
+timing and fully saved historical replay format.
+The **last remaining major combat rewrite** is the
+shared top-level group-capable encounter stepper
+and boss-specific grab/throw effect plugin; neither
+has been falsely marked implemented.
+
 ## Dungeon, heroes and pace
 
 ### One shared dungeon rather than three incompatible mini-simulations
