@@ -12,9 +12,9 @@ import {
 } from "./combatTactics.ts";
 import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
 import {
-  grappleEscapeChance, grappleEscapes, grappleHoldPosition,
+  grappleEscapes, grappleHoldPosition,
   grappleLaunchVelocity, deterministicGrappleSample,
-  GRAPPLE_FLIGHT_SECONDS,
+  GRAPPLE_FLIGHT_SECONDS, GRAPPLE_TIMING,
 } from "./combatGrapple.ts";
 import {
   COMBAT_STEP_SECONDS, stepCombatEncounter, recordCombatEncounter,
@@ -61,6 +61,8 @@ export interface CombatantSpec {
   readonly specialAbility?: "grapple-throw";
   /** Real actor resistance, if known (e.g. hero stats); default 10. */
   readonly agility?: number;
+  /** Tunable physical throw damage before actual defender armor. */
+  readonly grappleDamage?: number;
 }
 
 export interface CombatBounds {
@@ -85,6 +87,7 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
   readonly meleeAbility: "ordinary" | "heavy";
   readonly specialAbility?: "grapple-throw";
   readonly agility: number;
+  readonly grappleDamage: number;
   lockedHeading: number;
   attacksStarted: number;
   activeMeleeAbility: "ordinary" | "heavy" | "grapple";
@@ -210,6 +213,10 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       throw new RangeError("Grapple ability requires a melee monster");
     const agility=spec.agility??10;
     validNumber(agility,0,1000,spec.id+".agility");
+    if(spec.grappleDamage!==undefined && spec.specialAbility===undefined)
+      throw new RangeError("Throw damage requires a grapple ability");
+    const grappleDamage=spec.grappleDamage??Math.round(spec.damage*1.5);
+    validNumber(grappleDamage,1,10000,spec.id+".grappleDamage");
     const radius = spec.radius ?? 0.5;
     validNumber(radius, 0.1, 3, spec.id + ".radius");
     // Healing Herbs are real player-sold consumables. Do not mint two
@@ -227,7 +234,7 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       meleeAbility:chooseCombatAbility(
         [spec.meleeAbility??"ordinary"],1,0,0) as "ordinary"|"heavy",
       ...(spec.specialAbility?{specialAbility:spec.specialAbility}:{}),
-      agility,
+      agility,grappleDamage,
       attacksStarted:0,activeMeleeAbility:spec.meleeAbility??"ordinary",
       grappleTargetId:null,grabbedById:null,
       throwVelocity:{x:0,z:0},
@@ -347,7 +354,9 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   // decide when contact can happen, not each renderer's animation time.
   let window:CombatActionWindow={};
   if(a.phase==="windup"){
-    window={completeAt:meleeAbilityProfile(a.meleeAbility,a.reach).windupSeconds};
+    window={completeAt:a.activeMeleeAbility==="grapple"
+      ? GRAPPLE_TIMING.windup
+      : meleeAbilityProfile(a.meleeAbility,a.reach).windupSeconds};
   }else if(a.phase==="strike"){
     const skill=meleeAbilityProfile(a.meleeAbility,a.reach);
     window={contactAt:skill.strikeDelaySeconds,completeAt:skill.strikeEndSeconds};
@@ -355,7 +364,16 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     window={contactAt:0.40,completeAt:0.75};
   }else if(a.phase==="heal"){
     window={contactAt:0.62,completeAt:0.92};
-  }else if(a.phase==="recover")window={completeAt:0.38};
+  }else if(a.phase==="recover")window={completeAt:
+    a.activeMeleeAbility==="grapple"?GRAPPLE_TIMING.recover:0.38};
+  else if(a.phase==="grab")window={
+    contactAt:GRAPPLE_TIMING.grabContact,completeAt:GRAPPLE_TIMING.grab,
+  };
+  else if(a.phase==="throw")window={
+    contactAt:GRAPPLE_TIMING.throwRelease,completeAt:GRAPPLE_TIMING.throw,
+  };
+  else if(a.phase==="grabMiss")window={completeAt:GRAPPLE_TIMING.missRecover};
+  else if(a.phase==="thrown")window={completeAt:GRAPPLE_FLIGHT_SECONDS};
   else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
   else if(a.phase==="hurt")window={completeAt:0.34};
   const tick=advanceCombatActorPhase(a,dt,window);
@@ -387,17 +405,26 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     if (a.phase === "move") {
       const gap=distance(a,enemy);
       const ranged=a.style==="ranged";
+      // Real bosses can bring a special move into the *same* encounter
+      // scheduler. At least one normal swing precedes the first grapple.
+      const nextAttack=a.attacksStarted+1;
+      const wantsGrapple=a.specialAbility==="grapple-throw"&&
+        nextAttack>1&&nextAttack%3===2;
       const posture=chooseCombatPosture({
         distance:gap,ready:a.cooldown===0&&a.stamina>=13,
         clearShot:lineClear(s,a,enemy),
-        attackRange:ranged?11:a.reach+enemy.radius,
+        attackRange:ranged?11:wantsGrapple?meleeAbilityProfile("grapple").reach:
+          a.reach+enemy.radius,
         approachBeyond:(ranged?7:a.reach+enemy.radius-0.35)+0.15,
         ...(ranged?{withdrawWithin:4.5}:{}),
       });
       if(posture.attack){
         a.stamina-=13;a.targetId=enemy.id;
+        a.attacksStarted++;
+        a.activeMeleeAbility=wantsGrapple?"grapple":a.meleeAbility;
         a.lockedHeading=a.heading;
         a.cooldown=ranged?1.3:
+          wantsGrapple?3.5:
           a.meleeAbility==="heavy"?1.62:(a.role==="DPS"?0.92:1.16);
         phase(a,ranged?"cast":"windup");
         cue(batch,s,a,ranged?"cast":"attack",enemy.id);
@@ -408,7 +435,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       }
     }
   } else if (a.phase === "windup") {
-    if (tick.complete) phase(a,"strike");
+    if (tick.complete)
+      phase(a,a.activeMeleeAbility==="grapple"?"grab":"strike");
   } else if (a.phase === "strike") {
     if (tick.contactDue) {
       a.applied = true;
@@ -432,6 +460,36 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     if (tick.complete) phase(a,"move");
   } else if (a.phase === "recover") {
     if (tick.complete) phase(a,"move");
+  } else if (a.phase === "grab") {
+    if(tick.contactDue){
+      a.applied=true;
+      tryGroupGrapple(s,a,batch);
+    }
+    if(a.phase==="grab"&&tick.complete){
+      const held=s.actors.find(other=>other.id===a.grappleTargetId&&
+        other.hp>0&&other.grabbedById===a.id&&other.phase==="grabbed");
+      phase(a,held?"throw":"grabMiss");
+    }
+  } else if (a.phase === "throw") {
+    if(tick.contactDue){
+      a.applied=true;
+      const victim=s.actors.find(other=>other.id===a.grappleTargetId&&
+        other.hp>0&&other.grabbedById===a.id&&other.phase==="grabbed");
+      if(victim){
+        victim.throwVelocity=grappleLaunchVelocity(a,victim);
+        phase(victim,"thrown");
+        cue(batch,s,a,"throw",victim.id);
+      }
+    }
+    if(tick.complete){
+      a.grappleTargetId=null;
+      phase(a,"recover");
+    }
+  } else if (a.phase === "grabMiss") {
+    if(tick.complete){
+      a.grappleTargetId=null;
+      phase(a,"recover");
+    }
   } else if (a.phase === "roll") {
     move(s,a,a.rollX*7.8*dt,a.rollZ*7.8*dt);
     if (tick.complete) phase(a,"move");
