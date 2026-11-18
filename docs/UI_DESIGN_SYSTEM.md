@@ -72,7 +72,7 @@ This document is a maintainable implementation contract.
 | Level 6 local model lab | In the existing spectator toolbar, `Inspect Tripo GLB` opens an explicit read-only asset inspection panel with a browser-local GLB file input, accessible animation selector, drag-orbit/zoom camera and Escape-to-return behavior. No saved fighter or combat details are written. The regular battle HUD and cinematic are hidden while inspecting. |
 | Audio / notifications / campaign | Minimal chrome, consistent buttons and persistent errors; Level 6 has one transient music-led cinematic overlay before the original HUD and combat data appear |
 
-## V.0003 Adventurer Board 2.0 — APPROVED TARGET, NOT SHIPPED
+## V.003 Adventurer Board 2.0 — APPROVED TARGET, NOT SHIPPED
 
 The existing wall-mounted board and E/R roster are the physical entry points.
 Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
@@ -96,7 +96,7 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   All icons retain accessible text/legend and never become the sole means
   to interpret urgent equipment/HP information.
 - **Special-floor status:** don't label the shop as dungeon F5
-  in V.0003. Show **At Galvik's shop**, **Outside world · off duty**
+  in V.003. Show **At Galvik's shop**, **Outside world · off duty**
   (with actual two-day cooldown/return eligibility when known), or
   **Dungeon Floor N** as mutually exclusive states. For dungeon-active
   heroes, expose short move direction and medium-term goal where known;
