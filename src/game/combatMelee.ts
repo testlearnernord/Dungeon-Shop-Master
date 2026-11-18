@@ -11,7 +11,7 @@ import {
  * intentionally not re-resolved when these profiles change.
  */
 export type MeleeAbilityId =
-  "ordinary" | "heavy" | "troll-smash" | "troll-slam" | "troll-grab";
+  "ordinary" | "heavy" | "hero-strike" | "troll-smash" | "troll-slam" | "troll-grab";
 
 export interface MeleeAbilityProfile {
   readonly id: MeleeAbilityId;
@@ -50,6 +50,10 @@ export function meleeAbilityProfile(
         halfAngleRadians:1.10,
         windupSeconds:0.94, strikeDelaySeconds:0.20,
         strikeEndSeconds:0.40, damageMultiplier:1.35,
+      };
+    case "hero-strike":
+      return {
+        ...ordinary,id,reach:baseReach,halfAngleRadians:0.93,
       };
     case "troll-smash":
       return {
