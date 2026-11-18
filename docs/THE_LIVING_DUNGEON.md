@@ -117,6 +117,23 @@ shared top-level group-capable encounter stepper
 and boss-specific grab/throw effect plugin; neither
 has been falsely marked implemented.
 
+**Seventh combat integration slice (CURRENT only after this PR merges):**
+`combatEncounter.ts` now drives the **same authoritative
+60-Hz actor/projectile/outcome pipeline** and **same bounded
+recording scheduler** for the ordinary group motor and the
+Cave Troll. The latter registers its real hero/boss actor
+sequence and physical grip/throw/lava handlers as encounter
+extensions; it no longer owns a separate top-level simulation
+clock, victory rule or replay capture loop. Both immutable
+old-style v1 replay schemas remain in place.
+
+**Still open:** unify all actor state schemas and boss-only
+ability progression/party AI under one extensible actor
+model. A shared encounter stepper is real progress,
+**not a claim of a completely universal group-plus-boss actor
+FSM**, nor a claim that the V.003 shop/portal/Board design is
+playable.
+
 ## Dungeon, heroes and pace
 
 ### One shared dungeon rather than three incompatible mini-simulations
