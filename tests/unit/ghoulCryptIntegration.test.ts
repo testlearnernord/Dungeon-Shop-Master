@@ -5,7 +5,7 @@ import {
   GHOUL_CLIP_INDICES,ghoulMotionForPhase,
   ghoulClipProgress,ghoulRecordedPhaseAge,
 } from "../../src/game/ghoulMotion.ts";
-import {cryptRelicPositions,CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "../../src/game/ghoulCryptArt.ts";
+import {cryptRelicPositions,CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "../../src/game/ghoulCryptPlan.ts";
 import type {GroupReplayFrame} from "../../src/game/groupCombat.ts";
 import {createGameState} from "../../src/game/gameState.ts";
 import {simulateSpatialDungeonDay,emptyLevel7World} from "../../src/game/level7Exploration.ts";
