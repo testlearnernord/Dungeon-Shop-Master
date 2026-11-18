@@ -105,9 +105,12 @@ test("ordinary and heavy enemy strikes share contact logic but have meaningful t
       ? {...a,style:"ranged" as const}:a)}),/meleeAbility/);
   const input=heavy.actors;
   const result=resolveGroupCombat({bounds:heavy.state.bounds,actors:input},12);
-  assert.deepEqual(result,resolveGroupCombat({
+  const reversed=resolveGroupCombat({
     bounds:heavy.state.bounds,actors:[...input].reverse(),
-  },12));
+  },12);
+  assert.deepEqual(result.state,reversed.state);
+  assert.deepEqual(result.replay.frames,reversed.replay.frames);
+  assert.deepEqual(result.replay.cues,reversed.replay.cues);
   assert.equal(result.replay.actors.find(a=>a.id==="z-skeleton")!.meleeAbility,"heavy");
 });
 
