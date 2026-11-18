@@ -151,7 +151,7 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
   }
   let previousDay=0;
   let previousHeroes:typeof store.state.adventurers|null=null;
-  let previousParties:typeof store.state.dungeonParties=null;
+  let previousParties:typeof store.state.dungeonParties|null=null;
   const redrawOnContentChange=()=>{
     const state=store.state;
     if(state.day===previousDay&&state.adventurers===previousHeroes&&

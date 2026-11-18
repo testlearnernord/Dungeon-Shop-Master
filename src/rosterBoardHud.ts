@@ -180,7 +180,7 @@ export function setupRosterBoardHud(
   });
   let priorDay=0;
   let priorHeroes:typeof store.state.adventurers|null=null;
-  let priorParties:typeof store.state.dungeonParties=null;
+  let priorParties:typeof store.state.dungeonParties|null=null;
   const updateOnRosterChange=()=>{
     const state=store.state;
     if(state.day===priorDay&&state.adventurers===priorHeroes&&
