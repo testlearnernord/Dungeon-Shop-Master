@@ -147,10 +147,13 @@ recordings. PR #201 introduces the persisted tick, deterministic future event
 scheduler, foreground pacing and strict version-14 save break. The existing
 `advanceDay()` still computes dungeon expeditions at bedtime; physical
 restock/credit request deadlines and expiry walkouts are migrated in
-PR #202 to saved future `visitor` events with strict schema validation.
-Babylon NPC locomotion, browsing/checkout waits, stock pickups and the
-legacy bedtime auto-trade still need migration; the foundation is NOT yet
-a live deterministic shop or parallel live dungeon simulation.
+PR #202 to saved future `visitor` events with strict version-15
+schema validation. The old automatic bedtime sale and unpaid-cart
+settlement paths have been removed; bed now returns unpaid physical
+reservations to their shelves and never mints merchant gold. Babylon
+NPC locomotion, browsing/checkout waits and physical stock pickups
+still need authoritative world-time migration. This foundation is NOT
+yet a live deterministic shop or parallel live dungeon simulation.
 
 **Required migration strategy**:
 

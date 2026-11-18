@@ -17,10 +17,13 @@
 
 - **PR #202 in progress (partial, not release accepted):** customer
   restock/credit request deadlines and no-sale walkouts now use the saved
-  world tick, future-event queue and strict save validation. Modal/planning
-  pauses freeze physical traffic. Finish migration of customer motion,
-  shopping and checkout decisions and remove legacy day-close auto-trade
-  before marking the full shop-simulation milestone complete.
+  world tick, future-event queue and strict version-15 save validation.
+  The day-close auto-trade and silent unpaid-cart settlement were removed:
+  unpaid stock returns to the shelf; only real cashier/credit commits transfer
+  goods. Modal/planning pauses freeze physical traffic. Remaining work is
+  clock-owned physical customer movement, queues, browsing and checkout
+  decisions, and deterministic save/reload of these flows. Do not call this
+  complete live shop simulation while Babylon is still the movement motor.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,

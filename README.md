@@ -165,7 +165,7 @@ An expedition now records up to 36 actual connected moves and two
 separate real encounters instead of ending automatically at the first
 won battle. A real defeat, unsafe lack of supplies or inaccessible
 route can still end the tape early. Older v1 records remain playable
-with the unchanged combat replay schema; the outer campaign save is now v14. No filler frames are added.
+with the unchanged combat replay schema; the outer campaign save is now v15. No filler frames are added.
 The physical Adventurer Board now shows empty/owned W/A equipment
 slots plus numeric HP. Its chronological event/last-reported timeline
 remains a target, not three mandatory day phases.
@@ -298,18 +298,25 @@ Prefer focused additional coverage over inflating the default CI.
 
 ### Saves and compatibility
 
-**Current playable V.002, world-clock foundation #201:** `SIMULATION_VERSION = 14`
-in `src/game/gameState.ts`. A new campaign now persists a monotonic
-in-game minute tick and a deterministically ordered future-event queue.
-Old alpha/v13 campaigns are deliberately **incompatible** and preserved
-when load fails; start a fresh campaign or import a v14 save. No migration
-adapter is supplied.
+**V.002 still playable, PR #202 shop migration in progress:** `SIMULATION_VERSION = 15`
+in `src/game/gameState.ts`. A fresh campaign persists a monotonic
+in-game minute tick, deterministic future-event queue, and real per-customer
+restock/credit petition deadlines. Old v14/v13 alpha saves are deliberately
+**incompatible** and preserved on load failure. No adapter or inferred
+replacement data is supplied. No offline progress occurs.
 
-**Still planned for V.003:** shop customer timers, dungeon expeditions and
-night skipping must migrate onto the saved clock. The current dungeon
-continues to resolve during the bed-based day transaction, so the clock
-foundation is **not yet** a live parallel dungeon. Deterministic v14
-save/resume, exactly-once payouts and correct gold/HP remain mandatory.
+**Shop transactions:** buyers physically reserve shelf goods without paying.
+Only the actual staffed cashier transfers sales revenue; approved credit
+records a receivable instead. Bedtime **returns all unpaid cart stock**
+to shelves without creating purchases, while due petition expiries commit
+one real world-time-stamped walkout. Menus and blueprint planning pause
+physical customer motion and the world clock.
+
+**Still planned for V.003:** remaining NPC locomotion/checkout waits still
+use Babylon render updates, and dungeon expeditions still resolve at
+the bed-based day boundary. This is **not** parallel live dungeon gameplay
+or a fully deterministic physical shop yet. Deterministic version-15
+save/resume and exactly-once real payments remain mandatory.
 
 ## Where to code
 

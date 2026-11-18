@@ -7,7 +7,7 @@
 The current game is a **TypeScript/Vite** browser application rendered with **Babylon.js**.
 
 - `src/main.ts` wires the startup, shop scene, controllers, day closure, UI, and active arena/dungeon viewers.
-- `src/game/gameState.ts` defines persisted version-14 `GameState`, the single saved world tick and the transitional deterministic day progression. `src/game/gameStore.ts` owns validated player actions and subscriber notifications.
+- `src/game/gameState.ts` defines persisted version-15 `GameState`, the single saved world tick and the transitional deterministic day progression. `src/game/gameStore.ts` owns validated player actions and subscriber notifications.
 - Pure simulation functions must remain independent of Babylon meshes and the DOM. Scene objects and HUD projections are representations of authoritative game state, not additional sources of truth.
 - Scene transitions among the Level 5 shop, boss arena and dungeon viewer must not silently mutate the stored combat result.
 
@@ -403,10 +403,17 @@ The redesign must preserve one deterministic GameState authority and introduce:
   countdown. `GameStore.endDay` fast-forwards due petitions through the
   same event executor before closing. `NpcVisualSystem` reads remaining
   ticks and freezes during modal/planning/hidden-tab pause.
+  **Bedtime change:** `gameState.advanceDay` no longer runs automatic
+  `tradeAtStartOfDay` or settles unpaid carts for free. It returns every
+  outstanding reservation to its physical shelf using the existing
+  `returnShopCart` path (and fails on impossible returns). Actual receipts
+  originate from real cashier commits and explicit credit creates debt,
+  never cash. The old `tradeAtStartOfDay` remains a **read-only forecast
+  helper** for buyer intentions, not an active economic transaction.
   **Remaining:** customer movement, path state, browsing/checkout waits and
-  pickup decisions still occur in Babylon render frames; bedtime still
-  contains the legacy automatic trade and dungeon batch. This is NOT a
-  completed, deterministic physical-shop migration or a live dungeon.
+  pickup decisions still occur in Babylon render frames; dungeon encounters
+  are still resolved in the legacy bed batch. This is NOT a completed,
+  deterministic physical-shop migration or a live dungeon.
   The full migration must unify active shop/customer timers, dungeon/party
   events and site cooldowns
   on one deterministic saved in-game timeline. Use bounded event advances,
@@ -515,10 +522,10 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 3. **Replay fidelity.** Level 6/7 outcomes are committed before watching. Reopening a recording never rerolls combat, survival, loot, XP or merchant gold.
 4. **Spoiler-safe projection.** The ledger separates known business activity from sealed outcomes. Never derive pre-replay hero status from the after-day state. Pending-ledger restore must not temporarily render unsafe information.
 5. **Furniture preview versus commit.** Cursor previews do not write saved state. The contextual blueprint editor calls the same `GameStore.previewFurniturePlacement` check as the authoritative click/commit, including the excavated `level5Room`, board clearance and reachable service routes. Shelf access, checkout queues and doors stay reachable. Focus outlines trace visible furniture, not the larger clearances reserved for NPC service.
-6. **Universal furniture registry and transaction.** `furnitureRegistry.ts` owns canonical labels, mount surfaces, sizes, focus data, rotated bounds, collision and shelf/counter service semantics; there is no parallel shop-floor geometry table or counter rendering facade. `furniturePlacement.ts` is the ONE pure preview/commit validator, exposed through `GameStore.previewFurniturePlacement` / `placeFurniture`, contextual P and new-shelf N. Shop shelves have monotonically assigned `shelf-N` instance IDs and four stock slots per built instance; new placement appends the empty stock records atomically. New campaigns start with no shelves or stocked slots. Strict `campaignSave.ts` requires a complete version-14 room, bedroom, roster-board and counter transform and checks shelf-to-slot correspondence; older partial/five-slot states are incompatible and deliberately not migrated. The alpha bounds live shelving at 12 instances. `Shop` creates corresponding meshes and inventory slots on state changes, while navigation/queues use their registered collision hulls and service sockets. Wall-mounted fixtures share `wallFurniturePlacement.ts` for structural wall anchors and excavated-rock support; mining supporting rock is rejected until the mounted object is moved. Private bedroom fixtures share the registry/transaction but retain sleep/door access rules. Other furniture currently remains a single instance per type: new reusable types still need their own mesh, persistence and interactions.
+6. **Universal furniture registry and transaction.** `furnitureRegistry.ts` owns canonical labels, mount surfaces, sizes, focus data, rotated bounds, collision and shelf/counter service semantics; there is no parallel shop-floor geometry table or counter rendering facade. `furniturePlacement.ts` is the ONE pure preview/commit validator, exposed through `GameStore.previewFurniturePlacement` / `placeFurniture`, contextual P and new-shelf N. Shop shelves have monotonically assigned `shelf-N` instance IDs and four stock slots per built instance; new placement appends the empty stock records atomically. New campaigns start with no shelves or stocked slots. Strict `campaignSave.ts` requires a complete version-15 room, bedroom, roster-board and counter transform and checks shelf-to-slot correspondence; older partial/five-slot states are incompatible and deliberately not migrated. The alpha bounds live shelving at 12 instances. `Shop` creates corresponding meshes and inventory slots on state changes, while navigation/queues use their registered collision hulls and service sockets. Wall-mounted fixtures share `wallFurniturePlacement.ts` for structural wall anchors and excavated-rock support; mining supporting rock is rejected until the mounted object is moved. Private bedroom fixtures share the registry/transaction but retain sleep/door access rules. Other furniture currently remains a single instance per type: new reusable types still need their own mesh, persistence and interactions.
 7. **All dependent transforms move together.** Bedroom object groups include their interaction targets, collision hulls and lights when applicable. Sleep range follows the moved bed; roster interaction follows the moved board. Register geometry, staff docking, queue and blueprint use the same counter placement and orientation.
 8. **No hunger implementation.** Waybread/Herbs heal HP. No starvation timers, hunger events or residual hunger logic.
-9. **Persistence discipline.** `SIMULATION_VERSION` is **14** (PR #201). Earlier alpha campaigns deliberately do not migrate. Version-14 saves strictly validate the day-bounded world tick, ordered event queue and existing room/furniture/stock invariants. Invalid saves must not be silently overwritten.
+9. **Persistence discipline.** `SIMULATION_VERSION` is **15** (PR #202). PR #201 version-14 and earlier alpha campaigns deliberately do not migrate. Version-15 saves strictly validate day-bounded world time, ordered event queue, each petition's linked unique visitor event/expiry, and room/furniture/stock invariants. Invalid saves must not be silently overwritten.
 
 ## 4. Performance and runtime watchpoints
 
