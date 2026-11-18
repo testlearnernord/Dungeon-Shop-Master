@@ -26,11 +26,12 @@ export function rosterPartyDetails(state:GameState,heroId:string):{
   readonly members:readonly AdventurerState[];
 }|null {
   const party=state.dungeonParties?.find(p=>p.memberIds.includes(heroId));
-  if(!party)return null;
+  if(!party||party.memberIds.length<2||party.memberIds.length>3)return null;
   const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
   const members=party.memberIds.map(id=>byId.get(id));
   if(members.some(member=>!member||member.health<=0||
-    member.floor!==party.floor||!["exploring","expedition"].includes(member.status)))
+    member.floor!==party.floor||
+    member.status!==(party.floor===7?"expedition":"exploring")))
     return null;
   return {formedDay:party.formedDay,floor:party.floor,
     members:members as AdventurerState[]};
