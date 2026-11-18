@@ -41,6 +41,17 @@
   (a temporary new design gate, not today's `level6Permit`). Do not
   reinstate the rejected long backtrack, mandatory five-floor shops,
   two-door topology or an invented escape rope as accepted scope.
+- **CURRENT live actor model (after this PR):**
+  `combatActor.ts` owns the shared mutable `CombatActorRuntime`
+  contract, phase transitions, action time and resource refresh.
+  `GroupActor` implements it. `bossEncounterActors` returns
+  live adapters for the hero and Cave Troll over the original
+  `CombatPreviewState` fields. Never copy boss HP/phase/
+  position into an independently mutated actor object.
+  Boss special grab/throw states are legitimate ability
+  variants in this contract and their v1 replay phase strings
+  must remain unchanged. A fully universal multi-hero boss
+  party/ability registry is NOT yet implemented.
 - **CURRENT unified encounter driver (after this PR):**
   `combatEncounter.ts` is the **sole top-level 60-Hz
   combat tick owner and immutable frame capture scheduler**
