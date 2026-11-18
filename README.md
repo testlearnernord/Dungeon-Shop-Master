@@ -135,7 +135,9 @@ unanimous transition to a neighboring early dungeon floor **only**
 when every survivor really arrives at the same saved tile; individual
 choices, casualties, separation and returns to the shop can dissolve
 the group. The physical Adventurer Board displays “Party 2/3” on
-actual members. There are no player-issued orders or teleport
+actual members. Expand that hero's card in the R roster to see
+the real companions' names, roles, HP and when the group formed.
+There are no player-issued orders or teleport
 corrections, and the unique Level 6 Cave Troll cinematic is unchanged.
 V.002 stays the playable version.
 
