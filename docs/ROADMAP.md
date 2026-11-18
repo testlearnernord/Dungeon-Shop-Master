@@ -48,8 +48,13 @@ Do not overbuild extra content before this loop is both real and fun.
 ### P0 — Contracts, migration plan and first end-to-end example
 
 - Define one authoritative dungeon-world/hero-expedition schema with shared
-  seeded rooms/feature resolution, per-hero locations and group membership,
-  stable intents, real gear/supplies and event IDs.
+  seeded rooms/feature resolution, per-hero locations, group membership,
+  **short-term direction (stay/up/down)**, **medium-term goal** (farm,
+  gear test, explore, progress, cautious retreat), personal depth and
+  remembered encounters, **cursed special-floor shop instance**, one portal,
+  **two-day off-duty status after shop exit**, real gear/supplies and event IDs.
+  Level 10 requires **individual Galvik-granted access**, separate from
+  character XP and the existing live Floor 6 permit.
 - Define a **Morning / Midday / Evening** phase ledger and a distinction
   between *world truth* and *Galvik's observed knowledge*. Determine actual
   day-clock commit points without retroactive leaks, frame dependence or
@@ -68,9 +73,13 @@ Do not overbuild extra content before this loop is both real and fun.
   a new viewer. All floors use actual reachable travel, saved hero position,
   encounters and shared features. Reuse existing Level 7 code where sound,
   with no parallel authority.
-- Distinguish character **level/XP** from actual current **dungeon floor**.
-  Heroes may progress, farm renewable opportunities, discover, fight,
-  flee, recover, group and shop based on real state and temperament.
+- Distinguish character **level/XP** from current **dungeon floor**.
+  At decision points choose stay, descend or ascend; when choosing to
+  ascend, heroes can **abort from any depth and enter the cursed shop**
+  rather than retrace all dungeon levels. Medium-term goals (farm money,
+  test equipment, cautious play, progress) inform real intentions.
+  Do not let the dungeon advance a hero into Floor 10 without Galvik's
+  **hero-specific pass**.
 - Keep rooms/unique encounters persistent; avoid duplicated treasure,
   infinitely safe farming, softlocked progression and arbitrary HP deaths.
 - Validate seeded multi-hero shared-world behavior across several days;
@@ -121,14 +130,24 @@ Do not overbuild extra content before this loop is both real and fun.
 - Candidate: move the Cave Troll to a more dramatic chapter boss region
   around Floor 10 after the unified progression is built. Keep original
   Floor 6 fight/replay assets and verify old records remain valid.
-- **Shop access proposal (OPEN):** heroes can always choose to seek
-  Galvik, but must travel on reachable discovered routes at an actual
-  time/risk cost. Start with the physical Floor 5 shop; later unlocked
-  milestone shortcuts may reach the same shop (candidate: after the Floor
-  10 chapter boss), without universal every-five-level gates. Consider
-  an actual purchased/consumed one-way emergency escape item later; no
-  teleport straight back to the deep point of retreat. Balance against
-  free healing, trivial escapes and punishing arbitrary shop lockouts.
+- **Replace the legacy Floor 4/Floor 6 entrances** and their
+  service/traffic/navigation assumptions with a **single large swirling
+  cursed portal** for entrance and exit. The existing cave shop becomes
+  a **special floor outside dungeon numbering**, not Floor 5.
+- **Expedition rotation:** an upward-direction decision at **any**
+  dungeon depth may become an **expedition abort + shop visit**; when
+  the hero **leaves the shop**, keep them outside both dungeon and shop
+  for **two full subsequent game days**. Only after that may they
+  start a new expedition. Never count off-duty heroes as present
+  customers or combatants; do not auto-heal/replenish them for free.
+  Exact safe reentry anchor and downtime healing remain open for balance.
+- **Floor 10 remains blocked** per hero until the player grants a pass;
+  reuse/rework the current Floor-6 permit concept deliberately instead
+  of treating high XP or finishing Floor 9 as automatic authorization.
+  This pass design is temporary and may be revisited later.
+- **Do not add an escape-rope item yet.** The upward-transition shop
+  option already solves return travel. Revisit special extraction only
+  if it proves to have a distinct balanced purpose.
 - Make the player notice genuinely changing dungeon routes, customer
   behavior, supplies and commerce; prioritize legibility over more HUD.
 - Perform seeded economy/fight tests and genuine shop-to-dungeon browser
@@ -145,12 +164,17 @@ Do not overbuild extra content before this loop is both real and fun.
 3. **One authoritative expedition world:** heroes share persistent seeded
    floors and unique resolved events; character levels progress separately;
    groups/retreats and travel have deterministic outcomes.
-4. **No replay or economic lies:** before/after save and ledger produce
+4. **Special-floor/shop lifecycle:** one portal instead of the old
+   Floor-4/Floor-6 entrances, abort-to-shop from any floor at the upward
+   choice, two **complete** post-shop off-duty days, safe new-expedition
+   reentry, and per-hero Floor 10 pass gate are reproducible with
+   no duplicated characters, carts or phantom cash.
+5. **No replay or economic lies:** before/after save and ledger produce
    identical committed events; missing heroes do not reveal a secret death,
    and old Floor 6/7 recordings are preserved.
-5. **Player-facing pacing:** ten shop days are not merely bookkeeping.
+6. **Player-facing pacing:** ten shop days are not merely bookkeeping.
    Visible world, hero and merchant progression creates future goals.
-6. **Regression and performance:** shop stocking, navigation, checkout,
+7. **Regression and performance:** shop stocking, navigation, checkout,
    credit, mining/blueprints, day closure, browser viewers, saved data and
    the existing Troll presentation still function. Lean CI remains lean;
    use focused tests plus human visual review.
@@ -160,7 +184,8 @@ Do not overbuild extra content before this loop is both real and fun.
 - Full always-running 24-hour concurrent simulation; exact phase triggers.
 - Full 100-floor content, many more items/classes/abilities, new economy
   systems or automatic party commands.
-- Guaranteed Floor 10 boss placement and magical shop access details.
+- Final Floor 10 Cave Troll placement, exact portal magic/art, standby reentry
+  checkpoint/HP recovery and future redesign of the *temporary* Floor 10 pass.
 - Galvik curse transfer, new protagonist, basement forge/pond and wider lore.
 - Full reuse of Tripo for every monster/hero; visual trial still needs review.
 
