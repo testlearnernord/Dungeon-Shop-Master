@@ -245,6 +245,15 @@ rewrite existing historical recordings or claim V.003 released.
 - No direct Galvik party control and no guarantee that equipping a hero
   makes them survive.
 
+**Current pacing and art gate (after this PR):** authentic spatial days
+have up to 36 connected steps and two actually reached fights; a winning
+party can continue instead of the first fight ending the day. Past replays
+remain unchanged. Current ordinary monsters are named combat specs and
+sphere placeholders, not finished creature models. The Ghoul candidate
+must pass the approved concept > GLB > rig/animation > original SFX >
+replay integration > visual/test gates in `MONSTER_ASSET_PIPELINE.md`
+before being offered as a shipped creature.
+
 ### P3 — Adventurer Board 2.0
 
 - Preserve the **physical wall board**, movement/placement, and **E/R**
