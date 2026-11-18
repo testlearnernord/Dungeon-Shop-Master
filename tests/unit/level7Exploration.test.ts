@@ -188,7 +188,7 @@ test("a tank really spends purchased Herbs in a committed ordinary encounter",()
     "the spatial encounter cannot mutate original world history");
 });
 
-test("regenerated Floor 7 room sentry becomes a real grapple elite in committed footage",()=>{
+test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Troll throw",()=>{
   const seed=7351,day=12,layout=generateDungeonLayout(seed,7);
   const eliteSite=layout.features.find(feature=>feature.kind==="monster"&&
     tileAt(layout,feature.x,feature.z)==="room");
@@ -208,7 +208,9 @@ test("regenerated Floor 7 room sentry becomes a real grapple elite in committed 
   assert.equal(first.replay.encounters.length,1,"The room elite must be actually encountered");
   const fight=first.replay.encounters[0].combat;
   const enemy=fight.actors.find(actor=>actor.id===eliteSite.id)!;
-  assert.equal(enemy.specialAbility,"grapple-throw");
+  assert.equal(enemy.specialAbility,undefined,
+    "The Cave Troll's signature throw is never given to renewable sentries");
+  assert.equal(enemy.meleeAbility,"heavy");
   assert.equal(enemy.radius,1.05);
   assert.equal(enemy.staggerThreshold,12);
   assert(fight.frames.length>1);
