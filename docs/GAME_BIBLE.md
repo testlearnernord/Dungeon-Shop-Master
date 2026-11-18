@@ -44,7 +44,9 @@ The repository currently implements:
   combatants. A real hero can evade, parry or escape; a landed
   catch physically holds and throws one actual hero, dealing
   armor-mitigated damage only on wall collision or landing.
-  No item consumption or instant death is invented. Shared
+  A large boss has configurable stagger resistance so weak
+  attacks do not cancel every long windup; successful parries
+  and strong hits still interrupt. No item consumption or instant death is invented. Shared
   `combatGrapple.ts` supplies timing/escape/launch rules to
   the established single-hero Troll fight too. Party fights
   are executable and replay-recorded in the group engine;
