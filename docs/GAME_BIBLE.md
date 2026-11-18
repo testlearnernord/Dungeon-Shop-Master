@@ -76,8 +76,7 @@ The repository currently implements:
   owned weapon and armor sockets and numeric HP as well as parties;
   Fixed Morning/Midday/Evening simulation snapshots have been superseded
   in the agreed V.003 design by one paced, pausable shared world clock
-  with ordered event/last-known reports. This time system is NOT yet
-  implemented. See LIVING_WORLD_CLOCK.md. The first ordinary
+  with ordered event/last-known reports. The stored clock foundation exists, but shop timers and expedition commits are not yet driven by it. See LIVING_WORLD_CLOCK.md. The first ordinary
   Ghoul is now generated on Floors 1–4/7 and rendered with its original
   skinned Tripo animation clips in recorded fights, and these rooms
   use a procedural burial-crypt visual theme. This is an initial
@@ -308,7 +307,7 @@ This does **not** declare an implemented system or a shipped version.
   genuinely heal a recorded fighter, or armor mitigate a real blow, but the
   UI must not invent an unseen event, predict certain survival or expose
   sealed results. A missing hero is *last known / unknown* until reported.
-- **Approved time design (not implemented):** retain deliberate shop days
+- **Approved time design (PR #201 clock foundation only):** retain deliberate shop days
   and sleeping, but advance the dungeon alongside active shop play on
   one deterministic, pausable in-game event clock. Bedtime completes
   unsupervised time exactly once and opens read-only recordings; there
@@ -319,7 +318,9 @@ This does **not** declare an implemented system or a shipped version.
   shop, before being eligible to return. Replays remain immutable
   within the active new-format campaign. The owner expressly waived
   compatibility with old alpha/v13 saves when the shared-clock V.003
-  replaces its day-batched model. Correct new saves remain essential.
+  replaces its day-batched model. PR #201 begins strict version-14 saves without
+  migration; the old dungeon day-batch remains transitional until PR #203.
+  Correct new saves remain essential.
   See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 - **Small first chapter rather than fake 100-floor coverage:** investigate a
   playable first ten-floor vertical slice with the Cave Troll as a likely
