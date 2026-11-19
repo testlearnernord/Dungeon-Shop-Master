@@ -506,7 +506,7 @@ The redesign must preserve one deterministic GameState authority and introduce:
   and finished battle, including casualties and bedtime rotation,
   with unique world-tick TP join/leave identities. No second party
   movement AI, free floor-change gold, or fabricated combat.
-  **PR #210 knowledge-safe LIVE observations (in progress):**
+  **PR #210 knowledge-safe LIVE observations (merged):**
   `liveBoardProjection.ts` is the ONE pure event-based read model for
   the wall canvas, R roster and daily glance. It never reads remote
   mutable adventurer HP/loot/gear/gold/location/dead status. Actual
@@ -522,7 +522,7 @@ The redesign must preserve one deterministic GameState authority and introduce:
   attributes, while a single accessible HUD warning announces real
   fatalities. Strict v22 checks tick-qualified IDs, source enum and
   genuine dead hero/active zero-HP actor.
-  **Still incomplete:** shop post-visit two-day standby, unique
+  **PR #211 LIVE spectator:** `liveSpectator.ts` reads only the saved\n  participant's visited cells, current spatial checkpoint and actual\n  precomputed combat frames after explicit Board opt-in. The common\n  `DungeonReplayScene.showLive()` reuses combat meshes, party visuals,\n  fog and minimap; it never resolves combat or invents a replay outcome.\n  The render loop continues shop traffic and the world event scheduler\n  during this mode, unlike paused archive/development views. Current\n  remote HP and enemy identity never flow back to `liveBoardProjection`.\n  **Still incomplete:** shop post-visit two-day standby, unique
   Level-6 boss unification, Floor-7+ authored exits, real-time
   Board/important death signals, spectator/archive and ten-day
   end-to-end gameplay validation. Render FPS never drives outcomes.

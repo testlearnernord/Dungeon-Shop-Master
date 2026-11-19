@@ -304,7 +304,7 @@
   join/leave events. Preserve each character's independent HP,
   gear, consumables, gold, visited locations and intention.
   Full lower-floor progression, two-day off-duty rotation,
-  spectator and archive remain pending. PR #210 introduces strict
+  archive remains pending. PR #211 adds the opt-in LIVE spectator: use\n  `liveSpectator.ts` to inspect only saved current dungeon progress and\n  committed group fight frames. `dungeonReplayScene.ts` renders these\n  using the SAME renderer and fog as old footage, with no battle tick,\n  RNG, future monster reveal or replay outcome. The ordinary Board must\n  not consume this projection: watching is an explicit per-hero action.\n  The shared clock AND shop traffic continue while watching LIVE, but\n  historical replay and dialogs still pause it. PR #210 introduced strict
   v22 magical observation events and one `liveBoardProjection.ts`
   knowledge source. The actual spatial/trap, unique boss and 60Hz
   group motors emit `hero-death-signal` ONLY on a real first

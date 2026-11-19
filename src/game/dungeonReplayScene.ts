@@ -25,6 +25,7 @@ import {
 import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts";
 import {ghoulRecordedPhaseAge} from "./ghoulMotion.ts";
 import type { GroupPhase } from "./groupCombat.ts";
+import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 
 const SPACING=2.5;
 const toWorld=(layout:DungeonLayout,p:DungeonPoint)=>
@@ -49,6 +50,9 @@ export interface DungeonRoomDecoration {
  */
 export class DungeonReplayScene {
   private replay:Level7Replay|null=null;
+  private liveFrame:LiveSpectatorFrame|null=null;
+  private liveHeroId:string|null=null;
+  private liveFightId:string|null=null;
   private timeline:DungeonPlaybackTimeline|null=null;
   private hero:HeroVisual|null=null;
   private readonly companionHeroes=new Map<string,HeroVisual>();
@@ -75,10 +79,16 @@ export class DungeonReplayScene {
     this.indicator=minimap;
   }
   get currentReplay(){return this.replay;}
+  get isLive(){return this.liveFrame!==null;}
   get duration(){return this.timeline?.duration??0;}
   get snapshot(){return this.lastSnapshot;}
   get visibleFocusIds():readonly string[] {
-    return this.replay?dungeonReplayFocusIds(this.replay,this.lastSnapshot):[];
+    return this.liveFrame?
+      [this.liveFrame.heroId,...this.liveFrame.heroes.filter(h=>
+        h.id!==this.liveFrame!.heroId).map(h=>h.id),
+        ...(this.liveFrame.combat?.frame.actors.filter(a=>
+          !this.liveFrame!.heroes.some(h=>h.id===a.id)).map(a=>a.id)??[])]:
+      this.replay?dungeonReplayFocusIds(this.replay,this.lastSnapshot):[];
   }
 
   private clearCombatModels():void {
@@ -97,6 +107,9 @@ export class DungeonReplayScene {
   }
 
   setReplay(record:Level7Replay|null):void {
+    this.liveFrame=null;
+    this.liveHeroId=null;
+    this.liveFightId=null;
     this.replay=record;
     this.timeline=record?buildDungeonPlayback(record):null;
     this.lastSnapshot=null;
@@ -394,18 +407,174 @@ export class DungeonReplayScene {
     ctx.fillStyle="#a5ebc7";
     ctx.fillRect(Math.round(snapshot.x*cell)+1,Math.round(snapshot.z*cell)+1,cell-2,cell-2);
   }
+
+  /** Real-time projection of the committed world, using the SAME Babylon
+   * actors, fog, minimap and camera as historical footage. Never advances
+   * a battle, calls RNG, creates a replay outcome, or mutates GameStore.
+   */
+  showLive(view:LiveSpectatorFrame):void {
+    if(this.replay||this.liveHeroId!==view.heroId){
+      this.clearCombatModels();
+      this.replay=null;this.timeline=null;this.lastSnapshot=null;
+      this.liveHeroId=view.heroId;
+      this.liveFightId=null;
+      this.lastVisibility="";
+      if(this.heroPreview)this.heroPreview.root.setEnabled(false);
+      const lead=view.heroes.find(h=>h.id===view.heroId);
+      if(!lead)throw new RangeError("LIVE hero must be a current participant");
+      this.hero=createHeroVisual(this.scene,{
+        id:lead.id,role:lead.role,equipment:lead.equipment,
+      },"dungeon-live-"+lead.id);
+      this.hero.root.metadata={...this.hero.root.metadata,liveOnly:true};
+    }
+    this.liveFrame=view;
+    if(!this.hero)return;
+    const lead=view.heroes.find(h=>h.id===view.heroId)!;
+    const observed={
+      time:0,duration:0,x:view.x,z:view.z,hp:lead.health,
+      action:view.combat?"combat":"walk",
+      known:new Set(view.visited),resolved:new Set(view.resolved),
+      encounter:null,frame:null,finished:false,percent:0,
+    } satisfies DungeonPlaybackSnapshot;
+    this.lastSnapshot=observed;
+    const position=toWorld(this.layout,view);
+    this.hero.root.position.set(position.x,.1,position.z);
+    this.hero.root.metadata.hp=lead.health;
+    this.animateHero(this.hero,"move",view.worldTick/20);
+    const present=new Set(view.heroes.map(h=>h.id));
+    for(const [id,model] of this.companionHeroes){
+      if(!present.has(id)){model.root.dispose(false,true);
+        this.companionHeroes.delete(id);}
+      else model.root.setEnabled(false);
+    }
+    for(const h of view.heroes){
+      if(h.id===view.heroId)continue;
+      if(!this.companionHeroes.has(h.id)){
+        const model=createHeroVisual(this.scene,{
+          id:h.id,role:h.role,equipment:h.equipment,
+        },"dungeon-live-companion-"+h.id);
+        model.root.metadata={...model.root.metadata,liveOnly:true};
+        this.companionHeroes.set(h.id,model);
+      }
+      const model=this.companionHeroes.get(h.id)!;
+      model.root.setEnabled(true);
+      model.root.position.set(position.x+((h.id<view.heroId)?-0.7:0.7),
+        .1,position.z+.5);
+      model.root.metadata.hp=h.health;
+      this.animateHero(model,"move",view.worldTick/20);
+    }
+    for(const enemy of this.enemies.values())enemy.setEnabled(false);
+    for(const ghoul of this.ghouls.values())ghoul.root.setEnabled(false);
+    for(const projectile of this.projectiles)projectile.setEnabled(false);
+    const combat=view.combat;
+    if(combat){
+      if(this.liveFightId!==combat.id){
+        for(const mesh of this.enemies.values())mesh.dispose();
+        this.enemies.clear();
+        for(const ghoul of this.ghouls.values())ghoul.dispose();
+        this.ghouls.clear();
+        for(const mesh of this.projectiles)mesh.dispose();
+        this.projectiles=[];
+        for(const material of this.combatMaterials)material.dispose();
+        this.combatMaterials.length=0;
+        this.liveFightId=combat.id;
+        const material=new StandardMaterial("live-monster-material",this.scene);
+        material.diffuseColor=Color3.FromHexString("#ad5b42");
+        material.emissiveColor=Color3.FromHexString("#58231d");
+        this.combatMaterials.push(material);
+        for(const actor of combat.actors.filter(a=>a.team==="monsters")){
+          const fallback=MeshBuilder.CreateSphere("dungeon-live-fallback-"+actor.id,
+            {diameter:1.35,segments:12},this.scene);
+          fallback.material=material;fallback.isPickable=false;
+          fallback.metadata={liveOnly:true,fallbackOnly:true,actorId:actor.id};
+          fallback.setEnabled(false);
+          this.enemies.set(actor.id,fallback);
+          const feature=this.layout.features.find(f=>f.id===actor.id);
+          if(feature?.kind==="monster"&&feature.subtype==="ghoul"){
+            const ghoul=createDungeonGhoulVisual(this.scene,actor.id);
+            this.ghouls.set(actor.id,ghoul);
+          }
+        }
+      }
+      const origin=toWorld(this.layout,{x:combat.x,z:combat.z});
+      const specs=new Map(combat.actors.map(a=>[a.id,a]));
+      for(const actor of combat.frame.actors){
+        const p=new Vector3(origin.x+actor.x,.1,origin.z+actor.z);
+        const model=actor.id===view.heroId?this.hero:
+          this.companionHeroes.get(actor.id);
+        if(model){
+          model.root.position.copyFrom(p);
+          model.root.rotation.y=actor.heading;
+          model.root.metadata.hp=actor.hp;
+          this.animateHero(model,actor.phase,combat.frame.t);
+        }
+        const fallback=this.enemies.get(actor.id);
+        if(fallback){
+          const ghoul=this.ghouls.get(actor.id);
+          if(ghoul?.root.metadata?.tripoStatus==="ready"){
+            ghoul.root.setEnabled(true);
+            ghoul.root.position.set(p.x,.08,p.z);
+            ghoul.root.rotation.y=actor.heading;
+            ghoul.animate(actor.phase,ghoulRecordedPhaseAge(
+              combat.frames,actor.id,combat.frame.t));
+          }else{
+            fallback.setEnabled(true);
+            fallback.position.set(p.x,1,p.z);
+            fallback.rotation.y=actor.heading;
+            fallback.metadata={...fallback.metadata,
+              combatPhase:actor.phase,hp:actor.hp};
+            const radius=specs.get(actor.id)?.radius??.5;
+            fallback.scaling.setAll(Math.max(.75,radius*1.7));
+          }
+        }
+      }
+      const material=this.combatMaterials[0];
+      for(let i=0;i<combat.frame.projectiles.length;i++){
+        let mesh=this.projectiles[i];
+        if(!mesh){
+          mesh=MeshBuilder.CreateSphere("dungeon-live-projectile-"+i,
+            {diameter:.28,segments:6},this.scene);
+          mesh.material=material;mesh.isPickable=false;
+          this.projectiles.push(mesh);
+        }
+        const p=combat.frame.projectiles[i];
+        mesh.setEnabled(true);
+        mesh.position.set(origin.x+p.x,1.2,origin.z+p.z);
+      }
+    }else if(this.liveFightId){
+      this.liveFightId=null;
+      // The next engagement will create its actual cast on demand.
+    }
+    this.updateVisibility(observed);
+  }
   /** Only explicitly selected visible recorded actors can steer the camera. */
   follow(actorId:string):void {
-    if(!this.lastSnapshot||!this.replay)return;
+    if(!this.lastSnapshot||(!this.replay&&!this.liveFrame))return;
     let p=toWorld(this.layout,this.lastSnapshot);
     const encounter=this.lastSnapshot.encounter;
+    if(this.liveFrame){
+      const combat=this.liveFrame.combat;
+      const actor=combat?.frame.actors.find(a=>a.id===actorId);
+      if(actor&&combat){
+        const origin=toWorld(this.layout,{x:combat.x,z:combat.z});
+        p=new Vector3(origin.x+actor.x,0,origin.z+actor.z);
+      }else{
+        const model=actorId===this.liveFrame.heroId?this.hero:
+          this.companionHeroes.get(actorId);
+        if(model?.root.isEnabled())
+          p=new Vector3(model.root.position.x,0,model.root.position.z);
+      }
+      this.camera.position.set(p.x,Math.max(22,this.camera.position.y),p.z-15);
+      this.camera.setTarget(new Vector3(p.x,0,p.z));
+      return;
+    }
     const visible=visibleDungeonCombatActors(this.lastSnapshot);
     const actor=visible.find(candidate=>candidate.id===actorId);
     if(actor&&encounter){
       const origin=toWorld(this.layout,encounter);
       p=new Vector3(origin.x+actor.x,0,origin.z+actor.z);
     }else{
-      const model=actorId===this.replay.heroId?this.hero:
+      const model=actorId===this.replay?.heroId?this.hero:
         this.companionHeroes.get(actorId);
       if(model?.root.isEnabled())
         p=new Vector3(model.root.position.x,0,model.root.position.z);
@@ -416,5 +585,6 @@ export class DungeonReplayScene {
   dispose():void {
     this.clearCombatModels();
     this.replay=null;this.timeline=null;this.lastSnapshot=null;
+    this.liveFrame=null;this.liveHeroId=null;this.liveFightId=null;
   }
 }
