@@ -8,7 +8,7 @@
 > [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
 > Future PR numbers are **not reserved**.
 
-## Current foundation (playable V.002 ALPHA)
+## Incremental V.003 migration\n\nPR #211 introduces an opt-in read-only LIVE spectator for genuine current\ndungeon exploration and group-combat frames. It preserves passive Board\ninformation boundaries and allows shop operation to proceed on the shared\nworld clock. Expedition archive, two-day off-duty shop rotation, integrated\nmultiday testing and release acceptance remain outstanding.\n\n## Current foundation (playable V.002 ALPHA)
 
 - **PR #201 world-clock foundation:** version-14 campaigns save an integer
   world minute and future-event queue. Foreground unblocked shop play advances
