@@ -1,11 +1,11 @@
 import type {UniversalCamera} from "@babylonjs/core/Cameras/universalCamera";
 import type {GameStore} from "./game/gameStore.ts";
-import {selectExpeditionArchive,archiveForHero,type ExpeditionArchiveEntry}
-  from "./game/expeditionArchive.ts";
-import {hasObservedReplay} from "./replayDisclosure.ts";
+import {archiveAvailableDays,archiveBookmarks,selectExpeditionArchive,
+  type ArchiveDay,type ExpeditionHighlight} from "./game/expeditionArchive.ts";
+import {MAX_SAVED_REPLAYS} from "./game/replayRetention.ts";
 
-/** A continuously accessible, read-only library over authentic committed
- * records. No GameStore action, RNG, fight engine or archive clock exists here.
+/** One bounded timeline. Showing history or setting a UI bookmark cannot
+ * simulate a fight, alter resources or advance the world event clock.
  */
 export function setupExpeditionArchiveHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
@@ -18,106 +18,120 @@ export function setupExpeditionArchiveHud(
   const closeButton=document.querySelector<HTMLButtonElement>("#archive-close")!;
   const list=document.querySelector<HTMLElement>("#archive-entries")!;
   const summary=document.querySelector<HTMLElement>("#archive-summary")!;
+  const dayFilter=document.querySelector<HTMLSelectElement>("#archive-day-filter")!;
   const heroFilter=document.querySelector<HTMLSelectElement>("#archive-hero-filter")!;
-  const groupFilter=document.querySelector<HTMLSelectElement>("#archive-party-filter")!;
   const search=document.querySelector<HTMLInputElement>("#archive-search")!;
-  const names=()=>new Map(store.state.adventurers.map(h=>[h.id,h.name]));
+  let selectedDay:ArchiveDay=store.state.day;
   let lastEvents:typeof store.state.events|null=null;
+  let lastPins:typeof store.state.savedReplayIds|null=null;
 
   function render():void {
-    const entries=selectExpeditionArchive(store.state);
-    const selectedHero=heroFilter.value;
-    const heroes=new Set(entries.map(e=>e.heroId));
-    const heroNames=names();
-    heroFilter.replaceChildren(new Option("All heroes","all"),
-      ...[...heroes].sort((a,b)=>
-        (heroNames.get(a)??a).localeCompare(heroNames.get(b)??b))
-        .map(id=>new Option(heroNames.get(id)??id,id)));
-    heroFilter.value=selectedHero!=="all"&&heroes.has(selectedHero)
-      ?selectedHero:"all";
+    const state=store.state;
+    const days=archiveAvailableDays(state.day);
+    if(selectedDay!=="saved"&&!days.includes(selectedDay))selectedDay=state.day;
+    dayFilter.replaceChildren(...days.map(day=>
+      new Option(day===state.day?"Today · Day "+day:"Day "+day,String(day))),
+      new Option("Saved recordings ("+state.savedReplayIds.length+
+        "/"+MAX_SAVED_REPLAYS+")","saved"));
+    dayFilter.value=String(selectedDay);
 
+    const names=new Map(state.adventurers.map(h=>[h.id,h.name]));
+    const id=heroFilter.value||"all";
+    const entries=selectExpeditionArchive(state,selectedDay);
+    const relevantIds=[...new Set(entries.map(e=>e.heroId))];
+    relevantIds.sort((a,b)=>(names.get(a)??a).localeCompare(names.get(b)??b));
+    heroFilter.replaceChildren(new Option("All heroes","all"),
+      ...relevantIds.map(heroId=>new Option(names.get(heroId)??heroId,heroId)));
+    heroFilter.value=id==="all"||relevantIds.includes(id)?id:"all";
     const query=search.value.trim().toLocaleLowerCase();
-    const source=heroFilter.value==="all"?entries:
-      archiveForHero(entries,heroFilter.value,true).filter(entry=>
-        entry.heroId===heroFilter.value||hasObservedReplay(entry.id));
-    const filtered=source.filter(entry=>{
-      if(groupFilter.value==="party"&&entry.partySize<2)return false;
-      if(groupFilter.value==="solo"&&entry.partySize>=2)return false;
-      if(!query)return true;
-      return [entry.heroName,entry.id,entry.clockLabel,entry.label]
-        .some(value=>value.toLocaleLowerCase().includes(query));
-    });
-    summary.textContent=filtered.length+" committed entries · "+
-      filtered.filter(entry=>entry.hasReplay).length+" surviving recordings · "+
-      "newest first · world clock and playback time are separate";
-    const visible=filtered.slice().reverse();
-    list.replaceChildren(...visible.map(entry=>makeEntry(entry,heroNames)));
+    const visible=entries.filter(entry=>
+      (heroFilter.value==="all"||entry.heroId===heroFilter.value)&&
+      (!query||[entry.heroName,entry.clockLabel,entry.label,entry.id]
+        .some(value=>value.toLocaleLowerCase().includes(query))));
+    summary.textContent=visible.length+" real highlights · "+
+      visible.filter(entry=>entry.hasReplay).length+" available recordings · "+
+      state.savedReplayIds.length+"/"+MAX_SAVED_REPLAYS+" permanently saved";
+    // One day at a time; never materialize all recorded frames in the DOM.
+    list.replaceChildren(...visible.map(makeEntry));
     if(!visible.length){
       const empty=document.createElement("p");
-      empty.textContent="No committed events match these filters.";
+      empty.textContent=selectedDay==="saved"
+        ?"No saved recordings. Use Save on a recent fight."
+        :"No matching committed highlights on this day.";
       list.append(empty);
     }
   }
 
-  function makeEntry(entry:ExpeditionArchiveEntry,heroNames:Map<string,string>):
-    HTMLElement {
+  function makeEntry(entry:ExpeditionHighlight):HTMLElement {
     const section=document.createElement("article");
     section.className="archive-entry";
     section.dataset.eventId=entry.id;
     section.dataset.heroId=entry.heroId;
     section.dataset.kind=entry.kind;
     const heading=document.createElement("h3");
-    heading.textContent=entry.heroName+" · "+entry.label;
+    heading.textContent=entry.label+" · "+entry.heroName;
     const when=document.createElement("p");
     when.className="archive-world-time";
-    when.textContent=entry.clockLabel+
-      (entry.floor!==null?" · F"+entry.floor:"")+
-      (entry.partySize>=2?" · Party recording ("+entry.partySize+")":"");
-    const detail=document.createElement("p");
-    detail.className="archive-recording-status";
-    detail.textContent=entry.hasReplay
-      ?"Recorded playback: "+(entry.replaySeconds?.toFixed(1)??"?")+
-        " s · independent of the in-world clock"
-      :"Committed event only · no invented replay frames";
-    section.append(heading,when,detail);
-    // Archive metadata cannot infer a murder weapon, remote health, or
-    // who won an unseen encounter from the saved finished replay.
-    if(entry.hasReplay){
-      const actions=document.createElement("div");
-      actions.className="archive-entry-actions";
-      const button=(label:string,time:number)=>{
-        const control=document.createElement("button");
-        control.type="button";
-        control.textContent=label;
-        control.addEventListener("click",()=>openFootage(entry,time));
-        return control;
-      };
-      actions.append(button("Watch recording",0));
-      if(entry.floor!==6)for(const mark of entry.bookmarks.slice(1)){
-        actions.append(button(mark.label+" @ "+mark.replaySeconds.toFixed(1)+" s",
-          mark.replaySeconds));
-      }
-      section.append(actions);
-      if(entry.partySize>=2&&hasObservedReplay(entry.id)){
-        const names=entry.partyMemberIds.map(id=>heroNames.get(id)??id);
-        const actors=document.createElement("p");
-        actors.textContent="Observed party: "+names.join(", ");
-        section.append(actors);
-      }
-    }
+    when.textContent=entry.clockLabel+(entry.floor===null?"":" · F"+entry.floor)+
+      (entry.partySize>=2?" · Temporary Party ("+entry.partySize+")":"");
+    const note=document.createElement("p");
+    note.className="archive-recording-status";
+    note.textContent=entry.hasReplay
+      ?"Actual recorded footage · local replay clock is separate"
+      :"Committed timeline event · no fake video";
+    section.append(heading,when,note);
+    if(!entry.hasReplay)return section;
+    const actions=document.createElement("div");
+    actions.className="archive-entry-actions";
+    const watch=document.createElement("button");
+    watch.type="button";
+    watch.textContent="Watch recording";
+    watch.addEventListener("click",()=>watchFootage(entry,0));
+    actions.append(watch);
+    const save=document.createElement("button");
+    save.type="button";
+    save.textContent=entry.saved?"Unsave recording":"Save recording";
+    save.setAttribute("aria-pressed",String(entry.saved));
+    save.addEventListener("click",()=>{
+      const result=store.toggleSavedReplay(entry.id);
+      const status=document.querySelector<HTMLElement>("#status");
+      if(status)status.textContent=result;
+      render();
+    });
+    actions.append(save);
+    if(entry.floor!==6){
+      const jumps=document.createElement("button");
+      jumps.type="button";
+      jumps.textContent="Highlights / Jump to…";
+      jumps.setAttribute("aria-expanded","false");
+      const bookmarks=document.createElement("div");
+      bookmarks.className="archive-bookmarks";
+      bookmarks.hidden=true;
+      jumps.addEventListener("click",()=>{
+        bookmarks.hidden=!bookmarks.hidden;
+        jumps.setAttribute("aria-expanded",String(!bookmarks.hidden));
+        if(bookmarks.hidden||bookmarks.childElementCount)return;
+        // Build segment positions lazily for exactly ONE selected tape.
+        for(const mark of archiveBookmarks(store.state,entry.id)){
+          const button=document.createElement("button");
+          button.type="button";
+          button.textContent=mark.label+" · "+mark.replaySeconds.toFixed(1)+" s";
+          button.addEventListener("click",()=>watchFootage(entry,mark.replaySeconds));
+          bookmarks.append(button);
+        }
+      });
+      actions.append(jumps);
+      section.append(actions,bookmarks);
+    }else section.append(actions);
     return section;
   }
-
-  function openFootage(entry:ExpeditionArchiveEntry,seconds:number):void{
+  function watchFootage(entry:ExpeditionHighlight,seconds:number):void {
     dialog.close();
-    const opened=entry.floor===6
-      ?openBossRecording(entry.id)
-      :openDungeonRecording(entry.id,seconds);
-    if(!opened){
-      // Recording metadata may be durable while its large replay frames
-      // are intentionally pruned. Never fake those missing frames.
+    const ok=entry.floor===6?openBossRecording(entry.id):
+      openDungeonRecording(entry.id,seconds);
+    if(!ok){
       const status=document.querySelector<HTMLElement>("#status");
-      if(status)status.textContent="This recording is no longer available.";
+      if(status)status.textContent="These recorded frames are no longer available.";
     }
   }
 
@@ -129,6 +143,7 @@ export function setupExpeditionArchiveHud(
       document.body.classList.contains("arena-active"))return;
     if(document.pointerLockElement===canvas)void document.exitPointerLock();
     camera.detachControl();
+    if(selectedDay!=="saved")selectedDay=store.state.day;
     render();
     dialog.showModal();
   }
@@ -141,12 +156,16 @@ export function setupExpeditionArchiveHud(
   openButton.addEventListener("click",open);
   boardButton.addEventListener("click",open);
   closeButton.addEventListener("click",close);
+  dayFilter.addEventListener("change",()=>{
+    selectedDay=dayFilter.value==="saved"?"saved":Number(dayFilter.value);
+    render();
+  });
   heroFilter.addEventListener("change",render);
-  groupFilter.addEventListener("change",render);
   search.addEventListener("input",render);
   store.subscribe(()=>{
-    if(lastEvents===store.state.events)return;
+    if(lastEvents===store.state.events&&lastPins===store.state.savedReplayIds)return;
     lastEvents=store.state.events;
+    lastPins=store.state.savedReplayIds;
     if(dialog.open)render();
   });
   window.addEventListener("keydown",event=>{
