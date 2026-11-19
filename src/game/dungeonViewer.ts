@@ -13,6 +13,7 @@ import type { HeroVisual } from "./heroVisual.ts";
 import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type DungeonRoomDecoration } from "./dungeonReplayScene.ts";
 import type { Level7Replay } from "./level7Exploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
+import {selectLiveSpectatorFrame,type LiveSpectatorFrame} from "./liveSpectator.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
@@ -54,6 +55,8 @@ export class DungeonViewer {
   private playbackTime = 0;
   private playbackSpeed = 1;
   private followActor: string | null = null;
+  private liveHeroId: string | null = null;
+  private liveWorldTick=-1;
   private readonly replaySelector = document.querySelector<HTMLSelectElement>("#dungeon-replay-select")!;
   private readonly playbackControls = document.querySelector<HTMLElement>("#dungeon-playback-controls")!;
   private readonly playbackButton = document.querySelector<HTMLButtonElement>("#dungeon-play")!;
@@ -78,7 +81,11 @@ export class DungeonViewer {
     document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
     document.querySelector("#close-dungeon")!.addEventListener("click", () => this.close());
     document.querySelector("#dungeon-reset-camera")!.addEventListener("click", () => this.resetCamera());
-    this.replaySelector.addEventListener("change",()=>this.selectReplay(this.replaySelector.value));
+    this.replaySelector.addEventListener("change",()=>{
+      const id=this.replaySelector.value;
+      if(id.startsWith("live:"))this.startLive(id.slice(5));
+      else this.selectReplay(id);
+    });
     this.playbackButton.addEventListener("click",()=>this.togglePlayback());
     document.querySelector("#dungeon-restart")!.addEventListener("click",()=>this.restartReplay());
     document.querySelector<HTMLSelectElement>("#dungeon-speed")!.addEventListener("change",event=>{
@@ -106,7 +113,7 @@ export class DungeonViewer {
       event.stopImmediatePropagation();
       if (event.code === "KeyG" || event.code === "Escape") this.close();
       else if (event.code === "Tab" && !event.repeat) {
-        if(this.replayScene?.currentReplay){
+        if(this.replayScene?.currentReplay||this.liveHeroId){
           const order=[...this.replayScene.visibleFocusIds,null];
           const previous=order.indexOf(this.followActor);
           this.followActor=order[(previous+1)%order.length]??null;
@@ -139,6 +146,7 @@ export class DungeonViewer {
   }
 
   get isActive() { return this.active; }
+  get isWatchingLive() { return this.active&&this.liveHeroId!==null; }
   get currentScene(): Scene | null { return this.active ? this.scene : null; }
   get map(): DungeonLayout | null { return this.layout; }
 
@@ -161,6 +169,14 @@ export class DungeonViewer {
     this.sceneChanged(true);
   }
 
+  /** Enter through an explicit Board choice. Do not make remote hero
+   * vitality or location available to the ordinary shop HUD. */
+  openLive(heroId:string):boolean {
+    if(!selectLiveSpectatorFrame(this.store.state,heroId))return false;
+    if(!this.active)this.open();
+    return this.active&&this.startLive(heroId);
+  }
+
   close(): void {
     if (!this.active) return;
     this.active = false;
@@ -171,6 +187,8 @@ export class DungeonViewer {
     this.replayScene=null;
     this.playing=false;
     this.followActor=null;
+    this.liveHeroId=null;
+    this.liveWorldTick=-1;
     this.scene?.dispose();
     this.scene = null;
     this.camera = null;
@@ -345,6 +363,10 @@ export class DungeonViewer {
     this.replaySelector.replaceChildren();
     const preview=new Option("Layout preview (full development map)","preview");
     this.replaySelector.add(preview);
+    for(const hero of this.store.state.adventurers){
+      if(selectLiveSpectatorFrame(this.store.state,hero.id))
+        this.replaySelector.add(new Option("LIVE · "+hero.name,"live:"+hero.id));
+    }
     for(const entry of replays){
       this.replaySelector.add(new Option(
         "Day "+entry.record.day+" · F"+entry.record.floor+" · "+entry.name+
@@ -356,6 +378,8 @@ export class DungeonViewer {
     this.selectReplay(replays[0]?.id??"preview");
   }
   private selectReplay(id:string):void {
+    this.liveHeroId=null;
+    this.liveWorldTick=-1;
     const record=this.availableReplays().find(e=>e.id===id)?.record??null;
     this.replaySelector.value=record?id:"preview";
     if(record)observeReplay(id);
@@ -389,6 +413,59 @@ export class DungeonViewer {
       this.centerOn(0);
     }
   }
+
+  private startLive(heroId:string):boolean {
+    const view=selectLiveSpectatorFrame(this.store.state,heroId);
+    if(!view)return false;
+    this.liveHeroId=heroId;
+    this.liveWorldTick=-1;
+    this.playing=false;
+    this.followActor=heroId;
+    if(this.layout?.floor!==view.floor){
+      this.replayScene?.dispose();
+      this.layout=generateExpeditionLayout(this.store.state.seed,view.floor);
+      this.createScene(this.layout);
+    }
+    if(![...this.replaySelector.options].some(o=>o.value==="live:"+heroId)){
+      const name=this.store.state.adventurers.find(h=>h.id===heroId)?.name??heroId;
+      this.replaySelector.add(new Option("LIVE · "+name,"live:"+heroId));
+    }
+    this.replaySelector.value="live:"+heroId;
+    this.playbackControls.hidden=true;
+    this.modeDescription.textContent="LIVE · authoritative dungeon world · Day "+view.day+
+      " · Floor "+view.floor+" · shop and world clock continue";
+    this.minimapTitle.textContent="LIVE · Hero knowledge";
+    this.minimapNote.textContent="Only the watched hero's visited tiles and currently observed battle.";
+    this.paintLive(view);
+    this.replaySelector.focus();
+    return true;
+  }
+
+  private paintLive(view:LiveSpectatorFrame):void {
+    if(this.liveWorldTick!==view.worldTick||!this.replayScene?.isLive){
+      this.replayScene?.showLive(view);
+      this.liveWorldTick=view.worldTick;
+    }
+    const clock=view.worldTick;
+    const minute=Math.floor((clock%28800)/20);
+    this.playbackStatus.textContent="LIVE · Day "+view.day+" · "+
+      String(Math.floor(minute/60)).padStart(2,"0")+":"+
+      String(minute%60).padStart(2,"0")+
+      (view.combat?" · "+view.combat.frame.actors.length+" real combatants":" · exploring");
+    this.focusLabel.textContent="TAB focus: "+(this.followActor??"free camera")+
+      " · "+view.heroId;
+    this.temporaryPartyPanel.hidden=view.heroes.length<2;
+    this.temporaryPartyHeading.textContent="LIVE Temporary Party · "+
+      view.heroes.length+" adventurers";
+    this.temporaryPartyMembers.replaceChildren(...view.heroes.map(hero=>{
+      const li=document.createElement("li");
+      li.dataset.heroId=hero.id;
+      li.textContent=this.store.state.adventurers.find(h=>h.id===hero.id)?.name??hero.id;
+      return li;
+    }));
+    this.updateTemporaryPartyFocus();
+    if(this.followActor)this.replayScene?.follow(this.followActor);
+  }
   /** Identity is taken from THIS saved tape, never a later party. */
   private renderTemporaryParty(record:Level7Replay|null):void {
     const ids=record?.partyMemberIds??[];
@@ -418,7 +495,7 @@ export class DungeonViewer {
   }
 
   private togglePlayback():void {
-    if(!this.replayScene?.currentReplay)return;
+    if(this.liveHeroId||!this.replayScene?.currentReplay)return;
     if(this.playbackTime>=this.replayScene.duration)this.playbackTime=0;
     this.playing=!this.playing;
     this.paintPlayback();
@@ -450,7 +527,10 @@ export class DungeonViewer {
     if(this.followActor)scene.follow(this.followActor);
   }
   private resetCamera():void {
-    if(this.replayScene?.currentReplay){
+    if(this.liveHeroId){
+      this.followActor=this.liveHeroId;
+      this.replayScene?.follow(this.liveHeroId);
+    }else if(this.replayScene?.currentReplay){
       this.followActor=this.replayScene.currentReplay.heroId;
       this.paintPlayback();
     }else this.centerOn(0);
@@ -497,7 +577,20 @@ export class DungeonViewer {
     this.camera.position.z=Math.max(-extentZ-18,Math.min(extentZ+18,this.camera.position.z+dz));
     if(this.keys.has("KeyQ")) this.camera.position.y=Math.min(100,this.camera.position.y+speed);
     if(this.keys.has("KeyE")) this.camera.position.y=Math.max(12,this.camera.position.y-speed);
-    if(this.replayScene?.currentReplay){
+    if(this.liveHeroId){
+      const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
+      if(!view){
+        this.close();
+        return;
+      }
+      if(this.layout.floor!==view.floor){
+        this.replayScene?.dispose();
+        this.layout=generateExpeditionLayout(this.store.state.seed,view.floor);
+        this.createScene(this.layout);
+        this.liveWorldTick=-1;
+      }
+      this.paintLive(view);
+    }else if(this.replayScene?.currentReplay){
       if(this.playing){
         this.playbackTime=Math.min(this.replayScene.duration,
           this.playbackTime+dt*this.playbackSpeed);
