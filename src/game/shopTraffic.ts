@@ -69,12 +69,12 @@ const obj=(value:unknown,path:string,keys:readonly string[]):Record<string,unkno
 };
 const arr=(value:unknown,path:string,max:number):unknown[]=>{
   if(!Array.isArray(value)||value.length>max)fail(path,"must be a bounded array");
-  return value;
+  return value as unknown[];
 };
 const bounded=(v:unknown,path:string,min:number,max:number):number=>{
   if(typeof v!=="number"||!Number.isFinite(v)||v<min||v>max)
     fail(path,"must be a bounded finite number");
-  return v;
+  return v as number;
 };
 const int=(v:unknown,path:string,min:number,max:number):number=>{
   const n=bounded(v,path,min,max);
@@ -83,7 +83,7 @@ const int=(v:unknown,path:string,min:number,max:number):number=>{
 };
 const str=(v:unknown,path:string,max=120):string=>{
   if(typeof v!=="string"||v.length>max)fail(path,"must be a bounded string");
-  return v;
+  return v as string;
 };
 const point=(raw:unknown,path:string):void=>{
   const p=obj(raw,path,["x","z"]);
