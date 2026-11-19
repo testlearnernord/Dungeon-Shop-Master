@@ -50,3 +50,21 @@ export function chooseHeroDungeonDecision(
     return {goal:"test-gear",action:"stay"};
   return {goal:!armed && hero.gold<18?"farm":"progress",action:"stay"};
 }
+
+/** Reuse the existing individual needs-based AI on the LIVE world clock.
+ * Floor 7 is a special unlocked expedition: it cannot invent Floor 8
+ * until the next authored progression slice exists.
+ */
+export function chooseLiveHeroDungeonDecision(
+  hero:AdventurerState,progress:Level7HeroProgress|undefined,
+  replay:Level7Replay,
+):HeroDungeonDecision {
+  if(hero.floor>=1&&hero.floor<=4)
+    return chooseHeroDungeonDecision(hero,progress,replay);
+  if(hero.floor!==7||hero.status!=="expedition"||hero.health<=0)
+    throw new RangeError("Only a living spatial explorer can make a LIVE choice.");
+  if(replay.outcome==="completed"||replay.outcome==="retreat"||
+    hero.health/hero.stats.maxHealth<0.48||hero.inventory.loot>=2)
+    return {goal:"resupply",action:"shop"};
+  return {goal:hero.equipment.weapon?"test-gear":"caution",action:"stay"};
+}
