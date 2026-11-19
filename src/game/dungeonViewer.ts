@@ -113,11 +113,14 @@ export class DungeonViewer {
       event.stopImmediatePropagation();
       if (event.code === "KeyG" || event.code === "Escape") this.close();
       else if (event.code === "Tab" && !event.repeat) {
-        if(this.replayScene?.currentReplay||this.liveHeroId){
+        if(this.replayScene&&(this.replayScene.currentReplay||this.liveHeroId)){
           const order=[...this.replayScene.visibleFocusIds,null];
           const previous=order.indexOf(this.followActor);
           this.followActor=order[(previous+1)%order.length]??null;
-          this.paintPlayback();
+          if(this.liveHeroId){
+            const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
+            if(view)this.paintLive(view);
+          }else this.paintPlayback();
         }else this.centerOn(this.focus+1);
       }
       else if (event.code === "KeyR" && !event.repeat) this.resetCamera();
