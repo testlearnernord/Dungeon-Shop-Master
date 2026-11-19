@@ -5,7 +5,7 @@ import { ITEMS } from "./game/economy.ts";
 import {itemIcon,goldIcon} from "./uiIcons.ts";
 import {counterDockPoint,isAtCounterStaffDock} from "./game/shopLayout.ts";
 import {Vector3} from "@babylonjs/core/Maths/math.vector";
-import { CASHIER_STAGES, CASHIER_TIMING_TOLERANCE, evaluateCashierTiming } from "./game/cashierChallenge.ts";
+import { CASHIER_STAGES, CASHIER_TIMING_TOLERANCE, evaluateCashierTiming, cashierNeedlePosition, CASHIER_NEEDLE_PERIOD_MS } from "./game/cashierChallenge.ts";
 import type { GameStore } from "./game/gameStore.ts";
 
 /**
@@ -22,7 +22,7 @@ export function setupCashierHud(
   report:(message:string)=>void,
   sound:(cue:CashierCue)=>void,
   pulse:(cycle:number)=>void,
-):{open:()=>string;close:()=>void} {
+):{open:()=>string;close:()=>void;readonly isOpen:boolean} {
   const root=document.createElement("dialog");
   root.id="cashier-overlay";
   root.tabIndex=-1;
@@ -99,6 +99,9 @@ export function setupCashierHud(
   let lastPress=0;
   let started=0;
   let frame=0;
+  // The input is graded against what the LAST rendered frame displayed,
+  // not against unseen wall-clock advancement during a browser stall.
+  let paintedPosition=0;
 
   const close=()=>{
     if(!root.open&&!heroId)return;
@@ -112,7 +115,7 @@ export function setupCashierHud(
     camera.attachControl(canvas,true);
     canvas.focus();
   });
-  const phase=()=>Math.abs(Math.sin((performance.now()-started)/700));
+  const phase=()=>cashierNeedlePosition(performance.now()-started);
   const showStage=()=>{
     const stage=CASHIER_STAGES[hits]??CASHIER_STAGES[0];
     stageCount.textContent=String(hits+1).padStart(2,"0")+" / 02";
@@ -153,6 +156,8 @@ export function setupCashierHud(
     misses=0;
     lastPress=Number.NEGATIVE_INFINITY;
     started=performance.now();
+    paintedPosition=0;
+    needle.style.left="0%";
     challenge.hidden=false;
     settlement.hidden=true;
     customer.textContent=buyer.hero.name+" · Lv"+buyer.hero.level+" "+buyer.hero.role;
@@ -187,8 +192,9 @@ export function setupCashierHud(
       if(!shopActive()||readyHero()!==heroId){
         close();report("Customer left the register.");return;
       }
-      needle.style.left=(phase()*100)+"%";
-      pulse(Math.floor((performance.now()-started)/(Math.PI*700)));
+      paintedPosition=phase();
+      needle.style.left=(paintedPosition*100)+"%";
+      pulse(Math.floor((performance.now()-started)/(Math.PI*CASHIER_NEEDLE_PERIOD_MS)));
     }else if(settled){
       if(!shopActive()){close();return;}
       if(performance.now()-lastNextCheck>=200){
@@ -210,7 +216,7 @@ export function setupCashierHud(
     if(!root.open||!heroId||!shopActive())return;
     if(performance.now()-lastPress<250)return;
     lastPress=performance.now();
-    const result=evaluateCashierTiming(hits,phase());
+    const result=evaluateCashierTiming(hits,paintedPosition);
     if(!result.accepted){
       misses++;
       hint.textContent=(result.direction==="early"?"Left of the mark. ":"Right of the mark. ")+
@@ -222,6 +228,8 @@ export function setupCashierHud(
     sound("hit");
     if(!result.completed){
       started=performance.now();
+      paintedPosition=0;
+      needle.style.left="0%";
       showStage();
       return;
     }
@@ -315,5 +323,5 @@ export function setupCashierHud(
     if(heroId&&!store.state.shopCarts.some(cart=>cart.heroId===heroId))
       close();
   });
-  return {open,close};
+  return {open,close,get isOpen(){return root.open;}};
 }
