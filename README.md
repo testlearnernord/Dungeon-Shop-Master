@@ -165,7 +165,7 @@ An expedition now records up to 36 actual connected moves and two
 separate real encounters instead of ending automatically at the first
 won battle. A real defeat, unsafe lack of supplies or inaccessible
 route can still end the tape early. Older v1 records remain playable
-with the unchanged combat replay schema; the outer campaign save is now v15. No filler frames are added.
+with the unchanged combat replay schema; the outer campaign save is now v16. No filler frames are added.
 The physical Adventurer Board now shows empty/owned W/A equipment
 slots plus numeric HP. Its chronological event/last-reported timeline
 remains a target, not three mandatory day phases.
@@ -298,12 +298,18 @@ Prefer focused additional coverage over inflating the default CI.
 
 ### Saves and compatibility
 
-**V.002 still playable, PR #202 shop migration in progress:** `SIMULATION_VERSION = 15`
-in `src/game/gameState.ts`. A fresh campaign persists a monotonic
-in-game minute tick, deterministic future-event queue, and real per-customer
-restock/credit petition deadlines. Old v14/v13 alpha saves are deliberately
-**incompatible** and preserved on load failure. No adapter or inferred
-replacement data is supplied. No offline progress occurs.
+**V.002 still playable; PR #203 shop-clock migration in progress:**
+`SIMULATION_VERSION = 16` in `src/game/gameState.ts`. A new campaign
+persists one monotonic **50-ms world tick**. Twenty ticks form one game
+minute; 28,800 ticks form a 24-game-hour day (24 foreground real minutes
+at current pacing). Shop requests last 1,200 ticks = 60 real seconds;
+pausing the game pauses this countdown. Scene-owned customer walking,
+routing, collision decisions and shelf pickups now advance ONLY when
+the shared world clock commits a tick, not during Babylon render frames.
+Clock-only autosaves are throttled to once per second; all real shopping,
+queue-event and receipt changes save immediately. Old v15/v14/v13 alpha
+saves are deliberately **incompatible** and retained on load failure.
+No migration adapter or offline progression is supplied.
 
 **Shop transactions:** buyers physically reserve shelf goods without paying.
 Only the actual staffed cashier transfers sales revenue; approved credit
@@ -312,11 +318,12 @@ to shelves without creating purchases, while due petition expiries commit
 one real world-time-stamped walkout. Menus and blueprint planning pause
 physical customer motion and the world clock.
 
-**Still planned for V.003:** remaining NPC locomotion/checkout waits still
-use Babylon render updates, and dungeon expeditions still resolve at
-the bed-based day boundary. This is **not** parallel live dungeon gameplay
-or a fully deterministic physical shop yet. Deterministic version-15
-save/resume and exactly-once real payments remain mandatory.
+**Still planned for V.003:** physical NPC positions, routes, personal
+wait phases and occupancy claims must be persisted, validated and restored
+at the last saved world tick. Without this, reloading mid-visit can change
+physical timing. Dungeon expeditions still resolve at the bed transition;
+this is **not** parallel live dungeon gameplay. Deterministic version-16
+campaign resumes and exactly-once real payments remain mandatory.
 
 ## Where to code
 

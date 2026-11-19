@@ -15,15 +15,17 @@
   that clock; sleep alone moves to the following day. Physical customer
   timers and expedition commits require the #202/#203 migration.
 
-- **PR #202 in progress (partial, not release accepted):** customer
-  restock/credit request deadlines and no-sale walkouts now use the saved
-  world tick, future-event queue and strict version-15 save validation.
-  The day-close auto-trade and silent unpaid-cart settlement were removed:
-  unpaid stock returns to the shelf; only real cashier/credit commits transfer
-  goods. Modal/planning pauses freeze physical traffic. Remaining work is
-  clock-owned physical customer movement, queues, browsing and checkout
-  decisions, and deterministic save/reload of these flows. Do not call this
-  complete live shop simulation while Babylon is still the movement motor.
+- **PR #202 merged (partial shop cutover):** saved restock/credit petitions,
+  real no-sale walkouts and strict v15 saves, without overnight phantom
+  revenue. Unpaid goods return to shelves; only real checkout/approved credit
+  transfers merchandise.
+- **PR #203 in progress (fixed-step shop):** 50ms committed simulation ticks,
+  20 ticks per in-game minute, stable 60-real-second petition deadlines,
+  FPS-independent shopper movement/queue/wait decisions and pickup checks,
+  and bounded clock-only autosave writes. Version-16 is a deliberate breaking
+  scale change. The next remaining shop task is persisted actor position,
+  route, intention, local wait and claims, with actual reload/replay tests.
+  Dungeon expeditions remain in a bedtime batch, so V.003 is not yet ready.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,

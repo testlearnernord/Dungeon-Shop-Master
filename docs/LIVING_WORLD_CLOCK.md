@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design; PR #201 clock and PR #202 petition migration, full live shop/dungeon still pending · 2026-11-18.**
+> **Approved design; PR #201 clock, #202 petitions, #203 fixed-step shop, full live dungeon and shop save/restore still pending · 2026-11-19.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -35,8 +35,9 @@ those words confer no special simulation authority.
 - Persist a monotonically increasing **world time** (integer game ticks / game
   minute index, plus day index), a deterministic ordered event queue or
   next-due-event representation, source seeds/counters and explicitly
-  committed actions. Exact rate, step granularity and maximum number of
-  events per active session are **tunable, not locked constants**.
+  committed actions. PR #203's current implementation uses 20 world ticks
+  per game minute (50 real ms/tick), or 28,800 ticks/day, retaining the
+  prior 24-minute foreground day. These are tuning values, not story canon.
 - Shop customer activity, patience/request countdowns, queue, arrivals,
   hero travel, dungeon movement, site regeneration and temporary group
   decisions all consume that **same simulated clock**. Do not mix
@@ -150,10 +151,13 @@ restock/credit request deadlines and expiry walkouts are migrated in
 PR #202 to saved future `visitor` events with strict version-15
 schema validation. The old automatic bedtime sale and unpaid-cart
 settlement paths have been removed; bed now returns unpaid physical
-reservations to their shelves and never mints merchant gold. Babylon
-NPC locomotion, browsing/checkout waits and physical stock pickups
-still need authoritative world-time migration. This foundation is NOT
-yet a live deterministic shop or parallel live dungeon simulation.
+reservations to their shelves and never mints merchant gold. PR #203 moves Babylon-driven physical customer locomotion, shopping,
+queue waiting and pickup checks onto fixed committed 50ms world ticks.
+`scene.render()` now observes rather than advancing customer decisions.
+The NPC positions, movement routes, waits and destination reservations
+remain scene-owned rather than persisted, so a reload mid-shop can still
+diverge. Full deterministic shop restoration and parallel live dungeon
+simulation remain unfinished.
 
 **Required migration strategy**:
 
