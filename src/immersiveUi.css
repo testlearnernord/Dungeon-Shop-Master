@@ -1151,3 +1151,36 @@
 @media(max-height:620px){
   #arena-sfx-debug{top:87px;max-height:calc(100dvh - 150px)}
 }
+
+/* Only a committed magical death signal may open this urgent, dismissible
+ * world warning. No view watches hidden current HP or waits on render FPS. */
+#live-death-signal{
+  position:fixed;right:18px;top:78px;z-index:1006;
+  display:flex;align-items:center;gap:12px;
+  width:min(420px,calc(100vw - 36px));padding:12px 13px;
+  color:var(--ui-text);background:var(--ui-glass-strong);
+  border:1px solid var(--ui-danger);border-left:4px solid var(--ui-danger);
+  border-radius:var(--ui-radius);box-shadow:var(--ui-shadow);
+  pointer-events:auto;font:500 12px/1.4 system-ui,sans-serif;
+}
+#live-death-signal[hidden]{display:none!important}
+#live-death-signal>.ui-icon{height:27px;width:27px;color:var(--ui-danger)}
+#live-death-signal>div{min-width:0;display:grid;gap:4px;flex:1}
+#live-death-signal strong{font-size:12px;color:var(--ui-danger);letter-spacing:.07em}
+#live-death-signal span{color:var(--ui-text)}
+#live-death-signal button{
+  width:32px;min-width:32px;height:32px;
+  border:1px solid var(--ui-border);border-radius:7px;
+  background:var(--ui-glass);color:var(--ui-text);
+  display:grid;place-items:center;cursor:pointer;
+}
+#live-death-signal button:hover{border-color:var(--ui-danger)}
+.roster-hp-unknown{background:rgba(156,142,115,.15)!important}
+.roster-known-report{color:var(--ui-warning);font-size:12px}
+.roster-card[data-status="lost"]{border-color:var(--ui-danger)}
+@media(max-width:680px){
+  #live-death-signal{top:128px;left:18px;right:18px;width:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  #live-death-signal,#live-death-signal *{animation:none!important;transition:none!important}
+}
