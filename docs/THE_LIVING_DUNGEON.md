@@ -20,6 +20,26 @@
 > Current code/tests and the Game Bible govern implemented mechanics; this
 > document governs the **agreed design goals** and identifies proposals to test.
 
+## Revised retrospective recording boundary (LOCKED 20 November 2026)
+
+**Do not build an endless replay library.** A chronological event
+timeline covers today and at most the two preceding complete game days.
+The player can retain a chosen real combat/expedition recording by
+explicitly saving it (initial bounded cap: 12) and remove it later.
+Otherwise the expensive positional/60 Hz combat footage expires while
+the compact world event remains. Real highlights include combat,
+treasure, party join/leave, returns and fatalities. A Party formation
+or loot event without recorded video is a timeline marker, **not**
+manufactured cinematic footage. Watch/jump actions use the original
+immutable replay frames and a separate playback clock; the ordinary
+Board's observation/spoiler rules are not relaxed.
+
+**Performance is now a blocker:** avoid per-render re-generations of
+static dungeon layout, heavy Board DOM updates or a costly 3D scene
+behind the open checkout dialog. Cashier timing must correspond to what
+was visibly painted at low FPS, not an unseen time jump. V.003 release
+still requires representative performance checks.
+
 ## Why we are changing the dungeon
 
 The intended game is **a shopkeeper's indirect influence on a living dungeon**,
