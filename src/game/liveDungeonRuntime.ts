@@ -359,6 +359,7 @@ function commitDungeonTick(state:GameState):GameState {
         const journey=beginPortalReturn(hero,tick,clock,returns);
         byId.set(hero.id,journey.hero);
         clock=journey.clock;returns=journey.returns;
+        plans.delete(hero.id);
         processed.add(hero.id);
         stepCounts.set(hero.id,{heroId:hero.id,
           steps:(stepCounts.get(hero.id)?.steps??0)+1,finished:true});
@@ -695,5 +696,13 @@ export function finishLiveDungeonDay(
           h.health>0&&(h.status==="exploring"||h.status==="expedition")))},
     events:[...state.events,...events],
   };
-  return {state:queueNextDungeonWorldTick(next),events};
+  const finalPlans=new Map(next.liveDungeon.plans.map(p=>[p.heroId,p] as const));
+  const party=settleLivePartyRelationships(state.dungeonParties??[],
+    [],adventurers,floor=>floor===7?next.level7World:
+      next.earlyDungeonWorlds?.find(e=>e.floor===floor)?.world??
+      emptyLevel7World(),finalPlans,state.seed,day,clock.tick);
+  const committed={...next,dungeonParties:party.parties,
+    events:[...next.events,...party.events]};
+  return {state:queueNextDungeonWorldTick(committed),
+    events:[...events,...party.events]};
 }
