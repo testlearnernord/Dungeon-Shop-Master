@@ -1,6 +1,11 @@
 # Live Adventurer Board and lean day-end ledger
 
 > **Owner-approved V.003 design audit, 18 November 2026.**
+> **Implementation update, 19 November 2026:** PR #207 has merged true
+> persisted 60Hz ordinary fights; #208 implements saved connected return
+> paths and real timed shop portal arrivals. The historical baseline and
+> migration TODOs below record the earlier state, not current limitations.
+> The LIVE Board, spectator/archive and two-day standby are still pending.
 > This is the migration contract for the new shared world clock, **not a
 > claim that the current V.002 shop already has live dungeon updates.**
 > Crucial owner choice: **backward compatibility with old alpha campaign
