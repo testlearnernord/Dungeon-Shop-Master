@@ -158,9 +158,13 @@ PR #204 introduces a validated saved checkpoint for actual NPC positions,
 routes, waits, service claims, shelf ownership, gate heights and stable
 iteration order, written alongside the same tick and hydrated into the
 single existing actor motor on reload. It neither replays physical pickups
-nor introduces a second authoritative customer AI. The remaining large
-migration is parallel live dungeon simulation and integrated gameplay
-verification across long sessions.
+nor introduces a second authoritative customer AI. PR #205 extracts the bounded `advanceSpatialDungeonPartyStep` call
+  from the original shared dungeon resolver. It can advance a single
+  connected tile with the same persistent world/site/combat authority,
+  but it is not yet scheduled on the world clock. Its group-combat output
+  still resolves instantly, rather than over individual live 60 Hz frames.
+  The remaining large migration is parallel live dungeon simulation,
+  removal of the bedtime dungeon batch, and long-session verification.
 
 **Required migration strategy**:
 

@@ -248,6 +248,13 @@
   motor after room, roster and shopping intents are rebuilt; the old
   50ms tick/commerce authority remains unchanged. Save only the finished
   step, not a partial position before the tick's actual movement.
+  PR #205 makes the existing Floors 1–4 and 7 party/exploration
+  resolver resumable in real adjacent one-tile steps via
+  `advanceSpatialDungeonPartyStep`, sharing the existing monster/chest/
+  trap and group-combat ownership. DO NOT invoke this alongside bedtime
+  dungeon rolls in production: the scheduler cutover must exclusively
+  own live expedition events and retire/guard the old day batch.
+  This extraction alone is NOT live dungeon behavior.
   The live dungeon cutover and integrated ten-day validation remain pending.
   An unpaid cart returns to its shelf at bed closure, never settling
   as imaginary cash. Version-17 saves intentionally reject v16 and

@@ -322,8 +322,13 @@ to shelves without creating purchases, while due petition expiries commit
 one real world-time-stamped walkout. Menus and blueprint planning pause
 physical customer motion and the world clock.
 
-**Still planned for V.003:** fully integrated long-running shop/expedition
-testing and the switch of dungeon expeditions to the common live clock.
+**Still planned for V.003:** PR #205 introduces bounded, resumable
+single-tile expedition calls using the existing shared party/spatial
+motor across Floors 1–4 and 7. It is an internal API extraction, not
+yet live dungeon gameplay: old `advanceDay` still invokes the full
+36-step batch. Next is persisted in-day scheduling (and no duplicated
+nighttime expedition), followed by truly time-resolved 60 Hz fights and
+full integrated long-session shop/expedition testing.
 The dungeon still resolves at the bed-based transition; this is **not**
 parallel live dungeon gameplay. Deterministic version-17 shop campaign
 resumes and exactly-once real payments remain mandatory.
