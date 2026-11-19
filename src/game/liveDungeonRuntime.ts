@@ -264,6 +264,9 @@ function commitDungeonTick(state:GameState):GameState {
   const combats=[...state.liveDungeon.combats];
   let returns=[...state.liveDungeon.returns];
   let clock=state.worldClock;
+  const plans=new Map(state.liveDungeon.plans.map(p=>[p.heroId,p] as const));
+  const sharedGroups:string[][]=state.liveDungeon.combats
+    .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   const stepCounts=new Map(state.liveDungeon.heroes.map(v=>[v.heroId,v]));
   let level7World=state.level7World;
   let earlyDungeonWorlds:EarlyDungeonFloorWorld[]=[...(state.earlyDungeonWorlds??[])];
@@ -306,6 +309,64 @@ function commitDungeonTick(state:GameState):GameState {
     const layout=generateExpeditionLayout(state.seed,floor);
     const homeward=returns.find(j=>j.heroId===hero.id&&
       j.phase==="backtrack");
+    const priorPlan=plans.get(hero.id);
+    if(!homeward&&priorPlan?.floor===floor&&
+      (priorPlan.action==="ascend"||priorPlan.action==="descend")&&
+      ((priorPlan.action==="ascend"&&floor>1&&floor<=4)||
+       (priorPlan.action==="descend"&&floor<4))){
+      const target=actualStair(state.seed,floor,priorPlan.action);
+      const at=getLevel7Progress(world,hero.id,layout);
+      if(at.x===target.x&&at.z===target.z){
+        // A staircase consumes this scheduled movement event; it may be
+        // crossed only from the real saved tile. Co-located companions
+        // who consented to the same direction cross TOGETHER.
+        const nextFloor=(floor+(priorPlan.action==="ascend"?-1:1))
+          as EarlyDungeonFloorWorld["floor"];
+        const priorParty=(state.dungeonParties??[]).find(p=>
+          p.floor===floor&&p.memberIds.includes(hero.id));
+        const participants=priorParty?.memberIds.map(id=>byId.get(id)!)
+          .filter(Boolean)??[hero];
+        const crossing=participants.length>1&&participants.every(member=>{
+          const plan=plans.get(member.id);
+          const pos=getLevel7Progress(world,member.id,layout);
+          return !processed.has(member.id)&&eligible(member)&&
+            member.floor===floor&&plan?.action===priorPlan.action&&
+            pos.x===target.x&&pos.z===target.z&&
+            !returns.some(r=>r.heroId===member.id);
+        })?participants:[hero];
+        const destinationLayout=generateExpeditionLayout(state.seed,nextFloor);
+        const arrival=priorPlan.action==="ascend"
+          ?dungeonDownStair(destinationLayout):destinationLayout.entrance;
+        const previousWorld=earlyDungeonWorlds.find(e=>e.floor===nextFloor)?.world
+          ??emptyLevel7World();
+        const nextHeroes=[...previousWorld.heroes];
+        for(const member of crossing){
+          const old=nextHeroes.find(p=>p.heroId===member.id);
+          const cell=arrival.z*destinationLayout.width+arrival.x;
+          nextHeroes.splice(nextHeroes.findIndex(p=>p.heroId===member.id),0,
+            ...(old?[{...old,...arrival,
+              visited:old.visited.includes(cell)?old.visited:[...old.visited,cell]}]:
+              [{heroId:member.id,...arrival,visited:[cell]}]));
+          byId.set(member.id,{...member,floor:nextFloor});
+          plans.delete(member.id);
+          processed.add(member.id);
+          stepCounts.set(member.id,{heroId:member.id,
+            steps:(stepCounts.get(member.id)?.steps??0)+1,finished:false});
+          activities.push({
+            id:"day-"+day+":"+member.id+":dungeon-live:"+tick,
+            type:"dungeon-live",day,worldTick:tick,adventurerId:member.id,
+            dungeonGoal:priorPlan.goal,floorAction:priorPlan.action,
+            message:member.name+"'s expedition changed depth. Details await a report.",
+          });
+        }
+        earlyDungeonWorlds=[
+          ...earlyDungeonWorlds.filter(e=>e.floor!==nextFloor),
+          {floor:nextFloor,world:{...previousWorld,heroes:nextHeroes}},
+        ].sort((a,b)=>a.floor-b.floor);
+        if(crossing.length>=2)sharedGroups.push(crossing.map(h=>h.id));
+        continue;
+      }
+    }
     if(homeward){
       const current=getLevel7Progress(world,hero.id,layout);
       if(current.x===layout.entrance.x&&current.z===layout.entrance.z){
@@ -328,9 +389,17 @@ function commitDungeonTick(state:GameState):GameState {
       member.floor===floor&&eligible(member)).map(member=>member.id));
     const blocked=new Set([...combatSites].filter(key=>
       key.startsWith(floor+":")).map(key=>key.slice((floor+":").length)));
+    const directed=priorPlan?.floor===floor&&
+      (priorPlan.action==="ascend"||priorPlan.action==="descend")&&
+      ((priorPlan.action==="ascend"&&floor>1&&floor<=4)||
+       (priorPlan.action==="descend"&&floor<4))
+      ?actualStair(state.seed,floor,priorPlan.action):undefined;
     const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
       {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
+        ...(directed?{routeToKnownTarget:directed}:{}),
         blockedCombatSites:blocked});
+    if(readyGroup.length>=2)
+      sharedGroups.push(readyGroup.map(member=>member.id));
     if(result.pendingCombat){
       const encounter=result.pendingCombat;
       const siteKey=floor+":"+encounter.featureId;
@@ -366,6 +435,7 @@ function commitDungeonTick(state:GameState):GameState {
           const journey=beginPortalReturn(individual.adventurer,tick,clock,returns);
           clock=journey.clock;returns=journey.returns;
           byId.set(id,journey.hero);
+          plans.delete(id);
         }
       }
       const important=individual.replay.steps.some(s=>
