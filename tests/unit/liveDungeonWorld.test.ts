@@ -281,3 +281,25 @@ test("strict v20 saves reject forged backtracks and duplicated portal events",()
     e.dueTick===stable.payload.worldClock.tick+SHOP_PORTAL_TRANSIT_TICKS));
   assert.deepEqual(parseSave(JSON.stringify(stable)),store.state);
 });
+
+
+test("a second real same-day portal crossing has a new unique event, not a phantom sale",()=>{
+  const {store:fixture,heroId}=shortRealReturnFixture();
+  // Historical first arrival must not suppress a genuinely traversed
+  // dungeon-to-shop portal crossing later in the same world day.
+  const historical={id:"day-1:"+heroId+":shop-arrival",
+    type:"shop-arrival" as const,day:1,adventurerId:heroId,
+    message:"Earlier real shop visit."};
+  const a=new GameStore({...fixture.state,
+    events:[...fixture.state.events,historical]});
+  a.enableLiveDungeon();
+  a.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS*8);
+  const arrivals=a.state.events.filter(e=>
+    e.type==="shop-arrival"&&e.adventurerId===heroId);
+  assert.equal(arrivals.length,2);
+  assert.notEqual(arrivals[0].id,arrivals[1].id);
+  assert(arrivals[1].worldTick!>0);
+  assert.equal(a.state.shopEconomy.dailySales.revenue,0,
+    "A genuine portal arrival is not a transaction.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(a.state))),a.state);
+});
