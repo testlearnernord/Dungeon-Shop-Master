@@ -21,7 +21,8 @@ import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
 import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
 import {validateShopTraffic} from "./shopTraffic.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
-  LIVE_COMBAT_EVENT_SUBJECT,LIVE_COMBAT_INTERVAL_TICKS} from "./liveDungeonRuntime.ts";
+  LIVE_COMBAT_EVENT_SUBJECT,LIVE_COMBAT_INTERVAL_TICKS,
+  SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS} from "./liveDungeonRuntime.ts";
 import {createGroupCombat,type GroupCombatOptions} from "./groupCombat.ts";
 import {forecastShoppingIntents} from "./shopperIntents.ts";
 
@@ -628,6 +629,72 @@ function validateLiveCombatCheckpoints(
   }
 }
 
+/** The only authority for a same-day shop arrival is a real
+ * traversed dungeon entrance and an exactly scheduled portal crossing.
+ * A forged traveling status cannot turn into a phantom merchant customer.
+ */
+function validateLivePortalReturns(
+  state:RecordValue,journeys:unknown[],pending:unknown[],
+  clockTick:number,enabled:boolean,
+):void{
+  const records=array(state.adventurers,"payload.adventurers") as RecordValue[];
+  const indexed=new Set<string|number>(),portalSubjects=new Set<string>();
+  for(const [i,raw] of journeys.entries()){
+    const path="payload.liveDungeon.returns["+i+"]";
+    const journey=object(raw,path,["heroId","fromFloor","startedTick","phase"],
+      ["dueTick"]);
+    const heroId=text(journey.heroId,path+".heroId");
+    unique(heroId,indexed,path+".heroId");
+    choice(journey.fromFloor,[1,2,3,4,6,7],path+".fromFloor");
+    const floor=journey.fromFloor as number;
+    const started=integer(journey.startedTick,path+".startedTick",0,clockTick);
+    choice(journey.phase,["backtrack","portal"],path+".phase");
+    const hero=records.find(r=>r.id===heroId);
+    if(!enabled||!hero||hero.health===0)
+      fail(path+".heroId","must identify one live returning hero");
+    if(journey.phase==="portal"){
+      const due=integer(journey.dueTick,path+".dueTick",
+        clockTick+1,Number.MAX_SAFE_INTEGER);
+      if(due!==started+SHOP_PORTAL_TRANSIT_TICKS||
+        hero.status!=="traveling"||hero.floor!==4)
+        fail(path,"must be an actual timed portal arrival");
+      portalSubjects.add(SHOP_PORTAL_RETURN_PREFIX+heroId);
+      const scheduled=pending.filter(rawEvent=>{
+        const e=rawEvent as RecordValue;
+        return e.lane==="report"&&e.subjectId===SHOP_PORTAL_RETURN_PREFIX+heroId;
+      }) as RecordValue[];
+      if(scheduled.length!==1||scheduled[0].dueTick!==due)
+        fail(path+".dueTick","must own exactly one scheduled portal event");
+    }else{
+      if(journey.dueTick!==undefined)
+        fail(path+".dueTick","is only allowed during portal transit");
+      if(![1,2,3,4,7].includes(floor)||
+        hero.floor!==floor||
+        hero.status!==(floor===7?"expedition":"exploring"))
+        fail(path,"must backtrack on the real hero floor");
+      const world:Level7World=floor===7?
+        state.level7World as Level7World:
+        ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
+          ?.find(w=>w.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
+      if(!world.heroes.some(p=>p.heroId===heroId))
+        fail(path+".heroId","must have an actual saved dungeon location");
+    }
+  }
+  const reports=pending.filter(raw=>{
+    const event=raw as RecordValue;
+    return event.lane==="report";
+  }) as RecordValue[];
+  if(reports.length!==portalSubjects.size||reports.some(e=>
+    !portalSubjects.has(e.subjectId as string)))
+    fail("payload.worldClock.pending","has an orphaned portal/report event");
+  const travelers=records.filter(hero=>hero.status==="traveling");
+  if(enabled&&travelers.some(hero=>!journeys.some(raw=>{
+    const j=raw as RecordValue;
+    return j.heroId===hero.id&&j.phase==="portal";
+  })))
+    fail("payload.liveDungeon.returns","must account for every live portal traveler");
+}
+
 function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
     "day", "worldClock", "shopRequests", "shopTraffic", "liveDungeon", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
@@ -667,7 +734,7 @@ function validateState(value: unknown): asserts value is GameState {
   if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
   {
     const live=object(state.liveDungeon,"payload.liveDungeon",
-      ["enabled","lastStepTick","heroes","combatTick","combats"]);
+      ["enabled","lastStepTick","heroes","combatTick","combats","returns"]);
     if(typeof live.enabled!=="boolean")
       fail("payload.liveDungeon.enabled","must be boolean");
     const last=integer(live.lastStepTick,"payload.liveDungeon.lastStepTick",0,clockTick);
@@ -685,6 +752,8 @@ function validateState(value: unknown): asserts value is GameState {
       "payload.liveDungeon.combatTick",0,clockTick);
     const combats=array(live.combats,"payload.liveDungeon.combats");
     if(combats.length>100)fail("payload.liveDungeon.combats","is oversized");
+    const returning=array(live.returns,"payload.liveDungeon.returns");
+    if(returning.length>100)fail("payload.liveDungeon.returns","is oversized");
     const dungeonEvents=pending.filter(raw=>
       (raw as RecordValue).lane==="expedition").map(raw=>raw as RecordValue);
     const movements=dungeonEvents.filter(e=>
@@ -693,7 +762,7 @@ function validateState(value: unknown): asserts value is GameState {
       e.subjectId===LIVE_COMBAT_EVENT_SUBJECT);
     if(!live.enabled){
       if(last!==0||progress.length||dungeonEvents.length||
-        combatTick!==0||combats.length)
+        combatTick!==0||combats.length||returning.length)
         fail("payload.liveDungeon","legacy mode cannot have scheduled dungeon work");
     }else{
       if(last<firstWorldTickOfDay(day))
@@ -707,6 +776,7 @@ function validateState(value: unknown): asserts value is GameState {
         fail("payload.liveDungeon","must own its exact next movement and combat ticks");
     }
     validateLiveCombatCheckpoints(state,combats,day,clockTick,last,combatTick);
+    validateLivePortalReturns(state,returning,pending,clockTick,!!live.enabled);
   }
   const shopRequests=array(state.shopRequests,"payload.shopRequests");
   if(shopRequests.length>100)fail("payload.shopRequests","is oversized");
@@ -1053,7 +1123,8 @@ function validateState(value: unknown): asserts value is GameState {
     if(event.worldTick!==undefined){
       integer(event.worldTick,path+".worldTick",firstWorldTickOfDay(eventDay),
         eventDay===day?clockTick:lastWorldTickOfDay(eventDay));
-      if(event.type!=="shop-walkout"&&event.type!=="dungeon-live")
+      if(event.type!=="shop-walkout"&&event.type!=="dungeon-live"&&
+        event.type!=="shop-arrival")
         fail(path+".worldTick","is not allowed for this event type");
     }
     lastDay = eventDay;
@@ -1064,6 +1135,7 @@ function validateState(value: unknown): asserts value is GameState {
     if (!global && !heroIds.has(event.adventurerId as string)) fail(`${path}.adventurerId`, "must link to an existing hero");
     const allowed = ["id", "type", "day", "message",
       ...(event.type==="shop-walkout"?["worldTick","shopReason"]:[]),
+      ...(event.type==="shop-arrival"&&event.worldTick!==undefined?["worldTick"]:[]),
       ...(event.type==="dungeon-live"?["worldTick",
         ...(event.level7Replay!==undefined?["level7Replay"]:[]),
         ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[])]:[]),
