@@ -3,7 +3,8 @@ import {
   dungeonNeighbors, dungeonShortestPath, generateExpeditionLayout, tileAt,
   type DungeonFeature, type DungeonLayout, type DungeonPoint,
 } from "./dungeonLayout.ts";
-import { resolveGroupCombat, type CombatantSpec, type GroupCombatReplay } from "./groupCombat.ts";
+import { resolveGroupCombat, type CombatantSpec, type GroupCombatOptions,
+  type GroupCombatState, type GroupCombatReplay } from "./groupCombat.ts";
 import { SeededRandom } from "./random.ts";
 import {
   dungeonGenerationSeed, dungeonSiteGeneration, refreshDungeonSites,
@@ -150,14 +151,11 @@ function chooseRenewedSiteStep(
   return available[0]?.[1] ?? null;
 }
 
-/** Real team fight, resolved once; every hero supplies their own stats and Herbs. */
-function fightAgainst(
+/** Prepare the original fight geometry/stats without advancing its clock. */
+export function prepareSpatialDungeonCombat(
   party: readonly AdventurerState[], monster: DungeonFeature,
   campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint, cycle = 0,
-): {
-  survivors: readonly {id:string;hp:number;healsUsed:number}[];
-  outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay;elite:boolean;
-} {
+):{readonly options:GroupCombatOptions;readonly elite:boolean} {
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
     (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0,cycle));
   // Only renewable sentries can become elites. No unique boss is regenerated.
@@ -224,10 +222,22 @@ function fightAgainst(
     obstacles.push({id:"wall:"+dx+":"+dz,
       minX:x-1.2,maxX:x+1.2,minZ:z-1.2,maxZ:z+1.2});
   }
-  const encounter=resolveGroupCombat({
+  return {elite,options:{
     actors:specs,obstacles,
     bounds:{minX:-8.75,maxX:8.75,minZ:-8.75,maxZ:8.75},
-  },LEVEL7_COMBAT_SECONDS);
+  }};
+}
+
+/** Legacy bounded encounter uses exactly the same prepared group fighters. */
+function fightAgainst(
+  party: readonly AdventurerState[], monster: DungeonFeature,
+  campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint, cycle = 0,
+): {
+  survivors: readonly {id:string;hp:number;healsUsed:number}[];
+  outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay;elite:boolean;
+} {
+  const prepared=prepareSpatialDungeonCombat(party,monster,campaignSeed,layout,approach,cycle);
+  const encounter=resolveGroupCombat(prepared.options,LEVEL7_COMBAT_SECONDS);
   return {
     survivors:party.map(hero=>{
       const actor=encounter.state.actors.find(a=>a.id===hero.id)!;
@@ -237,7 +247,7 @@ function fightAgainst(
       };
     }),
     outcome:encounter.state.outcome==="fighting"?"draw":encounter.state.outcome,
-    combat:encounter.replay,elite,
+    combat:encounter.replay,elite:prepared.elite,
   };
 }
 
@@ -287,6 +297,16 @@ export interface Level7Tick {
 export interface Level7PartyTick {
   readonly ticks: readonly Level7Tick[];
   readonly world: Level7World;
+  /** A reserved, not-yet-resolved monster: combat advances via the world clock. */
+  readonly pendingCombat?:PreparedSpatialEncounter;
+}
+export interface PreparedSpatialEncounter {
+  readonly featureId:string;
+  readonly floor:SpatialDungeonFloor;
+  readonly x:number; readonly z:number;
+  readonly siteCycle:number;
+  readonly elite:boolean;
+  readonly options:GroupCombatOptions;
 }
 
 /** A bounded advancement window for the ONE spatial/dungeon combat authority.
@@ -297,6 +317,9 @@ export interface Level7PartyTick {
 export interface SpatialDungeonAdvanceOptions {
   readonly maxSteps?: number;
   readonly maxEncounters?: number;
+  /** Live mode reserves the site, but does not prematurely calculate its result. */
+  readonly deferCombat?:boolean;
+  readonly blockedCombatSites?:ReadonlySet<string>;
 }
 
 /**
@@ -356,6 +379,7 @@ export function simulateSpatialDungeonPartyDay(
   let current:DungeonPoint={x:entry.x,z:entry.z};
   let outcome:Level7Outcome="exploring";
   let encountersResolved=0;
+  let pendingCombat:PreparedSpatialEncounter|undefined;
 
   const step=(t:number,action:Level7Action,featureId?:string):void=>{
     for(const m of members)m.steps.push({
@@ -424,12 +448,23 @@ export function simulateSpatialDungeonPartyDay(
         break;
       }
     }else{
+      // A site already claimed by another live fight is NOT free loot and
+      // does not spawn another combat while its first fight remains active.
+      if(options.blockedCombatSites?.has(feature.id))continue;
       const active=members.filter(m=>m.hp>0).map(m=>({
         ...m.hero,health:m.hp,
         inventory:{...m.hero.inventory,healing:m.healing},
       }));
-      const fight=fightAgainst(active,feature,layout.seed,layout,previous,
-        dungeonSiteGeneration(siteCycles,feature.id));
+      const cycle=dungeonSiteGeneration(siteCycles,feature.id);
+      if(options.deferCombat){
+        const prepared=prepareSpatialDungeonCombat(active,feature,layout.seed,
+          layout,previous,cycle);
+        pendingCombat={featureId:feature.id,floor:floor as SpatialDungeonFloor,
+          x:current.x,z:current.z,siteCycle:cycle,...prepared};
+        step(t+0.1,"combat",feature.id);
+        break;
+      }
+      const fight=fightAgainst(active,feature,layout.seed,layout,previous,cycle);
       for(const survivor of fight.survivors){
         const m=members.find(candidate=>candidate.hero.id===survivor.id)!;
         m.hp=survivor.hp;
@@ -516,7 +551,8 @@ export function simulateSpatialDungeonPartyDay(
   // Every viewpoint references the SAME settled world, not separate copies
   // that could independently claim the chest or revive the encounter.
   return {world:updatedWorld,
-    ticks:outcomes.map(tick=>({...tick,world:updatedWorld}))};
+    ticks:outcomes.map(tick=>({...tick,world:updatedWorld})),
+    ...(pendingCombat?{pendingCombat}:{})};
 }
 
 /** The existing one-hero public API is now just the size-one party path. */
@@ -549,7 +585,8 @@ export function simulateLevel7Day(
 export function advanceSpatialDungeonPartyStep(
   party:readonly AdventurerState[],world:Level7World,
   campaignSeed:number,day:number,occupiedHeroIds?:ReadonlySet<string>,
+  liveOptions:Pick<SpatialDungeonAdvanceOptions,"deferCombat"|"blockedCombatSites">={},
 ):Level7PartyTick {
   return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
-    occupiedHeroIds,{maxSteps:1,maxEncounters:1});
+    occupiedHeroIds,{maxSteps:1,maxEncounters:1,...liveOptions});
 }
