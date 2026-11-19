@@ -304,14 +304,28 @@
   join/leave events. Preserve each character's independent HP,
   gear, consumables, gold, visited locations and intention.
   Full lower-floor progression, two-day off-duty rotation,
-  magic life-signature death alert, spectator and archive remain pending.
+  spectator and archive remain pending. PR #210 introduces strict
+  v22 magical observation events and one `liveBoardProjection.ts`
+  knowledge source. The actual spatial/trap, unique boss and 60Hz
+  group motors emit `hero-death-signal` ONLY on a real first
+  zero-HP crossing. That signal identifies the dead hero and precise
+  committed tick, NOT the killer, exact tile, loot or battle outcome.
+  `dungeon-live.reportedZone` offers coarse upper/deep life
+  signatures ONLY, with no remote HP/gear/gold. The wall board,
+  R roster and mini feed must ALL consume the SAME observed projection,
+  never raw `GameState.adventurers` for hidden remote stats/death,
+  nor raw `dungeonParties` for unreported companions.
+  Physically visible shop visitors may show current actual health,
+  gear, gold and permits; sealed replays do not retroactively reveal
+  information. The skull warning is an accessible UI projection,
+  not another combat clock, and dismissing it cannot alter truth.
   Do not promote V.003 to playable/released on this partial cutover.
   Full V.003 release acceptance and integrated ten-day validation remain pending.
   An unpaid cart returns to its shelf at bed closure, never settling
   as imaginary cash. Real browser campaigns exclusively run the saved
   live expedition/combat and shop motors, never the older bedtime
   dungeon batch (retained only for isolated pure legacy regression
-  fixtures). The current v21 format intentionally rejects older
+  fixtures). The current v22 format intentionally rejects older
   alpha snapshots. Do not claim V.003 as a released milestone or
   invent an additional time engine, mandatory Floor-10 boss, class/mana
   scheme or 100-floor simulation from design-only documents. **Newest owner decision: backward compatibility with old alpha/v13
