@@ -13,6 +13,7 @@ import {WORLD_TICKS_PER_DAY,WORLD_TICKS_PER_GAME_MINUTE} from "./game/worldClock
  */
 export function setupRosterBoardHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
+  watchLive:(heroId:string)=>void,
 ):()=>void {
   const dialog=document.querySelector<HTMLDialogElement>("#roster-dialog")!;
   const list=document.querySelector<HTMLElement>("#roster-detail-list")!;
@@ -150,6 +151,17 @@ export function setupRosterBoardHud(
           "cannot retroactively change a past magical report.";
         extended.append(note);
       }
+      // Every remote non-lost signature gets the SAME explicit opt-in.
+      // Whether a view exists is not itself leaked onto the board.
+      if(hero.status!=="lost"&&hero.status!=="at-shop"){
+        const watch=document.createElement("button");
+        watch.type="button";
+        watch.className="roster-watch-live";
+        watch.textContent="Watch LIVE (opt in)";
+        watch.setAttribute("aria-label","Watch "+hero.name+" in real time");
+        watch.addEventListener("click",()=>{closeRoster();watchLive(hero.id);});
+        extended.append(watch);
+      }
       card.append(summary,extended);
       return card;
     }));
@@ -166,7 +178,10 @@ export function setupRosterBoardHud(
     camera.detachControl();render();dialog.showModal();
   }
   function closeRoster():void{if(dialog.open)dialog.close();}
-  dialog.addEventListener("close",()=>camera.attachControl(canvas,true));
+  dialog.addEventListener("close",()=>{
+    if(!document.body.classList.contains("dungeon-active"))
+      camera.attachControl(canvas,true);
+  });
   close.addEventListener("click",closeRoster);
   openButton.addEventListener("click",openRoster);
   filter.addEventListener("change",()=>{
