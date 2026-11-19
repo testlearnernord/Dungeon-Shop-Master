@@ -73,8 +73,13 @@ function summary(event:WorldEvent):{text:string;source:LiveBoardSource;location:
 export function selectLiveBoardHeroes(state:GameState):readonly LiveBoardHero[]{
   const latest=new Map<string,WorldEvent>();
   const tp=new Map<string,boolean>();
+  const deaths=new Set<string>();
+  // One scan regardless of campaign age. Looking for every death anew
+  // for each hero used to multiply the cost of long event histories.
   for(const event of state.events){
-    if(!event.adventurerId||!knownType.has(event.type))continue;
+    if(!event.adventurerId)continue;
+    if(event.type==="hero-death-signal")deaths.add(event.adventurerId);
+    if(!knownType.has(event.type))continue;
     latest.set(event.adventurerId,event);
     if(event.type==="temporary-party-join")tp.set(event.adventurerId,true);
     else if(event.type==="temporary-party-leave")tp.set(event.adventurerId,false);
@@ -82,8 +87,7 @@ export function selectLiveBoardHeroes(state:GameState):readonly LiveBoardHero[]{
   return state.adventurers.map(hero=>{
     const event=latest.get(hero.id);
     const observed=event?summary(event):null;
-    const death=state.events.some(e=>e.adventurerId===hero.id&&
-      e.type==="hero-death-signal");
+    const death=deaths.has(hero.id);
     // A real death signal cannot be reversed by a later ordinary activity
     // event. No spoiler if the raw hero is dead but the signal never arrived.
     const physicallyHere=hero.status==="at-shop"&&!death;
