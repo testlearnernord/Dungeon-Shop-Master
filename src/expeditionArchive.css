@@ -47,3 +47,33 @@
   .archive-filters { grid-template-columns:1fr; }
   .archive-header { flex-wrap:wrap; }
 }
+
+/* The rail is a real committed-event chronology, not a video editor with
+ * fabricated timestamps. Missing event clock values remain labelled unknown. */
+#archive-entries { position:relative; padding-left:1.45rem; }
+#archive-entries::before {
+  content:"";position:absolute;top:0;bottom:0;left:.55rem;
+  width:2px;background:#665641;pointer-events:none;
+}
+.archive-entry { position:relative; }
+.archive-entry::before {
+  content:"";position:absolute;left:-1.38rem;top:.93rem;
+  width:.7rem;height:.7rem;box-sizing:border-box;
+  border:2px solid #191815;border-radius:50%;
+  background:#bf9d66;
+}
+.archive-entry[data-kind="combat"]::before { background:#b77e6a; }
+.archive-entry[data-kind="treasure"]::before { background:#e7c06b; }
+.archive-entry[data-kind="party"]::before { background:#7ca3a1; }
+.archive-entry[data-kind="death"]::before { background:#bb5953; }
+.archive-bookmarks:not([hidden]) {
+  display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem;
+}
+.archive-bookmarks button {
+  cursor:pointer;padding:.35rem .6rem;border:1px solid #6d624d;
+  border-radius:4px;background:#302d28;color:#f0e5cf;
+  font:inherit;font-size:.8rem;
+}
+.archive-bookmarks button:hover,.archive-bookmarks button:focus-visible {
+  outline:2px solid #cbaa73;outline-offset:1px;
+}
