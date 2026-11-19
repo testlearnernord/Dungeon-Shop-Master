@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {CASHIER_STAGES,CASHIER_TIMING_TOLERANCE,evaluateCashierTiming}
+import {CASHIER_STAGES,CASHIER_TIMING_TOLERANCE,evaluateCashierTiming,
+  CASHIER_NEEDLE_PERIOD_MS,cashierNeedlePosition}
   from "../../src/game/cashierChallenge.ts";
 
 test("checkout checks goods and seals receipt in order, never pays after one hit",()=>{
@@ -30,4 +31,17 @@ test("success window remains bounded and stage selection is validated",()=>{
   }
   assert.throws(()=>evaluateCashierTiming(-1,.5),RangeError);
   assert.throws(()=>evaluateCashierTiming(2,.5),RangeError);
+});
+
+test("slower cashier marker has a finite visible window independent of payment logic",()=>{
+  assert.equal(CASHIER_NEEDLE_PERIOD_MS,1100);
+  assert.equal(cashierNeedlePosition(0),0);
+  const target=CASHIER_STAGES[0].target;
+  const centerTime=Math.asin(target)*CASHIER_NEEDLE_PERIOD_MS;
+  const visible=cashierNeedlePosition(centerTime);
+  assert(evaluateCashierTiming(0,visible).accepted);
+  // Pausing redraw must not require recalculating a later invisible marker
+  // for the player action. The DOM grades the last painted value.
+  assert(!evaluateCashierTiming(0,
+    cashierNeedlePosition(centerTime+600)).accepted);
 });
