@@ -1,6 +1,8 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { beginNextWorldDay, createWorldClock, MAX_WORLD_DAY, type WorldClockState } from "./worldClock.ts";
 import {emptyShopTraffic,type ShopTrafficCheckpoint} from "./shopTraffic.ts";
+import {createLiveDungeonState,finishLiveDungeonDay,
+  type LiveDungeonState} from "./liveDungeonRuntime.ts";
 import type {ShopRequest} from "./shopRuntime.ts";
 import { useHealingSupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
 import { createEconomy, type ItemId, type Slot } from "./economy.ts";
@@ -32,7 +34,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 17;
+export const SIMULATION_VERSION = 18;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -64,7 +66,8 @@ export interface WorldEvent {
     "sale" | "tip" | "healed" |
     "level6-departure" | "level6-combat" | "level6-return" |
     "level7-departure" | "level7-exploration" | "shop-credit" |
-    "dungeon-exploration" | "temporary-party-join" | "temporary-party-leave";
+    "dungeon-exploration" | "dungeon-live" |
+    "temporary-party-join" | "temporary-party-leave";
   readonly day: number;
   readonly message: string;
   readonly worldTick?: number;
@@ -101,6 +104,7 @@ export interface GameState {
   readonly worldClock: WorldClockState;
   readonly shopRequests: readonly ShopRequest[];
   readonly shopTraffic: ShopTrafficCheckpoint;
+  readonly liveDungeon: LiveDungeonState;
   readonly simulationVersion: number;
   readonly events: readonly WorldEvent[];
   readonly adventurers: readonly AdventurerState[];
@@ -144,6 +148,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     worldClock: createWorldClock(),
     shopRequests: [],
     shopTraffic:emptyShopTraffic(1,0),
+    liveDungeon:createLiveDungeonState(),
     simulationVersion: SIMULATION_VERSION,
     events: [
       ...adventurers.slice(0, 3).map((hero) => arrivalEvent(hero, 1)),
@@ -169,6 +174,9 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
 }
 
 export function advanceDay(state: GameState): { state: GameState; events: readonly WorldEvent[] } {
+  if(state.liveDungeon.enabled)return finishLiveDungeonDay(state);
+  // Legacy test/fixture owner is exclusive with liveDungeon.enabled.
+  // No production campaign with live time may run the old spatial batch.
   if (!Number.isSafeInteger(state.day) || state.day < 1 || state.day >= MAX_WORLD_DAY) {
     throw new RangeError("The current day must be a positive safe integer with room for one more day.");
   }

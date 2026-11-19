@@ -74,6 +74,9 @@ const scene = new Scene(engine);
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
+// Live time is the exclusive owner in real gameplay. Unit fixtures that
+// directly advance a legacy day do not run simultaneous spatial motors.
+store.enableLiveDungeon();
 const worldClockPacer = new WorldClockPacer();
 let ignoreNextClockFrame=false;
 document.addEventListener("visibilitychange",()=>{

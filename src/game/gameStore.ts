@@ -13,6 +13,7 @@ import {rosterBoardProblem} from "./rosterBoardPlacement.ts";
 import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
 import { advanceWorldUntil, lastWorldTickOfDay,
   WORLD_TICKS_PER_GAME_MINUTE } from "./worldClock.ts";
+import {activateLiveDungeon,commitLiveWorldEvent} from "./liveDungeonRuntime.ts";
 import {clearResolvedShopRequests,commitShopRequestEvent,closeShopRequests,
   requestRemainingTicks,shortenShopRequestForTest,startShopRequest} from "./shopRuntime.ts";
 
@@ -20,6 +21,7 @@ export class GameStore {
   private current: GameState;
   private readonly listeners = new Set<() => void>();
   private readonly purchases = new Set<number>();
+  private liveDungeonRequested=false;
 
   constructor(state = createGameState()) {
     this.current = state;
@@ -43,9 +45,16 @@ export class GameStore {
     return () => this.listeners.delete(listener);
   }
 
+  /** Public gameplay opts into one live expedition motor. Pure legacy
+   * fixtures may still call advanceDay directly without invoking this.
+   */
+  enableLiveDungeon():void {
+    this.liveDungeonRequested=true;
+    this.replace(activateLiveDungeon(this.current));
+  }
   restore(state: GameState): void {
     this.purchases.clear();
-    this.replace(state);
+    this.replace(this.liveDungeonRequested?activateLiveDungeon(state):state);
   }
 
   private replace(state: GameState): void {
@@ -197,7 +206,8 @@ export class GameStore {
     const oldTick=this.current.worldClock.tick;
     const target=Math.min(lastWorldTickOfDay(this.current.day),oldTick+ticks);
     if(target===oldTick)return;
-    const advanced=advanceWorldUntil(this.current,target,commitShopRequestEvent);
+    const advanced=advanceWorldUntil(this.current,target,
+      this.current.liveDungeon.enabled?commitLiveWorldEvent:commitShopRequestEvent);
     // Keep saveable clock/checkpoint identities aligned while the committed
     // shop step finishes. The caller replaces the position checkpoint after
     // actually moving the customers.
@@ -210,7 +220,8 @@ export class GameStore {
     // Fast-forward pending visitor deadlines using the SAME event executor.
     // No late-night unserved customer can buy stock on the following morning.
     const atClose=advanceWorldUntil(this.current,
-      lastWorldTickOfDay(this.current.day),commitShopRequestEvent);
+      lastWorldTickOfDay(this.current.day),
+      this.current.liveDungeon.enabled?commitLiveWorldEvent:commitShopRequestEvent);
     this.replace(advanceDay(closeShopRequests(atClose)).state);
   }
 }
