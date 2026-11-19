@@ -358,6 +358,7 @@ function commitLiveCombatTick(state:GameState):GameState{
   let earlyDungeonWorlds=[...(state.earlyDungeonWorlds??[])];
   const activities:WorldEvent[]=[];
   const continuing:LiveDungeonCombat[]=[];
+  let returns=[...state.liveDungeon.returns];
   for(const fight of state.liveDungeon.combats){
     // Copy the authoritative mutable actors before stepping, preserving the
     // previous immutable checkpoint for deterministic save comparisons.
@@ -395,6 +396,12 @@ function commitLiveCombatTick(state:GameState):GameState{
     for(const tick of settled.ticks){
       const id=tick.adventurer.id;
       byId.set(id,tick.adventurer);
+      if(tick.adventurer.status==="dead")
+        returns=returns.filter(j=>j.heroId!==id);
+      else if(!returns.some(j=>j.heroId===id)&&
+        wantsToReturn(tick.adventurer,settled.world,tick.replay,state.seed))
+        returns.push({heroId:id,fromFloor:floor,
+          startedTick:state.worldClock.tick,phase:"backtrack"});
       counts.set(id,{heroId:id,steps:counts.get(id)?.steps??1,
         finished:tick.replay.outcome!=="exploring"});
       activities.push({
@@ -409,7 +416,7 @@ function commitLiveCombatTick(state:GameState):GameState{
   const next:GameState={...state,
     adventurers:state.adventurers.map(h=>byId.get(h.id)!),
     earlyDungeonWorlds,level7World,
-    liveDungeon:{...state.liveDungeon,combats:continuing,
+    liveDungeon:{...state.liveDungeon,combats:continuing,returns,
       combatTick:continuing.length?state.worldClock.tick:0,
       heroes:[...counts.values()]},
     events:[...state.events,...activities],
