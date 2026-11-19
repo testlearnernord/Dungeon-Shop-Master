@@ -329,14 +329,20 @@ This does **not** declare an implemented system or a shipped version.
   PR #202 introduced version-15 saved customer petitions, and PR #203
   intentionally moved to v16 for 20 fixed ticks per minute, and PR #204
   introduced v17 for persisted physical customer state, while PR #206
-  moves to v18 for exclusive live expedition event ownership.
+  moved to v18 for exclusive live expedition event ownership. PR #207
+  introduces v19 with strict active ordinary-fight snapshots and one
+  scheduled group-combat lane on the same world clock.
   No older alpha version has a migration adapter.
   Real browser campaigns now take bounded same-world dungeon steps
   during live shop time; sleeping fast-forwards outstanding events
   without simulating the dungeon twice. The old day-batch survives
-  ONLY as an exclusive direct-test legacy mode. Group fights are still
-  settled in a single world event rather than progressing at real 60Hz;
-  live spectator, death signaling and true shop returns remain unfinished.
+  ONLY as an exclusive direct-test legacy mode. Floors 1–4/7
+  monster contacts start real time-resolved 60Hz group fights, captured
+  every 0.1s and committed across real saved 0.5s world bursts.
+  Monster rewards, Herbs and completed footage apply at most once.
+  The unique Level-6 cinematic boss remains an atomic specialized
+  resolver for now; live spectator, death signaling and true shop
+  returns remain unfinished.
   Correct new saves remain essential.
   See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 - **Small first chapter rather than fake 100-floor coverage:** investigate a
