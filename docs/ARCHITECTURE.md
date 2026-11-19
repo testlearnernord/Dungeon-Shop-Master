@@ -488,7 +488,7 @@ The redesign must preserve one deterministic GameState authority and introduce:
   timer per event; an expired report cannot be replayed for another sale.
   Surviving Floor-6 Troll challengers use this portal too, despite their
   unique boss fight still being atomic.
-  **PR #209 LIVE hero autonomy/Temporary Parties (in progress):**
+  **PR #209 merged LIVE hero autonomy/Temporary Parties:**
   `dungeonDecisions.ts` remains the ONLY individual goal policy; the
   shared `liveDungeonRuntime.ts` invokes it after physically committed
   spatial ticks or finished 60Hz fights. The persistent v21
@@ -506,6 +506,22 @@ The redesign must preserve one deterministic GameState authority and introduce:
   and finished battle, including casualties and bedtime rotation,
   with unique world-tick TP join/leave identities. No second party
   movement AI, free floor-change gold, or fabricated combat.
+  **PR #210 knowledge-safe LIVE observations (in progress):**
+  `liveBoardProjection.ts` is the ONE pure event-based read model for
+  the wall canvas, R roster and daily glance. It never reads remote
+  mutable adventurer HP/loot/gear/gold/location/dead status. Actual
+  shop presence is a legitimate physical observation. Ticked
+  `dungeon-live.reportedZone` is an intentionally coarse magical
+  upper/deep life signature, distinct from a replay outcome. A
+  `hero-death-signal` is committed at the exact first real 60Hz actor
+  zero-HP transition or a lethal spatial trap/Boss outcome, including
+  before a multi-actor fight finishes; it reveals only hero identity,
+  occurrence tick and extinguished signature. It remains immutable
+  across reload and never re-resolves combat. Both screens show
+  unknown/last-confirmed data instead of today's hidden roster
+  attributes, while a single accessible HUD warning announces real
+  fatalities. Strict v22 checks tick-qualified IDs, source enum and
+  genuine dead hero/active zero-HP actor.
   **Still incomplete:** shop post-visit two-day standby, unique
   Level-6 boss unification, Floor-7+ authored exits, real-time
   Board/important death signals, spectator/archive and ten-day
@@ -615,7 +631,7 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 6. **Universal furniture registry and transaction.** `furnitureRegistry.ts` owns canonical labels, mount surfaces, sizes, focus data, rotated bounds, collision and shelf/counter service semantics; there is no parallel shop-floor geometry table or counter rendering facade. `furniturePlacement.ts` is the ONE pure preview/commit validator, exposed through `GameStore.previewFurniturePlacement` / `placeFurniture`, contextual P and new-shelf N. Shop shelves have monotonically assigned `shelf-N` instance IDs and four stock slots per built instance; new placement appends the empty stock records atomically. New campaigns start with no shelves or stocked slots. Strict `campaignSave.ts` requires a complete version-15 room, bedroom, roster-board and counter transform and checks shelf-to-slot correspondence; older partial/five-slot states are incompatible and deliberately not migrated. The alpha bounds live shelving at 12 instances. `Shop` creates corresponding meshes and inventory slots on state changes, while navigation/queues use their registered collision hulls and service sockets. Wall-mounted fixtures share `wallFurniturePlacement.ts` for structural wall anchors and excavated-rock support; mining supporting rock is rejected until the mounted object is moved. Private bedroom fixtures share the registry/transaction but retain sleep/door access rules. Other furniture currently remains a single instance per type: new reusable types still need their own mesh, persistence and interactions.
 7. **All dependent transforms move together.** Bedroom object groups include their interaction targets, collision hulls and lights when applicable. Sleep range follows the moved bed; roster interaction follows the moved board. Register geometry, staff docking, queue and blueprint use the same counter placement and orientation.
 8. **No hunger implementation.** Waybread/Herbs heal HP. No starvation timers, hunger events or residual hunger logic.
-9. **Persistence discipline.** `SIMULATION_VERSION` is **21** (PR #209). Version 20 and earlier alpha campaigns deliberately do not migrate because persistently owned LIVE autonomous intentions and TP event identities are newly required. Version-21 saves strictly validate 50ms world time, pending visitor events, uniquely referenced live customers, route/waypoint/timer bounds, occupied service positions, shelf ownership, and room/furniture/stock invariants. Clock/traffic-only autosave is sampled at most once per game minute; full snapshots are serialized after completed synchronous world steps, while real transactions save immediately and lifecycle flush saves outstanding changes. Invalid saves must not be silently overwritten.
+9. **Persistence discipline.** `SIMULATION_VERSION` is **22** (PR #210). Version 21 and earlier alpha campaigns deliberately do not migrate because legitimate magical observation and death-signal events are newly required. Version-22 saves strictly validate 50ms world time, pending visitor events, uniquely referenced live customers, route/waypoint/timer bounds, occupied service positions, shelf ownership, and room/furniture/stock invariants. Clock/traffic-only autosave is sampled at most once per game minute; full snapshots are serialized after completed synchronous world steps, while real transactions save immediately and lifecycle flush saves outstanding changes. Invalid saves must not be silently overwritten.
 
 ## 4. Performance and runtime watchpoints
 

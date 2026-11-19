@@ -360,7 +360,20 @@ This does **not** declare an implemented system or a shipped version.
   A temporarily saved `liveDungeon.plans` intention is NOT a direct
   player command or advance knowledge in Galvik's Board. The unique
   Floor-6 boss and existing Floor-7 endpoint remain separately gated.
-  Live spectator, death signaling, two-day post-shop standby, full
+  PR #210 integrates a first knowledge-safe LIVE Adventurer Board
+  (physical wall, R roster and day feed) from one read-only observed
+  event selector. Distant HP, gear, gold, floor and even a hidden
+  casualty are never read from the raw current adventurer record by
+  those interfaces. The actual 60Hz and spatial motors emit a unique
+  magic `hero-death-signal` the first time a hero's real HP reaches
+  zero. It confirms loss of their life signature, not their last
+  enemy, final loot or exact death tile. A visible warning is
+  acknowledged without mutating world truth. Coarse live upper/deep
+  regions come only from explicit saved observations; physical shop
+  visitors alone expose present HP/gear/coins. Strict v22 saves reject
+  invented death events, invalid origins and wrong tick IDs.
+  This does NOT ship the whole observed history/Archive design.
+  Live spectator, fuller report provenance, two-day post-shop standby, full
   authored Floors 8–10 and deeper long-range progression are unfinished.
   Correct new saves remain essential.
   See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).

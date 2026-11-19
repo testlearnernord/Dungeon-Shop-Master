@@ -239,6 +239,19 @@ function settleLivePartyRelationships(
   return {parties,events};
 }
 
+/** A genuine magic death signal is emitted only when saved combat/trap
+ * vitality crosses to zero. It reveals the hero and moment, NEVER remote
+ * location, enemy, loot, or sealed battle outcome.
+ */
+function deathSignal(hero:AdventurerState,day:number,tick:number):WorldEvent {
+  return {
+    id:"day-"+day+":"+hero.id+":hero-death-signal:"+tick,
+    type:"hero-death-signal",day,worldTick:tick,adventurerId:hero.id,
+    message:hero.name+"'s life-signature has been extinguished.",
+  };
+}
+const zone=(floor:number):"upper"|"deep"=>floor===7?"deep":"upper";
+
 function commitDungeonTick(state:GameState):GameState {
   const tick=state.worldClock.tick;
   const day=state.day;
@@ -271,6 +284,8 @@ function commitDungeonTick(state:GameState):GameState {
       const fight=simulateLevel6Combat(hero,day,rngState);
       rngState=fight.rngState;
       byId.set(hero.id,fight.adventurer);
+      if(fight.adventurer.status==="dead")
+        activities.push(deathSignal(fight.adventurer,day,tick));
       if(fight.adventurer.status==="traveling"){
         // The unique Troll battle is still an atomic cinematic fight. Its
         // already-settled survivor nevertheless returns through a genuine
@@ -341,6 +356,7 @@ function commitDungeonTick(state:GameState):GameState {
           activities.push({
             id:"day-"+day+":"+member.id+":dungeon-live:"+tick,
             type:"dungeon-live",day,worldTick:tick,adventurerId:member.id,
+            reportedZone:zone(nextFloor),
             dungeonGoal:priorPlan.goal,floorAction:priorPlan.action,
             message:member.name+"'s expedition changed depth. Details await a report.",
           });
@@ -424,6 +440,8 @@ function commitDungeonTick(state:GameState):GameState {
       const planChanged=decision&&!homeward
         ?recordLivePlan(plans,individual.adventurer,decision,tick):false;
       if(individual.adventurer.status==="dead"){
+        if(hero.health>0)
+          activities.push(deathSignal(individual.adventurer,day,tick));
         returns=returns.filter(j=>j.heroId!==id);
         plans.delete(id);
       } else if(!result.pendingCombat){
@@ -460,6 +478,7 @@ function commitDungeonTick(state:GameState):GameState {
         activities.push({
           id:`day-${day}:${id}:dungeon-live:${tick}`,
           type:"dungeon-live",day,worldTick:tick,adventurerId:id,
+          reportedZone:zone(floor),
           ...(decision?{dungeonGoal:decision.goal,floorAction:decision.action}:{}),
           message:`${individual.adventurer.name}'s expedition changed. Details await a report.`,
         });
@@ -527,6 +546,17 @@ function commitLiveCombatTick(state:GameState):GameState{
       if(step%6===0||combat.outcome!=="fighting")
         frames.push(captureGroupCombatFrame(combat));
     }
+    // Actors can die BEFORE their surviving companions finish the battle.
+    // Emit their signal at that precise authoritative 60Hz batch, once.
+    for(const id of fight.heroIds){
+      const oldActor=fight.state.actors.find(a=>a.id===id);
+      const updated=combat.actors.find(a=>a.id===id);
+      if(oldActor&&updated&&oldActor.hp>0&&updated.hp<=0){
+        const hero=byId.get(id);
+        if(!hero)throw new RangeError("Dead combat actor has no adventurer.");
+        activities.push(deathSignal(hero,state.day,state.worldClock.tick));
+      }
+    }
     if(combat.outcome==="fighting"){
       continuing.push({...fight,state:combat,frames});
       continue;
@@ -575,7 +605,7 @@ function commitLiveCombatTick(state:GameState):GameState{
       activities.push({
         id:"day-"+state.day+":"+id+":dungeon-live:"+state.worldClock.tick,
         day:state.day,worldTick:state.worldClock.tick,type:"dungeon-live",
-        adventurerId:id,
+        adventurerId:id,reportedZone:zone(floor),
         ...(floor===7?{level7Replay:tick.replay}:{dungeonReplay:tick.replay}),
         ...(plans.get(id)?{dungeonGoal:plans.get(id)!.goal,
           floorAction:plans.get(id)!.action}:{}),

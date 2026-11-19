@@ -8,10 +8,8 @@ import { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { DEFAULT_ROSTER_BOARD } from "./rosterBoardPlacement.ts";
 import type { GameStore } from "./gameStore.ts";
-import {
-  locationLabel, temporaryPartyNumber, rosterPartyDetails, portraitIndex,
-  rosterBoardEquipment, rosterEntries,
-} from "./rosterView.ts";
+import {portraitIndex} from "./rosterView.ts";
+import {liveBoardHeroesForFilter} from "./liveBoardProjection.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {portraitSourceRect} from "./portraitAtlas.ts";
 import {goldIconUrl} from "../uiIcons.ts";
@@ -86,7 +84,11 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
     ctx.fillText("DAY " + state.day, 780, 66);
     ctx.fillStyle = "#7e5e35";
     ctx.fillRect(44, 83, 930, 4);
-    const heroes = rosterEntries(state, "active");
+    const fallen=liveBoardHeroesForFilter(state,"fallen");
+    const heroes=[
+      ...fallen.slice(0,2),
+      ...liveBoardHeroesForFilter(state,"active"),
+    ];
     const labels = heroDisplayNames(state.adventurers);
     ctx.font = "23px sans-serif";
     heroes.slice(0, 9).forEach((hero, i) => {
@@ -103,20 +105,19 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
         ctx.restore();
       }
       ctx.font = "bold 21px sans-serif";
-      ctx.fillText((labels.get(hero.id) ?? hero.name) + " · Lv" + hero.level + " " + hero.role, 93, y + 1, 238);
+      ctx.fillText((labels.get(hero.id) ?? hero.name) +
+        (hero.visible?" · Lv"+hero.visible.level:" · Lv?")+
+        " "+hero.role, 93, y + 1, 238);
       ctx.font = "23px sans-serif";
-      ctx.fillStyle = hero.status === "at-shop" ? "#a8e1b8" :
-        hero.status === "expedition" ? "#e9ae67" : "#c0bcae";
-      const group=rosterPartyDetails(state,hero.id);
-      const number=temporaryPartyNumber(state,hero.id);
-      ctx.fillText(group&&number!==null
-        ?"F"+hero.floor+" · TP"+number+" ("+group.members.length+")"
-        :locationLabel(hero),345,y+1,253);
+      ctx.fillStyle=hero.status==="lost"?"#ff9c8c":
+        hero.status==="at-shop"?"#a8e1b8":"#c0bcae";
+      ctx.fillText(hero.location+
+        (hero.temporaryPartySignal?" · TP signal":""),345,y+1,253);
       // Actual empty/present weapon and armor sockets. Never treat a
       // higher character level as proof of bought equipment.
-      const gear=rosterBoardEquipment(hero);
       for(const [socket,present,x] of [
-        ["W",gear.weapon,610],["A",gear.armor,645],
+        ["W",hero.visible?.equipment.weapon!==null&&!!hero.visible,610],
+        ["A",hero.visible?.equipment.armor!==null&&!!hero.visible,645],
       ] as const){
         ctx.fillStyle=present?"#a2cbb4":"#343b3a";
         ctx.fillRect(x,y-23,29,29);
@@ -125,40 +126,48 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
         ctx.strokeRect(x+0.75,y-22.25,27.5,27.5);
         ctx.fillStyle=present?"#1b2d28":"#b2ac9a";
         ctx.font="bold 19px sans-serif";
-        ctx.fillText(socket,x+6,y-2);
+        ctx.fillText(hero.visible?socket:"?",x+6,y-2);
       }
       if(goldSymbol.complete&&goldSymbol.naturalWidth>0)
         ctx.drawImage(goldSymbol,689,y-20,23,23);
       ctx.fillStyle="#f5d59e";
       ctx.font="bold 18px sans-serif";
-      ctx.fillText(hero.gold+"g",714,y+1,55);
-      const hpRatio=Math.max(0,Math.min(1,hero.health/hero.stats.maxHealth));
+      ctx.fillText(hero.visible?hero.visible.gold+"g":"?",714,y+1,55);
+      const hpRatio=hero.visible
+        ?Math.max(0,Math.min(1,hero.visible.health/hero.visible.stats.maxHealth))
+        :null;
       ctx.fillStyle = "#352a20";
       ctx.fillRect(780, y - 20, 175, 12);
-      ctx.fillStyle = hpRatio < 0.3 ? "#d16b55" : "#8ab668";
-      ctx.fillRect(780, y - 20, 175 * hpRatio, 12);
-      ctx.fillStyle="#f0e4c9";
+      if(hpRatio!==null){
+        ctx.fillStyle=hpRatio<0.3?"#d16b55":"#8ab668";
+        ctx.fillRect(780,y-20,175*hpRatio,12);
+      }
+      ctx.fillStyle=hero.status==="lost"?"#ff9c8c":"#f0e4c9";
       ctx.font="bold 15px sans-serif";
-      ctx.fillText(gear.hp+" HP",783,y+9,171);
+      ctx.fillText(hero.visible
+        ?hero.visible.health+"/"+hero.visible.stats.maxHealth+" HP"
+        :hero.status==="lost"?"SIGNAL LOST":"HP unknown",783,y+9,171);
     });
     ctx.fillStyle = "#c8ae7d";
     ctx.font = "22px sans-serif";
-    ctx.fillText(heroes.length > 9 ? "+" + (heroes.length - 9) + " more" : heroes.length + " active", 46, 574);
+    ctx.fillText(heroes.length > 9 ? "+" + (heroes.length - 9) + " more" :
+      fallen.length+" lost signals · "+liveBoardHeroesForFilter(state,"active").length+
+      " registered", 46, 574);
     ctx.font="17px sans-serif";
-    ctx.fillText("TP = Temporary Party · W/A = weapon/armor",46,605);
+    ctx.fillText("MAGIC SIGNALS · ? = NOT OBSERVED · TP = PARTY",46,605);
     ctx.fillText("PRESS E / R FOR MEMBERS", 686,605);
     texture.update();
   }
   let previousDay=0;
   let previousHeroes:typeof store.state.adventurers|null=null;
-  let previousParties:typeof store.state.dungeonParties|null=null;
+  let previousEvents:typeof store.state.events|null=null;
   const redrawOnContentChange=()=>{
     const state=store.state;
     if(state.day===previousDay&&state.adventurers===previousHeroes&&
-      state.dungeonParties===previousParties)return;
+      state.events===previousEvents)return;
     previousDay=state.day;
     previousHeroes=state.adventurers;
-    previousParties=state.dungeonParties;
+    previousEvents=state.events;
     draw();
   };
   store.subscribe(redrawOnContentChange);

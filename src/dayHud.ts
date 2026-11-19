@@ -5,6 +5,7 @@ import { hasObservedReplay } from "./replayDisclosure.ts";
 import {reportCategory,reportIcon,reportCounts,type ReportCategory} from "./reportPresentation.ts";
 import {uiIcon} from "./uiIcons.ts";
 import {goldIcon} from "./uiIcons.ts";
+import {selectLiveBoardHeroes,committedDeathSignals} from "./game/liveBoardProjection.ts";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
@@ -70,11 +71,46 @@ export function setupDayHud(
     }));
   };
   let previousVisitors: readonly VisitorSnapshot[] = [];
+  const dismissedSignals=new Set<string>();
+  const deathAlert=document.createElement("aside");
+  deathAlert.id="live-death-signal";
+  deathAlert.setAttribute("role","alert");
+  deathAlert.setAttribute("aria-live","assertive");
+  deathAlert.hidden=true;
+  document.body.append(deathAlert);
+  function renderDeathAlert():void{
+    const pending=committedDeathSignals(store.state)
+      .filter(e=>!dismissedSignals.has(e.id));
+    const newest=pending.at(-1);
+    if(!newest){deathAlert.hidden=true;deathAlert.replaceChildren();return;}
+    deathAlert.hidden=false;
+    const icon=uiIcon("skull");
+    const copy=document.createElement("div");
+    const heading=document.createElement("strong");
+    heading.textContent="LIFE-SIGNATURE EXTINGUISHED"+
+      (pending.length>1?" · "+pending.length+" signals":"");
+    const detail=document.createElement("span");
+    detail.textContent=newest.message+
+      " · A magical signal, not a report of where or how they died.";
+    copy.append(heading,detail);
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="live-death-dismiss";
+    button.title="Acknowledge death warning";
+    button.setAttribute("aria-label","Acknowledge life-signature warning");
+    button.append(uiIcon("close"));
+    button.addEventListener("click",()=>{
+      for(const e of pending)dismissedSignals.add(e.id);
+      renderDeathAlert();
+    });
+    deathAlert.replaceChildren(icon,copy,button);
+  }
 
   const render = (): void => {
     const state = store.state;
     day.textContent = `Day ${state.day}`;
     events.replaceChildren(...state.events.slice(-3).reverse().map(eventRow));
+    renderDeathAlert();
     const today = [];
     for (let index = state.events.length - 1; index >= 0 && today.length < 100; index -= 1) {
       const event = state.events[index];
@@ -107,43 +143,50 @@ export function setupDayHud(
       empty.textContent="No "+(activeFilter==="all"?"":activeFilter+" ")+"events yet.";
       history.append(empty);
     }
-    const names = heroDisplayNames(state.adventurers);
-    const active = state.adventurers.filter((hero) => hero.status !== "dead");
-    const atShop = active.filter((hero) => hero.status === "at-shop");
-    population.textContent = `Adventurers: ${active.length} active · ${state.adventurers.length - active.length} lost`;
-    population.dataset.short=active.length+" active";
+    const names=heroDisplayNames(state.adventurers);
+    const known=selectLiveBoardHeroes(state);
+    const active=known.filter(hero=>hero.status!=="lost");
+    const atShop=known.filter(hero=>hero.visible!==null);
+    const fallen=known.length-active.length;
+    population.textContent="Adventurers: "+active.length+
+      " tracked signatures · "+fallen+" confirmed extinguished";
+    population.dataset.short=active.length+" tracked";
     population.setAttribute("aria-label",population.textContent);
-    visitors.textContent = `Shop visitors (${atShop.length}): ${atShop.map((hero) => names.get(hero.id) ?? hero.name).join(", ") || "none"}`;
+    visitors.textContent="Shop visitors ("+atShop.length+"): "+
+      (atShop.map(hero=>names.get(hero.id)??hero.name).join(", ")||"none");
     visitors.dataset.short=atShop.length+" in shop";
     visitors.title=visitors.textContent;
     visitors.setAttribute("aria-label",visitors.textContent);
-    roster.replaceChildren(...active.map((hero) => {
-      const entry = document.createElement("li");
-      entry.dataset.adventurerId = hero.id;
-      entry.dataset.status = hero.status;
-      const summary = document.createElement("span");
-      summary.className = "hero-summary";
-      summary.textContent = `${names.get(hero.id) ?? hero.name} · ${hero.role} · Lv ${hero.level} · HP ${hero.health}/${hero.stats.maxHealth} · F${hero.floor} ${hero.status} · Waybread ${hero.inventory.bread} · Herbs ${hero.inventory.healing}`;
+    roster.replaceChildren(...known.map(hero=>{
+      const entry=document.createElement("li");
+      entry.dataset.adventurerId=hero.id;
+      entry.dataset.status=hero.status;
+      const summary=document.createElement("span");
+      summary.className="hero-summary";
+      summary.textContent=(names.get(hero.id)??hero.name)+" · "+
+        hero.role+" · "+hero.location+" · "+
+        (hero.visible?"HP "+hero.visible.health+"/"+hero.visible.stats.maxHealth:
+          hero.status==="lost"?"MAGIC SIGNAL LOST":"HP unreported");
       entry.append(summary);
-      const cash=document.createElement("span");
-      cash.className="hero-gold";
-      cash.setAttribute("aria-label",hero.gold+" gold");
-      cash.append(goldIcon(),document.createTextNode(" "+hero.gold+"g"));
-      entry.append(cash);
-      if (hero.status === "at-shop") {
-        const permission = document.createElement("button");
-        permission.type = "button";
-        permission.className = "level6-permit";
-        permission.dataset.adventurerId = hero.id;
-        permission.setAttribute("aria-pressed", String(hero.level6Permit));
-        permission.textContent = hero.level6Permit ? "Revoke L6 pass" : "Grant L6 pass";
-        permission.title = "Approve this hero's Level 6 departure on the next confirmed day. Combat resolves one day later.";
-        permission.addEventListener("click", () => {
-          store.setLevel6Permit(hero.id, !hero.level6Permit);
+      if(hero.visible){
+        const cash=document.createElement("span");
+        cash.className="hero-gold";
+        cash.setAttribute("aria-label",hero.visible.gold+" observed gold");
+        cash.append(goldIcon(),document.createTextNode(" "+hero.visible.gold+"g"));
+        entry.append(cash);
+        const permit=document.createElement("button");
+        permit.type="button";
+        permit.className="level6-permit";
+        permit.dataset.adventurerId=hero.id;
+        permit.setAttribute("aria-pressed",String(hero.visible.level6Permit));
+        permit.textContent=hero.visible.level6Permit?"Revoke L6 pass":"Grant L6 pass";
+        permit.title="Approve this physically present hero's next Level 6 departure.";
+        permit.addEventListener("click",()=>{
+          store.setLevel6Permit(hero.id,!hero.visible!.level6Permit);
         });
-        entry.append(" ", permission);
+        entry.append(" ",permit);
       }
-      entry.title = `${hero.id} · XP ${hero.xp} · Gold ${hero.gold} · ${hero.traits.positive} / ${hero.traits.neutral} / ${hero.traits.negative} · Waybread ${hero.inventory.bread} · Herbs ${hero.inventory.healing}`;
+      entry.title=hero.report?.text??"No confirmed observation";
       return entry;
     }));
   };
