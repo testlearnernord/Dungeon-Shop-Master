@@ -76,7 +76,7 @@
   battle is still atomically resolved. Two-day post-shop standby,
   longer-term hero AI and unified portal dressing follow in later work.
 
-- **PR #209 in progress (LIVE autonomous decisions and Temporary Parties):**
+- **PR #209 merged (LIVE autonomous decisions and Temporary Parties):**
   `liveDungeon.plans` records each individual's actual medium-term
   goal and short-term stay/up/down/shop intention at its committed world
   tick. The ORIGINAL `chooseHeroDungeonDecision` and the existing
@@ -94,6 +94,21 @@
   retain their existing gated boundaries. Future work must still
   deliver fully connected deeper authored floors, meaningful two-day
   off-duty rotation, LIVE Board/death notices, spectator and archive.
+
+- **PR #210 in progress (knowledge-safe LIVE Board and death signals):**
+  A single event-derived `liveBoardProjection.ts` replaces raw remote
+  hero HP/equipment/death inspection on both the 3D wall board, expanded
+  R roster and compact day feed. Only physically present shop customers
+  expose live HP, goods and gold. Real deterministic, clock-ticked
+  magical life signatures reveal a coarse upper/deep dungeon activity
+  region; an actual zero-HP hero transition emits exactly one
+  conspicuous, dismissible `hero-death-signal` warning, never cause,
+  enemy, location, unseen loot or full fight. Untold deaths remain
+  unknown rather than leaking through mutable game state.
+  v22 saves strictly validate signals, event identity and source.
+  This is the FIRST genuinely LIVE known-state board slice; the
+  full chronological archive, historical observed HP snapshots,
+  spectator and night-book redesign follow later PRs.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,
