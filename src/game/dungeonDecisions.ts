@@ -59,8 +59,11 @@ export function chooseLiveHeroDungeonDecision(
   hero:AdventurerState,progress:Level7HeroProgress|undefined,
   replay:Level7Replay,
 ):HeroDungeonDecision {
-  if(hero.floor>=1&&hero.floor<=4)
+  if(hero.floor>=1&&hero.floor<=4) {
+    if(replay.outcome==="retreat")
+      return {goal:"resupply",action:"shop"};
     return chooseHeroDungeonDecision(hero,progress,replay);
+  }
   if(hero.floor!==7||hero.status!=="expedition"||hero.health<=0)
     throw new RangeError("Only a living spatial explorer can make a LIVE choice.");
   if(replay.outcome==="completed"||replay.outcome==="retreat"||
