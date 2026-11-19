@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design; PR #201–208 merged, #209 autonomous LIVE goals and parties in progress · 2026-11-19.**
+> **Approved design; PR #201–209 merged, #210 knowledge-safe LIVE Board in progress · 2026-11-19.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -188,7 +188,14 @@ nor introduces a second authoritative customer AI. PR #205 extracts bounded `adv
   commits same-world joins, splits, deaths and voluntary companions
   into time-stamped events, never by examining a replay. The unique
   boss and Floor-7 special boundaries remain unchanged; post-shop
-  standby, deeper authored floors, live viewing and reporting remain pending.
+  standby and deeper authored floors remain pending. PR #210
+  adds the ONE event-only known-state projection for the physical
+  wall Board, R roster and mini feed. Real zero-HP crossings create a
+  unique, clock-timed magical death signal without revealing the enemy,
+  exact dungeon tile, loot or unseen fight. Upper/deep presence is an
+  explicit coarse event, never read from hidden mutable hero position.
+  The v22 validator refuses fabricated signals and event IDs. The
+  spectator, rich history, provenance and Archive remain pending.
 
 **Required migration strategy**:
 
