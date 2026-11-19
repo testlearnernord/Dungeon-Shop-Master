@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design; PR #201–206 foundations merged, #207 ordinary 60Hz live-combat integration in progress · 2026-11-19.**
+> **Approved design; PR #201–207 merged, #208 physical portal returns in progress · 2026-11-19.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -173,9 +173,14 @@ nor introduces a second authoritative customer AI. PR #205 extracts bounded `adv
   tick. The monster site and finite rewards settle only at combat termination;
   recording views cannot trigger game simulation. The unique Level-6
   Troll duel remains an atomic legacy special encounter for a later
-  integration, not a second newly authored motor. Meaningful autonomous
-  floor choices, physical shop returns, live viewing, knowledge-safe
-  report delivery and long-session verification are still pending.
+  integration, not a second newly authored motor. PR #208 adds real
+  homeward traversal over visited tiles using the SAME spatial encounter
+  authority. Only reaching a seeded floor entrance schedules one 20-tick
+  portal event; its committed result creates an actual mid-day shop visitor
+  handled by the existing physical NPC traffic system. Strict v20 saves
+  preserve return intent and the uniquely owned crossing event through
+  save/reload and bedtime. Post-shop standby, deeper floor choices,
+  live viewing and reporting remain pending.
 
 **Required migration strategy**:
 
