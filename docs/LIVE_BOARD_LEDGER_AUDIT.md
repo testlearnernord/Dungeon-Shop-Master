@@ -100,13 +100,14 @@ future-event queue. PR #202 deliberately bumps to version 15 with a required
 persisted customer request ledger; v14 and older saves are rejected and
 preserved, not migrated. PR #202 migrates customer petitions and expired
 unpaid walkouts to world events, and **retires bedtime auto-trading**:
-unpaid carts return to physical shelf stock, not paid receipts. Shop movement is being moved from render frames to fixed 50ms ticks in
-PR #203. Physical NPC positions, route/wait/queue checkpoints and the
-dungeon batch remain unfinished,
+unpaid carts return to physical shelf stock, not paid receipts. PR #203 completed the fixed-50ms world-time shop motor. PR #204
+persists and rehydrates real physical NPC poses/routes, local waits,
+priority order and reserved shelf/queue/waiting points in strict v17
+saves. The dungeon expedition/combat day batch remains unfinished,
 not an approved second permanent simulation authority. Do not implement
 old alpha/v15 conversion, deprecated fields, dual day motors or old four-folio
-session recovery merely to retain experimental saves. Version 16 changes
-the world tick scale and also deliberately rejects v15 games.
+session recovery merely to retain experimental saves. Version 17 requires the physical traffic checkpoint and deliberately
+rejects v16 and older experimental games.
 
 Still required:
 - A clear, non-destructive **"Old alpha campaign incompatible; start

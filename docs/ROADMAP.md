@@ -19,13 +19,17 @@
   real no-sale walkouts and strict v15 saves, without overnight phantom
   revenue. Unpaid goods return to shelves; only real checkout/approved credit
   transfers merchandise.
-- **PR #203 in progress (fixed-step shop):** 50ms committed simulation ticks,
-  20 ticks per in-game minute, stable 60-real-second petition deadlines,
-  FPS-independent shopper movement/queue/wait decisions and pickup checks,
-  and bounded clock-only autosave writes. Version-16 is a deliberate breaking
-  scale change. The next remaining shop task is persisted actor position,
-  route, intention, local wait and claims, with actual reload/replay tests.
-  Dungeon expeditions remain in a bedtime batch, so V.003 is not yet ready.
+- **PR #203 merged (fixed-step shop):** 50ms committed simulation ticks,
+  20 per game minute, real 60-second petition deadlines, FPS-independent
+  shopper movement/queue/wait decisions and pickup checks; bounded autosaves.
+- **PR #204 in progress (physical checkpoint):** strict v17 saved NPC
+  positions/heading, active routes, local waits and congestion state,
+  exclusive service and shelf reservations, gate heights and original
+  iteration order. Real shop rehydration runs after layout/roster/plans;
+  checkpoint capture is coalesced with each completed world tick to avoid
+  intermediate half-steps in IndexedDB. Gameplay test and full CI gate
+  required before merge. Dungeon expeditions remain a bedtime batch,
+  so the parallel V.003 world is still incomplete.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,

@@ -32,7 +32,10 @@ The repository currently implements:
 - **Customer navigation:** physical shopper movement, waiting, pickup checks
   and collision arbitration run at a fixed 20 Hz after a saved world tick
   commits, never in Babylon render frames. Their route/phase/position
-  checkpoints across reload still need implementation. Shoppers move along
+  checkpoints across reload are now required version-17 save data.
+  Physical actor position/rotation, active route/waypoint, local waits and
+  full service-claim ownership are restored into the existing NPC motor,
+  without replaying pickups or purchases. Shoppers move along
   geometry-aware paths with smoothed turns, measured speed changes, real shelf service access and a finite five-position physical checkout line. Extra buyers use safe overflow positions. The single `ShopServiceSpots` manager exclusively reserves shelf browsing/waiting, register, petition and overflow destinations, including in mined shop extensions. Moving a fixture invalidates affected claims; customers should not occupy exits or block active traffic.
 - **Customer purchases and departure:** a hero inspects actual shelf goods, reserves stock into a saved unpaid cart and carries it to the register. Successful manual checkout is real, exactly-once accounting with an immediate *physical* departure; paid buyers cannot reroll into a next-day shop stay just because the day closes, while independently approved dungeon expeditions still take priority. Outstanding unpaid carts are returned to their original shelf slots at bedtime, without gold or fictional sale receipts. Only an actual checkout commits revenue. Roster or inventory refreshes do not respawn a paid, exiting customer.
 - **Staffed register:** the existing two-stage goods/receipt timing challenge processes a real cart from the customer side of a physical five-place queue, but only the player standing at the **staff** dock may operate it. Once a payment commits, the paid receipt shows actual gold and any customer-funded tip. The register remains open so **E** explicitly admits the next *physically ready* customer without closing/reopening the modal. Every customer's two stages remain mandatory; opening a new transaction does not itself pay anyone. **Esc** exits the register.
@@ -311,7 +314,7 @@ This does **not** declare an implemented system or a shipped version.
   genuinely heal a recorded fighter, or armor mitigate a real blow, but the
   UI must not invent an unseen event, predict certain survival or expose
   sealed results. A missing hero is *last known / unknown* until reported.
-- **Approved time design (PR #201 foundation, #202 requests, #203 fixed-step shop):** retain deliberate shop days
+- **Approved time design (PR #201 foundation, #202 requests, #203 fixed steps, #204 physical checkpoints):** retain deliberate shop days
   and sleeping, but advance the dungeon alongside active shop play on
   one deterministic, pausable in-game event clock. Bedtime completes
   unsupervised time exactly once and opens read-only recordings; there
@@ -324,7 +327,8 @@ This does **not** declare an implemented system or a shipped version.
   compatibility with old alpha/v13 saves when the shared-clock V.003
   replaces its day-batched model. PR #201 introduced version-14 saves and
   PR #202 introduced version-15 saved customer petitions, and PR #203
-  intentionally moves to v16 for 20 fixed ticks per minute. None of the
+  intentionally moved to v16 for 20 fixed ticks per minute, and PR #204
+  uses v17 for persisted physical customer state. None of the
   older alpha versions has a migration adapter.
   The old dungeon day-batch remains transitional until PR #203.
   Correct new saves remain essential.

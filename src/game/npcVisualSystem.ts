@@ -15,6 +15,7 @@ import {goldIconUrl} from "../uiIcons.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
 import { RESTOCK_WAIT_SECONDS, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
 import {WORLD_TICK_SECONDS} from "./worldClock.ts";
+import type {ShopTrafficCheckpoint,ShopTrafficActor} from "./shopTraffic.ts";
 import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble,
   createNpcCustomerBubble, positionNpcBubble,
   type NpcWishBubble, type NpcCustomerBubble } from "./npcWishBubble.ts";
@@ -255,6 +256,136 @@ export class NpcVisualSystem {
       throw new RangeError("Shop movement needs bounded committed world ticks.");
     for(let step=0;step<ticks;step++)this.updateStep(WORLD_TICK_SECONDS);
   }
+  /** Save the actual in-flight motor, not a replay/recomputed customer plan.
+   * This checkpoint is committed at the same tick as the GameStore clock.
+   */
+  snapshotTraffic(day:number,tick:number):ShopTrafficCheckpoint{
+    const actors:ShopTrafficActor[]=[...this.npcs.values()].map(npc=>({
+      heroId:npc.visitor.id,
+      x:npc.root.position.x,z:npc.root.position.z,yaw:npc.root.rotation.y,
+      slot:npc.slot,gateSide:npc.gateSide,phase:npc.phase,
+      shoppingPhase:String(npc.root.metadata.shoppingPhase??""),
+      shoppingReason:String(npc.root.metadata.shoppingReason??"no-need"),
+      shoppingTargetSlot:typeof npc.root.metadata.shoppingTargetSlot==="string"
+        ?npc.root.metadata.shoppingTargetSlot:null,
+      checkoutQueueIndex:Number.isSafeInteger(npc.root.metadata.checkoutQueueIndex)
+        ?Number(npc.root.metadata.checkoutQueueIndex):-1,
+      route:npc.route.map(p=>({x:p.x,z:p.z})),waypoint:npc.waypoint,
+      toQueue:npc.toQueue,intentKey:npc.intentKey,targetIndex:npc.targetIndex,
+      wait:npc.wait,elapsed:npc.elapsed,blockedSeconds:npc.blockedSeconds,
+      routeProgress:npc.routeProgress?{
+        target:{...npc.routeProgress.target},
+        closest:npc.routeProgress.closest,
+        stagnantSeconds:npc.routeProgress.stagnantSeconds,
+      }:null,
+      trafficReroutes:npc.trafficReroutes,
+      idleYieldCooldown:npc.idleYieldCooldown,
+      requestActive:npc.requestActive,roamLeg:npc.roamLeg,
+      restockSeconds:npc.restockSeconds,wishItem:npc.wishItem,
+      walkSpeed:npc.walkSpeed,animationTime:npc.animationTime,
+      performanceTime:npc.performanceTime,browseSide:npc.browseSide,
+    }));
+    return {day,tick,initialized:true,actors,
+      claims:this.serviceSpots.snapshot().map(c=>({
+        heroId:c.heroId,role:c.role,point:{...c.point}})),
+      shelfOwners:this.serviceSpots.snapshotShelfOwners(),
+      doorY:{...this.doorY}};
+  }
+
+  /** Called after the SAME saved GameState has rebuilt the shop layout and
+   * real shopping intentions. Restore actual actors and previous reservations
+   * without rerunning entrance paths, collision routing or shelf pickup.
+   */
+  restoreTraffic(
+    checkpoint:ShopTrafficCheckpoint,
+    visitors:readonly VisitorSnapshot[],
+  ):void{
+    if(!checkpoint.initialized)return;
+    if(!this.layout)throw new Error("Restore shop layout before restoring physical traffic.");
+    const byId=new Map(visitors.map(v=>[v.id,v]));
+    const saved=new Map(checkpoint.actors.map(actor=>[actor.heroId,actor]));
+    for(const npc of [...this.npcs.values()])
+      if(!saved.has(npc.visitor.id))this.dispose(npc);
+    for(const actor of checkpoint.actors){
+      const visitor=byId.get(actor.heroId);
+      if(!visitor)throw new Error("Shop checkpoint has an unknown visitor.");
+      let npc=this.npcs.get(actor.heroId);
+      if(!npc){
+        npc=createHumanoid(this.scene,visitor,actor.slot,
+          new Vector3(actor.x,0,actor.z),this.portraits);
+        this.npcs.set(actor.heroId,npc);
+      }
+      npc.visitor=visitor;
+      npc.root.position.x=actor.x;
+      npc.root.position.z=actor.z;
+      npc.root.rotation.y=actor.yaw;
+      npc.slot=actor.slot;
+      npc.gateSide=actor.gateSide;
+      npc.phase=actor.phase;
+      npc.route=actor.route.map(point=>new Vector3(point.x,0,point.z));
+      npc.waypoint=actor.waypoint;
+      npc.toQueue=actor.toQueue;
+      npc.intentKey=actor.intentKey;
+      npc.targetIndex=actor.targetIndex;
+      npc.wait=actor.wait;
+      npc.elapsed=actor.elapsed;
+      npc.blockedSeconds=actor.blockedSeconds;
+      npc.routeProgress=actor.routeProgress?{
+        target:{...actor.routeProgress.target},
+        closest:actor.routeProgress.closest,
+        stagnantSeconds:actor.routeProgress.stagnantSeconds,
+      }:null;
+      npc.trafficReroutes=actor.trafficReroutes;
+      npc.idleYieldCooldown=actor.idleYieldCooldown;
+      npc.requestActive=actor.requestActive;
+      npc.roamLeg=actor.roamLeg;
+      npc.restockSeconds=actor.restockSeconds;
+      npc.walkSpeed=actor.walkSpeed;
+      npc.animationTime=actor.animationTime;
+      npc.performanceTime=actor.performanceTime;
+      npc.browseSide=actor.browseSide;
+      npc.root.metadata.phase=actor.phase;
+      npc.root.metadata.gateSide=actor.gateSide;
+      npc.root.metadata.simulationStatus=visitor.status;
+      npc.root.metadata.shoppingPhase=actor.shoppingPhase;
+      npc.root.metadata.shoppingReason=actor.shoppingReason;
+      npc.root.metadata.shoppingTargetSlot=actor.shoppingTargetSlot;
+      npc.root.metadata.checkoutQueueIndex=actor.checkoutQueueIndex;
+      npc.root.metadata.blockedSeconds=actor.blockedSeconds;
+      npc.root.metadata.trafficReroutes=actor.trafficReroutes;
+      npc.root.metadata.restockRemaining=actor.restockSeconds;
+      npc.root.metadata.movementMode="restored";
+      npc.wishBubble?.root.remove();
+      npc.wishBubble=null;
+      npc.wishItem=null;
+      if(actor.wishItem){
+        this.showWish(npc,actor.wishItem,actor.shoppingReason==="cannot-afford");
+        npc.restockSeconds=actor.restockSeconds;
+      }
+      paintIdentity(npc,this.portraits);
+    }
+    // Map order determines deterministic right-of-way in the NEXT shop
+    // step. Restoring only positions but retaining fresh-spawn insertion
+    // order would reroute the crowd differently after reload.
+    const ordered=new Map<string,NpcVisual>();
+    for(const actor of checkpoint.actors){
+      const npc=this.npcs.get(actor.heroId);
+      if(!npc)throw new Error("Missing restored physical visitor");
+      ordered.set(actor.heroId,npc);
+    }
+    this.npcs.clear();
+    for(const [id,npc] of ordered)this.npcs.set(id,npc);
+    this.serviceSpots.restoreClaims(checkpoint.claims,checkpoint.shelfOwners,
+      this.layout,this.room);
+    for(const gate of ["level4","level6"] as const){
+      this.doorY[gate]=checkpoint.doorY[gate];
+      if(this.doors[gate])this.doors[gate]!.position.y=this.doorY[gate];
+    }
+    this.customerBarkQueue.length=0;
+    this.activeCustomerBark=null;
+    this.customerBubble.root.hidden=true;
+  }
+
   private readonly serviceSpots=new ShopServiceSpots();
   private carts:readonly ShopCart[]=[];
   /** Shopping-state notifications may happen without a new day. A committed

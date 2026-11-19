@@ -1,3 +1,4 @@
+import {emptyShopTraffic} from "../../src/game/shopTraffic.ts";
 import {WORLD_TICKS_PER_DAY} from "../../src/game/worldClock.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -220,6 +221,7 @@ test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Trol
   const initial=createGameState(seed);
   const saved={
     ...initial,day,worldClock:{...initial.worldClock,tick:(day-1)*WORLD_TICKS_PER_DAY},
+    shopTraffic:emptyShopTraffic(day,(day-1)*WORLD_TICKS_PER_DAY),
     shopEconomy:{...initial.shopEconomy,
       dailySales:{...initial.shopEconomy.dailySales,day}},
     adventurers:initial.adventurers.map(a=>

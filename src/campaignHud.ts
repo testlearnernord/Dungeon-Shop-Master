@@ -21,6 +21,7 @@ export function setupCampaignHud(
   store: GameStore,
   campaign: Awaited<ReturnType<typeof loadCampaign>>,
   resetScene: () => void,
+  restorePhysicalShop?:()=>void,
 ): void {
   const status = document.querySelector<HTMLElement>("#save-status")!;
   const file = document.querySelector<HTMLInputElement>("#save-file")!;
@@ -48,13 +49,22 @@ export function setupCampaignHud(
   };
   let lastObserved=store.state;
   let lastQueuedTick=store.state.worldClock.tick;
+  let saveMicrotaskQueued=false;
   store.subscribe(()=>{
-    const current=store.state;
-    const queue=shouldQueueCampaignSave(lastObserved,current,lastQueuedTick);
-    lastObserved=current;
-    if(!queue)return;
-    lastQueuedTick=current.worldClock.tick;
-    save();
+    if(saveMicrotaskQueued)return;
+    saveMicrotaskQueued=true;
+    // A committed world tick and its physical movement checkpoint happen
+    // synchronously in one JS turn. Never serialize the intermediate
+    // world-time-only state before the customer AI has finished its step.
+    queueMicrotask(()=>{
+      saveMicrotaskQueued=false;
+      const current=store.state;
+      const queue=shouldQueueCampaignSave(lastObserved,current,lastQueuedTick);
+      lastObserved=current;
+      if(!queue)return;
+      lastQueuedTick=current.worldClock.tick;
+      save();
+    });
   });
   if (campaign.error) {
     reportError(campaign.error);
@@ -73,6 +83,12 @@ export function setupCampaignHud(
     recover.hidden = true;
     resetScene();
     store.restore(state);
+    restorePhysicalShop?.();
+    // Save the fully restored traffic, never an intermediate pre-hydration
+    // snapshot. Keep the cadence baseline aligned after an explicit reset.
+    lastObserved=store.state;
+    lastQueuedTick=store.state.worldClock.tick;
+    save();
     document.querySelector<HTMLCanvasElement>("#renderCanvas")!.focus();
   };
   document.querySelector("#new-game")!.addEventListener("click", () => {

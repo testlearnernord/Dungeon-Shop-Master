@@ -298,17 +298,21 @@ Prefer focused additional coverage over inflating the default CI.
 
 ### Saves and compatibility
 
-**V.002 still playable; PR #203 shop-clock migration in progress:**
-`SIMULATION_VERSION = 16` in `src/game/gameState.ts`. A new campaign
+**V.002 still playable; PR #204 persistent shop traffic:**
+`SIMULATION_VERSION = 17` in `src/game/gameState.ts`. A new campaign
 persists one monotonic **50-ms world tick**. Twenty ticks form one game
 minute; 28,800 ticks form a 24-game-hour day (24 foreground real minutes
 at current pacing). Shop requests last 1,200 ticks = 60 real seconds;
 pausing the game pauses this countdown. Scene-owned customer walking,
 routing, collision decisions and shelf pickups now advance ONLY when
 the shared world clock commits a tick, not during Babylon render frames.
-Clock-only autosaves are throttled to once per second; all real shopping,
-queue-event and receipt changes save immediately. Old v15/v14/v13 alpha
-saves are deliberately **incompatible** and retained on load failure.
+Clock/traffic-only autosaves are throttled to once per second; all real
+shopping, queue-event and receipt changes save immediately. Shop checkpoints
+now also persist visitor positions, headings, routes, waypoints, local waits,
+exclusive shelf/queue claims, their stable actor order and door positions.
+Mid-visit reload hydrates the SAME physical customer motor without running
+a fresh entrance simulation. Old v16/v15/v14/v13 alpha saves are deliberately
+**incompatible** and retained on load failure.
 No migration adapter or offline progression is supplied.
 
 **Shop transactions:** buyers physically reserve shelf goods without paying.
@@ -318,12 +322,11 @@ to shelves without creating purchases, while due petition expiries commit
 one real world-time-stamped walkout. Menus and blueprint planning pause
 physical customer motion and the world clock.
 
-**Still planned for V.003:** physical NPC positions, routes, personal
-wait phases and occupancy claims must be persisted, validated and restored
-at the last saved world tick. Without this, reloading mid-visit can change
-physical timing. Dungeon expeditions still resolve at the bed transition;
-this is **not** parallel live dungeon gameplay. Deterministic version-16
-campaign resumes and exactly-once real payments remain mandatory.
+**Still planned for V.003:** fully integrated long-running shop/expedition
+testing and the switch of dungeon expeditions to the common live clock.
+The dungeon still resolves at the bed-based transition; this is **not**
+parallel live dungeon gameplay. Deterministic version-17 shop campaign
+resumes and exactly-once real payments remain mandatory.
 
 ## Where to code
 
@@ -331,7 +334,7 @@ campaign resumes and exactly-once real payments remain mandatory.
 | --- | --- |
 | Simulation and merchant mutations | `src/game/gameState.ts`, `src/game/gameStore.ts`, `src/game/economy.ts` |
 | Actual collected carts, cashier and debt | `src/game/shopCarts.ts`, `src/cashierHud.ts`, `src/game/shopCredit.ts` |
-| NPC intents and visual traffic | `src/game/shopperIntents.ts`, `src/game/npcVisualSystem.ts`, `src/game/shopServiceSpots.ts`, `src/game/shopperNavigation.ts` |
+| NPC intents, physical traffic and saved checkpoint | `src/game/shopperIntents.ts`, `src/game/npcVisualSystem.ts`, `src/game/shopTraffic.ts`, `src/game/shopServiceSpots.ts`, `src/game/shopperNavigation.ts` |
 | Furniture and mining | `src/game/furnitureRegistry.ts`, `src/game/furniturePlacement.ts`, `src/blueprintHud.ts`, `src/game/level5Room.ts` |
 | Player UX | `src/game/interactionSystem.ts`, `src/game/shopServiceFocus.ts`, `src/shopHudLayout.ts`, `src/uiIcons.ts`, `src/immersiveUi.css` |
 | Dungeon / observation | `src/game/level7Exploration.ts`, `src/game/dungeonDecisions.ts`, `src/game/dungeonRegeneration.ts`, `src/game/level6Combat.ts`, `src/game/level6Arena.ts`, `src/game/dungeonViewer.ts` |

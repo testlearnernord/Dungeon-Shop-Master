@@ -19,6 +19,7 @@ import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
   MAX_PENDING_WORLD_EVENTS,compareScheduledWorldEvents,
   type ScheduledWorldEvent } from "./worldClock.ts";
 import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
+import {validateShopTraffic} from "./shopTraffic.ts";
 import {forecastShoppingIntents} from "./shopperIntents.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
@@ -388,7 +389,7 @@ function validateLevel7Replay(
 
 function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
-    "day", "worldClock", "shopRequests", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
+    "day", "worldClock", "shopRequests", "shopTraffic", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
     "level5Room","bedroomFurniture","rosterBoard",
@@ -717,6 +718,11 @@ function validateState(value: unknown): asserts value is GameState {
         fail("payload.shopCarts","held stock conflicts with the shelf product");
     }
   }
+
+  validateShopTraffic(state.shopTraffic,day,clockTick,
+    new Set((state.adventurers as RecordValue[]).filter(hero=>hero.status!=="dead")
+      .map(hero=>hero.id as string)),
+    new Set(parsedShopLayout.shelves.map(shelf=>shelf.id)));
 
   {
     const seenDebtHeroes=new Set<string|number>();

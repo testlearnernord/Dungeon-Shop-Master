@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design; PR #201 clock, #202 petitions, #203 fixed-step shop, full live dungeon and shop save/restore still pending · 2026-11-19.**
+> **Approved design; PR #201 clock, #202 petitions, #203 fixed-step shop, #204 persisted physical NPC checkpoints. Live dungeon still pending · 2026-11-19.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -154,10 +154,13 @@ settlement paths have been removed; bed now returns unpaid physical
 reservations to their shelves and never mints merchant gold. PR #203 moves Babylon-driven physical customer locomotion, shopping,
 queue waiting and pickup checks onto fixed committed 50ms world ticks.
 `scene.render()` now observes rather than advancing customer decisions.
-The NPC positions, movement routes, waits and destination reservations
-remain scene-owned rather than persisted, so a reload mid-shop can still
-diverge. Full deterministic shop restoration and parallel live dungeon
-simulation remain unfinished.
+PR #204 introduces a validated saved checkpoint for actual NPC positions,
+routes, waits, service claims, shelf ownership, gate heights and stable
+iteration order, written alongside the same tick and hydrated into the
+single existing actor motor on reload. It neither replays physical pickups
+nor introduces a second authoritative customer AI. The remaining large
+migration is parallel live dungeon simulation and integrated gameplay
+verification across long sessions.
 
 **Required migration strategy**:
 

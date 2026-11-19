@@ -100,6 +100,21 @@ export class ShopServiceSpots{
   }
   claim(heroId:string):ShopServiceClaim|null{return this.claims.get(heroId)??null;}
   snapshot():readonly ShopServiceClaim[]{return [...this.claims.values()];}
+  snapshotShelfOwners():readonly {shelfId:string;heroId:string}[]{
+    return [...this.shelfOwners].map(([shelfId,heroId])=>({shelfId,heroId}));
+  }
+  /** Restore previously validated service places without route mutation. */
+  restoreClaims(
+    claims:readonly ShopServiceClaim[],
+    shelves:readonly {readonly shelfId:string;readonly heroId:string}[],
+    layout:ShopLayout,room?:Level5Room,
+  ):void{
+    this.configure(layout,room);
+    this.claims.clear();this.shelfOwners.clear();
+    for(const claim of claims)this.claims.set(claim.heroId,{
+      heroId:claim.heroId,role:claim.role,point:{...claim.point}});
+    for(const shelf of shelves)this.shelfOwners.set(shelf.shelfId,shelf.heroId);
+  }
 
   /** Reserve the actual shelf approach, not only the shelf ID.
    * A checkout / credit / restock / idle customer must not receive the same
