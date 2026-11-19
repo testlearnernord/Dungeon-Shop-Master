@@ -287,14 +287,34 @@
   repeated portal event identities, invented returners and unmatched
   report timers. Distinct real same-day reentries have distinct tick IDs
   and NEVER generate a sale without real checkout. The unique Floor-6 Troll survivor uses the same portal, but
-  its fight remains atomic until explicitly integrated. Autonomous floor transitions,
+  its fight remains atomic until explicitly integrated. PR #209
+  introduces strict v21 `liveDungeon.plans` with individual
+  per-floor goals, actions and their actual decision ticks. Reuse
+  `chooseLiveHeroDungeonDecision` (the existing early-floor policy)
+  and `negotiatePartyFloorDecisions`, never a second hero/party AI.
+  Physical early-floor ascents occur at each floor's seeded entrance;
+  descents require the discovered `dungeonDownStair` reachable room
+  and `chooseKnownRouteStep` via ACTUAL walked/known grid edges.
+  Commit a depth change only from the correct saved stair position
+  during a real movement event. The special Floor-5 shop is NEVER
+  a compulsory dungeon level. After each live move/combat/bed boundary
+  use the original voluntary `settlePersistentDungeonParties` and
+  `temporaryPartyChanges` to keep consenting co-located groups,
+  dissolve dissent and casualties, and emit unique world-tick TP
+  join/leave events. Preserve each character's independent HP,
+  gear, consumables, gold, visited locations and intention.
+  Full lower-floor progression, two-day off-duty rotation,
   magic life-signature death alert, spectator and archive remain pending.
   Do not promote V.003 to playable/released on this partial cutover.
   Full V.003 release acceptance and integrated ten-day validation remain pending.
   An unpaid cart returns to its shelf at bed closure, never settling
-  as imaginary cash. Version-17 saves intentionally reject v16 and
-  earlier campaigns because the physical actor checkpoint is newly required. `gameState.advanceDay`
-  remains bed-batched for dungeon outcomes until its later migration. Never claim the V.003 parallel simulation has shipped. No additional time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from design documents. **Newest owner decision: backward compatibility with old alpha/v13
+  as imaginary cash. Real browser campaigns exclusively run the saved
+  live expedition/combat and shop motors, never the older bedtime
+  dungeon batch (retained only for isolated pure legacy regression
+  fixtures). The current v21 format intentionally rejects older
+  alpha snapshots. Do not claim V.003 as a released milestone or
+  invent an additional time engine, mandatory Floor-10 boss, class/mana
+  scheme or 100-floor simulation from design-only documents. **Newest owner decision: backward compatibility with old alpha/v13
   campaign saves is NOT required for the V.003 world-clock cutover.**
   A clean new save schema and fresh campaign may replace old data.
   New-version deterministic saves, no duplicated purchases/HP/loot,
