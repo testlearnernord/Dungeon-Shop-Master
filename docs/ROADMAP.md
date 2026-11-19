@@ -29,15 +29,25 @@
   checkpoint capture is coalesced with each completed world tick to avoid
   intermediate half-steps in IndexedDB. Build, 534 unit and 12 browser
   checks passed, including an actual mid-visit resume.
-- **PR #205 in progress (resumable dungeon motor):** the SAME seeded
+- **PR #205 merged (resumable dungeon motor):** the SAME seeded
   Floors 1–4 and 7 spatial-party/loot/combat engine now exposes a bounded
   single connected step with immutable world-state result, rather than
-  requiring every caller to roll 36 steps at once. Previously committed
-  day-based behavior is unchanged until explicit live-time wiring removes
-  its bedtime owner. The current PR DOES NOT claim live dungeon play yet.
-  Real live expedition scheduling, 60 Hz fight progression and retirement
-  of the day-batch remain next. Dungeon expeditions currently still resolve
-  at bedtime, so the parallel V.003 world is incomplete.
+  requiring every caller to roll 36 steps at once. The shared spatial
+  motor is deterministic and preserves legacy tests.
+- **PR #206 in progress (actual in-day expeditions):** real browser play
+  opts into saved exclusive `expedition` world events every 600 ticks,
+  moving each active party by at most one connected tile per event and
+  applying actual chest, trap and group-combat outcomes to the shared
+  world immediately. Level 6 uses the existing unique boss combat resolver
+  at a scheduled event. Bedtime processes only the remaining events,
+  never the legacy dungeon day batch. V18 saves strictly validate the
+  one active dungeon event and each hero's checkpoint; fixtures not opted
+  into live time retain the old path solely for legacy regression tests.
+  Remaining **before V.003:** gradual 60Hz combat event progression,
+  actual same-day physical return journeys, lasting hero decisions,
+  live spectator/recordings, obvious death alerts and integrated
+  ten-day gameplay verification. A fight is currently committed
+  atomically at its scheduled event, not fought over live world seconds.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,

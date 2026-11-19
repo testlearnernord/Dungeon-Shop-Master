@@ -299,7 +299,7 @@ Prefer focused additional coverage over inflating the default CI.
 ### Saves and compatibility
 
 **V.002 still playable; PR #204 persistent shop traffic:**
-`SIMULATION_VERSION = 17` in `src/game/gameState.ts`. A new campaign
+`SIMULATION_VERSION = 18` in `src/game/gameState.ts`. A new campaign
 persists one monotonic **50-ms world tick**. Twenty ticks form one game
 minute; 28,800 ticks form a 24-game-hour day (24 foreground real minutes
 at current pacing). Shop requests last 1,200 ticks = 60 real seconds;
@@ -311,8 +311,10 @@ shopping, queue-event and receipt changes save immediately. Shop checkpoints
 now also persist visitor positions, headings, routes, waypoints, local waits,
 exclusive shelf/queue claims, their stable actor order and door positions.
 Mid-visit reload hydrates the SAME physical customer motor without running
-a fresh entrance simulation. Old v16/v15/v14/v13 alpha saves are deliberately
-**incompatible** and retained on load failure.
+a fresh entrance simulation. Strict v18 campaigns additionally persist
+the single live dungeon scheduler and its per-hero activity checkpoint.
+Old v17/v16/v15/v14/v13 alpha saves are deliberately **incompatible**
+and retained on load failure.
 No migration adapter or offline progression is supplied.
 
 **Shop transactions:** buyers physically reserve shelf goods without paying.
@@ -322,16 +324,25 @@ to shelves without creating purchases, while due petition expiries commit
 one real world-time-stamped walkout. Menus and blueprint planning pause
 physical customer motion and the world clock.
 
-**Still planned for V.003:** PR #205 introduces bounded, resumable
-single-tile expedition calls using the existing shared party/spatial
-motor across Floors 1–4 and 7. It is an internal API extraction, not
-yet live dungeon gameplay: old `advanceDay` still invokes the full
-36-step batch. Next is persisted in-day scheduling (and no duplicated
-nighttime expedition), followed by truly time-resolved 60 Hz fights and
-full integrated long-session shop/expedition testing.
-The dungeon still resolves at the bed-based transition; this is **not**
-parallel live dungeon gameplay. Deterministic version-17 shop campaign
-resumes and exactly-once real payments remain mandatory.
+**PR #206 partial live dungeon cutover:** real browser campaigns now
+use the shared world clock for autonomous Floors 1–4/7 expedition movement
+every 600 committed world ticks (30 active real seconds). Each event
+advances the SAME physical party/path/loot engine by at most one connected
+tile, updates HP, visited locations, gold, treasures and site cycles
+immediately, and saves the next expedition deadline. The unique Floor 6
+boss uses its existing resolver during a scheduled expedition event.
+Bedtime fast-forwards outstanding world events once, then closes only
+the shop; it no longer rerolls dungeon outcomes for live campaigns.
+Direct legacy test fixtures must explicitly remain outside this live
+mode; they cannot run simultaneously with it.
+
+**Still planned for V.003:** combats must advance across their actual
+60 Hz world-time frames, not resolve an entire fight instantaneously at
+one dungeon event. Player-visible live battle spectator, persistent
+hero floor/long-term goals, physical travel back to the shop, true
+chronological expedition recordings and a live magic death notification
+also remain unfinished. The partial scheduler does not make V.003
+releasable. Strict version-18 campaign continuation is required.
 
 ## Where to code
 

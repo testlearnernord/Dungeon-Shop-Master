@@ -158,13 +158,18 @@ PR #204 introduces a validated saved checkpoint for actual NPC positions,
 routes, waits, service claims, shelf ownership, gate heights and stable
 iteration order, written alongside the same tick and hydrated into the
 single existing actor motor on reload. It neither replays physical pickups
-nor introduces a second authoritative customer AI. PR #205 extracts the bounded `advanceSpatialDungeonPartyStep` call
-  from the original shared dungeon resolver. It can advance a single
-  connected tile with the same persistent world/site/combat authority,
-  but it is not yet scheduled on the world clock. Its group-combat output
-  still resolves instantly, rather than over individual live 60 Hz frames.
-  The remaining large migration is parallel live dungeon simulation,
-  removal of the bedtime dungeon batch, and long-session verification.
+nor introduces a second authoritative customer AI. PR #205 extracts bounded `advanceSpatialDungeonPartyStep` from the
+  shared dungeon resolver. PR #206 enables one future dungeon event on
+  the SAME saved timeline in real browser gameplay, every 600 ticks.
+  Each due event advances real shared party positions and applies
+  actual site outcomes to the campaign. The day-end path processes all
+  remaining real events and cannot rerun a separate day dungeon batch.
+  The save format v18 validates the next due time and per-hero step
+  checkpoint. Remaining critical migrations are truly time-resolved
+  60Hz group fights, meaningful autonomous floor choices, the real
+  return route to Galvik, live viewing, report delivery and long-session
+  verification. The current fight motor still commits a whole combat
+  at one scheduled expedition tick, not gradually over live frames.
 
 **Required migration strategy**:
 

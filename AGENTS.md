@@ -255,6 +255,20 @@
   dungeon rolls in production: the scheduler cutover must exclusively
   own live expedition events and retire/guard the old day batch.
   This extraction alone is NOT live dungeon behavior.
+  PR #206 makes the actual browser campaign opt into EXCLUSIVE live
+  expedition scheduling: one persisted `dungeon-world` event every
+  600 world ticks, using exactly one connected spatial step per actual
+  party on Floors 1–4/7 and reusing the original Level 6 boss resolver.
+  `advanceDay` takes a separate shop-only closing branch for live campaigns
+  and MUST NOT reroll any already resolved dungeon event at bed. Pure old
+  unit fixtures that never opt in retain the historical day batch for
+  compatibility tests; never run both modes in one campaign.
+  Version-18 saves validate the unique pending expedition event, owner,
+  due tick and committed heroes. The actual combat motor still produces
+  its full fight atomically on an expedition event, not across true live
+  60Hz frames. Autonomous floor transitions, physical return journeys,
+  magic life-signature death alert, spectator and archive remain pending.
+  Do not promote V.003 to playable/released on this partial cutover.
   The live dungeon cutover and integrated ten-day validation remain pending.
   An unpaid cart returns to its shelf at bed closure, never settling
   as imaginary cash. Version-17 saves intentionally reject v16 and

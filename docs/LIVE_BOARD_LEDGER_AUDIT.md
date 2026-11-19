@@ -103,11 +103,17 @@ unpaid walkouts to world events, and **retires bedtime auto-trading**:
 unpaid carts return to physical shelf stock, not paid receipts. PR #203 completed the fixed-50ms world-time shop motor. PR #204
 persists and rehydrates real physical NPC poses/routes, local waits,
 priority order and reserved shelf/queue/waiting points in strict v17
-saves. The dungeon expedition/combat day batch remains unfinished,
-not an approved second permanent simulation authority. Do not implement
+saves. PR #205 exposes a resumable single-step shared spatial motor; PR #206
+adds an exclusive saved live expedition event queue in real gameplay,
+with shop/customer time and dungeon movement now on one world clock.
+A live campaign bypasses the legacy dungeon bed-batch completely;
+pure isolated test fixtures preserve it as a mutually exclusive path.
+Group fights still settle atomically at the scheduled event rather
+than over their complete 60Hz frame durations. Live board/report
+delivery, true returns and time-accurate recordings remain unfinished. Do not implement
 old alpha/v15 conversion, deprecated fields, dual day motors or old four-folio
-session recovery merely to retain experimental saves. Version 17 requires the physical traffic checkpoint and deliberately
-rejects v16 and older experimental games.
+session recovery merely to retain experimental saves. Version 18 adds exclusive live dungeon event ownership and deliberately
+rejects v17 and older experimental games.
 
 Still required:
 - A clear, non-destructive **"Old alpha campaign incompatible; start
