@@ -83,6 +83,20 @@ HP/death/loot of distant heroes. The board does not need a UI timer
 or full canvas repaint at every rendered frame. Preview/replay pauses
 the world clock. A physical cursed clock may display saved world time.
 
+**CURRENT PR #210 LIVE known-state slice:** `liveBoardProjection.ts`
+provides one information boundary for the physical wall board, expanded
+E/R roster and compact day feed. Remote HP, weapons, gold, loot, true
+floor and unreported deaths are **unknown**, not covertly read from the
+mutable hero store. Only physically present shop customers show current
+numeric HP, gear and inventory. Explicit, time-stamped coarse magic
+upper/deep signatures give an activity cue; an actually committed
+`hero-death-signal` gives a definite extinguished status, with an
+accessible, dismissible skull banner and no location/cause spoilers.
+The R panel shows source and occurred/reported time. The wall canvas
+redraws on real observation revisions, not at 60fps. More complete
+historical known-HP snapshots, TP identity reports, depth map and
+Archive are still later milestones.
+
 **Nightly book cutover:** keep the dark Book of Debts visual identity,
 actual closing balance, itemized receipts and credit; retire the
 duplicate `The Living` night roster and compulsory `Sealed Expeditions`
@@ -104,15 +118,16 @@ Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
   Herb, Waybread, Mana Potion and other carried quantities are readable.
   On limited wall texture space, prioritize health, dangerous missing gear,
   location and one current action; overflow detail goes to the E/R panel.
-- **CURRENT physical gear/HP glance (after this PR):** every row of the
+- **Earlier actual-gear/HP physical glance (superseded for remote heroes
+by PR #210):** every row of the
   placeable canvas board now has explicit W (weapon) and A (armor)
-  sockets, visibly muted when empty, and a numeric HP total next to
-  its genuine health bar. The legend names both sockets. These values
-  project the actual hero equipment/health with no added AI, time
-  phase or hidden replay outcome. The full Board 2.0 target now uses
+  sockets, visibly muted when empty, and a numeric HP total only when directly observed in the shop.
+  Unknown remote equipment/HP now use neutral question marks rather
+  than raw unreported current stats. The legend names both sockets. The full Board 2.0 target now uses
   chronological real reports and last-known timestamps, not three
   mandatory phase columns.
-- **CURRENT Temporary Party feedback:** the physical Board marks every
+- **Earlier Temporary Party feedback (the raw-membership presentation is
+superseded by PR #210):** the physical Board marks every
   member of one actually saved group with the same numbered `TP1`
   (legend: **Temporary Party**); the E/R roster writes the full name
   plus current companion identities, role, HP and founding day.
