@@ -1155,7 +1155,7 @@
 /* Only a committed magical death signal may open this urgent, dismissible
  * world warning. No view watches hidden current HP or waits on render FPS. */
 #live-death-signal{
-  position:fixed;right:18px;top:78px;z-index:1006;
+  position:fixed;right:18px;top:165px;z-index:1006;
   display:flex;align-items:center;gap:12px;
   width:min(420px,calc(100vw - 36px));padding:12px 13px;
   color:var(--ui-text);background:var(--ui-glass-strong);
@@ -1179,7 +1179,7 @@
 .roster-known-report{color:var(--ui-warning);font-size:12px}
 .roster-card[data-status="lost"]{border-color:var(--ui-danger)}
 @media(max-width:680px){
-  #live-death-signal{top:128px;left:18px;right:18px;width:auto}
+  #live-death-signal{top:185px;left:18px;right:18px;width:auto}
 }
 @media(prefers-reduced-motion:reduce){
   #live-death-signal,#live-death-signal *{animation:none!important;transition:none!important}
