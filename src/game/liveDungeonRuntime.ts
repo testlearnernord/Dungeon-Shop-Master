@@ -199,6 +199,61 @@ function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState
   };
 }
 
+/** A medium-term intention belongs to the individual. Its tick changes
+ * only on a genuine new decision; the Board can project it later without
+ * inventing a new AI or exposing unseen encounter results.
+ */
+function recordLivePlan(
+  plans:Map<string,LiveDungeonPlan>,hero:AdventurerState,
+  decision:HeroDungeonDecision,tick:number,
+):boolean {
+  const previous=plans.get(hero.id);
+  const changed=!previous||previous.floor!==hero.floor||
+    previous.goal!==decision.goal||previous.action!==decision.action;
+  if(changed)plans.set(hero.id,{
+    heroId:hero.id,floor:hero.floor as SpatialDungeonFloor,
+    goal:decision.goal,action:decision.action,updatedTick:tick,
+  });
+  return changed;
+}
+function actualStair(
+  seed:number,floor:SpatialDungeonFloor,action:"ascend"|"descend",
+):DungeonPoint {
+  const layout=generateExpeditionLayout(seed,floor);
+  return action==="ascend"?layout.entrance:dungeonDownStair(layout);
+}
+/** Settle a voluntary group using only saved, co-located willing heroes.
+ * Both LIVE movement and combat termination call this same existing party
+ * policy; no new party combat or movement engine is introduced.
+ */
+function settleLivePartyRelationships(
+  prior:readonly DungeonPartyState[],encountered:readonly (readonly string[])[],
+  roster:readonly AdventurerState[],worldForFloor:(floor:SpatialDungeonFloor)=>Level7World,
+  plans:ReadonlyMap<string,LiveDungeonPlan>,seed:number,day:number,tick:number,
+):{parties:readonly DungeonPartyState[];events:WorldEvent[]} {
+  const claimed=new Set(encountered.flat());
+  const proposals=[
+    ...encountered.filter(ids=>ids.length>=2),
+    ...prior.filter(p=>p.memberIds.every(id=>!claimed.has(id)))
+      .map(p=>p.memberIds),
+  ];
+  const actions=new Map(roster.filter(h=>eligible(h)).map(hero=>[
+    hero.id,plans.get(hero.id)?.action??"stay",
+  ] as const));
+  const parties=settlePersistentDungeonParties(prior,proposals,roster,
+    worldForFloor,seed,day,actions);
+  const changes=temporaryPartyChanges(prior,parties.map(p=>p.memberIds),parties);
+  const byId=new Map(roster.map(h=>[h.id,h]));
+  const events:WorldEvent[]=changes.map(change=>({
+    id:"day-"+day+":"+change.heroId+":temporary-party-"+change.action+":"+tick,
+    type:change.action==="join"?"temporary-party-join":"temporary-party-leave",
+    day,worldTick:tick,adventurerId:change.heroId,
+    message:(byId.get(change.heroId)?.name??"An adventurer")+
+      "'s temporary companionship changed during a live expedition.",
+  }));
+  return {parties,events};
+}
+
 function commitDungeonTick(state:GameState):GameState {
   const tick=state.worldClock.tick;
   const day=state.day;
