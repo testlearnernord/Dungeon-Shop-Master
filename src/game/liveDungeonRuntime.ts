@@ -343,10 +343,12 @@ function commitDungeonTick(state:GameState):GameState {
         for(const member of crossing){
           const old=nextHeroes.find(p=>p.heroId===member.id);
           const cell=arrival.z*destinationLayout.width+arrival.x;
-          nextHeroes.splice(nextHeroes.findIndex(p=>p.heroId===member.id),0,
-            ...(old?[{...old,...arrival,
-              visited:old.visited.includes(cell)?old.visited:[...old.visited,cell]}]:
-              [{heroId:member.id,...arrival,visited:[cell]}]));
+          const arrived=old?{...old,...arrival,
+            visited:old.visited.includes(cell)?old.visited:[...old.visited,cell]}
+            :{heroId:member.id,...arrival,visited:[cell]};
+          const oldIndex=nextHeroes.findIndex(p=>p.heroId===member.id);
+          if(oldIndex<0)nextHeroes.push(arrived);
+          else nextHeroes[oldIndex]=arrived;
           byId.set(member.id,{...member,floor:nextFloor});
           plans.delete(member.id);
           processed.add(member.id);
@@ -416,18 +418,33 @@ function commitDungeonTick(state:GameState):GameState {
       ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
       {floor:floor as EarlyDungeonFloorWorld["floor"],world:result.world},
     ].sort((a,b)=>a.floor-b.floor);
+    const independent=new Map<string,HeroDungeonDecision>();
+    if(!result.pendingCombat)for(const individual of result.ticks){
+      if(individual.adventurer.health<=0)continue;
+      const progress=result.world.heroes.find(p=>
+        p.heroId===individual.adventurer.id);
+      independent.set(individual.adventurer.id,
+        chooseLiveHeroDungeonDecision(individual.adventurer,
+          progress,individual.replay));
+    }
+    const agreed=readyGroup.length>1
+      ?negotiatePartyFloorDecisions(result.ticks.map(t=>t.adventurer),
+        independent):independent;
     for(const individual of result.ticks){
       const id=individual.adventurer.id;
       const count=(stepCounts.get(id)?.steps??0)+1;
       processed.add(id);
       byId.set(id,individual.adventurer);
-      if(individual.adventurer.status==="dead")
+      const decision=agreed.get(id);
+      const planChanged=decision&&!homeward
+        ?recordLivePlan(plans,individual.adventurer,decision,tick):false;
+      if(individual.adventurer.status==="dead"){
         returns=returns.filter(j=>j.heroId!==id);
-      else if(!result.pendingCombat){
+        plans.delete(id);
+      } else if(!result.pendingCombat){
         const progress=result.world.heroes.find(p=>p.heroId===id);
         const existing=returns.find(j=>j.heroId===id&&j.phase==="backtrack");
-        if(!existing&&wantsToReturn(individual.adventurer,result.world,
-          individual.replay,state.seed))
+        if(!existing&&decision?.action==="shop")
           returns.push({heroId:id,fromFloor:floor,
             startedTick:tick,phase:"backtrack"});
         if((existing||returns.some(j=>j.heroId===id&&j.phase==="backtrack"))&&
@@ -442,26 +459,37 @@ function commitDungeonTick(state:GameState):GameState {
         s.action==="treasure"||s.action==="trap"||
         s.action==="combat"||s.action==="death");
       const committedHero=byId.get(id)!;
-      const stopped=individual.replay.outcome!=="exploring"||
-        committedHero.status==="dead"||committedHero.status==="traveling";
+      const wantsTravel=returns.some(r=>r.heroId===id&&r.phase==="backtrack")||
+        (decision?.action==="ascend"&&floor>1&&floor<=4)||
+        (decision?.action==="descend"&&floor<4);
+      const stopped=committedHero.status==="dead"||
+        committedHero.status==="traveling"||
+        (individual.replay.outcome!=="exploring"&&!wantsTravel);
       stepCounts.set(id,{heroId:id,steps:count,finished:stopped});
       if(individual.replay.outcome==="completed"&&floor===7)
         clearedLevel7=true;
-      if(important||stopped){
+      if(important||stopped||planChanged){
         // The merchant knows that the magic life-signature changed, but not
         // details of unseen loot or battles. Actual facts remain in the
         // saved dungeon world, never in an invented shop report.
         activities.push({
           id:`day-${day}:${id}:dungeon-live:${tick}`,
           type:"dungeon-live",day,worldTick:tick,adventurerId:id,
+          ...(decision?{dungeonGoal:decision.goal,floorAction:decision.action}:{}),
           message:`${individual.adventurer.name}'s expedition changed. Details await a report.`,
         });
       }
     }
   }
+  const finalRoster=state.adventurers.map(hero=>byId.get(hero.id)!);
+  const party=settleLivePartyRelationships(state.dungeonParties??[],
+    sharedGroups,finalRoster,floor=>floor===7?level7World:
+      earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
+      emptyLevel7World(),plans,state.seed,day,tick);
   const next:GameState={
     ...state,worldClock:clock,
-    adventurers:state.adventurers.map(hero=>byId.get(hero.id)!),
+    dungeonParties:party.parties,
+    adventurers:finalRoster,
     earlyDungeonWorlds,level7World,
     rngState,
     dungeonFloors:[
@@ -474,8 +502,8 @@ function commitDungeonTick(state:GameState):GameState {
     liveDungeon:{enabled:true,lastStepTick:tick,
       heroes:[...stepCounts.values()],
       combatTick:combats.length?state.liveDungeon.combatTick||tick:0,
-      combats,returns},
-    events:[...state.events,...activities],
+      combats,returns,plans:[...plans.values()]},
+    events:[...state.events,...activities,...party.events],
   };
   const scheduled=queueNextDungeonWorldTick(next);
   return state.liveDungeon.combats.length||!combats.length?scheduled:
