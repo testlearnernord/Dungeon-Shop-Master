@@ -20,6 +20,8 @@ import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
   type ScheduledWorldEvent } from "./worldClock.ts";
 import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
 import {validateShopTraffic} from "./shopTraffic.ts";
+import {DUNGEON_STEP_INTERVAL_TICKS,
+  DUNGEON_WORLD_EVENT_SUBJECT} from "./liveDungeonRuntime.ts";
 import {forecastShoppingIntents} from "./shopperIntents.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
@@ -81,7 +83,7 @@ const eventTypes = [
   "influx", "sale", "tip", "healed",
   "level6-departure", "level6-combat", "level6-return",
   "level7-departure", "level7-exploration", "shop-credit",
-  "dungeon-exploration",
+  "dungeon-exploration","dungeon-live",
   "temporary-party-join","temporary-party-leave",
 ] as const;
 
@@ -389,7 +391,7 @@ function validateLevel7Replay(
 
 function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
-    "day", "worldClock", "shopRequests", "shopTraffic", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
+    "day", "worldClock", "shopRequests", "shopTraffic", "liveDungeon", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
     "level5Room","bedroomFurniture","rosterBoard",
@@ -424,6 +426,40 @@ function validateState(value: unknown): asserts value is GameState {
     previous=scheduled;
   }
   if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
+  {
+    const live=object(state.liveDungeon,"payload.liveDungeon",
+      ["enabled","lastStepTick","heroes"]);
+    if(typeof live.enabled!=="boolean")
+      fail("payload.liveDungeon.enabled","must be boolean");
+    const last=integer(live.lastStepTick,"payload.liveDungeon.lastStepTick",0,clockTick);
+    const progress=array(live.heroes,"payload.liveDungeon.heroes");
+    if(progress.length>100)fail("payload.liveDungeon.heroes","is oversized");
+    const seenHeroes=new Set<string|number>();
+    for(const [i,raw] of progress.entries()){
+      const path="payload.liveDungeon.heroes["+i+"]";
+      const hero=object(raw,path,["heroId","steps","finished"]);
+      unique(text(hero.heroId,path+".heroId"),seenHeroes,path+".heroId");
+      integer(hero.steps,path+".steps",1,100000);
+      if(typeof hero.finished!=="boolean")fail(path+".finished","must be boolean");
+    }
+    const dungeonEvents=pending.filter(raw=>
+      (raw as RecordValue).lane==="expedition");
+    if(!live.enabled){
+      if(last!==0||progress.length||dungeonEvents.length)
+        fail("payload.liveDungeon","legacy mode cannot have scheduled dungeon work");
+    }else{
+      if(last<firstWorldTickOfDay(day))
+        fail("payload.liveDungeon.lastStepTick","is from an earlier world day");
+      const due=last+DUNGEON_STEP_INTERVAL_TICKS;
+      if(dungeonEvents.length!==(due<=lastWorldTickOfDay(day)?1:0)||
+         dungeonEvents.some(raw=>{
+           const e=raw as RecordValue;
+           return e.subjectId!==DUNGEON_WORLD_EVENT_SUBJECT||
+             e.dueTick!==due;
+         }))
+        fail("payload.liveDungeon","must own exactly its next real expedition event");
+    }
+  }
   const shopRequests=array(state.shopRequests,"payload.shopRequests");
   if(shopRequests.length>100)fail("payload.shopRequests","is oversized");
   const requestHeroes=new Set<string|number>();
@@ -719,6 +755,10 @@ function validateState(value: unknown): asserts value is GameState {
     }
   }
 
+  for(const [i,hero] of (state.liveDungeon as GameState["liveDungeon"]).heroes.entries()){
+    if(!heroIds.has(hero.heroId as string))
+      fail("payload.liveDungeon.heroes["+i+"].heroId","must be a known adventurer");
+  }
   validateShopTraffic(state.shopTraffic,day,clockTick,
     new Set((state.adventurers as RecordValue[]).filter(hero=>hero.status!=="dead")
       .map(hero=>hero.id as string)),
@@ -765,7 +805,8 @@ function validateState(value: unknown): asserts value is GameState {
     if(event.worldTick!==undefined){
       integer(event.worldTick,path+".worldTick",firstWorldTickOfDay(eventDay),
         eventDay===day?clockTick:lastWorldTickOfDay(eventDay));
-      if(event.type!=="shop-walkout")fail(path+".worldTick","is not allowed for this event type");
+      if(event.type!=="shop-walkout"&&event.type!=="dungeon-live")
+        fail(path+".worldTick","is not allowed for this event type");
     }
     lastDay = eventDay;
     text(event.message, `${path}.message`);
@@ -775,12 +816,18 @@ function validateState(value: unknown): asserts value is GameState {
     if (!global && !heroIds.has(event.adventurerId as string)) fail(`${path}.adventurerId`, "must link to an existing hero");
     const allowed = ["id", "type", "day", "message",
       ...(event.type==="shop-walkout"?["worldTick","shopReason"]:[]),
+      ...(event.type==="dungeon-live"?["worldTick"]:[]),
       ...(!global ? ["adventurerId"] : [])];
     if(event.shopReason!==undefined){
       if(event.type!=="shop-walkout")fail(path+".shopReason","is not supported");
       choice(event.shopReason,["interested","unavailable","cannot-afford","no-need"],path+".shopReason");
     }
+    if(event.type==="dungeon-live"){
+      if(event.worldTick===undefined)
+        fail(path+".worldTick","is mandatory for real live dungeon events");
+    }
     let suffix = event.type === "day-started" ? "started" : event.type;
+    if(event.type==="dungeon-live")suffix="dungeon-live:"+event.worldTick;
     if (event.type === "dungeon-outcome") {
       allowed.push("outcome");
       choice(event.outcome, ["advance", "stay", "retreat", "death"], `${path}.outcome`);

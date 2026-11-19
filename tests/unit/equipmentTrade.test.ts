@@ -25,7 +25,7 @@ function merchantState(gold: number, stocked: ReadonlyArray<{ itemId: "iron-swor
 
 test("equipment catalog, wholesale and shelf stocking conserve gold and inventory", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 17);
+  assert.equal(SIMULATION_VERSION, 18);
   assert(ITEMS.some(x => x.id === "iron-sword" && x.kind === "weapon"));
   assert(ITEMS.some(x => x.id === "leather-vest" && x.kind === "armor"));
   assert.equal(initial.shopEconomy.bag["iron-sword"], 0);

@@ -314,7 +314,7 @@ This does **not** declare an implemented system or a shipped version.
   genuinely heal a recorded fighter, or armor mitigate a real blow, but the
   UI must not invent an unseen event, predict certain survival or expose
   sealed results. A missing hero is *last known / unknown* until reported.
-- **Approved time design (PR #201 foundation, #202 requests, #203 fixed steps, #204 physical checkpoints):** retain deliberate shop days
+- **Approved time design (PRs #201–204 shop/world clock, #205 resumable dungeon, #206 in-day expedition scheduling):** retain deliberate shop days
   and sleeping, but advance the dungeon alongside active shop play on
   one deterministic, pausable in-game event clock. Bedtime completes
   unsupervised time exactly once and opens read-only recordings; there
@@ -328,12 +328,15 @@ This does **not** declare an implemented system or a shipped version.
   replaces its day-batched model. PR #201 introduced version-14 saves and
   PR #202 introduced version-15 saved customer petitions, and PR #203
   intentionally moved to v16 for 20 fixed ticks per minute, and PR #204
-  uses v17 for persisted physical customer state. None of the
-  older alpha versions has a migration adapter.
-  The old dungeon day-batch remains transitional until the actual
-  live dungeon cutover. PR #205 adds a resumable one-step call to the
-  already shared spatial traversal authority. Its existence alone does
-  not commit any live expedition or replace 60 Hz combat playback.
+  introduced v17 for persisted physical customer state, while PR #206
+  moves to v18 for exclusive live expedition event ownership.
+  No older alpha version has a migration adapter.
+  Real browser campaigns now take bounded same-world dungeon steps
+  during live shop time; sleeping fast-forwards outstanding events
+  without simulating the dungeon twice. The old day-batch survives
+  ONLY as an exclusive direct-test legacy mode. Group fights are still
+  settled in a single world event rather than progressing at real 60Hz;
+  live spectator, death signaling and true shop returns remain unfinished.
   Correct new saves remain essential.
   See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 - **Small first chapter rather than fake 100-floor coverage:** investigate a

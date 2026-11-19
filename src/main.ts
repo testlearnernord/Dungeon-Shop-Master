@@ -74,6 +74,9 @@ const scene = new Scene(engine);
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
+// Live time is the exclusive owner in real gameplay. Unit fixtures that
+// directly advance a legacy day do not run simultaneous spatial motors.
+store.enableLiveDungeon();
 const worldClockPacer = new WorldClockPacer();
 let ignoreNextClockFrame=false;
 document.addEventListener("visibilitychange",()=>{
@@ -128,6 +131,7 @@ if(import.meta.env.VITE_E2E==="1"){
     __shopTestPauseWorld?:(paused:boolean)=>void;
     __shopTestSaveTrafficNow?:()=>Promise<unknown>;
     __shopTestHydratedTraffic?:unknown;
+    __shopTestAdvanceDungeonTick?:()=>void;
   };
   hooks.__shopTestAdvanceDay=()=>dayClock.endDayFromBed();
   hooks.__shopTestStockItem=(slotId,itemId)=>
@@ -135,6 +139,9 @@ if(import.meta.env.VITE_E2E==="1"){
   hooks.__shopTestRestockWait=(heroId,seconds)=>
     npcVisuals.setRestockTimeForE2E(heroId,seconds);
   hooks.__shopTestReadyCheckout=()=>npcVisuals.readyCheckoutHeroId();
+  // This invokes the real scheduled world event owner, not a second
+  // explorer/combat engine. Test-only fast-forward avoids 30s wall delay.
+  hooks.__shopTestAdvanceDungeonTick=()=>store.advanceWorldTime(600);
   hooks.__shopTestTraffic=()=>structuredClone(store.state.shopTraffic);
   hooks.__shopTestPauseWorld=paused=>worldClockPacer.setPaused("e2e",paused);
   hooks.__shopTestSaveTrafficNow=async()=>{
