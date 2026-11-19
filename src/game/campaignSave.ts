@@ -1167,6 +1167,7 @@ function validateState(value: unknown): asserts value is GameState {
   });
 
   const eventIds = new Set<string | number>();
+  const signaledDeaths=new Set<string | number>();
   let lastDay = 1;
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
@@ -1208,6 +1209,8 @@ function validateState(value: unknown): asserts value is GameState {
       choice(event.shopReason,["interested","unavailable","cannot-afford","no-need"],path+".shopReason");
     }
     if(event.type==="hero-death-signal"){
+      unique(text(event.adventurerId,path+".adventurerId"),
+        signaledDeaths,path+".adventurerId");
       if(event.worldTick===undefined)
         fail(path+".worldTick","is required for a real death signal");
       const hero=(state.adventurers as RecordValue[]).find(h=>h.id===event.adventurerId);
