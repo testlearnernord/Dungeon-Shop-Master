@@ -2,7 +2,19 @@ import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {GroupReplayFrame,CombatantSpec} from "./groupCombat.ts";
 import type {SpatialDungeonFloor} from "./level7Exploration.ts";
-import {generateExpeditionLayout} from "./dungeonLayout.ts";
+import {generateExpeditionLayout,type DungeonLayout} from "./dungeonLayout.ts";
+
+/** Presentation-only cache of immutable seeded geometry, never game state. */
+const layoutCache=new Map<string,DungeonLayout>();
+function spectatorLayout(seed:number,floor:number):DungeonLayout {
+  const key=seed+":"+floor;
+  const existing=layoutCache.get(key);
+  if(existing)return existing;
+  const layout=generateExpeditionLayout(seed,floor);
+  if(layoutCache.size>=10)layoutCache.delete(layoutCache.keys().next().value!);
+  layoutCache.set(key,layout);
+  return layout;
+}
 
 /** Deliberate opt-in knowledge boundary. Never attach this projection to
  * the ordinary Adventurer Board, a shop report, or a persisted replay.
@@ -44,7 +56,7 @@ export function selectLiveSpectatorFrame(
   const floor=hero.floor as SpatialDungeonFloor;
   const world=floor===7?state.level7World:
     state.earlyDungeonWorlds?.find(f=>f.floor===floor)?.world;
-  const layout=generateExpeditionLayout(state.seed,floor);
+  const layout=spectatorLayout(state.seed,floor);
   const progress=world?.heroes.find(h=>h.heroId===heroId);
   const fight=state.liveDungeon.combats.find(c=>c.heroIds.includes(heroId));
   if(!progress&&!fight)return null;
