@@ -1171,7 +1171,7 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
-      ["adventurerId", "worldTick", "shopReason", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
+      ["adventurerId", "worldTick", "reportedZone", "shopReason", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
         "combatReplay", "level7Replay", "dungeonReplay",
         "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
