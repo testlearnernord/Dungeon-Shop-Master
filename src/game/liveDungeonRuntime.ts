@@ -1,9 +1,12 @@
 import type {GameState,WorldEvent,EarlyDungeonFloorWorld} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
-import {generateExpeditionLayout} from "./dungeonLayout.ts";
-import {chooseHeroDungeonDecision} from "./dungeonDecisions.ts";
-import {choosePersistentDungeonParty} from "./dungeonParties.ts";
+import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
+import {chooseLiveHeroDungeonDecision,
+  type HeroDungeonDecision} from "./dungeonDecisions.ts";
+import {choosePersistentDungeonParty,negotiatePartyFloorDecisions,
+  settlePersistentDungeonParties,temporaryPartyChanges,
+  type DungeonPartyState} from "./dungeonParties.ts";
 import {advanceSpatialDungeonPartyStep,emptyLevel7World,settleSpatialDungeonCombat,
   LEVEL7_COMBAT_SECONDS,getLevel7Progress,type PreparedSpatialEncounter,type Level7Replay,
   type SpatialDungeonFloor,type Level7World} from "./level7Exploration.ts";
@@ -55,6 +58,13 @@ export interface LiveDungeonReturn {
   readonly phase:"backtrack"|"portal";
   readonly dueTick?:number;
 }
+export interface LiveDungeonPlan {
+  readonly heroId:string;
+  readonly floor:SpatialDungeonFloor;
+  readonly goal:HeroDungeonDecision["goal"];
+  readonly action:HeroDungeonDecision["action"];
+  readonly updatedTick:number;
+}
 export interface LiveDungeonState {
   readonly enabled:boolean;
   readonly lastStepTick:number;
@@ -62,9 +72,12 @@ export interface LiveDungeonState {
   readonly combatTick:number;
   readonly combats:readonly LiveDungeonCombat[];
   readonly returns:readonly LiveDungeonReturn[];
+  /** Durable individual intentions, never player-issued party orders. */
+  readonly plans:readonly LiveDungeonPlan[];
 }
 export const createLiveDungeonState=():LiveDungeonState=>({
-  enabled:false,lastStepTick:0,heroes:[],combatTick:0,combats:[],returns:[],
+  enabled:false,lastStepTick:0,heroes:[],combatTick:0,combats:[],
+  returns:[],plans:[],
 });
 
 const eligible=(hero:AdventurerState)=>
@@ -97,7 +110,7 @@ export function activateLiveDungeon(state:GameState):GameState{
     throw new RangeError("Cannot activate a second dungeon event motor.");
   return queueNextDungeonWorldTick({...state,liveDungeon:{
     enabled:true,lastStepTick:state.worldClock.tick,heroes:[],
-    combatTick:0,combats:[],returns:[],
+    combatTick:0,combats:[],returns:[],plans:[],
   }});
 }
 
@@ -119,22 +132,6 @@ function spatialWorld(state:GameState,floor:SpatialDungeonFloor):Level7World{
     state.earlyDungeonWorlds?.find(entry=>entry.floor===floor)?.world??
     emptyLevel7World();
 }
-/** A decision is based on real committed HP, gear, loot and visited
- * rooms, not a daily dice roll or a report/replay viewer.
- */
-function wantsToReturn(
-  hero:AdventurerState,world:Level7World,replay:Level7Replay,
-  seed:number,
-):boolean {
-  if(hero.health<=0)return false;
-  if(hero.floor===7)
-    return replay.outcome==="retreat"||replay.outcome==="completed";
-  if(hero.floor<1||hero.floor>4||hero.status!=="exploring")return false;
-  const progress=getLevel7Progress(world,hero.id,
-    generateExpeditionLayout(seed,hero.floor));
-  return chooseHeroDungeonDecision(hero,progress,replay).action==="shop";
-}
-
 /** A hero crosses only after physically reaching the floor's entrance.
  * Both entrance and exit share Galvik's cursed portal, independent of
  * dungeon depth. The existing shop NPC movement owns its visible doorway.
@@ -181,9 +178,65 @@ function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState
   return {...state,adventurers:state.adventurers.map(h=>h.id===id?
       {...h,status:"at-shop" as const,floor:5 as const,shopStayDays:0}:h),
     liveDungeon:{...state.liveDungeon,
-      returns:state.liveDungeon.returns.filter(j=>j.heroId!==id)},
+      returns:state.liveDungeon.returns.filter(j=>j.heroId!==id),
+      plans:state.liveDungeon.plans.filter(p=>p.heroId!==id)},
     events:[...state.events,arrival],
   };
+}
+
+/** A medium-term intention belongs to the individual. Its tick changes
+ * only on a genuine new decision; the Board can project it later without
+ * inventing a new AI or exposing unseen encounter results.
+ */
+function recordLivePlan(
+  plans:Map<string,LiveDungeonPlan>,hero:AdventurerState,
+  decision:HeroDungeonDecision,tick:number,
+):boolean {
+  const previous=plans.get(hero.id);
+  const changed=!previous||previous.floor!==hero.floor||
+    previous.goal!==decision.goal||previous.action!==decision.action;
+  if(changed)plans.set(hero.id,{
+    heroId:hero.id,floor:hero.floor as SpatialDungeonFloor,
+    goal:decision.goal,action:decision.action,updatedTick:tick,
+  });
+  return changed;
+}
+function actualStair(
+  seed:number,floor:SpatialDungeonFloor,action:"ascend"|"descend",
+):DungeonPoint {
+  const layout=generateExpeditionLayout(seed,floor);
+  return action==="ascend"?layout.entrance:dungeonDownStair(layout);
+}
+/** Settle a voluntary group using only saved, co-located willing heroes.
+ * Both LIVE movement and combat termination call this same existing party
+ * policy; no new party combat or movement engine is introduced.
+ */
+function settleLivePartyRelationships(
+  prior:readonly DungeonPartyState[],encountered:readonly (readonly string[])[],
+  roster:readonly AdventurerState[],worldForFloor:(floor:SpatialDungeonFloor)=>Level7World,
+  plans:ReadonlyMap<string,LiveDungeonPlan>,seed:number,day:number,tick:number,
+):{parties:readonly DungeonPartyState[];events:WorldEvent[]} {
+  const claimed=new Set(encountered.flat());
+  const proposals=[
+    ...encountered.filter(ids=>ids.length>=2),
+    ...prior.filter(p=>p.memberIds.every(id=>!claimed.has(id)))
+      .map(p=>p.memberIds),
+  ];
+  const actions=new Map(roster.filter(h=>eligible(h)).map(hero=>[
+    hero.id,plans.get(hero.id)?.action??"stay",
+  ] as const));
+  const parties=settlePersistentDungeonParties(prior,proposals,roster,
+    worldForFloor,seed,day,actions);
+  const changes=temporaryPartyChanges(prior,parties.map(p=>p.memberIds),parties);
+  const byId=new Map(roster.map(h=>[h.id,h]));
+  const events:WorldEvent[]=changes.map(change=>({
+    id:"day-"+day+":"+change.heroId+":temporary-party-"+change.action+":"+tick,
+    type:change.action==="join"?"temporary-party-join":"temporary-party-leave",
+    day,worldTick:tick,adventurerId:change.heroId,
+    message:(byId.get(change.heroId)?.name??"An adventurer")+
+      "'s temporary companionship changed during a live expedition.",
+  }));
+  return {parties,events};
 }
 
 function commitDungeonTick(state:GameState):GameState {
@@ -196,6 +249,9 @@ function commitDungeonTick(state:GameState):GameState {
   const combats=[...state.liveDungeon.combats];
   let returns=[...state.liveDungeon.returns];
   let clock=state.worldClock;
+  const plans=new Map(state.liveDungeon.plans.map(p=>[p.heroId,p] as const));
+  const sharedGroups:string[][]=state.liveDungeon.combats
+    .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   const stepCounts=new Map(state.liveDungeon.heroes.map(v=>[v.heroId,v]));
   let level7World=state.level7World;
   let earlyDungeonWorlds:EarlyDungeonFloorWorld[]=[...(state.earlyDungeonWorlds??[])];
@@ -238,12 +294,72 @@ function commitDungeonTick(state:GameState):GameState {
     const layout=generateExpeditionLayout(state.seed,floor);
     const homeward=returns.find(j=>j.heroId===hero.id&&
       j.phase==="backtrack");
+    const priorPlan=plans.get(hero.id);
+    if(!homeward&&priorPlan?.floor===floor&&
+      (priorPlan.action==="ascend"||priorPlan.action==="descend")&&
+      ((priorPlan.action==="ascend"&&floor>1&&floor<=4)||
+       (priorPlan.action==="descend"&&floor<4))){
+      const target=actualStair(state.seed,floor,priorPlan.action);
+      const at=getLevel7Progress(world,hero.id,layout);
+      if(at.x===target.x&&at.z===target.z){
+        // A staircase consumes this scheduled movement event; it may be
+        // crossed only from the real saved tile. Co-located companions
+        // who consented to the same direction cross TOGETHER.
+        const nextFloor=(floor+(priorPlan.action==="ascend"?-1:1)) as EarlyDungeonFloorWorld["floor"];
+        const priorParty=(state.dungeonParties??[]).find(p=>
+          p.floor===floor&&p.memberIds.includes(hero.id));
+        const participants=priorParty?.memberIds.map(id=>byId.get(id)!)
+          .filter(Boolean)??[hero];
+        const crossing=participants.length>1&&participants.every(member=>{
+          const plan=plans.get(member.id);
+          const pos=getLevel7Progress(world,member.id,layout);
+          return !processed.has(member.id)&&eligible(member)&&
+            member.floor===floor&&plan?.action===priorPlan.action&&
+            pos.x===target.x&&pos.z===target.z&&
+            !returns.some(r=>r.heroId===member.id);
+        })?participants:[hero];
+        const destinationLayout=generateExpeditionLayout(state.seed,nextFloor);
+        const arrival=priorPlan.action==="ascend"
+          ?dungeonDownStair(destinationLayout):destinationLayout.entrance;
+        const previousWorld=earlyDungeonWorlds.find(e=>e.floor===nextFloor)?.world
+          ??emptyLevel7World();
+        const nextHeroes=[...previousWorld.heroes];
+        for(const member of crossing){
+          const old=nextHeroes.find(p=>p.heroId===member.id);
+          const cell=arrival.z*destinationLayout.width+arrival.x;
+          const arrived=old?{...old,...arrival,
+            visited:old.visited.includes(cell)?old.visited:[...old.visited,cell]}
+            :{heroId:member.id,...arrival,visited:[cell]};
+          const oldIndex=nextHeroes.findIndex(p=>p.heroId===member.id);
+          if(oldIndex<0)nextHeroes.push(arrived);
+          else nextHeroes[oldIndex]=arrived;
+          byId.set(member.id,{...member,floor:nextFloor});
+          plans.delete(member.id);
+          processed.add(member.id);
+          stepCounts.set(member.id,{heroId:member.id,
+            steps:(stepCounts.get(member.id)?.steps??0)+1,finished:false});
+          activities.push({
+            id:"day-"+day+":"+member.id+":dungeon-live:"+tick,
+            type:"dungeon-live",day,worldTick:tick,adventurerId:member.id,
+            dungeonGoal:priorPlan.goal,floorAction:priorPlan.action,
+            message:member.name+"'s expedition changed depth. Details await a report.",
+          });
+        }
+        earlyDungeonWorlds=[
+          ...earlyDungeonWorlds.filter(e=>e.floor!==nextFloor),
+          {floor:nextFloor,world:{...previousWorld,heroes:nextHeroes}},
+        ].sort((a,b)=>a.floor-b.floor);
+        if(crossing.length>=2)sharedGroups.push(crossing.map(h=>h.id));
+        continue;
+      }
+    }
     if(homeward){
       const current=getLevel7Progress(world,hero.id,layout);
       if(current.x===layout.entrance.x&&current.z===layout.entrance.z){
         const journey=beginPortalReturn(hero,tick,clock,returns);
         byId.set(hero.id,journey.hero);
         clock=journey.clock;returns=journey.returns;
+        plans.delete(hero.id);
         processed.add(hero.id);
         stepCounts.set(hero.id,{heroId:hero.id,
           steps:(stepCounts.get(hero.id)?.steps??0)+1,finished:true});
@@ -260,9 +376,17 @@ function commitDungeonTick(state:GameState):GameState {
       member.floor===floor&&eligible(member)).map(member=>member.id));
     const blocked=new Set([...combatSites].filter(key=>
       key.startsWith(floor+":")).map(key=>key.slice((floor+":").length)));
+    const directed=priorPlan?.floor===floor&&
+      (priorPlan.action==="ascend"||priorPlan.action==="descend")&&
+      ((priorPlan.action==="ascend"&&floor>1&&floor<=4)||
+       (priorPlan.action==="descend"&&floor<4))
+      ?actualStair(state.seed,floor,priorPlan.action):undefined;
     const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
       {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
+        ...(directed?{routeToKnownTarget:directed}:{}),
         blockedCombatSites:blocked});
+    if(readyGroup.length>=2)
+      sharedGroups.push(readyGroup.map(member=>member.id));
     if(result.pendingCombat){
       const encounter=result.pendingCombat;
       const siteKey=floor+":"+encounter.featureId;
@@ -279,18 +403,33 @@ function commitDungeonTick(state:GameState):GameState {
       ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
       {floor:floor as EarlyDungeonFloorWorld["floor"],world:result.world},
     ].sort((a,b)=>a.floor-b.floor);
+    const independent=new Map<string,HeroDungeonDecision>();
+    if(!result.pendingCombat)for(const individual of result.ticks){
+      if(individual.adventurer.health<=0)continue;
+      const progress=result.world.heroes.find(p=>
+        p.heroId===individual.adventurer.id);
+      independent.set(individual.adventurer.id,
+        chooseLiveHeroDungeonDecision(individual.adventurer,
+          progress,individual.replay));
+    }
+    const agreed=readyGroup.length>1
+      ?negotiatePartyFloorDecisions(result.ticks.map(t=>t.adventurer),
+        independent):independent;
     for(const individual of result.ticks){
       const id=individual.adventurer.id;
       const count=(stepCounts.get(id)?.steps??0)+1;
       processed.add(id);
       byId.set(id,individual.adventurer);
-      if(individual.adventurer.status==="dead")
+      const decision=agreed.get(id);
+      const planChanged=decision&&!homeward
+        ?recordLivePlan(plans,individual.adventurer,decision,tick):false;
+      if(individual.adventurer.status==="dead"){
         returns=returns.filter(j=>j.heroId!==id);
-      else if(!result.pendingCombat){
+        plans.delete(id);
+      } else if(!result.pendingCombat){
         const progress=result.world.heroes.find(p=>p.heroId===id);
         const existing=returns.find(j=>j.heroId===id&&j.phase==="backtrack");
-        if(!existing&&wantsToReturn(individual.adventurer,result.world,
-          individual.replay,state.seed))
+        if(!existing&&decision?.action==="shop")
           returns.push({heroId:id,fromFloor:floor,
             startedTick:tick,phase:"backtrack"});
         if((existing||returns.some(j=>j.heroId===id&&j.phase==="backtrack"))&&
@@ -298,32 +437,44 @@ function commitDungeonTick(state:GameState):GameState {
           const journey=beginPortalReturn(individual.adventurer,tick,clock,returns);
           clock=journey.clock;returns=journey.returns;
           byId.set(id,journey.hero);
+          plans.delete(id);
         }
       }
       const important=individual.replay.steps.some(s=>
         s.action==="treasure"||s.action==="trap"||
         s.action==="combat"||s.action==="death");
       const committedHero=byId.get(id)!;
-      const stopped=individual.replay.outcome!=="exploring"||
-        committedHero.status==="dead"||committedHero.status==="traveling";
+      const wantsTravel=returns.some(r=>r.heroId===id&&r.phase==="backtrack")||
+        (decision?.action==="ascend"&&floor>1&&floor<=4)||
+        (decision?.action==="descend"&&floor<4);
+      const stopped=committedHero.status==="dead"||
+        committedHero.status==="traveling"||
+        (individual.replay.outcome!=="exploring"&&!wantsTravel);
       stepCounts.set(id,{heroId:id,steps:count,finished:stopped});
       if(individual.replay.outcome==="completed"&&floor===7)
         clearedLevel7=true;
-      if(important||stopped){
+      if(important||stopped||planChanged){
         // The merchant knows that the magic life-signature changed, but not
         // details of unseen loot or battles. Actual facts remain in the
         // saved dungeon world, never in an invented shop report.
         activities.push({
           id:`day-${day}:${id}:dungeon-live:${tick}`,
           type:"dungeon-live",day,worldTick:tick,adventurerId:id,
+          ...(decision?{dungeonGoal:decision.goal,floorAction:decision.action}:{}),
           message:`${individual.adventurer.name}'s expedition changed. Details await a report.`,
         });
       }
     }
   }
+  const finalRoster=state.adventurers.map(hero=>byId.get(hero.id)!);
+  const party=settleLivePartyRelationships(state.dungeonParties??[],
+    sharedGroups,finalRoster,floor=>floor===7?level7World:
+      earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
+      emptyLevel7World(),plans,state.seed,day,tick);
   const next:GameState={
     ...state,worldClock:clock,
-    adventurers:state.adventurers.map(hero=>byId.get(hero.id)!),
+    dungeonParties:party.parties,
+    adventurers:finalRoster,
     earlyDungeonWorlds,level7World,
     rngState,
     dungeonFloors:[
@@ -336,8 +487,8 @@ function commitDungeonTick(state:GameState):GameState {
     liveDungeon:{enabled:true,lastStepTick:tick,
       heroes:[...stepCounts.values()],
       combatTick:combats.length?state.liveDungeon.combatTick||tick:0,
-      combats,returns},
-    events:[...state.events,...activities],
+      combats,returns,plans:[...plans.values()]},
+    events:[...state.events,...activities,...party.events],
   };
   const scheduled=queueNextDungeonWorldTick(next);
   return state.liveDungeon.combats.length||!combats.length?scheduled:
@@ -359,6 +510,9 @@ function commitLiveCombatTick(state:GameState):GameState{
   const activities:WorldEvent[]=[];
   const continuing:LiveDungeonCombat[]=[];
   let returns=[...state.liveDungeon.returns];
+  const plans=new Map(state.liveDungeon.plans.map(p=>[p.heroId,p] as const));
+  const sharedGroups:string[][]=state.liveDungeon.combats
+    .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   for(const fight of state.liveDungeon.combats){
     // Copy the authoritative mutable actors before stepping, preserving the
     // previous immutable checkpoint for deterministic save comparisons.
@@ -393,33 +547,55 @@ function commitLiveCombatTick(state:GameState):GameState{
       ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
       {floor:floor as EarlyDungeonFloorWorld["floor"],world:settled.world},
     ].sort((a,b)=>a.floor-b.floor);
+    if(fight.heroIds.length>=2) {
+      const survivors=settled.ticks.filter(t=>t.adventurer.health>0)
+        .map(t=>t.adventurer.id);
+      if(survivors.length>=2)sharedGroups.push(survivors);
+    }
     for(const tick of settled.ticks){
       const id=tick.adventurer.id;
       byId.set(id,tick.adventurer);
-      if(tick.adventurer.status==="dead")
+      if(tick.adventurer.status==="dead"){
         returns=returns.filter(j=>j.heroId!==id);
-      else if(!returns.some(j=>j.heroId===id)&&
-        wantsToReturn(tick.adventurer,settled.world,tick.replay,state.seed))
-        returns.push({heroId:id,fromFloor:floor,
-          startedTick:state.worldClock.tick,phase:"backtrack"});
+        plans.delete(id);
+      }else {
+        const progress=settled.world.heroes.find(p=>p.heroId===id);
+        const decision=chooseLiveHeroDungeonDecision(
+          tick.adventurer,progress,tick.replay);
+        recordLivePlan(plans,tick.adventurer,decision,state.worldClock.tick);
+        if(!returns.some(j=>j.heroId===id)&&decision.action==="shop")
+          returns.push({heroId:id,fromFloor:floor,
+            startedTick:state.worldClock.tick,phase:"backtrack"});
+      }
+      const moving=returns.some(j=>j.heroId===id&&j.phase==="backtrack")||
+        plans.get(id)?.action==="ascend"||plans.get(id)?.action==="descend";
       counts.set(id,{heroId:id,steps:counts.get(id)?.steps??1,
-        finished:tick.replay.outcome!=="exploring"});
+        finished:tick.adventurer.health===0||
+          (tick.replay.outcome!=="exploring"&&!moving)});
       activities.push({
         id:"day-"+state.day+":"+id+":dungeon-live:"+state.worldClock.tick,
         day:state.day,worldTick:state.worldClock.tick,type:"dungeon-live",
         adventurerId:id,
         ...(floor===7?{level7Replay:tick.replay}:{dungeonReplay:tick.replay}),
+        ...(plans.get(id)?{dungeonGoal:plans.get(id)!.goal,
+          floorAction:plans.get(id)!.action}:{}),
         message:tick.adventurer.name+"'s life-signature changed during an expedition. Details await a report.",
       });
     }
   }
+  const roster=state.adventurers.map(h=>byId.get(h.id)!);
+  const parties=settleLivePartyRelationships(state.dungeonParties??[],
+    sharedGroups,roster,floor=>floor===7?level7World:
+      earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
+      emptyLevel7World(),plans,state.seed,state.day,state.worldClock.tick);
   const next:GameState={...state,
-    adventurers:state.adventurers.map(h=>byId.get(h.id)!),
+    adventurers:roster,dungeonParties:parties.parties,
     earlyDungeonWorlds,level7World,
     liveDungeon:{...state.liveDungeon,combats:continuing,returns,
+      plans:[...plans.values()],
       combatTick:continuing.length?state.worldClock.tick:0,
       heroes:[...counts.values()]},
-    events:[...state.events,...activities],
+    events:[...state.events,...activities,...parties.events],
   };
   return continuing.length?scheduleLiveCombat(next):next;
 }
@@ -514,8 +690,19 @@ export function finishLiveDungeonDay(
     adventurers,rngState,
     nextAdventurerId:state.nextAdventurerId+influx,
     liveDungeon:{enabled:true,lastStepTick:clock.tick,heroes:[],
-      combatTick:0,combats:[],returns:state.liveDungeon.returns},
+      combatTick:0,combats:[],returns:state.liveDungeon.returns,
+      plans:state.liveDungeon.plans.filter(plan=>
+        adventurers.some(h=>h.id===plan.heroId&&h.floor===plan.floor&&
+          h.health>0&&(h.status==="exploring"||h.status==="expedition")))},
     events:[...state.events,...events],
   };
-  return {state:queueNextDungeonWorldTick(next),events};
+  const finalPlans=new Map(next.liveDungeon.plans.map(p=>[p.heroId,p] as const));
+  const party=settleLivePartyRelationships(state.dungeonParties??[],
+    [],adventurers,floor=>floor===7?next.level7World:
+      next.earlyDungeonWorlds?.find(e=>e.floor===floor)?.world??
+      emptyLevel7World(),finalPlans,state.seed,day,clock.tick);
+  const committed={...next,dungeonParties:party.parties,
+    events:[...next.events,...party.events]};
+  return {state:queueNextDungeonWorldTick(committed),
+    events:[...events,...party.events]};
 }

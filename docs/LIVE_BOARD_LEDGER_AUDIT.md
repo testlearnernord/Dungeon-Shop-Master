@@ -5,7 +5,9 @@
 > persisted 60Hz ordinary fights; #208 implements saved connected return
 > paths and real timed shop portal arrivals. The historical baseline and
 > migration TODOs below record the earlier state, not current limitations.
-> The LIVE Board, spectator/archive and two-day standby are still pending.
+> PR #209 adds live autonomous goals, physical early-floor stair traversal,
+> and tick-stamped persistent Temporary Party joins/splits into strict v21
+> saves. The LIVE Board, spectator/archive and two-day standby are still pending.
 > This is the migration contract for the new shared world clock, **not a
 > claim that the current V.002 shop already has live dungeon updates.**
 > Crucial owner choice: **backward compatibility with old alpha campaign

@@ -333,6 +333,8 @@ This does **not** declare an implemented system or a shipped version.
   introduced v19 with strict active ordinary-fight snapshots and one
   scheduled group-combat lane on the same world clock. PR #208 introduces
   v20 with saved real backtracking journeys and exclusive portal arrivals.
+  PR #209 adds strict v21 saves for individual LIVE goals and genuine
+  tick-accurate Temporary Party join/leave history.
   No older alpha version has a migration adapter.
   Real browser campaigns now take bounded same-world dungeon steps
   during live shop time; sleeping fast-forwards outstanding events
@@ -347,8 +349,19 @@ This does **not** declare an implemented system or a shipped version.
   the mid-day shop arrival, and the existing physical NPC system owns
   the visible entrance path. The unique Floor-6 boss duel is still
   atomically resolved, but survivors use that same timed portal.
-  Live spectator, death signaling, post-visit standby and deeper floor
-  decisions remain unfinished.
+  On ordinary Floors 1–4, living heroes now form repeatable individual
+  goals from actual equipment/HP/discoveries, with physically discovered
+  seeded down-stairs and entrance-side up-stairs. They spend an actual
+  world event at a reached staircase before changing depth; there is
+  NO numbered Floor 5 as an intermediate dungeon transition. The
+  existing TP negotiation now commits active, voluntary co-location
+  and membership changes during play, and can split on injury, death,
+  dissent or shop departure without moving companions by fiat.
+  A temporarily saved `liveDungeon.plans` intention is NOT a direct
+  player command or advance knowledge in Galvik's Board. The unique
+  Floor-6 boss and existing Floor-7 endpoint remain separately gated.
+  Live spectator, death signaling, two-day post-shop standby, full
+  authored Floors 8–10 and deeper long-range progression are unfinished.
   Correct new saves remain essential.
   See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 - **Small first chapter rather than fake 100-floor coverage:** investigate a

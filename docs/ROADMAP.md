@@ -62,7 +62,7 @@
   their previous resolver**. Full temporary-party AI, LIVE Board,
   spectator and archive remain future milestones.
 
-- **PR #208 in progress (physical shop returns):** The SAME seeded
+- **PR #208 merged (physical shop returns):** The SAME seeded
   spatial motor backtracks over the hero's previously visited connected tiles,
   one true tile each 600 world ticks. Resupply/retreat decisions never teleport
   a hero to the shop. Real traps and monsters remain consequential en route.
@@ -75,6 +75,25 @@
   Troll challengers use the same timed portal although their cinematic
   battle is still atomically resolved. Two-day post-shop standby,
   longer-term hero AI and unified portal dressing follow in later work.
+
+- **PR #209 in progress (LIVE autonomous decisions and Temporary Parties):**
+  `liveDungeon.plans` records each individual's actual medium-term
+  goal and short-term stay/up/down/shop intention at its committed world
+  tick. The ORIGINAL `chooseHeroDungeonDecision` and the existing
+  voluntary party negotiation run after real, completed movement and
+  combat, never on a view or idle animation. Floors 1–4 gain physical
+  seeded down stairs in real connected rooms and up stairs at their
+  entrances; transitioning requires the hero to reach a discovered
+  stair tile using the SAME spatial walker, with one world movement
+  event spent on the crossing and no mandatory Floor 5 route. At a
+  shared destination, companions keep their existing TP only when
+  alive, willing, co-located and voluntarily aligned; real join,
+  dissent/split, casualty and shop departures produce unique ticked
+  TP events. v21 validates live goals and time-stamped TP identities.
+  The unique Floor-6 cinematic fight and Floor-7 special progression
+  retain their existing gated boundaries. Future work must still
+  deliver fully connected deeper authored floors, meaningful two-day
+  off-duty rotation, LIVE Board/death notices, spectator and archive.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,

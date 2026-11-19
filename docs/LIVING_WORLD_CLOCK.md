@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design; PR #201–207 merged, #208 physical portal returns in progress · 2026-11-19.**
+> **Approved design; PR #201–208 merged, #209 autonomous LIVE goals and parties in progress · 2026-11-19.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -179,8 +179,16 @@ nor introduces a second authoritative customer AI. PR #205 extracts bounded `adv
   portal event; its committed result creates an actual mid-day shop visitor
   handled by the existing physical NPC traffic system. Strict v20 saves
   preserve return intent and the uniquely owned crossing event through
-  save/reload and bedtime. Post-shop standby, deeper floor choices,
-  live viewing and reporting remain pending.
+  save/reload and bedtime. PR #209 adds v21 individual
+  `liveDungeon.plans` (goal, action, source floor and committed tick)
+  from the existing hero decision policy and optional group negotiation.
+  An early-floor depth transition costs a real movement event only
+  after a hero physically reaches a seeded stair via discovered,
+  connected tiles. The existing party relationship reconciler now
+  commits same-world joins, splits, deaths and voluntary companions
+  into time-stamped events, never by examining a replay. The unique
+  boss and Floor-7 special boundaries remain unchanged; post-shop
+  standby, deeper authored floors, live viewing and reporting remain pending.
 
 **Required migration strategy**:
 

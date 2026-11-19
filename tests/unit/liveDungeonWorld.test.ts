@@ -9,7 +9,7 @@ import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
   from "../../src/game/liveDungeonRuntime.ts";
 import {WORLD_TICKS_PER_DAY,lastWorldTickOfDay}
   from "../../src/game/worldClock.ts";
-import {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath,tileAt}
+import {generateExpeditionLayout,dungeonDownStair,dungeonNeighbors,dungeonShortestPath,tileAt}
   from "../../src/game/dungeonLayout.ts";
 import {emptyLevel7World,chooseKnownReturnStep} from "../../src/game/level7Exploration.ts";
 
@@ -37,7 +37,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.earlyDungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,20);
+  assert.equal(SIMULATION_VERSION,21);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -308,4 +308,131 @@ test("a second real same-day portal crossing has a new unique event, not a phant
   assert.equal(a.state.shopEconomy.dailySales.revenue,0,
     "A genuine portal arrival is not a transaction.");
   assert.deepEqual(parseSave(JSON.stringify(createSave(a.state))),a.state);
+});
+
+function livePartyFixture():{store:GameStore;ids:readonly string[]} {
+  const base=createGameState(7351);
+  const layout=generateExpeditionLayout(7351,1);
+  const members=base.adventurers.filter(h=>h.status==="exploring").slice(0,2);
+  assert.equal(members.length,2);
+  const ids=members.map(h=>h.id);
+  const adventurers=base.adventurers.map(h=>ids.includes(h.id)?{
+    ...h,floor:1 as const,status:"exploring" as const,
+    health:h.stats.maxHealth,role: h.id===ids[0]?"healer" as const:"tank" as const,
+    traits:{...h.traits,negative:"stubborn"},
+    inventory:{...h.inventory,loot:0},
+  }:h.status==="exploring"?{...h,floor:4 as const}:h);
+  const entrance=layout.entrance.z*layout.width+layout.entrance.x;
+  const world={...emptyLevel7World(),
+    resolvedFeatureIds:layout.features.map(f=>f.id),
+    heroes:ids.map(heroId=>({heroId,...layout.entrance,visited:[entrance]})),
+  };
+  return {ids,store:new GameStore({...base,adventurers,
+    earlyDungeonWorlds:[{floor:1 as const,world}]})};
+}
+
+test("LIVE Temporary Party forms on one physical tile, persists and splits on individual resupply",()=>{
+  const fixture=livePartyFixture();
+  const store=fixture.store;
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  let party=store.state.dungeonParties?.find(p=>
+    fixture.ids.every(id=>p.memberIds.includes(id)));
+  assert(party,"Willing co-located companions should form a real live TP.");
+  assert.equal(party.floor,1);
+  assert.equal(party.formedDay,1);
+  const joins=store.state.events.filter(e=>e.type==="temporary-party-join"&&
+    fixture.ids.includes(e.adventurerId!));
+  assert.equal(joins.length,2);
+  assert(joins.every(e=>e.worldTick===DUNGEON_STEP_INTERVAL_TICKS));
+  const snap=parseSave(JSON.stringify(createSave(store.state)));
+  assert.deepEqual(snap,store.state);
+  const replay=new GameStore(snap);
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  replay.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.deepEqual(store.state,replay.state);
+  assert.equal(store.state.events.filter(e=>e.type==="temporary-party-join"&&
+    fixture.ids.includes(e.adventurerId!)).length,2,
+    "A stable party does not join again on each world event.");
+
+  // An actual independent need overrides companionship; Galvik never commands it.
+  const forced={...store.state,adventurers:store.state.adventurers.map(h=>
+    h.id===fixture.ids[0]?{...h,inventory:{...h.inventory,loot:2}}:h)};
+  const next=new GameStore(forced);
+  next.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert(next.state.liveDungeon.returns.some(j=>j.heroId===fixture.ids[0]),
+    "Actual loot creates the hero's own resupply decision.");
+  assert(!next.state.dungeonParties?.some(p=>fixture.ids.every(id=>
+    p.memberIds.includes(id))),"Dissent disbands rather than forcing travel.");
+  const leaves=next.state.events.filter(e=>e.type==="temporary-party-leave"&&
+    fixture.ids.includes(e.adventurerId!));
+  assert.equal(leaves.length,2);
+  assert.equal(new Set(next.state.events.map(e=>e.id)).size,
+    next.state.events.length,"Real-time TP history is not duplicated.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(next.state))),next.state);
+});
+
+function authoredStairFixture():{store:GameStore;heroId:string;stair:{x:number;z:number}}{
+  const seed=7351,base=createGameState(seed);
+  const layout=generateExpeditionLayout(seed,1);
+  const stair=dungeonDownStair(layout);
+  const hero=base.adventurers.find(h=>h.status==="exploring");
+  assert(hero);
+  const adventurers=base.adventurers.map(h=>h.id===hero.id?{
+    ...h,floor:1 as const,status:"exploring" as const,
+    health:h.stats.maxHealth,equipment:{...h.equipment,weapon:"Iron Sword" as const},
+    inventory:{...h.inventory,loot:0},
+  }:h.status==="exploring"?{...h,floor:4 as const}:h);
+  const known=layout.tiles.flatMap((cell,i)=>cell==="wall"?[]:[i]);
+  const world={...emptyLevel7World(),
+    resolvedFeatureIds:layout.features.map(f=>f.id),
+    heroes:[{heroId:hero.id,...stair,visited:known}]};
+  return {heroId:hero.id,stair,store:new GameStore({...base,adventurers,
+    earlyDungeonWorlds:[{floor:1 as const,world}]})};
+}
+
+test("real hero strategy descends ONLY from discovered connected stairs and resumes across saves",()=>{
+  const {store,heroId,stair}=authoredStairFixture();
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const hero=store.state.adventurers.find(h=>h.id===heroId)!;
+  assert.equal(hero.floor,1);
+  assert.equal(store.state.liveDungeon.plans.find(p=>p.heroId===heroId)?.action,
+    "descend","Real gear and explored room knowledge generate an autonomous plan.");
+  const checkpoint=parseSave(JSON.stringify(createSave(store.state)));
+  const resumed=new GameStore(checkpoint);
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  resumed.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.deepEqual(store.state,resumed.state);
+  assert.equal(store.state.adventurers.find(h=>h.id===heroId)?.floor,2,
+    "Floor depth changes only on a subsequent real movement event at the stair.");
+  const here=store.state.earlyDungeonWorlds?.find(x=>x.floor===1)!.world.heroes
+    .find(p=>p.heroId===heroId)!;
+  assert.deepEqual({x:here.x,z:here.z},stair,
+    "Visited original floor remains saved for future returns.");
+  const destination=generateExpeditionLayout(7351,2).entrance;
+  const there=store.state.earlyDungeonWorlds?.find(x=>x.floor===2)!.world.heroes
+    .find(p=>p.heroId===heroId)!;
+  assert.deepEqual({x:there.x,z:there.z},destination);
+  assert.equal(store.state.liveDungeon.plans.some(p=>p.heroId===heroId),false,
+    "New floor requires a fresh real decision, not recursive floor skipping.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+});
+
+test("v21 rejects fabricated AI intentions and invalid plan-tick ownership",()=>{
+  const {store}=authoredStairFixture();
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert(store.state.liveDungeon.plans.length);
+  const raw=createSave(store.state);
+  const tamper=(change:(p:any)=>void,pattern:RegExp)=>{
+    const corrupted=structuredClone(raw) as any;change(corrupted.payload);
+    assert.throws(()=>parseSave(JSON.stringify(corrupted)),pattern);
+  };
+  tamper(s=>{delete s.liveDungeon.plans;},/plans/);
+  tamper(s=>{s.liveDungeon.plans[0].heroId="adventurer-9999";},/plans/);
+  tamper(s=>{s.liveDungeon.plans[0].action="teleport";},/plans/);
+  tamper(s=>{s.liveDungeon.plans[0].updatedTick=s.worldClock.tick+1;},/updatedTick/);
+  tamper(s=>{s.liveDungeon.plans.push(s.liveDungeon.plans[0]);},/plans/);
+  assert.deepEqual(parseSave(JSON.stringify(raw)),store.state);
 });

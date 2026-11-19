@@ -630,6 +630,38 @@ function validateLiveCombatCheckpoints(
   }
 }
 
+/** LIVE individual AI intentions must point to existing active explorers,
+ * never invent a hero or a goal that the saved autonomous policy cannot emit.
+ * Decision timestamps are historical monotonic checkpoints, not scheduled
+ * extra events or player-issued movement instructions.
+ */
+function validateLivePlans(
+  state:RecordValue,rawPlans:unknown[],clockTick:number,enabled:boolean,
+):void {
+  const ids=new Set<string|number>();
+  const roster=array(state.adventurers,"payload.adventurers") as RecordValue[];
+  for(const [index,raw] of rawPlans.entries()){
+    const path="payload.liveDungeon.plans["+index+"]";
+    const plan=object(raw,path,["heroId","floor","goal","action","updatedTick"]);
+    const id=text(plan.heroId,path+".heroId");
+    unique(id,ids,path+".heroId");
+    choice(plan.floor,[1,2,3,4,7],path+".floor");
+    choice(plan.goal,["farm","progress","test-gear","caution","resupply"],
+      path+".goal");
+    choice(plan.action,["stay","ascend","descend","shop"],path+".action");
+    integer(plan.updatedTick,path+".updatedTick",0,clockTick);
+    const hero=roster.find(h=>h.id===id);
+    if(!enabled||!hero||hero.health===0||hero.floor!==plan.floor||
+      hero.status!==(plan.floor===7?"expedition":"exploring"))
+      fail(path+".heroId","must name a living committed explorer on the recorded floor");
+    if((plan.action==="ascend"&&(plan.floor as number)<=1)||
+      (plan.action==="descend"&&(plan.floor as number)>=4))
+      fail(path+".action","must be an authored adjacent early-floor transition");
+    if(plan.floor===7&&plan.action!=="shop"&&plan.action!=="stay")
+      fail(path+".action","cannot invent an unauthored deeper floor");
+  }
+}
+
 /** The only authority for a same-day shop arrival is a real
  * traversed dungeon entrance and an exactly scheduled portal crossing.
  * A forged traveling status cannot turn into a phantom merchant customer.
@@ -755,7 +787,7 @@ function validateState(value: unknown): asserts value is GameState {
   if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
   {
     const live=object(state.liveDungeon,"payload.liveDungeon",
-      ["enabled","lastStepTick","heroes","combatTick","combats","returns"]);
+      ["enabled","lastStepTick","heroes","combatTick","combats","returns","plans"]);
     if(typeof live.enabled!=="boolean")
       fail("payload.liveDungeon.enabled","must be boolean");
     const last=integer(live.lastStepTick,"payload.liveDungeon.lastStepTick",0,clockTick);
@@ -775,6 +807,9 @@ function validateState(value: unknown): asserts value is GameState {
     if(combats.length>100)fail("payload.liveDungeon.combats","is oversized");
     const returning=array(live.returns,"payload.liveDungeon.returns");
     if(returning.length>100)fail("payload.liveDungeon.returns","is oversized");
+    const plans=array(live.plans,"payload.liveDungeon.plans");
+    if(plans.length>100)fail("payload.liveDungeon.plans","is oversized");
+    validateLivePlans(state,plans,clockTick,!!live.enabled);
     const dungeonEvents=pending.filter(raw=>
       (raw as RecordValue).lane==="expedition").map(raw=>raw as RecordValue);
     const movements=dungeonEvents.filter(e=>
@@ -783,7 +818,7 @@ function validateState(value: unknown): asserts value is GameState {
       e.subjectId===LIVE_COMBAT_EVENT_SUBJECT);
     if(!live.enabled){
       if(last!==0||progress.length||dungeonEvents.length||
-        combatTick!==0||combats.length||returning.length)
+        combatTick!==0||combats.length||returning.length||plans.length)
         fail("payload.liveDungeon","legacy mode cannot have scheduled dungeon work");
     }else{
       if(last<firstWorldTickOfDay(day))
@@ -1145,7 +1180,8 @@ function validateState(value: unknown): asserts value is GameState {
       integer(event.worldTick,path+".worldTick",firstWorldTickOfDay(eventDay),
         eventDay===day?clockTick:lastWorldTickOfDay(eventDay));
       if(event.type!=="shop-walkout"&&event.type!=="dungeon-live"&&
-        event.type!=="shop-arrival")
+        event.type!=="shop-arrival"&&
+        event.type!=="temporary-party-join"&&event.type!=="temporary-party-leave")
         fail(path+".worldTick","is not allowed for this event type");
     }
     lastDay = eventDay;
@@ -1157,6 +1193,9 @@ function validateState(value: unknown): asserts value is GameState {
     const allowed = ["id", "type", "day", "message",
       ...(event.type==="shop-walkout"?["worldTick","shopReason"]:[]),
       ...(event.type==="shop-arrival"&&event.worldTick!==undefined?["worldTick"]:[]),
+      ...((event.type==="temporary-party-join"||
+        event.type==="temporary-party-leave")&&event.worldTick!==undefined
+        ?["worldTick"]:[]),
       ...(event.type==="dungeon-live"?["worldTick",
         ...(event.level7Replay!==undefined?["level7Replay"]:[]),
         ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[])]:[]),
@@ -1171,6 +1210,9 @@ function validateState(value: unknown): asserts value is GameState {
     }
     let suffix = event.type === "day-started" ? "started" : event.type;
     if(event.type==="dungeon-live")suffix="dungeon-live:"+event.worldTick;
+    if((event.type==="temporary-party-join"||
+      event.type==="temporary-party-leave")&&event.worldTick!==undefined)
+      suffix=event.type+":"+event.worldTick;
     // Real in-day portal arrivals have their OWN committed tick. Legacy
     // starting visitors (no worldTick) keep the existing day-scoped ID.
     if(event.type==="shop-arrival"&&event.worldTick!==undefined)
