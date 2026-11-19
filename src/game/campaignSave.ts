@@ -20,8 +20,9 @@ import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
   type ScheduledWorldEvent } from "./worldClock.ts";
 import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
 import {validateShopTraffic} from "./shopTraffic.ts";
-import {DUNGEON_STEP_INTERVAL_TICKS,
-  DUNGEON_WORLD_EVENT_SUBJECT} from "./liveDungeonRuntime.ts";
+import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
+  LIVE_COMBAT_EVENT_SUBJECT,LIVE_COMBAT_INTERVAL_TICKS} from "./liveDungeonRuntime.ts";
+import {createGroupCombat} from "./groupCombat.ts";
 import {forecastShoppingIntents} from "./shopperIntents.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
@@ -428,7 +429,7 @@ function validateState(value: unknown): asserts value is GameState {
   if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
   {
     const live=object(state.liveDungeon,"payload.liveDungeon",
-      ["enabled","lastStepTick","heroes"]);
+      ["enabled","lastStepTick","heroes","combatTick","combats"]);
     if(typeof live.enabled!=="boolean")
       fail("payload.liveDungeon.enabled","must be boolean");
     const last=integer(live.lastStepTick,"payload.liveDungeon.lastStepTick",0,clockTick);
@@ -442,23 +443,32 @@ function validateState(value: unknown): asserts value is GameState {
       integer(hero.steps,path+".steps",1,100000);
       if(typeof hero.finished!=="boolean")fail(path+".finished","must be boolean");
     }
+    const combatTick=integer(live.combatTick,
+      "payload.liveDungeon.combatTick",0,clockTick);
+    const combats=array(live.combats,"payload.liveDungeon.combats");
+    if(combats.length>100)fail("payload.liveDungeon.combats","is oversized");
     const dungeonEvents=pending.filter(raw=>
-      (raw as RecordValue).lane==="expedition");
+      (raw as RecordValue).lane==="expedition").map(raw=>raw as RecordValue);
+    const movements=dungeonEvents.filter(e=>
+      e.subjectId===DUNGEON_WORLD_EVENT_SUBJECT);
+    const fights=dungeonEvents.filter(e=>
+      e.subjectId===LIVE_COMBAT_EVENT_SUBJECT);
     if(!live.enabled){
-      if(last!==0||progress.length||dungeonEvents.length)
+      if(last!==0||progress.length||dungeonEvents.length||
+        combatTick!==0||combats.length)
         fail("payload.liveDungeon","legacy mode cannot have scheduled dungeon work");
     }else{
       if(last<firstWorldTickOfDay(day))
         fail("payload.liveDungeon.lastStepTick","is from an earlier world day");
       const due=last+DUNGEON_STEP_INTERVAL_TICKS;
-      if(dungeonEvents.length!==(due<=lastWorldTickOfDay(day)?1:0)||
-         dungeonEvents.some(raw=>{
-           const e=raw as RecordValue;
-           return e.subjectId!==DUNGEON_WORLD_EVENT_SUBJECT||
-             e.dueTick!==due;
-         }))
-        fail("payload.liveDungeon","must own exactly its next real expedition event");
+      if(movements.length!==(due<=lastWorldTickOfDay(day)?1:0)||
+         movements.some(e=>e.dueTick!==due)||
+         fights.length!==(combats.length?1:0)||
+         fights.some(e=>e.dueTick!==combatTick+LIVE_COMBAT_INTERVAL_TICKS)||
+         dungeonEvents.length!==movements.length+fights.length)
+        fail("payload.liveDungeon","must own its exact next movement and combat ticks");
     }
+    validateLiveCombatCheckpoints(state,combats,day,clockTick,last,combatTick);
   }
   const shopRequests=array(state.shopRequests,"payload.shopRequests");
   if(shopRequests.length>100)fail("payload.shopRequests","is oversized");
@@ -816,7 +826,9 @@ function validateState(value: unknown): asserts value is GameState {
     if (!global && !heroIds.has(event.adventurerId as string)) fail(`${path}.adventurerId`, "must link to an existing hero");
     const allowed = ["id", "type", "day", "message",
       ...(event.type==="shop-walkout"?["worldTick","shopReason"]:[]),
-      ...(event.type==="dungeon-live"?["worldTick"]:[]),
+      ...(event.type==="dungeon-live"?["worldTick",
+        ...(event.level7Replay!==undefined?["level7Replay"]:[]),
+        ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[])]:[]),
       ...(!global ? ["adventurerId"] : [])];
     if(event.shopReason!==undefined){
       if(event.type!=="shop-walkout")fail(path+".shopReason","is not supported");
@@ -843,12 +855,13 @@ function validateState(value: unknown): asserts value is GameState {
           event.combatOutcome as "victory" | "retreat" | "death");
       }
     }
-    if(event.type === "level7-exploration" && event.level7Replay !== undefined) {
+    if((event.type === "level7-exploration"||event.type==="dungeon-live") &&
+      event.level7Replay !== undefined) {
       allowed.push("level7Replay");
       validateLevel7Replay(event.level7Replay,`${path}.level7Replay`,
         event.adventurerId as string,eventDay,campaignSeed,7,heroIds);
     }
-    if(event.type==="dungeon-exploration"){
+    if(event.type==="dungeon-exploration"||event.type==="dungeon-live"){
       if(event.dungeonGoal!==undefined){
         allowed.push("dungeonGoal");
         choice(event.dungeonGoal,["farm","progress","test-gear","caution","resupply"],
