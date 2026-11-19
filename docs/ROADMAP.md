@@ -34,11 +34,11 @@
   single connected step with immutable world-state result, rather than
   requiring every caller to roll 36 steps at once. The shared spatial
   motor is deterministic and preserves legacy tests.
-- **PR #206 in progress (actual in-day expeditions):** real browser play
+- **PR #206 merged (actual in-day expeditions):** real browser play
   opts into saved exclusive `expedition` world events every 600 ticks,
   moving each active party by at most one connected tile per event and
-  applying actual chest, trap and group-combat outcomes to the shared
-  world immediately. Level 6 uses the existing unique boss combat resolver
+  committing reached chests and traps exactly once. At this PR's baseline
+  ordinary fights were still atomic. Level 6 uses the existing unique boss combat resolver
   at a scheduled event. Bedtime processes only the remaining events,
   never the legacy dungeon day batch. V18 saves strictly validate the
   one active dungeon event and each hero's checkpoint; fixtures not opted
@@ -46,8 +46,21 @@
   Remaining **before V.003:** gradual 60Hz combat event progression,
   actual same-day physical return journeys, lasting hero decisions,
   live spectator/recordings, obvious death alerts and integrated
-  ten-day gameplay verification. A fight is currently committed
-  atomically at its scheduled event, not fought over live world seconds.
+  ten-day gameplay verification. PR #207 replaces the atomic ordinary
+  fight path described here with genuine persisted group-combat ticks.
+
+- **PR #207 in progress (real-time shared group combat):** Floors 1–4/7
+  now reserve actual monster sites on a real one-tile approach, then
+  schedule 30 authoritative 60-Hz group-combat ticks every 10 saved
+  world ticks (0.5 game seconds), storing live fighter/projectile state,
+  accumulated frame captures and participant snapshots in strict v19 saves.
+  No viewer, reload or bedtime rerolls a combat. Actual fight completion
+  settles healing charges, XP, finite gold and one site generation once;
+  completed immutable footage is attached to knowledge-safe live events.
+  The 600-tick expedition movement cadence and fixed-step shop continue
+  on the SAME clock. **Unique Level-6 cinematic Troll fights still use
+  their previous resolver**, and physical hero return journeys, full
+  temporary-party AI, LIVE Board, spectator and archive are later PRs.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,
