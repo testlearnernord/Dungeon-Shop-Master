@@ -86,7 +86,7 @@ const eventTypes = [
   "influx", "sale", "tip", "healed",
   "level6-departure", "level6-combat", "level6-return",
   "level7-departure", "level7-exploration", "shop-credit",
-  "dungeon-exploration","dungeon-live",
+  "dungeon-exploration","dungeon-live","hero-death-signal",
   "temporary-party-join","temporary-party-leave",
 ] as const;
 
@@ -1181,7 +1181,8 @@ function validateState(value: unknown): asserts value is GameState {
         eventDay===day?clockTick:lastWorldTickOfDay(eventDay));
       if(event.type!=="shop-walkout"&&event.type!=="dungeon-live"&&
         event.type!=="shop-arrival"&&
-        event.type!=="temporary-party-join"&&event.type!=="temporary-party-leave")
+        event.type!=="temporary-party-join"&&event.type!=="temporary-party-leave"&&
+        event.type!=="hero-death-signal")
         fail(path+".worldTick","is not allowed for this event type");
     }
     lastDay = eventDay;
@@ -1196,7 +1197,9 @@ function validateState(value: unknown): asserts value is GameState {
       ...((event.type==="temporary-party-join"||
         event.type==="temporary-party-leave")&&event.worldTick!==undefined
         ?["worldTick"]:[]),
+      ...(event.type==="hero-death-signal"?["worldTick"]:[]),
       ...(event.type==="dungeon-live"?["worldTick",
+        ...(event.reportedZone!==undefined?["reportedZone"]:[]),
         ...(event.level7Replay!==undefined?["level7Replay"]:[]),
         ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[])]:[]),
       ...(!global ? ["adventurerId"] : [])];
@@ -1204,12 +1207,25 @@ function validateState(value: unknown): asserts value is GameState {
       if(event.type!=="shop-walkout")fail(path+".shopReason","is not supported");
       choice(event.shopReason,["interested","unavailable","cannot-afford","no-need"],path+".shopReason");
     }
+    if(event.type==="hero-death-signal"){
+      if(event.worldTick===undefined)
+        fail(path+".worldTick","is required for a real death signal");
+      const hero=(state.adventurers as RecordValue[]).find(h=>h.id===event.adventurerId);
+      const inCombat=(state.liveDungeon as GameState["liveDungeon"]).combats.some(f=>
+        f.state.actors.some(a=>a.id===event.adventurerId&&a.hp<=0));
+      if(!hero||(!(hero.status==="dead"&&hero.health===0)&&!inCombat))
+        fail(path+".adventurerId","must be a real fallen hero or active zero-HP fighter");
+    }
     if(event.type==="dungeon-live"){
+      if(event.reportedZone!==undefined)
+        choice(event.reportedZone,["upper","deep"],path+".reportedZone");
       if(event.worldTick===undefined)
         fail(path+".worldTick","is mandatory for real live dungeon events");
     }
     let suffix = event.type === "day-started" ? "started" : event.type;
     if(event.type==="dungeon-live")suffix="dungeon-live:"+event.worldTick;
+    if(event.type==="hero-death-signal")
+      suffix="hero-death-signal:"+event.worldTick;
     if((event.type==="temporary-party-join"||
       event.type==="temporary-party-leave")&&event.worldTick!==undefined)
       suffix=event.type+":"+event.worldTick;
