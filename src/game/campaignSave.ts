@@ -5,8 +5,8 @@ import {
 } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
 import {
-  LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS,
-  getLevel7Progress, type Level7World,
+  LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS, LEVEL7_COMBAT_SECONDS,
+  getLevel7Progress, prepareSpatialDungeonCombat, type Level7World,
   type SpatialDungeonFloor,
 } from "./level7Exploration.ts";
 import { generateDungeonLayout, generateExpeditionLayout, tileAt } from "./dungeonLayout.ts";
@@ -20,8 +20,9 @@ import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
   type ScheduledWorldEvent } from "./worldClock.ts";
 import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
 import {validateShopTraffic} from "./shopTraffic.ts";
-import {DUNGEON_STEP_INTERVAL_TICKS,
-  DUNGEON_WORLD_EVENT_SUBJECT} from "./liveDungeonRuntime.ts";
+import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
+  LIVE_COMBAT_EVENT_SUBJECT,LIVE_COMBAT_INTERVAL_TICKS} from "./liveDungeonRuntime.ts";
+import {createGroupCombat,type GroupCombatOptions} from "./groupCombat.ts";
 import {forecastShoppingIntents} from "./shopperIntents.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
@@ -389,6 +390,244 @@ function validateLevel7Replay(
   });
 }
 
+/** Strict v19 validation for intermediate 60Hz actor state. Do not accept
+ * a synthesized fight, stale site lock, invented equipment or a second
+ * scheduler. Current actors are derived from one canonical seeded encounter.
+ */
+function validateLiveCombatCheckpoints(
+  state:RecordValue,rawCombats:unknown[],day:number,clockTick:number,
+  lastStepTick:number,combatTick:number,
+):void{
+  const path="payload.liveDungeon";
+  if(rawCombats.length===0){
+    if(combatTick!==0)fail(path+".combatTick","must be zero without active combat");
+    return;
+  }
+  if(combatTick<lastStepTick||combatTick>clockTick)
+    fail(path+".combatTick","does not follow the active expedition step");
+  const known=new Set<string|number>();
+  const sites=new Set<string|number>();
+  for(const [index,raw] of rawCombats.entries()){
+    const cp=path+".combats["+index+"]";
+    const battle=object(raw,cp,[
+      "id","startedTick","encounter","heroIds","arrivals","state","frames",
+    ]);
+    const started=integer(battle.startedTick,cp+".startedTick",
+      firstWorldTickOfDay(day),lastStepTick);
+    if(started!==lastStepTick||
+      (combatTick-started)%LIVE_COMBAT_INTERVAL_TICKS!==0)
+      fail(cp+".startedTick","must equal this movement's last committed tick");
+    const encounter=object(battle.encounter,cp+".encounter",[
+      "featureId","floor","x","z","siteCycle","elite","options",
+    ]);
+    choice(encounter.floor,[1,2,3,4,7],cp+".encounter.floor");
+    const floor=encounter.floor as number;
+    const featureId=text(encounter.featureId,cp+".encounter.featureId");
+    const layout=generateExpeditionLayout(state.seed as number,
+      floor as SpatialDungeonFloor);
+    const feature=layout.features.find(f=>f.id===featureId&&f.kind==="monster");
+    if(!feature||feature.x!==encounter.x||feature.z!==encounter.z)
+      fail(cp+".encounter","must identify one real reached monster tile");
+    const cycle=integer(encounter.siteCycle,cp+".encounter.siteCycle",0,100000);
+    if(typeof encounter.elite!=="boolean")
+      fail(cp+".encounter.elite","must be boolean");
+    unique(floor+":"+featureId,sites,cp+".encounter.featureId");
+    if(battle.id!=="battle:"+day+":"+started+":"+floor+":"+featureId)
+      fail(cp+".id","must be the canonical live battle identity");
+
+    const roster=array(state.adventurers,cp+".adventurers") as RecordValue[];
+    const heroIds=array(battle.heroIds,cp+".heroIds");
+    if(heroIds.length<1||heroIds.length>3)fail(cp+".heroIds","requires 1–3 heroes");
+    const members:GameState["adventurers"][number][]=[];
+    heroIds.forEach((rawId,i)=>{
+      const id=text(rawId,cp+".heroIds["+i+"]");
+      unique(id,known,cp+".heroIds["+i+"]");
+      const hero=roster.find(h=>h.id===id) as GameState["adventurers"][number]|undefined;
+      if(!hero||hero.floor!==floor||hero.health<=0||
+        hero.status!==(floor===7?"expedition":"exploring"))
+        fail(cp+".heroIds["+i+"]","must identify a living co-located explorer");
+      members.push(hero);
+    });
+    const world:Level7World=floor===7?
+      state.level7World as Level7World:
+      ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
+        ?.find(entry=>entry.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
+    if(world.resolvedFeatureIds.includes(featureId)||
+      (world.siteCycles?.find(x=>x.id===featureId)?.cycle??0)!==cycle)
+      fail(cp+".encounter.siteCycle","cannot reserve a resolved or regenerated site");
+    for(const member of members){
+      const progress=world.heroes.find(h=>h.heroId===member.id);
+      if(!progress||progress.x!==feature.x||progress.z!==feature.z)
+        fail(cp+".heroIds","must actually occupy the monster's tile");
+    }
+    const arrivals=array(battle.arrivals,cp+".arrivals");
+    if(arrivals.length!==members.length)
+      fail(cp+".arrivals","must retain each real party member's approach");
+    arrivals.forEach((rawArrival,i)=>{
+      const ap=cp+".arrivals["+i+"]";
+      validateLevel7Replay(rawArrival,ap,members[i].id,day,
+        state.seed as number,floor,new Set(roster.map(x=>x.id as string)));
+      const r=rawArrival as RecordValue;
+      const steps=r.steps as {x:number;z:number;action:string;featureId?:string}[];
+      const tail=steps[steps.length-1];
+      if(r.outcome!=="exploring"||(r.encounters as unknown[]).length||
+        !tail||tail.action!=="combat"||tail.featureId!==featureId||
+        tail.x!==feature.x||tail.z!==feature.z)
+        fail(ap,"must be an unresolved real monster approach");
+    });
+
+    const options=object(encounter.options,cp+".encounter.options",[
+      "actors","bounds","obstacles",
+    ]);
+    const specs=array(options.actors,cp+".encounter.options.actors");
+    if(specs.length!==members.length+1)
+      fail(cp+".encounter.options.actors","must match this party and the site monster");
+    specs.forEach((rawSpec,i)=>{
+      const sp=cp+".encounter.options.actors["+i+"]";
+      const spec=object(rawSpec,sp,[
+        "id","team","role","style","x","z","hp","maxHp","damage",
+        "armor","speed","reach",
+      ],["radius","healCharges","equipment","meleeAbility","specialAbility",
+        "agility","grappleDamage","staggerThreshold"]);
+      text(spec.id,sp+".id");
+    });
+    const bounds=object(options.bounds,cp+".encounter.options.bounds",
+      ["minX","maxX","minZ","maxZ"]);
+    for(const key of ["minX","maxX","minZ","maxZ"])
+      validNumber(bounds[key],cp+".encounter.options.bounds."+key,-10000,10000);
+    const obstacles=array(options.obstacles,cp+".encounter.options.obstacles");
+    if(obstacles.length>50)fail(cp+".encounter.options.obstacles","is oversized");
+    obstacles.forEach((rawObstacle,i)=>{
+      const op=cp+".encounter.options.obstacles["+i+"]";
+      const obstacle=object(rawObstacle,op,["id","minX","maxX","minZ","maxZ"]);
+      text(obstacle.id,op+".id");
+      for(const key of ["minX","maxX","minZ","maxZ"])
+        validNumber(obstacle[key],op+"."+key,-10000,10000);
+    });
+    const initialApproach=(arrivals[0] as {steps:{x:number;z:number}[]}).steps[0];
+    const canonical=prepareSpatialDungeonCombat(members,feature!,
+      layout.seed,layout,initialApproach,cycle);
+    if(canonical.elite!==encounter.elite||
+      JSON.stringify(canonical.options)!==JSON.stringify(options))
+      fail(cp+".encounter.options","must match the deterministic real hero and monster stats");
+    let initial;
+    try {initial=createGroupCombat(options as unknown as GroupCombatOptions);}
+    catch {fail(cp+".encounter.options","is not a valid group combat");}
+
+    const combat=object(battle.state,cp+".state",[
+      "actors","bounds","obstacles","projectiles","events","time","outcome",
+    ]);
+    if(combat.outcome!=="fighting")fail(cp+".state.outcome","must still be active");
+    const completed=(combatTick-started)*3;
+    const time=validNumber(combat.time,cp+".state.time",0,LEVEL7_COMBAT_SECONDS);
+    if(Math.abs(time*60-completed)>0.001||
+      completed>=LEVEL7_COMBAT_SECONDS*60)
+      fail(cp+".state.time","must match committed 60Hz world-clock steps");
+    if(JSON.stringify(combat.bounds)!==JSON.stringify(initial.bounds)||
+      JSON.stringify(combat.obstacles)!==JSON.stringify(initial.obstacles))
+      fail(cp+".state.bounds","must preserve the original real arena");
+    const actors=array(combat.actors,cp+".state.actors");
+    if(actors.length!==initial.actors.length)
+      fail(cp+".state.actors","must retain every original fighter");
+    const actorIds=new Set(initial.actors.map(a=>a.id));
+    actors.forEach((rawActor,i)=>{
+      const ap=cp+".state.actors["+i+"]";
+      const a=object(rawActor,ap,[
+        "id","team","role","style","maxHp","damage","armor","speed",
+        "reach","radius","meleeAbility","agility","grappleDamage",
+        "staggerThreshold","attacksStarted","activeMeleeAbility",
+        "grappleTargetId","grabbedById","throwVelocity","x","z",
+        "hp","stamina","heading","lockedHeading","phase","phaseAge",
+        "cooldown","applied","targetId","rollX","rollZ",
+        "healCharges","distanceTraveled",
+      ],["specialAbility"]);
+      const original=initial.actors[i];
+      for(const key of ["id","team","role","style","maxHp","damage",
+        "armor","speed","reach","radius","meleeAbility","agility",
+        "grappleDamage","staggerThreshold","specialAbility"])
+        if(a[key]!==original[key as keyof typeof original])
+          fail(ap+"."+key,"must match the seeded fighter");
+      for(const key of ["x","z","hp","stamina","heading","lockedHeading",
+        "phaseAge","cooldown","rollX","rollZ","distanceTraveled"])
+        validNumber(a[key],ap+"."+key,-10000,100000);
+      if((a.hp as number)<0||(a.hp as number)>(a.maxHp as number)||
+        (a.stamina as number)<0||(a.stamina as number)>100)
+        fail(ap+".hp","must retain bounded genuine vitality");
+      integer(a.attacksStarted,ap+".attacksStarted",0,10000);
+      integer(a.healCharges,ap+".healCharges",0,10);
+      if(typeof a.applied!=="boolean")fail(ap+".applied","must be boolean");
+      choice(a.phase,["move","windup","strike","recover","cast","heal",
+        "roll","parry","hurt","dead","grab","grabMiss","throw",
+        "grabbed","thrown"],ap+".phase");
+      choice(a.activeMeleeAbility,["ordinary","heavy","grapple"],ap+".activeMeleeAbility");
+      for(const key of ["targetId","grappleTargetId","grabbedById"])
+        if(a[key]!==null&&!actorIds.has(a[key] as string))
+          fail(ap+"."+key,"must reference an actual fighter");
+      const velocity=object(a.throwVelocity,ap+".throwVelocity",["x","z"]);
+      validNumber(velocity.x,ap+".throwVelocity.x",-10000,10000);
+      validNumber(velocity.z,ap+".throwVelocity.z",-10000,10000);
+    });
+    const projectiles=array(combat.projectiles,cp+".state.projectiles");
+    if(projectiles.length>30)fail(cp+".state.projectiles","is oversized");
+    projectiles.forEach((rawProjectile,i)=>{
+      const pp=cp+".state.projectiles["+i+"]";
+      const p=object(rawProjectile,pp,[
+        "ownerId","team","x","z","vx","vz","damage","ttl",
+      ]);
+      if(!actorIds.has(p.ownerId as string))fail(pp+".ownerId","is unknown");
+      choice(p.team,["heroes","monsters"],pp+".team");
+      for(const key of ["x","z","vx","vz","damage","ttl"])
+        validNumber(p[key],pp+"."+key,-10000,100000);
+    });
+    const cues=array(combat.events,cp+".state.events");
+    if(cues.length>2000)fail(cp+".state.events","is oversized");
+    cues.forEach((rawCue,i)=>{
+      const qp=cp+".state.events["+i+"]";
+      const cue=object(rawCue,qp,["t","actorId","kind"],["targetId","amount"]);
+      if(!actorIds.has(cue.actorId as string)||(
+        cue.targetId!==undefined&&!actorIds.has(cue.targetId as string)))
+        fail(qp+".actorId","must reference existing fighters");
+      choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
+        "parry","heal","death","blocked","grab","throw","landing","escape"],qp+".kind");
+      validNumber(cue.t,qp+".t",0,26);
+      if(cue.amount!==undefined)validNumber(cue.amount,qp+".amount",0,100000);
+    });
+    const frames=array(battle.frames,cp+".frames");
+    if(frames.length!==1+completed/6||frames.length>252)
+      fail(cp+".frames","must contain precisely the captured 10Hz frames");
+    let previousTime=-1;
+    frames.forEach((rawFrame,i)=>{
+      const fp=cp+".frames["+i+"]";
+      const frame=object(rawFrame,fp,["t","actors","projectiles"]);
+      const t=validNumber(frame.t,fp+".t",0,26);
+      if(t<previousTime)fail(fp+".t","must be chronological");
+      previousTime=t;
+      const snapshots=array(frame.actors,fp+".actors");
+      if(snapshots.length!==actors.length)fail(fp+".actors","must retain all fighters");
+      snapshots.forEach((rawSnapshot,j)=>{
+        const sp=fp+".actors["+j+"]";
+        const snapshot=object(rawSnapshot,sp,["id","x","z","hp","stamina","heading","phase"]);
+        if(snapshot.id!==(actors[j] as RecordValue).id)
+          fail(sp+".id","must match the live actor order");
+        for(const key of ["x","z","hp","stamina","heading"])
+          validNumber(snapshot[key],sp+"."+key,-10000,100000);
+        choice(snapshot.phase,["move","windup","strike","recover","cast",
+          "heal","roll","parry","hurt","dead","grab","grabMiss",
+          "throw","grabbed","thrown"],sp+".phase");
+      });
+      const shots=array(frame.projectiles,fp+".projectiles");
+      if(shots.length>30)fail(fp+".projectiles","is oversized");
+      shots.forEach((rawShot,j)=>{
+        const sp=fp+".projectiles["+j+"]";
+        const shot=object(rawShot,sp,["ownerId","x","z"]);
+        if(!actorIds.has(shot.ownerId as string))fail(sp+".ownerId","is unknown");
+        validNumber(shot.x,sp+".x",-10000,10000);
+        validNumber(shot.z,sp+".z",-10000,10000);
+      });
+    });
+  }
+}
+
 function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
     "day", "worldClock", "shopRequests", "shopTraffic", "liveDungeon", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
@@ -428,7 +667,7 @@ function validateState(value: unknown): asserts value is GameState {
   if (state.simulationVersion !== SIMULATION_VERSION) fail("payload.simulationVersion", "is incompatible");
   {
     const live=object(state.liveDungeon,"payload.liveDungeon",
-      ["enabled","lastStepTick","heroes"]);
+      ["enabled","lastStepTick","heroes","combatTick","combats"]);
     if(typeof live.enabled!=="boolean")
       fail("payload.liveDungeon.enabled","must be boolean");
     const last=integer(live.lastStepTick,"payload.liveDungeon.lastStepTick",0,clockTick);
@@ -442,23 +681,32 @@ function validateState(value: unknown): asserts value is GameState {
       integer(hero.steps,path+".steps",1,100000);
       if(typeof hero.finished!=="boolean")fail(path+".finished","must be boolean");
     }
+    const combatTick=integer(live.combatTick,
+      "payload.liveDungeon.combatTick",0,clockTick);
+    const combats=array(live.combats,"payload.liveDungeon.combats");
+    if(combats.length>100)fail("payload.liveDungeon.combats","is oversized");
     const dungeonEvents=pending.filter(raw=>
-      (raw as RecordValue).lane==="expedition");
+      (raw as RecordValue).lane==="expedition").map(raw=>raw as RecordValue);
+    const movements=dungeonEvents.filter(e=>
+      e.subjectId===DUNGEON_WORLD_EVENT_SUBJECT);
+    const fights=dungeonEvents.filter(e=>
+      e.subjectId===LIVE_COMBAT_EVENT_SUBJECT);
     if(!live.enabled){
-      if(last!==0||progress.length||dungeonEvents.length)
+      if(last!==0||progress.length||dungeonEvents.length||
+        combatTick!==0||combats.length)
         fail("payload.liveDungeon","legacy mode cannot have scheduled dungeon work");
     }else{
       if(last<firstWorldTickOfDay(day))
         fail("payload.liveDungeon.lastStepTick","is from an earlier world day");
       const due=last+DUNGEON_STEP_INTERVAL_TICKS;
-      if(dungeonEvents.length!==(due<=lastWorldTickOfDay(day)?1:0)||
-         dungeonEvents.some(raw=>{
-           const e=raw as RecordValue;
-           return e.subjectId!==DUNGEON_WORLD_EVENT_SUBJECT||
-             e.dueTick!==due;
-         }))
-        fail("payload.liveDungeon","must own exactly its next real expedition event");
+      if(movements.length!==(due<=lastWorldTickOfDay(day)?1:0)||
+         movements.some(e=>e.dueTick!==due)||
+         fights.length!==(combats.length?1:0)||
+         fights.some(e=>e.dueTick!==combatTick+LIVE_COMBAT_INTERVAL_TICKS)||
+         dungeonEvents.length!==movements.length+fights.length)
+        fail("payload.liveDungeon","must own its exact next movement and combat ticks");
     }
+    validateLiveCombatCheckpoints(state,combats,day,clockTick,last,combatTick);
   }
   const shopRequests=array(state.shopRequests,"payload.shopRequests");
   if(shopRequests.length>100)fail("payload.shopRequests","is oversized");
@@ -816,7 +1064,9 @@ function validateState(value: unknown): asserts value is GameState {
     if (!global && !heroIds.has(event.adventurerId as string)) fail(`${path}.adventurerId`, "must link to an existing hero");
     const allowed = ["id", "type", "day", "message",
       ...(event.type==="shop-walkout"?["worldTick","shopReason"]:[]),
-      ...(event.type==="dungeon-live"?["worldTick"]:[]),
+      ...(event.type==="dungeon-live"?["worldTick",
+        ...(event.level7Replay!==undefined?["level7Replay"]:[]),
+        ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[])]:[]),
       ...(!global ? ["adventurerId"] : [])];
     if(event.shopReason!==undefined){
       if(event.type!=="shop-walkout")fail(path+".shopReason","is not supported");
@@ -843,12 +1093,13 @@ function validateState(value: unknown): asserts value is GameState {
           event.combatOutcome as "victory" | "retreat" | "death");
       }
     }
-    if(event.type === "level7-exploration" && event.level7Replay !== undefined) {
+    if((event.type === "level7-exploration"||event.type==="dungeon-live") &&
+      event.level7Replay !== undefined) {
       allowed.push("level7Replay");
       validateLevel7Replay(event.level7Replay,`${path}.level7Replay`,
         event.adventurerId as string,eventDay,campaignSeed,7,heroIds);
     }
-    if(event.type==="dungeon-exploration"){
+    if(event.type==="dungeon-exploration"||event.type==="dungeon-live"){
       if(event.dungeonGoal!==undefined){
         allowed.push("dungeonGoal");
         choice(event.dungeonGoal,["farm","progress","test-gear","caution","resupply"],

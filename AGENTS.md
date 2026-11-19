@@ -263,13 +263,21 @@
   and MUST NOT reroll any already resolved dungeon event at bed. Pure old
   unit fixtures that never opt in retain the historical day batch for
   compatibility tests; never run both modes in one campaign.
-  Version-18 saves validate the unique pending expedition event, owner,
-  due tick and committed heroes. The actual combat motor still produces
-  its full fight atomically on an expedition event, not across true live
-  60Hz frames. Autonomous floor transitions, physical return journeys,
+  Version-18 saves validate the unique pending movement event, owner,
+  due tick and committed heroes. PR #207 adds strict version-19 combat
+  checkpoints. An ordinary Floors 1–4/7 monster arrival reserves
+  the real site but NEVER settles it at the movement tick. The one
+  `dungeon-combat` event advances all real existing `GroupCombatState`
+  actors by 30 authentic 60Hz steps every 10 saved world ticks.
+  Persist fighter HP/phase/projectiles, the original gear/approach
+  and frame captures. Only terminal combat settles Herbs, hero XP,
+  finite gold and a site generation once. Do NOT resimulate battle
+  on replay, reopen, sleep or reload; nor create another combat motor.
+  The special Level-6 Troll remains atomic until a separate explicit
+  integration. Autonomous floor transitions, physical return journeys,
   magic life-signature death alert, spectator and archive remain pending.
   Do not promote V.003 to playable/released on this partial cutover.
-  The live dungeon cutover and integrated ten-day validation remain pending.
+  Full V.003 release acceptance and integrated ten-day validation remain pending.
   An unpaid cart returns to its shelf at bed closure, never settling
   as imaginary cash. Version-17 saves intentionally reject v16 and
   earlier campaigns because the physical actor checkpoint is newly required. `gameState.advanceDay`

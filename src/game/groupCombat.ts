@@ -706,7 +706,7 @@ export function stepGroupCombat(
 ):readonly GroupCombatCue[] {
   return stepCombatEncounter(s,dt,GROUP_PIPELINE);
 }
-function capture(s: GroupCombatState): GroupReplayFrame {
+export function captureGroupCombatFrame(s: GroupCombatState): GroupReplayFrame {
   return { t:round(s.time),
     actors:s.actors.map(a=>({
       id:a.id,x:round(a.x),z:round(a.z),
@@ -714,6 +714,21 @@ function capture(s: GroupCombatState): GroupReplayFrame {
       heading:round(a.heading),phase:a.phase,
     })),
     projectiles:s.projectiles.map(p=>({ownerId:p.ownerId,x:round(p.x),z:round(p.z)})),
+  };
+}
+
+/** An immutable replay assembled ONLY from previously committed 60Hz frames. */
+export function groupCombatReplayFromFrames(
+  options:GroupCombatOptions,state:GroupCombatState,
+  frames:readonly GroupReplayFrame[],
+):GroupCombatReplay {
+  if(state.outcome==="fighting")throw new RangeError("Cannot archive an active battle");
+  return {
+    version:1,actors:options.actors.map(a=>({...a,
+      ...(a.equipment?{equipment:{...a.equipment}}:{})})),
+    bounds:{...options.bounds},
+    obstacles:(options.obstacles??[]).map(o=>({...o})),
+    frames:[...frames],cues:[...state.events],outcome:state.outcome,
   };
 }
 
@@ -727,17 +742,9 @@ export function resolveGroupCombat(options: GroupCombatOptions, maxSeconds=45):
     throw new RangeError("Group encounters must be bounded to 1-90 seconds");
   const state=createGroupCombat(options);
   const {frames}=recordCombatEncounter({
-    state,step:stepGroupCombat,capture, captureEvery:6,maxSeconds,
+    state,step:stepGroupCombat,capture:captureGroupCombatFrame, captureEvery:6,maxSeconds,
     isFighting:world=>world.outcome==="fighting",
   });
   if(state.outcome==="fighting")state.outcome="draw";
-  return {state,replay:{
-    version:1,
-    actors:options.actors.map(a=>({...a,
-      ...(a.equipment?{equipment:{...a.equipment}}:{})})),
-    bounds:{...options.bounds},
-    obstacles:(options.obstacles??[]).map(o=>({...o})),
-    frames,cues:[...state.events],
-    outcome:state.outcome,
-  }};
+  return {state,replay:groupCombatReplayFromFrames(options,state,frames)};
 }
