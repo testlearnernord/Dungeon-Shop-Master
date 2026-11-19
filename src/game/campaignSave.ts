@@ -5,7 +5,7 @@ import {
 } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
 import {
-  LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS,
+  LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS, LEVEL7_COMBAT_SECONDS,
   getLevel7Progress, prepareSpatialDungeonCombat, type Level7World,
   type SpatialDungeonFloor,
 } from "./level7Exploration.ts";
