@@ -8,6 +8,7 @@ import { pickUpShopItem, returnShopCart, payReservedShopCart } from "./shopCarts
 import { walkOutWithoutPurchase } from "./shopWalkout.ts";
 import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
+import {validateShopTraffic,type ShopTrafficCheckpoint} from "./shopTraffic.ts";
 import {rosterBoardProblem} from "./rosterBoardPlacement.ts";
 import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
 import { advanceWorldUntil, lastWorldTickOfDay,
@@ -26,6 +27,15 @@ export class GameStore {
 
   get state(): GameState {
     return this.current;
+  }
+  /** Commit the one authoritative physical checkpoint; never alter stock or
+   * create another customer AI/world clock in the persistence layer.
+   */
+  commitShopTraffic(checkpoint:ShopTrafficCheckpoint):void{
+    validateShopTraffic(checkpoint,this.current.day,this.current.worldClock.tick,
+      new Set(this.current.adventurers.filter(hero=>hero.status!=="dead").map(hero=>hero.id)),
+      new Set(this.current.shopLayout.shelves.map(shelf=>shelf.id)));
+    this.replace({...this.current,shopTraffic:checkpoint});
   }
 
   subscribe(listener: () => void): () => void {
@@ -187,7 +197,13 @@ export class GameStore {
     const oldTick=this.current.worldClock.tick;
     const target=Math.min(lastWorldTickOfDay(this.current.day),oldTick+ticks);
     if(target===oldTick)return;
-    this.replace(advanceWorldUntil(this.current,target,commitShopRequestEvent));
+    const advanced=advanceWorldUntil(this.current,target,commitShopRequestEvent);
+    // Keep saveable clock/checkpoint identities aligned while the committed
+    // shop step finishes. The caller replaces the position checkpoint after
+    // actually moving the customers.
+    this.replace({...advanced,shopTraffic:{
+      ...advanced.shopTraffic,tick:advanced.worldClock.tick}});
+
   }
 
   endDay(): void {

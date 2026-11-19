@@ -2,7 +2,7 @@ import type {ShopServiceClaim} from "./shopServiceSpots.ts";
 import type {WaypointProgress} from "./npcTraffic.ts";
 import type {GateSide} from "./npcVisitors.ts";
 import type {ShopPoint} from "./shopperNavigation.ts";
-import type {ItemId} from "./economy.ts";
+import {ITEMS,type ItemId} from "./economy.ts";
 
 export type ShopActorPhase="entering"|"browsing"|"considering"|"queueing"|"leaving";
 export interface ShopTrafficActor {
@@ -105,8 +105,7 @@ const ACTOR_FIELDS=[
 const ROLES=["checkout","restock","credit","shelf-browse","shelf-wait",
   "overflow","idle","roam"];
 const PHASES=["entering","browsing","considering","queueing","leaving"];
-const ITEMS=["bread","healing-herb","iron-sword","leather-vest",
-  "steel-sword","chainmail"];
+const PERMITTED_ITEMS=ITEMS.map(item=>item.id);
 /** Saves reject incompatible/forged actors, orphaned claims and impossible
  * checkout/shelf ownership; never silently reset a corrupted route.
  */
@@ -169,7 +168,7 @@ export function validateShopTraffic(
     }
     if(actor.restockSeconds!==null)
       bounded(actor.restockSeconds,p+".restockSeconds",0,100);
-    if(actor.wishItem!==null&&!ITEMS.includes(actor.wishItem as string))
+    if(actor.wishItem!==null&&!PERMITTED_ITEMS.includes(actor.wishItem as ItemId))
       fail(p+".wishItem","is not a known product");
     if(actor.browseSide!==-1&&actor.browseSide!==1)fail(p+".browseSide","is invalid");
   }

@@ -1,5 +1,6 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { beginNextWorldDay, createWorldClock, MAX_WORLD_DAY, type WorldClockState } from "./worldClock.ts";
+import {emptyShopTraffic,type ShopTrafficCheckpoint} from "./shopTraffic.ts";
 import type {ShopRequest} from "./shopRuntime.ts";
 import { useHealingSupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
 import { createEconomy, type ItemId, type Slot } from "./economy.ts";
@@ -31,7 +32,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 16;
+export const SIMULATION_VERSION = 17;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -99,6 +100,7 @@ export interface GameState {
   readonly day: number;
   readonly worldClock: WorldClockState;
   readonly shopRequests: readonly ShopRequest[];
+  readonly shopTraffic: ShopTrafficCheckpoint;
   readonly simulationVersion: number;
   readonly events: readonly WorldEvent[];
   readonly adventurers: readonly AdventurerState[];
@@ -141,6 +143,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     day: 1,
     worldClock: createWorldClock(),
     shopRequests: [],
+    shopTraffic:emptyShopTraffic(1,0),
     simulationVersion: SIMULATION_VERSION,
     events: [
       ...adventurers.slice(0, 3).map((hero) => arrivalEvent(hero, 1)),
@@ -423,7 +426,8 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   });
   return {
     state: {
-      ...closed, day, worldClock, adventurers, rngState, shopEconomy: nextEconomy,
+      ...closed, day, worldClock,shopTraffic:emptyShopTraffic(day,worldClock.tick),
+      adventurers, rngState, shopEconomy: nextEconomy,
       level7World,
       earlyDungeonWorlds,
       dungeonParties,
