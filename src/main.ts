@@ -98,7 +98,9 @@ const shop = new Shop(scene, store);
 const board = createRosterBoard(scene, store);
 setupWallPortraitVisuals(scene,store);
 worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
-const openRoster = setupRosterBoardHud(canvas, camera, store);
+let watchLiveHero:(heroId:string)=>void=()=>{};
+const openRoster = setupRosterBoardHud(canvas, camera, store,
+  id=>watchLiveHero(id));
 const debtBook=setupDebtBookHud(canvas,camera,store);
 let bedtime:BedtimeController|null=null;
 let ledger:MerchantLedger|null=null;
@@ -232,6 +234,7 @@ setupCampaignHud(store, campaign, () => {
   npcVisuals.reconcile([], []);
   lastShoppingState=null;
   worldClockPacer.reset();
+  dungeon.close();
   bedtime?.reset();
   ledger?.close();
   resetReplayDisclosure();
@@ -343,6 +346,10 @@ const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
 });
+watchLiveHero=id=>{
+  if(!dungeon.openLive(id))
+    statusHud.textContent="No active LIVE dungeon observation for this signature.";
+};
 isShopActive=()=>!arena.isActive&&!dungeon.isActive&&!(bedtime?.isBlocking??false);
 ledger=setupMerchantLedger(()=>{
   camera.attachControl(canvas,true);
@@ -385,7 +392,9 @@ cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId()
 engine.runRenderLoop(() => {
   const frameMs=ignoreNextClockFrame?0:engine.getDeltaTime();
   ignoreNextClockFrame=false;
-  const paused=document.hidden||!isShopActive()||
+  // LIVE spectator is a camera only: the saved world and physical shop
+  // customers must continue on the one authoritative 50ms clock.
+  const paused=document.hidden||(!isShopActive()&&!dungeon.isWatchingLive)||
     !!document.querySelector("dialog[open]")||
     document.body.classList.contains("blueprint-active");
   npcVisuals.setWorldPaused(paused);
