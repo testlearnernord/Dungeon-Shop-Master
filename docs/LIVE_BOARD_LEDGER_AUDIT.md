@@ -18,6 +18,29 @@
 > obsolete implementations, and test deterministic saving only for the
 > NEW version. Do not ship two parallel simulations or two boards.
 
+## Revised PR #212 recording rule (20 November 2026)
+
+The owner explicitly rejected an ever-expanding permanent archive of
+thousands of replays because of performance and storage costs.
+Replace that older open-ended archive proposal with a compact **timeline
+of real highlights from today and the previous two completed game days**.
+The player may save individual true recordings, up to a bounded list of
+12. Older unpinned 60 Hz combat/path frames expire after this rolling
+window; small event truth remains for death signals, party relations,
+debt and shop reports. Combat, treasure, Temporary Party join/leave,
+departure and return appear as authentic event markers. Missing
+recorded movement/fight footage must NEVER be invented for a marker.
+World event ticks and the recording's local playback clock are distinct.
+The existing Babylon dungeon viewer is reused, and bookmark segments
+are assembled only for a selected recording. The passive Board still
+uses its restricted known-state projection; archive inspection is an
+explicit action and may reveal more.
+
+The same milestone addresses the demonstrated low-FPS checkout issue:
+the UI grades what was actually rendered, and the expensive 3D scene
+stops rendering while its payment modal pauses the world. Overall
+render performance still requires representative browser profiling.
+
 ## Existing code, confirmed
 
 | Current location | What it actually does | V.003 decision |
