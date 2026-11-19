@@ -276,6 +276,12 @@ test("strict v20 saves reject forged backtracks and duplicated portal events",()
   tamper(stable,s=>{s.worldClock.pending=s.worldClock.pending.filter(
     (e:any)=>!e.subjectId.startsWith(SHOP_PORTAL_RETURN_PREFIX));},/dueTick|returns/);
   tamper(stable,s=>{s.adventurers.find((h:any)=>h.id===heroId).status="at-shop";},/floor|returns/);
+  tamper(stable,s=>{
+    const world=s.earlyDungeonWorlds.find((e:any)=>e.floor===1).world;
+    const position=world.heroes.find((h:any)=>h.heroId===heroId);
+    const other=position.visited.find((cell:number)=>cell!==1+19);
+    position.x=other%19;position.z=Math.floor(other/19);
+  },/entrance|returns/);
   assert(stable.payload.worldClock.pending.some(e=>
     e.subjectId===SHOP_PORTAL_RETURN_PREFIX+heroId&&
     e.dueTick===stable.payload.worldClock.tick+SHOP_PORTAL_TRANSIT_TICKS));
