@@ -22,14 +22,22 @@
 - **PR #203 merged (fixed-step shop):** 50ms committed simulation ticks,
   20 per game minute, real 60-second petition deadlines, FPS-independent
   shopper movement/queue/wait decisions and pickup checks; bounded autosaves.
-- **PR #204 in progress (physical checkpoint):** strict v17 saved NPC
+- **PR #204 merged (physical checkpoint):** strict v17 saved NPC
   positions/heading, active routes, local waits and congestion state,
   exclusive service and shelf reservations, gate heights and original
   iteration order. Real shop rehydration runs after layout/roster/plans;
   checkpoint capture is coalesced with each completed world tick to avoid
-  intermediate half-steps in IndexedDB. Gameplay test and full CI gate
-  required before merge. Dungeon expeditions remain a bedtime batch,
-  so the parallel V.003 world is still incomplete.
+  intermediate half-steps in IndexedDB. Build, 534 unit and 12 browser
+  checks passed, including an actual mid-visit resume.
+- **PR #205 in progress (resumable dungeon motor):** the SAME seeded
+  Floors 1–4 and 7 spatial-party/loot/combat engine now exposes a bounded
+  single connected step with immutable world-state result, rather than
+  requiring every caller to roll 36 steps at once. Previously committed
+  day-based behavior is unchanged until explicit live-time wiring removes
+  its bedtime owner. The current PR DOES NOT claim live dungeon play yet.
+  Real live expedition scheduling, 60 Hz fight progression and retirement
+  of the day-batch remain next. Dungeon expeditions currently still resolve
+  at bedtime, so the parallel V.003 world is incomplete.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,

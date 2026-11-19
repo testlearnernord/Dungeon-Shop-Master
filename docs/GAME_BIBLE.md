@@ -330,7 +330,10 @@ This does **not** declare an implemented system or a shipped version.
   intentionally moved to v16 for 20 fixed ticks per minute, and PR #204
   uses v17 for persisted physical customer state. None of the
   older alpha versions has a migration adapter.
-  The old dungeon day-batch remains transitional until PR #203.
+  The old dungeon day-batch remains transitional until the actual
+  live dungeon cutover. PR #205 adds a resumable one-step call to the
+  already shared spatial traversal authority. Its existence alone does
+  not commit any live expedition or replace 60 Hz combat playback.
   Correct new saves remain essential.
   See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 - **Small first chapter rather than fake 100-floor coverage:** investigate a

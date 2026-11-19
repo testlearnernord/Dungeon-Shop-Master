@@ -433,6 +433,18 @@ The redesign must preserve one deterministic GameState authority and introduce:
   coalesce to a microtask after completed world/shop steps, so no mid-step
   snapshot is serialized. Tick-only and traffic-only snapshots are
   throttled together; real shop transactions still save immediately.
+  **PR #205 resumable traversal:** `level7Exploration.ts` uses its SAME
+  spatial/party/combat/loot resolver for an optional bounded
+  `maxSteps`/`maxEncounters` advancement. The exported
+  `advanceSpatialDungeonPartyStep` moves at most one real connected tile
+  and commits a single site generation's effects, returning an immutable
+  continuation world/hero state. It does NOT introduce independent dice,
+  new map generation, a second encounter authority or a fake replay.
+  Default 36-step callers remain exactly backward-compatible inside
+  the active v17 save contract. This is a migration primitive, NOT
+  yet tied to `WorldClock`; fight frames still resolve atomically per
+  encounter. Live scheduling and deletion of bedtime dungeon batch
+  remain necessary before V.003.
   **Remaining:** the old dungeon expedition/fight batch and end-to-end
   long-running game balance/board integration are NOT yet live V.003.
   The full migration must unify active shop/customer timers, dungeon/party
