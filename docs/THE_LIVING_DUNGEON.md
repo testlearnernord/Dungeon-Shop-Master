@@ -1,7 +1,12 @@
 # The Living Dungeon — V.003 ALPHA design target
 
-> **Approved direction, not implemented gameplay · 2026-11-18.**
+> **Approved V.003 direction, with PR #201–207 merged and #208 in progress · 2026-11-19.**
 > Dungeon Shop Master's next named milestone is **V.003 ALPHA — The Living Dungeon**.
+> Actual saved shared-world time, physical shop customers, persistent spatial
+> dungeon steps and ordinary time-resolved 60Hz fights are implemented.
+> PR #208 adds real backtracking and timed portal returns; V.003 is NOT
+> release-complete without the LIVE Board, spectator/archive, richer hero
+> decisions, two-day standby and multi-day acceptance.
 > The existing published build still displays **V.002 ALPHA** and the npm package
 > still has independent metadata `0.1.0`. Do not bump the in-game release label
 > or claim V.003 is playable until its release acceptance gates are met.
@@ -134,11 +139,14 @@ roles, HP and founding day from that same historical relationship.
 This is still only a foundation for Board 2.0, not its full
 chronological event/last-known status timeline.
 
-**Not implemented:** advanced long-term party negotiation/leadership (bounded voluntary post-encounter floor coordination is now present),
+**Not implemented:** advanced long-term party negotiation/leadership
+(bounded voluntary post-encounter floor coordination is present),
 party-vs-unique-Troll campaign encounters, fully general status/
-ability effects, dungeon Floors 8–10, cursed out-of-number
-shop entrance, two-day hero standby, a shared deterministic
-shop/dungeon world clock or the full event-based Adventurer Board 2.0.
+ability effects, dungeon Floors 8–10, finalized cursed out-of-number
+shop *visual* entrance, two-day post-shop hero standby or the complete
+event-based LIVE Adventurer Board 2.0. The shared clock and real in-day
+ordinary battles already exist. PR #208 brings real connected dungeon
+return routes and saved mid-day arrivals through the existing shop gate.
 The old Floor 6 boss progression remains separately routed.
 
 **Release label:** V.003 Alpha is the **future milestone**.
