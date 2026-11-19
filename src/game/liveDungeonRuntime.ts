@@ -169,11 +169,11 @@ function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState
      journey.dueTick!==state.worldClock.tick||
      !hero||hero.status!=="traveling"||hero.floor!==4)
     throw new RangeError("Portal arrival lacks a committed physical return.");
-  if(state.events.some(e=>e.day===state.day&&e.type==="shop-arrival"&&
-      e.adventurerId===id))
-    throw new RangeError("A hero cannot arrive twice on one world day.");
+  // Multiple genuine visits in a day are legal. The identity is tied
+  // to the ONE consumed portal crossing, not to a lossy per-day hero flag.
+  // Paid goods remain protected by the existing once-per-day sale ledger.
   const arrival:WorldEvent={
-    id:"day-"+state.day+":"+id+":shop-arrival",
+    id:"day-"+state.day+":"+id+":shop-arrival:"+state.worldClock.tick,
     type:"shop-arrival",day:state.day,worldTick:state.worldClock.tick,
     adventurerId:id,
     message:hero.name+" emerged through Galvik's portal into the shop.",
