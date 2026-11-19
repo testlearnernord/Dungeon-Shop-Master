@@ -11,6 +11,22 @@
 - The latest explicit project-owner decision overrides an older statement here. Update this document in the same change; do not let outdated text veto new work.
 - A conceptual image, brainstorm, AI suggestion or prototype is **not** a LOCKED decision by itself.
 
+## Recording history and performance (LOCKED for V.003)
+
+The player must be able to review a **short timeline of real highlights**
+for today's events and the previous two completed game days. An
+ever-growing automatically saved replay library is rejected. Recorded
+footage persists beyond that window only when the player explicitly
+marks a chosen replay for long-term retention (initial cap 12).
+Party formations, loot discoveries, fights, losses and returns belong
+as chronological committed markers; do not fabricate video for any
+unrecorded event. Record local video time separately from world ticks.
+Only the explicit spectator/timeline may reveal additional information;
+Galvik's passive Board still obeys its knowledge limits.
+The payment minigame must not penalize the player for frames that the
+renderer never presented. Avoid expensive Babylon redraws while that
+modal is open. V.003 performance acceptance remains OPEN.
+
 ## 1. The game we are making
 
 **Identity (LOCKED):** An atmospheric, dark-fantasy shopkeeping simulator in a dangerous dungeon. The shop is physically operated, rather than being a menu. Adventurers are autonomous customers with identities and uncertain futures. Commerce, greed, survival and long-term consequences belong together.
