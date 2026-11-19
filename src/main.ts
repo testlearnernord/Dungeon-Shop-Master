@@ -397,6 +397,13 @@ cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId()
 engine.runRenderLoop(() => {
   const frameMs=ignoreNextClockFrame?0:engine.getDeltaTime();
   ignoreNextClockFrame=false;
+  // The register is a DOM-only modal. Its world clock is paused already,
+  // so avoid wasting GPU/CPU on a hidden 3D scene while input matters.
+  if(cashier?.isOpen){
+    npcVisuals.setWorldPaused(true);
+    worldClockPacer.reset();
+    return;
+  }
   // LIVE spectator is a camera only: the saved world and physical shop
   // customers must continue on the one authoritative 50ms clock.
   const paused=document.hidden||(!isShopActive()&&!dungeon.isWatchingLive)||
