@@ -26,6 +26,7 @@ import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
   SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS} from "./liveDungeonRuntime.ts";
 import {createGroupCombat,type GroupCombatOptions} from "./groupCombat.ts";
 import {forecastShoppingIntents} from "./shopperIntents.ts";
+import {containsReplay,MAX_SAVED_REPLAYS} from "./replayRetention.ts";
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -750,7 +751,7 @@ function validateLivePortalReturns(
 
 function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
-    "day", "worldClock", "shopRequests", "shopTraffic", "liveDungeon", "simulationVersion", "events", "adventurers", "shopEconomy", "dungeonFloors",
+    "day", "worldClock", "shopRequests", "shopTraffic", "liveDungeon", "simulationVersion", "events", "savedReplayIds", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
     "level5Room","bedroomFurniture","rosterBoard",
@@ -1172,7 +1173,7 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
-      ["adventurerId", "worldTick", "reportedZone", "shopReason", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
+      ["adventurerId", "worldTick", "reportedZone", "dungeonHighlight", "shopReason", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
         "combatReplay", "level7Replay", "dungeonReplay",
         "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
@@ -1201,6 +1202,7 @@ function validateState(value: unknown): asserts value is GameState {
       ...(event.type==="hero-death-signal"?["worldTick"]:[]),
       ...(event.type==="dungeon-live"?["worldTick",
         ...(event.reportedZone!==undefined?["reportedZone"]:[]),
+        ...(event.dungeonHighlight!==undefined?["dungeonHighlight"]:[]),
         ...(event.level7Replay!==undefined?["level7Replay"]:[]),
         ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[])]:[]),
       ...(!global ? ["adventurerId"] : [])];
@@ -1220,6 +1222,8 @@ function validateState(value: unknown): asserts value is GameState {
         fail(path+".adventurerId","must be a real fallen hero or active zero-HP fighter");
     }
     if(event.type==="dungeon-live"){
+      if(event.dungeonHighlight!==undefined)
+        choice(event.dungeonHighlight,["treasure","trap"],path+".dungeonHighlight");
       if(event.reportedZone!==undefined)
         choice(event.reportedZone,["upper","deep"],path+".reportedZone");
       if(event.worldTick===undefined)
@@ -1332,6 +1336,20 @@ function validateState(value: unknown): asserts value is GameState {
     for (const key of Object.keys(event)) {
       if (!allowed.includes(key)) fail(`${path}.${key}`, "is not valid for this event type");
     }
+  });
+  // Only complete, real recordings may be protected beyond the lookback.
+  const pins=array(state.savedReplayIds,"payload.savedReplayIds");
+  if(pins.length>MAX_SAVED_REPLAYS)
+    fail("payload.savedReplayIds","exceeds the saved recording limit");
+  const seenPins=new Set<string|number>();
+  pins.forEach((raw,i)=>{
+    const path="payload.savedReplayIds["+i+"]";
+    const id=text(raw,path);
+    unique(id,seenPins,path);
+    const referenced=(state.events as unknown as GameState["events"])
+      .find(event=>event.id===id);
+    if(!referenced||!containsReplay(referenced))
+      fail(path,"must identify a retained committed recording");
   });
   {
     const balances=new Map<string,number>();

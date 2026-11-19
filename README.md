@@ -15,6 +15,13 @@ The *100-floor dungeon* is the setting's long-term premise, **not** a claim
 that 100 playable floors exist. The current alpha is **day-based**, not a
 continuously running dungeon simulation.
 
+**V.003 migration note (PR #212):** The experimental Expedition
+Archive has been redesigned as a small timeline of today's and the
+previous two days' actual highlights. Save individual recordings to
+retain them long-term (up to 12). Do not expect an infinite replay
+library. A separate cashier/observer performance pass reduces wasted
+rendering; full release acceptance remains open.
+
 ## Start here: source of truth
 
 - [Game Bible](docs/GAME_BIBLE.md): current implementation versus explicitly

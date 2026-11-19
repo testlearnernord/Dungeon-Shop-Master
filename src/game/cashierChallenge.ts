@@ -17,6 +17,11 @@ export const CASHIER_STAGES = [
 ] as const;
 
 export const CASHIER_TIMING_TOLERANCE = 0.09;
+/** Slow enough to expose visible success frames on lower-end machines. */
+export const CASHIER_NEEDLE_PERIOD_MS=1100;
+export function cashierNeedlePosition(elapsedMs:number):number {
+  return Math.abs(Math.sin(Math.max(0,elapsedMs)/CASHIER_NEEDLE_PERIOD_MS));
+}
 
 export interface CashierTimingResult {
   readonly accepted: boolean;

@@ -14,6 +14,7 @@ import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
 import { advanceWorldUntil, lastWorldTickOfDay,
   WORLD_TICKS_PER_GAME_MINUTE } from "./worldClock.ts";
 import {activateLiveDungeon,commitLiveWorldEvent} from "./liveDungeonRuntime.ts";
+import {containsReplay,MAX_SAVED_REPLAYS} from "./replayRetention.ts";
 import {clearResolvedShopRequests,commitShopRequestEvent,closeShopRequests,
   requestRemainingTicks,shortenShopRequestForTest,startShopRequest} from "./shopRuntime.ts";
 
@@ -67,6 +68,23 @@ export class GameStore {
       state.events!==this.current.events||state.shopDebts!==this.current.shopDebts;
     this.current=needsRefresh?clearResolvedShopRequests(state):state;
     for (const listener of this.listeners) listener();
+  }
+
+  /** Pin a real completed recording for later days, or remove its pin.
+   * Only this list is mutated: not the tape, combat, RNG or world time.
+   */
+  toggleSavedReplay(eventId:string):string {
+    const existing=this.current.savedReplayIds;
+    if(existing.includes(eventId)){
+      this.replace({...this.current,savedReplayIds:existing.filter(id=>id!==eventId)});
+      return "Recording removed from saved highlights.";
+    }
+    const event=this.current.events.find(e=>e.id===eventId);
+    if(!event||!containsReplay(event))return "No recording is available to save.";
+    if(existing.length>=MAX_SAVED_REPLAYS)
+      return "Saved highlight limit reached ("+MAX_SAVED_REPLAYS+"). Remove one first.";
+    this.replace({...this.current,savedReplayIds:[...existing,eventId]});
+    return "Recording saved for later days.";
   }
 
   purchase(itemId: ItemId, quantity: number, requestId: number): string {

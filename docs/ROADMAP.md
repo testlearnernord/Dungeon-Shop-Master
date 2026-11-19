@@ -8,7 +8,24 @@
 > [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
 > Future PR numbers are **not reserved**.
 
-## Incremental V.003 migration\n\nPR #211 introduces an opt-in read-only LIVE spectator for genuine current\ndungeon exploration and group-combat frames. It preserves passive Board\ninformation boundaries and allows shop operation to proceed on the shared\nworld clock. Expedition archive, two-day off-duty shop rotation, integrated\nmultiday testing and release acceptance remain outstanding.\n\n## Current foundation (playable V.002 ALPHA)
+## Incremental V.003 migration
+
+- **PR #211 merged:** explicit LIVE spectator of real current spatial
+  checkpoints and 60 Hz combat frames; the physical shop clock continues.
+- **PR #212 current:** a SMALL, two-completed-days-plus-today
+  event/highlight timeline, not a massive permanent replay archive.
+  Deliberate Save protects at most 12 full recordings past the rolling
+  frame expiry; combat/loot/party/death/return highlights come only from
+  committed world events. Strict v23 validation protects saved record
+  references. Lazy playback jump positions use the existing replay engine.
+  Cashier no longer renders an expensive Babylon scene while its modal is
+  open and grades the last visibly painted needle position. LIVE spectator
+  skips re-projection at 60Hz when nothing in the dungeon changed.
+- **Remaining:** two-day off-duty shop rotation and integrated multi-day
+  campaign/financial/performance acceptance. Never label V.003 as shipped
+  until its release gates pass.
+
+## Current foundation (playable V.002 ALPHA)
 
 - **PR #201 world-clock foundation:** version-14 campaigns save an integer
   world minute and future-event queue. Foreground unblocked shop play advances

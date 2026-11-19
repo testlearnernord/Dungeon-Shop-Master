@@ -304,7 +304,14 @@
   join/leave events. Preserve each character's independent HP,
   gear, consumables, gold, visited locations and intention.
   Full lower-floor progression, two-day off-duty rotation,
-  archive remains pending. PR #211 adds the opt-in LIVE spectator: use\n  `liveSpectator.ts` to inspect only saved current dungeon progress and\n  committed group fight frames. `dungeonReplayScene.ts` renders these\n  using the SAME renderer and fog as old footage, with no battle tick,\n  RNG, future monster reveal or replay outcome. The ordinary Board must\n  not consume this projection: watching is an explicit per-hero action.\n  The shared clock AND shop traffic continue while watching LIVE, but\n  historical replay and dialogs still pause it. PR #210 introduced strict
+  unique deeper progression remains pending. PR #211 adds the opt-in LIVE spectator: use
+  `liveSpectator.ts` to inspect only saved current dungeon progress and
+  committed group fight frames. `dungeonReplayScene.ts` renders these
+  using the SAME renderer and fog as old footage, with no battle tick,
+  RNG, future monster reveal or replay outcome. The ordinary Board must
+  not consume this projection: watching is an explicit per-hero action.
+  The shared clock AND shop traffic continue while watching LIVE, but
+  historical replay and dialogs still pause it. PR #210 introduced strict
   v22 magical observation events and one `liveBoardProjection.ts`
   knowledge source. The actual spatial/trap, unique boss and 60Hz
   group motors emit `hero-death-signal` ONLY on a real first
@@ -325,7 +332,7 @@
   as imaginary cash. Real browser campaigns exclusively run the saved
   live expedition/combat and shop motors, never the older bedtime
   dungeon batch (retained only for isolated pure legacy regression
-  fixtures). The current v22 format intentionally rejects older
+  fixtures). The current v23 format intentionally rejects older
   alpha snapshots. Do not claim V.003 as a released milestone or
   invent an additional time engine, mandatory Floor-10 boss, class/mana
   scheme or 100-floor simulation from design-only documents. **Newest owner decision: backward compatibility with old alpha/v13
@@ -336,6 +343,23 @@
   Board is to be genuinely LIVE and knowledge-safe during shop play.
   Simplify the redundant `The Living` and mandatory `Sealed Expeditions`
   nighttime pages only after the new Board/Archive replaces them.
+  **PR #212 bounded footage (current branch):** Expedition Timeline lists
+  only committed highlights from today and the preceding TWO complete
+  in-game days. Only explicit saves in `GameState.savedReplayIds`
+  preserve up to 12 selected recordings beyond the window. The one
+  `compactReplayFootage` path strips expired large frame arrays
+  during both day-close implementations without touching event IDs,
+  deaths, economy, hero progress or world time. No mass replay library,
+  fabricated party/treasure video or simulated archive outcomes.
+  `dungeonHighlight` is derived from real committed treasure/trap steps
+  and shown only in the deliberately opened timeline, never on the
+  knowledge-limited passive Board. Exact timestamps and local playback
+  seconds must never be conflated; recording bookmarks are lazy.
+  VERSION 23 saves validate all saved recording references.
+  **Performance boundary:** Cashier input is graded against the last
+  actually painted needle position, with Babylon scene rendering stopped
+  during its modal; world timing remains paused. LIVE spectator projection
+  must not regenerate layouts/meshes or a party DOM on every render frame.
   See `docs/LIVE_BOARD_LEDGER_AUDIT.md`.
 - **Story causality remains OPEN.** The young hero, mercenary leader, transfer of the curse, Floor 100 and Galvik's eventual role are not final canon. The earlier **amulet mechanic is removed from the current design direction**, not an OPEN prerequisite; do not reintroduce it by accident. Short cynical Galvik-as-commentator sketches are likewise not a locked protagonist transition.
 

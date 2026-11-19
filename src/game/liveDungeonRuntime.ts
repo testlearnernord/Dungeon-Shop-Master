@@ -18,6 +18,7 @@ import {returnUnpaidCartsAtClose} from "./shopCarts.ts";
 import {scheduleShopVisit} from "./shopArrivals.ts";
 import {commitShopRequestEvent} from "./shopRuntime.ts";
 import {SeededRandom} from "./random.ts";
+import {compactReplayFootage} from "./replayRetention.ts";
 import {beginNextWorldDay,firstWorldTickOfDay,lastWorldTickOfDay,
   scheduleWorldEvent,type ScheduledWorldEvent} from "./worldClock.ts";
 
@@ -458,6 +459,9 @@ function commitDungeonTick(state:GameState):GameState {
           plans.delete(id);
         }
       }
+      const highlight=individual.replay.steps.some(s=>s.action==="treasure")
+        ?"treasure" as const:individual.replay.steps.some(s=>s.action==="trap")
+          ?"trap" as const:null;
       const important=individual.replay.steps.some(s=>
         s.action==="treasure"||s.action==="trap"||
         s.action==="combat"||s.action==="death");
@@ -479,6 +483,7 @@ function commitDungeonTick(state:GameState):GameState {
           id:`day-${day}:${id}:dungeon-live:${tick}`,
           type:"dungeon-live",day,worldTick:tick,adventurerId:id,
           reportedZone:zone(floor),
+           ...(highlight?{dungeonHighlight:highlight}:{}),
           ...(decision?{dungeonGoal:decision.goal,floorAction:decision.action}:{}),
           message:`${individual.adventurer.name}'s expedition changed. Details await a report.`,
         });
@@ -732,7 +737,8 @@ export function finishLiveDungeonDay(
       next.earlyDungeonWorlds?.find(e=>e.floor===floor)?.world??
       emptyLevel7World(),finalPlans,state.seed,day,clock.tick);
   const committed={...next,dungeonParties:party.parties,
-    events:[...next.events,...party.events]};
+    events:compactReplayFootage([...next.events,...party.events],
+      day,state.savedReplayIds)};
   return {state:queueNextDungeonWorldTick(committed),
     events:[...events,...party.events]};
 }

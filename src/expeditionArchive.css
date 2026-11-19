@@ -1,0 +1,79 @@
+.archive-dialog {
+  box-sizing:border-box;
+  width:min(880px,96vw);
+  max-height:86vh;
+  padding:clamp(1rem,3vw,1.75rem);
+  overflow:auto;
+  color:#e9dec5;
+  background:#191815;
+  border:1px solid #6b5842;
+  border-radius:10px;
+  box-shadow:0 22px 90px #000b;
+  font-family:inherit;
+}
+.archive-dialog::backdrop { background:#000b; }
+.archive-header { display:flex;justify-content:space-between;align-items:start;gap:1.5rem; }
+.archive-header small { letter-spacing:.13em;color:#cba96f; }
+.archive-header h2 { font-size:1.55rem;margin:.2rem 0; }
+.archive-header p { margin:.4rem 0 1rem;color:#b7aa97; }
+.archive-header button,.archive-entry-actions button { 
+  cursor:pointer;color:#f0e5cf;background:#352c22;border:1px solid #937653;
+  border-radius:5px;padding:.55rem .75rem;
+}
+.archive-header button:hover,.archive-entry-actions button:hover,
+.archive-header button:focus-visible,.archive-entry-actions button:focus-visible {
+  outline:2px solid #cbaa73;outline-offset:2px;
+}
+.archive-filters { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem; }
+.archive-filters label { display:grid;gap:.25rem;font-size:.82rem;color:#d3b88e; }
+.archive-filters select,.archive-filters input {
+  color:#f4e6d0;background:#25231f;border:1px solid #6d624d;
+  padding:.55rem;width:100%;min-width:0;box-sizing:border-box;border-radius:4px;
+}
+#archive-summary { color:#bbb09e;font-size:.8rem;margin:1rem 0; }
+#archive-entries { display:grid;gap:.65rem; }
+.archive-entry {
+  background:#25211c;border:1px solid #51493b;border-left:3px solid #9d784d;
+  border-radius:5px;padding:.8rem 1rem;
+}
+.archive-entry[data-kind="death"] { border-left-color:#ac625a; }
+.archive-entry[data-kind="party"] { border-left-color:#75928f; }
+.archive-entry h3 { margin:0;font-size:1rem;color:#f0e1c5; }
+.archive-entry p { margin:.35rem 0;font-size:.83rem;color:#bfb09b; }
+.archive-entry .archive-world-time { color:#d4b88b; }
+.archive-entry-actions { display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.7rem; }
+.archive-entry-actions button { font-size:.8rem;padding:.4rem .6rem; }
+@media(max-width:680px) {
+  .archive-filters { grid-template-columns:1fr; }
+  .archive-header { flex-wrap:wrap; }
+}
+
+/* The rail is a real committed-event chronology, not a video editor with
+ * fabricated timestamps. Missing event clock values remain labelled unknown. */
+#archive-entries { position:relative; padding-left:1.45rem; }
+#archive-entries::before {
+  content:"";position:absolute;top:0;bottom:0;left:.55rem;
+  width:2px;background:#665641;pointer-events:none;
+}
+.archive-entry { position:relative; }
+.archive-entry::before {
+  content:"";position:absolute;left:-1.38rem;top:.93rem;
+  width:.7rem;height:.7rem;box-sizing:border-box;
+  border:2px solid #191815;border-radius:50%;
+  background:#bf9d66;
+}
+.archive-entry[data-kind="combat"]::before { background:#b77e6a; }
+.archive-entry[data-kind="treasure"]::before { background:#e7c06b; }
+.archive-entry[data-kind="party"]::before { background:#7ca3a1; }
+.archive-entry[data-kind="death"]::before { background:#bb5953; }
+.archive-bookmarks:not([hidden]) {
+  display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem;
+}
+.archive-bookmarks button {
+  cursor:pointer;padding:.35rem .6rem;border:1px solid #6d624d;
+  border-radius:4px;background:#302d28;color:#f0e5cf;
+  font:inherit;font-size:.8rem;
+}
+.archive-bookmarks button:hover,.archive-bookmarks button:focus-visible {
+  outline:2px solid #cbaa73;outline-offset:1px;
+}

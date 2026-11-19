@@ -4,8 +4,9 @@ import { createGameState, advanceDay, setLevel6Permit } from "../../src/game/gam
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
 import { BOSS_MAX_HP } from "../../src/game/arenaCombatMotion.ts";
-import { REPLAY_KEEP_RECENT, frameFromCombat, validateBossReplay } from "../../src/game/bossCombatReplay.ts";
+import { frameFromCombat, validateBossReplay } from "../../src/game/bossCombatReplay.ts";
 import { createCombatPreview } from "../../src/game/arenaCombatMotion.ts";
+import {compactReplayFootage} from "../../src/game/replayRetention.ts";
 
 function recordedFight() {
   let state = setLevel6Permit(createGameState(), "adventurer-1", true);
@@ -79,7 +80,7 @@ test("a victory replay requires a living hero", () => {
     /victory requires boss death and a living hero/);
 });
 
-test("only the three newest fight recordings remain heavy; full event outcomes remain intact", () => {
+test("only the last two completed days retain automatic footage; older recordings need a pin", () => {
   const original = createGameState();
   const party = original.adventurers.slice(0,5).map(h=>({
     ...h, status:"expedition" as const, floor:6 as const,
@@ -91,9 +92,13 @@ test("only the three newest fight recordings remain heavy; full event outcomes r
   const result = advanceDay(state).state;
   const combats=result.events.filter(e=>e.type==="level6-combat");
   assert.equal(combats.length,5);
-  assert.equal(combats.filter(e=>e.combatReplay).length,REPLAY_KEEP_RECENT);
-  assert(combats.slice(0,2).every(e=>!e.combatReplay));
-  assert(combats.slice(-3).every(e=>e.combatReplay));
+  assert.equal(combats.filter(e=>e.combatReplay).length,5,
+    "All five newly committed day recordings remain available.");
+  const aged=compactReplayFootage(result.events,result.day+3,[]);
+  assert.equal(aged.filter(e=>e.type==="level6-combat"&&e.combatReplay).length,0);
+  const pinned=compactReplayFootage(result.events,result.day+3,[combats[0].id]);
+  assert.equal(pinned.filter(e=>e.type==="level6-combat"&&e.combatReplay).length,1);
+  assert(pinned.some(e=>e.id===combats[0].id&&e.combatReplay));
   assert.deepEqual(parseSave(JSON.stringify(createSave(result))),result);
 });
 

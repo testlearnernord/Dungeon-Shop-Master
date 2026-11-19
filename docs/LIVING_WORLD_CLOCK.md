@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design; PR #201–210 merged, #211 LIVE spectator in development · 2026-11-19.**
+> **Approved design; PR #201–211 merged, #212 bounded highlight timeline in progress · 2026-11-19.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -136,7 +136,34 @@ those words confer no special simulation authority.
   occurs once through a deliberate confirmation. No extra settlement or
   world random roll from watching video.
 
-## PR #211 live spectator boundary\n\nThe LIVE viewer is an opt-in presentation of the selected hero's actual\nspatial checkpoint, visited tiles, and precommitted 60Hz encounter frames.\nIt reads the SAME world clock and dungeon engine. It never creates a second\ncombat result, advances RNG, or writes to the save. Galvik's passive Board\ncontinues to show only verified signals, not the watched hero's hidden stats.\nWhile LIVE, shop traffic and all real world events continue normally; historical\nreplay/development inspection pauses the clock. The day still closes only at bed.\n\n## Migration constraints from current source
+## PR #211 live spectator boundary
+
+The LIVE viewer is an opt-in presentation of the selected hero's actual
+spatial checkpoint, visited tiles, and precommitted 60Hz encounter frames.
+It reads the SAME world clock and dungeon engine. It never creates a second
+combat result, advances RNG, or writes to the save. Galvik's passive Board
+continues to show only verified signals, not the watched hero's hidden stats.
+While LIVE, shop traffic and all real world events continue normally; historical
+replay/development inspection pauses the clock. The day still closes only at bed.
+
+## PR #212 owner-revised rolling replay contract
+
+The default timeline displays TODAY and only TWO earlier completed game
+days. A player can explicitly save an individual committed replay, up to
+12 per campaign, and later remove the pin. The larger combat/movement frame
+arrays expire at the next overnight window boundary unless saved; small
+authentic history events remain so death/party/shop knowledge stays intact.
+No thousands-of-replays library, no video footage invented for a party
+join, loot discovery or an unrecorded fight. On-demand bookmarks seek the
+existing immutable local replay timeline, **not** world time. The listener
+cannot reveal hidden combat detail through the passive Adventurer Board.
+
+FPS is a separate quality gate: pause expensive Babylon rendering during
+the register dialog; grade against the last visible needle to avoid skipped
+success zones on low-FPS systems. LIVE observer projections are refreshed
+on committed state changes rather than every rendered frame.
+
+## Migration constraints from current source
 
 **CURRENT at decision time:** `src/game/gameState.ts::advanceDay`
 advances all ordinary dungeon expeditions in one day transition;

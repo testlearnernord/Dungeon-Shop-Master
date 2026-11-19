@@ -21,6 +21,7 @@
           <p id="save-status" role="status">Loading campaign…</p>
           <nav class="shop-quick-actions" aria-label="Shop actions">
             <button id="open-wholesale" type="button">Wholesale (B)</button>
+             <button id="open-archive" type="button">Expedition Archive (H)</button>
             <button id="open-blueprint" type="button">Move looked-at furniture (P)</button>
              <button id="build-shelf" type="button">Build 4-slot shelf (N)</button>
              <button id="build-portrait" type="button">Hang portrait (Shift+N)</button>
@@ -100,7 +101,8 @@
              <span>·</span> <strong>R</strong> rotate in build mode
             <span>·</span> <strong>R</strong> roster board
             <span>·</span> <strong>V</strong> watch Level 6
-            <span>·</span> <strong>G</strong> observe Level 7
+            <span>·</span> <strong>G</strong> observe dungeon footage
+             <span>·</span> <strong>H</strong> Expedition Archive
             <span>·</span> <strong>M</strong> mouse / HUD
             <span>·</span> <strong>Esc</strong> release
 </div></details>
@@ -286,7 +288,10 @@
             <h2 id="roster-title">Adventurer Board</h2>
             <p id="roster-totals"></p>
           </div>
-          <button type="button" id="close-roster">Close (R / Esc)</button>
+          <div class="roster-heading-actions">
+              <button type="button" id="open-archive-roster">Expedition Archive (H)</button>
+              <button type="button" id="close-roster">Close (R / Esc)</button>
+            </div>
         </header>
         <div class="roster-toolbar">
           <label for="roster-filter">Show:</label>
@@ -298,7 +303,29 @@
         </div>
         <div id="roster-detail-list" aria-label="Hero roster"></div>
       </dialog>
-      <dialog id="wholesale" aria-labelledby="wholesale-title">
+      <dialog id="archive-dialog" class="archive-dialog" aria-labelledby="archive-title">
+          <header class="archive-header">
+            <div><small>GALVIK'S HISTORICAL RECORDS</small>
+              <h2 id="archive-title">Expedition Archive</h2>
+              <p>Last two completed days, plus today's highlights. Save selected recordings to keep them. World time is not replay time.</p>
+            </div>
+            <button id="archive-close" type="button">Close (H / Esc)</button>
+          </header>
+          <div class="archive-filters">
+            <label for="archive-hero-filter">Hero
+              <select id="archive-hero-filter"><option value="all">All heroes</option></select>
+            </label>
+            <label for="archive-day-filter">Timeline
+              <select id="archive-day-filter"><option value="saved">Saved replays</option></select>
+            </label>
+            <label for="archive-search">Find event
+              <input id="archive-search" type="search" placeholder="Hero, day, event ID" />
+            </label>
+          </div>
+          <p id="archive-summary" role="status"></p>
+          <div id="archive-entries" aria-label="Chronological expedition and event library"></div>
+        </dialog>
+        <dialog id="wholesale" aria-labelledby="wholesale-title">
         <header class="wholesale-heading">
           <div><small>GALVIK'S SUPPLIER LEDGER</small><h2 id="wholesale-title">Wholesale market</h2>
             <p>Purchase goods into your bag, then stock the shop. Adventurers pay when they check out.</p></div>
