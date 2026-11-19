@@ -473,7 +473,7 @@ The redesign must preserve one deterministic GameState authority and introduce:
   combat claims its real site and commits resources/rewards exactly once.
   Only captured finished footage is exposed through read-only live
   history. The unique Level-6 Troll resolver remains atomic for now.
-  **PR #208 physical return journey (in progress):** a real resupply or
+  **PR #208 merged physical return journey:** a real resupply or
   retreat decision stores a return intent in `liveDungeon.returns`.
   The very same spatial floor walker uses `chooseKnownReturnStep` for
   one adjacent, previously visited tile every 600 world ticks;
@@ -487,16 +487,29 @@ The redesign must preserve one deterministic GameState authority and introduce:
   checkpoint validation requires one real living traveler, location and
   timer per event; an expired report cannot be replayed for another sale.
   Surviving Floor-6 Troll challengers use this portal too, despite their
-  unique boss fight still being atomic. **Still incomplete:** two-day
-  post-shop standby, deeper autonomous floors, LIVE Board and spectator.
-  **Remaining:** the old dungeon expedition/fight batch and end-to-end
-  long-running game balance/board integration are NOT yet live V.003.
-  The full migration must unify active shop/customer timers, dungeon/party
-  events and site cooldowns
-  on one deterministic saved in-game timeline. Use bounded event advances,
-  clear same-timestamp ordering, safe pauses on planning/reviews/background,
-  deliberate bed settlement/overnight fast-forward, and no offline world
-  progress. Do not resolve every offscreen combat at 60 Hz per render frame.
+  unique boss fight still being atomic.
+  **PR #209 LIVE hero autonomy/Temporary Parties (in progress):**
+  `dungeonDecisions.ts` remains the ONLY individual goal policy; the
+  shared `liveDungeonRuntime.ts` invokes it after physically committed
+  spatial ticks or finished 60Hz fights. The persistent v21
+  `liveDungeon.plans` records per-hero action, goal, floor and
+  changed-tick; neither Board nor replay owns or advances it.
+  `dungeonDownStair` chooses a stable seeded reachable room.
+  `chooseKnownRouteStep` in the existing spatial path motor can
+  approach a previously discovered stair; ONLY arrival at the
+  correct seeded stair allows an adjacent early-floor change on
+  the next committed movement tick. New-floor entry uses actual
+  matching staircase coordinates and saves old-floor knowledge.
+  Existing `negotiatePartyFloorDecisions`,
+  `settlePersistentDungeonParties` and `temporaryPartyChanges`
+  reconcile consenting co-located people after each live movement
+  and finished battle, including casualties and bedtime rotation,
+  with unique world-tick TP join/leave identities. No second party
+  movement AI, free floor-change gold, or fabricated combat.
+  **Still incomplete:** shop post-visit two-day standby, unique
+  Level-6 boss unification, Floor-7+ authored exits, real-time
+  Board/important death signals, spectator/archive and ten-day
+  end-to-end gameplay validation. Render FPS never drives outcomes.
   See [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 - Separate *world truth* from *merchant knowledge*: only genuine
   chronologically committed reports with source/time/recency reach Galvik.
@@ -602,7 +615,7 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 6. **Universal furniture registry and transaction.** `furnitureRegistry.ts` owns canonical labels, mount surfaces, sizes, focus data, rotated bounds, collision and shelf/counter service semantics; there is no parallel shop-floor geometry table or counter rendering facade. `furniturePlacement.ts` is the ONE pure preview/commit validator, exposed through `GameStore.previewFurniturePlacement` / `placeFurniture`, contextual P and new-shelf N. Shop shelves have monotonically assigned `shelf-N` instance IDs and four stock slots per built instance; new placement appends the empty stock records atomically. New campaigns start with no shelves or stocked slots. Strict `campaignSave.ts` requires a complete version-15 room, bedroom, roster-board and counter transform and checks shelf-to-slot correspondence; older partial/five-slot states are incompatible and deliberately not migrated. The alpha bounds live shelving at 12 instances. `Shop` creates corresponding meshes and inventory slots on state changes, while navigation/queues use their registered collision hulls and service sockets. Wall-mounted fixtures share `wallFurniturePlacement.ts` for structural wall anchors and excavated-rock support; mining supporting rock is rejected until the mounted object is moved. Private bedroom fixtures share the registry/transaction but retain sleep/door access rules. Other furniture currently remains a single instance per type: new reusable types still need their own mesh, persistence and interactions.
 7. **All dependent transforms move together.** Bedroom object groups include their interaction targets, collision hulls and lights when applicable. Sleep range follows the moved bed; roster interaction follows the moved board. Register geometry, staff docking, queue and blueprint use the same counter placement and orientation.
 8. **No hunger implementation.** Waybread/Herbs heal HP. No starvation timers, hunger events or residual hunger logic.
-9. **Persistence discipline.** `SIMULATION_VERSION` is **20** (PR #208). Version 19 and earlier alpha campaigns deliberately do not migrate because persistent physical return checkpoint ownership is newly required. Version-20 saves strictly validate 50ms world time, pending visitor events, uniquely referenced live customers, route/waypoint/timer bounds, occupied service positions, shelf ownership, and room/furniture/stock invariants. Clock/traffic-only autosave is sampled at most once per game minute; full snapshots are serialized after completed synchronous world steps, while real transactions save immediately and lifecycle flush saves outstanding changes. Invalid saves must not be silently overwritten.
+9. **Persistence discipline.** `SIMULATION_VERSION` is **21** (PR #209). Version 20 and earlier alpha campaigns deliberately do not migrate because persistently owned LIVE autonomous intentions and TP event identities are newly required. Version-21 saves strictly validate 50ms world time, pending visitor events, uniquely referenced live customers, route/waypoint/timer bounds, occupied service positions, shelf ownership, and room/furniture/stock invariants. Clock/traffic-only autosave is sampled at most once per game minute; full snapshots are serialized after completed synchronous world steps, while real transactions save immediately and lifecycle flush saves outstanding changes. Invalid saves must not be silently overwritten.
 
 ## 4. Performance and runtime watchpoints
 
