@@ -1,9 +1,12 @@
 import type {GameState,WorldEvent,EarlyDungeonFloorWorld} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
-import {generateExpeditionLayout} from "./dungeonLayout.ts";
-import {chooseHeroDungeonDecision} from "./dungeonDecisions.ts";
-import {choosePersistentDungeonParty} from "./dungeonParties.ts";
+import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
+import {chooseHeroDungeonDecision,chooseLiveHeroDungeonDecision,
+  type HeroDungeonDecision} from "./dungeonDecisions.ts";
+import {choosePersistentDungeonParty,negotiatePartyFloorDecisions,
+  settlePersistentDungeonParties,temporaryPartyChanges,
+  type DungeonPartyState} from "./dungeonParties.ts";
 import {advanceSpatialDungeonPartyStep,emptyLevel7World,settleSpatialDungeonCombat,
   LEVEL7_COMBAT_SECONDS,getLevel7Progress,type PreparedSpatialEncounter,type Level7Replay,
   type SpatialDungeonFloor,type Level7World} from "./level7Exploration.ts";
@@ -55,6 +58,13 @@ export interface LiveDungeonReturn {
   readonly phase:"backtrack"|"portal";
   readonly dueTick?:number;
 }
+export interface LiveDungeonPlan {
+  readonly heroId:string;
+  readonly floor:SpatialDungeonFloor;
+  readonly goal:HeroDungeonDecision["goal"];
+  readonly action:HeroDungeonDecision["action"];
+  readonly updatedTick:number;
+}
 export interface LiveDungeonState {
   readonly enabled:boolean;
   readonly lastStepTick:number;
@@ -62,9 +72,12 @@ export interface LiveDungeonState {
   readonly combatTick:number;
   readonly combats:readonly LiveDungeonCombat[];
   readonly returns:readonly LiveDungeonReturn[];
+  /** Durable individual intentions, never player-issued party orders. */
+  readonly plans:readonly LiveDungeonPlan[];
 }
 export const createLiveDungeonState=():LiveDungeonState=>({
-  enabled:false,lastStepTick:0,heroes:[],combatTick:0,combats:[],returns:[],
+  enabled:false,lastStepTick:0,heroes:[],combatTick:0,combats:[],
+  returns:[],plans:[],
 });
 
 const eligible=(hero:AdventurerState)=>
@@ -97,7 +110,7 @@ export function activateLiveDungeon(state:GameState):GameState{
     throw new RangeError("Cannot activate a second dungeon event motor.");
   return queueNextDungeonWorldTick({...state,liveDungeon:{
     enabled:true,lastStepTick:state.worldClock.tick,heroes:[],
-    combatTick:0,combats:[],returns:[],
+    combatTick:0,combats:[],returns:[],plans:[],
   }});
 }
 
