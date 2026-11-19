@@ -8,7 +8,8 @@ const SHOP_TYPES=new Set<WorldEvent["type"]>([
 const DUNGEON_TYPES=new Set<WorldEvent["type"]>([
   "dungeon-outcome","level6-departure","level6-combat","level6-return",
   "level7-departure","level7-exploration","dungeon-exploration","healed",
-  "temporary-party-join","temporary-party-leave"
+  "temporary-party-join","temporary-party-leave","dungeon-live",
+  "hero-death-signal"
 ]);
 export function reportCategory(event:Pick<WorldEvent,"type">):ReportCategory{
   if(SHOP_TYPES.has(event.type))return "shop";
@@ -19,6 +20,7 @@ export function reportIcon(event:Pick<WorldEvent,"type">):InterfaceIcon{
   if(event.type==="sale")return "receipt";
   if(event.type==="shop-credit")return "receipt";
   if(event.type==="healed")return "heart";
+  if(event.type==="hero-death-signal")return "skull";
   if(reportCategory(event)==="dungeon")return "swords";
   if(reportCategory(event)==="shop")return "shop";
   return "calendar";
