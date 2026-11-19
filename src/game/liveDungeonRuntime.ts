@@ -2,9 +2,10 @@ import type {GameState,WorldEvent,EarlyDungeonFloorWorld} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {generateExpeditionLayout} from "./dungeonLayout.ts";
+import {chooseHeroDungeonDecision} from "./dungeonDecisions.ts";
 import {choosePersistentDungeonParty} from "./dungeonParties.ts";
 import {advanceSpatialDungeonPartyStep,emptyLevel7World,settleSpatialDungeonCombat,
-  LEVEL7_COMBAT_SECONDS,type PreparedSpatialEncounter,type Level7Replay,
+  LEVEL7_COMBAT_SECONDS,getLevel7Progress,type PreparedSpatialEncounter,type Level7Replay,
   type SpatialDungeonFloor,type Level7World} from "./level7Exploration.ts";
 import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
   groupCombatReplayFromFrames,type GroupCombatState,
@@ -27,6 +28,9 @@ export const DUNGEON_WORLD_EVENT_SUBJECT="dungeon-world";
 export const LIVE_COMBAT_EVENT_SUBJECT="dungeon-combat";
 /** Each clock event executes thirty genuine 60Hz fighter ticks in 0.5s. */
 export const LIVE_COMBAT_INTERVAL_TICKS=10;
+export const SHOP_PORTAL_RETURN_PREFIX="shop-return:";
+/** The actual portal crossing takes one more game minute after backtracking. */
+export const SHOP_PORTAL_TRANSIT_TICKS=20;
 
 export interface LiveDungeonHeroStep {
   readonly heroId:string;
@@ -43,15 +47,24 @@ export interface LiveDungeonCombat {
   readonly state:GroupCombatState;
   readonly frames:readonly GroupReplayFrame[];
 }
+export interface LiveDungeonReturn {
+  readonly heroId:string;
+  readonly fromFloor:1|2|3|4|6|7;
+  readonly startedTick:number;
+  /** Backtracking walks actual visited tiles; portal waits on a saved event. */
+  readonly phase:"backtrack"|"portal";
+  readonly dueTick?:number;
+}
 export interface LiveDungeonState {
   readonly enabled:boolean;
   readonly lastStepTick:number;
   readonly heroes:readonly LiveDungeonHeroStep[];
   readonly combatTick:number;
   readonly combats:readonly LiveDungeonCombat[];
+  readonly returns:readonly LiveDungeonReturn[];
 }
 export const createLiveDungeonState=():LiveDungeonState=>({
-  enabled:false,lastStepTick:0,heroes:[],combatTick:0,combats:[],
+  enabled:false,lastStepTick:0,heroes:[],combatTick:0,combats:[],returns:[],
 });
 
 const eligible=(hero:AdventurerState)=>
@@ -84,7 +97,7 @@ export function activateLiveDungeon(state:GameState):GameState{
     throw new RangeError("Cannot activate a second dungeon event motor.");
   return queueNextDungeonWorldTick({...state,liveDungeon:{
     enabled:true,lastStepTick:state.worldClock.tick,heroes:[],
-    combatTick:0,combats:[],
+    combatTick:0,combats:[],returns:[],
   }});
 }
 
@@ -106,6 +119,73 @@ function spatialWorld(state:GameState,floor:SpatialDungeonFloor):Level7World{
     state.earlyDungeonWorlds?.find(entry=>entry.floor===floor)?.world??
     emptyLevel7World();
 }
+/** A decision is based on real committed HP, gear, loot and visited
+ * rooms, not a daily dice roll or a report/replay viewer.
+ */
+function wantsToReturn(
+  hero:AdventurerState,world:Level7World,replay:Level7Replay,
+  seed:number,
+):boolean {
+  if(hero.health<=0)return false;
+  if(hero.floor===7)
+    return replay.outcome==="retreat"||replay.outcome==="completed";
+  if(hero.floor<1||hero.floor>4||hero.status!=="exploring")return false;
+  const progress=getLevel7Progress(world,hero.id,
+    generateExpeditionLayout(seed,hero.floor));
+  return chooseHeroDungeonDecision(hero,progress,replay).action==="shop";
+}
+
+/** A hero crosses only after physically reaching the floor's entrance.
+ * Both entrance and exit share Galvik's cursed portal, independent of
+ * dungeon depth. The existing shop NPC movement owns its visible doorway.
+ */
+function beginPortalReturn(
+  hero:AdventurerState,tick:number,clock:GameState["worldClock"],
+  returns:readonly LiveDungeonReturn[],
+):{hero:AdventurerState;clock:GameState["worldClock"];
+  returns:LiveDungeonReturn[]} {
+  if(returns.some(j=>j.heroId===hero.id&&j.phase==="portal"))
+    throw new RangeError("Portal journey already active");
+  const dueTick=tick+SHOP_PORTAL_TRANSIT_TICKS;
+  const nextClock=scheduleWorldEvent(clock,"report",dueTick,
+    SHOP_PORTAL_RETURN_PREFIX+hero.id);
+  return {
+    hero:{...hero,status:"traveling",floor:4,shopStayDays:0},
+    clock:nextClock,
+    returns:[...returns.filter(j=>j.heroId!==hero.id),{
+      heroId:hero.id,fromFloor:hero.floor as LiveDungeonReturn["fromFloor"],
+      startedTick:tick,phase:"portal" as const,dueTick,
+    }],
+  };
+}
+
+function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState{
+  if(event.lane!=="report"||!event.subjectId.startsWith(SHOP_PORTAL_RETURN_PREFIX))
+    throw new RangeError("Unexpected portal return event.");
+  const id=event.subjectId.slice(SHOP_PORTAL_RETURN_PREFIX.length);
+  const journey=state.liveDungeon.returns.find(j=>j.heroId===id);
+  const hero=state.adventurers.find(h=>h.id===id);
+  if(!journey||journey.phase!=="portal"||
+     journey.dueTick!==state.worldClock.tick||
+     !hero||hero.status!=="traveling"||hero.floor!==4)
+    throw new RangeError("Portal arrival lacks a committed physical return.");
+  if(state.events.some(e=>e.day===state.day&&e.type==="shop-arrival"&&
+      e.adventurerId===id))
+    throw new RangeError("A hero cannot arrive twice on one world day.");
+  const arrival:WorldEvent={
+    id:"day-"+state.day+":"+id+":shop-arrival",
+    type:"shop-arrival",day:state.day,worldTick:state.worldClock.tick,
+    adventurerId:id,
+    message:hero.name+" emerged through Galvik's portal into the shop.",
+  };
+  return {...state,adventurers:state.adventurers.map(h=>h.id===id?
+      {...h,status:"at-shop" as const,floor:5 as const,shopStayDays:0}:h),
+    liveDungeon:{...state.liveDungeon,
+      returns:state.liveDungeon.returns.filter(j=>j.heroId!==id)},
+    events:[...state.events,arrival],
+  };
+}
+
 function commitDungeonTick(state:GameState):GameState {
   const tick=state.worldClock.tick;
   const day=state.day;
@@ -114,6 +194,8 @@ function commitDungeonTick(state:GameState):GameState {
   const combatSites=new Set(state.liveDungeon.combats.map(c=>
     c.encounter.floor+":"+c.encounter.featureId));
   const combats=[...state.liveDungeon.combats];
+  let returns=[...state.liveDungeon.returns];
+  let clock=state.worldClock;
   const stepCounts=new Map(state.liveDungeon.heroes.map(v=>[v.heroId,v]));
   let level7World=state.level7World;
   let earlyDungeonWorlds:EarlyDungeonFloorWorld[]=[...(state.earlyDungeonWorlds??[])];
@@ -133,6 +215,15 @@ function commitDungeonTick(state:GameState):GameState {
       const fight=simulateLevel6Combat(hero,day,rngState);
       rngState=fight.rngState;
       byId.set(hero.id,fight.adventurer);
+      if(fight.adventurer.status==="traveling"){
+        // The unique Troll battle is still an atomic cinematic fight. Its
+        // already-settled survivor nevertheless returns through a genuine
+        // scheduled portal instead of a midnight shop teleport.
+        const journey=beginPortalReturn({...fight.adventurer,
+          status:"expedition",floor:6},tick,clock,returns);
+        byId.set(hero.id,journey.hero);
+        clock=journey.clock;returns=journey.returns;
+      }
       processed.add(hero.id);
       stepCounts.set(hero.id,{heroId:hero.id,steps:1,finished:true});
       activities.push(...fight.events);
@@ -145,16 +236,33 @@ function commitDungeonTick(state:GameState):GameState {
       emptyLevel7World();
     const roster=state.adventurers.map(h=>byId.get(h.id)!);
     const layout=generateExpeditionLayout(state.seed,floor);
-    const group=choosePersistentDungeonParty(hero,roster,world,layout,
+    const homeward=returns.find(j=>j.heroId===hero.id&&
+      j.phase==="backtrack");
+    if(homeward){
+      const current=getLevel7Progress(world,hero.id,layout);
+      if(current.x===layout.entrance.x&&current.z===layout.entrance.z){
+        const journey=beginPortalReturn(hero,tick,clock,returns);
+        byId.set(hero.id,journey.hero);
+        clock=journey.clock;returns=journey.returns;
+        processed.add(hero.id);
+        stepCounts.set(hero.id,{heroId:hero.id,
+          steps:(stepCounts.get(hero.id)?.steps??0)+1,finished:true});
+        continue;
+      }
+    }
+    const returningIds=new Set(returns.map(j=>j.heroId));
+    const group=homeward?[hero]:choosePersistentDungeonParty(hero,roster,world,layout,
       processed,state.dungeonParties??[]).filter(member=>
-        !stepCounts.get(member.id)?.finished);
-    if(!group.length)continue;
+        !returningIds.has(member.id));
+    const readyGroup=group.filter(member=>!stepCounts.get(member.id)?.finished);
+    if(!readyGroup.length)continue;
     const occupied=new Set(roster.filter(member=>
       member.floor===floor&&eligible(member)).map(member=>member.id));
     const blocked=new Set([...combatSites].filter(key=>
       key.startsWith(floor+":")).map(key=>key.slice((floor+":").length)));
-    const result=advanceSpatialDungeonPartyStep(group,world,state.seed,day,occupied,
-      {deferCombat:true,blockedCombatSites:blocked});
+    const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
+      {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
+        blockedCombatSites:blocked});
     if(result.pendingCombat){
       const encounter=result.pendingCombat;
       const siteKey=floor+":"+encounter.featureId;
@@ -162,7 +270,7 @@ function commitDungeonTick(state:GameState):GameState {
       combatSites.add(siteKey);
       const fight=createGroupCombat(encounter.options);
       combats.push({id:"battle:"+day+":"+tick+":"+floor+":"+encounter.featureId,
-        startedTick:tick,encounter,heroIds:group.map(h=>h.id),
+        startedTick:tick,encounter,heroIds:readyGroup.map(h=>h.id),
         arrivals:result.ticks.map(t=>t.replay),state:fight,
         frames:[captureGroupCombatFrame(fight)]});
     }
@@ -176,12 +284,28 @@ function commitDungeonTick(state:GameState):GameState {
       const count=(stepCounts.get(id)?.steps??0)+1;
       processed.add(id);
       byId.set(id,individual.adventurer);
+      if(individual.adventurer.status==="dead")
+        returns=returns.filter(j=>j.heroId!==id);
+      else if(!result.pendingCombat){
+        const progress=result.world.heroes.find(p=>p.heroId===id);
+        const existing=returns.find(j=>j.heroId===id&&j.phase==="backtrack");
+        if(!existing&&wantsToReturn(individual.adventurer,result.world,
+          individual.replay,state.seed))
+          returns.push({heroId:id,fromFloor:floor,
+            startedTick:tick,phase:"backtrack"});
+        if((existing||returns.some(j=>j.heroId===id&&j.phase==="backtrack"))&&
+           progress?.x===layout.entrance.x&&progress?.z===layout.entrance.z){
+          const journey=beginPortalReturn(individual.adventurer,tick,clock,returns);
+          clock=journey.clock;returns=journey.returns;
+          byId.set(id,journey.hero);
+        }
+      }
       const important=individual.replay.steps.some(s=>
         s.action==="treasure"||s.action==="trap"||
         s.action==="combat"||s.action==="death");
+      const committedHero=byId.get(id)!;
       const stopped=individual.replay.outcome!=="exploring"||
-        individual.adventurer.status==="dead"||
-        individual.adventurer.status==="traveling";
+        committedHero.status==="dead"||committedHero.status==="traveling";
       stepCounts.set(id,{heroId:id,steps:count,finished:stopped});
       if(individual.replay.outcome==="completed"&&floor===7)
         clearedLevel7=true;
@@ -198,7 +322,7 @@ function commitDungeonTick(state:GameState):GameState {
     }
   }
   const next:GameState={
-    ...state,
+    ...state,worldClock:clock,
     adventurers:state.adventurers.map(hero=>byId.get(hero.id)!),
     earlyDungeonWorlds,level7World,
     rngState,
@@ -212,7 +336,7 @@ function commitDungeonTick(state:GameState):GameState {
     liveDungeon:{enabled:true,lastStepTick:tick,
       heroes:[...stepCounts.values()],
       combatTick:combats.length?state.liveDungeon.combatTick||tick:0,
-      combats},
+      combats,returns},
     events:[...state.events,...activities],
   };
   const scheduled=queueNextDungeonWorldTick(next);
@@ -300,6 +424,7 @@ export function commitLiveWorldEvent(
   state:GameState,event:ScheduledWorldEvent,
 ):GameState {
   if(event.lane==="visitor")return commitShopRequestEvent(state,event);
+  if(event.lane==="report")return commitPortalReturn(state,event);
   if(event.lane!=="expedition"||!state.liveDungeon.enabled)
     throw new RangeError("Unexpected world event without an authoritative owner.");
   if(event.subjectId===LIVE_COMBAT_EVENT_SUBJECT)return commitLiveCombatTick(state);
@@ -337,6 +462,9 @@ export function finishLiveDungeonDay(
     const ready=healed.adventurer;
     if(ready.status==="returning"&&ready.floor>=1&&ready.floor<=4)
       return {...ready,status:"exploring" as const};
+    // Sleeping cannot complete a portal journey which is still scheduled
+    // for a subsequent live world tick.
+    if(ready.status==="traveling")return ready;
     if(ready.status==="at-shop"&&ready.level6Permit&&ready.health>0&&
        !previouslyCleared7){
       const target=previouslyCleared6?7 as const:6 as const;
@@ -379,7 +507,7 @@ export function finishLiveDungeonDay(
     adventurers,rngState,
     nextAdventurerId:state.nextAdventurerId+influx,
     liveDungeon:{enabled:true,lastStepTick:clock.tick,heroes:[],
-      combatTick:0,combats:[]},
+      combatTick:0,combats:[],returns:state.liveDungeon.returns},
     events:[...state.events,...events],
   };
   return {state:queueNextDungeonWorldTick(next),events};
