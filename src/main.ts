@@ -32,6 +32,7 @@ import { resetReplayDisclosure } from "./replayDisclosure.ts";
 import { setupEconomyHud } from "./economyHud";
 import { setupSalesHud } from "./salesHud";
 import { setupExpeditionHud } from "./expeditionHud";
+import {setupExpeditionArchiveHud} from "./expeditionArchiveHud.ts";
 import { currentDayReceipts } from "./game/saleView";
 import { loadCampaign, setupCampaignHud } from "./campaignHud";
 import { setupSoundtrack } from "./soundtrack";
@@ -50,6 +51,7 @@ import "./beggarHud.css";
 import "./blueprintHud.css";
 import "./debtBookHud.css";
 import "./immersiveUi.css";
+import "./expeditionArchive.css";
 
 async function startGame(): Promise<void> {
 setupInterfaceIcons();
@@ -350,6 +352,9 @@ watchLiveHero=id=>{
   if(!dungeon.openLive(id))
     statusHud.textContent="No active LIVE dungeon observation for this signature.";
 };
+setupExpeditionArchiveHud(canvas,camera,store,
+  (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
+  eventId=>{arena.open(eventId);return arena.isActive;});
 isShopActive=()=>!arena.isActive&&!dungeon.isActive&&!(bedtime?.isBlocking??false);
 ledger=setupMerchantLedger(()=>{
   camera.attachControl(canvas,true);
