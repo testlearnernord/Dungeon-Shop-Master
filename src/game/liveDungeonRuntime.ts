@@ -3,8 +3,12 @@ import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {generateExpeditionLayout} from "./dungeonLayout.ts";
 import {choosePersistentDungeonParty} from "./dungeonParties.ts";
-import {advanceSpatialDungeonPartyStep,emptyLevel7World,
+import {advanceSpatialDungeonPartyStep,emptyLevel7World,settleSpatialDungeonCombat,
+  LEVEL7_COMBAT_SECONDS,type PreparedSpatialEncounter,type Level7Replay,
   type SpatialDungeonFloor,type Level7World} from "./level7Exploration.ts";
+import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
+  groupCombatReplayFromFrames,type GroupCombatState,
+  type GroupReplayFrame} from "./groupCombat.ts";
 import {simulateLevel6Combat} from "./level6Combat.ts";
 import {returnUnpaidCartsAtClose} from "./shopCarts.ts";
 import {scheduleShopVisit} from "./shopArrivals.ts";
@@ -20,6 +24,9 @@ import {beginNextWorldDay,firstWorldTickOfDay,lastWorldTickOfDay,
  */
 export const DUNGEON_STEP_INTERVAL_TICKS=600;
 export const DUNGEON_WORLD_EVENT_SUBJECT="dungeon-world";
+export const LIVE_COMBAT_EVENT_SUBJECT="dungeon-combat";
+/** Each clock event executes thirty genuine 60Hz fighter ticks in 0.5s. */
+export const LIVE_COMBAT_INTERVAL_TICKS=10;
 
 export interface LiveDungeonHeroStep {
   readonly heroId:string;
@@ -27,13 +34,24 @@ export interface LiveDungeonHeroStep {
   /** Floor was exhausted or party retreated: re-evaluate next day. */
   readonly finished:boolean;
 }
+export interface LiveDungeonCombat {
+  readonly id:string;
+  readonly startedTick:number;
+  readonly encounter:PreparedSpatialEncounter;
+  readonly heroIds:readonly string[];
+  readonly arrivals:readonly Level7Replay[];
+  readonly state:GroupCombatState;
+  readonly frames:readonly GroupReplayFrame[];
+}
 export interface LiveDungeonState {
   readonly enabled:boolean;
   readonly lastStepTick:number;
   readonly heroes:readonly LiveDungeonHeroStep[];
+  readonly combatTick:number;
+  readonly combats:readonly LiveDungeonCombat[];
 }
 export const createLiveDungeonState=():LiveDungeonState=>({
-  enabled:false,lastStepTick:0,heroes:[],
+  enabled:false,lastStepTick:0,heroes:[],combatTick:0,combats:[],
 });
 
 const eligible=(hero:AdventurerState)=>
@@ -48,9 +66,10 @@ function nextDungeonTick(tick:number,day:number):number|null{
 }
 function queueNextDungeonWorldTick(state:GameState):GameState{
   if(!state.liveDungeon.enabled)return state;
-  const due=nextDungeonTick(state.worldClock.tick,state.day);
+  const due=nextDungeonTick(state.liveDungeon.lastStepTick,state.day);
   if(due===null)return state;
-  if(state.worldClock.pending.some(event=>event.lane==="expedition"))
+  if(state.worldClock.pending.some(event=>event.lane==="expedition"&&
+      event.subjectId===DUNGEON_WORLD_EVENT_SUBJECT))
     throw new RangeError("Live dungeon cannot have two expedition clocks.");
   return {...state,worldClock:scheduleWorldEvent(
     state.worldClock,"expedition",due,DUNGEON_WORLD_EVENT_SUBJECT)};
@@ -65,7 +84,21 @@ export function activateLiveDungeon(state:GameState):GameState{
     throw new RangeError("Cannot activate a second dungeon event motor.");
   return queueNextDungeonWorldTick({...state,liveDungeon:{
     enabled:true,lastStepTick:state.worldClock.tick,heroes:[],
+    combatTick:0,combats:[],
   }});
+}
+
+/** All currently active fights use one shared scheduled event, never
+ * separate render or per-actor clock owners.
+ */
+function scheduleLiveCombat(state:GameState):GameState{
+  if(!state.liveDungeon.combats.length)return state;
+  if(state.worldClock.pending.some(e=>e.lane==="expedition"&&
+    e.subjectId===LIVE_COMBAT_EVENT_SUBJECT))
+    throw new RangeError("Duplicate live combat clock event.");
+  return {...state,worldClock:scheduleWorldEvent(state.worldClock,
+    "expedition",state.worldClock.tick+LIVE_COMBAT_INTERVAL_TICKS,
+    LIVE_COMBAT_EVENT_SUBJECT)};
 }
 
 function spatialWorld(state:GameState,floor:SpatialDungeonFloor):Level7World{
@@ -77,7 +110,10 @@ function commitDungeonTick(state:GameState):GameState {
   const tick=state.worldClock.tick;
   const day=state.day;
   const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
-  const processed=new Set<string>();
+  const processed=new Set(state.liveDungeon.combats.flatMap(c=>c.heroIds));
+  const combatSites=new Set(state.liveDungeon.combats.map(c=>
+    c.encounter.floor+":"+c.encounter.featureId));
+  const combats=[...state.liveDungeon.combats];
   const stepCounts=new Map(state.liveDungeon.heroes.map(v=>[v.heroId,v]));
   let level7World=state.level7World;
   let earlyDungeonWorlds:EarlyDungeonFloorWorld[]=[...(state.earlyDungeonWorlds??[])];
@@ -115,7 +151,21 @@ function commitDungeonTick(state:GameState):GameState {
     if(!group.length)continue;
     const occupied=new Set(roster.filter(member=>
       member.floor===floor&&eligible(member)).map(member=>member.id));
-    const result=advanceSpatialDungeonPartyStep(group,world,state.seed,day,occupied);
+    const blocked=new Set([...combatSites].filter(key=>
+      key.startsWith(floor+":")).map(key=>key.slice((floor+":").length)));
+    const result=advanceSpatialDungeonPartyStep(group,world,state.seed,day,occupied,
+      {deferCombat:true,blockedCombatSites:blocked});
+    if(result.pendingCombat){
+      const encounter=result.pendingCombat;
+      const siteKey=floor+":"+encounter.featureId;
+      if(combatSites.has(siteKey))throw new RangeError("Duplicate live monster reservation.");
+      combatSites.add(siteKey);
+      const fight=createGroupCombat(encounter.options);
+      combats.push({id:"battle:"+day+":"+tick+":"+floor+":"+encounter.featureId,
+        startedTick:tick,encounter,heroIds:group.map(h=>h.id),
+        arrivals:result.ticks.map(t=>t.replay),state:fight,
+        frames:[captureGroupCombatFrame(fight)]});
+    }
     if(floor===7)level7World=result.world;
     else earlyDungeonWorlds=[
       ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
@@ -160,10 +210,14 @@ function commitDungeonTick(state:GameState):GameState {
         ?[{floor:7,cleared:true}]:[]),
     ],
     liveDungeon:{enabled:true,lastStepTick:tick,
-      heroes:[...stepCounts.values()]},
+      heroes:[...stepCounts.values()],
+      combatTick:combats.length?state.liveDungeon.combatTick||tick:0,
+      combats},
     events:[...state.events,...activities],
   };
-  return queueNextDungeonWorldTick(next);
+  const scheduled=queueNextDungeonWorldTick(next);
+  return state.liveDungeon.combats.length||!combats.length?scheduled:
+    scheduleLiveCombat(scheduled);
 }
 
 /** One world timeline dispatches both real customer expiry and live dungeon.
@@ -173,10 +227,11 @@ export function commitLiveWorldEvent(
   state:GameState,event:ScheduledWorldEvent,
 ):GameState {
   if(event.lane==="visitor")return commitShopRequestEvent(state,event);
-  if(event.lane!=="expedition"||event.subjectId!==DUNGEON_WORLD_EVENT_SUBJECT||
-     !state.liveDungeon.enabled)
+  if(event.lane!=="expedition"||!state.liveDungeon.enabled)
     throw new RangeError("Unexpected world event without an authoritative owner.");
-  return commitDungeonTick(state);
+  if(event.subjectId===LIVE_COMBAT_EVENT_SUBJECT)return commitLiveCombatTick(state);
+  if(event.subjectId===DUNGEON_WORLD_EVENT_SUBJECT)return commitDungeonTick(state);
+  throw new RangeError("Unknown expedition world event owner.");
 }
 
 /** Bedtime closes actual physical shop customers, but NEVER performs the
@@ -188,6 +243,8 @@ export function finishLiveDungeonDay(
 ):{state:GameState;events:readonly WorldEvent[]}{
   if(!state.liveDungeon.enabled)
     throw new RangeError("Cannot close an inactive live dungeon.");
+  if(state.liveDungeon.combats.length)
+    throw new RangeError("Cannot close a day while a real fight is unresolved.");
   const day=state.day+1;
   const clock=beginNextWorldDay(state.worldClock,state.day);
   const closed=returnUnpaidCartsAtClose(state);
@@ -248,7 +305,8 @@ export function finishLiveDungeonDay(
       dailySales:{day,units:0,revenue:0}},
     adventurers,rngState,
     nextAdventurerId:state.nextAdventurerId+influx,
-    liveDungeon:{enabled:true,lastStepTick:clock.tick,heroes:[]},
+    liveDungeon:{enabled:true,lastStepTick:clock.tick,heroes:[],
+      combatTick:0,combats:[]},
     events:[...state.events,...events],
   };
   return {state:queueNextDungeonWorldTick(next),events};
