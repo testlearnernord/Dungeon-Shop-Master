@@ -194,7 +194,8 @@ function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState
   return {...state,adventurers:state.adventurers.map(h=>h.id===id?
       {...h,status:"at-shop" as const,floor:5 as const,shopStayDays:0}:h),
     liveDungeon:{...state.liveDungeon,
-      returns:state.liveDungeon.returns.filter(j=>j.heroId!==id)},
+      returns:state.liveDungeon.returns.filter(j=>j.heroId!==id),
+      plans:state.liveDungeon.plans.filter(p=>p.heroId!==id)},
     events:[...state.events,arrival],
   };
 }
@@ -525,6 +526,9 @@ function commitLiveCombatTick(state:GameState):GameState{
   const activities:WorldEvent[]=[];
   const continuing:LiveDungeonCombat[]=[];
   let returns=[...state.liveDungeon.returns];
+  const plans=new Map(state.liveDungeon.plans.map(p=>[p.heroId,p] as const));
+  const sharedGroups:string[][]=state.liveDungeon.combats
+    .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   for(const fight of state.liveDungeon.combats){
     // Copy the authoritative mutable actors before stepping, preserving the
     // previous immutable checkpoint for deterministic save comparisons.
@@ -559,33 +563,55 @@ function commitLiveCombatTick(state:GameState):GameState{
       ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
       {floor:floor as EarlyDungeonFloorWorld["floor"],world:settled.world},
     ].sort((a,b)=>a.floor-b.floor);
+    if(fight.heroIds.length>=2) {
+      const survivors=settled.ticks.filter(t=>t.adventurer.health>0)
+        .map(t=>t.adventurer.id);
+      if(survivors.length>=2)sharedGroups.push(survivors);
+    }
     for(const tick of settled.ticks){
       const id=tick.adventurer.id;
       byId.set(id,tick.adventurer);
-      if(tick.adventurer.status==="dead")
+      if(tick.adventurer.status==="dead"){
         returns=returns.filter(j=>j.heroId!==id);
-      else if(!returns.some(j=>j.heroId===id)&&
-        wantsToReturn(tick.adventurer,settled.world,tick.replay,state.seed))
-        returns.push({heroId:id,fromFloor:floor,
-          startedTick:state.worldClock.tick,phase:"backtrack"});
+        plans.delete(id);
+      }else {
+        const progress=settled.world.heroes.find(p=>p.heroId===id);
+        const decision=chooseLiveHeroDungeonDecision(
+          tick.adventurer,progress,tick.replay);
+        recordLivePlan(plans,tick.adventurer,decision,state.worldClock.tick);
+        if(!returns.some(j=>j.heroId===id)&&decision.action==="shop")
+          returns.push({heroId:id,fromFloor:floor,
+            startedTick:state.worldClock.tick,phase:"backtrack"});
+      }
+      const moving=returns.some(j=>j.heroId===id&&j.phase==="backtrack")||
+        plans.get(id)?.action==="ascend"||plans.get(id)?.action==="descend";
       counts.set(id,{heroId:id,steps:counts.get(id)?.steps??1,
-        finished:tick.replay.outcome!=="exploring"});
+        finished:tick.adventurer.health===0||
+          (tick.replay.outcome!=="exploring"&&!moving)});
       activities.push({
         id:"day-"+state.day+":"+id+":dungeon-live:"+state.worldClock.tick,
         day:state.day,worldTick:state.worldClock.tick,type:"dungeon-live",
         adventurerId:id,
         ...(floor===7?{level7Replay:tick.replay}:{dungeonReplay:tick.replay}),
+        ...(plans.get(id)?{dungeonGoal:plans.get(id)!.goal,
+          floorAction:plans.get(id)!.action}:{}),
         message:tick.adventurer.name+"'s life-signature changed during an expedition. Details await a report.",
       });
     }
   }
+  const roster=state.adventurers.map(h=>byId.get(h.id)!);
+  const parties=settleLivePartyRelationships(state.dungeonParties??[],
+    sharedGroups,roster,floor=>floor===7?level7World:
+      earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
+      emptyLevel7World(),plans,state.seed,state.day,state.worldClock.tick);
   const next:GameState={...state,
-    adventurers:state.adventurers.map(h=>byId.get(h.id)!),
+    adventurers:roster,dungeonParties:parties.parties,
     earlyDungeonWorlds,level7World,
     liveDungeon:{...state.liveDungeon,combats:continuing,returns,
+      plans:[...plans.values()],
       combatTick:continuing.length?state.worldClock.tick:0,
       heroes:[...counts.values()]},
-    events:[...state.events,...activities],
+    events:[...state.events,...activities,...parties.events],
   };
   return continuing.length?scheduleLiveCombat(next):next;
 }
@@ -680,7 +706,10 @@ export function finishLiveDungeonDay(
     adventurers,rngState,
     nextAdventurerId:state.nextAdventurerId+influx,
     liveDungeon:{enabled:true,lastStepTick:clock.tick,heroes:[],
-      combatTick:0,combats:[],returns:state.liveDungeon.returns},
+      combatTick:0,combats:[],returns:state.liveDungeon.returns,
+      plans:state.liveDungeon.plans.filter(plan=>
+        adventurers.some(h=>h.id===plan.heroId&&h.floor===plan.floor&&
+          h.health>0&&(h.status==="exploring"||h.status==="expedition")))},
     events:[...state.events,...events],
   };
   return {state:queueNextDungeonWorldTick(next),events};
