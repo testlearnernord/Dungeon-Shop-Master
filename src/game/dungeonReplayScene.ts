@@ -574,7 +574,7 @@ export class DungeonReplayScene {
       const origin=toWorld(this.layout,encounter);
       p=new Vector3(origin.x+actor.x,0,origin.z+actor.z);
     }else{
-      const model=actorId===this.replay.heroId?this.hero:
+      const model=actorId===this.replay?.heroId?this.hero:
         this.companionHeroes.get(actorId);
       if(model?.root.isEnabled())
         p=new Vector3(model.root.position.x,0,model.root.position.z);
