@@ -3,10 +3,14 @@ import test from "node:test";
 import {createGameState,SIMULATION_VERSION} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
-import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT}
+import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
+  LIVE_COMBAT_INTERVAL_TICKS,LIVE_COMBAT_EVENT_SUBJECT}
   from "../../src/game/liveDungeonRuntime.ts";
 import {WORLD_TICKS_PER_DAY,lastWorldTickOfDay}
   from "../../src/game/worldClock.ts";
+import {generateExpeditionLayout,dungeonNeighbors,tileAt}
+  from "../../src/game/dungeonLayout.ts";
+import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
 
 test("real world-clock event advances one dungeon step during shop play, not at bedtime",()=>{
   const store=new GameStore(createGameState(7351));
@@ -32,7 +36,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.earlyDungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,18);
+  assert.equal(SIMULATION_VERSION,19);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -85,5 +89,92 @@ test("save validator refuses a second dungeon motor and forged pending/due ticks
   tamper(s=>{s.worldClock.pending[0].subjectId="forged-world";},/liveDungeon/);
   tamper(s=>{s.worldClock.pending=[];},/liveDungeon/);
   tamper(s=>{s.liveDungeon.heroes=[{heroId:"ghost",steps:1,finished:false}];},/heroId/);
+  assert.deepEqual(parseSave(JSON.stringify(valid)),store.state);
+});
+
+function activeFightFixture():GameStore {
+  const seed=7351;
+  const initial=createGameState(seed);
+  const map=generateExpeditionLayout(seed,1);
+  const monster=map.features.find(feature=>feature.kind==="monster"&&
+    dungeonNeighbors(map,feature).length>0);
+  assert(monster,"Fixture needs a genuine seeded monster.");
+  const approach=dungeonNeighbors(map,monster)[0];
+  const targetIndex=monster.z*map.width+monster.x;
+  const visited=map.tiles.flatMap((cell,i)=>
+    cell!=="wall"&&i!==targetIndex?[i]:[]);
+  const hero=initial.adventurers.find(h=>h.status==="exploring"&&h.floor===1);
+  assert(hero,"Fixture needs an existing live explorer.");
+  const positioned={...initial,
+    earlyDungeonWorlds:[{floor:1 as const,world:{
+      ...emptyLevel7World(),heroes:[{
+        heroId:hero.id,x:approach.x,z:approach.z,visited,
+      }],
+    }}],
+  };
+  return new GameStore(positioned);
+}
+
+test("real monster arrival starts a SAVED active fight, not a completed instant combat",()=>{
+  const store=activeFightFixture();
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const fights=store.state.liveDungeon.combats;
+  assert(fights.length>0,"Exploring the only unknown adjacent monster must begin combat.");
+  const fight=fights[0];
+  assert.equal(fight.state.outcome,"fighting");
+  assert.equal(fight.state.time,0);
+  assert.equal(fight.frames.length,1);
+  assert(store.state.worldClock.pending.some(e=>e.lane==="expedition"&&
+    e.subjectId===LIVE_COMBAT_EVENT_SUBJECT&&
+    e.dueTick===store.state.worldClock.tick+LIVE_COMBAT_INTERVAL_TICKS));
+  assert(!store.state.events.some(e=>e.dungeonReplay?.encounters.length),
+    "Arrival alone must not archive or settle an unplayed battle.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+});
+
+test("mid-combat JSON save resumes identical 60Hz actors, Herb debit and single site outcome",()=>{
+  const a=activeFightFixture();
+  a.enableLiveDungeon();
+  a.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert(a.state.liveDungeon.combats.length>0);
+  a.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS*3);
+  const fight=a.state.liveDungeon.combats[0];
+  assert(fight);
+  assert.equal(fight.state.time>0,true);
+  assert.equal(fight.frames.length,16,"0.5s bursts retain authentic 10Hz replay frames");
+  const checkpoint=parseSave(JSON.stringify(createSave(a.state)));
+  const b=new GameStore(checkpoint);
+  assert.deepEqual(b.state,a.state);
+  a.advanceWorldTime(520);
+  b.advanceWorldTime(520);
+  assert.deepEqual(b.state,a.state,"Future fighter state and settlement must be byte-identical");
+  assert.equal(a.state.liveDungeon.combats.length,0);
+  const actual=a.state.events.filter(e=>e.type==="dungeon-live"&&
+    e.dungeonReplay?.encounters.length);
+  assert(actual.length>0,"Battle results are committed to immutable footage.");
+  assert(actual.every(e=>e.dungeonReplay?.encounters[0].combat.frames.length!>1));
+  const ids=a.state.events.map(e=>e.id);
+  assert.equal(ids.length,new Set(ids).size,"No double combat event IDs.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(a.state))),a.state);
+});
+
+test("v19 rejects tampered active fight clocks, fake fighter HP and duplicated reservations",()=>{
+  const store=activeFightFixture();
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS+LIVE_COMBAT_INTERVAL_TICKS);
+  assert(store.state.liveDungeon.combats.length>0);
+  const valid=createSave(store.state);
+  const tamper=(fn:(value:any)=>void,pattern:RegExp)=>{
+    const snapshot=structuredClone(valid) as any;
+    fn(snapshot.payload);
+    assert.throws(()=>parseSave(JSON.stringify(snapshot)),pattern);
+  };
+  tamper(s=>{s.liveDungeon.combatTick+=1;},/combat/);
+  tamper(s=>{s.liveDungeon.combats[0].state.actors[0].hp=999999;},/hp/);
+  tamper(s=>{s.liveDungeon.combats.push(s.liveDungeon.combats[0]);},/combats|featureId|heroIds/);
+  tamper(s=>{s.worldClock.pending=s.worldClock.pending.filter(
+    (e:any)=>e.subjectId!==LIVE_COMBAT_EVENT_SUBJECT);},/liveDungeon/);
+  tamper(s=>{s.liveDungeon.combats[0].encounter.options.actors[0].damage+=50;},/options/);
   assert.deepEqual(parseSave(JSON.stringify(valid)),store.state);
 });
