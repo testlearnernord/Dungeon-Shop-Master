@@ -2,7 +2,7 @@ import type {GameState,WorldEvent,EarlyDungeonFloorWorld} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
-import {chooseHeroDungeonDecision,chooseLiveHeroDungeonDecision,
+import {chooseLiveHeroDungeonDecision,
   type HeroDungeonDecision} from "./dungeonDecisions.ts";
 import {choosePersistentDungeonParty,negotiatePartyFloorDecisions,
   settlePersistentDungeonParties,temporaryPartyChanges,
@@ -132,22 +132,6 @@ function spatialWorld(state:GameState,floor:SpatialDungeonFloor):Level7World{
     state.earlyDungeonWorlds?.find(entry=>entry.floor===floor)?.world??
     emptyLevel7World();
 }
-/** A decision is based on real committed HP, gear, loot and visited
- * rooms, not a daily dice roll or a report/replay viewer.
- */
-function wantsToReturn(
-  hero:AdventurerState,world:Level7World,replay:Level7Replay,
-  seed:number,
-):boolean {
-  if(hero.health<=0)return false;
-  if(hero.floor===7)
-    return replay.outcome==="retreat"||replay.outcome==="completed";
-  if(hero.floor<1||hero.floor>4||hero.status!=="exploring")return false;
-  const progress=getLevel7Progress(world,hero.id,
-    generateExpeditionLayout(seed,hero.floor));
-  return chooseHeroDungeonDecision(hero,progress,replay).action==="shop";
-}
-
 /** A hero crosses only after physically reaching the floor's entrance.
  * Both entrance and exit share Galvik's cursed portal, independent of
  * dungeon depth. The existing shop NPC movement owns its visible doorway.
