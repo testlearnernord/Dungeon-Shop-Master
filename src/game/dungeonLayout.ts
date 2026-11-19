@@ -202,6 +202,26 @@ export function generateDungeonLayout(
   return {...draft,features};
 }
 
+/** The down staircase uses a genuine connected room in the one seeded
+ * floor blueprint. No new map engine, hidden teleporter or nightly roll.
+ * A hero must actually discover and reach this tile before descending.
+ */
+export function dungeonDownStair(layout:DungeonLayout):DungeonPoint {
+  let furthest:{point:DungeonPoint;distance:number}|null=null;
+  for(const room of layout.rooms){
+    const path=dungeonShortestPath(layout,layout.entrance,room);
+    if(!path.length)continue;
+    const distance=path.length-1;
+    if(!furthest||distance>furthest.distance||
+      (distance===furthest.distance&&
+        (room.z<furthest.point.z||
+          room.z===furthest.point.z&&room.x<furthest.point.x)))
+      furthest={point:{x:room.x,z:room.z},distance};
+  }
+  if(!furthest)throw new RangeError("Seeded dungeon has no reachable lower staircase.");
+  return furthest.point;
+}
+
 /** One seeded geometry contract for ordinary early floors and the existing
  * Level 7 viewer. Smaller early maps keep progression playable in shop days. */
 export function generateExpeditionLayout(
