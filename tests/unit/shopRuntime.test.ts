@@ -115,7 +115,7 @@ test("forged or orphaned shop request queues fail strict save validation",()=>{
   tamper(s=>{s.shopRequests.push(s.shopRequests[0]);},/unique/);
   tamper(s=>{s.shopRequests=[];},/orphaned visitor/);
   assert.deepEqual(clearResolvedShopRequests(valid),valid);
-  assert.throws(()=>advanceWorldUntil(valid,61,(_s,event)=>{
+  assert.throws(()=>advanceWorldUntil(valid,SHOP_REQUEST_TICKS+1,(_s,event)=>{
     return commitShopRequestEvent({...valid,shopRequests:[]},event);
   }),/Orphaned/);
 });
