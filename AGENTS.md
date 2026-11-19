@@ -242,12 +242,16 @@
   phantom sales. PR #203 switches physical customer movement, wait checks,
   collision claims and pickups to **committed 50ms world ticks** (20 ticks
   per game minute). Babylon `scene.render()` does not run the shop AI.
-  Movement routes, queue claims and local actor phases are NOT yet saved
-  across reload, and the live dungeon cutover is still pending; never
-  pretend complete deterministic save/restore of the physical shop.
+  PR #204 checkpoints exactly those physical actors, routes, local waits,
+  exclusive shop service claims, shelf access ownership and gate positions
+  at the shared tick. Strict version-17 saves restore the SAME existing NPC
+  motor after room, roster and shopping intents are rebuilt; the old
+  50ms tick/commerce authority remains unchanged. Save only the finished
+  step, not a partial position before the tick's actual movement.
+  The live dungeon cutover and integrated ten-day validation remain pending.
   An unpaid cart returns to its shelf at bed closure, never settling
-  as imaginary cash. Version-16 saves intentionally reject v15 and
-  earlier campaigns due to the finer clock unit. `gameState.advanceDay`
+  as imaginary cash. Version-17 saves intentionally reject v16 and
+  earlier campaigns because the physical actor checkpoint is newly required. `gameState.advanceDay`
   remains bed-batched for dungeon outcomes until its later migration. Never claim the V.003 parallel simulation has shipped. No additional time engine, mandatory Floor 10 boss, shop portal, class/mana scheme or 100-floor system may be claimed implemented merely from design documents. **Newest owner decision: backward compatibility with old alpha/v13
   campaign saves is NOT required for the V.003 world-clock cutover.**
   A clean new save schema and fresh campaign may replace old data.

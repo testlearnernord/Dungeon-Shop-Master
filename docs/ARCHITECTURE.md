@@ -7,7 +7,7 @@
 The current game is a **TypeScript/Vite** browser application rendered with **Babylon.js**.
 
 - `src/main.ts` wires the startup, shop scene, controllers, day closure, UI, and active arena/dungeon viewers.
-- `src/game/gameState.ts` defines persisted version-16 `GameState`, the single saved world tick and the transitional deterministic day progression. `src/game/gameStore.ts` owns validated player actions and subscriber notifications.
+- `src/game/gameState.ts` defines persisted version-17 `GameState`, the single saved world tick and the transitional deterministic day progression. `src/game/gameStore.ts` owns validated player actions and subscriber notifications.
 - Pure simulation functions must remain independent of Babylon meshes and the DOM. Scene objects and HUD projections are representations of authoritative game state, not additional sources of truth.
 - Scene transitions among the Level 5 shop, boss arena and dungeon viewer must not silently mutate the stored combat result.
 
@@ -421,10 +421,20 @@ The redesign must preserve one deterministic GameState authority and introduce:
   saved ticks, with seconds conversion at the visual UI boundary.
   `campaignSaveCadence.ts` throttles clock-only IndexedDB writes to
   once per real second while immediate player actions/queue changes save.
-  **Remaining:** physical NPC phase, route, local wait and occupancy claim
-  snapshots are still scene-only, so mid-visit save/reload is not fully
-  deterministic. Dungeon fights still resolve in the old bedtime batch;
-  this is NOT yet parallel live dungeon simulation.
+  **PR #204 physical save/restore:** `shopTraffic.ts` defines the one
+  strict v17 checkpoint `GameState.shopTraffic`. It contains the actual
+  physical NPC positions, gate/phase, route/waypoint, local waits and
+  congestion state, exclusive service claims and shelf owners, and current
+  gate heights at the saved integer tick. `NpcVisualSystem.snapshotTraffic`
+  exports its own existing motor state; `restoreTraffic` hydrates it after
+  saved shop layout, roster and shopping intentions are installed. Original
+  actor iteration/priority ordering is restored, preventing crowd
+  divergence from different Map insertion order. Save subscriptions
+  coalesce to a microtask after completed world/shop steps, so no mid-step
+  snapshot is serialized. Tick-only and traffic-only snapshots are
+  throttled together; real shop transactions still save immediately.
+  **Remaining:** the old dungeon expedition/fight batch and end-to-end
+  long-running game balance/board integration are NOT yet live V.003.
   The full migration must unify active shop/customer timers, dungeon/party
   events and site cooldowns
   on one deterministic saved in-game timeline. Use bounded event advances,
@@ -536,7 +546,7 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 6. **Universal furniture registry and transaction.** `furnitureRegistry.ts` owns canonical labels, mount surfaces, sizes, focus data, rotated bounds, collision and shelf/counter service semantics; there is no parallel shop-floor geometry table or counter rendering facade. `furniturePlacement.ts` is the ONE pure preview/commit validator, exposed through `GameStore.previewFurniturePlacement` / `placeFurniture`, contextual P and new-shelf N. Shop shelves have monotonically assigned `shelf-N` instance IDs and four stock slots per built instance; new placement appends the empty stock records atomically. New campaigns start with no shelves or stocked slots. Strict `campaignSave.ts` requires a complete version-15 room, bedroom, roster-board and counter transform and checks shelf-to-slot correspondence; older partial/five-slot states are incompatible and deliberately not migrated. The alpha bounds live shelving at 12 instances. `Shop` creates corresponding meshes and inventory slots on state changes, while navigation/queues use their registered collision hulls and service sockets. Wall-mounted fixtures share `wallFurniturePlacement.ts` for structural wall anchors and excavated-rock support; mining supporting rock is rejected until the mounted object is moved. Private bedroom fixtures share the registry/transaction but retain sleep/door access rules. Other furniture currently remains a single instance per type: new reusable types still need their own mesh, persistence and interactions.
 7. **All dependent transforms move together.** Bedroom object groups include their interaction targets, collision hulls and lights when applicable. Sleep range follows the moved bed; roster interaction follows the moved board. Register geometry, staff docking, queue and blueprint use the same counter placement and orientation.
 8. **No hunger implementation.** Waybread/Herbs heal HP. No starvation timers, hunger events or residual hunger logic.
-9. **Persistence discipline.** `SIMULATION_VERSION` is **16** (PR #203). Version 15 and earlier alpha campaigns deliberately do not migrate because the world tick scale changed. Version-16 saves strictly validate day-bounded 50ms time, ordered event queue, each petition's linked unique visitor event/expiry, and room/furniture/stock invariants. Clock-only autosave is sampled at most once per game minute; real transactions and queue mutations save immediately, and lifecycle flush saves outstanding changes. Invalid saves must not be silently overwritten.
+9. **Persistence discipline.** `SIMULATION_VERSION` is **17** (PR #204). Version 16 and earlier alpha campaigns deliberately do not migrate because the complete physical traffic checkpoint is newly required. Version-17 saves strictly validate 50ms world time, pending visitor events, uniquely referenced live customers, route/waypoint/timer bounds, occupied service positions, shelf ownership, and room/furniture/stock invariants. Clock/traffic-only autosave is sampled at most once per game minute; full snapshots are serialized after completed synchronous world steps, while real transactions save immediately and lifecycle flush saves outstanding changes. Invalid saves must not be silently overwritten.
 
 ## 4. Performance and runtime watchpoints
 
