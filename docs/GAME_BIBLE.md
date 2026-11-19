@@ -29,10 +29,14 @@
 The repository currently implements:
 
 - TypeScript/Vite with Babylon.js; first-person Level 5 shop, shelf restocking, wholesale purchasing, cashier interaction, credits and customer shopping behavior. All six stocked goods have distinct original low-poly GLB assets loaded by Babylon once per scene, with painted meshes reused for shelf stock rather than geometry rebuilt independently in code. These meshes follow slot quantity and cannot be targeted or obstruct NPC movement; item UI icons remain a separate shared atlas.
-- **Customer navigation:** shoppers move along geometry-aware paths with smoothed turns, measured speed changes, real shelf service access and a finite five-position physical checkout line. Extra buyers use safe overflow positions. The single `ShopServiceSpots` manager exclusively reserves shelf browsing/waiting, register, petition and overflow destinations, including in mined shop extensions. Moving a fixture invalidates affected claims; customers should not occupy exits or block active traffic.
+- **Customer navigation:** physical shopper movement, waiting, pickup checks
+  and collision arbitration run at a fixed 20 Hz after a saved world tick
+  commits, never in Babylon render frames. Their route/phase/position
+  checkpoints across reload still need implementation. Shoppers move along
+  geometry-aware paths with smoothed turns, measured speed changes, real shelf service access and a finite five-position physical checkout line. Extra buyers use safe overflow positions. The single `ShopServiceSpots` manager exclusively reserves shelf browsing/waiting, register, petition and overflow destinations, including in mined shop extensions. Moving a fixture invalidates affected claims; customers should not occupy exits or block active traffic.
 - **Customer purchases and departure:** a hero inspects actual shelf goods, reserves stock into a saved unpaid cart and carries it to the register. Successful manual checkout is real, exactly-once accounting with an immediate *physical* departure; paid buyers cannot reroll into a next-day shop stay just because the day closes, while independently approved dungeon expeditions still take priority. Outstanding unpaid carts are returned to their original shelf slots at bedtime, without gold or fictional sale receipts. Only an actual checkout commits revenue. Roster or inventory refreshes do not respawn a paid, exiting customer.
 - **Staffed register:** the existing two-stage goods/receipt timing challenge processes a real cart from the customer side of a physical five-place queue, but only the player standing at the **staff** dock may operate it. Once a payment commits, the paid receipt shows actual gold and any customer-funded tip. The register remains open so **E** explicitly admits the next *physically ready* customer without closing/reopening the modal. Every customer's two stages remain mandatory; opening a new transaction does not itself pay anyone. **Esc** exits the register.
-- **Requests and credit:** an unavailable item produces a specific icon/restock request with a 60-tick **saved world-time** limit once the visitor reaches a real waiting spot. Expiry is a single scheduled visitor event, not a Babylon-frame countdown. The visitor waits in a reachable quiet pocket, may roam locally or yield to traffic and leaves upset when the timer expires. A visitor unable to afford goods may request *credit*, which requires the player's active decision and creates a debt entry, **not immediate merchant revenue**. Opening a modal pauses the shared world clock and the shop's visual traffic; it cannot silently consume customer patience.
+- **Requests and credit:** an unavailable item produces a specific icon/restock request with a 60-real-second (= 1,200 saved world-tick) limit once the visitor reaches a real waiting spot. Expiry is a single scheduled visitor event, not a Babylon-frame countdown. The visitor waits in a reachable quiet pocket, may roam locally or yield to traffic and leaves upset when the timer expires. A visitor unable to afford goods may request *credit*, which requires the player's active decision and creates a debt entry, **not immediate merchant revenue**. Opening a modal pauses the shared world clock and the shop's visual traffic; it cannot silently consume customer patience.
 - **Customer visual performance:** adventurers accelerate/brake, turn smoothly, look toward actual merchandise/register/player, briefly reach for **confirmed** goods and react to **confirmed** payment. Idle glances and credit/restock gestures are spaced and restrained. A single, short, world-anchored speech bubble can surface a deterministic character remark after a real pickup, manually paid cart, granted credit, restock/credit petition or unsatisfied walkout. Comments are per-visit bounded, rate-limited and never reveal sealed expedition outcomes. All these visual cues leave purchases, pathfinding, request countdowns, debt, damage and save state untouched.
 - Unpaid or unserved visitors may still follow normal day-based stay/departure rules. Goods in an unpaid cart are not a sale and cannot transfer to a hero by sleeping; bedtime returns every unserved cart to its shelf. No inventory or revenue is invented by the closing report.
 - **Player service focus:** aiming at a physical shelf slot reveals the **real** item, capacity, selected bag item, valid left/right-click actions, Shift+click fill/clear and blockers (wrong item, full slot, empty bag or unpaid customer cart). A small, translucent top-center service strip reports **physically present** register-ready buyers and live restock/credit requests; earliest-expiring restock takes priority. **F** (or its icon chip) only selects that item in the existing six-item hotbar. The player still goes to the shelf to stock, and to the staff side of the counter or nearby debtor to interact with E. There is no auto-buy, auto-stock or auto-pay.
@@ -307,7 +311,7 @@ This does **not** declare an implemented system or a shipped version.
   genuinely heal a recorded fighter, or armor mitigate a real blow, but the
   UI must not invent an unseen event, predict certain survival or expose
   sealed results. A missing hero is *last known / unknown* until reported.
-- **Approved time design (PR #201 foundation; PR #202 request migration):** retain deliberate shop days
+- **Approved time design (PR #201 foundation, #202 requests, #203 fixed-step shop):** retain deliberate shop days
   and sleeping, but advance the dungeon alongside active shop play on
   one deterministic, pausable in-game event clock. Bedtime completes
   unsupervised time exactly once and opens read-only recordings; there
@@ -319,8 +323,9 @@ This does **not** declare an implemented system or a shipped version.
   within the active new-format campaign. The owner expressly waived
   compatibility with old alpha/v13 saves when the shared-clock V.003
   replaces its day-batched model. PR #201 introduced version-14 saves and
-  PR #202 deliberately moves to version 15 to require persisted customer
-  petitions; neither older alpha version has a migration adapter.
+  PR #202 introduced version-15 saved customer petitions, and PR #203
+  intentionally moves to v16 for 20 fixed ticks per minute. None of the
+  older alpha versions has a migration adapter.
   The old dungeon day-batch remains transitional until PR #203.
   Correct new saves remain essential.
   See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).

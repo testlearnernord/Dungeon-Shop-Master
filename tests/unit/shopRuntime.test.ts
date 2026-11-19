@@ -4,9 +4,9 @@ import {createGameState} from "../../src/game/gameState.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
-import {advanceWorldUntil} from "../../src/game/worldClock.ts";
+import {advanceWorldUntil,WORLD_TICKS_PER_DAY} from "../../src/game/worldClock.ts";
 import {clearResolvedShopRequests,commitShopRequestEvent,requestRemainingTicks,
-  startShopRequest} from "../../src/game/shopRuntime.ts";
+  startShopRequest,SHOP_REQUEST_TICKS} from "../../src/game/shopRuntime.ts";
 import {createStockedShopState} from "./shopFixtures.ts";
 
 function waitingShop(){
@@ -31,22 +31,22 @@ test("live shop request is unique and commits exactly one real angry walkout at 
   const {state,buyerId}=waitingShop();
   const store=new GameStore(state);
   const due=store.startShopRequest(buyerId,"bread","unavailable");
-  assert.equal(due,60);
+  assert.equal(due,SHOP_REQUEST_TICKS);
   assert.equal(store.startShopRequest(buyerId,"bread","unavailable"),due);
   assert.equal(store.state.shopRequests.length,1);
   assert.equal(store.state.worldClock.pending.length,1);
-  store.advanceWorldTime(59);
+  store.advanceWorldTime(SHOP_REQUEST_TICKS-1);
   assert.equal(store.state.shopRequests.length,1);
   assert.equal(store.shopRequestRemaining(buyerId),1);
   const beforeBalance=store.state.shopEconomy.balance;
   const beforeGold=store.state.adventurers.find(h=>h.id===buyerId)!.gold;
   store.advanceWorldTime(1);
-  assert.equal(store.state.worldClock.tick,60);
+  assert.equal(store.state.worldClock.tick,SHOP_REQUEST_TICKS);
   assert.equal(store.state.shopRequests.length,0);
   assert.equal(store.state.worldClock.pending.length,0);
   const events=store.state.events.filter(e=>e.type==="shop-walkout"&&e.adventurerId===buyerId);
   assert.equal(events.length,1);
-  assert.equal(events[0].worldTick,60);
+  assert.equal(events[0].worldTick,SHOP_REQUEST_TICKS);
   assert.equal(events[0].shopReason,"unavailable");
   assert.equal(store.state.adventurers.find(h=>h.id===buyerId)!.status,"returning");
   assert.equal(store.state.shopEconomy.balance,beforeBalance);
@@ -62,10 +62,10 @@ test("request countdown saves and continues after reload without deadline extens
   store.startShopRequest(buyerId,"bread","unavailable");
   store.advanceWorldTime(17);
   const resumed=parseSave(JSON.stringify(createSave(store.state)));
-  assert.equal(requestRemainingTicks(resumed,buyerId),43);
+  assert.equal(requestRemainingTicks(resumed,buyerId),SHOP_REQUEST_TICKS-17);
   const a=new GameStore(store.state),b=new GameStore(resumed);
-  a.advanceWorldTime(43);
-  b.advanceWorldTime(43);
+  a.advanceWorldTime(SHOP_REQUEST_TICKS-17);
+  b.advanceWorldTime(SHOP_REQUEST_TICKS-17);
   assert.deepEqual(a.state,b.state);
   assert.equal(a.state.events.filter(e=>e.type==="shop-walkout"&&e.adventurerId===buyerId).length,1);
 });
@@ -90,7 +90,7 @@ test("day closure fast-forwards outstanding requests once and clears shop-only f
   store.startShopRequest(buyerId,"bread","unavailable");
   store.endDay();
   assert.equal(store.state.day,2);
-  assert.equal(store.state.worldClock.tick,1440);
+  assert.equal(store.state.worldClock.tick,WORLD_TICKS_PER_DAY);
   assert.equal(store.state.shopRequests.length,0);
   assert.equal(store.state.worldClock.pending.length,0);
   assert.equal(store.state.events.filter(e=>e.type==="shop-walkout"&&e.adventurerId===buyerId).length,1);
@@ -115,7 +115,7 @@ test("forged or orphaned shop request queues fail strict save validation",()=>{
   tamper(s=>{s.shopRequests.push(s.shopRequests[0]);},/unique/);
   tamper(s=>{s.shopRequests=[];},/orphaned visitor/);
   assert.deepEqual(clearResolvedShopRequests(valid),valid);
-  assert.throws(()=>advanceWorldUntil(valid,61,(_s,event)=>{
+  assert.throws(()=>advanceWorldUntil(valid,SHOP_REQUEST_TICKS+1,(_s,event)=>{
     return commitShopRequestEvent({...valid,shopRequests:[]},event);
   }),/Orphaned/);
 });

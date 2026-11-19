@@ -1,3 +1,4 @@
+import {WORLD_TICKS_PER_DAY} from "../../src/game/worldClock.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { generateDungeonLayout, dungeonNeighbors, tileAt } from "../../src/game/dungeonLayout.ts";
@@ -218,7 +219,7 @@ test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Trol
   assert.deepEqual(world.heroes[0].visited,visited,"Exploration never mutates prior knowledge");
   const initial=createGameState(seed);
   const saved={
-    ...initial,day,worldClock:{...initial.worldClock,tick:(day-1)*1440},
+    ...initial,day,worldClock:{...initial.worldClock,tick:(day-1)*WORLD_TICKS_PER_DAY},
     shopEconomy:{...initial.shopEconomy,
       dailySales:{...initial.shopEconomy.dailySales,day}},
     adventurers:initial.adventurers.map(a=>

@@ -77,7 +77,7 @@ test("strict saves reject missing, mismatched and unsorted clock state",()=>{
     assert.throws(()=>parseSave(JSON.stringify(value)),pattern);
   };
   bad(x=>{delete x.payload.worldClock;},/worldClock.*required/);
-  bad(x=>{x.payload.worldClock.tick=1440;},/worldClock.tick/);
+  bad(x=>{x.payload.worldClock.tick=WORLD_TICKS_PER_DAY;},/worldClock.tick/);
   bad(x=>{x.payload.worldClock.nextSequence=0;},/nextSequence/);
   bad(x=>{x.payload.worldClock.nextSequence=2;
     x.payload.worldClock.pending=[{id:"clock-1",dueTick:1,lane:"bad",
@@ -93,16 +93,16 @@ test("FPS-independent ticks; pause excludes tab time and manual interruptions",(
     for(const ms of frames)pacer.step(ms,false,ticks=>store.advanceWorldTime(ticks));
     return store.state;
   };
-  assert.deepEqual(simulate(Array(20).fill(150)),simulate([1000,1000,1000]));
+  assert.deepEqual(simulate(Array(20).fill(150)),simulate(Array(10).fill(300)));
   const store=new GameStore(),pacer=new WorldClockPacer();
-  pacer.step(REAL_MS_PER_WORLD_TICK/2,false,ticks=>store.advanceWorldTime(ticks));
+  pacer.step(REAL_MS_PER_WORLD_TICK*1.5,false,ticks=>store.advanceWorldTime(ticks));
   pacer.step(5000,true,ticks=>store.advanceWorldTime(ticks));
-  pacer.step(1000,false,ticks=>store.advanceWorldTime(ticks));
-  assert.equal(store.state.worldClock.tick,1);
+  pacer.step(REAL_MS_PER_WORLD_TICK,false,ticks=>store.advanceWorldTime(ticks));
+  assert.equal(store.state.worldClock.tick,2);
   pacer.setPaused("manual",true);
   pacer.step(2000,false,ticks=>store.advanceWorldTime(ticks));
-  assert.equal(store.state.worldClock.tick,1);
-  pacer.setPaused("manual",false);
-  pacer.step(1000,false,ticks=>store.advanceWorldTime(ticks));
   assert.equal(store.state.worldClock.tick,2);
+  pacer.setPaused("manual",false);
+  pacer.step(REAL_MS_PER_WORLD_TICK,false,ticks=>store.advanceWorldTime(ticks));
+  assert.equal(store.state.worldClock.tick,3);
 });

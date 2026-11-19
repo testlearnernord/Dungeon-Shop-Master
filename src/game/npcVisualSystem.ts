@@ -14,6 +14,7 @@ import {portraitSourceRect} from "./portraitAtlas.ts";
 import {goldIconUrl} from "../uiIcons.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
 import { RESTOCK_WAIT_SECONDS, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
+import {WORLD_TICK_SECONDS} from "./worldClock.ts";
 import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble,
   createNpcCustomerBubble, positionNpcBubble,
   type NpcWishBubble, type NpcCustomerBubble } from "./npcWishBubble.ts";
@@ -244,6 +245,16 @@ export class NpcVisualSystem {
   private shopRequestClock:ShopRequestClockAccess|null=null;
   private worldPaused=false;
   setWorldPaused(paused:boolean):void{this.worldPaused=paused;}
+  /** Physical traffic, collision arbitration, route choices and shelf pickups
+   * run ONLY for committed world ticks, never according to the render FPS.
+   * This still needs a persisted traffic checkpoint before reload is exact.
+   */
+  advanceWorldTicks(ticks:number):void{
+    if(this.worldPaused||ticks===0)return;
+    if(!Number.isSafeInteger(ticks)||ticks<0||ticks>8)
+      throw new RangeError("Shop movement needs bounded committed world ticks.");
+    for(let step=0;step<ticks;step++)this.updateStep(WORLD_TICK_SECONDS);
+  }
   private readonly serviceSpots=new ShopServiceSpots();
   private carts:readonly ShopCart[]=[];
   /** Shopping-state notifications may happen without a new day. A committed
@@ -273,7 +284,9 @@ export class NpcVisualSystem {
       level4: scene.getMeshByName("level-4-barrier") as Mesh | null,
       level6: scene.getMeshByName("level-6-barrier") as Mesh | null,
     };
-    scene.onBeforeRenderObservable.add(this.update);
+    // Render frames may only draw the already-committed customer scene.
+    // GameStore + WorldClockPacer explicitly invoke advanceWorldTicks. No
+    // second frame-clock shopper solver is installed here.
   }
 
   reconcile(current: readonly VisitorSnapshot[], previous: readonly VisitorSnapshot[]): void {
@@ -702,9 +715,8 @@ export class NpcVisualSystem {
     npc.saleSeconds = 0;
   }
 
-  private readonly update = (): void => {
-    if(this.worldPaused)return; // No decisions, movement or pickup while time is frozen.
-    const delta = Math.min(this.scene.getEngine().getDeltaTime() / 1000, 0.1);
+  private updateStep(delta:number):void {
+    if(this.worldPaused)return; // World clock is frozen; never simulate a scene frame.
     const open: Record<GateSide, boolean> = { level4: false, level6: false };
     // Compute from the same snapshot for every visitor this frame. Otherwise
     // the first actor moved would change right-of-way for subsequent actors.
@@ -909,7 +921,7 @@ export class NpcVisualSystem {
       if (this.doors[gate]) this.doors[gate]!.position.y = this.doorY[gate];
     }
     this.showNextCustomerBark();
-  };
+  }
 
   private releaseShelf(npc:NpcVisual):void{
     this.serviceSpots.release(npc.visitor.id);

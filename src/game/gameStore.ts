@@ -10,7 +10,8 @@ import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
 import {rosterBoardProblem} from "./rosterBoardPlacement.ts";
 import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
-import { advanceWorldUntil, lastWorldTickOfDay } from "./worldClock.ts";
+import { advanceWorldUntil, lastWorldTickOfDay,
+  WORLD_TICKS_PER_GAME_MINUTE } from "./worldClock.ts";
 import {clearResolvedShopRequests,commitShopRequestEvent,closeShopRequests,
   requestRemainingTicks,shortenShopRequestForTest,startShopRequest} from "./shopRuntime.ts";
 
@@ -174,7 +175,7 @@ export class GameStore {
     if(import.meta.env.VITE_E2E!=="1"||!Number.isFinite(remainingSeconds)||
        remainingSeconds<=0)throw new Error("Shop request test hook disabled.");
     this.replace(shortenShopRequestForTest(this.current,heroId,
-      Math.max(1,Math.ceil(remainingSeconds))));
+      Math.max(1,Math.ceil(remainingSeconds*WORLD_TICKS_PER_GAME_MINUTE))));
   }
 
   /** Clock events and customer walkouts commit on the same world timeline.

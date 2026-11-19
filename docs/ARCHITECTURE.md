@@ -7,7 +7,7 @@
 The current game is a **TypeScript/Vite** browser application rendered with **Babylon.js**.
 
 - `src/main.ts` wires the startup, shop scene, controllers, day closure, UI, and active arena/dungeon viewers.
-- `src/game/gameState.ts` defines persisted version-15 `GameState`, the single saved world tick and the transitional deterministic day progression. `src/game/gameStore.ts` owns validated player actions and subscriber notifications.
+- `src/game/gameState.ts` defines persisted version-16 `GameState`, the single saved world tick and the transitional deterministic day progression. `src/game/gameStore.ts` owns validated player actions and subscriber notifications.
 - Pure simulation functions must remain independent of Babylon meshes and the DOM. Scene objects and HUD projections are representations of authoritative game state, not additional sources of truth.
 - Scene transitions among the Level 5 shop, boss arena and dungeon viewer must not silently mutate the stored combat result.
 
@@ -390,12 +390,14 @@ The redesign must preserve one deterministic GameState authority and introduce:
   fights, reward events or maps. Keep farming rewards bounded and
   distinguish true spawn state from Galvik's known/last-seen reports.
 - **Single paced world clock (PR #201 FOUNDATION; full V.003 integration pending):**
-  `worldClock.ts` owns the saved integer game-minute tick, future-only unique
+  `worldClock.ts` owns the saved integer 50ms world tick (20 ticks/game
+  minute, 28,800 ticks/day), future-only unique
   events, priority/sequence ordering, a bounded pure event executor and the
   bed-only day boundary. `worldClockPacer.ts` converts foreground frame
   elapsed time into whole ticks without becoming a simulation authority.
   `GameStore.advanceWorldTime` commits the clock. The old `advanceDay`
-  dungeon resolver still runs at bed until PR #203. PR #202 moves **customer
+  dungeon resolver still runs at bed; the dungeon live cutover is pending.
+  PR #202 moves **customer
   petition deadlines** to `shopRuntime.ts`: one scheduled `visitor` event
   per waiting customer and real time-stamped walkout, persisted alongside
   `GameState.shopRequests` and validated in `campaignSave.ts`. Stock or
@@ -410,10 +412,19 @@ The redesign must preserve one deterministic GameState authority and introduce:
   originate from real cashier commits and explicit credit creates debt,
   never cash. The old `tradeAtStartOfDay` remains a **read-only forecast
   helper** for buyer intentions, not an active economic transaction.
-  **Remaining:** customer movement, path state, browsing/checkout waits and
-  pickup decisions still occur in Babylon render frames; dungeon encounters
-  are still resolved in the legacy bed batch. This is NOT a completed,
-  deterministic physical-shop migration or a live dungeon.
+  **PR #203 fixed-step shop:** `main.ts` feeds 50ms pacing into
+  `GameStore.advanceWorldTime` first, then calls
+  `NpcVisualSystem.advanceWorldTicks`. NPC route following, physical
+  crowd/queue arbitration, wait decisions and actual shelf pickup callbacks
+  run only on committed world time, never on `scene.render()` or
+  `engine.getDeltaTime()`. 60-second requests are scheduled for 1,200
+  saved ticks, with seconds conversion at the visual UI boundary.
+  `campaignSaveCadence.ts` throttles clock-only IndexedDB writes to
+  once per real second while immediate player actions/queue changes save.
+  **Remaining:** physical NPC phase, route, local wait and occupancy claim
+  snapshots are still scene-only, so mid-visit save/reload is not fully
+  deterministic. Dungeon fights still resolve in the old bedtime batch;
+  this is NOT yet parallel live dungeon simulation.
   The full migration must unify active shop/customer timers, dungeon/party
   events and site cooldowns
   on one deterministic saved in-game timeline. Use bounded event advances,
@@ -525,7 +536,7 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 6. **Universal furniture registry and transaction.** `furnitureRegistry.ts` owns canonical labels, mount surfaces, sizes, focus data, rotated bounds, collision and shelf/counter service semantics; there is no parallel shop-floor geometry table or counter rendering facade. `furniturePlacement.ts` is the ONE pure preview/commit validator, exposed through `GameStore.previewFurniturePlacement` / `placeFurniture`, contextual P and new-shelf N. Shop shelves have monotonically assigned `shelf-N` instance IDs and four stock slots per built instance; new placement appends the empty stock records atomically. New campaigns start with no shelves or stocked slots. Strict `campaignSave.ts` requires a complete version-15 room, bedroom, roster-board and counter transform and checks shelf-to-slot correspondence; older partial/five-slot states are incompatible and deliberately not migrated. The alpha bounds live shelving at 12 instances. `Shop` creates corresponding meshes and inventory slots on state changes, while navigation/queues use their registered collision hulls and service sockets. Wall-mounted fixtures share `wallFurniturePlacement.ts` for structural wall anchors and excavated-rock support; mining supporting rock is rejected until the mounted object is moved. Private bedroom fixtures share the registry/transaction but retain sleep/door access rules. Other furniture currently remains a single instance per type: new reusable types still need their own mesh, persistence and interactions.
 7. **All dependent transforms move together.** Bedroom object groups include their interaction targets, collision hulls and lights when applicable. Sleep range follows the moved bed; roster interaction follows the moved board. Register geometry, staff docking, queue and blueprint use the same counter placement and orientation.
 8. **No hunger implementation.** Waybread/Herbs heal HP. No starvation timers, hunger events or residual hunger logic.
-9. **Persistence discipline.** `SIMULATION_VERSION` is **15** (PR #202). PR #201 version-14 and earlier alpha campaigns deliberately do not migrate. Version-15 saves strictly validate day-bounded world time, ordered event queue, each petition's linked unique visitor event/expiry, and room/furniture/stock invariants. Invalid saves must not be silently overwritten.
+9. **Persistence discipline.** `SIMULATION_VERSION` is **16** (PR #203). Version 15 and earlier alpha campaigns deliberately do not migrate because the world tick scale changed. Version-16 saves strictly validate day-bounded 50ms time, ordered event queue, each petition's linked unique visitor event/expiry, and room/furniture/stock invariants. Clock-only autosave is sampled at most once per game minute; real transactions and queue mutations save immediately, and lifecycle flush saves outstanding changes. Invalid saves must not be silently overwritten.
 
 ## 4. Performance and runtime watchpoints
 
