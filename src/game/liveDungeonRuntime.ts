@@ -220,6 +220,79 @@ function commitDungeonTick(state:GameState):GameState {
     scheduleLiveCombat(scheduled);
 }
 
+/** Run the existing 60Hz group engine on the saved world timeline.
+ * Every scheduled 0.5s event advances exactly 30 ticks, or fewer if
+ * the fight ends. Read-only replays NEVER call this function.
+ */
+function commitLiveCombatTick(state:GameState):GameState{
+  if(!state.liveDungeon.combats.length||
+     state.worldClock.tick!==state.liveDungeon.combatTick+LIVE_COMBAT_INTERVAL_TICKS)
+    throw new RangeError("Unscheduled live battle advance.");
+  const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
+  const counts=new Map(state.liveDungeon.heroes.map(h=>[h.heroId,h]));
+  let level7World=state.level7World;
+  let earlyDungeonWorlds=[...(state.earlyDungeonWorlds??[])];
+  const activities:WorldEvent[]=[];
+  const continuing:LiveDungeonCombat[]=[];
+  for(const fight of state.liveDungeon.combats){
+    // Copy the authoritative mutable actors before stepping, preserving the
+    // previous immutable checkpoint for deterministic save comparisons.
+    const combat:GroupCombatState=structuredClone(fight.state);
+    const frames=[...fight.frames];
+    for(let i=0;i<LIVE_COMBAT_INTERVAL_TICKS*3&&combat.outcome==="fighting";i++){
+      const step=Math.round(combat.time*60)+1;
+      if(step>LEVEL7_COMBAT_SECONDS*60){combat.outcome="draw";break;}
+      stepGroupCombat(combat);
+      if(combat.outcome==="fighting"&&step===LEVEL7_COMBAT_SECONDS*60)
+        combat.outcome="draw";
+      if(step%6===0||combat.outcome!=="fighting")
+        frames.push(captureGroupCombatFrame(combat));
+    }
+    if(combat.outcome==="fighting"){
+      continuing.push({...fight,state:combat,frames});
+      continue;
+    }
+    const replay=groupCombatReplayFromFrames(fight.encounter.options,combat,frames);
+    const party=fight.heroIds.map(id=>{
+      const hero=byId.get(id);
+      if(!hero)throw new RangeError("Missing LIVE combat adventurer.");
+      return hero;
+    });
+    const floor=fight.encounter.floor;
+    const world=floor===7?level7World:earlyDungeonWorlds.find(e=>
+      e.floor===floor)?.world??emptyLevel7World();
+    const settled=settleSpatialDungeonCombat(party,world,state.day,
+      fight.encounter,combat,replay,fight.arrivals);
+    if(floor===7)level7World=settled.world;
+    else earlyDungeonWorlds=[
+      ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
+      {floor:floor as EarlyDungeonFloorWorld["floor"],world:settled.world},
+    ].sort((a,b)=>a.floor-b.floor);
+    for(const tick of settled.ticks){
+      const id=tick.adventurer.id;
+      byId.set(id,tick.adventurer);
+      counts.set(id,{heroId:id,steps:counts.get(id)?.steps??1,
+        finished:tick.replay.outcome!=="exploring"});
+      activities.push({
+        id:"day-"+state.day+":"+id+":dungeon-live:"+state.worldClock.tick,
+        day:state.day,worldTick:state.worldClock.tick,type:"dungeon-live",
+        adventurerId:id,
+        ...(floor===7?{level7Replay:tick.replay}:{dungeonReplay:tick.replay}),
+        message:tick.adventurer.name+"'s life-signature changed during an expedition. Details await a report.",
+      });
+    }
+  }
+  const next:GameState={...state,
+    adventurers:state.adventurers.map(h=>byId.get(h.id)!),
+    earlyDungeonWorlds,level7World,
+    liveDungeon:{...state.liveDungeon,combats:continuing,
+      combatTick:continuing.length?state.worldClock.tick:0,
+      heroes:[...counts.values()]},
+    events:[...state.events,...activities],
+  };
+  return continuing.length?scheduleLiveCombat(next):next;
+}
+
 /** One world timeline dispatches both real customer expiry and live dungeon.
  * Unknown events throw. No player/render/replay code invokes a second roll.
  */
