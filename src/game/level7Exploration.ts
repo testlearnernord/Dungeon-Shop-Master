@@ -318,15 +318,14 @@ export interface PreparedSpatialEncounter {
  * knows. No hidden-map shortcut and no new movement/loot/combat engine.
  * The last tile is the dungeon entrance, which connects to Galvik's portal.
  */
-export function chooseKnownReturnStep(
-  layout:DungeonLayout,progress:Level7HeroProgress,
+export function chooseKnownRouteStep(
+  layout:DungeonLayout,progress:Level7HeroProgress,target:DungeonPoint,
 ):DungeonPoint|null {
   const start=tileIndex(layout,progress);
-  const goal=tileIndex(layout,layout.entrance);
+  const goal=tileIndex(layout,target);
   if(start===goal)return null;
   const known=new Set(progress.visited);
-  if(!known.has(start)||!known.has(goal))
-    throw new RangeError("Return route needs visited start and entrance");
+  if(!known.has(start)||!known.has(goal))return null;
   const queue=[start],parents=new Map<number,number>([[start,start]]);
   for(let index=0;index<queue.length&&!parents.has(goal);index++){
     const here=queue[index],location={x:here%layout.width,
@@ -337,7 +336,7 @@ export function chooseKnownReturnStep(
       parents.set(cell,here);queue.push(cell);
     }
   }
-  if(!parents.has(goal))throw new RangeError("Visited return route is disconnected");
+  if(!parents.has(goal))return null;
   let next=goal;
   while(parents.get(next)!==start){
     const parent=parents.get(next);
@@ -347,11 +346,30 @@ export function chooseKnownReturnStep(
   return {x:next%layout.width,z:Math.floor(next/layout.width)};
 }
 
+/** Return routes are stricter than elective stair travel: the entrance
+ * was explored already and every leg MUST remain connected.
+ */
+export function chooseKnownReturnStep(
+  layout:DungeonLayout,progress:Level7HeroProgress,
+):DungeonPoint|null {
+  const start=tileIndex(layout,progress);
+  const goal=tileIndex(layout,layout.entrance);
+  if(start===goal)return null;
+  const known=new Set(progress.visited);
+  if(!known.has(start)||!known.has(goal))
+    throw new RangeError("Return route needs visited start and entrance");
+  const next=chooseKnownRouteStep(layout,progress,layout.entrance);
+  if(!next)throw new RangeError("Visited return route is disconnected");
+  return next;
+}
+
 export interface SpatialDungeonAdvanceOptions {
   readonly maxSteps?: number;
   readonly maxEncounters?: number;
   /** The existing map motor backtracks ONLY across the hero's known cells. */
   readonly returnToEntrance?:boolean;
+  /** A known real staircase tile, not a free remote floor transition. */
+  readonly routeToKnownTarget?:DungeonPoint;
   /** A retreat on the live timeline must return via the portal, not teleport. */
   readonly deferReturn?:boolean;
   /** Live mode reserves the site, but does not prematurely calculate its result. */
@@ -432,10 +450,14 @@ export function simulateSpatialDungeonPartyDay(
   };
 
   for(let t=1;t<=maxSteps;t++){
+    const routeProgress={...progress[0],...current,
+      visited:members[0].visitedOrder};
+    const stairStep=options.routeToKnownTarget
+      ?chooseKnownRouteStep(layout,routeProgress,options.routeToKnownTarget)
+      :null;
     const next=(options.returnToEntrance
-      ?chooseKnownReturnStep(layout,{...progress[0],...current,
-        visited:members[0].visitedOrder})
-      :choosePartyDungeonStep(layout,members.map(member=>({
+      ?chooseKnownReturnStep(layout,routeProgress)
+      :stairStep??choosePartyDungeonStep(layout,members.map(member=>({
         heroId:member.hero.id,...current,visited:member.visitedOrder,
       }))) ?? chooseRenewedSiteStep(layout,current,
       // Only discovered tiles may steer the renewable-site fallback. A
@@ -626,7 +648,7 @@ export function advanceSpatialDungeonPartyStep(
   party:readonly AdventurerState[],world:Level7World,
   campaignSeed:number,day:number,occupiedHeroIds?:ReadonlySet<string>,
   liveOptions:Pick<SpatialDungeonAdvanceOptions,"deferCombat"|"blockedCombatSites"|
-    "returnToEntrance"|"deferReturn">={},
+    "returnToEntrance"|"deferReturn"|"routeToKnownTarget">={},
 ):Level7PartyTick {
   return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
     occupiedHeroIds,{maxSteps:1,maxEncounters:1,...liveOptions});
