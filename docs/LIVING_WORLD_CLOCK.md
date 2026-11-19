@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design; PR #201–209 merged, #210 knowledge-safe LIVE Board in progress · 2026-11-19.**
+> **Approved design; PR #201–210 merged, #211 LIVE spectator in development · 2026-11-19.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -136,7 +136,7 @@ those words confer no special simulation authority.
   occurs once through a deliberate confirmation. No extra settlement or
   world random roll from watching video.
 
-## Migration constraints from current source
+## PR #211 live spectator boundary\n\nThe LIVE viewer is an opt-in presentation of the selected hero's actual\nspatial checkpoint, visited tiles, and precommitted 60Hz encounter frames.\nIt reads the SAME world clock and dungeon engine. It never creates a second\ncombat result, advances RNG, or writes to the save. Galvik's passive Board\ncontinues to show only verified signals, not the watched hero's hidden stats.\nWhile LIVE, shop traffic and all real world events continue normally; historical\nreplay/development inspection pauses the clock. The day still closes only at bed.\n\n## Migration constraints from current source
 
 **CURRENT at decision time:** `src/game/gameState.ts::advanceDay`
 advances all ordinary dungeon expeditions in one day transition;
