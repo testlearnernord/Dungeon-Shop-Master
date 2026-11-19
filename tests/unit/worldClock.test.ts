@@ -56,10 +56,10 @@ test("sleep alone closes a day; pending daytime events cannot be silently skippe
 
 test("new-version save round-trips scheduled event identity and resumes deterministically",()=>{
   let clock=createWorldClock();
-  clock=scheduleWorldEvent(clock,"report",3,"guest");
-  // A real expedition lane is now owned exclusively by liveDungeon.
-  // This generic serialization fixture deliberately uses a passive lane.
-  clock=scheduleWorldEvent(clock,"regeneration",5,"site");
+  clock=scheduleWorldEvent(clock,"regeneration",3,"guest");
+  // Expedition and report lanes now have real strict live-world owners.
+  // Generic clock serialization uses lanes not yet bound to a live service.
+  clock=scheduleWorldEvent(clock,"shop-command",5,"site");
   const before={...createGameState(23),worldClock:clock};
   const restored=parseSave(JSON.stringify(createSave(before)));
   const apply=(state:typeof before,event:ScheduledWorldEvent)=>({
