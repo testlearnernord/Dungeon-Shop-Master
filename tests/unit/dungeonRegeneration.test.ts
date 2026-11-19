@@ -1,3 +1,4 @@
+import {emptyShopTraffic} from "../../src/game/shopTraffic.ts";
 import {WORLD_TICKS_PER_DAY} from "../../src/game/worldClock.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -86,6 +87,7 @@ test("Floor 7 uses persistent saved generations and rejects forged save cycles",
   }
   const state = {...initial,
     day:3,worldClock:{...initial.worldClock,tick:2*WORLD_TICKS_PER_DAY},
+    shopTraffic:emptyShopTraffic(3,2*WORLD_TICKS_PER_DAY),
     shopEconomy:{...initial.shopEconomy,
       dailySales:{day:3,units:0,revenue:0}},
     adventurers:initial.adventurers.map(h => h.id===hero.id ? result.adventurer : h),

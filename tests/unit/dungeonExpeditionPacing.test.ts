@@ -1,3 +1,4 @@
+import {emptyShopTraffic} from "../../src/game/shopTraffic.ts";
 import {WORLD_TICKS_PER_DAY} from "../../src/game/worldClock.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -101,6 +102,7 @@ test("one real committed day can contain two DISTINCT fights without repeated re
   const base=createGameState(seed);
   const saved={
     ...base,day:2,worldClock:{...base.worldClock,tick:WORLD_TICKS_PER_DAY},
+    shopTraffic:emptyShopTraffic(2,WORLD_TICKS_PER_DAY),
     shopEconomy:{...base.shopEconomy,
       dailySales:{...base.shopEconomy.dailySales,day:2}},
     adventurers:base.adventurers.map(h=>first.ticks.find(t=>

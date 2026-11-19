@@ -1,3 +1,4 @@
+import {emptyShopTraffic} from "../../src/game/shopTraffic.ts";
 import {WORLD_TICKS_PER_DAY} from "../../src/game/worldClock.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -130,7 +131,9 @@ test("one party day commits all member outcomes into v14 campaign replays",()=>{
     new Set(heroes.map(h=>h.id)));
   const base=createGameState(SEED);
   const updated={
-    ...base,day:12,worldClock:{...base.worldClock,tick:11*WORLD_TICKS_PER_DAY},shopEconomy:{...base.shopEconomy,
+    ...base,day:12,worldClock:{...base.worldClock,tick:11*WORLD_TICKS_PER_DAY},
+    shopTraffic:emptyShopTraffic(12,11*WORLD_TICKS_PER_DAY),
+    shopEconomy:{...base.shopEconomy,
       dailySales:{...base.shopEconomy.dailySales,day:12}},
     adventurers:base.adventurers.map(h=>
       result.ticks.find(t=>t.adventurer.id===h.id)?.adventurer??h),
