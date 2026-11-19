@@ -10,8 +10,10 @@ import {
   resolveDungeonSite, type DungeonSiteCycle,
 } from "./dungeonRegeneration.ts";
 
-/** Real movement actions across one shop day. Longer footage comes from
- * actual additional spatial exploration, not slowed-down replay clips. */
+/** Historical bedtime-only expedition cap. The LIVE scheduler will call the
+ * same spatial authority with maxSteps=1 and determine cadence from world
+ * time, not silently make 36 moves when a whole day ends.
+ */
 export const LEVEL7_STEP_BUDGET = 36;
 export const LEVEL7_REPLAY_KEEP = 3;
 /** Bound battle frequency within a longer day without inventing encounters. */
@@ -287,6 +289,16 @@ export interface Level7PartyTick {
   readonly world: Level7World;
 }
 
+/** A bounded advancement window for the ONE spatial/dungeon combat authority.
+ * maxSteps=1 is the resume/schedule primitive, maxSteps=36 preserves old
+ * history fixtures until the live day-cutover explicitly retires batching.
+ * Never recompute an earlier tile or reroll an already-resolved site.
+ */
+export interface SpatialDungeonAdvanceOptions {
+  readonly maxSteps?: number;
+  readonly maxEncounters?: number;
+}
+
 /**
  * Shared spatial navigation and combat authority for solo and co-located
  * parties. Each member walks the same actual edges; all inventory, HP and
@@ -297,7 +309,16 @@ export function simulateSpatialDungeonPartyDay(
   party: readonly AdventurerState[], world: Level7World,
   campaignSeed: number, day: number,
   occupiedHeroIds?: ReadonlySet<string>,
+  options:SpatialDungeonAdvanceOptions={},
 ): Level7PartyTick {
+  const maxSteps=options.maxSteps??LEVEL7_STEP_BUDGET;
+  const maxEncounters=options.maxEncounters??LEVEL7_MAX_ENCOUNTERS;
+  if(!Number.isSafeInteger(maxSteps)||maxSteps<1||
+     maxSteps>LEVEL7_STEP_BUDGET)
+    throw new RangeError("Spatial dungeon steps must be a positive bounded integer.");
+  if(!Number.isSafeInteger(maxEncounters)||maxEncounters<1||
+     maxEncounters>LEVEL7_MAX_ENCOUNTERS)
+    throw new RangeError("Spatial dungeon encounters must be bounded.");
   if(party.length<1||party.length>3)
     throw new RangeError("Spatial expeditions support 1–3 co-located heroes");
   const floor=party[0].floor;
@@ -349,7 +370,7 @@ export function simulateSpatialDungeonPartyDay(
     eligible.forEach((m,index)=>{m.gold+=each+(index<extra?1:0);});
   };
 
-  for(let t=1;t<=LEVEL7_STEP_BUDGET;t++){
+  for(let t=1;t<=maxSteps;t++){
     const next=choosePartyDungeonStep(layout,members.map(member=>({
       heroId:member.hero.id,...current,visited:member.visitedOrder,
     }))) ?? chooseRenewedSiteStep(layout,current,
@@ -442,7 +463,7 @@ export function simulateSpatialDungeonPartyDay(
         // Battle victory does not magically end the day's exploration.
         // Keep walking the real connected floor until the step or encounter
         // budget is spent, or the party decides to retreat for safety.
-        if(encountersResolved>=LEVEL7_MAX_ENCOUNTERS)break;
+        if(encountersResolved>=maxEncounters)break;
         continue;
       }else{
         outcome="retreat";
@@ -514,4 +535,21 @@ export function simulateLevel7Day(
   if(hero.status!=="expedition"||hero.floor!==7||hero.health<=0)
     throw new RangeError("Level 7 run requires a living F7 expedition hero");
   return simulateSpatialDungeonDay(hero,world,campaignSeed,day);
+}
+
+/**
+ * A true single connected dungeon step for an existing hero/party at its
+ * current saved location. The FULL spatial path/combat/loot engine above
+ * remains authoritative: this adapter only chooses the step budget.
+ *
+ * A fight is still resolved atomically by the existing deterministic group
+ * combat resolver. Binding its 60 Hz frames to elapsed shared world time is
+ * a separate, explicit live-combat integration step; don't claim otherwise.
+ */
+export function advanceSpatialDungeonPartyStep(
+  party:readonly AdventurerState[],world:Level7World,
+  campaignSeed:number,day:number,occupiedHeroIds?:ReadonlySet<string>,
+):Level7PartyTick {
+  return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
+    occupiedHeroIds,{maxSteps:1,maxEncounters:1});
 }
