@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createGameState,WorldEvent} from "../../src/game/gameState.ts";
+import {createGameState,type WorldEvent} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {selectExpeditionArchive,archiveAvailableDays,archiveWorldTime,
