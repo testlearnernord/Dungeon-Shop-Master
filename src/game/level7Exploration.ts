@@ -590,3 +590,95 @@ export function advanceSpatialDungeonPartyStep(
   return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
     occupiedHeroIds,{maxSteps:1,maxEncounters:1,...liveOptions});
 }
+
+
+/** Commit a finished LIVE battle to the SAME spatial world and hero resource
+ * ledger. The site has been reserved, not resolved, since the arrival step.
+ * Only a genuine hero victory retires a monster generation and pays rewards.
+ * This function never invokes combat AI, RNG or a viewer.
+ */
+export function settleSpatialDungeonCombat(
+  party:readonly AdventurerState[],world:Level7World,day:number,
+  encounter:PreparedSpatialEncounter,combat:GroupCombatState,
+  recording:GroupCombatReplay,arrivals:readonly Level7Replay[],
+):Level7PartyTick {
+  if(party.length<1||party.length>3||party.length!==arrivals.length||
+    combat.outcome==="fighting"||recording.outcome!==combat.outcome)
+    throw new RangeError("LIVE battle is not ready for settlement.");
+  const ids=new Set(party.map(hero=>hero.id));
+  if(ids.size!==party.length||party.some((hero,i)=>
+    hero.floor!==encounter.floor||hero.health<=0||
+    arrivals[i].heroId!==hero.id||arrivals[i].floor!==encounter.floor))
+    throw new RangeError("LIVE party changed while fighting.");
+  const roster=new Map(combat.actors.map(actor=>[actor.id,actor]));
+  if(encounter.options.actors.filter(actor=>actor.team==="monsters").length!==1||
+    !roster.has(encounter.featureId)||party.some(hero=>!roster.has(hero.id)))
+    throw new RangeError("LIVE combat has invalid fighters.");
+  const winner=combat.outcome==="heroes";
+  const settled=world.siteCycles?.find(site=>site.id===encounter.featureId);
+  if(world.resolvedFeatureIds.includes(encounter.featureId)||
+    (settled&&settled.cycle!==encounter.siteCycle))
+    throw new RangeError("LIVE monster generation was already settled.");
+  const shares=new Map<string,number>();
+  const alive=party.map(hero=>({hero,actor:roster.get(hero.id)!}))
+    .filter(pair=>pair.actor.hp>0).sort((a,b)=>
+      a.hero.id.localeCompare(b.hero.id));
+  const pot=winner?(encounter.elite?6:2):0;
+  alive.forEach(({hero},i)=>{
+    shares.set(hero.id,Math.floor(pot/alive.length)+
+      (i<pot%alive.length?1:0));
+  });
+  const survivors=world.heroes.filter(progress=>!ids.has(progress.heroId));
+  const noSafeContinuation=alive.some(({hero,actor})=>
+    actor.hp/hero.stats.maxHealth<0.35&&actor.healCharges===0);
+  const retreats=!winner||alive.length!==party.length||noSafeContinuation;
+  const result:Omit<Level7Tick,"world">[]=party.map((hero,index)=>{
+    const actor=roster.get(hero.id)!;
+    const hp=Math.max(0,Math.round(actor.hp));
+    const dead=hp===0;
+    const used=Math.min(2,hero.inventory.healing)-actor.healCharges;
+    if(used<0||used>hero.inventory.healing)
+      throw new RangeError("LIVE combat invented a Healing Herb.");
+    const personalOutcome:Level7Outcome=dead?"death":retreats?"retreat":"exploring";
+    const returning=encounter.floor===7&&!dead&&retreats;
+    const xp=hero.xp+(winner&&!dead?(encounter.elite?28:12):0);
+    const gold=shares.get(hero.id)??0;
+    const adventurer:AdventurerState={
+      ...hero,health:hp,xp,level:1+Math.floor(xp/100),
+      gold:hero.gold+gold,
+      floor:returning?4:hero.floor,
+      status:dead?"dead":returning?"traveling":hero.status,
+      inventory:{...hero.inventory,healing:hero.inventory.healing-used},
+    };
+    const oldProgress=world.heroes.find(p=>p.heroId===hero.id);
+    if(!dead&&!returning&&oldProgress)survivors.push(oldProgress);
+    const arrival=arrivals[index];
+    const t=arrival.steps[arrival.steps.length-1]?.t??1.1;
+    const tail:Level7ReplayStep[]=[{
+      x:encounter.x,z:encounter.z,t:t+0.1,
+      action:dead?"death":winner?"defeat-monster":"retreat",
+      hp,featureId:encounter.featureId,
+    }];
+    if(!dead&&winner&&retreats)tail.push({
+      x:encounter.x,z:encounter.z,t:t+0.2,action:"retreat",hp,
+    });
+    return {
+      adventurer,
+      replay:{...arrival,steps:[...arrival.steps,...tail],
+        encounters:[{featureId:encounter.featureId,x:encounter.x,z:encounter.z,
+          siteCycle:encounter.siteCycle,combat:recording}],
+        outcome:personalOutcome},
+      gainedGold:gold,gainedLoot:0,
+      defeatedMonsters:winner&&!dead&&alive[0]?.hero.id===hero.id?1:0,
+    };
+  });
+  const nextWorld:Level7World={
+    ...world,heroes:survivors,
+    ...(winner?{
+      resolvedFeatureIds:[...world.resolvedFeatureIds,encounter.featureId],
+      siteCycles:resolveDungeonSite(world.siteCycles??[],
+        encounter.featureId,day),
+    }:{}),
+  };
+  return {world:nextWorld,ticks:result.map(tick=>({...tick,world:nextWorld}))};
+}
