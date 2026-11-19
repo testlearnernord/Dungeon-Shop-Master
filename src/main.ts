@@ -9,6 +9,7 @@ import { ITEMS, type ItemId } from "./game/inventory";
 import { ECONOMY } from "./game/economy";
 import { GameStore } from "./game/gameStore";
 import { WorldClockPacer } from "./game/worldClockPacer.ts";
+import {WORLD_TICKS_PER_GAME_MINUTE} from "./game/worldClock.ts";
 import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
 import { manuallyPaidVisitors } from "./game/npcVisitors.ts";
@@ -153,9 +154,13 @@ const refreshShoppingIntents = () => {
   (heroId,reason)=>store.walkOutWithoutPurchase(heroId,reason),state.level5Room,{
     start:(heroId,itemId,reason)=>{
       const due=store.startShopRequest(heroId,itemId,reason);
-      return due===null?null:due-store.state.worldClock.tick;
+      return due===null?null:
+        (due-store.state.worldClock.tick)/WORLD_TICKS_PER_GAME_MINUTE;
     },
-    remaining:heroId=>store.shopRequestRemaining(heroId),
+    remaining:heroId=>{
+      const remaining=store.shopRequestRemaining(heroId);
+      return remaining===null?null:remaining/WORLD_TICKS_PER_GAME_MINUTE;
+    },
     shortenE2E:(heroId,seconds)=>store.shortenShopRequestForE2E(heroId,seconds),
     expiredWithoutStock:heroId=>store.state.events.some(event=>
       event.day===store.state.day&&event.type==="shop-walkout"&&
@@ -327,8 +332,14 @@ engine.runRenderLoop(() => {
   const paused=document.hidden||!isShopActive()||
     !!document.querySelector("dialog[open]")||
     document.body.classList.contains("blueprint-active");
-  worldClockPacer.step(frameMs,paused,ticks=>store.advanceWorldTime(ticks));
   npcVisuals.setWorldPaused(paused);
+  worldClockPacer.step(frameMs,paused,ticks=>{
+    // One committed timeline drives both store mutations and physical motion.
+    // Shopper/stock events caused by physical arrival occur in this fixed-step
+    // callback, never during Babylon scene.render().
+    store.advanceWorldTime(ticks);
+    npcVisuals.advanceWorldTicks(ticks);
+  });
   npcVisuals.setWishBubblesVisible(!arena.isActive&&!dungeon.isActive);
   if(ledger?.isSuspended&&!arena.isActive&&!dungeon.isActive){
     ledger.resumeIfReady();

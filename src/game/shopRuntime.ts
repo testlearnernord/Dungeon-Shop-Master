@@ -1,7 +1,7 @@
 import type {GameState} from "./gameState.ts";
 import {walkOutWithoutPurchase} from "./shopWalkout.ts";
 import {forecastShoppingIntents,RESTOCK_WAIT_SECONDS,type ShoppingReason} from "./shopperIntents.ts";
-import {scheduleWorldEvent,type ScheduledWorldEvent} from "./worldClock.ts";
+import {scheduleWorldEvent,WORLD_TICKS_PER_GAME_MINUTE,type ScheduledWorldEvent} from "./worldClock.ts";
 import type {ItemId} from "./economy.ts";
 
 /** Request countdowns belong to committed world time, not Babylon frames.
@@ -16,7 +16,7 @@ export interface ShopRequest {
   readonly dueTick:number;
   readonly eventId:string;
 }
-export const SHOP_REQUEST_TICKS=RESTOCK_WAIT_SECONDS;
+export const SHOP_REQUEST_TICKS=RESTOCK_WAIT_SECONDS*WORLD_TICKS_PER_GAME_MINUTE;
 
 export function requestRemainingTicks(state:GameState,heroId:string):number|null {
   const request=state.shopRequests.find(item=>item.heroId===heroId);

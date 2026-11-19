@@ -1,5 +1,8 @@
-/** Presentation adapter only. Browser elapsed time is never a gameplay event. */
-export const REAL_MS_PER_WORLD_TICK=1000; // provisional until gameplay balance pass
+/** Presentation adapter only. Browser elapsed time is never a gameplay event.
+ * A 50 ms committed tick is the ONLY authority for gameplay movement.
+ */
+import { WORLD_TICK_SECONDS } from "./worldClock.ts";
+export const REAL_MS_PER_WORLD_TICK=WORLD_TICK_SECONDS*1000;
 export const MAX_WORLD_TICKS_PER_FRAME=8;
 const MAX_BUFFERED_REAL_MS=10000;
 

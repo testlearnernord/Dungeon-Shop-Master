@@ -1,5 +1,11 @@
-/** Persisted world clock. Ticks are in-game minutes; only the bed closes a day. */
-export const WORLD_TICKS_PER_DAY=1440;
+/** The ONE saved world clock. Twenty deterministic 50 ms simulation
+ * slices equal one game minute (and one unpaused real second).
+ * A shop day remains 24 foreground minutes, and ONLY the bed closes it.
+ * Fractions of a minute are integral to realistic shop traffic and combat.
+ */
+export const WORLD_TICKS_PER_GAME_MINUTE=20;
+export const WORLD_TICK_SECONDS=0.05;
+export const WORLD_TICKS_PER_DAY=1440*WORLD_TICKS_PER_GAME_MINUTE;
 export const MAX_WORLD_DAY=Math.floor(Number.MAX_SAFE_INTEGER/WORLD_TICKS_PER_DAY)-1;
 export const MAX_PENDING_WORLD_EVENTS=4096;
 export const MAX_EVENTS_PER_ADVANCE=4096;
