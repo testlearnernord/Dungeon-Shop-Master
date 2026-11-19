@@ -18,9 +18,9 @@ import {
 } from "./dungeonParties.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
 import type { BossCombatReplay } from "./bossCombatReplay.ts";
-import { REPLAY_KEEP_RECENT } from "./bossCombatReplay.ts";
+import {compactReplayFootage} from "./replayRetention.ts";
 import {
-  emptyLevel7World, getLevel7Progress, LEVEL7_REPLAY_KEEP,
+  emptyLevel7World, getLevel7Progress,
   simulateSpatialDungeonPartyDay,
   type Level7Replay, type Level7World, type Level7Tick,
   type SpatialDungeonFloor,
@@ -34,7 +34,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 22;
+export const SIMULATION_VERSION = 23;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -73,6 +73,8 @@ export interface WorldEvent {
   readonly worldTick?: number;
   /** Explicit limited magical observation. Never inferred from sealed footage. */
   readonly reportedZone?: "upper"|"deep";
+  /** Highlight from a committed step, never passive Board knowledge. */
+  readonly dungeonHighlight?: "treasure"|"trap";
   readonly shopReason?: "unavailable"|"cannot-afford"|"no-need"|"interested";
   readonly adventurerId?: string;
   readonly outcome?: DungeonOutcome;
@@ -109,6 +111,8 @@ export interface GameState {
   readonly liveDungeon: LiveDungeonState;
   readonly simulationVersion: number;
   readonly events: readonly WorldEvent[];
+  /** Explicitly saved tapes exempt from two-day frame expiry. */
+  readonly savedReplayIds:readonly string[];
   readonly adventurers: readonly AdventurerState[];
   readonly shopEconomy: ShopEconomyState;
   readonly shopLayout: ShopLayout;
@@ -152,6 +156,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     shopTraffic:emptyShopTraffic(1,0),
     liveDungeon:createLiveDungeonState(),
     simulationVersion: SIMULATION_VERSION,
+    savedReplayIds:[],
     events: [
       ...adventurers.slice(0, 3).map((hero) => arrivalEvent(hero, 1)),
       { id: "day-1:welcome", type: "welcome", day: 1, message: "Welcome to Day 1. The shop is ready." },
@@ -407,33 +412,10 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         :`${name} left their Temporary Party.`,
     });
   }
-  // Keep the full event history, but only a few heavy 3D recordings.
-  // Removing an expired replay never changes its outcome/event/hero/RNG.
-  const allEvents = [...state.events, ...events];
-  const keepBoss = new Set(allEvents.filter(event =>
-    event.type === "level6-combat" && event.combatReplay)
-    .slice(-REPLAY_KEEP_RECENT).map(event => event.id));
-  const keepDungeon = new Set(allEvents.filter(event =>
-    event.type === "level7-exploration" && event.level7Replay)
-    .slice(-LEVEL7_REPLAY_KEEP).map(event => event.id));
-  const keepEarlyDungeon = new Set(allEvents.filter(event =>
-    event.type==="dungeon-exploration"&&event.dungeonReplay)
-    .slice(-8).map(event=>event.id));
-  const compactedEvents = allEvents.map(event => {
-    if ((!event.combatReplay || keepBoss.has(event.id)) &&
-        (!event.level7Replay || keepDungeon.has(event.id)) &&
-        (!event.dungeonReplay || keepEarlyDungeon.has(event.id))) return event;
-    const {
-      combatReplay: _expiredBoss, level7Replay: _expiredDungeon,
-      dungeonReplay: _expiredEarly,
-      ...smallEvent
-    } = event;
-    return {...smallEvent,
-      ...(event.combatReplay && keepBoss.has(event.id) ? {combatReplay:event.combatReplay}:{ }),
-      ...(event.level7Replay && keepDungeon.has(event.id) ? {level7Replay:event.level7Replay}:{ }),
-      ...(event.dungeonReplay && keepEarlyDungeon.has(event.id) ? {dungeonReplay:event.dungeonReplay}:{}),
-    };
-  });
+  // Retain actual facts permanently; purge large unpinned frames after
+  // two completed days. Historical readers never re-simulate expired footage.
+  const compactedEvents=compactReplayFootage(
+    [...state.events,...events],day,state.savedReplayIds);
   return {
     state: {
       ...closed, day, worldClock,shopTraffic:emptyShopTraffic(day,worldClock.tick),
