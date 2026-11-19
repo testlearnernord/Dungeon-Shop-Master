@@ -10,6 +10,7 @@ import { ECONOMY } from "./game/economy";
 import { GameStore } from "./game/gameStore";
 import { WorldClockPacer } from "./game/worldClockPacer.ts";
 import {WORLD_TICKS_PER_GAME_MINUTE} from "./game/worldClock.ts";
+import {advancePhysicalShopWorldTicks} from "./game/shopWorldAdvance.ts";
 import { InteractionSystem } from "./game/interactionSystem";
 import { NpcVisualSystem } from "./game/npcVisualSystem";
 import { manuallyPaidVisitors } from "./game/npcVisitors.ts";
@@ -337,8 +338,10 @@ engine.runRenderLoop(() => {
     // One committed timeline drives both store mutations and physical motion.
     // Shopper/stock events caused by physical arrival occur in this fixed-step
     // callback, never during Babylon scene.render().
-    store.advanceWorldTime(ticks);
-    npcVisuals.advanceWorldTicks(ticks);
+    advancePhysicalShopWorldTicks(ticks,
+      ()=>store.state.worldClock.tick,
+      ()=>store.advanceWorldTime(1),
+      ()=>npcVisuals.advanceWorldTicks(1));
   });
   npcVisuals.setWishBubblesVisible(!arena.isActive&&!dungeon.isActive);
   if(ledger?.isSuspended&&!arena.isActive&&!dungeon.isActive){
