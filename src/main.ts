@@ -124,6 +124,10 @@ if(import.meta.env.VITE_E2E==="1"){
     __shopTestStockItem?:(slotId:string,itemId:ItemId)=>string;
     __shopTestRestockWait?:(heroId:string,seconds:number)=>void;
     __shopTestReadyCheckout?:()=>string|null;
+    __shopTestTraffic?:()=>unknown;
+    __shopTestPauseWorld?:(paused:boolean)=>void;
+    __shopTestSaveTrafficNow?:()=>Promise<unknown>;
+    __shopTestHydratedTraffic?:unknown;
   };
   hooks.__shopTestAdvanceDay=()=>dayClock.endDayFromBed();
   hooks.__shopTestStockItem=(slotId,itemId)=>
@@ -131,6 +135,13 @@ if(import.meta.env.VITE_E2E==="1"){
   hooks.__shopTestRestockWait=(heroId,seconds)=>
     npcVisuals.setRestockTimeForE2E(heroId,seconds);
   hooks.__shopTestReadyCheckout=()=>npcVisuals.readyCheckoutHeroId();
+  hooks.__shopTestTraffic=()=>structuredClone(store.state.shopTraffic);
+  hooks.__shopTestPauseWorld=paused=>worldClockPacer.setPaused("e2e",paused);
+  hooks.__shopTestSaveTrafficNow=async()=>{
+    const {CampaignStorage}=await import("./game/campaignSave.ts");
+    await new CampaignStorage().saveGame(store.state);
+    return structuredClone(store.state.shopTraffic);
+  };
 }
 // The forecast is read-only. It uses exactly the same purchase decisions
 // as the confirmed next-day transaction. Stock changes trigger replanning.
@@ -193,6 +204,10 @@ const syncTrafficCheckpoint=()=>{
 const restoreTrafficCheckpoint=()=>{
   const state=store.state;
   npcVisuals.restoreTraffic(state.shopTraffic,currentVisitorSnapshots);
+  if(import.meta.env.VITE_E2E==="1")
+    (window as Window & {__shopTestHydratedTraffic?:unknown})
+      .__shopTestHydratedTraffic=structuredClone(npcVisuals.snapshotTraffic(
+        state.day,state.worldClock.tick));
   replacingCampaign=false;
   if(!state.shopTraffic.initialized)syncTrafficCheckpoint();
 };

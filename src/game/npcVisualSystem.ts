@@ -364,6 +364,17 @@ export class NpcVisualSystem {
       }
       paintIdentity(npc,this.portraits);
     }
+    // Map order determines deterministic right-of-way in the NEXT shop
+    // step. Restoring only positions but retaining fresh-spawn insertion
+    // order would reroute the crowd differently after reload.
+    const ordered=new Map<string,NpcVisual>();
+    for(const actor of checkpoint.actors){
+      const npc=this.npcs.get(actor.heroId);
+      if(!npc)throw new Error("Missing restored physical visitor");
+      ordered.set(actor.heroId,npc);
+    }
+    this.npcs.clear();
+    for(const [id,npc] of ordered)this.npcs.set(id,npc);
     this.serviceSpots.restoreClaims(checkpoint.claims,checkpoint.shelfOwners,
       this.layout,this.room);
     for(const gate of ["level4","level6"] as const){

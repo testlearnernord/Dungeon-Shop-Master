@@ -7,7 +7,7 @@ import { GameStore } from "../../src/game/gameStore.ts";
 
 test("Level 6 permission is explicit, individual, immutable and does not consume a tick", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 16);
+  assert.equal(SIMULATION_VERSION, 17);
   assert(initial.adventurers.every((hero) => !hero.level6Permit));
   const visitor = initial.adventurers[0];
   const granted = setLevel6Permit(initial, visitor.id, true);
