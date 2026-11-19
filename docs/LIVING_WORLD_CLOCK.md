@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Approved design; PR #201 clock, #202 petitions, #203 fixed-step shop, #204 persisted physical NPC checkpoints. Live dungeon still pending · 2026-11-19.**
+> **Approved design; PR #201–206 foundations merged, #207 ordinary 60Hz live-combat integration in progress · 2026-11-19.**
 > Supersedes the former fixed **Morning / Midday / Evening simulation phase**
 > requirement in `THE_LIVING_DUNGEON.md`, `ROADMAP.md` and Board 2.0 designs.
 > This document defines the intended **hybrid world clock** and its acceptance
@@ -164,12 +164,18 @@ nor introduces a second authoritative customer AI. PR #205 extracts bounded `adv
   Each due event advances real shared party positions and applies
   actual site outcomes to the campaign. The day-end path processes all
   remaining real events and cannot rerun a separate day dungeon batch.
-  The save format v18 validates the next due time and per-hero step
-  checkpoint. Remaining critical migrations are truly time-resolved
-  60Hz group fights, meaningful autonomous floor choices, the real
-  return route to Galvik, live viewing, report delivery and long-session
-  verification. The current fight motor still commits a whole combat
-  at one scheduled expedition tick, not gradually over live frames.
+  Version-18 saves validate the next due movement and per-hero step.
+  PR #207 integrates ordinary Floors 1–4/7 group combat without a second
+  engine: a monster arrival reserves the true site, and the existing 60Hz
+  actor motor advances 30 fixed steps per due half-second event. Version-19
+  saves retain intermediate fighter phases, projectiles, consumed resources,
+  original gear and immutable capture frames with an exact next combat due
+  tick. The monster site and finite rewards settle only at combat termination;
+  recording views cannot trigger game simulation. The unique Level-6
+  Troll duel remains an atomic legacy special encounter for a later
+  integration, not a second newly authored motor. Meaningful autonomous
+  floor choices, physical shop returns, live viewing, knowledge-safe
+  report delivery and long-session verification are still pending.
 
 **Required migration strategy**:
 
