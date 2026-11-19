@@ -21,6 +21,7 @@ export function setupCampaignHud(
   store: GameStore,
   campaign: Awaited<ReturnType<typeof loadCampaign>>,
   resetScene: () => void,
+  restorePhysicalShop?:()=>void,
 ): void {
   const status = document.querySelector<HTMLElement>("#save-status")!;
   const file = document.querySelector<HTMLInputElement>("#save-file")!;
@@ -73,6 +74,10 @@ export function setupCampaignHud(
     recover.hidden = true;
     resetScene();
     store.restore(state);
+    restorePhysicalShop?.();
+    // Save the fully restored traffic/visitor state, not the temporary
+    // pre-hydration replacement that event listeners first observed.
+    save();
     document.querySelector<HTMLCanvasElement>("#renderCanvas")!.focus();
   };
   document.querySelector("#new-game")!.addEventListener("click", () => {
