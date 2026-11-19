@@ -153,7 +153,7 @@ export class DungeonViewer {
   get currentScene(): Scene | null { return this.active ? this.scene : null; }
   get map(): DungeonLayout | null { return this.layout; }
 
-  open(): void {
+  open(initialReplayId?:string): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("arena-active")) return;
     this.shopCamera.detachControl();
@@ -164,7 +164,7 @@ export class DungeonViewer {
     this.panel.hidden = false;
     this.layout = generateExpeditionLayout(this.store.state.seed,7);
     this.createScene(this.layout);
-    this.refreshReplaySelector();
+    this.refreshReplaySelector(initialReplayId);
     // A recording opens with accessible footage controls; the full-layout
     // development preview must instead accept WASD immediately.
     if (this.replayScene?.currentReplay) this.replaySelector.focus();
@@ -176,8 +176,22 @@ export class DungeonViewer {
    * vitality or location available to the ordinary shop HUD. */
   openLive(heroId:string):boolean {
     if(!selectLiveSpectatorFrame(this.store.state,heroId))return false;
-    if(!this.active)this.open();
+    if(!this.active)this.open("preview");
     return this.active&&this.startLive(heroId);
+  }
+
+  /** Open exactly one already committed tape and seek solely its LOCAL
+   * playback clock. This is deliberately independent of shared world time. */
+  openReplayAt(id:string,seconds=0):boolean {
+    if(!this.availableReplays().some(entry=>entry.id===id))return false;
+    if(!this.active)this.open(id);
+    else this.selectReplay(id);
+    if(!this.active||this.replaySelector.value!==id||
+       !this.replayScene?.currentReplay)return false;
+    this.playbackTime=Math.max(0,Math.min(this.replayScene.duration,seconds));
+    this.playing=false;
+    this.paintPlayback();
+    return true;
   }
 
   close(): void {
@@ -354,14 +368,15 @@ export class DungeonViewer {
     // Outcomes remain sealed in this selection list.
     return this.store.state.events.filter(e=>
       (e.type==="level7-exploration"&&!!e.level7Replay) ||
-      (e.type==="dungeon-exploration"&&!!e.dungeonReplay))
-      .slice(-12).reverse().map(e=>({
+      (e.type==="dungeon-exploration"&&!!e.dungeonReplay) ||
+      (e.type==="dungeon-live"&&!!(e.dungeonReplay||e.level7Replay)))
+      .reverse().map(e=>({
         id:e.id,record:(e.level7Replay??e.dungeonReplay)!,
         name:this.store.state.adventurers.find(h=>h.id===e.adventurerId)?.name ??
           e.adventurerId ?? "Unknown hero",
       }));
   }
-  private refreshReplaySelector():void {
+  private refreshReplaySelector(initialReplayId?:string):void {
     const replays=this.availableReplays();
     this.replaySelector.replaceChildren();
     const preview=new Option("Layout preview (full development map)","preview");
@@ -378,7 +393,7 @@ export class DungeonViewer {
         " · expedition footage",entry.id));
     }
     // Saved recordings take priority; never disclose the ending in the menu.
-    this.selectReplay(replays[0]?.id??"preview");
+    this.selectReplay(initialReplayId??replays[0]?.id??"preview");
   }
   private selectReplay(id:string):void {
     this.liveHeroId=null;
