@@ -284,8 +284,9 @@
   `report`-lane `shop-return:<heroId>` portal event exactly 20 ticks
   later; ONLY that event changes the hero to `at-shop` and spawns
   the real existing saved physical NPC entrance path. Strictly reject
-  duplicate arrival events, invented returners and unmatched report
-  timers. The unique Floor-6 Troll survivor uses the same portal, but
+  repeated portal event identities, invented returners and unmatched
+  report timers. Distinct real same-day reentries have distinct tick IDs
+  and NEVER generate a sale without real checkout. The unique Floor-6 Troll survivor uses the same portal, but
   its fight remains atomic until explicitly integrated. Autonomous floor transitions,
   magic life-signature death alert, spectator and archive remain pending.
   Do not promote V.003 to playable/released on this partial cutover.
