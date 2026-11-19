@@ -1,6 +1,6 @@
 # The Living Dungeon — V.003 ALPHA design target
 
-> **Approved V.003 direction, with PR #201–209 merged and #210 in progress · 2026-11-19.**
+> **Approved V.003 direction, with PR #201–210 merged and #211 in development · 2026-11-19.**
 > Dungeon Shop Master's next named milestone is **V.003 ALPHA — The Living Dungeon**.
 > Actual saved shared-world time, physical shop customers, persistent spatial
 > dungeon steps and ordinary time-resolved 60Hz fights are implemented.
@@ -8,7 +8,7 @@
 > PR #209 implements actual saved individual goal/choice ticks, early-floor
 > physically discovered stairs and voluntary LIVE Temporary Parties through
 > the existing AI and encounter motor. V.003 remains NOT release-complete
-> without the COMPLETE historical LIVE Board/Archive, spectator,
+> without the COMPLETE historical LIVE Board/Archive, spectator validation,
 > authored deeper-floor exits,
 > two-day shop standby and multi-day acceptance.
 > PR #210 ships a first knowledge-safe LIVE Board and explicit magical
