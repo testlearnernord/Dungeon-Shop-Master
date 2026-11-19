@@ -34,7 +34,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 21;
+export const SIMULATION_VERSION = 22;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -66,11 +66,13 @@ export interface WorldEvent {
     "sale" | "tip" | "healed" |
     "level6-departure" | "level6-combat" | "level6-return" |
     "level7-departure" | "level7-exploration" | "shop-credit" |
-    "dungeon-exploration" | "dungeon-live" |
+    "dungeon-exploration" | "dungeon-live" | "hero-death-signal" |
     "temporary-party-join" | "temporary-party-leave";
   readonly day: number;
   readonly message: string;
   readonly worldTick?: number;
+  /** Explicit limited magical observation. Never inferred from sealed footage. */
+  readonly reportedZone?: "upper"|"deep";
   readonly shopReason?: "unavailable"|"cannot-afford"|"no-need"|"interested";
   readonly adventurerId?: string;
   readonly outcome?: DungeonOutcome;
