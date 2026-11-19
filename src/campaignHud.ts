@@ -1,6 +1,7 @@
 import { CampaignStorage, createSave, parseSave } from "./game/campaignSave";
 import { createGameState, type GameState } from "./game/gameState";
 import { GameStore } from "./game/gameStore";
+import {shouldQueueCampaignSave} from "./game/campaignSaveCadence.ts";
 
 export async function loadCampaign() {
   const storage = new CampaignStorage();
@@ -45,7 +46,16 @@ export function setupCampaignHud(
       if (revision === currentRevision) reportError(describe(error));
     });
   };
-  store.subscribe(save);
+  let lastObserved=store.state;
+  let lastQueuedTick=store.state.worldClock.tick;
+  store.subscribe(()=>{
+    const current=store.state;
+    const queue=shouldQueueCampaignSave(lastObserved,current,lastQueuedTick);
+    lastObserved=current;
+    if(!queue)return;
+    lastQueuedTick=current.worldClock.tick;
+    save();
+  });
   if (campaign.error) {
     reportError(campaign.error);
     recover.hidden = false;
