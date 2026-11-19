@@ -6,7 +6,8 @@ import {
 import { validateBossReplay } from "./bossCombatReplay.ts";
 import {
   LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS, LEVEL7_COMBAT_SECONDS,
-  getLevel7Progress, prepareSpatialDungeonCombat, type Level7World,
+  getLevel7Progress, prepareSpatialDungeonCombat, chooseKnownReturnStep,
+  type Level7World,
   type SpatialDungeonFloor,
 } from "./level7Exploration.ts";
 import { generateDungeonLayout, generateExpeditionLayout, tileAt } from "./dungeonLayout.ts";
@@ -653,6 +654,19 @@ function validateLivePortalReturns(
     if(!enabled||!hero||hero.health===0)
       fail(path+".heroId","must identify one live returning hero");
     if(journey.phase==="portal"){
+      // A normal-floor portal can only be triggered from the known real
+      // entrance tile. The saved last location is intentionally retained
+      // until the portal event resolves; a bare fabricated timer is not enough.
+      if(floor!==6){
+        const world:Level7World=floor===7?
+          state.level7World as Level7World:
+          ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
+            ?.find(w=>w.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
+        const progress=world.heroes.find(p=>p.heroId===heroId);
+        const entrance=generateExpeditionLayout(state.seed as number,floor).entrance;
+        if(!progress||progress.x!==entrance.x||progress.z!==entrance.z)
+          fail(path+".phase","portal traveler must have reached the real floor entrance");
+      }
       const due=integer(journey.dueTick,path+".dueTick",
         clockTick+1,Number.MAX_SAFE_INTEGER);
       if(due!==started+SHOP_PORTAL_TRANSIT_TICKS||
@@ -676,8 +690,15 @@ function validateLivePortalReturns(
         state.level7World as Level7World:
         ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
           ?.find(w=>w.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
-      if(!world.heroes.some(p=>p.heroId===heroId))
+      const progress=world.heroes.find(p=>p.heroId===heroId);
+      if(!progress)
         fail(path+".heroId","must have an actual saved dungeon location");
+      try {
+        chooseKnownReturnStep(generateExpeditionLayout(
+          state.seed as number,floor),progress);
+      } catch {
+        fail(path+".heroId","must have a fully connected known route home");
+      }
     }
   }
   const reports=pending.filter(raw=>{
