@@ -522,9 +522,29 @@ The redesign must preserve one deterministic GameState authority and introduce:
   attributes, while a single accessible HUD warning announces real
   fatalities. Strict v22 checks tick-qualified IDs, source enum and
   genuine dead hero/active zero-HP actor.
-  **PR #211 LIVE spectator:** `liveSpectator.ts` reads only the saved\n  participant's visited cells, current spatial checkpoint and actual\n  precomputed combat frames after explicit Board opt-in. The common\n  `DungeonReplayScene.showLive()` reuses combat meshes, party visuals,\n  fog and minimap; it never resolves combat or invents a replay outcome.\n  The render loop continues shop traffic and the world event scheduler\n  during this mode, unlike paused archive/development views. Current\n  remote HP and enemy identity never flow back to `liveBoardProjection`.\n  **Still incomplete:** shop post-visit two-day standby, unique
+  **PR #211 LIVE spectator:** `liveSpectator.ts` reads only the saved
+  participant's visited cells, current spatial checkpoint and actual
+  precomputed combat frames after explicit Board opt-in. The common
+  `DungeonReplayScene.showLive()` reuses combat meshes, party visuals,
+  fog and minimap; it never resolves combat or invents a replay outcome.
+  The render loop continues shop traffic and the world event scheduler
+  during this mode, unlike paused archive/development views. Current
+  remote HP and enemy identity never flow back to `liveBoardProjection`.
+  **PR #212 selective recording retention:** `replayRetention.ts` is
+  shared by `advanceDay` (legacy isolated fixtures) and
+  `finishLiveDungeonDay` (real browser) to remove large unpinned frame
+  arrays older than two completed days. `GameStore.toggleSavedReplay`
+  is the only explicit archive pin action (max 12 IDs), preserving the
+  original event object. `expeditionArchive.ts` projects only committed
+  short-window highlights and calculates `dungeonReplayPlayback` segment
+  bookmarks on-demand for an opened record. No second clock or fight
+  resolver. `cashierHud` grades the last actually painted needle position;
+  `main.ts` suspends Babylon rendering while that modal pauses gameplay.
+  The LIVE spectator avoids re-projecting immutable spatial checkpoints
+  on every 60Hz render frame.
+  **Still incomplete:** shop post-visit two-day standby, unique
   Level-6 boss unification, Floor-7+ authored exits, real-time
-  Board/important death signals, spectator/archive and ten-day
+  delayed detailed reports, release-ready archive polish and ten-day
   end-to-end gameplay validation. Render FPS never drives outcomes.
   See [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 - Separate *world truth* from *merchant knowledge*: only genuine
@@ -631,7 +651,7 @@ This is a **route map**. Before editing, inspect the named module, its imports, 
 6. **Universal furniture registry and transaction.** `furnitureRegistry.ts` owns canonical labels, mount surfaces, sizes, focus data, rotated bounds, collision and shelf/counter service semantics; there is no parallel shop-floor geometry table or counter rendering facade. `furniturePlacement.ts` is the ONE pure preview/commit validator, exposed through `GameStore.previewFurniturePlacement` / `placeFurniture`, contextual P and new-shelf N. Shop shelves have monotonically assigned `shelf-N` instance IDs and four stock slots per built instance; new placement appends the empty stock records atomically. New campaigns start with no shelves or stocked slots. Strict `campaignSave.ts` requires a complete version-15 room, bedroom, roster-board and counter transform and checks shelf-to-slot correspondence; older partial/five-slot states are incompatible and deliberately not migrated. The alpha bounds live shelving at 12 instances. `Shop` creates corresponding meshes and inventory slots on state changes, while navigation/queues use their registered collision hulls and service sockets. Wall-mounted fixtures share `wallFurniturePlacement.ts` for structural wall anchors and excavated-rock support; mining supporting rock is rejected until the mounted object is moved. Private bedroom fixtures share the registry/transaction but retain sleep/door access rules. Other furniture currently remains a single instance per type: new reusable types still need their own mesh, persistence and interactions.
 7. **All dependent transforms move together.** Bedroom object groups include their interaction targets, collision hulls and lights when applicable. Sleep range follows the moved bed; roster interaction follows the moved board. Register geometry, staff docking, queue and blueprint use the same counter placement and orientation.
 8. **No hunger implementation.** Waybread/Herbs heal HP. No starvation timers, hunger events or residual hunger logic.
-9. **Persistence discipline.** `SIMULATION_VERSION` is **22** (PR #210). Version 21 and earlier alpha campaigns deliberately do not migrate because legitimate magical observation and death-signal events are newly required. Version-22 saves strictly validate 50ms world time, pending visitor events, uniquely referenced live customers, route/waypoint/timer bounds, occupied service positions, shelf ownership, and room/furniture/stock invariants. Clock/traffic-only autosave is sampled at most once per game minute; full snapshots are serialized after completed synchronous world steps, while real transactions save immediately and lifecycle flush saves outstanding changes. Invalid saves must not be silently overwritten.
+9. **Persistence discipline.** `SIMULATION_VERSION` is **23** (PR #212). Earlier alpha campaigns deliberately do not migrate. Version-23 saves additionally strictly validate bounded saved recording IDs and committed treasure/trap markers; the existing save contract still checks 50ms world time, pending visitor events, uniquely referenced live customers, route/waypoint/timer bounds, occupied service positions, shelf ownership, and room/furniture/stock invariants. Clock/traffic-only autosave is sampled at most once per game minute; full snapshots are serialized after completed synchronous world steps, while real transactions save immediately and lifecycle flush saves outstanding changes. Invalid saves must not be silently overwritten.
 
 ## 4. Performance and runtime watchpoints
 
