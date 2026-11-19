@@ -755,7 +755,7 @@ function validateState(value: unknown): asserts value is GameState {
     }
   }
 
-  for(const [i,raw] of (state.liveDungeon as RecordValue).heroes as unknown[]){
+  for(const [i,raw] of (state.liveDungeon as GameState["liveDungeon"]).heroes.entries()){
     const hero=raw as RecordValue;
     if(!heroIds.has(hero.heroId as string))
       fail("payload.liveDungeon.heroes["+i+"].heroId","must be a known adventurer");
