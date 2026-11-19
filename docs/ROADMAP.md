@@ -49,7 +49,7 @@
   ten-day gameplay verification. PR #207 replaces the atomic ordinary
   fight path described here with genuine persisted group-combat ticks.
 
-- **PR #207 in progress (real-time shared group combat):** Floors 1–4/7
+- **PR #207 merged (real-time shared group combat):** Floors 1–4/7
   now reserve actual monster sites on a real one-tile approach, then
   schedule 30 authoritative 60-Hz group-combat ticks every 10 saved
   world ticks (0.5 game seconds), storing live fighter/projectile state,
@@ -59,8 +59,22 @@
   completed immutable footage is attached to knowledge-safe live events.
   The 600-tick expedition movement cadence and fixed-step shop continue
   on the SAME clock. **Unique Level-6 cinematic Troll fights still use
-  their previous resolver**, and physical hero return journeys, full
-  temporary-party AI, LIVE Board, spectator and archive are later PRs.
+  their previous resolver**. Full temporary-party AI, LIVE Board,
+  spectator and archive remain future milestones.
+
+- **PR #208 in progress (physical shop returns):** The SAME seeded
+  spatial motor backtracks over the hero's previously visited connected tiles,
+  one true tile each 600 world ticks. Resupply/retreat decisions never teleport
+  a hero to the shop. Real traps and monsters remain consequential en route.
+  Only reaching the floor's entrance can schedule Galvik's cursed portal
+  transit (20 world ticks). Its uniquely owned event commits the actual
+  mid-day shop arrival, after which the existing saved NPC shop traffic
+  owns physical entering, queues and service. Strict v20 saves persist
+  the current route intent, floor, portal owner and exact due tick;
+  sleeping cannot conjure missing arrivals or sales. Surviving Floor-6
+  Troll challengers use the same timed portal although their cinematic
+  battle is still atomically resolved. Two-day post-shop standby,
+  longer-term hero AI and unified portal dressing follow in later work.
 
 - A physical, movable-fixture Floor 5 shop: compact four-slot shelves,
   real stock and carts, staffed register, credit/debt, customer paths,

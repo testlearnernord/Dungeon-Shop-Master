@@ -4,13 +4,14 @@ import {createGameState,SIMULATION_VERSION} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
-  LIVE_COMBAT_INTERVAL_TICKS,LIVE_COMBAT_EVENT_SUBJECT}
+  LIVE_COMBAT_INTERVAL_TICKS,LIVE_COMBAT_EVENT_SUBJECT,
+  SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS}
   from "../../src/game/liveDungeonRuntime.ts";
 import {WORLD_TICKS_PER_DAY,lastWorldTickOfDay}
   from "../../src/game/worldClock.ts";
-import {generateExpeditionLayout,dungeonNeighbors,tileAt}
+import {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath,tileAt}
   from "../../src/game/dungeonLayout.ts";
-import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {emptyLevel7World,chooseKnownReturnStep} from "../../src/game/level7Exploration.ts";
 
 test("real world-clock event advances one dungeon step during shop play, not at bedtime",()=>{
   const store=new GameStore(createGameState(7351));
@@ -36,7 +37,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.earlyDungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,19);
+  assert.equal(SIMULATION_VERSION,20);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -177,4 +178,134 @@ test("v19 rejects tampered active fight clocks, fake fighter HP and duplicated r
     (e:any)=>e.subjectId!==LIVE_COMBAT_EVENT_SUBJECT);},/liveDungeon/);
   tamper(s=>{s.liveDungeon.combats[0].encounter.options.actors[0].damage+=50;},/options/);
   assert.deepEqual(parseSave(JSON.stringify(valid)),store.state);
+});
+
+function shortRealReturnFixture():{store:GameStore;heroId:string;path:{x:number;z:number}[]} {
+  const seed=7351,initial=createGameState(seed);
+  const layout=generateExpeditionLayout(seed,1);
+  const points=layout.tiles.flatMap((tile,index)=>
+    tile!=="wall"?[{x:index%layout.width,z:Math.floor(index/layout.width)}]:[]);
+  const selected=points.map(point=>({
+    point,route:dungeonShortestPath(layout,layout.entrance,point),
+  })).find(({route})=>route.length===5&&route.every(point=>
+    !layout.features.some(f=>f.x===point.x&&f.z===point.z)));
+  assert(selected,"The seeded dungeon must have a safe known four-edge route.");
+  const path=selected.route;
+  const hero=initial.adventurers.find(h=>h.status==="exploring");
+  assert(hero);
+  const adventurers=initial.adventurers.map(h=>h.id===hero.id?{
+    ...h,floor:1 as const,status:"exploring" as const,
+    inventory:{...h.inventory,loot:2},
+  }:h);
+  const world={...emptyLevel7World(),heroes:[{
+    heroId:hero.id,x:path.at(-1)!.x,z:path.at(-1)!.z,
+    visited:path.map(p=>p.z*layout.width+p.x),
+  }]};
+  return {heroId:hero.id,path,store:new GameStore({...initial,adventurers,
+    earlyDungeonWorlds:[{floor:1 as const,world}]})};
+}
+
+test("homeward steps use only saved, connected, previously explored dungeon tiles",()=>{
+  const fixture=shortRealReturnFixture();
+  const layout=generateExpeditionLayout(7351,1);
+  let current=fixture.path.at(-1)!;
+  for(let i=fixture.path.length-1;i>0;i--){
+    const next=chooseKnownReturnStep(layout,{
+      heroId:fixture.heroId,...current,
+      visited:fixture.path.map(p=>p.z*layout.width+p.x),
+    });
+    assert(next);
+    assert(fixture.path.some(p=>p.x===next.x&&p.z===next.z));
+    assert.equal(Math.abs(next.x-current.x)+Math.abs(next.z-current.z),1);
+    current=next;
+  }
+  assert.deepEqual(current,layout.entrance);
+  assert.equal(chooseKnownReturnStep(layout,{heroId:fixture.heroId,
+    ...current,visited:fixture.path.map(p=>p.z*layout.width+p.x)}),null);
+});
+
+test("actual shop return crosses known tiles, survives reload and arrives DURING the same world day",()=>{
+  const {store:a,heroId}=shortRealReturnFixture();
+  a.enableLiveDungeon();
+  const initial=a.state;
+  a.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert(a.state.liveDungeon.returns.some(j=>j.heroId===heroId&&j.phase==="backtrack"),
+    "The actual looted hero chooses to start a return, not teleport to the shop.");
+  assert.equal(a.state.adventurers.find(h=>h.id===heroId)?.status,"exploring");
+  assert.equal(a.state.worldClock.tick,DUNGEON_STEP_INTERVAL_TICKS);
+  const b=new GameStore(parseSave(JSON.stringify(createSave(a.state))));
+  assert.deepEqual(a.state,b.state);
+  a.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS*7);
+  b.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS*7);
+  assert.deepEqual(a.state,b.state,"Return path, portal and shops resume identically.");
+  const traveler=a.state.adventurers.find(h=>h.id===heroId)!;
+  assert.equal(traveler.status,"at-shop");
+  assert.equal(traveler.floor,5);
+  assert.equal(a.state.day,1,"The bed, not an arrival, ends the day.");
+  const arrival=a.state.events.filter(e=>
+    e.type==="shop-arrival"&&e.adventurerId===heroId);
+  assert.equal(arrival.length,1,"Arrival is the unique true portal crossing.");
+  assert(arrival[0].worldTick!>initial.worldClock.tick);
+  assert.equal(a.state.liveDungeon.returns.some(j=>j.heroId===heroId),false);
+  assert.equal(a.state.shopEconomy.dailySales.revenue,initial.shopEconomy.dailySales.revenue,
+    "A returning explorer is not an invented purchase.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(a.state))),a.state);
+});
+
+test("strict v20 saves reject forged backtracks and duplicated portal events",()=>{
+  const {store,heroId}=shortRealReturnFixture();
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert(store.state.liveDungeon.returns.some(j=>j.heroId===heroId));
+  const tamper=(snapshot:ReturnType<typeof createSave>,
+    fn:(v:any)=>void,re:RegExp)=>{
+    const modified=structuredClone(snapshot) as any;
+    fn(modified.payload);
+    assert.throws(()=>parseSave(JSON.stringify(modified)),re);
+  };
+  const walking=createSave(store.state);
+  tamper(walking,s=>{s.liveDungeon.returns[0].heroId="adventurer-99999";},/returns/);
+  tamper(walking,s=>{s.liveDungeon.returns[0].phase="portal";},/dueTick|returns/);
+  tamper(walking,s=>{s.liveDungeon.returns.push(s.liveDungeon.returns[0]);},/returns/);
+  for(let i=0;i<10&&store.state.liveDungeon.returns[0]?.phase!=="portal";i++)
+    store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const portal=store.state.liveDungeon.returns.find(j=>j.heroId===heroId);
+  assert.equal(portal?.phase,"portal");
+  const stable=createSave(store.state);
+  tamper(stable,s=>{s.liveDungeon.returns[0].dueTick+=1;},/dueTick|returns/);
+  tamper(stable,s=>{s.worldClock.pending=s.worldClock.pending.filter(
+    (e:any)=>!e.subjectId.startsWith(SHOP_PORTAL_RETURN_PREFIX));},/dueTick|returns/);
+  tamper(stable,s=>{s.adventurers.find((h:any)=>h.id===heroId).status="at-shop";},/floor|returns/);
+  tamper(stable,s=>{
+    const world=s.earlyDungeonWorlds.find((e:any)=>e.floor===1).world;
+    const position=world.heroes.find((h:any)=>h.heroId===heroId);
+    const other=position.visited.find((cell:number)=>cell!==1+19);
+    position.x=other%19;position.z=Math.floor(other/19);
+  },/entrance|returns/);
+  assert(stable.payload.worldClock.pending.some(e=>
+    e.subjectId===SHOP_PORTAL_RETURN_PREFIX+heroId&&
+    e.dueTick===stable.payload.worldClock.tick+SHOP_PORTAL_TRANSIT_TICKS));
+  assert.deepEqual(parseSave(JSON.stringify(stable)),store.state);
+});
+
+
+test("a second real same-day portal crossing has a new unique event, not a phantom sale",()=>{
+  const {store:fixture,heroId}=shortRealReturnFixture();
+  // Historical first arrival must not suppress a genuinely traversed
+  // dungeon-to-shop portal crossing later in the same world day.
+  const historical={id:"day-1:"+heroId+":shop-arrival",
+    type:"shop-arrival" as const,day:1,adventurerId:heroId,
+    message:"Earlier real shop visit."};
+  const a=new GameStore({...fixture.state,
+    events:[...fixture.state.events,historical]});
+  a.enableLiveDungeon();
+  a.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS*8);
+  const arrivals=a.state.events.filter(e=>
+    e.type==="shop-arrival"&&e.adventurerId===heroId);
+  assert.equal(arrivals.length,2);
+  assert.notEqual(arrivals[0].id,arrivals[1].id);
+  assert(arrivals[1].worldTick!>0);
+  assert.equal(a.state.shopEconomy.dailySales.revenue,0,
+    "A genuine portal arrival is not a transaction.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(a.state))),a.state);
 });

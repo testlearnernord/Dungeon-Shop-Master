@@ -314,9 +314,46 @@ export interface PreparedSpatialEncounter {
  * history fixtures until the live day-cutover explicitly retires batching.
  * Never recompute an earlier tile or reroll an already-resolved site.
  */
+/** Deterministic shortest homeward route across tiles this hero actually
+ * knows. No hidden-map shortcut and no new movement/loot/combat engine.
+ * The last tile is the dungeon entrance, which connects to Galvik's portal.
+ */
+export function chooseKnownReturnStep(
+  layout:DungeonLayout,progress:Level7HeroProgress,
+):DungeonPoint|null {
+  const start=tileIndex(layout,progress);
+  const goal=tileIndex(layout,layout.entrance);
+  if(start===goal)return null;
+  const known=new Set(progress.visited);
+  if(!known.has(start)||!known.has(goal))
+    throw new RangeError("Return route needs visited start and entrance");
+  const queue=[start],parents=new Map<number,number>([[start,start]]);
+  for(let index=0;index<queue.length&&!parents.has(goal);index++){
+    const here=queue[index],location={x:here%layout.width,
+      z:Math.floor(here/layout.width)};
+    for(const next of dungeonNeighbors(layout,location).sort(byPoint)){
+      const cell=tileIndex(layout,next);
+      if(!known.has(cell)||parents.has(cell))continue;
+      parents.set(cell,here);queue.push(cell);
+    }
+  }
+  if(!parents.has(goal))throw new RangeError("Visited return route is disconnected");
+  let next=goal;
+  while(parents.get(next)!==start){
+    const parent=parents.get(next);
+    if(parent===undefined)throw new RangeError("Broken return route");
+    next=parent;
+  }
+  return {x:next%layout.width,z:Math.floor(next/layout.width)};
+}
+
 export interface SpatialDungeonAdvanceOptions {
   readonly maxSteps?: number;
   readonly maxEncounters?: number;
+  /** The existing map motor backtracks ONLY across the hero's known cells. */
+  readonly returnToEntrance?:boolean;
+  /** A retreat on the live timeline must return via the portal, not teleport. */
+  readonly deferReturn?:boolean;
   /** Live mode reserves the site, but does not prematurely calculate its result. */
   readonly deferCombat?:boolean;
   readonly blockedCombatSites?:ReadonlySet<string>;
@@ -395,12 +432,15 @@ export function simulateSpatialDungeonPartyDay(
   };
 
   for(let t=1;t<=maxSteps;t++){
-    const next=choosePartyDungeonStep(layout,members.map(member=>({
-      heroId:member.hero.id,...current,visited:member.visitedOrder,
-    }))) ?? chooseRenewedSiteStep(layout,current,
+    const next=(options.returnToEntrance
+      ?chooseKnownReturnStep(layout,{...progress[0],...current,
+        visited:members[0].visitedOrder})
+      :choosePartyDungeonStep(layout,members.map(member=>({
+        heroId:member.hero.id,...current,visited:member.visitedOrder,
+      }))) ?? chooseRenewedSiteStep(layout,current,
       // Only discovered tiles may steer the renewable-site fallback. A
       // companion's actual knowledge is usable, never global fog of war.
-      new Set(members.flatMap(member=>member.visitedOrder)),resolved);
+      new Set(members.flatMap(member=>member.visitedOrder)),resolved));
     if(!next){
       outcome="completed";
       step(t,"complete");
@@ -514,7 +554,7 @@ export function simulateSpatialDungeonPartyDay(
   const outcomes:Omit<Level7Tick,"world">[]=members.map(m=>{
     const dead=m.hp<=0;
     const personalOutcome:Level7Outcome=dead?"death":outcome;
-    const returning=floor===7 && !dead &&
+    const returning=!options.deferReturn&&floor===7 && !dead &&
       (personalOutcome==="retreat"||personalOutcome==="completed");
     const xp=m.hero.xp+m.xp;
     const adventurer:AdventurerState={
@@ -585,7 +625,8 @@ export function simulateLevel7Day(
 export function advanceSpatialDungeonPartyStep(
   party:readonly AdventurerState[],world:Level7World,
   campaignSeed:number,day:number,occupiedHeroIds?:ReadonlySet<string>,
-  liveOptions:Pick<SpatialDungeonAdvanceOptions,"deferCombat"|"blockedCombatSites">={},
+  liveOptions:Pick<SpatialDungeonAdvanceOptions,"deferCombat"|"blockedCombatSites"|
+    "returnToEntrance"|"deferReturn">={},
 ):Level7PartyTick {
   return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
     occupiedHeroIds,{maxSteps:1,maxEncounters:1,...liveOptions});
@@ -640,7 +681,9 @@ export function settleSpatialDungeonCombat(
     if(used<0||used>hero.inventory.healing)
       throw new RangeError("LIVE combat invented a Healing Herb.");
     const personalOutcome:Level7Outcome=dead?"death":retreats?"retreat":"exploring";
-    const returning=encounter.floor===7&&!dead&&retreats;
+    // LIVE campaigns never jump to a shop floor on battle termination.
+    // The one shared world motor must physically backtrack first.
+    const returning=false;
     const xp=hero.xp+(winner&&!dead?(encounter.elite?28:12):0);
     const gold=shares.get(hero.id)??0;
     const adventurer:AdventurerState={

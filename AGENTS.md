@@ -274,7 +274,20 @@
   finite gold and a site generation once. Do NOT resimulate battle
   on replay, reopen, sleep or reload; nor create another combat motor.
   The special Level-6 Troll remains atomic until a separate explicit
-  integration. Autonomous floor transitions, physical return journeys,
+  integration. PR #208 adds strict version-20 saved return journeys:
+  `liveDungeon.returns` tracks genuine hero intent and portal crossing.
+  Use the original spatial motor's `chooseKnownReturnStep` to traverse
+  one actually visited connected tile per 600-world-tick movement event,
+  including its original trap/monster effects. NEVER move someone to the
+  shop at their decision or simply when the bed is used. Only a saved
+  real visit to the seeded floor entrance schedules the unique
+  `report`-lane `shop-return:<heroId>` portal event exactly 20 ticks
+  later; ONLY that event changes the hero to `at-shop` and spawns
+  the real existing saved physical NPC entrance path. Strictly reject
+  repeated portal event identities, invented returners and unmatched
+  report timers. Distinct real same-day reentries have distinct tick IDs
+  and NEVER generate a sale without real checkout. The unique Floor-6 Troll survivor uses the same portal, but
+  its fight remains atomic until explicitly integrated. Autonomous floor transitions,
   magic life-signature death alert, spectator and archive remain pending.
   Do not promote V.003 to playable/released on this partial cutover.
   Full V.003 release acceptance and integrated ten-day validation remain pending.
