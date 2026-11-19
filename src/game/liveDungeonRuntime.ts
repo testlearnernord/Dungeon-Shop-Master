@@ -305,8 +305,7 @@ function commitDungeonTick(state:GameState):GameState {
         // A staircase consumes this scheduled movement event; it may be
         // crossed only from the real saved tile. Co-located companions
         // who consented to the same direction cross TOGETHER.
-        const nextFloor=(floor+(priorPlan.action==="ascend"?-1:1))
-          as EarlyDungeonFloorWorld["floor"];
+        const nextFloor=(floor+(priorPlan.action==="ascend"?-1:1)) as EarlyDungeonFloorWorld["floor"];
         const priorParty=(state.dungeonParties??[]).find(p=>
           p.floor===floor&&p.memberIds.includes(hero.id));
         const participants=priorParty?.memberIds.map(id=>byId.get(id)!)
