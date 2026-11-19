@@ -1171,6 +1171,10 @@ function validateState(value: unknown): asserts value is GameState {
     }
     let suffix = event.type === "day-started" ? "started" : event.type;
     if(event.type==="dungeon-live")suffix="dungeon-live:"+event.worldTick;
+    // Real in-day portal arrivals have their OWN committed tick. Legacy
+    // starting visitors (no worldTick) keep the existing day-scoped ID.
+    if(event.type==="shop-arrival"&&event.worldTick!==undefined)
+      suffix="shop-arrival:"+event.worldTick;
     if (event.type === "dungeon-outcome") {
       allowed.push("outcome");
       choice(event.outcome, ["advance", "stay", "retreat", "death"], `${path}.outcome`);
