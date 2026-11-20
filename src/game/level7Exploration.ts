@@ -156,7 +156,8 @@ function chooseRenewedSiteStep(
 /** Prepare the original fight geometry/stats without advancing its clock. */
 export function prepareSpatialDungeonCombat(
   party: readonly AdventurerState[], monster: DungeonFeature,
-  campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint, cycle = 0,
+  campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint,
+  cycle=0,livePacks=false,
 ):{readonly options:GroupCombatOptions;readonly elite:boolean} {
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
     (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0,cycle));
@@ -197,8 +198,10 @@ export function prepareSpatialDungeonCombat(
   // The lead feature stays the sole renewable source for this encounter.
   const freePackSpawns=available.slice(party.length).filter(point=>
     !layout.features.some(feature=>feature.x===point.x&&feature.z===point.z));
-  const packCount=elite?1:ghoulPackCount(campaignSeed,layout.floor,
-    monster.x,monster.z,cycle,party.length,freePackSpawns.length);
+  // Old atomic day/replay resolver stays single-Ghoul, unchanged.
+  // Real multi-Ghoul teams are enabled ONLY for actual deferred LIVE fights.
+  const packCount=livePacks&&!elite?ghoulPackCount(campaignSeed,layout.floor,
+    monster.x,monster.z,cycle,party.length,freePackSpawns.length):1;
   const specs:CombatantSpec[]=party.map((hero,index)=>{
     const spawn=available[index];
     const sword=hero.equipment.weapon==="Iron Sword";
@@ -542,7 +545,7 @@ export function simulateSpatialDungeonPartyDay(
       const cycle=dungeonSiteGeneration(siteCycles,feature.id);
       if(options.deferCombat){
         const prepared=prepareSpatialDungeonCombat(active,feature,layout.seed,
-          layout,previous,cycle);
+          layout,previous,cycle,true);
         pendingCombat={featureId:feature.id,floor:floor as SpatialDungeonFloor,
           x:current.x,z:current.z,siteCycle:cycle,...prepared};
         step(t+0.1,"combat",feature.id);
