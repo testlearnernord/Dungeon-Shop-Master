@@ -442,7 +442,7 @@ const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
 }, (observingFight,bossFight)=>{
   soundtrack.setScene(observingFight
     ?bossFight?"boss":"combat":"dungeon");
-});
+}, seconds=>soundtrack.skipCombatIntro(seconds));
 watchLiveHero=id=>dungeon.openLive(id);
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
