@@ -30,6 +30,7 @@ import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 import { BossCombatHud } from "./bossCombatHud.ts";
 import { BossModelLab } from "./bossModelLab.ts";
 import { nextBossTrainingScenario, type BossTrainingScenario } from "./bossTrainingScenario.ts";
+import { DeveloperCombatLab } from "./developerCombatLab.ts";
 import type { GameSfx, GameSfxCue, SoundListener } from "../gameSfx.ts";
 import { Level6SfxDebugPanel } from "../gameSfxDebug.ts";
 import {createCombatSpectatorStage,flyCombatSpectatorCamera,
@@ -62,6 +63,8 @@ export class Level6Arena {
   private forcePreview = false;
   private training: BossTrainingScenario | null = null;
   private modelLab: BossModelLab | null = null;
+  private readonly lab:DeveloperCombatLab;
+  private readonly labToggle:HTMLButtonElement;
   private readonly modelPanel: HTMLElement;
   private readonly modelToggle: HTMLButtonElement;
   private readonly rendererToggle: HTMLButtonElement;
@@ -140,6 +143,11 @@ export class Level6Arena {
   ) {
     this.panel = document.querySelector<HTMLElement>("#arena-hud")!;
     this.worldHud = new BossCombatHud(this.panel,this.canvas,this.engine);
+    this.lab=new DeveloperCombatLab(this.engine,this.canvas,this.panel,this.store);
+    this.labToggle=document.querySelector<HTMLButtonElement>("#arena-lab-toggle")!;
+    this.labToggle.addEventListener("click",()=>this.toggleDeveloperLab());
+    document.querySelector<HTMLButtonElement>("#lab-model")!
+      .addEventListener("click",()=>this.toggleModelLab());
     this.sfxLab = new Level6SfxDebugPanel(this.sfx);
     this.cinematic=document.querySelector<HTMLElement>("#arena-cinematic")!;
     this.cinematicLine=document.querySelector<HTMLElement>("#arena-cinematic-line")!;
@@ -190,7 +198,18 @@ export class Level6Arena {
         return;
       }
       if (event.target instanceof Element &&
-        event.target.closest("#music-panel, #arena-sfx-debug, #arena-sfx-debug-toggle")) return;
+        event.target.closest("#music-panel, #arena-sfx-debug, #arena-sfx-debug-toggle, #arena-lab-panel")) return;
+      if(this.lab.isActive){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if(event.repeat)return;
+        if(event.code==="KeyV"||event.code==="Escape")this.close();
+        else if(event.code==="Space"||event.code==="Enter")this.lab.skipIntro();
+        else if(event.code==="Tab")this.lab.nextFocus();
+        else if(event.code==="KeyM")this.musicToggle.focus();
+        else this.pressed.add(event.code);
+        return;
+      }
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.repeat) return;
@@ -208,7 +227,7 @@ export class Level6Arena {
     window.addEventListener("keyup", (event) => {
       if (!this.active || this.modelLab) return;
       if (event.target instanceof Element &&
-        event.target.closest("#music-panel, #arena-sfx-debug, #arena-sfx-debug-toggle")) return;
+        event.target.closest("#music-panel, #arena-sfx-debug, #arena-sfx-debug-toggle, #arena-lab-panel")) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       this.pressed.delete(event.code);
@@ -218,18 +237,49 @@ export class Level6Arena {
       if (!this.active || this.modelLab) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if(this.introActive)return;
+      if(this.lab.isActive?this.lab.isIntroActive:this.introActive)return;
       if (document.pointerLockElement !== canvas) void canvas.requestPointerLock();
     }, true);
     document.addEventListener("mousemove", (event) => {
       if (!this.active || this.modelLab || this.introActive ||
-          document.pointerLockElement !== canvas || !this.camera) return;
-      turnCombatSpectatorCamera(this.camera,event.movementX,event.movementY);
+          document.pointerLockElement !== canvas) return;
+      if(this.lab.isActive){this.lab.turnCamera(event.movementX,event.movementY);return;}
+      if(this.camera)turnCombatSpectatorCamera(this.camera,event.movementX,event.movementY);
     }, true);
   }
 
-  get currentScene(): Scene | null { return this.active ? (this.modelLab?.scene ?? this.scene) : null; }
+  get currentScene(): Scene | null { return this.active ?
+    (this.modelLab?.scene ?? this.lab.currentScene ?? this.scene) : null; }
   get isActive(): boolean { return this.active; }
+
+  private toggleDeveloperLab():void{
+    if(!this.active||this.modelLab)return;
+    if(this.lab.isActive){
+      this.lab.close();
+      this.panel.dataset.devLab="false";
+      this.labToggle.textContent="Developer Combat Lab";
+      this.restart();
+      return;
+    }
+    this.sfx?.endArena();
+    this.sfxLab.setAvailable(false);
+    this.worldHud.reset();
+    this.scene?.dispose();
+    this.scene=null;
+    this.motion=null;
+    this.replay=null;
+    this.introActive=false;
+    this.cinematic.hidden=true;
+    this.panel.dataset.intro="false";
+    this.sourceToggle.hidden=true;
+    if(document.pointerLockElement)void document.exitPointerLock();
+    this.lab.open();
+    this.panel.dataset.devLab="true";
+    this.labToggle.textContent="Return to Level 6 preview";
+    this.previewText.textContent=
+      "DEVELOPER COMBAT LAB · Real 60Hz test simulation, no campaign writes.";
+    this.status.textContent="Independent combat balance test";
+  }
 
   private toggleSource(): void {
     if(this.modelLab)return;
@@ -284,6 +334,9 @@ export class Level6Arena {
   close(): void {
     if (!this.active) return;
     this.active = false;
+    this.lab.close();
+    this.panel.dataset.devLab="false";
+    this.labToggle.textContent="Developer Combat Lab";
     this.modelLab?.dispose();
     this.modelLab=null;
     this.modelPanel.hidden=true;
@@ -324,6 +377,7 @@ export class Level6Arena {
 
   restart(preserveTraining = false): void {
     if (!this.active || this.modelLab) return;
+    if(this.lab.isActive){this.lab.restart();return;}
     const previousTraining = this.training;
     this.panel.dataset.bossRenderer=this.useTripoModel?"tripo":"legacy";
     this.rendererToggle.textContent=this.useTripoModel?"Tripo loading… · switch to legacy":"Legacy boss · try Tripo";
@@ -673,6 +727,7 @@ export class Level6Arena {
   /** Preview combat advances at a fixed 60 Hz independent of render FPS. */
   update(deltaSeconds: number): void {
     if (this.modelLab)return;
+    if(this.lab.isActive){this.lab.update(deltaSeconds,this.pressed);return;}
     if (!this.active || !this.scene || !this.camera || !this.hero || !this.boss || !this.motion) return;
     const frameDt = Math.min(0.1, Math.max(0, deltaSeconds));
     if(this.introActive){
