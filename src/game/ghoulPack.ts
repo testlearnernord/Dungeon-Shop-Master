@@ -1,4 +1,4 @@
-import {dungeonGenerationSeed} from "./dungeonLayout.ts";
+import {dungeonGenerationSeed} from "./dungeonRegeneration.ts";
 
 /** A pack is one independently saved monster per physical fighter, but it
  * still occupies ONE authored renewable dungeon site. The primary actor
