@@ -55,6 +55,8 @@ export class Level6Arena {
   private active = false;
   private motion: CombatPreviewState | null = null;
   private replay: BossCombatReplay | null = null;
+  /** A LIVE witness never steps the boss; it projects only world-clock frames. */
+  private watchingLiveHeroId:string|null=null;
   private requestedReplayId: string | null = null;
   private replayTime = 0;
   private replayFrameIndex = 0;
@@ -230,9 +232,23 @@ export class Level6Arena {
 
   get currentScene(): Scene | null { return this.active ? (this.modelLab?.scene ?? this.scene) : null; }
   get isActive(): boolean { return this.active; }
+  /** Allow the live world, including physical shop visitors, to advance. */
+  get isWatchingLiveBoss():boolean {
+    return this.active&&this.watchingLiveHeroId!==null;
+  }
+
+  /** Public roster entry for the one real running Level-6 fight. */
+  openLiveBoss(heroId:string):boolean{
+    const boss=this.store.state.liveDungeon.bossCombat;
+    if(!boss||boss.heroId!==heroId||this.active)return false;
+    this.watchingLiveHeroId=heroId;
+    this.open();
+    return this.active;
+  }
 
   private toggleSource(): void {
     if(this.modelLab)return;
+    this.watchingLiveHeroId=null;
     this.forcePreview = !this.forcePreview;
     this.restart();
   }
@@ -265,6 +281,7 @@ export class Level6Arena {
   open(eventId?: string): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("dungeon-active")) return;
+    if(eventId)this.watchingLiveHeroId=null;
     this.requestedReplayId=eventId??null;
     this.modelPanel.hidden=true;
     this.panel.dataset.modelViewer="false";
@@ -309,6 +326,7 @@ export class Level6Arena {
     this.motion = null;
     this.replay = null;
     this.requestedReplayId=null;
+    this.watchingLiveHeroId=null;
     this.projectiles = [];
     this.telegraph = null;
     this.slamTelegraph = null;
@@ -360,11 +378,19 @@ export class Level6Arena {
       .find(event => event.type === "level6-combat" && event.combatReplay &&
         (!this.requestedReplayId || event.id===this.requestedReplayId));
     const saved=recorded?.combatReplay??null;
-    this.replay = this.forcePreview ? null : saved;
-    if(this.replay&&recorded)observeReplay(recorded.id);
-    this.sourceToggle.hidden = !saved;
+    const live=this.watchingLiveHeroId?
+      state.liveDungeon.bossCombat?.heroId===this.watchingLiveHeroId
+        ?state.liveDungeon.bossCombat:null:null;
+    this.replay=live?{
+      version:1,day:state.day,heroId:live.heroId,
+      role:live.state.options.role,sword:live.state.options.sword,
+      armor:live.state.options.armor,maxHp:live.state.options.maxHealth,
+      outcome:"retreat",frames:live.frames,
+    }:this.forcePreview?null:saved;
+    if(this.replay&&recorded&&!live)observeReplay(recorded.id);
+    this.sourceToggle.hidden = !saved||!!live;
     this.sourceToggle.textContent = this.replay ? "Preview current expedition" : "Watch last saved combat";
-    this.panel.dataset.replay = this.replay ? "recorded" : "preview";
+    this.panel.dataset.replay = live?"live":this.replay?"recorded":"preview";
     this.sfxLab.setAvailable(!this.replay);
     this.fighter = this.replay
       ? state.adventurers.find(hero => hero.id === this.replay!.heroId) ?? null
@@ -392,7 +418,9 @@ export class Level6Arena {
     });
     if (this.replay) this.applyReplayFrame(this.replay.frames[0]);
     const names = heroDisplayNames(state.adventurers);
-    this.previewText.textContent = this.replay
+    this.previewText.textContent = live
+      ?"LIVE BOSS · Shared world-clock combat · Read-only witness, no reroll or pause."
+      :this.replay
       ? "RECORDED COMBAT · Day " + this.replay.day + " · " + this.replay.outcome +
         " · Exact saved fight, no additional damage or rewards."
       : realExpedition
