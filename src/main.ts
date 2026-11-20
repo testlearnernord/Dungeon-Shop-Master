@@ -80,6 +80,21 @@ const store = new GameStore(campaign.state);
 // directly advance a legacy day do not run simultaneous spatial motors.
 store.enableLiveDungeon();
 const worldClockPacer = new WorldClockPacer();
+// E2E-only CPU attribution for the real world clock. No extra engine,
+// timer, render or save mutation. Vite eliminates this in production builds.
+const profileCounters=new Map<string,{ms:number;calls:number;maxMs:number}>();
+const profile=<T>(phase:string,work:()=>T):T=>{
+  if(import.meta.env.VITE_E2E!=="1")return work();
+  const start=performance.now();
+  try{return work();}
+  finally{
+    const elapsed=performance.now()-start;
+    const old=profileCounters.get(phase)??{ms:0,calls:0,maxMs:0};
+    profileCounters.set(phase,{ms:old.ms+elapsed,calls:old.calls+1,
+      maxMs:Math.max(old.maxMs,elapsed)});
+  }
+};
+
 let ignoreNextClockFrame=false;
 document.addEventListener("visibilitychange",()=>{
   worldClockPacer.reset();
@@ -139,6 +154,7 @@ if(import.meta.env.VITE_E2E==="1"){
     __shopTestHydratedTraffic?:unknown;
     __shopTestAdvanceDungeonTick?:()=>void;
     __shopTestAdvanceWorldTicks?:(ticks:number)=>void;
+    __shopTestReadProfile?:()=>Record<string,{ms:number;calls:number;maxMs:number}>;
   };
   hooks.__shopTestAdvanceDay=()=>dayClock.endDayFromBed();
   hooks.__shopTestStockItem=(slotId,itemId)=>
@@ -153,6 +169,11 @@ if(import.meta.env.VITE_E2E==="1"){
   // This only instruments the fast/slow render-path guard; production has
   // no hook and no alternate movement or economic resolver.
   hooks.__shopTestAdvanceWorldTicks=ticks=>store.advanceWorldTime(ticks);
+  hooks.__shopTestReadProfile=()=>{
+    const sample=Object.fromEntries(profileCounters);
+    profileCounters.clear();
+    return sample;
+  };
   hooks.__shopTestTraffic=()=>structuredClone(store.state.shopTraffic);
   hooks.__shopTestPauseWorld=paused=>worldClockPacer.setPaused("e2e",paused);
   hooks.__shopTestSaveTrafficNow=async()=>{
@@ -213,10 +234,12 @@ const syncTrafficCheckpointAfterStep=()=>syncTrafficCheckpoint();
 const syncTrafficCheckpoint=()=>{
   if(trafficSyncing||replacingCampaign)return;
   const state=store.state;
-  const checkpoint=npcVisuals.snapshotTraffic(state.day,state.worldClock.tick);
-  if(JSON.stringify(checkpoint)===JSON.stringify(state.shopTraffic))return;
+  const checkpoint=profile("traffic-snapshot",
+    ()=>npcVisuals.snapshotTraffic(state.day,state.worldClock.tick));
+  if(profile("traffic-compare",
+    ()=>JSON.stringify(checkpoint)===JSON.stringify(state.shopTraffic)))return;
   trafficSyncing=true;
-  try{store.commitShopTraffic(checkpoint);}
+  try{profile("traffic-validate-notify",()=>store.commitShopTraffic(checkpoint));}
   finally{trafficSyncing=false;}
 };
 const restoreTrafficCheckpoint=()=>{
@@ -425,9 +448,9 @@ engine.runRenderLoop(() => {
     try{
       advancePhysicalShopWorldTicks(ticks,
         ()=>store.state.worldClock.tick,
-        ()=>store.advanceWorldTime(1),
+        ()=>profile("world-step",()=>store.advanceWorldTime(1)),
         ()=>{
-          npcVisuals.advanceWorldTicks(1);
+          profile("npc-step",()=>npcVisuals.advanceWorldTicks(1));
           syncTrafficCheckpointAfterStep();
           for(const exit of npcVisuals.drainCompletedExits())
             store.completePhysicalShopExit(exit.heroId,exit.outerGateZ);
@@ -447,7 +470,7 @@ engine.runRenderLoop(() => {
   } else if (arena.isActive) {
     arena.update(engine.getDeltaTime() / 1000);
     arena.currentScene?.render();
-  } else scene.render();
+  } else profile("scene-render",()=>scene.render());
 });
 window.addEventListener("resize", () => engine.resize());
 }
