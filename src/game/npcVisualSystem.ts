@@ -15,6 +15,7 @@ import {goldIconUrl} from "../uiIcons.ts";
 import { createHeroVisual, setHeroVisualEquipment, type HeroVisual } from "./heroVisual.ts";
 import { RESTOCK_WAIT_SECONDS, shopperVisualAction, type ShoppingIntent, type ShoppingInterest } from "./shopperIntents.ts";
 import {WORLD_TICK_SECONDS} from "./worldClock.ts";
+import {interpolateSavedShopPose,type SavedShopPose} from "./shopVisualInterpolation.ts";
 import type {ShopTrafficCheckpoint,ShopTrafficActor} from "./shopTraffic.ts";
 import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble,
   createNpcCustomerBubble, positionNpcBubble,
@@ -244,6 +245,51 @@ export class NpcVisualSystem {
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
   private readonly completedExits:{heroId:string;outerGateZ:number}[]=[];
+  // A read-only, one-tick PRESENTATION trail. Gameplay/crowd checks and
+  // saved traffic always use the true npc.root transforms at tick boundaries.
+  private readonly presentationTrails=
+    new Map<string,{from:SavedShopPose;to:SavedShopPose}>();
+  rememberCommittedMotion(before:ShopTrafficCheckpoint,after:ShopTrafficCheckpoint):void{
+    this.presentationTrails.clear();
+    const old=new Map(before.actors.map(a=>[a.heroId,a]));
+    for(const actor of after.actors){
+      const prior=old.get(actor.heroId);
+      if(!prior||prior.x===actor.x&&prior.z===actor.z&&prior.yaw===actor.yaw)
+        continue;
+      this.presentationTrails.set(actor.heroId,{
+        from:{x:prior.x,z:prior.z,yaw:prior.yaw},
+        to:{x:actor.x,z:actor.z,yaw:actor.yaw},
+      });
+    }
+  }
+  clearPresentationMotion():void{this.presentationTrails.clear();}
+  /** Temporarily paint the last saved 50ms step at fractional render time.
+   * Restore ALL authoritative root transforms synchronously, even if Babylon
+   * throws. No render write may enter GameStore or the next pathfinding tick.
+   */
+  renderInterpolated<T>(fraction:number,draw:()=>T):T{
+    if(this.worldPaused||fraction>=1||!this.presentationTrails.size)
+      return draw();
+    const original:{npc:NpcVisual;x:number;z:number;yaw:number}[]=[];
+    for(const [heroId,trail] of this.presentationTrails){
+      const npc=this.npcs.get(heroId);
+      if(!npc)continue;
+      original.push({npc,x:npc.root.position.x,z:npc.root.position.z,
+        yaw:npc.root.rotation.y});
+      const pose=interpolateSavedShopPose(trail.from,trail.to,fraction);
+      npc.root.position.x=pose.x;
+      npc.root.position.z=pose.z;
+      npc.root.rotation.y=pose.yaw;
+    }
+    try{return draw();}
+    finally{
+      for(const saved of original){
+        saved.npc.root.position.x=saved.x;
+        saved.npc.root.position.z=saved.z;
+        saved.npc.root.rotation.y=saved.yaw;
+      }
+    }
+  }
   /** Drain only after the outgoing mesh was removed AND the authoritative
    * shop traffic checkpoint was committed. Autosave must never see an
    * off-duty hero with an in-flight physical shop actor. */
@@ -307,6 +353,7 @@ export class NpcVisualSystem {
     checkpoint:ShopTrafficCheckpoint,
     visitors:readonly VisitorSnapshot[],
   ):void{
+    this.clearPresentationMotion();
     if(!checkpoint.initialized)return;
     if(!this.layout)throw new Error("Restore shop layout before restoring physical traffic.");
     const byId=new Map(visitors.map(v=>[v.id,v]));
@@ -1745,6 +1792,7 @@ export class NpcVisualSystem {
   }
 
   private dispose(npc: NpcVisual): void {
+    this.presentationTrails.delete(npc.visitor.id);
     for(let i=this.customerBarkQueue.length-1;i>=0;i--)
       if(this.customerBarkQueue[i]?.heroId===npc.visitor.id)
         this.customerBarkQueue.splice(i,1);

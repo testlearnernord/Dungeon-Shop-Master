@@ -66,6 +66,26 @@ test("ten browser days retain one LIVE world, unique signals, bounded timeline a
     }
   }
   const settled=await loaded();
+  const cost=await page.evaluate(async()=>{
+    const {CampaignStorage,createSave,parseSave,serializeSave}=
+      await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    if(!state)throw Error("Campaign lost at Day 11");
+    const t1=performance.now();
+    const raw=serializeSave(state);
+    const t2=performance.now();
+    parseSave(raw);
+    const t3=performance.now();
+    const cloned=JSON.stringify(createSave(state));
+    const t4=performance.now();
+    return {events:state.events.length,bytes:raw.length,
+      serializeMs:Math.round((t2-t1)*10)/10,
+      parseValidateMs:Math.round((t3-t2)*10)/10,
+      legacyCloneMs:Math.round((t4-t3)*10)/10,
+      samePayload:JSON.stringify(JSON.parse(raw).payload)===
+        JSON.stringify(JSON.parse(cloned).payload)};
+  });
+  console.log("[PR215 DAY11 AUTOSAVE PROFILE, CI virtual browser]",JSON.stringify(cost));
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 11");
   await page.evaluate(()=>

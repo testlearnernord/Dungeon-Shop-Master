@@ -1417,6 +1417,22 @@ export function createSave(state: GameState): SaveEnvelope {
   };
 }
 
+/** Strict serialized snapshot of the current state, captured synchronously.
+ * JSON.stringify completes before any queued IndexedDB operation can run.
+ * Unlike createSave(), no intermediate deep structuredClone is necessary:
+ * the queued immutable UTF-8-compatible JSON string is already detached.
+ * Explicit export/createSave still produces an independent object.
+ */
+export function serializeSave(state:GameState):string{
+  validateState(state);
+  return JSON.stringify({
+    schemaVersion:SAVE_SCHEMA_VERSION,
+    simulationVersion:SIMULATION_VERSION,
+    savedAt:new Date().toISOString(),
+    payload:state,
+  } satisfies SaveEnvelope);
+}
+
 export function parseSave(text: string): GameState {
   let value: unknown;
   try {
@@ -1553,6 +1569,11 @@ class IndexedDBAdapter implements CampaignStorageAdapter {
 
 const browserAdapter = new IndexedDBAdapter();
 const queues = new WeakMap<CampaignStorageAdapter, Promise<unknown>>();
+// An acknowledged snapshot was already strictly validated by createSave.
+// Re-parsing that exact stored string every second when rotating the backup
+// is expensive and cannot improve integrity. Values from another tab, an
+// external adapter, or a damaged store are NOT trusted unless identical.
+const verifiedLatest = new WeakMap<CampaignStorageAdapter, string>();
 
 export class CampaignStorage {
   private readonly adapter: CampaignStorageAdapter;
@@ -1569,11 +1590,19 @@ export class CampaignStorage {
   }
 
   async saveGame(state: GameState): Promise<void> {
-    const snapshot = JSON.stringify(createSave(state));
-    return this.enqueue(() => this.adapter.update((records) => ({
-      latest: snapshot,
-      previous: validSave(records.latest) ? records.latest : records.previous,
-    })));
+    const snapshot = serializeSave(state);
+    return this.enqueue(async () => {
+      await this.adapter.update(records => ({
+        latest:snapshot,
+        previous:records.latest!==null&&
+          (records.latest===verifiedLatest.get(this.adapter)||
+            validSave(records.latest))
+          ?records.latest:records.previous,
+      }));
+      // Mark as trusted ONLY after durable adapter success. A rejected
+      // transaction must never certify a snapshot it did not commit.
+      verifiedLatest.set(this.adapter,snapshot);
+    });
   }
 
   loadGame(): Promise<GameState | null> {
@@ -1589,7 +1618,9 @@ export class CampaignStorage {
       const records = await this.adapter.read();
       if (records[key] === null) return null;
       try {
-        return parseSave(records[key]);
+        const loaded=parseSave(records[key]);
+        if(key==="latest")verifiedLatest.set(this.adapter,records[key]);
+        return loaded;
       } catch (error) {
         throw new Error(`Cannot load ${key === "latest" ? "latest campaign" : "campaign backup"}; stored data was preserved. ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -1597,6 +1628,9 @@ export class CampaignStorage {
   }
 
   deleteGame(): Promise<void> {
-    return this.enqueue(() => this.adapter.update(() => ({ latest: null, previous: null })));
+    return this.enqueue(async () => {
+      await this.adapter.update(() => ({latest:null,previous:null}));
+      verifiedLatest.delete(this.adapter);
+    });
   }
 }

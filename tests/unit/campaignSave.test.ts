@@ -2,7 +2,7 @@ import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  CampaignStorage, createSave, parseSave, SAVE_SCHEMA_VERSION,
+  CampaignStorage, createSave, serializeSave, parseSave, SAVE_SCHEMA_VERSION,
   type CampaignRecords, type CampaignStorageAdapter,
 } from "../../src/game/campaignSave.ts";
 import { advanceDay, SIMULATION_VERSION, type GameState } from "../../src/game/gameState.ts";
@@ -24,6 +24,21 @@ test("versioned saves round-trip every field without retaining caller references
   state.shopEconomy.bag.bread = 0;
   assert.deepEqual(envelope.payload, before);
   assert.notEqual(envelope.payload.adventurers, state.adventurers);
+});
+
+test("synchronous validated autosave JSON is detached without a full intermediate structuredClone",()=>{
+  const original=createGameState(7351);
+  const expected=structuredClone(original);
+  const json=serializeSave(original);
+  const direct=JSON.parse(json);
+  assert.equal(direct.schemaVersion,SAVE_SCHEMA_VERSION);
+  assert.equal(direct.simulationVersion,SIMULATION_VERSION);
+  assert.deepEqual(parseSave(json),expected);
+  // The caller may mutate state immediately after saveGame was invoked;
+  // the queued string cannot change even without a second deep clone.
+  original.shopEconomy.bag.bread=0;
+  assert.deepEqual(parseSave(json),expected);
+  assert.throws(()=>serializeSave({...expected,day:-1}),/day/);
 });
 
 test("seeded 45-day spatial-dungeon continuation preserves history, RNG, legitimate casualties and economy mutations", () => {
@@ -247,6 +262,21 @@ test("invalid latest rejects visibly, stays intact, and never replaces the known
   adapter.records = { latest: good, previous: "bad backup" };
   await assert.rejects(storage.loadBackup(), /Cannot load campaign backup; stored data was preserved/);
   assert.equal(adapter.records.previous, "bad backup");
+});
+
+test("a damaged external latest is never certified by the previous successful autosave cache",async()=>{
+  const adapter=new MemoryAdapter();
+  const storage=new CampaignStorage(adapter);
+  const first=createGameState(7351);
+  await storage.saveGame(first);
+  const good=adapter.records.latest!;
+  assert.equal(typeof good,"string");
+  adapter.records={latest:"{broken",previous:good};
+  await storage.saveGame(advanceDay(first).state);
+  assert.equal(adapter.records.previous,good,
+    "A previously trusted slot that later contains corrupt data cannot poison the backup");
+  assert.deepEqual(await storage.loadBackup(),first);
+  assert.deepEqual(await storage.loadGame(),advanceDay(first).state);
 });
 
 test("queued snapshots are captured at invocation and ordered across shared repository instances", async () => {

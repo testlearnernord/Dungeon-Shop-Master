@@ -100,3 +100,100 @@ test("world-only clocks never rerender level-6 history; cashier leaves Babylon i
   await expect(page.locator("#cashier-overlay")).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+
+test("PR215 forensic profile: compare the SAME scene with and without real 50ms world work @ci-smoke",async({page})=>{
+  test.setTimeout(120000);
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const inspect=async(paused:boolean)=>{
+    await page.evaluate(on=>{
+      const hooks=window as Window&{
+        __shopTestPauseWorld?:(paused:boolean)=>void;
+        __shopTestReadProfile?:()=>Record<string,{ms:number;calls:number;maxMs:number}>;
+      };
+      if(!hooks.__shopTestReadProfile||!hooks.__shopTestPauseWorld)
+        throw Error("Missing E2E-only profiling hooks");
+      hooks.__shopTestPauseWorld(on);
+      hooks.__shopTestReadProfile();
+    },paused);
+    const frames=await sampleAnimationFrames(page,60);
+    const profile=await page.evaluate(()=>
+      (window as Window&{__shopTestReadProfile?:()=>unknown})
+        .__shopTestReadProfile?.());
+    return {frames,profile};
+  };
+  const idle=await inspect(true);
+  const live=await inspect(false);
+  const save=await page.evaluate(async()=>{
+    const {CampaignStorage,createSave,parseSave,serializeSave}=
+      await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const storage=new CampaignStorage();
+    const state=await storage.loadGame();
+    if(!state)throw Error("No authentic campaign persisted");
+    const t1=performance.now();
+    const payload=serializeSave(state);
+    const t2=performance.now();
+    parseSave(payload);
+    const t3=performance.now();
+    const clone=JSON.stringify(createSave(state));
+    const t4=performance.now();
+    return {bytes:payload.length,serializeMs:t2-t1,parseValidateMs:t3-t2,
+      legacyCloneMs:t4-t3,identicalPayload:
+        JSON.stringify(JSON.parse(clone).payload)===
+        JSON.stringify(JSON.parse(payload).payload)};
+  });
+  await page.evaluate(()=>
+    (window as Window&{__shopTestPauseWorld?:(paused:boolean)=>void})
+      .__shopTestPauseWorld?.(false));
+  console.log("[PR215 BEFORE/AFTER clock CPU baseline, CI virtual GPU]",JSON.stringify({
+    idle,live,save,
+  }));
+  expect(idle.profile).toBeTruthy();
+  expect(live.profile).toBeTruthy();
+  expect((live.profile as Record<string,{calls:number}>)["world-step"]?.calls)
+    .toBeGreaterThan(0);
+  expect((live.profile as Record<string,{calls:number}>)["traffic-validate-notify"]?.calls)
+    .toBeGreaterThan(0);
+});
+
+test("F3 diagnostics are opt-in and expose real browser frame and autosave costs @ci-smoke",async({page})=>{
+  test.setTimeout(90000);
+  await page.goto("./");
+  await expect(page.locator("#runtime-performance")).toBeHidden();
+  await page.keyboard.press("F3");
+  await expect(page.locator("#runtime-performance")).toBeVisible();
+  await expect(page.locator("#runtime-performance")).toContainText("FPS (frame gap)",{
+    timeout:20000,
+  });
+  await expect(page.locator("#runtime-performance")).toContainText("Render CPU / frame");
+  await expect(page.locator("#runtime-performance")).toContainText("autosave");
+  await page.keyboard.press("F3");
+  await expect(page.locator("#runtime-performance")).toBeHidden();
+});
+
+test("smooth shop presentation never commits fractional NPC positions to save/physics @ci-smoke",async({page})=>{
+  test.setTimeout(90000);
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const sawMovement=await expect.poll(async()=>page.evaluate(()=>{
+    const hook=(window as Window&{
+      __shopTestPresentAt?:(fraction:number)=>{
+        before:{actors:{heroId:string;x:number;z:number;yaw:number}[]};
+        during:{actors:{heroId:string;x:number;z:number;yaw:number}[]};
+        after:{actors:{heroId:string;x:number;z:number;yaw:number}[]};
+      };
+    }).__shopTestPresentAt;
+    if(!hook)throw Error("Missing actual-world presentation hook");
+    const {before,during,after}=hook(.5);
+    if(JSON.stringify(before)!==JSON.stringify(after))
+      throw Error("Temporary display changes leaked into the physical shop motor");
+    const byId=new Map(during.actors.map(actor=>[actor.heroId,actor]));
+    return before.actors.some(actor=>{
+      const shown=byId.get(actor.heroId);
+      return shown&&Math.hypot(shown.x-actor.x,shown.z-actor.z)>1e-4;
+    });
+  }),{timeout:20000,intervals:[100,150,250]}).toBe(true);
+  // The returned matcher itself enforces a frame with genuine interpolation.
+  expect(sawMovement).toBeUndefined();
+});

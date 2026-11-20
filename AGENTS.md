@@ -1,5 +1,13 @@
 # Dungeon Shop Master — Contributor Guide
 
+### PR #215 performance diagnosis contract
+
+- The 2026-11-20 virtual-browser attribution shows 50ms median frame gaps BOTH with the 50ms world clock paused and active. CPU measurement for 63 active ticks: scheduler ~0.5ms total, NPC motion ~7.1ms, snapshot ~0.6ms, equality JSON ~1.1ms, strict traffic validation + notifications ~1.2ms. Do NOT claim that CI's 20 FPS is caused by the clock, or that removing equality alone fixes physical-user FPS.
+- Source root of unnecessary work after PRs #203/#204: two full serialized traffic comparisons per committed 50ms tick, now removed ONLY from the known-tick authority. Cold material commits retain equality guard; strict traffic/save and frame-by-frame movement remain intact.
+- #203 visibly quantized NPC mesh motion at 20Hz. `NpcVisualSystem.rememberCommittedMotion` now keeps only the last already-committed 50ms poses and `renderInterpolated` temporarily displays fractional pose/shortest-angle facing, then restores physical roots in `finally`. NEVER write the interpolated position into saved traffic, pathfinding, raycasts, the world clock or player actions. Paused worlds render the exact final pose; reload clears visual trails. Test both pure math and real browser snapshot restoration.
+- Autosave remains event-immediate + 1 real second for ordinary motion, but repeated validation of **the same already-confirmed latest snapshot** is cached by adapter; foreign, corrupt, rejected or externally modified data are never blindly treated as valid.
+- A hidden F3 panel shows real device FPS, frame gaps, JS world/render duration and synchronous autosave cost; it is a diagnostic, NOT a second clock or GPU timer. See `docs/PERFORMANCE_INVESTIGATION.md`.
+
 ### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.

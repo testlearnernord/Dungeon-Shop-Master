@@ -1,5 +1,13 @@
 # Dungeon Shop Master
 
+### PR #215 live-clock performance investigation (CI measurements, device verification pending)
+
+- Press **F3** in the playable shop to show/hide a small real-device performance meter: FPS, p95 frame gap, world-tick CPU, synchronous Babylon render CPU, ticks/s, last autosave serialization/validation time. It is off by default, does not pause/modify the world and is not a GPU profiler.
+- Source comparison confirms the 50ms world step arrived with #203 and full physical shop traffic checkpoints with #204. #215 avoids full JSON equality checks on every **known committed physical tick**; non-clock mutations retain their guarded comparison. Strict traffic/save validation is unchanged.
+- **Visible motion regression fixed:** #203 tied NPC root movement to 20Hz saved ticks. Shop meshes now interpolate **presentation only** between the previous and current already-committed poses at display refresh rate. Babylon roots return to exact saved physics positions immediately after each render. Collision, pickups, combat, replay and autosaves never see interpolated coordinates.
+- Autosave rotation previously re-parsed/strictly validated the last full snapshot **every second**, including snapshots already validated and committed by this exact adapter. Now it reuses that proven value, while externally changed/corrupt latest saves still receive a full validation, failures never certify records and backups remain intact. Full autosave JSON is captured synchronously after strict validation without an extra intermediate `structuredClone` of the same entire state; manual `createSave` keeps its detached-object contract.
+- **Important:** CI itself reports ~50ms median frame gaps both when this world clock is paused and when it runs. That prevents falsely attributing CI's ~20 FPS to the new world motor; hardware performance on a real player's PC is still unmeasured. See [performance investigation](docs/PERFORMANCE_INVESTIGATION.md).
+
 ### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
