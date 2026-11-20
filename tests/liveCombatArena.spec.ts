@@ -65,37 +65,22 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   await expect(page.locator("#dungeon-live-combat-summary")).toBeVisible();
   await expect(page.locator("#dungeon-live-combat-actors")).toContainText("HP");
   await expect(page.locator("#dungeon-watch-live-combat")).toBeVisible();
-  const abstract=await page.evaluate(async()=>{
-    const {Engine}=await import("@babylonjs/core/Engines/engine");
-    const scene=Engine.LastCreatedScene!;
-    return {
-      battleMarkers:scene.meshes.filter(mesh=>mesh.name==="dungeon-live-combat-marker").length,
-      monsters:scene.meshes.filter(mesh=>mesh.name.startsWith("dungeon-live-fallback-")).length,
-      projectiles:scene.meshes.filter(mesh=>mesh.name.startsWith("dungeon-live-projectile-")).length,
-      ghl:scene.transformNodes.filter(node=>node.name.startsWith("dungeon-ghoul-")).length,
-      sceneCount:scene.getEngine().scenes.length,
-    };
-  });
+  const abstract=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectLiveCombatPresentation());
   expect(abstract.battleMarkers).toBe(1);
-  expect(abstract.monsters).toBe(0);
-  expect(abstract.projectiles).toBe(0);
-  expect(abstract.ghl).toBe(0);
+  expect(abstract.liveMapMonsterMeshes).toBe(0);
+  expect(abstract.liveMapProjectiles).toBe(0);
+  expect(abstract.liveMapGhouls).toBe(0);
   await page.locator("#dungeon-watch-live-combat").click();
   await expect(page.locator("#dungeon-mode-description")).toContainText("3D combat arena");
   await expect(page.locator("#dungeon-return-from-combat")).toBeVisible();
   await expect(page.locator("#dungeon-watch-live-combat")).toBeHidden();
-  const arena=await page.evaluate(async()=>{
-    const {Engine}=await import("@babylonjs/core/Engines/engine");
-    const scene=Engine.LastCreatedScene!;
-    return {sceneCount:scene.getEngine().scenes.length,
-      floor:!!scene.getMeshByName("live-fight-arena-floor"),
-      heroes:scene.transformNodes.filter(node=>node.name.startsWith("live-fight-hero-")).length,
-      monsters:scene.meshes.filter(mesh=>mesh.name.startsWith("live-fight-monster-")).length};
-  });
+  const arena=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectLiveCombatPresentation());
   expect(arena.sceneCount).toBe(abstract.sceneCount+1);
-  expect(arena.floor).toBe(true);
-  expect(arena.heroes).toBeGreaterThanOrEqual(1);
-  expect(arena.monsters).toBeGreaterThanOrEqual(1);
+  expect(arena.isArena).toBe(true);
+  expect(arena.arenaHeroes).toBeGreaterThanOrEqual(1);
+  expect(arena.arenaMonsters).toBeGreaterThanOrEqual(1);
   expect(await record()).toEqual(before,
     "Watching LIVE must never decide a result or mutate saved HP/loot/frames");
   // With the real world resumed, both view modes remain spectators and
