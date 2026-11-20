@@ -1,5 +1,13 @@
 # Dungeon Shop Master — Contributor Guide
 
+### PR #216 · Render performance facts and invariants
+
+- **Real ablation** in `tests/renderAblation.spec.ts`: CI Chromium's GL renderer is ANGLE SwiftShader, baseline native 800×600 20 FPS, skip Babylon 60, halve render width/height 60, disable five point lights 30, hide partial furniture still 20, hide almost all world meshes 60. Six total lights, 301 total scene meshes/50 active in this view, ~4,464 active triangles. The bottleneck **in CI** is GPU-like WebGL pixel/shader/lighting cost under software rendering; do NOT confuse with actual owner's GPU or host performance.
+- **DO NOT** remove the physically saved 20Hz shop motor or down-sample the deterministic 60Hz combat. Only Babylon render buffer density is adaptive. Never change CSS canvas display size/HUD clarity, simulation authority, exact Save/Reload coordinates or rerender history to optimize FPS.
+- `AdaptiveResolutionPolicy` is pure and independently unit-tested. Default Auto starts at native scale 1; requires two sustained slow ~1.8s windows after initial warmup and low synchronous JS CPU cost before stepping 1 → 1.25 → 1.5 → 1.75 → 2. CPU-heavy frames are intentionally not treated as a resolution problem. Recovery is conservative. F4 manual Native/Balanced/Performance modes override Auto; F3 shows actual buffer and ANGLE renderer. In VITE_E2E benchmark the controller does not self-scale, to keep A/B scene comparisons meaningful; the explicit F4 test validates actual buffer resizing.
+- For future optimized assets use profiler first: preserve light mood, physics/picking, merchant station names and rendering fidelity. Measured CI 20→60 FPS at 400×300 is **not** proof of 60 FPS on a player's 1080p/4K browser. Do not report it as hardware acceptance.
+- See `docs/PERFORMANCE_INVESTIGATION.md` for reproducible test methods and next priorities.
+
 ### PR #215 performance diagnosis contract
 
 - The 2026-11-20 virtual-browser attribution shows 50ms median frame gaps BOTH with the 50ms world clock paused and active. CPU measurement for 63 active ticks: scheduler ~0.5ms total, NPC motion ~7.1ms, snapshot ~0.6ms, equality JSON ~1.1ms, strict traffic validation + notifications ~1.2ms. Do NOT claim that CI's 20 FPS is caused by the clock, or that removing equality alone fixes physical-user FPS.

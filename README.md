@@ -1,5 +1,14 @@
 # Dungeon Shop Master
 
+### PR #216 · Shop FPS: measured WebGL bottleneck and adaptive render resolution
+
+**Controlled comparison on identical local Vite CI + Chromium SwiftShader (software WebGL):** normal shop 20 FPS median, world simulation fully paused still 20 FPS, Babylon rendering disabled 60 FPS, **half width/height drawing resolution 60 FPS**, five dynamic point lights disabled 30 FPS, hiding some furniture/decor unchanged at 20 FPS, most world meshes hidden 60 FPS. Actual scene baseline: 301 meshes, 50 active, ~4,464 active triangles, six lights (five point + ambient). The bottleneck **on CI** is the WebGL pixel/shader/lighting pipeline, not an extreme polygon count or the 20Hz dungeon simulation. **This is NOT a claim about physical user's GPU or GitHub Pages FPS.**
+
+- **Automatic display-quality optimization:** Retains native Babylon resolution when smooth; under sustained GPU-like frame stalls drops only the 3D render buffer through 80%, 67%, 57% and 50% linear resolution. Native HTML HUD, text and icons stay at full browser clarity. Does not change shop traffic, world time, gameplay, physics, combat, checkpoints or autosave frequency. Auto is disabled in deterministic E2E benchmark sessions.
+- **F3** shows real device FPS/p95, world and draw CPU, Babylon render buffer, render scale, active/total meshes, lights and actual WebGL renderer name. **F4** cycles Auto → Native (100%) → Balanced (67%) → Performance (50%) → Auto. Manually forced quality does not self-adjust.
+- The static GitHub Pages deployment serves the same `vite build` artifacts that a local `npm run build && npm run preview` would serve. Hosting affects initial transfer and caching, not each WebGL draw call; the CI FPS data were recorded on `127.0.0.1`, **not GitHub Pages**.
+- Detailed evidence, controlled ablations, limitations and prioritized next steps: [Performance investigation](docs/PERFORMANCE_INVESTIGATION.md).
+
 ### PR #215 live-clock performance investigation (CI measurements, device verification pending)
 
 - Press **F3** in the playable shop to show/hide a small real-device performance meter: FPS, p95 frame gap, world-tick CPU, synchronous Babylon render CPU, ticks/s, last autosave serialization/validation time. It is off by default, does not pause/modify the world and is not a GPU profiler.

@@ -1,5 +1,29 @@
 # Dungeon Shop Master — Current Architecture
 
+### PR #216 · Adaptive renderer, **not** adaptive world time
+
+The normal shop Babylon `Scene` remains fully synchronized with the one
+fixed 50ms persisted world tick and 60Hz fight engine. The new quality
+controller only calls `engine.setHardwareScalingLevel` and `engine.resize`
+when the visible 3D viewport has sustained low FPS and the measured JS
+simulation/render CPU budget is low. It starts at scaling 1, then potentially
+selects 1.25, 1.5, 1.75 or at most 2 (half width and height = quarter pixels).
+`RenderQualityController` reads the pure `AdaptiveResolutionPolicy`:
+warmup, two slow frame windows, hysteresis and delayed recovery.
+Manual F4 presets override automatic decisions. Browser HUD is native DOM
+and remains full resolution. Babylon viewport picking, shop meshes, scene,
+simulation, RNG, event queue and campaign saves remain unchanged.
+
+Diagnostic baseline: 2026-11-20 CI uses local Vite + Xvfb Chromium ANGLE
+SwiftShader software GPU. With the world clock paused, the shop at 800×600
+displayed a 50ms median frame gap (20 FPS); skip scene rendering gave
+16.7ms, half resolution gave 16.7ms, switch off all five point lights
+gave 33.3ms, and hide mostly decorative meshes was unchanged.
+Only ~50 meshes and 4,464 triangles were active. That implicates raster
+pixel/shader/lighting work in CI; it is not attributable to Pages hosting
+or an overactive dungeon motor. Hardware device performance remains
+unverified. Instrument and test with `tests/renderAblation.spec.ts`.
+
 ### PR #215 50ms hot-path performance boundaries
 
 A single `advancePhysicalShopWorldTicks` call still interleaves each due

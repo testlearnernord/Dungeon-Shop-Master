@@ -1,5 +1,39 @@
 # Dungeon Shop Master — Development Roadmap
 
+### PR #216 · Performance recovery, evidence-first
+
+- [x] Reproduce 20 FPS *with* the simulated world paused, on local
+  CI Vite server and software-rendered Chromium, ruling out Pages
+  hosting and the 20Hz simulation as the cause of **that** low FPS.
+- [x] A/B identical scene: full graphics 20 FPS; disable Babylon 60;
+  half width/height buffer 60; five point lights disabled 30;
+  hide partial furniture 20; hide all world 60 (median CI estimates).
+- [x] Inspect real Babylon scene: 301 meshes, ~50 active, 4,464 active
+  triangles, six lights, 73 materials, SwiftShader ANGLE; this is
+  predominantly raster/shader/lighting cost, not high-poly simulation.
+- [x] Implement adaptive 3D drawing resolution (1..2 hardware scaling),
+  with CPU-bound rejection and warmup/hysteresis, preserving native DOM
+  clarity and deterministic shop/combat state. Offer F4 override and
+  enriched F3 hardware/scene stats.
+- [x] Cover pure policy (fast/slow/CPU-bound/paused), render-buffer
+  selection and unmodified CSS dimensions in browser tests.
+- [ ] Obtain **physical device** baseline and device-specific GPU info
+  via F3, and compare local production preview with Pages using same
+  Chrome/GPU/viewport before concluding hardware FPS acceptance.
+- [ ] Benchmark shader/light budgeting, static mesh batching and visual
+  occlusion on representative cards/GPUs before changing art. Avoid
+  disabling the five point lights globally as a first resort.
+- [ ] Set hardware-tier targets: sustained 60 FPS shop @1080p where
+  supported, frame p95 <25ms for smooth tier, no >100ms main-thread
+  saves during steady play, and correct 20 world ticks/sec. Verify
+  day-10+ high-hero-count spikes; report actual hardware measurements.
+
+**GitHub Pages is static hosting**. Only network loading/caching varies;
+browser WebGL rendering runs on the user's graphics stack. Existing
+20-FPS smoke measurements were already local (`127.0.0.1`) in
+SwiftShader, so swapping the host alone is not a plausible fix.
+See `docs/PERFORMANCE_INVESTIGATION.md`.
+
 ### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.

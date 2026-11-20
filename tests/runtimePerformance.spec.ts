@@ -197,3 +197,52 @@ test("smooth shop presentation never commits fractional NPC positions to save/ph
   // The returned matcher itself enforces a frame with genuine interpolation.
   expect(sawMovement).toBeUndefined();
 });
+
+test("F4 quality presets change the actual Babylon render buffer, never the HTML UI @ci-smoke",async({page})=>{
+  test.setTimeout(60000);
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const info=()=>page.evaluate(()=>{
+    const read=(window as Window&{
+      __shopTestRenderQualityInfo?:()=>{mode:string;scale:number;
+        width:number;height:number;renderer:string};
+    }).__shopTestRenderQualityInfo;
+    if(!read)throw Error("Missing actual render quality E2E hook");
+    return read();
+  });
+  const canvas=page.locator("#renderCanvas");
+  const cssBefore=await canvas.evaluate(element=>({
+    width:element.getBoundingClientRect().width,
+    height:element.getBoundingClientRect().height,
+  }));
+  const full=await info();
+  expect(full.mode).toBe("auto");
+  expect(full.scale).toBe(1);
+  await page.keyboard.press("F4");
+  expect((await info()).mode).toBe("native");
+  await page.keyboard.press("F4");
+  const balanced=await info();
+  expect(balanced.mode).toBe("balanced");
+  expect(balanced.width).toBeLessThan(full.width);
+  expect(balanced.height).toBeLessThan(full.height);
+  await page.keyboard.press("F4");
+  const performance=await info();
+  expect(performance.mode).toBe("performance");
+  expect(performance.scale).toBe(2);
+  expect(performance.width).toBeLessThan(balanced.width);
+  await page.keyboard.press("F3");
+  await expect(page.locator("#runtime-performance")).toContainText("Render buffer:",{
+    timeout:15000,
+  });
+  await expect(page.locator("#runtime-performance")).toContainText("GL:");
+  await expect(page.locator("#runtime-performance")).toContainText("performance");
+  const cssAfter=await canvas.evaluate(element=>({
+    width:element.getBoundingClientRect().width,
+    height:element.getBoundingClientRect().height,
+  }));
+  expect(cssAfter).toEqual(cssBefore,
+    "Only internal Babylon pixels change; screen/HUD dimensions stay crisp");
+  await page.keyboard.press("F4");
+  expect((await info()).mode).toBe("auto");
+  expect((await info()).scale).toBe(1);
+});
