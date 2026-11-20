@@ -6,6 +6,8 @@ import {
 import { resolveGroupCombat, type CombatantSpec, type GroupCombatOptions,
   type GroupCombatState, type GroupCombatReplay } from "./groupCombat.ts";
 import { SeededRandom } from "./random.ts";
+import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK}
+  from "./ghoulPack.ts";
 import {
   dungeonGenerationSeed, dungeonSiteGeneration, refreshDungeonSites,
   resolveDungeonSite, type DungeonSiteCycle,
@@ -154,7 +156,8 @@ function chooseRenewedSiteStep(
 /** Prepare the original fight geometry/stats without advancing its clock. */
 export function prepareSpatialDungeonCombat(
   party: readonly AdventurerState[], monster: DungeonFeature,
-  campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint, cycle = 0,
+  campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint,
+  cycle=0,livePacks=false,
 ):{readonly options:GroupCombatOptions;readonly elite:boolean} {
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
     (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0,cycle));
@@ -191,6 +194,14 @@ export function prepareSpatialDungeonCombat(
   available.push(...candidates);
   if(available.length<party.length)
     throw new RangeError("Insufficient physical entry positions for this party");
+  // A pack may not steal another authored monster/chest/trap site's tile.
+  // The lead feature stays the sole renewable source for this encounter.
+  const freePackSpawns=available.slice(party.length).filter(point=>
+    !layout.features.some(feature=>feature.x===point.x&&feature.z===point.z));
+  // Old atomic day/replay resolver stays single-Ghoul, unchanged.
+  // Real multi-Ghoul teams are enabled ONLY for actual deferred LIVE fights.
+  const packCount=livePacks&&!elite?ghoulPackCount(campaignSeed,layout.floor,
+    monster.x,monster.z,cycle,party.length,freePackSpawns.length):1;
   const specs:CombatantSpec[]=party.map((hero,index)=>{
     const spawn=available[index];
     const sword=hero.equipment.weapon==="Iron Sword";
@@ -209,19 +220,26 @@ export function prepareSpatialDungeonCombat(
       healCharges:Math.min(2,hero.inventory.healing),
     };
   });
-  specs.push({
-    id:monster.id,team:"monsters",role:"monster",style:"melee",
-    x:0,z:0,hp:monsterHp,maxHp:monsterHp,
-    damage:(layout.floor===7?8+monsterRand.int(4):2+layout.floor+monsterRand.int(3))+
-      (elite?4:0),
-    armor:1+(elite?4:0),
-    speed:elite?2.7:3.0,reach:elite?2:1.6,
-    // The grab-and-throw is the signature of the UNIQUE Cave Troll.
-    // The shared engine supports it, but renewable generic foes cannot
-    // acquire that boss art/ability merely by spawning as elites.
-    ...(elite?{radius:1.05,agility:8,staggerThreshold:12}:{}),
-    ...(elite?{meleeAbility:"heavy" as const}:{}),
-  });
+  // One *real* source feature can spawn a bounded physical Ghoul pack.
+  // Every extra monster gets its own stable ID, actual collision position,
+  // HP, AI decisions and saved 60Hz frames. Never duplicate the primary
+  // feature or create more world sites/reward settlements for companions.
+  const baseDamage=(layout.floor===7?8+monsterRand.int(4):
+    2+layout.floor+monsterRand.int(3))+(elite?4:0);
+  for(let index=0;index<packCount;index++){
+    const spawn=index===0?monster:freePackSpawns[index-1]!;
+    specs.push({
+      id:ghoulPackActorId(monster.id,index),team:"monsters",
+      role:"monster",style:"melee",
+      x:(spawn.x-monster.x)*2.5,z:(spawn.z-monster.z)*2.5,
+      hp:monsterHp,maxHp:monsterHp,
+      damage:baseDamage,armor:1+(elite?4:0),
+      speed:elite?2.7:3.0,reach:elite?2:1.6,
+      // Only unique bosses own grab/throw. Renewable pack Ghouls do not.
+      ...(elite?{radius:1.05,agility:8,staggerThreshold:12}:{}),
+      ...(elite?{meleeAbility:"heavy" as const}:{}),
+    });
+  }
   const obstacles=[];
   for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){
     if(tileAt(layout,monster.x+dx,monster.z+dz)!=="wall")continue;
@@ -527,7 +545,7 @@ export function simulateSpatialDungeonPartyDay(
       const cycle=dungeonSiteGeneration(siteCycles,feature.id);
       if(options.deferCombat){
         const prepared=prepareSpatialDungeonCombat(active,feature,layout.seed,
-          layout,previous,cycle);
+          layout,previous,cycle,true);
         pendingCombat={featureId:feature.id,floor:floor as SpatialDungeonFloor,
           x:current.x,z:current.z,siteCycle:cycle,...prepared};
         step(t+0.1,"combat",feature.id);
@@ -548,9 +566,11 @@ export function simulateSpatialDungeonPartyDay(
         resolved.add(feature.id);
         siteCycles=resolveDungeonSite(siteCycles,feature.id,day);
         const alive=members.filter(m=>m.hp>0);
-        for(const m of alive)m.xp+=fight.elite?28:12;
-        if(alive.length)alive[0].kills+=1;
-        shareGold(fight.elite?6:2);
+        const monsterKills=fight.combat.actors
+          .filter(actor=>actor.team==="monsters").length;
+        for(const m of alive)m.xp+=(fight.elite?28:12)*monsterKills;
+        if(alive.length)alive[0].kills+=monsterKills;
+        shareGold((fight.elite?6:2)*monsterKills);
         for(const m of members)m.steps.push({...current,t:t+0.2,
           action:m.hp===0?"death":"defeat-monster",featureId:feature.id,hp:m.hp});
         // A fallen companion ends this outing. Living friends don't
@@ -681,8 +701,13 @@ export function settleSpatialDungeonCombat(
     arrivals[i].heroId!==hero.id||arrivals[i].floor!==encounter.floor))
     throw new RangeError("LIVE party changed while fighting.");
   const roster=new Map(combat.actors.map(actor=>[actor.id,actor]));
-  if(encounter.options.actors.filter(actor=>actor.team==="monsters").length!==1||
-    !roster.has(encounter.featureId)||party.some(hero=>!roster.has(hero.id)))
+  const monsterSpecs=encounter.options.actors.filter(a=>a.team==="monsters");
+  if(monsterSpecs.length<1||monsterSpecs.length>MAX_GHOUL_PACK||
+    monsterSpecs.some((actor,index)=>
+      actor.id!==ghoulPackActorId(encounter.featureId,index))||
+    roster.size!==encounter.options.actors.length||
+    !roster.has(encounter.featureId)||
+    party.some(hero=>!roster.has(hero.id)))
     throw new RangeError("LIVE combat has invalid fighters.");
   const winner=combat.outcome==="heroes";
   const settled=world.siteCycles?.find(site=>site.id===encounter.featureId);
@@ -693,7 +718,8 @@ export function settleSpatialDungeonCombat(
   const alive=party.map(hero=>({hero,actor:roster.get(hero.id)!}))
     .filter(pair=>pair.actor.hp>0).sort((a,b)=>
       a.hero.id.localeCompare(b.hero.id));
-  const pot=winner?(encounter.elite?6:2):0;
+  const monsterKills=monsterSpecs.length;
+  const pot=winner?(encounter.elite?6:2)*monsterKills:0;
   alive.forEach(({hero},i)=>{
     shares.set(hero.id,Math.floor(pot/alive.length)+
       (i<pot%alive.length?1:0));
@@ -713,7 +739,8 @@ export function settleSpatialDungeonCombat(
     // LIVE campaigns never jump to a shop floor on battle termination.
     // The one shared world motor must physically backtrack first.
     const returning=false;
-    const xp=hero.xp+(winner&&!dead?(encounter.elite?28:12):0);
+    const xp=hero.xp+(winner&&!dead?
+      (encounter.elite?28:12)*monsterKills:0);
     const gold=shares.get(hero.id)??0;
     const adventurer:AdventurerState={
       ...hero,health:hp,xp,level:1+Math.floor(xp/100),
@@ -741,7 +768,8 @@ export function settleSpatialDungeonCombat(
           siteCycle:encounter.siteCycle,combat:recording}],
         outcome:personalOutcome},
       gainedGold:gold,gainedLoot:0,
-      defeatedMonsters:winner&&!dead&&alive[0]?.hero.id===hero.id?1:0,
+      defeatedMonsters:winner&&!dead&&alive[0]?.hero.id===hero.id
+        ?monsterKills:0,
     };
   });
   const nextWorld:Level7World={

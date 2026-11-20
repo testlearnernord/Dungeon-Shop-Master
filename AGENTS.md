@@ -1,6 +1,25 @@
 # Dungeon Shop Master — Contributor Guide
 
 
+### PR #230 · Real multi-Ghoul teams per authored site
+
+`ghoulPack.ts` derives a pack count and IDs from only the real
+seeded site/cycle, party size and physical free positions. The pack
+option is enabled only for `deferCombat` LIVE reservations, never the
+older atomic day replay resolver.  Floor 1
+remains single Ghoul; deeper floors may spawn up to three. Each extra
+Ghoul is a real GroupCombat actor, **not** an extra world feature,
+separate loot settlement, global dungeon event or a fake 3D floor mesh.
+All members of one pack share ONE reserved site generation, while
+positions, HP, phases, projectiles and cues remain individual.
+On LIVE save/reload re-create the canonical options exactly; on
+archived tape validation allow old singleton fights and contiguous
+`site:pack:N` identities, never arbitrary extras. No edits to
+boss damage models or historical Level-6 replay semantics.
+Only opt-in arenas load the individual Ghoul GLBs. Keep unit/browser
+smoke gates green before merge.
+
+
 ### PR #229 · One real shared encounter driver; signature-profile convergence
 
 The canonical `combatEncounter.ts` 60Hz stepper already runs both

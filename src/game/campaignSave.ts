@@ -25,6 +25,7 @@ import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
   LIVE_COMBAT_EVENT_SUBJECT,LIVE_COMBAT_INTERVAL_TICKS,
   SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS} from "./liveDungeonRuntime.ts";
 import {createGroupCombat,type GroupCombatOptions} from "./groupCombat.ts";
+import {ghoulPackActorId,MAX_GHOUL_PACK} from "./ghoulPack.ts";
 import {forecastShoppingIntents} from "./shopperIntents.ts";
 import {containsReplay,MAX_SAVED_REPLAYS} from "./replayRetention.ts";
 
@@ -283,10 +284,10 @@ function validateLevel7Replay(
     if(combat.version!==1)fail(item+".combat.version","is incompatible");
     choice(combat.outcome,["heroes","monsters","draw"],item+".combat.outcome");
     const actors=array(combat.actors,item+".combat.actors");
-    // Historical two-actor replays remain valid. New encounters may contain
-    // up to three actual heroes but always exactly one site monster.
-    if(actors.length<2||actors.length>4)
-      fail(item+".combat.actors","must contain 1–3 heroes and one monster");
+    // Historical two-actor replays remain valid. One real authored site
+    // may contain up to three physically independent Ghoul combatants.
+    if(actors.length<2||actors.length>6)
+      fail(item+".combat.actors","must contain 1–3 heroes and 1–3 Ghouls");
     const actorIds=new Set<string | number>();
     let monsterCount=0,heroCount=0;
     actors.forEach((rawActor,j)=>{
@@ -317,8 +318,10 @@ function validateLevel7Replay(
       }
       if(actor.team==="monsters"){
         monsterCount++;
-        if(id!==feature.id||actor.role!=="monster")
-          fail(a,"only the real saved monster site can oppose the party");
+        if(actor.role!=="monster" ||
+           !Array.from({length:MAX_GHOUL_PACK},(_,index)=>
+             ghoulPackActorId(feature.id,index)).includes(id))
+          fail(a,"only fighters of the real saved monster site can oppose the party");
       }else{
         heroCount++;
         if(actor.role==="monster"||!/^adventurer-[1-9][0-9]*$/.test(id))
@@ -330,9 +333,14 @@ function validateLevel7Replay(
       if(actor.radius!==undefined)validNumber(actor.radius,a+".radius",0.1,3);
       if(actor.healCharges!==undefined)integer(actor.healCharges,a+".healCharges",0,10);
     });
-    if(heroCount!==actors.length-1||monsterCount!==1||
-      !actorIds.has(heroId)||!actorIds.has(feature.id))
-      fail(item+".combat.actors","must contain the lead hero and exactly one real monster");
+    if(heroCount<1||heroCount>3||
+       monsterCount<1||monsterCount>MAX_GHOUL_PACK||
+       heroCount+monsterCount!==actors.length||
+       !actorIds.has(heroId)||
+       Array.from({length:monsterCount},(_,index)=>
+         ghoulPackActorId(feature.id,index)).some(id=>!actorIds.has(id)))
+      fail(item+".combat.actors",
+        "must include the lead hero and a contiguous real site Ghoul pack");
     const bounds=object(combat.bounds,item+".combat.bounds",["minX","maxX","minZ","maxZ"]);
     for(const key of ["minX","maxX","minZ","maxZ"])
       validNumber(bounds[key],item+".combat.bounds."+key,-10000,10000);
@@ -483,8 +491,10 @@ function validateLiveCombatCheckpoints(
       "actors","bounds","obstacles",
     ]);
     const specs=array(options.actors,cp+".encounter.options.actors");
-    if(specs.length!==members.length+1)
-      fail(cp+".encounter.options.actors","must match this party and the site monster");
+    if(specs.length<members.length+1||
+       specs.length>members.length+MAX_GHOUL_PACK)
+      fail(cp+".encounter.options.actors",
+        "must match this party and its real site Ghoul pack");
     specs.forEach((rawSpec,i)=>{
       const sp=cp+".encounter.options.actors["+i+"]";
       const spec=object(rawSpec,sp,[
@@ -508,11 +518,17 @@ function validateLiveCombatCheckpoints(
         validNumber(obstacle[key],op+"."+key,-10000,10000);
     });
     const initialApproach=(arrivals[0] as {steps:{x:number;z:number}[]}).steps[0];
-    const canonical=prepareSpatialDungeonCombat(members,feature!,
-      layout.seed,layout,initialApproach,cycle);
-    if(canonical.elite!==encounter.elite||
-      JSON.stringify(canonical.options)!==JSON.stringify(options))
-      fail(cp+".encounter.options","must match the deterministic real hero and monster stats");
+    const liveCanonical=prepareSpatialDungeonCombat(members,feature!,
+      layout.seed,layout,initialApproach,cycle,true);
+    const legacyCanonical=prepareSpatialDungeonCombat(members,feature!,
+      layout.seed,layout,initialApproach,cycle,false);
+    // Existing in-progress single-Ghoul saves remain valid; newly reserved
+    // LIVE pack sites must exactly match their seeded, physical actor roster.
+    if(![liveCanonical,legacyCanonical].some(canonical=>
+      canonical.elite===encounter.elite&&
+      JSON.stringify(canonical.options)===JSON.stringify(options)))
+      fail(cp+".encounter.options",
+        "must match a seeded LIVE pack or historical single Ghoul stats");
     let initial;
     try {initial=createGroupCombat(options as unknown as GroupCombatOptions);}
     catch {fail(cp+".encounter.options","is not a valid group combat");}
