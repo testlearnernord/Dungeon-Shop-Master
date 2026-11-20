@@ -682,7 +682,7 @@ export function finishLiveDungeonDay(
     if(hero.status==="off-duty"){
       if(!reenteringIds.has(hero.id))return hero;
       events.push({
-        id:`day-${day}:${hero.id}:expedition-reentry`,type:"dungeon-live",day,
+        id:`day-${day}:${hero.id}:dungeon-live:${clock.tick}`,type:"dungeon-live",day,
         worldTick:clock.tick,adventurerId:hero.id,reportedZone:"upper",
         message:`${hero.name} began a new expedition after two full days away.`,
       });
