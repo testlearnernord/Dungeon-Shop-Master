@@ -43,6 +43,7 @@ test("historical map stays abstract; opting into archive arena loads the authore
   });
   await page.reload();
   await page.locator("#open-dungeon").click();
+  await page.locator("#dungeon-open-archive").click();
   const inspect=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonPlayback());
   expect((await inspect()).cryptRelics).toBeGreaterThan(0);
