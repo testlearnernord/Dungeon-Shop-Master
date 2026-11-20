@@ -84,6 +84,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   expect(arena.isArena).toBe(true);
   expect(arena.arenaHeroes).toBeGreaterThanOrEqual(1);
   expect(arena.arenaMonsters).toBeGreaterThanOrEqual(1);
+  expect(arena.legacyMonsterPlaceholders).toBe(0);
   expect(arena.spectatorCamera).toBe("crypt-spectator-camera");
   expect(arena.cryptSetpieces).toBeGreaterThan(24);
   expect(arena.activeArenaLights).toBeGreaterThanOrEqual(4);
