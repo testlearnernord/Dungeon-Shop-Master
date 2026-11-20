@@ -27,7 +27,7 @@ test("Recorded successive claw strikes alternate authored right and left clips",
   assert.equal(ghoulMotionForPhase("strike",3).clip,"attack_claw_right");
   assert.equal(GHOUL_CLIP_INDICES.attack_claw_left,8);
   assert.equal(GHOUL_CLIP_INDICES.attack_claw_right,7);
-  assert.equal(ghoulRecordedPhaseAge(frames,"ghoul",1.3),.1);
+  assert(Math.abs(ghoulRecordedPhaseAge(frames,"ghoul",1.3)-.1)<1e-6);
   assert.deepEqual(frames[2],saved(.4,"strike"));
 });
 
