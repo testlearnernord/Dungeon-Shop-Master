@@ -12,6 +12,9 @@ import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts
 import type {CombatantSpec,GroupPhase,GroupReplayFrame} from "./groupCombat.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 
+/** Shared presentation contract for committed LIVE and archived fight frames. */
+export type CombatArenaView=Pick<LiveSpectatorFrame,"combat"|"heroes">;
+
 interface VisualActor {
   readonly spec:CombatantSpec;
   readonly hero:HeroVisual|null;
@@ -43,7 +46,7 @@ export class LiveGroupCombatArena{
   get observedFightId():string|null{return this.fightId;}
 
   /** Explicit viewer gesture is the ONLY construction entry point. */
-  watch(view:LiveSpectatorFrame):boolean{
+  watch(view:CombatArenaView):boolean{
     if(!view.combat)return false;
     if(this.fightId!==view.combat.id){
       this.dispose();
@@ -54,7 +57,7 @@ export class LiveGroupCombatArena{
   }
 
   /** Show a different immutable committed pose without executing combat AI. */
-  show(view:LiveSpectatorFrame):void {
+  show(view:CombatArenaView):void {
     const fight=view.combat;
     if(!fight||!this.scene||fight.id!==this.fightId)return;
     for(const [id,model] of this.actors){
@@ -129,7 +132,7 @@ export class LiveGroupCombatArena{
     this.scene=null;this.camera=null;this.fightId=null;
   }
 
-  private create(view:LiveSpectatorFrame):void{
+  private create(view:CombatArenaView):void{
     const fight=view.combat;
     if(!fight)return;
     const scene=new Scene(this.engine);

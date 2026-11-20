@@ -129,7 +129,7 @@ const shop = new Shop(scene, store);
 const board = createRosterBoard(scene, store);
 setupWallPortraitVisuals(scene,store);
 worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
-let watchLiveHero:(heroId:string)=>void=()=>{};
+let watchLiveHero:(heroId:string)=>boolean=()=>false;
 const openRoster = setupRosterBoardHud(canvas, camera, store,
   id=>watchLiveHero(id));
 const debtBook=setupDebtBookHud(canvas,camera,store);
@@ -440,10 +440,7 @@ const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
 });
-watchLiveHero=id=>{
-  if(!dungeon.openLive(id))
-    statusHud.textContent="No active LIVE dungeon observation for this signature.";
-};
+watchLiveHero=id=>dungeon.openLive(id);
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
   eventId=>{arena.open(eventId);return arena.isActive;});

@@ -1,5 +1,13 @@
 # Dungeon Shop Master — Contributor Guide
 
+### Owner correction after PR #218 · Abstract fights in all maps / native first
+
+- The most recent owner decision supersedes #218's distinction between LIVE map and archive map: **both are abstract**. Neither `DungeonReplayScene.showLive` nor `setReplay`/`show` may create enemy/hero battle models, Ghoul GLBs or projectile meshes on an ordinary dungeon map. Render a clickable encounter beacon, HP/status and genuine traversals.
+- `LiveGroupCombatArena` is the ONE read-only battle scene for both genuinely running and archived 60Hz recorded fights, constructed only by clicking the marker or accessible Watch button. It never simulates combat again. LIVE world time continues; recorded playback uses only local replay time.
+- Roster `Watch LIVE` must only close the dialog after opening a real saved hero observation; if the selected non-shop signature lacks a committed dungeon checkpoint, re-open the Board and display an accessible inline explanation. Do not reveal remote availability or coordinates **before** the opt-in. The top-right launcher is called **Dungeon (G)**, not Level 7, because both time modes use the same `DungeonViewer`.
+- Native 100% Babylon resolution is the **initial/default** mode. Auto quality is still available by explicit F4 selection, never as implicit degradation. Order: Native → Balanced → Performance → Auto.
+
+
 ### PR #218 · Strict separation between simulation, abstract LIVE dungeon map and opt-in arena
 
 - The saved **single** `GroupCombatState` / `commitLiveCombatTick`
@@ -10,8 +18,7 @@
   the committed combat site during an encounter and keeps existing fog/
   map/hero knowledge. Never load `createDungeonGhoulVisual`, allocate
   per-combat fighter/projectile meshes or animate combat phases from this
-  LIVE map code. **Historical recordings** still show full recorded
-  combat in their replay path. Don't break that distinction.
+  LIVE map code. **Historical recordings now follow the same abstract-map rule.**
 - `LiveGroupCombatArena` is a distinct, opt-in Babylon scene instantiated
   only via `DungeonViewer.watchLiveCombat()`. Its input is
   `selectLiveSpectatorFrame` from committed `GameStore` snapshots.
@@ -53,7 +60,7 @@
 
 - **Real ablation** in `tests/renderAblation.spec.ts`: CI Chromium's GL renderer is ANGLE SwiftShader, baseline native 800×600 20 FPS, skip Babylon 60, halve render width/height 60, disable five point lights 30, hide partial furniture still 20, hide almost all world meshes 60. Six total lights, 301 total scene meshes/50 active in this view, ~4,464 active triangles. The bottleneck **in CI** is GPU-like WebGL pixel/shader/lighting cost under software rendering; do NOT confuse with actual owner's GPU or host performance.
 - **DO NOT** remove the physically saved 20Hz shop motor or down-sample the deterministic 60Hz combat. Only Babylon render buffer density is adaptive. Never change CSS canvas display size/HUD clarity, simulation authority, exact Save/Reload coordinates or rerender history to optimize FPS.
-- `AdaptiveResolutionPolicy` is pure and independently unit-tested. Default Auto starts at native scale 1; requires two sustained slow ~1.8s windows after initial warmup and low synchronous JS CPU cost before stepping 1 → 1.25 → 1.5 → 1.75 → 2. CPU-heavy frames are intentionally not treated as a resolution problem. Recovery is conservative. F4 manual Native/Balanced/Performance modes override Auto; F3 shows actual buffer and ANGLE renderer. In VITE_E2E benchmark the controller does not self-scale, to keep A/B scene comparisons meaningful; the explicit F4 test validates actual buffer resizing.
+- `AdaptiveResolutionPolicy` is pure and independently unit-tested. Default Native fixes scale 1; opt-in Auto starts at native scale 1 and requires two sustained slow ~1.8s windows after initial warmup and low synchronous JS CPU cost before stepping 1 → 1.25 → 1.5 → 1.75 → 2. CPU-heavy frames are intentionally not treated as a resolution problem. Recovery is conservative. F4 Native/Balanced/Performance modes override opt-in Auto; F3 shows actual buffer and ANGLE renderer. In VITE_E2E benchmark the controller does not self-scale, to keep A/B scene comparisons meaningful; the explicit F4 test validates actual buffer resizing.
 - For future optimized assets use profiler first: preserve light mood, physics/picking, merchant station names and rendering fidelity. Measured CI 20→60 FPS at 400×300 is **not** proof of 60 FPS on a player's 1080p/4K browser. Do not report it as hardware acceptance.
 - See `docs/PERFORMANCE_INVESTIGATION.md` for reproducible test methods and next priorities.
 
@@ -131,9 +138,9 @@
   v1 replay fields are strict-save-validated.
 - **CURRENT recorded dungeon presentation (after this PR):**
   `dungeonReplayCast.ts` projects only actually saved combat actors.
-  `dungeonReplayScene.ts` renders all recorded heroes/monsters/projectiles
-  without recomputing fights. TAB focus reveals only actors in the currently
-  visible combat frame, never enemies from a later scene. New hero
+  `dungeonReplayScene.ts` renders only walking heroes and one battle beacon; the
+  optional 3D arena renders recorded combatants/projectiles without recomputing
+  fights. TAB focus never discloses a later encounter. New hero
   equipment is preserved in committed encounter records; older footage
   without this optional snapshot remains visually neutral. Level 7 regenerated room sentries at eligible site cycles
   use a bounded heavy melee strike instead of the Troll's unique

@@ -12,6 +12,8 @@ export class RenderQualityController{
   constructor(private readonly engine:Engine){
     const gl=engine as unknown as {getGlInfo?:()=>{renderer?:string}};
     this.rendererName=gl.getGlInfo?.()?.renderer??"unknown";
+    // No implicit adaptive downgrade: launch in true native rendering.
+    this.apply(this.policy.scale);
   }
   setMode(mode:RenderQualityMode):void{
     this.apply(this.policy.setMode(mode));
@@ -44,7 +46,7 @@ export class RenderQualityController{
       "Active meshes: "+scene.getActiveMeshes().length+"/"+scene.meshes.length+
         " | Lights: "+scene.lights.filter(l=>l.isEnabled()).length,
       "GL: "+info.renderer.slice(0,83),
-      "F4: auto / native / balanced / performance",
+      "F4: native / balanced / performance / auto",
     ];
   }
 }

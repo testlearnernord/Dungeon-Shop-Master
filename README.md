@@ -1,5 +1,13 @@
 # Dungeon Shop Master
 
+### Post #218 owner correction · Clickable abstract combat + native first
+
+**Viewer entry points:** The top-right **Dungeon (G)** opens the shared viewer for recordings, the developer layout preview and already-available LIVE hero streams. **Watch LIVE (opt in)** from the Adventurer Board/Roster asks for one hero's current committed dungeon position or fight. This is not guaranteed for every hero outside the shop: the first spatial checkpoint is committed at the next 30-second dungeon step; traveling, off-duty, and unsupported-floor heroes cannot be followed. When no view is available the Board stays visible with an explicit message, rather than vanishing silently. These are two data modes within one viewer, **not two world or fight engines**.
+
+Both **LIVE** and **historical expedition** dungeon maps now display combat as a clickable abstract beacon with saved HP/status; neither map creates animated Ghoul battle cast or projectiles. Click the marker or accessible Watch button to load the same separate 3D arena using existing committed frames, then Esc/Return to go back. LIVE observation keeps world time running, while historical playback remains independent.
+
+**Native (100%) is the default quality.** Press F4 for Balanced (67%) → Performance (50%) → Auto (opt-in dynamic scaling) → Native. F3 exposes real render buffer and WebGL identity.
+
 ### PR #218 · LIVE battles are abstract in the dungeon map; detailed 3D only on request
 
 **The world and all combat remain 100% authoritative and parallel.** Entering the
@@ -8,7 +16,7 @@ fog-of-war, movement and party. During a fight it shows **one abstract encounter
 beacon**, the actual combatants and saved HP. It does **not** build monster
 fighters, skinned Tripo ghouls, combat projectiles or fighting animations.
 
-When watching an active LIVE hero, click **⚔ Watch LIVE fight in arena**.
+When watching an active LIVE hero, click the combat marker or **⚔ Watch LIVE fight in arena**.
 Only this explicit action constructs a **separate Babylon arena Scene** and
 displays the exact, already-committed group-combat actors, poses, weapons and
 projectiles. Press **Esc** or **Return to dungeon map** to dispose the
@@ -39,8 +47,8 @@ The user-observed lag began after #200; a SwiftShader graphics bottleneck on CI 
 
 **Controlled comparison on identical local Vite CI + Chromium SwiftShader (software WebGL):** normal shop 20 FPS median, world simulation fully paused still 20 FPS, Babylon rendering disabled 60 FPS, **half width/height drawing resolution 60 FPS**, five dynamic point lights disabled 30 FPS, hiding some furniture/decor unchanged at 20 FPS, most world meshes hidden 60 FPS. Actual scene baseline: 301 meshes, 50 active, ~4,464 active triangles, six lights (five point + ambient). The bottleneck **on CI** is the WebGL pixel/shader/lighting pipeline, not an extreme polygon count or the 20Hz dungeon simulation. **This is NOT a claim about physical user's GPU or GitHub Pages FPS.**
 
-- **Automatic display-quality optimization:** Retains native Babylon resolution when smooth; under sustained GPU-like frame stalls drops only the 3D render buffer through 80%, 67%, 57% and 50% linear resolution. Native HTML HUD, text and icons stay at full browser clarity. Does not change shop traffic, world time, gameplay, physics, combat, checkpoints or autosave frequency. Auto is disabled in deterministic E2E benchmark sessions.
-- **F3** shows real device FPS/p95, world and draw CPU, Babylon render buffer, render scale, active/total meshes, lights and actual WebGL renderer name. **F4** cycles Auto → Native (100%) → Balanced (67%) → Performance (50%) → Auto. Manually forced quality does not self-adjust.
+- **Optional automatic display-quality optimization (F4 Auto only):** Retains native Babylon resolution when smooth; under sustained GPU-like frame stalls drops only the 3D render buffer through 80%, 67%, 57% and 50% linear resolution. Native HTML HUD, text and icons stay at full browser clarity. Does not change shop traffic, world time, gameplay, physics, combat, checkpoints or autosave frequency. Auto is disabled in deterministic E2E benchmark sessions.
+- **F3** shows real device FPS/p95, world and draw CPU, Babylon render buffer, render scale, active/total meshes, lights and actual WebGL renderer name. **F4** cycles Native (100%, default) → Balanced (67%) → Performance (50%) → Auto (opt-in) → Native. Manually forced quality does not self-adjust.
 - The static GitHub Pages deployment serves the same `vite build` artifacts that a local `npm run build && npm run preview` would serve. Hosting affects initial transfer and caching, not each WebGL draw call; the CI FPS data were recorded on `127.0.0.1`, **not GitHub Pages**.
 - Detailed evidence, controlled ablations, limitations and prioritized next steps: [Performance investigation](docs/PERFORMANCE_INVESTIGATION.md).
 
@@ -247,7 +255,7 @@ remains a target, not three mandatory day phases.
 the owner's actual skinned Tripo Ghoul instead of placeholder
 Goblin/Skeleton/Slime/Cultist labels and sphere fighters. At build
 time, the 14-clip source is joined with the separately exported
-Combat Idle into one GLB; the Babylon spectator renders real Ghoul
+Combat Idle into one GLB; the opt-in Babylon arena renders real Ghoul
 locomotion, attacks, hurt and death from committed replay frames.
 A new crypt/ruins environment decorates the EXISTING navigable
 rooms with tombs, broken pillars and ghostly lights, adding no

@@ -13,7 +13,7 @@ import {WORLD_TICKS_PER_DAY,WORLD_TICKS_PER_GAME_MINUTE} from "./game/worldClock
  */
 export function setupRosterBoardHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
-  watchLive:(heroId:string)=>void,
+  watchLive:(heroId:string)=>boolean,
 ):()=>void {
   const dialog=document.querySelector<HTMLDialogElement>("#roster-dialog")!;
   const list=document.querySelector<HTMLElement>("#roster-detail-list")!;
@@ -159,7 +159,27 @@ export function setupRosterBoardHud(
         watch.className="roster-watch-live";
         watch.textContent="Watch LIVE (opt in)";
         watch.setAttribute("aria-label","Watch "+hero.name+" in real time");
-        watch.addEventListener("click",()=>{closeRoster();watchLive(hero.id);});
+        watch.addEventListener("click",()=>{
+          // The Board deliberately does not expose remote coordinates. The
+          // user explicitly opts into observation before checking the actual
+          // world snapshot. If it is not ready, keep the reason visible here.
+          closeRoster();
+          if(watchLive(hero.id))return;
+          openRoster();
+          const current=[...list.querySelectorAll<HTMLDetailsElement>(
+            "details[data-hero-id]")].find(node=>node.dataset.heroId===hero.id);
+          if(!current)return;
+          current.open=true;
+          const warning=document.createElement("p");
+          warning.className="roster-watch-unavailable";
+          warning.setAttribute("role","status");
+          warning.textContent="LIVE observation unavailable: no current dungeon "+
+            "position or fight checkpoint for this adventurer. Active dungeon "+
+            "explorers receive a real checkpoint at their next 30-second step; "+
+            "traveling and off-duty adventurers cannot be watched in a dungeon.";
+          current.querySelector(".roster-card-extended")?.append(warning);
+          current.querySelector<HTMLButtonElement>(".roster-watch-live")?.focus();
+        });
         extended.append(watch);
       }
       card.append(summary,extended);
@@ -179,7 +199,7 @@ export function setupRosterBoardHud(
   }
   function closeRoster():void{if(dialog.open)dialog.close();}
   dialog.addEventListener("close",()=>{
-    if(!document.body.classList.contains("dungeon-active"))
+    if(!dialog.open&&!document.body.classList.contains("dungeon-active"))
       camera.attachControl(canvas,true);
   });
   close.addEventListener("click",closeRoster);

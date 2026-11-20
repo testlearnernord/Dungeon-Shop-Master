@@ -22,6 +22,9 @@
 
 ## Recording history and performance (LOCKED for V.003)
 
+**Combat presentation (LOCKED 20 November 2026):** Both LIVE and historical dungeon maps display battles only as clickable abstract encounter markers with committed HP/status. The same detailed 3D fight arena is loaded only after explicit Watch/marker interaction and never changes the 60Hz fight motor, its result, save data or historical replay. Native 100% Babylon resolution is the default. Auto downscaling is opt-in through F4. This supersedes historical Ghoul fights rendered directly in map playback.
+
+
 The player must be able to review a **short timeline of real highlights**
 for today's events and the previous two completed game days. An
 ever-growing automatically saved replay library is rejected. Recorded
@@ -110,7 +113,7 @@ The repository currently implements:
   in the agreed V.003 design by one paced, pausable shared world clock
   with ordered event/last-known reports. The stored clock drives **restock/credit petition expiry and walkout events** in the #202 branch. Bedtime no longer fabricates merchant sales or hands over unpaid carts. Full shopper movement/browsing/checkout timing and dungeon expedition commits remain pending. See LIVING_WORLD_CLOCK.md. The first ordinary
   Ghoul is now generated on Floors 1–4/7 and rendered with its original
-  skinned Tripo animation clips in recorded fights, and these rooms
+  skinned Tripo animation clips only in the opt-in 3D fight arena, and these rooms
   use a procedural burial-crypt visual theme. This is an initial
   playable art pass, NOT final animation/facing review or finished
   Ghoul SFX. See MONSTER_ASSET_PIPELINE.md and TRIPO_GHOUL_ASSET_AUDIT.md.

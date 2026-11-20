@@ -16,14 +16,12 @@ import {
   type DungeonPlaybackTimeline, type DungeonPlaybackSnapshot,
 } from "./dungeonReplayPlayback.ts";
 import {
-  dungeonReplayCast, dungeonReplayFocusIds, visibleDungeonCombatActors,
+  dungeonReplayCast, dungeonReplayFocusIds,
   recordedTemporaryPartyVisuals,
 } from "./dungeonReplayCast.ts";
 import {
   recordedTemporaryPartyFormation, recordedPartyMemberAlive,
 } from "./dungeonPartyFormation.ts";
-import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts";
-import {ghoulRecordedPhaseAge} from "./ghoulMotion.ts";
 import type { GroupPhase } from "./groupCombat.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 
@@ -53,15 +51,12 @@ export class DungeonReplayScene {
   private liveFrame:LiveSpectatorFrame|null=null;
   private liveHeroId:string|null=null;
   private liveFightId:string|null=null;
-  /** Single abstract LIVE map marker; no combat actor GLBs in dungeon map. */
-  private liveCombatMarker:Mesh|null=null;
+  /** One clickable abstract encounter beacon for both LIVE and recorded maps. */
+  private battleMarker:Mesh|null=null;
   private timeline:DungeonPlaybackTimeline|null=null;
   private hero:HeroVisual|null=null;
   private readonly companionHeroes=new Map<string,HeroVisual>();
-  private readonly enemies=new Map<string,Mesh>();
-  private readonly ghouls=new Map<string,GhoulVisual>();
   private readonly combatMaterials:StandardMaterial[]=[];
-  private projectiles:Mesh[]=[];
   private lastVisibility="";
   private lastSnapshot:DungeonPlaybackSnapshot|null=null;
   private readonly indicator:HTMLCanvasElement;
@@ -92,18 +87,12 @@ export class DungeonReplayScene {
   }
 
   private clearCombatModels():void {
-    this.liveCombatMarker?.dispose(false,true);
-    this.liveCombatMarker=null;
+    this.battleMarker?.dispose(false,true);
+    this.battleMarker=null;
     this.hero?.root.dispose(false,true);
     this.hero=null;
     for(const model of this.companionHeroes.values())model.root.dispose(false,true);
     this.companionHeroes.clear();
-    for(const mesh of this.enemies.values())mesh.dispose();
-    this.enemies.clear();
-    for(const visual of this.ghouls.values())visual.dispose();
-    this.ghouls.clear();
-    for(const mesh of this.projectiles)mesh.dispose();
-    this.projectiles=[];
     for(const material of this.combatMaterials)material.dispose();
     this.combatMaterials.length=0;
   }
@@ -126,13 +115,6 @@ export class DungeonReplayScene {
       this.hero.root.metadata={
         ...this.hero.root.metadata,replayOnly:true,combatPhase:"move",
       };
-      const ordinary=new StandardMaterial("dungeon-replay-monster-material",this.scene);
-      ordinary.diffuseColor=Color3.FromHexString("#ad5b42");
-      ordinary.emissiveColor=Color3.FromHexString("#58231d");
-      const elite=new StandardMaterial("dungeon-replay-elite-material",this.scene);
-      elite.diffuseColor=Color3.FromHexString("#75362e");
-      elite.emissiveColor=Color3.FromHexString("#31100c");
-      this.combatMaterials.push(ordinary,elite);
       // Real companions are part of the expedition BEFORE the first
       // fight. New tapes snapshot their role and purchased gear at the
       // start, so a peaceful run still displays the full party.
@@ -159,58 +141,18 @@ export class DungeonReplayScene {
           if(model)this.addPartyRing(model,gold);
         }
       }
+      // Walking actors remain on the map; all combat cast is arena-only.
       for(const actor of dungeonReplayCast(record)){
-        if(actor.id===record.heroId)continue;
-        if(actor.team==="heroes" && actor.role!=="monster"){
-          if(this.companionHeroes.has(actor.id))continue;
-          // Read equipment from committed historical actor metadata, not
-          // the current roster (the player may have sold gear since then).
-          // Old v1 records without this optional field stay visually neutral.
-          const model=createHeroVisual(this.scene,{
-            id:actor.id,role:actor.role,
-            equipment:actor.equipment??{weapon:null,armor:null},
-          },"dungeon-companion-"+actor.id);
-          model.root.metadata={...model.root.metadata,replayOnly:true,
-            recordedEquipmentUnknown:actor.equipment===undefined};
-          model.root.setEnabled(false);
-          this.companionHeroes.set(actor.id,model);
-        }else if(actor.team==="monsters"){
-          const boss=actor.specialAbility==="grapple-throw";
-          const enemy=MeshBuilder.CreateSphere("dungeon-enemy-"+actor.id,{
-            diameter:1.35,segments:12,
-          },this.scene);
-          // The primitive is a loading/error FALLBACK, never the shipped
-          // ordinary monster visual when a valid Tripo model is available.
-          enemy.material=boss?elite:ordinary;
-          enemy.isPickable=false;
-          enemy.metadata={replayOnly:true,recordedActorId:actor.id,
-            fallbackOnly:true,
-            ...(boss?{specialAbility:actor.specialAbility}:{})};
-          enemy.setEnabled(false);
-          this.enemies.set(actor.id,enemy);
-          const feature=this.layout.features.find(f=>f.id===actor.id);
-          if(feature?.kind==="monster"&&feature.subtype==="ghoul"){
-            const ghoul=createDungeonGhoulVisual(this.scene,actor.id);
-            this.ghouls.set(actor.id,ghoul);
-            void ghoul.ready.then(()=>{
-              // If paused on a saved fight, replace the fallback as soon
-              // as the asset loads; no new simulation step is needed.
-              if(this.replay===record&&this.lastSnapshot)
-                this.show(this.lastSnapshot.time);
-            });
-          }
-        }
-      }
-      const maxProjectiles=Math.min(30,Math.max(0,...record.encounters.flatMap(
-        e=>e.combat.frames.map(f=>f.projectiles.length))));
-      for(let i=0;i<maxProjectiles;i++){
-        const ball=MeshBuilder.CreateSphere("dungeon-combat-projectile-"+i,{
-          diameter:0.28,segments:6,
-        },this.scene);
-        ball.material=ordinary;
-        ball.isPickable=false;
-        ball.setEnabled(false);
-        this.projectiles.push(ball);
+        if(actor.id===record.heroId||actor.team!=="heroes"||
+           actor.role==="monster"||this.companionHeroes.has(actor.id))continue;
+        const model=createHeroVisual(this.scene,{
+          id:actor.id,role:actor.role,
+          equipment:actor.equipment??{weapon:null,armor:null},
+        },"dungeon-companion-"+actor.id);
+        model.root.metadata={...model.root.metadata,replayOnly:true,
+          recordedEquipmentUnknown:actor.equipment===undefined};
+        model.root.setEnabled(false);
+        this.companionHeroes.set(actor.id,model);
       }
       this.show(0);
     }else{
@@ -222,6 +164,26 @@ export class DungeonReplayScene {
       }
       this.drawDevelopmentMap();
     }
+  }
+
+  /** Clickable encounter marker; no skinned fighters, weapons or projectiles. */
+  private showBattleMarker(point:DungeonPoint|null):void{
+    if(!point){this.battleMarker?.setEnabled(false);return;}
+    if(!this.battleMarker){
+      const marker=MeshBuilder.CreateCylinder("dungeon-combat-marker",
+        {height:.24,diameter:2.05,tessellation:8},this.scene);
+      const material=new StandardMaterial("dungeon-combat-marker-mat",this.scene);
+      material.diffuseColor=Color3.FromHexString("#df694c");
+      material.emissiveColor=Color3.FromHexString("#7a2c20");
+      marker.material=material;
+      marker.isPickable=true;
+      marker.checkCollisions=false;
+      marker.metadata={abstractBattle:true};
+      this.battleMarker=marker;
+    }
+    const pos=toWorld(this.layout,point);
+    this.battleMarker.position.set(pos.x,.38,pos.z);
+    this.battleMarker.setEnabled(true);
   }
 
   private addPartyRing(model:HeroVisual,material:StandardMaterial):void {
@@ -263,18 +225,16 @@ export class DungeonReplayScene {
     this.hero.root.position.set(heroWorld.x+(leadOffset?.offsetX??0),
       0.1,heroWorld.z+(leadOffset?.offsetZ??0));
     if(leadOffset)this.hero.root.rotation.y=leadOffset.heading;
-    const actors=visibleDungeonCombatActors(snapshot);
-    const lead=actors.find(actor=>actor.id===this.replay!.heroId);
-    if(lead){
-      this.hero.root.rotation.y=lead.heading;
-      this.hero.root.metadata.hp=lead.hp;
-    }
-    this.animateHero(this.hero,lead?.phase??
-      (snapshot.action==="walk"?"move":
-        snapshot.action==="death"?"dead":"recover"),snapshot.time);
+    const lead=snapshot.frame?.actors.find(actor=>actor.id===this.replay!.heroId);
+    if(lead)this.hero.root.metadata.hp=lead.hp;
+    // Replay camera is an expedition map, not a second combat stage.
+    this.hero.root.setEnabled(!snapshot.encounter);
+    this.animateHero(this.hero,
+      snapshot.action==="walk"?"move":snapshot.action==="death"?"dead":"recover",
+      snapshot.time);
 
     for(const model of this.companionHeroes.values())model.root.setEnabled(false);
-    for(const member of formation){
+    if(!snapshot.encounter)for(const member of formation){
       if(member.id===this.replay.heroId ||
         !recordedPartyMemberAlive(this.timeline,snapshot,member.id))continue;
       const model=this.companionHeroes.get(member.id);
@@ -283,58 +243,9 @@ export class DungeonReplayScene {
       model.root.position.set(heroWorld.x+member.offsetX,0.1,
         heroWorld.z+member.offsetZ);
       model.root.rotation.y=member.heading;
-      this.animateHero(model,member.walking?"move":"recover",
-        snapshot.time);
+      this.animateHero(model,member.walking?"move":"recover",snapshot.time);
     }
-    for(const enemy of this.enemies.values())enemy.setEnabled(false);
-    for(const visual of this.ghouls.values())visual.root.setEnabled(false);
-    for(const mesh of this.projectiles)mesh.setEnabled(false);
-    if(snapshot.encounter&&snapshot.frame){
-      const origin=toWorld(this.layout,snapshot.encounter);
-      for(const actor of actors){
-        if(actor.id===this.replay.heroId)continue;
-        const model=this.companionHeroes.get(actor.id);
-        if(model){
-          model.root.setEnabled(true);
-          model.root.position.set(origin.x+actor.x,0.1,origin.z+actor.z);
-          model.root.rotation.y=actor.heading;
-          model.root.metadata.hp=actor.hp;
-          this.animateHero(model,actor.phase,snapshot.time);
-        }
-        const enemy=this.enemies.get(actor.id);
-        if(enemy){
-          const ghoul=this.ghouls.get(actor.id);
-          const skinned=ghoul?.root.metadata?.tripoStatus==="ready";
-          if(skinned&&ghoul){
-            ghoul.root.setEnabled(true);
-            ghoul.root.position.set(origin.x+actor.x,.08,origin.z+actor.z);
-            ghoul.root.rotation.y=actor.heading;
-            ghoul.root.metadata.hp=actor.hp;
-            ghoul.animate(actor.phase,ghoulRecordedPhaseAge(
-              snapshot.encounter.combat.frames,actor.id,snapshot.frame.t));
-          }else{
-            enemy.setEnabled(true);
-            const boss=actor.specialAbility==="grapple-throw";
-            enemy.position.set(origin.x+actor.x,
-              (boss?1.25:0.90),origin.z+actor.z);
-            enemy.rotation.y=actor.heading;
-            const size=Math.max(.75,actor.radius*1.7);
-            enemy.scaling.set(
-              size*(actor.hp>0?1:.65),
-              size*(boss?1.5:1)*(actor.hp>0?1:.42),
-              size*(actor.hp>0?1:.65),
-            );
-            enemy.metadata={...enemy.metadata,combatPhase:actor.phase,hp:actor.hp};
-          }
-        }
-      }
-      for(let i=0;i<this.projectiles.length;i++){
-        const projectile=snapshot.frame.projectiles[i],mesh=this.projectiles[i];
-        mesh.setEnabled(!!projectile);
-        if(projectile)mesh.position.set(
-          origin.x+projectile.x,1.2,origin.z+projectile.z);
-      }
-    }
+    this.showBattleMarker(snapshot.encounter);
     this.updateVisibility(snapshot);
     return snapshot;
   }
@@ -468,34 +379,10 @@ export class DungeonReplayScene {
       model.root.metadata.hp=h.health;
       if(!view.combat)this.animateHero(model,"move",view.worldTick/20);
     }
-    // No skinned ghouls, combatants, projectiles, or fight animations are
-    // created in the LIVE dungeon map. The committed 60Hz fight continues
-    // independently of this read-only visual projection.
-    for(const enemy of this.enemies.values())enemy.setEnabled(false);
-    for(const ghoul of this.ghouls.values())ghoul.root.setEnabled(false);
-    for(const projectile of this.projectiles)projectile.setEnabled(false);
+    // The map never allocates combat actors or steps an animation for a fight.
     const combat=view.combat;
-    if(combat){
-      if(!this.liveCombatMarker){
-        const beacon=MeshBuilder.CreateCylinder("dungeon-live-combat-marker",
-          {height:.18,diameter:1.25,tessellation:8},this.scene);
-        const mat=new StandardMaterial("dungeon-live-combat-marker-mat",this.scene);
-        mat.diffuseColor=Color3.FromHexString("#df694c");
-        mat.emissiveColor=Color3.FromHexString("#7a2c20");
-        beacon.material=mat;
-        beacon.isPickable=false;
-        beacon.checkCollisions=false;
-        beacon.metadata={liveOnly:true,abstractBattle:true};
-        this.liveCombatMarker=beacon;
-      }
-      const origin=toWorld(this.layout,{x:combat.x,z:combat.z});
-      this.liveCombatMarker.position.set(origin.x,.38,origin.z);
-      this.liveCombatMarker.setEnabled(true);
-      this.liveFightId=combat.id;
-    }else{
-      this.liveCombatMarker?.setEnabled(false);
-      this.liveFightId=null;
-    }
+    this.showBattleMarker(combat);
+    this.liveFightId=combat?.id??null;
     this.updateVisibility(observed);
   }
   /** Only explicitly selected visible recorded actors can steer the camera. */
@@ -518,11 +405,8 @@ export class DungeonReplayScene {
       this.camera.setTarget(new Vector3(p.x,0,p.z));
       return;
     }
-    const visible=visibleDungeonCombatActors(this.lastSnapshot);
-    const actor=visible.find(candidate=>candidate.id===actorId);
-    if(actor&&encounter){
-      const origin=toWorld(this.layout,encounter);
-      p=new Vector3(origin.x+actor.x,0,origin.z+actor.z);
+    if(encounter){
+      p=toWorld(this.layout,encounter);
     }else{
       const model=actorId===this.replay?.heroId?this.hero:
         this.companionHeroes.get(actorId);
