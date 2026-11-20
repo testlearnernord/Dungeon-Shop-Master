@@ -338,7 +338,7 @@ function commitDungeonTick(state:GameState):GameState {
       processed.add(hero.id);
       stepCounts.set(hero.id,{heroId:hero.id,steps:1,finished:true});
       activities.push({
-        id:"day-"+day+":"+hero.id+":boss-engaged:"+tick,
+        id:"day-"+day+":"+hero.id+":dungeon-live:"+tick,
         type:"dungeon-live",day,worldTick:tick,adventurerId:hero.id,
         reportedZone:"deep",
         message:hero.name+" entered a dangerous chamber. Their life-signature is still active.",
@@ -638,7 +638,7 @@ function commitLiveCombatTick(state:GameState):GameState{
       byId.set(hero.id,hero);
       activities.push({
         id:"day-"+state.day+":"+hero.id+":level6-combat",
-        type:"level6-combat",day:state.day,worldTick:state.worldClock.tick,
+        type:"level6-combat",day:state.day,
         adventurerId:hero.id,combatOutcome:outcome,combatReplay:replay,
         message:hero.name+" completed a real time-resolved Cave Troll fight: "+
           outcome+". HP "+original.health+"→"+hp+
