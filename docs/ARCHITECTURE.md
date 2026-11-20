@@ -13,8 +13,8 @@ shared with `LiveGroupCombatArena`; no new Babylon engine or combat engine.
 `groupCombatIntro.ts` builds a dedicated **8.5-second** introduction
 only when Galvik deliberately enters a LIVE or recorded fight arena.
 Its shots introduce the actual saved monster and hero teams, including
-multi-hero/multi-Ghoul casts, by sampling recorded actor IDs and the first
-available committed combat pose. This is presentation only: no invented
+multi-hero/multi-Ghoul casts, by sampling recorded actor IDs and the **current committed pose at
+watch time**, not outdated spawn positions. This is presentation only: no invented
 actors, RNG, damage, simulation steps, progression, timeline alteration,
 or pause in LIVE combat/shop/world time. The cutscene is skippable via
 Space, Enter or its visible button; Escape always leaves the arena.
@@ -26,7 +26,9 @@ upgraded Ghoul rig transitions and crypt art (PR #228),
 true Level-6-behavior combat motor convergence (PR #229), and
 expanded multi-actor boss logic (PR #230).
 The Troll's musical sync remains untouched and the group intro currently
-uses presentation wall time only, not song beat sync. Do not confuse
+uses presentation wall time only, not song beat sync. A historical tape
+temporarily holds its **local replay cursor** during the film and resumes
+on conclusion/skip; this does not pause autonomous LIVE world time. Do not confuse
 shared cinematography with unified authoritative combat mechanics.
 
 
