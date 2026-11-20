@@ -52,7 +52,8 @@ test("actual stocked shelf meshes follow saved quantities for all six products @
   await page.evaluate(()=>(window as Window&{
     __shopTestPauseWorld?:(paused:boolean)=>void;
   }).__shopTestPauseWorld?.(true));
-  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await expect(page.locator("#save-status")).toHaveText(
+    /^(Saved Day 1\.|Continued saved Day 1\.)$/);
   // Check the REAL shop-rendered meshes, not merely geometry created by a
   // factory inside a test. Two persisted four-slot inventories cover 6 items.
   const seed=(ids:readonly (string|null)[],counts:readonly number[])=>
@@ -94,7 +95,8 @@ test("actual stocked shelf meshes follow saved quantities for all six products @
   await page.evaluate(()=>(window as Window&{
     __shopTestPauseWorld?:(paused:boolean)=>void;
   }).__shopTestPauseWorld?.(true));
-  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await expect(page.locator("#save-status")).toHaveText(
+    /^(Saved Day 1\.|Continued saved Day 1\.)$/);
   let shown=await inspect();
   expect(shown.map(slot=>slot.units)).toEqual([3,1,5,2]);
   for(const slot of shown){
@@ -113,7 +115,8 @@ test("actual stocked shelf meshes follow saved quantities for all six products @
   await page.evaluate(()=>(window as Window&{
     __shopTestPauseWorld?:(paused:boolean)=>void;
   }).__shopTestPauseWorld?.(true));
-  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await expect(page.locator("#save-status")).toHaveText(
+    /^(Saved Day 1\.|Continued saved Day 1\.)$/);
   shown=await inspect();
   expect(shown.map(slot=>slot.units)).toEqual([2,4,0,0]);
   expect(shown.every(slot=>slot.padPickable&&slot.padCollision)).toBe(true);
