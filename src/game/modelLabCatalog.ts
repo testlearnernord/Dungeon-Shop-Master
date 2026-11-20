@@ -6,4 +6,9 @@ export const MODEL_LAB_CATALOG = [
     label: "Ashen Tunnel Mauler · curated (12 clips)",
     path: "assets/models/ashen-tunnel-mauler-tripo.glb",
   },
+  {
+    id: "ghoul-tripo",
+    label: "Dungeon Ghoul · combat rig (15 clips)",
+    path: "assets/models/dungeon-ghoul-tripo.glb",
+  },
 ] as const;
