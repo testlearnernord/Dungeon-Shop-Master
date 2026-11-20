@@ -3,6 +3,7 @@ import type {
   Level7Replay, Level7ReplayStep, Level7ReplayEncounter,
 } from "./level7Exploration.ts";
 import type { GroupReplayFrame } from "./groupCombat.ts";
+import {sampleGroupReplayPresentation} from "./groupReplayPresentation.ts";
 
 /**
  * Read-only time mapping. This module never calls combat, simulation or RNG.
@@ -103,28 +104,10 @@ export function dungeonPlaybackAt(
       encounter=segment.encounter;
       const frames=encounter.combat.frames;
       const fightTime=portion*(frames.at(-1)?.t??0);
-      // Frame HP is authoritative. Interpolated positions are purely cosmetic.
-      let idx=0;
-      while(idx+1<frames.length&&frames[idx+1].t<=fightTime)idx++;
-      const src=frames[idx];
-      const next=frames[Math.min(idx+1,frames.length-1)];
-      const alpha=next.t===src.t?0:clamp((fightTime-src.t)/(next.t-src.t),0,1);
-      frame={
-        ...src,
-        actors:src.actors.map(actor=>{
-          const follow=next.actors.find(other=>other.id===actor.id)??actor;
-          return {...actor,
-            x:actor.x+(follow.x-actor.x)*alpha,
-            z:actor.z+(follow.z-actor.z)*alpha,
-          };
-        }),
-        projectiles:src.projectiles.map((p,i)=>{
-          const n=next.projectiles[i];
-          return n&&n.ownerId===p.ownerId
-            ?{...p,x:p.x+(n.x-p.x)*alpha,z:p.z+(n.z-p.z)*alpha}
-            :p;
-        }),
-      };
+      // Display time is continuous even though saves record discrete 100ms
+      // frames. Prior code kept src.t and advanced the Ghoul skeleton at only
+      // 10Hz. Interpolate only cosmetic motion, NEVER HP, phase or outcomes.
+      frame=sampleGroupReplayPresentation(frames,fightTime);
       const hero=frame.actors.find(a=>a.id===replay.heroId);
       if(hero){
         hp=hero.hp;
