@@ -816,6 +816,10 @@ export class DungeonViewer {
         };
         this.paintLive(view);
       }
+      // Animation is presentation-only, sampled every rendered frame from
+      // the two committed tile checkpoints. No per-frame map/AI projection.
+      if(!this.liveArena.isActive)
+        this.replayScene?.advanceLivePresentation(dt);
     }else if(this.replayScene?.currentReplay){
       if(this.playing){
         this.playbackTime=Math.min(this.replayScene.duration,
