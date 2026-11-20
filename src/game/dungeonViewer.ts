@@ -12,9 +12,13 @@ import type {GameState} from "./gameState.ts";
 import { createHeroVisual } from "./heroVisual.ts";
 import type { HeroVisual } from "./heroVisual.ts";
 import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type DungeonRoomDecoration } from "./dungeonReplayScene.ts";
-import type { Level7Replay } from "./level7Exploration.ts";
+import type { Level7Replay,SpatialDungeonFloor } from "./level7Exploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
 import {selectLiveSpectatorFrame,type LiveSpectatorFrame} from "./liveSpectator.ts";
+import {
+  selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
+  type LiveFloorSpectatorFrame,type LiveFloorFight,
+} from "./liveFloorSpectator.ts";
 import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
@@ -59,6 +63,17 @@ export class DungeonViewer {
   private playbackSpeed = 1;
   private followActor: string | null = null;
   private liveHeroId: string | null = null;
+  private liveFloor:SpatialDungeonFloor|null=null;
+  private liveFloorFightId:string|null=null;
+  private liveFloorProjectionCache:null|{
+    readonly floor:SpatialDungeonFloor;
+    readonly adventurers:GameState["adventurers"];
+    readonly liveDungeon:GameState["liveDungeon"];
+    readonly level7World:GameState["level7World"];
+    readonly earlyDungeonWorlds:GameState["earlyDungeonWorlds"];
+    readonly dungeonParties:GameState["dungeonParties"];
+    readonly view:LiveFloorSpectatorFrame;
+  }=null;
   private liveWorldTick=-1;
   private liveProjectionCache:null|{
     readonly heroId:string;
@@ -70,6 +85,10 @@ export class DungeonViewer {
     readonly view:LiveSpectatorFrame;
   }=null;
   private readonly replaySelector = document.querySelector<HTMLSelectElement>("#dungeon-replay-select")!;
+  private readonly floorSelector=document.querySelector<HTMLSelectElement>("#dungeon-floor-select")!;
+  private readonly archiveControls=document.querySelector<HTMLElement>("#dungeon-archive-controls")!;
+  private readonly archiveButton=document.querySelector<HTMLButtonElement>("#dungeon-open-archive")!;
+  private readonly backLiveButton=document.querySelector<HTMLButtonElement>("#dungeon-back-live")!;
   private readonly playbackControls = document.querySelector<HTMLElement>("#dungeon-playback-controls")!;
   private readonly watchCombatButton=document.querySelector<HTMLButtonElement>("#dungeon-watch-live-combat")!;
   private readonly returnCombatButton=document.querySelector<HTMLButtonElement>("#dungeon-return-from-combat")!;
@@ -96,7 +115,8 @@ export class DungeonViewer {
   ) {
     this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel);
     this.watchCombatButton.addEventListener("click",()=>{
-      if(this.liveHeroId)this.watchLiveCombat();
+      if(this.liveFloor!==null)this.watchFloorCombat();
+      else if(this.liveHeroId)this.watchLiveCombat();
       else this.watchRecordedCombat();
     });
     this.returnCombatButton.addEventListener("click",()=>this.returnToDungeonMap());
@@ -107,7 +127,9 @@ export class DungeonViewer {
       const picked=this.scene.pick(event.clientX-rect.left,
         event.clientY-rect.top,mesh=>mesh.metadata?.abstractBattle===true);
       if(!picked?.hit)return;
-      if(this.liveHeroId)this.watchLiveCombat();
+      if(this.liveFloor!==null)
+        this.watchFloorCombat(picked.pickedMesh?.metadata?.fightId as string|undefined);
+      else if(this.liveHeroId)this.watchLiveCombat();
       else this.watchRecordedCombat();
     });
     document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
@@ -117,6 +139,22 @@ export class DungeonViewer {
       const id=this.replaySelector.value;
       if(id.startsWith("live:"))this.startLive(id.slice(5));
       else this.selectReplay(id);
+    });
+    this.floorSelector.addEventListener("change",()=>{
+      const floor=Number(this.floorSelector.value);
+      if(LIVE_SPECTATOR_FLOORS.some(candidate=>candidate===floor))
+        this.startFloor(floor as SpatialDungeonFloor);
+    });
+    this.archiveButton.addEventListener("click",()=>{
+      const first=this.availableReplays()[0]?.id??"preview";
+      this.selectReplay(first);
+      this.replaySelector.focus();
+    });
+    this.backLiveButton.addEventListener("click",()=>{
+      const floor=Number(this.floorSelector.value);
+      this.startFloor(LIVE_SPECTATOR_FLOORS.some(f=>f===floor)
+        ?floor as SpatialDungeonFloor:1);
+      this.floorSelector.focus();
     });
     this.playbackButton.addEventListener("click",()=>this.togglePlayback());
     document.querySelector("#dungeon-restart")!.addEventListener("click",()=>this.restartReplay());
@@ -159,11 +197,15 @@ export class DungeonViewer {
       if(event.code==="Escape"&&this.liveArena.isActive)this.returnToDungeonMap();
       else if (event.code === "KeyG" || event.code === "Escape") this.close();
       else if (event.code === "Tab" && !event.repeat) {
-        if(this.replayScene&&(this.replayScene.currentReplay||this.liveHeroId)){
+        if(this.replayScene&&(this.replayScene.currentReplay||this.liveHeroId||
+           this.liveFloor!==null)){
           const order=[...this.replayScene.visibleFocusIds,null];
           const previous=order.indexOf(this.followActor);
           this.followActor=order[(previous+1)%order.length]??null;
-          if(this.liveHeroId){
+          if(this.liveFloor!==null){
+            const view=selectLiveFloorSpectatorFrame(this.store.state,this.liveFloor);
+            if(view)this.paintFloor(view);
+          }else if(this.liveHeroId){
             const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
             if(view)this.paintLive(view);
           }else this.paintPlayback();
@@ -206,7 +248,7 @@ export class DungeonViewer {
   }
 
   get isActive() { return this.active; }
-  get isWatchingLive() { return this.active&&this.liveHeroId!==null; }
+  get isWatchingLive() { return this.active&&(this.liveFloor!==null||this.liveHeroId!==null); }
   get currentScene(): Scene | null {
     return this.active?(this.liveArena.currentScene??this.scene):null;
   }
@@ -224,19 +266,19 @@ export class DungeonViewer {
     this.layout = generateExpeditionLayout(this.store.state.seed,7);
     this.createScene(this.layout);
     this.refreshReplaySelector(initialReplayId);
-    // A recording opens with accessible footage controls; the full-layout
-    // development preview must instead accept WASD immediately.
+    // LIVE floor overview is the default. Archive opens only intentionally.
     if (this.replayScene?.currentReplay) this.replaySelector.focus();
-    else this.canvas.focus();
+    else this.floorSelector.focus();
     this.sceneChanged(true);
   }
 
   /** Enter through an explicit Board choice. Do not make remote hero
    * vitality or location available to the ordinary shop HUD. */
   openLive(heroId:string):boolean {
-    if(!selectLiveSpectatorFrame(this.store.state,heroId))return false;
-    if(!this.active)this.open("preview");
-    return this.active&&this.startLive(heroId);
+    const view=selectLiveSpectatorFrame(this.store.state,heroId);
+    if(!view)return false;
+    if(!this.active)this.open();
+    return this.active&&this.startFloor(view.floor,heroId);
   }
 
   /** Open exactly one already committed tape and seek solely its LOCAL
@@ -264,6 +306,8 @@ export class DungeonViewer {
     this.playing=false;
     this.followActor=null;
     this.liveHeroId=null;
+    this.liveFloor=null;this.liveFloorFightId=null;
+    this.liveFloorProjectionCache=null;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
     this.leaveLiveCombat();
@@ -443,10 +487,7 @@ export class DungeonViewer {
     this.replaySelector.replaceChildren();
     const preview=new Option("Layout preview (full development map)","preview");
     this.replaySelector.add(preview);
-    for(const hero of this.store.state.adventurers){
-      if(selectLiveSpectatorFrame(this.store.state,hero.id))
-        this.replaySelector.add(new Option("LIVE · "+hero.name,"live:"+hero.id));
-    }
+ // LIVE actor choices belong to the floor map, not the archive selector.
     for(const entry of replays){
       this.replaySelector.add(new Option(
         "Day "+entry.record.day+" · F"+entry.record.floor+" · "+entry.name+
@@ -454,14 +495,19 @@ export class DungeonViewer {
           ?" · Temporary Party ("+entry.record.partyMemberIds.length+")":"")+
         " · expedition footage",entry.id));
     }
-    // Saved recordings take priority; never disclose the ending in the menu.
-    this.selectReplay(initialReplayId??replays[0]?.id??"preview");
+    // Opening the dungeon never silently opens yesterday's tapes.
+    if(initialReplayId&&replays.some(entry=>entry.id===initialReplayId))
+      this.selectReplay(initialReplayId);
+    else this.startFloor(1);
   }
   private selectReplay(id:string):void {
     this.leaveLiveCombat();
     this.liveCombatPanel.hidden=true;
     this.liveCombatDetails.textContent="";
     this.liveHeroId=null;
+    this.liveFloor=null;this.liveFloorFightId=null;
+    this.liveFloorProjectionCache=null;
+    this.archiveControls.hidden=false;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
     const record=this.availableReplays().find(e=>e.id===id)?.record??null;
@@ -502,6 +548,9 @@ export class DungeonViewer {
     const view=selectLiveSpectatorFrame(this.store.state,heroId);
     if(!view)return false;
     this.leaveLiveCombat();
+    this.liveFloor=null;this.liveFloorFightId=null;
+    this.liveFloorProjectionCache=null;
+    this.archiveControls.hidden=true;
     this.liveHeroId=heroId;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
