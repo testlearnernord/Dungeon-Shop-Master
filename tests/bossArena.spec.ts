@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { advanceTestDay } from "./advanceTestDay";
 
-test("Level 6 is a separate viewable boss cavern, camera focuses hero/boss and no saved tick advances", async ({ page }) => {
+test("Level 6 is a separate viewable boss cavern, camera focuses hero/boss and no saved tick advances @ci-smoke", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(e.message));
   await page.goto("./");
