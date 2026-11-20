@@ -99,7 +99,13 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   });
   expect(buttonHit,"The visible close icon must be the topmost click target")
     .toBe("dungeon-clear-hero");
-  await page.locator("#dungeon-clear-hero").click();
+  // A real pointer click at the verified on-screen button center.
+  // Locator.click() auto-scrolls the fixed HUD even though the target is
+  // already visible, relocating the viewport and making its <aside> intercept.
+  const closeBounds=await page.locator("#dungeon-clear-hero").boundingBox();
+  expect(closeBounds).not.toBeNull();
+  await page.mouse.click(closeBounds!.x+closeBounds!.width/2,
+    closeBounds!.y+closeBounds!.height/2);
   await expect(page.locator("#dungeon-hero-detail")).toBeHidden();
   await page.locator("#dungeon-floor-select").selectOption("2");
   await expect(page.locator("#dungeon-mode-description")).toContainText("Floor 2");
