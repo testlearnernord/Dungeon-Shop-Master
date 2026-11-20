@@ -934,7 +934,14 @@ export function inspectLiveCombatPresentation(){
       node.name.startsWith("dungeon-ghoul-")).length,
     arenaHeroes:scene.transformNodes.filter(node=>
       node.name.startsWith("live-fight-hero-")).length,
-    arenaMonsters:scene.meshes.filter(mesh=>
+    // Count recorded monster IDENTITIES, never nested GLB parts,
+    // and never the removed placeholder spheres. One actor = one model root.
+    arenaMonsters:scene.transformNodes.filter(node=>
+      (node.name.startsWith("dungeon-ghoul-")&&
+        typeof node.metadata?.recordedActorId==="string")||
+      (node.name==="arena-boss-troll"&&
+        typeof node.metadata?.actorId==="string")).length,
+    legacyMonsterPlaceholders:scene.meshes.filter(mesh=>
       mesh.name.startsWith("live-fight-monster-")).length,
     spectatorCamera:scene.activeCamera?.name??"none",
     cryptSetpieces:scene.meshes.filter(mesh=>
