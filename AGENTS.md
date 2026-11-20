@@ -1,6 +1,21 @@
 # Dungeon Shop Master — Contributor Guide
 
 
+### PR #227 · Fight camera timeline shared, NOT fight engine merged
+
+The authored 13.5-second Level-6 Troll introduction is preserved. Its
+camera interpolation now uses `combatCinematic.ts`. Group fights use
+`groupCombatIntro.ts` for real-cast-based 8.5-second opt-in camera
+intros with skippable captions. Rendering an introduction never steps,
+stops, rerolls, resets, backfills or saves a fight. The LIVE shop and
+dungeon/world clock continue and archived frames remain immutable.
+`LiveGroupCombatArena` reuses the existing 3D stage and HUD. Its
+intro clock is local to visual presentation and must not be passed into
+`groupCombat.ts` or `level6Combat.ts`.
+Do not claim these separate authoritative fight motors are unified:
+that remains a deliberately guarded #229 migration.
+
+
 ### PR #226 · Read-only subjective sight and individual memory
 
 The neutral LIVE floor overview is intentionally omniscient **for Galvik only**.
