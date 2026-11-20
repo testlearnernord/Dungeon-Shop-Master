@@ -1,6 +1,43 @@
 # Dungeon Shop Master — Current Architecture
 
 
+### PR #230 · Bounded real multi-Ghoul combat sites
+
+A single *authored* Ghoul monster feature on floors 2–4 and 7 can now
+spawn a seeded **pack of 1–3 physically distinct fighters**. Floor 1
+remains solo for tutorial pacing; solo adventurers meet at most two,
+deeper Temporary Parties meet up to three. Count depends only on the
+site generation, layout/seed, current party size and actual walkable
+space. No world RNG or visual/spectator decisions affect it.
+
+`ghoulPack.ts` owns deterministic pack member IDs: the first Ghoul retains
+the original site feature ID and extras are `<site>:pack:1` and
+`<site>:pack:2`. Each has an independent spawn, HP/stamina, role,
+collision, target selection, action phases, damage events and saved 60Hz
+replay frames. Extra monsters never occupy another authored dungeon
+feature, solid wall, party entrance or hero spawn. Site respawn,
+reservation and event authority still count **one site generation**,
+not three fake world encounters. XP/gold/kill credit scales with the
+number of enemies actually beaten, while the site settles only once.
+
+Historical two-actor replay v1 remains valid. Strict replay and LIVE
+save validation now allow 1–3 real heroes plus 1–3 contiguous Ghoul
+identities, and the active save still re-derives the exact prepared
+party/monster stats, terrain and seed. Forged arbitrary actor IDs,
+extra sites and boss powers on Ghouls remain invalid.
+
+The neutral LIVE-floor overview remains a single cheap abstract
+beacon per encounter. Only explicit opt-in creates one 3D Ghoul mesh per
+genuine recorded monster; the existing camera intro, HP HUD and
+NO SAFE PASSAGE use the same group actor registry. No third engine,
+duplicated world clock or full background 3D battle is introduced.
+
+**Not yet:** multiple unique Cave Trolls, full live Floor 6 boss
+timeline/lava integration, and final Ghoul SFX review. Those require
+separate verification. This PR is specifically real multi-Ghoul
+encounter and save-authority completion.
+
+
 ### PR #229 · Shared authoritative Troll signature ability policy
 
 **Important baseline:** since earlier refactors, `stepCombatEncounter`
