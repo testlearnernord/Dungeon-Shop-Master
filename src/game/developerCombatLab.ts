@@ -109,7 +109,7 @@ export class DeveloperCombatLab {
     get<HTMLButtonElement>("#lab-step").addEventListener("click",()=>{
       if(!this.active||!this.state)return;
       this.paused=true;
-      this.simulateTicks(1);this.paintStatus();
+      this.simulateTicks(1,true);this.paintStatus();
     });
     this.loadSelectedHero();
   }
@@ -234,20 +234,18 @@ export class DeveloperCombatLab {
       this.status.textContent="Invalid test fixture: "+String(error);
     }
   }
-  private simulateTicks(count:number):void{
+  private simulateTicks(count:number,forceCapture=false):void{
     const s=this.state;
     if(!s||s.outcome!=="fighting")return;
     for(let i=0;i<count&&s.outcome==="fighting";i++){
       stepGroupCombat(s,1/60);
       this.ticks++;
-      if(this.ticks%6===0||s.outcome!=="fighting"||this.ticks===5400)
-        this.frames.push(captureGroupCombatFrame(s));
       if(this.ticks>=5400&&s.outcome==="fighting")s.outcome="draw";
-    }
-    if(this.ticks%6!==0&&s.outcome==="fighting"){
-      // The UI never invents future poses between authoritative captures.
-      // Single-step mode publishes this exact real committed frame.
-      this.frames.push(captureGroupCombatFrame(s));
+      // Bound normal preview captures to the SAME 10Hz frequency as LIVE.
+      // One-frame debug stepping can additionally expose an exact 60Hz pose.
+      if((this.ticks%6===0||s.outcome!=="fighting"||forceCapture)&&
+         s.time>this.frames[this.frames.length-1].t+0.0001)
+        this.frames.push(captureGroupCombatFrame(s));
     }
     this.renderer.show(this.snapshot());
   }
