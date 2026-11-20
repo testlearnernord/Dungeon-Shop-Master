@@ -1553,6 +1553,11 @@ class IndexedDBAdapter implements CampaignStorageAdapter {
 
 const browserAdapter = new IndexedDBAdapter();
 const queues = new WeakMap<CampaignStorageAdapter, Promise<unknown>>();
+// An acknowledged snapshot was already strictly validated by createSave.
+// Re-parsing that exact stored string every second when rotating the backup
+// is expensive and cannot improve integrity. Values from another tab, an
+// external adapter, or a damaged store are NOT trusted unless identical.
+const verifiedLatest = new WeakMap<CampaignStorageAdapter, string>();
 
 export class CampaignStorage {
   private readonly adapter: CampaignStorageAdapter;
@@ -1570,10 +1575,18 @@ export class CampaignStorage {
 
   async saveGame(state: GameState): Promise<void> {
     const snapshot = JSON.stringify(createSave(state));
-    return this.enqueue(() => this.adapter.update((records) => ({
-      latest: snapshot,
-      previous: validSave(records.latest) ? records.latest : records.previous,
-    })));
+    return this.enqueue(async () => {
+      await this.adapter.update(records => ({
+        latest:snapshot,
+        previous:records.latest!==null&&
+          (records.latest===verifiedLatest.get(this.adapter)||
+            validSave(records.latest))
+          ?records.latest:records.previous,
+      }));
+      // Mark as trusted ONLY after durable adapter success. A rejected
+      // transaction must never certify a snapshot it did not commit.
+      verifiedLatest.set(this.adapter,snapshot);
+    });
   }
 
   loadGame(): Promise<GameState | null> {
@@ -1589,7 +1602,9 @@ export class CampaignStorage {
       const records = await this.adapter.read();
       if (records[key] === null) return null;
       try {
-        return parseSave(records[key]);
+        const loaded=parseSave(records[key]);
+        if(key==="latest")verifiedLatest.set(this.adapter,records[key]);
+        return loaded;
       } catch (error) {
         throw new Error(`Cannot load ${key === "latest" ? "latest campaign" : "campaign backup"}; stored data was preserved. ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -1597,6 +1612,9 @@ export class CampaignStorage {
   }
 
   deleteGame(): Promise<void> {
-    return this.enqueue(() => this.adapter.update(() => ({ latest: null, previous: null })));
+    return this.enqueue(async () => {
+      await this.adapter.update(() => ({latest:null,previous:null}));
+      verifiedLatest.delete(this.adapter);
+    });
   }
 }
