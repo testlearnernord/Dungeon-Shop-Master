@@ -154,6 +154,14 @@ export class SceneSoundtrack {
     catch { /* Keep gameplay accessible if browser blocks seeking. */ }
   }
 
+  /** Jump to the same musical point when an audience member skips the
+   * optional Ghoul fight film. It never changes the actual combat clock. */
+  skipCombatIntro(seconds:number):void {
+    if(!this.enabled||this.scene!=="combat")return;
+    try {this.tracks.combat.currentTime=Math.max(0,seconds);}
+    catch { /* Muted/blocked audio never prevents skipping the visuals. */ }
+  }
+
   setScene(next: SoundtrackScene): void {
     if (this.scene === next) return;
     this.scene = next;
