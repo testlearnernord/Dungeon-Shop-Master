@@ -62,6 +62,7 @@ export class DungeonViewer {
   private playing = false;
   private playbackTime = 0;
   private playbackSpeed = 1;
+  private archivePlayingBeforeIntro=false;
   private followActor: string | null = null;
   private liveHeroId: string | null = null;
   private liveFloor:SpatialDungeonFloor|null=null;
@@ -348,6 +349,7 @@ export class DungeonViewer {
     this.replayScene?.dispose();
     this.replayScene=null;
     this.playing=false;
+    this.archivePlayingBeforeIntro=false;
     this.followActor=null;
     this.liveHeroId=null;
     this.liveFloor=null;this.liveFloorFightId=null;
@@ -860,6 +862,11 @@ export class DungeonViewer {
   private watchRecordedCombat():void{
     const view=this.recordedArenaView();
     if(!view||!this.liveArena.watch(view))return;
+    // Historical tape time is LOCAL playback. Hold its chosen real frame for
+    // the introduction so a short archived fight cannot vanish halfway
+    // through the film. LIVE world/shop time is never paused by this.
+    this.archivePlayingBeforeIntro=this.playing;
+    this.playing=false;
     this.paintPlayback();
     this.paintCombatIntro();
     this.returnCombatButton.focus();
@@ -878,6 +885,10 @@ export class DungeonViewer {
 
   private paintCombatIntro():void {
     const film=this.liveArena.introFrame;
+    if(!film&&this.archivePlayingBeforeIntro){
+      this.playing=true;
+      this.archivePlayingBeforeIntro=false;
+    }
     this.fightIntroPanel.hidden=!film;
     this.panel.dataset.fightIntro=String(!!film);
     if(film){
