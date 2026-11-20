@@ -1,5 +1,13 @@
 # Dungeon Shop Master — Contributor Guide
 
+### PR #217 · Live-world CPU spikes are a distinct performance risk
+
+- The reported user hardware slowdown began with #200; our CI-only SwiftShader resolution ablation **cannot** rule out concurrent simulation CPU stutters on a hardware-accelerated Chrome PC. Do not conflagrate slow virtual-rasterizer FPS with actual owner hardware.
+- `tests/liveWorldSpikeProfile.spec.ts` measures real day-one and seeded day-eleven campaign 600-tick (30 seconds of world time) dungeon event bursts, plus same-scene paused/live FPS. Baseline #44744094263: 7.5–15.8ms per day-one burst, 7.7–11.2ms day eleven, with 10 alive heroes and **no active group fights**. Ordinary world tick under 0.1ms in this CI window. These bursts are atomic test fast-forwards and **do not** include physical NPC movement interleaving during each tick; do not misreport them as normal in-frame shop CPU.
+- F3 tracks p95/max world work in rolling 120 render frames, plus peak world CPU/autosave and over-16ms world frames **for the entire current F3 session**. The isolated `__shopTestTimedWorldAdvance` hook is only under `VITE_E2E=1`, invokes existing `GameStore.advanceWorldTime` and never changes production gameplay.
+- Next priority when user hardware shows spikes: measure simultaneous **multiple live combats**, real loaded inventory and persistent day20+, profile `commitDungeonTick` and `commitLiveCombatTick`, then slice large deterministic work at saved event boundaries or reduce allocations **without** fabricating a new clock, losing replay fidelity or weakening Save/Reload.
+
+
 ### PR #216 · Render performance facts and invariants
 
 - **Real ablation** in `tests/renderAblation.spec.ts`: CI Chromium's GL renderer is ANGLE SwiftShader, baseline native 800×600 20 FPS, skip Babylon 60, halve render width/height 60, disable five point lights 30, hide partial furniture still 20, hide almost all world meshes 60. Six total lights, 301 total scene meshes/50 active in this view, ~4,464 active triangles. The bottleneck **in CI** is GPU-like WebGL pixel/shader/lighting cost under software rendering; do NOT confuse with actual owner's GPU or host performance.

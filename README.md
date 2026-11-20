@@ -1,5 +1,14 @@
 # Dungeon Shop Master
 
+### PR #217 · Frame-spike evidence after the shared-clock migration
+
+The user-observed lag began after #200; a SwiftShader graphics bottleneck on CI does **not** prove the new live-world work is free on a real PC. A new browser test compares a genuine seeded day-one campaign and the same ten-hero campaign on **day eleven**, both with rendering active and world pacing paused versus live, and measures six real scheduled dungeon-event intervals. World-only ticks are lightweight in the sample; **scheduled dungeon events take 7.5–15.8ms on day one and 7.7–11.2ms on day eleven** when artificially advanced in 600-tick chunks. These periodic CPU spikes can exceed a remaining 60 FPS frame budget after rendering, even if sustained low CI FPS still occurs with simulation paused. This sample contains **zero active group combats**, so many simultaneous live combats are **not yet benchmarked**.
+
+- Open **F3** to see world CPU mean, p95/max in the rolling window, **worst world-frame and autosave cost since F3 was opened**, and number of simulation frames over 16ms. Fast averages hide occasional 30-second scheduled dungeon spikes.
+- For a real PC A/B, fix **F4 to Native**, read F3 with the normal shop running, then enter the **P blueprint mode** which pauses world pacing while the main 3D scene continues to render. Compare the *same camera position* and repeat on advanced campaign days. FPS improvement when the world is paused means CPU/event work contributes; identical low FPS points to browser/WebGL work.
+- No simulation cadence, save frequency, gameplay decisions or GPU quality is changed by this instrumentation. See [performance investigation](docs/PERFORMANCE_INVESTIGATION.md).
+
+
 ### PR #216 · Shop FPS: measured WebGL bottleneck and adaptive render resolution
 
 **Controlled comparison on identical local Vite CI + Chromium SwiftShader (software WebGL):** normal shop 20 FPS median, world simulation fully paused still 20 FPS, Babylon rendering disabled 60 FPS, **half width/height drawing resolution 60 FPS**, five dynamic point lights disabled 30 FPS, hiding some furniture/decor unchanged at 20 FPS, most world meshes hidden 60 FPS. Actual scene baseline: 301 meshes, 50 active, ~4,464 active triangles, six lights (five point + ambient). The bottleneck **on CI** is the WebGL pixel/shader/lighting pipeline, not an extreme polygon count or the 20Hz dungeon simulation. **This is NOT a claim about physical user's GPU or GitHub Pages FPS.**

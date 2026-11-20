@@ -1,5 +1,58 @@
 # PR #215 · Diagnosing the post-#200 shop FPS regression
 
+## PR #217: Was the parallel live-world simulation overlooked?
+
+**Yes, it can cause separate CPU hitching on real hardware.** The PR #216
+CI graphics ablation held world time paused: its poor FPS proves a
+SwiftShader software WebGL render limitation **in that test environment**,
+but does not exclude added main-thread work after the shared world-clock
+migration on the player's hardware.
+
+PR #217 measures a real ten-hero browser campaign at Day 1 and Day 11,
+using the current shared-clock scheduler. For each day, the exact same
+scene is sampled during paused/live pacing; while paused, six test-only
+`GameStore.advanceWorldTime(600)` bursts each commit the next **genuine**
+scheduled dungeon event (600 world ticks = 30 unpaused real seconds).
+This fast-forward deliberately does not interleave each 50ms physical
+NPC motor step: the timing is **the scheduler/events and subscribers**,
+not total game runtime. Final run #44744094263 passed all 25 browser
+smoke tests.
+
+| Virtual CI measurement | Day 1 | Day 11 |
+| --- | ---: | ---: |
+| Six genuine 600-tick dungeon-event bursts | **7.5–15.8ms** | **7.7–11.2ms** |
+| Maximum ordinary sampled world step | 0.1ms | 0.1ms |
+| Paused-world shop median rAF interval | 50ms | 66.6ms |
+| Live-world shop median rAF interval | 50ms | 50.1ms |
+| Remaining living heroes | 10 | 10 |
+| Active group combats in measured burst samples | **0** | **0** |
+
+This demonstrates that **scheduled dungeon event bursts** can consume a
+substantial portion of a **16.7ms/frame 60FPS budget** even while normal
+50ms ticks are cheap. However, the persistently poor virtual-CI rAF
+rates remain when simulation is stopped, indicating that the render
+cost is independent here. *No live simultaneous combat workload was
+observed*, therefore this test does **not** falsify the user's concern
+about multiple simultaneous fights and save spikes on their PC.
+
+The new production F3 diagnostics display world CPU rolling p95/max,
+number of frames over 16ms, and **worst world CPU and autosave sync
+over the entire current F3 session**, not only averages. This helps
+identify rare 30-second scheduling spikes. Press F4 to force **Native**
+quality and compare the same camera with the regular running shop
+versus **P blueprint mode** (world paused, main 3D render remains active);
+then repeat with 10+ heroes or active live combats.
+
+If real hardware shows world CPU spikes, prioritize distributing
+scheduled hero-expedition work into bounded deterministic saved
+substeps, reducing duplicate state notifications and carefully
+profiling 60Hz fight resolution and saves. Do not eliminate concurrent
+world simulation merely because the browser's *virtual* GPU also
+performs poorly.
+
+---
+
+
 ## PR #216: Definitive *CI-specific* rendering ablation
 
 Run #44712298171 on Ubuntu CI, **local** `http://127.0.0.1:5174`
