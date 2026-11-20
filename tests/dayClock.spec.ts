@@ -105,8 +105,10 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger @ci-smo
 
 test("bedtime is accounting only; historical footage stays optional in the live timeline",async({page})=>{
   await page.goto("./");
-  await advanceTestDay(page);
-  await expect(page.locator("#merchant-ledger")).toBeVisible();
+  await moveToBed(page);
+  await page.keyboard.down("e");
+  await expect(page.locator("#merchant-ledger")).toBeVisible({timeout:10000});
+  await page.keyboard.up("e");
   await expect(page.locator("#ledger-chapters button")).toHaveCount(2);
   await expect(page.locator(".ledger-record,.ledger-hero-card")).toHaveCount(0);
   await page.locator("#ledger-begin").click();
