@@ -462,6 +462,11 @@ export function inspectDungeonPlayback() {
     disabledTorchLights:scene.lights.filter(light=>
       light.name.startsWith("dungeon-torchlight-")&&!light.isEnabled()).length,
     combatEnemyVisible:scene.getMeshByName("dungeon-combat-creature")?.isEnabled()??false,
+    abstractMarkers:scene.meshes.filter(mesh=>
+      mesh.name==="dungeon-combat-marker"&&mesh.isEnabled()).length,
+    combatRenderMeshes:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-enemy-")||
+      mesh.name.startsWith("dungeon-combat-projectile-")).length,
     temporaryPartyCompanions:scene.transformNodes.filter(node=>
       node.name.startsWith("dungeon-companion-")&&
       typeof node.metadata?.adventurerId==="string").map(node=>({
@@ -920,7 +925,7 @@ export function inspectLiveCombatPresentation(){
     isArena,
     sceneCount:scene.getEngine().scenes.length,
     battleMarkers:scene.meshes.filter(mesh=>
-      mesh.name==="dungeon-live-combat-marker").length,
+      mesh.name==="dungeon-combat-marker").length,
     liveMapMonsterMeshes:scene.meshes.filter(mesh=>
       mesh.name.startsWith("dungeon-live-fallback-")).length,
     liveMapProjectiles:scene.meshes.filter(mesh=>
