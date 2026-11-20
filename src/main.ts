@@ -455,12 +455,9 @@ ledger=setupMerchantLedger(()=>{
   }
   if((event.type==="level7-exploration"&&event.level7Replay) ||
      (event.type==="dungeon-exploration"&&event.dungeonReplay)){
-    dungeon.open();
-    if(!dungeon.isActive)return false;
-    const selector=document.querySelector<HTMLSelectElement>("#dungeon-replay-select")!;
-    selector.value=event.id;
-    selector.dispatchEvent(new Event("change",{bubbles:true}));
-    return selector.value===event.id;
+    // The night ledger opens the separately archived tape directly.
+    // The default LIVE floor selector never mixes historical recordings.
+    return dungeon.openReplayAt(event.id);
   }
   return false;
 },()=>sfx.soundEnabled,()=>sfx.soundVolume);
