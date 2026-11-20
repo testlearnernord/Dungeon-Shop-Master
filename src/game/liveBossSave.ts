@@ -12,7 +12,8 @@ const shape=(v:unknown,keys:readonly string[],optional:readonly string[]=[]):boo
 const range=(n:unknown,a:number,b:number):n is number=>
   typeof n==="number"&&Number.isFinite(n)&&n>=a&&n<=b;
 const point=(v:unknown,bound:number):boolean=>
-  shape(v,["x","z"])&&range(v.x,-bound,bound)&&range(v.z,-bound,bound);
+  isRecord(v)&&shape(v,["x","z"])&&
+  range(v.x,-bound,bound)&&range(v.z,-bound,bound);
 const nonnegativeInteger=(x:unknown,max=100000)=>
   Number.isSafeInteger(x)&&Number(x)>=0&&Number(x)<=max;
 
@@ -61,18 +62,19 @@ export function liveBossCheckpointProblem(
   if(ticks<0||ticks>=90*60||!range(motion.time,0,90)||
      Math.abs(motion.time*60-ticks)>.001)
     return fail("60Hz state time differs from committed world-clock ticks");
+  const runtime=motion as unknown as Record<string,unknown>;
   for(const key of ["hero","boss","rollDirection","throwVelocity"])
-    if(!point(motion[key],50))return fail("invalid "+key+" coordinates");
+    if(!point(runtime[key],50))return fail("invalid "+key+" coordinates");
   for(const key of ["heroHeading","bossHeading","lockedBossHeading",
     "heroAge","heroCooldown","bossAge","bossCooldown","bossStamina",
     "distanceTraveled"])
-    if(!range(motion[key],-100,100000))return fail("invalid "+key);
+    if(!range(runtime[key],-100,100000))return fail("invalid "+key);
   if(!range(motion.heroHp,0,hero.stats.maxHealth)||
      !range(motion.bossHp,0,280)||!range(motion.stamina,0,100)||
      motion.heroHp===0||motion.bossHp===0)
     return fail("invalid fighting HP or stamina");
   for(const key of ["heroApplied","rollRisksLava","bossDamageApplied","bossSlam"])
-    if(typeof motion[key]!=="boolean")return fail("invalid "+key);
+    if(typeof runtime[key]!=="boolean")return fail("invalid "+key);
   if(!["move","roll","parry","attack","cast","heal","hurt",
         "grabbed","thrown","dead"].includes(String(motion.heroPhase))||
      !["chase","windup","strike","grab","throw","grabMiss",
@@ -81,12 +83,12 @@ export function liveBossCheckpointProblem(
     return fail("invalid combat phase/ability");
   for(const key of ["bossAttacks","magicHeals","healingSupplies",
     "dodgeCount","parryCount","landedHits","missedHits"]){
-    if(!nonnegativeInteger(motion[key]))return fail("invalid "+key);
+    if(!nonnegativeInteger(runtime[key]))return fail("invalid "+key);
   }
   if(!Number.isSafeInteger(motion.lastDefenseAttack)||
      motion.lastDefenseAttack< -1)return fail("invalid defense attack ordinal");
   const cueCheck=(v:unknown):boolean=>
-    shape(v,["kind"],["amount"])&&
+    isRecord(v)&&shape(v,["kind"],["amount"])&&
     ["windup","dodge","parry","miss","hit","hero-hit",
       "grab","throw","projectile","heal","stagger","lava",
       "victory","defeat"].includes(String(v.kind))&&
@@ -100,7 +102,7 @@ export function liveBossCheckpointProblem(
      !motion.projectiles.every(p=>
        shape(p,["x","z","dx","dz","damage","ttl"])&&
        ["x","z","dx","dz","damage","ttl"].every(k=>
-         range(p[k],-10000,10000))))
+         range((p as unknown as Record<string,unknown>)[k],-10000,10000))))
     return fail("invalid active projectiles");
   if(!Array.isArray(value.frames)||
      value.frames.length!==1+Math.floor(ticks/8)||
