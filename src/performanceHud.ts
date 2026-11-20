@@ -47,12 +47,18 @@ export function setupPerformanceHud(options:RuntimePerformanceOptions={}):{
   let showing=false;
   let lastFrame=0,lastUpdate=0;
   let lastSaveMs:number|null=null;
+  let worstSaveMs=0;
+  let worstWorldMs=0;
+  let slowWorldFramesTotal=0;
+  let totalMeasuredFrames=0;
   let tickTotal=0;
   const intervals:number[]=[];
   const worldWork:number[]=[];
   const renderWork:number[]=[];
   const reset=()=>{
     lastFrame=0;lastUpdate=0;tickTotal=0;
+    worstWorldMs=0;worstSaveMs=0;
+    slowWorldFramesTotal=0;totalMeasuredFrames=0;
     intervals.length=0;worldWork.length=0;renderWork.length=0;
   };
   window.addEventListener("keydown",event=>{
@@ -83,6 +89,9 @@ export function setupPerformanceHud(options:RuntimePerformanceOptions={}):{
       lastFrame=frame.now;
       push(worldWork,frame.worldMs);
       push(renderWork,frame.renderMs);
+      worstWorldMs=Math.max(worstWorldMs,frame.worldMs);
+      if(frame.worldMs>16)slowWorldFramesTotal++;
+      totalMeasuredFrames++;
       tickTotal+=frame.ticks;
       if(frame.now-lastUpdate<1000||intervals.length<10)return;
       const elapsed=lastUpdate===0?1000:frame.now-lastUpdate;
@@ -97,9 +106,13 @@ export function setupPerformanceHud(options:RuntimePerformanceOptions={}):{
           ms(Math.max(...worldWork))+" ms",
         "World >16ms frames:   "+worldWork.filter(value=>value>16).length+
           " / "+worldWork.length,
+        "World peak since F3:  "+ms(worstWorldMs)+" ms",
+        "World >16ms total:   "+slowWorldFramesTotal+" / "+
+          totalMeasuredFrames,
         "Render CPU / frame:  "+ms(average(renderWork))+" ms",
         "World ticks / sec:   "+(tickTotal*1000/elapsed).toFixed(1),
         "Last autosave sync:  "+(lastSaveMs===null?"none":ms(lastSaveMs)+" ms"),
+        "Autosave peak (F3):  "+ms(worstSaveMs)+" ms",
         ...(options.details?.()??[]),
         "Frame gap includes GPU/browser scheduling.",
         "Render CPU is NOT GPU render time.",
@@ -107,7 +120,10 @@ export function setupPerformanceHud(options:RuntimePerformanceOptions={}):{
       tickTotal=0;
     },
     recordSave(syncMs:number){
-      if(showing&&Number.isFinite(syncMs))lastSaveMs=syncMs;
+      if(showing&&Number.isFinite(syncMs)){
+        lastSaveMs=syncMs;
+        worstSaveMs=Math.max(worstSaveMs,syncMs);
+      }
     },
   };
 }
