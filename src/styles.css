@@ -1025,3 +1025,47 @@ body.dungeon-active #music-panel { top: 119px; }
     font-size:10px;padding:6px;
   }
 }
+
+/* V Developer Combat Lab. Only visible during explicitly selected sandbox. */
+#arena-lab-panel[hidden]{display:none}
+.arena-lab-panel{
+  position:absolute;top:98px;left:16px;z-index:16;
+  max-height:min(74vh,750px);overflow-y:auto;
+  width:min(445px,calc(100vw - 32px));box-sizing:border-box;
+  border:1px solid #ac835b;border-radius:6px;
+  background:#151311f2;color:#f4dfc6;padding:14px;
+  pointer-events:auto;box-shadow:0 14px 40px #000b;
+  font:12px/1.45 system-ui,sans-serif;
+}
+.arena-lab-panel header{display:flex;justify-content:space-between;gap:8px;
+  flex-wrap:wrap;align-items:center;margin:0 0 12px}
+.arena-lab-panel header strong{font-size:14px;color:#ffbf8a}
+.arena-lab-panel header small,.arena-lab-panel>small{font-size:11px;color:#bfb1a2}
+.arena-lab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.arena-lab-grid label{min-width:0;display:flex;flex-direction:column;gap:4px;
+  color:#dfd0ba;font-size:11px}
+.arena-lab-grid input:not([type=checkbox]),.arena-lab-grid select{
+  box-sizing:border-box;width:100%;min-height:32px;
+  padding:6px 8px;border:1px solid #826c55;border-radius:4px;
+  color:#f6dfbd;background:#29231e;font:12px system-ui,sans-serif;
+}
+.arena-lab-grid .arena-lab-check{flex-direction:row;align-items:center;gap:9px;
+  min-height:32px}
+.arena-lab-check input{accent-color:#ce975b}
+.arena-lab-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.arena-lab-actions button{padding:7px 10px;min-height:32px;
+  border:1px solid #92724c;border-radius:4px;color:#ffe3c2;
+  background:#423024;cursor:pointer}
+.arena-lab-actions button:hover{background:#603f2b}
+#lab-status{font:12px/1.5 ui-monospace,SFMono-Regular,monospace;
+  border-top:1px solid #6c5140;padding:9px 0 0;margin:10px 0 6px}
+#arena-hud[data-dev-lab=true] #arena-world-hud,
+#arena-hud[data-dev-lab=true] #arena-cinematic,
+#arena-hud[data-dev-lab=true] #arena-source-toggle,
+#arena-hud[data-dev-lab=true] #arena-tripo-toggle{display:none!important}
+#arena-hud[data-dev-lab=true] .arena-vitals{display:none}
+@media(max-width:740px){
+  .arena-lab-panel{top:143px;max-height:55vh}
+  .arena-lab-grid{gap:6px}
+  .arena-lab-panel header strong{font-size:12px}
+}
