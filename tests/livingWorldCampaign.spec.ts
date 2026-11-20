@@ -14,6 +14,9 @@ test("ten browser days retain one LIVE world, unique signals, bounded timeline a
   // and falsely reports Save/Reload corruption despite correct persisted data.
   await page.goto("./?e2e-pause-world=1");
   await expect(page.locator("#day")).toHaveText("Day 1");
+  // Never let the initial startup autosave overwrite an explicit seeded
+  // browser fixture written by a separate CampaignStorage instance.
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   // Keep this browser load bounded to the original ten named heroes while
   // still running all genuine spatial and physical world state transitions.
   await page.evaluate(async()=>{

@@ -6,6 +6,9 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
+  // Never let the initial startup autosave overwrite an explicit seeded
+  // browser fixture written by a separate CampaignStorage instance.
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   // Use the existing genuine saved world-clock fight fixture, not fabricated
   // poses or a second engine. An already discovered neighboring monster is
   // the only unknown adjacent location for this actual explorer.
