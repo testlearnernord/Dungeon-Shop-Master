@@ -1,5 +1,26 @@
 # Dungeon Shop Master — Current Architecture
 
+
+### PR #223 · LIVE party gait and planned floor spectator boundary
+
+`DungeonReplayScene.showLive` previously animated party limbs only on the
+occasional authoritative world/expedition checkpoint; the render loop's
+cached `liveSpectator` projection never ticked the gait between steps.
+`livePartyPresentation.ts` is a **read-only cosmetic** adapter from two
+committed adjacent one-tile checkpoints. Only when floor, watched identity,
+party membership and noncombat state remain stable does the map interpolate
+the visual position over 0.85 rendered seconds. `advanceLivePresentation`
+updates the same lead/companion poses on requestAnimationFrame without
+rerunning `selectLiveSpectatorFrame`, AI or the 60Hz combat motor.
+Stillness, missing steps, combat and floor transitions snap to recorded
+positions; the actual 30-second expedition event cadence is unchanged.
+
+Next #224–226 replace the mixed individual-LIVE/archived selector with a
+whole-floor LIVE overview, independent selectable hero detail/fog and a
+separate archive. Current `selectLiveSpectatorFrame` and single-hero UI
+remain until their replacements are tested. Full implementation contract:
+[FLOOR_SPECTATOR_CONTRACT.md](FLOOR_SPECTATOR_CONTRACT.md).
+
 ### Owner correction: Level-6 is the COMBAT reference, not the Ghoul prototype
 
 The live/recorded ordinary fights use the same Level-6 spectator scene foundation via `combatSpectatorStage.ts`: identical original Troll-camera/lighting controls and scene lifecycle with environment-specific art. `Level6Arena` itself uses this extracted stage. `BossCombatHud` and `CombatGroupWorldHud` use identical world-space health/damage projection from `combatHudProjection.ts`; optional groups merely add health plates and original recorded actors. The read-only Ghoul Crypt variant is in `cryptCombatArenaArt.ts`. No extra fight simulation is triggered by a viewer.
