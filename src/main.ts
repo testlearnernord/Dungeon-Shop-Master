@@ -109,6 +109,8 @@ let ledger:MerchantLedger|null=null;
 let beggarHud:ReturnType<typeof setupBeggarHud>|null=null;
 const blueprint=setupBlueprintHud(canvas,camera,store,()=>isShopActive());
 const npcVisuals = new NpcVisualSystem(scene);
+// The physical customer motor reports exits after removing its outgoing mesh.
+// The store commits the event only after saving that motor's new checkpoint.
 setupNpcTrafficDebug(npcVisuals);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
   if (open) camera.detachControl();
@@ -422,6 +424,8 @@ engine.runRenderLoop(() => {
         ()=>{
           npcVisuals.advanceWorldTicks(1);
           syncTrafficCheckpointAfterStep();
+          for(const exit of npcVisuals.drainCompletedExits())
+            store.completePhysicalShopExit(exit.heroId,exit.outerGateZ);
         });
     }finally{
       shopTickInProgress=false;

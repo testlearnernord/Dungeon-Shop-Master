@@ -1,5 +1,14 @@
 # Dungeon Shop Master
 
+### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
+
+- Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
+- `at-shop` -> `departing` starts an actual pedestrian walk; manual checkout, unsatisfied walkout and sleeping alone **do not** start cooldown. After observed exit on day D, the hero is absent from both shop and dungeon for complete days D+1 and D+2; earliest reentry is D+3.
+- Reentry uses the seeded safe known entrance, retains discovered routes, HP, equipment, supplies and true committed site generations; no free healing, RNG or second simulation. The old individually granted Level-6/7 boss permit is temporarily honored **only after** the required off-duty days.
+- The night book now has only **The Reckoning** and **Goods & Receipts**; LIVE Board and the bounded Expedition Timeline replace duplicate nightly hero/replay pages. Old four-page session indices are safely reset.
+- Strict `SIMULATION_VERSION = 24` snapshots validate new statuses, `offDutyUntilDay` and real clock-stamped departures. Earlier Alpha snapshots do not migrate.
+- **NOT SHIPPED V.003:** cursed special-floor single physical portal, Floor-10 permit, deeper progression, unified boss fight architecture and integrated performance acceptance are still open.
+
 **Playable browser alpha:** https://testlearnernord.github.io/Dungeon-Shop-Master/  
 **Repository:** https://github.com/testlearnernord/Dungeon-Shop-Master
 
@@ -12,10 +21,9 @@ a physical shop on **Floor 5**. Autonomous adventurers from the upper floors
 buy supplies, risk their lives below, and may or may not return.
 
 The *100-floor dungeon* is the setting's long-term premise, **not** a claim
-that 100 playable floors exist. The current alpha is **day-based**, not a
-continuously running dungeon simulation.
+that 100 playable floors exist. The current alpha has one deterministic, pausable live world clock: shop customers, dungeon exploration and ordinary fights run while the shop is open, and the bed ends the day. The full V.003 release remains unshipped.
 
-**V.003 migration note (PR #212):** The experimental Expedition
+**V.003 migration note (PRs #212-213):** The experimental Expedition
 Archive has been redesigned as a small timeline of today's and the
 previous two days' actual highlights. Save individual recordings to
 retain them long-term (up to 12). Do not expect an infinite replay

@@ -21,15 +21,16 @@ export function walkOutWithoutPurchase(
     type:"shop-walkout",day:state.day,worldTick:state.worldClock.tick,
     adventurerId:heroId,shopReason:reason,
     message: reason==="unavailable"
-      ?`${hero.name} left the shop angry: their supplies were sold out.`
+      ?`${hero.name} is leaving the shop angry: their supplies were sold out.`
       :reason==="cannot-afford"
-      ?`${hero.name} left the shop without buying anything.`
-      :`${hero.name} left the shop without needing anything.`,
+      ?`${hero.name} is leaving the shop without buying anything.`
+      :`${hero.name} is leaving the shop without needing anything.`,
   };
   return {
     ...state,
     adventurers:state.adventurers.map(person=>person.id===heroId?
-      {...person,status:"returning" as const,floor:4 as const,shopStayDays:0}:person),
+      {...person,status:state.liveDungeon.enabled?"departing" as const:"returning" as const,
+        floor:state.liveDungeon.enabled?5 as const:4 as const,shopStayDays:0}:person),
     events:[...state.events,walkout],
   };
 }

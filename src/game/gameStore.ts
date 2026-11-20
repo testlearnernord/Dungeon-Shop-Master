@@ -15,6 +15,7 @@ import { advanceWorldUntil, lastWorldTickOfDay,
   WORLD_TICKS_PER_GAME_MINUTE } from "./worldClock.ts";
 import {activateLiveDungeon,commitLiveWorldEvent} from "./liveDungeonRuntime.ts";
 import {containsReplay,MAX_SAVED_REPLAYS} from "./replayRetention.ts";
+import {completeObservedShopExit} from "./shopRotation.ts";
 import {clearResolvedShopRequests,commitShopRequestEvent,closeShopRequests,
   requestRemainingTicks,shortenShopRequestForTest,startShopRequest} from "./shopRuntime.ts";
 
@@ -36,7 +37,9 @@ export class GameStore {
    */
   commitShopTraffic(checkpoint:ShopTrafficCheckpoint):void{
     validateShopTraffic(checkpoint,this.current.day,this.current.worldClock.tick,
-      new Set(this.current.adventurers.filter(hero=>hero.status!=="dead").map(hero=>hero.id)),
+      new Set(this.current.adventurers.filter(hero=>hero.status==="at-shop"||
+         hero.status==="departing"||(!this.current.liveDungeon.enabled&&
+         hero.status==="returning")).map(hero=>hero.id)),
       new Set(this.current.shopLayout.shelves.map(shelf=>shelf.id)));
     this.replace({...this.current,shopTraffic:checkpoint});
   }
@@ -68,6 +71,14 @@ export class GameStore {
       state.events!==this.current.events||state.shopDebts!==this.current.shopDebts;
     this.current=needsRefresh?clearResolvedShopRequests(state):state;
     for (const listener of this.listeners) listener();
+  }
+
+  /** The physical shop motor calls this only at the genuine outside gate. */
+  completePhysicalShopExit(heroId:string,outerGateZ:number):boolean{
+    const next=completeObservedShopExit(this.current,heroId,outerGateZ);
+    if(next===this.current)return false;
+    this.replace(next);
+    return true;
   }
 
   /** Pin a real completed recording for later days, or remove its pin.

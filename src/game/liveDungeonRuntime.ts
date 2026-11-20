@@ -674,7 +674,27 @@ export function finishLiveDungeonDay(
   }];
   const previouslyCleared6=state.dungeonFloors.some(f=>f.floor===6&&f.cleared);
   const previouslyCleared7=state.dungeonFloors.some(f=>f.floor===7&&f.cleared);
+  const reenteringIds=new Set(closed.adventurers.filter(hero=>
+    hero.status==="off-duty"&&hero.offDutyUntilDay!==null&&
+    day>=hero.offDutyUntilDay).map(hero=>hero.id));
   const adventurers=closed.adventurers.map(hero=>{
+    // Two whole days away: no shop presence, combat, free healing or supplies.
+    if(hero.status==="off-duty"){
+      if(!reenteringIds.has(hero.id))return hero;
+      // Interim compatibility: the existing individually granted Level-6/7
+      // boss permit remains playable, but never bypasses physical shop exit
+      // or the two whole off-duty days. The Floor-10 gate is still future work.
+      const target=hero.level6Permit&&!previouslyCleared7?
+        previouslyCleared6?7 as const:6 as const:1 as const;
+      events.push({
+        id:`day-${day}:${hero.id}:dungeon-live:${clock.tick}`,type:"dungeon-live",day,
+        worldTick:clock.tick,adventurerId:hero.id,
+        reportedZone:target>=6?"deep" as const:"upper" as const,
+        message:`${hero.name} began a new expedition after two full days away.`,
+      });
+      return {...hero,status:target===1?"exploring" as const:"expedition" as const,
+        floor:target,offDutyUntilDay:null};
+    }
     const healed=useHealingSupplies(hero,day);
     events.push(...healed.events);
     const ready=healed.adventurer;
@@ -683,21 +703,10 @@ export function finishLiveDungeonDay(
     // Sleeping cannot complete a portal journey which is still scheduled
     // for a subsequent live world tick.
     if(ready.status==="traveling")return ready;
-    if(ready.status==="at-shop"&&ready.level6Permit&&ready.health>0&&
-       !previouslyCleared7){
-      const target=previouslyCleared6?7 as const:6 as const;
-      const type=target===7?"level7-departure" as const:
-        "level6-departure" as const;
-      events.push({
-        id:`day-${day}:${ready.id}:${type}`,type,day,
-        adventurerId:ready.id,
-        message:`${ready.name} left Galvik's shop for Floor ${target}.`,
-      });
-      return {...ready,status:"expedition" as const,
-        floor:target,shopStayDays:0};
-    }
+    // Permit ownership cannot silently teleport a visitor to a boss at dawn.
+    // Every new journey begins only after the real door crossing + downtime.
     const shop=scheduleShopVisit(ready,day,rngState,
-      priorPaid.has(hero.id));
+      priorPaid.has(hero.id),true);
     rngState=shop.rngState;
     events.push(...shop.events);
     return shop.adventurer;
@@ -716,8 +725,34 @@ export function finishLiveDungeonDay(
       message:`${adventurer.name} entered Floor 1.`,
     });
   }
+  // Reenter at a seeded known floor ENTRANCE, never the last fight tile;
+  // retain personally visited cells, site generations and other heroes.
+  let morningWorlds=closed.earlyDungeonWorlds??[];
+  let morningLevel7=closed.level7World;
+  for(const floor of [1,7] as const){
+    const ids=adventurers.filter(h=>reenteringIds.has(h.id)&&h.floor===floor)
+      .map(h=>h.id);
+    if(!ids.length)continue;
+    const layout=generateExpeditionLayout(state.seed,floor);
+    const saved=floor===7?morningLevel7:
+      morningWorlds.find(w=>w.floor===1)?.world??emptyLevel7World();
+    const heroes=[...saved.heroes];
+    const spawn=layout.entrance,cell=spawn.z*layout.width+spawn.x;
+    for(const id of ids){
+      const oldIndex=heroes.findIndex(h=>h.heroId===id);
+      const old=oldIndex>=0?heroes[oldIndex]:null;
+      const landed={heroId:id,...spawn,visited:old?
+        old.visited.includes(cell)?old.visited:[...old.visited,cell]:[cell]};
+      if(oldIndex>=0)heroes[oldIndex]=landed;
+      else heroes.push(landed);
+    }
+    if(floor===7)morningLevel7={...saved,heroes};
+    else morningWorlds=[...morningWorlds.filter(w=>w.floor!==1),
+      {floor:1 as const,world:{...saved,heroes}}].sort((a,b)=>a.floor-b.floor);
+  }
   const next:GameState={
-    ...closed,day,worldClock:clock,
+    ...closed,day,worldClock:clock,earlyDungeonWorlds:morningWorlds,
+    level7World:morningLevel7,
     shopTraffic:{day,tick:clock.tick,initialized:false,actors:[],
       claims:[],shelfOwners:[],doorY:{level4:0,level6:0}},
     shopEconomy:{...closed.shopEconomy,

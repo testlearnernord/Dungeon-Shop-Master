@@ -1,5 +1,14 @@
 # Dungeon Shop Master — Development Roadmap
 
+### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
+
+- Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
+- `at-shop` -> `departing` starts an actual pedestrian walk; manual checkout, unsatisfied walkout and sleeping alone **do not** start cooldown. After observed exit on day D, the hero is absent from both shop and dungeon for complete days D+1 and D+2; earliest reentry is D+3.
+- Reentry uses the seeded safe known entrance, retains discovered routes, HP, equipment, supplies and true committed site generations; no free healing, RNG or second simulation. The old individually granted Level-6/7 boss permit is temporarily honored **only after** the required off-duty days.
+- The night book now has only **The Reckoning** and **Goods & Receipts**; LIVE Board and the bounded Expedition Timeline replace duplicate nightly hero/replay pages. Old four-page session indices are safely reset.
+- Strict `SIMULATION_VERSION = 24` snapshots validate new statuses, `offDutyUntilDay` and real clock-stamped departures. Earlier Alpha snapshots do not migrate.
+- **NOT SHIPPED V.003:** cursed special-floor single physical portal, Floor-10 permit, deeper progression, unified boss fight architecture and integrated performance acceptance are still open.
+
 > **Reviewed 2026-11-18 · next release target: V.003 ALPHA —
 > The Living Dungeon (DESIGN APPROVED, NOT YET SHIPPED).**
 > Source, tests and merged PRs define what is actually playable. Do not
@@ -12,7 +21,7 @@
 
 - **PR #211 merged:** explicit LIVE spectator of real current spatial
   checkpoints and 60 Hz combat frames; the physical shop clock continues.
-- **PR #212 current:** a SMALL, two-completed-days-plus-today
+- **PR #212 merged:** a SMALL, two-completed-days-plus-today
   event/highlight timeline, not a massive permanent replay archive.
   Deliberate Save protects at most 12 full recordings past the rolling
   frame expiry; combat/loot/party/death/return highlights come only from
@@ -21,8 +30,9 @@
   Cashier no longer renders an expensive Babylon scene while its modal is
   open and grades the last visibly painted needle position. LIVE spectator
   skips re-projection at 60Hz when nothing in the dungeon changed.
-- **Remaining:** two-day off-duty shop rotation and integrated multi-day
-  campaign/financial/performance acceptance. Never label V.003 as shipped
+- **PR #213 in progress:** physical departures, two full post-shop off-duty days,
+  no midnight permit teleport, safe reentry, two-page night accounts and strict v24 saves.
+- **Remaining:** integrated multi-day campaign/financial/performance acceptance. Never label V.003 as shipped
   until its release gates pass.
 
 ## Current foundation (playable V.002 ALPHA)

@@ -18,7 +18,7 @@ export function arrivalEvent(hero: AdventurerState, day: number): WorldEvent {
  */
 export function scheduleShopVisit(
   hero: AdventurerState, day: number, rngState: number,
-  alreadyBought: boolean = false,
+  alreadyBought: boolean = false, livePhysicalExit = false,
 ): { adventurer: AdventurerState; events: readonly WorldEvent[]; rngState: number } {
   if (hero.status === "traveling") {
     return {
@@ -38,11 +38,11 @@ export function scheduleShopVisit(
     rngState: random.state,
     adventurer: {
       ...hero,
-      floor: stay ? 5 : 4,
-      status: stay ? "at-shop" : "returning",
+      floor: stay || livePhysicalExit ? 5 : 4,
+      status: stay ? "at-shop" : livePhysicalExit ? "departing" : "returning",
       shopStayDays: stay ? 1 : 0,
     },
-    events: [{
+    events: !stay && livePhysicalExit ? [] : [{
       id: `day-${day}:${hero.id}:shop-${stay ? "stay" : "departure"}`,
       type: stay ? "shop-stay" : "shop-departure",
       day,

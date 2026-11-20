@@ -1,5 +1,14 @@
 # Dungeon Shop Master — Contributor Guide
 
+### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
+
+- Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
+- `at-shop` -> `departing` starts an actual pedestrian walk; manual checkout, unsatisfied walkout and sleeping alone **do not** start cooldown. After observed exit on day D, the hero is absent from both shop and dungeon for complete days D+1 and D+2; earliest reentry is D+3.
+- Reentry uses the seeded safe known entrance, retains discovered routes, HP, equipment, supplies and true committed site generations; no free healing, RNG or second simulation. The old individually granted Level-6/7 boss permit is temporarily honored **only after** the required off-duty days.
+- The night book now has only **The Reckoning** and **Goods & Receipts**; LIVE Board and the bounded Expedition Timeline replace duplicate nightly hero/replay pages. Old four-page session indices are safely reset.
+- Strict `SIMULATION_VERSION = 24` snapshots validate new statuses, `offDutyUntilDay` and real clock-stamped departures. Earlier Alpha snapshots do not migrate.
+- **NOT SHIPPED V.003:** cursed special-floor single physical portal, Floor-10 permit, deeper progression, unified boss fight architecture and integrated performance acceptance are still open.
+
 > **Living instructions for human and AI contributors.** These rules describe how to work against the **current** project. Keep this file, `docs/GAME_BIBLE.md` and `docs/ARCHITECTURE.md` synchronized with each relevant change. Obsolete instructions must be replaced or deleted, not accumulated.
 
 ## Before editing
@@ -332,7 +341,7 @@
   as imaginary cash. Real browser campaigns exclusively run the saved
   live expedition/combat and shop motors, never the older bedtime
   dungeon batch (retained only for isolated pure legacy regression
-  fixtures). The current v23 format intentionally rejects older
+  fixtures). The current v24 format intentionally rejects older
   alpha snapshots. Do not claim V.003 as a released milestone or
   invent an additional time engine, mandatory Floor-10 boss, class/mana
   scheme or 100-floor simulation from design-only documents. **Newest owner decision: backward compatibility with old alpha/v13
@@ -355,7 +364,7 @@
   and shown only in the deliberately opened timeline, never on the
   knowledge-limited passive Board. Exact timestamps and local playback
   seconds must never be conflated; recording bookmarks are lazy.
-  VERSION 23 saves validate all saved recording references.
+  VERSION 24 saves validate all saved recording references.
   **Performance boundary:** Cashier input is graded against the last
   actually painted needle position, with Babylon scene rendering stopped
   during its modal; world timing remains paused. LIVE spectator projection
