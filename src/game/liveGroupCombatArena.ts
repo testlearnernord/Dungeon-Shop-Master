@@ -174,7 +174,7 @@ export class LiveGroupCombatArena{
       if(spec.team==="heroes"){
         const known=heroById.get(spec.id);
         const hero=createHeroVisual(scene,{
-          id:spec.id,role:known?.role??spec.role,
+          id:spec.id,role:known?.role??(spec.role==="monster"?"DPS":spec.role),
           equipment:known?.equipment??spec.equipment??{
             weapon:null,armor:null,
           },
