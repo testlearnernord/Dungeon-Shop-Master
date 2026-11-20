@@ -319,6 +319,21 @@ function commitDungeonTick(state:GameState):GameState {
         stepCounts.set(hero.id,{heroId:hero.id,steps:1,finished:true});
         continue;
       }
+      // A 90-second authentic boss duel needs enough world-clock room.
+      // Late-night starts otherwise trap the player in an unfinished fight
+      // at the hard bedtime boundary. Defer the start, never truncate it.
+      if(tick+REPLAY_MAX_SECONDS*20+SHOP_PORTAL_TRANSIT_TICKS>
+          lastWorldTickOfDay(day)){
+        processed.add(hero.id);
+        stepCounts.set(hero.id,{heroId:hero.id,steps:1,finished:true});
+        activities.push({
+          id:"day-"+day+":"+hero.id+":dungeon-live:"+tick,
+          type:"dungeon-live",day,worldTick:tick,adventurerId:hero.id,
+          reportedZone:"deep",
+          message:hero.name+" is waiting out the last hours of the expedition day.",
+        });
+        continue;
+      }
       const rng=new SeededRandom(rngState);
       const tacticsSeed=rng.int(32);
       rngState=rng.state;
