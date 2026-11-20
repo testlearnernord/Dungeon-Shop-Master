@@ -100,6 +100,10 @@ export class DungeonViewer {
   private readonly returnCombatButton=document.querySelector<HTMLButtonElement>("#dungeon-return-from-combat")!;
   private readonly liveCombatPanel=document.querySelector<HTMLElement>("#dungeon-live-combat-summary")!;
   private readonly liveCombatDetails=document.querySelector<HTMLElement>("#dungeon-live-combat-actors")!;
+  private readonly fightIntroPanel=document.querySelector<HTMLElement>("#dungeon-fight-cinematic")!;
+  private readonly fightIntroCaption=document.querySelector<HTMLElement>("#dungeon-fight-intro-caption")!;
+  private readonly fightIntroProgress=document.querySelector<HTMLElement>("#dungeon-fight-intro-progress")!;
+  private readonly fightIntroSkipButton=document.querySelector<HTMLButtonElement>("#dungeon-skip-intro")!;
   private readonly playbackButton = document.querySelector<HTMLButtonElement>("#dungeon-play")!;
   private readonly timeSlider = document.querySelector<HTMLInputElement>("#dungeon-timeline")!;
   private readonly timeLabel = document.querySelector<HTMLElement>("#dungeon-clock")!;
@@ -126,6 +130,11 @@ export class DungeonViewer {
       else this.watchRecordedCombat();
     });
     this.returnCombatButton.addEventListener("click",()=>this.returnToDungeonMap());
+    this.fightIntroSkipButton.addEventListener("click",()=>{
+      this.liveArena.skipIntro();
+      this.paintCombatIntro();
+      this.canvas.focus();
+    });
     this.clearHeroButton.addEventListener("click",()=>{
       this.selectFloorHero(null);
       this.canvas.focus();
@@ -205,6 +214,19 @@ export class DungeonViewer {
         this.returnToDungeonMap();
         return;
       }
+      if(this.liveArena.isIntroActive &&
+         (event.code==="Space"||event.code==="Enter")&&!event.repeat){
+        event.preventDefault();event.stopImmediatePropagation();
+        this.liveArena.skipIntro();
+        this.paintCombatIntro();
+        this.canvas.focus();
+        return;
+      }
+      if(event.code==="Tab"&&this.liveArena.isIntroActive&&!event.repeat){
+        event.preventDefault();event.stopImmediatePropagation();
+        this.fightIntroSkipButton.focus();
+        return;
+      }
       if(event.code==="Tab"&&this.liveArena.isActive&&!event.repeat){
         event.preventDefault();event.stopImmediatePropagation();
         const actorId=this.liveArena.nextFocus();
@@ -251,7 +273,8 @@ export class DungeonViewer {
     // Use the same spectator mouse-flight contract as Level-6, but only
     // after opting into the actual 3D fight. Map picking stays untouched.
     canvas.addEventListener("pointerdown",()=>{
-      if(!this.active||!this.liveArena.isActive)return;
+      if(!this.active||!this.liveArena.isActive||
+         this.liveArena.isIntroActive)return;
       if(document.pointerLockElement!==canvas)void canvas.requestPointerLock();
     },true);
     document.addEventListener("mousemove",event=>{
@@ -619,6 +642,7 @@ export class DungeonViewer {
     this.liveFloorFightId=fight.id;
     if(!this.liveArena.watch(this.floorCombatView(fight),"live"))return;
     this.paintFloor(view!);
+    this.paintCombatIntro();
     this.returnCombatButton.focus();
   }
 
@@ -837,6 +861,7 @@ export class DungeonViewer {
     const view=this.recordedArenaView();
     if(!view||!this.liveArena.watch(view))return;
     this.paintPlayback();
+    this.paintCombatIntro();
     this.returnCombatButton.focus();
   }
 
@@ -844,14 +869,27 @@ export class DungeonViewer {
     if(!this.liveHeroId)return;
     const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
     if(!view?.combat||!this.liveArena.watch(view,"live"))return;
+    this.paintCombatIntro();
     this.watchCombatButton.hidden=true;
     this.returnCombatButton.hidden=false;
     this.returnCombatButton.focus();
     this.paintLive(view);
   }
 
+  private paintCombatIntro():void {
+    const film=this.liveArena.introFrame;
+    this.fightIntroPanel.hidden=!film;
+    this.panel.dataset.fightIntro=String(!!film);
+    if(film){
+      this.fightIntroCaption.textContent=film.caption;
+      this.fightIntroProgress.style.width=
+        Math.round(film.progress*100)+"%";
+    }
+  }
+
   private leaveLiveCombat():void {
     this.liveArena.dispose();
+    this.paintCombatIntro();
     if(document.pointerLockElement===this.canvas)
       void document.exitPointerLock();
     this.returnCombatButton.hidden=true;
@@ -1055,8 +1093,10 @@ export class DungeonViewer {
   update(deltaSeconds:number):void {
     if(!this.active||!this.camera||!this.layout)return;
     const dt=Math.min(0.1,Math.max(0,deltaSeconds));
-    if(this.liveArena.isActive)this.liveArena.updateCamera(dt,this.keys);
-    else {
+    if(this.liveArena.isActive){
+      this.liveArena.updateCamera(dt,this.keys);
+      this.paintCombatIntro();
+    }else {
     const speed=dt*(this.keys.has("ShiftLeft")||this.keys.has("ShiftRight")?44:15);
     const dx=(Number(this.keys.has("KeyD"))-Number(this.keys.has("KeyA")))*speed;
     const dz=(Number(this.keys.has("KeyS"))-Number(this.keys.has("KeyW")))*speed;
