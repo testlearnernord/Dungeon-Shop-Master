@@ -1,5 +1,12 @@
 # Dungeon Shop Master — Game Bible
 
+### Combat reference and groups (LOCKED, 20 November 2026)
+
+- The owner requires **Level-6 Cave Troll quality and behavior as the reference for ALL dungeon fights**, not a degraded common denominator based on the earlier Ghoul/Group arena. Monster/arena/ability content varies. Parties are an extra capability, not a replacement for the authored solo gameplay.
+- **CURRENT in PR #220, pending merge:** the existing Level-6 camera, stage lighting and world-projected HP/damage HUD are shared with a Ghoul crypt variant and optional multiple fighter plates. The original Troll presentation is preserved; opt-in views remain read-only.
+- **OPEN:** the unique Level-6 campaign Troll is still resolved atomically by its specialized solo motor, while regular group fights are scheduled against 60Hz world time. Unified **authoritative** boss/group combat requires an explicit migration with parity tests for grip/throw, lava, movement, damage, cues, time and save/replay. Rendering reuse alone does not mean this is shipped.
+
+
 ### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
