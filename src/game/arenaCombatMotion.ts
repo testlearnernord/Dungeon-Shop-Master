@@ -305,7 +305,10 @@ function resolveBossStrike(s: CombatPreviewState): void {
     return;
   }
   // An actual smash must threaten a well-equipped hero who misreads it.
-  const raw = trollSignatureProfile(s.bossAttack).soloRawDamage;
+  // Existing duel v1 treats bossSlam as the authoritative contact flag:
+  // old saves and forced hit fixtures may not update bossAttack alongside it.
+  // Still use the shared profile's 33/47 damage rather than duplicating it.
+  const raw=trollSignatureProfile(s.bossSlam?"slam":"smash").soloRawDamage;
   const damageResult=applyCombatHit(s.heroHp,raw,
     (s.options.armor?7:0)+(s.options.role==="tank"?3:0));
   s.heroHp=damageResult.hp;
