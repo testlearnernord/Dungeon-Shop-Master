@@ -57,8 +57,6 @@ export class LiveGroupCombatArena{
   show(view:LiveSpectatorFrame):void {
     const fight=view.combat;
     if(!fight||!this.scene||fight.id!==this.fightId)return;
-    const specs=new Map(fight.actors.map(actor=>[actor.id,actor]));
-    const poses=new Set(fight.frame.actors.map(actor=>actor.id));
     for(const [id,model] of this.actors){
       const actor=fight.frame.actors.find(candidate=>candidate.id===id);
       if(!actor){
@@ -109,7 +107,6 @@ export class LiveGroupCombatArena{
     });
     // No new actor can be created from an interpolated render state: all
     // specs and IDs came from the authoritative combat checkpoint.
-    void specs;void poses;
   }
 
   resetCamera():void{
@@ -231,7 +228,7 @@ function animateHero(model:HeroVisual,phase:GroupPhase,time:number):void{
   const swing=walking?Math.sin(time*12)*.46:0;
   model.legs[0].rotation.x=swing;
   model.legs[1].rotation.x=-swing;
-  model.arms[0].rotation.x=phase==="strike"||phase==="windup"?.8:-swing*.55;
+  model.arms[0].rotation.x=(phase==="strike"||phase==="windup")?0.8:-swing*.55;
   model.arms[1].rotation.x=phase==="strike"?-1.1:
     phase==="cast"||phase==="heal"?-.65:swing*.55;
   model.root.scaling.y=phase==="dead"?.48:1;
