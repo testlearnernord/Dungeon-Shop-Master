@@ -151,3 +151,18 @@ test("PR215 forensic profile: compare the SAME scene with and without real 50ms 
   expect((live.profile as Record<string,{calls:number}>)["traffic-validate-notify"]?.calls)
     .toBeGreaterThan(0);
 });
+
+test("F3 diagnostics are opt-in and expose real browser frame and autosave costs @ci-smoke",async({page})=>{
+  test.setTimeout(90000);
+  await page.goto("./");
+  await expect(page.locator("#runtime-performance")).toBeHidden();
+  await page.keyboard.press("F3");
+  await expect(page.locator("#runtime-performance")).toBeVisible();
+  await expect(page.locator("#runtime-performance")).toContainText("FPS (frame gap)",{
+    timeout:20000,
+  });
+  await expect(page.locator("#runtime-performance")).toContainText("Render CPU / frame");
+  await expect(page.locator("#runtime-performance")).toContainText("autosave");
+  await page.keyboard.press("F3");
+  await expect(page.locator("#runtime-performance")).toBeHidden();
+});

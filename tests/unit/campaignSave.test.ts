@@ -249,6 +249,21 @@ test("invalid latest rejects visibly, stays intact, and never replaces the known
   assert.equal(adapter.records.previous, "bad backup");
 });
 
+test("a damaged external latest is never certified by the previous successful autosave cache",async()=>{
+  const adapter=new MemoryAdapter();
+  const storage=new CampaignStorage(adapter);
+  const first=createGameState(7351);
+  await storage.saveGame(first);
+  const good=adapter.records.latest!;
+  assert.equal(typeof good,"string");
+  adapter.records={latest:"{broken",previous:good};
+  await storage.saveGame(advanceDay(first).state);
+  assert.equal(adapter.records.previous,good,
+    "A previously trusted slot that later contains corrupt data cannot poison the backup");
+  assert.deepEqual(await storage.loadBackup(),first);
+  assert.deepEqual(await storage.loadGame(),advanceDay(first).state);
+});
+
 test("queued snapshots are captured at invocation and ordered across shared repository instances", async () => {
   const adapter = new MemoryAdapter();
   let release!: () => void;
