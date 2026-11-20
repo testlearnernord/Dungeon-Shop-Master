@@ -936,5 +936,12 @@ export function inspectLiveCombatPresentation(){
       node.name.startsWith("live-fight-hero-")).length,
     arenaMonsters:scene.meshes.filter(mesh=>
       mesh.name.startsWith("live-fight-monster-")).length,
+    spectatorCamera:scene.activeCamera?.name??"none",
+    cryptSetpieces:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("crypt-")).length,
+    activeArenaLights:scene.lights.filter(light=>light.isEnabled()).length,
+    worldHudBarCount:document.querySelectorAll(
+      "#group-combat-world-hud .arena-actor-plate").length,
+    bossStageCamera:scene.activeCamera?.name==="boss-spectator-camera",
   };
 }
