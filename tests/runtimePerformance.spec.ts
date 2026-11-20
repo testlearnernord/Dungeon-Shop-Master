@@ -51,13 +51,14 @@ test("world-only clocks never rerender level-6 history; cashier leaves Babylon i
       __shopTestExpeditionRenders?:()=>number;
     };
     hooks.__shopTestPauseWorld?.(true);
+    const beforeTick=hooks.__shopTestTraffic?.().tick;
     hooks.__shopTestAdvanceWorldTicks?.(25);
     const tick=hooks.__shopTestTraffic?.().tick;
     const rendered=hooks.__shopTestExpeditionRenders?.();
     hooks.__shopTestPauseWorld?.(false);
-    return {tick,rendered};
+    return {beforeTick,tick,rendered};
   });
-  expect(clock.tick).toBe(25);
+  expect(clock.tick! - clock.beforeTick!).toBe(25);
   expect(clock.rendered).toBe(renders,
     "Moving the shared world clock alone cannot scan the event log and redraw Level-6 DOM");
 
