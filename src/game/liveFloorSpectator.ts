@@ -10,6 +10,13 @@ export interface LiveFloorHero {
   readonly id:string;
   readonly name:string;
   readonly role:AdventurerState["role"];
+  readonly level:number;
+  readonly stats:AdventurerState["stats"];
+  readonly traits:AdventurerState["traits"];
+  readonly inventory:AdventurerState["inventory"];
+  readonly goal:GameState["liveDungeon"]["plans"][number]["goal"]|null;
+  readonly plannedAction:GameState["liveDungeon"]["plans"][number]["action"]|null;
+  readonly activity:"combat"|"exploring"|"backtracking"|"portal";
   readonly equipment:AdventurerState["equipment"];
   readonly x:number;
   readonly z:number;
@@ -71,8 +78,16 @@ export function selectLiveFloorSpectatorFrame(
       const members=party?.memberIds??(fight?.heroIds??[hero.id]);
       const partyIds=members.length>1?[...members].sort():[];
       const combatActor=fight?.frame.actors.find(a=>a.id===hero.id);
+      const plan=state.liveDungeon.plans.find(p=>
+        p.heroId===hero.id&&p.floor===floor);
+      const returning=state.liveDungeon.returns.find(r=>r.heroId===hero.id);
+      const activity=fight?"combat":returning?.phase==="portal"?"portal":
+        returning?.phase==="backtrack"?"backtracking":"exploring";
       return [{
         id:hero.id,name:hero.name,role:hero.role,equipment:hero.equipment,
+        level:hero.level,stats:hero.stats,traits:hero.traits,
+        inventory:hero.inventory,goal:plan?.goal??null,
+        plannedAction:plan?.action??null,activity,
         x:site?.x??fight!.x,z:site?.z??fight!.z,
         health:combatActor?.hp??hero.health,gold:hero.gold,
         visited:site?.visited??[],
