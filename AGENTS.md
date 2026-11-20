@@ -1,6 +1,22 @@
 # Dungeon Shop Master — Contributor Guide
 
 
+### PR #228 · No Safe Passage + opt-in Ghoul presentation
+
+`No Safe Passage.mp3` exists in the repository root and is additionally
+published from its exact existing Git blob as
+`public/audio/no-safe-passage.mp3`. Never regenerate or duplicate its
+contents with unrelated music. `SceneSoundtrack` owns all ordinary
+battle/boss/shop/dungeon transitions. Ordinary opt-in fights use the
+combat scene, boss fights keep Desperate Measures, and the abstract
+floor map uses Beneath the Surface. The Ghoul crypt props/fog and
+skinned animation blending are opt-in art only and must not touch
+`groupCombat.ts` or collision bounds. Right/left claw alternation
+is derived from saved strike transitions, with no RNG. Original unique
+Ghoul SFX and owner-led motion review remain OPEN; do not mark them
+complete or substitute the Troll's signature voice.
+
+
 ### PR #227 · Fight camera timeline shared, NOT fight engine merged
 
 The authored 13.5-second Level-6 Troll introduction is preserved. Its
