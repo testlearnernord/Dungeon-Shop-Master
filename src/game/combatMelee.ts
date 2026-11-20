@@ -64,6 +64,9 @@ export function meleeAbilityProfile(
       return {
         ...ordinary, id, reach:6.2+0.58,
         halfAngleRadians:1.30, parryReach:6.8,
+        // The authored solo slam is 47 raw vs 33 for a normal smash.
+        // Apply the same relative force in group encounters, before armor.
+        damageMultiplier:47/33,
       };
     case "grapple":
       // Same physical reach/arc as the Troll grip. A generic monster
