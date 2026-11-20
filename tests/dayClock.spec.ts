@@ -66,45 +66,31 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger @ci-smo
   await page.locator("#ledger-next").click();
   await expect(page.locator("#ledger-heading")).toHaveText("Goods & Receipts");
   await expect(page.locator("#ledger-page-content")).toContainText("No receipts were posted");
-  await page.locator("#ledger-next").click();
-  await expect(page.locator("#ledger-heading")).toHaveText("The Living");
-  const knownBeforeReload=await page.locator(".ledger-hero-list").innerText();
-  await expect.poll(()=>page.locator(".ledger-hero-card").count())
-    .toBeGreaterThanOrEqual(3);
-  expect(await page.locator(".ledger-hero-portrait").count())
-    .toBe(await page.locator(".ledger-hero-card").count());
-  await expect(page.locator(".ledger-people-overview")).toContainText("SHOP AT CLOSING");
-  await expect(page.locator(".ledger-hero-disclosure")).toContainText("remain sealed");
-  expect(knownBeforeReload).not.toMatch(/VICTORY|DEFEAT|KILLED|DIED/i);
+  // Bedtime no longer contains a redundant hero dashboard or a forced
+  // sealed-replay chapter. Those belong to the LIVE Board and optional Timeline.
+  await expect(page.locator("#ledger-pages")).toHaveText("02 / 02");
+  await expect(page.locator("#ledger-chapters button")).toHaveCount(2);
+  await expect(page.locator("#ledger-next")).toBeDisabled();
+  await expect(page.locator(".ledger-hero-card,.ledger-record")).toHaveCount(0);
   await page.locator("#ledger-skip").click();
   await expect(page.locator("#ledger-skip")).toHaveAttribute("aria-pressed","true");
   await expect(page.locator("#ledger-skip")).toHaveText("Enable animations");
-  // Toggling the animations must not destroy the displayed hero cards.
-  expect(await page.locator(".ledger-hero-list").innerText()).toBe(knownBeforeReload);
-  await page.locator("#ledger-next").click();
-  await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
-  await expect(page.locator("#ledger-heading")).toBeFocused();
-  await expect(page.locator("#ledger-pages")).toHaveText("04 / 04");
-  await expect(page.locator("#ledger-next")).toBeDisabled();
-  // A reload should restore exactly this folio and preferences, not page 1.
   await expect(page.locator("#save-status")).toHaveText("Saved Day 2.");
   await page.reload();
   await expect(page.locator("#merchant-ledger")).toBeVisible();
   await expect(page.locator("#day")).toHaveText("Day 2");
-  await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
+  await expect(page.locator("#ledger-heading")).toHaveText("Goods & Receipts");
+  await expect(page.locator("#ledger-pages")).toHaveText("02 / 02");
   await expect(page.locator("#ledger-skip")).toHaveAttribute("aria-pressed","true");
   await expect(page.locator("#ledger-page-content")).toHaveClass(/ledger-no-animation/);
-  // A second reload must be identical: no stale session rewrite.
   await page.reload();
-  await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
-  await expect(page.locator("#ledger-skip")).toHaveText("Enable animations");
+  await expect(page.locator("#ledger-heading")).toHaveText("Goods & Receipts");
   await page.keyboard.press("Home");
   await expect(page.locator("#ledger-heading")).toHaveText("The Reckoning");
   await page.keyboard.press("End");
-  await expect(page.locator("#ledger-heading")).toHaveText("Sealed Expeditions");
-  await page.locator("#ledger-chapters button").nth(2).click();
-  await expect(page.locator("#ledger-heading")).toHaveText("The Living");
-  expect(await page.locator(".ledger-hero-list").innerText()).toBe(knownBeforeReload);
+  await expect(page.locator("#ledger-heading")).toHaveText("Goods & Receipts");
+  await page.locator("#ledger-chapters button").first().click();
+  await expect(page.locator("#ledger-heading")).toHaveText("The Reckoning");
   await page.locator("#ledger-skip").click();
   await expect(page.locator("#ledger-skip")).toHaveText("Skip animations");
   await expect(page.locator("#ledger-skip")).toHaveAttribute("aria-pressed","false");
@@ -117,47 +103,19 @@ test("Galvik closes a day by holding E at his bed, then reads the ledger @ci-smo
   expect(errors).toEqual([]);
 });
 
-test("book keeps expedition results sealed until the observer watches a replay",async({page})=>{
+test("bedtime is accounting only; historical footage stays optional in the live timeline",async({page})=>{
   await page.goto("./");
-  await page.locator("#adventurer-roster .level6-permit").first()
-    .evaluate((button:HTMLButtonElement)=>button.click());
-  await advanceTestDay(page); // Level 6 departure on day 2
-  await expect(page.locator("#day")).toHaveText("Day 2");
-  await moveToBed(page);
-  await page.keyboard.down("e");
-  await expect(page.locator("#merchant-ledger")).toBeVisible({timeout:10000});
-  await page.keyboard.up("e");
-  await page.locator('#ledger-chapters button').last().click();
-  const recording=page.locator(".ledger-record").first();
-  await expect(recording).toBeVisible();
-  await expect(page.locator(".ledger-sealed-overview")).toContainText("SEALED FILES");
-  await expect(recording).toHaveAttribute("data-kind","combat");
-  await expect(recording).toHaveAttribute("data-floor","6");
-  await expect(recording.locator(".ledger-record-title")).toHaveText("THE CAVE TROLL");
-  await expect(recording.locator(".ledger-dossier-portrait")).toBeVisible();
-  await expect(recording.locator(".ledger-dossier-person-name")).not.toBeEmpty();
-  await expect(recording.locator(".ledger-record-seal")).toContainText("SEALED RECORD");
-  await expect(recording).not.toContainText(/victory|death|defeat|rare loot|xp gained/i);
-  // The archive entry must resolve to the exact saved event that is replayed.
-  const recordId=await recording.getAttribute("data-record-id");
-  const expectedRecord=await page.evaluate(async()=>{
-    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const current=await new CampaignStorage().loadGame();
-    return current?.events.find(event=>event.type==="level6-combat"&&
-      !!event.combatReplay)?.id??null;
-  });
-  expect(recordId).toBe(expectedRecord);
-  const dayBeforeReplay=await page.locator("#day").innerText();
-  await recording.locator(".ledger-watch").click();
-  await expect(page.locator("#arena-hud")).toBeVisible();
-  await expect(page.locator("#merchant-ledger")).not.toBeVisible();
-  await page.locator("#close-arena").click();
+  await advanceTestDay(page);
   await expect(page.locator("#merchant-ledger")).toBeVisible();
-  await expect(page.locator(".ledger-record").first()).toHaveAttribute(
-    "data-record-id",recordId!);
-  await expect(page.locator("#day")).toHaveText(dayBeforeReplay);
+  await expect(page.locator("#ledger-chapters button")).toHaveCount(2);
+  await expect(page.locator(".ledger-record,.ledger-hero-card")).toHaveCount(0);
   await page.locator("#ledger-begin").click();
-  await expect(page.locator("#day")).toHaveText("Day 3");
+  await expect(page.locator("#merchant-ledger")).toBeHidden();
+  await page.locator("#open-archive").click();
+  await expect(page.locator("#archive-dialog")).toBeVisible();
+  await expect(page.locator("#archive-summary")).toContainText("real highlights");
+  await page.locator("#archive-close").click();
+  await expect(page.locator("#day")).toHaveText("Day 2");
 });
 
 test("player can walk through former rear wall into the bedchamber",async({page})=>{
