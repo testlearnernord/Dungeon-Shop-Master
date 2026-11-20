@@ -68,6 +68,9 @@ test("ten browser days retain one LIVE world, unique signals, bounded timeline a
   const settled=await loaded();
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 11");
+  await page.evaluate(()=>
+    (window as Window&{__shopTestPauseWorld?:(paused:boolean)=>void})
+      .__shopTestPauseWorld?.(true));
   expect(await loaded()).toEqual(settled);
   await page.locator("#open-archive").click();
   await expect(page.locator("#archive-dialog")).toBeVisible();
