@@ -1,6 +1,22 @@
 # Dungeon Shop Master — Contributor Guide
 
 
+### PR #224 · Whole-floor LIVE view
+
+The LIVE dungeon launches as a floor overview (supported spatial floors
+1, 2, 3, 4, 7 only), not an archived hero tape. `liveFloorSpectator.ts`
+uses each hero's own committed floor/world checkpoint, saved party membership,
+and genuine live battle frames. Do not give all heroes one focus hero's x/z
+or `visited` map. Do not expose the full player-visible floor to hero AI
+or the passive shop Board. The 3D map shows abstract active fight beacons;
+only an explicit click/Watch enters the existing `LiveGroupCombatArena`.
+Historical expeditions are accessed in the separate Replay Archive and
+retain their own saved-local-clock scrubbing.
+
+Click-to-inspect and hero-specific fog are still OPEN (#225–226).
+No monster rendering or full battle animations inside the normal floor view.
+
+
 ### PR #223 · Read-only LIVE party animation and floor-view boundary
 
 The LIVE map does not simulate movement or combat. `livePartyPresentation.ts`

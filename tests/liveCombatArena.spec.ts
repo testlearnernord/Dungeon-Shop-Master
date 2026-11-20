@@ -64,7 +64,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   await expect(card).toBeVisible();
   await card.locator("summary").click();
   await card.locator(".roster-watch-live").click();
-  await expect(page.locator("#dungeon-mode-description")).toContainText("abstract dungeon map");
+  await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor dungeon overview");
   await expect(page.locator("#dungeon-live-combat-summary")).toBeVisible();
   await expect(page.locator("#dungeon-live-combat-actors")).toContainText("HP");
   await expect(page.locator("#dungeon-watch-live-combat")).toBeVisible();
@@ -118,7 +118,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   }).__shopTestPauseWorld?.(true));
   await page.keyboard.press("Escape");
   await expect(page.locator("#dungeon-watch-live-combat")).toBeVisible();
-  await expect(page.locator("#dungeon-mode-description")).toContainText("abstract dungeon map");
+  await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor dungeon overview");
   await page.locator("#close-dungeon").click();
   await expect(page.locator("body")).not.toHaveClass(/dungeon-active/);
   expect(errors).toEqual([]);

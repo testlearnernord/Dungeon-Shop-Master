@@ -219,11 +219,24 @@
           <div>
             <strong>THE LIVING DUNGEON · OBSERVATION</strong>
             <p id="dungeon-mode-description">Loading observation mode...</p>
-            <label class="dungeon-replay-picker" for="dungeon-replay-select">Footage
-              <select id="dungeon-replay-select" aria-label="Select saved expedition">
-                <option value="preview">Layout preview (full development map)</option>
+            <label class="dungeon-replay-picker" for="dungeon-floor-select">LIVE Dungeon Floor
+              <select id="dungeon-floor-select" aria-label="Select LIVE dungeon floor">
+                <option value="1">Floor 1</option>
+                <option value="2">Floor 2</option>
+                <option value="3">Floor 3</option>
+                <option value="4">Floor 4</option>
+                <option value="7">Floor 7</option>
               </select>
             </label>
+            <button type="button" id="dungeon-open-archive">Expedition Replay Archive</button>
+            <div id="dungeon-archive-controls" hidden>
+              <label class="dungeon-replay-picker" for="dungeon-replay-select">Archived footage
+                <select id="dungeon-replay-select" aria-label="Select archived expedition">
+                  <option value="preview">Layout preview (full development map)</option>
+                </select>
+              </label>
+              <button type="button" id="dungeon-back-live">Return to LIVE Floors</button>
+            </div>
             <p id="dungeon-seed"></p>
           </div>
           <div class="dungeon-actions">

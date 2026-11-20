@@ -957,3 +957,26 @@ export function inspectLiveCombatPresentation(){
     bossStageCamera:scene.activeCamera?.name==="boss-spectator-camera",
   };
 }
+
+
+/** #224 opt-in full-floor inspector. Never reads or affects the GameStore. */
+export function inspectLiveDungeonFloor(){
+  const scene=Engine.LastCreatedScene!;
+  return {
+    heroes:scene.transformNodes.filter(node=>
+      node.name.startsWith("dungeon-floor-")&&node.metadata?.liveFloorOnly===true)
+      .map(node=>({
+        id:node.metadata?.adventurerId as string,
+        x:node.position.x,z:node.position.z,
+        visible:node.isEnabled(),
+        partyId:node.metadata?.floorPartyId as string|null,
+        phase:node.metadata?.combatPhase as string|undefined,
+      })),
+    fightBeacons:scene.meshes.filter(mesh=>
+      mesh.metadata?.abstractBattle===true&&mesh.isEnabled()).length,
+    combatMonsterMeshes:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-ghoul-")||
+      mesh.name.startsWith("dungeon-enemy-")||
+      mesh.name.startsWith("dungeon-combat-projectile-")).length,
+  };
+}

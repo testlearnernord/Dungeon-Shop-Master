@@ -628,7 +628,14 @@ body.dungeon-active #music-panel { top: 119px; }
   color: #f5e1c0; background: #282a2d; border: 1px solid #927b52;
   border-radius: 4px; padding: 5px; max-width: min(350px,48vw);
 }
-#dungeon-playback-controls[hidden] { display: none; }
+#dungeon-playback-controls[hidden], #dungeon-archive-controls[hidden] { display: none; }
+#dungeon-open-archive, #dungeon-back-live {
+  pointer-events: auto; padding: 6px 11px; border: 1px solid #876d4a;
+  background: rgba(22,27,27,.90); color: #ead09c; cursor: pointer;
+  font: inherit; border-radius: 5px; margin-top: 6px;
+}
+#dungeon-archive-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+#dungeon-floor-select { color: #e7d5b7; background: #242b2c; padding: 4px; border-radius: 4px; }
 .dungeon-playback-controls {
   display: flex; align-items: center; justify-content: center;
   gap: 8px; flex-wrap: wrap; margin-bottom: 8px; pointer-events: auto;
