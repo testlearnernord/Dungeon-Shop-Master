@@ -47,7 +47,7 @@ test("a real Level-6 Troll battle is witnessed LIVE without replacing its saved 
   await card.locator(".roster-watch-live").click();
   await expect(page.locator("#arena-hud")).toBeVisible();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-replay","live");
-  await expect(page.locator("#arena-boss-title")).toBeVisible();
+  await expect(page.locator("#arena-preview")).toContainText("LIVE BOSS");
   await expect(page.locator("#arena-cinematic")).toBeVisible();
   // Camera, animation and sound NEVER apply combat damage while the
   // saved world pacer is frozen for this observation-only assertion.
