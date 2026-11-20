@@ -123,6 +123,8 @@ export class DungeonViewer {
     private readonly shopCamera: UniversalCamera,
     private readonly store: GameStore,
     private readonly sceneChanged: (active: boolean) => void,
+    private readonly fightSoundtrackChanged:
+      (active:boolean,boss:boolean)=>void=()=>{},
   ) {
     this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel);
     this.watchCombatButton.addEventListener("click",()=>{
@@ -643,6 +645,7 @@ export class DungeonViewer {
     if(!fight)return;
     this.liveFloorFightId=fight.id;
     if(!this.liveArena.watch(this.floorCombatView(fight),"live"))return;
+    this.enterFightSoundtrack(fight.actors);
     this.paintFloor(view!);
     this.paintCombatIntro();
     this.returnCombatButton.focus();
@@ -862,6 +865,7 @@ export class DungeonViewer {
   private watchRecordedCombat():void{
     const view=this.recordedArenaView();
     if(!view||!this.liveArena.watch(view))return;
+    this.enterFightSoundtrack(view.combat!.actors);
     // Historical tape time is LOCAL playback. Hold its chosen real frame for
     // the introduction so a short archived fight cannot vanish halfway
     // through the film. LIVE world/shop time is never paused by this.
@@ -876,6 +880,7 @@ export class DungeonViewer {
     if(!this.liveHeroId)return;
     const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
     if(!view?.combat||!this.liveArena.watch(view,"live"))return;
+    this.enterFightSoundtrack(view.combat.actors);
     this.paintCombatIntro();
     this.watchCombatButton.hidden=true;
     this.returnCombatButton.hidden=false;
@@ -898,7 +903,17 @@ export class DungeonViewer {
     }
   }
 
+  private enterFightSoundtrack(
+    actors:readonly {specialAbility?:string}[],
+  ):void {
+    // Only explicit opt-in premium fights switch to combat music. The
+    // abstract dungeon map keeps Beneath the Surface and no 3D stage.
+    this.fightSoundtrackChanged(true,actors.some(actor=>
+      actor.specialAbility==="grapple-throw"));
+  }
+
   private leaveLiveCombat():void {
+    if(this.liveArena.isActive)this.fightSoundtrackChanged(false,false);
     this.liveArena.dispose();
     this.paintCombatIntro();
     if(document.pointerLockElement===this.canvas)
