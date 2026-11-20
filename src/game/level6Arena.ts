@@ -242,6 +242,9 @@ export class Level6Arena {
     const boss=this.store.state.liveDungeon.bossCombat;
     if(!boss||boss.heroId!==heroId||this.active)return false;
     this.watchingLiveHeroId=heroId;
+    // LIVE boss always prefers the actual Tripo 14-clip cinematic actor,
+    // never the training-only legacy geometric stand-in.
+    this.useTripoModel=true;
     this.open();
     return this.active;
   }
