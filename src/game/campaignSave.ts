@@ -1144,7 +1144,7 @@ function validateState(value: unknown): asserts value is GameState {
   validateShopTraffic(state.shopTraffic,day,clockTick,
     new Set((state.adventurers as RecordValue[]).filter(hero=>
       hero.status==="at-shop"||hero.status==="departing"||
-      (!state.liveDungeon.enabled&&hero.status==="returning"))
+      (!(state.liveDungeon as GameState["liveDungeon"]).enabled&&hero.status==="returning"))
       .map(hero=>hero.id as string)),
     new Set(parsedShopLayout.shelves.map(shelf=>shelf.id)));
 
@@ -1191,6 +1191,7 @@ function validateState(value: unknown): asserts value is GameState {
       integer(event.worldTick,path+".worldTick",firstWorldTickOfDay(eventDay),
         eventDay===day?clockTick:lastWorldTickOfDay(eventDay));
       if(event.type!=="shop-walkout"&&event.type!=="dungeon-live"&&
+        event.type!=="shop-departure"&&
         event.type!=="shop-arrival"&&
         event.type!=="temporary-party-join"&&event.type!=="temporary-party-leave"&&
         event.type!=="hero-death-signal")
@@ -1204,6 +1205,7 @@ function validateState(value: unknown): asserts value is GameState {
     if (!global && !heroIds.has(event.adventurerId as string)) fail(`${path}.adventurerId`, "must link to an existing hero");
     const allowed = ["id", "type", "day", "message",
       ...(event.type==="shop-walkout"?["worldTick","shopReason"]:[]),
+      ...(event.type==="shop-departure"&&event.worldTick!==undefined?["worldTick"]:[]),
       ...(event.type==="shop-arrival"&&event.worldTick!==undefined?["worldTick"]:[]),
       ...((event.type==="temporary-party-join"||
         event.type==="temporary-party-leave")&&event.worldTick!==undefined
@@ -1249,6 +1251,8 @@ function validateState(value: unknown): asserts value is GameState {
     // starting visitors (no worldTick) keep the existing day-scoped ID.
     if(event.type==="shop-arrival"&&event.worldTick!==undefined)
       suffix="shop-arrival:"+event.worldTick;
+    if(event.type==="shop-departure"&&event.worldTick!==undefined)
+      suffix="shop-departure:"+event.worldTick;
     if (event.type === "dungeon-outcome") {
       allowed.push("outcome");
       choice(event.outcome, ["advance", "stay", "retreat", "death"], `${path}.outcome`);
