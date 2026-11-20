@@ -16,7 +16,8 @@ import type {BossPhase} from "./arenaCombatMotion.ts";
 import {CombatGroupWorldHud} from "./combatGroupWorldHud.ts";
 import {createHeroVisual,type HeroVisual} from "./heroVisual.ts";
 import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts";
-import type {CombatantSpec,GroupPhase,GroupReplayFrame} from "./groupCombat.ts";
+import type {CombatantSpec,GroupPhase} from "./groupCombat.ts";
+import {ghoulRecordedPhaseAge} from "./ghoulMotion.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 
 /** Shared presentation contract for committed LIVE and archived fight frames. */
@@ -25,7 +26,6 @@ export type CombatArenaView=Pick<LiveSpectatorFrame,"combat"|"heroes">;
 interface VisualActor {
   readonly spec:CombatantSpec;
   readonly hero:HeroVisual|null;
-  readonly fallback:Mesh|null;
   readonly ghoul:GhoulVisual|null;
   readonly troll:CaveTrollVisual|null;
 }
@@ -83,7 +83,6 @@ export class LiveGroupCombatArena{
       const actor=fight.frame.actors.find(candidate=>candidate.id===id);
       if(!actor){
         model.hero?.root.setEnabled(false);
-        model.fallback?.setEnabled(false);
         model.ghoul?.root.setEnabled(false);
         model.troll?.root.setEnabled(false);
         continue;
@@ -107,7 +106,7 @@ export class LiveGroupCombatArena{
           actor.phase==="windup"?"windup":
           actor.phase==="strike"?"strike":"recover";
         model.troll.animate({
-          phase,phaseAge:recordedPhaseAge(fight.frames,id,fight.frame.t),
+          phase,phaseAge:ghoulRecordedPhaseAge(fight.frames,id,fight.frame.t),
           slam:false,attackType:"grab",time:fight.frame.t,
           moved,delta:timeDelta,hp:actor.hp,maxHp:model.spec.maxHp,
         });
@@ -120,21 +119,17 @@ export class LiveGroupCombatArena{
           hp:actor.hp,combatPhase:actor.phase,liveArenaOnly:true};
         animateHero(model.hero,actor.phase,fight.frame.t);
       }
-      if(model.fallback){
-        const ready=model.ghoul?.root.metadata?.tripoStatus==="ready";
-        model.fallback.setEnabled(!ready);
-        model.fallback.position.set(pos.x,.9,pos.z);
-        model.fallback.rotation.y=actor.heading;
-        model.fallback.metadata={...model.fallback.metadata,
-          hp:actor.hp,combatPhase:actor.phase};
-        if(model.ghoul){
-          model.ghoul.root.setEnabled(!!ready);
-          if(ready){
-            model.ghoul.root.position.set(pos.x,.08,pos.z);
-            model.ghoul.root.rotation.y=actor.heading;
-            model.ghoul.animate(actor.phase,recordedPhaseAge(
-              fight.frames,id,fight.frame.t));
-          }
+      if(model.ghoul){
+        // Never display the superseded anonymous monster sphere. The actual
+        // skinned owner-authored Ghoul is rendered only after its GLB loads.
+        // The saved actor, HP and replay remain valid during loading/failure.
+        const ready=model.ghoul.root.metadata?.tripoStatus==="ready";
+        model.ghoul.root.setEnabled(ready);
+        if(ready){
+          model.ghoul.root.position.set(pos.x,.08,pos.z);
+          model.ghoul.root.rotation.y=actor.heading;
+          model.ghoul.animate(actor.phase,ghoulRecordedPhaseAge(
+            fight.frames,id,fight.frame.t));
         }
       }
     }
@@ -232,9 +227,6 @@ export class LiveGroupCombatArena{
     this.hud=new CombatGroupWorldHud(this.engine,this.canvas,this.panel,fight.actors);
     this.focusIds=fight.actors.map(actor=>actor.id);
     const heroById=new Map(view.heroes.map(hero=>[hero.id,hero]));
-    const monsterMaterial=new StandardMaterial("live-fight-monster",scene);
-    monsterMaterial.diffuseColor=Color3.FromHexString("#944a37");
-    monsterMaterial.emissiveColor=Color3.FromHexString("#27130d");
     this.projectileMaterial=new StandardMaterial("live-fight-projectile",scene);
     this.projectileMaterial.diffuseColor=Color3.FromHexString("#efb861");
     this.projectileMaterial.emissiveColor=Color3.FromHexString("#b77b2c");
@@ -249,7 +241,7 @@ export class LiveGroupCombatArena{
         },"live-fight-hero-"+spec.id);
         hero.root.metadata={...hero.root.metadata,liveArenaOnly:true,
           actorId:spec.id};
-        this.actors.set(spec.id,{spec,hero,fallback:null,ghoul:null,troll:null});
+        this.actors.set(spec.id,{spec,hero,ghoul:null,troll:null});
       }else{
         if(spec.specialAbility==="grapple-throw"){
           // Optional party boss, SAME skinned Troll asset and animations as
@@ -257,17 +249,13 @@ export class LiveGroupCombatArena{
           const troll=createTripoCaveTrollVisual(scene);
           troll.root.metadata={...troll.root.metadata,liveArenaOnly:true,
             actorId:spec.id};
-          this.actors.set(spec.id,{spec,hero:null,fallback:null,ghoul:null,troll});
+          this.actors.set(spec.id,{spec,hero:null,ghoul:null,troll});
           continue;
         }
-        const fallback=MeshBuilder.CreateSphere("live-fight-monster-"+spec.id,
-          {diameter:Math.max(1.1,2*(spec.radius??.65)),segments:12},scene);
-        fallback.material=monsterMaterial;
-        fallback.isPickable=false;fallback.checkCollisions=false;
-        fallback.metadata={liveArenaOnly:true,actorId:spec.id,fallbackOnly:true};
-        // A Ghoul is instantiated only on explicit view, never on the map.
+        // No legacy spheres or duplicated actor meshes. Exactly one
+        // authoritative enemy identity receives one opt-in Tripo model.
         const ghoul=createDungeonGhoulVisual(scene,spec.id);
-        this.actors.set(spec.id,{spec,hero:null,fallback,ghoul,troll:null});
+        this.actors.set(spec.id,{spec,hero:null,ghoul,troll:null});
       }
     }
   }
@@ -283,19 +271,6 @@ function fitBounds(actors:readonly CombatantSpec[]):{
   return {cx:(lowX+highX)/2,cz:(lowZ+highZ)/2,
     width:Math.max(12,highX-lowX+12),
     depth:Math.max(12,highZ-lowZ+12)};
-}
-
-function recordedPhaseAge(
-  frames:readonly GroupReplayFrame[],actorId:string,t:number,
-):number{
-  const current=frames.at(-1)?.actors.find(actor=>actor.id===actorId);
-  if(!current)return 0;
-  for(let i=frames.length-2;i>=0;i--){
-    const previous=frames[i].actors.find(actor=>actor.id===actorId);
-    if(!previous||previous.phase!==current.phase)
-      return Math.max(0,t-frames[i+1].t);
-  }
-  return Math.max(0,t-(frames[0]?.t??0));
 }
 
 function animateHero(model:HeroVisual,phase:GroupPhase,time:number):void{
