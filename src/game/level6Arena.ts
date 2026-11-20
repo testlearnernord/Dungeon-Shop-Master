@@ -668,9 +668,14 @@ export class Level6Arena {
     if(this.watchingLiveHeroId&&this.replay){
       // The world advanced during the cinematic. Jump ONLY the spectator
       // cursor near the last already committed frame, never world time.
+      const committed=this.store.state.liveDungeon.bossCombat;
+      if(committed?.heroId===this.watchingLiveHeroId)
+        this.replay={...this.replay,frames:committed.frames};
       this.replayTime=Math.max(0,this.replay.frames.at(-1)!.t-.5);
-      this.replayFrameIndex=Math.max(0,this.replay.frames.findLastIndex(
-        frame=>frame.t<=this.replayTime));
+      let frameIndex=0;
+      for(let i=1;i<this.replay.frames.length;i++)
+        if(this.replay.frames[i].t<=this.replayTime)frameIndex=i;
+      this.replayFrameIndex=frameIndex;
     }
     this.status.textContent=this.replay
       ?"Recorded combat · original saved frames, no new damage or rewards."
