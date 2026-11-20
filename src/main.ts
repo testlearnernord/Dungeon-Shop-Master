@@ -138,6 +138,7 @@ if(import.meta.env.VITE_E2E==="1"){
     __shopTestSaveTrafficNow?:()=>Promise<unknown>;
     __shopTestHydratedTraffic?:unknown;
     __shopTestAdvanceDungeonTick?:()=>void;
+    __shopTestAdvanceWorldTicks?:(ticks:number)=>void;
   };
   hooks.__shopTestAdvanceDay=()=>dayClock.endDayFromBed();
   hooks.__shopTestStockItem=(slotId,itemId)=>
@@ -148,6 +149,10 @@ if(import.meta.env.VITE_E2E==="1"){
   // This invokes the real scheduled world event owner, not a second
   // explorer/combat engine. Test-only fast-forward avoids 30s wall delay.
   hooks.__shopTestAdvanceDungeonTick=()=>store.advanceWorldTime(600);
+  // Single genuine scheduler, with a small test-controlled tick count.
+  // This only instruments the fast/slow render-path guard; production has
+  // no hook and no alternate movement or economic resolver.
+  hooks.__shopTestAdvanceWorldTicks=ticks=>store.advanceWorldTime(ticks);
   hooks.__shopTestTraffic=()=>structuredClone(store.state.shopTraffic);
   hooks.__shopTestPauseWorld=paused=>worldClockPacer.setPaused("e2e",paused);
   hooks.__shopTestSaveTrafficNow=async()=>{
