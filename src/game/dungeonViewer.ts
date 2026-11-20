@@ -95,7 +95,10 @@ export class DungeonViewer {
     private readonly sceneChanged: (active: boolean) => void,
   ) {
     this.liveArena=new LiveGroupCombatArena(engine);
-    this.watchCombatButton.addEventListener("click",()=>this.watchLiveCombat());
+    this.watchCombatButton.addEventListener("click",()=>{
+      if(this.liveHeroId)this.watchLiveCombat();
+      else this.watchRecordedCombat();
+    });
     this.returnCombatButton.addEventListener("click",()=>this.returnToDungeonMap());
     // Clicking the encounter beacon opts in; toolbar remains keyboard accessible.
     this.canvas.addEventListener("click",event=>{
