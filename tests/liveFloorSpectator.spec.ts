@@ -70,6 +70,43 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   const third=floorOne.heroes.find(h=>h.id===ids[2])!;
   expect(Math.hypot(first.x-third.x,first.z-third.z)).toBeGreaterThan(1.5);
   expect(floorOne.combatMonsterMeshes).toBe(0);
+  // Click an actual Babylon hero token in screen space. The entire
+  // read-only panel must open without writing to GameStore or a fake route.
+  const record=()=>page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    if(!state)throw Error("Missing saved world");
+    return {tick:state.worldClock.tick,adventurers:state.adventurers,
+      dungeonParties:state.dungeonParties,liveDungeon:state.liveDungeon};
+  });
+  const beforeClick=await record();
+  const clickPoint=await page.evaluate(async(heroId:string)=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .liveFloorHeroClickPoint(heroId),ids[2]);
+  await page.locator("#renderCanvas").click({position:clickPoint});
+  await expect(page.locator("#dungeon-hero-detail")).toBeVisible();
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Gold");
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("No committed plan");
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Solo");
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Current activity");
+  expect(await record()).toEqual(beforeClick);
+  const buttonHit=await page.evaluate(()=>{
+    const button=document.querySelector<HTMLElement>("#dungeon-clear-hero")!;
+    const rect=button.getBoundingClientRect();
+    const target=document.elementFromPoint(rect.left+rect.width/2,
+      rect.top+rect.height/2);
+    return target?.id??target?.tagName??"none";
+  });
+  expect(buttonHit,"The visible close icon must be the topmost click target")
+    .toBe("dungeon-clear-hero");
+  // A real pointer click at the verified on-screen button center.
+  // Locator.click() auto-scrolls the fixed HUD even though the target is
+  // already visible, relocating the viewport and making its <aside> intercept.
+  const closeBounds=await page.locator("#dungeon-clear-hero").boundingBox();
+  expect(closeBounds).not.toBeNull();
+  await page.mouse.click(closeBounds!.x+closeBounds!.width/2,
+    closeBounds!.y+closeBounds!.height/2);
+  await expect(page.locator("#dungeon-hero-detail")).toBeHidden();
   await page.locator("#dungeon-floor-select").selectOption("2");
   await expect(page.locator("#dungeon-mode-description")).toContainText("Floor 2");
   const floorTwo=await inspect();

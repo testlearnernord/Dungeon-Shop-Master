@@ -258,6 +258,16 @@
           <ul id="dungeon-temporary-party-members"></ul>
           <small>Recorded expedition companions · not today's roster</small>
         </aside>
+        <aside id="dungeon-hero-detail" class="dungeon-hero-detail" hidden
+          aria-label="Selected LIVE dungeon hero">
+          <div class="dungeon-hero-detail-header">
+            <strong id="dungeon-hero-detail-title">Adventurer</strong>
+            <button id="dungeon-clear-hero" type="button"
+              aria-label="Clear selected hero">✕</button>
+          </div>
+          <dl id="dungeon-hero-detail-values"></dl>
+          <small>Real saved expedition data · observation only</small>
+        </aside>
         <aside class="dungeon-minimap-panel" aria-label="Development layout map">
           <strong id="dungeon-minimap-heading">Dungeon layout · developer preview</strong>
           <canvas id="dungeon-minimap" width="186" height="186" aria-label="Full map layout preview, not hero fog of war"></canvas>

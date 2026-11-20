@@ -1,6 +1,6 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Vector3,Matrix } from "@babylonjs/core/Maths/math.vector";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
 
@@ -978,5 +978,26 @@ export function inspectLiveDungeonFloor(){
       mesh.name.startsWith("dungeon-ghoul-")||
       mesh.name.startsWith("dungeon-enemy-")||
       mesh.name.startsWith("dungeon-combat-projectile-")).length,
+  };
+}
+
+
+/** Browser-only physical canvas click location of a real rendered hero token. */
+export function liveFloorHeroClickPoint(heroId:string):{x:number;y:number}{
+  const scene=Engine.LastCreatedScene!;
+  const node=scene.getMeshByName("dungeon-floor-token-"+heroId);
+  const camera=scene.activeCamera;
+  if(!node||!camera||!node.isEnabled())throw new Error(
+    "Selected floor hero has no visible pickable token");
+  const engine=scene.getEngine();
+  const viewport=camera.viewport.toGlobal(engine.getRenderWidth(),
+    engine.getRenderHeight());
+  const projected=Vector3.Project(node.getAbsolutePosition(),
+    Matrix.Identity(),scene.getTransformMatrix(),viewport);
+  const canvas=engine.getRenderingCanvas();
+  if(!canvas)throw new Error("Missing Babylon rendering canvas");
+  return {
+    x:projected.x/engine.getRenderWidth()*canvas.clientWidth,
+    y:projected.y/engine.getRenderHeight()*canvas.clientHeight,
   };
 }
