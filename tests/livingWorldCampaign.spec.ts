@@ -21,6 +21,11 @@ test("ten browser days retain one LIVE world, unique signals, bounded timeline a
   });
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
+  // Fixed boundary verification must not race the production 50ms wall-clock
+  // pacer. Test-only pause leaves GameStore.endDay on its real live motor.
+  await page.evaluate(()=>
+    (window as Window&{__shopTestPauseWorld?:(paused:boolean)=>void})
+      .__shopTestPauseWorld?.(true));
 
   async function loaded():Promise<GameState>{
     const result=await page.evaluate(async()=>{
@@ -33,6 +38,8 @@ test("ten browser days retain one LIVE world, unique signals, bounded timeline a
   let previousCount=0;
   for(let day=2;day<=11;day++){
     await page.evaluate(()=>{
+      (window as Window&{__shopTestPauseWorld?:(paused:boolean)=>void})
+        .__shopTestPauseWorld?.(true);
       const close=(window as Window&{__shopTestAdvanceDay?:()=>void}).__shopTestAdvanceDay;
       if(!close)throw Error("The genuine bed-close E2E hook is missing");
       close();
@@ -51,6 +58,9 @@ test("ten browser days retain one LIVE world, unique signals, bounded timeline a
     if(day===6){
       await page.reload();
       await expect(page.locator("#day")).toHaveText("Day 6");
+      await page.evaluate(()=>
+        (window as Window&{__shopTestPauseWorld?:(paused:boolean)=>void})
+          .__shopTestPauseWorld?.(true));
       const roundTrip=await loaded();
       expect(roundTrip).toEqual(state);
     }
