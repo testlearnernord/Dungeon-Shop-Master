@@ -15,6 +15,7 @@ import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type 
 import type { Level7Replay } from "./level7Exploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
 import {selectLiveSpectatorFrame,type LiveSpectatorFrame} from "./liveSpectator.ts";
+import {LiveGroupCombatArena} from "./liveGroupCombatArena.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
@@ -52,6 +53,7 @@ export class DungeonViewer {
   private landmarks: { name: string; point: DungeonPoint }[] = [];
   private focus = 0;
   private replayScene: DungeonReplayScene | null = null;
+  private readonly liveArena:LiveGroupCombatArena;
   private playing = false;
   private playbackTime = 0;
   private playbackSpeed = 1;
@@ -69,6 +71,10 @@ export class DungeonViewer {
   }=null;
   private readonly replaySelector = document.querySelector<HTMLSelectElement>("#dungeon-replay-select")!;
   private readonly playbackControls = document.querySelector<HTMLElement>("#dungeon-playback-controls")!;
+  private readonly watchCombatButton=document.querySelector<HTMLButtonElement>("#dungeon-watch-live-combat")!;
+  private readonly returnCombatButton=document.querySelector<HTMLButtonElement>("#dungeon-return-from-combat")!;
+  private readonly liveCombatPanel=document.querySelector<HTMLElement>("#dungeon-live-combat-summary")!;
+  private readonly liveCombatDetails=document.querySelector<HTMLElement>("#dungeon-live-combat-actors")!;
   private readonly playbackButton = document.querySelector<HTMLButtonElement>("#dungeon-play")!;
   private readonly timeSlider = document.querySelector<HTMLInputElement>("#dungeon-timeline")!;
   private readonly timeLabel = document.querySelector<HTMLElement>("#dungeon-clock")!;
@@ -88,6 +94,9 @@ export class DungeonViewer {
     private readonly store: GameStore,
     private readonly sceneChanged: (active: boolean) => void,
   ) {
+    this.liveArena=new LiveGroupCombatArena(engine);
+    this.watchCombatButton.addEventListener("click",()=>this.watchLiveCombat());
+    this.returnCombatButton.addEventListener("click",()=>this.leaveLiveCombat());
     document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
     document.querySelector("#close-dungeon")!.addEventListener("click", () => this.close());
     document.querySelector("#dungeon-reset-camera")!.addEventListener("click", () => this.resetCamera());
@@ -121,7 +130,8 @@ export class DungeonViewer {
       if(isInteractiveTarget(event.target))return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (event.code === "KeyG" || event.code === "Escape") this.close();
+      if(event.code==="Escape"&&this.liveArena.isActive)this.leaveLiveCombat();
+      else if (event.code === "KeyG" || event.code === "Escape") this.close();
       else if (event.code === "Tab" && !event.repeat) {
         if(this.replayScene&&(this.replayScene.currentReplay||this.liveHeroId)){
           const order=[...this.replayScene.visibleFocusIds,null];
@@ -160,7 +170,9 @@ export class DungeonViewer {
 
   get isActive() { return this.active; }
   get isWatchingLive() { return this.active&&this.liveHeroId!==null; }
-  get currentScene(): Scene | null { return this.active ? this.scene : null; }
+  get currentScene(): Scene | null {
+    return this.active?(this.liveArena.currentScene??this.scene):null;
+  }
   get map(): DungeonLayout | null { return this.layout; }
 
   open(initialReplayId?:string): void {
@@ -217,6 +229,8 @@ export class DungeonViewer {
     this.liveHeroId=null;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
+    this.leaveLiveCombat();
+    this.liveCombatPanel.hidden=true;
     this.scene?.dispose();
     this.scene = null;
     this.camera = null;
@@ -407,6 +421,8 @@ export class DungeonViewer {
     this.selectReplay(initialReplayId??replays[0]?.id??"preview");
   }
   private selectReplay(id:string):void {
+    this.leaveLiveCombat();
+    this.liveCombatPanel.hidden=true;
     this.liveHeroId=null;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
@@ -447,6 +463,7 @@ export class DungeonViewer {
   private startLive(heroId:string):boolean {
     const view=selectLiveSpectatorFrame(this.store.state,heroId);
     if(!view)return false;
+    this.leaveLiveCombat();
     this.liveHeroId=heroId;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
@@ -472,15 +489,57 @@ export class DungeonViewer {
     return true;
   }
 
+  private watchLiveCombat():void {
+    if(!this.liveHeroId)return;
+    const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
+    if(!view?.combat||!this.liveArena.watch(view))return;
+    this.watchCombatButton.hidden=true;
+    this.returnCombatButton.hidden=false;
+    this.returnCombatButton.focus();
+    this.paintLive(view);
+  }
+
+  private leaveLiveCombat():void {
+    this.liveArena.dispose();
+    this.returnCombatButton.hidden=true;
+    this.watchCombatButton.hidden=true;
+    this.panel.dataset.liveCombatMode="none";
+  }
+
   private paintLive(view:LiveSpectatorFrame):void {
+    if(this.liveArena.isActive){
+      if(!view.combat||view.combat.id!==this.liveArena.observedFightId)
+        this.leaveLiveCombat(); // Fight ended or was replaced. Never replay it.
+      else this.liveArena.show(view);
+    }
     this.replayScene?.showLive(view);
+    this.liveCombatPanel.hidden=!view.combat;
+    this.watchCombatButton.hidden=!view.combat||this.liveArena.isActive;
+    this.returnCombatButton.hidden=!this.liveArena.isActive;
+    this.panel.dataset.liveCombatMode=this.liveArena.isActive?"arena":
+      view.combat?"abstract":"none";
+    if(view.combat){
+      const fight=view.combat;
+      const maxHp=new Map(fight.actors.map(actor=>[actor.id,actor.maxHp]));
+      const roles=new Map(fight.actors.map(actor=>[actor.id,actor.team]));
+      this.liveCombatDetails.textContent=fight.frame.actors.map(actor=>{
+        const hero=this.store.state.adventurers.find(entry=>entry.id===actor.id);
+        const name=hero?.name??(roles.get(actor.id)==="monsters"?"Monster":"Adventurer");
+        return name+" "+Math.max(0,Math.round(actor.hp))+"/"+Math.round(maxHp.get(actor.id)??actor.hp)+" HP";
+      }).join(" · ");
+    }
+    this.modeDescription.textContent="LIVE · "+(this.liveArena.isActive?
+      "3D combat arena (read-only)":"abstract dungeon map")+
+      " · Day "+view.day+" · Floor "+view.floor+
+      " · shop and world clock continue";
     this.liveWorldTick=view.worldTick;
     const clock=view.worldTick;
     const minute=Math.floor((clock%28800)/20);
     this.playbackStatus.textContent="LIVE · Day "+view.day+" · "+
       String(Math.floor(minute/60)).padStart(2,"0")+":"+
       String(minute%60).padStart(2,"0")+
-      (view.combat?" · "+view.combat.frame.actors.length+" real combatants":" · exploring");
+      (view.combat?" · "+view.combat.frame.actors.length+
+        " real combatants · "+(this.liveArena.isActive?"3D ARENA":"abstract battle"):" · exploring");
     this.focusLabel.textContent="TAB focus: "+(this.followActor??"free camera")+
       " · "+view.heroId;
     this.temporaryPartyPanel.hidden=view.heroes.length<2;
@@ -556,6 +615,7 @@ export class DungeonViewer {
     if(this.followActor)scene.follow(this.followActor);
   }
   private resetCamera():void {
+    if(this.liveArena.isActive){this.liveArena.resetCamera();return;}
     if(this.liveHeroId){
       this.followActor=this.liveHeroId;
       this.replayScene?.follow(this.liveHeroId);
@@ -597,6 +657,7 @@ export class DungeonViewer {
   update(deltaSeconds:number):void {
     if(!this.active||!this.camera||!this.layout)return;
     const dt=Math.min(0.1,Math.max(0,deltaSeconds));
+    if(!this.liveArena.isActive){
     const speed=dt*(this.keys.has("ShiftLeft")||this.keys.has("ShiftRight")?44:15);
     const dx=(Number(this.keys.has("KeyD"))-Number(this.keys.has("KeyA")))*speed;
     const dz=(Number(this.keys.has("KeyS"))-Number(this.keys.has("KeyW")))*speed;
@@ -606,6 +667,7 @@ export class DungeonViewer {
     this.camera.position.z=Math.max(-extentZ-18,Math.min(extentZ+18,this.camera.position.z+dz));
     if(this.keys.has("KeyQ")) this.camera.position.y=Math.min(100,this.camera.position.y+speed);
     if(this.keys.has("KeyE")) this.camera.position.y=Math.max(12,this.camera.position.y-speed);
+    }
     if(this.liveHeroId){
       const state=this.store.state;
       const cached=this.liveProjectionCache;
@@ -621,6 +683,7 @@ export class DungeonViewer {
         const view=selectLiveSpectatorFrame(state,this.liveHeroId);
         if(!view){this.close();return;}
         if(this.layout.floor!==view.floor){
+          this.leaveLiveCombat();
           this.replayScene?.dispose();
           this.layout=generateExpeditionLayout(state.seed,view.floor);
           this.createScene(this.layout);
