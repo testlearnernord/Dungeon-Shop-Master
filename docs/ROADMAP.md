@@ -1,5 +1,26 @@
 # Dungeon Shop Master — Development Roadmap
 
+### PR #217 · Isolate simultaneous world-simulation hitches
+
+- [x] Add true max/p95 per-frame world CPU and session peaks for world
+  and autosave work to F3, not just smooth averages.
+- [x] Benchmark real seeded Day 1 and Day 11, each with six genuine
+  scheduled 600-tick dungeon advances, plus paused/live Babylon
+  frame timings on the same CI browser/scene.
+- [x] Confirm event batches of 7.5–15.8ms (Day 1) and 7.7–11.2ms
+  (Day 11) on SwiftShader CI, ordinary tick max ~0.1ms.
+  Distinguish **periodic world CPU hitches** from **continuously slow
+  WebGL GPU-like frames**.
+- [ ] Stress cases with **multiple concurrently active 60Hz fights**;
+  those did not occur in the Day 1/11 measured samples.
+- [ ] Get hardware F3 Native / P blueprint A/B at same camera view
+  and compare early versus late hero-heavy days.
+- [ ] If live bursts dominate: profile per-hero expedition work,
+  group combat event resolution and late-save compression/validation.
+  Consider deterministic time-budgeted subdivisions of **existing**
+  scheduled event work, without a second clock or replay divergence.
+
+
 ### PR #216 · Performance recovery, evidence-first
 
 - [x] Reproduce 20 FPS *with* the simulated world paused, on local
