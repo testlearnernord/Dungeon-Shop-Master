@@ -517,7 +517,22 @@ export class DungeonViewer {
     const frame=scene?.snapshot;
     if(!record||!frame?.encounter||!frame.frame)return null;
     const encounter=frame.encounter;
-    return {combat:{
+    const savedAppearances=new Map([
+      ...(record.partyAppearances??[]),
+      {id:record.heroId,role:record.appearance.role,
+        equipment:record.appearance.equipment},
+    ].map(hero=>[hero.id,hero] as const));
+    return {heroes:encounter.combat.actors
+      .filter(actor=>actor.team==="heroes")
+      .map(actor=>({
+        id:actor.id,
+        role:savedAppearances.get(actor.id)?.role??
+          (actor.role==="monster"?"DPS":actor.role),
+        equipment:savedAppearances.get(actor.id)?.equipment??
+          actor.equipment??{weapon:null,armor:null},
+        health:actor.hp,
+      })),
+      combat:{
       id:"record:"+this.replaySelector.value+":"+encounter.featureId+
         ":"+(encounter.siteCycle??0),
       featureId:encounter.featureId,x:encounter.x,z:encounter.z,
