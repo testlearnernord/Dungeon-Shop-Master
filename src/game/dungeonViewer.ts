@@ -544,6 +544,112 @@ export class DungeonViewer {
     }
   }
 
+  /** The default view: one real physical floor, every committed hero and party. */
+  private startFloor(floor:SpatialDungeonFloor,focusHeroId:string|null=null):boolean {
+    const view=selectLiveFloorSpectatorFrame(this.store.state,floor);
+    if(!view)return false;
+    this.leaveLiveCombat();
+    this.liveFloor=floor;
+    this.liveFloorFightId=null;
+    this.liveFloorProjectionCache=null;
+    this.liveHeroId=null;this.liveProjectionCache=null;
+    this.liveWorldTick=-1;
+    this.archiveControls.hidden=true;
+    this.floorSelector.value=String(floor);
+    this.playing=false;
+    this.playbackControls.hidden=true;
+    this.followActor=focusHeroId;
+    if(this.layout?.floor!==floor){
+      this.replayScene?.dispose();
+      this.layout=generateExpeditionLayout(this.store.state.seed,floor);
+      this.createScene(this.layout);
+    }
+    this.minimapTitle.textContent="LIVE · Full Floor "+floor+" Overview";
+    this.minimapNote.textContent=
+      "All confirmed adventurers on this floor. Hero-specific fog is separate.";
+    this.paintFloor(view);
+    return true;
+  }
+
+  /** Read-only combat payload, never reroll from the spectator. */
+  private floorCombatView(fight:LiveFloorFight):CombatArenaView {
+    return {
+      heroes:fight.actors.filter(actor=>actor.team==="heroes").map(actor=>{
+        const saved=this.store.state.adventurers.find(h=>h.id===actor.id);
+        return {id:actor.id,
+          role:saved?.role??(actor.role==="monster"?"DPS":actor.role),
+          equipment:saved?.equipment??actor.equipment??{weapon:null,armor:null},
+          health:fight.frame.actors.find(frame=>frame.id===actor.id)?.hp??
+            saved?.health??actor.hp};
+      }),
+      combat:fight,
+    };
+  }
+
+  private watchFloorCombat(id?:string):void {
+    if(this.liveFloor===null)return;
+    const view=selectLiveFloorSpectatorFrame(this.store.state,this.liveFloor);
+    const fight=view?.fights.find(entry=>entry.id===(id??this.liveFloorFightId))
+      ??view?.fights[0];
+    if(!fight)return;
+    this.liveFloorFightId=fight.id;
+    if(!this.liveArena.watch(this.floorCombatView(fight),"live"))return;
+    this.paintFloor(view!);
+    this.returnCombatButton.focus();
+  }
+
+  /** Entire floor stays observable while the *same* autonomous game runs. */
+  private paintFloor(view:LiveFloorSpectatorFrame):void {
+    const selected=view.fights.find(f=>f.id===this.liveFloorFightId)??view.fights[0];
+    this.liveFloorFightId=selected?.id??null;
+    if(this.liveArena.isActive){
+      if(!selected||selected.id!==this.liveArena.observedFightId)
+        this.leaveLiveCombat();
+      else this.liveArena.show(this.floorCombatView(selected));
+    }
+    this.replayScene?.showLiveFloor(view);
+    this.liveCombatPanel.hidden=view.fights.length===0;
+    this.watchCombatButton.textContent=view.fights.length>1
+      ?"⚔ Watch selected LIVE fight ("+view.fights.length+" running)"
+      :"⚔ Watch LIVE fight in arena";
+    this.watchCombatButton.hidden=!selected||this.liveArena.isActive;
+    this.returnCombatButton.hidden=!this.liveArena.isActive;
+    this.panel.dataset.liveCombatMode=this.liveArena.isActive?"arena":
+      selected?"abstract":"none";
+    document.querySelector<HTMLElement>("#dungeon-combat-heading")!.textContent=
+      "⚔ "+view.fights.length+" LIVE ENGAGEMENT(S) · ABSTRACT FLOOR";
+    this.liveCombatDetails.textContent=view.fights.map(fight=>{
+      const alive=fight.frame.actors.filter(a=>a.hp>0).length;
+      return fight.featureId+" · "+alive+"/"+fight.frame.actors.length+
+        " combatants active";
+    }).join(" | ");
+    this.modeDescription.textContent="LIVE · "+(this.liveArena.isActive
+      ?"3D combat arena (read-only)":"whole-floor dungeon overview")+
+      " · Day "+view.day+" · Floor "+view.floor+
+      " · shop and world clock continue";
+    const partyIds=new Set(view.heroes.map(h=>h.partyId).filter((id):id is string=>!!id));
+    this.temporaryPartyPanel.hidden=partyIds.size===0;
+    this.temporaryPartyHeading.textContent="LIVE · "+partyIds.size+
+      " Temporary Parties on Floor "+view.floor;
+    this.temporaryPartyMembers.replaceChildren(...view.heroes
+      .filter(hero=>hero.partyId!==null).map(hero=>{
+        const li=document.createElement("li");
+        li.dataset.heroId=hero.id;
+        li.textContent=hero.name+" · "+hero.partyMemberIds.length+" members";
+        return li;
+      }));
+    this.updateTemporaryPartyFocus();
+    this.liveWorldTick=view.worldTick;
+    const minute=Math.floor((view.worldTick%28800)/20);
+    this.playbackStatus.textContent="LIVE · "+view.heroes.length+
+      " adventurers · "+view.fights.length+" battles · "+String(
+      Math.floor(minute/60)).padStart(2,"0")+":"+
+      String(minute%60).padStart(2,"0");
+    this.focusLabel.textContent="TAB focus: "+
+      (this.followActor??"all adventurers")+" · Floor "+view.floor;
+    if(this.followActor)this.replayScene?.follow(this.followActor);
+  }
+
   private startLive(heroId:string):boolean {
     const view=selectLiveSpectatorFrame(this.store.state,heroId);
     if(!view)return false;
@@ -635,7 +741,10 @@ export class DungeonViewer {
 
   private returnToDungeonMap():void{
     this.leaveLiveCombat();
-    if(this.liveHeroId){
+    if(this.liveFloor!==null){
+      const view=selectLiveFloorSpectatorFrame(this.store.state,this.liveFloor);
+      if(view)this.paintFloor(view);
+    }else if(this.liveHeroId){
       const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
       if(view)this.paintLive(view);
     }else this.paintPlayback();
@@ -782,7 +891,10 @@ export class DungeonViewer {
   }
   private resetCamera():void {
     if(this.liveArena.isActive){this.liveArena.resetCamera();return;}
-    if(this.liveHeroId){
+    if(this.liveFloor!==null){
+      if(this.followActor)this.replayScene?.follow(this.followActor);
+      else this.centerOn(0);
+    }else if(this.liveHeroId){
       this.followActor=this.liveHeroId;
       this.replayScene?.follow(this.liveHeroId);
     }else if(this.replayScene?.currentReplay){
@@ -835,7 +947,28 @@ export class DungeonViewer {
     if(this.keys.has("KeyQ")) this.camera.position.y=Math.min(100,this.camera.position.y+speed);
     if(this.keys.has("KeyE")) this.camera.position.y=Math.max(12,this.camera.position.y-speed);
     }
-    if(this.liveHeroId){
+    if(this.liveFloor!==null){
+      const state=this.store.state;
+      const cached=this.liveFloorProjectionCache;
+      if(!cached||cached.floor!==this.liveFloor||
+         cached.adventurers!==state.adventurers||
+         cached.liveDungeon!==state.liveDungeon||
+         cached.level7World!==state.level7World||
+         cached.earlyDungeonWorlds!==state.earlyDungeonWorlds||
+         cached.dungeonParties!==state.dungeonParties){
+        const view=selectLiveFloorSpectatorFrame(state,this.liveFloor);
+        if(!view){this.close();return;}
+        this.liveFloorProjectionCache={
+          floor:this.liveFloor,adventurers:state.adventurers,
+          liveDungeon:state.liveDungeon,level7World:state.level7World,
+          earlyDungeonWorlds:state.earlyDungeonWorlds,
+          dungeonParties:state.dungeonParties,view,
+        };
+        this.paintFloor(view);
+      }
+      if(!this.liveArena.isActive)
+        this.replayScene?.advanceLiveFloorPresentation(dt);
+    }else if(this.liveHeroId){
       const state=this.store.state;
       const cached=this.liveProjectionCache;
       // The 50ms shop/world tick is NOT a new dungeon actor pose.
