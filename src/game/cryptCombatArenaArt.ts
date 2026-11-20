@@ -51,7 +51,7 @@ export function buildCryptCombatArenaArt(
   };
   // The real actors remain at their recorded x/z. Art is always laid out
   // around their bounds, so larger Temporary Parties don't collide visually.
-  const floor=mark(MeshBuilder.CreateGround("crypt-arena-floor",
+  const floor=mark(MeshBuilder.CreateGround("live-fight-arena-floor",
     {width:width+9,height:depth+9,subdivisions:2},scene),floorMat);
   floor.position.set(cx,-.06,cz);
   box("rear-foundation",cx,1.6,cz+halfD+3,width+10,3.2,1.3,walls);
