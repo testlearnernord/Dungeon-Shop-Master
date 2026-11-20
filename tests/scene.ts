@@ -933,7 +933,8 @@ export function inspectLiveCombatPresentation(){
     liveMapGhouls:scene.transformNodes.filter(node=>
       node.name.startsWith("dungeon-ghoul-")).length,
     arenaHeroes:scene.transformNodes.filter(node=>
-      node.name.startsWith("live-fight-hero-")).length,
+      typeof node.metadata?.actorId==="string"&&
+      node.name==="live-fight-hero-"+node.metadata.actorId).length,
     // Count recorded monster IDENTITIES, never nested GLB parts,
     // and never the removed placeholder spheres. One actor = one model root.
     arenaMonsters:scene.transformNodes.filter(node=>{
