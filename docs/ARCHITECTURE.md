@@ -1,5 +1,31 @@
 # Dungeon Shop Master — Current Architecture
 
+### PR #215 50ms hot-path performance boundaries
+
+A single `advancePhysicalShopWorldTicks` call still interleaves each due
+saved world tick, real NPC step, physical checkpoint and observed departure
+before the next tick. On that **known committed physical step**, the
+`main.ts` checkpoint is unconditionally fresh and does not need two
+whole-JSON serializations for an equality test. All off-step mutations still
+use the no-op equality guard and every committed snapshot still passes
+`GameStore.commitShopTraffic` strict validation.
+
+`CampaignStorage` now remembers only the **exact string acknowledged by a
+successful write or strict latest-load**, scoped to its adapter. Backup
+rotation promotes that already-verified exact value without parsing the
+entire previous save again every real second. If storage contains a
+different string, it is fully parsed/strictly validated before promotion,
+retaining corruption recovery and backup safety. Failed writes/deletions
+never certify a new snapshot. The save interval, immutable event history,
+tick identities and strict round-trip schema remain unchanged.
+
+`performanceHud.ts` implements a hidden-by-default F3 view of **local**
+rAF frame gaps and synchronous JavaScript costs. Browser/GPU scheduling
+is not equal to JavaScript `Scene.render()` cost. The virtual CI baseline
+showed 50ms median frame gaps even while the world motor was paused, so
+actual hardware FPS cannot be claimed fixed from CI alone. See
+`docs/PERFORMANCE_INVESTIGATION.md`.
+
 ### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.

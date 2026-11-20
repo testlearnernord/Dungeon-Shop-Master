@@ -17,6 +17,25 @@
 > [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
 > Future PR numbers are **not reserved**.
 
+## PR #215 performance regression investigation (post-#200)
+
+- [x] Identify #203 fixed 50ms clock, #204 per-tick full traffic capture/
+  comparison/strict validation and repeated full autosave backup parsing.
+- [x] Add E2E attribution for clock, NPC, checkpoint, JSON, validation,
+  synchronous renderer and save, plus same-scene paused/live comparison.
+- [x] Drop the redundant full-traffic JSON comparison in the authoritative
+  committed physical tick path; retain it for unrelated store changes.
+- [x] Cache adapter-acknowledged strictly valid latest save text, never trust
+  third-party/corrupt/mismatching snapshots and never weaken load validation.
+- [x] Add hidden F3 readout for real hardware FPS, p95 gaps, world/render
+  CPU and synchronous autosave stalls.
+- [ ] Confirm user-hardware bottleneck with the F3 panel and browser/GPU
+  profiler, and further tune the actual heavy path. Virtual GitHub Actions
+  measures ~20 FPS even with the world clock PAUSED, so CI FPS alone
+  **cannot** establish the owner's device regression or its full resolution.
+- Release V.003 remains gated on real representative hardware smoothness.
+  Details: [performance diagnosis](PERFORMANCE_INVESTIGATION.md).
+
 ## Incremental V.003 migration
 
 - **PR #211 merged:** explicit LIVE spectator of real current spatial

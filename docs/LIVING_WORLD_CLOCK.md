@@ -196,6 +196,27 @@ These measurements use a virtualized test runner, NOT the player's PC,
 and impose no deceptive GPU-independent FPS guarantees. A real player
 benchmark and the full V.003 visual quality gate remain open.
 
+## PR #215: measured overhead versus browser frame pacing
+
+The original PR #203 introduced a 50ms authoritative shared simulation
+step; #204 added persisted full NPC traffic for exact reloads. The motor
+still runs each 50ms tick in strict order and persists a matching traffic
+checkpoint. The new optimization removes **only** an unnecessary whole-JSON
+comparison when the physical shop step is already known to have committed.
+Unrelated store changes keep the no-op comparison and all strict validators.
+
+The same latest snapshot that was successfully saved and strictly checked
+is now trusted by identity for backup rotation; changed/unrecognized bytes
+are still fully validated. No delayed/sampled shop simulation, separate
+clock, changed autosave interval or skipped game event is introduced.
+
+The virtual CI sample ran 60 requestAnimationFrames with the SAME scene
+first world-clock paused and then active. Median frame gap was 50ms in
+both modes; in the active sample 63 scheduled ticks used about 11ms
+combined main-thread work. This distinguishes avoidable CPU work from
+unexplained virtual-browser frame pacing. Real device F3 diagnostics are
+required before making player-FPS claims.
+
 ## Migration constraints from current source
 
 **CURRENT at decision time:** `src/game/gameState.ts::advanceDay`
