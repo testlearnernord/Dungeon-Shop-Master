@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Current Architecture
 
-### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
+### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
 - `at-shop` -> `departing` starts an actual pedestrian walk; manual checkout, unsatisfied walkout and sleeping alone **do not** start cooldown. After observed exit on day D, the hero is absent from both shop and dungeon for complete days D+1 and D+2; earliest reentry is D+3.
@@ -551,10 +551,22 @@ The redesign must preserve one deterministic GameState authority and introduce:
   `main.ts` suspends Babylon rendering while that modal pauses gameplay.
   The LIVE spectator avoids re-projecting immutable spatial checkpoints
   on every 60Hz render frame.
-  **Still incomplete:** shop post-visit two-day standby, unique
-  Level-6 boss unification, Floor-7+ authored exits, real-time
-  delayed detailed reports, release-ready archive polish and ten-day
-  end-to-end gameplay validation. Render FPS never drives outcomes.
+  **PR #213** makes the observed physical NPC outer-gate crossing the
+  committed shop-departure boundary. `departing` remains in saved traffic;
+  only a completed crossing sets `offDutyUntilDay` and two full days away,
+  then the next permitted new-expedition morning. Night books contain two
+  accounts-only pages, no mandatory sealed-replay gallery.
+  **PR #214** brings approved credit transfers through the same physical
+  exit instead of sending them to the old `returning` shortcut. The
+  Level-6 progress HUD now checks event/floor collection identity before
+  scanning the historical event log or creating DOM elements, so ordinary
+  50ms shop/clock/checkpoint mutations are cheap. CI runs ten-day
+  deterministic shop/dungeon/economy/save checks and browser RAF samples;
+  no performance measurement is claimed for the player's actual machine.
+  **Still incomplete:** unique Level-6 boss unification, Floor-7+ authored
+  exits, cursed-floor portal and Floor-10 pass, delayed detailed reports,
+  release-ready archive polish, player-hardware FPS and pacing approval.
+  Render FPS never drives gameplay outcomes.
   See [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 - Separate *world truth* from *merchant knowledge*: only genuine
   chronologically committed reports with source/time/recency reach Galvik.

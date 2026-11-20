@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
+### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
 - `at-shop` -> `departing` starts an actual pedestrian walk; manual checkout, unsatisfied walkout and sleeping alone **do not** start cooldown. After observed exit on day D, the hero is absent from both shop and dungeon for complete days D+1 and D+2; earliest reentry is D+3.
@@ -171,6 +171,30 @@ FPS is a separate quality gate: pause expensive Babylon rendering during
 the register dialog; grade against the last visible needle to avoid skipped
 success zones on low-FPS systems. LIVE observer projections are refreshed
 on committed state changes rather than every rendered frame.
+
+## PR #214 deterministic acceptance and rendering boundaries
+
+The live loop now has a seeded ten-day regression covering actual legal
+purchase and credit transfers, their physical exit contract, two full
+absent days, independent hero/death/party outcomes and one pinned original
+60Hz fight recording. Each morning reloads through the strict v24 save
+parser and must match uninterrupted progression byte-for-byte in gameplay
+state. The browser also advances ten real live store days and checks
+persistent IndexedDB state and a three-day bounded timeline.
+
+The old Level-6 progress HUD previously rescanned the **entire** immutable
+`events` array and rebuilt all its DOM entries on EVERY 50ms world/traffic
+checkpoint, even when no combat report changed. Its subscriber now compares
+saved `events` and `dungeonFloors` references, while an explicit historical
+replay-disclosure event can still redraw it. Credit customers must
+physically walk through the saved outer gate before becoming off-duty,
+not teleport out of the store on loan approval.
+
+The Browser RAF sample prints median/p95/worst animation-frame intervals in
+CI and verifies Babylon's render frame is static during the DOM cashier.
+These measurements use a virtualized test runner, NOT the player's PC,
+and impose no deceptive GPU-independent FPS guarantees. A real player
+benchmark and the full V.003 visual quality gate remain open.
 
 ## Migration constraints from current source
 

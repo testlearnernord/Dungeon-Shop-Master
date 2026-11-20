@@ -1,6 +1,6 @@
 # Dungeon Shop Master
 
-### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
+### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
 - `at-shop` -> `departing` starts an actual pedestrian walk; manual checkout, unsatisfied walkout and sleeping alone **do not** start cooldown. After observed exit on day D, the hero is absent from both shop and dungeon for complete days D+1 and D+2; earliest reentry is D+3.
@@ -23,12 +23,19 @@ buy supplies, risk their lives below, and may or may not return.
 The *100-floor dungeon* is the setting's long-term premise, **not** a claim
 that 100 playable floors exist. The current alpha has one deterministic, pausable live world clock: shop customers, dungeon exploration and ordinary fights run while the shop is open, and the bed ends the day. The full V.003 release remains unshipped.
 
-**V.003 migration note (PRs #212-213):** The experimental Expedition
+**V.003 migration note (PRs #212–214):** The experimental Expedition
 Archive has been redesigned as a small timeline of today's and the
 previous two days' actual highlights. Save individual recordings to
 retain them long-term (up to 12). Do not expect an infinite replay
 library. A separate cashier/observer performance pass reduces wasted
-rendering; full release acceptance remains open.
+rendering. PR #214 adds seeded ten-day live-campaign and browser
+save/reload checks and stops the Level-6 HUD from rebuilding its entire
+history for every shop/world tick. Live shop credit now follows the
+same witnessed door exit and two complete days off duty as paid customers.
+GitHub Actions measures representative browser frame intervals, but this
+is NOT a verified FPS figure for any player's own hardware. The single
+cursed portal, Floor-10 pass migration, deeper authored content and full
+release acceptance remain open.
 
 ## Start here: source of truth
 
