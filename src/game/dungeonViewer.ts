@@ -15,7 +15,7 @@ import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type 
 import type { Level7Replay } from "./level7Exploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
 import {selectLiveSpectatorFrame,type LiveSpectatorFrame} from "./liveSpectator.ts";
-import {LiveGroupCombatArena} from "./liveGroupCombatArena.ts";
+import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
@@ -96,7 +96,17 @@ export class DungeonViewer {
   ) {
     this.liveArena=new LiveGroupCombatArena(engine);
     this.watchCombatButton.addEventListener("click",()=>this.watchLiveCombat());
-    this.returnCombatButton.addEventListener("click",()=>this.returnToLiveMap());
+    this.returnCombatButton.addEventListener("click",()=>this.returnToDungeonMap());
+    // Clicking the encounter beacon opts in; toolbar remains keyboard accessible.
+    this.canvas.addEventListener("click",event=>{
+      if(!this.active||!this.scene||this.liveArena.isActive)return;
+      const rect=this.canvas.getBoundingClientRect();
+      const picked=this.scene.pick(event.clientX-rect.left,
+        event.clientY-rect.top,mesh=>mesh.metadata?.abstractBattle===true);
+      if(!picked?.hit)return;
+      if(this.liveHeroId)this.watchLiveCombat();
+      else this.watchRecordedCombat();
+    });
     document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
     document.querySelector("#close-dungeon")!.addEventListener("click", () => this.close());
     document.querySelector("#dungeon-reset-camera")!.addEventListener("click", () => this.resetCamera());
@@ -131,13 +141,13 @@ export class DungeonViewer {
       // keyboard focus; the normal dungeon toolbar remains interactive.
       if(event.code==="Escape"&&this.liveArena.isActive){
         event.preventDefault();event.stopImmediatePropagation();
-        this.returnToLiveMap();
+        this.returnToDungeonMap();
         return;
       }
       if(isInteractiveTarget(event.target))return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if(event.code==="Escape"&&this.liveArena.isActive)this.returnToLiveMap();
+      if(event.code==="Escape"&&this.liveArena.isActive)this.returnToDungeonMap();
       else if (event.code === "KeyG" || event.code === "Escape") this.close();
       else if (event.code === "Tab" && !event.repeat) {
         if(this.replayScene&&(this.replayScene.currentReplay||this.liveHeroId)){
@@ -430,6 +440,7 @@ export class DungeonViewer {
   private selectReplay(id:string):void {
     this.leaveLiveCombat();
     this.liveCombatPanel.hidden=true;
+    this.liveCombatDetails.textContent="";
     this.liveHeroId=null;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
@@ -451,7 +462,7 @@ export class DungeonViewer {
     this.playbackControls.hidden=!record;
     this.renderTemporaryParty(record);
     this.modeDescription.textContent=record
-      ?"Recorded Floor "+record.floor+" expedition · movements, combat and discoveries are historical, not re-simulated."
+      ?"Recorded Floor "+record.floor+" expedition · abstract map; combat arena only on request."
       :"Full development map preview · no replay selected.";
     this.minimapTitle.textContent=record?"Hero knowledge · Fog of War":
       "Dungeon layout · development preview";
@@ -496,6 +507,29 @@ export class DungeonViewer {
     return true;
   }
 
+  /** Archive view reads saved 60Hz combat frames, never replays combat AI. */
+  private recordedArenaView():CombatArenaView|null{
+    const scene=this.replayScene;
+    const record=scene?.currentReplay;
+    const frame=scene?.snapshot;
+    if(!record||!frame?.encounter||!frame.frame)return null;
+    const encounter=frame.encounter;
+    return {combat:{
+      id:"record:"+this.replaySelector.value+":"+encounter.featureId+
+        ":"+(encounter.siteCycle??0),
+      featureId:encounter.featureId,x:encounter.x,z:encounter.z,
+      actors:encounter.combat.actors,frame:frame.frame,
+      frames:encounter.combat.frames,
+    }};
+  }
+
+  private watchRecordedCombat():void{
+    const view=this.recordedArenaView();
+    if(!view||!this.liveArena.watch(view))return;
+    this.paintPlayback();
+    this.returnCombatButton.focus();
+  }
+
   private watchLiveCombat():void {
     if(!this.liveHeroId)return;
     const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
@@ -513,15 +547,14 @@ export class DungeonViewer {
     this.panel.dataset.liveCombatMode="none";
   }
 
-  private returnToLiveMap():void{
+  private returnToDungeonMap():void{
     this.leaveLiveCombat();
-    const view=this.liveHeroId?
-      selectLiveSpectatorFrame(this.store.state,this.liveHeroId):null;
-    if(view){
-      this.paintLive(view);
-      if(!this.watchCombatButton.hidden)this.watchCombatButton.focus();
-      else this.canvas.focus();
-    }
+    if(this.liveHeroId){
+      const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
+      if(view)this.paintLive(view);
+    }else this.paintPlayback();
+    if(!this.watchCombatButton.hidden)this.watchCombatButton.focus();
+    else this.canvas.focus();
   }
 
   private paintLive(view:LiveSpectatorFrame):void {
@@ -532,6 +565,9 @@ export class DungeonViewer {
     }
     this.replayScene?.showLive(view);
     this.liveCombatPanel.hidden=!view.combat;
+    this.watchCombatButton.textContent="⚔ Watch LIVE fight in arena";
+    document.querySelector<HTMLElement>("#dungeon-combat-heading")!.textContent=
+      "⚔ LIVE ENGAGEMENT · ABSTRACT MAP";
     this.watchCombatButton.hidden=!view.combat||this.liveArena.isActive;
     this.returnCombatButton.hidden=!this.liveArena.isActive;
     this.panel.dataset.liveCombatMode=this.liveArena.isActive?"arena":
@@ -618,6 +654,32 @@ export class DungeonViewer {
     if(!scene?.currentReplay)return;
     const frame=scene.show(this.playbackTime);
     if(!frame)return;
+    const fight=this.recordedArenaView();
+    if(this.liveArena.isActive){
+      if(!fight||fight.combat?.id!==this.liveArena.observedFightId)
+        this.leaveLiveCombat();
+      else this.liveArena.show(fight);
+    }
+    this.liveCombatPanel.hidden=!fight;
+    document.querySelector<HTMLElement>("#dungeon-combat-heading")!.textContent=
+      "⚔ RECORDED ENGAGEMENT · ABSTRACT MAP";
+    this.watchCombatButton.textContent="⚔ Watch recorded fight in arena";
+    this.watchCombatButton.hidden=!fight||this.liveArena.isActive;
+    this.returnCombatButton.hidden=!this.liveArena.isActive;
+    this.panel.dataset.liveCombatMode=this.liveArena.isActive?"arena":
+      fight?"abstract":"none";
+    if(fight?.combat){
+      const roles=new Map(fight.combat.actors.map(actor=>[actor.id,actor]));
+      this.liveCombatDetails.textContent=fight.combat.frame.actors.map(actor=>{
+        const spec=roles.get(actor.id);
+        const hero=this.store.state.adventurers.find(h=>h.id===actor.id);
+        return (hero?.name??(spec?.team==="monsters"?"Monster":"Adventurer"))+
+          " "+Math.max(0,Math.round(actor.hp))+"/"+Math.round(spec?.maxHp??actor.hp)+" HP";
+      }).join(" · ");
+    }
+    this.modeDescription.textContent="Recorded expedition · "+
+      (this.liveArena.isActive?"3D fight arena (read-only)":"abstract dungeon map")+
+      " · original committed results";
     this.timeSlider.value=String(Math.round(frame.percent*1000));
     this.timeLabel.textContent=frame.time.toFixed(1)+" / "+frame.duration.toFixed(1)+" s";
     this.playbackButton.textContent=this.playing?"Pause (Space)":"Play (Space)";
