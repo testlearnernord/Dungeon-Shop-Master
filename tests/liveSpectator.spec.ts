@@ -43,3 +43,22 @@ test("Board LIVE watch observes the real world while physical shop traffic conti
     .toContainText("HP ?");
   expect(errors).toEqual([]);
 });
+
+test("Watch LIVE without a committed location keeps the Board open with clear feedback @ci-smoke",async({page})=>{
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.locator("#open-roster").click();
+  const card=page.locator("#roster-detail-list details[data-hero-id]").first();
+  await card.locator("summary").click();
+  await card.locator(".roster-watch-live").click();
+  await expect(page.locator("#roster-dialog")).toBeVisible();
+  await expect(page.locator("body")).not.toHaveClass(/dungeon-active/);
+  await expect(page.locator(".roster-watch-unavailable")).toContainText(
+    "no current dungeon position or fight checkpoint");
+  await expect(page.locator(".roster-watch-unavailable")).toHaveAttribute("role","status");
+  await page.locator("#close-roster").click();
+  await expect(page.locator("#roster-dialog")).not.toBeVisible();
+  expect(errors).toEqual([]);
+});
