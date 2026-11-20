@@ -4,7 +4,9 @@
 ### PR #230 · Bounded real multi-Ghoul combat sites
 
 A single *authored* Ghoul monster feature on floors 2–4 and 7 can now
-spawn a seeded **pack of 1–3 physically distinct fighters**. Floor 1
+spawn a seeded **pack of 1–3 physically distinct fighters in deferred LIVE combat**.
+The older atomic day/legacy solver intentionally retains its original
+single-Ghoul encounter model and historical replay contents. Floor 1
 remains solo for tutorial pacing; solo adventurers meet at most two,
 deeper Temporary Parties meet up to three. Count depends only on the
 site generation, layout/seed, current party size and actual walkable
