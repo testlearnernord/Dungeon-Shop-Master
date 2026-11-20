@@ -1,11 +1,12 @@
 import {uiIcon} from "./uiIcons.ts";
-export type SoundtrackScene = "shop" | "dungeon" | "boss";
+export type SoundtrackScene = "shop" | "dungeon" | "combat" | "boss";
 
 const PREFERENCE_KEY = "dungeon-shop-master-music-v1";
 const FADE_DURATION_MS = 1100;
 const TRACK_NAMES: Record<SoundtrackScene, string> = {
   shop: "The Lean Season",
   dungeon: "Beneath the Surface",
+  combat: "No Safe Passage",
   boss: "Desperate Measures",
 };
 
@@ -78,6 +79,7 @@ export class SceneSoundtrack {
     this.tracks = {
       shop: makeTrack("shop", "the-lean-season.mp3"),
       dungeon: makeTrack("dungeon", "beneath-the-surface.mp3"),
+      combat: makeTrack("combat", "no-safe-passage.mp3"),
       boss: makeTrack("boss", "desperate-measures.mp3"),
     };
 
@@ -181,7 +183,7 @@ export class SceneSoundtrack {
     const outgoing = Object.values(this.tracks).filter(track => track !== incoming);
     const fromIncoming = incoming.paused ? 0 : incoming.volume;
     const fromOutgoing = outgoing.map(track => track.paused ? 0 : track.volume);
-    if (next === "boss") incoming.currentTime = 0;
+    if (next === "boss" || next === "combat") incoming.currentTime = 0;
     if (incoming.paused) {
       incoming.volume = 0;
     }
