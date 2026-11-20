@@ -42,8 +42,8 @@ test("group and original Level-6 duel reference one Troll signature contract",()
   assert.equal(chooseTrollSignatureAttack(3,4,.9),"slam");
   assert.equal(chooseTrollSignatureAttack(2,4,.1),"grab");
   assert.equal(chooseTrollSignatureAttack(2,7,.1),"smash");
-  assert.equal(trollDefenseReadiness(10,"tank",false),.65);
-  assert.equal(trollDefenseReadiness(10,"DPS",true),.47);
+  assert(Math.abs(trollDefenseReadiness(10,"tank",false)-.65)<1e-12);
+  assert(Math.abs(trollDefenseReadiness(10,"DPS",true)-.47)<1e-12);
   assert.throws(()=>trollDefenseReadiness(Infinity,"tank",false),RangeError);
 });
 
