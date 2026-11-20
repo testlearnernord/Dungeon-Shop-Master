@@ -1,6 +1,32 @@
 # Dungeon Shop Master — Current Architecture
 
 
+### PR #224 · Floor-wide LIVE observer and replay archive
+
+`liveFloorSpectator.ts` projects every **saved** adventurer checkpoint independently
+on one of the actually playable spatial floors (1–4, 7), together with saved
+Temporary Party membership and the latest real frame from each ongoing fight.
+A party does **not** inherit another member's x/z, HP or visited tiles;
+`DungeonReplayScene.showLiveFloor` creates one lightweight map hero per
+committed alive explorer and one abstract encounter beacon per running fight.
+There are no background Ghoul meshes or extra combat simulations on the map.
+An optional 0.85s walk pose interpolates one *already committed* adjacent step.
+
+`DungeonViewer.open()` selects Floor 1 LIVE by default. The new floor selector
+observes whole levels; the separate Expedition Replay Archive chooses historical
+tapes on an independent local playback clock, with existing `openReplayAt`
+for book highlights. Board `Watch LIVE` lands on the correct floor and
+focuses that hero without exposing the floor projection to the ordinary Board.
+One optional `LiveGroupCombatArena` still handles explicit fights and is
+disposed on return. The real shop clock continues in LIVE floor/arena mode;
+archive playback pauses it as before.
+
+**Not in #224:** click-to-inspect hero detail cards (#225), hero-selectable
+subjective Fog of War and hero-to-hero perception (#226), premium Ghoul combat
+and authoritative Troll/group motor unification (#227–231). The full-floor
+spectator overview is intentionally omniscient **only for the player**.
+
+
 ### PR #223 · LIVE party gait and planned floor spectator boundary
 
 `DungeonReplayScene.showLive` previously animated party limbs only on the
