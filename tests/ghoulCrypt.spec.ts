@@ -1,6 +1,6 @@
 import {expect,test} from "@playwright/test";
 
-test("authored Ghoul model replaces recorded monster sphere inside the crypt @ci-smoke",async({page})=>{
+test("historical map stays abstract; opting into archive arena loads the authored Ghoul @ci-smoke",async({page})=>{
   test.setTimeout(90000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
@@ -46,15 +46,10 @@ test("authored Ghoul model replaces recorded monster sphere inside the crypt @ci
   const inspect=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonPlayback());
   expect((await inspect()).cryptRelics).toBeGreaterThan(0);
-  // A paused replay still instantiates its authored GLB asynchronously.
-  await expect.poll(async()=>{
-    const state=await inspect();
-    return state.ghoulActors[0]?.status??"missing";
-  },{timeout:35000}).toBe("ready");
-  const loaded=await inspect();
-  expect(loaded.ghoulActors[0]).toMatchObject({
-    geometryCount:1,boneCount:65,status:"ready",
-  });
+  // Regular expedition playback must never allocate any Ghoul GLBs.
+  expect((await inspect()).ghoulActors).toHaveLength(0);
+  expect((await inspect()).combatRenderMeshes).toBe(0);
+  await page.locator("#dungeon-play").click(); // Pause the saved local tape.
   const fraction=await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const {buildDungeonPlayback}=await import(
@@ -72,13 +67,30 @@ test("authored Ghoul model replaces recorded monster sphere inside the crypt @ci
     slider.value=String(value);
     slider.dispatchEvent(new Event("input",{bubbles:true}));
   },fraction);
+  await expect(page.locator("#dungeon-watch-live-combat")).toBeVisible();
+  const abstract=await inspect();
+  expect(abstract.abstractMarkers).toBe(1);
+  expect(abstract.ghoulActors).toHaveLength(0);
+  expect(abstract.combatRenderMeshes).toBe(0);
+  // Opening the separate Babylon arena reads ONLY committed recorded frames.
+  await page.locator("#dungeon-watch-live-combat").click();
+  await expect(page.locator("#dungeon-mode-description")).toContainText("3D fight arena");
+  await expect.poll(async()=>{
+    const state=await inspect();
+    return state.ghoulActors[0]?.status??"missing";
+  },{timeout:35000}).toBe("ready");
   await expect.poll(async()=>((await inspect()).ghoulActors[0]?.visible),
     {timeout:10000}).toBe(true);
   const during=await inspect();
+  expect(during.ghoulActors[0]).toMatchObject({
+    geometryCount:1,boneCount:65,status:"ready",
+  });
   expect(during.ghoulActors[0].animationClip).toBeTruthy();
-  expect(during.ghoulFallbacks).toBe(0);
-  // The crypt is only a visual treatment; its fog-of-war contract persists.
-  expect(during.hiddenTiles).toBeGreaterThan(0);
+  await page.locator("#dungeon-return-from-combat").click();
+  const back=await inspect();
+  expect(back.abstractMarkers).toBe(1);
+  expect(back.ghoulActors).toHaveLength(0);
+  expect(back.hiddenTiles).toBeGreaterThan(0);
   await page.locator("#dungeon-replay-select").selectOption("preview");
   expect((await inspect()).ghoulActors).toHaveLength(0);
   await page.locator("#close-dungeon").click();
