@@ -24,6 +24,7 @@ import {
 } from "./dungeonPartyFormation.ts";
 import type { GroupPhase } from "./groupCombat.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
+import type {LiveFloorSpectatorFrame,LiveFloorHero} from "./liveFloorSpectator.ts";
 import {
   committedLivePartyStep, sampleLivePartyStep, livePartyVisualOffset,
   LIVE_PARTY_STEP_SECONDS, type CommittedPartyStep,
@@ -53,6 +54,11 @@ export interface DungeonRoomDecoration {
 export class DungeonReplayScene {
   private replay:Level7Replay|null=null;
   private liveFrame:LiveSpectatorFrame|null=null;
+  private floorFrame:LiveFloorSpectatorFrame|null=null;
+  private readonly floorModels=new Map<string,HeroVisual>();
+  private readonly floorMarkers=new Map<string,Mesh>();
+  private readonly floorTravel=new Map<string,{step:CommittedPartyStep;seconds:number;gait:number}>();
+  private readonly floorHeadings=new Map<string,number>();
   private liveHeroId:string|null=null;
   private liveFightId:string|null=null;
   private liveTransit:CommittedPartyStep|null=null;
@@ -88,6 +94,7 @@ export class DungeonReplayScene {
   get duration(){return this.timeline?.duration??0;}
   get snapshot(){return this.lastSnapshot;}
   get visibleFocusIds():readonly string[] {
+    if(this.floorFrame)return this.floorFrame.heroes.map(h=>h.id);
     return this.liveFrame?
       [this.liveFrame.heroId,...this.liveFrame.heroes.filter(h=>
         h.id!==this.liveFrame!.heroId).map(h=>h.id)]:
@@ -97,6 +104,11 @@ export class DungeonReplayScene {
   private clearCombatModels():void {
     this.battleMarker?.dispose(false,true);
     this.battleMarker=null;
+    for(const model of this.floorModels.values())model.root.dispose(false,true);
+    this.floorModels.clear();
+    for(const marker of this.floorMarkers.values())marker.dispose(false,true);
+    this.floorMarkers.clear();
+    this.floorTravel.clear();this.floorHeadings.clear();
     this.hero?.root.dispose(false,true);
     this.hero=null;
     for(const model of this.companionHeroes.values())model.root.dispose(false,true);
@@ -106,6 +118,7 @@ export class DungeonReplayScene {
   }
 
   setReplay(record:Level7Replay|null):void {
+    this.floorFrame=null;
     this.liveTransit=null;
     this.liveTransitSeconds=0;
     this.liveGaitSeconds=0;
@@ -333,6 +346,151 @@ export class DungeonReplayScene {
     ctx.fillRect(Math.round(snapshot.x*cell)+1,Math.round(snapshot.z*cell)+1,cell-2,cell-2);
   }
 
+  /** Full-floor read-only rendering. Every hero has its own saved grid tile;
+   * co-located party members get only a local cosmetic formation offset.
+   * No individual fog, AI or combat is allocated in this overview. */
+  showLiveFloor(view:LiveFloorSpectatorFrame):void {
+    const previous=this.floorFrame;
+    if(!previous||previous.floor!==view.floor){
+      this.clearCombatModels();
+      this.replay=null;this.timeline=null;this.lastSnapshot=null;
+      this.liveFrame=null;this.liveHeroId=null;this.liveFightId=null;
+      this.liveTransit=null;
+      if(this.heroPreview)this.heroPreview.root.setEnabled(false);
+      this.lastVisibility="";
+    }
+    for(const hero of view.heroes){
+      const old=previous?.heroes.find(member=>member.id===hero.id);
+      const ids=(h:LiveFloorHero)=>h.partyMemberIds.length?
+        h.partyMemberIds.map(id=>({id})):[{id:h.id}];
+      const movement=old?committedLivePartyStep({
+        heroId:hero.id,floor:previous!.floor,
+        worldTick:previous!.worldTick,x:old.x,z:old.z,
+        combat:old.inCombat?{}:null,heroes:ids(old),
+      },{
+        heroId:hero.id,floor:view.floor,
+        worldTick:view.worldTick,x:hero.x,z:hero.z,
+        combat:hero.inCombat?{}:null,heroes:ids(hero),
+      }):null;
+      if(movement){
+        this.floorTravel.set(hero.id,{step:movement,seconds:0,gait:0});
+        this.floorHeadings.set(hero.id,movement.heading);
+      }else if(!old||old.x!==hero.x||old.z!==hero.z||
+               old.partyId!==hero.partyId||old.inCombat||hero.inCombat){
+        this.floorTravel.delete(hero.id);
+      }
+    }
+    this.floorFrame=view;
+    const present=new Set(view.heroes.map(hero=>hero.id));
+    for(const [id,model] of this.floorModels){
+      if(!present.has(id)||model.root.metadata.floorPartyId!==
+          (view.heroes.find(hero=>hero.id===id)?.partyId??null)){
+        model.root.dispose(false,true);
+        this.floorModels.delete(id);
+        this.floorTravel.delete(id);
+        this.floorHeadings.delete(id);
+      }
+    }
+    let partyMaterial=this.combatMaterials.find(material=>
+      material.name==="dungeon-floor-party-ring");
+    for(const hero of view.heroes){
+      let model=this.floorModels.get(hero.id);
+      if(!model){
+        model=createHeroVisual(this.scene,{
+          id:hero.id,role:hero.role,equipment:hero.equipment,
+        },"dungeon-floor-"+hero.id);
+        model.root.metadata={...model.root.metadata,liveFloorOnly:true,
+          floorPartyId:hero.partyId};
+        if(hero.partyId){
+          if(!partyMaterial){
+            partyMaterial=new StandardMaterial("dungeon-floor-party-ring",this.scene);
+            partyMaterial.diffuseColor=Color3.FromHexString("#d5af68");
+            partyMaterial.emissiveColor=Color3.FromHexString("#6b542d");
+            this.combatMaterials.push(partyMaterial);
+          }
+          this.addPartyRing(model,partyMaterial);
+        }
+        this.floorModels.set(hero.id,model);
+      }
+      model.root.metadata.hp=hero.health;
+      model.root.metadata.floorPartyId=hero.partyId;
+      model.root.setEnabled(!hero.inCombat);
+    }
+    for(const [id,marker] of this.floorMarkers){
+      if(!view.fights.some(f=>f.id===id)){
+        marker.dispose(false,true);this.floorMarkers.delete(id);
+      }
+    }
+    for(const fight of view.fights){
+      let marker=this.floorMarkers.get(fight.id);
+      if(!marker){
+        marker=MeshBuilder.CreateCylinder("dungeon-combat-marker",
+          {height:.24,diameter:2.05,tessellation:8},this.scene);
+        const material=new StandardMaterial(
+          "dungeon-floor-combat-marker-"+fight.id,this.scene);
+        material.diffuseColor=Color3.FromHexString("#df694c");
+        material.emissiveColor=Color3.FromHexString("#7a2c20");
+        marker.material=material;
+        marker.isPickable=true;marker.checkCollisions=false;
+        marker.metadata={abstractBattle:true,fightId:fight.id};
+        this.floorMarkers.set(fight.id,marker);
+      }
+      const pos=toWorld(this.layout,fight);
+      marker.position.set(pos.x,.38,pos.z);
+      marker.setEnabled(true);
+    }
+    // Full overview is the Dungeon Shop Master's explicit omniscient camera,
+    // NOT any hero's subjective discovered map.
+    for(const tile of this.tiles)tile.mesh.isVisible=true;
+    const resolved=new Set(view.resolved);
+    for(const marker of this.markers)
+      marker.mesh.setEnabled(!resolved.has(marker.id));
+    for(const deco of this.decorations){
+      deco.light.setEnabled(true);deco.mesh.setEnabled(true);
+    }
+    this.poseLiveFloor(0);
+    this.drawDevelopmentMap();
+    const ctx=this.indicator.getContext("2d");
+    if(ctx){
+      for(const hero of view.heroes){
+        if(hero.inCombat)continue;
+        ctx.fillStyle=hero.partyId?"#e5ca82":"#85d9b2";
+        ctx.fillRect(hero.x*6+1,hero.z*6+1,4,4);
+      }
+    }
+  }
+
+  private poseLiveFloor(dt:number):void {
+    const view=this.floorFrame;
+    if(!view)return;
+    const bounded=Math.min(.1,Math.max(0,dt));
+    for(const hero of view.heroes){
+      const model=this.floorModels.get(hero.id);
+      if(!model||hero.inCombat)continue;
+      const transit=this.floorTravel.get(hero.id);
+      if(transit){
+        transit.seconds=Math.min(LIVE_PARTY_STEP_SECONDS,transit.seconds+bounded);
+        transit.gait+=bounded;
+      }
+      const position=sampleLivePartyStep(transit?.step??null,
+        transit?.seconds??0,hero);
+      const center=toWorld(this.layout,position);
+      const heading=this.floorHeadings.get(hero.id)??0;
+      const offset=livePartyVisualOffset(hero.partyMemberIds.length?
+        hero.partyMemberIds:[hero.id],hero.id,heading);
+      model.root.position.set(center.x+offset.x,.1,center.z+offset.z);
+      model.root.rotation.y=heading;
+      this.animateHero(model,position.walking?"move":"recover",
+        transit?.gait??0);
+      if(transit&&transit.seconds>=LIVE_PARTY_STEP_SECONDS)
+        this.floorTravel.delete(hero.id);
+    }
+  }
+
+  advanceLiveFloorPresentation(dt:number):void {
+    if(this.floorTravel.size)this.poseLiveFloor(dt);
+  }
+
   /**
    * Between committed dungeon steps, animate only models already on the map.
    * Every sampled path has TWO saved endpoints; otherwise heroes stand still.
@@ -375,6 +533,9 @@ export class DungeonReplayScene {
    * a battle, calls RNG, creates a replay outcome, or mutates GameStore.
    */
   showLive(view:LiveSpectatorFrame):void {
+    if(this.floorFrame){
+      this.floorFrame=null;this.clearCombatModels();
+    }
     const previous=this.liveFrame;
     const step=committedLivePartyStep(previous,view);
     if(step){
@@ -448,6 +609,14 @@ export class DungeonReplayScene {
   }
   /** Only explicitly selected visible recorded actors can steer the camera. */
   follow(actorId:string):void {
+    if(this.floorFrame){
+      const model=this.floorModels.get(actorId);
+      if(!model?.root.isEnabled())return;
+      const p=model.root.position;
+      this.camera.position.set(p.x,Math.max(22,this.camera.position.y),p.z-15);
+      this.camera.setTarget(new Vector3(p.x,0,p.z));
+      return;
+    }
     if(!this.lastSnapshot||(!this.replay&&!this.liveFrame))return;
     let p=toWorld(this.layout,this.lastSnapshot);
     const encounter=this.lastSnapshot.encounter;
@@ -481,6 +650,7 @@ export class DungeonReplayScene {
     this.clearCombatModels();
     this.replay=null;this.timeline=null;this.lastSnapshot=null;
     this.liveFrame=null;this.liveHeroId=null;this.liveFightId=null;
+    this.floorFrame=null;
     this.liveTransit=null;this.liveTransitSeconds=0;
   }
 }
