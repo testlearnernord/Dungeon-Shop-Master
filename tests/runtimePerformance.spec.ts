@@ -216,10 +216,8 @@ test("F4 quality presets change the actual Babylon render buffer, never the HTML
     height:element.getBoundingClientRect().height,
   }));
   const full=await info();
-  expect(full.mode).toBe("auto");
+  expect(full.mode).toBe("native");
   expect(full.scale).toBe(1);
-  await page.keyboard.press("F4");
-  expect((await info()).mode).toBe("native");
   await page.keyboard.press("F4");
   const balanced=await info();
   expect(balanced.mode).toBe("balanced");
@@ -245,4 +243,6 @@ test("F4 quality presets change the actual Babylon render buffer, never the HTML
   await page.keyboard.press("F4");
   expect((await info()).mode).toBe("auto");
   expect((await info()).scale).toBe(1);
+  await page.keyboard.press("F4");
+  expect((await info()).mode).toBe("native");
 });
