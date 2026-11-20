@@ -32,6 +32,17 @@ showed 50ms median frame gaps even while the world motor was paused, so
 actual hardware FPS cannot be claimed fixed from CI alone. See
 `docs/PERFORMANCE_INVESTIGATION.md`.
 
+**Display-only smooth NPCs:** The PR #203 20Hz physical shopper motor
+necessarily saved 50ms-discrete positions but also painted raw Babylon
+roots only at those positions. `NpcVisualSystem.rememberCommittedMotion`
+uses consecutive already-committed physical snapshots; the optional
+`renderInterpolated` temporarily paints a linear position and
+shortest-arc yaw at `WorldClockPacer.presentationAlpha` for `scene.render()`.
+Its `finally` restores each NPC's *exact* authoritative root transform
+before the next shop tick, pointer input, save, collision check or event
+callback. Pausing and reloading reset/skip fractional presentation.
+No second shopper motor or RNG path exists.
+
 ### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.

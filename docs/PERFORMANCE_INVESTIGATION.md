@@ -64,7 +64,15 @@ with Babylon rendering explicitly suspended.
    its JSON synchronously, before the promise is queued, so subsequent
    caller mutations cannot change the stored bytes. `createSave` still
    returns a fully detached envelope for explicit exports/tests.
-4. Show an **opt-in F3** diagnostic overlay during gameplay. It reports
+4. Remove the separate **visual 20Hz stutter**: PR #203 deliberately
+   moved physical NPCs on 50ms saved ticks, but until now the Babylon
+   mesh also jumped at 20Hz even on faster displays. For shop rendering,
+   remember the consecutive **already committed** physical traffic poses;
+   interpolate only the transient render x/z/yaw (shortest heading arc),
+   restoring exact root positions in `finally`. Actual gameplay, nav,
+   save, exit-gate validation and queues see no interpolated coordinates.
+   No independent simulation, time advance or movement reroll was added.
+5. Show an **opt-in F3** diagnostic overlay during gameplay. It reports
    measured browser FPS, p95 frame gap, synchronous world tick CPU per
    frame, synchronous Babylon render CPU per frame, actual world ticks/s,
    and main-thread work in the last autosave. It changes no simulation,
@@ -72,7 +80,8 @@ with Babylon rendering explicitly suspended.
 
 The autosave frequency, strictly validated source snapshots, physical
 checkpoints, item/gold transactions, combat RNG and replay payloads remain
-unchanged. The full E2E campaign + existing movement/save/load contract
+unchanged. Fractional 60Hz+ **presentation** corrects quantized
+pedestrian visuals but does not claim to increase actual rendered FPS. The full E2E campaign + existing movement/save/load contract
 suite is required to pass before merge.
 
 ## What remains unproven

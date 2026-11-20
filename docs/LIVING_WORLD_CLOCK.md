@@ -199,7 +199,13 @@ benchmark and the full V.003 visual quality gate remain open.
 ## PR #215: measured overhead versus browser frame pacing
 
 The original PR #203 introduced a 50ms authoritative shared simulation
-step; #204 added persisted full NPC traffic for exact reloads. The motor
+step; #204 added persisted full NPC traffic for exact reloads. A 50ms
+authoritative motor must NOT force 20-FPS pedestrian movement on a faster
+display: each draw may temporarily blend between the previous and last
+saved NPC transforms using the carry fraction from the existing
+`WorldClockPacer`. `NpcVisualSystem.renderInterpolated` restores the
+physical roots synchronously; snapshots, collision/pathfinding and saves
+continue seeing only tick-committed positions. The motor
 still runs each 50ms tick in strict order and persists a matching traffic
 checkpoint. The new optimization removes **only** an unnecessary whole-JSON
 comparison when the physical shop step is already known to have committed.

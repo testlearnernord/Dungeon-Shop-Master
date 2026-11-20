@@ -29,6 +29,9 @@
   third-party/corrupt/mismatching snapshots and never weaken load validation.
 - [x] Add hidden F3 readout for real hardware FPS, p95 gaps, world/render
   CPU and synchronous autosave stalls.
+- [x] Correct raw 20Hz shopper mesh updates introduced by #203 with a
+  render-only fractional display pose between genuine saved physical ticks;
+  physics/traffic checkpoints are restored before any gameplay code runs.
 - [ ] Confirm user-hardware bottleneck with the F3 panel and browser/GPU
   profiler, and further tune the actual heavy path. Virtual GitHub Actions
   measures ~20 FPS even with the world clock PAUSED, so CI FPS alone
