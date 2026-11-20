@@ -7,7 +7,10 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   await page.goto("./?e2e-pause-world");
   await expect(page.locator("#day")).toHaveText("Day 1");
   const gold=await page.locator("#merchant-gold").textContent();
-  const save=await page.locator("#save-status").textContent();
+  // Wait for the initial asynchronous persistence UI to settle. A
+  // completed save message is not itself proof of a gameplay mutation.
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  const save="Saved Day 1.";
   await page.locator("#open-arena").click();
   await page.locator("#arena-lab-toggle").click();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-dev-lab","true");
