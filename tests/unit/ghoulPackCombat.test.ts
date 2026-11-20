@@ -36,8 +36,8 @@ test("deeper seeded 3-hero party faces 2-3 actual Ghouls at distinct walkable po
     ...hero,status:"exploring" as const,floor:3 as const,
     health:hero.stats.maxHealth,
   }));
-  const a=prepareSpatialDungeonCombat(heroes,site,layout.seed,layout,approach,0);
-  const b=prepareSpatialDungeonCombat([...heroes],site,layout.seed,layout,approach,0);
+  const a=prepareSpatialDungeonCombat(heroes,site,layout.seed,layout,approach,0,true);
+  const b=prepareSpatialDungeonCombat([...heroes],site,layout.seed,layout,approach,0,true);
   assert.deepEqual(a,b);
   const actors=a.options.actors;
   const monsters=actors.filter(spec=>spec.team==="monsters");
@@ -58,7 +58,12 @@ test("deeper seeded 3-hero party faces 2-3 actual Ghouls at distinct walkable po
   const fight=resolveGroupCombat(a.options,25);
   const reordered=resolveGroupCombat({...a.options,
     actors:[...a.options.actors].reverse()},25);
-  assert.deepEqual(fight,reordered,"Cast order cannot reroll a pack fight");
+  assert.deepEqual(fight.state,reordered.state,
+    "Canonical live actor processing must ignore input actor ordering");
+  assert.deepEqual(fight.replay.frames,reordered.replay.frames);
+  assert.deepEqual(fight.replay.cues,reordered.replay.cues);
+  // The v1 replay's *declaration list* intentionally preserves the
+  // original input order, while actual frames/cues stay canonical.
   assert(fight.replay.frames.length>2);
   assert(fight.replay.frames.every(frame=>frame.actors.length===actors.length));
   assert.equal(fight.replay.version,1);
@@ -78,7 +83,7 @@ test("single authored Ghoul pack LIVE combat saves and reloads one authoritative
       const hero={...createGameState(seed).adventurers[0],
         status:"exploring" as const,floor:3 as const};
       const battle=prepareSpatialDungeonCombat([hero],site,layout.seed,
-        layout,approach);
+        layout,approach,0,true);
       if(battle.options.actors.filter(a=>a.team==="monsters").length>=2){
         fixture={seed,layout,site,approach};break;
       }
