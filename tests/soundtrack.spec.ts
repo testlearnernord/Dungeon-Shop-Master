@@ -9,10 +9,13 @@ test("music uses the correct deployed assets and tracks shop / boss scenes", asy
   await expect(page.locator("#music-status")).toContainText("first click");
   const sources = await page.locator("#music-panel audio").evaluateAll(nodes =>
     nodes.map(node => (node as HTMLAudioElement).src));
-  expect(sources).toHaveLength(3);
+  expect(sources).toHaveLength(4);
   expect(sources[0]).toMatch(/\/Dungeon-Shop-Master\/audio\/the-lean-season\.mp3$/);
   expect(sources[1]).toMatch(/\/Dungeon-Shop-Master\/audio\/beneath-the-surface\.mp3$/);
-  expect(sources[2]).toMatch(/\/Dungeon-Shop-Master\/audio\/desperate-measures\.mp3$/);
+  expect(sources[2]).toMatch(/\/Dungeon-Shop-Master\/audio\/no-safe-passage\.mp3$/);
+  expect(sources[3]).toMatch(/\/Dungeon-Shop-Master\/audio\/desperate-measures\.mp3$/);
+  const asset=await page.request.head(sources[2]);
+  expect(asset.status()).toBe(200);
   const gold = await page.locator("#merchant-gold").textContent();
   await page.locator("#open-arena").click();
   await expect(page.locator("#music-track")).toHaveText("Desperate Measures");

@@ -18,7 +18,7 @@ import {createHeroVisual,type HeroVisual} from "./heroVisual.ts";
 import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts";
 import type {CombatantSpec,GroupPhase,GroupReplayFrame} from "./groupCombat.ts";
 import {sampleGroupReplayPresentation} from "./groupReplayPresentation.ts";
-import {ghoulRecordedPhaseAge} from "./ghoulMotion.ts";
+import {ghoulRecordedPhaseAge,ghoulRecordedStrikeOrdinal} from "./ghoulMotion.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import {createGroupCombatIntro,sampleGroupCombatIntro,
   type GroupIntroTrack} from "./groupCombatIntro.ts";
@@ -169,7 +169,8 @@ export class LiveGroupCombatArena{
           model.ghoul.root.position.set(pos.x,.08,pos.z);
           model.ghoul.root.rotation.y=actor.heading;
           model.ghoul.animate(actor.phase,ghoulRecordedPhaseAge(
-            fight.frames,id,frame.t));
+            fight.frames,id,frame.t),actor.phase==="strike"
+              ?ghoulRecordedStrikeOrdinal(fight.frames,id,frame.t):1);
         }
       }
     }

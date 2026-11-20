@@ -20,6 +20,7 @@ import {
   type LiveFloorSpectatorFrame,type LiveFloorFight,
 } from "./liveFloorSpectator.ts";
 import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.ts";
+import {GROUP_COMBAT_INTRO_SECONDS} from "./groupCombatIntro.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
@@ -123,6 +124,9 @@ export class DungeonViewer {
     private readonly shopCamera: UniversalCamera,
     private readonly store: GameStore,
     private readonly sceneChanged: (active: boolean) => void,
+    private readonly fightSoundtrackChanged:
+      (active:boolean,boss:boolean)=>void=()=>{},
+    private readonly skipCombatScoreTo:(seconds:number)=>void=()=>{},
   ) {
     this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel);
     this.watchCombatButton.addEventListener("click",()=>{
@@ -131,11 +135,8 @@ export class DungeonViewer {
       else this.watchRecordedCombat();
     });
     this.returnCombatButton.addEventListener("click",()=>this.returnToDungeonMap());
-    this.fightIntroSkipButton.addEventListener("click",()=>{
-      this.liveArena.skipIntro();
-      this.paintCombatIntro();
-      this.canvas.focus();
-    });
+    this.fightIntroSkipButton.addEventListener("click",()=>
+      this.skipFightIntro());
     this.clearHeroButton.addEventListener("click",()=>{
       this.selectFloorHero(null);
       this.canvas.focus();
@@ -218,9 +219,7 @@ export class DungeonViewer {
       if(this.liveArena.isIntroActive &&
          (event.code==="Space"||event.code==="Enter")&&!event.repeat){
         event.preventDefault();event.stopImmediatePropagation();
-        this.liveArena.skipIntro();
-        this.paintCombatIntro();
-        this.canvas.focus();
+        this.skipFightIntro();
         return;
       }
       if(event.code==="Tab"&&this.liveArena.isIntroActive&&!event.repeat){
@@ -357,7 +356,7 @@ export class DungeonViewer {
     this.liveFloorProjectionCache=null;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
-    this.leaveLiveCombat();
+    this.leaveLiveCombat(false);
     this.liveCombatPanel.hidden=true;
     this.scene?.dispose();
     this.scene = null;
@@ -643,6 +642,7 @@ export class DungeonViewer {
     if(!fight)return;
     this.liveFloorFightId=fight.id;
     if(!this.liveArena.watch(this.floorCombatView(fight),"live"))return;
+    this.enterFightSoundtrack(fight.actors);
     this.paintFloor(view!);
     this.paintCombatIntro();
     this.returnCombatButton.focus();
@@ -862,6 +862,7 @@ export class DungeonViewer {
   private watchRecordedCombat():void{
     const view=this.recordedArenaView();
     if(!view||!this.liveArena.watch(view))return;
+    this.enterFightSoundtrack(view.combat!.actors);
     // Historical tape time is LOCAL playback. Hold its chosen real frame for
     // the introduction so a short archived fight cannot vanish halfway
     // through the film. LIVE world/shop time is never paused by this.
@@ -876,11 +877,20 @@ export class DungeonViewer {
     if(!this.liveHeroId)return;
     const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
     if(!view?.combat||!this.liveArena.watch(view,"live"))return;
+    this.enterFightSoundtrack(view.combat.actors);
     this.paintCombatIntro();
     this.watchCombatButton.hidden=true;
     this.returnCombatButton.hidden=false;
     this.returnCombatButton.focus();
     this.paintLive(view);
+  }
+
+  private skipFightIntro():void {
+    if(!this.liveArena.isIntroActive)return;
+    this.liveArena.skipIntro();
+    this.skipCombatScoreTo(GROUP_COMBAT_INTRO_SECONDS);
+    this.paintCombatIntro();
+    this.canvas.focus();
   }
 
   private paintCombatIntro():void {
@@ -898,7 +908,18 @@ export class DungeonViewer {
     }
   }
 
-  private leaveLiveCombat():void {
+  private enterFightSoundtrack(
+    actors:readonly {specialAbility?:string}[],
+  ):void {
+    // Only explicit opt-in premium fights switch to combat music. The
+    // abstract dungeon map keeps Beneath the Surface and no 3D stage.
+    this.fightSoundtrackChanged(true,actors.some(actor=>
+      actor.specialAbility==="grapple-throw"));
+  }
+
+  private leaveLiveCombat(backToDungeon=true):void {
+    if(backToDungeon&&this.liveArena.isActive)
+      this.fightSoundtrackChanged(false,false);
     this.liveArena.dispose();
     this.paintCombatIntro();
     if(document.pointerLockElement===this.canvas)

@@ -114,6 +114,47 @@ export function buildCryptCombatArenaArt(
     light.diffuse=Color3.FromHexString("#71d49e");
     light.intensity=.65;light.range=12;
   }
+  // Soft colored distance haze adds depth without fogging the UI, replay
+  // or shop. Babylon computes this only inside the explicitly opened arena.
+  scene.fogMode=Scene.FOGMODE_EXP2;
+  scene.fogDensity=.012;
+  scene.fogColor=Color3.FromHexString("#202e30");
+
+  // Repeated grave niches and corroded chains reuse shared box/cylinder
+  // geometry. These are far OUTSIDE the real movement bounds: scenery must
+  // never change hit windows, dodge routes, trapped fighters or saved loot.
+  const nicheStone=mark(MeshBuilder.CreateBox(
+    "crypt-niche-prototype",{width:2.35,height:2.8,depth:.55},scene),joints);
+  nicheStone.position.y=-800;
+  nicheStone.isVisible=true;
+  const chain=mark(MeshBuilder.CreateCylinder(
+    "crypt-chain-prototype",{height:2.6,diameter:.075,tessellation:5},scene),iron);
+  chain.position.y=-800;
+  chain.isVisible=true;
+  for(const side of [-1,1]){
+    const x=cx+side*(halfW+2.58);
+    for(let i=0;i<5;i++){
+      const z=cz-halfD+2.0+i*(depth-4)/4;
+      const niche=nicheStone.createInstance("crypt-burial-niche-"+side+"-"+i);
+      niche.position.set(x,1.78,z);
+      niche.rotation.y=side*Math.PI/2;
+      niche.isPickable=false;niche.checkCollisions=false;
+      const rusted=chain.createInstance("crypt-rusted-chain-"+side+"-"+i);
+      rusted.position.set(x-side*.26,3.4,z+.52);
+      rusted.isPickable=false;rusted.checkCollisions=false;
+      const urn=mark(MeshBuilder.CreateCylinder("crypt-burial-urn-"+side+"-"+i,
+        {height:.70,diameterTop:.4,diameterBottom:.78,tessellation:7},scene),shale);
+      urn.position.set(x-side*.9,.40,z+.3);
+    }
+  }
+  // A cracked central crypt crest replaces anonymous empty floor detail,
+  // but stays flush with the floor and non-pickable for real combat actors.
+  const centerCrest=mark(MeshBuilder.CreateTorus("crypt-sunken-crest",
+    {diameter:Math.min(5,width*.32),thickness:.07,tessellation:40},scene),relic);
+  centerCrest.position.set(cx,.035,cz);
+  centerCrest.rotation.x=Math.PI/2;
+  centerCrest.visibility=.55;
+
   // The marked edge is decorative only, unlike the Level-6 lethal lava.
   const edge=mark(MeshBuilder.CreateTorus("crypt-boundary-sigil",
     {diameter:Math.max(width,depth)+2,thickness:.08,tessellation:64},scene),spectral);

@@ -439,7 +439,10 @@ const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
   seconds=>soundtrack.skipBossIntro(seconds),sfx);
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
-});
+}, (observingFight,bossFight)=>{
+  soundtrack.setScene(observingFight
+    ?bossFight?"boss":"combat":"dungeon");
+}, seconds=>soundtrack.skipCombatIntro(seconds));
 watchLiveHero=id=>dungeon.openLive(id);
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),

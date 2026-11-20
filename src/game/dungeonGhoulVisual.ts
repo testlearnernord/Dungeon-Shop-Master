@@ -14,7 +14,7 @@ import {
 export interface GhoulVisual {
   readonly root:TransformNode;
   readonly ready:Promise<boolean>;
-  animate(phase:GroupPhase,time:number):void;
+  animate(phase:GroupPhase,time:number,strikeOrdinal?:number):void;
   dispose():void;
 }
 
@@ -32,9 +32,9 @@ export function createDungeonGhoulVisual(scene:Scene,id:string):GhoulVisual{
   let disposed=false;
   scene.onDisposeObservable.addOnce(()=>{disposed=true;});
 
-  const animate=(phase:GroupPhase,time:number)=>{
+  const animate=(phase:GroupPhase,time:number,strikeOrdinal=1)=>{
     if(disposed||!clips.length)return;
-    const motion=ghoulMotionForPhase(phase);
+    const motion=ghoulMotionForPhase(phase,strikeOrdinal);
     const next=clips[GHOUL_CLIP_INDICES[motion.clip]];
     if(!next)return;
     if(active!==next){
@@ -82,12 +82,20 @@ export function createDungeonGhoulVisual(scene:Scene,id:string):GhoulVisual{
         }
       }
       clips=staged.animationGroups;
-      for(const group of clips)group.stop();
+      for(const group of clips){
+        group.stop();
+        // Babylon glTF rig blending interpolates from the preceding bone
+        // pose rather than snapping at every recorded phase boundary.
+        // Animation groups are sampled ONLY in the opt-in fight scene.
+        group.enableBlending=true;
+        group.blendingSpeed=.09;
+      }
       container=staged;
       root.metadata.tripoStatus="ready";
       root.metadata.tripoUrl=url;
       root.metadata.geometryCount=geometry.length;
       root.metadata.tripoClipCount=clips.length;
+      root.metadata.clipBlending=true;
       root.metadata.tripoBoneCount=65;
       root.metadata.visualHeight=1.95;
       return true;

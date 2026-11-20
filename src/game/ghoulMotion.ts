@@ -12,11 +12,14 @@ export type GhoulClip=keyof typeof GHOUL_CLIP_INDICES;
 export interface GhoulMotion {readonly clip:GhoulClip;readonly loop:boolean;readonly length:number}
 
 /** Rendering choice only. Real hit windows/HP are recorded by groupCombat. */
-export function ghoulMotionForPhase(phase:GroupPhase):GhoulMotion {
+export function ghoulMotionForPhase(
+  phase:GroupPhase,strikeOrdinal=1,
+):GhoulMotion {
   switch(phase){
     case "move":return {clip:"walk_feral",loop:true,length:4.958};
     case "windup":return {clip:"attack_leap",loop:false,length:.85};
-    case "strike":return {clip:"attack_claw_right",loop:false,length:.38};
+    case "strike":return {clip:strikeOrdinal%2===0
+      ?"attack_claw_left":"attack_claw_right",loop:false,length:.38};
     case "hurt":case "thrown":return {clip:"hit_stagger",loop:false,length:.50};
     case "dead":return {clip:"death_fall",loop:false,length:3.958};
     case "roll":return {clip:"run_aggressive",loop:true,length:1.958};
@@ -47,4 +50,38 @@ export function ghoulRecordedPhaseAge(
     from=frame.t;
   }
   return Math.max(0,time-from);
+}
+
+/** A saved strike transition is one real attack, not one rendered sample.
+ * Index clip variants from committed frames so replays/seeks remain stable
+ * regardless of spectator FPS. No RNG, AI or combat time is consumed. */
+const strikesByFrames=new WeakMap<readonly GroupReplayFrame[],
+  Map<string,readonly number[]>>();
+export function ghoulRecordedStrikeOrdinal(
+  frames:readonly GroupReplayFrame[],actorId:string,time:number,
+):number {
+  let all=strikesByFrames.get(frames);
+  if(!all){all=new Map();strikesByFrames.set(frames,all);}
+  let starts=all.get(actorId);
+  if(!starts){
+    const times:number[]=[];
+    let previous:GroupPhase|null=null;
+    for(const frame of frames){
+      const actor=frame.actors.find(a=>a.id===actorId);
+      if(!actor)continue;
+      if(actor.phase==="strike"&&previous!=="strike")
+        times.push(frame.t);
+      previous=actor.phase;
+    }
+    starts=times;all.set(actorId,starts);
+  }
+  // Upper-bound binary search counts strikes whose *committed start time*
+  // is not later than this visual sample. O(log N) after one scan.
+  let low=0,high=starts.length;
+  while(low<high){
+    const mid=(low+high)>>1;
+    if(starts[mid]<=time+1e-6)low=mid+1;
+    else high=mid;
+  }
+  return low;
 }
