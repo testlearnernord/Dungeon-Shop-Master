@@ -1,6 +1,29 @@
 # Dungeon Shop Master — Current Architecture
 
 
+### PR #225 · Clickable LIVE hero inspection (read-only)
+
+On the whole-floor Babylon map, each actual saved hero model now exposes a
+clickable torso and enlarged ground token. Combat beacons have click priority;
+clicking a character selects their stable hero ID, visually highlights their
+marker, follows the saved world position and opens an accessible detail panel.
+Clicking empty map space, using the clear button or choosing another floor
+deselects. TAB keyboard focus can select/deselect the same party members.
+
+`liveFloorSpectator.ts` extends each **opt-in** actor projection with real
+saved level, attributes, traits, equipment, gold, inventory and optional
+`liveDungeon.plans` intention/goal, plus encounter/return activity. Unknown
+intentions show *No committed plan* instead of creating invented AI goals.
+The detail panel never sends commands, modifies any world state, replays
+combat, changes the shop Board's disclosure, or exposes its knowledge to
+other hero brains. When a LIVE fight arena is open, the panel hides until
+the player returns to the map.
+
+#226 still owns **per-hero visible cells**, subjective Fog of War,
+independent explored areas and actual mutual hero/monster perception.
+PR #225 does **not** silently turn map selection into gameplay knowledge.
+
+
 ### PR #224 · Floor-wide LIVE observer and replay archive
 
 `liveFloorSpectator.ts` projects every **saved** adventurer checkpoint independently
