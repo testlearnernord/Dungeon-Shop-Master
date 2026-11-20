@@ -161,9 +161,16 @@ export function prepareSpatialDungeonCombat(
   // Only renewable sentries can become elites. No unique boss is regenerated.
   const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
     tileAt(layout,monster.x,monster.z)==="room";
-  const monsterHp=(layout.floor===7
+  // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
+  // Toughness is authoritative, not a slowed replay: each extra party member
+  // adds some resistance so a three-hero party does not erase one Ghoul
+  // before its authored attacks can play out. All choices stay seed-stable.
+  // The 25-second encounter bound and actual hero/monster damage remain real.
+  const baseGhoulHp=(layout.floor===7
     ?22+monsterRand.int(13):12+layout.floor*3+monsterRand.int(7))+
     (elite?24:0);
+  const partyToughness=1+Math.max(0,party.length-1)*0.65;
+  const monsterHp=Math.round(baseGhoulHp*2.4*partyToughness);
 
   // Use distinct physically walkable grid cells inside this same 7x7 arena.
   // In a narrow corridor spawning three bodies at the same point would be
