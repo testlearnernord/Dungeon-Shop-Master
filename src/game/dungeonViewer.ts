@@ -21,6 +21,7 @@ import {
 } from "./liveFloorSpectator.ts";
 import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
+import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {
@@ -632,10 +633,21 @@ export class DungeonViewer {
     this.followActor=confirmed;
     this.replayScene?.setSelectedFloorHero(confirmed);
     this.renderFloorHeroDetail(view);
+    this.paintFloorVisionLabel(view);
     if(confirmed)this.replayScene?.follow(confirmed);
     this.focusLabel.textContent="TAB focus: "+
       (confirmed??"all adventurers")+" · Floor "+view.floor;
     this.updateTemporaryPartyFocus();
+  }
+
+  private paintFloorVisionLabel(view:LiveFloorSpectatorFrame):void {
+    const hero=view.heroes.find(h=>h.id===this.selectedFloorHeroId);
+    this.minimapTitle.textContent=hero
+      ?"LIVE · "+hero.name+" · Personal Fog of War"
+      :"LIVE · Full Floor "+view.floor+" Overview";
+    this.minimapNote.textContent=hero
+      ?"Bright: currently visible · Dim: personally explored · Black: unknown. No other hero's knowledge."
+      :"All confirmed adventurers on this floor. Select one to see their own sight.";
   }
 
   private renderFloorHeroDetail(view:LiveFloorSpectatorFrame):void {
@@ -649,6 +661,14 @@ export class DungeonViewer {
     const names=new Map(view.heroes.map(member=>[member.id,member.name]));
     const party=hero.partyMemberIds.length>1
       ?hero.partyMemberIds.map(id=>names.get(id)??id).join(", "):"Solo";
+    const perception=this.layout?
+      selectHeroFloorPerception(this.layout,view,hero.id):null;
+    const seenNames=perception?.visibleHeroIds.map(id=>
+      names.get(id)??id).join(", ")||"Nobody currently in sight";
+    const groupNames=perception?.partyVisibleHeroIds.map(id=>
+      names.get(id)??id).join(", ")||"No outside contacts";
+    const seenMonsters=perception?.visibleMonsterIds.join(", ")||
+      "No monsters in sight";
     const ongoing=hero.inCombat?"LIVE combat":
       hero.activity==="backtracking"?"Walking to portal":
       hero.activity==="portal"?"Portal transit":"Exploring";
@@ -670,6 +690,11 @@ export class DungeonViewer {
       ["Party",party],
       ["Position","Floor "+view.floor+" · tile ("+hero.x+", "+hero.z+")"],
       ["Visited cells",String(hero.visited.length)],
+      ["Sight",perception?perception.visible.size+" visible · "+
+        perception.explored.size+" explored tiles":"Unknown"],
+      ["Other heroes seen",seenNames],
+      ["Party sightings",groupNames],
+      ["Visible monsters",seenMonsters],
     ];
     const fragment=document.createDocumentFragment();
     for(const [label,value] of entries){
@@ -697,6 +722,7 @@ export class DungeonViewer {
     }
     this.replayScene?.setSelectedFloorHero(this.selectedFloorHeroId);
     this.renderFloorHeroDetail(view);
+    this.paintFloorVisionLabel(view);
     this.liveCombatPanel.hidden=view.fights.length===0;
     this.watchCombatButton.textContent=view.fights.length>1
       ?"⚔ Watch selected LIVE fight ("+view.fights.length+" running)"
