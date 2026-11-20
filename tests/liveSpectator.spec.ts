@@ -29,7 +29,7 @@ test("Board LIVE watch observes the real world while physical shop traffic conti
   await expect(page.locator("body")).toHaveClass(/dungeon-active/);
   await expect(page.locator("#dungeon-mode-description")).toContainText("LIVE");
   await expect(page.locator("#dungeon-playback-controls")).toBeHidden();
-  await expect(page.locator("#dungeon-minimap-heading")).toContainText("Full Floor");
+  await expect(page.locator("#dungeon-minimap-heading")).toContainText("Personal Fog of War");
   const tick=async()=>page.evaluate(()=>{
     const hooks=window as Window & {__shopTestTraffic?:()=>{tick:number}};
     return hooks.__shopTestTraffic?.().tick??-1;
