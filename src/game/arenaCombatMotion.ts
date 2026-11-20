@@ -8,6 +8,7 @@ import {
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
   chooseCombatDefense, chooseCombatPosture, selectCombatTarget,
+  trollDefenseReadiness,
 } from "./combatTactics.ts";
 import { traceCombatProjectile } from "./combatProjectile.ts";
 import {
@@ -616,10 +617,8 @@ const BOSS_PIPELINE:EncounterPipeline<
           s.lastDefenseAttack = s.bossAttacks;
           // A warning is not a guaranteed perfect reaction. Early blocks/rolls
           // expire before contact; some heroes hesitate and take the hit.
-          const readiness = Math.max(0.38, Math.min(0.78,
-            0.57 + (agility - 10) * 0.015 +
-            (s.options.role === "tank" ? 0.08 : 0) -
-            (s.bossAttack==="grab" ? 0.10 : 0)));
+          const readiness=trollDefenseReadiness(
+            agility,s.options.role,s.bossAttack==="grab");
           if(read<readiness){
             const parryBias=s.options.role==="tank"?0.82:0.28;
             const preferParry=s.options.sword && distance<5 &&
