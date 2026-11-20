@@ -1,7 +1,5 @@
 import {Engine} from "@babylonjs/core/Engines/engine";
 import type {Scene} from "@babylonjs/core/scene";
-import type {AbstractMesh} from "@babylonjs/core/Meshes/abstractMesh";
-import type {Light} from "@babylonjs/core/Lights/light";
 
 export type RenderAblation="baseline"|"skip-scene-render"|"half-resolution"|
   "disable-point-lights"|"hide-world-meshes"|"hide-stock-and-furniture";
