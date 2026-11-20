@@ -1,6 +1,19 @@
 # Dungeon Shop Master — Contributor Guide
 
 
+### PR #225 · Pure opt-in hero selection
+
+Only floor-visible, saved actor models have `floorHeroId` pick markers.
+Combat beacons always take precedence, then heroes, then empty-map
+deselection. Detail fields are persisted `AdventurerState` and optional
+`LiveDungeonPlan` projections plus committed fighting/return state.
+Missing plans must remain explicitly UNKNOWN; do not invoke
+`chooseHeroDungeonDecision` on the spectator side. Selection is strictly
+visual and must not alter WorldClock, RNG, HP, loot, shop traffic, Board
+disclosure or events. Selecting a hero does not yet grant hero-sight fog
+until #226 implements that independently.
+
+
 ### PR #224 · Whole-floor LIVE view
 
 The LIVE dungeon launches as a floor overview (supported spatial floors
