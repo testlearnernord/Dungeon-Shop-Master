@@ -22,6 +22,9 @@ test("Level 6 is a separate viewable boss cavern, camera focuses hero/boss and n
   expect(initial.lava).toBe(true);
   expect(initial.ring).toBe(true);
   expect(initial.spikes).toBe(34);
+  // Level-6 opens with a protected 13.5-second cinematic. Space skips
+  // only the intro, without advancing the authoritative world state.
+  await page.keyboard.press("Space");
   await page.keyboard.press("Tab");
   await expect(page.locator("#arena-focus")).toContainText("CAVE TROLL");
   await page.keyboard.press("Tab");
