@@ -230,13 +230,19 @@ refreshShoppingIntents();
 let trafficSyncing=false;
 let shopTickInProgress=false;
 let replacingCampaign=false;
-const syncTrafficCheckpointAfterStep=()=>syncTrafficCheckpoint();
-const syncTrafficCheckpoint=()=>{
+// The authoritative NPC motor always advances after a successful 50ms
+// tick. Its checkpoint MUST be saved, even when the actor graph happens
+// to be stationary. A deep JSON equality check on all moving actors/routes
+// has no meaning on this hot path, and used to run twice every tick.
+const syncTrafficCheckpointAfterStep=()=>syncTrafficCheckpoint(true);
+const syncTrafficCheckpoint=(committedPhysicalTick=false)=>{
   if(trafficSyncing||replacingCampaign)return;
   const state=store.state;
   const checkpoint=profile("traffic-snapshot",
     ()=>npcVisuals.snapshotTraffic(state.day,state.worldClock.tick));
-  if(profile("traffic-compare",
+  // Explicit furniture/roster writes can call this without a world step:
+  // keep the equivalence guard in that cold path to avoid no-op commits.
+  if(!committedPhysicalTick&&profile("traffic-compare",
     ()=>JSON.stringify(checkpoint)===JSON.stringify(state.shopTraffic)))return;
   trafficSyncing=true;
   try{profile("traffic-validate-notify",()=>store.commitShopTraffic(checkpoint));}
