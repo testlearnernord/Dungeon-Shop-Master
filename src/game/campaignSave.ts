@@ -562,7 +562,16 @@ function validateLiveCombatCheckpoints(
       choice(a.phase,["move","windup","strike","recover","cast","heal",
         "roll","parry","hurt","dead","grab","grabMiss","throw",
         "grabbed","thrown"],ap+".phase");
-      choice(a.activeMeleeAbility,["ordinary","heavy","grapple"],ap+".activeMeleeAbility");
+      choice(a.activeMeleeAbility,
+        ["ordinary","heavy","grapple","troll-smash","troll-slam"],
+        ap+".activeMeleeAbility");
+      // Old ordinary monster and historical v1 saves still load. Only a
+      // genuine boss archetype may store the two newly shared signature
+      // strikes; never accept made-up Troll powers on a Ghoul.
+      if((a.activeMeleeAbility==="troll-smash"||
+          a.activeMeleeAbility==="troll-slam")&&
+          a.specialAbility!=="grapple-throw")
+        fail(ap+".activeMeleeAbility","requires the real boss archetype");
       for(const key of ["targetId","grappleTargetId","grabbedById"])
         if(a[key]!==null&&!actorIds.has(a[key] as string))
           fail(ap+"."+key,"must reference an actual fighter");
