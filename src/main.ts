@@ -443,7 +443,8 @@ const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(observingFight
     ?bossFight?"boss":"combat":"dungeon");
 }, seconds=>soundtrack.skipCombatIntro(seconds));
-watchLiveHero=id=>dungeon.openLive(id);
+watchLiveHero=id=>store.state.liveDungeon.bossCombat?.heroId===id
+  ?arena.openLiveBoss(id):dungeon.openLive(id);
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
   eventId=>{arena.open(eventId);return arena.isActive;});
@@ -496,7 +497,8 @@ engine.runRenderLoop(() => {
   }
   // LIVE spectator is a camera only: the saved world and physical shop
   // customers must continue on the one authoritative 50ms clock.
-  const paused=document.hidden||(!isShopActive()&&!dungeon.isWatchingLive)||
+  const paused=document.hidden||
+    (!isShopActive()&&!dungeon.isWatchingLive&&!arena.isWatchingLiveBoss)||
     !!document.querySelector("dialog[open]")||
     document.body.classList.contains("blueprint-active");
   npcVisuals.setWorldPaused(paused);

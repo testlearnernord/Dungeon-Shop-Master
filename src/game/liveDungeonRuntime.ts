@@ -13,7 +13,14 @@ import {advanceSpatialDungeonPartyStep,emptyLevel7World,settleSpatialDungeonComb
 import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
   groupCombatReplayFromFrames,type GroupCombatState,
   type GroupReplayFrame} from "./groupCombat.ts";
-import {simulateLevel6Combat} from "./level6Combat.ts";
+import {
+  createCombatPreview,stepCombatPreview,
+  type CombatPreviewState,type ArenaCue,
+} from "./arenaCombatMotion.ts";
+import {
+  frameFromCombat,REPLAY_MAX_SECONDS,
+  type BossReplayFrame,type BossCombatReplay,
+} from "./bossCombatReplay.ts";
 import {returnUnpaidCartsAtClose} from "./shopCarts.ts";
 import {scheduleShopVisit} from "./shopArrivals.ts";
 import {commitShopRequestEvent} from "./shopRuntime.ts";
@@ -51,6 +58,18 @@ export interface LiveDungeonCombat {
   readonly state:GroupCombatState;
   readonly frames:readonly GroupReplayFrame[];
 }
+export interface LiveBossCombat {
+  readonly id:string;
+  readonly startedTick:number;
+  readonly heroId:string;
+  /** Original solo Cave Troll state, stepped by the SAME 60Hz encounter driver. */
+  readonly state:CombatPreviewState;
+  /** Saved real poses. The 8-frame sampling contract remains BossReplay v1. */
+  readonly frames:readonly BossReplayFrame[];
+  /** Cues accumulated between snapshot boundaries, never replayed as AI. */
+  readonly pendingCues:readonly ArenaCue[];
+}
+
 export interface LiveDungeonReturn {
   readonly heroId:string;
   readonly fromFloor:1|2|3|4|6|7;
@@ -72,6 +91,8 @@ export interface LiveDungeonState {
   readonly heroes:readonly LiveDungeonHeroStep[];
   readonly combatTick:number;
   readonly combats:readonly LiveDungeonCombat[];
+  /** Optional so existing active saves are not forcibly rewritten. */
+  readonly bossCombat?:LiveBossCombat|null;
   readonly returns:readonly LiveDungeonReturn[];
   /** Durable individual intentions, never player-issued party orders. */
   readonly plans:readonly LiveDungeonPlan[];
@@ -119,7 +140,7 @@ export function activateLiveDungeon(state:GameState):GameState{
  * separate render or per-actor clock owners.
  */
 function scheduleLiveCombat(state:GameState):GameState{
-  if(!state.liveDungeon.combats.length)return state;
+  if(!state.liveDungeon.combats.length&&!state.liveDungeon.bossCombat)return state;
   if(state.worldClock.pending.some(e=>e.lane==="expedition"&&
     e.subjectId===LIVE_COMBAT_EVENT_SUBJECT))
     throw new RangeError("Duplicate live combat clock event.");
@@ -258,6 +279,9 @@ function commitDungeonTick(state:GameState):GameState {
   const day=state.day;
   const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
   const processed=new Set(state.liveDungeon.combats.flatMap(c=>c.heroIds));
+  if(state.liveDungeon.bossCombat)
+    processed.add(state.liveDungeon.bossCombat.heroId);
+  let bossCombat=state.liveDungeon.bossCombat??null;
   const combatSites=new Set(state.liveDungeon.combats.map(c=>
     c.encounter.floor+":"+c.encounter.featureId));
   const combats=[...state.liveDungeon.combats];
@@ -280,26 +304,45 @@ function commitDungeonTick(state:GameState):GameState {
     if(!eligible(hero)||processed.has(hero.id)||
        stepCounts.get(hero.id)?.finished)continue;
     if(hero.floor===6){
-      // The existing unique boss resolver is reused, and never run again at
-      // bed. A future milestone must time its 60 Hz frames individually.
-      const fight=simulateLevel6Combat(hero,day,rngState);
-      rngState=fight.rngState;
-      byId.set(hero.id,fight.adventurer);
-      if(fight.adventurer.status==="dead")
-        activities.push(deathSignal(fight.adventurer,day,tick));
-      if(fight.adventurer.status==="traveling"){
-        // The unique Troll battle is still an atomic cinematic fight. Its
-        // already-settled survivor nevertheless returns through a genuine
-        // scheduled portal instead of a midnight shop teleport.
-        const journey=beginPortalReturn({...fight.adventurer,
-          status:"expedition",floor:6},tick,clock,returns);
+      // The unique boss now starts a real *saved* 60Hz fight on the shared
+      // world clock. Never resolve a hidden 90-second fight in this step.
+      // A second arrival cannot instantiate a clone of the same Troll.
+      if(bossCombat){
+        processed.add(hero.id);
+        continue;
+      }
+      if(clearedLevel6){
+        const journey=beginPortalReturn(hero,tick,clock,returns);
         byId.set(hero.id,journey.hero);
         clock=journey.clock;returns=journey.returns;
+        processed.add(hero.id);
+        stepCounts.set(hero.id,{heroId:hero.id,steps:1,finished:true});
+        continue;
       }
+      const rng=new SeededRandom(rngState);
+      const tacticsSeed=rng.int(32);
+      rngState=rng.state;
+      const motion=createCombatPreview({
+        role:hero.role,sword:hero.equipment.weapon==="Iron Sword",
+        armor:hero.equipment.armor==="Leather Vest",
+        health:hero.health,maxHealth:hero.stats.maxHealth,
+        healingSupplies:hero.inventory.healing,
+        strength:hero.stats.strength,agility:hero.stats.agility,
+        intellect:hero.stats.intellect,tacticsSeed,
+      });
+      bossCombat={
+        id:"live-boss:"+day+":"+tick+":"+hero.id,
+        startedTick:tick,heroId:hero.id,state:motion,
+        frames:[frameFromCombat(motion)],pendingCues:[],
+      };
       processed.add(hero.id);
       stepCounts.set(hero.id,{heroId:hero.id,steps:1,finished:true});
-      activities.push(...fight.events);
-      if(fight.victory)clearedLevel6=true;
+      activities.push({
+        id:"day-"+day+":"+hero.id+":dungeon-live:"+tick,
+        type:"dungeon-live",day,worldTick:tick,adventurerId:hero.id,
+        reportedZone:"deep",
+        message:hero.name+" entered a dangerous chamber. Their life-signature is still active.",
+      });
       continue;
     }
     const floor=hero.floor as SpatialDungeonFloor;
@@ -510,12 +553,14 @@ function commitDungeonTick(state:GameState):GameState {
     ],
     liveDungeon:{enabled:true,lastStepTick:tick,
       heroes:[...stepCounts.values()],
-      combatTick:combats.length?state.liveDungeon.combatTick||tick:0,
-      combats,returns,plans:[...plans.values()]},
+      combatTick:combats.length||bossCombat?state.liveDungeon.combatTick||tick:0,
+      combats,bossCombat,returns,plans:[...plans.values()]},
     events:[...state.events,...activities,...party.events],
   };
   const scheduled=queueNextDungeonWorldTick(next);
-  return state.liveDungeon.combats.length||!combats.length?scheduled:
+  const previouslyActive=state.liveDungeon.combats.length>0||
+    !!state.liveDungeon.bossCombat;
+  return previouslyActive||!(combats.length||bossCombat)?scheduled:
     scheduleLiveCombat(scheduled);
 }
 
@@ -524,7 +569,7 @@ function commitDungeonTick(state:GameState):GameState {
  * the fight ends. Read-only replays NEVER call this function.
  */
 function commitLiveCombatTick(state:GameState):GameState{
-  if(!state.liveDungeon.combats.length||
+  if(!(state.liveDungeon.combats.length||state.liveDungeon.bossCombat)||
      state.worldClock.tick!==state.liveDungeon.combatTick+LIVE_COMBAT_INTERVAL_TICKS)
     throw new RangeError("Unscheduled live battle advance.");
   const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
@@ -534,9 +579,83 @@ function commitLiveCombatTick(state:GameState):GameState{
   const activities:WorldEvent[]=[];
   const continuing:LiveDungeonCombat[]=[];
   let returns=[...state.liveDungeon.returns];
+  let clock=state.worldClock;
+  let rngState=state.rngState;
+  let bossCleared=false;
   const plans=new Map(state.liveDungeon.plans.map(p=>[p.heroId,p] as const));
   const sharedGroups:string[][]=state.liveDungeon.combats
     .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
+  let bossContinuing:LiveBossCombat|null=null;
+  const boss=state.liveDungeon.bossCombat;
+  if(boss){
+    // A live boss is stepped ONLY by this scheduler, not by the camera or
+    // the old atomic Level-6 simulator. Its same authored lava/throw motor
+    // and Replay v1 source frames remain authoritative.
+    const motion:CombatPreviewState=structuredClone(boss.state);
+    const frames=[...boss.frames];
+    let pending=[...boss.pendingCues];
+    for(let i=0;i<LIVE_COMBAT_INTERVAL_TICKS*3&&motion.outcome==="fighting";i++){
+      const step=Math.round(motion.time*60)+1;
+      if(step>REPLAY_MAX_SECONDS*60)break;
+      pending.push(...stepCombatPreview(motion,1/60));
+      if(step%8===0||motion.outcome!=="fighting"||
+          step===REPLAY_MAX_SECONDS*60){
+        frames.push(frameFromCombat(motion,pending));
+        pending=[];
+      }
+    }
+    const stillFighting=motion.outcome==="fighting"&&
+      motion.time<REPLAY_MAX_SECONDS-0.0001;
+    if(stillFighting){
+      bossContinuing={...boss,state:motion,frames,pendingCues:pending};
+    }else{
+      const original=byId.get(boss.heroId);
+      if(!original)throw new RangeError("Active boss lost its real hero.");
+      const outcome:BossCombatReplay["outcome"]=motion.outcome==="victory"
+        ?"victory":motion.outcome==="defeat"?"death":"retreat";
+      const replay:BossCombatReplay={
+        version:1,day:state.day,heroId:original.id,
+        role:motion.options.role,sword:motion.options.sword,
+        armor:motion.options.armor,maxHp:motion.options.maxHealth,
+        outcome,frames,
+      };
+      const rng=new SeededRandom(rngState);
+      const xpGain=outcome==="victory"?35+rng.int(21):0;
+      const goldGain=outcome==="victory"?15+rng.int(11):0;
+      const lootGain=outcome==="victory"?2+rng.int(2):0;
+      rngState=rng.state;
+      if(outcome==="victory")bossCleared=true;
+      const hp=outcome==="death"?0:Math.max(0,Math.round(motion.heroHp));
+      const nextXp=original.xp+xpGain;
+      const hero:AdventurerState={...original,
+        health:hp,xp:nextXp,level:1+Math.floor(nextXp/100),
+        gold:original.gold+goldGain,
+        status:hp<=0?"dead":"expedition",floor:6,
+        inventory:{...original.inventory,
+          healing:motion.healingSupplies,
+          loot:original.inventory.loot+lootGain},
+      };
+      byId.set(hero.id,hero);
+      activities.push({
+        id:"day-"+state.day+":"+hero.id+":level6-combat",
+        type:"level6-combat",day:state.day,
+        adventurerId:hero.id,combatOutcome:outcome,combatReplay:replay,
+        message:hero.name+" completed a real time-resolved Cave Troll fight: "+
+          outcome+". HP "+original.health+"→"+hp+
+          ", XP +"+xpGain+", gold +"+goldGain+", loot +"+lootGain+".",
+      });
+      if(hp<=0)activities.push(deathSignal(hero,state.day,state.worldClock.tick));
+      else{
+        const journey=beginPortalReturn(hero,state.worldClock.tick,
+          clock,returns);
+        // This return is queued against the SAME world event, and its
+        // scheduled report will be re-applied to the completed next state.
+        byId.set(hero.id,journey.hero);
+        returns=journey.returns;
+        clock=journey.clock;
+      }
+    }
+  }
   for(const fight of state.liveDungeon.combats){
     // Copy the authoritative mutable actors before stepping, preserving the
     // previous immutable checkpoint for deterministic save comparisons.
@@ -623,16 +742,21 @@ function commitLiveCombatTick(state:GameState):GameState{
     sharedGroups,roster,floor=>floor===7?level7World:
       earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
       emptyLevel7World(),plans,state.seed,state.day,state.worldClock.tick);
+  const active=continuing.length>0||!!bossContinuing;
   const next:GameState={...state,
+    worldClock:clock,rngState,
     adventurers:roster,dungeonParties:parties.parties,
     earlyDungeonWorlds,level7World,
-    liveDungeon:{...state.liveDungeon,combats:continuing,returns,
-      plans:[...plans.values()],
-      combatTick:continuing.length?state.worldClock.tick:0,
+    dungeonFloors:bossCleared&&
+      !state.dungeonFloors.some(f=>f.floor===6&&f.cleared)
+        ?[...state.dungeonFloors,{floor:6,cleared:true}]:state.dungeonFloors,
+    liveDungeon:{...state.liveDungeon,combats:continuing,
+      bossCombat:bossContinuing,returns,plans:[...plans.values()],
+      combatTick:active?state.worldClock.tick:0,
       heroes:[...counts.values()]},
     events:[...state.events,...activities,...parties.events],
   };
-  return continuing.length?scheduleLiveCombat(next):next;
+  return active?scheduleLiveCombat(next):next;
 }
 
 /** One world timeline dispatches both real customer expiry and live dungeon.
@@ -659,7 +783,7 @@ export function finishLiveDungeonDay(
 ):{state:GameState;events:readonly WorldEvent[]}{
   if(!state.liveDungeon.enabled)
     throw new RangeError("Cannot close an inactive live dungeon.");
-  if(state.liveDungeon.combats.length)
+  if(state.liveDungeon.combats.length||state.liveDungeon.bossCombat)
     throw new RangeError("Cannot close a day while a real fight is unresolved.");
   const day=state.day+1;
   const clock=beginNextWorldDay(state.worldClock,state.day);
@@ -760,7 +884,8 @@ export function finishLiveDungeonDay(
     adventurers,rngState,
     nextAdventurerId:state.nextAdventurerId+influx,
     liveDungeon:{enabled:true,lastStepTick:clock.tick,heroes:[],
-      combatTick:0,combats:[],returns:state.liveDungeon.returns,
+      combatTick:0,combats:[],bossCombat:null,
+      returns:state.liveDungeon.returns,
       plans:state.liveDungeon.plans.filter(plan=>
         adventurers.some(h=>h.id===plan.heroId&&h.floor===plan.floor&&
           h.health>0&&(h.status==="exploring"||h.status==="expedition")))},
