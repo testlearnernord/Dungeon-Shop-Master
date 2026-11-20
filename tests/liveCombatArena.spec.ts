@@ -86,6 +86,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   expect(await record()).toEqual(before,
     "Skipping a camera cut cannot change world time, HP or loot");
   await expect(page.locator("#dungeon-mode-description")).toContainText("3D combat arena");
+  await expect(page.locator("#music-track")).toHaveText("No Safe Passage");
   await expect(page.locator("#dungeon-return-from-combat")).toBeVisible();
   await expect(page.locator("#dungeon-watch-live-combat")).toBeHidden();
   const arena=await page.evaluate(async()=>
@@ -127,6 +128,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
     __shopTestPauseWorld?:(paused:boolean)=>void
   }).__shopTestPauseWorld?.(true));
   await page.keyboard.press("Escape");
+  await expect(page.locator("#music-track")).toHaveText("Beneath the Surface");
   await expect(page.locator("#dungeon-watch-live-combat")).toBeVisible();
   await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor dungeon overview");
   await page.locator("#close-dungeon").click();
