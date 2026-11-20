@@ -1,6 +1,35 @@
 # Dungeon Shop Master — Current Architecture
 
 
+### PR #227 · Shared camera-film contract for boss and opted-in group fights
+
+The existing Level-6 `bossCinematic.ts` owns the authored **unchanged**
+13.5-second Cave Troll camera locations, music-relative timestamps, caption
+sequence and traditional skip semantics. Its interpolation now delegates to
+the pure reusable `combatCinematic.ts` sampler. The spectator stage,
+free-fly/focus camera, world-anchored actor HP HUD and 3D stage assets remain
+shared with `LiveGroupCombatArena`; no new Babylon engine or combat engine.
+
+`groupCombatIntro.ts` builds a dedicated **8.5-second** introduction
+only when Galvik deliberately enters a LIVE or recorded fight arena.
+Its shots introduce the actual saved monster and hero teams, including
+multi-hero/multi-Ghoul casts, by sampling recorded actor IDs and the first
+available committed combat pose. This is presentation only: no invented
+actors, RNG, damage, simulation steps, progression, timeline alteration,
+or pause in LIVE combat/shop/world time. The cutscene is skippable via
+Space, Enter or its visible button; Escape always leaves the arena.
+One paid spectator 3D scene still exists only after an explicit opt-in.
+An ordinary floor view keeps all simultaneous combat encounters abstract.
+
+**Not part of #227:** soundtrack `NO SAFE PASSAGE` (PR #228),
+upgraded Ghoul rig transitions and crypt art (PR #228),
+true Level-6-behavior combat motor convergence (PR #229), and
+expanded multi-actor boss logic (PR #230).
+The Troll's musical sync remains untouched and the group intro currently
+uses presentation wall time only, not song beat sync. Do not confuse
+shared cinematography with unified authoritative combat mechanics.
+
+
 ### PR #226 · Per-hero Fog of War and mutual LOS
 
 A selected hero now switches the one LIVE Floor Babylon map and minimap
