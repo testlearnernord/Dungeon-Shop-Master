@@ -25,7 +25,7 @@ test("one real LIVE Ghoul pack is abstract on the floor and individually rendere
         if(!approach)continue;
         const visitor={...hero,status:"exploring" as const,floor:3 as const};
         const result=prepareSpatialDungeonCombat([visitor],site,layout.seed,
-          layout,approach);
+          layout,approach,0,true);
         const pack=result.options.actors.filter(a=>a.team==="monsters").length;
         if(pack<2)continue;
         const visited=layout.tiles.flatMap((tile,i)=>
