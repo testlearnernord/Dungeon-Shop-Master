@@ -126,17 +126,22 @@ test("PR215 forensic profile: compare the SAME scene with and without real 50ms 
   const idle=await inspect(true);
   const live=await inspect(false);
   const save=await page.evaluate(async()=>{
-    const {CampaignStorage,createSave,parseSave}=
+    const {CampaignStorage,createSave,parseSave,serializeSave}=
       await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const storage=new CampaignStorage();
     const state=await storage.loadGame();
     if(!state)throw Error("No authentic campaign persisted");
     const t1=performance.now();
-    const payload=JSON.stringify(createSave(state));
+    const payload=serializeSave(state);
     const t2=performance.now();
     parseSave(payload);
     const t3=performance.now();
-    return {bytes:payload.length,serializeMs:t2-t1,parseValidateMs:t3-t2};
+    const clone=JSON.stringify(createSave(state));
+    const t4=performance.now();
+    return {bytes:payload.length,serializeMs:t2-t1,parseValidateMs:t3-t2,
+      legacyCloneMs:t4-t3,identicalPayload:
+        JSON.stringify(JSON.parse(clone).payload)===
+        JSON.stringify(JSON.parse(payload).payload)};
   });
   await page.evaluate(()=>
     (window as Window&{__shopTestPauseWorld?:(paused:boolean)=>void})

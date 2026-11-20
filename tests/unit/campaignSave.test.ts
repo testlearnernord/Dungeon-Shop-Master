@@ -2,7 +2,7 @@ import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  CampaignStorage, createSave, parseSave, SAVE_SCHEMA_VERSION,
+  CampaignStorage, createSave, serializeSave, parseSave, SAVE_SCHEMA_VERSION,
   type CampaignRecords, type CampaignStorageAdapter,
 } from "../../src/game/campaignSave.ts";
 import { advanceDay, SIMULATION_VERSION, type GameState } from "../../src/game/gameState.ts";
@@ -24,6 +24,21 @@ test("versioned saves round-trip every field without retaining caller references
   state.shopEconomy.bag.bread = 0;
   assert.deepEqual(envelope.payload, before);
   assert.notEqual(envelope.payload.adventurers, state.adventurers);
+});
+
+test("synchronous validated autosave JSON is detached without a full intermediate structuredClone",()=>{
+  const original=createGameState(7351);
+  const expected=structuredClone(original);
+  const json=serializeSave(original);
+  const direct=JSON.parse(json);
+  assert.equal(direct.schemaVersion,SAVE_SCHEMA_VERSION);
+  assert.equal(direct.simulationVersion,SIMULATION_VERSION);
+  assert.deepEqual(parseSave(json),expected);
+  // The caller may mutate state immediately after saveGame was invoked;
+  // the queued string cannot change even without a second deep clone.
+  original.shopEconomy.bag.bread=0;
+  assert.deepEqual(parseSave(json),expected);
+  assert.throws(()=>serializeSave({...expected,day:-1}),/day/);
 });
 
 test("seeded 45-day spatial-dungeon continuation preserves history, RNG, legitimate casualties and economy mutations", () => {

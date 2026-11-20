@@ -59,7 +59,12 @@ with Babylon rendering explicitly suspended.
    that same full snapshot again at each 1-second autosave; unknown,
    externally changed, malformed or failed-write data remain subject
    to the previous full-validation and backup-preservation rules.
-3. Show an **opt-in F3** diagnostic overlay during gameplay. It reports
+3. Avoid an unnecessary full `structuredClone` before each ordinary autosave
+   JSON encode. `serializeSave` validates the same strict state and captures
+   its JSON synchronously, before the promise is queued, so subsequent
+   caller mutations cannot change the stored bytes. `createSave` still
+   returns a fully detached envelope for explicit exports/tests.
+4. Show an **opt-in F3** diagnostic overlay during gameplay. It reports
    measured browser FPS, p95 frame gap, synchronous world tick CPU per
    frame, synchronous Babylon render CPU per frame, actual world ticks/s,
    and main-thread work in the last autosave. It changes no simulation,

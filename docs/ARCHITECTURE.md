@@ -16,7 +16,13 @@ rotation promotes that already-verified exact value without parsing the
 entire previous save again every real second. If storage contains a
 different string, it is fully parsed/strictly validated before promotion,
 retaining corruption recovery and backup safety. Failed writes/deletions
-never certify a new snapshot. The save interval, immutable event history,
+never certify a new snapshot. Normal `saveGame` now uses `serializeSave` after the same strict state
+validator, writing the complete snapshot to a detached JSON string
+synchronously without first deep-cloning the whole state. The existing
+`createSave` export still returns a detached object, and queued writes
+still capture the exact invocation-time state.
+
+The save interval, immutable event history,
 tick identities and strict round-trip schema remain unchanged.
 
 `performanceHud.ts` implements a hidden-by-default F3 view of **local**
