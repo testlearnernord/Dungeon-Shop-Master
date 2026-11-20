@@ -96,7 +96,7 @@ export class DungeonViewer {
   ) {
     this.liveArena=new LiveGroupCombatArena(engine);
     this.watchCombatButton.addEventListener("click",()=>this.watchLiveCombat());
-    this.returnCombatButton.addEventListener("click",()=>this.leaveLiveCombat());
+    this.returnCombatButton.addEventListener("click",()=>this.returnToLiveMap());
     document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
     document.querySelector("#close-dungeon")!.addEventListener("click", () => this.close());
     document.querySelector("#dungeon-reset-camera")!.addEventListener("click", () => this.resetCamera());
@@ -127,10 +127,17 @@ export class DungeonViewer {
         }
         return;
       }
+      // Esc must leave the opted-in arena even when its Return button has
+      // keyboard focus; the normal dungeon toolbar remains interactive.
+      if(event.code==="Escape"&&this.liveArena.isActive){
+        event.preventDefault();event.stopImmediatePropagation();
+        this.returnToLiveMap();
+        return;
+      }
       if(isInteractiveTarget(event.target))return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if(event.code==="Escape"&&this.liveArena.isActive)this.leaveLiveCombat();
+      if(event.code==="Escape"&&this.liveArena.isActive)this.returnToLiveMap();
       else if (event.code === "KeyG" || event.code === "Escape") this.close();
       else if (event.code === "Tab" && !event.repeat) {
         if(this.replayScene&&(this.replayScene.currentReplay||this.liveHeroId)){
@@ -504,6 +511,17 @@ export class DungeonViewer {
     this.returnCombatButton.hidden=true;
     this.watchCombatButton.hidden=true;
     this.panel.dataset.liveCombatMode="none";
+  }
+
+  private returnToLiveMap():void{
+    this.leaveLiveCombat();
+    const view=this.liveHeroId?
+      selectLiveSpectatorFrame(this.store.state,this.liveHeroId):null;
+    if(view){
+      this.paintLive(view);
+      if(!this.watchCombatButton.hidden)this.watchCombatButton.focus();
+      else this.canvas.focus();
+    }
   }
 
   private paintLive(view:LiveSpectatorFrame):void {
