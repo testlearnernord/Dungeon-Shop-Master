@@ -46,3 +46,41 @@ test("missing checkpoints remain unknown, combat stays on actual floor",()=>{
   assert.equal(selectLiveFloorSpectatorFrame(base,1),null);
   assert.deepEqual(LIVE_SPECTATOR_FLOORS,[1,2,3,4,7]);
 });
+
+
+test("hero details expose saved gear, inventory and goals without invented intentions",()=>{
+  const initial=createGameState(7351);
+  const hero=initial.adventurers[0];
+  const saved={
+    ...initial,
+    adventurers:initial.adventurers.map(h=>h.id===hero.id?{
+      ...h,status:"exploring" as const,floor:1 as const,
+      gold:23,inventory:{loot:2,bread:4,healing:1},
+      equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+    }:h),
+    liveDungeon:{...initial.liveDungeon,enabled:true,
+      plans:[{heroId:hero.id,floor:1 as const,goal:"resupply" as const,
+        action:"shop" as const,updatedTick:600}]},
+    earlyDungeonWorlds:[{floor:1 as const,world:{
+      resolvedFeatureIds:[],heroes:[{
+        heroId:hero.id,x:1,z:1,visited:[1,2],
+      }],
+    }}],
+  };
+  const before=structuredClone(saved);
+  const view=selectLiveFloorSpectatorFrame(saved,1)!;
+  const actor=view.heroes.find(h=>h.id===hero.id)!;
+  assert.equal(actor.gold,23);
+  assert.deepEqual(actor.inventory,{loot:2,bread:4,healing:1});
+  assert.deepEqual(actor.equipment,{
+    weapon:"Iron Sword",armor:"Leather Vest",
+  });
+  assert.equal(actor.goal,"resupply");
+  assert.equal(actor.plannedAction,"shop");
+  assert.equal(actor.activity,"exploring");
+  assert.deepEqual(saved,before);
+  const unplanned=selectLiveFloorSpectatorFrame(
+    {...saved,liveDungeon:{...saved.liveDungeon,plans:[]}},1)!;
+  assert.equal(unplanned.heroes.find(h=>h.id===hero.id)?.goal,null);
+  assert.equal(unplanned.heroes.find(h=>h.id===hero.id)?.plannedAction,null);
+});
