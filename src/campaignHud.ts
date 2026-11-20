@@ -22,6 +22,7 @@ export function setupCampaignHud(
   campaign: Awaited<ReturnType<typeof loadCampaign>>,
   resetScene: () => void,
   restorePhysicalShop?:()=>void,
+  onSynchronousSave?:(elapsedMs:number)=>void,
 ): void {
   const status = document.querySelector<HTMLElement>("#save-status")!;
   const file = document.querySelector<HTMLInputElement>("#save-file")!;
@@ -39,7 +40,10 @@ export function setupCampaignHud(
     const state = store.state;
     const currentRevision = ++revision;
     status.textContent = `Saving Day ${state.day}…`;
-    pending = campaign.storage.saveGame(state).then(() => {
+    const saveStarted=performance.now();
+    const operation=campaign.storage.saveGame(state);
+    onSynchronousSave?.(performance.now()-saveStarted);
+    pending = operation.then(() => {
       if (revision !== currentRevision) return;
       savedState = state;
       status.textContent = `Saved Day ${state.day}.`;

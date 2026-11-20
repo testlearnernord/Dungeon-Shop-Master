@@ -2,6 +2,7 @@ import { createMerchantActions } from "./game/merchantActions.ts";
 import { createLevel5RoomVisuals } from "./game/level5RoomVisuals.ts";
 import { createCashierSfx } from "./cashierSfx.ts";
 import { setupGameSfx } from "./gameSfx.ts";
+import {setupPerformanceHud} from "./performanceHud.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { createFirstPersonCamera } from "./game/firstPersonController";
@@ -70,6 +71,7 @@ setupHudMouseMode(canvas);
 const inventoryHud = inventoryElement;
 const statusHud = statusElement;
 setupTransientStatus(statusHud);
+const runtimePerf=setupPerformanceHud();
 const campaign = await loadCampaign();
 const engine = new Engine(canvas, true, { antialias: true, preserveDrawingBuffer: false });
 const scene = new Scene(engine);
@@ -288,7 +290,7 @@ setupCampaignHud(store, campaign, () => {
   const catalog = document.querySelector<HTMLDialogElement>("#wholesale")!;
   if (catalog.open) catalog.close();
   statusHud.textContent = "Campaign ready. Click to enter the shop.";
-},restoreTrafficCheckpoint);
+},restoreTrafficCheckpoint,ms=>runtimePerf.recordSave(ms));
 
 function renderInventory(selectedItem: ItemId): void {
   const focusedItemId = document.activeElement instanceof HTMLElement &&
@@ -446,7 +448,10 @@ engine.runRenderLoop(() => {
     !!document.querySelector("dialog[open]")||
     document.body.classList.contains("blueprint-active");
   npcVisuals.setWorldPaused(paused);
+  const worldStarted=performance.now();
+  let stepped=0;
   worldClockPacer.step(frameMs,paused,ticks=>{
+    stepped=ticks;
     // One committed timeline drives both store mutations and physical motion.
     // Shopper/stock events caused by physical arrival occur in this fixed-step
     // callback, never during Babylon scene.render().
@@ -465,11 +470,13 @@ engine.runRenderLoop(() => {
       shopTickInProgress=false;
     }
   });
+  const worldElapsed=performance.now()-worldStarted;
   npcVisuals.setWishBubblesVisible(!arena.isActive&&!dungeon.isActive);
   if(ledger?.isSuspended&&!arena.isActive&&!dungeon.isActive){
     ledger.resumeIfReady();
     camera.detachControl();
   }
+  const renderStarted=performance.now();
   if (dungeon.isActive) {
     dungeon.update(engine.getDeltaTime() / 1000);
     dungeon.currentScene?.render();
@@ -477,6 +484,9 @@ engine.runRenderLoop(() => {
     arena.update(engine.getDeltaTime() / 1000);
     arena.currentScene?.render();
   } else profile("scene-render",()=>scene.render());
+  const now=performance.now();
+  runtimePerf.recordFrame({now,worldMs:worldElapsed,
+    renderMs:now-renderStarted,ticks:stepped});
 });
 window.addEventListener("resize", () => engine.resize());
 }
