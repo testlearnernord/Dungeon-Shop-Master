@@ -25,6 +25,8 @@ import {
 import type { GroupPhase } from "./groupCombat.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import type {LiveFloorSpectatorFrame,LiveFloorHero} from "./liveFloorSpectator.ts";
+import {selectHeroFloorPerception,type HeroFloorPerception}
+  from "./heroPerception.ts";
 import {
   committedLivePartyStep, sampleLivePartyStep, livePartyVisualOffset,
   LIVE_PARTY_STEP_SECONDS, type CommittedPartyStep,
@@ -469,15 +471,94 @@ export class DungeonReplayScene {
       deco.light.setEnabled(true);deco.mesh.setEnabled(true);
     }
     this.poseLiveFloor(0);
+    // Both neutral floor and selected hero perspectives are painted by
+    // the same selection boundary; never redraw omniscient map afterward.
     this.setSelectedFloorHero(this.selectedFloorHero);
-    this.drawDevelopmentMap();
-    const ctx=this.indicator.getContext("2d");
-    if(ctx){
-      for(const hero of view.heroes){
+  }
+
+  /** Only view-layer fog. The player's neutral overview retains all tiles,
+   * while a selected hero sees their OWN past travel and current LOS only. */
+  private paintFloorPerspective():void {
+    const frame=this.floorFrame;
+    if(!frame)return;
+    const perspective=this.selectedFloorHero
+      ?selectHeroFloorPerception(this.layout,frame,this.selectedFloorHero)
+      :null;
+    const visible=perspective?.visible;
+    const explored=perspective?.explored;
+    const resolved=new Set(frame.resolved);
+    for(const tile of this.tiles){
+      const cell=tile.z*this.layout.width+tile.x;
+      tile.mesh.isVisible=!explored||explored.has(cell);
+      tile.mesh.visibility=!visible||visible.has(cell)?1:.33;
+    }
+    for(const marker of this.markers){
+      const cell=marker.z*this.layout.width+marker.x;
+      // Dynamic encounters, treasure and traps may change without this
+      // hero witnessing it. Never announce a distant resolution.
+      marker.mesh.setEnabled((!visible||visible.has(cell))&&
+        !resolved.has(marker.id));
+    }
+    for(const decoration of this.decorations){
+      const cell=decoration.z*this.layout.width+decoration.x;
+      decoration.mesh.setEnabled(!explored||explored.has(cell));
+      decoration.light.setEnabled(!visible||visible.has(cell));
+    }
+    const seenHeroes=new Set(perspective?.visibleHeroIds??[]);
+    for(const [id,model] of this.floorModels){
+      const member=frame.heroes.find(hero=>hero.id===id);
+      model.root.setEnabled(!!member&&!member.inCombat&&(
+        !perspective||id===perspective.heroId||seenHeroes.has(id)));
+    }
+    for(const [id,marker] of this.floorMarkers){
+      const fight=frame.fights.find(entry=>entry.id===id);
+      marker.setEnabled(!!fight&&(!visible||
+        visible.has(fight.z*this.layout.width+fight.x)));
+    }
+    if(!perspective){
+      this.drawDevelopmentMap();
+      const ctx=this.indicator.getContext("2d");
+      if(ctx)for(const hero of frame.heroes){
         if(hero.inCombat)continue;
         ctx.fillStyle=hero.partyId?"#e5ca82":"#85d9b2";
         ctx.fillRect(hero.x*6+1,hero.z*6+1,4,4);
       }
+      return;
+    }
+    this.drawLiveHeroMap(frame,perspective);
+  }
+
+  private drawLiveHeroMap(
+    frame:LiveFloorSpectatorFrame,perception:HeroFloorPerception,
+  ):void {
+    const ctx=this.indicator.getContext("2d");
+    if(!ctx)return;
+    const cell=6;
+    this.indicator.width=this.layout.width*cell;
+    this.indicator.height=this.layout.height*cell;
+    for(let z=0;z<this.layout.height;z++)for(let x=0;x<this.layout.width;x++){
+      const key=z*this.layout.width+x;
+      const kind=tileAt(this.layout,x,z);
+      if(!perception.explored.has(key))ctx.fillStyle="#04060b";
+      else if(!perception.visible.has(key))
+        ctx.fillStyle=kind==="wall"?"#12161b":kind==="room"?"#3c3937":"#2c3236";
+      else ctx.fillStyle=kind==="wall"?"#252a31":
+        kind==="room"?"#81786d":"#565960";
+      ctx.fillRect(x*cell,z*cell,cell,cell);
+    }
+    const resolved=new Set(frame.resolved);
+    for(const marker of this.markers){
+      if(!perception.visible.has(marker.z*this.layout.width+marker.x)||
+         resolved.has(marker.id))continue;
+      ctx.fillStyle=marker.kind==="treasure"?"#e6b845":
+        marker.kind==="trap"?"#c94c42":"#e27c62";
+      ctx.fillRect(marker.x*cell+1,marker.z*cell+1,cell-2,cell-2);
+    }
+    for(const hero of frame.heroes){
+      if(hero.inCombat||hero.id!==perception.heroId&&
+         !perception.visibleHeroIds.includes(hero.id))continue;
+      ctx.fillStyle=hero.id===perception.heroId?"#a5ebc7":"#e5ca82";
+      ctx.fillRect(hero.x*cell+1,hero.z*cell+1,cell-2,cell-2);
     }
   }
 
@@ -497,6 +578,7 @@ export class DungeonReplayScene {
       model.torso.outlineColor=Color3.FromHexString("#e9cf82");
       model.torso.outlineWidth=.045;
     }
+    this.paintFloorPerspective();
   }
 
   private poseLiveFloor(dt:number):void {
