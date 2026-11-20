@@ -25,9 +25,9 @@ function acceptanceFixture():{
   const base=createStockedShopState(7351,{dailyInflux:0,maxActive:10});
   const shop=base.adventurers.filter(h=>h.status==="at-shop");
   const crawlers=base.adventurers.filter(h=>h.status==="exploring");
-  assert(shop.length>=2&&crawlers.length>=3);
+  assert(shop.length>=2&&crawlers.length>=4);
   const [debtor,buyer]=shop;
-  const [first,second,victim]=crawlers;
+  const [first,second,victim,fighter]=crawlers;
   const layout=generateExpeditionLayout(base.seed,1);
   const trap=layout.features.find(site=>site.kind==="trap"&&
     dungeonNeighbors(layout,site).some(pos=>
@@ -35,6 +35,14 @@ function acceptanceFixture():{
   assert(trap,"A real seeded Floor-1 trap is required");
   const approach=dungeonNeighbors(layout,trap).find(pos=>
     pos.x!==layout.entrance.x||pos.z!==layout.entrance.z)!;
+  // A separate genuine monster site creates the authentic recorded tape.
+  // The trap kill is only a witnessed magical death signal, NOT a video.
+  const fightLayout=generateExpeditionLayout(base.seed,2);
+  const monster=fightLayout.features.find(site=>site.kind==="monster"&&
+    dungeonNeighbors(fightLayout,site).length>0);
+  assert(monster,"A seeded real monster is required");
+  const fightApproach=dungeonNeighbors(fightLayout,monster)[0];
+  const monsterIndex=monster.z*fightLayout.width+monster.x;
   const trapIndex=trap.z*layout.width+trap.x;
   const entranceIndex=layout.entrance.z*layout.width+layout.entrance.x;
   const adventurers=base.adventurers.map(h=>{
@@ -49,6 +57,8 @@ function acceptanceFixture():{
       traits:{...h.traits,negative:"stubborn"}};
     if(h.id===victim.id)return {...h,health:1,
       floor:1 as const,status:"exploring" as const};
+    if(h.id===fighter.id)return {...h,
+      floor:2 as const,status:"exploring" as const};
     if(h.status==="exploring")return {...h,floor:4 as const};
     return h;
   });
@@ -60,8 +70,16 @@ function acceptanceFixture():{
       {heroId:victim.id,...approach,visited:layout.tiles.flatMap((tile,i)=>
         tile!=="wall"&&i!==trapIndex?[i]:[])},
     ]};
+  const fightWorld={...emptyLevel7World(),
+    resolvedFeatureIds:fightLayout.features.filter(f=>f.id!==monster.id)
+      .map(f=>f.id),
+    heroes:[{heroId:fighter.id,...fightApproach,
+      visited:fightLayout.tiles.flatMap((tile,i)=>
+        tile!=="wall"&&i!==monsterIndex?[i]:[])}],
+  };
   return {state:{...base,adventurers,
-      earlyDungeonWorlds:[{floor:1 as const,world}]},
+      earlyDungeonWorlds:[{floor:1 as const,world},
+        {floor:2 as const,world:fightWorld}]},
     debtorId:debtor.id,buyerId:buyer.id,
     victimId:victim.id,pairIds:[first.id,second.id]};
 }
@@ -127,9 +145,16 @@ test("ten live days: real credit, paid cart, death, parties, observed exits, ree
   assert.equal(joined.length,2,"A real common floor tile forms the Temporary Party");
   assert(firstDay.dungeonParties?.some(p=>
     fixture.pairIds.every(id=>p.memberIds.includes(id))));
-  const recording=firstDay.events.find(e=>e.type==="dungeon-live"&&
-    e.adventurerId===fixture.victimId&&!!e.dungeonReplay);
-  assert(recording?.dungeonReplay,"The lethal encounter must have authentic footage");
+  assert(firstDay.liveDungeon.combats.length>0,
+    "The real seeded monster must launch a saved active group-combat motor");
+  let fightTicks=0;
+  while(store.state.liveDungeon.combats.length&&fightTicks++<100)
+    store.advanceWorldTime(10);
+  assert(fightTicks<100,"The real 60Hz monster battle must settle");
+  const recording=store.state.events.find(e=>e.type==="dungeon-live"&&
+    !!e.dungeonReplay?.encounters.length);
+  assert(recording?.dungeonReplay,
+    "Only a genuine completed fight owns immutable recorded footage");
   const originalTape=structuredClone(recording.dungeonReplay);
   assert.match(store.toggleSavedReplay(recording.id),/saved/);
   assert.deepEqual(roundTrip(store.state),store.state);
