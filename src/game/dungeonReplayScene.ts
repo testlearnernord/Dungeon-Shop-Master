@@ -16,7 +16,7 @@ import {
   type DungeonPlaybackTimeline, type DungeonPlaybackSnapshot,
 } from "./dungeonReplayPlayback.ts";
 import {
-  dungeonReplayCast, dungeonReplayFocusIds, visibleDungeonCombatActors,
+  dungeonReplayCast, dungeonReplayFocusIds,
   recordedTemporaryPartyVisuals,
 } from "./dungeonReplayCast.ts";
 import {
