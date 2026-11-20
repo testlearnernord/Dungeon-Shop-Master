@@ -13,7 +13,7 @@ import type {CombatantSpec,GroupPhase,GroupReplayFrame} from "./groupCombat.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 
 /** Shared presentation contract for committed LIVE and archived fight frames. */
-export type CombatArenaView=Pick<LiveSpectatorFrame,"combat">;
+export type CombatArenaView=Pick<LiveSpectatorFrame,"combat"|"heroes">;
 
 interface VisualActor {
   readonly spec:CombatantSpec;
