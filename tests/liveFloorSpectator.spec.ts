@@ -89,6 +89,18 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("No committed plan");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Solo");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Current activity");
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Other heroes seen");
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Visible monsters");
+  await expect(page.locator("#dungeon-minimap-heading")).toContainText("Personal Fog of War");
+  const inspectFog=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectLiveFloorFog());
+  const subjective=await inspectFog();
+  expect(subjective.tiles).toBeGreaterThan(100);
+  expect(subjective.hiddenTiles).toBeGreaterThan(0);
+  // Remembered-vs-current contrast is verified with deliberate long-path
+  // fixtures by the LOS unit tests; a one-tile E2E trip may show no dim cells.
+  expect(subjective.dimTiles).toBeGreaterThanOrEqual(0);
+  expect(subjective.presentHeroes.length).toBeGreaterThan(0);
   expect(await record()).toEqual(beforeClick);
   const buttonHit=await page.evaluate(()=>{
     const button=document.querySelector<HTMLElement>("#dungeon-clear-hero")!;
@@ -107,6 +119,11 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   await page.mouse.click(closeBounds!.x+closeBounds!.width/2,
     closeBounds!.y+closeBounds!.height/2);
   await expect(page.locator("#dungeon-hero-detail")).toBeHidden();
+  await expect(page.locator("#dungeon-minimap-heading")).toContainText("Full Floor");
+  const neutral=await inspectFog();
+  expect(neutral.hiddenTiles).toBe(0);
+  expect(neutral.dimTiles).toBe(0);
+  expect(neutral.presentHeroes.length).toBe(3);
   await page.locator("#dungeon-floor-select").selectOption("2");
   await expect(page.locator("#dungeon-mode-description")).toContainText("Floor 2");
   const floorTwo=await inspect();

@@ -1,6 +1,30 @@
 # Dungeon Shop Master — Current Architecture
 
 
+### PR #226 · Per-hero Fog of War and mutual LOS
+
+A selected hero now switches the one LIVE Floor Babylon map and minimap
+from neutral omniscient view into **personal** visibility: present 5-tile
+line of sight through static seeded walkable geometry, blocker walls visible
+but nothing beyond; remembered geometry derived from the observer's own
+recorded visits, dimmed compared with currently visible cells. Previously
+visited paths from other explorers are never unioned into personal memory.
+A separate pure `heroPerception.ts` selector returns independently visible
+hero IDs, unresolved monster locations and current party sightings.
+The extra panel fields are observation only. The actual shop Board,
+personality/goal AI and saved world are unchanged. Party cooperation on
+potential contacts remains a future AI behavior feature: only the
+individual and co-located party's current visual contacts are modeled in
+this slice, not persisted communication histories or pathfinding to a
+distant stranger.
+
+`DungeonReplayScene.setSelectedFloorHero` applies the same perception
+projection to tile instances, room lighting/props, feature markers, other
+actors, active fight markers and the minimap. Unselecting restores all
+committed floor actors and geometry. No second simulation/motor. The
+historical replay visibility system stays independent.
+
+
 ### PR #225 · Clickable LIVE hero inspection (read-only)
 
 On the whole-floor Babylon map, each actual saved hero model now exposes a
