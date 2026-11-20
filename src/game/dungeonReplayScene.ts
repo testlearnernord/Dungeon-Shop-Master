@@ -53,6 +53,8 @@ export class DungeonReplayScene {
   private liveFrame:LiveSpectatorFrame|null=null;
   private liveHeroId:string|null=null;
   private liveFightId:string|null=null;
+  /** Single abstract LIVE map marker; no combat actor GLBs in dungeon map. */
+  private liveCombatMarker:Mesh|null=null;
   private timeline:DungeonPlaybackTimeline|null=null;
   private hero:HeroVisual|null=null;
   private readonly companionHeroes=new Map<string,HeroVisual>();
@@ -85,13 +87,13 @@ export class DungeonReplayScene {
   get visibleFocusIds():readonly string[] {
     return this.liveFrame?
       [this.liveFrame.heroId,...this.liveFrame.heroes.filter(h=>
-        h.id!==this.liveFrame!.heroId).map(h=>h.id),
-        ...(this.liveFrame.combat?.frame.actors.filter(a=>
-          !this.liveFrame!.heroes.some(h=>h.id===a.id)).map(a=>a.id)??[])]:
+        h.id!==this.liveFrame!.heroId).map(h=>h.id)]:
       this.replay?dungeonReplayFocusIds(this.replay,this.lastSnapshot):[];
   }
 
   private clearCombatModels():void {
+    this.liveCombatMarker?.dispose(false,true);
+    this.liveCombatMarker=null;
     this.hero?.root.dispose(false,true);
     this.hero=null;
     for(const model of this.companionHeroes.values())model.root.dispose(false,true);
@@ -440,7 +442,10 @@ export class DungeonReplayScene {
     const position=toWorld(this.layout,view);
     this.hero.root.position.set(position.x,.1,position.z);
     this.hero.root.metadata.hp=lead.health;
-    this.animateHero(this.hero,"move",view.worldTick/20);
+    // An actual fight gets ONLY the map beacon. All animated combat cast
+    // belongs in the separately requested LIVE Group Arena.
+    this.hero.root.setEnabled(!view.combat);
+    if(!view.combat)this.animateHero(this.hero,"move",view.worldTick/20);
     const present=new Set(view.heroes.map(h=>h.id));
     for(const [id,model] of this.companionHeroes){
       if(!present.has(id)){model.root.dispose(false,true);
@@ -457,93 +462,39 @@ export class DungeonReplayScene {
         this.companionHeroes.set(h.id,model);
       }
       const model=this.companionHeroes.get(h.id)!;
-      model.root.setEnabled(true);
+      model.root.setEnabled(!view.combat);
       model.root.position.set(position.x+((h.id<view.heroId)?-0.7:0.7),
         .1,position.z+.5);
       model.root.metadata.hp=h.health;
-      this.animateHero(model,"move",view.worldTick/20);
+      if(!view.combat)this.animateHero(model,"move",view.worldTick/20);
     }
+    // No skinned ghouls, combatants, projectiles, or fight animations are
+    // created in the LIVE dungeon map. The committed 60Hz fight continues
+    // independently of this read-only visual projection.
     for(const enemy of this.enemies.values())enemy.setEnabled(false);
     for(const ghoul of this.ghouls.values())ghoul.root.setEnabled(false);
     for(const projectile of this.projectiles)projectile.setEnabled(false);
     const combat=view.combat;
     if(combat){
-      if(this.liveFightId!==combat.id){
-        for(const mesh of this.enemies.values())mesh.dispose();
-        this.enemies.clear();
-        for(const ghoul of this.ghouls.values())ghoul.dispose();
-        this.ghouls.clear();
-        for(const mesh of this.projectiles)mesh.dispose();
-        this.projectiles=[];
-        for(const material of this.combatMaterials)material.dispose();
-        this.combatMaterials.length=0;
-        this.liveFightId=combat.id;
-        const material=new StandardMaterial("live-monster-material",this.scene);
-        material.diffuseColor=Color3.FromHexString("#ad5b42");
-        material.emissiveColor=Color3.FromHexString("#58231d");
-        this.combatMaterials.push(material);
-        for(const actor of combat.actors.filter(a=>a.team==="monsters")){
-          const fallback=MeshBuilder.CreateSphere("dungeon-live-fallback-"+actor.id,
-            {diameter:1.35,segments:12},this.scene);
-          fallback.material=material;fallback.isPickable=false;
-          fallback.metadata={liveOnly:true,fallbackOnly:true,actorId:actor.id};
-          fallback.setEnabled(false);
-          this.enemies.set(actor.id,fallback);
-          const feature=this.layout.features.find(f=>f.id===actor.id);
-          if(feature?.kind==="monster"&&feature.subtype==="ghoul"){
-            const ghoul=createDungeonGhoulVisual(this.scene,actor.id);
-            this.ghouls.set(actor.id,ghoul);
-          }
-        }
+      if(!this.liveCombatMarker){
+        const beacon=MeshBuilder.CreateCylinder("dungeon-live-combat-marker",
+          {height:.18,diameter:1.25,tessellation:8},this.scene);
+        const mat=new StandardMaterial("dungeon-live-combat-marker-mat",this.scene);
+        mat.diffuseColor=Color3.FromHexString("#df694c");
+        mat.emissiveColor=Color3.FromHexString("#7a2c20");
+        beacon.material=mat;
+        beacon.isPickable=false;
+        beacon.checkCollisions=false;
+        beacon.metadata={liveOnly:true,abstractBattle:true};
+        this.liveCombatMarker=beacon;
       }
       const origin=toWorld(this.layout,{x:combat.x,z:combat.z});
-      const specs=new Map(combat.actors.map(a=>[a.id,a]));
-      for(const actor of combat.frame.actors){
-        const p=new Vector3(origin.x+actor.x,.1,origin.z+actor.z);
-        const model=actor.id===view.heroId?this.hero:
-          this.companionHeroes.get(actor.id);
-        if(model){
-          model.root.position.copyFrom(p);
-          model.root.rotation.y=actor.heading;
-          model.root.metadata.hp=actor.hp;
-          this.animateHero(model,actor.phase,combat.frame.t);
-        }
-        const fallback=this.enemies.get(actor.id);
-        if(fallback){
-          const ghoul=this.ghouls.get(actor.id);
-          if(ghoul?.root.metadata?.tripoStatus==="ready"){
-            ghoul.root.setEnabled(true);
-            ghoul.root.position.set(p.x,.08,p.z);
-            ghoul.root.rotation.y=actor.heading;
-            ghoul.animate(actor.phase,ghoulRecordedPhaseAge(
-              combat.frames,actor.id,combat.frame.t));
-          }else{
-            fallback.setEnabled(true);
-            fallback.position.set(p.x,1,p.z);
-            fallback.rotation.y=actor.heading;
-            fallback.metadata={...fallback.metadata,
-              combatPhase:actor.phase,hp:actor.hp};
-            const radius=specs.get(actor.id)?.radius??.5;
-            fallback.scaling.setAll(Math.max(.75,radius*1.7));
-          }
-        }
-      }
-      const material=this.combatMaterials[0];
-      for(let i=0;i<combat.frame.projectiles.length;i++){
-        let mesh=this.projectiles[i];
-        if(!mesh){
-          mesh=MeshBuilder.CreateSphere("dungeon-live-projectile-"+i,
-            {diameter:.28,segments:6},this.scene);
-          mesh.material=material;mesh.isPickable=false;
-          this.projectiles.push(mesh);
-        }
-        const p=combat.frame.projectiles[i];
-        mesh.setEnabled(true);
-        mesh.position.set(origin.x+p.x,1.2,origin.z+p.z);
-      }
-    }else if(this.liveFightId){
+      this.liveCombatMarker.position.set(origin.x,.38,origin.z);
+      this.liveCombatMarker.setEnabled(true);
+      this.liveFightId=combat.id;
+    }else{
+      this.liveCombatMarker?.setEnabled(false);
       this.liveFightId=null;
-      // The next engagement will create its actual cast on demand.
     }
     this.updateVisibility(observed);
   }
@@ -553,12 +504,11 @@ export class DungeonReplayScene {
     let p=toWorld(this.layout,this.lastSnapshot);
     const encounter=this.lastSnapshot.encounter;
     if(this.liveFrame){
+      // Map camera follows a fight site, never an individual animated
+      // combat actor. Detailed actor positions are for the opt-in arena.
       const combat=this.liveFrame.combat;
-      const actor=combat?.frame.actors.find(a=>a.id===actorId);
-      if(actor&&combat){
-        const origin=toWorld(this.layout,{x:combat.x,z:combat.z});
-        p=new Vector3(origin.x+actor.x,0,origin.z+actor.z);
-      }else{
+      if(combat)p=toWorld(this.layout,{x:combat.x,z:combat.z});
+      else{
         const model=actorId===this.liveFrame.heroId?this.hero:
           this.companionHeroes.get(actorId);
         if(model?.root.isEnabled())
