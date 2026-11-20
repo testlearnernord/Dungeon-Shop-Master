@@ -1,5 +1,31 @@
 # Dungeon Shop Master
 
+### PR #218 · LIVE battles are abstract in the dungeon map; detailed 3D only on request
+
+**The world and all combat remain 100% authoritative and parallel.** Entering the
+LIVE dungeon map (G or Watch LIVE from the Board) shows the hero's genuine
+fog-of-war, movement and party. During a fight it shows **one abstract encounter
+beacon**, the actual combatants and saved HP. It does **not** build monster
+fighters, skinned Tripo ghouls, combat projectiles or fighting animations.
+
+When watching an active LIVE hero, click **⚔ Watch LIVE fight in arena**.
+Only this explicit action constructs a **separate Babylon arena Scene** and
+displays the exact, already-committed group-combat actors, poses, weapons and
+projectiles. Press **Esc** or **Return to dungeon map** to dispose the
+arena and return to the abstract map; G still returns to Galvik's shop.
+The world clock, physical shop movement, other expeditions and fights
+continue in the background during observation. When a fight ends, the
+viewer leaves the arena rather than restarting or inventing a result.
+
+No new combat engine was added: the same deterministic 60Hz group motor,
+0.5-second saved combat batches, RPG decisions, NPC lives/deaths, loot,
+Save/Reload and historical replay recordings remain identical.
+**Important performance distinction:** Opt-in rendering removes expensive
+LIVE dungeon spectator models/animations when not requested, but **does
+not reduce background combat CPU work in the shop**. The older Cave Troll
+training/recorded boss scene is still a separate specialized viewer.
+
+
 ### PR #217 · Frame-spike evidence after the shared-clock migration
 
 The user-observed lag began after #200; a SwiftShader graphics bottleneck on CI does **not** prove the new live-world work is free on a real PC. A new browser test compares a genuine seeded day-one campaign and the same ten-hero campaign on **day eleven**, both with rendering active and world pacing paused versus live, and measures six real scheduled dungeon-event intervals. World-only ticks are lightweight in the sample; **scheduled dungeon events take 7.5–15.8ms on day one and 7.7–11.2ms on day eleven** when artificially advanced in 600-tick chunks. These periodic CPU spikes can exceed a remaining 60 FPS frame budget after rendering, even if sustained low CI FPS still occurs with simulation paused. This sample contains **zero active group combats**, so many simultaneous live combats are **not yet benchmarked**.
