@@ -1,5 +1,13 @@
 # Dungeon Shop Master — Contributor Guide
 
+### LOCKED owner rule: LEVEL 6 Cave Troll sets the combat standard (20 Nov 2026)
+
+- The original Level-6 Cave Troll's authored combat, animation, camera, lighting, SFX, environment and HP/damage presentation are the **reference for every encounter**. The stripped-down Ghoul/Group prototype is NOT the basis for the universal engine. Monsters, arena art and unique abilities vary; group combat is an **additional capacity**, not a replacement.
+- PR #220 extracts `combatSpectatorStage.ts` and `combatHudProjection.ts` directly from Level-6, and extends those controls and world-HUD components to an opt-in crypt scene and multiple saved actors. The original Level-6 scene continues to use the same implementation. No combat authority or replay schema changes in this PR.
+- **Two authoritative motor paths still exist:** `arenaCombatMotion.ts` / `resolveSpatialBoss` / `simulateLevel6Combat` for the atomic Level-6 solo campaign; `groupCombat.ts` / `commitLiveCombatTick` for scheduled real-world ordinary encounters. Both use common primitives and `combatEncounter.ts`, but actor actions, time ownership, and recordings differ. Never falsely claim unified combat from shared visualization alone.
+- Subsequent motor migration must preserve the exact Troll grapple/throw, dodges/parries, attack windows, lava, combat timing, original SFX and visuals while making groups optional, running on ONE shared clock. Must pass solo/party parity, deterministic saves and spectator invariants BEFORE removing obsolete code.
+
+
 ### Owner correction after PR #218 · Abstract fights in all maps / native first
 
 - The most recent owner decision supersedes #218's distinction between LIVE map and archive map: **both are abstract**. Neither `DungeonReplayScene.showLive` nor `setReplay`/`show` may create enemy/hero battle models, Ghoul GLBs or projectile meshes on an ordinary dungeon map. Render a clickable encounter beacon, HP/status and genuine traversals.

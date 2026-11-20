@@ -1,5 +1,16 @@
 # Dungeon Shop Master — Development Roadmap
 
+### PR #220 · Shared Level-6 combat presentation foundation (branch, CI required)
+
+- [x] The Cave Troll is the mandatory quality reference, not the plain Ghoul/Group prototype. Extract the exact boss camera/stage into a reusable arena-themed module, used in the existing Troll scene and opt-in Ghoul/group views.
+- [x] Extract the Boss HUD's world-space HP and damage projection, reuse with every recorded group fighter, including optional Temporary Parties.
+- [x] Replace the flat grey group test ground with volumetric Crypt surroundings, stone, pillars, tombs, directional lighting. Keep the real GLB animation when requested. Map stays abstract.
+- [x] Let group actors with the existing grapple-throw ability display the real Tripo Troll model, never masquerade as a Ghoul.
+- [ ] Pass typecheck, unit, E2E and existing boss visual regressions; obtain actual device acceptance.
+- [ ] **Next priority: genuine Level-6 motor integration** with the ONE shared world clock, while retaining boss abilities, authored visual movement, cutscenes, lava and combat outcomes. Optional groups are an EXTRA. Compare solo deterministic replay, group fights, save/reload and boss attack timings before moving legacy authority.
+- [ ] Then the scheduled repository-audit and cleanup work, 10-day gameplay integration and final UX polish.
+
+
 ### PR #218 · LIVE map abstraction + user-chosen group arena
 
 - [x] Replace LIVE dungeon full battle cast, active ghoul model loads

@@ -933,8 +933,27 @@ export function inspectLiveCombatPresentation(){
     liveMapGhouls:scene.transformNodes.filter(node=>
       node.name.startsWith("dungeon-ghoul-")).length,
     arenaHeroes:scene.transformNodes.filter(node=>
-      node.name.startsWith("live-fight-hero-")).length,
-    arenaMonsters:scene.meshes.filter(mesh=>
+      typeof node.metadata?.actorId==="string"&&
+      node.name==="live-fight-hero-"+node.metadata.actorId).length,
+    // Count recorded monster IDENTITIES, never nested GLB parts,
+    // and never the removed placeholder spheres. One actor = one model root.
+    arenaMonsters:scene.transformNodes.filter(node=>{
+      // The imported rig has many transform nodes, but EXACTLY ONE
+      // authoritative root matches the recorded fighter identity.
+      const actorId=node.metadata?.recordedActorId;
+      return (typeof actorId==="string"&&
+        node.name==="dungeon-ghoul-"+actorId)||
+        (node.name==="arena-boss-troll"&&
+          typeof node.metadata?.actorId==="string");
+    }).length,
+    legacyMonsterPlaceholders:scene.meshes.filter(mesh=>
       mesh.name.startsWith("live-fight-monster-")).length,
+    spectatorCamera:scene.activeCamera?.name??"none",
+    cryptSetpieces:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("crypt-")).length,
+    activeArenaLights:scene.lights.filter(light=>light.isEnabled()).length,
+    worldHudBarCount:document.querySelectorAll(
+      "#group-combat-world-hud .arena-actor-plate").length,
+    bossStageCamera:scene.activeCamera?.name==="boss-spectator-camera",
   };
 }

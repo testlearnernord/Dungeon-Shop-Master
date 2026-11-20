@@ -1,8 +1,7 @@
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Engine } from "@babylonjs/core/Engines/engine";
-import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
-import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Matrix, Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
@@ -33,6 +32,8 @@ import { BossModelLab } from "./bossModelLab.ts";
 import { nextBossTrainingScenario, type BossTrainingScenario } from "./bossTrainingScenario.ts";
 import type { GameSfx, GameSfxCue, SoundListener } from "../gameSfx.ts";
 import { Level6SfxDebugPanel } from "../gameSfxDebug.ts";
+import {createCombatSpectatorStage,flyCombatSpectatorCamera,
+  focusCombatSpectatorCamera,turnCombatSpectatorCamera} from "./combatSpectatorStage.ts";
 
 type Fighter = { root: TransformNode; hp: number; max: number; alive: boolean };
 type FocusTarget = { label: string; node: TransformNode; vantage: Vector3 };
@@ -223,9 +224,7 @@ export class Level6Arena {
     document.addEventListener("mousemove", (event) => {
       if (!this.active || this.modelLab || this.introActive ||
           document.pointerLockElement !== canvas || !this.camera) return;
-      this.camera.rotation.y += event.movementX / 2700;
-      this.camera.rotation.x = Math.max(-1.45, Math.min(1.45,
-        this.camera.rotation.x + event.movementY / 2700));
+      turnCombatSpectatorCamera(this.camera,event.movementX,event.movementY);
     }, true);
   }
 
@@ -400,29 +399,11 @@ export class Level6Arena {
         ? "EXPEDITION PREVIEW · Uncommitted training only. Confirm the day to record the real fight."
         : "TRAINING PREVIEW · " + this.training?.label +
           " · New sparring match each restart. No saved gameplay changes.";
-    const scene = new Scene(this.engine);
-    scene.clearColor = new Color4(0.045, 0.035, 0.043, 1);
-    this.scene = scene;
-    const camera = new UniversalCamera("boss-spectator-camera", new Vector3(0, 12, -22), scene);
-    camera.minZ = 0.2;
-    camera.maxZ = 160;
-    camera.fov = 0.86;
-    camera.inertia = 0;
-    this.camera = camera;
-    scene.activeCamera = camera;
-    const ambient = new HemisphericLight("arena-ambient", new Vector3(0, 1, 0), scene);
-    ambient.intensity = .53;
-    ambient.groundColor = Color3.FromHexString("#423e3b");
-    const lavaLight = new PointLight("lava-glow", new Vector3(0, 2, 0), scene);
-    lavaLight.diffuse = Color3.FromHexString("#da7152");
-    lavaLight.intensity = .9;
-    lavaLight.range = 38;
-    const warmRim = new PointLight("troll-ember-rim",new Vector3(-7,10,7),scene);
-    warmRim.diffuse = Color3.FromHexString("#f08b54");
-    warmRim.intensity = 1.10; warmRim.range=26;
-    const faceFill = new PointLight("troll-face-fill",new Vector3(5,8,-10),scene);
-    faceFill.diffuse=Color3.FromHexString("#c9d7e7");
-    faceFill.intensity=1.27; faceFill.range=31;
+    // Level-6 authored lighting and spectator camera are THE shared standard.
+    // The Crypt variant uses this same stage, not a competing arena engine.
+    const {scene,camera}=createCombatSpectatorStage(this.engine,"cave-troll");
+    this.scene=scene;
+    this.camera=camera;
     const makeMat = (name: string, hex: string, emissive = false): StandardMaterial => {
       const mat = new StandardMaterial(name, scene);
       mat.diffuseColor = Color3.FromHexString(hex);
@@ -608,12 +589,11 @@ export class Level6Arena {
   private focusCamera(): void {
     const target = this.targets[this.focusIndex];
     if (!target || !this.camera) return;
-    this.camera.position.copyFrom(target.node.position.add(target.vantage));
     const view = this.focusIndex === 0 && this.boss && this.hero
       ? Vector3.Lerp(this.hero.root.position, this.boss.root.position, .53)
         .addInPlace(new Vector3(0,3.2,0))
       : target.node.position.add(new Vector3(0,4.1,0));
-    this.camera.setTarget(view);
+    focusCombatSpectatorCamera(this.camera,target.node.position,target.vantage,view);
     this.focusText.textContent = "TAB focus: " + target.label;
   }
 
@@ -699,17 +679,7 @@ export class Level6Arena {
       this.updateCinematic(frameDt);
       return;
     }
-    const speed = (this.pressed.has("ShiftLeft") || this.pressed.has("ShiftRight") ? 21 : 7) * frameDt;
-    const yaw = this.camera.rotation.y;
-    const forward = new Vector3(Math.sin(yaw), 0, Math.cos(yaw));
-    const right = new Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
-    if (this.pressed.has("KeyW")) this.camera.position.addInPlace(forward.scale(speed));
-    if (this.pressed.has("KeyS")) this.camera.position.subtractInPlace(forward.scale(speed));
-    if (this.pressed.has("KeyD")) this.camera.position.addInPlace(right.scale(speed));
-    if (this.pressed.has("KeyA")) this.camera.position.subtractInPlace(right.scale(speed));
-    if (this.pressed.has("KeyQ")) this.camera.position.y += speed;
-    if (this.pressed.has("KeyE")) this.camera.position.y -= speed;
-    this.camera.position.y = Math.max(1.2, Math.min(65, this.camera.position.y));
+    flyCombatSpectatorCamera(this.camera,this.pressed,frameDt);
 
     if (this.replay) {
       this.updateRecordedFight(frameDt);

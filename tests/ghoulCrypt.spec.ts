@@ -75,6 +75,11 @@ test("historical map stays abstract; opting into archive arena loads the authore
   // Opening the separate Babylon arena reads ONLY committed recorded frames.
   await page.locator("#dungeon-watch-live-combat").click();
   await expect(page.locator("#dungeon-mode-description")).toContainText("3D fight arena");
+  const staged=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectLiveCombatPresentation());
+  expect(staged.cryptSetpieces).toBeGreaterThan(24);
+  expect(staged.spectatorCamera).toBe("crypt-spectator-camera");
+  expect(staged.worldHudBarCount).toBe(2);
   await expect.poll(async()=>{
     const state=await inspect();
     return state.ghoulActors[0]?.status??"missing";

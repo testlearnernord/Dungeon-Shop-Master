@@ -1,5 +1,12 @@
 # Dungeon Shop Master
 
+### Combat architecture: Level-6 Cave Troll is the reference (owner-locked)
+
+Every encounter must reach the authored Cave Troll fight's technical and presentation standard. PR #220's feature branch extracts **that exact** Level-6 spectator stage/camera and world-space combat HUD foundations for optional Ghoul/party viewing, adds a volumetric crypt art variant, and uses real committed frames for each participant. Maps remain abstract until the player explicitly opens the 3D battle.
+
+**Important boundary:** Shared presentation is in progress; the original Level-6 campaign solo boss resolver still differs from the world's ordinary scheduled group motor. A later dedicated, fully tested migration must retain original Troll grapples, throws, lava, attack/camera/animation timing, audio and cinematics. Group fights are an additional feature.
+
+
 ### Post #218 owner correction · Clickable abstract combat + native first
 
 **Viewer entry points:** The top-right **Dungeon (G)** opens the shared viewer for recordings, the developer layout preview and already-available LIVE hero streams. **Watch LIVE (opt in)** from the Adventurer Board/Roster asks for one hero's current committed dungeon position or fight. This is not guaranteed for every hero outside the shop: the first spatial checkpoint is committed at the next 30-second dungeon step; traveling, off-duty, and unsupported-floor heroes cannot be followed. When no view is available the Board stays visible with an explicit message, rather than vanishing silently. These are two data modes within one viewer, **not two world or fight engines**.
