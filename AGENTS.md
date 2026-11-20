@@ -4,7 +4,9 @@
 ### PR #230 · Real multi-Ghoul teams per authored site
 
 `ghoulPack.ts` derives a pack count and IDs from only the real
-seeded site/cycle, party size and physical free positions. Floor 1
+seeded site/cycle, party size and physical free positions. The pack
+option is enabled only for `deferCombat` LIVE reservations, never the
+older atomic day replay resolver.  Floor 1
 remains single Ghoul; deeper floors may spawn up to three. Each extra
 Ghoul is a real GroupCombat actor, **not** an extra world feature,
 separate loot settlement, global dungeon event or a fake 3D floor mesh.
