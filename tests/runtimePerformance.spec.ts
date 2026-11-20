@@ -100,3 +100,54 @@ test("world-only clocks never rerender level-6 history; cashier leaves Babylon i
   await expect(page.locator("#cashier-overlay")).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+
+test("PR215 forensic profile: compare the SAME scene with and without real 50ms world work @ci-smoke",async({page})=>{
+  test.setTimeout(120000);
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const inspect=async(paused:boolean)=>{
+    await page.evaluate(on=>{
+      const hooks=window as Window&{
+        __shopTestPauseWorld?:(paused:boolean)=>void;
+        __shopTestReadProfile?:()=>Record<string,{ms:number;calls:number;maxMs:number}>;
+      };
+      if(!hooks.__shopTestReadProfile||!hooks.__shopTestPauseWorld)
+        throw Error("Missing E2E-only profiling hooks");
+      hooks.__shopTestPauseWorld(on);
+      hooks.__shopTestReadProfile();
+    },paused);
+    const frames=await sampleAnimationFrames(page,60);
+    const profile=await page.evaluate(()=>
+      (window as Window&{__shopTestReadProfile?:()=>unknown})
+        .__shopTestReadProfile?.());
+    return {frames,profile};
+  };
+  const idle=await inspect(true);
+  const live=await inspect(false);
+  const save=await page.evaluate(async()=>{
+    const {CampaignStorage,createSave,parseSave}=
+      await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const storage=new CampaignStorage();
+    const state=await storage.loadGame();
+    if(!state)throw Error("No authentic campaign persisted");
+    const t1=performance.now();
+    const payload=JSON.stringify(createSave(state));
+    const t2=performance.now();
+    parseSave(payload);
+    const t3=performance.now();
+    return {bytes:payload.length,serializeMs:t2-t1,parseValidateMs:t3-t2};
+  });
+  await page.evaluate(()=>
+    (window as Window&{__shopTestPauseWorld?:(paused:boolean)=>void})
+      .__shopTestPauseWorld?.(false));
+  console.log("[PR215 BEFORE/AFTER clock CPU baseline, CI virtual GPU]",JSON.stringify({
+    idle,live,save,
+  }));
+  expect(idle.profile).toBeTruthy();
+  expect(live.profile).toBeTruthy();
+  expect((live.profile as Record<string,{calls:number}>)["world-step"]?.calls)
+    .toBeGreaterThan(0);
+  expect((live.profile as Record<string,{calls:number}>)["traffic-validate-notify"]?.calls)
+    .toBeGreaterThan(0);
+});
