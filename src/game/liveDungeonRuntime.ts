@@ -579,6 +579,9 @@ function commitLiveCombatTick(state:GameState):GameState{
   const activities:WorldEvent[]=[];
   const continuing:LiveDungeonCombat[]=[];
   let returns=[...state.liveDungeon.returns];
+  let clock=state.worldClock;
+  let rngState=state.rngState;
+  let bossCleared=false;
   const plans=new Map(state.liveDungeon.plans.map(p=>[p.heroId,p] as const));
   const sharedGroups:string[][]=state.liveDungeon.combats
     .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
@@ -616,10 +619,12 @@ function commitLiveCombatTick(state:GameState):GameState{
         armor:motion.options.armor,maxHp:motion.options.maxHealth,
         outcome,frames,
       };
-      const rng=new SeededRandom(state.rngState);
+      const rng=new SeededRandom(rngState);
       const xpGain=outcome==="victory"?35+rng.int(21):0;
       const goldGain=outcome==="victory"?15+rng.int(11):0;
       const lootGain=outcome==="victory"?2+rng.int(2):0;
+      rngState=rng.state;
+      if(outcome==="victory")bossCleared=true;
       const hp=outcome==="death"?0:Math.max(0,Math.round(motion.heroHp));
       const nextXp=original.xp+xpGain;
       const hero:AdventurerState={...original,
@@ -642,12 +647,12 @@ function commitLiveCombatTick(state:GameState):GameState{
       if(hp<=0)activities.push(deathSignal(hero,state.day,state.worldClock.tick));
       else{
         const journey=beginPortalReturn(hero,state.worldClock.tick,
-          state.worldClock,returns);
+          clock,returns);
         // This return is queued against the SAME world event, and its
         // scheduled report will be re-applied to the completed next state.
         byId.set(hero.id,journey.hero);
         returns=journey.returns;
-        // The caller must carry this scheduled portal clock below.
+        clock=journey.clock;
       }
     }
   }
@@ -737,16 +742,21 @@ function commitLiveCombatTick(state:GameState):GameState{
     sharedGroups,roster,floor=>floor===7?level7World:
       earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
       emptyLevel7World(),plans,state.seed,state.day,state.worldClock.tick);
+  const active=continuing.length>0||!!bossContinuing;
   const next:GameState={...state,
+    worldClock:clock,rngState,
     adventurers:roster,dungeonParties:parties.parties,
     earlyDungeonWorlds,level7World,
-    liveDungeon:{...state.liveDungeon,combats:continuing,returns,
-      plans:[...plans.values()],
-      combatTick:continuing.length?state.worldClock.tick:0,
+    dungeonFloors:bossCleared&&
+      !state.dungeonFloors.some(f=>f.floor===6&&f.cleared)
+        ?[...state.dungeonFloors,{floor:6,cleared:true}]:state.dungeonFloors,
+    liveDungeon:{...state.liveDungeon,combats:continuing,
+      bossCombat:bossContinuing,returns,plans:[...plans.values()],
+      combatTick:active?state.worldClock.tick:0,
       heroes:[...counts.values()]},
     events:[...state.events,...activities,...parties.events],
   };
-  return continuing.length?scheduleLiveCombat(next):next;
+  return active?scheduleLiveCombat(next):next;
 }
 
 /** One world timeline dispatches both real customer expiry and live dungeon.
@@ -773,7 +783,7 @@ export function finishLiveDungeonDay(
 ):{state:GameState;events:readonly WorldEvent[]}{
   if(!state.liveDungeon.enabled)
     throw new RangeError("Cannot close an inactive live dungeon.");
-  if(state.liveDungeon.combats.length)
+  if(state.liveDungeon.combats.length||state.liveDungeon.bossCombat)
     throw new RangeError("Cannot close a day while a real fight is unresolved.");
   const day=state.day+1;
   const clock=beginNextWorldDay(state.worldClock,state.day);
@@ -874,7 +884,8 @@ export function finishLiveDungeonDay(
     adventurers,rngState,
     nextAdventurerId:state.nextAdventurerId+influx,
     liveDungeon:{enabled:true,lastStepTick:clock.tick,heroes:[],
-      combatTick:0,combats:[],returns:state.liveDungeon.returns,
+      combatTick:0,combats:[],bossCombat:null,
+      returns:state.liveDungeon.returns,
       plans:state.liveDungeon.plans.filter(plan=>
         adventurers.some(h=>h.id===plan.heroId&&h.floor===plan.floor&&
           h.health>0&&(h.status==="exploring"||h.status==="expedition")))},
