@@ -94,7 +94,7 @@ export class LiveGroupCombatArena{
       // The actual recorded cast and first available committed pose define
       // the entire opt-in film; never predict future combat state.
       this.intro=createGroupCombatIntro(view.combat.id,view.combat.actors,
-        view.combat.frames[0]??view.combat.frame);
+        view.combat.frame);
       this.introElapsed=0;
     }
     this.show(view);
