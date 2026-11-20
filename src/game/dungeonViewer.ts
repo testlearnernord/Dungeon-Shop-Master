@@ -94,7 +94,7 @@ export class DungeonViewer {
     private readonly store: GameStore,
     private readonly sceneChanged: (active: boolean) => void,
   ) {
-    this.liveArena=new LiveGroupCombatArena(engine);
+    this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel);
     this.watchCombatButton.addEventListener("click",()=>{
       if(this.liveHeroId)this.watchLiveCombat();
       else this.watchRecordedCombat();
@@ -147,6 +147,12 @@ export class DungeonViewer {
         this.returnToDungeonMap();
         return;
       }
+      if(event.code==="Tab"&&this.liveArena.isActive&&!event.repeat){
+        event.preventDefault();event.stopImmediatePropagation();
+        const actorId=this.liveArena.nextFocus();
+        this.focusLabel.textContent="TAB focus: "+(actorId??"free camera");
+        return;
+      }
       if(isInteractiveTarget(event.target))return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -179,8 +185,19 @@ export class DungeonViewer {
       this.keys.delete(event.code);
     }, true);
     window.addEventListener("blur", () => this.keys.clear());
+    // Use the same spectator mouse-flight contract as Level-6, but only
+    // after opting into the actual 3D fight. Map picking stays untouched.
+    canvas.addEventListener("pointerdown",()=>{
+      if(!this.active||!this.liveArena.isActive)return;
+      if(document.pointerLockElement!==canvas)void canvas.requestPointerLock();
+    },true);
+    document.addEventListener("mousemove",event=>{
+      if(!this.active||!this.liveArena.isActive||
+         document.pointerLockElement!==canvas)return;
+      this.liveArena.turnCamera(event.movementX,event.movementY);
+    },true);
     window.addEventListener("wheel", event => {
-      if (!this.active || !this.camera) return;
+      if (!this.active || !this.camera || this.liveArena.isActive) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       this.camera.position.y = Math.max(12, Math.min(100,
@@ -560,6 +577,8 @@ export class DungeonViewer {
 
   private leaveLiveCombat():void {
     this.liveArena.dispose();
+    if(document.pointerLockElement===this.canvas)
+      void document.exitPointerLock();
     this.returnCombatButton.hidden=true;
     this.watchCombatButton.hidden=true;
     this.panel.dataset.liveCombatMode="none";
@@ -755,7 +774,8 @@ export class DungeonViewer {
   update(deltaSeconds:number):void {
     if(!this.active||!this.camera||!this.layout)return;
     const dt=Math.min(0.1,Math.max(0,deltaSeconds));
-    if(!this.liveArena.isActive){
+    if(this.liveArena.isActive)this.liveArena.updateCamera(dt,this.keys);
+    else {
     const speed=dt*(this.keys.has("ShiftLeft")||this.keys.has("ShiftRight")?44:15);
     const dx=(Number(this.keys.has("KeyD"))-Number(this.keys.has("KeyA")))*speed;
     const dz=(Number(this.keys.has("KeyS"))-Number(this.keys.has("KeyW")))*speed;
