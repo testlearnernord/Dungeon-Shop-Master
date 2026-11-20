@@ -518,11 +518,17 @@ function validateLiveCombatCheckpoints(
         validNumber(obstacle[key],op+"."+key,-10000,10000);
     });
     const initialApproach=(arrivals[0] as {steps:{x:number;z:number}[]}).steps[0];
-    const canonical=prepareSpatialDungeonCombat(members,feature!,
-      layout.seed,layout,initialApproach,cycle);
-    if(canonical.elite!==encounter.elite||
-      JSON.stringify(canonical.options)!==JSON.stringify(options))
-      fail(cp+".encounter.options","must match the deterministic real hero and monster stats");
+    const liveCanonical=prepareSpatialDungeonCombat(members,feature!,
+      layout.seed,layout,initialApproach,cycle,true);
+    const legacyCanonical=prepareSpatialDungeonCombat(members,feature!,
+      layout.seed,layout,initialApproach,cycle,false);
+    // Existing in-progress single-Ghoul saves remain valid; newly reserved
+    // LIVE pack sites must exactly match their seeded, physical actor roster.
+    if(![liveCanonical,legacyCanonical].some(canonical=>
+      canonical.elite===encounter.elite&&
+      JSON.stringify(canonical.options)===JSON.stringify(options)))
+      fail(cp+".encounter.options",
+        "must match a seeded LIVE pack or historical single Ghoul stats");
     let initial;
     try {initial=createGroupCombat(options as unknown as GroupCombatOptions);}
     catch {fail(cp+".encounter.options","is not a valid group combat");}
