@@ -50,6 +50,7 @@ export class LiveGroupCombatArena{
   private focusIds:string[]=[];
   private focusedId:string|null=null;
   private lastPoseTime=-1;
+  private lastCommittedView:CombatArenaView|null=null;
   private readonly observedPositions=new Map<string,Vector3>();
 
   constructor(private readonly engine:Engine,
@@ -75,6 +76,7 @@ export class LiveGroupCombatArena{
   show(view:CombatArenaView):void {
     const fight=view.combat;
     if(!fight||!this.scene||fight.id!==this.fightId)return;
+    this.lastCommittedView=view;
     this.hud?.show(fight.frame);
     const timeDelta=this.lastPoseTime>=0&&fight.frame.t>=this.lastPoseTime
       ?Math.min(.1,fight.frame.t-this.lastPoseTime):0;
@@ -187,6 +189,7 @@ export class LiveGroupCombatArena{
     this.hud?.dispose();this.hud=null;
     this.observedPositions.clear();
     this.focusIds=[];this.focusedId=null;this.lastPoseTime=-1;
+    this.lastCommittedView=null;
     this.actors.clear();
     this.projectiles=[];
     this.projectileMaterial=null;
@@ -256,6 +259,15 @@ export class LiveGroupCombatArena{
         // authoritative enemy identity receives one opt-in Tripo model.
         const ghoul=createDungeonGhoulVisual(scene,spec.id);
         this.actors.set(spec.id,{spec,hero:null,ghoul,troll:null});
+        // Babylon loads rigged GLBs asynchronously. A paused world or a
+        // historical still-frame will never dispatch another committed tick.
+        // On readiness, repaint ONLY the last saved frame, without RNG,
+        // stepping fighters or allocating an additional renderer.
+        void ghoul.ready.then(loaded=>{
+          if(!loaded||this.scene!==scene||this.fightId!==fight.id)return;
+          const committed=this.lastCommittedView;
+          if(committed)this.show(committed);
+        });
       }
     }
   }
