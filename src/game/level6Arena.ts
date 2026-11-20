@@ -665,6 +665,13 @@ export class Level6Arena {
     if(skipped)this.skipBossThemeTo(BOSS_INTRO_SECONDS);
     this.pressed.clear();
     this.focusCamera();
+    if(this.watchingLiveHeroId&&this.replay){
+      // The world advanced during the cinematic. Jump ONLY the spectator
+      // cursor near the last already committed frame, never world time.
+      this.replayTime=Math.max(0,this.replay.frames.at(-1)!.t-.5);
+      this.replayFrameIndex=Math.max(0,this.replay.frames.findLastIndex(
+        frame=>frame.t<=this.replayTime));
+    }
     this.status.textContent=this.replay
       ?"Recorded combat · original saved frames, no new damage or rewards."
       :"The Ashen Tunnel Mauler is attacking · training only.";
@@ -755,7 +762,25 @@ export class Level6Arena {
   }
 
   private updateRecordedFight(dt: number): void {
-    const replay = this.replay;
+    let replay=this.replay;
+    if(this.watchingLiveHeroId){
+      const active=this.store.state.liveDungeon.bossCombat;
+      if(active?.heroId===this.watchingLiveHeroId&&replay){
+        // Refreshed LIVE frames come only from committed world-time updates.
+        // No hero AI, boss damage or RNG runs in the spectator.
+        replay={...replay,frames:active.frames};
+        this.replay=replay;
+      }else if(!active){
+        const completed=[...this.store.state.events].reverse().find(event=>
+          event.type==="level6-combat"&&
+          event.adventurerId===this.watchingLiveHeroId&&
+          event.combatReplay);
+        if(completed?.combatReplay){
+          replay=completed.combatReplay;
+          this.replay=replay;
+        }
+      }
+    }
     if (!replay || !this.motion) return;
     const frames = replay.frames;
     const end = frames[frames.length-1].t;
@@ -782,7 +807,12 @@ export class Level6Arena {
         (next.bossAge-current.bossAge)*alpha;
     }
     this.motion.time = this.replayTime;
-    if (this.replayTime >= end && !this.replayFinished) {
+    const stillLive=!!(this.watchingLiveHeroId&&
+      this.store.state.liveDungeon.bossCombat?.heroId===this.watchingLiveHeroId);
+    if(stillLive&&this.replayTime>=end){
+      this.motion.outcome="fighting";
+      this.status.textContent="LIVE · Waiting for the next committed world-clock frame.";
+    }else if (this.replayTime >= end && !this.replayFinished) {
       this.replayFinished = true;
       this.motion.outcome = replay.outcome === "death" ? "defeat" :
         replay.outcome === "victory" ? "victory" : "fighting";
