@@ -246,6 +246,20 @@
             <button id="close-dungeon" type="button">Return to shop (G / Esc)</button>
           </div>
         </header>
+        <div id="dungeon-fight-cinematic" class="dungeon-fight-cinematic" hidden
+          aria-label="Optional fight introduction" aria-live="off">
+          <div class="dungeon-fight-cinematic-copy">
+            <small>THE LIVING DUNGEON · COMBAT</small>
+            <strong id="dungeon-fight-intro-caption">THE ENCOUNTER</strong>
+            <p>Recorded combat is still unfolding on the shared world clock.</p>
+            <div class="dungeon-fight-intro-track" aria-hidden="true">
+              <div id="dungeon-fight-intro-progress"></div>
+            </div>
+            <button type="button" id="dungeon-skip-intro">
+              Skip intro (Space / Enter)
+            </button>
+          </div>
+        </div>
         <aside id="dungeon-live-combat-summary" class="dungeon-live-combat-summary"
           hidden aria-label="Read-only live battle status">
           <strong id="dungeon-combat-heading">⚔ ENGAGEMENT · ABSTRACT MAP</strong>

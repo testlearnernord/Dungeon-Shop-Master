@@ -1229,3 +1229,52 @@
 @media(prefers-reduced-motion:reduce){
   #live-death-signal,#live-death-signal *{animation:none!important;transition:none!important}
 }
+
+
+/* #227: opt-in group fight introduction. Exact saved actors only, and never
+   on the ordinary abstract floor map. Level-6 film grammar, new cast. */
+#dungeon-fight-cinematic[hidden]{display:none!important}
+#dungeon-hud .dungeon-fight-cinematic{
+  position:absolute;inset:0;z-index:14;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(5,8,11,.50),transparent 35%,
+    transparent 60%,rgba(5,8,11,.54))
+}
+#dungeon-hud .dungeon-fight-cinematic-copy{
+  position:absolute;bottom:17%;left:50%;transform:translateX(-50%);
+  width:min(620px,calc(100vw - 32px));padding:17px 22px;
+  text-align:center;pointer-events:none;
+  border:1px solid rgba(196,151,85,.58);border-radius:13px;
+  background:rgba(8,11,13,.84);
+  backdrop-filter:blur(10px);box-shadow:0 12px 48px #000b
+}
+#dungeon-hud .dungeon-fight-cinematic small{
+  display:block;letter-spacing:.19em;color:#ccac7d;font-size:11px
+}
+#dungeon-hud .dungeon-fight-cinematic strong{
+  display:block;margin:8px 0;font:700 clamp(20px,3vw,34px) Georgia,serif;
+  letter-spacing:.075em;color:#ffe4b0;text-shadow:0 3px 10px #000
+}
+#dungeon-hud .dungeon-fight-cinematic p{
+  margin:6px 0 13px;font-size:11px;color:#bdb3a3
+}
+#dungeon-hud .dungeon-fight-intro-track{
+  width:100%;height:4px;background:#2b2521;border-radius:5px;overflow:hidden
+}
+#dungeon-hud #dungeon-fight-intro-progress{
+  width:0;height:100%;background:#d9ad68;transition:none
+}
+#dungeon-hud #dungeon-skip-intro{
+  margin-top:12px;padding:9px 16px;pointer-events:auto;
+  color:#fae4c0;background:#27231e;border:1px solid #b08a57;
+  border-radius:6px;cursor:pointer
+}
+#dungeon-hud #dungeon-skip-intro:focus-visible{
+  outline:3px solid #f1c987;outline-offset:3px
+}
+@media(max-width:750px){
+  #dungeon-hud .dungeon-fight-cinematic-copy{
+    bottom:30%;padding:11px 14px
+  }
+}

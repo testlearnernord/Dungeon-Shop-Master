@@ -20,6 +20,9 @@ import type {CombatantSpec,GroupPhase,GroupReplayFrame} from "./groupCombat.ts";
 import {sampleGroupReplayPresentation} from "./groupReplayPresentation.ts";
 import {ghoulRecordedPhaseAge} from "./ghoulMotion.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
+import {createGroupCombatIntro,sampleGroupCombatIntro,
+  type GroupIntroTrack} from "./groupCombatIntro.ts";
+import type {CinematicFrame} from "./combatCinematic.ts";
 
 /** Shared presentation contract for committed LIVE and archived fight frames. */
 export type CombatArenaView=Pick<LiveSpectatorFrame,"combat"|"heroes">;
@@ -55,6 +58,8 @@ export class LiveGroupCombatArena{
   private presentationTime=0;
   private lastCommittedView:CombatArenaView|null=null;
   private readonly observedPositions=new Map<string,Vector3>();
+  private intro:GroupIntroTrack|null=null;
+  private introElapsed=0;
 
   constructor(private readonly engine:Engine,
     private readonly canvas:HTMLCanvasElement,
@@ -63,6 +68,16 @@ export class LiveGroupCombatArena{
   get isActive():boolean{return this.scene!==null;}
   get currentScene():Scene|null{return this.scene;}
   get observedFightId():string|null{return this.fightId;}
+  get isIntroActive():boolean{return this.intro!==null;}
+  get introFrame():CinematicFrame|null{
+    return this.intro?sampleGroupCombatIntro(this.intro,this.introElapsed):null;
+  }
+  /** Skips *only* the spectator film, never steps or rewinds the fight. */
+  skipIntro():void{
+    if(!this.intro)return;
+    this.intro=null;
+    this.resetCamera();
+  }
 
   /** Explicit viewer gesture is the ONLY construction entry point. */
   watch(view:CombatArenaView,mode:"live"|"recorded"="recorded"):boolean{
@@ -76,6 +91,11 @@ export class LiveGroupCombatArena{
       // NOT future prediction or a second 60Hz combat engine.
       this.liveBuffered=mode==="live";
       this.presentationTime=Math.max(0,view.combat.frame.t-.5);
+      // The actual recorded cast and first available committed pose define
+      // the entire opt-in film; never predict future combat state.
+      this.intro=createGroupCombatIntro(view.combat.id,view.combat.actors,
+        view.combat.frame);
+      this.introElapsed=0;
     }
     this.show(view);
     return true;
@@ -174,7 +194,9 @@ export class LiveGroupCombatArena{
   /** Same Level-6 spectator camera: free-flight and focus cycle. */
   updateCamera(dt:number,pressed:ReadonlySet<string>):void {
     if(!this.camera)return;
-    flyCombatSpectatorCamera(this.camera,pressed,dt);
+    const bounded=Math.min(.1,Math.max(0,dt));
+    // Even while the audience watches the intro, the authoritative world
+    // and the 60Hz committed-frame presentation keep moving independently.
     if(this.liveBuffered&&this.lastCommittedView?.combat){
       const fight=this.lastCommittedView.combat;
       const next=Math.min(fight.frame.t,this.presentationTime+Math.max(0,dt));
@@ -184,13 +206,21 @@ export class LiveGroupCombatArena{
           sampleGroupReplayPresentation(fight.frames,next));
       }
     }
+    if(this.intro){
+      this.introElapsed=Math.min(this.intro.duration,
+        this.introElapsed+bounded);
+      const frame=sampleGroupCombatIntro(this.intro,this.introElapsed);
+      this.camera.position.set(...frame.eye);
+      this.camera.setTarget(new Vector3(...frame.look));
+      if(this.introElapsed>=this.intro.duration)this.intro=null;
+    }else flyCombatSpectatorCamera(this.camera,pressed,dt);
     if(this.scene)this.hud?.render(this.scene,dt);
   }
   turnCamera(dx:number,dy:number):void{
-    if(this.camera)turnCombatSpectatorCamera(this.camera,dx,dy);
+    if(this.camera&&!this.intro)turnCombatSpectatorCamera(this.camera,dx,dy);
   }
   nextFocus():string|null{
-    if(!this.camera||!this.focusIds.length)return null;
+    if(this.intro||!this.camera||!this.focusIds.length)return null;
     const index=this.focusIds.indexOf(this.focusedId??"");
     this.focusedId=this.focusIds[(index+1)%this.focusIds.length];
     const pos=this.observedPositions.get(this.focusedId);
@@ -218,6 +248,7 @@ export class LiveGroupCombatArena{
     this.focusIds=[];this.focusedId=null;this.lastPoseTime=-1;
     this.lastCommittedView=null;
     this.liveBuffered=false;this.presentationTime=0;
+    this.intro=null;this.introElapsed=0;
     this.actors.clear();
     this.projectiles=[];
     this.projectileMaterial=null;

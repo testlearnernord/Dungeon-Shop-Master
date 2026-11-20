@@ -75,6 +75,16 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   expect(abstract.liveMapProjectiles).toBe(0);
   expect(abstract.liveMapGhouls).toBe(0);
   await page.locator("#dungeon-watch-live-combat").click();
+  // A premium camera intro exists only after opt-in. It is a read-only
+  // presentation and must never pause/advance the authoritative fight.
+  await expect(page.locator("#dungeon-fight-cinematic")).toBeVisible();
+  await expect(page.locator("#dungeon-fight-intro-caption")).not.toBeEmpty();
+  await expect(page.locator("#dungeon-skip-intro")).toBeVisible();
+  expect(await record()).toEqual(before);
+  await page.keyboard.press("Space");
+  await expect(page.locator("#dungeon-fight-cinematic")).toBeHidden();
+  expect(await record()).toEqual(before,
+    "Skipping a camera cut cannot change world time, HP or loot");
   await expect(page.locator("#dungeon-mode-description")).toContainText("3D combat arena");
   await expect(page.locator("#dungeon-return-from-combat")).toBeVisible();
   await expect(page.locator("#dungeon-watch-live-combat")).toBeHidden();
