@@ -4,6 +4,7 @@
 
 - The most recent owner decision supersedes #218's distinction between LIVE map and archive map: **both are abstract**. Neither `DungeonReplayScene.showLive` nor `setReplay`/`show` may create enemy/hero battle models, Ghoul GLBs or projectile meshes on an ordinary dungeon map. Render a clickable encounter beacon, HP/status and genuine traversals.
 - `LiveGroupCombatArena` is the ONE read-only battle scene for both genuinely running and archived 60Hz recorded fights, constructed only by clicking the marker or accessible Watch button. It never simulates combat again. LIVE world time continues; recorded playback uses only local replay time.
+- Roster `Watch LIVE` must only close the dialog after opening a real saved hero observation; if the selected non-shop signature lacks a committed dungeon checkpoint, re-open the Board and display an accessible inline explanation. Do not reveal remote availability or coordinates **before** the opt-in. The top-right launcher is called **Dungeon (G)**, not Level 7, because both time modes use the same `DungeonViewer`.
 - Native 100% Babylon resolution is the **initial/default** mode. Auto quality is still available by explicit F4 selection, never as implicit degradation. Order: Native → Balanced → Performance → Auto.
 
 
