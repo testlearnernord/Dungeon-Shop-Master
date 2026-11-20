@@ -2,7 +2,9 @@ import type {GameState} from "./gameState.ts";
 import type {LiveBossCombat} from "./liveDungeonRuntime.ts";
 import {createCombatPreview} from "./arenaCombatMotion.ts";
 import {frameFromCombat,validateBossReplay} from "./bossCombatReplay.ts";
-import {LIVE_COMBAT_INTERVAL_TICKS} from "./liveDungeonRuntime.ts";
+import {
+  LIVE_COMBAT_INTERVAL_TICKS,DUNGEON_STEP_INTERVAL_TICKS,
+} from "./liveDungeonRuntime.ts";
 
 const isRecord=(v:unknown):v is Record<string,unknown> =>
   !!v&&typeof v==="object"&&!Array.isArray(v);
@@ -28,8 +30,13 @@ export function liveBossCheckpointProblem(
   const hero=state.adventurers.find(a=>a.id===value.heroId);
   if(!hero||hero.floor!==6||hero.status!=="expedition"||hero.health<=0)
     return fail("must refer to a living real Floor-6 explorer");
+  // A boss may span several actual 30-second exploration steps. The
+  // original start must remain fixed while lastStepTick progresses.
   if(!Number.isSafeInteger(value.startedTick)||
-     value.startedTick!==lastStepTick||
+     value.startedTick>lastStepTick||
+     value.startedTick<0||
+     (lastStepTick-value.startedTick)%DUNGEON_STEP_INTERVAL_TICKS!==0||
+     combatTick<value.startedTick||
      (combatTick-value.startedTick)%LIVE_COMBAT_INTERVAL_TICKS!==0||
      value.id!=="live-boss:"+state.day+":"+value.startedTick+":"+hero.id)
     return fail("clock/identity does not match the one real boss");
