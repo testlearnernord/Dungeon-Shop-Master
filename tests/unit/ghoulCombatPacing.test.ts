@@ -39,6 +39,23 @@ test("10Hz saved poses animate smoothly at display-refresh timestamps, without f
     "LIVE playback must never extrapolate into uncommitted future");
 });
 
+test("multiple simultaneous projectiles from one hero never interpolate into each other",()=>{
+  const start=pose(0,0,50,"move");
+  const end=pose(.1,0,50,"move");
+  const frames:GroupReplayFrame[]=[
+    {...start,projectiles:[
+      {ownerId:"hero",x:1,z:1},{ownerId:"hero",x:5,z:5},
+    ]},
+    {...end,projectiles:[
+      {ownerId:"hero",x:2,z:2},{ownerId:"hero",x:6,z:6},
+    ]},
+  ];
+  const frame=sampleGroupReplayPresentation(frames,.05);
+  assert.deepEqual(frame.projectiles,[
+    {ownerId:"hero",x:1.5,z:1.5},{ownerId:"hero",x:5.5,z:5.5},
+  ]);
+});
+
 test("new seeded early-floor Ghoul has real longer 60Hz combat, not artificially slowed footage",()=>{
   const seed=7351;
   const layout=generateExpeditionLayout(seed,1);
