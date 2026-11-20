@@ -54,6 +54,10 @@ test("Cinematic shows every real team count without producing extra actors",()=>
   const film=createGroupCombatIntro("combat-1",cast,saved);
   assert.deepEqual(film.heroIds,["h1","h2"]);
   assert.deepEqual(film.monsterIds,["m1","m2"]);
+  // The saved frame has already advanced relative to initial cast specs;
+  // introduction looks at the real current position, not the spawn point.
+  assert.deepEqual(film.keyframes[1].look,[3,2.6,5]);
+  assert.deepEqual(film.keyframes[2].look,[-1,2.6,-2]);
   assert.equal(film.duration,GROUP_COMBAT_INTRO_SECONDS);
   assert.equal(sampleGroupCombatIntro(film,0).time,0);
   assert.match(sampleGroupCombatIntro(film,2).caption,/GHOUL PACK/);
