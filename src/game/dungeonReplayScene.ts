@@ -24,6 +24,10 @@ import {
 } from "./dungeonPartyFormation.ts";
 import type { GroupPhase } from "./groupCombat.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
+import {
+  committedLivePartyStep, sampleLivePartyStep, livePartyVisualOffset,
+  LIVE_PARTY_STEP_SECONDS, type CommittedPartyStep,
+} from "./livePartyPresentation.ts";
 
 const SPACING=2.5;
 const toWorld=(layout:DungeonLayout,p:DungeonPoint)=>
@@ -51,6 +55,10 @@ export class DungeonReplayScene {
   private liveFrame:LiveSpectatorFrame|null=null;
   private liveHeroId:string|null=null;
   private liveFightId:string|null=null;
+  private liveTransit:CommittedPartyStep|null=null;
+  private liveTransitSeconds=0;
+  private liveGaitSeconds=0;
+  private liveHeading=0;
   /** One clickable abstract encounter beacon for both LIVE and recorded maps. */
   private battleMarker:Mesh|null=null;
   private timeline:DungeonPlaybackTimeline|null=null;
@@ -98,6 +106,10 @@ export class DungeonReplayScene {
   }
 
   setReplay(record:Level7Replay|null):void {
+    this.liveTransit=null;
+    this.liveTransitSeconds=0;
+    this.liveGaitSeconds=0;
+    this.liveHeading=0;
     this.liveFrame=null;
     this.liveHeroId=null;
     this.liveFightId=null;
@@ -321,11 +333,63 @@ export class DungeonReplayScene {
     ctx.fillRect(Math.round(snapshot.x*cell)+1,Math.round(snapshot.z*cell)+1,cell-2,cell-2);
   }
 
+  /**
+   * Between committed dungeon steps, animate only models already on the map.
+   * Every sampled path has TWO saved endpoints; otherwise heroes stand still.
+   * Both the lead and companions use exactly the same travel pose and gait.
+   * This never reads or advances gameplay, generates fog or creates a battle.
+   */
+  private poseLiveParty():void {
+    const view=this.liveFrame;
+    if(!view||!this.hero||view.combat)return;
+    const location=sampleLivePartyStep(this.liveTransit,
+      this.liveTransitSeconds,view);
+    const center=toWorld(this.layout,location);
+    const ids=view.heroes.map(hero=>hero.id);
+    for(const member of view.heroes){
+      const model=member.id===view.heroId?this.hero:
+        this.companionHeroes.get(member.id);
+      if(!model||!model.root.isEnabled())continue;
+      const offset=livePartyVisualOffset(ids,member.id,this.liveHeading);
+      model.root.position.set(center.x+offset.x,.1,center.z+offset.z);
+      model.root.rotation.y=this.liveHeading;
+      this.animateHero(model,location.walking?"move":"recover",
+        this.liveGaitSeconds);
+    }
+  }
+
+  /** Cheap cosmetic RAF work only during one already committed tile step. */
+  advanceLivePresentation(deltaSeconds:number):void {
+    if(!this.liveTransit||!this.liveFrame||this.liveFrame.combat)return;
+    const dt=Math.min(.1,Math.max(0,deltaSeconds));
+    this.liveTransitSeconds=Math.min(LIVE_PARTY_STEP_SECONDS,
+      this.liveTransitSeconds+dt);
+    this.liveGaitSeconds+=dt;
+    this.poseLiveParty();
+    if(this.liveTransitSeconds>=LIVE_PARTY_STEP_SECONDS)
+      this.liveTransit=null;
+  }
+
   /** Real-time projection of the committed world, using the SAME Babylon
    * actors, fog, minimap and camera as historical footage. Never advances
    * a battle, calls RNG, creates a replay outcome, or mutates GameStore.
    */
   showLive(view:LiveSpectatorFrame):void {
+    const previous=this.liveFrame;
+    const step=committedLivePartyStep(previous,view);
+    if(step){
+      this.liveTransit=step;
+      this.liveTransitSeconds=0;
+      this.liveGaitSeconds=0;
+      this.liveHeading=step.heading;
+    }else if(!previous||previous.heroId!==view.heroId||
+             previous.floor!==view.floor||previous.combat!==null||
+             view.combat!==null||previous.x!==view.x||previous.z!==view.z){
+      this.liveTransit=null;
+      this.liveTransitSeconds=0;
+      this.liveGaitSeconds=0;
+      this.liveHeading=0;
+    }
     if(this.replay||this.liveHeroId!==view.heroId){
       this.clearCombatModels();
       this.replay=null;this.timeline=null;this.lastSnapshot=null;
@@ -350,13 +414,10 @@ export class DungeonReplayScene {
       encounter:null,frame:null,finished:false,percent:0,
     } satisfies DungeonPlaybackSnapshot;
     this.lastSnapshot=observed;
-    const position=toWorld(this.layout,view);
-    this.hero.root.position.set(position.x,.1,position.z);
     this.hero.root.metadata.hp=lead.health;
     // An actual fight gets ONLY the map beacon. All animated combat cast
     // belongs in the separately requested LIVE Group Arena.
     this.hero.root.setEnabled(!view.combat);
-    if(!view.combat)this.animateHero(this.hero,"move",view.worldTick/20);
     const present=new Set(view.heroes.map(h=>h.id));
     for(const [id,model] of this.companionHeroes){
       if(!present.has(id)){model.root.dispose(false,true);
@@ -374,11 +435,11 @@ export class DungeonReplayScene {
       }
       const model=this.companionHeroes.get(h.id)!;
       model.root.setEnabled(!view.combat);
-      model.root.position.set(position.x+((h.id<view.heroId)?-0.7:0.7),
-        .1,position.z+.5);
       model.root.metadata.hp=h.health;
-      if(!view.combat)this.animateHero(model,"move",view.worldTick/20);
     }
+    // All party members now share one actual saved travel step and one
+    // animation update, not an isolated pose sampled at world event time.
+    this.poseLiveParty();
     // The map never allocates combat actors or steps an animation for a fight.
     const combat=view.combat;
     this.showBattleMarker(combat);
@@ -420,5 +481,6 @@ export class DungeonReplayScene {
     this.clearCombatModels();
     this.replay=null;this.timeline=null;this.lastSnapshot=null;
     this.liveFrame=null;this.liveHeroId=null;this.liveFightId=null;
+    this.liveTransit=null;this.liveTransitSeconds=0;
   }
 }

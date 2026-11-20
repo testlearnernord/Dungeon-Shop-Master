@@ -1,5 +1,25 @@
 # Dungeon Shop Master — Contributor Guide
 
+
+### PR #223 · Read-only LIVE party animation and floor-view boundary
+
+The LIVE map does not simulate movement or combat. `livePartyPresentation.ts`
+may interpolate the mesh gait for **one real adjacent saved tile step** only.
+`DungeonReplayScene.advanceLivePresentation` is called every render frame
+while that existing transition is visible, with the same walk pose for
+leader and companions. This is not a new world timer, route, fight motor,
+save format or hero knowledge source. Changes in floor, party membership,
+combat or a skipped/missing step snap to the true checkpoint. Keep the
+neutral map abstract during fights.
+
+#224–226 must introduce a saved-world per-floor read-only projection for
+all live actors, clickable hero details and per-hero fog without passing
+spectator omniscience to actor AI or the passive Board. Replay archive
+must become separate from the LIVE floor selector. Follow
+[docs/FLOOR_SPECTATOR_CONTRACT.md](docs/FLOOR_SPECTATOR_CONTRACT.md).
+Do not remove the old single-hero selector or a combat engine until
+the replacement ships with tests.
+
 ### LOCKED owner rule: LEVEL 6 Cave Troll sets the combat standard (20 Nov 2026)
 
 - The original Level-6 Cave Troll's authored combat, animation, camera, lighting, SFX, environment and HP/damage presentation are the **reference for every encounter**. The stripped-down Ghoul/Group prototype is NOT the basis for the universal engine. Monsters, arena art and unique abilities vary; group combat is an **additional capacity**, not a replacement.
