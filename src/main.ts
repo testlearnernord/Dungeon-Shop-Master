@@ -3,6 +3,8 @@ import { createLevel5RoomVisuals } from "./game/level5RoomVisuals.ts";
 import { createCashierSfx } from "./cashierSfx.ts";
 import { setupGameSfx } from "./gameSfx.ts";
 import {setupPerformanceHud} from "./performanceHud.ts";
+import {RenderQualityController} from "./game/renderQualityController.ts";
+import type {RenderQualityMode} from "./game/adaptiveResolution.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { createFirstPersonCamera } from "./game/firstPersonController";
@@ -71,10 +73,14 @@ setupHudMouseMode(canvas);
 const inventoryHud = inventoryElement;
 const statusHud = statusElement;
 setupTransientStatus(statusHud);
-const runtimePerf=setupPerformanceHud();
 const campaign = await loadCampaign();
 const engine = new Engine(canvas, true, { antialias: true, preserveDrawingBuffer: false });
 const scene = new Scene(engine);
+const renderQuality=new RenderQualityController(engine);
+const runtimePerf=setupPerformanceHud({
+  details:()=>renderQuality.diagnostics(scene),
+  cycleQuality:()=>renderQuality.cycle(),
+});
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
@@ -158,6 +164,8 @@ if(import.meta.env.VITE_E2E==="1"){
     __shopTestAdvanceWorldTicks?:(ticks:number)=>void;
     __shopTestReadProfile?:()=>Record<string,{ms:number;calls:number;maxMs:number}>;
     __shopTestPresentAt?:(fraction:number)=>unknown;
+    __shopTestSetRenderQuality?:(mode:RenderQualityMode)=>void;
+    __shopTestRenderQualityInfo?:()=>ReturnType<RenderQualityController["info"]>;
   };
   hooks.__shopTestAdvanceDay=()=>dayClock.endDayFromBed();
   hooks.__shopTestStockItem=(slotId,itemId)=>
@@ -177,6 +185,8 @@ if(import.meta.env.VITE_E2E==="1"){
     profileCounters.clear();
     return sample;
   };
+  hooks.__shopTestSetRenderQuality=mode=>renderQuality.setMode(mode);
+  hooks.__shopTestRenderQualityInfo=()=>renderQuality.info();
   // Pure presentation diagnostic: physical source checkpoint and live NPC
   // roots must match exactly before/after a fractional render override.
   hooks.__shopTestPresentAt=fraction=>{
@@ -447,6 +457,7 @@ cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId()
     return result;
   },message=>{statusHud.textContent=message;},cashierSfx.play,cashierSfx.pulse);
 
+let lastResolutionFrame=0;
 engine.runRenderLoop(() => {
   const frameMs=ignoreNextClockFrame?0:engine.getDeltaTime();
   ignoreNextClockFrame=false;
@@ -502,6 +513,11 @@ engine.runRenderLoop(() => {
     paused||worldClockPacer.isPaused?1:worldClockPacer.presentationAlpha,
     ()=>profile("scene-render",()=>scene.render()));
   const now=performance.now();
+  const gapMs=lastResolutionFrame?now-lastResolutionFrame:0;
+  lastResolutionFrame=now;
+  renderQuality.observe({now,gapMs,worldCpuMs:worldElapsed,
+    renderCpuMs:now-renderStarted,active:!paused&&!dungeon.isActive&&
+      !arena.isActive&&!document.hidden});
   runtimePerf.recordFrame({now,worldMs:worldElapsed,
     renderMs:now-renderStarted,ticks:stepped});
 });

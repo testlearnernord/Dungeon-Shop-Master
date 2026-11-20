@@ -20,7 +20,11 @@ const percentile=(values:readonly number[],fraction:number):number=>{
 const average=(items:readonly number[]):number=>
   items.length?items.reduce((sum,n)=>sum+n,0)/items.length:0;
 const ms=(value:number)=>value.toFixed(1);
-export function setupPerformanceHud():{
+export interface RuntimePerformanceOptions{
+  readonly details?:()=>readonly string[];
+  readonly cycleQuality?:()=>void;
+}
+export function setupPerformanceHud(options:RuntimePerformanceOptions={}):{
   recordFrame:(frame:RuntimeFrameTiming)=>void;
   recordSave:(syncMs:number)=>void;
 }{
@@ -34,7 +38,8 @@ export function setupPerformanceHud():{
     "border:1px solid rgba(160,185,177,.55)","border-radius:7px",
     "font:12px/1.45 ui-monospace,SFMono-Regular,monospace",
     "padding:10px 13px","pointer-events:none",
-    "white-space:pre","max-width:min(400px,90vw)",
+    "white-space:pre-wrap","overflow-wrap:anywhere",
+    "max-width:min(430px,90vw)",
     "box-shadow:0 8px 24px rgba(0,0,0,.35)",
   ].join(";");
   panel.hidden=true;
@@ -51,10 +56,16 @@ export function setupPerformanceHud():{
     intervals.length=0;worldWork.length=0;renderWork.length=0;
   };
   window.addEventListener("keydown",event=>{
-    if(event.key!=="F3"||event.repeat||event.ctrlKey||event.altKey||
-       event.metaKey||event.target instanceof HTMLElement&&
+    if((event.key!=="F3"&&event.key!=="F4")||event.repeat||
+       event.ctrlKey||event.altKey||event.metaKey||
+       event.target instanceof HTMLElement&&
        event.target.closest("input,textarea,select,[contenteditable]"))return;
     event.preventDefault();
+    if(event.key==="F4"){
+      options.cycleQuality?.();
+      lastUpdate=0;
+      return;
+    }
     showing=!showing;
     panel.hidden=!showing;
     reset();
@@ -85,6 +96,7 @@ export function setupPerformanceHud():{
         "Render CPU / frame:  "+ms(average(renderWork))+" ms",
         "World ticks / sec:   "+(tickTotal*1000/elapsed).toFixed(1),
         "Last autosave sync:  "+(lastSaveMs===null?"none":ms(lastSaveMs)+" ms"),
+        ...(options.details?.()??[]),
         "Frame gap includes GPU/browser scheduling.",
         "Render CPU is NOT GPU render time.",
       ].join("\n");
