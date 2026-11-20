@@ -20,7 +20,7 @@ const MAX_CPU_MS=16;
  * Browser/GPU stalls may appear outside synchronous scene.render() time.
  */
 export class AdaptiveResolutionPolicy{
-  private modeValue:RenderQualityMode="auto";
+  private modeValue:RenderQualityMode="native";
   private index=0;
   private firstActiveAt:number|null=null;
   private windowStart:number|null=null;
@@ -46,7 +46,7 @@ export class AdaptiveResolutionPolicy{
     return this.scale;
   }
   cycle():number{
-    const order:RenderQualityMode[]=["auto","native","balanced","performance"];
+    const order:RenderQualityMode[]=["native","balanced","performance","auto"];
     return this.setMode(order[(order.indexOf(this.modeValue)+1)%order.length]);
   }
   observe(sample:RenderFrameBudget):number|null{
