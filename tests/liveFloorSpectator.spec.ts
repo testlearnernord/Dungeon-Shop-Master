@@ -90,6 +90,15 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Solo");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Current activity");
   expect(await record()).toEqual(beforeClick);
+  const buttonHit=await page.evaluate(()=>{
+    const button=document.querySelector<HTMLElement>("#dungeon-clear-hero")!;
+    const rect=button.getBoundingClientRect();
+    const target=document.elementFromPoint(rect.left+rect.width/2,
+      rect.top+rect.height/2);
+    return target?.id??target?.tagName??"none";
+  });
+  expect(buttonHit,"The visible close icon must be the topmost click target")
+    .toBe("dungeon-clear-hero");
   await page.locator("#dungeon-clear-hero").click();
   await expect(page.locator("#dungeon-hero-detail")).toBeHidden();
   await page.locator("#dungeon-floor-select").selectOption("2");
