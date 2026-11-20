@@ -227,10 +227,18 @@
             <p id="dungeon-seed"></p>
           </div>
           <div class="dungeon-actions">
+            <button id="dungeon-watch-live-combat" type="button" hidden>⚔ Watch LIVE fight in arena</button>
+            <button id="dungeon-return-from-combat" type="button" hidden>Return to dungeon map (Esc)</button>
             <button id="dungeon-reset-camera" type="button">Reset / Focus (R)</button>
             <button id="close-dungeon" type="button">Return to shop (G / Esc)</button>
           </div>
         </header>
+        <aside id="dungeon-live-combat-summary" class="dungeon-live-combat-summary"
+          hidden aria-label="Read-only live battle status">
+          <strong>⚔ LIVE ENGAGEMENT · ABSTRACT MAP</strong>
+          <p id="dungeon-live-combat-actors"></p>
+          <small>The encounter runs on the same saved world timeline. Watch the 3D arena only on request.</small>
+        </aside>
         <aside id="dungeon-temporary-party" class="dungeon-temporary-party"
           hidden aria-label="Recorded Temporary Party members">
           <strong id="dungeon-temporary-party-heading">Temporary Party</strong>

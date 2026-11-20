@@ -990,3 +990,31 @@ body.dungeon-active #music-panel { top: 119px; }
 #npc-traffic-debug strong{font:750 13px system-ui,sans-serif}
 #npc-traffic-debug p{margin:5px 0 10px;opacity:.7}
 #npc-traffic-debug pre{margin:0;font:11px/1.5 monospace;white-space:pre;tab-size:2}
+
+/* PR #218: Opt-in 3D combat is a distinct viewport. The ordinary LIVE map
+ * only displays a cheap beacon, committed HP, and the battle participants. */
+#dungeon-watch-live-combat[hidden],
+#dungeon-return-from-combat[hidden],
+#dungeon-live-combat-summary[hidden] { display:none; }
+#dungeon-watch-live-combat {
+  background:#6f3028; border-color:#e9aa7b; font-weight:700;
+}
+.dungeon-live-combat-summary {
+  position:absolute;left:16px;top:155px;
+  width:min(390px,calc(100vw - 250px));
+  box-sizing:border-box;padding:10px 12px;
+  background:rgb(22 17 17 / 94%);border:1px solid #b37a5a;
+  border-radius:6px;font-size:12px;line-height:1.45;
+}
+.dungeon-live-combat-summary strong { color:#ffc693; }
+.dungeon-live-combat-summary p { margin:6px 0; color:#f6d4bf; }
+.dungeon-live-combat-summary small { color:#c3b09e; }
+#dungeon-hud[data-live-combat-mode="arena"] .dungeon-live-combat-summary strong::after {
+  content:" · 3D ARENA";color:#c2e5c3;
+}
+@media(max-width:700px){
+  .dungeon-live-combat-summary {
+    top:166px;left:6px;width:min(220px,calc(100vw - 145px));
+    font-size:10px;padding:6px;
+  }
+}
