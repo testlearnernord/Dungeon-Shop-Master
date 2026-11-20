@@ -38,5 +38,9 @@ export function ghoulPackCount(
     floor+cycle*17);
   const cap=Math.min(MAX_GHOUL_PACK,
     floor===2?2:partySize===1?2:3,1+freeMonsterTiles);
+  // Deep encounters with an actual party should usually test their group
+  // tactics against at least two physically distinct enemies.
+  if(floor>=3&&partySize>=2&&cap>=2)
+    return 2+((seed>>>8)%Math.min(2,cap-1));
   return 1+((seed>>>8)%Math.max(1,cap));
 }
