@@ -4,7 +4,8 @@ export { heroPortraitIndex as portraitIndex } from "./heroIdentity.ts";
 
 export type RosterFilter = "active" | "fallen";
 const PRIORITY: Record<AdventurerState["status"], number> = {
-  "at-shop": 0, expedition: 1, traveling: 2, returning: 3, exploring: 4, dead: 5,
+  "at-shop": 0, departing:1, expedition: 2, traveling: 3, returning: 4,
+  exploring: 5, "off-duty":6, dead: 7,
 };
 export function rosterEntries(state: GameState, filter: RosterFilter): readonly AdventurerState[] {
   if (filter === "fallen") {
@@ -67,6 +68,8 @@ export function rosterBoardEquipment(hero:AdventurerState):{
 export function locationLabel(hero: AdventurerState): string {
   if (hero.status === "dead") return "Fallen";
   if (hero.status === "at-shop") return "F5 · Shop";
+  if (hero.status === "departing") return "Leaving Galvik's shop";
+  if (hero.status === "off-duty") return "Off duty · back Day "+hero.offDutyUntilDay;
   if (hero.status === "expedition") return "F" + hero.floor + " · Expedition";
   if (hero.status === "traveling") return "Returning to F5";
   if (hero.status === "returning") return "Leaving F5";

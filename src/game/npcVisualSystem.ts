@@ -243,6 +243,10 @@ export class NpcVisualSystem {
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
+  private onPhysicalExit:((heroId:string,outerGateZ:number)=>void)|null=null;
+  setPhysicalExitListener(listener:(heroId:string,outerGateZ:number)=>void):void{
+    this.onPhysicalExit=listener;
+  }
   private shopRequestClock:ShopRequestClockAccess|null=null;
   private worldPaused=false;
   setWorldPaused(paused:boolean):void{this.worldPaused=paused;}
@@ -1502,7 +1506,10 @@ export class NpcVisualSystem {
         }
         npc.root.metadata.phase=npc.phase;
       }else if(npc.phase==="leaving"){
-        if(npc.root.position.z>=CORRIDOR_OUTER_Z-0.12)this.dispose(npc);
+        if(npc.root.position.z>=CORRIDOR_OUTER_Z-0.12){
+          this.onPhysicalExit?.(npc.visitor.id,npc.root.position.z);
+          this.dispose(npc);
+        }
         else npc.root.metadata.shoppingPhase="blocked-exit";
       }
       return;

@@ -37,7 +37,9 @@ export class GameStore {
    */
   commitShopTraffic(checkpoint:ShopTrafficCheckpoint):void{
     validateShopTraffic(checkpoint,this.current.day,this.current.worldClock.tick,
-      new Set(this.current.adventurers.filter(hero=>hero.status!=="dead").map(hero=>hero.id)),
+      new Set(this.current.adventurers.filter(hero=>hero.status==="at-shop"||
+         hero.status==="departing"||(!this.current.liveDungeon.enabled&&
+         hero.status==="returning")).map(hero=>hero.id)),
       new Set(this.current.shopLayout.shelves.map(shelf=>shelf.id)));
     this.replace({...this.current,shopTraffic:checkpoint});
   }

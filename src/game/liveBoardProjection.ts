@@ -7,7 +7,7 @@ import {firstWorldTickOfDay} from "./worldClock.ts";
  * outside this selector. The only remote signals are explicitly committed,
  * coarse, timestamped events. Never project sealed replay internals.
  */
-export type LiveBoardStatus="at-shop"|"signal"|"last-seen"|"lost";
+export type LiveBoardStatus="at-shop"|"off-duty"|"signal"|"last-seen"|"lost";
 export type LiveBoardSource="shop"|"magical-signal"|"registry"|"none";
 export interface LiveBoardReport {
   readonly eventId:string;
@@ -55,9 +55,12 @@ function summary(event:WorldEvent):{text:string;source:LiveBoardSource;location:
     case "shop-arrival":case "shop-stay":
       return {text:"Seen at Galvik's shop",source:"shop",
         location:"Galvik's shop",status:"at-shop"};
-    case "shop-departure":case "shop-walkout":
-      return {text:"Last seen leaving Galvik's shop",source:"shop",
-        location:"Outside · last seen",status:"last-seen"};
+    case "shop-departure":
+      return {text:"Observed leaving the shop for two days away",source:"shop",
+        location:"Outside · shop exit confirmed",status:"off-duty"};
+    case "shop-walkout":
+      return {text:"Seen heading toward the shop exit",source:"shop",
+        location:"Galvik's shop · departing",status:"at-shop"};
     case "sale":case "shop-credit":case "tip":
       return {text:"Observed merchant transaction",source:"shop",
         location:"Galvik's shop · last seen",status:"last-seen"};
@@ -90,11 +93,14 @@ export function selectLiveBoardHeroes(state:GameState):readonly LiveBoardHero[]{
     const death=deaths.has(hero.id);
     // A real death signal cannot be reversed by a later ordinary activity
     // event. No spoiler if the raw hero is dead but the signal never arrived.
-    const physicallyHere=hero.status==="at-shop"&&!death;
+    const physicallyHere=(hero.status==="at-shop"||hero.status==="departing")&&!death;
     const status:LiveBoardStatus=death?"lost":physicallyHere?"at-shop":
-      observed?.status==="at-shop"?"last-seen":observed?.status??"last-seen";
+      observed?.status==="at-shop"?"last-seen":
+      observed?.status==="off-duty"&&hero.status!=="off-duty"?"last-seen":
+      observed?.status??"last-seen";
     const location=death?"Life-signature lost":
-      physicallyHere?"Galvik's shop":observed?.location??"No confirmed contact";
+      physicallyHere?(hero.status==="departing"?"Galvik's shop · departing":
+        "Galvik's shop"):observed?.location??"No confirmed contact";
     const when=event?.worldTick??(event?firstWorldTickOfDay(event.day):null);
     return {
       id:hero.id,name:hero.name,role:hero.role,status,location,

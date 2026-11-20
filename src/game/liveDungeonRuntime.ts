@@ -674,7 +674,21 @@ export function finishLiveDungeonDay(
   }];
   const previouslyCleared6=state.dungeonFloors.some(f=>f.floor===6&&f.cleared);
   const previouslyCleared7=state.dungeonFloors.some(f=>f.floor===7&&f.cleared);
+  const reenteringIds=new Set(closed.adventurers.filter(hero=>
+    hero.status==="off-duty"&&hero.offDutyUntilDay!==null&&
+    day>=hero.offDutyUntilDay).map(hero=>hero.id));
   const adventurers=closed.adventurers.map(hero=>{
+    // Two whole days away: no shop presence, combat, free healing or supplies.
+    if(hero.status==="off-duty"){
+      if(!reenteringIds.has(hero.id))return hero;
+      events.push({
+        id:`day-${day}:${hero.id}:expedition-reentry`,type:"dungeon-live",day,
+        worldTick:clock.tick,adventurerId:hero.id,reportedZone:"upper",
+        message:`${hero.name} began a new expedition after two full days away.`,
+      });
+      return {...hero,status:"exploring" as const,floor:1 as const,
+        offDutyUntilDay:null};
+    }
     const healed=useHealingSupplies(hero,day);
     events.push(...healed.events);
     const ready=healed.adventurer;
@@ -697,7 +711,7 @@ export function finishLiveDungeonDay(
         floor:target,shopStayDays:0};
     }
     const shop=scheduleShopVisit(ready,day,rngState,
-      priorPaid.has(hero.id));
+      priorPaid.has(hero.id),true);
     rngState=shop.rngState;
     events.push(...shop.events);
     return shop.adventurer;
@@ -716,8 +730,29 @@ export function finishLiveDungeonDay(
       message:`${adventurer.name} entered Floor 1.`,
     });
   }
+  // Reentry is a safe known Floor-1 entrance, never the old fight tile.
+  // Preserve personal visited maps and the world's site generations.
+  let morningWorlds=closed.earlyDungeonWorlds??[];
+  if(reenteringIds.size){
+    const layout=generateExpeditionLayout(state.seed,1);
+    const entry=morningWorlds.find(world=>world.floor===1);
+    const prior=entry?.world??emptyLevel7World();
+    const cells=[...prior.heroes];
+    const spawn=layout.entrance;
+    const cell=spawn.z*layout.width+spawn.x;
+    for(const id of reenteringIds){
+      const existing=cells.findIndex(hero=>hero.heroId===id);
+      const old=existing>=0?cells[existing]:null;
+      const landed={heroId:id,...spawn,visited:old?
+        old.visited.includes(cell)?old.visited:[...old.visited,cell]:[cell]};
+      if(existing>=0)cells[existing]=landed;
+      else cells.push(landed);
+    }
+    morningWorlds=[...morningWorlds.filter(world=>world.floor!==1),
+      {floor:1 as const,world:{...prior,heroes:cells}}].sort((a,b)=>a.floor-b.floor);
+  }
   const next:GameState={
-    ...closed,day,worldClock:clock,
+    ...closed,day,worldClock:clock,earlyDungeonWorlds:morningWorlds,
     shopTraffic:{day,tick:clock.tick,initialized:false,actors:[],
       claims:[],shelfOwners:[],doorY:{level4:0,level6:0}},
     shopEconomy:{...closed.shopEconomy,

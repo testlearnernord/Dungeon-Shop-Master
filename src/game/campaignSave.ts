@@ -875,7 +875,7 @@ function validateState(value: unknown): asserts value is GameState {
     const path = `payload.adventurers[${index}]`;
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
-      "equipment", "inventory", "floor", "status", "shopStayDays", "level6Permit",
+      "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilDay", "level6Permit",
     ]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
@@ -904,11 +904,12 @@ function validateState(value: unknown): asserts value is GameState {
     for (const key of Object.keys(inventory)) integer(inventory[key], `${path}.inventory.${key}`);
     const floor = integer(hero.floor, `${path}.floor`, 1, 7);
     choice(hero.status, ["exploring", "traveling", "at-shop",
-      "returning", "expedition", "dead"], `${path}.status`);
+      "returning", "expedition", "departing", "off-duty", "dead"], `${path}.status`);
     if ((hero.status === "dead") !== (health === 0)) fail(`${path}.status`, "must agree with health");
     if (hero.status !== "dead") {
       active += 1;
-      if ((hero.status === "at-shop" && floor !== 5) ||
+      if (((hero.status === "at-shop" || hero.status === "departing" ||
+             hero.status === "off-duty") && floor !== 5) ||
           (hero.status === "exploring" && floor > 4) ||
           ((hero.status === "traveling" || hero.status === "returning") && floor !== 4) ||
           (hero.status === "expedition" && floor !== 6 && floor !== 7)) {
@@ -917,6 +918,12 @@ function validateState(value: unknown): asserts value is GameState {
     }
     if (typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
     if (hero.status === "expedition" && hero.level6Permit !== true) fail(`${path}.level6Permit`, "is required for Level 6");
+    const until=hero.offDutyUntilDay;
+    if(hero.status==="off-duty"){
+      if(until===null)fail(path+".offDutyUntilDay","is required off duty");
+      integer(until,path+".offDutyUntilDay",day+1,day+3);
+    }else if(until!==null)
+      fail(path+".offDutyUntilDay","is only valid for off-duty heroes");
     const stay = integer(hero.shopStayDays, `${path}.shopStayDays`, 0, 1);
     if (stay !== 0 && hero.status !== "at-shop" && hero.status !== "dead") {
       fail(`${path}.shopStayDays`, "requires a shop visit");
@@ -1135,7 +1142,9 @@ function validateState(value: unknown): asserts value is GameState {
       fail("payload.liveDungeon.heroes["+i+"].heroId","must be a known adventurer");
   }
   validateShopTraffic(state.shopTraffic,day,clockTick,
-    new Set((state.adventurers as RecordValue[]).filter(hero=>hero.status!=="dead")
+    new Set((state.adventurers as RecordValue[]).filter(hero=>
+      hero.status==="at-shop"||hero.status==="departing"||
+      (!state.liveDungeon.enabled&&hero.status==="returning"))
       .map(hero=>hero.id as string)),
     new Set(parsedShopLayout.shelves.map(shelf=>shelf.id)));
 

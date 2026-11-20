@@ -1,4 +1,4 @@
-export type VisitorStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "dead";
+export type VisitorStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "departing" | "off-duty" | "dead";
 export type VisitorRole = "tank" | "DPS" | "healer";
 export type GateSide = "level4" | "level6";
 
@@ -45,8 +45,8 @@ export function reconcileVisitors(
   previous: readonly VisitorSnapshot[],
   current: readonly VisitorSnapshot[],
 ): VisitorChanges {
-  const oldVisitors = new Map(previous.filter(({ status }) => status === "at-shop").map((hero) => [hero.id, hero]));
-  const newVisitors = new Map(current.filter(({ status }) => status === "at-shop").map((hero) => [hero.id, hero]));
+  const oldVisitors = new Map(previous.filter(({ status }) => status === "at-shop" || status === "departing").map((hero) => [hero.id, hero]));
+  const newVisitors = new Map(current.filter(({ status }) => status === "at-shop" || status === "departing").map((hero) => [hero.id, hero]));
 
   return {
     entering: [...newVisitors.values()].filter(({ id }) => !oldVisitors.has(id)),

@@ -109,6 +109,9 @@ let ledger:MerchantLedger|null=null;
 let beggarHud:ReturnType<typeof setupBeggarHud>|null=null;
 const blueprint=setupBlueprintHud(canvas,camera,store,()=>isShopActive());
 const npcVisuals = new NpcVisualSystem(scene);
+// A customer becomes off-duty only after the actual saved pedestrian
+// crosses the outer shop gate. Paying or sleeping is not an exit.
+npcVisuals.setPhysicalExitListener((id,z)=>store.completePhysicalShopExit(id,z));
 setupNpcTrafficDebug(npcVisuals);
 const toggleCatalog = setupEconomyHud(canvas, store, (open) => {
   if (open) camera.detachControl();
