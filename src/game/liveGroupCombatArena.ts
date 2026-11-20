@@ -16,7 +16,8 @@ import type {BossPhase} from "./arenaCombatMotion.ts";
 import {CombatGroupWorldHud} from "./combatGroupWorldHud.ts";
 import {createHeroVisual,type HeroVisual} from "./heroVisual.ts";
 import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts";
-import type {CombatantSpec,GroupPhase} from "./groupCombat.ts";
+import type {CombatantSpec,GroupPhase,GroupReplayFrame} from "./groupCombat.ts";
+import {sampleGroupReplayPresentation} from "./groupReplayPresentation.ts";
 import {ghoulRecordedPhaseAge} from "./ghoulMotion.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 
@@ -50,6 +51,8 @@ export class LiveGroupCombatArena{
   private focusIds:string[]=[];
   private focusedId:string|null=null;
   private lastPoseTime=-1;
+  private liveBuffered=false;
+  private presentationTime=0;
   private lastCommittedView:CombatArenaView|null=null;
   private readonly observedPositions=new Map<string,Vector3>();
 
@@ -62,11 +65,17 @@ export class LiveGroupCombatArena{
   get observedFightId():string|null{return this.fightId;}
 
   /** Explicit viewer gesture is the ONLY construction entry point. */
-  watch(view:CombatArenaView):boolean{
+  watch(view:CombatArenaView,mode:"live"|"recorded"="recorded"):boolean{
     if(!view.combat)return false;
     if(this.fightId!==view.combat.id){
       this.dispose();
       this.create(view);
+      // The LIVE world commits 0.5s batches. Present the most recent half
+      // second of ALREADY committed frames at screen refresh rate, rather
+      // than jumping between 0.5-second poses. This is a read-only buffer,
+      // NOT future prediction or a second 60Hz combat engine.
+      this.liveBuffered=mode==="live";
+      this.presentationTime=Math.max(0,view.combat.frame.t-.5);
     }
     this.show(view);
     return true;
@@ -77,12 +86,21 @@ export class LiveGroupCombatArena{
     const fight=view.combat;
     if(!fight||!this.scene||fight.id!==this.fightId)return;
     this.lastCommittedView=view;
-    this.hud?.show(fight.frame);
-    const timeDelta=this.lastPoseTime>=0&&fight.frame.t>=this.lastPoseTime
-      ?Math.min(.1,fight.frame.t-this.lastPoseTime):0;
-    this.lastPoseTime=fight.frame.t;
+    const frame=this.liveBuffered
+      ?sampleGroupReplayPresentation(fight.frames,this.presentationTime)
+      :fight.frame;
+    this.paintSavedFrame(view,frame);
+  }
+
+  private paintSavedFrame(view:CombatArenaView,frame:GroupReplayFrame):void{
+    const fight=view.combat;
+    if(!fight||!this.scene)return;
+    this.hud?.show(frame);
+    const timeDelta=this.lastPoseTime>=0&&frame.t>=this.lastPoseTime
+      ?Math.min(.1,frame.t-this.lastPoseTime):0;
+    this.lastPoseTime=frame.t;
     for(const [id,model] of this.actors){
-      const actor=fight.frame.actors.find(candidate=>candidate.id===id);
+      const actor=frame.actors.find(candidate=>candidate.id===id);
       if(!actor){
         model.hero?.root.setEnabled(false);
         model.ghoul?.root.setEnabled(false);
@@ -108,8 +126,8 @@ export class LiveGroupCombatArena{
           actor.phase==="windup"?"windup":
           actor.phase==="strike"?"strike":"recover";
         model.troll.animate({
-          phase,phaseAge:ghoulRecordedPhaseAge(fight.frames,id,fight.frame.t),
-          slam:false,attackType:"grab",time:fight.frame.t,
+          phase,phaseAge:ghoulRecordedPhaseAge(fight.frames,id,frame.t),
+          slam:false,attackType:"grab",time:frame.t,
           moved,delta:timeDelta,hp:actor.hp,maxHp:model.spec.maxHp,
         });
       }
@@ -119,7 +137,7 @@ export class LiveGroupCombatArena{
         model.hero.root.rotation.y=actor.heading;
         model.hero.root.metadata={...model.hero.root.metadata,
           hp:actor.hp,combatPhase:actor.phase,liveArenaOnly:true};
-        animateHero(model.hero,actor.phase,fight.frame.t);
+        animateHero(model.hero,actor.phase,frame.t);
       }
       if(model.ghoul){
         // Never display the superseded anonymous monster sphere. The actual
@@ -131,11 +149,11 @@ export class LiveGroupCombatArena{
           model.ghoul.root.position.set(pos.x,.08,pos.z);
           model.ghoul.root.rotation.y=actor.heading;
           model.ghoul.animate(actor.phase,ghoulRecordedPhaseAge(
-            fight.frames,id,fight.frame.t));
+            fight.frames,id,frame.t));
         }
       }
     }
-    const particles=fight.frame.projectiles;
+    const particles=frame.projectiles;
     while(this.projectiles.length<particles.length){
       const dot=MeshBuilder.CreateSphere(
         "live-arena-projectile-"+this.projectiles.length,
@@ -157,6 +175,15 @@ export class LiveGroupCombatArena{
   updateCamera(dt:number,pressed:ReadonlySet<string>):void {
     if(!this.camera)return;
     flyCombatSpectatorCamera(this.camera,pressed,dt);
+    if(this.liveBuffered&&this.lastCommittedView?.combat){
+      const fight=this.lastCommittedView.combat;
+      const next=Math.min(fight.frame.t,this.presentationTime+Math.max(0,dt));
+      if(next>this.presentationTime){
+        this.presentationTime=next;
+        this.paintSavedFrame(this.lastCommittedView,
+          sampleGroupReplayPresentation(fight.frames,next));
+      }
+    }
     if(this.scene)this.hud?.render(this.scene,dt);
   }
   turnCamera(dx:number,dy:number):void{
@@ -190,6 +217,7 @@ export class LiveGroupCombatArena{
     this.observedPositions.clear();
     this.focusIds=[];this.focusedId=null;this.lastPoseTime=-1;
     this.lastCommittedView=null;
+    this.liveBuffered=false;this.presentationTime=0;
     this.actors.clear();
     this.projectiles=[];
     this.projectileMaterial=null;
