@@ -907,3 +907,29 @@ export function inspectRenderedShopStock(shelfId="shelf-1"){
       modelsColor:units.every(mesh=>!!mesh.getVerticesData("color")?.length)};
   });
 }
+
+/** PR #218: the LIVE map is an abstract signal, while a NEW distinct
+ * Babylon scene is only allocated for an explicitly requested arena.
+ * Read-only inspection. Never advances combat or mutates the campaign.
+ */
+export function inspectLiveCombatPresentation(){
+  const scene=Engine.LastCreatedScene;
+  if(!scene)throw Error("Missing active spectator Babylon scene");
+  const isArena=!!scene.getMeshByName("live-fight-arena-floor");
+  return {
+    isArena,
+    sceneCount:scene.getEngine().scenes.length,
+    battleMarkers:scene.meshes.filter(mesh=>
+      mesh.name==="dungeon-live-combat-marker").length,
+    liveMapMonsterMeshes:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-live-fallback-")).length,
+    liveMapProjectiles:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("dungeon-live-projectile-")).length,
+    liveMapGhouls:scene.transformNodes.filter(node=>
+      node.name.startsWith("dungeon-ghoul-")).length,
+    arenaHeroes:scene.transformNodes.filter(node=>
+      node.name.startsWith("live-fight-hero-")).length,
+    arenaMonsters:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("live-fight-monster-")).length,
+  };
+}

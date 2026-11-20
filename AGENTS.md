@@ -1,5 +1,46 @@
 # Dungeon Shop Master — Contributor Guide
 
+### PR #218 · Strict separation between simulation, abstract LIVE dungeon map and opt-in arena
+
+- The saved **single** `GroupCombatState` / `commitLiveCombatTick`
+  continues at genuine 60Hz in world-time 0.5-second batches. No new
+  combat simulation, local arena AI, opponent damage rolls, time controller,
+  RNG draws, alternate combat outcomes or replay synthesis are permitted.
+- `DungeonReplayScene.showLive` now draws a **single abstract marker** at
+  the committed combat site during an encounter and keeps existing fog/
+  map/hero knowledge. Never load `createDungeonGhoulVisual`, allocate
+  per-combat fighter/projectile meshes or animate combat phases from this
+  LIVE map code. **Historical recordings** still show full recorded
+  combat in their replay path. Don't break that distinction.
+- `LiveGroupCombatArena` is a distinct, opt-in Babylon scene instantiated
+  only via `DungeonViewer.watchLiveCombat()`. Its input is
+  `selectLiveSpectatorFrame` from committed `GameStore` snapshots.
+  Render exact saved actor HP/positions/phases. When closed or the fight
+  ends, dispose scene/models/materials. No changes to player agency,
+  seed, shop state, death events or replay records.
+- `DungeonViewer.currentScene` yields **one** active render scene,
+  either dungeon map or explicit fight arena; never draw both concurrently.
+  `DungeonViewer.isWatchingLive` stays true in both presentations so
+  the shop, dungeon, fighters and world clock continue.
+- Strict browser Save/Reload comparisons use the **E2E-only**
+  `?e2e-pause-world=1` boot switch. It calls the existing one
+  WorldClockPacer.setPaused("e2e",true) BEFORE Babylon frames start;
+  tests still use the authentic GameStore.endDay() and authoritative
+  scheduled event executor. This avoids false failed assertions when
+  SwiftShader renders several frames after reload but before Playwright
+  can issue a pause. Normal production ignores the URL switch.
+- Real browser smoke `tests/liveCombatArena.spec.ts` constructs a
+  genuine saved live dungeon fight from the already-tested seeded
+  neighboring-monster fixture. It checks map has no LIVE monster actors/
+  projectiles/ghouls, the opt-in arena creates a separate scene,
+  spectator actions don't mutate saved combat, the actual world time
+  progresses, and returning to map works. Existing recorded footage
+  semantics must remain unchanged.
+- This removes **viewer GPU/animation cost**, not the CPU cost of
+  simultaneous background combat. Never claim a general shop FPS gain
+  without hardware-side measured evidence.
+
+
 ### PR #217 · Live-world CPU spikes are a distinct performance risk
 
 - The reported user hardware slowdown began with #200; our CI-only SwiftShader resolution ablation **cannot** rule out concurrent simulation CPU stutters on a hardware-accelerated Chrome PC. Do not conflagrate slow virtual-rasterizer FPS with actual owner hardware.

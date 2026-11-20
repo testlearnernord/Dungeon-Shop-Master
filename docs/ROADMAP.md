@@ -1,5 +1,30 @@
 # Dungeon Shop Master — Development Roadmap
 
+### PR #218 · LIVE map abstraction + user-chosen group arena
+
+- [x] Replace LIVE dungeon full battle cast, active ghoul model loads
+  and combat projectiles with **one inexpensive map encounter beacon**.
+- [x] Expose actual visible hero/monster HP and fighter count, without
+  replaying combat or leaking hidden knowledge to Galvik's shop Board.
+- [x] Add **Watch LIVE fight in arena**, creating a separate read-only
+  Babylon scene only when requested. Renderer uses committed combat
+  frames and hero identity; Tripo ghouls are opt-in loads.
+- [x] Return-to-dungeon map via Esc/button; dispose expensive arena
+  resources and preserve concurrent 20Hz shop/expeditions and 60Hz
+  group combat. Historical expedition footage is unchanged.
+- [x] Browser regression with a real seeded saved active fight and
+  invariant saved HP/loot/frames across viewer entry/exit.
+- [ ] Future visual polish: interpolate committed 10Hz poses smoothly
+  for the viewer at native render FPS, add impact SFX and improved
+  encounter art. Keep recorded outcome and deterministic fight engine.
+- [ ] Cave Troll specialized cinematic integration with the optional
+  3D group arena should be planned separately; do not substitute a
+  generic ghoul for the actual boss asset.
+- [ ] Verify real-device GPU/FPS difference with same source and
+  active fight on map vs opt-in arena. The CPU burden of full
+  background combat is unchanged; measure it independently.
+
+
 ### PR #217 · Isolate simultaneous world-simulation hitches
 
 - [x] Add true max/p95 per-frame world CPU and session peaks for world

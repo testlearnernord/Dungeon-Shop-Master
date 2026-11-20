@@ -1,5 +1,40 @@
 # Dungeon Shop Master — Current Architecture
 
+### PR #218 · Three clean presentation/authority layers for LIVE battles
+
+**Authoritative state:** `GameStore` →
+`advanceWorldUntil` → `commitLiveCombatTick` → existing deterministic
+`stepGroupCombat` (60Hz, batched on saved 0.5s world events). The
+single persisted `LiveDungeonCombat.state`, captured frames, HP,
+decision records and unique outcome event are the whole truth.
+A viewer **never** calls combat simulation functions.
+
+**Cheap opt-in dungeon map:** `DungeonViewer.openLive` →
+`selectLiveSpectatorFrame` → `DungeonReplayScene.showLive`.
+Only a single abstract encounter beacon is created during a fight,
+plus observed fight membership/HP as DOM text. No fighter mesh imports,
+Tripo ghoul loads, projectile spheres or combat pose animation occur
+in the LIVE map. Historical replay code in `setReplay`/`show` stays
+untouched and retains its detailed recorded cast.
+
+**Expensive optional LIVE 3D:** Explicit player choice `Watch LIVE
+fight in arena` → `LiveGroupCombatArena.watch`: allocates a distinct
+Babylon Scene with basic stone arena, HeroVisual actors, on-demand
+Tripo ghouls, fallback enemies and visual projectiles. The scene reads
+the **latest committed GroupReplayFrame** (10Hz pose checkpoints from
+the existing 60Hz motor), never invents movement, damage or AI.
+`DungeonViewer.currentScene` chooses exactly one rendering scene
+per frame. Esc/Return disposes arena and returns to the abstract map;
+fight conclusion auto-returns without re-simulation.
+`DungeonViewer.isWatchingLive` remains true throughout for the
+authoritative clock/other shoppers to continue.
+
+The current opt-in visual presentation uses captured poses rather than
+independent outcome prediction. More animation blending, impact SFX and
+boss artwork are visual polish concerns, **not** reasons to clone
+the combat engine or modify background simulation.
+
+
 ### PR #216 · Adaptive renderer, **not** adaptive world time
 
 The normal shop Babylon `Scene` remains fully synchronized with the one

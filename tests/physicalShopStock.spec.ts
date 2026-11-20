@@ -45,6 +45,15 @@ test("actual stocked shelf meshes follow saved quantities for all six products @
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
+  // A world-clock autosave is queued on boot and again after reload.
+  // Seed via a different CampaignStorage ONLY once the app has finished its
+  // own queued write. Pause live time so the next 20-tick autosave cannot
+  // race the explicit stock fixture and replace its saved quantities.
+  await page.evaluate(()=>(window as Window&{
+    __shopTestPauseWorld?:(paused:boolean)=>void;
+  }).__shopTestPauseWorld?.(true));
+  await expect(page.locator("#save-status")).toHaveText(
+    /^(Saved Day 1\.|Continued saved Day 1\.)$/);
   // Check the REAL shop-rendered meshes, not merely geometry created by a
   // factory inside a test. Two persisted four-slot inventories cover 6 items.
   const seed=(ids:readonly (string|null)[],counts:readonly number[])=>
@@ -79,6 +88,15 @@ test("actual stocked shelf meshes follow saved quantities for all six products @
   await seed(["healing-herb","mana-potion","iron-ore","bread"],[3,1,5,2]);
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
+  // A world-clock autosave is queued on boot and again after reload.
+  // Seed via a different CampaignStorage ONLY once the app has finished its
+  // own queued write. Pause live time so the next 20-tick autosave cannot
+  // race the explicit stock fixture and replace its saved quantities.
+  await page.evaluate(()=>(window as Window&{
+    __shopTestPauseWorld?:(paused:boolean)=>void;
+  }).__shopTestPauseWorld?.(true));
+  await expect(page.locator("#save-status")).toHaveText(
+    /^(Saved Day 1\.|Continued saved Day 1\.)$/);
   let shown=await inspect();
   expect(shown.map(slot=>slot.units)).toEqual([3,1,5,2]);
   for(const slot of shown){
@@ -90,6 +108,15 @@ test("actual stocked shelf meshes follow saved quantities for all six products @
   await seed(["iron-sword","leather-vest",null,null],[2,4,0,0]);
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
+  // A world-clock autosave is queued on boot and again after reload.
+  // Seed via a different CampaignStorage ONLY once the app has finished its
+  // own queued write. Pause live time so the next 20-tick autosave cannot
+  // race the explicit stock fixture and replace its saved quantities.
+  await page.evaluate(()=>(window as Window&{
+    __shopTestPauseWorld?:(paused:boolean)=>void;
+  }).__shopTestPauseWorld?.(true));
+  await expect(page.locator("#save-status")).toHaveText(
+    /^(Saved Day 1\.|Continued saved Day 1\.)$/);
   shown=await inspect();
   expect(shown.map(slot=>slot.units)).toEqual([2,4,0,0]);
   expect(shown.every(slot=>slot.padPickable&&slot.padCollision)).toBe(true);
