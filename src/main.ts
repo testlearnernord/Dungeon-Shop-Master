@@ -162,6 +162,11 @@ if(import.meta.env.VITE_E2E==="1"){
     __shopTestHydratedTraffic?:unknown;
     __shopTestAdvanceDungeonTick?:()=>void;
     __shopTestAdvanceWorldTicks?:(ticks:number)=>void;
+    __shopTestTimedWorldAdvance?:(ticks:number)=>{
+      durationMs:number;advanced:number;eventsAdded:number;
+      pendingBefore:number;pendingAfter:number;activeCombats:number;
+      heroes:number;day:number;
+    };
     __shopTestReadProfile?:()=>Record<string,{ms:number;calls:number;maxMs:number}>;
     __shopTestPresentAt?:(fraction:number)=>unknown;
     __shopTestSetRenderQuality?:(mode:RenderQualityMode)=>void;
@@ -180,6 +185,24 @@ if(import.meta.env.VITE_E2E==="1"){
   // This only instruments the fast/slow render-path guard; production has
   // no hook and no alternate movement or economic resolver.
   hooks.__shopTestAdvanceWorldTicks=ticks=>store.advanceWorldTime(ticks);
+  // Measure the real scheduled event executor + synchronous subscribers,
+  // with no synthetic hero/combat decisions. This is deliberately NOT a
+  // physically interleaved shop step; only the regular render loop owns
+  // interleaved real shopper movement. Never enabled in production.
+  hooks.__shopTestTimedWorldAdvance=ticks=>{
+    const before=store.state;
+    const started=performance.now();
+    store.advanceWorldTime(ticks);
+    const next=store.state;
+    return {durationMs:performance.now()-started,
+      advanced:next.worldClock.tick-before.worldClock.tick,
+      eventsAdded:next.events.length-before.events.length,
+      pendingBefore:before.worldClock.pending.length,
+      pendingAfter:next.worldClock.pending.length,
+      activeCombats:next.liveDungeon.combats.length,
+      heroes:next.adventurers.filter(hero=>hero.health>0).length,
+      day:next.day};
+  };
   hooks.__shopTestReadProfile=()=>{
     const sample=Object.fromEntries(profileCounters);
     profileCounters.clear();
