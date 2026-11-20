@@ -25,7 +25,7 @@ export function sampleGroupReplayPresentation(
   const alpha=src===next||next.t===src.t?0:
     Math.max(0,Math.min(1,(t-src.t)/(next.t-src.t)));
   const following=new Map(next.actors.map(actor=>[actor.id,actor]));
-  const projectiles=new Map(next.projectiles.map(p=>[p.ownerId,p]));
+
   const turn=(start:number,end:number)=>{
     // Turning across +/-Pi must follow the short arc, never spin 360 degrees.
     const difference=Math.atan2(Math.sin(end-start),Math.cos(end-start));
@@ -41,8 +41,12 @@ export function sampleGroupReplayPresentation(
         heading:turn(actor.heading,future.heading),
       };
     }),
-    projectiles:src.projectiles.map(p=>{
-      const future=projectiles.get(p.ownerId);
+    projectiles:src.projectiles.map((p,index)=>{
+      // A ranged hero may have two projectiles in flight at the same time.
+      // Matching only by ownerId would blend the FIRST arrow towards the
+      // SECOND arrow and visibly teleport it across the arena.
+      const nextProjectile=next.projectiles[index];
+      const future=nextProjectile?.ownerId===p.ownerId?nextProjectile:null;
       return future?{...p,
         x:p.x+(future.x-p.x)*alpha,
         z:p.z+(future.z-p.z)*alpha}:p;
