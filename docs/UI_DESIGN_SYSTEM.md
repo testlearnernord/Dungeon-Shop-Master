@@ -1,5 +1,10 @@
 # Dungeon Shop Master · Immersive UI Contract
 
+### Level-6 quality rule (owner LOCKED, 20 Nov 2026)
+
+The Cave Troll arena's framing, volumetric art, directional lighting, 3D character animations, focus/fly controls, world-space health plates and hit effects are the **reference for every opt-in fight**. Different enemies get different authored arenas and attacks; Temporary Parties add actors and bars without downgrading the presentation. The ordinary LIVE/replay dungeon map stays abstract. The common stage and world-projection implementation is `combatSpectatorStage.ts` and `combatHudProjection.ts`; the Crypt is a themed art variant, not an alternate combat engine. The authoritative Troll solo-motor migration remains OPEN.
+
+
 > **Current implementation contract, reviewed 2026-11-18.** Read this
 > alongside [GAME_BIBLE](GAME_BIBLE.md), [ARCHITECTURE](ARCHITECTURE.md)
 > and [ROADMAP](ROADMAP.md). Implemented capabilities and future packages
