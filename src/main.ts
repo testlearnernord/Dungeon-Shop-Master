@@ -247,8 +247,12 @@ const syncTrafficCheckpoint=(committedPhysicalTick=false)=>{
   if(!committedPhysicalTick&&profile("traffic-compare",
     ()=>JSON.stringify(checkpoint)===JSON.stringify(state.shopTraffic)))return;
   trafficSyncing=true;
-  try{profile("traffic-validate-notify",()=>store.commitShopTraffic(checkpoint));}
-  finally{trafficSyncing=false;}
+  try{
+    profile("traffic-validate-notify",()=>store.commitShopTraffic(checkpoint));
+    if(committedPhysicalTick)npcVisuals.rememberCommittedMotion(
+      state.shopTraffic,checkpoint);
+    else npcVisuals.clearPresentationMotion();
+  }finally{trafficSyncing=false;}
 };
 const restoreTrafficCheckpoint=()=>{
   const state=store.state;
@@ -483,7 +487,9 @@ engine.runRenderLoop(() => {
   } else if (arena.isActive) {
     arena.update(engine.getDeltaTime() / 1000);
     arena.currentScene?.render();
-  } else profile("scene-render",()=>scene.render());
+  } else npcVisuals.renderInterpolated(
+    paused||worldClockPacer.isPaused?1:worldClockPacer.presentationAlpha,
+    ()=>profile("scene-render",()=>scene.render()));
   const now=performance.now();
   runtimePerf.recordFrame({now,worldMs:worldElapsed,
     renderMs:now-renderStarted,ticks:stepped});

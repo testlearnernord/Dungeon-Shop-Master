@@ -17,6 +17,11 @@ export class WorldClockPacer {
     if(paused)this.reset();
   }
   get isPaused():boolean{return this.pauseReasons.size>0;}
+  /** 0..1 sub-tick fraction for presentation ONLY. A buffered catch-up
+   * cannot visually extrapolate beyond the actual last saved checkpoint. */
+  get presentationAlpha():number{
+    return Math.min(1,this.carriedMs/REAL_MS_PER_WORLD_TICK);
+  }
   reset():void{this.carriedMs=0;}
 
   /** Bounded catch-up after foreground render stalls, zero catch-up on pause.
