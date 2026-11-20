@@ -59,6 +59,7 @@ export class DungeonReplayScene {
   private readonly floorMarkers=new Map<string,Mesh>();
   private readonly floorTravel=new Map<string,{step:CommittedPartyStep;seconds:number;gait:number}>();
   private readonly floorHeadings=new Map<string,number>();
+  private selectedFloorHero:string|null=null;
   private liveHeroId:string|null=null;
   private liveFightId:string|null=null;
   private liveTransit:CommittedPartyStep|null=null;
@@ -109,6 +110,7 @@ export class DungeonReplayScene {
     for(const marker of this.floorMarkers.values())marker.dispose(false,true);
     this.floorMarkers.clear();
     this.floorTravel.clear();this.floorHeadings.clear();
+    this.selectedFloorHero=null;
     this.hero?.root.dispose(false,true);
     this.hero=null;
     for(const model of this.companionHeroes.values())model.root.dispose(false,true);
@@ -401,6 +403,24 @@ export class DungeonReplayScene {
         },"dungeon-floor-"+hero.id);
         model.root.metadata={...model.root.metadata,liveFloorOnly:true,
           floorPartyId:hero.partyId};
+        // Explicitly selectable character geometry. The ground token
+        // avoids having to click a three-pixel helmet in the floor view.
+        model.torso.isPickable=true;
+        model.torso.metadata={...model.torso.metadata,floorHeroId:hero.id};
+        const token=MeshBuilder.CreateCylinder(
+          "dungeon-floor-token-"+hero.id,
+          {height:.12,diameter:1.5,tessellation:12},this.scene);
+        token.parent=model.root;
+        token.position.y=.07;
+        token.isPickable=true;
+        token.checkCollisions=false;
+        token.metadata={floorHeroId:hero.id};
+        const tokenMaterial=new StandardMaterial(
+          "dungeon-floor-token-material-"+hero.id,this.scene);
+        tokenMaterial.diffuseColor=Color3.FromHexString("#90cbae");
+        tokenMaterial.emissiveColor=Color3.FromHexString("#294f44");
+        tokenMaterial.alpha=.38;
+        token.material=tokenMaterial;
         if(hero.partyId){
           if(!partyMaterial){
             partyMaterial=new StandardMaterial("dungeon-floor-party-ring",this.scene);
@@ -449,6 +469,7 @@ export class DungeonReplayScene {
       deco.light.setEnabled(true);deco.mesh.setEnabled(true);
     }
     this.poseLiveFloor(0);
+    this.setSelectedFloorHero(this.selectedFloorHero);
     this.drawDevelopmentMap();
     const ctx=this.indicator.getContext("2d");
     if(ctx){
@@ -457,6 +478,24 @@ export class DungeonReplayScene {
         ctx.fillStyle=hero.partyId?"#e5ca82":"#85d9b2";
         ctx.fillRect(hero.x*6+1,hero.z*6+1,4,4);
       }
+    }
+  }
+
+  /** Selection outlines only; never feed presentation choices to the AI. */
+  setSelectedFloorHero(heroId:string|null):void {
+    this.selectedFloorHero=heroId;
+    for(const [id,model] of this.floorModels){
+      const active=id===heroId;
+      const token=model.root.getChildMeshes().find(mesh=>
+        mesh.name==="dungeon-floor-token-"+id);
+      if(token?.material instanceof StandardMaterial){
+        token.material.alpha=active?.85:.38;
+        token.material.emissiveColor=Color3.FromHexString(
+          active?"#d5b366":"#294f44");
+      }
+      model.torso.renderOutline=active;
+      model.torso.outlineColor=Color3.FromHexString("#e9cf82");
+      model.torso.outlineWidth=.045;
     }
   }
 
