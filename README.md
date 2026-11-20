@@ -2,6 +2,8 @@
 
 ### Post #218 owner correction · Clickable abstract combat + native first
 
+**Viewer entry points:** The top-right **Dungeon (G)** opens the shared viewer for recordings, the developer layout preview and already-available LIVE hero streams. **Watch LIVE (opt in)** from the Adventurer Board/Roster asks for one hero's current committed dungeon position or fight. This is not guaranteed for every hero outside the shop: the first spatial checkpoint is committed at the next 30-second dungeon step; traveling, off-duty, and unsupported-floor heroes cannot be followed. When no view is available the Board stays visible with an explicit message, rather than vanishing silently. These are two data modes within one viewer, **not two world or fight engines**.
+
 Both **LIVE** and **historical expedition** dungeon maps now display combat as a clickable abstract beacon with saved HP/status; neither map creates animated Ghoul battle cast or projectiles. Click the marker or accessible Watch button to load the same separate 3D arena using existing committed frames, then Esc/Return to go back. LIVE observation keeps world time running, while historical playback remains independent.
 
 **Native (100%) is the default quality.** Press F4 for Balanced (67%) → Performance (50%) → Auto (opt-in dynamic scaling) → Native. F3 exposes real render buffer and WebGL identity.
