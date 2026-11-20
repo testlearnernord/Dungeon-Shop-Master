@@ -1,6 +1,40 @@
 # Dungeon Shop Master — Current Architecture
 
 
+### PR #228 · Ghoul arena score, visual rig and crypt set
+
+`No Safe Passage.mp3` was already checked in at repository root but was
+**not deployed**. Its exact existing Git blob is reused at
+`public/audio/no-safe-passage.mp3` so Vite/Pages publishes it without
+recompression or a second copy authored by the game. The existing
+`SceneSoundtrack` has a fourth `combat` scene. Switching from the
+abstract LIVE/archived dungeon map to an explicitly opened ordinary
+Ghoul fight crossfades **Beneath the Surface -> No Safe Passage**.
+Boss-class fights retain **Desperate Measures**. Returning to the map
+restores dungeon audio, and closing straight to Galvik's shop does not
+pointlessly start dungeon music in between. A skipped Ghoul movie seeks
+the ordinary combat score to the same 8.5-second point. No new player,
+reload loop, gameplay RNG or world-time dependency.
+
+The existing crypt stage now gains opt-in fog, burial niches, corroded
+chains, urns and sunken stone heraldry. Only GPU presentation changes:
+all decorative meshes remain outside the saved collision bounds and
+cannot affect AI pathing, hits, obstacles or arena outcome.
+
+The already-grafted 15-clip Tripo Ghoul rig now enables Babylon animation
+blending and deterministically alternates the authored right/left claw
+slashes based on **committed strike transitions**, not render FPS, random
+selections, or a new combat phase. A weakly referenced per-frame-history
+index caches strike start times for seeking and replay. The authoritative
+60Hz fight, health, stamina and recorded events remain untouched.
+
+**Remaining artistic limitation:** unique Ghoul voice/impact/foley assets
+have not been checked into the repository and therefore **are not
+invented or falsely claimed as shipped**. Final animation timing and visual
+appearance still require an in-game human review. Level-6 boss score
+and original cinematic stay intact.
+
+
 ### PR #227 · Shared camera-film contract for boss and opted-in group fights
 
 The existing Level-6 `bossCinematic.ts` owns the authored **unchanged**
