@@ -171,3 +171,29 @@ test("F3 diagnostics are opt-in and expose real browser frame and autosave costs
   await page.keyboard.press("F3");
   await expect(page.locator("#runtime-performance")).toBeHidden();
 });
+
+test("smooth shop presentation never commits fractional NPC positions to save/physics @ci-smoke",async({page})=>{
+  test.setTimeout(90000);
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const sawMovement=await expect.poll(async()=>page.evaluate(()=>{
+    const hook=(window as Window&{
+      __shopTestPresentAt?:(fraction:number)=>{
+        before:{actors:{heroId:string;x:number;z:number;yaw:number}[]};
+        during:{actors:{heroId:string;x:number;z:number;yaw:number}[]};
+        after:{actors:{heroId:string;x:number;z:number;yaw:number}[]};
+      };
+    }).__shopTestPresentAt;
+    if(!hook)throw Error("Missing actual-world presentation hook");
+    const {before,during,after}=hook(.5);
+    if(JSON.stringify(before)!==JSON.stringify(after))
+      throw Error("Temporary display changes leaked into the physical shop motor");
+    const byId=new Map(during.actors.map(actor=>[actor.heroId,actor]));
+    return before.actors.some(actor=>{
+      const shown=byId.get(actor.heroId);
+      return shown&&Math.hypot(shown.x-actor.x,shown.z-actor.z)>1e-4;
+    });
+  }),{timeout:20000,intervals:[100,150,250]}).toBe(true);
+  // The returned matcher itself enforces a frame with genuine interpolation.
+  expect(sawMovement).toBeUndefined();
+});
