@@ -23,6 +23,8 @@ test("Level 7 saved expedition is replayed with personal fog, seeking, camera an
   const gold=await page.locator("#merchant-gold").textContent();
   await page.locator("#open-dungeon").click();
   await expect(page.locator("#dungeon-hud")).toBeVisible();
+  await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor");
+  await page.locator("#dungeon-open-archive").click();
   const select=page.locator("#dungeon-replay-select");
   await expect(select.locator("option")).toHaveCount(2);
   await expect(select).not.toHaveValue("preview");
@@ -79,6 +81,7 @@ test("Level 7 saved expedition is replayed with personal fog, seeking, camera an
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 2");
   await page.locator("#open-dungeon").click();
+  await page.locator("#dungeon-open-archive").click();
   await expect(page.locator("#dungeon-replay-select")).toHaveValue(selected);
   expect(errors).toEqual([]);
 });
@@ -87,6 +90,7 @@ test("without recorded Level 7 expeditions, the full developer map remains acces
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
   await page.locator("#open-dungeon").click();
+  await page.locator("#dungeon-open-archive").click();
   await expect(page.locator("#dungeon-replay-select")).toHaveValue("preview");
   await expect(page.locator("#dungeon-playback-controls")).toBeHidden();
   await expect(page.locator("#dungeon-summary")).toContainText("monster spawns");
