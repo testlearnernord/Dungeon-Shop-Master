@@ -243,9 +243,12 @@ export class NpcVisualSystem {
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
-  private onPhysicalExit:((heroId:string,outerGateZ:number)=>void)|null=null;
-  setPhysicalExitListener(listener:(heroId:string,outerGateZ:number)=>void):void{
-    this.onPhysicalExit=listener;
+  private readonly completedExits:{heroId:string;outerGateZ:number}[]=[];
+  /** Drain only after the outgoing mesh was removed AND the authoritative
+   * shop traffic checkpoint was committed. Autosave must never see an
+   * off-duty hero with an in-flight physical shop actor. */
+  drainCompletedExits():readonly {heroId:string;outerGateZ:number}[]{
+    return this.completedExits.splice(0);
   }
   private shopRequestClock:ShopRequestClockAccess|null=null;
   private worldPaused=false;
@@ -1507,7 +1510,8 @@ export class NpcVisualSystem {
         npc.root.metadata.phase=npc.phase;
       }else if(npc.phase==="leaving"){
         if(npc.root.position.z>=CORRIDOR_OUTER_Z-0.12){
-          this.onPhysicalExit?.(npc.visitor.id,npc.root.position.z);
+          this.completedExits.push({heroId:npc.visitor.id,
+            outerGateZ:npc.root.position.z});
           this.dispose(npc);
         }
         else npc.root.metadata.shoppingPhase="blocked-exit";
