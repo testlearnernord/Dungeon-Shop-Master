@@ -1,5 +1,82 @@
 # PR #215 · Diagnosing the post-#200 shop FPS regression
 
+## PR #216: Definitive *CI-specific* rendering ablation
+
+Run #44712298171 on Ubuntu CI, **local** `http://127.0.0.1:5174`
+Vite dev server, Xvfb Chromium, ANGLE Vulkan **SwiftShader Device
+(Subzero)**. World pacer frozen in every test variant; 55 measured
+rAF intervals per case. Counts vary with camera and model loading:
+301 scene meshes, 50 active meshes, approximately 4,464 active triangles,
+73 materials, 13 textures, 6 lights, five of them PointLights.
+
+| A/B condition, same scene | Median interval | Median equivalent FPS |
+| --- | ---: | ---: |
+| Full scene, 800×600 pixel framebuffer | 50ms | ~20 |
+| **Babylon scene.render skipped** | 16.7ms | ~60 |
+| Full scene at **400×300** framebuffer | 16.7ms | ~60 |
+| All 5 point lights switched off, ambient stays | 33.3ms | ~30 |
+| Stock/furniture/bedroom/flames subset hidden | 50ms | ~20 |
+| Almost every non-NPC world mesh hidden | 16.7ms | ~60 |
+| Restored full scene | 50ms | ~20 |
+
+Because halving BOTH width and height alone gives nearly 3× frame
+throughput while all 20Hz simulation, dynamic lighting, shader programs,
+meshes, material counts and world state remain, this is strong evidence
+that **software WebGL raster/shader/pixel cost is dominating these CI
+frames**. Lights materially contribute, geometry is modest. Skipping
+Babylon rendering also restores 60 FPS, so compositor/JS alone does not
+account for the observed 50ms stalls. `scene.render()` synchronous
+JavaScript timing may be only 1–4ms while ANGLE/SwiftShader work is
+scheduled elsewhere, so the former is NOT a GPU timer.
+
+This DOES NOT mean owner's Chrome with hardware GPU or GitHub Pages
+also takes 50ms, and it does not establish its actual performance.
+The test was local Vite, **never GitHub Pages**. Pages serves a static
+`vite build` bundle; a local `npm run build && npm run preview`
+with the SAME browser, monitor, GPU, viewport and resolution is the
+appropriate apples-to-apples comparison.
+
+### Implemented rendering adaptation
+
+`AdaptiveResolutionPolicy` samples frame intervals with CPU
+cost attribution (world + synchronous render). When the **shop scene**
+runs, after startup warmup and at least two sustained low-FPS windows
+with little synchronous JS cost, it incrementally raises Babylon
+hardware scaling 1 → 1.25 → 1.5 → 1.75 → 2. This reduces internal
+3D pixels but not CSS canvas size or DOM UI resolution. Never touch
+committed gameplay ticks, 60Hz group fights, physical shop checkpoint
+or replay records. On strong hardware it remains at native.
+Recovery attempts gradually restore sharper graphics only after
+prolonged stable fast frames. E2E deliberately disables automatic
+changes to preserve the controlled experiment; F4 explicit-mode
+browser tests check the real internal render buffer.
+
+Players can use **F3** for FPS, world/render JS CPU, WebGL renderer
+identity, render buffer and active meshes/lights. **F4** cycles
+Auto / Native (100% linear) / Balanced (~67%) / Performance (50%) / Auto.
+The quality mode is local and intentionally not saved into the game
+campaign, keeping save schema unaffected.
+
+### Further priorities
+
+1. Test on a real GPU/driver. Chrome `chrome://gpu` and F3 renderer
+   distinguish hardware acceleration from software rasterization.
+2. If a hardware GPU is still fill-rate bound, profile lighting/shader
+   overdraw and selectively limit distant point light coverage or
+   adapt dynamic-light quality while retaining atmospheric torches.
+3. If the hardware bottleneck is **draw calls**, batch/instance
+   decorative static meshes by materials, preserve collider and
+   interaction names. Do not change geometry blindly: only 50
+   meshes are active in this CI camera.
+4. If world CPU/saves dominate in large 10-day campaigns, profile
+   actual heroic AI/DOM events and save sizes there separately; do
+   not touch deterministic tick count before measuring.
+5. Target sustained hardware-specific 60 FPS at 1080p, p95 frame
+   <25ms, and verify accurate world ticks and reproducible save/
+   reload against all quality modes.
+
+---
+
 **Date:** 20 November 2026. **Main source of truth:** GitHub commits and
 `tests/runtimePerformance.spec.ts`. **Status:** deterministic bottleneck
 analysis + safe cleanup, **not** owner-hardware FPS acceptance.
