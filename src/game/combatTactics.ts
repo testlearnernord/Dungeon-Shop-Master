@@ -82,6 +82,19 @@ export function chooseCombatDefense(input:{
   return "none";
 }
 
+/** Authoritative reaction probability for a telegraphed Troll ability.
+ * The Level-6 legacy duel keeps its original seeded roll, while
+ * the multi-hero motor uses an actor-ID-stable deterministic sample.
+ * Neither the camera nor UI supplies the chance or the outcome. */
+export function trollDefenseReadiness(
+  agility:number,role:"tank"|"DPS"|"healer"|"monster",grab:boolean,
+):number {
+  if(!Number.isFinite(agility)||agility<0||agility>1000)
+    throw new RangeError("Invalid defense agility");
+  return Math.max(.38,Math.min(.78,
+    .57+(agility-10)*.015+(role==="tank"?.08:0)-(grab?.10:0)));
+}
+
 /** A signature boss skill is still a real ability rather than a free
  * scripted outcome. Group enemies choose the exact same profile contract
  * with their regular/heavy ability list.
