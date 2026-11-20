@@ -109,9 +109,13 @@ export function setupCashierHud(
     settled=false;
     cancelAnimationFrame(frame);
     if(root.open)root.close();
+    // One shared presentation-only flag: the main render loop does not
+    // depend on which authorized cashier controller opened the modal.
+    document.body.classList.remove("cashier-active");
   };
   root.addEventListener("cancel",event=>{event.preventDefault();close();});
   root.addEventListener("close",()=>{
+    document.body.classList.remove("cashier-active");
     camera.attachControl(canvas,true);
     canvas.focus();
   });
@@ -293,6 +297,7 @@ export function setupCashierHud(
     if(document.pointerLockElement)void document.exitPointerLock();
     camera.detachControl();
     root.showModal();
+    document.body.classList.add("cashier-active");
     sound("open");
     root.focus();
     frame=requestAnimationFrame(render);

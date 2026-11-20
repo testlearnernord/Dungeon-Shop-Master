@@ -466,13 +466,13 @@ export class NpcVisualSystem {
         // "at-shop" is deliberately retained in the economy until the day
         // closes, even after a manual checkout. A roster/permit update must
         // never revive that paid customer's already-running exit animation.
-        if (visual.phase === "leaving" &&
+        if (visual.phase === "leaving" && visitor.status==="at-shop" &&
             !this.paidThisDay.has(visitor.id))
           this.beginEntering(visual, visual.slot, false);
       } else {
         // This hero may have walked completely offscreen after payment.
         // A later unrelated GameStore update must not spawn them again.
-        if(this.paidThisDay.has(visitor.id))continue;
+        if(this.paidThisDay.has(visitor.id)||visitor.status==="departing")continue;
         let slot = 0;
         while (usedSlots.has(slot)) slot += 1;
         usedSlots.add(slot);

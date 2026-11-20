@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Development Roadmap
 
-### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
+### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
 - `at-shop` -> `departing` starts an actual pedestrian walk; manual checkout, unsatisfied walkout and sleeping alone **do not** start cooldown. After observed exit on day D, the hero is absent from both shop and dungeon for complete days D+1 and D+2; earliest reentry is D+3.
@@ -25,15 +25,23 @@
   event/highlight timeline, not a massive permanent replay archive.
   Deliberate Save protects at most 12 full recordings past the rolling
   frame expiry; combat/loot/party/death/return highlights come only from
-  committed world events. Strict v23 validation protects saved record
+  committed world events. Strict v24 validation protects saved record
   references. Lazy playback jump positions use the existing replay engine.
   Cashier no longer renders an expensive Babylon scene while its modal is
   open and grades the last visibly painted needle position. LIVE spectator
   skips re-projection at 60Hz when nothing in the dungeon changed.
-- **PR #213 in progress:** physical departures, two full post-shop off-duty days,
-  no midnight permit teleport, safe reentry, two-page night accounts and strict v24 saves.
-- **Remaining:** integrated multi-day campaign/financial/performance acceptance. Never label V.003 as shipped
-  until its release gates pass.
+- **PR #213 merged:** actual physical exits, two full subsequent off-duty days,
+  no midnight permit teleport, safe reentry, two-page accounts and strict v24 saves.
+- **PR #214 acceptance in progress:** ten deterministic saved live days,
+  genuine customer payment, credit and conservation, a verified trap death
+  warning, Temporary Parties, true 60Hz fight footage retained by explicit
+  pin, daily save/reload, and ten-day browser continuation. CPU improvement:
+  the Level-6 progress HUD no longer rescans all recorded events and rebuilds
+  DOM on 50ms clock-only updates. Browser RAF frame-time quantiles and the
+  cashier's idle-Babylon contract are measured in CI, NOT on player hardware.
+- **Still open for V.003:** unified Floor-10 boss/pass, cursed-floor single
+  portal, deeper authored progression, economy/pacing and visual FPS
+  acceptance on representative machines. Do not label V.003 as shipped.
 
 ## Current foundation (playable V.002 ALPHA)
 

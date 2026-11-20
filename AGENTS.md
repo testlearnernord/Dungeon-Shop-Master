@@ -1,6 +1,6 @@
 # Dungeon Shop Master — Contributor Guide
 
-### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
+### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
 - `at-shop` -> `departing` starts an actual pedestrian walk; manual checkout, unsatisfied walkout and sleeping alone **do not** start cooldown. After observed exit on day D, the hero is absent from both shop and dungeon for complete days D+1 and D+2; earliest reentry is D+3.
@@ -336,7 +336,10 @@
   information. The skull warning is an accessible UI projection,
   not another combat clock, and dismissing it cannot alter truth.
   Do not promote V.003 to playable/released on this partial cutover.
-  Full V.003 release acceptance and integrated ten-day validation remain pending.
+  Full V.003 release acceptance remains pending. PR #214 adds the seeded
+  ten-day live-world and browser campaign continuity tests, but neither
+  CI virtualization nor deterministic assertions replace owner FPS,
+  playability and actual hardware visual checks.
   An unpaid cart returns to its shelf at bed closure, never settling
   as imaginary cash. Real browser campaigns exclusively run the saved
   live expedition/combat and shop motors, never the older bedtime
@@ -365,6 +368,14 @@
   knowledge-limited passive Board. Exact timestamps and local playback
   seconds must never be conflated; recording bookmarks are lazy.
   VERSION 24 saves validate all saved recording references.
+  **PR #214 regression:** Credit goes through the live `departing`
+  physical shop exit; `returning` on loan approval is legacy-fixture only.
+  Never reverse a `departing` shop visitor into entering during a roster
+  refresh. The Level-6 HUD redraws only on actual event/floor history
+  changes or explicit replay disclosure, not every 50ms GameStore tick.
+  A fixed-seed ten-day state/replay/economy/TP test and a ten-day browser
+  IndexedDB/Board/Archive smoke must pass. RAF intervals recorded on CI
+  software GL are diagnostics, not measured hardware acceptance.
   **Performance boundary:** Cashier input is graded against the last
   actually painted needle position, with Babylon scene rendering stopped
   during its modal; world timing remains paused. LIVE spectator projection
