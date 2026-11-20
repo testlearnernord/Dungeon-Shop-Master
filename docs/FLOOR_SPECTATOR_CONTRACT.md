@@ -100,3 +100,16 @@ Level-6 motor or regress saved combat to a graphical-only encounter.
   RNG, actor steps, deaths and clocks. No expensive per-fight model
   allocation in the neutral floor view. Build, unit suite and two
   Playwright browser smoke shards required before merge.
+
+## Implementation update · #226
+
+The hero detail click now selects a subjective sight mode using
+`heroPerception.ts`; the neutral player view still sees the entire floor.
+`hasDungeonLineOfSight` raycasts seeded tile geometry and blocks views
+beyond walls. `dungeonExploredSight` uses the immutable travel history
+of one character, not other explorers or the player's omniscient map.
+Non-current revealed geometry is dimmed. Monster/hero/fight beacons appear
+only if in current sight. The detail panel lists line-of-sight contacts.
+No hero AI or passive Board receives observer-derived information;
+persistent cross-hero communication is not part of #226.
+
