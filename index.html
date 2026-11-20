@@ -139,6 +139,7 @@
           </div>
           <div class="arena-actions">
             <button id="arena-source-toggle" type="button" aria-keyshortcuts="C" hidden>Watch last saved combat</button>
+            <button id="arena-lab-toggle" type="button" aria-controls="arena-lab-panel">Developer Combat Lab</button>
             <button id="restart-arena" type="button">Restart battle</button>
             <button id="arena-sfx-debug-toggle" type="button" aria-controls="arena-sfx-debug" aria-expanded="false" hidden>SFX Lab</button>
             <button id="arena-tripo-toggle" type="button" title="Experimental visual-only troll replacement">Legacy boss · try Tripo</button>
@@ -146,6 +147,65 @@
             <button id="close-arena" type="button">Return to shop (V / Esc)</button>
           </div>
         </header>
+        <aside id="arena-lab-panel" class="arena-lab-panel" hidden aria-label="Developer combat test configuration">
+          <header><strong>COMBAT LAB · V</strong><small>Disposable tests · GameStore and world time never changed</small></header>
+          <div class="arena-lab-grid">
+            <label>Monster
+              <select id="lab-enemy"><option value="cave-troll">Cave Troll · Tripo</option><option value="ghoul">Ghoul · Tripo</option></select>
+            </label>
+            <label>Number of monsters
+              <select id="lab-enemy-count"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+            </label>
+            <label>Arena stage
+              <select id="lab-arena"><option value="cave-troll">Cave &amp; lava scenery</option><option value="crypt">Ghoul crypt</option></select>
+            </label>
+            <label>Number of heroes
+              <select id="lab-hero-count"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>
+            </label>
+            <label>Edit party member
+              <select id="lab-hero-slot"><option value="0">1. Training hero</option></select>
+            </label>
+            <label>Import actual roster hero (snapshot)
+              <select id="lab-roster"><option value="">Custom hero</option></select>
+            </label>
+            <label>Role
+              <select id="lab-hero-role"><option value="tank">Tank</option><option value="DPS">DPS</option><option value="healer">Healer</option></select>
+            </label>
+            <label>Max HP
+              <input id="lab-hero-hp" type="number" min="1" max="10000" value="120"/>
+            </label>
+            <label>Attack damage
+              <input id="lab-hero-damage" type="number" min="1" max="1000" value="16"/>
+            </label>
+            <label>Armor
+              <input id="lab-hero-armor" type="number" min="0" max="1000" value="5"/>
+            </label>
+            <label>Agility
+              <input id="lab-hero-agility" type="number" min="0" max="1000" value="10"/>
+            </label>
+            <label>Healing herbs
+              <input id="lab-hero-heals" type="number" min="0" max="10" value="2"/>
+            </label>
+            <label class="arena-lab-check"><input id="lab-hero-sword" type="checkbox" checked/> Iron Sword</label>
+            <label class="arena-lab-check"><input id="lab-hero-vest" type="checkbox" checked/> Leather Vest</label>
+            <label>Test seed
+              <input id="lab-seed" type="number" min="0" max="4294967295" value="17"/>
+            </label>
+            <label>Simulation speed
+              <select id="lab-speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+            </label>
+          </div>
+          <div class="arena-lab-actions">
+            <button id="lab-start" type="button">Start configured fight</button>
+            <button id="lab-random" type="button">Randomize heroes + fight</button>
+            <button id="lab-pause" type="button">Pause</button>
+            <button id="lab-step" type="button" title="Advance one genuine 60Hz combat tick">Step 1/60s</button>
+            <button id="lab-model" type="button">Inspect model animations</button>
+          </div>
+          <p id="lab-status" role="status">Configure your test battle.</p>
+          <small>Arena selection changes scenery only; lava hazards are specific to the implemented combat scenario.
+          Test observations and randomization never affect live fights, inventories or saved campaign replays.</small>
+        </aside>
         <div id="arena-cinematic" class="arena-cinematic" hidden aria-live="off">
           <div class="arena-cinematic-copy">
             <small>THE SIXTH FLOOR</small>

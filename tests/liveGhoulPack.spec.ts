@@ -4,7 +4,10 @@ test("one real LIVE Ghoul pack is abstract on the floor and individually rendere
   test.setTimeout(115000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
-  await page.goto("./");
+  // The browser test compares identical saved checkpoints. Freeze the
+  // real world pacer before the first render on BOTH boot and reload;
+  // otherwise legitimate LIVE combat advances during heavy GLB loading.
+  await page.goto("./?e2e-pause-world");
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   const prepared=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
