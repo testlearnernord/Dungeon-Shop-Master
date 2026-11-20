@@ -33,7 +33,24 @@ export function setupExpeditionHud(store: GameStore): void {
       list.append(empty);
     }
   }
-  store.subscribe(render);
+  // World time and the physical NPC motor publish fresh state 20+ times
+  // per second. Neither changes old Level-6 results; do not scan the
+  // unbounded event history or replace a DOM list on each shop movement.
+  let previousEvents:typeof store.state.events|null=null;
+  let previousFloors:typeof store.state.dungeonFloors|null=null;
+  let renderCount=0;
+  const renderIfChanged=()=>{
+    const state=store.state;
+    if(previousEvents===state.events&&previousFloors===state.dungeonFloors)return;
+    previousEvents=state.events;
+    previousFloors=state.dungeonFloors;
+    renderCount++;
+    render();
+  };
+  store.subscribe(renderIfChanged);
   window.addEventListener("expedition-observed",render);
-  render();
+  if(import.meta.env.VITE_E2E==="1")
+    (window as Window&{__shopTestExpeditionRenders?:()=>number})
+      .__shopTestExpeditionRenders=()=>renderCount;
+  renderIfChanged();
 }
