@@ -1,5 +1,12 @@
 # Dungeon Shop Master — Current Architecture
 
+### Owner correction after #218 · Unified combat presentation
+
+Both ordinary LIVE and historical `DungeonReplayScene` maps now show **one clickable encounter beacon**, never fighter battle animations, Ghoul GLB instances or projectiles. `DungeonViewer` handles the beacon click and the accessible Watch action. `LiveGroupCombatArena` is the only opt-in read-only 3D group fight scene. LIVE views use existing `selectLiveSpectatorFrame` committed 60Hz frames; archived views pass unchanged historical `Level7ReplayEncounter.combat` actors, frames and the local playback snapshot. No second simulation authority, RNG, altered HP/loot or added world clock. LIVE shop and dungeon continue, historical replays follow independent local time.
+
+Default render quality is **Native 100%**. Dynamic resolution stays available through deliberate F4 Auto selection only.
+
+
 ### PR #218 · Three clean presentation/authority layers for LIVE battles
 
 **Authoritative state:** `GameStore` →
@@ -14,8 +21,7 @@ A viewer **never** calls combat simulation functions.
 Only a single abstract encounter beacon is created during a fight,
 plus observed fight membership/HP as DOM text. No fighter mesh imports,
 Tripo ghoul loads, projectile spheres or combat pose animation occur
-in the LIVE map. Historical replay code in `setReplay`/`show` stays
-untouched and retains its detailed recorded cast.
+in either LIVE or historical map. Detailed saved combat stays in the opt-in arena.
 
 **Expensive optional LIVE 3D:** Explicit player choice `Watch LIVE
 fight in arena` → `LiveGroupCombatArena.watch`: allocates a distinct
@@ -45,7 +51,7 @@ simulation/render CPU budget is low. It starts at scaling 1, then potentially
 selects 1.25, 1.5, 1.75 or at most 2 (half width and height = quarter pixels).
 `RenderQualityController` reads the pure `AdaptiveResolutionPolicy`:
 warmup, two slow frame windows, hysteresis and delayed recovery.
-Manual F4 presets override automatic decisions. Browser HUD is native DOM
+Native is the default, while manual F4 presets override opt-in Auto. Browser HUD is native DOM
 and remains full resolution. Babylon viewport picking, shop meshes, scene,
 simulation, RNG, event queue and campaign saves remain unchanged.
 
@@ -325,16 +331,15 @@ supported by the existing *group* motor, including real
 grapple/throw effects, and is exercised in deterministic
 tests. The existing **Level 6 Cave Troll campaign path still
 uses its original one-hero cinematic replay and renderer**.
-The dungeon viewer renders the full recorded group cast. Real 1–3 hero parties already fight renewable elites on their campaign expeditions. Only the unique Cave Troll retains grapple/throw in newly simulated encounters; the separate Level 6 cinematic and Floor 10 gate are still incomplete.
+The opt-in combat arena renders the full recorded group cast. Real 1–3 hero parties already fight renewable elites on their campaign expeditions. Only the unique Cave Troll retains grapple/throw in newly simulated encounters; the separate Level 6 cinematic and Floor 10 gate are still incomplete.
 There is no implied V.003 release from this engine milestone.
 
 ## Recorded dungeon cast projection and regenerated elites (CURRENT after this PR)
 
 `dungeonReplayCast.ts` reads combat actor identities, teams, phases,
 radii and live-frame locations **only from the persisted replay**.
-`dungeonReplayScene.ts` draws every member of that cast and every
-recorded projectile, not the previous hard-coded one-hero/one-monster
-pair. The lead hero keeps historically recorded equipment. New `GroupCombatReplay` actors optionally snapshot their own
+The optional 3D arena draws the recorded group cast and every recorded
+projectile; the dungeon map retains one abstract battle marker. The lead hero keeps historically recorded equipment. New `GroupCombatReplay` actors optionally snapshot their own
 purchased gear at encounter commitment, and the renderer uses that
 immutable field for each companion. Older v1 records without gear
 remain visually neutral. The spectator must never use current mutable
@@ -636,8 +641,8 @@ The redesign must preserve one deterministic GameState authority and introduce:
   **PR #211 LIVE spectator:** `liveSpectator.ts` reads only the saved
   participant's visited cells, current spatial checkpoint and actual
   precomputed combat frames after explicit Board opt-in. The common
-  `DungeonReplayScene.showLive()` reuses combat meshes, party visuals,
-  fog and minimap; it never resolves combat or invents a replay outcome.
+  `DungeonReplayScene.showLive()` reuses party traversal visuals,
+  fog, minimap and one abstract beacon; it never resolves combat.
   The render loop continues shop traffic and the world event scheduler
   during this mode, unlike paused archive/development views. Current
   remote HP and enemy identity never flow back to `liveBoardProjection`.
