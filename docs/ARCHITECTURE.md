@@ -1,5 +1,12 @@
 # Dungeon Shop Master — Current Architecture
 
+### Owner correction: Level-6 is the COMBAT reference, not the Ghoul prototype
+
+The live/recorded ordinary fights use the same Level-6 spectator scene foundation via `combatSpectatorStage.ts`: identical original Troll-camera/lighting controls and scene lifecycle with environment-specific art. `Level6Arena` itself uses this extracted stage. `BossCombatHud` and `CombatGroupWorldHud` use identical world-space health/damage projection from `combatHudProjection.ts`; optional groups merely add health plates and original recorded actors. The read-only Ghoul Crypt variant is in `cryptCombatArenaArt.ts`. No extra fight simulation is triggered by a viewer.
+
+**Still separate authoritative motors:** The unique Level-6 solo campaign route (`arenaCombatMotion` -> `resolveSpatialBoss` -> `simulateLevel6Combat`) commits an atomic finished replay. The ordinary dungeon route (`groupCombat` -> `commitLiveCombatTick`) commits real 60Hz groups over the shared world clock. Both leverage `combatEncounter` and shared movement/hit/grapple helpers, but DIFFER in boss behavior, abilities, stamina/time ownership and v1 saved recording formats. A later parity-tested migration will preserve the Troll behavior and extend groups; do NOT mark it implemented or delete the specialized motor prematurely.
+
+
 ### Owner correction after #218 · Unified combat presentation
 
 Both ordinary LIVE and historical `DungeonReplayScene` maps now show **one clickable encounter beacon**, never fighter battle animations, Ghoul GLB instances or projectiles. `DungeonViewer` handles the beacon click and the accessible Watch action. `LiveGroupCombatArena` is the only opt-in read-only 3D group fight scene. LIVE views use existing `selectLiveSpectatorFrame` committed 60Hz frames; archived views pass unchanged historical `Level7ReplayEncounter.combat` actors, frames and the local playback snapshot. No second simulation authority, RNG, altered HP/loot or added world clock. LIVE shop and dungeon continue, historical replays follow independent local time.
@@ -25,7 +32,7 @@ in either LIVE or historical map. Detailed saved combat stays in the opt-in aren
 
 **Expensive optional LIVE 3D:** Explicit player choice `Watch LIVE
 fight in arena` → `LiveGroupCombatArena.watch`: allocates a distinct
-Babylon Scene with basic stone arena, HeroVisual actors, on-demand
+Babylon Scene with Level-6-authored camera and crypt art, HeroVisual actors, on-demand
 Tripo ghouls, fallback enemies and visual projectiles. The scene reads
 the **latest committed GroupReplayFrame** (10Hz pose checkpoints from
 the existing 60Hz motor), never invents movement, damage or AI.
