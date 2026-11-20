@@ -93,6 +93,10 @@ export function setupPerformanceHud(options:RuntimePerformanceOptions={}):{
         "FPS (frame gap):      "+(mean>0?(1000/mean).toFixed(1):"0"),
         "Frame interval p95:  "+ms(percentile(intervals,.95))+" ms",
         "World CPU / frame:   "+ms(average(worldWork))+" ms",
+        "World CPU p95/max:   "+ms(percentile(worldWork,.95))+" / "+
+          ms(Math.max(...worldWork))+" ms",
+        "World >16ms frames:   "+worldWork.filter(value=>value>16).length+
+          " / "+worldWork.length,
         "Render CPU / frame:  "+ms(average(renderWork))+" ms",
         "World ticks / sec:   "+(tickTotal*1000/elapsed).toFixed(1),
         "Last autosave sync:  "+(lastSaveMs===null?"none":ms(lastSaveMs)+" ms"),
