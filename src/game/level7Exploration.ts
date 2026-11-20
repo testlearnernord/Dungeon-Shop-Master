@@ -193,8 +193,12 @@ export function prepareSpatialDungeonCombat(
   available.push(...candidates);
   if(available.length<party.length)
     throw new RangeError("Insufficient physical entry positions for this party");
+  // A pack may not steal another authored monster/chest/trap site's tile.
+  // The lead feature stays the sole renewable source for this encounter.
+  const freePackSpawns=available.slice(party.length).filter(point=>
+    !layout.features.some(feature=>feature.x===point.x&&feature.z===point.z));
   const packCount=elite?1:ghoulPackCount(campaignSeed,layout.floor,
-    monster.x,monster.z,cycle,party.length,available.length-party.length);
+    monster.x,monster.z,cycle,party.length,freePackSpawns.length);
   const specs:CombatantSpec[]=party.map((hero,index)=>{
     const spawn=available[index];
     const sword=hero.equipment.weapon==="Iron Sword";
@@ -220,7 +224,7 @@ export function prepareSpatialDungeonCombat(
   const baseDamage=(layout.floor===7?8+monsterRand.int(4):
     2+layout.floor+monsterRand.int(3))+(elite?4:0);
   for(let index=0;index<packCount;index++){
-    const spawn=index===0?monster:available[party.length+index-1]!;
+    const spawn=index===0?monster:freePackSpawns[index-1]!;
     specs.push({
       id:ghoulPackActorId(monster.id,index),team:"monsters",
       role:"monster",style:"melee",
