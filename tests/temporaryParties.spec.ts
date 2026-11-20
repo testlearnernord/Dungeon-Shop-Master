@@ -49,6 +49,7 @@ test("Temporary Party appears in day feed, both roster and saved dungeon footage
   await page.locator("#close-roster").click();
 
   await page.locator("#open-dungeon").click();
+  await page.locator("#dungeon-open-archive").click();
   const options=page.locator("#dungeon-replay-select option");
   await expect(options.filter({hasText:"Temporary Party (2)"})).toHaveCount(2);
   await expect(page.locator("#dungeon-temporary-party")).toBeVisible();
@@ -81,6 +82,7 @@ test("Temporary Party appears in day feed, both roster and saved dungeon footage
   await page.locator("#close-dungeon").click();
   await page.reload();
   await page.locator("#open-dungeon").click();
+  await page.locator("#dungeon-open-archive").click();
   await expect(page.locator("#dungeon-temporary-party")).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -89,6 +91,7 @@ test("empty preview has no invented Temporary Party or join events",async({page}
   await page.goto("./");
   await expect(page.locator("#world-events")).not.toContainText("Temporary Party");
   await page.locator("#open-dungeon").click();
+  await page.locator("#dungeon-open-archive").click();
   await expect(page.locator("#dungeon-temporary-party")).toBeHidden();
   const empty=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonPlayback());
