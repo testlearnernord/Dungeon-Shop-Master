@@ -177,6 +177,11 @@ test("v19 rejects tampered active fight clocks, fake fighter HP and duplicated r
   tamper(s=>{s.worldClock.pending=s.worldClock.pending.filter(
     (e:any)=>e.subjectId!==LIVE_COMBAT_EVENT_SUBJECT);},/liveDungeon/);
   tamper(s=>{s.liveDungeon.combats[0].encounter.options.actors[0].damage+=50;},/options/);
+  tamper(s=>{
+    const monster=s.liveDungeon.combats[0].state.actors
+      .find((actor:any)=>actor.team==="monsters");
+    monster.activeMeleeAbility="troll-slam";
+  },/activeMeleeAbility/);
   assert.deepEqual(parseSave(JSON.stringify(valid)),store.state);
 });
 

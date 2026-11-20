@@ -1,6 +1,22 @@
 # Dungeon Shop Master — Contributor Guide
 
 
+### PR #229 · One real shared encounter driver; signature-profile convergence
+
+The canonical `combatEncounter.ts` 60Hz stepper already runs both
+legacy boss and group fights. New `combatSignatureAbilities.ts` holds
+shared Smash/Slam/Grab timing, damage ratio and ability arbitration.
+The historical Level-6 boss must retain its authored 13.5s music film,
+seeded decision sequence, lava and Replay v1 format. Group Trolls must
+use genuine committed signature strikes/telegraphs, identity-stable
+readiness, wall collision and real grapple/landing damage. Ghoul profiles
+and the regular dungeon world clock are unchanged. Active-save allowed
+action values must agree with the new group actor type; reject a
+Ghoul save claiming Troll signature abilities. Never compute HP or
+action choice from camera pose or archived playback. Do NOT mark
+multi-hero Level-6/lava fight parity complete before #230.
+
+
 ### PR #228 · No Safe Passage + opt-in Ghoul presentation
 
 `No Safe Passage.mp3` exists in the repository root and is additionally

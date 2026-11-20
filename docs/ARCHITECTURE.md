@@ -1,6 +1,49 @@
 # Dungeon Shop Master — Current Architecture
 
 
+### PR #229 · Shared authoritative Troll signature ability policy
+
+**Important baseline:** since earlier refactors, `stepCombatEncounter`
+already owns the same 60Hz encounter pipeline for the historical Level-6
+boss and group encounters. PR #229 does NOT introduce a second/third engine
+or silently replace the original Troll solver with a weaker generic monster.
+
+`combatSignatureAbilities.ts` is the single authoritative profile for
+Troll **Smash, Slam and Grapple/Throw**: exact authored windup/contact/
+recovery windows, striking reach and the solo duel's established raw
+33/47 damage. Both `arenaCombatMotion.ts` and `groupCombat.ts` now read
+the same signature profiles and use the same `chooseCombatAbility`
+selection policy. The historical solo duel keeps its original seeded
+random roll stream and movement/lava behavior, so saved Replay v1
+semantics and boss cinematic are not rewritten. The multi-actor motor
+uses actor-ID-stable samples and retains its previous forced-grab turn
+cadence (#2/#5/...) so existing deterministic group fight saves and
+grapple/throw tests remain meaningful. Its Troll-class actor now has
+actual committed smash/slam/grapple timings, extended geometric reach
+and a relative 47/33 slam-force factor, not just the ordinary Ghoul
+attack with a cosmetic Troll model. Generic Ghoul fighters remain on
+their original melee/heavy profiles.
+
+`trollDefenseReadiness` gives both encounters the same finite chance
+to react to a warning. The group branch samples the reaction from
+actual attacker/defender IDs and the committed attack ordinal, not a
+graphics frame or spectator RNG; a hero does not dodge EVERY Troll
+telegraph. Ordinary Ghoul defense policies are unchanged. All strikes
+resolve using the existing shared `resolveMeleeContact`, `applyCombatHit`,
+`CombatActorRuntime` and `stepCombatEncounter` contracts.
+The active-group save validator now accepts `troll-smash` and
+`troll-slam` **only** on original boss-class actors while continuing
+to accept historical active `ordinary` and `grapple` states.
+
+**Limits and next slice:** This preserves the bespoke historical
+Level-6 replay frame format and unique circular lava/knockback rules.
+Those are deliberate encounter plugins, not evidence of an extra clock
+or parallel source of HP. Floor-6 multihero boss instantiation,
+environmental lava across party fights, and visual slam identification
+in group replay are still separate work (#230). No claim of complete
+Troll/Group feature parity until those acceptance cases pass.
+
+
 ### PR #228 · Ghoul arena score, visual rig and crypt set
 
 `No Safe Passage.mp3` was already checked in at repository root but was

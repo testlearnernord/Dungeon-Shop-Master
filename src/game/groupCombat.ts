@@ -7,8 +7,12 @@ import {
 } from "./combatActor.ts";
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
+  chooseTrollSignatureAttack,fromTrollGroupAbility,trollSignatureProfile,
+  type TrollGroupMelee,
+} from "./combatSignatureAbilities.ts";
+import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
-  selectCombatTarget,
+  selectCombatTarget, trollDefenseReadiness,
 } from "./combatTactics.ts";
 import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
 import {
@@ -98,7 +102,7 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
   readonly staggerThreshold: number;
   lockedHeading: number;
   attacksStarted: number;
-  activeMeleeAbility: "ordinary" | "heavy" | "grapple";
+  activeMeleeAbility: "ordinary" | "heavy" | TrollGroupMelee;
   grappleTargetId: string | null;
   grabbedById: string | null;
   throwVelocity: Point2;
@@ -317,19 +321,28 @@ function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | nul
     a.hp/a.maxHp - b.hp/b.maxHp || a.id.localeCompare(b.id));
   return candidates[0] ?? null;
 }
+/** A shared boss telegraph threatens at the same authored lead-in as its
+ * solo duel. Standard ordinary/heavy threats keep their v1 timing. */
 function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor | null {
-  return s.actors.find(other =>
-    other.team !== defender.team && other.hp > 0 &&
-    other.phase === "windup" &&
-    other.phaseAge >= (other.meleeAbility==="heavy"
-      ? meleeAbilityProfile("heavy").windupSeconds +
-        meleeAbilityProfile("heavy").strikeDelaySeconds - 0.28
-      : 0.38) &&
-    distance(other, defender) < other.reach + defender.radius + 0.8 +
-      (other.meleeAbility==="heavy"?0.35:0) &&
-    inAttackArc(other, other.lockedHeading, defender,
-      other.reach + defender.radius + 1 +
-        (other.meleeAbility==="heavy"?0.35:0), 1.1)) ?? null;
+  return s.actors.find(other => {
+    if(other.team===defender.team||other.hp<=0||
+       other.phase!=="windup")return false;
+    const isSignature=other.specialAbility==="grapple-throw";
+    const signature=isSignature?trollSignatureProfile(
+      fromTrollGroupAbility(other.activeMeleeAbility as TrollGroupMelee)):null;
+    const lead=signature
+      ?Math.max(.20,signature.windupSeconds-.25)
+      :other.meleeAbility==="heavy"
+        ?meleeAbilityProfile("heavy").windupSeconds+
+          meleeAbilityProfile("heavy").strikeDelaySeconds-.28
+        :.38;
+    const range=signature?signature.reach:
+      other.reach+(other.meleeAbility==="heavy"?.35:0);
+    return other.phaseAge>=lead&&
+      distance(other,defender)<range+defender.radius+.8&&
+      inAttackArc(other,other.lockedHeading,defender,
+        range+defender.radius+1,signature?1.3:1.1);
+  })??null;
 }
 function tryStrike(s: GroupCombatState, attacker: GroupActor,
   batch: GroupCombatCue[]): void {
@@ -338,7 +351,7 @@ function tryStrike(s: GroupCombatState, attacker: GroupActor,
     cue(batch,s,attacker,"miss",attacker.targetId ?? undefined);
     return;
   }
-  const skill=meleeAbilityProfile(attacker.meleeAbility,
+  const skill=meleeAbilityProfile(attacker.activeMeleeAbility,
     attacker.reach+target.radius);
   const contact=resolveMeleeContact({
     attacker,lockedHeading:attacker.lockedHeading,defender:target,
@@ -472,22 +485,25 @@ function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupAct
 function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: GroupCombatCue[]): void {
   if (a.hp <= 0) return;
   refreshCombatActorResources(a,dt,17);
-  // This is the same action clock used by the boss. Ability profiles
-  // decide when contact can happen, not each renderer's animation time.
+  // Shared signature profiles make the group Troll's windups, contact and
+  // recover timings match the historical solo boss. Non-boss profiles stay.
+  const signature=a.specialAbility==="grapple-throw"
+    ?trollSignatureProfile(fromTrollGroupAbility(
+      a.activeMeleeAbility as TrollGroupMelee)):null;
   let window:CombatActionWindow={};
   if(a.phase==="windup"){
-    window={completeAt:a.activeMeleeAbility==="grapple"
-      ? GRAPPLE_TIMING.windup
-      : meleeAbilityProfile(a.meleeAbility,a.reach).windupSeconds};
+    window={completeAt:signature?.windupSeconds??
+      meleeAbilityProfile(a.meleeAbility,a.reach).windupSeconds};
   }else if(a.phase==="strike"){
-    const skill=meleeAbilityProfile(a.meleeAbility,a.reach);
-    window={contactAt:skill.strikeDelaySeconds,completeAt:skill.strikeEndSeconds};
+    const skill=meleeAbilityProfile(a.activeMeleeAbility,a.reach);
+    window={contactAt:signature?.contactSeconds??skill.strikeDelaySeconds,
+      completeAt:signature?.actionSeconds??skill.strikeEndSeconds};
   }else if(a.phase==="cast"){
     window={contactAt:0.40,completeAt:0.75};
   }else if(a.phase==="heal"){
     window={contactAt:0.62,completeAt:0.92};
   }else if(a.phase==="recover")window={completeAt:
-    a.activeMeleeAbility==="grapple"?GRAPPLE_TIMING.recover:0.38};
+    signature?.recoverySeconds??.38};
   else if(a.phase==="grab")window={
     contactAt:GRAPPLE_TIMING.grabContact,completeAt:GRAPPLE_TIMING.grab,
   };
@@ -513,11 +529,21 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       preferParry:a.role==="tank"&&a.style==="melee",
       canParry:a.role==="tank"&&a.style==="melee",
     });
-    if(threat&&reaction==="parry"){
+    // The Level-6 duel already has a finite response chance. A group
+    // member must not become a perfect 100%-dodge machine against the
+    // same telegraph. The sample is stable across actor/replay ordering.
+    const bossWarning=threat?.specialAbility==="grapple-throw";
+    const defenseRead=bossWarning&&threat
+      ?deterministicGrappleSample(threat.id,a.id,
+          Math.max(1,threat.attacksStarted))
+      :0;
+    const canReact=!bossWarning||defenseRead<trollDefenseReadiness(
+      a.agility,a.role,threat?.activeMeleeAbility==="grapple");
+    if(threat&&canReact&&reaction==="parry"){
       a.stamina-=20;
       a.heading=combatHeading(a,threat);
       phase(a,"parry");
-    }else if(threat&&reaction==="roll"){
+    }else if(threat&&canReact&&reaction==="roll"){
       a.stamina-=28;
       const escape=combatDirection(threat,a);
       const sign=a.id.localeCompare(threat.id)<0?1:-1;
@@ -531,26 +557,35 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     if (a.phase === "move") {
       const gap=distance(a,enemy);
       const ranged=a.style==="ranged";
-      // Real bosses can bring a special move into the *same* encounter
-      // scheduler. At least one normal swing precedes the first grapple.
+      // Exactly the same signature move chooser as the solo Boss, but
+      // an ID-stable per-contact sample for multi-actor reproducibility.
+      // Retain the existing group grapple cadence (#2/#5/...) for saved
+      // live encounters; add physically authored smash/slam between catches.
       const nextAttack=a.attacksStarted+1;
-      const wantsGrapple=a.specialAbility==="grapple-throw"&&
-        nextAttack>1&&nextAttack%3===2;
+      const grabTurn=nextAttack>1&&nextAttack%3===2;
+      const special=a.specialAbility==="grapple-throw"
+        ?chooseTrollSignatureAttack(nextAttack,gap,
+            grabTurn?0:deterministicGrappleSample(
+              a.id,enemy.id,nextAttack))
+        :null;
+      const chosen=special?trollSignatureProfile(special):null;
+      const action=chosen?.groupAbility??a.meleeAbility;
       const posture=chooseCombatPosture({
         distance:gap,ready:a.cooldown===0&&a.stamina>=13,
         clearShot:lineClear(s,a,enemy),
-        attackRange:ranged?11:wantsGrapple?meleeAbilityProfile("grapple").reach:
-          a.reach+enemy.radius,
-        approachBeyond:(ranged?7:a.reach+enemy.radius-0.35)+0.15,
+        attackRange:ranged?11:chosen?.reach??a.reach+enemy.radius,
+        approachBeyond:ranged?7:chosen?
+          Math.max(3.15,chosen.reach-1.7):
+          a.reach+enemy.radius-.20,
         ...(ranged?{withdrawWithin:4.5}:{}),
       });
       if(posture.attack){
         a.stamina-=13;a.targetId=enemy.id;
         a.attacksStarted++;
-        a.activeMeleeAbility=wantsGrapple?"grapple":a.meleeAbility;
+        a.activeMeleeAbility=action;
         a.lockedHeading=a.heading;
         a.cooldown=ranged?1.3:
-          wantsGrapple?3.5:
+          action==="grapple"?3.5:chosen?1.5:
           a.meleeAbility==="heavy"?1.62:(a.role==="DPS"?0.92:1.16);
         phase(a,ranged?"cast":"windup");
         cue(batch,s,a,ranged?"cast":"attack",enemy.id);

@@ -7,10 +7,14 @@ import {
 } from "./combatActor.ts";
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
-  chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
-  selectCombatTarget,
+  chooseCombatDefense, chooseCombatPosture, selectCombatTarget,
+  trollDefenseReadiness,
 } from "./combatTactics.ts";
 import { traceCombatProjectile } from "./combatProjectile.ts";
+import {
+  chooseTrollSignatureAttack,trollSignatureProfile,
+  type TrollSignatureAttack,
+} from "./combatSignatureAbilities.ts";
 import {
   grappleEscapeChance, grappleHoldPosition, grappleLaunchVelocity,
   GRAPPLE_TIMING,
@@ -33,7 +37,7 @@ export type ActorPhase = "move" | "roll" | "parry" | "attack" | "cast" | "heal" 
   "grabbed" | "thrown" | "dead";
 export type BossPhase = "chase" | "windup" | "strike" | "grab" | "throw" |
   "grabMiss" | "recover" | "stagger" | "dead";
-export type BossAttack = "smash" | "slam" | "grab";
+export type BossAttack = TrollSignatureAttack;
 export type CueKind = "windup" | "dodge" | "parry" | "miss" | "hit" | "hero-hit" |
   "grab" | "throw" | "projectile" | "heal" | "stagger" | "lava" | "victory" | "defeat";
 export type ArenaCue = { kind: CueKind; amount?: number };
@@ -301,7 +305,10 @@ function resolveBossStrike(s: CombatPreviewState): void {
     return;
   }
   // An actual smash must threaten a well-equipped hero who misreads it.
-  const raw = s.bossSlam ? 47 : 33;
+  // Existing duel v1 treats bossSlam as the authoritative contact flag:
+  // old saves and forced hit fixtures may not update bossAttack alongside it.
+  // Still use the shared profile's 33/47 damage rather than duplicating it.
+  const raw=trollSignatureProfile(s.bossSlam?"slam":"smash").soloRawDamage;
   const damageResult=applyCombatHit(s.heroHp,raw,
     (s.options.armor?7:0)+(s.options.role==="tank"?3:0));
   s.heroHp=damageResult.hp;
@@ -461,18 +468,19 @@ function progressHeroAction(s: CombatPreviewState, dt: number): void {
 function progressBossAction(s: CombatPreviewState, dt: number): void {
   let window:CombatActionWindow={};
   if(s.bossPhase==="windup"){
-    window={completeAt:s.bossAttack==="grab"?GRAPPLE_TIMING.windup:
-      s.bossSlam?1.05:0.85};
+    window={completeAt:trollSignatureProfile(s.bossAttack).windupSeconds};
   }else if(s.bossPhase==="grab"){
-    window={contactAt:GRAPPLE_TIMING.grabContact,completeAt:GRAPPLE_TIMING.grab};
+    const skill=trollSignatureProfile("grab");
+    window={contactAt:skill.contactSeconds,completeAt:skill.actionSeconds};
   }else if(s.bossPhase==="throw"){
     window={contactAt:GRAPPLE_TIMING.throwRelease,completeAt:GRAPPLE_TIMING.throw};
   }else if(s.bossPhase==="strike"){
-    window={contactAt:0.14,completeAt:0.38};
+    const skill=trollSignatureProfile(s.bossAttack);
+    window={contactAt:skill.contactSeconds,completeAt:skill.actionSeconds};
   }else if(s.bossPhase==="grabMiss"){
     window={completeAt:GRAPPLE_TIMING.missRecover};
   }else if(s.bossPhase==="recover"){
-    window={completeAt:s.bossAttack==="grab"?GRAPPLE_TIMING.recover:0.72};
+    window={completeAt:trollSignatureProfile(s.bossAttack).recoverySeconds};
   }else if(s.bossPhase==="stagger"){
     window={completeAt:1.6};
   }
@@ -503,11 +511,8 @@ function progressBossAction(s: CombatPreviewState, dt: number): void {
     }
     if(posture.attack){
       s.bossAttacks++;
-      const skill=chooseCombatAbility(
-        ["troll-smash","troll-slam","troll-grab"],
+      s.bossAttack=chooseTrollSignatureAttack(
         s.bossAttacks,gap,combatRoll(s,0x7a91));
-      s.bossAttack=skill==="troll-grab"?"grab":
-        skill==="troll-slam"?"slam":"smash";
       s.bossSlam=s.bossAttack==="slam";
       s.lockedBossHeading=combatHeading(s.boss,target);
       s.bossHeading=s.lockedBossHeading;
@@ -615,10 +620,8 @@ const BOSS_PIPELINE:EncounterPipeline<
           s.lastDefenseAttack = s.bossAttacks;
           // A warning is not a guaranteed perfect reaction. Early blocks/rolls
           // expire before contact; some heroes hesitate and take the hit.
-          const readiness = Math.max(0.38, Math.min(0.78,
-            0.57 + (agility - 10) * 0.015 +
-            (s.options.role === "tank" ? 0.08 : 0) -
-            (s.bossAttack==="grab" ? 0.10 : 0)));
+          const readiness=trollDefenseReadiness(
+            agility,s.options.role,s.bossAttack==="grab");
           if(read<readiness){
             const parryBias=s.options.role==="tank"?0.82:0.28;
             const preferParry=s.options.sword && distance<5 &&
