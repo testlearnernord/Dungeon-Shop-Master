@@ -50,7 +50,7 @@ test("Watch LIVE without a committed location keeps the Board open with clear fe
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
   await page.locator("#open-roster").click();
-  const card=page.locator("#roster-detail-list details[data-hero-id]").first();
+  const card=page.locator("#roster-detail-list details[data-hero-id]:has(.roster-watch-live)").first();
   await card.locator("summary").click();
   await card.locator(".roster-watch-live").click();
   await expect(page.locator("#roster-dialog")).toBeVisible();
