@@ -7,6 +7,7 @@ import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import {Scene} from "@babylonjs/core/scene";
 import {UniversalCamera} from "@babylonjs/core/Cameras/universalCamera";
 import {createCombatSpectatorStage,flyCombatSpectatorCamera,
+  type CombatStageTheme,
   focusCombatSpectatorCamera,turnCombatSpectatorCamera} from "./combatSpectatorStage.ts";
 import {buildCryptCombatArenaArt} from "./cryptCombatArenaArt.ts";
 import {buildCaveTrollArenaArt,paintCaveTrollFloor} from "./caveTrollArenaArt.ts";
@@ -60,6 +61,13 @@ export class LiveGroupCombatArena{
   private readonly observedPositions=new Map<string,Vector3>();
   private intro:GroupIntroTrack|null=null;
   private introElapsed=0;
+  private developerStage:CombatStageTheme|null=null;
+
+  /** V-mode presentation override ONLY. Never changes contact/hazard rules. */
+  setDeveloperTheme(theme:CombatStageTheme|null):void{
+    if(this.scene)throw new Error("Change test stage before creating the arena");
+    this.developerStage=theme;
+  }
 
   constructor(private readonly engine:Engine,
     private readonly canvas:HTMLCanvasElement,
@@ -262,15 +270,17 @@ export class LiveGroupCombatArena{
     if(!fight)return;
     const bounds=fitBounds(fight.actors);
     const hasTroll=fight.actors.some(spec=>spec.specialAbility==="grapple-throw");
+    const trollStage=this.developerStage
+      ?this.developerStage==="cave-troll":hasTroll;
     // The existing Level-6 Cave Troll spectator stage is the baseline:
     // monster variants change art and assets; multi-hero parties merely add actors.
     const {scene,camera}=createCombatSpectatorStage(this.engine,
-      hasTroll?"cave-troll":"crypt",bounds);
+      trollStage?"cave-troll":"crypt",bounds);
     this.scene=scene;
     this.fightId=fight.id;
     scene.metadata=bounds;
     this.camera=camera;
-    if(hasTroll){
+    if(trollStage){
       const stone=new StandardMaterial("group-troll-floor-mat",scene);
       paintCaveTrollFloor(scene,stone);
       const floor=MeshBuilder.CreateCylinder("live-fight-arena-floor",
