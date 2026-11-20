@@ -1,5 +1,20 @@
 # Dungeon Shop Master — Game Bible
 
+
+### Combat presentation soundtrack (PR #228)
+
+- Ordinary dungeon engagements observed in the premium arena:
+  **NO SAFE PASSAGE**, deployed under `public/audio/no-safe-passage.mp3`.
+- The standalone Level-6 Cave Troll and future boss-class opt-in
+  battles: **Desperate Measures**.
+- The abstract LIVE Dungeon Floor and Expedition Replay map:
+  **Beneath the Surface**.
+- Shop ambience returns to **The Lean Season** when closing the viewer.
+- These changes affect presentation only. No Ghoul-specific recorded
+  SFX pack exists yet; final species voice and Foley are not approved.
+- Babylon phase blending and saved-strike left/right clip alternation
+  are visual. The underlying fights continue at the one world clock.
+
 ### Combat reference and groups (LOCKED, 20 November 2026)
 
 - The owner requires **Level-6 Cave Troll quality and behavior as the reference for ALL dungeon fights**, not a degraded common denominator based on the earlier Ghoul/Group arena. Monster/arena/ability content varies. Parties are an extra capability, not a replacement for the authored solo gameplay.
