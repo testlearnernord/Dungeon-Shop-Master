@@ -619,9 +619,14 @@ export class DungeonViewer {
     document.querySelector<HTMLElement>("#dungeon-combat-heading")!.textContent=
       "⚔ "+view.fights.length+" LIVE ENGAGEMENT(S) · ABSTRACT FLOOR";
     this.liveCombatDetails.textContent=view.fights.map(fight=>{
-      const alive=fight.frame.actors.filter(a=>a.hp>0).length;
-      return fight.featureId+" · "+alive+"/"+fight.frame.actors.length+
-        " combatants active";
+      const cast=new Map(fight.actors.map(actor=>[actor.id,actor]));
+      return fight.featureId+" · "+fight.frame.actors.map(actor=>{
+        const spec=cast.get(actor.id);
+        const hero=this.store.state.adventurers.find(h=>h.id===actor.id);
+        const name=hero?.name??(spec?.team==="monsters"?"Monster":"Adventurer");
+        return name+" "+Math.max(0,Math.round(actor.hp))+"/"+
+          Math.round(spec?.maxHp??actor.hp)+" HP";
+      }).join(" · ");
     }).join(" | ");
     this.modeDescription.textContent="LIVE · "+(this.liveArena.isActive
       ?"3D combat arena (read-only)":"whole-floor dungeon overview")+
