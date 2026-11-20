@@ -1001,3 +1001,21 @@ export function liveFloorHeroClickPoint(heroId:string):{x:number;y:number}{
     y:projected.y/engine.getRenderHeight()*canvas.clientHeight,
   };
 }
+
+
+/** #226 read-only Babylon visibility audit, on the actual floor scene. */
+export function inspectLiveFloorFog(){
+  const scene=Engine.LastCreatedScene!;
+  const tiles=scene.meshes.filter(mesh=>
+    /^dungeon-(wall|corridor|room)-\d+-\d+$/.test(mesh.name));
+  const selected=scene.transformNodes.filter(node=>
+    node.metadata?.liveFloorOnly===true&&node.isEnabled());
+  return {
+    tiles:tiles.length,
+    hiddenTiles:tiles.filter(mesh=>!mesh.isVisible).length,
+    dimTiles:tiles.filter(mesh=>mesh.isVisible&&mesh.visibility<.99).length,
+    presentHeroes:selected.map(node=>node.metadata?.adventurerId as string),
+    abstractFights:scene.meshes.filter(mesh=>
+      mesh.metadata?.abstractBattle===true&&mesh.isEnabled()).length,
+  };
+}
