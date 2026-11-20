@@ -65,6 +65,7 @@ export class DungeonViewer {
   private liveHeroId: string | null = null;
   private liveFloor:SpatialDungeonFloor|null=null;
   private liveFloorFightId:string|null=null;
+  private selectedFloorHeroId:string|null=null;
   private liveFloorProjectionCache:null|{
     readonly floor:SpatialDungeonFloor;
     readonly adventurers:GameState["adventurers"];
@@ -88,6 +89,10 @@ export class DungeonViewer {
   private readonly floorSelector=document.querySelector<HTMLSelectElement>("#dungeon-floor-select")!;
   private readonly archiveControls=document.querySelector<HTMLElement>("#dungeon-archive-controls")!;
   private readonly archiveButton=document.querySelector<HTMLButtonElement>("#dungeon-open-archive")!;
+  private readonly heroDetailPanel=document.querySelector<HTMLElement>("#dungeon-hero-detail")!;
+  private readonly heroDetailTitle=document.querySelector<HTMLElement>("#dungeon-hero-detail-title")!;
+  private readonly heroDetailValues=document.querySelector<HTMLElement>("#dungeon-hero-detail-values")!;
+  private readonly clearHeroButton=document.querySelector<HTMLButtonElement>("#dungeon-clear-hero")!;
   private readonly backLiveButton=document.querySelector<HTMLButtonElement>("#dungeon-back-live")!;
   private readonly playbackControls = document.querySelector<HTMLElement>("#dungeon-playback-controls")!;
   private readonly watchCombatButton=document.querySelector<HTMLButtonElement>("#dungeon-watch-live-combat")!;
@@ -120,17 +125,31 @@ export class DungeonViewer {
       else this.watchRecordedCombat();
     });
     this.returnCombatButton.addEventListener("click",()=>this.returnToDungeonMap());
+    this.clearHeroButton.addEventListener("click",()=>{
+      this.selectFloorHero(null);
+      this.canvas.focus();
+    });
     // Clicking the encounter beacon opts in; toolbar remains keyboard accessible.
     this.canvas.addEventListener("click",event=>{
       if(!this.active||!this.scene||this.liveArena.isActive)return;
       const rect=this.canvas.getBoundingClientRect();
       const picked=this.scene.pick(event.clientX-rect.left,
         event.clientY-rect.top,mesh=>mesh.metadata?.abstractBattle===true);
-      if(!picked?.hit)return;
-      if(this.liveFloor!==null)
-        this.watchFloorCombat(picked.pickedMesh?.metadata?.fightId as string|undefined);
-      else if(this.liveHeroId)this.watchLiveCombat();
-      else this.watchRecordedCombat();
+      if(picked?.hit){
+        if(this.liveFloor!==null)
+          this.watchFloorCombat(picked.pickedMesh?.metadata?.fightId as string|undefined);
+        else if(this.liveHeroId)this.watchLiveCombat();
+        else this.watchRecordedCombat();
+        return;
+      }
+      // Hero picking is a read-only map interaction. A clear floor click
+      // deselects; combat beacons above always take priority.
+      if(this.liveFloor!==null){
+        const heroPick=this.scene.pick(event.clientX-rect.left,
+          event.clientY-rect.top,mesh=>typeof mesh.metadata?.floorHeroId==="string");
+        this.selectFloorHero(heroPick?.hit
+          ?heroPick.pickedMesh?.metadata?.floorHeroId as string:null);
+      }
     });
     document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
     document.querySelector("#close-dungeon")!.addEventListener("click", () => this.close());
@@ -203,6 +222,7 @@ export class DungeonViewer {
           const previous=order.indexOf(this.followActor);
           this.followActor=order[(previous+1)%order.length]??null;
           if(this.liveFloor!==null){
+            this.selectedFloorHeroId=this.followActor;
             const view=selectLiveFloorSpectatorFrame(this.store.state,this.liveFloor);
             if(view)this.paintFloor(view);
           }else if(this.liveHeroId){
@@ -307,6 +327,7 @@ export class DungeonViewer {
     this.followActor=null;
     this.liveHeroId=null;
     this.liveFloor=null;this.liveFloorFightId=null;
+    this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
     this.liveFloorProjectionCache=null;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
@@ -506,6 +527,7 @@ export class DungeonViewer {
     this.liveCombatDetails.textContent="";
     this.liveHeroId=null;
     this.liveFloor=null;this.liveFloorFightId=null;
+    this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
     this.liveFloorProjectionCache=null;
     this.archiveControls.hidden=false;
     this.liveWorldTick=-1;
@@ -551,6 +573,7 @@ export class DungeonViewer {
     this.leaveLiveCombat();
     this.liveFloor=floor;
     this.liveFloorFightId=null;
+    this.selectedFloorHeroId=focusHeroId;
     this.liveFloorProjectionCache=null;
     this.liveHeroId=null;this.liveProjectionCache=null;
     this.liveWorldTick=-1;
@@ -599,6 +622,66 @@ export class DungeonViewer {
   }
 
   /** Entire floor stays observable while the *same* autonomous game runs. */
+  /** Explicit selection never issues hero orders or world-clock events. */
+  private selectFloorHero(heroId:string|null):void {
+    if(this.liveFloor===null)return;
+    const view=selectLiveFloorSpectatorFrame(this.store.state,this.liveFloor);
+    if(!view)return;
+    const confirmed=heroId&&view.heroes.some(h=>h.id===heroId)?heroId:null;
+    this.selectedFloorHeroId=confirmed;
+    this.followActor=confirmed;
+    this.replayScene?.setSelectedFloorHero(confirmed);
+    this.renderFloorHeroDetail(view);
+    if(confirmed)this.replayScene?.follow(confirmed);
+    this.focusLabel.textContent="TAB focus: "+
+      (confirmed??"all adventurers")+" · Floor "+view.floor;
+    this.updateTemporaryPartyFocus();
+  }
+
+  private renderFloorHeroDetail(view:LiveFloorSpectatorFrame):void {
+    const hero=view.heroes.find(h=>h.id===this.selectedFloorHeroId);
+    this.heroDetailPanel.hidden=!hero||this.liveArena.isActive;
+    if(!hero){
+      this.heroDetailValues.replaceChildren();
+      return;
+    }
+    this.heroDetailTitle.textContent=hero.name+" · "+hero.role;
+    const names=new Map(view.heroes.map(member=>[member.id,member.name]));
+    const party=hero.partyMemberIds.length>1
+      ?hero.partyMemberIds.map(id=>names.get(id)??id).join(", "):"Solo";
+    const ongoing=hero.inCombat?"LIVE combat":
+      hero.activity==="backtracking"?"Walking to portal":
+      hero.activity==="portal"?"Portal transit":"Exploring";
+    const entries:[string,string][]=[
+      ["Health",Math.round(hero.health)+" / "+hero.stats.maxHealth+" HP"],
+      ["Level",String(hero.level)],
+      ["Attributes","STR "+hero.stats.strength+" · AGI "+hero.stats.agility+
+        " · INT "+hero.stats.intellect],
+      ["Gold",String(hero.gold)],
+      ["Weapon",hero.equipment.weapon??"None"],
+      ["Armor",hero.equipment.armor??"None"],
+      ["Inventory","Loot "+hero.inventory.loot+" · Waybread "+
+        hero.inventory.bread+" · Healing "+hero.inventory.healing],
+      ["Current activity",ongoing],
+      ["Short-term floor action",hero.plannedAction??"No committed plan"],
+      ["Medium-term goal",hero.goal??"No committed plan"],
+      ["Traits",hero.traits.positive+", "+hero.traits.neutral+
+        ", "+hero.traits.negative],
+      ["Party",party],
+      ["Position","Floor "+view.floor+" · tile ("+hero.x+", "+hero.z+")"],
+      ["Visited cells",String(hero.visited.length)],
+    ];
+    const fragment=document.createDocumentFragment();
+    for(const [label,value] of entries){
+      const key=document.createElement("dt");
+      key.textContent=label;
+      const detail=document.createElement("dd");
+      detail.textContent=value;
+      fragment.append(key,detail);
+    }
+    this.heroDetailValues.replaceChildren(fragment);
+  }
+
   private paintFloor(view:LiveFloorSpectatorFrame):void {
     const selected=view.fights.find(f=>f.id===this.liveFloorFightId)??view.fights[0];
     this.liveFloorFightId=selected?.id??null;
@@ -608,6 +691,12 @@ export class DungeonViewer {
       else this.liveArena.show(this.floorCombatView(selected));
     }
     this.replayScene?.showLiveFloor(view);
+    if(this.selectedFloorHeroId&&!view.heroes.some(hero=>
+       hero.id===this.selectedFloorHeroId)){
+      this.selectedFloorHeroId=null;this.followActor=null;
+    }
+    this.replayScene?.setSelectedFloorHero(this.selectedFloorHeroId);
+    this.renderFloorHeroDetail(view);
     this.liveCombatPanel.hidden=view.fights.length===0;
     this.watchCombatButton.textContent=view.fights.length>1
       ?"⚔ Watch selected LIVE fight ("+view.fights.length+" running)"
