@@ -406,7 +406,7 @@ engine.runRenderLoop(() => {
   ignoreNextClockFrame=false;
   // The register is a DOM-only modal. Its world clock is paused already,
   // so avoid wasting GPU/CPU on a hidden 3D scene while input matters.
-  if(cashier?.isOpen){
+  if(cashier?.isOpen||document.body.classList.contains("cashier-active")){
     npcVisuals.setWorldPaused(true);
     worldClockPacer.reset();
     return;
