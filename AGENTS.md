@@ -1,6 +1,24 @@
 # Dungeon Shop Master — Contributor Guide
 
 
+### PR #226 · Read-only subjective sight and individual memory
+
+The neutral LIVE floor overview is intentionally omniscient **for Galvik only**.
+On selecting a hero, `heroPerception.ts` derives current 5-tile
+wall-blocked line of sight from that hero's own saved position, and historical
+visible/explored geometry solely from that hero's immutable visited path.
+Unseen tiles are hidden; old discovered areas are dim; only currently
+visible other heroes/monsters/fight beacons are presented. Deselecting
+restores the neutral full-floor map with zero gameplay writes.
+The UI lists true currently observed contacts and party-shared current
+contacts. **This is an opt-in visual perception query, not a new saved
+AI memory subsystem or a promise that other hero planners react yet.**
+Never inject the all-floor observer view into hero decisions or the ordinary
+Board. Raycasts are pure deterministic static-grid operations; no combat,
+shop, world clock, RNG or save state changes. #227 begins cinematic combat
+presentation unification and should not reimplement fog/LOS.
+
+
 ### PR #225 · Pure opt-in hero selection
 
 Only floor-visible, saved actor models have `floorHeroId` pick markers.
