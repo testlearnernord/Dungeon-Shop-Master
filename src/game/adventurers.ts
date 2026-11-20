@@ -3,7 +3,7 @@ import { ECONOMY, ITEMS } from "./economy.ts";
 import type { WorldEvent } from "./gameState.ts";
 
 export type AdventurerRole = "tank" | "DPS" | "healer";
-export type AdventurerStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "dead";
+export type AdventurerStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "departing" | "off-duty" | "dead";
 export type DungeonFloor = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface AdventurerState {
@@ -30,6 +30,8 @@ export interface AdventurerState {
   readonly floor: DungeonFloor;
   readonly status: AdventurerStatus;
   readonly shopStayDays: number;
+  /** First eligible new expedition day following an observed shop exit. */
+  readonly offDutyUntilDay: number | null;
   /** Explicit, player-controlled future access to dungeon Level 6. */
   readonly level6Permit: boolean;
 }
@@ -67,6 +69,7 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
     floor: 1,
     status: "exploring",
     shopStayDays: 0,
+    offDutyUntilDay: null,
     level6Permit: false,
   };
   return { adventurer, rngState: random.state };
