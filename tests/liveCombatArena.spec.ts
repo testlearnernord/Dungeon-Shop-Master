@@ -89,6 +89,18 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   expect(arena.cryptSetpieces).toBeGreaterThan(24);
   expect(arena.activeArenaLights).toBeGreaterThanOrEqual(4);
   expect(arena.worldHudBarCount).toBe(arena.arenaHeroes+arena.arenaMonsters);
+
+  // The fixture pauses the one authoritative world clock. An asynchronously
+  // loaded Ghoul must still become visible from the last committed frame
+  // without a fake NPC, extra combat step or a world-time change.
+  const ghoul=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .inspectDungeonPlayback().ghoulActors[0]);
+  await expect.poll(async()=>((await ghoul())?.status??"missing"),
+    {timeout:35000}).toBe("ready");
+  await expect.poll(async()=>((await ghoul())?.visible??false),
+    {timeout:15000}).toBe(true);
+
   expect(await record()).toEqual(before,
     "Watching LIVE must never decide a result or mutate saved HP/loot/frames");
   // With the real world resumed, both view modes remain spectators and
