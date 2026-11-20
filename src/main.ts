@@ -88,6 +88,12 @@ const store = new GameStore(campaign.state);
 // directly advance a legacy day do not run simultaneous spatial motors.
 store.enableLiveDungeon();
 const worldClockPacer = new WorldClockPacer();
+// A strict test-only boot gate: exercise a real Save/Reload checkpoint with
+// ZERO intervening 50ms world ticks before Playwright can inspect it.
+// Normal players never see this URL switch; there is still one world clock.
+if(import.meta.env.VITE_E2E==="1"&&
+   new URLSearchParams(window.location.search).has("e2e-pause-world"))
+  worldClockPacer.setPaused("e2e",true);
 // E2E-only CPU attribution for the real world clock. No extra engine,
 // timer, render or save mutation. Vite eliminates this in production builds.
 const profileCounters=new Map<string,{ms:number;calls:number;maxMs:number}>();

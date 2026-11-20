@@ -9,7 +9,10 @@ test("ten browser days retain one LIVE world, unique signals, bounded timeline a
   test.setTimeout(180000);
   const errors:string[]=[];
   page.on("pageerror",e=>errors.push(e.message));
-  await page.goto("./");
+  // Hold the real world pacer BEFORE the very first animation frame.
+  // Pausing only after reload loses 5-10 ticks on slow SwiftShader machines
+  // and falsely reports Save/Reload corruption despite correct persisted data.
+  await page.goto("./?e2e-pause-world=1");
   await expect(page.locator("#day")).toHaveText("Day 1");
   // Keep this browser load bounded to the original ten named heroes while
   // still running all genuine spatial and physical world state transitions.

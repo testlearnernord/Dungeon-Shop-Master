@@ -22,6 +22,13 @@
   either dungeon map or explicit fight arena; never draw both concurrently.
   `DungeonViewer.isWatchingLive` stays true in both presentations so
   the shop, dungeon, fighters and world clock continue.
+- Strict browser Save/Reload comparisons use the **E2E-only**
+  `?e2e-pause-world=1` boot switch. It calls the existing one
+  WorldClockPacer.setPaused("e2e",true) BEFORE Babylon frames start;
+  tests still use the authentic GameStore.endDay() and authoritative
+  scheduled event executor. This avoids false failed assertions when
+  SwiftShader renders several frames after reload but before Playwright
+  can issue a pause. Normal production ignores the URL switch.
 - Real browser smoke `tests/liveCombatArena.spec.ts` constructs a
   genuine saved live dungeon fight from the already-tested seeded
   neighboring-monster fixture. It checks map has no LIVE monster actors/
