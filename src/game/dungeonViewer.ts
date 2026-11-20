@@ -568,7 +568,7 @@ export class DungeonViewer {
   private watchLiveCombat():void {
     if(!this.liveHeroId)return;
     const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
-    if(!view?.combat||!this.liveArena.watch(view))return;
+    if(!view?.combat||!this.liveArena.watch(view,"live"))return;
     this.watchCombatButton.hidden=true;
     this.returnCombatButton.hidden=false;
     this.returnCombatButton.focus();
