@@ -471,16 +471,9 @@ export class DungeonReplayScene {
       deco.light.setEnabled(true);deco.mesh.setEnabled(true);
     }
     this.poseLiveFloor(0);
+    // Both neutral floor and selected hero perspectives are painted by
+    // the same selection boundary; never redraw omniscient map afterward.
     this.setSelectedFloorHero(this.selectedFloorHero);
-    this.drawDevelopmentMap();
-    const ctx=this.indicator.getContext("2d");
-    if(ctx){
-      for(const hero of view.heroes){
-        if(hero.inCombat)continue;
-        ctx.fillStyle=hero.partyId?"#e5ca82":"#85d9b2";
-        ctx.fillRect(hero.x*6+1,hero.z*6+1,4,4);
-      }
-    }
   }
 
   /** Only view-layer fog. The player's neutral overview retains all tiles,
