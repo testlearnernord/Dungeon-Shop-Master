@@ -20,6 +20,7 @@ import {
   type LiveFloorSpectatorFrame,type LiveFloorFight,
 } from "./liveFloorSpectator.ts";
 import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.ts";
+import {GROUP_COMBAT_INTRO_SECONDS} from "./groupCombatIntro.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
@@ -125,6 +126,7 @@ export class DungeonViewer {
     private readonly sceneChanged: (active: boolean) => void,
     private readonly fightSoundtrackChanged:
       (active:boolean,boss:boolean)=>void=()=>{},
+    private readonly skipCombatScoreTo:(seconds:number)=>void=()=>{},
   ) {
     this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel);
     this.watchCombatButton.addEventListener("click",()=>{
@@ -133,11 +135,8 @@ export class DungeonViewer {
       else this.watchRecordedCombat();
     });
     this.returnCombatButton.addEventListener("click",()=>this.returnToDungeonMap());
-    this.fightIntroSkipButton.addEventListener("click",()=>{
-      this.liveArena.skipIntro();
-      this.paintCombatIntro();
-      this.canvas.focus();
-    });
+    this.fightIntroSkipButton.addEventListener("click",()=>
+      this.skipFightIntro());
     this.clearHeroButton.addEventListener("click",()=>{
       this.selectFloorHero(null);
       this.canvas.focus();
@@ -220,9 +219,7 @@ export class DungeonViewer {
       if(this.liveArena.isIntroActive &&
          (event.code==="Space"||event.code==="Enter")&&!event.repeat){
         event.preventDefault();event.stopImmediatePropagation();
-        this.liveArena.skipIntro();
-        this.paintCombatIntro();
-        this.canvas.focus();
+        this.skipFightIntro();
         return;
       }
       if(event.code==="Tab"&&this.liveArena.isIntroActive&&!event.repeat){
@@ -359,7 +356,7 @@ export class DungeonViewer {
     this.liveFloorProjectionCache=null;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
-    this.leaveLiveCombat();
+    this.leaveLiveCombat(false);
     this.liveCombatPanel.hidden=true;
     this.scene?.dispose();
     this.scene = null;
@@ -888,6 +885,14 @@ export class DungeonViewer {
     this.paintLive(view);
   }
 
+  private skipFightIntro():void {
+    if(!this.liveArena.isIntroActive)return;
+    this.liveArena.skipIntro();
+    this.skipCombatScoreTo(GROUP_COMBAT_INTRO_SECONDS);
+    this.paintCombatIntro();
+    this.canvas.focus();
+  }
+
   private paintCombatIntro():void {
     const film=this.liveArena.introFrame;
     if(!film&&this.archivePlayingBeforeIntro){
@@ -912,8 +917,9 @@ export class DungeonViewer {
       actor.specialAbility==="grapple-throw"));
   }
 
-  private leaveLiveCombat():void {
-    if(this.liveArena.isActive)this.fightSoundtrackChanged(false,false);
+  private leaveLiveCombat(backToDungeon=true):void {
+    if(backToDungeon&&this.liveArena.isActive)
+      this.fightSoundtrackChanged(false,false);
     this.liveArena.dispose();
     this.paintCombatIntro();
     if(document.pointerLockElement===this.canvas)
