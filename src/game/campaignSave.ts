@@ -1417,6 +1417,22 @@ export function createSave(state: GameState): SaveEnvelope {
   };
 }
 
+/** Strict serialized snapshot of the current state, captured synchronously.
+ * JSON.stringify completes before any queued IndexedDB operation can run.
+ * Unlike createSave(), no intermediate deep structuredClone is necessary:
+ * the queued immutable UTF-8-compatible JSON string is already detached.
+ * Explicit export/createSave still produces an independent object.
+ */
+export function serializeSave(state:GameState):string{
+  validateState(state);
+  return JSON.stringify({
+    schemaVersion:SAVE_SCHEMA_VERSION,
+    simulationVersion:SIMULATION_VERSION,
+    savedAt:new Date().toISOString(),
+    payload:state,
+  } satisfies SaveEnvelope);
+}
+
 export function parseSave(text: string): GameState {
   let value: unknown;
   try {
@@ -1574,7 +1590,7 @@ export class CampaignStorage {
   }
 
   async saveGame(state: GameState): Promise<void> {
-    const snapshot = JSON.stringify(createSave(state));
+    const snapshot = serializeSave(state);
     return this.enqueue(async () => {
       await this.adapter.update(records => ({
         latest:snapshot,
