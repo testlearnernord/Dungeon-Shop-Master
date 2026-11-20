@@ -21,3 +21,9 @@ test("old or malformed session markers fall back to the first readable page",()=
     {page:3,animationSkipped:true});
   assert.throws(()=>restoreLedgerView(0,false,0),RangeError);
 });
+
+// The bedtime book is accounting-only; old session indices cannot resurrect removed pages.
+test("old four-page marker falls back to accounting",()=>{
+  assert.deepEqual(restoreLedgerView(3,true,2),{page:0,animationSkipped:true});
+  assert.deepEqual(restoreLedgerView(1,false,2),{page:1,animationSkipped:false});
+});
