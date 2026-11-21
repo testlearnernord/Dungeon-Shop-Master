@@ -17,7 +17,7 @@ export interface SfxDebugEvent {
 }
 
 /**
- * Curated Cave Troll MP3s replace six synthetic cue branches; other sounds
+ * Curated Troll MP3s and Ghoul WAVs replace synthesized creature cues; others
  * remain explicit prototypes. Presentation never modifies combat or replay.
  */
 export interface SoundPosition { readonly x: number; readonly z: number }
@@ -27,6 +27,10 @@ const STORAGE_KEY = "dungeon-shop-master-sfx-v1";
 const DEFAULT_VOLUME = 0.65;
 const SPACING: Partial<Record<GameSfxCue, number>> = {
   "troll-step": 0.19, "hero-step": 0.13, "troll-breath": 2.8,
+  "ghoul-aggro": 1.8, "ghoul-growl": 2.2, "ghoul-attack": .35,
+  "ghoul-hurt": .13, "ghoul-stagger": .30, "ghoul-death": .12,
+  "ghoul-claw-whiff": .09, "ghoul-claw-hit": .09,
+  "ghoul-leap-takeoff": .4, "ghoul-leap-air": .4, "ghoul-leap-land": .3,
   "troll-grunt": 0.65, "boss-hurt": 0.48, "lava-burn": 0.45, "rock-crumble": 0.15,
 };
 
@@ -284,6 +288,9 @@ export class GameSfx {
 
   /** Decode each reviewed asset once after a user gesture. Never await the
    * network in the deterministic motor or on the cinematic's sound tick. */
+  /** Decode on a real spectator gesture, without starting the Troll lava ambience. */
+  prepareCombatSamples():void {this.preloadSamples();}
+
   private preloadSamples():void {
     const ctx=this.unlock();
     if(!ctx)return;
@@ -294,7 +301,7 @@ export class GameSfx {
     if(this.sampleBuffers.has(filename)||this.sampleLoading.has(filename)||
        this.sampleFailures.has(filename))return;
     this.sampleLoading.add(filename);
-    void fetch(import.meta.env.BASE_URL+SFX_SAMPLE_DIR+encodeURIComponent(filename))
+    void fetch(import.meta.env.BASE_URL+SFX_SAMPLE_DIR+filename.split("/").map(encodeURIComponent).join("/"))
       .then(response=>{
         if(!response.ok)throw new Error("SFX HTTP "+response.status);
         return response.arrayBuffer();
@@ -303,10 +310,13 @@ export class GameSfx {
       .then(buffer=>{this.sampleBuffers.set(filename,buffer);})
       .catch(error=>{
         this.sampleFailures.add(filename);
-        console.warn("Cave Troll SFX unavailable:",filename,error);
+        console.warn("Recorded SFX unavailable:",filename,error);
       })
       .finally(()=>{this.sampleLoading.delete(filename);});
   }
+
+  /** Stop arena samples on exit so long death rattles do not leak into the shop. */
+  stopCombatSamples():void {this.stopSamples();}
 
   private stopSamples():void {
     for(const source of this.sampleSources){
@@ -416,7 +426,7 @@ export class GameSfx {
     if(hasRecordedSfx(cue)){
       try{
         if(!this.playSample(cue,ctx,output,now,heavy)){log("blocked");return;}
-      }catch(error){console.warn("Cave Troll SFX playback failed:",cue,error);log("blocked");return;}
+      }catch(error){console.warn("Recorded SFX playback failed:",cue,error);log("blocked");return;}
       this.last.set(cue,now);log("triggered");return;
     }
     this.last.set(cue,now);

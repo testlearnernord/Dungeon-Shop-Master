@@ -145,7 +145,7 @@ export class Level6Arena {
   ) {
     this.panel = document.querySelector<HTMLElement>("#arena-hud")!;
     this.worldHud = new BossCombatHud(this.panel,this.canvas,this.engine);
-    this.lab=new DeveloperCombatLab(this.engine,this.canvas,this.panel,this.store);
+    this.lab=new DeveloperCombatLab(this.engine,this.canvas,this.panel,this.store,this.sfx);
     this.labToggle=document.querySelector<HTMLButtonElement>("#arena-lab-toggle")!;
     this.labToggle.addEventListener("click",()=>this.toggleDeveloperLab());
     document.querySelector<HTMLButtonElement>("#lab-model")!

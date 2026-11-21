@@ -2,6 +2,7 @@
 export const SFX_OWNERS = [
   {id:"hero",label:"Hero"},
   {id:"troll",label:"Troll"},
+  {id:"ghoul",label:"Ghoul"},
   {id:"world",label:"World / Rest"},
 ] as const;
 export const SFX_FAMILIES = [
@@ -18,6 +19,17 @@ export type SfxFamily = typeof SFX_FAMILIES[number]["id"];
 export type SfxAxis = "owner" | "family";
 
 export const SFX_CATALOG = [
+  {id:"ghoul-aggro",label:"Ghoul · aggro scream",owner:"ghoul",family:"voice"},
+  {id:"ghoul-attack",label:"Ghoul · attack grunt",owner:"ghoul",family:"voice"},
+  {id:"ghoul-growl",label:"Ghoul · threatening growl",owner:"ghoul",family:"voice"},
+  {id:"ghoul-hurt",label:"Ghoul · hit reaction",owner:"ghoul",family:"voice"},
+  {id:"ghoul-stagger",label:"Ghoul · stagger",owner:"ghoul",family:"voice"},
+  {id:"ghoul-death",label:"Ghoul · death",owner:"ghoul",family:"voice"},
+  {id:"ghoul-claw-whiff",label:"Ghoul · claw missed",owner:"ghoul",family:"melee"},
+  {id:"ghoul-claw-hit",label:"Ghoul · claw connected",owner:"ghoul",family:"melee"},
+  {id:"ghoul-leap-takeoff",label:"Ghoul · leap takeoff",owner:"ghoul",family:"movement"},
+  {id:"ghoul-leap-air",label:"Ghoul · leap rush",owner:"ghoul",family:"movement"},
+  {id:"ghoul-leap-land",label:"Ghoul · leap landing",owner:"ghoul",family:"movement"},
   {id:"troll-roar",label:"Troll · roar",owner:"troll",family:"voice"},
   {id:"troll-breath",label:"Troll · breath",owner:"troll",family:"voice"},
   {id:"troll-grunt",label:"Troll · grunt",owner:"troll",family:"voice"},

@@ -1,6 +1,6 @@
 import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
-import type {GroupReplayFrame,CombatantSpec} from "./groupCombat.ts";
+import type {GroupReplayFrame,CombatantSpec,GroupCombatCue} from "./groupCombat.ts";
 import type {SpatialDungeonFloor} from "./level7Exploration.ts";
 import {generateExpeditionLayout,type DungeonLayout} from "./dungeonLayout.ts";
 
@@ -39,6 +39,7 @@ export interface LiveSpectatorFrame {
     readonly actors:readonly CombatantSpec[];
     readonly frame:GroupReplayFrame;
     readonly frames:readonly GroupReplayFrame[];
+    readonly cues?:readonly GroupCombatCue[];
   };
 }
 
@@ -85,6 +86,7 @@ export function selectLiveSpectatorFrame(
       id:fight.id,featureId:fight.encounter.featureId,
       x:fight.encounter.x,z:fight.encounter.z,
       actors:fight.encounter.options.actors,frame:last,frames:fight.frames,
+      cues:fight.state.events,
     }:null,
   };
 }
