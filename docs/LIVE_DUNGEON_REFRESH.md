@@ -132,3 +132,23 @@
 - This is a **CPU-side render-work reduction**, not a measured end-user
   FPS claim; runtime benchmarks and the manual full browser pass remain
   available for acceptance.
+
+## PR #269 · Interactive LIVE minimap and knowledge-safe camera navigation
+
+- The existing actual dungeon minimap is now a camera navigation surface:
+  **click a drawn tile** or focus the minimap and use the **arrow keys**.
+  CSS scaling and canvas backing resolution are handled separately; clicks
+  outside the painted map are rejected.
+- Camera navigation changes only the Babylon target x/z, preserving current
+  orbit yaw, pitch and zoom. It clears auto-follow so the user can inspect
+  the target instead of being snapped back to a tracked hero.
+- With a specific hero selected, the map respects **only that hero's
+  personally explored/currently visible cells**. An attempted jump into
+  black/unexplored fog is ignored; no world knowledge is gained, and no
+  movement or AI command is issued. The unselected floor overview retains
+  the deliberately omniscient observer map.
+- The minimap is keyboard-focusable only in the actual LIVE floor observer,
+  not in replay/preview or an opted-in 3D fight.
+- Pure unit tests cover scaled hit-testing, bounds and personal knowledge.
+  Existing mandatory browser smoke verifies real saved explored/unexplored
+  targets, preserved Babylon camera offset and unchanged saved GameState.

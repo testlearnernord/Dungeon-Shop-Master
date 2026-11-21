@@ -133,6 +133,73 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   expect(cameraAfter.offset.x).toBeCloseTo(cameraBefore.offset.x,2);
   expect(cameraAfter.offset.y).toBeCloseTo(cameraBefore.offset.y,2);
   expect(cameraAfter.offset.z).toBeCloseTo(cameraBefore.offset.z,2);
+  // The real LIVE minimap now moves only the camera. A selected hero's
+  // black fog is a strict boundary even for exact CSS-scaled click targets.
+  const minimapTargets=await page.evaluate(async(heroId:string)=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {generateExpeditionLayout}=await import(
+      "/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
+    const {selectLiveFloorSpectatorFrame}=await import(
+      "/Dungeon-Shop-Master/src/game/liveFloorSpectator.ts");
+    const {selectHeroFloorPerception}=await import(
+      "/Dungeon-Shop-Master/src/game/heroPerception.ts");
+    const state=await new CampaignStorage().loadGame();
+    if(!state)throw Error("Missing actual saved dungeon");
+    const layout=generateExpeditionLayout(state.seed,1);
+    const frame=selectLiveFloorSpectatorFrame(state,1);
+    if(!frame)throw Error("Missing genuine floor projection");
+    const hero=frame.heroes.find(member=>member.id===heroId);
+    if(!hero)throw Error("Missing actual selected hero");
+    const perception=selectHeroFloorPerception(layout,frame,heroId);
+    if(!perception)throw Error("Missing real hero perception");
+    const known=perception.explored;
+    const index=[...known].find(id=>id!==hero.z*layout.width+hero.x);
+    const unknown=Array.from({length:layout.width*layout.height},(_,i)=>i)
+      .find(id=>!known.has(id));
+    if(index===undefined||unknown===undefined)
+      throw Error("Required observed/unobserved cells missing");
+    return {width:layout.width,height:layout.height,
+      hero:{x:hero.x,z:hero.z},
+      known:{x:index%layout.width,z:Math.floor(index/layout.width)},
+      unknown:{x:unknown%layout.width,z:Math.floor(unknown/layout.width)}};
+  },ids[2]);
+  const minimap=page.locator("#dungeon-minimap");
+  await expect(minimap).toHaveAttribute("tabindex","0");
+  const clickMinimap=async(point:{x:number;z:number})=>{
+    const bounds=await minimap.boundingBox();
+    if(!bounds)throw Error("Minimap should be visible");
+    await page.mouse.click(
+      bounds.x+(point.x+.5)*bounds.width/minimapTargets.width,
+      bounds.y+(point.z+.5)*bounds.height/minimapTargets.height);
+  };
+  const beforeMinimap=await mapFocus();
+  await clickMinimap(minimapTargets.known);
+  const afterKnown=await mapFocus();
+  expect(afterKnown.target.x).toBeCloseTo(
+    (minimapTargets.known.x-(minimapTargets.width-1)/2)*2.5,2);
+  expect(afterKnown.target.z).toBeCloseTo(
+    (minimapTargets.known.z-(minimapTargets.height-1)/2)*2.5,2);
+  expect(afterKnown.offset.x).toBeCloseTo(beforeMinimap.offset.x,3);
+  expect(afterKnown.offset.y).toBeCloseTo(beforeMinimap.offset.y,3);
+  expect(afterKnown.offset.z).toBeCloseTo(beforeMinimap.offset.z,3);
+  await clickMinimap(minimapTargets.unknown);
+  expect((await mapFocus()).target).toEqual(afterKnown.target);
+  // The keyboard path must use the same fog restrictions and keep orbit.
+  const dx=minimapTargets.hero.x-minimapTargets.known.x;
+  const dz=minimapTargets.hero.z-minimapTargets.known.z;
+  if(Math.abs(dx)+Math.abs(dz)===1){
+    await minimap.focus();
+    await page.keyboard.press(dx===1?"ArrowRight":dx===-1?
+      "ArrowLeft":dz===1?"ArrowDown":"ArrowUp");
+    const afterArrow=await mapFocus();
+    expect(afterArrow.target.x).toBeCloseTo(third.x,2);
+    expect(afterArrow.target.z).toBeCloseTo(third.z,2);
+    expect(afterArrow.offset.x).toBeCloseTo(beforeMinimap.offset.x,3);
+    expect(afterArrow.offset.y).toBeCloseTo(beforeMinimap.offset.y,3);
+    expect(afterArrow.offset.z).toBeCloseTo(beforeMinimap.offset.z,3);
+  }
+  expect(await record()).toEqual(beforeClick,
+    "Minimap camera navigation must never modify saved hero knowledge");
   await locator.selectOption("");
   await expect(page.locator("#dungeon-hero-detail")).toBeHidden();
   expect(await record()).toEqual(beforeClick);
