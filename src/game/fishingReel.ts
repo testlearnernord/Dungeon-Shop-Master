@@ -79,7 +79,7 @@ export function stepFishingReel(
   const next:FishingReel={...state,fishY,fishGoal,barY,barVelocity,
     targetChangesIn,breakoutIn,progress,elapsed:state.elapsed+dt};
   if(progress>=1)return {state:next,event:"landed"};
-  if(progress<=0&&next.elapsed>=2)return {state:next,event:"escaped"};
+  if(progress<=0&&next.elapsed>=6)return {state:next,event:"escaped"};
   if(breakoutIn<=0)return {state:next,event:"breakout"};
   return {state:next,event:"none"};
 }

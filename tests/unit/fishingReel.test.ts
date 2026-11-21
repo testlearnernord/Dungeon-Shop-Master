@@ -66,7 +66,7 @@ test("landing, losing and fish breakout are different explicit events",()=>{
     progress:.999,breakoutIn:10,targetChangesIn:10};
   assert.equal(stepFishingReel(aligned,.05,low).event,"landed");
   const lost={...initial,fishY:.92,fishGoal:.92,barY:.125,
-    progress:.001,elapsed:3,breakoutIn:10,targetChangesIn:10};
+    progress:.001,elapsed:7,breakoutIn:10,targetChangesIn:10};
   assert.equal(stepFishingReel(lost,.05,low).event,"escaped");
   const running={...initial,progress:.5,breakoutIn:.01,targetChangesIn:10};
   assert.equal(stepFishingReel(running,.05,low).event,"breakout");

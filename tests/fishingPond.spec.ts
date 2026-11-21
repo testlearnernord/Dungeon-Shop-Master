@@ -78,17 +78,45 @@ test("mined pond reveals water and opens fishing by E @ci-smoke",async({page})=>
   await page.locator("#fishing-cast").click();
   await expect.poll(()=>page.locator("#fishing-phase").textContent(),
     {timeout:7000}).toMatch(/Flick|Line cast/);
+  await expect.poll(()=>page.locator("#fishing-hud").getAttribute("data-phase"),
+    {timeout:9000}).toBe("tracking");
+  await expect(page.locator("#fishing-reel")).toBeVisible();
+  await expect(page.locator("#fishing-reel-fish")).toBeVisible();
+  // Two real browser mouse buttons must alternate to drive the green zone.
+  await page.mouse.click(420,340,{button:"left"});
+  await expect(page.locator("#fishing-click-cue")).toContainText("RIGHT CLICK");
+  await page.mouse.click(420,340,{button:"right"});
+  await expect(page.locator("#fishing-click-cue")).toContainText("LEFT CLICK");
+  await page.mouse.click(420,340,{button:"left"});
+  await expect(page.locator("#fishing-click-cue")).toContainText("RIGHT CLICK");
+  const reelReadout=await page.evaluate(()=>{
+    const green=document.querySelector<HTMLElement>("#fishing-reel-green")!;
+    const fish=document.querySelector<HTMLElement>("#fishing-reel-fish")!;
+    const progress=document.querySelector<HTMLElement>(
+      "#fishing-reel-progress-fill")!;
+    return {greenBottom:parseFloat(green.style.bottom),
+      fishBottom:parseFloat(fish.style.bottom),
+      progress:parseFloat(progress.style.height)};
+  });
+  expect(reelReadout.greenBottom).toBeGreaterThanOrEqual(0);
+  expect(reelReadout.fishBottom).toBeGreaterThanOrEqual(0);
+  expect(reelReadout.fishBottom).toBeLessThanOrEqual(100);
+  expect(reelReadout.progress).toBeGreaterThanOrEqual(0);
   const rodAfter=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectFishingRod());
   expect(rodAfter).toMatchObject({
     rodVisible:true,lineVisible:true,bobberVisible:true,sameScene:true,
   });
+  // A random escape now interrupts the ongoing reel session. The old
+  // immediate-on-bite flick flow no longer exists.
+  await expect.poll(()=>page.locator("#fishing-hud").getAttribute("data-phase"),
+    {timeout:11000,intervals:[120,180,260]}).toBe("flick");
   await expect.poll(async()=>page.evaluate(async()=>{
     const fish=(await import("/Dungeon-Shop-Master/tests/scene.ts"))
       .inspectHookedFishingFish();
     return fish.visible&&fish.wakeVisible&&
       fish.lineTension!==null&&fish.lineTension>.08;
-  }),{timeout:7000,intervals:[100,140,180]}).toBe(true);
+  }),{timeout:5000,intervals:[100,140,180]}).toBe(true);
   const hooked=await page.evaluate(async()=>{
     const fish=(await import("/Dungeon-Shop-Master/tests/scene.ts"))
       .inspectHookedFishingFish();
