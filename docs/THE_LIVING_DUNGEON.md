@@ -1,5 +1,8 @@
 # The Living Dungeon — V.003 ALPHA design target
 
+> **Design specification, not a current implementation inventory (verified 21 November 2026).** Several earlier milestones in this document were written before PR #234 and describe systems that have since shipped. Read the current [Game Bible](GAME_BIBLE.md), [Architecture](ARCHITECTURE.md), and [Roadmap](ROADMAP.md) for accurate IMPLEMENTED/PARTIAL/PLANNED states. The current HUD label remains V.002 ALPHA; V.003 ALPHA is a release milestone. The accepted design principles and explicit open decisions below remain useful, but historical PR status notes are not authoritative.
+
+
 > **Documentation transition (2026-11-21):** Read [the audited current baseline](CLEANUP_AUDIT.md) before using older PR-specific claims below. This file has not yet been fully consolidated; source and tests remain authoritative.
 
 

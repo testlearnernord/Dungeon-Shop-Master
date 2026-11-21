@@ -1,5 +1,8 @@
 # Dungeon Shop Master · One Living World Clock
 
+> **Current implementation summary (21 November 2026):** the shared 50-ms world clock, scheduled real dungeon movement and 60-Hz fights, physical returns/off-duty days and LIVE spectator already exist. The older “design only / future PR” implementation notes below are historical. Use [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) for current status; retain this document as the detailed time/ordering contract.
+
+
 ### PR #213 physical shop rotation (merged)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
