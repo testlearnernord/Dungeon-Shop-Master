@@ -140,7 +140,7 @@ export function chooseLevel7Step(
  * feature sites. The same BFS/path rules apply: never walk through unknown
  * stone or teleport to a newly spawned reward.
  */
-function chooseRenewedSiteStep(
+export function chooseRenewedSiteStep(
   layout: DungeonLayout, current: DungeonPoint,
   visited: ReadonlySet<number>, resolved: ReadonlySet<string>,
 ): DungeonPoint | null {
