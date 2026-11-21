@@ -518,7 +518,7 @@ export class DungeonViewer {
     if(!view||!view.heroes.some(h=>h.id===this.selectedFloorHeroId))
       return null;
     return selectHeroFloorPerception(this.layout,view,
-      this.selectedFloorHeroId).explored;
+      this.selectedFloorHeroId)?.explored??null;
   }
 
   private focusMinimapTile(
