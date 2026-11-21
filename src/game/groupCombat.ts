@@ -90,6 +90,8 @@ export interface GroupCombatOptions {
   readonly bounds: CombatBounds;
   readonly obstacles?: readonly CombatObstacle[];
   readonly environment?:CombatEnvironment;
+  /** Optional deterministic scenario variety; absent retains old group RNG. */
+  readonly tacticsSeed?:number;
 }
 
 export interface GroupActor extends CombatActorRuntime<GroupPhase> {
@@ -142,6 +144,7 @@ export interface GroupCombatState {
   readonly bounds: CombatBounds;
   readonly obstacles: readonly CombatObstacle[];
   readonly environment?:CombatEnvironment;
+  readonly tacticsSeed?:number;
   readonly projectiles: GroupProjectile[];
   readonly events: GroupCombatCue[];
   time: number;
@@ -167,6 +170,7 @@ export interface GroupCombatReplay {
   readonly bounds: CombatBounds;
   readonly obstacles: readonly CombatObstacle[];
   readonly environment?:CombatEnvironment;
+  readonly tacticsSeed?:number;
   readonly frames: readonly GroupReplayFrame[];
   readonly cues: readonly GroupCombatCue[];
   readonly outcome: Exclude<GroupOutcome, "fighting">;
@@ -201,6 +205,10 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
   validateBounds(options.bounds);
   if(options.environment!==undefined&&options.environment!=="cave-lava")
     throw new RangeError("Unknown combat environment");
+  if(options.tacticsSeed!==undefined&&
+      (!Number.isSafeInteger(options.tacticsSeed)||options.tacticsSeed<0||
+       options.tacticsSeed>0xffffffff))
+    throw new RangeError("Invalid combat tactics seed");
   if (options.actors.length < 2 || options.actors.length > 24)
     throw new RangeError("Group combat requires 2-24 actors");
   const ids = new Set<string>();
@@ -296,6 +304,7 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
   return {
     actors, bounds: { ...options.bounds }, obstacles: obstacles.map(o => ({...o})),
     ...(options.environment?{environment:options.environment}:{}),
+    ...(options.tacticsSeed!==undefined?{tacticsSeed:options.tacticsSeed}:{}),
     projectiles: [], events: [], time: 0, outcome: "fighting",
   };
 }
@@ -352,6 +361,23 @@ function cue(batch: GroupCombatCue[], s: GroupCombatState, actor: GroupActor,
   batch.push({ t: round(s.time), actorId: actor.id, kind,
     ...(targetId ? { targetId } : {}),
     ...(amount !== undefined ? { amount } : {}) });
+}
+/** Seed is part of the committed combat state, never a render-loop RNG.
+ * The absent-seed branch returns the original identity sample byte-for-byte,
+ * preserving existing dungeon fights and their historical decisions. */
+function combatSample(
+  s:GroupCombatState,attackerId:string,targetId:string,
+  ordinal:number,channel="",
+):number{
+  const reference=deterministicGrappleSample(
+    attackerId,targetId+channel,ordinal);
+  if(s.tacticsSeed===undefined)return reference;
+  let n=(s.tacticsSeed^Math.imul(ordinal,0x9e3779b9))>>>0;
+  n=(n+0x6d2b79f5)>>>0;
+  n=Math.imul(n^(n>>>15),n|1);
+  n^=n+Math.imul(n^(n>>>7),n|61);
+  const mix=((n^(n>>>14))>>>0)/4294967296;
+  return (reference+mix)%1;
 }
 function closestEnemy(s: GroupCombatState, actor: GroupActor): GroupActor | null {
   return selectCombatTarget(actor,s.actors);
@@ -454,7 +480,7 @@ function tryGroupGrapple(
   }
   // Resistance is real character agility plus a contact-stable,
   // order-independent roll, not an arbitrary scripted guaranteed catch.
-  const sample=deterministicGrappleSample(attacker.id,victim.id,
+  const sample=combatSample(s,attacker.id,victim.id,
     attacker.attacksStarted);
   if(grappleEscapes(victim.agility,sample)){
     cue(batch,s,victim,"escape",attacker.id);
@@ -588,8 +614,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     // every single attack for one pair of IDs.
     const ordinal=Math.max(1,threat?.attacksStarted??1);
     const attackMix=(Math.imul(ordinal,0x9e3779b9)>>>0)/0x100000000;
-    const parryRead=threat?(deterministicGrappleSample(
-      threat.id,a.id+"|parry",ordinal)+attackMix)%1:0;
+    const parryRead=threat?(combatSample(
+      s,threat.id,a.id,ordinal,"|parry")+attackMix)%1:0;
     const reaction=chooseCombatDefense({
       threatened:!!threat,stamina:a.stamina,
       preferParry:tankParry&&parryRead<.78,
@@ -600,7 +626,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     // same telegraph. The sample is stable across actor/replay ordering.
     const bossWarning=threat?.specialAbility==="grapple-throw";
     const defenseRead=bossWarning&&threat
-      ?deterministicGrappleSample(threat.id,a.id,
+      ?combatSample(s,threat.id,a.id,
           Math.max(1,threat.attacksStarted))
       :0;
     const canReact=!bossWarning||defenseRead<trollDefenseReadiness(
@@ -631,7 +657,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       const grabTurn=nextAttack>1&&nextAttack%3===2;
       const special=a.specialAbility==="grapple-throw"
         ?chooseTrollSignatureAttack(nextAttack,gap,
-            grabTurn?0:deterministicGrappleSample(
+            grabTurn?0:combatSample(s,
               a.id,enemy.id,nextAttack))
         :null;
       const chosen=special?trollSignatureProfile(special):null;
@@ -895,6 +921,7 @@ export function groupCombatReplayFromFrames(
     bounds:{...options.bounds},
     obstacles:(options.obstacles??[]).map(o=>({...o})),
     ...(options.environment?{environment:options.environment}:{}),
+    ...(options.tacticsSeed!==undefined?{tacticsSeed:options.tacticsSeed}:{}),
     frames:[...frames],cues:[...state.events],outcome:state.outcome,
   };
 }
