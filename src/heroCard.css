@@ -142,6 +142,22 @@
   color:#eddbbb;padding:3px 7px;cursor:pointer;font:700 14px system-ui}
 #world-hero-card-mini{position:fixed;z-index:1700;
   width:min(278px,calc(100vw - 18px));pointer-events:none}
+.hero-card-inspect{position:absolute;top:4px;right:5px;z-index:2;
+  min-width:25px;min-height:25px;border:1px solid #ad8e5f72;
+  border-radius:6px;color:#edcda0;background:#14242af0;cursor:pointer;
+  font:700 15px/1 system-ui,sans-serif}
+.hero-card-inspect:is(:hover,:focus-visible){border-color:#e4ba7d;
+  outline:1px solid #e4ba7d}
+.hero-card--combat .hero-card-role{margin-right:23px}
+#arena-hud[data-intro="true"] #arena-boss-hero-card,
+#arena-hud[data-dev-lab="true"] #arena-boss-hero-card,
+#arena-hud[data-model-viewer="true"] #arena-boss-hero-card{
+  display:none!important
+}
+@media(max-width:760px){
+  #dungeon-hud .dungeon-hero-detail{right:6px;top:var(--dungeon-panels-top,172px);
+    width:min(340px,calc(100vw - 14px));max-height:45dvh}
+}
 /* Side roster is tactical identification, NOT a duplicate world-space HP HUD. */
 .hero-combat-roster{position:absolute;z-index:42;left:14px;top:154px;
   width:225px;max-height:calc(100dvh - 285px);display:grid;gap:5px;
