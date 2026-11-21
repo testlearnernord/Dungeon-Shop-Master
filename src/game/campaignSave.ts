@@ -975,8 +975,16 @@ function validateState(value: unknown): asserts value is GameState {
       if (equipment[key] !== null) text(equipment[key], `${path}.equipment.${key}`);
     }
     const inventory = object(hero.inventory, `${path}.inventory`,
-      ["loot", "bread", "healing"]);
-    for (const key of Object.keys(inventory)) integer(inventory[key], `${path}.inventory.${key}`);
+      ["loot", "bread", "healing"],["finds"]);
+    for (const key of ["loot","bread","healing"])
+      integer(inventory[key], `${path}.inventory.${key}`);
+    if(inventory.finds!==undefined){
+      const finds=object(inventory.finds,path+".inventory.finds",[],itemIds);
+      let total=0;
+      for(const [id,quantity] of Object.entries(finds))
+        total+=integer(quantity,path+".inventory.finds."+id,1,1000);
+      if(total>1000)fail(path+".inventory.finds","is oversized");
+    }
     const floor = integer(hero.floor, `${path}.floor`, 1, 7);
     choice(hero.status, ["exploring", "traveling", "at-shop",
       "returning", "expedition", "departing", "off-duty", "dead"], `${path}.status`);
