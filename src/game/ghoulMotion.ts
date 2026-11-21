@@ -33,54 +33,83 @@ export function ghoulClipProgress(time:number,motion:GhoulMotion):number {
   return motion.loop?(time/motion.length)%1:Math.min(1,time/motion.length);
 }
 
-/** Local phase time is derived from committed combat frames, NOT the
- * player's elapsed video time. Seeking backwards gives the same pose. */
+/** Local phase time is derived from REAL committed transitions only,
+ * never from video time. A 90-second idle must not scan 900 snapshots
+ * for every on-screen Ghoul and every render frame. */
+interface PhaseHistory {
+  scanned:number;
+  lastPhase:GroupPhase|null;
+  starts:{at:number;phase:GroupPhase}[];
+}
+const phasesByFrames=new WeakMap<readonly GroupReplayFrame[],
+  Map<string,PhaseHistory>>();
 export function ghoulRecordedPhaseAge(
   frames:readonly GroupReplayFrame[],actorId:string,time:number,
 ):number {
-  let from=time;
-  let phase:string|undefined;
-  for(let i=frames.length-1;i>=0;i--){
+  let byActor=phasesByFrames.get(frames);
+  if(!byActor){byActor=new Map();phasesByFrames.set(frames,byActor);}
+  let history=byActor.get(actorId);
+  if(!history){
+    history={scanned:0,lastPhase:null,starts:[]};
+    byActor.set(actorId,history);
+  }
+  for(let i=history.scanned;i<frames.length;i++){
     const frame=frames[i];
-    if(frame.t>time+1e-6)continue;
     const actor=frame.actors.find(a=>a.id===actorId);
     if(!actor)continue;
-    if(phase===undefined)phase=actor.phase;
-    if(actor.phase!==phase)break;
-    from=frame.t;
+    if(actor.phase!==history.lastPhase){
+      history.starts.push({at:frame.t,phase:actor.phase});
+      history.lastPhase=actor.phase;
+    }
   }
-  return Math.max(0,time-from);
+  history.scanned=frames.length;
+  // A binary search of actual transitions supports playback seeking and
+  // long unchanging phases without depending on spectator FPS.
+  let lo=0,hi=history.starts.length;
+  while(lo<hi){
+    const mid=(lo+hi)>>1;
+    if(history.starts[mid].at<=time+1e-6)lo=mid+1;
+    else hi=mid;
+  }
+  return lo===0?0:Math.max(0,time-history.starts[lo-1].at);
 }
 
 /** A saved strike transition is one real attack, not one rendered sample.
  * Index clip variants from committed frames so replays/seeks remain stable
  * regardless of spectator FPS. No RNG, AI or combat time is consumed. */
+interface RecordedStrikeIndex {
+  readonly starts:number[];
+  scanned:number;
+  previous:GroupPhase|null;
+}
 const strikesByFrames=new WeakMap<readonly GroupReplayFrame[],
-  Map<string,readonly number[]>>();
+  Map<string,RecordedStrikeIndex>>();
 export function ghoulRecordedStrikeOrdinal(
   frames:readonly GroupReplayFrame[],actorId:string,time:number,
 ):number {
   let all=strikesByFrames.get(frames);
   if(!all){all=new Map();strikesByFrames.set(frames,all);}
-  let starts=all.get(actorId);
-  if(!starts){
-    const times:number[]=[];
-    let previous:GroupPhase|null=null;
-    for(const frame of frames){
-      const actor=frame.actors.find(a=>a.id===actorId);
-      if(!actor)continue;
-      if(actor.phase==="strike"&&previous!=="strike")
-        times.push(frame.t);
-      previous=actor.phase;
-    }
-    starts=times;all.set(actorId,starts);
+  let index=all.get(actorId);
+  if(!index){
+    index={starts:[],scanned:0,previous:null};
+    all.set(actorId,index);
   }
-  // Upper-bound binary search counts strikes whose *committed start time*
-  // is not later than this visual sample. O(log N) after one scan.
-  let low=0,high=starts.length;
+  // An ongoing LIVE/Lab fight APPENDS new committed frames to the SAME array.
+  // Keep the index current without re-scanning old strikes every refresh.
+  for(let i=index.scanned;i<frames.length;i++){
+    const frame=frames[i];
+    const actor=frame.actors.find(a=>a.id===actorId);
+    if(!actor)continue;
+    if(actor.phase==="strike"&&index.previous!=="strike")
+      index.starts.push(frame.t);
+    index.previous=actor.phase;
+  }
+  index.scanned=frames.length;
+  // Upper-bound search keeps rewind/replay seeking deterministic.
+  let low=0,high=index.starts.length;
   while(low<high){
     const mid=(low+high)>>1;
-    if(starts[mid]<=time+1e-6)low=mid+1;
+    if(index.starts[mid]<=time+1e-6)low=mid+1;
     else high=mid;
   }
   return low;

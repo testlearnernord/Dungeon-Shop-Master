@@ -58,6 +58,8 @@ export class LiveGroupCombatArena{
   private liveBuffered=false;
   private presentationTime=0;
   private lastCommittedView:CombatArenaView|null=null;
+  /** Optional render-only time for the V lab. Never used for LIVE authority. */
+  private localPresentationTime:number|null=null;
   private readonly observedPositions=new Map<string,Vector3>();
   private intro:GroupIntroTrack|null=null;
   private introElapsed=0;
@@ -109,18 +111,27 @@ export class LiveGroupCombatArena{
     return true;
   }
 
-  /** Show a different immutable committed pose without executing combat AI. */
-  show(view:CombatArenaView):void {
+  /** Show a different immutable committed pose without executing combat AI.
+   * The optional timestamp is exclusively the local V-lab render clock:
+   * interpolate committed 10Hz snapshots at the actual screen refresh rate.
+   * LIVE and archived fight consumers retain their existing presentation.
+   */
+  show(view:CombatArenaView,localTime?:number):void {
     const fight=view.combat;
     if(!fight||!this.scene||fight.id!==this.fightId)return;
     this.lastCommittedView=view;
-    const frame=this.liveBuffered
-      ?sampleGroupReplayPresentation(fight.frames,this.presentationTime)
-      :fight.frame;
-    this.paintSavedFrame(view,frame);
+    this.localPresentationTime=localTime??null;
+    const frame=localTime!==undefined
+      ?sampleGroupReplayPresentation(fight.frames,localTime)
+      :this.liveBuffered
+        ?sampleGroupReplayPresentation(fight.frames,this.presentationTime)
+        :fight.frame;
+    this.paintSavedFrame(view,frame,localTime!==undefined);
   }
 
-  private paintSavedFrame(view:CombatArenaView,frame:GroupReplayFrame):void{
+  private paintSavedFrame(
+    view:CombatArenaView,frame:GroupReplayFrame,deferHud=false,
+  ):void{
     const fight=view.combat;
     if(!fight||!this.scene)return;
     this.hud?.show(frame);
@@ -197,7 +208,9 @@ export class LiveGroupCombatArena{
     });
     // No actor can be added by the visualizer, no alternative damage or AI.
     // Saved participants and exact poses are the only source of truth.
-    this.hud?.render(this.scene,0);
+    // The local V loop calls updateCamera once per rendered frame, which
+    // draws this HUD once. Do not double-project every plate per frame.
+    if(!deferHud)this.hud?.render(this.scene,0);
   }
 
   /** Same Level-6 spectator camera: free-flight and focus cycle. */
@@ -255,7 +268,7 @@ export class LiveGroupCombatArena{
     this.hud?.dispose();this.hud=null;
     this.observedPositions.clear();
     this.focusIds=[];this.focusedId=null;this.lastPoseTime=-1;
-    this.lastCommittedView=null;
+    this.lastCommittedView=null;this.localPresentationTime=null;
     this.liveBuffered=false;this.presentationTime=0;
     this.intro=null;this.introElapsed=0;
     this.actors.clear();
@@ -336,7 +349,8 @@ export class LiveGroupCombatArena{
         void ghoul.ready.then(loaded=>{
           if(!loaded||this.scene!==scene||this.fightId!==fight.id)return;
           const committed=this.lastCommittedView;
-          if(committed)this.show(committed);
+          if(committed)this.show(committed,
+            this.localPresentationTime??undefined);
         });
       }
     }

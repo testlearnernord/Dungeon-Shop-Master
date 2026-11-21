@@ -41,3 +41,31 @@ test("Clip selection never depends on replay rendering order or RNG",()=>{
   assert.equal(ghoulMotionForPhase("dead").clip,"death_fall");
   assert.equal(ghoulMotionForPhase("move").clip,"walk_feral");
 });
+
+test("ongoing Ghoul playback indexes newly appended strikes without rescanning stale history",()=>{
+  const frames=[
+    saved(0,"move"),saved(.1,"windup"),saved(.2,"strike"),
+    saved(.3,"recover"),
+  ];
+  assert.equal(ghoulRecordedStrikeOrdinal(frames,"ghoul",.2),1);
+  frames.push(saved(.4,"windup"),saved(.5,"strike"),
+    saved(.6,"strike"),saved(.7,"recover"));
+  assert.equal(ghoulRecordedStrikeOrdinal(frames,"ghoul",.55),2);
+  assert.equal(ghoulRecordedStrikeOrdinal(frames,"ghoul",.2),1,
+    "Scrubbing backwards must not change saved attack identities");
+  frames.push(saved(.8,"windup"),saved(.9,"strike"));
+  assert.equal(ghoulRecordedStrikeOrdinal(frames,"ghoul",1),3);
+  assert.equal(ghoulMotionForPhase("strike",
+    ghoulRecordedStrikeOrdinal(frames,"ghoul",.55)).clip,
+    "attack_claw_left");
+  assert(Math.abs(ghoulRecordedPhaseAge(frames,"ghoul",.95)-.05)<1e-6);
+  assert(Math.abs(ghoulRecordedPhaseAge(frames,"ghoul",.55)-.05)<1e-6);
+});
+
+test("long battle seeks phase age from the correct checkpoint even if the file has future frames",()=>{
+  const frames=Array.from({length:901},(_,i)=>
+    saved(i/10,i<300?"move":i<305?"windup":i<308?"strike":"recover"));
+  assert(Math.abs(ghoulRecordedPhaseAge(frames,"ghoul",30.55)-.05)<1e-7);
+  assert(Math.abs(ghoulRecordedPhaseAge(frames,"ghoul",10.25)-10.25)<1e-7);
+  assert(Math.abs(ghoulRecordedPhaseAge(frames,"ghoul",90)-59.2)<1e-7);
+});

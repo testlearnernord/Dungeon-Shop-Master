@@ -1,6 +1,9 @@
 import type {Engine} from "@babylonjs/core/Engines/engine";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameStore} from "./gameStore.ts";
+import {
+  developerPresentationTime,LAB_CAPTURE_STRIDE,
+} from "./developerCombatPresentation.ts";
 import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.ts";
 import {
   createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
@@ -50,6 +53,9 @@ export class DeveloperCombatLab {
   private ticks=0;
   private session=0;
   private accumulated=0;
+  private presentedTime=0;
+  private lastRenderedTime=-1;
+  private statusElapsed=0;
   private paused=false;
   private active=false;
 
@@ -104,12 +110,19 @@ export class DeveloperCombatLab {
     });
     get<HTMLButtonElement>("#lab-start").addEventListener("click",()=>this.start());
     this.pauseButton.addEventListener("click",()=>{
-      this.paused=!this.paused;this.paintStatus();
+      this.paused=!this.paused;
+      // An explicitly paused test must show the EXACT committed state.
+      // Do not leave its visible HP/position a tenth of a second behind.
+      if(this.paused)this.capturePendingFrame();
+      this.presentFrame();
+      this.paintStatus();
     });
     get<HTMLButtonElement>("#lab-step").addEventListener("click",()=>{
       if(!this.active||!this.state)return;
       this.paused=true;
-      this.simulateTicks(1,true);this.paintStatus();
+      this.simulateTicks(1,true);
+      this.presentFrame();
+      this.paintStatus();
     });
     this.loadSelectedHero();
   }
@@ -134,6 +147,7 @@ export class DeveloperCombatLab {
     this.renderer.dispose();
     this.state=null;this.options=null;this.frames=[];
     this.accumulated=0;
+    this.presentedTime=0;this.lastRenderedTime=-1;this.statusElapsed=0;
   }
   /** Full restart from the configured immutable fixture, no random reroll. */
   restart():void{if(this.active)this.start();}
@@ -227,12 +241,22 @@ export class DeveloperCombatLab {
       this.frames=[captureGroupCombatFrame(state)];
       this.session++;
       this.ticks=0;this.accumulated=0;this.paused=false;
+      this.presentedTime=0;this.lastRenderedTime=-1;this.statusElapsed=0;
       this.renderer.watch(this.snapshot(),"recorded");
       this.paintStatus();
     }catch(error){
       this.paused=true;
       this.status.textContent="Invalid test fixture: "+String(error);
     }
+  }
+  /** This is the ONLY place that captures an extra lab frame. Normal
+   * tests still retain compact 10Hz checkpoints. Never call the 3D painter
+   * from the 60Hz motor loop. */
+  private capturePendingFrame():void {
+    const state=this.state;
+    if(!state)return;
+    if(state.time>this.frames[this.frames.length-1].t+0.0001)
+      this.frames.push(captureGroupCombatFrame(state));
   }
   private simulateTicks(count:number,forceCapture=false):void{
     const s=this.state;
@@ -241,27 +265,49 @@ export class DeveloperCombatLab {
       stepGroupCombat(s,1/60);
       this.ticks++;
       if(this.ticks>=5400&&s.outcome==="fighting")s.outcome="draw";
-      // Bound normal preview captures to the SAME 10Hz frequency as LIVE.
-      // One-frame debug stepping can additionally expose an exact 60Hz pose.
-      if((this.ticks%6===0||s.outcome!=="fighting"||forceCapture)&&
-         s.time>this.frames[this.frames.length-1].t+0.0001)
-        this.frames.push(captureGroupCombatFrame(s));
+      if(this.ticks%LAB_CAPTURE_STRIDE===0||
+         s.outcome!=="fighting"||forceCapture)
+        this.capturePendingFrame();
     }
-    this.renderer.show(this.snapshot());
+    // The real motor performs NO GLB animation, HUD projection or renderer
+    // work here. That happens once in presentFrame per display refresh.
+  }
+  private presentFrame():void {
+    const state=this.state;
+    if(!state||!this.renderer.isActive)return;
+    const last=this.frames[this.frames.length-1].t;
+    this.presentedTime=developerPresentationTime(
+      state.time,this.accumulated,last,this.presentedTime,
+      this.paused||state.outcome!=="fighting");
+    // No point repainting the same saved model/HP when the test is paused.
+    // Camera motion and the projected HUD still update independently.
+    if(Math.abs(this.presentedTime-this.lastRenderedTime)<1e-7)return;
+    this.renderer.show(this.snapshot(),this.presentedTime);
+    this.lastRenderedTime=this.presentedTime;
   }
   update(dt:number,pressed:ReadonlySet<string>):void{
     if(!this.active)return;
-    this.renderer.updateCamera(dt,pressed);
-    if(!this.state||this.renderer.isIntroActive)return;
-    if(!this.paused&&this.state.outcome==="fighting"){
-      this.accumulated+=Math.min(.1,Math.max(0,dt))*Number(this.speed.value);
+    const bounded=Math.min(.1,Math.max(0,dt));
+    const intro=this.renderer.isIntroActive;
+    const state=this.state;
+    if(state&&!intro&&!this.paused&&state.outcome==="fighting"){
+      this.accumulated+=bounded*Number(this.speed.value);
       let steps=0;
-      while(this.accumulated>=1/60&&steps++<24){
+      while(this.accumulated>=1/60&&steps<24){
         this.simulateTicks(1);
         this.accumulated-=1/60;
+        steps++;
       }
-      if(steps>0)this.paintStatus();
+      this.statusElapsed+=bounded;
+      if(steps>0&&(this.statusElapsed>=.1||state.outcome!=="fighting")){
+        this.statusElapsed=0;
+        this.paintStatus();
+      }
     }
+    if(!intro)this.presentFrame();
+    // ONE visual pass per screen frame, irrespective of how many 60Hz
+    // simulation steps were processed on this frame.
+    this.renderer.updateCamera(dt,pressed);
   }
   private paintStatus():void{
     const state=this.state;

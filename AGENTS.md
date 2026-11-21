@@ -1,6 +1,41 @@
 # Dungeon Shop Master — Contributor Guide
 
 
+### Combat Lab smooth-presentation hotfix (after #232)
+
+The V-mode Combat Lab is **not** 60-FPS-capped by its 60Hz deterministic
+combat motor. The initial V implementation ran `stepGroupCombat` at 60Hz
+but only saved a positional replay frame every sixth step (10Hz), then
+displayed that newest discrete frame directly. It also re-painted the
+entire Babylon actor tree and projected health plates from *inside every
+simulation step*, even when that step produced no new recorded pose.
+
+The lab now keeps those compact real 10Hz checkpoints and calculates
+a **render-only time one checkpoint (100ms) behind the sandbox motor**.
+`developerPresentationTime` advances smoothly at actual browser display
+refresh rate, without predicting future damage or rerunning any combat AI.
+The existing `sampleGroupReplayPresentation` reads two committed poses
+and interpolates only position/heading/projectiles; HP, phase and stamina
+come from committed data. Pauses, manual one-tick steps and conclusions
+show the exact newest committed sample with no visual reverse-jump when
+resuming. The 60Hz simulation loop never calls the Babylon painter.
+The visible combat scene is painted once per real rendered frame;
+read-only status text refreshes at most ~10Hz, except immediate control
+actions. LIVE fights, archived group replay and the historical Level-6
+Troll cinematic retain their original flow.
+
+The Ghoul rig's recorded phase age and alternating-claw lookup now use
+incremental, append-safe phase/strike indexes keyed to the specific
+committed frame array. This prevents rebuilding full 90-second histories
+on every display frame and keeps clips correct when live frames append.
+All caching is purely visual and never touches saved combat data.
+
+This is a source-level rendering correction. **Actual achieved FPS still
+depends on the browser/GPU/GLB scene**, and must be measured in situ; do
+not claim a guaranteed 60/144 FPS. Deterministic gameplay tick count,
+checkpoint capture frequency and campaign save/economy are unchanged.
+
+
 ### PR #230 · Real multi-Ghoul teams per authored site
 
 `ghoulPack.ts` derives a pack count and IDs from only the real
