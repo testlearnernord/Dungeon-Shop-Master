@@ -39,6 +39,7 @@ export class InteractionSystem {
     private readonly openDebtBook: () => void = () => {},
     private readonly store?: GameStore,
     private readonly onMerchantAction: (action:MerchantAction)=>void = () => {},
+    private readonly openFishing:()=>boolean=()=>false,
   ) {
     this.shop.select(ITEMS[0].id);
     this.registerEvents();
@@ -87,7 +88,7 @@ export class InteractionSystem {
       this.publish();
     }, { passive: false });
     this.canvas.addEventListener("pointerdown", (event) => {
-      if (document.querySelector("dialog[open]")) return;
+      if (document.querySelector("dialog[open]")||!this.isShopActive()) return;
       if (event.button !== 0 && event.button !== 2) return;
       if(this.miningMode&&event.button===2){
         this.setMiningMode(false);
@@ -280,6 +281,9 @@ export class InteractionSystem {
           this.message = "Adventurer roster opened.";
           this.openRoster();
         }
+      } else if(target?.kind==="cellar-pond"&&button===0){
+        this.message=hit.distance<=this.maxInteractionDistance&&this.openFishing()
+          ?"Fishing at the underground pond.":"Move closer to the water.";
       } else if(target?.kind==="cellar-door"&&button===0&&this.store){
         this.message=hit.distance<=this.maxInteractionDistance
           ?this.store.toggleCellarDoor():"Move closer to the portrait.";
@@ -300,6 +304,9 @@ export class InteractionSystem {
     } else if (target?.kind === "roster-board") {
       this.message = "Adventurer roster opened.";
       this.openRoster();
+    } else if(target?.kind==="cellar-pond"){
+      this.message=this.openFishing()
+        ?"Fishing at the underground pond.":"The water cannot be reached.";
     } else if(target?.kind==="cellar-door"&&this.store){
       this.message=this.store.toggleCellarDoor();
     } else if(target?.kind==="debt-book"){

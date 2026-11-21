@@ -28,6 +28,8 @@ import { Shop } from "./game/shop";
 import { setupBlueprintHud } from "./blueprintHud.ts";
 import { setupBedroomFurnitureVisuals } from "./game/bedroomFurnitureVisuals.ts";
 import {setupCellarFurnitureVisuals} from "./game/cellarFurnitureVisuals.ts";
+import {setupCellarPondVisuals} from "./game/cellarPondVisuals.ts";
+import {setupFishingHud} from "./fishingHud.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
@@ -54,6 +56,7 @@ import "./merchantLedger.css";
 import "./beggarHud.css";
 import "./blueprintHud.css";
 import "./debtBookHud.css";
+import "./fishingHud.css";
 import "./immersiveUi.css";
 import "./expeditionArchive.css";
 
@@ -136,6 +139,8 @@ store.subscribe(refreshRoom);
 refreshRoom();
 store.subscribe(refreshCellar);
 refreshCellar();
+const pondMesh=setupCellarPondVisuals(scene,store);
+worldItems.push({id:"cellar-fishing-pond",mesh:pondMesh,kind:"cellar-pond"});
 const shop = new Shop(scene, store);
 const board = createRosterBoard(scene, store);
 const portraitMeshes=setupWallPortraitVisuals(scene,store);
@@ -416,6 +421,7 @@ function renderInventory(selectedItem: ItemId): void {
 }
 
 let isShopActive = () => true;
+let fishing:ReturnType<typeof setupFishingHud>|null=null;
 let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
   ()=>isShopActive(),message=>{statusHud.textContent=message;});
@@ -427,7 +433,8 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
 }, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.",
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
-  debtBook.open,store,action=>merchantActions.play(action));
+  debtBook.open,store,action=>merchantActions.play(action),
+  ()=>fishing?.open()??false);
 setupControlsHotbarClearance();
 setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),
   itemId=>interactions.selectItem(itemId));
@@ -441,6 +448,7 @@ store.subscribe(()=>{
 renderInventory(selectedItemId);
 const soundtrack = setupSoundtrack();
 const sfx = setupGameSfx();
+fishing=setupFishingHud(canvas,camera,scene,store,sfx);
 const cashierSfx=createCashierSfx(()=>sfx.soundEnabled,()=>sfx.soundVolume);
 const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
   soundtrack.setArenaMix(active);
@@ -460,7 +468,8 @@ watchLiveHero=id=>store.state.liveDungeon.bossCombat?.heroId===id
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
   eventId=>{arena.open(eventId);return arena.isActive;});
-isShopActive=()=>!arena.isActive&&!dungeon.isActive&&!(bedtime?.isBlocking??false);
+isShopActive=()=>!arena.isActive&&!dungeon.isActive&&
+  !(bedtime?.isBlocking??false)&&!(fishing?.isActive??false);
 ledger=setupMerchantLedger(()=>{
   camera.attachControl(canvas,true);
   statusHud.textContent="Morning has come. The shop is open.";
@@ -510,7 +519,8 @@ engine.runRenderLoop(() => {
   // LIVE spectator is a camera only: the saved world and physical shop
   // customers must continue on the one authoritative 50ms clock.
   const paused=document.hidden||
-    (!isShopActive()&&!dungeon.isWatchingLive&&!arena.isWatchingLiveBoss)||
+    (!isShopActive()&&!(fishing?.isActive??false)&&
+       !dungeon.isWatchingLive&&!arena.isWatchingLiveBoss)||
     !!document.querySelector("dialog[open]")||
     document.body.classList.contains("blueprint-active");
   npcVisuals.setWorldPaused(paused);
