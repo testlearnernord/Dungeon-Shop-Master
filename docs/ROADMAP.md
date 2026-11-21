@@ -144,3 +144,30 @@ rewards, player controls, or continuous world clock. Additive camera
 offsets are removed on exit. Browser and human acceptance are required for
 fish direction, shadow legibility, water tension, camera comfort, and smooth
 return to FPS control before merging.
+
+### V.004 reel-and-escape fishing duel (PR #260; based on PR #259)
+
+The first bite now opens a **vertical fish/green-bar catching challenge** in the
+existing small first-person HUD, analogous to the attached design reference but
+using Dungeon Shop Master's brass-and-water aesthetic. The fish travels
+vertically. A green catching zone has gravity; clicking **LEFT then RIGHT**
+(or RIGHT then LEFT) repeatedly gives it upward impulses. Repeating the same
+button does not lift it. Keeping the fish inside the green zone increases
+catch progress; losing alignment drains progress. Filling the catch meter,
+not merely completing three counters, is now the ONLY way to receive a
+persistent fish trophy from the existing GameStore.
+
+Every hooked fish can occasionally break away after a randomized 2.5–5-second
+interval. That **pauses only the local reel duel**, not the world; it enters the
+existing **three-success, three-miss directional mouse-flick challenge** with
+the unchanged 540/743/945-pixel thresholds. Success returns to the SAME reel
+and progress, plus a small bonus; three misses lose the fish. After landing
+(or losing) one fish, the subsurface shadow disappears; the next bite is
+scheduled randomly between 1 and 10 seconds while the session remains active.
+The rod, line, shadow and camera pull remain in the one shop scene. The shop
+and dungeon continue on their original shared world clock.
+
+These temporary UI interactions do not add a saved fishing engine, alternate
+inventory, physics authority or new fish simulation to the campaign. Existing
+sounds are reused. Manual checks remain essential for alternation ergonomics,
+pointer lock, mouse/context-menu behavior and 3D camera comfort.

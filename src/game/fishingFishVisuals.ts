@@ -166,6 +166,20 @@ export function setupFishingFishVisuals(scene:Scene,camera:UniversalCamera){
         pulling=false;setVisible(false);
       }
     },
+    track(height:number){
+      if(!cast)return;
+      // The submerged silhouette is the SAME fish tracked by the vertical
+      // reel gauge. It moves along the pond's long axis while the player reels.
+      pulling=false;
+      pull={x:0,y:0};
+      destination=keepFishInsidePond(
+        .08*Math.sin(time*1.5),(Math.max(0,Math.min(1,height))-.5)*1.78);
+      fishHeading=destination.z>=travel.z?0:Math.PI;
+      fish.metadata={...fish.metadata,
+        reelHeight:height,fishPullX:0,fishPullY:0,
+        worldPullX:0,worldPullZ:0};
+      setVisible(true);
+    },
     hook(target:ScreenPull){
       if(!cast)return;
       setTarget(target);
