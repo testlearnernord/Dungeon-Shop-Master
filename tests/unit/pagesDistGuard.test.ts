@@ -55,8 +55,8 @@ test("broken Pages base and missing production files fail independently",()=>{
     put("dist/index.html",html.replaceAll(BASE,"/"));
     assert.throws(()=>verifyPagesDist(root),/base path/);
     put("dist/index.html",html);
-    put("dist/assets/index-123.js","");
-    // A zero-byte JS would not be a viable game asset; restore to test actual missing soundtrack instead.
+    rmSync(resolve(root,"dist/assets/index-123.js"));
+    assert.throws(()=>verifyPagesDist(root),/Vite HTML asset.*missing/);
     put("dist/assets/index-123.js","console.log('compiled')");
     put("dist/audio/no-safe-passage.mp3","truncated audio");
     assert.throws(()=>verifyPagesDist(root),/differs from source/);
@@ -65,7 +65,9 @@ test("broken Pages base and missing production files fail independently",()=>{
 test("generated GLB corruption is detected despite a matching filename",()=>{
   const {root,put}=fixture();
   try{
+    // Even if both source and published copies match, an invalid GLB cannot pass.
+    put("public/assets/models/dungeon-ghoul-tripo.glb",Buffer.alloc(20));
     put("dist/assets/models/dungeon-ghoul-tripo.glb",Buffer.alloc(20));
-    assert.throws(()=>verifyPagesDist(root),/differs from source bytes|Invalid or truncated GLB/);
+    assert.throws(()=>verifyPagesDist(root),/Invalid or truncated GLB/);
   }finally{rmSync(root,{recursive:true,force:true});}
 });
