@@ -1,6 +1,5 @@
 import type {GameState,WorldEvent} from "./gameState.ts";
 import {ITEMS,type ItemId} from "./economy.ts";
-import type {AdventurerState} from "./adventurers.ts";
 
 /** The ONE global world feed reads committed events and actual state deltas.
  * This is not an alternate world clock, loot generator or party simulator. */
