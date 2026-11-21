@@ -54,8 +54,8 @@ test("a real lethal dungeon step raises ONE global world-feed warning and opens 
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const save=await new CampaignStorage().loadGame();
     return save?.events.find(event=>event.adventurerId===heroId&&
-      (event.dungeonReplay?.outcome==="death"||
-       event.level7Replay?.outcome==="death"))?.id??null;
+      (event.dungeonReplay??event.level7Replay)?.steps.some(step=>
+        step.hp<=0&&(step.action==="trap"||step.action==="death")))?.id??null;
   },heroId);
   expect(recording).toBeTruthy();
   await alert.locator(".world-feed-jump").click();
