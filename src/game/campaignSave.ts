@@ -91,7 +91,7 @@ const eventTypes = [
   "level6-departure", "level6-combat", "level6-return",
   "level7-departure", "level7-exploration", "shop-credit",
   "dungeon-exploration","dungeon-live","hero-death-signal",
-  "temporary-party-join","temporary-party-leave",
+  "temporary-party-join","temporary-party-leave","hero-buyback",
 ] as const;
 
 
@@ -1378,6 +1378,21 @@ function validateState(value: unknown): asserts value is GameState {
         validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
           event.adventurerId as string,eventDay,campaignSeed,floor,heroIds);
       }
+    }
+    if(event.type==="hero-buyback"){
+      allowed.push("itemId","quantity","revenue");
+      choice(event.itemId,itemIds,path+".itemId");
+      if(integer(event.quantity,path+".quantity",1,1)!==1)
+        fail(path+".quantity","must represent one actual purchased item");
+      const item=ITEMS.find(entry=>entry.id===event.itemId)!;
+      const price=Math.max(1,Math.min(item.wholesaleCost,item.salePrice-1));
+      if(event.revenue!==price)
+        fail(path+".revenue","must match the real merchant buyback price");
+      const prefix="day-"+eventDay+":"+event.adventurerId+
+        ":hero-buyback:"+event.itemId+":";
+      const serial=id.startsWith(prefix)?Number(id.slice(prefix.length)):NaN;
+      if(!Number.isSafeInteger(serial)||serial<1)
+        fail(path+".id","must reference a real buyback receipt");
     }
     if (event.type === "sale" || event.type === "healed") {
       allowed.push("itemId", "quantity");

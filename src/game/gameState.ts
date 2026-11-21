@@ -68,7 +68,7 @@ export interface WorldEvent {
     "level6-departure" | "level6-combat" | "level6-return" |
     "level7-departure" | "level7-exploration" | "shop-credit" |
     "dungeon-exploration" | "dungeon-live" | "hero-death-signal" |
-    "temporary-party-join" | "temporary-party-leave";
+    "temporary-party-join" | "temporary-party-leave" | "hero-buyback";
   readonly day: number;
   readonly message: string;
   readonly worldTick?: number;
