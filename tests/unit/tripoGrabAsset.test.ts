@@ -54,6 +54,13 @@ test("Troll grab and throw original source is byte-identical and lives under ass
     .update("blob "+original.bytes.length+"\0")
     .update(original.bytes).digest("hex");
   assert.equal(gitBlob,"d1f42cc107cc733d94874c7315871373e0071f75");
+  const manifest=JSON.parse(readFileSync(resolve(root,
+    "assets/tripo/ashen-tunnel-mauler.manifest.json"),"utf8"));
+  assert.equal(manifest.combatBuild.sourceFile,
+    "assets/tripo/source/tripo_convert_ad846d87-3b98-4c37-a128-20fc302b37c7.glb");
+  assert.equal(manifest.combatBuild.sourceBytes,11449256);
+  assert.equal(manifest.combatBuild.sourceGitBlobSha,
+    "d1f42cc107cc733d94874c7315871373e0071f75");
   assert.equal(original.json.skins[0].joints.length,65);
   assert.deepEqual(original.json.animations.map((animation:{name:string})=>animation.name),[
     "Big Cave Troll who grabs and holds the enemy hero with one hand",
