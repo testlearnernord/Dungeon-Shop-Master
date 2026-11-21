@@ -107,3 +107,22 @@ test("site loot and multi-hero ownership are deterministic and never duplicate i
   assert.equal(heroes.every(hero=>hero.inventory.finds===undefined),true,
     "The supplied adventurer snapshot must remain untouched");
 });
+
+test("shop bag full blocks recovered consumables but not forge materials",()=>{
+  const base=stockedHero(),id=base.adventurers[0].id;
+  const withHerb:GameState={...base,adventurers:base.adventurers.map(hero=>
+    hero.id===id?{...hero,inventory:{...hero.inventory,
+      finds:{...hero.inventory.finds,"healing-herb":1}}}:hero)};
+  const bag=Object.fromEntries(ITEMS.map(item=>[
+    item.id,item.id==="bread"?ECONOMY.bagCapacity:0,
+  ])) as Record<ItemId,number>;
+  const full={...withHerb,shopEconomy:{...withHerb.shopEconomy,bag}};
+  assert.strictEqual(buyHeroDungeonFind(full,id,"healing-herb").state,full);
+  const coal=buyHeroDungeonFind(full,id,"coal");
+  assert.notStrictEqual(coal.state,full);
+  assert.equal(coal.state.shopEconomy.bag.bread,ECONOMY.bagCapacity);
+  assert.equal(coal.state.shopEconomy.materialStorage.coal,1);
+  assert.equal(coal.state.shopEconomy.balance,
+    full.shopEconomy.balance-dungeonBuybackPrice("coal"));
+  assert.deepEqual(parseSave(serializeSave(coal.state)),coal.state);
+});
