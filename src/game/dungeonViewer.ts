@@ -32,7 +32,7 @@ import {minimapPointFromClient,isKnownMinimapCell}
 import {floorHeroLocatorOptions,floorFightLocatorOptions,
   formatHeroDungeonFinds} from "./liveDungeonInspector.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
-  orbitDungeonMap,panDungeonMap,zoomDungeonMap,
+  orbitDungeonMap,panDungeonMap,zoomDungeonMap,DUNGEON_NORTH_YAW,
   type DungeonMapPose} from "./dungeonMapCamera.ts";
 import {
   generateExpeditionLayout, tileAt, type DungeonLayout,
@@ -367,7 +367,15 @@ export class DungeonViewer {
         if(drag.moved){
           event.preventDefault();
           const pose=this.mapPose();
-          if(pose)this.setMapPose(orbitDungeonMap(pose,dx,dy));
+          if(pose&&this.layout){
+            const tilted=orbitDungeonMap(pose,dx,dy);
+            // Horizontal drag slides the map while vertical drag tilts it.
+            // Unlike the old 360-degree orbit, north never leaves screen-up.
+            this.setMapPose(panDungeonMap(tilted,-dx,0,
+              Math.max(.05,tilted.distance*.001),
+              {halfX:this.layout.width*TILE_SIZE/2,
+                halfZ:this.layout.height*TILE_SIZE/2}));
+          }
           this.followActor=null;
           this.hoverTooltip.hidden=true;
         }
@@ -516,7 +524,9 @@ export class DungeonViewer {
   }
   private setMapPose(pose:DungeonMapPose):void{
     if(!this.camera)return;
-    const p=mapCameraPosition(pose),t=mapCameraTarget(pose);
+    // Every observer focus, minimap jump and zoom must preserve grid north.
+    const northPose={...pose,yaw:DUNGEON_NORTH_YAW};
+    const p=mapCameraPosition(northPose),t=mapCameraTarget(northPose);
     this.camera.position.set(p.x,p.y,p.z);
     this.camera.setTarget(new Vector3(t.x,t.y,t.z));
   }
