@@ -191,3 +191,30 @@ test("a wounded unarmed DPS and tank can use purchased Herbs, not magic or imagi
   assert.equal(bare.events.filter(cue=>cue.kind==="heal").length,0,
     "a healer must not magically mint an item that was never bought");
 });
+
+test("a tank usually parries but can dodge the same telegraphed Troll attack",()=>{
+  const choices:string[]=[];
+  for(let attackNumber=1;attackNumber<=24;attackNumber++){
+    const state=createGroupCombat({bounds,actors:[
+      fighter("lab-hero-1","heroes",0,0,{
+        role:"tank",style:"melee",hp:120,maxHp:120,
+        equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+      }),
+      fighter("lab-cave-troll","monsters",0,3,{
+        hp:280,maxHp:280,role:"monster",radius:1.8,
+        specialAbility:"grapple-throw",agility:7,
+      }),
+    ]});
+    const troll=state.actors.find(a=>a.id==="lab-cave-troll")!;
+    troll.phase="windup";troll.phaseAge=.65;troll.lockedHeading=Math.PI;
+    troll.activeMeleeAbility="troll-smash";
+    troll.attacksStarted=attackNumber;
+    const hero=state.actors.find(a=>a.id==="lab-hero-1")!;
+    stepGroupCombat(state);
+    choices.push(hero.phase);
+  }
+  assert(choices.filter(phase=>phase==="parry").length>=12,
+    "shield-first tanks should mostly parry");
+  assert(choices.some(phase=>phase==="roll"),
+    "a tank must retain actual timed dodge movement");
+});
