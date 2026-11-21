@@ -63,3 +63,17 @@
 - Unit coverage exercises full/empty inventory, gold constraints,
   deterministic loot assignment, no replay duplication, ledger visibility
   and serialization. Full browser UI regression remains available manually.
+
+## Regression fixtures for the 200-tick cadence
+
+- A running boss or Ghoul battle must be observed just after the **first**
+  scheduled spatial event, with one further `LIVE_COMBAT_INTERVAL_TICKS`
+  event when recorded frames are required. Advancing a fixed 600 ticks can
+  legitimately finish an encounter before the browser attempts to watch it.
+- The browser save/reload smoke checks that the next committed movement
+  advances beyond the previously persisted `lastStepTick`. It must never
+  assert an obsolete absolute 600-tick boundary.
+- Keep unit tests for one-tile movement, saved hero knowledge, encounter
+  reservation, combat continuity and single-owner rewards in the mandatory
+  suite. Use optional full browser regression for the cinematic and
+  multi-Ghoul presentation journeys.
