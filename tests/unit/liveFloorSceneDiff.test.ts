@@ -8,7 +8,7 @@ const hero={
   equipment:{weapon:"Iron Sword" as const,armor:null},
   partyId:null,partyMemberIds:["hero-1"],inCombat:true,
   visited:[14,15,16],activity:"combat" as const,
-  plannedAction:"explore" as const,goal:"explore" as const,
+  plannedAction:"stay" as const,goal:"farm" as const,
 };
 const fight={id:"encounter-1",x:4,z:6};
 const floor:FloorMapSnapshot={
