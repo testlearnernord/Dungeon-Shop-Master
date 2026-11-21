@@ -1597,7 +1597,7 @@ export function parseSave(text: string): GameState {
   if (!textTimestamp(envelope.savedAt)) fail("savedAt", "must be an ISO UTC timestamp");
   if(!envelope.payload||typeof envelope.payload!=="object"||
      (envelope.payload as RecordValue).simulationVersion!==envelope.simulationVersion)
-    fail("payload.simulationVersion","does not match the envelope");
+    fail("payload.simulationVersion","is incompatible with the envelope");
   const state=envelope.simulationVersion===25
     ?migrateV25Materials(envelope.payload):envelope.payload as GameState;
   validateState(state);
