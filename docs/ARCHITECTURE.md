@@ -1,5 +1,8 @@
 # Dungeon Shop Master — Current Architecture
 
+> **Documentation transition (2026-11-21):** Read [the audited current baseline](CLEANUP_AUDIT.md) before using older PR-specific claims below. This file has not yet been fully consolidated; source and tests remain authoritative.
+
+
 
 ### Combat Lab smooth-presentation hotfix (after #232)
 

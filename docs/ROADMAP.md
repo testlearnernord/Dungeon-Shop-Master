@@ -1,5 +1,8 @@
 # Dungeon Shop Master — Development Roadmap
 
+> **Documentation transition (2026-11-21):** Read [the audited current baseline](CLEANUP_AUDIT.md) before using older PR-specific claims below. This file has not yet been fully consolidated; source and tests remain authoritative.
+
+
 ### PR #220 · Shared Level-6 combat presentation foundation (branch, CI required)
 
 - [x] The Cave Troll is the mandatory quality reference, not the plain Ghoul/Group prototype. Extract the exact boss camera/stage into a reusable arena-themed module, used in the existing Troll scene and opt-in Ghoul/group views.
