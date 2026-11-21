@@ -21,7 +21,9 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
     const roster=base.adventurers.map(hero=>{
       if([one.id,two.id,three.id].includes(hero.id))
         return {...hero,status:"exploring" as const,floor:1 as const,
-          traits:{...hero.traits,negative:"stubborn"}};
+          traits:{...hero.traits,negative:"stubborn"},
+          ...(hero.id===three.id?{inventory:{...hero.inventory,
+            finds:{"iron-ore":1,coal:2}}}:{})};
       if(hero.id===four.id)
         return {...hero,status:"exploring" as const,floor:2 as const};
       return {...hero,status:"at-shop" as const,floor:5 as const,
@@ -107,6 +109,33 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
       dungeonParties:state.dungeonParties,liveDungeon:state.liveDungeon};
   });
   const beforeClick=await record();
+  // Locate a true saved hero by keyboard-accessible UI. Changing the
+  // inspector may move the camera, but must not modify the campaign.
+  const locator=page.locator("#dungeon-hero-locator");
+  await expect(locator).toBeVisible();
+  await expect(locator.locator("option")).toHaveCount(4);
+  const camera=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .inspectLiveFloorCameraFocus());
+  const cameraBefore=await camera();
+  await locator.selectOption(ids[2]);
+  await expect(locator).toHaveValue(ids[2]);
+  await expect(page.locator("#dungeon-hero-detail")).toBeVisible();
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText(
+    "Recovered goods");
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText(
+    "Iron Ore ×1");
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText(
+    "Coal ×2");
+  const cameraAfter=await camera();
+  expect(cameraAfter.target.x).toBeCloseTo(third.x,2);
+  expect(cameraAfter.target.z).toBeCloseTo(third.z,2);
+  expect(cameraAfter.offset.x).toBeCloseTo(cameraBefore.offset.x,2);
+  expect(cameraAfter.offset.y).toBeCloseTo(cameraBefore.offset.y,2);
+  expect(cameraAfter.offset.z).toBeCloseTo(cameraBefore.offset.z,2);
+  await locator.selectOption("");
+  await expect(page.locator("#dungeon-hero-detail")).toBeHidden();
+  expect(await record()).toEqual(beforeClick);
   const clickPoint=await page.evaluate(async(heroId:string)=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))
       .liveFloorHeroClickPoint(heroId),ids[2]);
