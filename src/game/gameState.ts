@@ -68,7 +68,7 @@ export interface WorldEvent {
     "level6-departure" | "level6-combat" | "level6-return" |
     "level7-departure" | "level7-exploration" | "shop-credit" |
     "dungeon-exploration" | "dungeon-live" | "hero-death-signal" |
-    "temporary-party-join" | "temporary-party-leave";
+    "temporary-party-join" | "temporary-party-leave" | "hero-buyback";
   readonly day: number;
   readonly message: string;
   readonly worldTick?: number;
@@ -92,6 +92,8 @@ export interface WorldEvent {
   readonly itemId?: ItemId;
   readonly quantity?: number;
   readonly revenue?: number;
+  /** Gold paid to an adventurer for a recovered dungeon item; not sales revenue. */
+  readonly cost?: number;
   /** Manual cash register vs. automated settlement; absent means legacy auto sale. */
   readonly saleChannel?: "manual" | "reserved";
   /** Face value written to the merchant debt ledger; no cash was earned. */

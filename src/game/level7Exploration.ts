@@ -6,6 +6,8 @@ import {
 import { resolveGroupCombat, type CombatantSpec, type GroupCombatOptions,
   type GroupCombatState, type GroupCombatReplay } from "./groupCombat.ts";
 import { SeededRandom } from "./random.ts";
+import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
+import type {ItemId} from "./economy.ts";
 import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK}
   from "./ghoulPack.ts";
 import {
@@ -479,6 +481,15 @@ export function simulateSpatialDungeonPartyDay(
       ...current,t,action,hp:m.hp,...(featureId?{featureId}:{}),
     });
   };
+  const distributeFound=(items:readonly ItemId[],siteId:string,cycle:number):void=>{
+    const living=members.filter(m=>m.hp>0);
+    const updated=distributeDungeonFinds(living.map(m=>({...m.hero,health:m.hp})),
+      items,siteId,cycle);
+    for(const awarded of updated){
+      const member=members.find(m=>m.hero.id===awarded.id);
+      if(member)member.hero=awarded;
+    }
+  };
   const shareGold=(amount:number):void=>{
     const eligible=members.filter(m=>m.hp>0).sort((a,b)=>
       a.hero.id.localeCompare(b.hero.id));
@@ -525,8 +536,15 @@ export function simulateSpatialDungeonPartyDay(
         dungeonSiteGeneration(siteCycles,feature.id)));
       const gain=7+rng.int(9);
       shareGold(gain);
-      const claimant=members.find(m=>m.hp>0);
-      if(claimant)claimant.loot+=1; // One chest contains one actual loot unit.
+      const living=members.filter(m=>m.hp>0).sort((a,b)=>
+        a.hero.id.localeCompare(b.hero.id));
+      // The legacy abstract loot token represents a single unique chest.
+      // Rotate ownership; never duplicate a one-off token among companions.
+      if(living.length)living[(idx+dungeonSiteGeneration(siteCycles,feature.id))%
+        living.length].loot+=1;
+      const cycle=dungeonSiteGeneration(siteCycles,feature.id);
+      distributeFound(rollDungeonSiteLoot(campaignSeed,floor,
+        feature.id,cycle,"treasure").itemIds,feature.id,cycle);
       for(const m of members)if(m.hp>0)m.xp+=8;
       resolved.add(feature.id);
       siteCycles=resolveDungeonSite(siteCycles,feature.id,day);
@@ -586,6 +604,9 @@ export function simulateSpatialDungeonPartyDay(
         for(const m of alive)m.xp+=(fight.elite?28:12)*monsterKills;
         if(alive.length)alive[0].kills+=monsterKills;
         shareGold((fight.elite?6:2)*monsterKills);
+        const cycle=dungeonSiteGeneration(siteCycles,feature.id);
+        distributeFound(rollDungeonSiteLoot(campaignSeed,floor,
+          feature.id,cycle,"monster",monsterKills).itemIds,feature.id,cycle);
         for(const m of members)m.steps.push({...current,t:t+0.2,
           action:m.hp===0?"death":"defeat-monster",featureId:feature.id,hp:m.hp});
         // A fallen companion ends this outing. Living friends don't
@@ -635,7 +656,10 @@ export function simulateSpatialDungeonPartyDay(
     });
     const replay:Level7Replay={
       version:1,day,heroId:m.hero.id,floor:floor as SpatialDungeonFloor,
-      appearance:{role:m.hero.role,equipment:{...m.hero.equipment}},
+      // The replay starts BEFORE chest loot can equip the hero. Preserve
+      // the original entering gear; live inventory still receives the drop.
+      appearance:{role:party.find(hero=>hero.id===m.hero.id)!.role,
+        equipment:{...party.find(hero=>hero.id===m.hero.id)!.equipment}},
       knownAtStart:[...m.progress.visited],
       resolvedAtStart:[...refreshed.resolvedFeatureIds],
       ...(party.length>1?{
@@ -706,6 +730,7 @@ export function settleSpatialDungeonCombat(
   party:readonly AdventurerState[],world:Level7World,day:number,
   encounter:PreparedSpatialEncounter,combat:GroupCombatState,
   recording:GroupCombatReplay,arrivals:readonly Level7Replay[],
+  campaignSeed=0,
 ):Level7PartyTick {
   if(party.length<1||party.length>3||party.length!==arrivals.length||
     combat.outcome==="fighting"||recording.outcome!==combat.outcome)
@@ -734,6 +759,13 @@ export function settleSpatialDungeonCombat(
     .filter(pair=>pair.actor.hp>0).sort((a,b)=>
       a.hero.id.localeCompare(b.hero.id));
   const monsterKills=monsterSpecs.length;
+  const physicalItems=winner?rollDungeonSiteLoot(campaignSeed,
+    encounter.floor,encounter.featureId,encounter.siteCycle,
+    "monster",monsterKills).itemIds:[];
+  const foundOwners=new Map(distributeDungeonFinds(alive.map(({hero,actor})=>
+    ({...hero,health:Math.max(1,Math.round(actor.hp))})),
+    physicalItems,encounter.featureId,encounter.siteCycle)
+    .map(hero=>[hero.id,hero] as const));
   const pot=winner?(encounter.elite?6:2)*monsterKills:0;
   alive.forEach(({hero},i)=>{
     shares.set(hero.id,Math.floor(pot/alive.length)+
@@ -757,12 +789,13 @@ export function settleSpatialDungeonCombat(
     const xp=hero.xp+(winner&&!dead?
       (encounter.elite?28:12)*monsterKills:0);
     const gold=shares.get(hero.id)??0;
+    const owner=foundOwners.get(hero.id)??hero;
     const adventurer:AdventurerState={
-      ...hero,health:hp,xp,level:1+Math.floor(xp/100),
+      ...owner,health:hp,xp,level:1+Math.floor(xp/100),
       gold:hero.gold+gold,
       floor:returning?4:hero.floor,
       status:dead?"dead":returning?"traveling":hero.status,
-      inventory:{...hero.inventory,healing:hero.inventory.healing-used},
+      inventory:{...owner.inventory,healing:hero.inventory.healing-used},
     };
     const oldProgress=world.heroes.find(p=>p.heroId===hero.id);
     if(!dead&&!returning&&oldProgress)survivors.push(oldProgress);

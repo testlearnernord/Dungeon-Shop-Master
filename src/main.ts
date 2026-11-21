@@ -30,6 +30,7 @@ import { setupBedroomFurnitureVisuals } from "./game/bedroomFurnitureVisuals.ts"
 import {setupCellarFurnitureVisuals} from "./game/cellarFurnitureVisuals.ts";
 import {setupCellarPondVisuals} from "./game/cellarPondVisuals.ts";
 import {setupFishingHud} from "./fishingHud.ts";
+import {setupHeroBuybackHud} from "./heroBuybackHud.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
@@ -57,6 +58,7 @@ import "./beggarHud.css";
 import "./blueprintHud.css";
 import "./debtBookHud.css";
 import "./fishingHud.css";
+import "./heroBuybackHud.css";
 import "./immersiveUi.css";
 import "./cashierLive.css";
 import "./expeditionArchive.css";
@@ -90,6 +92,7 @@ const runtimePerf=setupPerformanceHud({
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
+setupHeroBuybackHud(store);
 // Live time is the exclusive owner in real gameplay. Unit fixtures that
 // directly advance a legacy day do not run simultaneous spatial motors.
 store.enableLiveDungeon();

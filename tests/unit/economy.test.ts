@@ -42,7 +42,7 @@ function stock(state: GameState, itemId: ItemId, quantity: number, index = 0): G
 }
 
 test("catalog, starter economy and shelf layout are complete, independent and bounded", () => {
-  assert.deepEqual(ITEMS.map((item) => item.id), ["healing-herb", "mana-potion", "iron-ore", "bread", "iron-sword", "leather-vest"]);
+  assert.deepEqual(ITEMS.map((item) => item.id), ["healing-herb", "mana-potion", "iron-ore", "coal", "bread", "iron-sword", "leather-vest"]);
   for (const item of ITEMS) {
     assert(item.wholesaleCost > 0 && item.salePrice > item.wholesaleCost);
     assert(item.color.startsWith("#") && item.name.length > 0);
@@ -54,7 +54,7 @@ test("catalog, starter economy and shelf layout are complete, independent and bo
   assert.notEqual(first.slots, second.slots);
   assert.deepEqual(first.slots,[]);
   assert.deepEqual(second.slots,[]);
-  assert.deepEqual(first.bag, { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2, "iron-sword": 0, "leather-vest": 0 });
+  assert.deepEqual(first.bag, { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2, "iron-sword": 0, "leather-vest": 0, coal:0 });
   assert.equal(first.slots.length,0,"merchandise stays in the bag until a real shelf is built");
 });
 

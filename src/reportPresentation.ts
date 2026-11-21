@@ -3,7 +3,7 @@ import type {InterfaceIcon} from "./uiIcons.ts";
 export type ReportCategory="shop"|"dungeon"|"other";
 const SHOP_TYPES=new Set<WorldEvent["type"]>([
   "sale","tip","shop-arrival","shop-stay","shop-departure",
-  "shop-walkout","shop-credit"
+  "shop-walkout","shop-credit","hero-buyback"
 ]);
 const DUNGEON_TYPES=new Set<WorldEvent["type"]>([
   "dungeon-outcome","level6-departure","level6-combat","level6-return",
@@ -18,7 +18,7 @@ export function reportCategory(event:Pick<WorldEvent,"type">):ReportCategory{
 }
 export function reportIcon(event:Pick<WorldEvent,"type">):InterfaceIcon{
   if(event.type==="sale")return "receipt";
-  if(event.type==="shop-credit")return "receipt";
+  if(event.type==="shop-credit"||event.type==="hero-buyback")return "receipt";
   if(event.type==="healed")return "heart";
   if(event.type==="hero-death-signal")return "skull";
   if(reportCategory(event)==="dungeon")return "swords";

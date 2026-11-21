@@ -7,6 +7,7 @@ export const ITEMS = [
   { id: "healing-herb", name: "Healing Herb", color: "#64a84b", wholesaleCost: 3, salePrice: 6, kind: "healing", healing: HEALING_HERB_HP },
   { id: "mana-potion", name: "Mana Potion", color: "#548bd2", wholesaleCost: 4, salePrice: 7, kind: "supply", healing: 0 },
   { id: "iron-ore", name: "Iron Ore", color: "#9a9289", wholesaleCost: 2, salePrice: 3, kind: "material", healing: 0 },
+  { id: "coal", name: "Coal", color: "#444950", wholesaleCost: 2, salePrice: 3, kind: "material", healing: 0 },
   { id: "bread", name: "Waybread", color: "#c79246", wholesaleCost: 2, salePrice: 4, kind: "healing", healing: WAYBREAD_HP },
   { id: "iron-sword", name: "Iron Sword", color: "#a4b4c3", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0 },
   { id: "leather-vest", name: "Leather Vest", color: "#805338", wholesaleCost: 5, salePrice: 8, kind: "armor", healing: 0 },
@@ -46,7 +47,7 @@ export function createEconomy(): ShopEconomyState {
   return {
     balance: ECONOMY.startingGold,
     bag: { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2,
-      "iron-sword": 0, "leather-vest": 0 },
+      "iron-sword": 0, "leather-vest": 0, coal:0 },
     // Merchandising begins only after the player builds a real shelf.
     slots:[],
     dailySales: { day: 1, units: 0, revenue: 0 },

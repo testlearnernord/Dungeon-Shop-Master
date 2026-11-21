@@ -91,7 +91,7 @@ const eventTypes = [
   "level6-departure", "level6-combat", "level6-return",
   "level7-departure", "level7-exploration", "shop-credit",
   "dungeon-exploration","dungeon-live","hero-death-signal",
-  "temporary-party-join","temporary-party-leave",
+  "temporary-party-join","temporary-party-leave","hero-buyback",
 ] as const;
 
 
@@ -975,8 +975,16 @@ function validateState(value: unknown): asserts value is GameState {
       if (equipment[key] !== null) text(equipment[key], `${path}.equipment.${key}`);
     }
     const inventory = object(hero.inventory, `${path}.inventory`,
-      ["loot", "bread", "healing"]);
-    for (const key of Object.keys(inventory)) integer(inventory[key], `${path}.inventory.${key}`);
+      ["loot", "bread", "healing"],["finds"]);
+    for (const key of ["loot","bread","healing"])
+      integer(inventory[key], `${path}.inventory.${key}`);
+    if(inventory.finds!==undefined){
+      const finds=object(inventory.finds,path+".inventory.finds",[],itemIds);
+      let total=0;
+      for(const [id,quantity] of Object.entries(finds))
+        total+=integer(quantity,path+".inventory.finds."+id,1,1000);
+      if(total>1000)fail(path+".inventory.finds","is oversized");
+    }
     const floor = integer(hero.floor, `${path}.floor`, 1, 7);
     choice(hero.status, ["exploring", "traveling", "at-shop",
       "returning", "expedition", "departing", "off-duty", "dead"], `${path}.status`);
@@ -1257,7 +1265,7 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
-      ["adventurerId", "worldTick", "reportedZone", "dungeonHighlight", "shopReason", "outcome", "itemId", "quantity", "revenue", "combatOutcome",
+      ["adventurerId", "worldTick", "reportedZone", "dungeonHighlight", "shopReason", "outcome", "itemId", "quantity", "revenue", "cost", "combatOutcome",
         "combatReplay", "level7Replay", "dungeonReplay",
         "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
@@ -1316,6 +1324,12 @@ function validateState(value: unknown): asserts value is GameState {
         fail(path+".worldTick","is mandatory for real live dungeon events");
     }
     let suffix = event.type === "day-started" ? "started" : event.type;
+    if(event.type==="hero-buyback"){
+      const prefix="day-"+eventDay+":"+event.adventurerId+":";
+      if(!id.startsWith(prefix))
+        fail(path+".id","must reference the trading hero");
+      suffix=id.slice(prefix.length);
+    }
     if(event.type==="dungeon-live")suffix="dungeon-live:"+event.worldTick;
     if(event.type==="hero-death-signal")
       suffix="hero-death-signal:"+event.worldTick;
@@ -1370,6 +1384,21 @@ function validateState(value: unknown): asserts value is GameState {
         validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
           event.adventurerId as string,eventDay,campaignSeed,floor,heroIds);
       }
+    }
+    if(event.type==="hero-buyback"){
+      allowed.push("itemId","quantity","cost");
+      choice(event.itemId,itemIds,path+".itemId");
+      if(integer(event.quantity,path+".quantity",1,1)!==1)
+        fail(path+".quantity","must represent one actual purchased item");
+      const item=ITEMS.find(entry=>entry.id===event.itemId)!;
+      const price=Math.max(1,Math.min(item.wholesaleCost,item.salePrice-1));
+      if(event.cost!==price)
+        fail(path+".cost","must match the real merchant buyback price");
+      const prefix="day-"+eventDay+":"+event.adventurerId+
+        ":hero-buyback:"+event.itemId+":";
+      const serial=id.startsWith(prefix)?Number(id.slice(prefix.length)):NaN;
+      if(!Number.isSafeInteger(serial)||serial<1)
+        fail(path+".id","must reference a real buyback receipt");
     }
     if (event.type === "sale" || event.type === "healed") {
       allowed.push("itemId", "quantity");

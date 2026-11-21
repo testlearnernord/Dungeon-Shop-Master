@@ -1,5 +1,5 @@
 import { SeededRandom } from "./random.ts";
-import { ECONOMY, ITEMS } from "./economy.ts";
+import { ECONOMY, ITEMS,type ItemId } from "./economy.ts";
 import type { WorldEvent } from "./gameState.ts";
 
 export type AdventurerRole = "tank" | "DPS" | "healer";
@@ -26,7 +26,11 @@ export interface AdventurerState {
   readonly health: number;
   readonly gold: number;
   readonly equipment: { readonly weapon: string | null; readonly armor: string | null };
-  readonly inventory: { readonly loot: number; readonly bread: number; readonly healing: number };
+  readonly inventory: { readonly loot: number; readonly bread: number;
+    readonly healing: number;
+    /** Real generated goods owned by this individual; not Galvik's stock. */
+    readonly finds?:Partial<Record<ItemId,number>>;
+  };
   readonly floor: DungeonFloor;
   readonly status: AdventurerStatus;
   readonly shopStayDays: number;
