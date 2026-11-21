@@ -56,7 +56,9 @@ test("catalog, starter economy and shelf layout are complete, independent and bo
   assert.notEqual(first.slots, second.slots);
   assert.deepEqual(first.slots,[]);
   assert.deepEqual(second.slots,[]);
-  assert.deepEqual(first.bag, { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2, "iron-sword": 0, "leather-vest": 0, coal:0 });
+  assert.deepEqual(first.bag, { "healing-herb": 5, "mana-potion": 3, "iron-ore": 0, bread: 2, "iron-sword": 0, "leather-vest": 0, coal:0 });
+  assert.deepEqual(first.materialStorage,{"iron-ore":0,coal:0});
+  assert.notStrictEqual(first.materialStorage,second.materialStorage);
   assert.equal(first.slots.length,0,"merchandise stays in the bag until a real shelf is built");
 });
 
@@ -105,18 +107,19 @@ test("shelf stock/remove conserves each item and gold, and clears the last unit"
 test("discarding removes exactly one bag unit without refund and is pure and deterministic", () => {
   const state = freeze(createGameState());
   const snapshot = structuredClone(state);
-  const result = discardBag(state, "iron-ore");
+  const result = discardBag(state, "bread");
   assert.match(result.message, /^Discarded/);
-  assert.equal(result.state.shopEconomy.bag["iron-ore"], state.shopEconomy.bag["iron-ore"] - 1);
+  assert.equal(result.state.shopEconomy.bag.bread, state.shopEconomy.bag.bread - 1);
   assert.equal(result.state.shopEconomy.balance, state.shopEconomy.balance);
   assert.equal(result.state.shopEconomy.slots, state.shopEconomy.slots);
   assert.deepEqual(state, snapshot);
-  assert.deepEqual(discardBag(state, "iron-ore"), result);
+  assert.deepEqual(discardBag(state, "bread"), result);
+  assert.strictEqual(discardBag(state,"iron-ore").state,state);
   assert.equal(discardBag(state, "missing" as ItemId).state, state);
   const empty = freeze({
-    ...state, shopEconomy: { ...state.shopEconomy, bag: { ...state.shopEconomy.bag, "iron-ore": 0 } },
+    ...state, shopEconomy: { ...state.shopEconomy, bag: { ...state.shopEconomy.bag, bread: 0 } },
   });
-  assert.equal(discardBag(empty, "iron-ore").state, empty);
+  assert.equal(discardBag(empty, "bread").state, empty);
 });
 
 test("bankrupt merchants cannot receive free healing stock", () => {
