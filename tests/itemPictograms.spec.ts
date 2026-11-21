@@ -11,7 +11,7 @@ test("hotbar renders distinct item pictograms with accessible labels", async ({ 
     const icon = row.locator("svg.item-pictogram use");
     await expect(icon).toHaveAttribute("href", new RegExp(`assets/ui-item-icons\\.svg#${id}$`));
   }
-  const rosterIcon=page.locator("#roster-dialog .roster-item-icon").first();
+  const rosterIcon=page.locator("#roster-dialog .hero-card-item-art").first();
   await page.locator("#open-roster").click();
   await page.locator("#roster-detail-list .roster-card").first().locator("summary").click();
   await expect(rosterIcon.locator("use")).toHaveAttribute("href",/ui-item-icons\.svg#/);
