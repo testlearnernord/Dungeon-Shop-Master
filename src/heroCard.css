@@ -110,6 +110,28 @@
   justify-content:flex-start;gap:10px}
 .hero-card--combat .hero-card-item-art{width:21px;height:21px}
 .hero-card--combat .hero-card-item-count{display:none}
+/* The former LIVE dungeon dt/dd inspector is replaced by the SAME
+ * reusable card. Its outer shell owns alignment, not content styling. */
+#dungeon-hud .dungeon-hero-detail{padding:8px;right:216px;
+  width:min(380px,calc(100vw - 265px));top:var(--dungeon-panels-top,172px);
+  max-height:calc(100dvh - var(--dungeon-panels-top,172px) - 120px);
+  overflow:auto;scrollbar-width:thin}
+#dungeon-hud #dungeon-hero-detail-values{display:block;max-width:100%}
+#dungeon-hud #dungeon-hero-detail-values .hero-card{max-height:none}
+#dungeon-hud .dungeon-hero-detail-header{padding:3px 5px 8px}
+/* The old roster header is now a shared Mini Card. The expanded view is
+ * embedded inside the native details body, preserving permits and actions. */
+#roster-dialog .roster-card>summary{align-items:stretch}
+#roster-dialog .roster-card>summary>.hero-card{flex:1;border:0;
+  box-shadow:none;padding:6px;background:transparent}
+#roster-dialog .roster-card-extended{display:grid;gap:10px}
+#roster-dialog .roster-card-extended>.hero-card{max-width:none;max-height:none}
+#roster-dialog .roster-card .hero-card-portrait{
+  background-repeat:no-repeat!important}
+#roster-dialog .roster-card .hero-card-vital-track{min-height:6px}
+#roster-dialog .roster-card .hero-card-slot{max-width:170px}
+#roster-dialog .roster-card-extended>.roster-known-report{
+  font-size:11px;color:#baa78b}
 /* Expanded global inspection is non-modal: the world never pauses and the
  * player can still inspect fights and shop guests. Click X to dismiss. */
 #world-hero-card{position:fixed;right:16px;top:84px;width:min(420px,calc(100vw - 24px));
