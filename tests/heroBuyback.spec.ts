@@ -21,7 +21,7 @@ test("returning adventurer sells one real find to Galvik, saved with a paid expe
       bagOre:state.shopEconomy.bag["iron-ore"]};
   });
   await page.reload();
-  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await expect(page.locator("#save-status")).toHaveText(/Continued saved Day 1\./);
   const trigger=page.locator("#open-hero-offers");
   await expect(trigger).toContainText("Hero loot");
   await trigger.click();
