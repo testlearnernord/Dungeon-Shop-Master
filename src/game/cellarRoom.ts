@@ -1,7 +1,10 @@
 import {createLevel5Room,isLevel5Air,isValidLevel5Room,
   type Level5Room,type RoomCell} from "./level5Room.ts";
 import {furnitureBounds} from "./furnitureRegistry.ts";
-import {CELLAR_FLOOR_Y,CELLAR_ORIGIN_Z} from "./cellarGeometry.ts";
+/** Render-independent world mapping shared by mining, furniture and visuals. */
+export const CELLAR_ORIGIN_Z=-27;
+export const CELLAR_FLOOR_Y=-4.4;
+export const CELLAR_ENTRY_X=-.85;
 
 /** A second physical room, but the SAME authoritative excavation rules,
  * cell coordinates, wall-face generator, blueprint validator and world clock.
@@ -53,4 +56,3 @@ export function cellarChestProblem(
     return "Keep the cellar staircase landing clear.";
   return null;
 }
-export {CELLAR_FLOOR_Y};

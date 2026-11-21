@@ -5,7 +5,7 @@ import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameStore} from "./gameStore.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
-import {CELLAR_FLOOR_Y} from "./cellarGeometry.ts";
+import {CELLAR_FLOOR_Y} from "./cellarRoom.ts";
 
 /** One ordinary saved fixture through the shared furniture registry and P
  * editor. No second placement controller or parallel inventory. */

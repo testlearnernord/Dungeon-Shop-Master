@@ -6,13 +6,11 @@ import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import type {Mesh} from "@babylonjs/core/Meshes/mesh";
 import type {Scene} from "@babylonjs/core/scene";
 import type {DungeonSurfaces} from "./dungeonSurfaces.ts";
+import {CELLAR_ORIGIN_Z,CELLAR_FLOOR_Y,CELLAR_ENTRY_X} from "./cellarRoom.ts";
 
 /** Existing cave world, not a second scene or simulation. All world coordinates
  * stay physical, allowing the first-person camera to walk down the ramp.
  * Room mining and furniture are handled by their existing registries. */
-export const CELLAR_ORIGIN_Z=-27;
-export const CELLAR_FLOOR_Y=-4.4;
-export const CELLAR_ENTRY_X=-.85;
 const ROCK_SPAN=15;
 export function buildCellarGeometry(scene:Scene,surfaces:DungeonSurfaces):void{
   const cube=(name:string,width:number,height:number,depth:number,

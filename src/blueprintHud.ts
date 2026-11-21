@@ -14,7 +14,7 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import {getCounterPlacement,isShelfId,nextShelfId} from "./game/shopLayout.ts";
 import {turnShopOffset} from "./game/furnitureRegistry.ts";
-import {CELLAR_FLOOR_Y} from "./game/cellarGeometry.ts";
+import {CELLAR_FLOOR_Y} from "./game/cellarRoom.ts";
 import {
   blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,
   type FurnitureId,type FurnitureDraft,

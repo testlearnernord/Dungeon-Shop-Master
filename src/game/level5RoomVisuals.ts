@@ -3,7 +3,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { VertexBuffer } from "@babylonjs/core/Buffers/buffer";
 import { getDungeonSurfaces } from "./dungeonSurfaces.ts";
 import type { Scene } from "@babylonjs/core/scene";
-import {CELLAR_ORIGIN_Z,CELLAR_FLOOR_Y} from "./cellarGeometry.ts";
+import {CELLAR_ORIGIN_Z,CELLAR_FLOOR_Y} from "./cellarRoom.ts";
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { level5RockFaces } from "./level5WallFaces.ts";
 
