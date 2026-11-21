@@ -50,14 +50,21 @@ test("a real lethal dungeon step raises ONE global world-feed warning and opens 
   await expect(alert).not.toContainText(/trap|spikes|floor [0-9]|loot|killer/i);
   await expect(alert).toHaveAttribute("role","alert");
   await expect(page.locator("#world-event-feed .world-feed-toast")).toHaveCount(1);
+  const recording=await page.evaluate(async(heroId)=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const save=await new CampaignStorage().loadGame();
+    return save?.events.find(event=>event.adventurerId===heroId&&
+      (event.dungeonReplay?.outcome==="death"||
+       event.level7Replay?.outcome==="death"))?.id??null;
+  },heroId);
+  expect(recording).toBeTruthy();
   await alert.locator(".world-feed-jump").click();
-  await expect(page.locator("#roster-dialog")).toBeVisible();
-  await expect(page.locator("#roster-filter")).toHaveValue("fallen");
-  const fallen=page.locator("#roster-detail-list [data-hero-id='"+heroId+"']");
-  await expect(fallen).toBeVisible();
-  await expect(fallen).toContainText("Life-signature");
-  await expect(fallen).not.toContainText(/F1 · Exploring|500 loot/i);
-  await page.locator("#close-roster").click();
+  // The fatal TRAP was not a combat, so show its authentic expedition
+  // footage. A genuine Ghoul-fight death jumps directly into the arena.
+  await expect(page.locator("#dungeon-hud")).toBeVisible();
+  await expect(page.locator("#dungeon-replay-select")).toHaveValue(recording!);
+  await expect(page.locator("#dungeon-playback-controls")).toBeVisible();
+  await page.locator("#close-dungeon").click();
   await expect(alert).toHaveCount(0);
   await page.reload();
   await expect(alert).toBeVisible();
