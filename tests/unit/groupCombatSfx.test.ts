@@ -91,3 +91,11 @@ test("Troll grapples, throws, defenses and landing play authentic action cues",(
   assert.deepEqual(ids(cursor,cues,.5),["troll-impact","hero-hurt"]);
   assert.deepEqual(ids(cursor,cues,.6),["dodge"]);
 });
+
+test("committed lava contact triggers the existing environment sample once",()=>{
+  const cues=[c(.1,"hero","lava",undefined,12)];
+  const cursor=new GroupCombatSoundCursor(actors,0);
+  assert.deepEqual(ids(cursor,cues,.1),["lava-burn"]);
+  assert.deepEqual(ids(cursor,cues,.1),[],
+    "repaint must not replay a burn");
+});
