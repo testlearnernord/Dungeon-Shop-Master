@@ -1,4 +1,5 @@
 import type {GameStore} from "./game/gameStore.ts";
+import type {AdventurerState} from "./game/adventurers.ts";
 import {liveHeroCard,type HeroCardView} from "./game/heroCardView.ts";
 import {renderHeroCard} from "./heroCard.ts";
 
@@ -24,7 +25,7 @@ export class WorldHeroCards {
   private readonly mini=document.createElement("aside");
   private current:string|null=null;
   private snapshot:HeroCardView|null=null;
-  private lastRoster:typeof this.store.state.adventurers|null=null;
+  private lastRoster:readonly AdventurerState[]|null=null;
   constructor(private readonly store:GameStore){
     currentHeroCards=this;
     this.host.id="world-hero-card";
