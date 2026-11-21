@@ -64,11 +64,11 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   const liveCard=page.locator('#roster-detail-list [data-hero-id="'+ids[2]+'"]');
   await expect(liveCard.locator("summary")).toContainText("Lv 1");
   await expect(liveCard.locator("summary")).toContainText("Floor 1");
-  await expect(liveCard.locator(".roster-hp")).toHaveAttribute("aria-valuenow",/\d+/);
+  await expect(liveCard.locator("summary .hero-card-vital-track")).toHaveAttribute("aria-valuenow",/\d+/);
   await liveCard.locator("summary").click();
-  await expect(liveCard.locator(".roster-card-extended")).toContainText("LIVE · exploring · Floor 1");
-  await expect(liveCard.locator(".roster-card-extended")).toContainText("Recovered goods");
-  await expect(liveCard.locator(".roster-card-extended")).toContainText("iron-ore ×1");
+  await expect(liveCard.locator(".roster-card-extended .hero-card")).toHaveAttribute("data-source","live");
+  await expect(liveCard.locator(".roster-card-extended")).toContainText("CARRIED GOODS");
+  await expect(liveCard.locator(".roster-card-extended .hero-card-item[aria-label='Iron Ore ×1']")).toHaveCount(1);
   await page.locator("#close-roster").click();
   await page.locator("#open-dungeon").click();
   await expect(page.locator("#dungeon-floor-select")).toHaveValue("1");
@@ -226,12 +226,9 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   await locator.selectOption(ids[2]);
   await expect(locator).toHaveValue(ids[2]);
   await expect(page.locator("#dungeon-hero-detail")).toBeVisible();
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText(
-    "Recovered goods");
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText(
-    "Iron Ore ×1");
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText(
-    "Coal ×2");
+  await expect(page.locator("#dungeon-hero-detail-values .hero-card")).toHaveAttribute("data-source","live");
+  await expect(page.locator("#dungeon-hero-detail-values .hero-card-item[aria-label='Iron Ore ×1']")).toHaveCount(1);
+  await expect(page.locator("#dungeon-hero-detail-values .hero-card-item[aria-label='Coal ×2']")).toHaveCount(1);
   const cameraAfter=await mapFocus();
   expect(cameraAfter.target.x).toBeCloseTo(third.x,2);
   expect(cameraAfter.target.z).toBeCloseTo(third.z,2);
@@ -313,12 +310,12 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
       .liveFloorHeroClickPoint(heroId),ids[2]);
   await page.locator("#renderCanvas").click({position:clickPoint});
   await expect(page.locator("#dungeon-hero-detail")).toBeVisible();
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Gold");
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("No committed plan");
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Party");
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Current activity");
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Other heroes seen");
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Visible monsters");
+  const inspected=page.locator("#dungeon-hero-detail-values .hero-card");
+  await expect(inspected.locator(".hero-card-gold-icon")).toBeVisible();
+  await expect(inspected).toContainText("CURRENT ACTIVITY");
+  await expect(inspected).toContainText("Next two steps");
+  await expect(inspected).toContainText("visible monsters");
+  await expect(inspected).toContainText("heroes seen");
   await expect(page.locator("#dungeon-minimap-heading")).toContainText("Personal Fog of War");
   const inspectFog=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectLiveFloorFog());
