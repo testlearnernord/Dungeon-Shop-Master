@@ -8,7 +8,7 @@ Prior cleanup legitimately removed two retired night-only projections, but name-
 
 ## Tool contract
 
-Run `npm run audit:modules -- --json` locally or inspect the **Build and unit tests** GitHub Actions job log (the same command is run after unit tests). It reads `index.html` for production TypeScript entrypoints and scans all `src/**/*.ts(x)` plus `tests/**/*.ts(x)` using the TypeScript compiler parser already installed for the project. It records import/export declarations, type imports and **literal** `import()` calls; then recursively follows local imports using the same source-path candidates used by the game.
+Run `npm run audit:modules -- --json` locally or inspect the **Build and unit tests** GitHub Actions job log (the same command is run after unit tests). It reads `index.html` for production TypeScript entrypoints and scans all `src/**/*.ts(x)` plus `tests/**/*.ts(x)` using a small local, comment-aware token scanner. **TypeScript 7.0 no longer provides its old JavaScript Compiler API**, so the tool intentionally avoids a new compiler-version dependency; this is a conservative text-level audit, not an AST-verified result. It records import/export declarations, type imports and **literal** `import()` calls; then recursively follows local imports using the same source-path candidates used by the game.
 
 The JSON intentionally distinguishes:
 
@@ -20,13 +20,13 @@ The JSON intentionally distinguishes:
 | `unknownImports` | Non-literal dynamic imports or type imports, with file and source line | Manually trace; the graph cannot resolve computed paths |
 | `unresolvedSourceImports` | A relative TypeScript-looking import could not be found in scanned TS/TSX paths | Investigate; TypeScript/Vite build is still the source of truth for resolving actual imports |
 
-CSS, GLB, MP3, WAV, JSON and other asset imports are intentionally not classified as TypeScript modules. No data is uploaded; the script reads repo files and prints a report. The graph does **not** alter source, generated assets, world events, replay, combat, HUDs, sound or runtime memory.
+CSS, GLB, MP3, WAV, JSON and other asset imports are intentionally not classified as TypeScript modules. No data is uploaded; the script reads repo files and prints a report. The graph does **not** alter source, generated assets, world events, replay, combat, HUDs, sound or runtime memory. **Do not treat regex/token scanner reports as a complete call graph:** complex template interpolations and unusual syntax must be manually examined before claiming a module is dead.
 
 ## Test and acceptance
 
 - The new `tests/unit/moduleGraphAudit.test.ts` fixtures verify static, type and literal lazy import reachability, test-only separation, and explicit computed/missing-import warnings.
 - CI still requires **TypeScript/Vite build**, **all unit tests** and **both independent browser smoke shards**. Graph reporting is an additional quick read-only step in the existing build job; candidate lists do not block builds or trigger deletion.
-- We tested the fixture tool against Node 22 and the TypeScript parser in isolation before opening this PR. GitHub's clean-checkout CI is the authoritative integration result.
+- We tested the fixture tool against Node 22 with synthetic repos. The first GitHub CI showed the TypeScript 7.0 Compiler API is unavailable; C2 now uses a local, comment-aware lexer. The full clean-checkout CI rerun is the authoritative integration result.
 - The job's report can guide C3's separately scoped module removals. No hardcoded candidate list or unsupported FPS/storage claim is included in this document because results should be read from the actual tested commit.
 
 ## Protected boundaries
