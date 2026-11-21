@@ -1,6 +1,6 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
 import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
-import { ECONOMY, ITEMS,createEmptyShelfSlots } from "./economy.ts";
+import { ECONOMY, ITEMS,createEmptyShelfSlots,isMaterial,SHELF_GOODS,type MaterialItemId } from "./economy.ts";
 import {
   SIMULATION_VERSION, type GameState, type EarlyDungeonFloorWorld,
 } from "./gameState.ts";
@@ -1143,14 +1143,20 @@ function validateState(value: unknown): asserts value is GameState {
   const slotDefinitions=parsedShopLayout.shelves.flatMap(shelf=>
     createEmptyShelfSlots(shelf.id));
   const economy = object(state.shopEconomy, "payload.shopEconomy", [
-    "balance", "bag", "slots", "dailySales",
+    "balance", "bag", "materialStorage", "slots", "dailySales",
   ]);
+  const reserve=object(economy.materialStorage,"payload.shopEconomy.materialStorage",
+    ["iron-ore","coal"]);
+  for(const id of ["iron-ore","coal"] as const)
+    integer(reserve[id],"payload.shopEconomy.materialStorage."+id,0);
   integer(economy.balance, "payload.shopEconomy.balance");
   const permittedItems = itemIds;
   const bag = object(economy.bag, "payload.shopEconomy.bag", permittedItems);
   let bagTotal = 0;
   for (const id of permittedItems) bagTotal += integer(bag[id], `payload.shopEconomy.bag.${id}`, 0, ECONOMY.bagCapacity);
   if (bagTotal > ECONOMY.bagCapacity) fail("payload.shopEconomy.bag", "exceeds bag capacity");
+  if(bag["iron-ore"]!==0||bag.coal!==0)
+    fail("payload.shopEconomy.bag","raw materials belong in materialStorage");
   const slots = array(economy.slots, "payload.shopEconomy.slots");
   if (slots.length !== slotDefinitions.length)
     fail("payload.shopEconomy.slots","must match four slots per placed shelf");
@@ -1166,7 +1172,7 @@ function validateState(value: unknown): asserts value is GameState {
     }
     if (slot.capacity !== ECONOMY.slotCapacity) fail(`${path}.capacity`, "is incompatible");
     const quantity = integer(slot.quantity, `${path}.quantity`, 0, ECONOMY.slotCapacity);
-    choice(slot.itemId, [null, ...permittedItems], `${path}.itemId`);
+    choice(slot.itemId, [null, ...SHELF_GOODS.map(item=>item.id)], `${path}.itemId`);
     if ((quantity === 0) !== (slot.itemId === null)) fail(path, "must have an item exactly when stocked");
   });
   {
@@ -1538,6 +1544,43 @@ export function serializeSave(state:GameState):string{
   } satisfies SaveEnvelope);
 }
 
+/** Upgrade only the immediately preceding v25 campaigns. Their Ore/Coal
+ * still occupied the bag or shelf, before workshop storage existed. Move
+ * those exact saved quantities once, never duplicate, lose or generate goods.
+ * Every unrelated field is subsequently checked by the strict v26 validator. */
+function migrateV25Materials(raw:unknown):GameState{
+  const old=object(raw,"payload",[
+    "day","worldClock","shopRequests","shopTraffic","liveDungeon",
+    "simulationVersion","events","savedReplayIds","adventurers","shopEconomy",
+    "dungeonFloors","population","level5Room","cellarRoom","shopLayout",
+    "bedroomFurniture","rosterBoard","wallPortrait","shopCarts","shopDebts",
+    "rngState","seed","level7World","earlyDungeonWorlds","dungeonParties",
+  ],["level6","level7","expeditionArchive","dailyReport"]);
+  // v25 saves have no workshop reserve: accepting one here could duplicate stock.
+  const economy=object(old.shopEconomy,"payload.shopEconomy",
+    ["balance","bag","slots","dailySales"]);
+  const bag=object(economy.bag,"payload.shopEconomy.bag",itemIds);
+  const store:Record<MaterialItemId,number>={
+    "iron-ore":integer(bag["iron-ore"],"payload.shopEconomy.bag.iron-ore",0,ECONOMY.bagCapacity),
+    coal:integer(bag.coal,"payload.shopEconomy.bag.coal",0,ECONOMY.bagCapacity),
+  };
+  const slots=array(economy.slots,"payload.shopEconomy.slots").map((value,i)=>{
+    const slot=object(value,"payload.shopEconomy.slots["+i+"]",
+      ["id","shelfId","index","itemId","quantity","capacity"]);
+    const id=slot.itemId;
+    if(id!=="coal"&&id!=="iron-ore")return slot;
+    const quantity=integer(slot.quantity,
+      "payload.shopEconomy.slots["+i+"].quantity",1,ECONOMY.slotCapacity);
+    if(store[id]>Number.MAX_SAFE_INTEGER-quantity)
+      fail("payload.shopEconomy.materialStorage","would overflow");
+    store[id]+=quantity;
+    return {...slot,itemId:null,quantity:0};
+  });
+  return {...old,simulationVersion:SIMULATION_VERSION,
+    shopEconomy:{...economy,bag:{...bag,"iron-ore":0,coal:0},
+      materialStorage:store,slots}} as unknown as GameState;
+}
+
 export function parseSave(text: string): GameState {
   let value: unknown;
   try {
@@ -1547,11 +1590,17 @@ export function parseSave(text: string): GameState {
   }
   const envelope = object(value, "envelope", ["schemaVersion", "simulationVersion", "savedAt", "payload"]);
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
-  if (envelope.simulationVersion !== SIMULATION_VERSION)
-    fail("simulationVersion", "is incompatible; no migrations are available");
+  if (envelope.simulationVersion !== SIMULATION_VERSION&&
+      envelope.simulationVersion !== 25)
+    fail("simulationVersion", "is incompatible; only the previous v25 campaign can be migrated");
   if (!textTimestamp(envelope.savedAt)) fail("savedAt", "must be an ISO UTC timestamp");
-  validateState(envelope.payload);
-  return envelope.payload;
+  if(!envelope.payload||typeof envelope.payload!=="object"||
+     (envelope.payload as RecordValue).simulationVersion!==envelope.simulationVersion)
+    fail("payload.simulationVersion","does not match the envelope");
+  const state=envelope.simulationVersion===25
+    ?migrateV25Materials(envelope.payload):envelope.payload as GameState;
+  validateState(state);
+  return state;
 }
 
 function textTimestamp(value: unknown): boolean {
