@@ -70,6 +70,15 @@
   text-align:center;letter-spacing:.17em;font:700 9px system-ui,sans-serif;
   color:#d5bb8a;
 }
+  .fishing-fish-direction{
+  position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  width:max-content;max-width:calc(100vw - 30px);padding:4px 10px;
+  border:1px solid #62a3a494;border-radius:4px;
+  color:#8be1dc;background:#091f23d9;
+  font:700 10px system-ui,sans-serif;letter-spacing:.06em;
+  text-align:center;box-shadow:0 0 12px #07181dbb;
+}
+.fishing-fish-direction[hidden]{display:none!important}
 .fishing-aim-ui[data-grade="perfect"] .fishing-aim-ornament{
   border-color:#75dfb8;box-shadow:0 0 18px #55e9c177;
 }
