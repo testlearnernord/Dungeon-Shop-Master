@@ -8,12 +8,12 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Implemented on the audited main baseline
 
-Gameplay implementation last source-verified through merged **PR #241** (21 November 2026); Phase D1 artifact verification was merged in #242 and its Pages deploy passed; D2 closeout documentation remains in draft #243. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
+Core V.003 systems were audited through PR #241 (21 November 2026). The subsequent merged V.004 cellar, fishing and LIVE cashier additions are listed below. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
 
 | Area | Currently implemented |
 | --- | --- |
 | Physical shop | First-person movement, independently built four-slot shelves, real bag/shelf inventory, wholesale purchases, excavation and furniture placement |
-| Customers and economy | Saved physical navigation, shelf claims, unpaid carts, a staffed two-stage manual checkout, real paid receipts, credit/debt, restock requests, walkouts and finite checkout queue |
+| Customers and economy | Saved physical navigation, shelf claims, unpaid carts, a LIVE two-stage cashier QTE with compact circular timing HUD, real paid receipts, credit/debt, restock requests, walkouts and finite checkout queue |
 | Persistent world | One ordered 50-ms saved world-tick scheduler; shop, active dungeon expeditions and scheduled fights advance on that shared clock. Only the bed ends a shop day |
 | Heroes and exploration | Individual HP, equipment, purchases and intentions; seeded connected exploration on Floors **1–4 and 7**, persistent site generation/refresh and voluntary Temporary Parties |
 | Combat | Deterministic **60-Hz** combat; ordinary multi-hero/multi-Ghoul encounters; authentic **Floor 6 Cave Troll** boss abilities including grab/throw and lava. Original boss presentation is the quality reference |
@@ -23,9 +23,13 @@ Gameplay implementation last source-verified through merged **PR #241** (21 Nove
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
 | Persistence | Strict version-25 campaigns now include the cellar door, excavation and movable chest; older alpha saves need separate migration work |
 
-**V.004 cellar baseline (merged PR #252):** a fixed interactive portrait in Galvik's bedroom conceals a sloping staircase to the lower cave. The lower room uses the existing mineable 1m cave cells, P blueprint system and shared furniture registry for a movable chest. The pond/fishing implementation is in the follow-up branch, not yet on main.
+**V.004 cellar (merged PRs #252 and #254):** Galvik's fixed fiancée portrait opens a secret, physically traversable stairway to the cellar. The widened corridor and ramp support normal first-person descent, ascent and off-centre approaches. Cellar mining uses the same rock cells and U excavation tool; a chest uses the same P furniture blueprint registry and save state.
 
-**V.004 pond PR (in review):** excavate six connected cells on the cellar's left wall with U to uncover the pool; use E/click on the water to enter a three-counter pointer-lock mouse-flick game. Five provisional synth sounds use GameSfx volume/mute controls. Successful catches are tracked as a persistent trophy count only; no fish goods, economy, cooking or alchemy have been invented yet. The world clock continues during fishing.\n\n**Partially implemented / not yet released:** integrated deeper dungeon progression and Floor 8–10 content, a single physical cursed portal replacing the numbered-floor shop access, the individual Floor-10 pass, full ten-day gameplay/pacing acceptance and visual/audio acceptance on real hardware. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
+**V.004 pond and fishing (merged PRs #253 and #256):** excavate six connected cells on the cellar's left wall with U to uncover the water. E/click opens a LIVE first-person fishing interaction with a visible rod, 3D line and bobber, a small bottom HUD and crosshair-guided mouse flicks. Three accurate pulls win a persistent trophy count (not saleable fish goods); the five original synth sounds use GameSfx volume/mute settings. The world clock runs during fishing.
+
+**V.004 cashier (merged PR #255):** the original two accurate stamps, receipts and tip/payment rules remain unchanged. Checkout is now a non-modal LIVE HUD showing a brass timing ring at the bottom of the screen, while NPCs and the common world clock continue running. Existing queue positions are preserved and advancing shoppers prefer clear, direct steps rather than an outward route detour.
+
+**Partially implemented / not yet released:** integrated deeper dungeon progression and Floor 8–10 content, a single physical cursed portal replacing the numbered-floor shop access, the individual Floor-10 pass, full ten-day gameplay/pacing acceptance and visual/audio acceptance on real hardware. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
 
 ## Start playing
 
@@ -46,9 +50,10 @@ Gameplay implementation last source-verified through merged **PR #241** (21 Nove
 | Shift + left / right click | Fill / empty reachable slot, respecting stock rules |
 | B / F | Open wholesale / select urgent restock item |
 | E / hold E at bed | Interact / end the day |
-| N | Build a shelf; Galvik's portrait is a fixed secret door on the V.004 branch |
+| N | Build a shelf; Galvik's portrait is now a fixed secret door |
 | P / R / Q while placing | Move furniture / rotate |
-| U / Shift+U | Mine exposed rock / unlock another expansion tier, including in the cellar |\n| E at revealed cellar pond | Cast a line; perform three quick accurate mouse flicks to catch a fish |
+| U / Shift+U | Mine exposed rock / unlock another expansion tier, including in the cellar |
+| E at revealed cellar pond | Cast a line; perform three quick accurate mouse flicks to catch a fish |
 | R outside placement | Adventurer roster |
 | G | Dungeon spectator, LIVE or historical |
 | V | Developer Combat Lab and boss/training tools |

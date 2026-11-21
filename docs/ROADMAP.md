@@ -52,7 +52,7 @@ See [CLEANUP_AUDIT.md](CLEANUP_AUDIT.md) for the source-verified A1 baseline and
 
 - **PARTIAL:** demonstrate purchased weapon/armor/HP supply effects in saved combat and resource decisions; ensure renewable farming remains finite and non-exploitable.
 - **PARTIAL:** improve comprehensibility of actual last-known Board HP/equipment/intent, death warnings, source provenance, multi-hero party status and event jump links without exposing secret state.
-- **OPEN:** additional shop inventory, broader item crafting, cellar/forge/pond and extra hero wearable rigs require separate decisions; not automatic V.003 promises.
+- **OPEN:** additional shop inventory, forge and crafting economy, advanced pond resources and extra hero wearable rigs require separate decisions; the basic cellar and pond are already implemented.
 
 ## V.003 release gates
 
@@ -66,15 +66,15 @@ See [CLEANUP_AUDIT.md](CLEANUP_AUDIT.md) for the source-verified A1 baseline and
 
 ## Explicit non-goals and decisions still open
 
-Hunger, arbitrary three-phase daily engine, fake replay video and automatic endless archives are **REJECTED**. Full 100-floor release, protagonist transfer/curse ending, forge/pond and big new economy systems are **DEFERRED or OPEN**. Do not convert speculative lore to locked canon.
+Hunger, arbitrary three-phase daily engine, fake replay video and automatic endless archives are **REJECTED**. Full 100-floor release, protagonist transfer/curse ending, forge, advanced fishing economy and big new economy systems are **DEFERRED or OPEN**. Do not convert speculative lore to locked canon.
 
 **Delivery discipline:** keep each feature/cleanup PR cohesive; inspect actual code and the [architecture](ARCHITECTURE.md), [Game Bible](GAME_BIBLE.md) and [AGENTS.md](../AGENTS.md). Update status in place, run the relevant checks, state what is and is not proven, then wait for explicit merge approval.
 
-## V.004 concept prototype (unmerged branch)
+## V.004 walkable cellar (merged PRs #252 and #254)
 
-The V.004 **walkable cellar** is being prototyped independently of outstanding V.003 release gates. The proposed change makes Galvik's beloved portrait a fixed hinged doorway in his rear bedroom wall and extends the same Babylon shop scene with a sloping stair and lower cave. Cellar excavation reuses `excavateLevel5Cell`, `level5RockFaces` and `createLevel5RoomVisuals`; the first chest reuses the canonical furniture registry and P blueprint/commit. Its door, room cells and furniture transform persist on the same campaign state/world clock (strict save version 25). No new economics, fishing, pond or dungeon simulation is included. Playwright and human in-browser staircase/collision checks remain a release gate.
+The fixed fiancée portrait swings aside to reveal a widened, physically walkable staircase and the lower cellar in the existing Babylon shop scene. The stair/doorway regression now covers real first-person descent, ascent and off-centre entry (#254). Cellar excavation reuses `excavateLevel5Cell`, `level5RockFaces` and `createLevel5RoomVisuals`; furniture reuses P and the canonical registry. Door, mined cells and chest placement persist under the existing strict save version 25. Manual real-device visual acceptance remains open.
 
-## V.004 pond and fishing (PR #253; draft, not released)
+## V.004 pond and fishing (merged PRs #253 and #256)
 
 A sealed two-by-three basin occupies connected left-side cellar excavation
 cells `x=-8,-9`, `z=-1..1` in room-local coordinates. The existing U pickaxe
@@ -95,3 +95,21 @@ independent fishing economy yet.
 - Mute/volume honored, no duplicate sound engine
 - Saved fish count survives strict load; shop economy stays untouched
 - Browser smoke, manual pointer-lock feel and actual audio check
+
+## V.004 LIVE cashier and first-person fishing presentation (merged PRs #255–256)
+
+- **Cashier:** gameplay and two-stamp timing tolerances unchanged. The former DOM
+  modal no longer stops the central 50-ms world scheduler or Babylon rendering.
+  A compact circular brass timing instrument and receipt panel remain docked
+  along the bottom edge, with live customers still visible.
+- **Queue:** already-seated checkout customers retain their actual standing
+  transforms across unrelated cart updates. When they advance, a clear direct
+  queue-lane segment is preferred over an outward A* detour. Crowd collision,
+  cart ownership and service reservation remain canonical.
+- **Fishing:** original cast, bite, three accurate mouse flicks, timeout/misses,
+  sound cues and saved trophy counter are unchanged. A camera-mounted rod, live
+  world-space line, bobber and ripple now render in the original shop scene.
+  The crosshair displays target pull direction and real cumulative mouse delta,
+  while the UI occupies only a small lower-screen strip.
+- **CI:** build, unit, and both browser smoke shards passed before merge for
+  the feature branches. Real-hardware artistic/audio acceptance is still open.
