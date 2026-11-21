@@ -25,6 +25,7 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
+import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
   orbitDungeonMap,panDungeonMap,zoomDungeonMap,
   type DungeonMapPose} from "./dungeonMapCamera.ts";
@@ -507,7 +508,7 @@ export class DungeonViewer {
     const roomStone=makeMat("dungeon-room-floor",CRYPT_STONE);
     const gold=makeMat("dungeon-gold","#d8a548",true);
     const spike=makeMat("dungeon-spikes","#b75a4b",true);
-    const monster=makeMat("dungeon-monster",MONSTER_COLOR,true);
+    const ghoulIcon=createGhoulMapIconMaterial(scene);
     const underlay=MeshBuilder.CreateBox("dungeon-foundation",{
       width:layout.width*TILE_SIZE,height:0.35,depth:layout.height*TILE_SIZE,
     },scene);
@@ -571,6 +572,12 @@ export class DungeonViewer {
           {width:1.25,height:0.85,depth:0.9},scene);
         chest.position.set(pos.x,0.52,pos.z);
         chest.material=gold;
+        chest.metadata={spectatorFeatureId:feature.id,
+          spectatorFeatureKind:"treasure"};
+        const lid=MeshBuilder.CreateBox("dungeon-chest-lid-"+feature.id,
+          {width:1.29,height:.25,depth:1.02},scene);
+        lid.parent=chest;lid.position.y=.58;lid.material=gold;
+        lid.isPickable=false;
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
           kind:feature.kind,mesh:chest});
       } else if(feature.kind==="trap"){
@@ -579,17 +586,24 @@ export class DungeonViewer {
         marker.position.set(pos.x,0.18,pos.z);
         marker.rotation.y=Math.PI/4;
         marker.material=spike;
+        marker.metadata={spectatorFeatureId:feature.id,
+          spectatorFeatureKind:"trap"};
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
           kind:feature.kind,mesh:marker});
       } else {
-        // Development-map marker only; the ACTUAL encounter instantiates
-        // the animated skinned Ghoul in DungeonReplayScene.
-        const enemy=MeshBuilder.CreateCylinder("dungeon-monster-"+feature.id,
-          {diameterTop:.4,diameterBottom:.95,height:.36,tessellation:6},scene);
-        enemy.position.set(pos.x,.22,pos.z);
-        enemy.material=monster;
-        enemy.metadata={kind:"spawn-marker",subtype:feature.subtype,
-          label:"Ghoul presence (map marker, not fighter model)"};
+        // Detailed illustrated Ghoul icon shares one tiny GPU texture.
+        // Neutral map deliberately never spawns an animated combat monster:
+        // the existing opt-in combat arena still owns the actual actor rig.
+        const enemy=MeshBuilder.CreatePlane("dungeon-monster-"+feature.id,
+          {width:1.75,height:1.75},scene);
+        enemy.rotation.x=-Math.PI/2;
+        enemy.position.set(pos.x,.28,pos.z);
+        enemy.material=ghoulIcon;
+        enemy.isPickable=true;
+        enemy.checkCollisions=false;
+        enemy.metadata={spectatorFeatureId:feature.id,
+          spectatorFeatureKind:"monster",subtype:feature.subtype,
+          label:"Ghoul spawn · illustrated map icon"};
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
           kind:feature.kind,mesh:enemy});
       }
