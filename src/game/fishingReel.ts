@@ -74,7 +74,7 @@ export function stepFishingReel(
     barVelocity=Math.min(0,barVelocity)*.18;
   }
   const inside=Math.abs(fishY-barY)<=REEL_BAR_HALF_HEIGHT+.025;
-  const progress=clamp(state.progress+dt*(inside?.235:-.125),0,1);
+  const progress=clamp(state.progress+dt*(inside ? .235 : -.125),0,1);
   const breakoutIn=state.breakoutIn-dt;
   const next:FishingReel={...state,fishY,fishGoal,barY,barVelocity,
     targetChangesIn,breakoutIn,progress,elapsed:state.elapsed+dt};
@@ -89,7 +89,7 @@ export function resumeFishingReel(
   state:FishingReel,successful:boolean,random:()=>number,
 ):FishingReel{
   return {...state,
-    progress:clamp(state.progress+(successful?.12:-.20),.08,.94),
+    progress:clamp(state.progress+(successful ? .12 : -.20),.08,.94),
     breakoutIn:nextBreakoutDelay(random),
     targetChangesIn:.28+sample(random)*.26,
     lastButton:null,

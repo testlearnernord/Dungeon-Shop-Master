@@ -161,6 +161,9 @@ export function setupFishingRodVisuals(scene:Scene,camera:UniversalCamera){
       bobber.setEnabled(active&&cast);
       ring.setEnabled(active&&cast);
     },
+    trackFish(height:number){
+      hookedFish.track(height);
+    },
     hook(target:ScreenPull){
       hookedFish.hook(target);
       impact=1.15;
