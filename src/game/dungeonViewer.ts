@@ -445,6 +445,17 @@ export class DungeonViewer {
     return this.active&&this.startFloor(view.floor,heroId);
   }
 
+  /** A global feed click opens precisely the active recorded combat
+   * authority. It never spawns a new Ghoul or re-simulates a completed fight. */
+  openLiveEncounter(fightId:string):boolean {
+    const encounter=this.store.state.liveDungeon.combats.find(f=>f.id===fightId);
+    if(!encounter)return false;
+    if(!this.active)this.open();
+    if(!this.active||!this.startFloor(encounter.encounter.floor))return false;
+    this.watchFloorCombat(fightId);
+    return this.liveArena.isActive&&this.liveArena.observedFightId===fightId;
+  }
+
   /** Open exactly one already committed tape and seek solely its LOCAL
    * playback clock. This is deliberately independent of shared world time. */
   openReplayAt(id:string,seconds=0):boolean {
