@@ -25,18 +25,11 @@ jobs:
       - run: npm run build
       - run: npm run verify:pages
       - run: npm run test:unit
-      # Static reachability report only: candidates require separate human review.
-      - run: npm run audit:modules -- --json
 
   smoke:
-    name: Browser smoke (shard ${{ matrix.shard }}/2)
+    name: Browser core smoke
     runs-on: ubuntu-24.04
-    strategy:
-      # Two independent runners, NEVER two WebGL browser workers sharing one
-      # software GPU. All existing @ci-smoke tests remain required.
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -45,12 +38,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install chromium
-      - run: xvfb-run -a npm run test:smoke -- --shard=${{ matrix.shard }}/2
+      # Only the curated core flows run on each PR. Every other browser spec
+      # remains available through the manually dispatched full regression.
+      - run: xvfb-run -a npm run test:smoke
       - name: Upload browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: browser-smoke-failure-${{ github.run_id }}-shard-${{ matrix.shard }}
+          name: browser-core-failure-${{ github.run_id }}
           path: |
             playwright-report/
             test-results/

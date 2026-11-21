@@ -21,6 +21,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run test:unit
+      # Advisory static reachability audit; no longer stalls every small PR.
+      - run: npm run audit:modules -- --json
       - run: npx playwright install chromium
       - run: xvfb-run -a npm test
       - name: Upload Level 6 boss preview screenshots

@@ -70,6 +70,33 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   const third=floorOne.heroes.find(h=>h.id===ids[2])!;
   expect(Math.hypot(first.x-third.x,first.z-third.z)).toBeGreaterThan(1.5);
   expect(floorOne.combatMonsterMeshes).toBe(0);
+  // Check the actual active Babylon camera, not just the pure input math.
+  const camera=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonLayout().camera);
+  const neutralCamera=await camera();
+  await page.locator("#renderCanvas").focus();
+  await page.keyboard.down("w");
+  await expect.poll(async()=>(await camera()).z-neutralCamera.z,
+    {timeout:4000}).toBeGreaterThan(0.25);
+  await page.keyboard.up("w");
+  const afterW=await camera();
+  await page.keyboard.down("s");
+  await expect.poll(async()=>afterW.z-(await camera()).z,
+    {timeout:4000}).toBeGreaterThan(0.25);
+  await page.keyboard.up("s");
+  // Right-mouse drag must rotate the live map without entering pointer lock.
+  const canvas=await page.locator("#renderCanvas").boundingBox();
+  expect(canvas).not.toBeNull();
+  const mx=canvas!.x+canvas!.width*.5,my=canvas!.y+canvas!.height*.5;
+  const beforeOrbit=await camera();
+  await page.mouse.move(mx,my);
+  await page.mouse.down({button:"right"});
+  await page.mouse.move(mx+55,my+20,{steps:5});
+  await page.mouse.up({button:"right"});
+  const afterOrbit=await camera();
+  expect(Math.hypot(afterOrbit.x-beforeOrbit.x,
+    afterOrbit.z-beforeOrbit.z)).toBeGreaterThan(0.25);
+  await page.keyboard.press("r");
   // Click an actual Babylon hero token in screen space. The entire
   // read-only panel must open without writing to GameStore or a fake route.
   const record=()=>page.evaluate(async()=>{
