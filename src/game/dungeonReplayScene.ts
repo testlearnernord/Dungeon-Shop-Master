@@ -27,6 +27,7 @@ import type { GroupPhase } from "./groupCombat.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import type {LiveFloorSpectatorFrame,LiveFloorHero} from "./liveFloorSpectator.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
+import {sameLiveFloorMap} from "./liveFloorSceneDiff.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget}
   from "./dungeonMapCamera.ts";
 import {selectHeroFloorPerception,type HeroFloorPerception}
@@ -67,6 +68,7 @@ export class DungeonReplayScene {
   private readonly floorTravel=new Map<string,{step:CommittedPartyStep;seconds:number;gait:number}>();
   private readonly floorHeadings=new Map<string,number>();
   private selectedFloorHero:string|null=null;
+  private floorPerspectiveDirty=true;
   private liveHeroId:string|null=null;
   private liveFightId:string|null=null;
   private liveTransit:CommittedPartyStep|null=null;
@@ -120,6 +122,7 @@ export class DungeonReplayScene {
     this.floorRouteHints.clear();
     this.floorTravel.clear();this.floorHeadings.clear();
     this.selectedFloorHero=null;
+    this.floorPerspectiveDirty=true;
     this.hero?.root.dispose(false,true);
     this.hero=null;
     for(const model of this.companionHeroes.values())model.root.dispose(false,true);
@@ -362,6 +365,18 @@ export class DungeonReplayScene {
    * No individual fog, AI or combat is allocated in this overview. */
   showLiveFloor(view:LiveFloorSpectatorFrame):void {
     const previous=this.floorFrame;
+    if(previous&&sameLiveFloorMap(previous,view)){
+      // Fight checkpoints still carry fresh HP/frames. Keep the latest saved
+      // projection, but don't rebuild a single map tile, hero model, light,
+      // route arrow or fog texture when no spatial fact has changed.
+      this.floorFrame=view;
+      for(const hero of view.heroes){
+        const model=this.floorModels.get(hero.id);
+        if(model)model.root.metadata.hp=hero.health;
+      }
+      return;
+    }
+    this.floorPerspectiveDirty=true;
     if(!previous||previous.floor!==view.floor){
       this.clearCombatModels();
       this.replay=null;this.timeline=null;this.lastSnapshot=null;
@@ -519,9 +534,8 @@ export class DungeonReplayScene {
       deco.light.setEnabled(true);deco.mesh.setEnabled(true);
     }
     this.poseLiveFloor(0);
-    // Both neutral floor and selected hero perspectives are painted by
-    // the same selection boundary; never redraw omniscient map afterward.
-    this.setSelectedFloorHero(this.selectedFloorHero);
+    // The DungeonViewer applies current selection exactly once after
+    // this geometry update, including a hero who has just left the floor.
   }
 
   /** Only view-layer fog. The player's neutral overview retains all tiles,
@@ -619,7 +633,9 @@ export class DungeonReplayScene {
 
   /** Selection outlines only; never feed presentation choices to the AI. */
   setSelectedFloorHero(heroId:string|null):void {
+    if(this.selectedFloorHero===heroId&&!this.floorPerspectiveDirty)return;
     this.selectedFloorHero=heroId;
+    this.floorPerspectiveDirty=false;
     for(const [id,model] of this.floorModels){
       const active=id===heroId;
       const token=model.root.getChildMeshes().find(mesh=>

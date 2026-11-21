@@ -111,3 +111,24 @@
   creates rewards or launches the 3D stage on its own.
 - Unit and genuine browser coverage assert real rosters, focused Babylon
   camera coordinates and an unchanged persisted 60Hz battle before arena opt-in.
+
+## PR #268 · Combat-only LIVE map redraw elimination
+
+- The full-floor observer now distinguishes **actual floor-scene changes**
+  (hero coordinates, equipment, party, intent, explored cells, site
+  resolutions, active-fight beacons) from **combat-only checkpoints**
+  (HP, 60-Hz actor frames, gold and monotonically advancing clock time).
+- On combat-only updates the current saved floor frame and hero HP metadata
+  are refreshed, but static Babylon tiles, props/lights, route arrows, fog
+  and the 2D minimap are left untouched. The opt-in arena and its current
+  combat frame remain live and authoritative.
+- Hero selection changes and real movement still perform the complete
+  personal visibility and preview redraw. Repeated identical selection
+  no longer paints the same minimap twice.
+- Pure tests prove all invalidating spatial changes are recognized;
+  the existing curated LIVE arena browser smoke instruments the actual
+  2D minimap and asserts that advancing a genuine combat world-clock event
+  produces no redundant floor-map draw calls.
+- This is a **CPU-side render-work reduction**, not a measured end-user
+  FPS claim; runtime benchmarks and the manual full browser pass remain
+  available for acceptance.
