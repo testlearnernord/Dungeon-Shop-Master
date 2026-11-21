@@ -13,6 +13,11 @@ export function inspectHeroCard(view:HeroCardView):boolean{
 export function inspectHeroId(heroId:string):boolean{
   return currentHeroCards?.open(heroId)??false;
 }
+export function hoverHeroId(heroId:string,x:number,y:number):void{
+  currentHeroCards?.showMini(heroId,x,y);
+}
+export function hideHeroHover():void{currentHeroCards?.hideMini();}
+
 
 export class WorldHeroCards {
   private readonly host=document.createElement("aside");
