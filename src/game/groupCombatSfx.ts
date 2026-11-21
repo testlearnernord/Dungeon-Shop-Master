@@ -115,6 +115,8 @@ export class GroupCombatSoundCursor {
         }else if(e.kind==="landing"&&isTroll(actor)){
           add("troll-impact",target?.id??actor!.id);
           if(target)add("hero-hurt",target.id);
+        }else if(e.kind==="lava"){
+          add("lava-burn",actor?.id??e.actorId);
         }else if(e.kind==="escape"&&isTroll(target)){
           add("dodge",actor?.id??e.actorId);
         }else if(e.kind==="death"&&isTroll(actor)){
