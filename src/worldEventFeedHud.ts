@@ -1,28 +1,30 @@
 import type {GameStore} from "./game/gameStore.ts";
 import type {WorldFeedCategory,WorldFeedEntry,WorldFeedTarget}
   from "./game/worldFeedProjection.ts";
-import {initialWorldFeedCritical,projectWorldFeedChanges}
+import {initialWorldFeedCritical,projectWorldFeedChanges,WORLD_FEED_CATEGORIES}
   from "./game/worldFeedProjection.ts";
 
 export type WorldFeedLevel="minimal"|"standard"|"detailed";
 export type WorldFeedSeconds=5|7|10;
-interface FeedSettings {level:WorldFeedLevel;seconds:WorldFeedSeconds}
+interface FeedSettings {level:WorldFeedLevel;seconds:WorldFeedSeconds;enabled:WorldFeedCategory[]}
 const SETTING_KEY="dsm-world-feed-preferences-v1";
 const LOAD_PRESETS:Record<WorldFeedLevel,readonly WorldFeedCategory[]>={
   minimal:["death","boss"],
-  standard:["death","boss","combat","party"],
-  detailed:["death","boss","combat","party","treasure","travel"],
+  standard:["death","boss","combat","party","treasure","trap","depth"],
+  detailed:WORLD_FEED_CATEGORIES,
 };
 const validSeconds=(v:unknown):v is WorldFeedSeconds=>v===5||v===7||v===10;
 function loadSettings():FeedSettings{
   try{
     const raw=JSON.parse(localStorage.getItem(SETTING_KEY)??"null");
-    return {
-      level:raw&&["minimal","standard","detailed"].includes(raw.level)
-        ?raw.level as WorldFeedLevel:"standard",
-      seconds:raw&&validSeconds(raw.seconds)?raw.seconds:7,
-    };
-  }catch{return {level:"standard",seconds:7};}
+    const level:WorldFeedLevel=raw&&
+      ["minimal","standard","detailed"].includes(raw.level)?raw.level:"standard";
+    return {level,seconds:raw&&validSeconds(raw.seconds)?raw.seconds:7,
+      enabled:raw&&Array.isArray(raw.enabled)?
+        WORLD_FEED_CATEGORIES.filter(category=>raw.enabled.includes(category)):
+        [...LOAD_PRESETS[level]]};
+  }catch{return {level:"standard",seconds:7,
+    enabled:[...LOAD_PRESETS.standard]};}
 }
 
 /** One global overlay across shop, LIVE floor and both combat stages.
@@ -72,9 +74,28 @@ export function setupWorldEventFeed(
   duration.value=String(settings.seconds);
   levelLabel.append(level);
   durationLabel.append(duration);
+  const categories=document.createElement("fieldset");
+  categories.className="world-feed-categories";
+  const legend=document.createElement("legend");legend.textContent="Show events";
+  categories.append(legend);
+  const categoryInputs=new Map<WorldFeedCategory,HTMLInputElement>();
+  const titles:Record<WorldFeedCategory,string>={
+    death:"Deaths",boss:"Boss fights",combat:"Combat",party:"Parties",
+    treasure:"Chest loot",trap:"Traps",depth:"Ascend / descend",
+    travel:"Shop returns",
+  };
+  for(const category of WORLD_FEED_CATEGORIES){
+    const label=document.createElement("label");
+    const checkbox=document.createElement("input");
+    checkbox.type="checkbox";checkbox.dataset.category=category;
+    checkbox.checked=settings.enabled.includes(category);
+    checkbox.addEventListener("change",()=>saveSettings());
+    label.append(checkbox,document.createTextNode(titles[category]));
+    categories.append(label);categoryInputs.set(category,checkbox);
+  }
   const help=document.createElement("small");
-  help.textContent="No world clock, AI or combat actions. Click a notice to observe.";
-  panel.append(levelLabel,durationLabel,help);
+  help.textContent="One saved world event source · Click to observe.";
+  panel.append(levelLabel,durationLabel,categories,help);
   footer.append(settingsButton,panel);
   root.append(stack,footer);
   document.body.append(root);
@@ -84,19 +105,25 @@ export function setupWorldEventFeed(
   const seen=new Set<string>();
   const saveSettings=()=>{
     settings={level:level.value as WorldFeedLevel,
-      seconds:Number(duration.value) as WorldFeedSeconds};
+      seconds:Number(duration.value) as WorldFeedSeconds,
+      enabled:WORLD_FEED_CATEGORIES.filter(category=>
+        categoryInputs.get(category)?.checked)};
     try{localStorage.setItem(SETTING_KEY,JSON.stringify(settings));}
     catch{/* Browser storage may be disabled; settings still work this session. */}
     for(const [id,item] of [...active]){
-      if(LOAD_PRESETS[settings.level].includes(
+      if(settings.enabled.includes(
         (item.node.dataset.category??"") as WorldFeedCategory))continue;
       item.clear();active.delete(id);item.node.remove();
     }
-    for(let i=pending.length-1;i>=0;i--)if(!LOAD_PRESETS[settings.level]
-      .includes(pending[i].category))pending.splice(i,1);
+    for(let i=pending.length-1;i>=0;i--)if(!settings.enabled.includes(pending[i].category))pending.splice(i,1);
     drain();
   };
-  level.addEventListener("change",saveSettings);
+  level.addEventListener("change",()=>{
+    for(const category of WORLD_FEED_CATEGORIES)
+      categoryInputs.get(category)!.checked=
+        LOAD_PRESETS[level.value as WorldFeedLevel].includes(category);
+    saveSettings();
+  });
   duration.addEventListener("change",saveSettings);
   settingsButton.addEventListener("click",()=>{
     panel.hidden=!panel.hidden;
