@@ -311,3 +311,22 @@
 - Source data remains the same save-valid strict WorldEvent structure and
   true per-hero world snapshots. No save schema upgrade and no duplicated
   event authority.
+
+## World Echoes · Authentic victories and individual hero progression
+
+- One globally shared World Feed announces a **committed** successful ordinary
+  group fight (single/party), not a hypothetical result or an animation cue.
+  Entries group member tapes by saved day/tick/floor/feature/site generation.
+- Details derive from the exact before/after roster checkpoint: XP earned per
+  participant, physical item finds (including newly equipped Sword/Vest) and
+  actual gold credited. Defeats and still-running fights never claim victory.
+- Clicking a victory jumps to that saved immutable encounter and its first
+  replay frame in the existing 3D spectator arena. Cave Troll victories use
+  their existing recorded boss footage and show XP, loot tokens and gold.
+- Each genuine individual level increase has its own World Echoes entry.
+  Its target is `hero-profile` (hero ID, not a camera coordinate); until the
+  planned global hero tooltip is implemented, it focuses the same hero in the
+  existing Adventurer Board. No shop HUD leak of passive secret dungeon stats.
+- The level-up category can be configured independently in World Echoes
+  settings; old saved settings migrate once without discarding prior toggles.
+  Notifications create no RNG, no new gameplay actor and no save schema.

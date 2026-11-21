@@ -512,6 +512,26 @@ export class DungeonViewer {
     return this.liveArena.isActive&&this.liveArena.observedFightId===fightId;
   }
 
+  /** A won fight in World Echoes opens the actual, immutable saved
+   * encounter at its FIRST recorded frame. Do not simulate it a second time
+   * or open a now-unrelated live fight at the same dungeon location. */
+  openRecordedCombat(eventId:string,featureId:string,siteCycle=0):boolean{
+    const tape=this.availableReplays().find(entry=>entry.id===eventId)?.record;
+    if(!tape)return false;
+    const timeline=buildDungeonPlayback(tape);
+    const segment=timeline.segments.find(item=>item.kind==="combat"&&
+      item.encounter?.featureId===featureId&&
+      (item.encounter.siteCycle??0)===siteCycle&&
+      item.encounter.combat.outcome==="heroes"&&
+      item.encounter.combat.frames.length>0);
+    if(!segment)return false;
+    const start=segment.start+Math.min(.001,(segment.end-segment.start)/2);
+    if(!this.openReplayAt(eventId,start))return false;
+    this.playing=true;
+    this.watchRecordedCombat();
+    return this.liveArena.isActive;
+  }
+
   /** An explicit death notice opens the REAL fatal battle from its first
    * saved frame. Trap-only deaths show the real recorded expedition instead.
    * No dungeon clock, fight state, RNG or hero is ever replay-simulated. */

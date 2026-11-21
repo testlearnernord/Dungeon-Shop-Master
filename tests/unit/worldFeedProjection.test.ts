@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createGameState} from "../../src/game/gameState.ts";
+import {createGameState,type WorldEvent} from "../../src/game/gameState.ts";
 import {initialWorldFeedCritical,projectWorldFeedChanges}
   from "../../src/game/worldFeedProjection.ts";
 import type {LiveDungeonCombat} from "../../src/game/liveDungeonRuntime.ts";
@@ -156,4 +156,96 @@ test("only ACTUAL floor crossing announces ascend/descend, never route intent",(
   assert.equal(feed[0].category,"depth");
   assert.match(feed[0].detail,/Floor 2 → 3/);
   assert.equal(feed[0].title,"ADVENTURER DESCENDED");
+});
+
+
+test("one authentic winning group combat reports exact per-hero XP, items and gold",()=>{
+  const seed=createGameState(7351),[a,b]=seed.adventurers;
+  const before={...seed,adventurers:seed.adventurers.map(hero=>
+    hero.id===a.id||hero.id===b.id?
+      {...hero,status:"exploring" as const,floor:1 as const}:hero)};
+  const tape={floor:1,encounters:[{featureId:"ghoul-site-2",siteCycle:3,
+    combat:{outcome:"heroes",frames:[{t:0},{t:8.2}]}}]};
+  const events=[a,b].map(hero=>({
+    id:"winning-tape:"+hero.id,day:1,worldTick:500,
+    type:"dungeon-live",adventurerId:hero.id,
+    dungeonReplay:tape,
+    message:"True recorded battle",
+  } as unknown as WorldEvent));
+  const after={...before,adventurers:before.adventurers.map(hero=>{
+    if(hero.id===a.id)return {...hero,xp:hero.xp+24,gold:hero.gold+2,
+      inventory:{...hero.inventory,finds:{...hero.inventory.finds,"iron-ore":1}}};
+    if(hero.id===b.id)return {...hero,xp:hero.xp+24,gold:hero.gold+2,
+      equipment:{...hero.equipment,armor:"Leather Vest" as const}};
+    return hero;
+  }),events:[...before.events,...events]};
+  const result=projectWorldFeedChanges(before,after);
+  assert.equal(result.length,1,"Party victory should not issue two notifications");
+  const win=result[0];
+  assert.equal(win.title,"PARTY VICTORIOUS");
+  assert.equal(win.category,"combat");
+  assert.ok(win.detail.includes(a.name+" +24 XP"));
+  assert.ok(win.detail.includes(b.name+" +24 XP"));
+  assert.match(win.detail,/1 Iron Ore/);
+  assert.match(win.detail,/1 Leather Vest/);
+  assert.match(win.detail,/\+4 gold/);
+  assert.deepEqual(win.target,{kind:"recorded-fight",
+    eventId:events[0].id,featureId:"ghoul-site-2",siteCycle:3});
+  assert.deepEqual(projectWorldFeedChanges(after,after),[],
+    "Same recorded combat checkpoint cannot replay as a new notification");
+});
+
+test("retreats and unfinished combat never become imaginary victories",()=>{
+  const before=createGameState(7351),hero=before.adventurers[0];
+  const tape={floor:1,encounters:[{featureId:"ghoul-site",
+    combat:{outcome:"monsters",frames:[{t:0}]}}]};
+  const event={id:"lost-tape",type:"dungeon-live",day:1,worldTick:350,
+    adventurerId:hero.id,dungeonReplay:tape,
+    message:"A completed defeat"} as unknown as WorldEvent;
+  assert.deepEqual(projectWorldFeedChanges(before,{...before,
+    events:[...before.events,event]}),[]);
+  const pending={...event,id:"pending-tape",
+    dungeonReplay:{...tape,encounters:[{featureId:"ghoul-site",
+      combat:{outcome:"fighting",frames:[{t:0}]}}]}} as unknown as WorldEvent;
+  assert.deepEqual(projectWorldFeedChanges(before,{...before,
+    events:[...before.events,pending]}),[]);
+});
+
+test("each genuine level-up is a separate hero-profile target, without fake milestones",()=>{
+  const before=createGameState(7351),[a,b]=before.adventurers;
+  const after={...before,adventurers:before.adventurers.map(hero=>
+    hero.id===a.id?{...hero,level:hero.level+1,xp:hero.xp+105}:
+    hero.id===b.id?{...hero,level:hero.level+2,xp:hero.xp+205}:hero)};
+  const result=projectWorldFeedChanges(before,after);
+  assert.equal(result.length,2);
+  assert.ok(result.every(e=>e.category==="levelup"&&e.title==="HERO LEVEL UP"));
+  assert.deepEqual(result.map(e=>e.target),[
+    {kind:"hero-profile",heroId:a.id},{kind:"hero-profile",heroId:b.id}]);
+  assert.match(result[0].detail,/Level 1 → 2 · \+105 XP/);
+  assert.match(result[1].detail,/Level 1 → 3 · \+205 XP/);
+  assert.deepEqual(projectWorldFeedChanges(after,after),[]);
+  const noLevel={...before,adventurers:before.adventurers.map(hero=>
+    hero.id===a.id?{...hero,xp:hero.xp+30}:hero)};
+  assert.deepEqual(projectWorldFeedChanges(before,noLevel),[],
+    "XP gain is not automatically a level-up");
+});
+
+test("saved Cave Troll victory reports only real boss settlement and links its tape",()=>{
+  const before=createGameState(7351),hero=before.adventurers[0];
+  const event={id:"boss-record-1",type:"level6-combat",day:1,
+    adventurerId:hero.id,combatOutcome:"victory",
+    combatReplay:{frames:[{t:0}]},
+    message:"Real boss concluded"} as unknown as WorldEvent;
+  const after={...before,events:[...before.events,event],
+    adventurers:before.adventurers.map(h=>h.id===hero.id?{
+      ...h,xp:h.xp+43,gold:h.gold+19,
+      inventory:{...h.inventory,loot:h.inventory.loot+2}}:h)};
+  const entries=projectWorldFeedChanges(before,after);
+  assert.equal(entries.length,1);
+  assert.equal(entries[0].title,"CAVE TROLL DEFEATED");
+  assert.match(entries[0].detail,/\+43 XP/);
+  assert.match(entries[0].detail,/2 loot tokens/);
+  assert.match(entries[0].detail,/\+19 gold/);
+  assert.deepEqual(entries[0].target,
+    {kind:"boss-recording",eventId:event.id});
 });

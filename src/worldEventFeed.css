@@ -145,3 +145,14 @@
 ) .world-feed-jump span{
   max-height:4.6em;-webkit-line-clamp:3;
 }
+
+/* Real post-combat rewards need more space than ordinary travel toasts.
+ * Keep individual XP/loot legible rather than silently truncating the result. */
+#world-event-feed .world-feed-toast:is(
+  [data-category="combat"],[data-category="boss"],[data-category="levelup"]
+) .world-feed-jump span{
+  max-height:7.5em;-webkit-line-clamp:5;
+}
+#world-event-feed .world-feed-toast[data-category="levelup"]{
+  border-left-color:#9dd2ba;
+}
