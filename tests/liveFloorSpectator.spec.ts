@@ -86,6 +86,25 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   });
   expect(positions.party.top).toBeGreaterThanOrEqual(positions.overview.bottom+3);
   expect(positions.party.bottom).toBeLessThanOrEqual(positions.rail.bottom+1);
+  // The toolbar gains a second/third row when LIVE hero selectors appear.
+  // The OVERVIEW must never cover the locator (desktop or narrow layouts).
+  await expect(page.locator("#dungeon-hero-locator-label")).toBeVisible();
+  const hudClearance=()=>page.evaluate(()=>{
+    const rect=(selector:string)=>document.querySelector<HTMLElement>(selector)!
+      .getBoundingClientRect();
+    const header=rect("#dungeon-hud .dungeon-toolbar");
+    const rail=rect("#dungeon-left-rail");
+    const locator=rect("#dungeon-hero-locator-label");
+    const map=rect("#dungeon-hud .dungeon-minimap-panel");
+    return Math.min(rail.top-header.bottom,rail.top-locator.bottom,
+      map.top-header.bottom);
+  });
+  await expect.poll(hudClearance,{timeout:5000}).toBeGreaterThanOrEqual(8);
+  const originalViewport=page.viewportSize()!;
+  await page.setViewportSize({width:760,height:720});
+  await expect.poll(hudClearance,{timeout:5000}).toBeGreaterThanOrEqual(8);
+  await page.setViewportSize(originalViewport);
+  await expect.poll(hudClearance,{timeout:5000}).toBeGreaterThanOrEqual(8);
   await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor");
   await expect(page.locator("#dungeon-archive-controls")).toBeHidden();
   const inspect=()=>page.evaluate(async()=>(
