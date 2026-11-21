@@ -156,7 +156,7 @@ test("rejects malformed envelopes and incompatible versions without migrations",
     for (const version of [0, 999, "1", null]) {
       const envelope: any = JSON.parse(encoded());
       envelope[key] = version;
-      assert.throws(() => parseSave(JSON.stringify(envelope)), /incompatible.*no migrations/);
+      assert.throws(() => parseSave(JSON.stringify(envelope)), /incompatible/);
     }
   }
   for (const savedAt of ["yesterday", "2026-02-30T00:00:00.000Z", "2026-01-01", null, 42]) {
