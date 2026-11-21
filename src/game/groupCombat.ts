@@ -59,6 +59,8 @@ export interface CombatantSpec {
   readonly reach: number;
   readonly radius?: number;
   readonly healCharges?: number;
+  /** Innate healer spells are separate from purchased Herbs. */
+  readonly magicHeals?:number;
   /** Historical purchased equipment in new replays; absent in old v1 footage. */
   readonly equipment?: {
     readonly weapon:"Iron Sword"|null;
@@ -112,6 +114,7 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
   targetId: string | null;
   rollX: number; rollZ: number;
   healCharges: number;
+  magicHeals?:number;
   distanceTraveled: number;
 }
 
@@ -259,6 +262,10 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
     const healCharges = spec.healCharges ?? 0;
     if (!Number.isSafeInteger(healCharges) || healCharges < 0 || healCharges > 10)
       throw new RangeError("healCharges must be between 0 and 10");
+    if(spec.magicHeals!==undefined&&
+        (!Number.isSafeInteger(spec.magicHeals)||spec.magicHeals<0||
+         spec.magicHeals>10||spec.role!=="healer"))
+      throw new RangeError("Innate spells require a real healer");
     if (!within(spec, options.bounds, radius) ||
         obstacles.some(o => insideObstacle(spec, o, radius)))
       throw new RangeError("Actor spawns inside a wall or outside arena");
@@ -277,7 +284,9 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       x: spec.x, z: spec.z,
       hp: spec.hp, stamina: 100, heading: 0, lockedHeading: 0,
       phase: "move" as GroupPhase, phaseAge: 0, cooldown: 0, applied: false,
-      targetId: null, rollX: 0, rollZ: 0, healCharges, distanceTraveled: 0,
+      targetId: null, rollX: 0, rollZ: 0, healCharges,
+      ...(spec.magicHeals!==undefined?{magicHeals:spec.magicHeals}:{}),
+      distanceTraveled: 0,
     };
   });
   if (teams.size !== 2) throw new RangeError("Both opposing teams are required");
@@ -318,7 +327,8 @@ function closestEnemy(s: GroupCombatState, actor: GroupActor): GroupActor | null
   return selectCombatTarget(actor,s.actors);
 }
 function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | null {
-  if (actor.healCharges <= 0 || actor.hp <= 0) return null;
+  if ((actor.healCharges<=0&&(actor.magicHeals??0)<=0)||
+      actor.hp<=0)return null;
   // Any hero may spend a purchased Herb on their own wounds.
   // Healers can also treat an injured teammate without transferring
   // phantom items between inventories.
@@ -523,7 +533,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   else if(a.phase==="grabMiss")window={completeAt:GRAPPLE_TIMING.missRecover};
   else if(a.phase==="thrown")window={completeAt:GRAPPLE_FLIGHT_SECONDS};
   else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
-  else if(a.phase==="hurt")window={completeAt:0.34};
+  else if(a.phase==="hurt")window={completeAt:
+    a.specialAbility==="grapple-throw"?1.6:0.34};
   const tick=advanceCombatActorPhase(a,dt,window);
   if(a.phase==="grabbed"||a.phase==="thrown"){
     progressGroupGrappleVictim(s,a,dt,batch,tick.complete);
@@ -683,11 +694,15 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       a.applied = true;
       const friend = s.actors.find(other => other.id === a.targetId &&
         other.team === a.team && other.hp > 0);
-      if (friend && a.healCharges > 0 && distance(a,friend) <= 9) {
-        const heal=applyCombatHealing(friend.hp,friend.maxHp,HEALING_HERB_HP);
-        if (heal.amount>0) {
+      const herb=a.healCharges>0;
+      const spell=a.role==="healer"&&(a.magicHeals??0)>0;
+      if(friend&&(herb||spell)&&distance(a,friend)<=9){
+        const heal=applyCombatHealing(friend.hp,friend.maxHp,
+          herb?HEALING_HERB_HP:25);
+        if(heal.amount>0){
           friend.hp=heal.hp;
-          a.healCharges--;
+          if(herb)a.healCharges--;
+          else a.magicHeals!--;
           cue(batch,s,a,"heal",friend.id,heal.amount);
         }
       }
