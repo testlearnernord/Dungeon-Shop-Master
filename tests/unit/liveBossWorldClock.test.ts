@@ -106,6 +106,6 @@ test("two concurrent Floor-6 explorers cannot spawn duplicate live Troll combats
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
   store.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
   assert.equal(store.state.liveDungeon.bossCombat?.heroId,first.id);
-  assert(store.state.liveDungeon.bossCombat!.state.time>0,
-    "The only boss has advanced by an actual scheduled 60Hz motor batch");
+  assert(Math.abs(store.state.liveDungeon.bossCombat!.state.time-.5)<1e-6,
+    "Exactly 30 real 60Hz motor steps must elapse per scheduled 10-world-tick batch");
 });
