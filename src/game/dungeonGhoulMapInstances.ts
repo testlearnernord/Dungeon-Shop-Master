@@ -30,11 +30,20 @@ export async function installGhoulMapInstances(
     if(disposed){staged.dispose();return false;}
     const geometry=staged.meshes.filter(
       (mesh):mesh is Mesh=>mesh instanceof Mesh&&mesh.getTotalVertices()>0);
-    if(geometry.length!==1)
-      throw new Error("Expected exactly one authentic Tripo Ghoul render mesh");
+    if(geometry.length!==1||staged.skeletons[0]?.bones.length!==65||
+       staged.animationGroups.length!==15)
+      throw new Error("Expected the complete authored 65-bone, 15-clip Ghoul GLB");
     const source=geometry[0];
     staged.addAllToScene();
     for(const clip of staged.animationGroups)clip.stop();
+    // Sample ONE actual authored combat-idle pose, then pause. Sharing this
+    // single skeleton across static map instances is much cheaper than
+    // driving 15 clips and one real combat actor per spawn.
+    const idle=staged.animationGroups.find(clip=>clip.name==="idle_combat");
+    if(idle){
+      idle.start(false);idle.pause();
+      idle.goToFrame(idle.from+(idle.to-idle.from)*.18);
+    }
     source.isPickable=false;
     source.checkCollisions=false;
     // Keep the source mesh enabled for Babylon hardware instancing, but
