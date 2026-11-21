@@ -24,8 +24,8 @@ Owner rule: **no lost gameplay, scenes, animations, cues, saves, rendering quali
 | A2: living documentation | **Merged (#236)** | Replace dated PR accumulation in README/AGENTS/Architecture/Bible/Roadmap with current module map, approved choices and status distinctions |
 | B1: audio ownership | **Merged (#237)** | Proposed removal of one exact root music copy; canonical audio untouched; generated Ghoul GLB ignored and owners documented |
 | B2: model provenance | **Merged (#238)** | Archive the original Troll Grab/Throw source with unchanged Git blob; update generator, manifest, docs and integrity test |
-| C: TypeScript | **C1 + C2 merged (#239, #240), C3 draft (#241)** | C2 measures actual entry/test-only imports; C3 proposes removing its sole unreferenced-by-gameplay boss adapter only after real specialized boss save/clock/single-instance tests are confirmed |
-| D: CI and acceptance | **Planned; C2 adds non-gating graph report** | Required regressions, Pages asset URL checks, full-browser review, before/after measurements and final doc sync |
+| C: TypeScript | **Merged (#239–241)** | Retired obsolete nightly ledger projections, audited module reachability and removed the unused group-boss adapter while preserving the real LIVE Troll with new tests |
+| D: CI and acceptance | **D1 draft (#242)** | Validate finished GitHub Pages dist/ asset paths, bytes and generated GLBs before both PR CI and deployment; later full-browser regression and closeout measurements remain open |
 
 See [CLEANUP_AUDIT.md](CLEANUP_AUDIT.md) for the source-verified A1 baseline and known risk classifications.
 

@@ -1,6 +1,6 @@
 # Asset ownership — runtime, sources and generated outputs
 
-> B1 merged as PR #237; B2 proposes byte-exact relocation of the required Troll Grab/Throw source. This is an asset path/provenance contract, not an audio/visual quality sign-off. See [Great Cleanup audit](CLEANUP_AUDIT.md) and [Monster Asset Pipeline](MONSTER_ASSET_PIPELINE.md).
+> B1 merged as PR #237; B2 merged as PR #238 with byte-exact relocation of the required Troll Grab/Throw source. This is an asset path/provenance contract, not an audio/visual quality sign-off. See [Great Cleanup audit](CLEANUP_AUDIT.md) and [Monster Asset Pipeline](MONSTER_ASSET_PIPELINE.md).
 
 ## Runtime soundtrack: exact stable paths
 
@@ -46,5 +46,5 @@ Both generated combat models are produced by `npm run dev` / `npm run build` pre
 - Classify source, runtime, generated and preview files separately. Hash-identical assets are not automatically safe to remove without checking code and source provenance.
 - Preserve all approved audio and animated model bytes, all clip names and 65-bone rig constraints.
 - Update build inputs, runtime URLs, manifests and browser tests **together** for any future move.
-- Test with a fresh production build, unit tests, Pages-compatible audio and actual browser playback. The full visual/audible sign-off is not proven by byte hashes.
+- Test with a fresh production build, unit tests, Pages-compatible audio and actual browser playback. Proposed D1 `npm run verify:pages` checks the actual `dist/` folder in both PR CI and Pages deploy, including exact copied bytes of all `public/audio/` and `public/assets/models/` assets. The full visual/audible sign-off is not proven by byte hashes.
 - Never migrate to Git LFS or rewrite history without separate owner approval.
