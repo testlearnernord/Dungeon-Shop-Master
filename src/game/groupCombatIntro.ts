@@ -1,6 +1,7 @@
 import {sampleCinematicTrack,type CinematicFrame,
   type CinematicKeyframe} from "./combatCinematic.ts";
 import type {CombatantSpec,GroupReplayFrame} from "./groupCombat.ts";
+import {BOSS_INTRO_SECONDS,BOSS_INTRO_KEYFRAMES} from "./bossCinematic.ts";
 
 /** Premium opt-in group film. The first *saved* combat pose defines each
  * actor's placement. LIVE updates continue underneath the camera cutscene. */
@@ -46,6 +47,19 @@ export function createGroupCombatIntro(
     heroes.length+" HEROES STAND TOGETHER";
   const monsterCaption=big?"THE CAVE TROLL":
     monsters.length===1?"THE GHOUL":"THE GHOUL PACK";
+  // A solo Cave Troll film is THE original 13.5-second authored Level-6
+  // opening, translated to the actual committed boss spawn position.
+  if(big&&heroes.length===1&&monsters.length===1){
+    const keyframes=BOSS_INTRO_KEYFRAMES.map(frame=>({
+      ...frame,
+      eye:eye(frame.eye[0]+leadMonster.x,frame.eye[1],
+        frame.eye[2]+leadMonster.z),
+      look:eye(frame.look[0]+leadMonster.x,frame.look[1],
+        frame.look[2]+leadMonster.z),
+    }));
+    return {fightId,duration:BOSS_INTRO_SECONDS,keyframes,
+      heroIds:heroes.map(a=>a.id),monsterIds:monsters.map(a=>a.id)};
+  }
   const keyframes:readonly CinematicKeyframe[]=[
     {at:0,eye:eye(c.x-width*.52,Math.max(8,width*.36),
         c.z-depth*.92),look:eye(c.x,2,c.z),
