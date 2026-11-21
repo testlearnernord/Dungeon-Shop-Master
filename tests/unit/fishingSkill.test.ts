@@ -25,10 +25,10 @@ test("the basin is revealed by the EXISTING connected six-cell excavation",()=>{
 });
 
 test("three counters require increasing quick mouse sweeps, not tiny nudges",()=>{
-  assert.deepEqual(FLICK_DISTANCE_BY_COUNTER,[120,165,210]);
+  assert.deepEqual(FLICK_DISTANCE_BY_COUNTER,[540,743,945]);
   assert.equal(FLICK_SAMPLE_MS,400);
   assert.deepEqual([0,1,2,3,4].map(fishingFlickDistanceFor),
-    [120,165,210,210,210]);
+    [540,743,945,945,945]);
   for(let index=0;index<REQUIRED_FLICKS;index++){
     const distance=fishingFlickDistanceFor(index);
     assert.equal(scoreFishingFlick(distance-1,0,100,{x:1,y:0},distance),
@@ -42,24 +42,29 @@ test("three counters require increasing quick mouse sweeps, not tiny nudges",()=
     assert.equal(scoreFishingFlick(distance*1.25,0,460,{x:1,y:0},distance),
       "too-slow");
   }
-  assert.equal(scoreFishingFlick(190,-190,190,{x:1,y:-1},210),"perfect");
+  assert.equal(scoreFishingFlick(900,-900,190,{x:1,y:-1},945),"perfect");
+  // Long but angled: raw travel exceeds the required distance, yet the
+  // forward projection remains short of the marker. It must not score.
+  assert.equal(scoreFishingFlick(900,450,290,{x:1,y:0},945),"too-small");
+  // Enough projected travel and accurate direction is a proper good hit.
+  assert.equal(scoreFishingFlick(950,150,290,{x:1,y:0},945),"good");
   assert.equal(FISHING_FLICKS.length,8);
   assert.equal(REQUIRED_FLICKS,3);
   assert.deepEqual(fishingDirectionFor(0,0),fishingDirectionFor(0,0));
 });
 
 test("visible pull progress measures forward movement, not side-to-side travel",()=>{
-  assert.deepEqual(fishingFlickProgress(60,0,{x:1,y:0},120),
-    {projected:60,ratio:.5});
+  assert.deepEqual(fishingFlickProgress(270,0,{x:1,y:0},540),
+    {projected:270,ratio:.5});
   assert.deepEqual(fishingFlickProgress(0,400,{x:1,y:0},120),
     {projected:0,ratio:0});
   assert.deepEqual(fishingFlickProgress(-400,0,{x:1,y:0},120),
     {projected:0,ratio:0});
-  assert.deepEqual(fishingFlickProgress(230,0,{x:1,y:0},210),
-    {projected:230,ratio:1});
-  const diagonal=fishingFlickProgress(100,100,{x:1,y:1},210);
-  assert.ok(diagonal.ratio>.67&&diagonal.ratio<.68);
-  assert.deepEqual(fishingFlickProgress(100,100,{x:0,y:0},210),
+  assert.deepEqual(fishingFlickProgress(1000,0,{x:1,y:0},945),
+    {projected:1000,ratio:1});
+  const diagonal=fishingFlickProgress(320,320,{x:1,y:1},945);
+  assert.ok(diagonal.ratio>.47&&diagonal.ratio<.49);
+  assert.deepEqual(fishingFlickProgress(100,100,{x:0,y:0},945),
     {projected:0,ratio:0});
 });
 

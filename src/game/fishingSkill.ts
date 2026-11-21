@@ -14,9 +14,10 @@ export type FishingFlick=typeof FISHING_FLICKS[number];
 export type FlickGrade="perfect"|"good"|"miss"|"too-small"|"too-slow";
 export const REQUIRED_FLICKS=3,MAX_MISSES=3;
 export const FLICK_WINDOW_MS=1750;
-// A quick twitch is no longer enough: each successful counter asks for a
-// visibly longer, committed mouse sweep. Misses do not reduce difficulty.
-export const FLICK_DISTANCE_BY_COUNTER=[120,165,210] as const;
+// Real pointer-lock travel now requires roughly 4.5x the previous distance.
+// Keep the original 400ms sample: committed, fast full-arm flicks rather than
+// tiny wrist nudges. Misses never reduce the current distance requirement.
+export const FLICK_DISTANCE_BY_COUNTER=[540,743,945] as const;
 export const FLICK_SAMPLE_MS=400;
 export function fishingFlickDistanceFor(successes:number):number {
   const index=Number.isFinite(successes)?Math.max(0,Math.floor(successes)):0;
@@ -47,8 +48,15 @@ export function scoreFishingFlick(
   const magnitude=Math.hypot(target.x,target.y);
   if(!magnitude)return "miss";
   const dot=(dx*target.x+dy*target.y)/(length*magnitude);
-  if(dot>=.95&&sampleMs<=260&&length>=requiredDistance*1.18)return "perfect";
-  return dot>=.83?"good":"miss";
+  if(dot<.83)return "miss";
+  // Match the on-screen forward-distance meter exactly: a diagonal sweep
+  // must REACH the gold marker along its axis, not merely be long enough
+  // in Euclidean travel while its progress bar remains incomplete.
+  const forward=length*dot;
+  if(forward<requiredDistance)return "too-small";
+  if(dot>=.95&&sampleMs<=260&&forward>=requiredDistance*1.18)
+    return "perfect";
+  return "good";
 }
 export function fishingDirectionFor(catchCount:number,step:number):FishingFlick{
   const index=(Math.max(0,Math.floor(catchCount))*3+

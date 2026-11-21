@@ -116,14 +116,12 @@ independent fishing economy yet.
 
 ### V.004 fishing challenge refinement (larger mouse flicks)
 
-The three original counters now require **120, 165 and 210 px** of real
-pointer-lock motion, respectively, within one 400 ms directional sample.
-A valid counter still needs angular accuracy and the existing bite window;
-misses do not lower the current counter's required distance. The crosshair
-shows an increasingly long brass reference line (the goal distance) and
-end marker, plus a turquoise vector showing the player's actual signed mouse
-movement at the SAME fixed screen scale.
-The bottom HUD displays projected forward progress versus required distance;
-sideways or reverse motion cannot fill it. The world clock, rod, water and
-catch economy are unchanged. Manual mouse/DPI difficulty validation remains
-required before locking final tuning.
+The three counters now require **540, 743 and 945 px** of real pointer-lock
+travel, approximately **4.5 times** the original 120/165/210-pixel tuning,
+within the original 400 ms directional sample and 1750 ms bite window. A
+valid hit needs the full **forward-projected distance** to reach the brass
+marker: a long but slanted swipe that does not fill the meter is insufficient.
+The increasing brass rail and the signed turquoise attempt remain at one
+shared fixed on-screen scale. Misses never reduce the current difficulty.
+The world clock, rod, water, SFX and catch economy are unchanged. Real-hardware
+mouse-DPI/sensitivity acceptance remains necessary before final tuning.
