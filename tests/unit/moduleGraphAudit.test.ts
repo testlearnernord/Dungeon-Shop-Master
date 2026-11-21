@@ -47,3 +47,17 @@ test("computed imports and missing source imports remain explicit review flags",
     assert.equal(graph.entryReachableCount,1);
   }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test("ordinary exported functions are not mistaken for re-export imports",()=>{
+  const root=fixture({
+    "index.html":'<script type="module" src="/src/main.ts"></script>',
+    "src/main.ts":'export function valid(from:string){return from;} export {z} from "./other.ts";',
+    "src/other.ts":"export const z=1;",
+  });
+  try{
+    const graph=auditModuleGraph(root);
+    assert.equal(graph.entryReachableCount,2);
+    assert.deepEqual(graph.unknownImports,[]);
+    assert.deepEqual(graph.unreferencedModules,[]);
+  }finally{rmSync(root,{recursive:true,force:true});}
+});

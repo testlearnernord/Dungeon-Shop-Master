@@ -67,6 +67,10 @@ function moduleReferences(file){
     const node=tokens[i],next=tokens[i+1];
     if(node.kind!=="identifier"||(node.value!=="import"&&node.value!=="export"))continue;
     if(next?.value===".")continue;
+    if(node.value==="export"){
+      const target=next?.value==="type"?tokens[i+2]:next;
+      if(target?.value!=="*"&&target?.value!=="{")continue;
+    }
     if(node.value==="import"&&next?.value==="("){
       record(tokens[i+2],"dynamic",node);continue;
     }
