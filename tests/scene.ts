@@ -1118,6 +1118,8 @@ export function inspectHookedFishingFish(){
     cameraTug:{yaw:metadata?.cameraYawTug??null,
       pitch:metadata?.cameraPitchTug??null},
     lineTension:metadata?.lineTension??null,
+    bobber:{x:scene.getMeshByName("fishing-water-bobber")?.position.x??null,
+      z:scene.getMeshByName("fishing-water-bobber")?.position.z??null},
     sameScene:node?.getScene()===scene,
   };
 }
