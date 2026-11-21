@@ -38,11 +38,18 @@ export function ghoulClipProgress(time:number,motion:GhoulMotion):number {
 export function ghoulRecordedPhaseAge(
   frames:readonly GroupReplayFrame[],actorId:string,time:number,
 ):number {
+  // Locate the visible checkpoint with binary search, rather than
+  // skipping every *future* frame of a 90-second lab session every render.
+  let lo=0,hi=frames.length;
+  while(lo<hi){
+    const mid=(lo+hi)>>1;
+    if(frames[mid].t<=time+1e-6)lo=mid+1;
+    else hi=mid;
+  }
   let from=time;
   let phase:string|undefined;
-  for(let i=frames.length-1;i>=0;i--){
+  for(let i=lo-1;i>=0;i--){
     const frame=frames[i];
-    if(frame.t>time+1e-6)continue;
     const actor=frame.actors.find(a=>a.id===actorId);
     if(!actor)continue;
     if(phase===undefined)phase=actor.phase;
@@ -55,32 +62,39 @@ export function ghoulRecordedPhaseAge(
 /** A saved strike transition is one real attack, not one rendered sample.
  * Index clip variants from committed frames so replays/seeks remain stable
  * regardless of spectator FPS. No RNG, AI or combat time is consumed. */
+interface RecordedStrikeIndex {
+  readonly starts:number[];
+  scanned:number;
+  previous:GroupPhase|null;
+}
 const strikesByFrames=new WeakMap<readonly GroupReplayFrame[],
-  Map<string,readonly number[]>>();
+  Map<string,RecordedStrikeIndex>>();
 export function ghoulRecordedStrikeOrdinal(
   frames:readonly GroupReplayFrame[],actorId:string,time:number,
 ):number {
   let all=strikesByFrames.get(frames);
   if(!all){all=new Map();strikesByFrames.set(frames,all);}
-  let starts=all.get(actorId);
-  if(!starts){
-    const times:number[]=[];
-    let previous:GroupPhase|null=null;
-    for(const frame of frames){
-      const actor=frame.actors.find(a=>a.id===actorId);
-      if(!actor)continue;
-      if(actor.phase==="strike"&&previous!=="strike")
-        times.push(frame.t);
-      previous=actor.phase;
-    }
-    starts=times;all.set(actorId,starts);
+  let index=all.get(actorId);
+  if(!index){
+    index={starts:[],scanned:0,previous:null};
+    all.set(actorId,index);
   }
-  // Upper-bound binary search counts strikes whose *committed start time*
-  // is not later than this visual sample. O(log N) after one scan.
-  let low=0,high=starts.length;
+  // An ongoing LIVE/Lab fight APPENDS new committed frames to the SAME array.
+  // Keep the index current without re-scanning old strikes every refresh.
+  for(let i=index.scanned;i<frames.length;i++){
+    const frame=frames[i];
+    const actor=frame.actors.find(a=>a.id===actorId);
+    if(!actor)continue;
+    if(actor.phase==="strike"&&index.previous!=="strike")
+      index.starts.push(frame.t);
+    index.previous=actor.phase;
+  }
+  index.scanned=frames.length;
+  // Upper-bound search keeps rewind/replay seeking deterministic.
+  let low=0,high=index.starts.length;
   while(low<high){
     const mid=(low+high)>>1;
-    if(starts[mid]<=time+1e-6)low=mid+1;
+    if(index.starts[mid]<=time+1e-6)low=mid+1;
     else high=mid;
   }
   return low;
