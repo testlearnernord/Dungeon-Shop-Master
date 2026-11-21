@@ -110,3 +110,12 @@ pipeline. The current runtime only allows descent on floors 1–3; lower
 passages on floors 4 and 7 are visibly SEALED, not fictional transitions.
 No new floor crossing is synthesized by the renderer.
 
+
+**Global World Echoes:** worldFeedProjection.ts reads committed WorldEvent
+IDs and authoritative pre/post GameState snapshots. It coalesces chest
+finds and traps across real party members; exact item/gold/damage details
+are derived only from saved delta, including auto-equipped chest gear.
+Floor-change notices require a truly changed floor, never a plan alone.
+The renderer's eight configurable categories reuse a single HUD and
+the same camera/hero jump methods, never a second dungeon runtime.
+
