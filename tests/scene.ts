@@ -1033,3 +1033,24 @@ export function inspectLiveFloorFog(){
       mesh.metadata?.abstractBattle===true&&mesh.isEnabled()).length,
   };
 }
+
+/** Physical basement regression helpers: only orient the real shop camera. */
+export function aimAtCellarPortrait():void {
+  inspectPlayer({x:-.85,y:1.7,z:-11.55});
+  const scene=Engine.LastCreatedScene!;
+  (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,2.15,-12.02));
+}
+export function aimAtCellarStairs():void {
+  inspectPlayer({x:-.85,y:1.72,z:-12.9});
+  const scene=Engine.LastCreatedScene!;
+  (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,0,-21));
+}
+export function inspectCellarGate() {
+  const scene=Engine.LastCreatedScene!;
+  return {
+    blocked:scene.getMeshByName("cellar-portrait-barrier")?.checkCollisions,
+    ramp:scene.getMeshByName("cellar-stair-walkable-ramp")?.checkCollisions,
+    cellarFloor:scene.getMeshByName("cellar-floor")?.checkCollisions,
+    chest:!!scene.getMeshByName("cellar-chest-body"),
+  };
+}

@@ -9,39 +9,20 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
-  await page.evaluate(async()=>{
-    const {inspectPlayer}=await import("/Dungeon-Shop-Master/tests/scene.ts");
-    inspectPlayer({x:-.85,y:1.7,z:-11.55});
-    const {Engine}=await import("@babylonjs/core/Engines/engine");
-    const {Vector3}=await import("@babylonjs/core/Maths/math.vector");
-    const scene=Engine.LastCreatedScene!;
-    scene.activeCamera!.setTarget(new Vector3(-.85,2.15,-12.02));
-  });
+  await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtCellarPortrait());
   await page.keyboard.press("e");
   await expect.poll(async()=>page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     return (await new CampaignStorage().loadGame())?.cellarDoorOpen;
   }),{timeout:12000}).toBe(true);
-  const gate=await page.evaluate(async()=>{
-    const {Engine}=await import("@babylonjs/core/Engines/engine");
-    const scene=Engine.LastCreatedScene!;
-    return {
-      blocked:scene.getMeshByName("cellar-portrait-barrier")?.checkCollisions,
-      ramp:scene.getMeshByName("cellar-stair-walkable-ramp")?.checkCollisions,
-      cellarFloor:scene.getMeshByName("cellar-floor")?.checkCollisions,
-      chest:!!scene.getMeshByName("cellar-chest-body"),
-    };
-  });
+  const gate=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectCellarGate());
   expect(gate).toEqual({blocked:false,ramp:true,cellarFloor:true,chest:true});
   // Start at the actual upper stair landing and WALK downhill. The real FPS
   // camera must follow the slope, not be teleported to a second world.
-  await page.evaluate(async()=>{
-    const {inspectPlayer}=await import("/Dungeon-Shop-Master/tests/scene.ts");
-    inspectPlayer({x:-.85,y:1.72,z:-12.9});
-    const {Engine}=await import("@babylonjs/core/Engines/engine");
-    const {Vector3}=await import("@babylonjs/core/Maths/math.vector");
-    Engine.LastCreatedScene!.activeCamera!.setTarget(new Vector3(-.85,0,-21));
-  });
+  await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtCellarStairs());
   await page.keyboard.down("w");
   await page.waitForTimeout(550);
   await page.keyboard.up("w");
