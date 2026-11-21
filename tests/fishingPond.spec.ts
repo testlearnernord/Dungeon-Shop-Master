@@ -31,9 +31,40 @@ test("mined pond reveals water and opens fishing by E @ci-smoke",async({page})=>
     await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtFishingPond());
   await page.keyboard.press("e");
   await expect(page.locator("#fishing-hud")).toBeVisible();
+  const rodBefore=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectFishingRod());
+  expect(rodBefore).toMatchObject({
+    rod:true,rodVisible:true,line:true,lineVisible:false,
+    bobber:true,bobberVisible:false,sameScene:true,
+  });
+  const tickBefore=await page.evaluate(()=>{
+    const hooks=window as Window&{__shopTestTraffic?:()=>{tick:number}};
+    return hooks.__shopTestTraffic?.().tick??-1;
+  });
+  expect(tickBefore).toBeGreaterThanOrEqual(0);
+  await expect.poll(async()=>page.evaluate(()=>{
+    const hooks=window as Window&{__shopTestTraffic?:()=>{tick:number}};
+    return hooks.__shopTestTraffic?.().tick??-1;
+  }),{timeout:4000}).toBeGreaterThan(tickBefore+3);
+  const hud=await page.evaluate(()=>{
+    const frame=document.querySelector<HTMLElement>(".fishing-frame")!;
+    const bounds=frame.getBoundingClientRect();
+    return {bottom:bounds.bottom,height:bounds.height,
+      viewport:window.innerHeight,
+      mainSceneVisible:getComputedStyle(document.querySelector("#fishing-hud")!)
+        .backgroundColor==="rgba(0, 0, 0, 0)"};
+  });
+  expect(hud.bottom).toBeGreaterThan(hud.viewport*.55);
+  expect(hud.height).toBeLessThan(hud.viewport*.5);
+  expect(hud.mainSceneVisible).toBe(true);
   await page.locator("#fishing-cast").click();
   await expect.poll(()=>page.locator("#fishing-phase").textContent(),
     {timeout:7000}).toMatch(/Flick|Line cast/);
+  const rodAfter=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectFishingRod());
+  expect(rodAfter).toMatchObject({
+    rodVisible:true,lineVisible:true,bobberVisible:true,sameScene:true,
+  });
   // End without granting a fake catch. Esc must restore the real FPS camera.
   await page.keyboard.press("Escape");
   await expect(page.locator("#fishing-hud")).toBeHidden();

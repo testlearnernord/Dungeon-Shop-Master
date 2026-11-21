@@ -1081,3 +1081,17 @@ export function aimUpCellarStairs():void{
   const scene=Engine.LastCreatedScene!;
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,1.4,-10.2));
 }
+
+/** Read-only 3D fishing diagnostics; no scene mutation or fake catches. */
+export function inspectFishingRod(){
+  const scene=Engine.LastCreatedScene!;
+  const rod=scene.getMeshByName("fishing-rod-visible-shaft");
+  const line=scene.getMeshByName("fishing-rod-visible-line");
+  const bobber=scene.getMeshByName("fishing-water-bobber");
+  return {
+    rod:!!rod,rodVisible:!!rod?.isEnabled(),
+    line:!!line,lineVisible:!!line?.isEnabled(),
+    bobber:!!bobber,bobberVisible:!!bobber?.isEnabled(),
+    sameScene:rod?.getScene()===scene&&line?.getScene()===scene,
+  };
+}
