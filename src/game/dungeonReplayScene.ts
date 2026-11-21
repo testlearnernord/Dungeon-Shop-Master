@@ -64,7 +64,7 @@ export class DungeonReplayScene {
   private floorFrame:LiveFloorSpectatorFrame|null=null;
   private readonly floorModels=new Map<string,HeroVisual>();
   private readonly floorMarkers=new Map<string,Mesh>();
-  private readonly floorRouteHints=new Map<string,{mesh:LinesMesh;signature:string}>();
+  private readonly floorRouteHints=new Map<string,{mesh:LinesMesh;pips:Mesh[];signature:string}>();
   private readonly floorTravel=new Map<string,{step:CommittedPartyStep;seconds:number;gait:number}>();
   private readonly floorHeadings=new Map<string,number>();
   private selectedFloorHero:string|null=null;
@@ -118,7 +118,10 @@ export class DungeonReplayScene {
     this.floorModels.clear();
     for(const marker of this.floorMarkers.values())marker.dispose(false,true);
     this.floorMarkers.clear();
-    for(const hint of this.floorRouteHints.values())hint.mesh.dispose();
+    for(const hint of this.floorRouteHints.values()){
+      hint.mesh.dispose();
+      hint.pips.forEach(pip=>pip.dispose());
+    }
     this.floorRouteHints.clear();
     this.floorTravel.clear();this.floorHeadings.clear();
     this.selectedFloorHero=null;
@@ -471,7 +474,8 @@ export class DungeonReplayScene {
     // movement checkpoints. They stop at any unresolved site interaction.
     for(const [id,hint] of this.floorRouteHints){
       if(!present.has(id)){
-        hint.mesh.dispose();this.floorRouteHints.delete(id);
+        hint.mesh.dispose();hint.pips.forEach(pip=>pip.dispose());
+        this.floorRouteHints.delete(id);
       }
     }
     for(const hero of view.heroes){
@@ -480,7 +484,7 @@ export class DungeonReplayScene {
         .join(",")+"|"+hero.activity+"|"+hero.plannedAction;
       const old=this.floorRouteHints.get(hero.id);
       if(old?.signature===signature)continue;
-      old?.mesh.dispose();
+      old?.mesh.dispose();old?.pips.forEach(pip=>pip.dispose());
       this.floorRouteHints.delete(hero.id);
       if(!points.length)continue;
       const positions=[
@@ -501,11 +505,31 @@ export class DungeonReplayScene {
         points:[...positions,left,tip,right],
       },this.scene);
       line.color=Color3.FromHexString(hero.partyId?"#f4d58f":"#9de5d2");
-      line.alpha=.90;
+      line.alpha=.98;
+      line.renderingGroupId=2; // Above floor geometry, not a hidden AI path.
       line.isPickable=false;line.checkCollisions=false;
       line.metadata={previewOnly:true,floorHeroId:hero.id,
         label:"Two-step route forecast, not an actual saved route"};
-      this.floorRouteHints.set(hero.id,{mesh:line,signature});
+      const pips=points.map((point,index)=>{
+        const pip=MeshBuilder.CreateCylinder(
+          "dungeon-floor-intent-pip-"+hero.id+"-"+(index+1),
+          {height:.075,diameter:index===0?.40:.51,tessellation:10},
+          this.scene);
+        const p=toWorld(this.layout,point);
+        pip.position.set(p.x,.41,p.z);
+        const color=hero.partyId?"#f4d58f":"#9de5d2";
+        const paint=this.scene.getMaterialByName("route-pip-"+color) as
+          StandardMaterial|null??new StandardMaterial("route-pip-"+color,this.scene);
+        paint.diffuseColor=Color3.FromHexString(color);
+        paint.emissiveColor=Color3.FromHexString(color).scale(.42);
+        pip.material=paint;
+        pip.renderingGroupId=2;pip.isPickable=false;
+        pip.checkCollisions=false;
+        pip.metadata={previewOnly:true,floorHeroId:hero.id,
+          step:index+1};
+        return pip;
+      });
+      this.floorRouteHints.set(hero.id,{mesh:line,pips,signature});
     }
     for(const [id,marker] of this.floorMarkers){
       if(!view.fights.some(f=>f.id===id)){
@@ -587,8 +611,10 @@ export class DungeonReplayScene {
       const hero=frame.heroes.find(entry=>entry.id===id);
       const seen=!perspective||id===perspective.heroId||
         perspective.visibleHeroIds.includes(id);
-      hint.mesh.setEnabled(!!hero&&!hero.inCombat&&seen&&
-        (!this.selectedFloorHero||this.selectedFloorHero===id));
+      const visible=!!hero&&!hero.inCombat&&seen&&
+        (!this.selectedFloorHero||this.selectedFloorHero===id);
+      hint.mesh.setEnabled(visible);
+      hint.pips.forEach(pip=>pip.setEnabled(visible));
     }
     if(!perspective){
       this.drawDevelopmentMap();
