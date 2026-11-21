@@ -1,4 +1,5 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
+import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots } from "./economy.ts";
 import {
   SIMULATION_VERSION, type GameState, type EarlyDungeonFloorWorld,
@@ -800,10 +801,28 @@ function validateState(value: unknown): asserts value is GameState {
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
     "level5Room","bedroomFurniture","rosterBoard",
+    "cellarRoom","cellarChest","cellarDoorOpen",
   ], ["wallPortrait","earlyDungeonWorlds","dungeonParties"]);
   const room=state.level5Room;
   if (!isValidLevel5Room(room))
     fail("payload.level5Room", "has invalid excavation geometry");
+  if(!isValidCellarRoom(state.cellarRoom))
+    fail("payload.cellarRoom","has invalid cellar excavation geometry");
+  if(typeof state.cellarDoorOpen!=="boolean")
+    fail("payload.cellarDoorOpen","must be a boolean");
+  {
+    const raw=object(state.cellarChest,"payload.cellarChest",
+      ["id","x","z","rotation"]);
+    if(raw.id!=="cellar-chest")fail("payload.cellarChest.id","is invalid");
+    const chest:CellarChestPlacement={
+      id:"cellar-chest",
+      x:validNumber(raw.x,"payload.cellarChest.x",-14,14),
+      z:validNumber(raw.z,"payload.cellarChest.z",-41,-13),
+      rotation:integer(raw.rotation,"payload.cellarChest.rotation",0,3) as 0|1|2|3,
+    };
+    const problem=cellarChestProblem(chest,state.cellarRoom);
+    if(problem)fail("payload.cellarChest",problem);
+  }
   const day = integer(state.day, "payload.day", 1, MAX_WORLD_DAY);
   const clock=object(state.worldClock,"payload.worldClock",["tick","nextSequence","pending"]);
   const clockTick=integer(clock.tick,"payload.worldClock.tick",

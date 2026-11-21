@@ -1,4 +1,5 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
+import {createCellarRoom,DEFAULT_CELLAR_CHEST,type CellarChestPlacement,type CellarRoom} from "./cellarRoom.ts";
 import { beginNextWorldDay, createWorldClock, MAX_WORLD_DAY, type WorldClockState } from "./worldClock.ts";
 import {emptyShopTraffic,type ShopTrafficCheckpoint} from "./shopTraffic.ts";
 import {createLiveDungeonState,finishLiveDungeonDay,
@@ -34,7 +35,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 24;
+export const SIMULATION_VERSION = 25;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -121,6 +122,9 @@ export interface GameState {
   /** Optional one-of-a-kind wall decoration, absent until the player hangs it. */
   readonly wallPortrait?: WallPortraitPlacement;
   readonly level5Room: Level5Room;
+  readonly cellarRoom: CellarRoom;
+  readonly cellarChest: CellarChestPlacement;
+  readonly cellarDoorOpen: boolean;
   readonly shopCarts: readonly ShopCart[];
   readonly shopDebts: readonly ShopDebt[];
   readonly dungeonFloors: readonly DungeonFloorProgress[];
@@ -167,6 +171,9 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     bedroomFurniture: createBedroomFurnitureLayout(),
     rosterBoard: DEFAULT_ROSTER_BOARD,
     level5Room: createLevel5Room(),
+    cellarRoom: createCellarRoom(),
+    cellarChest: {...DEFAULT_CELLAR_CHEST},
+    cellarDoorOpen: false,
     shopCarts: [],
     shopDebts: [],
     dungeonFloors: [],
