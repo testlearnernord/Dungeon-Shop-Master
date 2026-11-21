@@ -60,6 +60,10 @@ export class DungeonViewer {
   private suppressNextMapClick=false;
   private readonly hoverTooltip=document.querySelector<HTMLElement>(
     "#dungeon-hover-tooltip")!;
+  private readonly mapStatus=document.querySelector<HTMLElement>(
+    "#dungeon-map-status")!;
+  private readonly mapCounts=document.querySelector<HTMLElement>(
+    "#dungeon-map-counts")!;
   private readonly panel = document.querySelector<HTMLElement>("#dungeon-hud")!;
   private readonly summary = document.querySelector<HTMLElement>("#dungeon-summary")!;
   private readonly focusLabel = document.querySelector<HTMLElement>("#dungeon-focus")!;
@@ -404,6 +408,7 @@ export class DungeonViewer {
     this.keys.clear();
     this.orbitPointer=null;
     this.hoverTooltip.hidden=true;
+    this.mapStatus.hidden=true;
     document.body.classList.remove("dungeon-active");
     this.panel.hidden = true;
     this.replayScene?.dispose();
@@ -413,6 +418,7 @@ export class DungeonViewer {
     this.followActor=null;
     this.liveHeroId=null;
     this.liveFloor=null;this.liveFloorFightId=null;
+    this.mapStatus.hidden=true;
     this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
     this.liveFloorProjectionCache=null;
     this.liveWorldTick=-1;
@@ -702,6 +708,7 @@ export class DungeonViewer {
     if(!view)return false;
     this.leaveLiveCombat();
     this.liveFloor=floor;
+    this.mapStatus.hidden=false;
     this.liveFloorFightId=null;
     this.selectedFloorHeroId=focusHeroId;
     this.liveFloorProjectionCache=null;
@@ -839,6 +846,16 @@ export class DungeonViewer {
   }
 
   private paintFloor(view:LiveFloorSpectatorFrame):void {
+    if(this.layout){
+      const unresolved=this.layout.features.filter(feature=>
+        !view.resolved.includes(feature.id));
+      const count=(kind:DungeonFeature["kind"])=>
+        unresolved.filter(feature=>feature.kind===kind).length;
+      const parties=new Set(view.heroes.map(hero=>hero.partyId).filter(Boolean));
+      this.mapCounts.textContent=view.heroes.length+" heroes · "+
+        parties.size+" parties · "+count("monster")+" Ghoul sites · "+
+        count("treasure")+" chests · "+count("trap")+" traps";
+    }
     const selected=view.fights.find(f=>f.id===this.liveFloorFightId)??view.fights[0];
     this.liveFloorFightId=selected?.id??null;
     if(this.liveArena.isActive){

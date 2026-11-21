@@ -60,6 +60,7 @@ import "./fishingHud.css";
 import "./immersiveUi.css";
 import "./cashierLive.css";
 import "./expeditionArchive.css";
+import "./dungeonMapHud.css";
 
 async function startGame(): Promise<void> {
 setupInterfaceIcons();

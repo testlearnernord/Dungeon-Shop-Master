@@ -1,0 +1,118 @@
+/* V.004 read-only map spectator facelift. This HUD consumes only saved world
+ * projections; it must never become a second dungeon simulator. */
+#dungeon-hud .dungeon-toolbar{
+  top:12px;left:16px;right:16px;
+  padding:13px 17px;gap:18px;
+  border:1px solid #827151;border-radius:12px;
+  background:linear-gradient(130deg,rgba(21,29,30,.97),rgba(9,15,19,.95));
+  box-shadow:0 14px 44px #0008,inset 0 1px 0 #ffffff12;
+  backdrop-filter:blur(12px);
+}
+#dungeon-hud .dungeon-toolbar strong{
+  font:700 clamp(14px,1.35vw,19px)/1.2 Georgia,serif;
+  letter-spacing:.08em;color:#e2c895;
+}
+#dungeon-hud .dungeon-toolbar p{
+  color:#aebdb5;line-height:1.45;margin:5px 0 0;
+}
+#dungeon-hud .dungeon-actions button{
+  background:linear-gradient(#30403e,#1e2c2f);
+  border:1px solid #6e8779;border-radius:7px;
+  color:#e5ede3;padding:9px 13px;
+  min-height:36px;font:600 11px system-ui,sans-serif;
+  transition:background-color .12s,box-shadow .12s;
+}
+#dungeon-hud .dungeon-actions button:hover{
+  background:linear-gradient(#3e5750,#2d3e3e);
+  box-shadow:0 0 0 1px #c0ddc066;
+}
+#dungeon-hud .dungeon-actions button:focus-visible{
+  outline:2px solid #c6e6a9;outline-offset:2px;
+}
+#dungeon-hud .dungeon-toolbar kbd{
+  border:1px solid #788d7b;border-radius:3px;
+  padding:1px 4px;font:700 10px monospace;
+}
+#dungeon-hud .dungeon-map-status{
+  position:absolute;left:16px;top:148px;
+  width:min(290px,calc(100vw - 32px));padding:13px 15px;
+  pointer-events:none;border:1px solid #63766c;border-radius:11px;
+  background:linear-gradient(160deg,rgba(16,27,29,.94),rgba(12,22,26,.89));
+  box-shadow:0 12px 33px #0007;
+  font:11px/1.45 system-ui,sans-serif;
+}
+#dungeon-hud .dungeon-map-status[hidden]{display:none!important}
+#dungeon-hud .dungeon-map-status strong{
+  font:800 11px system-ui,sans-serif;letter-spacing:.12em;
+  color:#bee4c0;
+}
+#dungeon-hud .dungeon-live-indicator{
+  display:inline-block;vertical-align:middle;
+  width:7px;height:7px;border-radius:50%;
+  background:#82d79b;box-shadow:0 0 9px #92eaaa;
+  margin-right:6px;
+}
+#dungeon-map-counts{
+  margin:9px 0 10px;color:#e3e7df;
+  font-size:12px;font-variant-numeric:tabular-nums;
+}
+#dungeon-hud .dungeon-map-legend{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:4px 9px;padding:9px 0;
+  border-block:1px solid #86957a40;
+}
+#dungeon-hud .dungeon-map-legend span{
+  font-size:11px;font-weight:600;
+}
+#dungeon-hud .dungeon-legend-hero{color:#85dab4}
+#dungeon-hud .dungeon-legend-party{color:#e2c57d}
+#dungeon-hud .dungeon-legend-ghoul{color:#ec9871}
+#dungeon-hud .dungeon-legend-chest{color:#f0cf68}
+#dungeon-hud .dungeon-legend-trap{color:#e98a7b}
+#dungeon-hud .dungeon-map-status small{
+  display:block;margin-top:9px;color:#a6bdb2;
+  font:10px/1.55 system-ui,sans-serif;
+}
+#dungeon-hud .dungeon-hover-tooltip{
+  position:fixed;z-index:44;max-width:250px;
+  padding:8px 11px;pointer-events:none;
+  border:1px solid #b7a06d;border-radius:6px;
+  background:rgba(14,22,23,.97);
+  box-shadow:0 7px 25px #000b;
+  font:600 11px/1.4 system-ui,sans-serif;color:#e9dfbf;
+  text-shadow:none;
+}
+#dungeon-hud .dungeon-hover-tooltip[hidden]{display:none!important}
+#dungeon-hud .dungeon-minimap-panel,
+#dungeon-hud .dungeon-bottom{
+  border-color:#788676;border-radius:10px;
+  background:linear-gradient(150deg,rgba(17,27,30,.96),rgba(11,19,23,.93));
+  box-shadow:0 12px 30px #0007;
+}
+#dungeon-hud .dungeon-minimap-panel strong{
+  font:700 12px system-ui,sans-serif;color:#e1d29f;
+}
+#dungeon-hud .dungeon-minimap-panel small{color:#aec0b8}
+#dungeon-hud .dungeon-hero-detail{
+  border-radius:10px;box-shadow:0 13px 40px #0009;
+  backdrop-filter:blur(12px);
+}
+body.dungeon-active:not(.arena-active) #renderCanvas{
+  cursor:grab;
+}
+body.dungeon-active:not(.arena-active) #renderCanvas:active{
+  cursor:grabbing;
+}
+@media(max-width:860px){
+  #dungeon-hud .dungeon-map-status{top:172px;width:225px;padding:9px}
+  #dungeon-hud .dungeon-map-legend{grid-template-columns:1fr 1fr}
+  #dungeon-hud .dungeon-map-status small{font-size:9px}
+}
+@media(max-width:700px){
+  #dungeon-hud .dungeon-map-status{top:219px;left:6px;width:154px;padding:7px}
+  #dungeon-hud .dungeon-map-status strong{font-size:9px}
+  #dungeon-hud .dungeon-map-legend{gap:2px;font-size:9px}
+  #dungeon-map-counts{font-size:10px;margin:4px 0}
+  #dungeon-hud .dungeon-toolbar{left:6px;right:6px;top:6px}
+  #dungeon-hud .dungeon-toolbar strong{font-size:13px}
+}
