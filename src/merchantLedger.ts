@@ -20,6 +20,9 @@ export interface LedgerSummary {
   readonly newCreditGold: number;
   readonly outstandingCreditGold: number;
   readonly credits: readonly WorldEvent[];
+  /** Physical goods Galvik purchased from returning adventurers. */
+  readonly buybacks: readonly WorldEvent[];
+  readonly buybackCost: number;
   readonly receipts: readonly SaleReceipt[];
   readonly visited: number;
   readonly arrivals: number;
@@ -39,6 +42,10 @@ export function summarizeLedger(before: GameState, after: GameState): LedgerSumm
   const credits = [
     ...before.events.filter(e=>e.day===before.day&&e.type==="shop-credit"),
     ...newlyBooked.filter(e=>e.type==="shop-credit"),
+  ];
+  const buybacks = [
+    ...before.events.filter(e=>e.day===before.day&&e.type==="hero-buyback"),
+    ...newlyBooked.filter(e=>e.type==="hero-buyback"),
   ];
   const outstandingCreditGold=after.shopDebts.reduce(
     (sum,debt)=>sum+debt.outstandingGold,0);
@@ -67,7 +74,8 @@ export function summarizeLedger(before: GameState, after: GameState): LedgerSumm
     bookedRevenue:receipts.reduce((sum,r)=>sum+r.revenue,0),
     soldUnits:receipts.reduce((sum,r)=>sum+r.quantity,0),
     newCreditGold:credits.reduce((sum,event)=>sum+(event.debtGold??0),0),
-    outstandingCreditGold,credits,receipts,
+    outstandingCreditGold,credits,buybacks,
+    buybackCost:buybacks.reduce((sum,event)=>sum+(event.cost??0),0),receipts,
     visited:before.adventurers.filter(h=>h.status==="at-shop").length,
     arrivals:newlyBooked.filter(e=>e.type==="shop-arrival").length,
     departures:newlyBooked.filter(e=>e.type==="shop-departure").length,
@@ -266,6 +274,7 @@ export function setupMerchantLedger(
       content.append(line("Receipts entered",String(summary.receipts.length)));
       content.append(line("Goods sold",String(summary.soldUnits)+" units"));
       content.append(line("Recorded sales",gold(summary.bookedRevenue),"Includes daytime manual sales"));
+      content.append(line("Dungeon goods bought",gold(summary.buybackCost),"Gold paid to returning adventurers"));
       content.append(line("New goods issued on credit",gold(summary.newCreditGold),"No gold received"));
       content.append(line("Total outstanding hero debt",gold(summary.outstandingCreditGold),"Unpaid receivables"));
       content.append(line("Visitors at closing",String(summary.visited)));
@@ -296,6 +305,19 @@ export function setupMerchantLedger(
         content.append(scroll);
         if(summary.receipts.length>40)
           content.append(node("small","ledger-footnote","Showing the latest 40 receipts."));
+      }
+      if(summary.buybacks.length){
+        content.append(node("h3","ledger-subhead","ADVENTURER BUYBACK · PAID GOODS"));
+        const purchaseRows=node("div","ledger-receipts");
+        for(const event of summary.buybacks.slice(-30)){
+          const item=ITEMS.find(entry=>entry.id===event.itemId);
+          const description=event.adventurerId??"Unknown adventurer";
+          purchaseRows.append(item&&event.itemId?itemLedgerLine(
+            event.itemId,description+" · "+item.name,
+            "-"+gold(event.cost??0),"PURCHASED"):line(
+            description,"-"+gold(event.cost??0),"PURCHASED"));
+        }
+        content.append(purchaseRows);
       }
       if(summary.credits.length){
         content.append(node("h3","ledger-subhead","ITEMS LOANED · GALVIK'S DEBT BOOK"));
