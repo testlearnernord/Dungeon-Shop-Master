@@ -46,3 +46,28 @@ test("same seed and gear give identical new boss saves and replay projections",(
   }
   assert.deepEqual(a,b);
 });
+
+test("a sword-bearing tank can parry a committed Troll strike before its contact tick",()=>{
+  const state=createGroupCombat(caveTrollGroupOptions(options));
+  const boss=state.actors.find(actor=>actor.id==="cave-troll")!;
+  const tank=state.actors.find(actor=>actor.id==="hero")!;
+  boss.phase="windup";
+  boss.activeMeleeAbility="troll-smash";
+  boss.phaseAge=.70;
+  boss.lockedHeading=Math.PI;
+  boss.heading=Math.PI;
+  boss.targetId=tank.id;
+  boss.attacksStarted=2;
+  // Fixed-position bench: the hero is close enough for actual contact.
+  tank.x=0;tank.z=0;
+  boss.x=0;boss.z=3;
+  let defended=false;
+  for(let tick=0;tick<60&&!defended;tick++){
+    stepGroupCombat(state);
+    defended=state.events.some(e=>e.kind==="parry"&&
+      e.actorId==="hero"&&e.targetId==="cave-troll");
+  }
+  assert(defended,"Parry's 0.10–0.36s window must overlap Troll contact");
+  assert.equal(tank.hp,options.health,
+    "a genuine timed parry must prevent boss strike damage");
+});
