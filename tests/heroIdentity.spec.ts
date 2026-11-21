@@ -23,7 +23,7 @@ test("same hero has consistent original portrait, unique display name and level 
     const card = page.locator('#roster-detail-list .roster-card[data-hero-id="' + hero.id + '"]');
     await expect(card.locator("strong")).toContainText(names.get(hero.id)!);
     await expect(card.locator("strong")).toContainText("Lv " + hero.level);
-    await expect(card.locator(".roster-portrait")).toHaveAttribute("data-portrait-id", String(heroPortraitIndex(hero.id)));
+    await expect(card.locator("summary .roster-portrait")).toHaveAttribute("data-portrait-id", String(heroPortraitIndex(hero.id)));
   }
   await page.locator("#close-roster").click();
   await page.reload();
