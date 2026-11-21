@@ -71,3 +71,38 @@ test("a sword-bearing tank can parry a committed Troll strike before its contact
   assert.equal(tank.hp,options.health,
     "a genuine timed parry must prevent boss strike damage");
 });
+
+test("diagnostics: seeded Troll grab opportunities and physical strike outcomes",()=>{
+  const fight={...options,role:"DPS" as const,health:185,maxHealth:185,
+    healingSupplies:2};
+  let grabEncounters=0,throwEncounters=0;
+  let smashHits=0,grappleAttempts=0,late=0;
+  const examples:unknown[]=[];
+  for(let seed=0;seed<48;seed++){
+    const s=createSharedBossPreview({...fight,tacticsSeed:seed});
+    let sawGrab=false,sawThrow=false;
+    let firstGrabGap:number|null=null;
+    let bossAttacks=0,heroHits=0;
+    for(let tick=0;tick<5400&&s.outcome==="fighting";tick++){
+      stepSharedBossPreview(s,1/60);
+      const boss=s.group.actors.find(a=>a.id==="cave-troll")!;
+      const hero=s.group.actors.find(a=>a.id==="hero")!;
+      if(boss.phase==="grab"){
+        if(!sawGrab)firstGrabGap=Math.hypot(boss.x-hero.x,boss.z-hero.z);
+        sawGrab=true;
+      }
+      if(boss.phase==="throw")sawThrow=true;
+    }
+    bossAttacks=s.group.events.filter(e=>e.kind==="attack"&&e.actorId==="cave-troll").length;
+    heroHits=s.group.events.filter(e=>e.kind==="hit"&&e.actorId==="cave-troll").length;
+    smashHits+=heroHits;
+    grappleAttempts+=bossAttacks;
+    if(sawGrab)grabEncounters++;
+    if(sawThrow)throwEncounters++;
+    if(s.time>18)late++;
+    if(seed<5)examples.push({seed,time:Number(s.time.toFixed(1)),bossAttacks,heroHits,
+      firstGrabGap,sawGrab,sawThrow,heroHp:s.heroHp});
+  }
+  console.log("Shared-Troll-telegraph-diagnostics",{
+    grabEncounters,throwEncounters,smashHits,grappleAttempts,late,examples});
+});
