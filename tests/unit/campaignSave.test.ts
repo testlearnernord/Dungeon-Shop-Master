@@ -48,7 +48,7 @@ test("seeded 45-day spatial-dungeon continuation preserves history, RNG, legitim
     for (let tick = 0; tick < 45; tick += 1) {
       function step(state: GameState): GameState {
         if (tick % 3 === 0) state = buyWholesale(state, "bread", 1).state;
-        if (tick % 5 === 0) state = discardBag(state, "iron-ore").state;
+        if (tick % 5 === 0) state = discardBag(state, "bread").state;
         state = transferShelf(state, "shelf-2-slot-1", "bread", "stock").state;
         if (tick % 7 === 0) state = transferShelf(state, "shelf-1-slot-3", "healing-herb", "remove").state;
         return advanceDay(state).state;
