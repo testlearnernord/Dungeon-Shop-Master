@@ -11,7 +11,7 @@ export const DUNGEON_NORTH_YAW=0;
 /** CSS compass needle angle: north stays fixed in world space while the
  * actual camera can freely orbit through any number of revolutions. */
 export function dungeonNorthNeedleDegrees(yaw:number):number {
-  return -yaw*180/Math.PI;
+  return yaw*180/Math.PI;
 }
 export function mapPoseFromCamera(
   position:DungeonMapPoint,target:DungeonMapPoint,
@@ -40,7 +40,7 @@ export function panDungeonMap(
   bounds:{halfX:number;halfZ:number},
 ):DungeonMapPose{
   const dx=(Math.cos(p.yaw)*right-Math.sin(p.yaw)*forward)*amount;
-  const dz=(-Math.sin(p.yaw)*right+Math.cos(p.yaw)*forward)*amount;
+  const dz=(Math.sin(p.yaw)*right+Math.cos(p.yaw)*forward)*amount;
   // WASD remains intuitive in SCREEN space after arbitrary camera orbit:
   // W toward the top of the picture, S down, D right and A left.
   return {...p,x:clamp(p.x+dx,-bounds.halfX,bounds.halfX),
