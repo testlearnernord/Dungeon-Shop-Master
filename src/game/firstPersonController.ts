@@ -2,6 +2,7 @@ import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import "@babylonjs/core/Collisions/collisionCoordinator";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
+import {installCellarStairTraversal} from "./cellarStairTraversal.ts";
 
 export function createFirstPersonCamera(canvas: HTMLCanvasElement, scene: Scene): UniversalCamera {
   const camera = new UniversalCamera("player-camera", new Vector3(0, 1.7, -4.6), scene);
@@ -40,5 +41,6 @@ export function createFirstPersonCamera(canvas: HTMLCanvasElement, scene: Scene)
   camera.applyGravity = true;
   camera.ellipsoid = new Vector3(0.35, 0.85, 0.35);
   scene.gravity = new Vector3(0, -0.22, 0);
+  installCellarStairTraversal(camera,scene);
   return camera;
 }
