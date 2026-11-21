@@ -16,7 +16,7 @@ test("one authentic magical death is a critical event with no hidden death cause
   assert.equal(feed.length,1);
   assert.equal(feed[0].category,"death");
   assert.equal(feed[0].priority,3);
-  assert.deepEqual(feed[0].target,{kind:"roster",heroId:hero.id});
+  assert.deepEqual(feed[0].target,{kind:"death-footage",heroId:hero.id,signalId:death.id});
   assert.match(feed[0].detail,/magical signal/);
   assert.doesNotMatch(feed[0].detail,/trap|spike|killer|floor [0-9]/i);
   assert.deepEqual(initialWorldFeedCritical(after),feed[0]);
