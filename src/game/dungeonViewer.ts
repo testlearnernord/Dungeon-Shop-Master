@@ -300,6 +300,11 @@ export class DungeonViewer {
       this.paintPlayback();
     });
     window.addEventListener("keydown", event => {
+      // Give the shared hero inspector first refusal on Escape; do not
+      // accidentally close the entire spectator arena behind its card.
+      if(event.code==="Escape"&&
+         !document.querySelector<HTMLElement>("#world-hero-card")?.hidden)
+        return;
       if (!this.active) {
         if (event.code === "KeyG" && !event.repeat &&
           !document.querySelector("dialog[open]") &&
