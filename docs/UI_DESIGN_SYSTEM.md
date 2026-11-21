@@ -62,7 +62,7 @@ This document is a maintainable implementation contract.
 | Experience | Contract |
 | --- | --- |
 | Shop header / day / gold | Tiny top-left glance; extra details behind disclosure |
-| Hotbar | Six ~54px translucent slots, no whole-bar background; quantities visible, item label on focus |
+| Hotbar | Five ~54px translucent saleable slots, no whole-bar background; quantities visible, item label on focus |
 | Live service strip | Conditional small top-center chips for ready-to-pay customers, live expiring restock and credit requests; **F/click selects stock**, no automatic merchant action |
 | Physical shelf focus | The wooden slot remains the only pick/collision target; each stocked unit is a real GLB-derived 3D mesh sharing its loaded geometry, not a billboard or UI sprite. Aimed slot shows item/count/capacity, left/right one-unit clicks, Shift+click fill/clear and held-cart/bag warnings; no extra modal or pointer interception |
 | Controls | Collapsed by default, expandable above the measured dock |
@@ -199,7 +199,7 @@ The latter is defined in [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 ## Invariants and review gates
 - Never hide a campaign save **error** behind a collapsed panel.
 - Never move purchase or movement authority into presentation helpers.
-- All six item symbols remain distinguishable and share exact IDs.
+- All five shelf-good item symbols remain distinguishable and share exact IDs.
 - HUD dimensions remain narrow at 390px, 800px, and desktop 1440px.
 - The register's paid state must never imply that another cart is already paid. The next-customer action stays disabled until `readyCheckoutHeroId()` and a real unpaid cart agree; merely viewing the next receipt or pressing E does not transfer value. Do not reattach the camera between consecutive registered customers; restore it when the overlay actually closes.
 - The game stays keyboard operable without pointer lock; do not force
