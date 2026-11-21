@@ -376,7 +376,9 @@
         </aside>
         <aside class="dungeon-minimap-panel" aria-label="Development layout map">
           <strong id="dungeon-minimap-heading">Dungeon layout · developer preview</strong>
-          <canvas id="dungeon-minimap" width="186" height="186" aria-label="Full map layout preview, not hero fog of war"></canvas>
+          <canvas id="dungeon-minimap" width="186" height="186" tabindex="-1" role="button"
+            aria-label="LIVE dungeon minimap. Click a known cell or use arrow keys to move the camera."
+            aria-describedby="dungeon-minimap-note"></canvas>
           <small id="dungeon-minimap-note">Green: entrance · Rust: Ghouls · Gold: chests · Red: traps</small>
         </aside>
         <footer class="dungeon-bottom">
