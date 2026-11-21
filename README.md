@@ -21,11 +21,11 @@ Gameplay implementation last source-verified through merged **PR #241** (21 Nove
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Main still uses strict version-24 campaigns. The **unmerged V.004 cellar branch** introduces version 25; older saves need separate migration work |
+| Persistence | Strict version-25 campaigns now include the cellar door, excavation and movable chest; older alpha saves need separate migration work |
 
-**V.004 prototype branch (not merged/released):** a fixed interactive portrait in Galvik's bedroom conceals a sloping staircase to the lower cave. The lower room uses the existing mineable 1m cave cells, P blueprint system and shared furniture registry for a movable chest. It does not yet include the pond, fishing, forging or broader cellar economy. Basement stair climbing and final player-facing lighting need real browser acceptance.
+**V.004 cellar baseline (merged PR #252):** a fixed interactive portrait in Galvik\u0027s bedroom conceals a sloping staircase to the lower cave. The lower room uses the existing mineable 1m cave cells, P blueprint system and shared furniture registry for a movable chest. The pond/fishing implementation is in the follow-up branch, not yet on main.
 
-**Partially implemented / not yet released:** integrated deeper dungeon progression and Floor 8–10 content, a single physical cursed portal replacing the numbered-floor shop access, the individual Floor-10 pass, full ten-day gameplay/pacing acceptance and visual/audio acceptance on real hardware. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
+**V.004 pond PR (in review):** excavate six connected cells on the cellar\u0027s left wall with U to uncover the pool; use E/click on the water to enter a three-counter pointer-lock mouse-flick game. Five provisional synth sounds use GameSfx volume/mute controls. Successful catches are tracked as a persistent trophy count only; no fish goods, economy, cooking or alchemy have been invented yet. The world clock continues during fishing.\n\n**Partially implemented / not yet released:** integrated deeper dungeon progression and Floor 8–10 content, a single physical cursed portal replacing the numbered-floor shop access, the individual Floor-10 pass, full ten-day gameplay/pacing acceptance and visual/audio acceptance on real hardware. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
 
 ## Start playing
 
@@ -48,7 +48,7 @@ Gameplay implementation last source-verified through merged **PR #241** (21 Nove
 | E / hold E at bed | Interact / end the day |
 | N | Build a shelf; Galvik's portrait is a fixed secret door on the V.004 branch |
 | P / R / Q while placing | Move furniture / rotate |
-| U / Shift+U | Mine exposed rock / unlock another expansion tier, including in the cellar |
+| U / Shift+U | Mine exposed rock / unlock another expansion tier, including in the cellar |\n| E at revealed cellar pond | Cast a line; perform three quick accurate mouse flicks to catch a fish |
 | R outside placement | Adventurer roster |
 | G | Dungeon spectator, LIVE or historical |
 | V | Developer Combat Lab and boss/training tools |
