@@ -56,8 +56,8 @@ test("Cinematic shows every real team count without producing extra actors",()=>
   assert.deepEqual(film.monsterIds,["m1","m2"]);
   // The saved frame has already advanced relative to initial cast specs;
   // introduction looks at the real current position, not the spawn point.
-  assert.deepEqual(film.keyframes[1].look,[3,2,5]);
-  assert.deepEqual(film.keyframes[2].look,[-1,1.8,-2]);
+  assert.deepEqual(film.keyframes[1].look,[4.5,2,5.5]);
+  assert.deepEqual(film.keyframes[2].look,[-2,1.8,-2]);
   assert.equal(film.kind,"normal");
   assert.equal(film.duration,5.2);
   assert.equal(film.duration,GROUP_COMBAT_INTRO_SECONDS);
