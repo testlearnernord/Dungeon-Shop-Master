@@ -1,6 +1,6 @@
-/** Pure north-up dungeon map adapter. Grid north is always +Z and
- * occupies the TOP of screen; WASD is never reversed by mouse dragging.
- * All yaw rotation belongs to the opt-in 3D combat camera, not this map. */
+/** Pure map-camera orbit/pan adapter. North is world +Z. Camera yaw
+ * rotates freely, while the HUD compass independently displays true north.
+ * No game-world, save or Babylon dependencies. */
 export interface DungeonMapPose {
   readonly x:number;readonly z:number;
   readonly yaw:number;readonly pitch:number;readonly distance:number;
@@ -8,6 +8,11 @@ export interface DungeonMapPose {
 export interface DungeonMapPoint {readonly x:number;readonly y:number;readonly z:number}
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 export const DUNGEON_NORTH_YAW=0;
+/** CSS compass needle angle: north stays fixed in world space while the
+ * actual camera can freely orbit through any number of revolutions. */
+export function dungeonNorthNeedleDegrees(yaw:number):number {
+  return -yaw*180/Math.PI;
+}
 export function mapPoseFromCamera(
   position:DungeonMapPoint,target:DungeonMapPoint,
 ):DungeonMapPose{
@@ -23,10 +28,8 @@ export function mapCameraPosition(p:DungeonMapPose):DungeonMapPoint{
     y:Math.sin(p.pitch)*p.distance,
     z:p.z-Math.cos(p.yaw)*horizontal};
 }
-export function orbitDungeonMap(p:DungeonMapPose,_dx:number,dy:number):DungeonMapPose{
-  // Dragging can still tilt the perspective; horizontal drag is consumed
-  // by the viewer as camera slide. It must never rotate north away from up.
-  return {...p,yaw:DUNGEON_NORTH_YAW,
+export function orbitDungeonMap(p:DungeonMapPose,dx:number,dy:number):DungeonMapPose{
+  return {...p,yaw:p.yaw+dx*.006,
     pitch:clamp(p.pitch+dy*.005,.32,1.48)};
 }
 export function zoomDungeonMap(p:DungeonMapPose,wheelY:number):DungeonMapPose{
@@ -36,11 +39,11 @@ export function panDungeonMap(
   p:DungeonMapPose,right:number,forward:number,amount:number,
   bounds:{halfX:number;halfZ:number},
 ):DungeonMapPose{
-  const dx=right*amount,dz=forward*amount;
-  // Even if an old camera pose contains rotated yaw, the player controls
-  // are cardinal: W +Z (north), S -Z, A -X, D +X.
-  return { ...p,yaw:DUNGEON_NORTH_YAW,
-    x:clamp(p.x+dx,-bounds.halfX,bounds.halfX),
+  const dx=(Math.cos(p.yaw)*right-Math.sin(p.yaw)*forward)*amount;
+  const dz=(-Math.sin(p.yaw)*right+Math.cos(p.yaw)*forward)*amount;
+  // WASD remains intuitive in SCREEN space after arbitrary camera orbit:
+  // W toward the top of the picture, S down, D right and A left.
+  return {...p,x:clamp(p.x+dx,-bounds.halfX,bounds.halfX),
     z:clamp(p.z+dz,-bounds.halfZ,bounds.halfZ)};
 }
 export function mapCameraTarget(p:DungeonMapPose):DungeonMapPoint{
