@@ -49,7 +49,7 @@ export function buyHeroDungeonFind(
   const serial=state.events.filter(e=>e.id.startsWith(prefix)).length+1;
   const event:WorldEvent={
     id:prefix+serial,type:"hero-buyback",day:state.day,adventurerId:heroId,
-    itemId,quantity:1,revenue:offer.price,
+    itemId,quantity:1,cost:offer.price,
     message:"Galvik bought 1 "+ITEMS.find(item=>item.id===itemId)!.name+
       " from "+hero.name+" for "+offer.price+" gold.",
   };
