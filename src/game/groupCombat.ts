@@ -283,7 +283,10 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       throwVelocity:{x:0,z:0},
       x: spec.x, z: spec.z,
       hp: spec.hp, stamina: 100, heading: 0, lockedHeading: 0,
-      phase: "move" as GroupPhase, phaseAge: 0, cooldown: 0, applied: false,
+      // The authored Troll did not open with an instant attack the moment
+      // a hero entered range. Give the same readable reaction window here.
+      phase: "move" as GroupPhase, phaseAge: 0,
+      cooldown: spec.specialAbility==="grapple-throw"?1.1:0,applied:false,
       targetId: null, rollX: 0, rollZ: 0, healCharges,
       ...(spec.magicHeals!==undefined?{magicHeals:spec.magicHeals}:{}),
       distanceTraveled: 0,
@@ -313,6 +316,33 @@ function move(s: GroupCombatState, a: GroupActor, dx: number, dz: number): void 
   });
   a.x=result.x;a.z=result.z;
   a.distanceTraveled+=result.distance;
+}
+/** Skillful heroes keep a real lane around a unique boss instead of
+ * standing still within a 6-metre smash arc. Move through the same collision
+ * authority as every dungeon fighter; the camera invents no coordinates. */
+function circleSignatureBoss(
+  s:GroupCombatState,a:GroupActor,boss:GroupActor,dt:number,
+):void{
+  const dx=boss.x-a.x,dz=boss.z-a.z;
+  const gap=Math.hypot(dx,dz);
+  if(gap<.001)return;
+  const towardX=dx/gap,towardZ=dz/gap;
+  const wanted=a.style==="ranged"?8:3.15;
+  const radial=gap>wanted+.4?1:gap<wanted-.35?-1:0;
+  const orbit=((a.id.charCodeAt(a.id.length-1)||0)&1)?1:-1;
+  const tangentX=-towardZ*orbit,tangentZ=towardX*orbit;
+  // Keep enough of the approach vector to close and to attack the boss.
+  let vx=tangentX*.54+towardX*radial;
+  let vz=tangentZ*.54+towardZ*radial;
+  const fromCenter=Math.hypot(a.x,a.z);
+  if(s.environment==="cave-lava"&&fromCenter>12.5){
+    const w=Math.min(1,(fromCenter-12.5)/2.4);
+    vx=vx*(1-w)-a.x/fromCenter*w*1.6;
+    vz=vz*(1-w)-a.z/fromCenter*w*1.6;
+  }
+  const length=Math.hypot(vx,vz);
+  if(length<.00001)return;
+  move(s,a,vx/length*a.speed*dt,vz/length*a.speed*dt);
 }
 function phase(a: GroupActor, next: GroupPhase): void {
   enterCombatActorPhase(a,next);
@@ -602,7 +632,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       const chosen=special?trollSignatureProfile(special):null;
       const action=chosen?.groupAbility??a.meleeAbility;
       const posture=chooseCombatPosture({
-        distance:gap,ready:a.cooldown===0&&a.stamina>=13,
+        distance:gap,ready:a.cooldown===0&&a.stamina>=13&&
+          !(enemy.specialAbility==="grapple-throw"&&enemy.phase==="windup"),
         clearShot:lineClear(s,a,enemy),
         attackRange:ranged?11:chosen?.reach??a.reach+enemy.radius,
         approachBeyond:ranged?7:chosen?
@@ -621,12 +652,31 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         phase(a,ranged?"cast":"windup");
         cue(batch,s,a,ranged?"cast":"attack",enemy.id);
       }else{
-        const heading=combatDirection(a,enemy);
-        if(posture.approach)move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
-        else if(posture.withdraw)move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
+        if(a.team==="heroes"&&enemy.specialAbility==="grapple-throw"){
+          circleSignatureBoss(s,a,enemy,dt);
+        }else{
+          const heading=combatDirection(a,enemy);
+          if(posture.approach){
+            if(a.specialAbility==="grapple-throw"){
+              // Same slow turning pressure as the authored solo boss.
+              const tangentX=-heading.z,tangentZ=heading.x;
+              const length=Math.hypot(heading.x*3.25+tangentX*.45,
+                heading.z*3.25+tangentZ*.45);
+              move(s,a,(heading.x*3.25+tangentX*.45)/length*a.speed/3.25*dt,
+                (heading.z*3.25+tangentZ*.45)/length*a.speed/3.25*dt);
+            }else move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
+          }else if(posture.withdraw)
+            move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
+        }
       }
     }
   } else if (a.phase === "windup") {
+    // Keep the early grab readable and reactive, then lock the final lane.
+    if(a.activeMeleeAbility==="grapple"&&a.specialAbility==="grapple-throw"&&
+       a.phaseAge<GRAPPLE_TIMING.trackUntil){
+      a.lockedHeading=combatHeading(a,enemy);
+      a.heading=a.lockedHeading;
+    }
     if (tick.complete)
       phase(a,a.activeMeleeAbility==="grapple"?"grab":"strike");
   } else if (a.phase === "strike") {
@@ -651,7 +701,11 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     }
     if (tick.complete) phase(a,"move");
   } else if (a.phase === "recover") {
-    if (tick.complete) phase(a,"move");
+    if(tick.complete){
+      if(a.specialAbility==="grapple-throw")
+        a.cooldown=Math.max(a.cooldown,1.5);
+      phase(a,"move");
+    }
   } else if (a.phase === "grab") {
     if(tick.contactDue){
       a.applied=true;
@@ -680,6 +734,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   } else if (a.phase === "grabMiss") {
     if(tick.complete){
       a.grappleTargetId=null;
+      a.cooldown=Math.max(a.cooldown,1.45);
       phase(a,"recover");
     }
   } else if (a.phase === "roll") {
@@ -688,7 +743,11 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   } else if (a.phase === "parry") {
     if (a.phaseAge >= 0.53) phase(a,"move");
   } else if (a.phase === "hurt") {
-    if (tick.complete) phase(a,"move");
+    if(tick.complete){
+      if(a.specialAbility==="grapple-throw")
+        a.cooldown=Math.max(a.cooldown,1.4);
+      phase(a,"move");
+    }
   } else if (a.phase === "heal") {
     if (tick.contactDue) {
       a.applied = true;
