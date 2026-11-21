@@ -42,7 +42,7 @@ test("three counters require increasing quick mouse sweeps, not tiny nudges",()=
     assert.equal(scoreFishingFlick(distance*1.25,0,460,{x:1,y:0},distance),
       "too-slow");
   }
-  assert.equal(scoreFishingFlick(170,-170,190,{x:1,y:-1},210),"perfect");
+  assert.equal(scoreFishingFlick(190,-190,190,{x:1,y:-1},210),"perfect");
   assert.equal(FISHING_FLICKS.length,8);
   assert.equal(REQUIRED_FLICKS,3);
   assert.deepEqual(fishingDirectionFor(0,0),fishingDirectionFor(0,0));

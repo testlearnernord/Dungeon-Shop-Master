@@ -57,6 +57,21 @@ test("mined pond reveals water and opens fishing by E @ci-smoke",async({page})=>
   expect(hud.bottom).toBeGreaterThan(hud.viewport*.55);
   expect(hud.height).toBeLessThan(hud.viewport*.5);
   expect(hud.mainSceneVisible).toBe(true);
+  // The gold goal has a fixed full-length marker, while the independent cyan
+  // attempt starts at zero. Difficulty is the actual browser mouse delta,
+  // not a short UI-only fake threshold.
+  const presentation=await page.evaluate(()=>{
+    const guide=document.querySelector<HTMLElement>(".fishing-aim-goal")!;
+    const attempt=document.querySelector<HTMLElement>("#fishing-motion-ray")!;
+    return {goldGoalWidth:guide.getBoundingClientRect().width,
+      actualAttemptWidth:parseFloat(attempt.style.width),
+      required:document.querySelector("#fishing-pull-distance")?.textContent,
+      progress:document.querySelector<HTMLElement>("#fishing-pull-fill")?.style.width};
+  });
+  expect(presentation.goldGoalWidth).toBeGreaterThan(90);
+  expect(presentation.actualAttemptWidth).toBe(0);
+  expect(presentation.required).toBe("0 / 120 px");
+  expect(presentation.progress).toBe("0.0%");
   await page.locator("#fishing-cast").click();
   await expect.poll(()=>page.locator("#fishing-phase").textContent(),
     {timeout:7000}).toMatch(/Flick|Line cast/);
