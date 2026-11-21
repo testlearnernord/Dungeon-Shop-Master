@@ -28,8 +28,8 @@ test("paid Iron Sword and Leather Vest follow one buyer into the authentic saved
         ({...slot,itemId:null,quantity:0}))},
   };
   const merchant=new GameStore(start);
-  assert.match(merchant.purchase("iron-sword",1,1101),/Bought Iron Sword/);
-  assert.match(merchant.purchase("leather-vest",1,1102),/Bought Leather Vest/);
+  assert.match(merchant.purchase("iron-sword",1,1101),/Bought 1 Iron Sword/);
+  assert.match(merchant.purchase("leather-vest",1,1102),/Bought 1 Leather Vest/);
   assert.match(merchant.transfer("shelf-1-slot-1","iron-sword","stock"),/Placed Iron Sword/);
   assert.match(merchant.transfer("shelf-1-slot-2","leather-vest","stock"),/Placed Leather Vest/);
   const stocked=merchant.state;
