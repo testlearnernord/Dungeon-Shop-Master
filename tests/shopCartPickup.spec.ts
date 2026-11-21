@@ -58,6 +58,12 @@ test("real 3D shelf pickup reserves stock, displays a hand-held item and survive
   const scene=await inspect();
   const hero=scene.visitors.find(v=>v.id===heroId)!;
   expect(hero.carriedMeshes).toBeGreaterThan(0);
+  expect(hero.carriedStock).toHaveLength(hero.carriedMeshes);
+  for(const model of hero.carriedStock){
+    expect(model.source).toBe("shared-shop-stock-glb");
+    expect(model.geometry).toBeGreaterThan(0);
+    expect(model.material).toContain("shop-stock-glb-vertex-paint");
+  }
   expect(hero.cartPaid).toBe(false);
   expect(hero.cartTotal).toBeGreaterThan(0);
   expect(hero.unpickable).toBe(true);
