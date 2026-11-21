@@ -1,4 +1,4 @@
-import { ECONOMY, ITEMS } from "./game/economy";
+import {ECONOMY,SHELF_GOODS} from "./game/economy";
 import { GameStore } from "./game/gameStore";
 import {goldIcon} from "./uiIcons.ts";
 
@@ -9,6 +9,7 @@ export function setupEconomyHud(
 ): () => void {
   const gold = document.querySelector<HTMLElement>("#merchant-gold")!;
   const supplies = document.querySelector<HTMLElement>("#shelf-supplies")!;
+  const materialReserve=document.querySelector<HTMLElement>("#material-reserve")!;
   const sales = document.querySelector<HTMLElement>("#daily-sales")!;
   const dialog = document.querySelector<HTMLDialogElement>("#wholesale")!;
   const catalog = document.querySelector<HTMLElement>("#wholesale-catalog")!;
@@ -20,7 +21,7 @@ export function setupEconomyHud(
   const resultCount=document.querySelector<HTMLElement>("#wholesale-count")!;
   const balance=document.querySelector<HTMLElement>("#wholesale-gold")!;
   const capacity=document.querySelector<HTMLElement>("#wholesale-bag-fill")!;
-  const cards:{row:HTMLElement;id:(typeof ITEMS)[number]["id"];
+  const cards:{row:HTMLElement;id:(typeof SHELF_GOODS)[number]["id"];
     bag:HTMLElement;shelf:HTMLElement;
     buyOne:HTMLButtonElement;buyFive:HTMLButtonElement;
     max:HTMLButtonElement;discard:HTMLButtonElement}[]=[];
@@ -62,7 +63,7 @@ export function setupEconomyHud(
     toggle();
   });
 
-  for (const item of ITEMS) {
+  for (const item of SHELF_GOODS) {
     const row = document.createElement("div");
     row.className = "catalog-row";
     row.dataset.itemId=item.id;
@@ -170,13 +171,13 @@ export function setupEconomyHud(
     const term=search.value.trim().toLowerCase();
     let shown=0;
     for(const card of cards){
-      const item=ITEMS.find(entry=>entry.id===card.id)!;
+      const item=SHELF_GOODS.find(entry=>entry.id===card.id)!;
       const visible=(filter.value==="all"||groupFor(item.kind)===filter.value)&&
         (item.name.toLowerCase().includes(term)||item.kind.toLowerCase().includes(term));
       card.row.hidden=!visible;
       if(visible)shown++;
     }
-    resultCount.textContent=shown+" / "+ITEMS.length+" items";
+    resultCount.textContent=shown+" / "+SHELF_GOODS.length+" items";
   };
   search.addEventListener("input",updateFilter);
   filter.addEventListener("change",updateFilter);
@@ -189,7 +190,7 @@ export function setupEconomyHud(
     capacity.textContent=used+" / "+ECONOMY.bagCapacity+" bag slots";
     capacity.dataset.full=String(free===0);
     for(const card of cards){
-      const item=ITEMS.find(entry=>entry.id===card.id)!;
+      const item=SHELF_GOODS.find(entry=>entry.id===card.id)!;
       const count=economy.slots.filter(slot=>slot.itemId===item.id)
         .reduce((sum,slot)=>sum+slot.quantity,0);
       const possible=Math.min(free,Math.floor(economy.balance/item.wholesaleCost));
@@ -208,7 +209,10 @@ export function setupEconomyHud(
     gold.dataset.amount=economy.balance+"g";
     gold.setAttribute("aria-label","Merchant gold: "+economy.balance+"g");
     gold.prepend(goldIcon());
-    supplies.textContent = `Shelves: ${ITEMS.map((item) =>
+    materialReserve.textContent="Workshop reserve · Iron Ore "+
+      economy.materialStorage["iron-ore"]+" · Coal "+economy.materialStorage.coal+
+      " · Forge not constructed";
+    supplies.textContent = `Shelves: ${SHELF_GOODS.map((item) =>
       `${item.name} ${economy.slots.filter((slot) => slot.itemId === item.id)
         .reduce((sum, slot) => sum + slot.quantity, 0)}`).join(" · ")}`;
     const summary = economy.dailySales;
