@@ -527,8 +527,13 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     // Tanks prefer to meet an incoming strike with steel, but do not lose
     // the ability to sidestep. One stable per-attack read, not render RNG.
     const tankParry=a.role==="tank"&&a.style==="melee";
-    const parryRead=threat?deterministicGrappleSample(
-      threat.id,a.id+"|parry",Math.max(1,threat.attacksStarted)):0;
+    // Mix the monotone attack ordinal into the ID-stable sample: adjacent
+    // FNV samples alone are strongly correlated and could make a tank parry
+    // every single attack for one pair of IDs.
+    const ordinal=Math.max(1,threat?.attacksStarted??1);
+    const attackMix=(Math.imul(ordinal,0x9e3779b9)>>>0)/0x100000000;
+    const parryRead=threat?(deterministicGrappleSample(
+      threat.id,a.id+"|parry",ordinal)+attackMix)%1:0;
     const reaction=chooseCombatDefense({
       threatened:!!threat,stamina:a.stamina,
       preferParry:tankParry&&parryRead<.78,
