@@ -463,6 +463,26 @@ export class DungeonViewer {
     return this.active&&this.startFloor(view.floor,heroId);
   }
 
+  /** World Echoes jumps to the ACTUAL event tile, not wherever that
+   * adventurer may have wandered by the time the toast is clicked. */
+  openFloorSite(floor:number,x:number,z:number):boolean{
+    if(!LIVE_SPECTATOR_FLOORS.some(value=>value===floor))return false;
+    const layout=generateExpeditionLayout(this.store.state.seed,floor);
+    if(!Number.isInteger(x)||!Number.isInteger(z)||
+       x<0||z<0||x>=layout.width||z>=layout.height||
+       tileAt(layout,x,z)==="wall")return false;
+    if(!this.active)this.open();
+    if(!this.active||!this.startFloor(floor as SpatialDungeonFloor))return false;
+    const pose=this.mapPose();
+    if(!pose)return false;
+    const target=getWorld(layout,{x,z});
+    this.setMapPose({...pose,x:target.x,z:target.z});
+    this.followActor=null;
+    this.focusLabel.textContent="WORLD ECHO · Floor "+floor+
+      " · tile ("+x+", "+z+")";
+    return true;
+  }
+
   /** A global feed click opens precisely the active recorded combat
    * authority. It never spawns a new Ghoul or re-simulates a completed fight. */
   openLiveEncounter(fightId:string):boolean {
