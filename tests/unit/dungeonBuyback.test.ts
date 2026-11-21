@@ -35,7 +35,7 @@ test("buyback transfers one physical item and its gold exactly once per receipt"
   const receipt=first.state.events.at(-1)!;
   assert.equal(receipt.type,"hero-buyback");
   assert.equal(receipt.quantity,1);
-  assert.equal(receipt.revenue,price);
+  assert.equal(receipt.cost,price);
   assert.equal(receipt.itemId,"iron-ore");
   assert.equal(receipt.adventurerId,heroId);
   const second=buyHeroDungeonFind(first.state,heroId,"iron-ore");
