@@ -27,6 +27,8 @@ import type { GroupPhase } from "./groupCombat.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import type {LiveFloorSpectatorFrame,LiveFloorHero} from "./liveFloorSpectator.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
+import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget}
+  from "./dungeonMapCamera.ts";
 import {selectHeroFloorPerception,type HeroFloorPerception}
   from "./heroPerception.ts";
 import {
@@ -784,11 +786,19 @@ export class DungeonReplayScene {
   /** Only explicitly selected visible recorded actors can steer the camera. */
   follow(actorId:string):void {
     if(this.floorFrame){
-      const model=this.floorModels.get(actorId);
-      if(!model?.root.isEnabled())return;
-      const p=model.root.position;
-      this.camera.position.set(p.x,Math.max(22,this.camera.position.y),p.z-15);
-      this.camera.setTarget(new Vector3(p.x,0,p.z));
+      const hero=this.floorFrame.heroes.find(member=>member.id===actorId);
+      if(!hero)return;
+      // Center on the hero's committed tile, including an abstract active
+      // fight where their presentation model is intentionally hidden.
+      // Never destroy the orbit angle or zoom selected by the player.
+      const target=toWorld(this.layout,hero);
+      const current=mapPoseFromCamera(this.camera.position,
+        this.camera.getTarget());
+      const pose={...current,x:target.x,z:target.z};
+      const position=mapCameraPosition(pose);
+      const focus=mapCameraTarget(pose);
+      this.camera.position.set(position.x,position.y,position.z);
+      this.camera.setTarget(new Vector3(focus.x,focus.y,focus.z));
       return;
     }
     if(!this.lastSnapshot||(!this.replay&&!this.liveFrame))return;
