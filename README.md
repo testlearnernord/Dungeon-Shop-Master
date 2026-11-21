@@ -267,7 +267,7 @@ locomotion, attacks, hurt and death from committed replay frames.
 A new crypt/ruins environment decorates the EXISTING navigable
 rooms with tombs, broken pillars and ghostly lights, adding no
 second arena or gameplay collision authority. This needs final
-visual and original Ghoul SFX sign-off before calling the asset
+visual/audio timing sign-off before calling the asset
 finished. See [Monster Asset Pipeline](docs/MONSTER_ASSET_PIPELINE.md).
 
 **V.003 is a target, not an implemented version.** Floors 1–4 and 7 now share the real spatial explorer and recorded combat; the separate Floor 6 boss battle has **not** been consolidated. The cursed special-floor shop, two-day off-duty period, shared paced world clock, event-timeline Adventurer Board and complete hero/item causality upgrades remain future work. The npm package version `0.1.0` is independent of the in-game V.002 / planned V.003 release labels.
@@ -322,7 +322,8 @@ need human game testing. Shop remarks never alter sales or dungeon outcomes.
 | V / G | Level 6 arena (13.5s music-led intro) / Level 7 dungeon viewer |
 | V with old footage available | Opens a fresh preview by default; use C / the spectator source button for saved footage. Opening a specific Ledger recording still shows that recording directly. |
 | Inspect Tripo GLB (inside Level 6) | Open a local-only model lab: select a rigged `.glb`, orbit/zoom and choose any embedded animation; Esc returns to the battle. Training-only fights with no authorized hero randomize on each restart. Saved replays never reroll. |
-| SFX Lab (V training preview only) | Toggle beside Restart. Solo/Mute Hero, Troll or World and independently Voice, Movement, Melee, Ranged, Magic or Environment. Expand the 19-sound list to audition each cue, now explicitly labelled MP3 or synth, and inspect recent sound events. Filters reset outside training. |
+| SFX Lab (V training preview only) | Toggle beside Restart. Solo/Mute Hero, Troll, Ghoul or World and independently Voice, Movement, Melee, Ranged, Magic or Environment. Expand the 30-sound list to audition each cue, labelled WAV, MP3 or synth, and inspect recent sound events. Filters reset outside training. |
+| Ghoul combat audio | Twenty-one curated 48 kHz mono WAVs under `public/audio/sfx/ghoul/`, played in LIVE, saved 3D fight replays and V Combat Lab via one presentation-only cue mapper. Real `GroupCombatCue` hit/miss/dodge/parry/death events choose claw impacts, whiffs and deaths; sound does not alter combat outcomes. The 3D viewer uses committed actor coordinates for spatial mixing. Five source preview MP3s have been removed from the repo root. Final artistic sound/animation alignment remains subject to in-browser review. |
 | Audio panel | Separate Music and Effects (SFX) mute/volume controls persist independently outside V; Level 6 temporarily starts with a 16% Music / 40% SFX balance and restores previous settings when closed. The Level 6 Troll now uses eleven curated MP3 one-shots: one roar, two grunts, one footstep, two fist swings, two impacts and three hurt takes. Heavy slam samples follow the actual combat motor. Breathing, death, Hero and environment cues and shop feedback are still provisional Web Audio synthesis, not finished Foley. |
 | Space / Enter (during Level 6 intro) | Skip the cinematic and seek Desperate Measures to the 13.5s combat downbeat; V / Esc still returns to the shop |
 | M | Toggle mouse/HUD cursor mode |
