@@ -49,6 +49,11 @@ export const SFX_CATALOG = [
   {id:"troll-death",label:"Troll · death",owner:"troll",family:"voice"},
   {id:"hero-death",label:"Hero · death",owner:"hero",family:"voice"},
   {id:"rock-crumble",label:"Rock · crumble",owner:"world",family:"environment"},
+  {id:"fishing-cast",label:"Fishing · cast and splash",owner:"world",family:"environment"},
+  {id:"fishing-bite",label:"Fishing · bite",owner:"world",family:"environment"},
+  {id:"fishing-flick",label:"Fishing · counter flick",owner:"world",family:"movement"},
+  {id:"fishing-miss",label:"Fishing · lost tension",owner:"world",family:"environment"},
+  {id:"fishing-catch",label:"Fishing · landed fish",owner:"world",family:"environment"},
 ] as const satisfies readonly {
   id:string; label:string; owner:SfxOwner; family:SfxFamily
 }[];

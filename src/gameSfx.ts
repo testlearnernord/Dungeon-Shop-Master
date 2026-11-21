@@ -32,6 +32,8 @@ const SPACING: Partial<Record<GameSfxCue, number>> = {
   "ghoul-claw-whiff": .09, "ghoul-claw-hit": .09,
   "ghoul-leap-takeoff": .4, "ghoul-leap-air": .4, "ghoul-leap-land": .3,
   "troll-grunt": 0.65, "boss-hurt": 0.48, "lava-burn": 0.45, "rock-crumble": 0.15,
+  "fishing-cast": .30,"fishing-bite": .30,"fishing-flick": .12,
+  "fishing-miss": .20,"fishing-catch": .4,
 };
 
 /** The same live or saved motor cue means the same sound; no guessed damage. */
@@ -490,6 +492,27 @@ export class GameSfx {
       case "rock-crumble":
         this.noise(output, now, .56, 350, .30, "lowpass", .75);
         this.noise(output, now+.085, .28, 1500, .11, "bandpass");
+        break;
+      case "fishing-cast":
+        this.noise(output,now,.32,1050,.20,"bandpass",.85);
+        this.tone(output,now+.13,.22,280*pitch,110*pitch,.11,"sine");
+        break;
+      case "fishing-bite":
+        this.noise(output,now,.19,1800,.22,"bandpass",1.1);
+        this.tone(output,now+.05,.24,680*pitch,310*pitch,.17,"sine");
+        break;
+      case "fishing-flick":
+        this.noise(output,now,.16,2300,.15,"bandpass",1.4);
+        this.tone(output,now,.12,350*pitch,520*pitch,.08,"triangle");
+        break;
+      case "fishing-miss":
+        this.tone(output,now,.34,190*pitch,85*pitch,.15,"triangle");
+        this.noise(output,now+.08,.22,600,.08,"lowpass");
+        break;
+      case "fishing-catch":
+        this.tone(output,now,.22,460*pitch,650*pitch,.19,"sine");
+        this.tone(output,now+.17,.38,630*pitch,970*pitch,.16,"triangle");
+        this.noise(output,now+.03,.40,1800,.14,"bandpass");
         break;
     }
   }
