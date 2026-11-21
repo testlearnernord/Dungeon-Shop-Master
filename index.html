@@ -326,6 +326,7 @@
             <button id="close-dungeon" type="button">Return to shop (G / Esc)</button>
           </div>
         </header>
+        <div class="dungeon-left-rail" id="dungeon-left-rail" aria-label="LIVE floor status and party summaries">
         <aside id="dungeon-map-status" class="dungeon-map-status" aria-label="LIVE dungeon floor summary" hidden>
           <strong><span class="dungeon-live-indicator"></span> LIVE FLOOR OVERVIEW</strong>
           <div id="dungeon-map-counts" aria-live="off">Waiting for confirmed dungeon data</div>
@@ -338,6 +339,13 @@
           </div>
           <small>WASD move · Left/right drag orbit + tilt · Wheel zoom · Click hero to inspect · Tab cycle · R reset</small>
         </aside>
+        <aside id="dungeon-temporary-party" class="dungeon-temporary-party"
+          hidden aria-label="Recorded Temporary Party members">
+          <strong id="dungeon-temporary-party-heading">Temporary Party</strong>
+          <ul id="dungeon-temporary-party-members"></ul>
+          <small>Recorded expedition companions · not today's roster</small>
+        </aside>
+        </div>
         <div id="dungeon-hover-tooltip" class="dungeon-hover-tooltip" role="tooltip" hidden></div>
         <div id="dungeon-fight-cinematic" class="dungeon-fight-cinematic" hidden
           aria-label="Optional fight introduction" aria-live="off">
@@ -358,12 +366,6 @@
           <strong id="dungeon-combat-heading">⚔ ENGAGEMENT · ABSTRACT MAP</strong>
           <p id="dungeon-live-combat-actors"></p>
           <small>Click the map battle marker or use the Watch button for the separate 3D arena. LIVE fights continue on the shared world clock; recordings only read saved frames.</small>
-        </aside>
-        <aside id="dungeon-temporary-party" class="dungeon-temporary-party"
-          hidden aria-label="Recorded Temporary Party members">
-          <strong id="dungeon-temporary-party-heading">Temporary Party</strong>
-          <ul id="dungeon-temporary-party-members"></ul>
-          <small>Recorded expedition companions · not today's roster</small>
         </aside>
         <aside id="dungeon-hero-detail" class="dungeon-hero-detail" hidden
           aria-label="Selected LIVE dungeon hero">
