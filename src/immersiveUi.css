@@ -1278,3 +1278,24 @@
     bottom:30%;padding:11px 14px
   }
 }
+
+/* The shared group/LIVE/V spectator uses the ORIGINAL Level-6 title-card
+ * language and timing. This overlay is opt-in and pointer-transparent: it
+ * may not intercept lab controls or alter simulated combat. */
+.group-combat-cinematic[hidden]{display:none!important}
+.group-combat-cinematic{
+  position:fixed;inset:0;z-index:4;pointer-events:none;
+  background:linear-gradient(180deg,rgba(5,6,7,.12) 0%,
+    transparent 38%,rgba(6,5,6,.28) 65%,rgba(2,2,4,.74) 100%);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:0 24px clamp(68px,10vh,110px);
+  text-align:center;
+}
+.group-combat-cinematic-caption{
+  letter-spacing:.13em;
+  font:600 clamp(12px,1.3vw,16px)/1.4 system-ui,sans-serif;
+  color:#fff2d2;margin:0;
+}
+.group-combat-cinematic-progress{
+  width:0;height:100%;background:#e9bc7b;
+}
