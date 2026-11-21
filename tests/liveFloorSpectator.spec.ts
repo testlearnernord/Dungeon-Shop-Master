@@ -100,6 +100,16 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
       map.top-header.bottom);
   });
   await expect.poll(hudClearance,{timeout:5000}).toBeGreaterThanOrEqual(8);
+  // A native select popup may extend below the header rectangle; the
+  // interactive header must still stack above the read-only overview.
+  const dropdownAboveOverview=await page.evaluate(()=>{
+    const toolbar=document.querySelector<HTMLElement>(
+      "#dungeon-hud .dungeon-toolbar")!;
+    const rail=document.querySelector<HTMLElement>("#dungeon-left-rail")!;
+    return Number(getComputedStyle(toolbar).zIndex)>
+      Number(getComputedStyle(rail).zIndex);
+  });
+  expect(dropdownAboveOverview).toBe(true);
   const originalViewport=page.viewportSize()!;
   await page.setViewportSize({width:760,height:720});
   await expect.poll(hudClearance,{timeout:5000}).toBeGreaterThanOrEqual(8);
