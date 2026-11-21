@@ -293,6 +293,9 @@ export class Level6Arena {
     this.sourceToggle.hidden=true;
     if(document.pointerLockElement)void document.exitPointerLock();
     this.lab.open();
+    // The shared SFX workbench belongs in the actual Combat Lab too, not
+    // only in the historical solo preview.
+    this.sfxLab.setAvailable(true);
     this.panel.dataset.devLab="true";
     this.labToggle.textContent="Return to Level 6 preview";
     this.previewText.textContent=
