@@ -5,7 +5,7 @@ import type {GameSfx} from "./gameSfx.ts";
 import {isCellarPondUncovered} from "./game/cellarPond.ts";
 import {setupFishingRodVisuals} from "./game/fishingRodVisuals.ts";
 import {FLICK_SAMPLE_MS,FLICK_WINDOW_MS,REQUIRED_FLICKS,MAX_MISSES,
-  fishingDirectionFor,scoreFishingFlick,
+  fishingDirectionFor,fishingFlickDistanceFor,fishingFlickProgress,scoreFishingFlick,
   type FishingFlick,type FlickGrade} from "./game/fishingSkill.ts";
 
 type Phase="ready"|"waiting"|"flick"|"recover"|"result";
@@ -26,8 +26,9 @@ export function setupFishingHud(
       <div class="fishing-aim-ornament"></div>
       <div class="fishing-aim-crosshair"></div>
       <span id="fishing-arrow" class="fishing-aim-target">➶</span>
+      <span class="fishing-aim-goal"></span>
       <span id="fishing-motion-ray" class="fishing-aim-motion"></span>
-      <span class="fishing-aim-label">COUNTER PULL</span>
+      <span class="fishing-aim-label">BRASS = TARGET · CYAN = YOUR PULL</span>
     </div>
     <div class="fishing-frame">
       <div class="fishing-titlebar">
@@ -43,6 +44,13 @@ export function setupFishingHud(
             <span id="fishing-count">0 / 3 counters</span>
             <span id="fishing-errors">0 / 3 misses</span>
           </div>
+          <div class="fishing-pull-head">
+            <span id="fishing-pull-stage">PULL DISTANCE · I</span>
+            <strong id="fishing-pull-distance">0 / 120 px</strong>
+          </div>
+          <div class="fishing-pull-track" aria-label="Mouse pull toward the target">
+            <div id="fishing-pull-fill"></div>
+          </div>
           <div class="fishing-meter" aria-label="Flick time remaining">
             <div id="fishing-timer-fill"></div>
           </div>
@@ -52,12 +60,15 @@ export function setupFishingHud(
         <button id="fishing-cast" type="button">Cast line</button>
         <button id="fishing-close" type="button">Leave pond <kbd>Esc</kbd></button>
       </div>
-      <small>Follow the brass direction cue · Your actual mouse pull appears in turquoise</small>
+      <small>Make one long, quick directional sweep · The next counter needs more distance</small>
     </div>`;
   document.body.append(panel);
   const arrow=panel.querySelector<HTMLElement>("#fishing-arrow")!;
   const aim=panel.querySelector<HTMLElement>(".fishing-aim-ui")!;
   const motion=panel.querySelector<HTMLElement>("#fishing-motion-ray")!;
+  const pullStage=panel.querySelector<HTMLElement>("#fishing-pull-stage")!;
+  const pullDistance=panel.querySelector<HTMLElement>("#fishing-pull-distance")!;
+  const pullFill=panel.querySelector<HTMLElement>("#fishing-pull-fill")!;
   const rod=setupFishingRodVisuals(scene,camera);
   const phaseText=panel.querySelector<HTMLElement>("#fishing-phase")!;
   const hint=panel.querySelector<HTMLElement>("#fishing-hint")!;
@@ -71,6 +82,20 @@ export function setupFishingHud(
   let waitUntil=0,deadline=0;
   let sampleStarted=0,sampleLast=0,dx=0,dy=0;
   let target:FishingFlick=fishingDirectionFor(0,0);
+  let requiredDistance=fishingFlickDistanceFor(0);
+  const showPull=(x:number,y:number)=>{
+    const progress=fishingFlickProgress(x,y,target,requiredDistance);
+    const travelled=Math.hypot(x,y);
+    // Render the actual vector at exactly the same scale as the brass goal.
+    // A reverse or sideways pull is visible, but cannot fill the progress.
+    const scale=102/requiredDistance;
+    const angle=Math.atan2(y,x)*180/Math.PI;
+    motion.style.transform="rotate("+angle+"deg)";
+    motion.style.width=Math.min(119,travelled*scale)+"px";
+    pullDistance.textContent=Math.round(progress.projected)+" / "+requiredDistance+" px";
+    pullFill.style.width=(progress.ratio*100).toFixed(1)+"%";
+    pullFill.dataset.complete=String(progress.ratio>=1);
+  };
   let note="Ready to cast";
   let tip="Cast your line, then flick the mouse in the shown direction.";
 
@@ -81,6 +106,8 @@ export function setupFishingHud(
     hint.textContent=tip;
     count.textContent=correct+" / "+REQUIRED_FLICKS+" counters";
     errors.textContent=misses+" / "+MAX_MISSES+" misses";
+    pullStage.textContent="PULL DISTANCE · "+
+      ["I","II","III"][Math.min(correct,REQUIRED_FLICKS-1)];
     arrow.textContent=phase==="flick"?target.glyph:"➶";
     arrow.dataset.active=String(phase==="flick");
     aim.dataset.active=String(phase==="flick");
@@ -119,13 +146,15 @@ export function setupFishingHud(
   };
   const nextFlick=(now:number)=>{
     phase="flick";
-    motion.style.width="0px";
     rod.tug();
     target=fishingDirectionFor(store.state.cellarFishCaught,round);
+    requiredDistance=fishingFlickDistanceFor(correct);
+    aim.dataset.grade="";
+    showPull(0,0);
     deadline=now+FLICK_WINDOW_MS;
     dx=0;dy=0;sampleStarted=0;sampleLast=0;
-    note="Flick "+target.label+"!";
-    tip="Counter the fish's pull with one quick mouse flick ("+target.glyph+").";
+    note="Flick "+target.label+" · "+requiredDistance+" px!";
+    tip="Reach the gold marker with one fast pull ("+target.glyph+"). Turquoise shows your actual movement.";
     sfx.play("fishing-bite");
     render();
   };
@@ -162,12 +191,11 @@ export function setupFishingHud(
     }
     sampleLast=now;dx+=event.movementX;dy+=event.movementY;
     rod.flick(event.movementX,event.movementY);
-    // The drawn turquoise vector is the real aggregate mouse delta.
-    // It does not alter the existing scoring function or timing windows.
-    const angle=Math.atan2(dy,dx)*180/Math.PI;
-    motion.style.transform="rotate("+angle+"deg)";
-    motion.style.width=Math.min(72,Math.hypot(dx,dy)*.62)+"px";
-    const grade=scoreFishingFlick(dx,dy,now-sampleStarted,target);
+    // One shared rule drives both the feedback meter and actual grading:
+    // unaligned travel is visible but does not count toward the target.
+    showPull(dx,dy);
+    const grade=scoreFishingFlick(dx,dy,now-sampleStarted,target,
+      requiredDistance);
     if(grade==="too-small")return;
     if(grade==="perfect"||grade==="good"){hit(grade,now);return;}
     if(grade==="too-slow"){
@@ -228,7 +256,9 @@ export function setupFishingHud(
       if(!isCellarPondUncovered(store.state.cellarRoom))return false;
       active=true;phase="ready";correct=0;misses=0;round=0;
       aim.dataset.grade="";
-      motion.style.width="0px";
+      requiredDistance=fishingFlickDistanceFor(0);
+      target=fishingDirectionFor(store.state.cellarFishCaught,0);
+      showPull(0,0);
       rod.setActive(true);
       rod.setCast(false);
       note="Ready to cast";
