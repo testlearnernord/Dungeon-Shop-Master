@@ -8,6 +8,8 @@ import type {Scene} from "@babylonjs/core/scene";
 import type {UniversalCamera} from "@babylonjs/core/Cameras/universalCamera";
 import {CELLAR_FLOOR_Y} from "./cellarRoom.ts";
 import {POND_CENTER} from "./cellarPond.ts";
+import {setupFishingFishVisuals} from "./fishingFishVisuals.ts";
+import type {ScreenPull} from "./fishingPullPresentation.ts";
 
 /** Camera-held rod, one real 3D line leading into the already excavated pond,
  * and a water-space bobber. Pure presentation; never mutates the world clock
@@ -60,8 +62,10 @@ export function setupFishingRodVisuals(scene:Scene,camera:UniversalCamera){
   tip.parent=rig;tip.position.copyFrom(points[points.length-1]);
 
   const water=new Vector3(POND_CENTER.x,CELLAR_FLOOR_Y+.17,POND_CENTER.z);
+  const hookedFish=setupFishingFishVisuals(scene,camera);
   let line:LinesMesh=MeshBuilder.CreateLines("fishing-rod-visible-line",{
-    points:[new Vector3(0,0,0),water.clone()],updatable:true,
+    points:[new Vector3(0,0,0),new Vector3(0,0,0),
+      new Vector3(0,0,0),water.clone()],updatable:true,
   },scene);
   line.color=lineColor;
   line.alpha=.9;
@@ -87,7 +91,7 @@ export function setupFishingRodVisuals(scene:Scene,camera:UniversalCamera){
   ring.material=rippleMat;
   ring.isPickable=false;ring.checkCollisions=false;
 
-  let active=false,cast=false,impact=0;
+  let active=false,cast=false,impact=0,resolveRemaining=0;
   let originalYaw=0,originalPitch=0;
   let elapsed=0;
   rig.setEnabled(false);line.setEnabled(false);
@@ -96,28 +100,53 @@ export function setupFishingRodVisuals(scene:Scene,camera:UniversalCamera){
     if(!active)return;
     const dt=Math.min(.05,scene.getEngine().getDeltaTime()/1000);
     elapsed+=dt;impact=Math.max(0,impact-dt*3.2);
+    hookedFish.update(dt);
+    const tension=hookedFish.lineTension;
     const sway=Math.sin(elapsed*3)*.012;
-    rig.rotation.x=-.035+impact*.25+sway;
-    rig.rotation.z=impact*.20;
+    // The fish loading the line bows the rod rather than merely shaking it.
+    rig.rotation.x=-.035+impact*.25+sway+tension*.09;
+    rig.rotation.z=impact*.20+tension*Math.sin(elapsed*13)*.027;
     if(!cast)return;
-    bobber.position.y=water.y+Math.sin(elapsed*4.5)*.035;
-    ring.scaling.setAll(1+.18*Math.sin(elapsed*3.8));
+    const pull=hookedFish.bobberOffset;
+    bobber.position.set(water.x+pull.x,water.y+
+      Math.sin(elapsed*4.5)*.035-tension*.065,
+      water.z+pull.z);
+    ring.position.x=bobber.position.x;
+    ring.position.z=bobber.position.z;
+    ring.scaling.setAll(1+.18*Math.sin(elapsed*3.8)+tension*.35);
+    rippleMat.alpha=.28+tension*.55;
     tip.computeWorldMatrix(true);
-    // Endpoints follow the held rod and the bobber every rendered frame. They
-    // never obstruct scene picks or modify actual gameplay physics.
+    const start=tip.getAbsolutePosition().clone();
+    // Four points let the existing line soften at rest and visually tighten
+    // toward a straight cable when the hooked fish yanks the float.
+    const sag=.25*(1-tension)+.018;
+    const bendA=Vector3.Lerp(start,bobber.position,.32);
+    const bendB=Vector3.Lerp(start,bobber.position,.70);
+    bendA.y-=sag; bendB.y-=sag*.78;
     line=MeshBuilder.CreateLines("fishing-rod-visible-line",{
-      points:[tip.getAbsolutePosition().clone(),bobber.position.clone()],
+      points:[start,bendA,bendB,bobber.position.clone()],
       instance:line,
     },scene);
+    if(resolveRemaining>0){
+      resolveRemaining-=dt;
+      if(resolveRemaining<=0)thisFinishCast();
+    }
   });
+  const thisFinishCast=()=>{
+    cast=false;hookedFish.setCast(false);
+    line.setEnabled(false);bobber.setEnabled(false);ring.setEnabled(false);
+  };
   return {
     setActive(enabled:boolean){
       active=enabled;
       if(enabled){
         originalYaw=camera.rotation.y;originalPitch=camera.rotation.x;
-        elapsed=0;impact=0;
+        elapsed=0;impact=0;resolveRemaining=0;
+        hookedFish.setActive(true);
       }else{
+        hookedFish.setActive(false);
         camera.rotation.y=originalYaw;camera.rotation.x=originalPitch;
+        resolveRemaining=0;
       }
       rig.setEnabled(enabled);
       line.setEnabled(enabled&&cast);
@@ -126,24 +155,44 @@ export function setupFishingRodVisuals(scene:Scene,camera:UniversalCamera){
       if(!enabled)cast=false;
     },
     setCast(value:boolean){
-      cast=value;
+      cast=value;resolveRemaining=0;
+      hookedFish.setCast(value);
       line.setEnabled(active&&cast);
       bobber.setEnabled(active&&cast);
       ring.setEnabled(active&&cast);
     },
-    tug(){
-      impact=.8;
+    hook(target:ScreenPull){
+      hookedFish.hook(target);
+      impact=1.15;
+    },
+    counterSuccess(){
+      hookedFish.countered();
+      impact=.55;
+    },
+    counterMiss(){
+      hookedFish.missed();
+      impact=1.2;
+    },
+    resolve(won:boolean){
+      hookedFish.resolved(won);
+      impact=won ? .45 : 1.1;
+      resolveRemaining=.78;
     },
     flick(dx:number,dy:number){
       if(!active)return;
       // Hybrid mode: mouse deltas primarily drive the physical rod;
       // a tightly bounded camera response keeps the pond in view.
       impact=Math.min(1,impact+Math.hypot(dx,dy)*.0025);
+      const tug=hookedFish.cameraTug;
+      const baseYaw=camera.rotation.y-tug.yaw;
+      const basePitch=camera.rotation.x-tug.pitch;
       camera.rotation.y=Math.max(originalYaw-.075,Math.min(originalYaw+.075,
-        camera.rotation.y+dx*.000035));
+        baseYaw+dx*.000035))+tug.yaw;
       camera.rotation.x=Math.max(originalPitch-.045,Math.min(originalPitch+.045,
-        camera.rotation.x+dy*.000025));
+        basePitch+dy*.000025))+tug.pitch;
     },
     get isVisible(){return rig.isEnabled()&&active;},
+    get fishPull(){return hookedFish.pullDirection;},
+    get cameraPull(){return hookedFish.cameraTug;},
   };
 }

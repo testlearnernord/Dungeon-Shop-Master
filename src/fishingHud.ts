@@ -5,7 +5,7 @@ import type {GameSfx} from "./gameSfx.ts";
 import {isCellarPondUncovered} from "./game/cellarPond.ts";
 import {setupFishingRodVisuals} from "./game/fishingRodVisuals.ts";
 import {FLICK_SAMPLE_MS,FLICK_WINDOW_MS,REQUIRED_FLICKS,MAX_MISSES,
-  fishingDirectionFor,fishingFlickDistanceFor,fishingFlickProgress,scoreFishingFlick,
+  FISHING_FLICKS,fishingDirectionFor,fishingFlickDistanceFor,fishingFlickProgress,scoreFishingFlick,
   type FishingFlick,type FlickGrade} from "./game/fishingSkill.ts";
 
 type Phase="ready"|"waiting"|"flick"|"recover"|"result";
@@ -29,6 +29,7 @@ export function setupFishingHud(
       <span class="fishing-aim-goal"></span>
       <span id="fishing-motion-ray" class="fishing-aim-motion"></span>
       <span class="fishing-aim-label">BRASS = TARGET · CYAN = YOUR PULL</span>
+      <span id="fishing-fish-direction" class="fishing-fish-direction"></span>
     </div>
     <div class="fishing-frame">
       <div class="fishing-titlebar">
@@ -66,6 +67,7 @@ export function setupFishingHud(
   const arrow=panel.querySelector<HTMLElement>("#fishing-arrow")!;
   const aim=panel.querySelector<HTMLElement>(".fishing-aim-ui")!;
   const motion=panel.querySelector<HTMLElement>("#fishing-motion-ray")!;
+  const fishDirection=panel.querySelector<HTMLElement>("#fishing-fish-direction")!;
   const pullStage=panel.querySelector<HTMLElement>("#fishing-pull-stage")!;
   const pullDistance=panel.querySelector<HTMLElement>("#fishing-pull-distance")!;
   const pullFill=panel.querySelector<HTMLElement>("#fishing-pull-fill")!;
@@ -114,6 +116,7 @@ export function setupFishingHud(
       ["I","II","III"][Math.min(correct,REQUIRED_FLICKS-1)];
     arrow.textContent=phase==="flick"?target.glyph:"➶";
     arrow.dataset.active=String(phase==="flick");
+    fishDirection.hidden=phase!=="flick";
     aim.dataset.active=String(phase==="flick");
     if(phase==="flick"){
       const degrees=Math.atan2(target.y,target.x)*180/Math.PI;
@@ -135,7 +138,7 @@ export function setupFishingHud(
   };
   const finish=(won:boolean)=>{
     phase="result";
-    rod.setCast(false);
+    rod.resolve(won);
     if(document.pointerLockElement===canvas)void document.exitPointerLock();
     if(won){
       note=store.recordCellarCatch();
@@ -150,20 +153,26 @@ export function setupFishingHud(
   };
   const nextFlick=(now:number)=>{
     phase="flick";
-    rod.tug();
     target=fishingDirectionFor(store.state.cellarFishCaught,round);
+    rod.hook(target);
+    const escaping=FISHING_FLICKS.find(direction=>
+      direction.x===-target.x&&direction.y===-target.y);
+    fishDirection.textContent="FISH PULLS "+(escaping?.glyph??"")+
+      "  •  COUNTER "+target.glyph;
     requiredDistance=fishingFlickDistanceFor(correct);
     aim.dataset.grade="";
     showPull(0,0);
     deadline=now+FLICK_WINDOW_MS;
     dx=0;dy=0;sampleStarted=0;sampleLast=0;
     note="Flick "+target.label+" · "+requiredDistance+" px!";
-    tip="Reach the gold marker with one fast pull ("+target.glyph+"). Turquoise shows your actual movement.";
+    tip="The fish tears "+(escaping?.label.toLowerCase()??"away")+
+      ". Counter "+target.label+" with the mouse ("+target.glyph+").";
     sfx.play("fishing-bite");
     render();
   };
   const miss=(now:number)=>{
     misses++;
+    rod.counterMiss();
     aim.dataset.grade="miss";
     sfx.play("fishing-miss");
     if(misses>=MAX_MISSES){finish(false);return;}
@@ -176,7 +185,7 @@ export function setupFishingHud(
   const hit=(grade:Extract<FlickGrade,"perfect"|"good">,now:number)=>{
     correct++;round++;
     aim.dataset.grade=grade;
-    rod.tug();
+    rod.counterSuccess();
     sfx.play("fishing-flick");
     if(correct>=REQUIRED_FLICKS){finish(true);return;}
     phase="recover";waitUntil=now+320;

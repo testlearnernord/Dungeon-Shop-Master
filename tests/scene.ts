@@ -1095,3 +1095,31 @@ export function inspectFishingRod(){
     sameScene:rod?.getScene()===scene&&line?.getScene()===scene,
   };
 }
+
+/** Read-only hooks for verifying that the real fishing target drives the
+ * hooked fish's world-space shadow and camera spring in Babylon. */
+export function inspectHookedFishingFish(){
+  const scene=Engine.LastCreatedScene!;
+  const node=scene.getTransformNodeByName("fishing-hooked-shadow-root");
+  const body=scene.getMeshByName("fishing-hooked-shadow-body");
+  const wake=scene.getMeshByName("fishing-hooked-wake");
+  const metadata=node?.metadata as {
+    fishPullX?:number;fishPullY?:number;
+    worldPullX?:number;worldPullZ?:number;
+    cameraYawTug?:number;cameraPitchTug?:number;
+    lineTension?:number;
+  }|undefined;
+  return {
+    exists:!!node,visible:!!body?.isEnabled(),
+    wakeVisible:!!wake?.isEnabled(),
+    position:{x:node?.position.x??null,z:node?.position.z??null},
+    pull:{x:metadata?.fishPullX??null,y:metadata?.fishPullY??null},
+    waterDirection:{x:metadata?.worldPullX??null,z:metadata?.worldPullZ??null},
+    cameraTug:{yaw:metadata?.cameraYawTug??null,
+      pitch:metadata?.cameraPitchTug??null},
+    lineTension:metadata?.lineTension??null,
+    bobber:{x:scene.getMeshByName("fishing-water-bobber")?.position.x??null,
+      z:scene.getMeshByName("fishing-water-bobber")?.position.z??null},
+    sameScene:node?.getScene()===scene,
+  };
+}

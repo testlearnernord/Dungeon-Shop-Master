@@ -125,3 +125,22 @@ The increasing brass rail and the signed turquoise attempt remain at one
 shared fixed on-screen scale. Misses never reduce the current difficulty.
 The world clock, rod, water, SFX and catch economy are unchanged. Real-hardware
 mouse-DPI/sensitivity acceptance remains necessary before final tuning.
+
+### V.004 hooked-fish water and camera presentation (PR #259; draft)
+
+The existing player-facing fishing counter direction remains the only source
+of truth. `fishPullAgainst(target)` creates the exact opposite vector,
+`fishPullOnWater(cameraYaw,pull)` maps that screen direction to the actual
+pond plane, and the same vector drives a small visible fish silhouette under
+the water, surface wake, bobber position, taut curved fishing line, rod bend,
+and a damped additive camera spring. The shadow has body, fins, forked tail,
+subsurface glow and tail sway. The fish is invisible while waiting for a bite
+and reacts differently to accurate counters, misses and resolved catches.
+
+The UI displays both `FISH PULLS` and `COUNTER` direction during a bite.
+There is no second fishing AI, no extra RNG, no saved fish actor, and no
+changes to three flicks, 540/743/945-pixel distances, misses, SFX,
+rewards, player controls, or continuous world clock. Additive camera
+offsets are removed on exit. Browser and human acceptance are required for
+fish direction, shadow legibility, water tension, camera comfort, and smooth
+return to FPS control before merging.
