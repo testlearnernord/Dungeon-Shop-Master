@@ -534,6 +534,29 @@ setupExpeditionArchiveHud(canvas,camera,store,
   eventId=>{arena.open(eventId);return arena.isActive;});
 isShopActive=()=>!arena.isActive&&!dungeon.isActive&&
   !(bedtime?.isBlocking??false)&&!(fishing?.isActive??false);
+/** Shop floor uses the same worldwide Hero Card as LIVE Dungeon.
+ * The visual pick is throttled and never enables Babylon NPC mesh picking,
+ * so shelf checkout/collision decisions stay untouched. */
+let nextShopHover=0;
+canvas.addEventListener("pointermove",event=>{
+  if(!isShopActive()||document.pointerLockElement===canvas){
+    heroCards.hideMini();return;
+  }
+  const now=performance.now();
+  if(now<nextShopHover)return;
+  nextShopHover=now+95;
+  const id=npcVisuals.heroAtScreen(event.clientX,event.clientY,canvas);
+  if(id)heroCards.showMini(id,event.clientX,event.clientY);
+  else heroCards.hideMini();
+},{passive:true});
+canvas.addEventListener("pointerleave",()=>heroCards.hideMini());
+canvas.addEventListener("click",event=>{
+  if(!isShopActive()||!event.altKey)return;
+  const id=npcVisuals.heroAtScreen(event.clientX,event.clientY,canvas);
+  if(!id)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  heroCards.open(id);
+},true);
 ledger=setupMerchantLedger(()=>{
   camera.attachControl(canvas,true);
   statusHud.textContent="Morning has come. The shop is open.";
