@@ -8,6 +8,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import "@babylonjs/core/Meshes/instancedMesh"; // Registers createInstance for Babylon ES modules.
 import { Scene } from "@babylonjs/core/scene";
 import type { GameStore } from "./gameStore.ts";
+import type {GameSfx} from "../gameSfx.ts";
 import type {GameState} from "./gameState.ts";
 import { createHeroVisual } from "./heroVisual.ts";
 import type { HeroVisual } from "./heroVisual.ts";
@@ -127,8 +128,9 @@ export class DungeonViewer {
     private readonly fightSoundtrackChanged:
       (active:boolean,boss:boolean)=>void=()=>{},
     private readonly skipCombatScoreTo:(seconds:number)=>void=()=>{},
+    private readonly sfx?:GameSfx,
   ) {
-    this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel);
+    this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel,this.sfx);
     this.watchCombatButton.addEventListener("click",()=>{
       if(this.liveFloor!==null)this.watchFloorCombat();
       else if(this.liveHeroId)this.watchLiveCombat();
@@ -855,7 +857,7 @@ export class DungeonViewer {
         ":"+(encounter.siteCycle??0),
       featureId:encounter.featureId,x:encounter.x,z:encounter.z,
       actors:encounter.combat.actors,frame:frame.frame,
-      frames:encounter.combat.frames,
+      frames:encounter.combat.frames,cues:encounter.combat.cues,
     }};
   }
 
