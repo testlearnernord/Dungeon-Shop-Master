@@ -3,7 +3,7 @@ import type {Engine} from "@babylonjs/core/Engines/engine";
 import type {Scene} from "@babylonjs/core/scene";
 import {CombatDamageNumbers,combatHudProjector,paintCombatHealthPlate}
   from "./combatHudProjection.ts";
-import type {CombatantSpec,GroupReplayFrame} from "./groupCombat.ts";
+import type {CombatantSpec,GroupCombatCue,GroupReplayFrame} from "./groupCombat.ts";
 
 type HealthPlate={root:HTMLElement;fill:HTMLElement;label:HTMLElement};
 
@@ -19,12 +19,16 @@ export class CombatGroupWorldHud{
   private readonly numbers:CombatDamageNumbers;
   private current:GroupReplayFrame|null=null;
   private previous:GroupReplayFrame|null=null;
+  private cueIndex=0;
+  private cueTime:number;
   constructor(
     private readonly engine:Engine,
     private readonly canvas:HTMLCanvasElement,
     host:HTMLElement,
     private readonly specs:readonly CombatantSpec[],
+    cueStartTime=0,
   ){
+    this.cueTime=cueStartTime;
     this.root.id="group-combat-world-hud";
     this.root.className="arena-world-hud";
     this.root.setAttribute("aria-hidden","true");
@@ -71,6 +75,33 @@ export class CombatGroupWorldHud{
         diff>0?"heal":spec?.team==="heroes"?"troll":"hero",
         new Vector3(actor.x,spec?.specialAbility==="grapple-throw"?7.2:2.5,actor.z));
     }
+  }
+
+  /** Defense labels come only from committed motor events, never inferred
+   * from a limb animation. Seeking or reopening cannot replay past labels. */
+  showCues(events:readonly GroupCombatCue[],frame:GroupReplayFrame):void{
+    const time=frame.t;
+    if(time<this.cueTime-1e-6||time-this.cueTime>.75||
+        this.cueIndex>events.length){
+      this.cueIndex=0;
+      while(this.cueIndex<events.length&&events[this.cueIndex].t<=time+1e-6)
+        this.cueIndex++;
+      this.cueTime=time;
+      return;
+    }
+    const poses=new Map(frame.actors.map(actor=>[actor.id,actor]));
+    while(this.cueIndex<events.length&&
+        events[this.cueIndex].t<=time+1e-6){
+      const cue=events[this.cueIndex++];
+      if(cue.t<=this.cueTime+1e-6)continue;
+      if(cue.kind!=="parry"&&cue.kind!=="dodge")continue;
+      const actor=poses.get(cue.actorId);
+      if(!actor)continue;
+      this.numbers.push(cue.kind==="parry"?"PARRY!":"DODGE!",
+        cue.kind==="parry"?"heal":"hero",
+        new Vector3(actor.x,2.4,actor.z));
+    }
+    this.cueTime=time;
   }
 
   render(scene:Scene,frameDt:number):void{

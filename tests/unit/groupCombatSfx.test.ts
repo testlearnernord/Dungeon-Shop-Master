@@ -62,10 +62,32 @@ test("seek, late join and duplicate render frames never replay historical sounds
   assert.deepEqual(ids(cursor,cues,.4),[]);
 });
 
-test("Troll fight remains free of Ghoul vocals",()=>{
+test("Troll attack, hit, hurt and death use original boss cues, never Ghoul vocals",()=>{
   const cues=[c(.1,"troll","attack","hero"),
     c(.4,"troll","hit","hero",7),
     c(.7,"hero","hit","troll",8),
     c(.8,"troll","death","hero")];
-  assert.deepEqual(ids(new GroupCombatSoundCursor(actors,0),cues,.8),[]);
+  const cursor=new GroupCombatSoundCursor(actors,0);
+  assert.deepEqual(ids(cursor,cues,.1),["troll-grunt"]);
+  assert.deepEqual(ids(cursor,cues,.4),["troll-impact","hero-hurt"]);
+  assert.deepEqual(ids(cursor,cues,.7),["boss-hurt"]);
+  assert.deepEqual(ids(cursor,cues,.8),["troll-death"]);
+});
+
+test("Troll grapples, throws, defenses and landing play authentic action cues",()=>{
+  const cues=[
+    c(.1,"hero","parry","troll"),
+    c(.2,"hero","dodge","troll"),
+    c(.3,"troll","grab","hero"),
+    c(.4,"troll","throw","hero"),
+    c(.5,"troll","landing","hero",30),
+    c(.6,"hero","escape","troll"),
+  ];
+  const cursor=new GroupCombatSoundCursor(actors,0);
+  assert.deepEqual(ids(cursor,cues,.1),["shield-parry","stagger"]);
+  assert.deepEqual(ids(cursor,cues,.2),["dodge","troll-impact"]);
+  assert.deepEqual(ids(cursor,cues,.3),["troll-grunt","hero-hurt"]);
+  assert.deepEqual(ids(cursor,cues,.4),["troll-swing"]);
+  assert.deepEqual(ids(cursor,cues,.5),["troll-impact","hero-hurt"]);
+  assert.deepEqual(ids(cursor,cues,.6),["dodge"]);
 });
