@@ -133,7 +133,7 @@ export function setupWorldEventFeed(
   function drain():void{
     while(active.size<2&&pending.length){
       const item=pending.shift()!;
-      if(!LOAD_PRESETS[settings.level].includes(item.category))continue;
+      if(!settings.enabled.includes(item.category))continue;
       const toast=document.createElement("article");
       toast.className="world-feed-toast";
       toast.dataset.category=item.category;
@@ -189,7 +189,7 @@ export function setupWorldEventFeed(
     for(const item of entries){
       if(seen.has(item.id))continue;
       seen.add(item.id);
-      if(!LOAD_PRESETS[settings.level].includes(item.category))continue;
+      if(!settings.enabled.includes(item.category))continue;
       pending.push(item);
     }
     // Keep the latest, highest-priority critical notices when a full
