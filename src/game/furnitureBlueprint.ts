@@ -38,7 +38,7 @@ export function surfaceFromMesh(name:string):BlueprintSurface|null {
      name==="cellar-floor"||
      /^(?:cellar-)?excavated-floor--?\d+,-?\d+$/.test(name))return "floor";
   if(name==="stone-ceiling")return "ceiling";
-  if(/^excavation-rock-face--?\d+(?:\.\d+)?:-?\d+(?:\.\d+)?:\d+(?:\.\d+)?:\d+(?:\.\d+)?:(?:-?\d+)?:(?:-?\d+)?:(?:true|false)$/.test(name))
+  if(/^(?:cellar-)?excavation-rock-face--?\d+(?:\.\d+)?:-?\d+(?:\.\d+)?:\d+(?:\.\d+)?:\d+(?:\.\d+)?:(?:-?\d+)?:(?:-?\d+)?:(?:true|false)$/.test(name))
     return "rock-wall";
   if(name==="left-wall")return "left-wall";
   if(name==="right-wall")return "right-wall";
