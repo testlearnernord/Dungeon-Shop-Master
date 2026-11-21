@@ -11,10 +11,14 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import {
-  BOSS_MAX_HP, bossStrikeGeometry, createCombatPreview, stepCombatPreview,
+  BOSS_MAX_HP, bossStrikeGeometry,
   type CombatPreviewState, type ArenaCue,
 } from "./arenaCombatMotion.ts";
 import { GRAPPLE_TIMING } from "./arenaCombatMotion.ts";
+import {
+  createSharedBossPreview,stepSharedBossPreview,
+  type SharedBossPreview,
+} from "./sharedBossCombat.ts";
 import type { AdventurerState } from "./adventurers.ts";
 import type { BossCombatReplay, BossReplayFrame } from "./bossCombatReplay.ts";
 import { observeReplay } from "../replayDisclosure.ts";
@@ -54,7 +58,7 @@ export class Level6Arena {
   private focusIndex = 0;
   private readonly pressed = new Set<string>();
   private active = false;
-  private motion: CombatPreviewState | null = null;
+  private motion: SharedBossPreview | null = null;
   private replay: BossCombatReplay | null = null;
   /** A LIVE witness never steps the boss; it projects only world-clock frames. */
   private watchingLiveHeroId:string|null=null;
@@ -461,7 +465,7 @@ export class Level6Arena {
     this.training = !this.replay && !realExpedition
       ? (preserveTraining && previousTraining ? previousTraining : nextBossTrainingScenario()) : null;
     this.panel.dataset.trainingScenario=this.training?.id??"";
-    this.motion = createCombatPreview({
+    this.motion = createSharedBossPreview({
       role: this.replay?.role ?? this.training?.options.role ?? this.fighter?.role ?? "tank",
       sword: this.replay?.sword ?? this.training?.options.sword ??
         (this.fighter?.equipment.weapon === "Iron Sword"),
@@ -791,7 +795,7 @@ export class Level6Arena {
     const fixedDt = 1 / 60;
     let ticks = 0;
     while (this.motionAccumulator >= fixedDt && ticks++ < 6) {
-      const cues = stepCombatPreview(this.motion, fixedDt);
+      const cues = stepSharedBossPreview(this.motion, fixedDt);
       for (const cue of cues) this.displayCue(cue);
       this.motionAccumulator -= fixedDt;
     }

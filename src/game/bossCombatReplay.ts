@@ -1,8 +1,9 @@
 import {
-  BOSS_MAX_HP, createCombatPreview, stepCombatPreview,
+  BOSS_MAX_HP,
   type ActorPhase, type BossPhase, type ArenaCue, type CombatPreviewOptions,
   type CombatPreviewState,
 } from "./arenaCombatMotion.ts";
+import {createSharedBossPreview,stepSharedBossPreview} from "./sharedBossCombat.ts";
 import { recordCombatEncounter } from "./combatEncounter.ts";
 
 export const REPLAY_FORMAT = 1;
@@ -81,12 +82,12 @@ export function frameFromCombat(s: CombatPreviewState, cues: readonly ArenaCue[]
 export function resolveSpatialBoss(
   heroId: string, day: number, options: CombatPreviewOptions,
 ): { replay: BossCombatReplay; final: CombatPreviewState } {
-  const state=createCombatPreview(options);
+  const state=createSharedBossPreview(options);
   // One authoritative capture loop for the existing boss v1 format and
   // the GroupCombatReplay v1 format. Both record once; neither viewer
   // executes gameplay code to reconstruct its frames.
   const {frames}=recordCombatEncounter({
-    state,step:stepCombatPreview,capture:frameFromCombat,
+    state,step:stepSharedBossPreview,capture:frameFromCombat,
     captureEvery:CAPTURE_EVERY,maxSeconds:REPLAY_MAX_SECONDS,
     isFighting:world=>world.outcome==="fighting",
   });

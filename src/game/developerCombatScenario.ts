@@ -119,6 +119,7 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
         "ranged":"melee",
       ...pos,hp:hero.maxHp,maxHp:hero.maxHp,damage:hero.damage,
       armor:hero.armor,agility:hero.agility,speed:hero.role==="tank"?2.5:3.1,
+      ...(hero.role==="healer"?{magicHeals:2}:{}),
       reach:1.75,healCharges:hero.healCharges,
       equipment:{weapon:hero.sword?"Iron Sword":null,
         armor:hero.vest?"Leather Vest":null},
@@ -134,9 +135,10 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
       speed:troll?2.7:3.0,reach:troll?1.8:1.6,
       radius:troll?1.8:.5,agility:troll?7:9,
       ...(troll?{specialAbility:"grapple-throw" as const,
-        grappleDamage:42,staggerThreshold:19}:{}),
+        grappleDamage:42,staggerThreshold:62}:{}),
     });
   }
   return {actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},obstacles:[],
+    tacticsSeed:config.seed,
     ...(config.arena==="cave-troll"?{environment:"cave-lava" as const}:{})};
 }

@@ -91,7 +91,11 @@ export function trollDefenseReadiness(
 ):number {
   if(!Number.isFinite(agility)||agility<0||agility>1000)
     throw new RangeError("Invalid defense agility");
-  return Math.max(.38,Math.min(.78,
+  // Superhuman agility must not be indistinguishable from merely good
+  // agility. Ordinary adventurers keep the historical 78% ceiling; highly
+  // developed fighters can read a telegraph with up to 94% readiness.
+  const ceiling=Math.min(.94,.78+Math.max(0,agility-20)*.008);
+  return Math.max(.38,Math.min(ceiling,
     .57+(agility-10)*.015+(role==="tank"?.08:0)-(grab?.10:0)));
 }
 

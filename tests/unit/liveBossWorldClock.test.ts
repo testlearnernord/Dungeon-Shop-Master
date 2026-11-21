@@ -28,6 +28,9 @@ test("Floor-6 encounter starts on one real dungeon tick with no instantly resolv
   assert.equal(boss.frames[0].t,0);
   assert.equal(boss.state.outcome,"fighting");
   assert.equal(boss.state.bossHp,280);
+  assert.equal(boss.state.group.environment,"cave-lava");
+  assert.equal(boss.state.group.actors.length,2,
+    "LIVE Floor 6 must store the real shared encounter state");
   assert.equal(store.state.events.some(event=>event.type==="level6-combat"),false);
   assert(store.state.worldClock.pending.some(event=>
     event.lane==="expedition"&&event.subjectId==="dungeon-combat"));
@@ -73,6 +76,8 @@ test("boss save rejects fake HP, phase, clock, snapshots and actor identity",()=
     assert.throws(()=>parseSave(JSON.stringify(changed)),pattern);
   };
   tamper(s=>{s.liveDungeon.bossCombat.state.heroHp=99999;},/bossCombat/);
+  tamper(s=>{s.liveDungeon.bossCombat.state.group.actors[0].hp=99999;},/bossCombat/);
+  tamper(s=>{delete s.liveDungeon.bossCombat.state.group;},/bossCombat/);
   tamper(s=>{s.liveDungeon.bossCombat.state.bossPhase="fake";},/bossCombat/);
   tamper(s=>{s.liveDungeon.bossCombat.state.time+=1;},/bossCombat/);
   tamper(s=>{s.liveDungeon.bossCombat.frames[0].heroHp-=1;},/bossCombat/);

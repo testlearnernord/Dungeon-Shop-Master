@@ -14,9 +14,12 @@ import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
   groupCombatReplayFromFrames,type GroupCombatState,
   type GroupReplayFrame} from "./groupCombat.ts";
 import {
-  createCombatPreview,stepCombatPreview,
-  type CombatPreviewState,type ArenaCue,
+  type ArenaCue,
 } from "./arenaCombatMotion.ts";
+import {
+  createSharedBossPreview,stepSharedBossPreview,
+  type SharedBossPreview,
+} from "./sharedBossCombat.ts";
 import {
   frameFromCombat,REPLAY_MAX_SECONDS,
   type BossReplayFrame,type BossCombatReplay,
@@ -63,7 +66,7 @@ export interface LiveBossCombat {
   readonly startedTick:number;
   readonly heroId:string;
   /** Original solo Cave Troll state, stepped by the SAME 60Hz encounter driver. */
-  readonly state:CombatPreviewState;
+  readonly state:SharedBossPreview;
   /** Saved real poses. The 8-frame sampling contract remains BossReplay v1. */
   readonly frames:readonly BossReplayFrame[];
   /** Cues accumulated between snapshot boundaries, never replayed as AI. */
@@ -337,7 +340,7 @@ function commitDungeonTick(state:GameState):GameState {
       const rng=new SeededRandom(rngState);
       const tacticsSeed=rng.int(32);
       rngState=rng.state;
-      const motion=createCombatPreview({
+      const motion=createSharedBossPreview({
         role:hero.role,sword:hero.equipment.weapon==="Iron Sword",
         armor:hero.equipment.armor==="Leather Vest",
         health:hero.health,maxHealth:hero.stats.maxHealth,
@@ -606,13 +609,13 @@ function commitLiveCombatTick(state:GameState):GameState{
     // A live boss is stepped ONLY by this scheduler, not by the camera or
     // the old atomic Level-6 simulator. Its same authored lava/throw motor
     // and Replay v1 source frames remain authoritative.
-    const motion:CombatPreviewState=structuredClone(boss.state);
+    const motion:SharedBossPreview=structuredClone(boss.state);
     const frames=[...boss.frames];
     let pending=[...boss.pendingCues];
     for(let i=0;i<LIVE_COMBAT_INTERVAL_TICKS*3&&motion.outcome==="fighting";i++){
       const step=Math.round(motion.time*60)+1;
       if(step>REPLAY_MAX_SECONDS*60)break;
-      pending.push(...stepCombatPreview(motion,1/60));
+      pending.push(...stepSharedBossPreview(motion,1/60));
       if(step%8===0||motion.outcome!=="fighting"||
           step===REPLAY_MAX_SECONDS*60){
         frames.push(frameFromCombat(motion,pending));

@@ -1,6 +1,10 @@
 import type {GameState} from "./gameState.ts";
 import type {LiveBossCombat} from "./liveDungeonRuntime.ts";
-import {createCombatPreview} from "./arenaCombatMotion.ts";
+import {
+  caveTrollGroupOptions,createSharedBossPreview,projectSharedBossState,
+  type SharedBossPreview,
+} from "./sharedBossCombat.ts";
+import {createGroupCombat} from "./groupCombat.ts";
 import {frameFromCombat,validateBossReplay} from "./bossCombatReplay.ts";
 import {
   LIVE_COMBAT_INTERVAL_TICKS,DUNGEON_STEP_INTERVAL_TICKS,
@@ -49,7 +53,7 @@ export function liveBossCheckpointProblem(
     "bossAttack","throwVelocity","bossStamina","magicHeals",
     "healingSupplies","projectiles","cues","outcome",
     "distanceTraveled","dodgeCount","parryCount","landedHits","missedHits"];
-  if(!shape(motion,required)||motion.outcome!=="fighting")
+  if(!shape(motion,required,["group"])||motion.outcome!=="fighting")
     return fail("must preserve an active, genuine boss motor state");
   const opts=motion.options;
   const optsKeys=["role","sword","armor","health","maxHealth",
@@ -65,6 +69,69 @@ export function liveBossCheckpointProblem(
      opts.intellect!==hero.stats.intellect||
      !nonnegativeInteger(opts.tacticsSeed,31))
     return fail("options do not match the actual original hero");
+  // New Floor-6 fights have ONE actual 60-Hz authority: GroupCombat.
+  // The flat v1 fields are only the read-only 3D/ledger projection.
+  if(!isRecord(motion.group)||!shape(motion.group,[
+    "actors","bounds","obstacles","environment",
+    "projectiles","events","time","outcome",
+  ],["tacticsSeed"]))return fail("has no genuine saved group combat authority");
+  const group=(motion as SharedBossPreview).group;
+  let canonical;
+  try{canonical=createGroupCombat(caveTrollGroupOptions(opts as
+    Parameters<typeof caveTrollGroupOptions>[0]));}
+  catch{return fail("cannot reconstruct the real Level-6 encounter");}
+  if(group.environment!=="cave-lava"||
+     group.tacticsSeed!==opts.tacticsSeed||
+     group.outcome!=="fighting"||
+     !Array.isArray(group.actors)||group.actors.length!==2||
+     JSON.stringify(group.bounds)!==JSON.stringify(canonical.bounds)||
+     JSON.stringify(group.obstacles)!==JSON.stringify(canonical.obstacles)||
+     !Array.isArray(group.projectiles)||!Array.isArray(group.events))
+    return fail("invalid shared combat environment or cast");
+  for(let i=0;i<canonical.actors.length;i++){
+    const actor=group.actors[i],original=canonical.actors[i];
+    if(!isRecord(actor))return fail("missing real group actor");
+    for(const key of ["id","team","role","style","maxHp","damage",
+      "armor","speed","reach","radius","meleeAbility",
+      "specialAbility","agility","grappleDamage","staggerThreshold"] as const){
+      if(actor[key]!==original[key])
+        return fail("group actor stat/identity changed: "+key);
+    }
+    if(!["move","windup","strike","recover","cast","heal",
+      "roll","parry","hurt","dead","grab","grabMiss","throw",
+      "grabbed","thrown"].includes(actor.phase)||
+      !["ordinary","heavy","grapple","troll-smash","troll-slam"]
+        .includes(actor.activeMeleeAbility)||
+      !range(actor.hp,0,actor.maxHp)||!range(actor.stamina,0,100)||
+      !nonnegativeInteger(actor.attacksStarted,10000)||
+      !nonnegativeInteger(actor.healCharges,10)||
+      (actor.magicHeals!==undefined&&!nonnegativeInteger(actor.magicHeals,10))||
+      !["hero","cave-troll",null].includes(actor.targetId??null))
+      return fail("invalid group action, health or target");
+    for(const key of ["x","z","heading","lockedHeading","phaseAge",
+      "cooldown","rollX","rollZ","distanceTraveled"] as const){
+      if(!range(actor[key],-10000,100000))
+        return fail("invalid group coordinate or motion: "+key);
+    }
+  }
+  if(!range(group.time,0,90)||Math.abs(group.time-motion.time)>0.00001||
+     group.events.length>3000||group.projectiles.length>30)
+    return fail("group clock/event history diverged");
+  // For t>0, every displayed boss field must match the saved authoritative
+  // group state, not an invented independent HP/attack result.
+  if(group.time>0){
+    const projected:SharedBossPreview=structuredClone(motion as SharedBossPreview);
+    projectSharedBossState(projected);
+    for(const key of ["hero","boss","heroHeading","bossHeading",
+      "lockedBossHeading","heroHp","bossHp","stamina",
+      "heroPhase","heroAge","heroCooldown","heroApplied","rollDirection",
+      "bossPhase","bossAge","bossCooldown","bossDamageApplied",
+      "bossAttacks","bossSlam","bossAttack","throwVelocity","bossStamina",
+      "healingSupplies","magicHeals","projectiles","outcome","distanceTraveled"] as const){
+      if(JSON.stringify(projected[key])!==JSON.stringify(motion[key]))
+        return fail("projection diverges from real combat: "+key);
+    }
+  }
   const ticks=(combatTick-value.startedTick)*3;
   if(ticks<0||ticks>=90*60||!range(motion.time,0,90)||
      Math.abs(motion.time*60-ticks)>.001)
@@ -115,8 +182,8 @@ export function liveBossCheckpointProblem(
      value.frames.length!==1+Math.floor(ticks/8)||
      value.frames.length>700)
     return fail("expected actual eight-tick snapshot count");
-  const initial=frameFromCombat(createCombatPreview(opts as
-    Parameters<typeof createCombatPreview>[0]));
+  const initial=frameFromCombat(createSharedBossPreview(opts as
+    Parameters<typeof createSharedBossPreview>[0]));
   if(JSON.stringify(value.frames[0])!==JSON.stringify(initial))
     return fail("initial frame was not produced by the real motor");
   if(value.frames.length>1){

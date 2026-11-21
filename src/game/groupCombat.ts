@@ -59,6 +59,8 @@ export interface CombatantSpec {
   readonly reach: number;
   readonly radius?: number;
   readonly healCharges?: number;
+  /** Innate healer spells are separate from purchased Herbs. */
+  readonly magicHeals?:number;
   /** Historical purchased equipment in new replays; absent in old v1 footage. */
   readonly equipment?: {
     readonly weapon:"Iron Sword"|null;
@@ -88,6 +90,8 @@ export interface GroupCombatOptions {
   readonly bounds: CombatBounds;
   readonly obstacles?: readonly CombatObstacle[];
   readonly environment?:CombatEnvironment;
+  /** Optional deterministic scenario variety; absent retains old group RNG. */
+  readonly tacticsSeed?:number;
 }
 
 export interface GroupActor extends CombatActorRuntime<GroupPhase> {
@@ -112,6 +116,7 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
   targetId: string | null;
   rollX: number; rollZ: number;
   healCharges: number;
+  magicHeals?:number;
   distanceTraveled: number;
 }
 
@@ -139,6 +144,7 @@ export interface GroupCombatState {
   readonly bounds: CombatBounds;
   readonly obstacles: readonly CombatObstacle[];
   readonly environment?:CombatEnvironment;
+  readonly tacticsSeed?:number;
   readonly projectiles: GroupProjectile[];
   readonly events: GroupCombatCue[];
   time: number;
@@ -164,6 +170,7 @@ export interface GroupCombatReplay {
   readonly bounds: CombatBounds;
   readonly obstacles: readonly CombatObstacle[];
   readonly environment?:CombatEnvironment;
+  readonly tacticsSeed?:number;
   readonly frames: readonly GroupReplayFrame[];
   readonly cues: readonly GroupCombatCue[];
   readonly outcome: Exclude<GroupOutcome, "fighting">;
@@ -198,6 +205,10 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
   validateBounds(options.bounds);
   if(options.environment!==undefined&&options.environment!=="cave-lava")
     throw new RangeError("Unknown combat environment");
+  if(options.tacticsSeed!==undefined&&
+      (!Number.isSafeInteger(options.tacticsSeed)||options.tacticsSeed<0||
+       options.tacticsSeed>0xffffffff))
+    throw new RangeError("Invalid combat tactics seed");
   if (options.actors.length < 2 || options.actors.length > 24)
     throw new RangeError("Group combat requires 2-24 actors");
   const ids = new Set<string>();
@@ -250,7 +261,7 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
     validNumber(grappleDamage,1,10000,spec.id+".grappleDamage");
     const staggerThreshold=spec.staggerThreshold??
       (spec.specialAbility==="grapple-throw"
-        ? Math.max(10,Math.round(spec.damage/2)):0);
+        ? Math.max(62,Math.round(spec.maxHp*.22)):0);
     validNumber(staggerThreshold,0,10000,spec.id+".staggerThreshold");
     const radius = spec.radius ?? 0.5;
     validNumber(radius, 0.1, 3, spec.id + ".radius");
@@ -259,6 +270,10 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
     const healCharges = spec.healCharges ?? 0;
     if (!Number.isSafeInteger(healCharges) || healCharges < 0 || healCharges > 10)
       throw new RangeError("healCharges must be between 0 and 10");
+    if(spec.magicHeals!==undefined&&
+        (!Number.isSafeInteger(spec.magicHeals)||spec.magicHeals<0||
+         spec.magicHeals>10||spec.role!=="healer"))
+      throw new RangeError("Innate spells require a real healer");
     if (!within(spec, options.bounds, radius) ||
         obstacles.some(o => insideObstacle(spec, o, radius)))
       throw new RangeError("Actor spawns inside a wall or outside arena");
@@ -276,14 +291,20 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       throwVelocity:{x:0,z:0},
       x: spec.x, z: spec.z,
       hp: spec.hp, stamina: 100, heading: 0, lockedHeading: 0,
-      phase: "move" as GroupPhase, phaseAge: 0, cooldown: 0, applied: false,
-      targetId: null, rollX: 0, rollZ: 0, healCharges, distanceTraveled: 0,
+      // The authored Troll did not open with an instant attack the moment
+      // a hero entered range. Give the same readable reaction window here.
+      phase: "move" as GroupPhase, phaseAge: 0,
+      cooldown: spec.specialAbility==="grapple-throw"?1.1:0,applied:false,
+      targetId: null, rollX: 0, rollZ: 0, healCharges,
+      ...(spec.magicHeals!==undefined?{magicHeals:spec.magicHeals}:{}),
+      distanceTraveled: 0,
     };
   });
   if (teams.size !== 2) throw new RangeError("Both opposing teams are required");
   return {
     actors, bounds: { ...options.bounds }, obstacles: obstacles.map(o => ({...o})),
     ...(options.environment?{environment:options.environment}:{}),
+    ...(options.tacticsSeed!==undefined?{tacticsSeed:options.tacticsSeed}:{}),
     projectiles: [], events: [], time: 0, outcome: "fighting",
   };
 }
@@ -305,6 +326,33 @@ function move(s: GroupCombatState, a: GroupActor, dx: number, dz: number): void 
   a.x=result.x;a.z=result.z;
   a.distanceTraveled+=result.distance;
 }
+/** Skillful heroes keep a real lane around a unique boss instead of
+ * standing still within a 6-metre smash arc. Move through the same collision
+ * authority as every dungeon fighter; the camera invents no coordinates. */
+function circleSignatureBoss(
+  s:GroupCombatState,a:GroupActor,boss:GroupActor,dt:number,
+):void{
+  const dx=boss.x-a.x,dz=boss.z-a.z;
+  const gap=Math.hypot(dx,dz);
+  if(gap<.001)return;
+  const towardX=dx/gap,towardZ=dz/gap;
+  const wanted=a.style==="ranged"?8:3.15;
+  const radial=gap>wanted+.4?1:gap<wanted-.35?-1:0;
+  const orbit=((a.id.charCodeAt(a.id.length-1)||0)&1)?1:-1;
+  const tangentX=-towardZ*orbit,tangentZ=towardX*orbit;
+  // Keep enough of the approach vector to close and to attack the boss.
+  let vx=tangentX*.54+towardX*radial;
+  let vz=tangentZ*.54+towardZ*radial;
+  const fromCenter=Math.hypot(a.x,a.z);
+  if(s.environment==="cave-lava"&&fromCenter>12.5){
+    const w=Math.min(1,(fromCenter-12.5)/2.4);
+    vx=vx*(1-w)-a.x/fromCenter*w*1.6;
+    vz=vz*(1-w)-a.z/fromCenter*w*1.6;
+  }
+  const length=Math.hypot(vx,vz);
+  if(length<.00001)return;
+  move(s,a,vx/length*a.speed*dt,vz/length*a.speed*dt);
+}
 function phase(a: GroupActor, next: GroupPhase): void {
   enterCombatActorPhase(a,next);
 }
@@ -314,11 +362,29 @@ function cue(batch: GroupCombatCue[], s: GroupCombatState, actor: GroupActor,
     ...(targetId ? { targetId } : {}),
     ...(amount !== undefined ? { amount } : {}) });
 }
+/** Seed is part of the committed combat state, never a render-loop RNG.
+ * The absent-seed branch returns the original identity sample byte-for-byte,
+ * preserving existing dungeon fights and their historical decisions. */
+function combatSample(
+  s:GroupCombatState,attackerId:string,targetId:string,
+  ordinal:number,channel="",
+):number{
+  const reference=deterministicGrappleSample(
+    attackerId,targetId+channel,ordinal);
+  if(s.tacticsSeed===undefined)return reference;
+  let n=(s.tacticsSeed^Math.imul(ordinal,0x9e3779b9))>>>0;
+  n=(n+0x6d2b79f5)>>>0;
+  n=Math.imul(n^(n>>>15),n|1);
+  n^=n+Math.imul(n^(n>>>7),n|61);
+  const mix=((n^(n>>>14))>>>0)/4294967296;
+  return (reference+mix)%1;
+}
 function closestEnemy(s: GroupCombatState, actor: GroupActor): GroupActor | null {
   return selectCombatTarget(actor,s.actors);
 }
 function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | null {
-  if (actor.healCharges <= 0 || actor.hp <= 0) return null;
+  if ((actor.healCharges<=0&&(actor.magicHeals??0)<=0)||
+      actor.hp<=0)return null;
   // Any hero may spend a purchased Herb on their own wounds.
   // Healers can also treat an injured teammate without transferring
   // phantom items between inventories.
@@ -340,8 +406,13 @@ function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor |
     const isSignature=other.specialAbility==="grapple-throw";
     const signature=isSignature?trollSignatureProfile(
       fromTrollGroupAbility(other.activeMeleeAbility as TrollGroupMelee)):null;
+    // Defense contact windows are 0.10–0.36s for parry and 0.09–0.43s
+    // for roll. Reacting a quarter-second before windup ends means the
+    // parry has EXPIRED by the 0.14s smash impact (or 0.30s grab impact).
+    // This is the same late committed warning used in the authored duel.
     const lead=signature
-      ?Math.max(.20,signature.windupSeconds-.25)
+      ?Math.max(.20,signature.windupSeconds-
+        (signature.attack==="grab"?.04:.15))
       :other.meleeAbility==="heavy"
         ?meleeAbilityProfile("heavy").windupSeconds+
           meleeAbilityProfile("heavy").strikeDelaySeconds-.28
@@ -409,7 +480,7 @@ function tryGroupGrapple(
   }
   // Resistance is real character agility plus a contact-stable,
   // order-independent roll, not an arbitrary scripted guaranteed catch.
-  const sample=deterministicGrappleSample(attacker.id,victim.id,
+  const sample=combatSample(s,attacker.id,victim.id,
     attacker.attacksStarted);
   if(grappleEscapes(victim.agility,sample)){
     cue(batch,s,victim,"escape",attacker.id);
@@ -523,7 +594,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   else if(a.phase==="grabMiss")window={completeAt:GRAPPLE_TIMING.missRecover};
   else if(a.phase==="thrown")window={completeAt:GRAPPLE_FLIGHT_SECONDS};
   else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
-  else if(a.phase==="hurt")window={completeAt:0.34};
+  else if(a.phase==="hurt")window={completeAt:
+    a.specialAbility==="grapple-throw"?1.6:0.34};
   const tick=advanceCombatActorPhase(a,dt,window);
   if(a.phase==="grabbed"||a.phase==="thrown"){
     progressGroupGrappleVictim(s,a,dt,batch,tick.complete);
@@ -531,6 +603,15 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   }
   const enemy = closestEnemy(s, a);
   if (!enemy) return;
+  // A highly agile hero can abandon an unfinished swing or its recovery
+  // when a real boss windup is already threatening the actor. No instant
+  // roll during an applied strike, no attack refund, no camera-side defense.
+  if(a.team==="heroes"&&a.agility>=25&&
+     enemy.specialAbility==="grapple-throw"&&
+     (a.phase==="windup"||a.phase==="recover")&&
+     a.stamina>=20&&attackerThreat(s,a)){
+    phase(a,"move");
+  }
   if (a.phase === "move") {
     a.heading = combatHeading(a,enemy);
     const threat = attackerThreat(s,a);
@@ -542,8 +623,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     // every single attack for one pair of IDs.
     const ordinal=Math.max(1,threat?.attacksStarted??1);
     const attackMix=(Math.imul(ordinal,0x9e3779b9)>>>0)/0x100000000;
-    const parryRead=threat?(deterministicGrappleSample(
-      threat.id,a.id+"|parry",ordinal)+attackMix)%1:0;
+    const parryRead=threat?(combatSample(
+      s,threat.id,a.id,ordinal,"|parry")+attackMix)%1:0;
     const reaction=chooseCombatDefense({
       threatened:!!threat,stamina:a.stamina,
       preferParry:tankParry&&parryRead<.78,
@@ -554,7 +635,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     // same telegraph. The sample is stable across actor/replay ordering.
     const bossWarning=threat?.specialAbility==="grapple-throw";
     const defenseRead=bossWarning&&threat
-      ?deterministicGrappleSample(threat.id,a.id,
+      ?combatSample(s,threat.id,a.id,
           Math.max(1,threat.attacksStarted))
       :0;
     const canReact=!bossWarning||defenseRead<trollDefenseReadiness(
@@ -585,15 +666,23 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       const grabTurn=nextAttack>1&&nextAttack%3===2;
       const special=a.specialAbility==="grapple-throw"
         ?chooseTrollSignatureAttack(nextAttack,gap,
-            grabTurn?0:deterministicGrappleSample(
+            grabTurn?0:combatSample(s,
               a.id,enemy.id,nextAttack))
         :null;
       const chosen=special?trollSignatureProfile(special):null;
       const action=chosen?.groupAbility??a.meleeAbility;
       const posture=chooseCombatPosture({
-        distance:gap,ready:a.cooldown===0&&a.stamina>=13,
+        distance:gap,ready:a.cooldown===0&&a.stamina>=13&&
+          // Troll chooses to close the physical gap before beginning a
+          // signature move, so a real 5.1m grab can occur instead of
+          // eternally opening at the 5.78m smash maximum.
+          !(a.specialAbility==="grapple-throw"&&gap>4.8)&&
+          !(enemy.specialAbility==="grapple-throw"&&enemy.phase==="windup"),
         clearShot:lineClear(s,a,enemy),
-        attackRange:ranged?11:chosen?.reach??a.reach+enemy.radius,
+        attackRange:ranged?11:
+          a.team==="heroes"&&enemy.specialAbility==="grapple-throw"
+            ?Math.min(5.3,a.reach+enemy.radius-.25):
+            chosen?.reach??a.reach+enemy.radius,
         approachBeyond:ranged?7:chosen?
           Math.max(3.15,chosen.reach-1.7):
           a.reach+enemy.radius-.20,
@@ -610,12 +699,31 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         phase(a,ranged?"cast":"windup");
         cue(batch,s,a,ranged?"cast":"attack",enemy.id);
       }else{
-        const heading=combatDirection(a,enemy);
-        if(posture.approach)move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
-        else if(posture.withdraw)move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
+        if(a.team==="heroes"&&enemy.specialAbility==="grapple-throw"){
+          circleSignatureBoss(s,a,enemy,dt);
+        }else{
+          const heading=combatDirection(a,enemy);
+          if(posture.approach){
+            if(a.specialAbility==="grapple-throw"){
+              // Same slow turning pressure as the authored solo boss.
+              const tangentX=-heading.z,tangentZ=heading.x;
+              const length=Math.hypot(heading.x*3.25+tangentX*.45,
+                heading.z*3.25+tangentZ*.45);
+              move(s,a,(heading.x*3.25+tangentX*.45)/length*a.speed*dt,
+                (heading.z*3.25+tangentZ*.45)/length*a.speed*dt);
+            }else move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
+          }else if(posture.withdraw)
+            move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
+        }
       }
     }
   } else if (a.phase === "windup") {
+    // Keep the early grab readable and reactive, then lock the final lane.
+    if(a.activeMeleeAbility==="grapple"&&a.specialAbility==="grapple-throw"&&
+       a.phaseAge<GRAPPLE_TIMING.trackUntil){
+      a.lockedHeading=combatHeading(a,enemy);
+      a.heading=a.lockedHeading;
+    }
     if (tick.complete)
       phase(a,a.activeMeleeAbility==="grapple"?"grab":"strike");
   } else if (a.phase === "strike") {
@@ -640,7 +748,11 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     }
     if (tick.complete) phase(a,"move");
   } else if (a.phase === "recover") {
-    if (tick.complete) phase(a,"move");
+    if(tick.complete){
+      if(a.specialAbility==="grapple-throw")
+        a.cooldown=Math.max(a.cooldown,1.5);
+      phase(a,"move");
+    }
   } else if (a.phase === "grab") {
     if(tick.contactDue){
       a.applied=true;
@@ -669,6 +781,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   } else if (a.phase === "grabMiss") {
     if(tick.complete){
       a.grappleTargetId=null;
+      a.cooldown=Math.max(a.cooldown,1.45);
       phase(a,"recover");
     }
   } else if (a.phase === "roll") {
@@ -677,17 +790,25 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   } else if (a.phase === "parry") {
     if (a.phaseAge >= 0.53) phase(a,"move");
   } else if (a.phase === "hurt") {
-    if (tick.complete) phase(a,"move");
+    if(tick.complete){
+      if(a.specialAbility==="grapple-throw")
+        a.cooldown=Math.max(a.cooldown,1.4);
+      phase(a,"move");
+    }
   } else if (a.phase === "heal") {
     if (tick.contactDue) {
       a.applied = true;
       const friend = s.actors.find(other => other.id === a.targetId &&
         other.team === a.team && other.hp > 0);
-      if (friend && a.healCharges > 0 && distance(a,friend) <= 9) {
-        const heal=applyCombatHealing(friend.hp,friend.maxHp,HEALING_HERB_HP);
-        if (heal.amount>0) {
+      const herb=a.healCharges>0;
+      const spell=a.role==="healer"&&(a.magicHeals??0)>0;
+      if(friend&&(herb||spell)&&distance(a,friend)<=9){
+        const heal=applyCombatHealing(friend.hp,friend.maxHp,
+          herb?HEALING_HERB_HP:25);
+        if(heal.amount>0){
           friend.hp=heal.hp;
-          a.healCharges--;
+          if(herb)a.healCharges--;
+          else a.magicHeals!--;
           cue(batch,s,a,"heal",friend.id,heal.amount);
         }
       }
@@ -810,6 +931,7 @@ export function groupCombatReplayFromFrames(
     bounds:{...options.bounds},
     obstacles:(options.obstacles??[]).map(o=>({...o})),
     ...(options.environment?{environment:options.environment}:{}),
+    ...(options.tacticsSeed!==undefined?{tacticsSeed:options.tacticsSeed}:{}),
     frames:[...frames],cues:[...state.events],outcome:state.outcome,
   };
 }
