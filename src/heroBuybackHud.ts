@@ -33,15 +33,24 @@ export function setupHeroBuybackHud(store:GameStore):void{
   modal.append(heading,budget,offers,feedback);
   document.body.append(modal);
   let previousCount=-1;
-  const render=()=>{
-    const entries=availableDungeonOffers(store.state);
+  let previousRoster:typeof store.state.adventurers|null=null;
+  let previousEconomy:typeof store.state.shopEconomy|null=null;
+  // World-clock notifications may arrive every 50ms. Rebuild only when
+  // actual offers or treasury can change, not merely when time advances.
+  const render=(force=false)=>{
+    const state=store.state;
+    if(!force&&state.adventurers===previousRoster&&
+      state.shopEconomy===previousEconomy)return;
+    previousRoster=state.adventurers;
+    previousEconomy=state.shopEconomy;
+    const entries=availableDungeonOffers(state);
     if(entries.length!==previousCount){
       previousCount=entries.length;
       trigger.textContent=entries.length?"Hero loot ("+entries.length+")":"Hero loot offers";
     }
     if(!modal.open)return;
-    budget.textContent="Galvik: "+store.state.shopEconomy.balance+
-      " gold · Bag "+Object.values(store.state.shopEconomy.bag).reduce(
+    budget.textContent="Galvik: "+state.shopEconomy.balance+
+      " gold · Bag "+Object.values(state.shopEconomy.bag).reduce(
         (sum,value)=>sum+value,0)+"/"+ECONOMY.bagCapacity;
     offers.replaceChildren();
     if(!entries.length){
@@ -50,7 +59,7 @@ export function setupHeroBuybackHud(store:GameStore):void{
       empty.textContent="No returning adventurer currently offers recovered goods.";
       offers.append(empty);return;
     }
-    const bagFull=Object.values(store.state.shopEconomy.bag).reduce(
+    const bagFull=Object.values(state.shopEconomy.bag).reduce(
       (sum,value)=>sum+value,0)>=ECONOMY.bagCapacity;
     for(const offer of entries){
       const item=ITEMS.find(entry=>entry.id===offer.itemId)!;
@@ -67,7 +76,7 @@ export function setupHeroBuybackHud(store:GameStore):void{
       summary.append(good,seller);
       const action=document.createElement("button");
       action.type="button";action.textContent="Buy · "+offer.price+"g";
-      action.disabled=bagFull||store.state.shopEconomy.balance<offer.price;
+      action.disabled=bagFull||state.shopEconomy.balance<offer.price;
       action.setAttribute("aria-label","Buy one "+item.name+" from "+offer.heroName);
       action.addEventListener("click",()=>{
         feedback.textContent=store.buyDungeonFind(offer.heroId,offer.itemId);
@@ -81,9 +90,9 @@ export function setupHeroBuybackHud(store:GameStore):void{
     if(document.pointerLockElement)void document.exitPointerLock();
     modal.showModal();
     feedback.textContent="Only confirmed visitor stock can be purchased.";
-    render();
+    render(true);
     close.focus();
   });
-  store.subscribe(render);
-  render();
+  store.subscribe(()=>render());
+  render(true);
 }
