@@ -1,6 +1,6 @@
 import type { Level5Room } from "./level5Room.ts";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Matrix,Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
@@ -295,6 +295,32 @@ export class NpcVisualSystem {
   /** Drain only after the outgoing mesh was removed AND the authoritative
    * shop traffic checkpoint was committed. Autosave must never see an
    * off-duty hero with an in-flight physical shop actor. */
+  /** Cheap, optional SHOP-only hover hit for our one shared Hero Card.
+   * Project actual visible persisted NPC roots instead of enabling mesh
+   * picking on every articulated limb (which would alter shelf selection). */
+  heroAtScreen(clientX:number,clientY:number,canvas:HTMLCanvasElement):
+    string|null {
+    const camera=this.scene.activeCamera;
+    if(!camera||!this.npcs.size)return null;
+    const engine=this.scene.getEngine();
+    const width=engine.getRenderWidth(),height=engine.getRenderHeight();
+    const viewport=camera.viewport.toGlobal(width,height);
+    const rect=canvas.getBoundingClientRect();
+    let nearest:string|null=null,best=48*48;
+    for(const npc of this.npcs.values()){
+      if(!npc.root.isEnabled())continue;
+      const pos=npc.root.getAbsolutePosition().add(new Vector3(0,1.65,0));
+      const projected=Vector3.Project(pos,Matrix.Identity(),
+        this.scene.getTransformMatrix(),viewport);
+      if(projected.z<0||projected.z>1)continue;
+      const x=rect.left+projected.x/width*rect.width;
+      const y=rect.top+projected.y/height*rect.height;
+      const distance=(clientX-x)**2+(clientY-y)**2;
+      if(distance<best){best=distance;nearest=npc.visitor.id;}
+    }
+    return nearest;
+  }
+
   drainCompletedExits():readonly {heroId:string;outerGateZ:number}[]{
     return this.completedExits.splice(0);
   }
