@@ -161,6 +161,40 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   await expect(page.locator("#music-track")).toHaveText("Beneath the Surface");
   await expect(page.locator("#dungeon-watch-live-combat")).toBeVisible();
   await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor dungeon overview",{timeout:20000});
+  // While the world is paused, advance one GENUINE 10-tick combat event.
+  // Only the committed 60Hz fighter frames/HP change: the floor map,
+  // lighting, fog and minimap must not be repainted for that nonspatial step.
+  const mapWrites=await page.evaluate(()=>{
+    const canvas=document.querySelector<HTMLCanvasElement>("#dungeon-minimap")!;
+    const ctx=canvas.getContext("2d")!;
+    const original=ctx.fillRect;
+    let writes=0;
+    ctx.fillRect=(x,y,width,height)=>{
+      writes++;
+      original.call(ctx,x,y,width,height);
+    };
+    const hooks=window as Window&{
+      __shopTestAdvanceWorldTicks?:(ticks:number)=>void;
+      __dungeonMapCanvasWrites?:()=>number;
+    };
+    hooks.__dungeonMapCanvasWrites=()=>writes;
+    return writes;
+  });
+  expect(mapWrites).toBe(0);
+  await page.evaluate(()=>{
+    const hooks=window as Window&{
+      __shopTestAdvanceWorldTicks?:(ticks:number)=>void;
+    };
+    if(!hooks.__shopTestAdvanceWorldTicks)
+      throw Error("Missing real world-clock E2E advance");
+    hooks.__shopTestAdvanceWorldTicks(10);
+  });
+  await page.waitForTimeout(250);
+  const unnecessaryMapWrites=await page.evaluate(()=>(
+    window as Window&{__dungeonMapCanvasWrites?:()=>number}
+  ).__dungeonMapCanvasWrites?.()??-1);
+  expect(unnecessaryMapWrites).toBe(0);
+  await expect(page.locator("#dungeon-live-combat-summary")).toBeVisible();
   await page.locator("#close-dungeon").click();
   await expect(page.locator("body")).not.toHaveClass(/dungeon-active/);
   expect(errors).toEqual([]);
