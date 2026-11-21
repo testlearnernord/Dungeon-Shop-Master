@@ -69,7 +69,7 @@ test("SFX Lab is preview-only, supports independent solo/mute and cue audition",
   await expect(page.locator("#arena-sfx-debug-ambient")).toContainText("filtered");
 
   await page.locator(".sfx-debug-library summary").click();
-  await expect(page.locator("#arena-sfx-debug-auditions button")).toHaveCount(19);
+  await expect(page.locator("#arena-sfx-debug-auditions button")).toHaveCount(30);
   await page.locator('#arena-sfx-debug-auditions [data-cue="projectile"]').click();
   await expect(page.locator('#arena-sfx-debug-events li[data-cue="projectile"]').first())
     .toContainText("[TEST]");
