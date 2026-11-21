@@ -436,6 +436,31 @@ export function inspectDungeonLayout() {
 }
 
 
+/** Inspect actual scene props; absent/stale authored GLB is visible as a
+ * failure, rather than being silently replaced by a flat dummy shape. */
+export function inspectDungeonFeatureProps(){
+  const scene=Engine.LastCreatedScene!;
+  const withPrefix=(prefix:string)=>scene.meshes.filter(mesh=>
+    mesh.name.startsWith(prefix));
+  const roots=withPrefix("dungeon-monster-");
+  return {
+    chests:scene.meshes.filter(mesh=>
+      mesh.metadata?.visualKind==="3d-wooden-chest").length,
+    lids:withPrefix("chest-lid-").length,
+    chestBands:withPrefix("chest-lid-band-").length,
+    traps:scene.meshes.filter(mesh=>
+      mesh.metadata?.visualKind==="3d-spike-pressure-plate").length,
+    spikes:withPrefix("trap-spike-").length,
+    ghoulMarkers:roots.length,
+    ghoulModels:scene.meshes.filter(mesh=>
+      mesh.metadata?.worldFloorGhoul===true).length,
+    fallbackIcons:withPrefix("ghoul-fallback-")
+      .filter(mesh=>mesh.isEnabled()).length,
+    errors:roots.flatMap(mesh=>mesh.metadata?.assetError?[
+      String(mesh.metadata.assetError)]:[]),
+  };
+}
+
 /** Inspect actual Level 7 playback meshes without invoking any simulator. */
 export function inspectDungeonPlayback() {
   const scene=Engine.LastCreatedScene!;
