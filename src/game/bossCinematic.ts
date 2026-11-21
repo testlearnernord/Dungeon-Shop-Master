@@ -7,7 +7,9 @@ export const BOSS_INTRO_SECONDS=13.5;
 
 import {sampleCinematicTrack,type CinematicFrame,
   type CinematicKeyframe} from "./combatCinematic.ts";
-const FRAMES:readonly CinematicKeyframe[]=[
+/** Reusable authored Level-6 film; group combat repositions it to the
+ * real boss's saved position without adding camera-owned combat logic. */
+export const BOSS_INTRO_KEYFRAMES:readonly CinematicKeyframe[]=[
   {at:0,eye:[-14.5,7.8,-16],look:[0,3.8,0],caption:"FLOOR VI · THE ASHEN TUNNEL"},
   {at:3.2,eye:[-7.4,6.5,-9.4],look:[0,5.5,2],caption:"SOMETHING STIRS IN THE DARK"},
   {at:5.7,eye:[-4.4,4.8,-5.4],look:[0,5.3,2],caption:"THE TUNNEL MAULER"},
@@ -19,5 +21,5 @@ const FRAMES:readonly CinematicKeyframe[]=[
  * The exact same sampler also drives group opening cinematics. */
 export type BossIntroFrame=CinematicFrame;
 export function sampleBossIntro(seconds:number):BossIntroFrame {
-  return sampleCinematicTrack(FRAMES,BOSS_INTRO_SECONDS,seconds);
+  return sampleCinematicTrack(BOSS_INTRO_KEYFRAMES,BOSS_INTRO_SECONDS,seconds);
 }
