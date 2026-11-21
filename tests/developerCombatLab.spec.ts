@@ -39,12 +39,25 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   await page.locator("#lab-arena").selectOption("cave-troll");
   await page.locator("#lab-start").click();
   await expect.poll(async()=>(await summary()).arenaMonsters).toBe(1);
+  await expect(page.locator(".group-combat-cinematic")).toBeVisible();
+  await expect(page.locator(".group-combat-cinematic strong")).toHaveText(
+    "THE ASHEN TUNNEL MAULER");
+  await expect(page.locator("#group-combat-world-hud"))
+    .toHaveCSS("visibility","hidden");
   const trollScene=await summary();
   expect(trollScene.trollImpactDustCount).toBe(1);
   expect(trollScene.trollDebrisCount).toBe(16);
   expect(trollScene.trollWarningSectorCount).toBe(2);
   expect(trollScene.trollImpactFlashCount).toBe(1);
+  // The same spectator controls must skip its film without changing battle
+  // state, and the real saved world HP bars must be restored afterward.
+  await page.evaluate(()=>(document.activeElement as HTMLElement|null)?.blur());
+  await page.keyboard.press("Space");
+  await expect(page.locator(".group-combat-cinematic")).toBeHidden();
+  await expect(page.locator("#group-combat-world-hud"))
+    .toHaveCSS("visibility","visible");
   await page.locator("#lab-model").click();
+  await expect(page.locator(".group-combat-cinematic")).toHaveCount(0);
   await expect(page.locator("#arena-model-panel")).toBeVisible();
   await page.locator("#arena-model-preset").selectOption("ghoul-tripo");
   await expect(page.locator("#arena-model-info")).toContainText("15 imported clips",{timeout:30000});
