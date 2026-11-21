@@ -446,7 +446,8 @@ export function inspectDungeonFeatureProps(){
   return {
     chests:scene.meshes.filter(mesh=>
       mesh.metadata?.visualKind==="3d-wooden-chest").length,
-    lids:withPrefix("chest-lid-").length,
+    lids:withPrefix("chest-lid-").filter(mesh=>
+      !mesh.name.startsWith("chest-lid-band-")).length,
     chestBands:withPrefix("chest-lid-band-").length,
     traps:scene.meshes.filter(mesh=>
       mesh.metadata?.visualKind==="3d-spike-pressure-plate").length,
