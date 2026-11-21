@@ -51,7 +51,7 @@ function identity(hero:HeroCardView):HTMLElement{
     "RECORDED · "+hero.status.toUpperCase():
     hero.source==="training"?"TRAINING · "+hero.status.toUpperCase():
       hero.status.toUpperCase()+
-      (hero.floor!==null?" · FLOOR "+hero.floor:""));
+      (hero.floor!==null?" · Floor "+hero.floor:""));
   info.append(name,state);
   const sigil=pict(hero.role==="tank"?"shield":
     hero.role==="healer"?"heart":"swords",hero.role);
@@ -95,7 +95,20 @@ function vitals(hero:HeroCardView):HTMLElement{
   }
   if(hero.inventory)row.append(metric("heart",
     "Healing herbs",String(hero.inventory.healing)));
-  host.append(row);return host;
+  host.append(row);
+  if(hero.xp!==null){
+    const progress=heroXpProgress(hero.xp)??0;
+    const xpTrack=make("span","hero-card-xp-track");
+    xpTrack.title=progress+" / 100 XP to next level";
+    xpTrack.setAttribute("role","progressbar");
+    xpTrack.setAttribute("aria-label","XP progress to next level");
+    xpTrack.setAttribute("aria-valuemin","0");
+    xpTrack.setAttribute("aria-valuemax","100");
+    xpTrack.setAttribute("aria-valuenow",String(progress));
+    const fill=make("span","hero-card-xp-fill");
+    fill.style.width=progress+"%";xpTrack.append(fill);host.append(xpTrack);
+  }
+  return host;
 }
 function equipment(hero:HeroCardView,compact=false):HTMLElement{
   const zone=make("section","hero-card-equipment");
