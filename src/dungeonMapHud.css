@@ -106,6 +106,16 @@
   background:linear-gradient(150deg,rgba(17,27,30,.96),rgba(11,19,23,.93));
   box-shadow:0 12px 30px #0007;
 }
+#dungeon-hud #dungeon-minimap[tabindex="0"]{
+  cursor:crosshair;border-radius:4px;
+  transition:box-shadow .12s ease;
+}
+#dungeon-hud #dungeon-minimap[tabindex="0"]:hover{
+  box-shadow:0 0 0 1px #d5bd84a0;
+}
+#dungeon-hud #dungeon-minimap:focus-visible{
+  outline:2px solid #c6e6a9;outline-offset:3px;
+}
 #dungeon-hud .dungeon-minimap-panel strong{
   font:700 12px system-ui,sans-serif;color:#e1d29f;
 }
