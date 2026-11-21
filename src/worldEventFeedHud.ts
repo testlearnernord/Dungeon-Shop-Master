@@ -10,7 +10,7 @@ interface FeedSettings {level:WorldFeedLevel;seconds:WorldFeedSeconds;enabled:Wo
 const SETTING_KEY="dsm-world-feed-preferences-v1";
 const LOAD_PRESETS:Record<WorldFeedLevel,readonly WorldFeedCategory[]>={
   minimal:["death","boss"],
-  standard:["death","boss","combat","party","treasure","trap","depth"],
+  standard:["death","boss","combat","levelup","party","treasure","trap","depth"],
   detailed:WORLD_FEED_CATEGORIES,
 };
 const validSeconds=(v:unknown):v is WorldFeedSeconds=>v===5||v===7||v===10;
@@ -19,10 +19,16 @@ function loadSettings():FeedSettings{
     const raw=JSON.parse(localStorage.getItem(SETTING_KEY)??"null");
     const level:WorldFeedLevel=raw&&
       ["minimal","standard","detailed"].includes(raw.level)?raw.level:"standard";
+    const selected=raw&&Array.isArray(raw.enabled)?
+      WORLD_FEED_CATEGORIES.filter(category=>raw.enabled.includes(category)):
+      [...LOAD_PRESETS[level]];
+    // Upgrade old saved UI preferences once. Do not silently re-enable the
+    // category after the player has consciously switched it off in v2.
+    if(raw?.version!==2&&level!=="minimal"&&
+       selected.includes("combat")&&!selected.includes("levelup"))
+      selected.push("levelup");
     return {level,seconds:raw&&validSeconds(raw.seconds)?raw.seconds:7,
-      enabled:raw&&Array.isArray(raw.enabled)?
-        WORLD_FEED_CATEGORIES.filter(category=>raw.enabled.includes(category)):
-        [...LOAD_PRESETS[level]]};
+      enabled:selected};
   }catch{return {level:"standard",seconds:7,
     enabled:[...LOAD_PRESETS.standard]};}
 }
@@ -80,7 +86,8 @@ export function setupWorldEventFeed(
   categories.append(legend);
   const categoryInputs=new Map<WorldFeedCategory,HTMLInputElement>();
   const titles:Record<WorldFeedCategory,string>={
-    death:"Deaths",boss:"Boss fights",combat:"Combat",party:"Parties",
+    death:"Deaths",boss:"Boss fights",combat:"Combat",
+    levelup:"Hero level-ups",party:"Parties",
     treasure:"Chest loot",trap:"Traps",depth:"Ascend / descend",
     travel:"Shop returns",
   };
@@ -108,7 +115,7 @@ export function setupWorldEventFeed(
       seconds:Number(duration.value) as WorldFeedSeconds,
       enabled:WORLD_FEED_CATEGORIES.filter(category=>
         categoryInputs.get(category)?.checked)};
-    try{localStorage.setItem(SETTING_KEY,JSON.stringify(settings));}
+    try{localStorage.setItem(SETTING_KEY,JSON.stringify({...settings,version:2}));}
     catch{/* Browser storage may be disabled; settings still work this session. */}
     for(const [id,item] of [...active]){
       if(settings.enabled.includes(
@@ -151,7 +158,10 @@ export function setupWorldEventFeed(
       detail.textContent=item.detail;
       const prompt=document.createElement("small");
       prompt.className="world-feed-prompt";
-      prompt.textContent="CLICK TO OBSERVE";
+      prompt.textContent=item.target.kind==="recorded-fight"||
+        item.target.kind==="boss-recording"?"CLICK TO WATCH REPLAY":
+        item.target.kind==="hero-profile"?"CLICK TO VIEW HERO":
+        "CLICK TO OBSERVE";
       action.append(eyebrow,title,detail,prompt);
       const close=document.createElement("button");
       close.type="button";
