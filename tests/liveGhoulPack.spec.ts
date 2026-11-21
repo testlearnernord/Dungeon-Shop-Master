@@ -12,6 +12,7 @@ test("one real LIVE Ghoul pack is abstract on the floor and individually rendere
   const prepared=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {GameStore}=await import("/Dungeon-Shop-Master/src/game/gameStore.ts");
+    const {DUNGEON_STEP_INTERVAL_TICKS}=await import("/Dungeon-Shop-Master/src/game/liveDungeonRuntime.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const {generateExpeditionLayout,dungeonNeighbors}=
       await import("/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
@@ -49,7 +50,9 @@ test("one real LIVE Ghoul pack is abstract on the floor and individually rendere
       }}],
     });
     store.enableLiveDungeon();
-    store.advanceWorldTime(600);
+    // At three 200-tick movement events the encounter may have completed.
+    // Assert the actual first committed fight instead of chasing an old clock.
+    store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS+10);
     const live=store.state.liveDungeon.combats.find(c=>
       c.heroIds.includes(moved.id));
     if(!live)throw Error("Seeded pack did not start a real LIVE fight");
