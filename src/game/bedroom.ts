@@ -106,10 +106,10 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   }
   for (let i = 0; i < 9; i++) {
     const x = -2.6 + i * 0.65;
+    if(x>-1.5&&x<-.2)continue; // Do not block the portrait doorway.
     const mesh = MeshBuilder.CreateIcoSphere("bedroom-rear-rock-" + i,
       { radius: 0.5, subdivisions: 1, flat: true }, scene);
     mesh.position.set(x, 2.15 + (i % 3) * 0.38, -12.06);
-    if(x>-1.5&&x<-.2)continue; // Do not cover the portrait doorway.
     mesh.scaling.set(0.44, 0.55 + (i % 2) * 0.24, 0.23);
     mesh.rotation.y = i * 0.47;
     mesh.material = i % 3 === 0 ? stoneHighlight : masonry;

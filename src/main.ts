@@ -27,6 +27,7 @@ import { setupRosterBoardHud } from "./rosterBoardHud";
 import { Shop } from "./game/shop";
 import { setupBlueprintHud } from "./blueprintHud.ts";
 import { setupBedroomFurnitureVisuals } from "./game/bedroomFurnitureVisuals.ts";
+import {setupCellarFurnitureVisuals} from "./game/cellarFurnitureVisuals.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
@@ -115,6 +116,7 @@ document.addEventListener("visibilitychange",()=>{
   ignoreNextClockFrame=true;
 });
 setupBedroomFurnitureVisuals(scene,store);
+setupCellarFurnitureVisuals(scene,store);
 const roomVisuals=createLevel5RoomVisuals(scene);
 const cellarVisuals=createLevel5RoomVisuals(scene,"cellar");
 let lastDrawnRoom:typeof store.state.level5Room|null=null;
