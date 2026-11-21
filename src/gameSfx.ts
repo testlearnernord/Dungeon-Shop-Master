@@ -315,6 +315,9 @@ export class GameSfx {
       .finally(()=>{this.sampleLoading.delete(filename);});
   }
 
+  /** Stop arena samples on exit so long death rattles do not leak into the shop. */
+  stopCombatSamples():void {this.stopSamples();}
+
   private stopSamples():void {
     for(const source of this.sampleSources){
       try{source.stop();}catch{ /* Already ended. */ }
