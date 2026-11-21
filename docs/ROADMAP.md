@@ -1,6 +1,6 @@
 # Dungeon Shop Master — active roadmap
 
-> Current planning snapshot after merged PR #241, 21 November 2026. **Not a PR history.** Verify current `main` and open branches before work. The browser still labels the game V.002 ALPHA; V.003 ALPHA is a release target. Source and tests establish feature status, not earlier roadmap promises.
+> Current planning snapshot after merged PR #243, 21 November 2026. **Not a PR history.** Verify current `main` and open branches before work. The browser still labels the game V.002 ALPHA; V.003 ALPHA is a release target. Source and tests establish feature status, not earlier roadmap promises.
 
 ## Completed foundations (IMPLEMENTED; do not schedule again)
 
@@ -14,7 +14,7 @@
 
 These are **foundations**, not proof of full V.003 release readiness.
 
-## Current milestone: The Great Cleanup
+## Completed milestone: The Great Cleanup
 
 Owner rule: **no lost gameplay, scenes, animations, cues, saves, rendering quality or score; no automatic merges.** All sub-PRs require separate review.
 
@@ -25,9 +25,13 @@ Owner rule: **no lost gameplay, scenes, animations, cues, saves, rendering quali
 | B1: audio ownership | **Merged (#237)** | Proposed removal of one exact root music copy; canonical audio untouched; generated Ghoul GLB ignored and owners documented |
 | B2: model provenance | **Merged (#238)** | Archive the original Troll Grab/Throw source with unchanged Git blob; update generator, manifest, docs and integrity test |
 | C: TypeScript | **Merged (#239–241)** | Retired obsolete nightly ledger projections, audited module reachability and removed the unused group-boss adapter while preserving the real LIVE Troll with new tests |
-| D: CI and acceptance | **D1 merged/deployed (#242); D2 draft (#243)** | Published Pages build now verifies dist/ audio/model copies and asset URLs; D2 reconciles before/after metrics and retains open full-browser, device, audio and FPS acceptance gates |
+| D: CI and acceptance | **Merged (#242–243)** | Pages build verifies dist/ assets; the measured closeout ledger documents confirmed CI/deploy results and explicitly open full-browser/device/audio/FPS sign-offs |
 
 See [CLEANUP_AUDIT.md](CLEANUP_AUDIT.md) for the source-verified A1 baseline and known risk classifications.
+
+## Current milestone: V.003 gameplay and acceptance
+
+**P0.1 review draft (#244):** trace paid, stocked Iron Sword and Leather Vest through a legitimate manual checkout into the **actual saved** unique Troll encounter, comparing a nonbuyer control and checking exact 60-Hz Save/Reload. This is a test-only boundary proof, **not** a claim that a complete ten-day played economy, physical portal or purchased-equipment outcome balance is accepted. The broader ten-day browser test already checks world/ledger/replay retention, but deliberately has zero physical sales. 
 
 ## Remaining V.003 work (PARTIAL / PLANNED)
 
