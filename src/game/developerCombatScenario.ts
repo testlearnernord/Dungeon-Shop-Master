@@ -139,5 +139,6 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
     });
   }
   return {actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},obstacles:[],
+    tacticsSeed:config.seed,
     ...(config.arena==="cave-troll"?{environment:"cave-lava" as const}:{})};
 }
