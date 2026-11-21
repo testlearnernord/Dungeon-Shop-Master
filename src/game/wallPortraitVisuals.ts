@@ -12,14 +12,14 @@ import type {GameStore} from "./gameStore.ts";
  * A save records only whether the door is open, not its camera animation. */
 export function setupWallPortraitVisuals(scene:Scene,store:GameStore):Mesh[]{
   const hinge=new TransformNode("galvik-portrait-secret-hinge",scene);
-  hinge.position.set(-1.46,0,-12.02);
+  hinge.position.set(-1.985,0,-12.02);
   const panel=new TransformNode("galvik-portrait-secret-panel",scene);
   panel.parent=hinge;
-  panel.position.x=.61;
+  panel.position.x=1.135;
   const canvas=MeshBuilder.CreatePlane("galvik-portrait-canvas",
-    {width:.98,height:1.16},scene);
+    {width:1.98,height:2.48},scene);
   canvas.parent=panel;
-  canvas.position.set(0,2.15,.065);
+  canvas.position.set(0,1.50,.065);
   canvas.rotation.y=Math.PI;
   canvas.isPickable=true;
   canvas.checkCollisions=false;
@@ -40,10 +40,12 @@ export function setupWallPortraitVisuals(scene:Scene,store:GameStore):Mesh[]{
     mesh.material=wood;mesh.isPickable=true;mesh.checkCollisions=false;
     interactables.push(mesh);
   };
-  add("back",1.08,1.30,.055,0,2.15,-.01);
+  // The full-size beloved portrait conceals the entire enlarged passage,
+  // rather than leaving a visible empty gap around a tiny floating picture.
+  add("back",2.18,2.68,.055,0,1.50,-.01);
   for(const side of [-1,1]){
-    add("side-"+side,.08,1.30,.12,side*.52,2.15,.05);
-    add("edge-"+side,1.08,.08,.12,0,2.15+side*.63,.05);
+    add("side-"+side,.08,2.68,.12,side*1.05,1.50,.05);
+    add("edge-"+side,2.18,.08,.12,0,1.50+side*1.30,.05);
   }
   const blocker=scene.getMeshByName("cellar-portrait-barrier");
   let angle=store.state.cellarDoorOpen?-1.64:0;
