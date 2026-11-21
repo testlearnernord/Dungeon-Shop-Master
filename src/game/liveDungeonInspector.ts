@@ -14,6 +14,23 @@ export function floorHeroLocatorOptions(
     }));
 }
 
+/** One label per actually running encounter, derived only from the saved
+ * combat roster. Never conjures enemies or predicts encounter outcomes. */
+export function floorFightLocatorOptions(
+  fights:readonly {id:string;x:number;z:number;
+    heroIds:readonly string[];actors:readonly {team:string}[]}[],
+):readonly {id:string;label:string;x:number;z:number}[] {
+  return [...fights].sort((a,b)=>a.z-b.z||a.x-b.x||
+    a.id.localeCompare(b.id)).map((fight,index)=>{
+    const ghouls=fight.actors.filter(actor=>actor.team==="monsters").length;
+    const heroes=fight.heroIds.length;
+    return {id:fight.id,x:fight.x,z:fight.z,
+      label:"Engagement "+(index+1)+" · "+ghouls+
+        (ghouls===1?" Ghoul":" Ghouls")+" / "+heroes+
+        (heroes===1?" hero":" heroes")+" · ("+fight.x+", "+fight.z+")"};
+  });
+}
+
 /** The abstract `inventory.loot` counter is not a physical item.
  * Show only goods that a real saved adventurer currently owns. */
 export function formatHeroDungeonFinds(
