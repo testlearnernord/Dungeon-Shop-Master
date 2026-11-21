@@ -66,6 +66,8 @@ Browser input / shop interactions
 - **Historical archive:** the former night-only `ledgerHeroChronicle.ts` and `ledgerSealedExpeditions.ts` projections are unreferenced in active application imports and retired in proposed C1. Their former role is handled by `liveBoardProjection.ts` and `expeditionArchive.ts` respectively. `expeditionArchive.ts` lists real committed highlights for **today plus the previous two days**. A bounded set of **12 manually retained recordings** can outlive rolling footage. `dungeonReplayPlayback.ts` projects saved frames on a separate local playback clock; seeking cannot change world state or play old SFX hits again.
 - **Death:** only committed genuine HP transition can emit a spoiler-limited magical warning. An unknown offscreen event cannot be promoted to omniscient Board HP or a fabricated replay.
 
+**LIVE map compass invariant:** the physical LIVE floor observer uses world +Z as fixed north and keeps its Babylon map yaw at zero. W/S travel +Z/-Z; A/D travel -X/+X regardless of prior camera pose, and mouse dragging slides/tilts without changing north-up. This map-only control policy does not apply to opt-in boss/ordinary arenas or the Combat Lab.
+
 **LIVE floor update boundary:** `liveFloorSceneDiff.ts` classifies committed floor-geometry/fog changes separately from combat-only frame and HP changes. `DungeonReplayScene.showLiveFloor` preserves the real updated frame and HP metadata on every new checkpoint while skipping costly Babylon lights, route meshes, fog and minimap redraws unless a spatial fact changes. It must not gate `GameStore`, 60-Hz combat, arena frames, loot or clock events.
 
 ## 5. Rendering and performance boundary
