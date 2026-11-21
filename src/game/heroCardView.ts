@@ -23,6 +23,7 @@ export interface HeroCardView {
   readonly inventory:Readonly<{loot:number;bread:number;healing:number;
     finds?:Partial<Record<ItemId,number>>}>|null;
   readonly recent:readonly string[];
+  readonly observations?:readonly {icon:"map"|"search"|"swords"|"users"|"info";text:string}[];
   readonly combat:Readonly<{damage:number;armor:number;heals:number;
     phase:GroupPhase|null;stamina:number|null}>|null;
 }
@@ -47,7 +48,7 @@ export function liveHeroCard(
     activity:context.activity??null,goal:context.goal??plan?.goal??null,
     action:context.action??plan?.action??null,
     party:group?.memberIds??[],stats:hero.stats,traits:hero.traits,
-    equipment:hero.equipment,inventory:hero.inventory,recent,
+    equipment:hero.equipment,inventory:hero.inventory,recent,observations:[],
     combat:null,
   };
 }
@@ -68,7 +69,7 @@ export function combatHeroCard(
     activity:actor?.phase??null,goal:null,action:null,party:[],
     stats:live?.stats??null,traits:live?.traits??null,
     equipment:spec.equipment??live?.equipment??{weapon:null,armor:null},
-    inventory:live?.inventory??null,recent:[],
+    inventory:live?.inventory??null,recent:[],observations:[],
     combat:{damage:spec.damage,armor:spec.armor,
       heals:Math.max(0,(spec.healCharges??0)+(spec.magicHeals??0)),
       phase:actor?.phase??null,stamina:actor?.stamina??null},
