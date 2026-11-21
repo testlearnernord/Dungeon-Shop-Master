@@ -74,9 +74,11 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   cube("bedroom-right-wall", 0.85, 4, 6.05, 3.25, 2, -9.68, wall, true);
   // The hidden rear opening is permanently structural; a portrait-operated
   // collision barrier keeps it closed until Galvik uncovers the stairs.
-  cube("bedroom-rear-left",2.0,4,.65,-2.45,2,-12.35,wall,true);
-  cube("bedroom-rear-right",3.7,4,.65,1.60,2,-12.35,wall,true);
-  cube("bedroom-secret-lintel",1.20,1.20,.65,-.85,3.40,-12.35,wall,true);
+  // A usable two-metre passage, wide enough for real FPS movement without
+  // forcing the player to perfectly centre the 0.35m collision ellipsoid.
+  cube("bedroom-rear-left",1.60,4,.65,-2.65,2,-12.35,wall,true);
+  cube("bedroom-rear-right",3.30,4,.65,1.80,2,-12.35,wall,true);
+  cube("bedroom-secret-lintel",2.00,1.15,.65,-.85,3.425,-12.35,wall,true);
   const flagstone = surfaces.floor;
   const bedroomFloor=cube("bedroom-floor-skin", 6.05, 0.025, 5.08, 0, 0.012, -9.68, flagstone);
   bedroomFloor.isPickable=true; // Blueprint floor targeting; not a gameplay interactable
@@ -106,7 +108,7 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   }
   for (let i = 0; i < 9; i++) {
     const x = -2.6 + i * 0.65;
-    if(x>-1.5&&x<-.2)continue; // Do not block the portrait doorway.
+    if(x>-2.2&&x<.45)continue; // Leave the wider secret opening unobstructed.
     const mesh = MeshBuilder.CreateIcoSphere("bedroom-rear-rock-" + i,
       { radius: 0.5, subdivisions: 1, flat: true }, scene);
     mesh.position.set(x, 2.15 + (i % 3) * 0.38, -12.06);

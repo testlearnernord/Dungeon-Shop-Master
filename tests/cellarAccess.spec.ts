@@ -21,17 +21,52 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
   expect(gate).toEqual({blocked:false,ramp:true,cellarFloor:true,chest:true});
   // Start at the actual upper stair landing and WALK downhill. The real FPS
   // camera must follow the slope, not be teleported to a second world.
-  await page.evaluate(async()=>
-    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtCellarStairs());
-  await page.locator("#renderCanvas").focus();
-  await page.keyboard.down("w");
-  await page.waitForTimeout(550);
-  await page.keyboard.up("w");
-  const after=await page.evaluate(async()=>{
-    const {inspectPlayer}=await import("/Dungeon-Shop-Master/tests/scene.ts");
-    return inspectPlayer();
+  await page.evaluate(async()=>{
+    const helper=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    helper.aimAtCellarStairs();
+    helper.trackCellarCollisions();
   });
-  expect(after.z).toBeLessThan(-13.5);
-  expect(after.y).toBeLessThan(1.65);
+  await page.locator("#renderCanvas").focus();
+  const position=async()=>{
+    return await page.evaluate(async()=>(
+      await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectPlayer());
+  };
+  await page.keyboard.down("w");
+  try {
+    await expect.poll(async()=>(await position()).z,{timeout:12000,
+      intervals:[250,300,350,400]}).toBeLessThan(-20.2);
+  } finally {
+    await page.keyboard.up("w");
+  }
+  const after=await page.evaluate(async()=>{
+    const helper=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    return {player:helper.inspectPlayer(),hits:helper.inspectCellarCollisions()};
+  });
+  console.log("Cellar descent diagnostic",JSON.stringify(after));
+  expect(after.player.y).toBeLessThan(-2.3);
+  // Re-aim UP the same physical staircase and walk out past the secret door.
+  await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimUpCellarStairs());
+  await page.keyboard.down("w");
+  try {
+    await expect.poll(async()=>(await position()).z,{timeout:12000,
+      intervals:[250,300,350,400]}).toBeGreaterThan(-12.0);
+  } finally {
+    await page.keyboard.up("w");
+  }
+  const returned=await position();
+  console.log("Cellar return diagnostic",JSON.stringify(returned));
+  expect(returned.y).toBeGreaterThan(.75);
+  // Normal players approach slightly off-centre. They must not need pixel-
+  // perfect alignment at the original 1.2m doorway.
+  await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtCellarStairs(-.48));
+  await page.keyboard.down("w");
+  try {
+    await expect.poll(async()=>(await position()).z,{timeout:9000,
+      intervals:[250,300,350]}).toBeLessThan(-14.0);
+  } finally {
+    await page.keyboard.up("w");
+  }
   expect(errors).toEqual([]);
 });
