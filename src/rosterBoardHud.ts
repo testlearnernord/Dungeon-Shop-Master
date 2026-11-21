@@ -7,9 +7,10 @@ import {itemIcon,uiIcon,goldIcon} from "./uiIcons.ts";
 import {portraitCssFrame} from "./game/portraitAtlas.ts";
 import {WORLD_TICKS_PER_DAY,WORLD_TICKS_PER_GAME_MINUTE} from "./game/worldClock.ts";
 
-/** The R roster and the physical board read the EXACT SAME world-knowledge
- * selector. Hidden dungeon HP, inventory, gear, gold, position and survival
- * are never queried from today's actual remote adventurer state.
+/** The explicit player-opened Adventurer Board now displays the LIVE
+ * authoritative registered hero state, by design. The passive shop
+ * status/last-contact feed still uses the knowledge-limited projection;
+ * opening the board never modifies the game or sealed combat recordings.
  */
 export function setupRosterBoardHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
@@ -33,14 +34,16 @@ export function setupRosterBoardHud(
     const state=store.state;
     const known=selectLiveBoardHeroes(state);
     const fallen=known.filter(h=>h.status==="lost").length;
-    totals.textContent=(known.length-fallen)+" signatures tracked · "+fallen+
-      " extinguished · Day "+state.day+
+    totals.textContent=(known.length-fallen)+" active · "+fallen+
+      " fallen · Day "+state.day+
       (filterValue==="fallen"&&fallen>40?" · Showing last 40":"");
     const expanded=new Set([...list.querySelectorAll<HTMLDetailsElement>(
       "details[open][data-hero-id]")].map(node=>node.dataset.heroId));
     const heroes=liveBoardHeroesForFilter(state,filterValue);
     const names=heroDisplayNames(state.adventurers);
+    const actualHeroes=new Map(state.adventurers.map(actor=>[actor.id,actor]));
     list.replaceChildren(...heroes.map(hero=>{
+      const current=actualHeroes.get(hero.id)!;
       const card=document.createElement("details");
       card.className="roster-card";
       card.dataset.heroId=hero.id;
@@ -59,57 +62,51 @@ export function setupRosterBoardHud(
       primary.className="roster-card-primary";
       const name=document.createElement("strong");
       name.textContent=(names.get(hero.id)??hero.name)+" · Lv "+
-        (hero.visible?.level??"?")+" "+hero.role;
+        current.level+" "+hero.role;
       const location=document.createElement("small");
-      location.textContent=hero.location+
-        (hero.temporaryPartySignal?" · TP contact":"")+
-        (hero.report?" · "+timeLabel(hero.report.reportedAtTick):" · no report");
+      location.textContent=(current.status==="at-shop"?"Galvik's shop":
+        current.status==="off-duty"?"Off duty":
+        current.status==="dead"?"Fallen · last floor "+current.floor:
+        "Floor "+current.floor+" · "+current.status)+
+        (hero.temporaryPartySignal?" · Party contact":"")+
+        (hero.report?" · last signal "+timeLabel(hero.report.reportedAtTick):"");
       const bar=document.createElement("span");
       bar.className="roster-hp";
-      if(hero.visible){
-        bar.setAttribute("role","meter");
-        bar.setAttribute("aria-label",hero.name+" observed hit points");
-        bar.setAttribute("aria-valuemin","0");
-        bar.setAttribute("aria-valuemax",String(hero.visible.stats.maxHealth));
-        bar.setAttribute("aria-valuenow",String(hero.visible.health));
-        const fill=document.createElement("span");
-        fill.style.width=(100*hero.visible.health/hero.visible.stats.maxHealth)+"%";
-        bar.append(fill);
-      }else{
-        bar.classList.add("roster-hp-unknown");
-        bar.setAttribute("aria-label","No confirmed health report");
-      }
+      bar.setAttribute("role","meter");
+      bar.setAttribute("aria-label",hero.name+" current saved hit points");
+      bar.setAttribute("aria-valuemin","0");
+      bar.setAttribute("aria-valuemax",String(current.stats.maxHealth));
+      bar.setAttribute("aria-valuenow",String(current.health));
+      const fill=document.createElement("span");
+      fill.style.width=(100*current.health/current.stats.maxHealth)+"%";
+      bar.append(fill);
       const overview=document.createElement("span");
       overview.className="roster-overview";
-      if(hero.visible)overview.append(
-        goldIcon(),document.createTextNode(" "+hero.visible.gold+"g  ·  "),
+      overview.append(
+        goldIcon(),document.createTextNode(" "+current.gold+"g  ·  "),
         itemIcon("bread","ui-item-icon"),
-        document.createTextNode(" "+hero.visible.inventory.bread+
-          " Waybread · "+hero.visible.inventory.healing+" Herbs"));
-      else overview.append(uiIcon(hero.status==="lost"?"skull":"info"),
-        document.createTextNode(hero.status==="lost"
-          ?"Confirmed magic life-signal loss"
-          :"No verified remote health, gear, gold or inventory"));
+        document.createTextNode(" "+current.inventory.bread+
+          " Waybread · "+current.inventory.healing+" Herbs · "+
+          current.status));
       primary.append(name,location,bar,overview);
       const health=document.createElement("span");
       health.className="roster-hp-value";
-      health.textContent=hero.visible
-        ?hero.visible.health+"/"+hero.visible.stats.maxHealth:"HP ?";
+      health.textContent=current.health+"/"+current.stats.maxHealth;
       summary.append(portrait,primary,health);
       const extended=document.createElement("div");
       extended.className="roster-card-extended";
       const report=document.createElement("p");
       report.className="roster-known-report";
       report.textContent=hero.report
-        ?hero.report.text+" · "+hero.report.source+
-          " · occurred "+timeLabel(hero.report.occurredAtTick)+
-          " · reported "+timeLabel(hero.report.reportedAtTick)
-        :"No confirmed contact has been received.";
+        ?"Last magical/physical report: "+hero.report.text+" · "+
+          hero.report.source+" · "+timeLabel(hero.report.reportedAtTick)
+        :"No historical contact report. LIVE statistics below are current saved world state.";
       extended.append(report);
-      if(hero.visible){
-        const actual=hero.visible;
+      {
+        const actual=current;
         const stats=document.createElement("p");
-        stats.textContent="Seen in shop · XP "+actual.xp+
+        stats.textContent="LIVE · "+actual.status+" · Floor "+actual.floor+
+          " · HP "+actual.health+"/"+actual.stats.maxHealth+" · XP "+actual.xp+
           " · Gold "+actual.gold+"g · STR "+actual.stats.strength+
           " / AGI "+actual.stats.agility+" / INT "+actual.stats.intellect;
         const traits=document.createElement("p");
@@ -132,7 +129,14 @@ export function setupRosterBoardHud(
           chip("healing-herb","Healing "+actual.inventory.healing),
           chip("iron-ore","Loot "+actual.inventory.loot),
         );
-        extended.append(stats,traits,items);
+        const recovered=document.createElement("p");
+        const finds=Object.entries(actual.inventory.finds??{})
+          .filter(([,count])=>typeof count==="number"&&count>0);
+        recovered.textContent="Recovered goods: "+
+          (finds.length?finds.map(([id,count])=>id+" ×"+count).join(" · "):
+            "None");
+        extended.append(stats,traits,items,recovered);
+        if(actual.status==="at-shop"||actual.status==="departing"){
         const permit=document.createElement("button");
         permit.type="button";
         permit.className="roster-permit";
@@ -145,11 +149,7 @@ export function setupRosterBoardHud(
               ?.querySelector<HTMLButtonElement>(".roster-permit")?.focus();
         });
         extended.append(permit);
-      }else{
-        const note=document.createElement("p");
-        note.textContent="Remote details remain unverified. Watching a saved recording "+
-          "cannot retroactively change a past magical report.";
-        extended.append(note);
+        }
       }
       // Every remote non-lost signature gets the SAME explicit opt-in.
       // Whether a view exists is not itself leaked onto the board.
@@ -175,7 +175,7 @@ export function setupRosterBoardHud(
           warning.setAttribute("role","status");
           warning.textContent="LIVE observation unavailable: no current dungeon "+
             "position or fight checkpoint for this adventurer. Active dungeon "+
-            "explorers receive a real checkpoint at their next 30-second step; "+
+            "explorers receive a real checkpoint at their next 10-second step; "+
             "traveling and off-duty adventurers cannot be watched in a dungeon.";
           current.querySelector(".roster-card-extended")?.append(warning);
           current.querySelector<HTMLButtonElement>(".roster-watch-live")?.focus();
