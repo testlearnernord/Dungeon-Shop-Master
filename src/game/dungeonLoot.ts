@@ -28,9 +28,10 @@ export function rollDungeonSiteLoot(
   const seed=(campaignSeed^Math.imul(floor+13,0x9e3779b1)^
     hash(siteId)^Math.imul(cycle+1,0x85ebca6b))>>>0;
   const rng=new SeededRandom(seed);
-  const n=kind==="treasure"?1+rng.int(3):
-    Array.from({length:Math.min(4,Math.max(1,monsterCount))})
-      .reduce(count=>count+(rng.int(100)<48?1:0),0);
+  let n=0;
+  if(kind==="treasure")n=1+rng.int(3);
+  else for(let enemy=0;enemy<Math.min(4,Math.max(1,monsterCount));enemy++)
+    if(rng.int(100)<48)n++;
   const itemIds:ItemId[]=[];
   for(let i=0;i<n;i++){
     if(kind==="monster"){
