@@ -1,6 +1,6 @@
 import {Engine} from "@babylonjs/core/Engines/engine";
 import {Color3} from "@babylonjs/core/Maths/math.color";
-import {Vector3} from "@babylonjs/core/Maths/math.vector";
+import {Matrix,Quaternion,Vector3} from "@babylonjs/core/Maths/math.vector";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {Mesh} from "@babylonjs/core/Meshes/mesh";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
@@ -14,6 +14,8 @@ import {buildCaveTrollArenaArt,paintCaveTrollFloor} from "./caveTrollArenaArt.ts
 import {createTripoCaveTrollVisual} from "./tripoCaveTrollVisual.ts";
 import type {CaveTrollVisual} from "./caveTrollVisual.ts";
 import type {BossPhase} from "./arenaCombatMotion.ts";
+import {GRAPPLE_TIMING} from "./combatGrapple.ts";
+import {airborneRootFromGrip} from "./tripoGripPresentation.ts";
 import {CombatGroupWorldHud} from "./combatGroupWorldHud.ts";
 import {createHeroVisual,type HeroVisual} from "./heroVisual.ts";
 import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts";
@@ -35,6 +37,16 @@ interface VisualActor {
   readonly hero:HeroVisual|null;
   readonly ghoul:GhoulVisual|null;
   readonly troll:CaveTrollVisual|null;
+}
+
+/** Visual-only interpolation state; no grapple authority or damage here. */
+interface ObservedGrip {
+  handStart:Quaternion|null;
+  heroOrientation:Quaternion|null;
+  approach:Vector3|null;
+  heldRoot:Vector3|null;
+  launchRoot:Vector3|null;
+  launchMotor:Vector3|null;
 }
 
 /**
@@ -63,6 +75,9 @@ export class LiveGroupCombatArena{
   /** Optional render-only time for the V lab. Never used for LIVE authority. */
   private localPresentationTime:number|null=null;
   private readonly observedPositions=new Map<string,Vector3>();
+  private readonly actorPhases=new Map<string,GroupPhase>();
+  private readonly stepDistances=new Map<string,number>();
+  private readonly observedGrips=new Map<string,ObservedGrip>();
   private intro:GroupIntroTrack|null=null;
   private introElapsed=0;
   private developerStage:CombatStageTheme|null=null;
@@ -144,9 +159,13 @@ export class LiveGroupCombatArena{
     const fight=view.combat;
     if(!fight||!this.scene)return;
     this.hud?.show(frame);
+    this.hud?.showCues(fight.cues??[],frame);
     this.playRecordedCues(view,frame);
-    const timeDelta=this.lastPoseTime>=0&&frame.t>=this.lastPoseTime
-      ?Math.min(.1,frame.t-this.lastPoseTime):0;
+    const fromTime=this.lastPoseTime;
+    const timeDelta=fromTime>=0&&frame.t>=fromTime
+      ?Math.min(.1,frame.t-fromTime):0;
+    // A seek/reopen never creates sounds or a catch-up burst of footsteps.
+    const continuous=fromTime>=0&&frame.t>fromTime&&frame.t-fromTime<=.25;
     this.lastPoseTime=frame.t;
     for(const [id,model] of this.actors){
       const actor=frame.actors.find(candidate=>candidate.id===id);
@@ -160,12 +179,31 @@ export class LiveGroupCombatArena{
       const previous=this.observedPositions.get(id);
       const moved=previous?.subtract(pos).length()??0;
       this.observedPositions.set(id,pos.clone());
+      const priorPhase=this.actorPhases.get(id);
+      this.actorPhases.set(id,actor.phase);
+      if(continuous && moved>.004 && moved<.65 &&
+          (model.troll||model.hero) && actor.phase==="move"){
+        const stride=model.troll?1.45:.88;
+        const distance=(this.stepDistances.get(id)??0)+moved;
+        if(distance>=stride){
+          this.sfx?.play(model.troll?"troll-step":"hero-step",
+            {x:actor.x,z:actor.z},this.soundListener());
+        }
+        this.stepDistances.set(id,distance%stride);
+      }else if(actor.phase!=="move"||!continuous){
+        this.stepDistances.delete(id);
+      }
       if(model.troll){
         model.troll.root.setEnabled(true);
         model.troll.root.position.set(pos.x,0,pos.z);
         model.troll.root.rotation.y=actor.heading;
         model.troll.root.metadata={...model.troll.root.metadata,
           hp:actor.hp,combatPhase:actor.phase,liveArenaOnly:true};
+        if(continuous&&actor.phase==="strike"&&priorPhase!==undefined&&
+            priorPhase!=="strike"){
+          this.sfx?.play("troll-swing",{x:actor.x,z:actor.z},
+            this.soundListener());
+        }
         const phase:BossPhase=actor.phase==="move"?"chase":
           actor.phase==="hurt"?"stagger":
           actor.phase==="dead"?"dead":
@@ -176,7 +214,11 @@ export class LiveGroupCombatArena{
           actor.phase==="strike"?"strike":"recover";
         model.troll.animate({
           phase,phaseAge:ghoulRecordedPhaseAge(fight.frames,id,frame.t),
-          slam:false,attackType:"grab",time:frame.t,
+          // A strike must not pretend it is a grab. Actual grab/throw phases
+          // remain authored by the motor; historical v1 frames do not carry
+          // an exact smash/slam variant.
+          slam:false,attackType:phase==="grab"||phase==="throw"||
+            phase==="grabMiss"?"grab":"smash",time:frame.t,
           moved,delta:timeDelta,hp:actor.hp,maxHp:model.spec.maxHp,
         });
       }
@@ -186,7 +228,8 @@ export class LiveGroupCombatArena{
         model.hero.root.rotation.y=actor.heading;
         model.hero.root.metadata={...model.hero.root.metadata,
           hp:actor.hp,combatPhase:actor.phase,liveArenaOnly:true};
-        animateHero(model.hero,actor.phase,frame.t);
+        animateHero(model.hero,actor.phase,frame.t,
+          ghoulRecordedPhaseAge(fight.frames,id,frame.t));
       }
       if(model.ghoul){
         // Never display the superseded anonymous monster sphere. The actual
@@ -203,6 +246,9 @@ export class LiveGroupCombatArena{
         }
       }
     }
+    // Apply physical-looking, motor-owned hero holds and flight only AFTER
+    // animating the Troll rig, so its actual finger socket is up to date.
+    this.paintObservedGrapples(view,frame);
     const particles=frame.projectiles;
     while(this.projectiles.length<particles.length){
       const dot=MeshBuilder.CreateSphere(
@@ -221,6 +267,97 @@ export class LiveGroupCombatArena{
     // The local V loop calls updateCamera once per rendered frame, which
     // draws this HUD once. Do not double-project every plate per frame.
     if(!deferHud)this.hud?.render(this.scene,0);
+  }
+
+  /** Attach a captured hero to the Troll's real animated left-hand socket.
+   * This is a read-only counterpart of the Level-6 grip presentation. The
+   * saved motor position always determines displacement and landing. */
+  private paintObservedGrapples(
+    view:CombatArenaView,frame:GroupReplayFrame,
+  ):void{
+    const trollIds=(view.combat?.actors??[]).filter(actor=>
+      actor.specialAbility==="grapple-throw").map(actor=>actor.id);
+    for(const [id,model] of this.actors){
+      if(!model.hero)continue;
+      const actor=frame.actors.find(candidate=>candidate.id===id);
+      if(!actor||actor.phase!=="grabbed"&&actor.phase!=="thrown"){
+        this.observedGrips.delete(id);
+        continue;
+      }
+      const root=model.hero.root;
+      let observed=this.observedGrips.get(id);
+      if(!observed){
+        observed={handStart:null,heroOrientation:null,approach:null,
+          heldRoot:null,launchRoot:null,launchMotor:null};
+        this.observedGrips.set(id,observed);
+      }
+      const age=ghoulRecordedPhaseAge(view.combat!.frames,id,frame.t);
+      if(actor.phase==="grabbed"){
+        // A lab encounter permits one Troll; for future parties with multiple
+        // bosses the nearest visible real Troll owns the visual hold.
+        const holder=trollIds.map(trollId=>({
+          visual:this.actors.get(trollId)?.troll,
+          pose:frame.actors.find(entry=>entry.id===trollId),
+        })).filter(entry=>entry.visual&&entry.pose).sort((a,b)=>
+          Math.hypot(actor.x-a.pose!.x,actor.z-a.pose!.z)-
+          Math.hypot(actor.x-b.pose!.x,actor.z-b.pose!.z))[0];
+        const grip=holder?.visual?.gripPose?.();
+        if(grip){
+          if(!observed.handStart){
+            observed.handStart=grip.handRotation.clone();
+            observed.heroOrientation=Quaternion.RotationYawPitchRoll(
+              actor.heading,0,-.38);
+            observed.approach=root.position.clone();
+          }
+          const handDelta=grip.handRotation.multiply(
+            Quaternion.Inverse(observed.handStart));
+          const orientation=handDelta.multiply(observed.heroOrientation!);
+          root.rotationQuaternion=orientation;
+          const torsoRotation=Matrix.Identity();
+          Matrix.FromQuaternionToRef(orientation,torsoRotation);
+          const offset=Vector3.TransformNormal(
+            new Vector3(0,1.14*root.scaling.y,0),torsoRotation);
+          const target=grip.position.subtract(offset);
+          const progress=Math.min(1,Math.max(0,age/.16));
+          const eased=progress*progress*(3-2*progress);
+          root.position.copyFrom(Vector3.Lerp(
+            observed.approach!,target,eased));
+          root.metadata.gripAttached=progress>=1;
+          root.metadata.gripJoint="mixamorig:LeftHand";
+        }else{
+          // The GLB may still be loading. Maintain the real hold horizontally.
+          root.position.y=2.45;
+          root.rotation.z=-.38;
+          root.metadata.gripAttached=false;
+          root.metadata.gripJoint=null;
+        }
+        observed.heldRoot=root.position.clone();
+        observed.launchRoot=null;
+        observed.launchMotor=null;
+      }else{
+        if(!observed.launchRoot){
+          observed.launchRoot=observed.heldRoot?.clone()??
+            new Vector3(actor.x,2.45,actor.z);
+          observed.launchMotor=new Vector3(actor.x,0,actor.z);
+        }
+        const progress=Math.min(1,Math.max(0,age/GRAPPLE_TIMING.flight));
+        root.position.copyFrom(airborneRootFromGrip(
+          observed.launchRoot,observed.launchMotor!,
+          new Vector3(actor.x,0,actor.z),progress));
+        root.rotationQuaternion=Quaternion.RotationYawPitchRoll(
+          actor.heading,-.35*Math.sin(Math.PI*progress),
+          2*Math.PI*progress);
+        root.metadata.gripAttached=false;
+        root.metadata.gripJoint=null;
+      }
+    }
+  }
+
+  private soundListener():SoundListener|undefined{
+    return this.camera?{
+      x:this.camera.position.x,z:this.camera.position.z,
+      yaw:this.camera.rotation.y,
+    }:undefined;
   }
 
   /** Play only the authoritative saved action stream at the observed pose.
@@ -296,6 +433,9 @@ export class LiveGroupCombatArena{
     for(const model of this.actors.values())model.ghoul?.dispose();
     this.hud?.dispose();this.hud=null;
     this.observedPositions.clear();
+    this.actorPhases.clear();
+    this.stepDistances.clear();
+    this.observedGrips.clear();
     this.focusIds=[];this.focusedId=null;this.lastPoseTime=-1;
     this.lastCommittedView=null;this.localPresentationTime=null;
     this.liveBuffered=false;this.presentationTime=0;
@@ -339,7 +479,8 @@ export class LiveGroupCombatArena{
       buildCaveTrollArenaArt(scene);
     }else buildCryptCombatArenaArt(scene,bounds);
     this.resetCamera();
-    this.hud=new CombatGroupWorldHud(this.engine,this.canvas,this.panel,fight.actors);
+    this.hud=new CombatGroupWorldHud(
+      this.engine,this.canvas,this.panel,fight.actors,fight.frame.t);
     this.focusIds=fight.actors.map(actor=>actor.id);
     const heroById=new Map(view.heroes.map(hero=>[hero.id,hero]));
     this.projectileMaterial=new StandardMaterial("live-fight-projectile",scene);
@@ -398,13 +539,24 @@ function fitBounds(actors:readonly CombatantSpec[]):{
     depth:Math.max(12,highZ-lowZ+12)};
 }
 
-function animateHero(model:HeroVisual,phase:GroupPhase,time:number):void{
+function animateHero(
+  model:HeroVisual,phase:GroupPhase,time:number,phaseAge:number,
+):void{
   const walking=phase==="move";
   const swing=walking?Math.sin(time*12)*.46:0;
   model.legs[0].rotation.x=swing;
   model.legs[1].rotation.x=-swing;
-  model.arms[0].rotation.x=(phase==="strike"||phase==="windup")?0.8:-swing*.55;
-  model.arms[1].rotation.x=phase==="strike"?-1.1:
+  model.arms[0].rotation.x=phase==="parry"?.65:
+    (phase==="strike"||phase==="windup")?.8:-swing*.55;
+  // A committed parry lifts the actual equipped weapon into the impact lane.
+  model.arms[1].rotation.x=phase==="parry"?-1.65:
+    phase==="strike"?-1.1:
     phase==="cast"||phase==="heal"?-.65:swing*.55;
+  model.arms[1].rotation.z=phase==="parry"?-.38:0;
+  model.root.rotationQuaternion=null;
+  const roll=Math.min(1,Math.max(0,phaseAge/.53));
+  model.root.rotation.x=phase==="roll"?2*Math.PI*roll:0;
+  model.root.rotation.z=phase==="roll"?
+    .72*Math.sin(Math.PI*roll):phase==="parry"?-.22:0;
   model.root.scaling.y=phase==="dead"?.48:1;
 }
