@@ -33,30 +33,45 @@ export function ghoulClipProgress(time:number,motion:GhoulMotion):number {
   return motion.loop?(time/motion.length)%1:Math.min(1,time/motion.length);
 }
 
-/** Local phase time is derived from committed combat frames, NOT the
- * player's elapsed video time. Seeking backwards gives the same pose. */
+/** Local phase time is derived from REAL committed transitions only,
+ * never from video time. A 90-second idle must not scan 900 snapshots
+ * for every on-screen Ghoul and every render frame. */
+interface PhaseHistory {
+  scanned:number;
+  lastPhase:GroupPhase|null;
+  starts:{at:number;phase:GroupPhase}[];
+}
+const phasesByFrames=new WeakMap<readonly GroupReplayFrame[],
+  Map<string,PhaseHistory>>();
 export function ghoulRecordedPhaseAge(
   frames:readonly GroupReplayFrame[],actorId:string,time:number,
 ):number {
-  // Locate the visible checkpoint with binary search, rather than
-  // skipping every *future* frame of a 90-second lab session every render.
-  let lo=0,hi=frames.length;
-  while(lo<hi){
-    const mid=(lo+hi)>>1;
-    if(frames[mid].t<=time+1e-6)lo=mid+1;
-    else hi=mid;
+  let byActor=phasesByFrames.get(frames);
+  if(!byActor){byActor=new Map();phasesByFrames.set(frames,byActor);}
+  let history=byActor.get(actorId);
+  if(!history){
+    history={scanned:0,lastPhase:null,starts:[]};
+    byActor.set(actorId,history);
   }
-  let from=time;
-  let phase:string|undefined;
-  for(let i=lo-1;i>=0;i--){
+  for(let i=history.scanned;i<frames.length;i++){
     const frame=frames[i];
     const actor=frame.actors.find(a=>a.id===actorId);
     if(!actor)continue;
-    if(phase===undefined)phase=actor.phase;
-    if(actor.phase!==phase)break;
-    from=frame.t;
+    if(actor.phase!==history.lastPhase){
+      history.starts.push({at:frame.t,phase:actor.phase});
+      history.lastPhase=actor.phase;
+    }
   }
-  return Math.max(0,time-from);
+  history.scanned=frames.length;
+  // A binary search of actual transitions supports playback seeking and
+  // long unchanging phases without depending on spectator FPS.
+  let lo=0,hi=history.starts.length;
+  while(lo<hi){
+    const mid=(lo+hi)>>1;
+    if(history.starts[mid].at<=time+1e-6)lo=mid+1;
+    else hi=mid;
+  }
+  return lo===0?0:Math.max(0,time-history.starts[lo-1].at);
 }
 
 /** A saved strike transition is one real attack, not one rendered sample.
