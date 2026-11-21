@@ -150,7 +150,9 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
     if(!frame)throw Error("Missing genuine floor projection");
     const hero=frame.heroes.find(member=>member.id===heroId);
     if(!hero)throw Error("Missing actual selected hero");
-    const known=selectHeroFloorPerception(layout,frame,heroId).explored;
+    const perception=selectHeroFloorPerception(layout,frame,heroId);
+    if(!perception)throw Error("Missing real hero perception");
+    const known=perception.explored;
     const index=[...known].find(id=>id!==hero.z*layout.width+hero.x);
     const unknown=Array.from({length:layout.width*layout.height},(_,i)=>i)
       .find(id=>!known.has(id));
