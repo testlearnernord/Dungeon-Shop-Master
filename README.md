@@ -21,7 +21,9 @@ Gameplay implementation last source-verified through merged **PR #241** (21 Nove
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Strict version-24 campaigns; correct current-save continuation is required. Old alpha save migration is intentionally not guaranteed |
+| Persistence | Main still uses strict version-24 campaigns. The **unmerged V.004 cellar branch** introduces version 25; older saves need separate migration work |
+
+**V.004 prototype branch (not merged/released):** a fixed interactive portrait in Galvik's bedroom conceals a sloping staircase to the lower cave. The lower room uses the existing mineable 1m cave cells, P blueprint system and shared furniture registry for a movable chest. It does not yet include the pond, fishing, forging or broader cellar economy. Basement stair climbing and final player-facing lighting need real browser acceptance.
 
 **Partially implemented / not yet released:** integrated deeper dungeon progression and Floor 8–10 content, a single physical cursed portal replacing the numbered-floor shop access, the individual Floor-10 pass, full ten-day gameplay/pacing acceptance and visual/audio acceptance on real hardware. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
 
@@ -44,9 +46,9 @@ Gameplay implementation last source-verified through merged **PR #241** (21 Nove
 | Shift + left / right click | Fill / empty reachable slot, respecting stock rules |
 | B / F | Open wholesale / select urgent restock item |
 | E / hold E at bed | Interact / end the day |
-| N / Shift+N | Build a shelf / hang Galvik's portrait |
+| N | Build a shelf; Galvik's portrait is a fixed secret door on the V.004 branch |
 | P / R / Q while placing | Move furniture / rotate |
-| U | Mine / excavate |
+| U / Shift+U | Mine exposed rock / unlock another expansion tier, including in the cellar |
 | R outside placement | Adventurer roster |
 | G | Dungeon spectator, LIVE or historical |
 | V | Developer Combat Lab and boss/training tools |
