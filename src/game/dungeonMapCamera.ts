@@ -33,8 +33,8 @@ export function panDungeonMap(
   p:DungeonMapPose,right:number,forward:number,amount:number,
   bounds:{halfX:number;halfZ:number},
 ):DungeonMapPose{
-  const dx=(Math.cos(p.yaw)*right+Math.sin(p.yaw)*forward)*amount;
-  const dz=(Math.sin(p.yaw)*right-Math.cos(p.yaw)*forward)*amount;
+  const dx=(Math.cos(p.yaw)*right-Math.sin(p.yaw)*forward)*amount;
+  const dz=(-Math.sin(p.yaw)*right+Math.cos(p.yaw)*forward)*amount;
   // Screen up points away from camera, so positive forward on yaw=0
   // must increase the world Z coordinate, not decrease it.
   return { ...p,x:clamp(p.x+dx,-bounds.halfX,bounds.halfX),
