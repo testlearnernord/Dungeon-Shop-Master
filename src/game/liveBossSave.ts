@@ -104,6 +104,7 @@ export function liveBossCheckpointProblem(
       !range(actor.hp,0,actor.maxHp)||!range(actor.stamina,0,100)||
       !nonnegativeInteger(actor.attacksStarted,10000)||
       !nonnegativeInteger(actor.healCharges,10)||
+      (actor.magicHeals!==undefined&&!nonnegativeInteger(actor.magicHeals,10))||
       !["hero","cave-troll",null].includes(actor.targetId??null))
       return fail("invalid group action, health or target");
     for(const key of ["x","z","heading","lockedHeading","phaseAge",
@@ -125,7 +126,7 @@ export function liveBossCheckpointProblem(
       "heroPhase","heroAge","heroCooldown","heroApplied","rollDirection",
       "bossPhase","bossAge","bossCooldown","bossDamageApplied",
       "bossAttacks","bossSlam","bossAttack","throwVelocity","bossStamina",
-      "healingSupplies","projectiles","outcome","distanceTraveled"] as const){
+      "healingSupplies","magicHeals","projectiles","outcome","distanceTraveled"] as const){
       if(JSON.stringify(projected[key])!==JSON.stringify(motion[key]))
         return fail("projection diverges from real combat: "+key);
     }
