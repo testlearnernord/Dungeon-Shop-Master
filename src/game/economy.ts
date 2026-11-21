@@ -14,6 +14,10 @@ export const ITEMS = [
 ] as const;
 
 export type ItemId = (typeof ITEMS)[number]["id"];
+/** Only real shop merchandise requires physical GLB models. Raw materials
+ * are bought directly from adventurers and are never shelf displays. */
+export const SHELF_GOODS = ITEMS.filter(item=>item.kind!=="material");
+export const isShelfGood=(id:ItemId):boolean=>SHELF_GOODS.some(item=>item.id===id);
 export type ItemDefinition = (typeof ITEMS)[number];
 
 export interface Slot {
@@ -63,6 +67,8 @@ export function buyWholesale(state: GameState, itemId: ItemId, quantity: number)
   if (!item || !Number.isSafeInteger(quantity) || quantity <= 0) {
     return { state, message: "Choose a valid item and a positive whole quantity." };
   }
+  if (!isShelfGood(itemId))
+    return {state,message:"Raw materials are only purchased from returning adventurers."};
   const economy = state.shopEconomy;
   const cost = item.wholesaleCost * quantity;
   if (!Number.isSafeInteger(cost) || cost > economy.balance) return { state, message: "Not enough gold." };
@@ -102,6 +108,8 @@ export function transferShelf(
   if (state.shopCarts.some(cart => cart.lines.some(line =>
     line.slotId === slotId)))
     return {state, message: "This shelf slot contains items held by customers."};
+  if (direction==="stock"&&item&&!isShelfGood(item.id))
+    return {state,message:"Raw materials cannot be placed on shop shelves."};
   if (!item || !slot || (direction !== "stock" && direction !== "remove") ||
       !Number.isSafeInteger(requestedUnits) || requestedUnits < 1) {
     return { state, message: "Choose a valid item, slot and transfer direction." };
