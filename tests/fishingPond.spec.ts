@@ -71,7 +71,7 @@ test("mined pond reveals water and opens fishing by E @ci-smoke",async({page})=>
   expect(presentation.goldGoalWidth).toBeGreaterThan(50);
   expect(presentation.goldGoalWidth).toBeLessThan(72);
   expect(presentation.actualAttemptWidth).toBe(0);
-  expect(presentation.required).toBe("0 / 120 px");
+  expect(presentation.required).toBe("0 / 540 px");
   // Browsers normalize the CSS zero percentage as either "0%" or "0.0%".
   // The real contract is zero progress, not its string formatting.
   expect(Number.parseFloat(presentation.progress??"NaN")).toBe(0);
