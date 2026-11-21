@@ -149,7 +149,7 @@ export class GameStore {
     const result=excavateLevel5Cell(this.current.cellarRoom,cell);
     if(!result.ok)return result.reason;
     // The relocated cellar chest uses the same mined-floor validation as P.
-    const revealed=!isCellarPondUncovered(room)&&
+    const revealed=!isCellarPondUncovered(this.current.cellarRoom)&&
       isCellarPondUncovered(result.room);
     this.replace({...this.current,cellarRoom:result.room});
     return revealed?"An underground pond has been uncovered.":"Cellar rock excavated.";
