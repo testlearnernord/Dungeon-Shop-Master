@@ -466,8 +466,9 @@ function commitDungeonTick(state:GameState):GameState {
     const resourceKind=priorPlan?.floor===floor?
       priorPlan.goal==="loot-chest"?"treasure":
       priorPlan.goal==="hunt-ghouls"?"monster":null:null;
-    const resourceTarget=resourceKind&&!homeward&&!directed
+    const candidate=resourceKind&&!homeward&&!directed
       ?selectKnownResourceSite(layout,known,world,resourceKind):null;
+    const resourceTarget=candidate&&!blocked.has(candidate.id)?candidate:null;
     const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
       {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
         ...(directed?{routeToKnownTarget:directed}:{}),
