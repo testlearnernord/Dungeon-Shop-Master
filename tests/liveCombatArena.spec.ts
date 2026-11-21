@@ -76,6 +76,34 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   expect(abstract.liveMapMonsterMeshes).toBe(0);
   expect(abstract.liveMapProjectiles).toBe(0);
   expect(abstract.liveMapGhouls).toBe(0);
+  // Navigate to the actual in-progress encounter; its coordinates and
+  // combat ID are taken from the saved authoritative world, not a fake map.
+  const expectedFight=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {generateExpeditionLayout}=await import(
+      "/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
+    const state=await new CampaignStorage().loadGame();
+    if(!state)throw Error("Missing real LIVE dungeon fight");
+    const fight=state.liveDungeon.combats[0];
+    if(!fight)throw Error("The genuine fight is missing");
+    const layout=generateExpeditionLayout(state.seed,fight.encounter.floor);
+    return {id:fight.id,
+      x:(fight.encounter.x-(layout.width-1)/2)*2.5,
+      z:(fight.encounter.z-(layout.height-1)/2)*2.5};
+  });
+  const locator=page.locator("#dungeon-fight-locator");
+  await expect(locator).toBeVisible();
+  await expect(locator.locator("option")).toHaveCount(2);
+  await locator.selectOption(expectedFight.id);
+  await expect(locator).toHaveValue(expectedFight.id);
+  const mapFocus=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .inspectLiveFloorCameraFocus());
+  expect(mapFocus.target.x).toBeCloseTo(expectedFight.x,2);
+  expect(mapFocus.target.z).toBeCloseTo(expectedFight.z,2);
+  await expect(page.locator("#dungeon-hero-detail")).toBeHidden();
+  expect(await record()).toEqual(before,
+    "Locating a LIVE encounter must never rerun or modify the combat motor");
   await page.locator("#dungeon-watch-live-combat").click();
   // A premium camera intro exists only after opt-in. It is a read-only
   // presentation and must never pause/advance the authoritative fight.
