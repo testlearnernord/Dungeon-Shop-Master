@@ -1,5 +1,8 @@
 # Dungeon Shop Master — Game Bible
 
+> **Documentation transition (2026-11-21):** Read [the audited current baseline](CLEANUP_AUDIT.md) before using older PR-specific claims below. This file has not yet been fully consolidated; source and tests remain authoritative.
+
+
 
 ### Combat presentation soundtrack (PR #228)
 
@@ -10,8 +13,9 @@
 - The abstract LIVE Dungeon Floor and Expedition Replay map:
   **Beneath the Surface**.
 - Shop ambience returns to **The Lean Season** when closing the viewer.
-- These changes affect presentation only. No Ghoul-specific recorded
-  SFX pack exists yet; final species voice and Foley are not approved.
+- Presentation remains read-only. Since merged PR #234, 21 approved Ghoul WAV
+  samples are integrated in LIVE, recorded replays and V Combat Lab; final
+  audible mixing and frame-accurate animation sync still need owner review.
 - Babylon phase blending and saved-strike left/right clip alternation
   are visual. The underlying fights continue at the one world clock.
 

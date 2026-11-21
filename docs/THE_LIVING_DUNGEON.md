@@ -1,5 +1,8 @@
 # The Living Dungeon — V.003 ALPHA design target
 
+> **Documentation transition (2026-11-21):** Read [the audited current baseline](CLEANUP_AUDIT.md) before using older PR-specific claims below. This file has not yet been fully consolidated; source and tests remain authoritative.
+
+
 > **Approved V.003 direction, with PR #201–210 merged and #211 in development · 2026-11-19.**
 > Dungeon Shop Master's next named milestone is **V.003 ALPHA — The Living Dungeon**.
 > Actual saved shared-world time, physical shop customers, persistent spatial

@@ -1,3 +1,5 @@
+> **Documentation transition (2026-11-21):** Start with [the verified Great Cleanup baseline](docs/CLEANUP_AUDIT.md). Older PR-labelled sections below describe historical steps and may contradict current `main`; only current source, tests and verified audit establish implementation status.
+
 ### Ghoul SFX audio integration (after Combat Lab smoothing)
 
 The original owner-approved 21 Ghoul WAVs are shipped exactly once in

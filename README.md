@@ -1,5 +1,8 @@
 # Dungeon Shop Master
 
+> **Documentation transition (2026-11-21):** Start with [the verified Great Cleanup baseline](docs/CLEANUP_AUDIT.md). Older PR-labelled sections below describe historical steps and may contradict current `main`; only current source, tests and verified audit establish implementation status.
+
+
 ### Combat architecture: Level-6 Cave Troll is the reference (owner-locked)
 
 Every encounter must reach the authored Cave Troll fight's technical and presentation standard. PR #220's feature branch extracts **that exact** Level-6 spectator stage/camera and world-space combat HUD foundations for optional Ghoul/party viewing, adds a volumetric crypt art variant, and uses real committed frames for each participant. Maps remain abstract until the player explicitly opens the 3D battle.
