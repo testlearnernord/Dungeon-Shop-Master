@@ -84,6 +84,8 @@ export class LiveGroupCombatArena{
   private readonly bossImpactVisuals=new Map<string,CaveTrollImpactVisual>();
   private intro:GroupIntroTrack|null=null;
   private introHud:GroupCombatIntroHud|null=null;
+  /** Spectator-only preference: never saved with a fight or its seed. */
+  private cinematicsEnabled=true;
   private introElapsed=0;
   private developerStage:CombatStageTheme|null=null;
   private audioCursor:GroupCombatSoundCursor|null=null;
@@ -105,6 +107,13 @@ export class LiveGroupCombatArena{
   get currentScene():Scene|null{return this.scene;}
   get observedFightId():string|null{return this.fightId;}
   get isIntroActive():boolean{return this.intro!==null;}
+  get introDurationSeconds():number{return this.intro?.duration??0;}
+  /** OFF skips immediately; ON takes effect on the next new encounter.
+   * No camera setting is allowed to rewind the 60-Hz fight or replay. */
+  setCinematicsEnabled(enabled:boolean):void{
+    this.cinematicsEnabled=enabled;
+    if(!enabled)this.skipIntro();
+  }
   get introFrame():CinematicFrame|null{
     return this.intro?sampleGroupCombatIntro(this.intro,this.introElapsed):null;
   }
@@ -139,11 +148,19 @@ export class LiveGroupCombatArena{
       this.presentationTime=Math.max(0,view.combat.frame.t-.5);
       // The actual recorded cast and first available committed pose define
       // the entire opt-in film; never predict future combat state.
-      this.intro=createGroupCombatIntro(view.combat.id,view.combat.actors,
-        view.combat.frame);
+      this.intro=this.cinematicsEnabled
+        ?createGroupCombatIntro(view.combat.id,view.combat.actors,
+          view.combat.frame)
+        :null;
       this.introElapsed=0;
-      this.introHud?.show(sampleGroupCombatIntro(this.intro,0));
-      this.hud?.setIntroActive(true);
+      if(this.intro){
+        this.introHud?.show(sampleGroupCombatIntro(this.intro,0));
+        this.hud?.setIntroActive(true);
+      }else{
+        this.introHud?.hide();
+        this.hud?.setIntroActive(false);
+        this.resetCamera();
+      }
     }
     this.show(view);
     return true;
@@ -419,7 +436,7 @@ export class LiveGroupCombatArena{
     if(this.intro){
       this.introElapsed=Math.min(this.intro.duration,
         this.introElapsed+bounded);
-      if(this.bossStage){
+      if(this.intro.kind==="boss"){
         const landmarks=[{at:1.8,cue:"troll-breath" as const},
           {at:5.9,cue:"troll-roar" as const},
           {at:11.2,cue:"troll-breath" as const}];
@@ -499,7 +516,9 @@ export class LiveGroupCombatArena{
     const hasTroll=fight.actors.some(spec=>spec.specialAbility==="grapple-throw");
     const trollStage=this.developerStage
       ?this.developerStage==="cave-troll":hasTroll;
-    this.bossStage=trollStage;
+    // Fight classification is NOT chosen by the cosmetic stage theme.
+    // A Ghoul placed in a lava stage is still a normal encounter.
+    this.bossStage=hasTroll;
     // The existing Level-6 Cave Troll spectator stage is the baseline:
     // monster variants change art and assets; multi-hero parties merely add actors.
     const {scene,camera}=createCombatSpectatorStage(this.engine,
