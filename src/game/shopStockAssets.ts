@@ -5,7 +5,7 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Scene } from "@babylonjs/core/scene";
 import "@babylonjs/loaders/glTF/2.0";
-import { ITEMS, type ItemId } from "./inventory.ts";
+import { SHELF_GOODS, type ItemId } from "./economy.ts";
 
 /**
  * The checked-in GLBs are the ONLY stock geometry source.
@@ -65,7 +65,7 @@ export function getShopStockTemplates(
 ): Promise<ReadonlyMap<ItemId, Mesh>> {
   let cached = templatesByScene.get(scene);
   if (!cached) {
-    cached = Promise.all(ITEMS.map(async item =>
+    cached = Promise.all(SHELF_GOODS.map(async item =>
       [item.id, await loadTemplate(scene, item.id)] as const,
     )).then(entries => new Map<ItemId, Mesh>(entries));
     templatesByScene.set(scene, cached);
