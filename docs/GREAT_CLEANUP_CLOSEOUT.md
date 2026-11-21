@@ -12,7 +12,7 @@
 | C1 | #239 merged | Retired two unused night-only ledger projections and their isolated tests; kept current LIVE Board / archive and added active archive secrecy regression |
 | C2 | #240 merged | Added read-only source import graph with fixture tests and CI evidence; recognized that nearly all source modules are reachable, preventing speculative deletion |
 | C3 | #241 merged | Retired one test-only, never-wired group-boss adapter and its fixture; added regression of the **real** unique saved Floor-6 Troll fight and scheduled 60-Hz progression |
-| D1 | **#242 draft, not merged** | Proposed guard for exact `dist/` Pages URL base, every copied audio/model byte, and both generated combat GLBs in CI **and** deployment. Build/units passed in [initial PR CI](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/44889145401); require both browser shards and independent approval |
+| D1 | **#242 draft, not merged** | Proposed guard for exact `dist/` Pages URL base, every copied audio/model byte, and both generated combat GLBs in CI **and** deployment. **All three required PR CI checks passed** in [run 44889145401](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/44889145401), including both independent browser smoke shards. Independent merge approval and actual post-merge Pages deployment are still required |
 | D2 | **#243 draft, not merged** | This measured closeout report and final navigation/documentation reconciliation; no engine, combat, asset or test changes |
 
 ## 2. Exact tracked Git tree: before versus after C3
@@ -50,7 +50,7 @@ The −7,370,927 bytes is a **current tracked-tree reduction**, not a Git-pack s
 
 ## 4. Gates still OPEN: don't call the project fully accepted
 
-1. **D1 #242 merge + deployment:** require full green CI and explicit separate owner approval; only then check the `Deploy to GitHub Pages` workflow finished with success on merged `main`.
+1. **D1 #242 merge + deployment:** all three required PR checks are green; still require explicit separate owner approval, and only then check the `Deploy to GitHub Pages` workflow finished with success on merged `main`.
 2. **Full browser regression:** the manual `.github/workflows/full-browser-ci.yml` workflow (`npm test`) is separate from normal two-shard `@ci-smoke` CI. No completed full-browser run was found among the 100 newest workflow runs inspected for this report. It must be dispatched and its outcome checked; absence in this sample is **not proof that the workflow has never run**.
 3. **Live Pages acceptance:** check real served music/SFX/model URLs and game load after deployment. Built `dist/` verification alone cannot establish CDN or autoplay behavior.
 4. **Human visual/audio acceptance:** compare authentic Floor-6 boss and Ghoul arenas, intros, animation blending, camera, sounds, and V Combat Lab 60-Hz simulation / interpolated presentation. CI cannot judge whether a clawswipe sounds convincing.
