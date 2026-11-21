@@ -1,6 +1,7 @@
 import type {DungeonLayout,DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonDownStair,dungeonNeighbors} from "./dungeonLayout.ts";
 import {chooseKnownRouteStep,chooseLevel7Step,chooseKnownResourceStep,
+  chooseRenewedSiteStep,
   type Level7HeroProgress} from "./level7Exploration.ts";
 import {selectKnownResourceSite} from "./dungeonDecisions.ts";
 import type {LiveFloorHero} from "./liveFloorSpectator.ts";
@@ -20,21 +21,32 @@ export function predictDungeonHeroSteps(
     heroId:hero.id,x:hero.x,z:hero.z,visited:[...hero.visited],
   };
   const result:DungeonPoint[]=[];
-  const target=hero.activity==="backtracking"||
-    hero.plannedAction==="shop"||hero.plannedAction==="ascend"
-    ?layout.entrance:
-    hero.plannedAction==="descend"?dungeonDownStair(layout):null;
+  const homeward=hero.activity==="backtracking"||
+    hero.plannedAction==="shop";
+  const validAscend=hero.plannedAction==="ascend"&&
+    layout.floor>1&&layout.floor<=4;
+  const validDescend=hero.plannedAction==="descend"&&layout.floor<4;
+  const target=homeward||validAscend?layout.entrance:
+    validDescend?dungeonDownStair(layout):null;
   const resource=hero.goal==="loot-chest"?"treasure":
     hero.goal==="hunt-ghouls"?"monster":null;
-  const resourceTarget=resource?selectKnownResourceSite(layout,current,
+  const resourceTarget=resource&&!target?selectKnownResourceSite(layout,current,
     {resolvedFeatureIds:resolved,heroes:[]},resource):null;
   for(let i=0;i<2;i++){
-    let next:DungeonPoint|null=null;
-    if(target){
-      next=chooseKnownRouteStep(layout,current,target);
-      if(!next)return result;
-    }else if(resourceTarget)next=chooseKnownResourceStep(layout,current,resourceTarget);
-    else next=chooseLevel7Step(layout,current);
+    // Mirror the authoritative advanceSpatialDungeonPartyStep order:
+    // known stair / resource route, ordinary frontier, then renewed site.
+    // A blocked or not-yet-known optional stair route does NOT halt movement.
+    // Return-to-shop remains strict, and arriving at the stair is a floor
+    // transition (not another invented in-floor movement arrow).
+    if(target&&current.x===target.x&&current.z===target.z)break;
+    let next:DungeonPoint|null=target
+      ?chooseKnownRouteStep(layout,current,target):null;
+    if(!next&&homeward)break;
+    if(!next&&resourceTarget)
+      next=chooseKnownResourceStep(layout,current,resourceTarget);
+    next??=chooseLevel7Step(layout,current);
+    next??=chooseRenewedSiteStep(layout,current,
+      new Set(current.visited),new Set(resolved));
     if(!next||!dungeonNeighbors(layout,current).some(point=>
       point.x===next!.x&&point.z===next!.z))break;
     result.push(next);
@@ -67,11 +79,13 @@ export function dungeonPreviewExplanation(
       (feature?"Site interaction next; step 2 depends on outcome":
         "Second step not predictable");
   }
-  const stair=hero.plannedAction==="descend"?
-    dungeonDownStair(layout):layout.entrance;
-  if((hero.plannedAction==="descend"||hero.plannedAction==="ascend"||
-      hero.plannedAction==="shop")&&
-     hero.x===stair.x&&hero.z===stair.z)
+  const hasDownStair=hero.plannedAction==="descend"&&layout.floor<4;
+  const hasUpStair=hero.plannedAction==="ascend"&&
+    layout.floor>1&&layout.floor<=4;
+  const atStair=hasDownStair?dungeonDownStair(layout):
+    layout.entrance;
+  if((hasDownStair||hasUpStair||hero.plannedAction==="shop")&&
+    hero.x===atStair.x&&hero.z===atStair.z)
     return "At staircase / exit · awaiting committed transition";
-  return "No safe next tile predicted · awaiting a new world decision";
+  return "No connected next tile or eligible renewed site · awaiting world decision";
 }
