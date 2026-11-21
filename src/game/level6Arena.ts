@@ -11,7 +11,7 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import {
-  BOSS_MAX_HP, bossStrikeGeometry, createCombatPreview, stepCombatPreview,
+  BOSS_MAX_HP, bossStrikeGeometry,
   type CombatPreviewState, type ArenaCue,
 } from "./arenaCombatMotion.ts";
 import { GRAPPLE_TIMING } from "./arenaCombatMotion.ts";
