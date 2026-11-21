@@ -222,6 +222,12 @@ export function inspectNpcVisuals() {
         cartPaid: node.metadata.cartPaid as boolean|undefined,
         cartItemIds: node.metadata.cartItemIds as string[]|undefined,
         carriedMeshes: node.metadata.carriedMeshes as number|undefined,
+        carriedStock: node.getChildMeshes(false).filter(mesh=>
+          mesh.name.startsWith("npc-carried-")).map(mesh=>({
+          itemId:mesh.metadata?.carriedItemId as string|undefined,
+          source:mesh.metadata?.carriedItemSource as string|undefined,
+          geometry:mesh.getTotalVertices(),material:mesh.material?.name??null,
+        })),
         uniqueId: node.uniqueId,
         x: node.position.x,
         y: node.position.y,
