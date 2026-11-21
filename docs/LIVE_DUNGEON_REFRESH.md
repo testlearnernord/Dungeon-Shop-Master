@@ -96,3 +96,18 @@
 - Browser regression locates a real saved hero, verifies the Babylon camera
   target/orbit and known physical finds, then proves the campaign snapshot is
   unchanged. Separate fast unit tests cover stable options and item labels.
+
+## PR #266 · LIVE encounter locator
+
+- The LIVE floor toolbar offers an active-encounter selector only when that
+  floor actually has saved ongoing fights. Labels include real hero counts,
+  real Ghoul counts and authoritative tile coordinates from the one shared
+  combat state. No speculative encounter is listed.
+- Selecting a fight clears hero-specific fog, focuses the exact fight site
+  without discarding the existing camera orbit/zoom and marks that fight as
+  the next target for the existing **Watch LIVE fight** arena button.
+- Once a fight finishes or the user changes to archived footage, the option
+  disappears. Selection never advances the world clock, rolls AI, changes HP,
+  creates rewards or launches the 3D stage on its own.
+- Unit and genuine browser coverage assert real rosters, focused Babylon
+  camera coordinates and an unchanged persisted 60Hz battle before arena opt-in.
