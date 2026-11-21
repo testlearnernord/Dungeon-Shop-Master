@@ -672,7 +672,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         clearShot:lineClear(s,a,enemy),
         attackRange:ranged?11:
           a.team==="heroes"&&enemy.specialAbility==="grapple-throw"
-            ?5.3:chosen?.reach??a.reach+enemy.radius,
+            ?Math.min(5.3,a.reach+enemy.radius-.25):
+            chosen?.reach??a.reach+enemy.radius,
         approachBeyond:ranged?7:chosen?
           Math.max(3.15,chosen.reach-1.7):
           a.reach+enemy.radius-.20,
