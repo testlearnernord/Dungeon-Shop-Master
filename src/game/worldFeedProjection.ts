@@ -10,6 +10,7 @@ export const WORLD_FEED_CATEGORIES:readonly WorldFeedCategory[]=[
 ];
 export type WorldFeedTarget=
   |{kind:"roster";heroId:string}
+  |{kind:"death-footage";heroId:string;signalId:string}
   |{kind:"hero";heroId:string}
   |{kind:"floor-site";floor:number;x:number;z:number;heroId:string}
   |{kind:"combat";fightId:string}
@@ -35,7 +36,8 @@ function eventEntry(event:WorldEvent,state:GameState):WorldFeedEntry|null{
     return {id:event.id,category:"death",priority:3,
       title:"LIFE-SIGNATURE EXTINGUISHED",
       detail:event.message+" · A magical signal, not a report of where or how.",
-      target:{kind:"roster",heroId:event.adventurerId}};
+      target:{kind:"death-footage",heroId:event.adventurerId,
+        signalId:event.id}};
   }
   if(event.type==="temporary-party-join"&&event.adventurerId){
     const party=state.dungeonParties?.find(p=>
