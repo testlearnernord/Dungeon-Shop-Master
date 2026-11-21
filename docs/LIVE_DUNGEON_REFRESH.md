@@ -191,3 +191,37 @@
   replay details are invented.
 - Required floor browser smoke checks DOM bounding boxes for overview and
   genuine saved Temporary Party, and verifies unmasked remote hero data.
+
+## PR #273 · One global world-event feed (no duplicate death alarm)
+
+- The old persistent top-right death alert is retired. The new singleton
+  World Echoes layer lives outside the shop, dungeon and combat HUD trees
+  and is visible across all three contexts.
+- Projections read only **committed WorldEvent records** and the existing
+  authoritative active 60-Hz combat registry. Prior/current fight IDs,
+  rather than per-frame HP differences, generate one combat-start notice.
+  The source of a magical death notice is the same committed
+  hero-death-signal as before; causes and coordinates remain undisclosed
+  by the warning. No second dungeon, AI or combat motor is created.
+- Important events include committed deaths, first boss engagement,
+  ordinary combat start, distinct Temporary Party formation and optional
+  treasure/visitor arrivals. Multiple join records for the same party
+  coalesce to one notification.
+- A small toast occupies the bottom-left notification lane, never the
+  right minimap/hero panel or left party/status rail. At most **two**
+  toasts are visible; they expire after **5, 7 or 10 seconds**, are
+  dismissible, and pause while hovered or keyboard-focused.
+- A small **World Echoes · Settings** control selects critical-only,
+  important (default) or detailed notifications, plus duration.
+  These are local UI settings, not GameState events or hidden simulation.
+- Clicking a live fight opens **that exact fight's** existing opt-in
+  arena. Hero/party notices focus the saved live hero; boss notices
+  observe the running Cave Troll. A death opens the fallen hero on the
+  explicit Adventurer Board, not a made-up view of the cause of death.
+  An expired fight is shown as unavailable, never replayed as live.
+- A legitimate death signal on loading the current day can still issue
+  one critical notice, preserving the old UI's recovery semantics without
+  resurrecting its separate alarm component.
+- Unit and real Chromium smoke tests verify suppression of historical
+  events and repeated combat frames, party de-duplication, magical death
+  privacy, exact navigation and only a single death popup.
