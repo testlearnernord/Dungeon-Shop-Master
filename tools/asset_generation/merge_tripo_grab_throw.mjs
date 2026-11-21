@@ -1,7 +1,7 @@
 /**
  * Build-time GLB animation graft. Keeps the curated 12-clip mesh/material/rig,
  * adds only the animation binary views from the owner's 2-clip Tripo export.
- * The original exported .glb remains the source of truth in the repo root.
+ * The original exported .glb remains byte-for-byte under assets/tripo/source/.
  *
  * No external tool, blender conversion or full second mesh download at runtime.
  * The generated, untracked combat GLB is served by Vite and GitHub Pages.
@@ -11,7 +11,7 @@ import { resolve, dirname } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
 const curated = resolve(root, "public/assets/models/ashen-tunnel-mauler-tripo.glb");
-const additions = resolve(root, "tripo_convert_ad846d87-3b98-4c37-a128-20fc302b37c7.glb");
+const additions = resolve(root, "assets/tripo/source/tripo_convert_ad846d87-3b98-4c37-a128-20fc302b37c7.glb");
 const output = resolve(root, "public/assets/models/ashen-tunnel-mauler-tripo-combat.glb");
 const CLIPS = new Map([
   ["Big Cave Troll who grabs and holds the enemy hero with one hand", "grab_hero"],

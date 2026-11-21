@@ -151,7 +151,9 @@ test("experimental Tripo boss uses live Level 6 motor while preserving the origi
   await expect(page.locator("#arena-cinematic")).toBeHidden();
   await expect.poll(async()=>(await inspect()).bossPhase,{timeout:20000}).toBe("windup");
   const animated=await inspect();
-  expect(["walk_heavy","idle_combat","attack_2h_swing"])
+  // The real seeded training motor can choose a genuine Grab windup here.
+  // All these are authored pose clips; checking only the normal swing is flaky.
+  expect(["walk_heavy","idle_combat","attack_2h_swing","grab_hero","throw_hero"])
     .toContain(animated.tripoClip);
   await page.locator("#arena-tripo-toggle").click();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-boss-renderer","legacy");
