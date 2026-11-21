@@ -145,6 +145,11 @@ function situation(hero:HeroCardView):HTMLElement{
     chip.append(uiIcon(icon),make("span","",title));chip.title=title;
     chips.append(chip);
   }
+  for(const observation of hero.observations??[]){
+    const chip=make("span","hero-card-chip");
+    chip.append(uiIcon(observation.icon),make("span","",observation.text));
+    chip.title=observation.text;chips.append(chip);
+  }
   zone.append(chips);return zone;
 }
 function inventory(hero:HeroCardView):HTMLElement{
