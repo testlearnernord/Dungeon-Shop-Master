@@ -208,7 +208,7 @@
 }
 #fishing-hud .fishing-reel-body{
   display:flex;flex:1;gap:5px;align-items:stretch;
-  width:100%;min-height:156px;max-height:178px;
+  width:100%;min-height:130px;max-height:145px;
 }
 #fishing-hud .fishing-reel-rail{
   position:relative;flex:1;overflow:hidden;
@@ -304,7 +304,7 @@
   #fishing-hud .fishing-reel{grid-column:1;grid-row:1}
   #fishing-hud .fishing-seal{display:none}
   #fishing-hud .fishing-reading{grid-column:2;grid-row:1}
-  #fishing-hud .fishing-reel-body{min-height:145px}
+  #fishing-hud .fishing-reel-body{min-height:126px}
   #fishing-hud .fishing-reel-fish{width:27px}
   #fishing-hud .fishing-reel-fish svg{width:26px}
   #fishing-hud .fishing-reel-cap{font-size:7px}
