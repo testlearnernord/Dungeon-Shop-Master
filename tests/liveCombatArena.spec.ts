@@ -4,7 +4,9 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   test.setTimeout(110000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
-  await page.goto("./");
+  // Pause the real world BEFORE boot/reload: setting pause after the page
+  // becomes interactive races autonomous 60Hz combat and can finish the fight.
+  await page.goto("./?e2e-pause-world");
   await expect(page.locator("#day")).toHaveText("Day 1");
   // Never let the initial startup autosave overwrite an explicit seeded
   // browser fixture written by a separate CampaignStorage instance.
