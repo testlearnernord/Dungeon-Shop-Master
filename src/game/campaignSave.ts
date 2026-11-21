@@ -497,9 +497,11 @@ function validateLiveCombatCheckpoints(
 
     const options=object(encounter.options,cp+".encounter.options",[
       "actors","bounds","obstacles",
-    ],["environment"]);
+    ],["environment","tacticsSeed"]);
     if(options.environment!==undefined)
       choice(options.environment,["cave-lava"],cp+".encounter.options.environment");
+    if(options.tacticsSeed!==undefined)
+      integer(options.tacticsSeed,cp+".encounter.options.tacticsSeed",0,0xffffffff);
     const specs=array(options.actors,cp+".encounter.options.actors");
     if(specs.length<members.length+1||
        specs.length>members.length+MAX_GHOUL_PACK)
@@ -545,9 +547,12 @@ function validateLiveCombatCheckpoints(
 
     const combat=object(battle.state,cp+".state",[
       "actors","bounds","obstacles","projectiles","events","time","outcome",
-    ],["environment"]);
-    if(combat.environment!==initial.environment)
+    ],["environment","tacticsSeed"]);
+    if(combat.environment!==initial.environment||
+       combat.tacticsSeed!==initial.tacticsSeed)
       fail(cp+".state.environment","must match the real encounter rules");
+    if(combat.tacticsSeed!==undefined)
+      integer(combat.tacticsSeed,cp+".state.tacticsSeed",0,0xffffffff);
     if(combat.outcome!=="fighting")fail(cp+".state.outcome","must still be active");
     const completed=(combatTick-started)*3;
     const time=validNumber(combat.time,cp+".state.time",0,LEVEL7_COMBAT_SECONDS);
