@@ -16,12 +16,13 @@ export class GroupCombatIntroHud {
     const troll=monsters.some(actor=>actor.specialAbility==="grapple-throw");
     const root=document.createElement("div");
     root.className="group-combat-cinematic";
+    root.dataset.kind=troll?"boss":"normal";
     root.hidden=true;
     root.setAttribute("aria-hidden","true");
     const copy=document.createElement("div");
     copy.className="arena-cinematic-copy";
     const eyebrow=document.createElement("small");
-    eyebrow.textContent=troll?"THE SIXTH FLOOR":"THE LIVING DUNGEON";
+    eyebrow.textContent=troll?"BOSS ENCOUNTER":"THE LIVING DUNGEON";
     const title=document.createElement("strong");
     title.textContent=troll?"THE ASHEN TUNNEL MAULER":
       monsters.length===1?"THE GHOUL":"THE GHOUL PACK";
