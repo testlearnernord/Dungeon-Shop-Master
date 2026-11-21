@@ -1,5 +1,7 @@
 import type { AdventurerState } from "./adventurers.ts";
-import type { Level7HeroProgress, Level7Replay } from "./level7Exploration.ts";
+import type {Level7HeroProgress,Level7Replay,Level7World} from "./level7Exploration.ts";
+import {chooseKnownRouteStep} from "./level7Exploration.ts";
+import {dungeonNeighbors,type DungeonLayout,type DungeonFeature} from "./dungeonLayout.ts";
 
 /**
  * A short floor step follows a strategic goal. This logic reads real hero
@@ -7,7 +9,8 @@ import type { Level7HeroProgress, Level7Replay } from "./level7Exploration.ts";
  * A departure to the shop is only chosen at a floor transition decision,
  * not while a fight is active.
  */
-export type HeroDungeonGoal = "farm" | "progress" | "test-gear" | "caution" | "resupply";
+export type HeroDungeonGoal = "farm"|"progress"|"test-gear"|
+  "caution"|"resupply"|"loot-chest"|"hunt-ghouls";
 export type HeroFloorAction = "stay" | "ascend" | "descend" | "shop";
 
 export interface HeroDungeonDecision {
@@ -57,17 +60,57 @@ export function chooseHeroDungeonDecision(
  */
 export function chooseLiveHeroDungeonDecision(
   hero:AdventurerState,progress:Level7HeroProgress|undefined,
-  replay:Level7Replay,
+  replay:Level7Replay,layout?:DungeonLayout,world?:Level7World,
 ):HeroDungeonDecision {
   if(hero.floor>=1&&hero.floor<=4) {
     if(replay.outcome==="retreat")
       return {goal:"resupply",action:"shop"};
-    return chooseHeroDungeonDecision(hero,progress,replay);
+    return preferKnownDungeonResourceGoal(chooseHeroDungeonDecision(hero,progress,replay),hero,progress,layout,world);
   }
   if(hero.floor!==7||hero.status!=="expedition"||hero.health<=0)
     throw new RangeError("Only a living spatial explorer can make a LIVE choice.");
   if(replay.outcome==="completed"||replay.outcome==="retreat"||
     hero.health/hero.stats.maxHealth<0.48||hero.inventory.loot>=2)
     return {goal:"resupply",action:"shop"};
-  return {goal:hero.equipment.weapon?"test-gear":"caution",action:"stay"};
+  return preferKnownDungeonResourceGoal({goal:hero.equipment.weapon?"test-gear":"caution",action:"stay"},hero,progress,layout,world);
+}
+
+/** The full-floor spectator is omniscient; the AI is not. Only personally
+ * visited or directly adjacent unresolved site coordinates are eligible. */
+export function selectKnownResourceSite(
+  layout:DungeonLayout,progress:Level7HeroProgress,world:Level7World,
+  kind:"treasure"|"monster",
+):DungeonFeature|null {
+  const known=new Set(progress.visited);
+  const adjacent=dungeonNeighbors(layout,progress);
+  const sites=layout.features.filter(site=>
+    site.kind===kind&&!world.resolvedFeatureIds.includes(site.id)&&
+    (known.has(site.z*layout.width+site.x)||
+      adjacent.some(p=>p.x===site.x&&p.z===site.z))&&
+    (adjacent.some(p=>p.x===site.x&&p.z===site.z)||
+      !!chooseKnownRouteStep(layout,progress,site)));
+  return sites.sort((a,b)=>
+    (Math.abs(a.x-progress.x)+Math.abs(a.z-progress.z))-
+    (Math.abs(b.x-progress.x)+Math.abs(b.z-progress.z))||
+    a.id.localeCompare(b.id))[0]??null;
+}
+
+/** Resource goals are committed by the normal LIVE event owner, not by
+ * opening a map. Greedy heroes prioritize chests; prepared fighters hunt. */
+export function preferKnownDungeonResourceGoal(
+  base:HeroDungeonDecision,hero:AdventurerState,
+  progress:Level7HeroProgress|undefined,layout:DungeonLayout|undefined,
+  world:Level7World|undefined,
+):HeroDungeonDecision {
+  if(base.action!=="stay"||!progress||!layout||!world||
+    hero.health/hero.stats.maxHealth<.62)return base;
+  const chest=selectKnownResourceSite(layout,progress,world,"treasure");
+  const monster=hero.equipment.weapon!==null||
+    hero.traits.positive==="brave"
+    ?selectKnownResourceSite(layout,progress,world,"monster"):null;
+  if(chest&&(hero.traits.negative==="greedy"||!monster))
+    return {goal:"loot-chest",action:"stay"};
+  if(monster)return {goal:"hunt-ghouls",action:"stay"};
+  if(chest)return {goal:"loot-chest",action:"stay"};
+  return base;
 }

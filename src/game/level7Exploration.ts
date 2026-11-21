@@ -371,6 +371,17 @@ export function chooseKnownRouteStep(
   return {x:next%layout.width,z:Math.floor(next/layout.width)};
 }
 
+/** Directly adjacent resource sites are known even if still unvisited.
+ * Other resource routes must remain on the hero's own explored tiles. */
+export function chooseKnownResourceStep(
+  layout:DungeonLayout,progress:Level7HeroProgress,target:DungeonPoint,
+):DungeonPoint|null {
+  if(progress.x===target.x&&progress.z===target.z)return null;
+  const directly=dungeonNeighbors(layout,progress).find(p=>
+    p.x===target.x&&p.z===target.z);
+  return directly??chooseKnownRouteStep(layout,progress,target);
+}
+
 /** Return routes are stricter than elective stair travel: the entrance
  * was explored already and every leg MUST remain connected.
  */
@@ -395,6 +406,8 @@ export interface SpatialDungeonAdvanceOptions {
   readonly returnToEntrance?:boolean;
   /** A known real staircase tile, not a free remote floor transition. */
   readonly routeToKnownTarget?:DungeonPoint;
+  /** Targeted known resource tile, selected by one individual real LIVE goal. */
+  readonly routeToResource?:DungeonPoint;
   /** A retreat on the live timeline must return via the portal, not teleport. */
   readonly deferReturn?:boolean;
   /** Live mode reserves the site, but does not prematurely calculate its result. */
@@ -480,9 +493,11 @@ export function simulateSpatialDungeonPartyDay(
     const stairStep=options.routeToKnownTarget
       ?chooseKnownRouteStep(layout,routeProgress,options.routeToKnownTarget)
       :null;
+    const resourceStep=options.routeToResource
+      ?chooseKnownResourceStep(layout,routeProgress,options.routeToResource):null;
     const next=(options.returnToEntrance
       ?chooseKnownReturnStep(layout,routeProgress)
-      :stairStep??choosePartyDungeonStep(layout,members.map(member=>({
+      :stairStep??resourceStep??choosePartyDungeonStep(layout,members.map(member=>({
         heroId:member.hero.id,...current,visited:member.visitedOrder,
       }))) ?? chooseRenewedSiteStep(layout,current,
       // Only discovered tiles may steer the renewable-site fallback. A
@@ -675,7 +690,7 @@ export function advanceSpatialDungeonPartyStep(
   party:readonly AdventurerState[],world:Level7World,
   campaignSeed:number,day:number,occupiedHeroIds?:ReadonlySet<string>,
   liveOptions:Pick<SpatialDungeonAdvanceOptions,"deferCombat"|"blockedCombatSites"|
-    "returnToEntrance"|"deferReturn"|"routeToKnownTarget">={},
+    "returnToEntrance"|"deferReturn"|"routeToKnownTarget"|"routeToResource">={},
 ):Level7PartyTick {
   return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
     occupiedHeroIds,{maxSteps:1,maxEncounters:1,...liveOptions});
