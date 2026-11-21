@@ -1237,6 +1237,10 @@ export class Level6Arena {
       " · "+Math.round(hero.heroHp)+" HP";
     if(phase)phase.textContent=String(hero.heroPhase).toUpperCase();
     if(phaseRow)phaseRow.dataset.phase=String(hero.heroPhase);
+    if(this.bossCardData)this.bossCardData={
+      ...this.bossCardData,health:Math.round(hero.heroHp),
+      activity:String(hero.heroPhase),
+    };
   }
 
   private updateHud(): void {
