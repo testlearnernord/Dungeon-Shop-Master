@@ -14,12 +14,13 @@ test("adventurer wall board opens by R and nearby E, tracks state and persists p
   const first = page.locator('#roster-detail-list .roster-card[data-hero-id="adventurer-1"]');
   await first.locator("summary").click();
   await expect(first.locator(".roster-card-extended")).toBeVisible();
-  await expect(first.locator(".roster-hp")).toHaveAttribute("aria-valuenow", /\d+/);
-  await expect(first.locator(".roster-item-icon")).toHaveCount(5);
-  await expect(first.locator(".roster-item-chip")).toContainText([
-    "No weapon", "No armor", "Waybread", "Healing", "Loot",
-  ]);
-  await expect(first.locator(".roster-portrait")).toHaveAttribute("data-portrait-id", "0");
+  await expect(first.locator(".hero-card-vital-track").first()).toHaveAttribute("aria-valuenow", /\d+/);
+  await expect(first.locator(".roster-card-extended .hero-card-slot")).toHaveCount(2);
+  await expect(first.locator(".roster-card-extended .hero-card-slot").first())
+    .toHaveAttribute("title","Unarmed");
+  await expect(first.locator(".roster-card-extended .hero-card-slot").last())
+    .toHaveAttribute("title","No armor");
+  await expect(first.locator("summary .roster-portrait")).toHaveAttribute("data-portrait-id", "0");
   await first.locator(".roster-permit").click();
   await expect(first.locator(".roster-permit")).toHaveAttribute("aria-pressed", "true");
   await expect(first.locator(".roster-permit")).toBeFocused();
@@ -37,7 +38,7 @@ test("adventurer wall board opens by R and nearby E, tracks state and persists p
   await restored.locator("summary").click();
   await expect(restored.locator(".roster-permit")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#roster-filter").selectOption("fallen");
-  await expect(page.locator("#roster-detail-list")).toContainText("No fallen adventurers yet.");
+  await expect(page.locator("#roster-detail-list")).toContainText("No confirmed extinguished life-signatures.");
   await page.locator("#close-roster").click();
 
   await page.evaluate(async () => {
