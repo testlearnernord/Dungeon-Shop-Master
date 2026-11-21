@@ -290,3 +290,24 @@
   so personal fog cannot expose unseen stairs and archive replays do
   not materialize new visits. Pure unit and real Babylon smoke assert
   deterministic coordinates and real rendered 3D steps.
+
+## PR #279 · Exact party loot, trap injuries, stair travel in global Echoes
+
+- The existing World Echoes renderer remains the ONLY notification system.
+  New categories are **Chest loot**, **Traps**, and **Ascend / descend**.
+  The category controls are independent checkboxes plus existing importance
+  presets (Minimal / Standard / Detailed), persisted as local UI preferences.
+- One newly committed chest/trap per co-located saved party and world tick
+  creates **one** message, listing member names. Chest contents are derived
+  from each recipient's actual saved inventory.finds, newly equipped gear
+  and gained gold; trap damage is derived from each member's actual saved
+  health change. No second loot roll, magic remote survey or fake party HP.
+- A hero/party route intention **does not** notify a stair crossing.
+  Only a changed, committed saved floor number plus the recorded directional
+  floor action does.
+- Echoes for these events keep the exact, committed dungeon site **x/z/floor**
+  camera target. One click opens the existing LIVE map on that precise tile,
+  rather than following a hero who has already continued moving.
+- Source data remains the same save-valid strict WorldEvent structure and
+  true per-hero world snapshots. No save schema upgrade and no duplicated
+  event authority.
