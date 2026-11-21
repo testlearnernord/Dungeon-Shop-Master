@@ -49,6 +49,7 @@ export function caveTrollGroupOptions(
         speed:options.role==="tank"?2.7:3.7,
         reach:options.sword?4.2:3.2,
         radius:.58,healCharges:options.healingSupplies,
+        ...(options.role==="healer"?{magicHeals:2}:{}),
         equipment:{weapon:options.sword?"Iron Sword":null,
           armor:options.armor?"Leather Vest":null},
       },
@@ -134,6 +135,7 @@ export function projectSharedBossState(
   state.bossStamina=boss.stamina;
   state.throwVelocity={...hero.throwVelocity};
   state.healingSupplies=hero.healCharges;
+  state.magicHeals=hero.magicHeals??0;
   state.distanceTraveled=hero.distanceTraveled;
   state.projectiles=group.projectiles.map(p=>({
     x:p.x,z:p.z,dx:p.vx/12,dz:p.vz/12,damage:p.damage,ttl:p.ttl,
