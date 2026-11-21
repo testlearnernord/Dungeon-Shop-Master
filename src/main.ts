@@ -8,7 +8,7 @@ import type {RenderQualityMode} from "./game/adaptiveResolution.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { createFirstPersonCamera } from "./game/firstPersonController";
-import { ITEMS, type ItemId } from "./game/inventory";
+import {SHELF_GOODS,type ItemId} from "./game/economy.ts";
 import { ECONOMY } from "./game/economy";
 import { GameStore } from "./game/gameStore";
 import { WorldClockPacer } from "./game/worldClockPacer.ts";
@@ -344,7 +344,7 @@ store.subscribe(()=>{
 });
 setupSalesHud(store);
 setupExpeditionHud(store);
-let selectedItemId: ItemId = ITEMS[0].id;
+let selectedItemId: ItemId = SHELF_GOODS[0].id;
 setupCampaignHud(store, campaign, () => {
   replacingCampaign=true;
   npcVisuals.reconcile([], []);
@@ -373,7 +373,7 @@ function renderInventory(selectedItem: ItemId): void {
     inventoryHud.contains(document.activeElement) ? document.activeElement.dataset.itemId : undefined;
   inventoryHud.replaceChildren();
   const rows = new Map<string, HTMLDivElement>();
-  for (const [index,item] of ITEMS.entries()) {
+  for (const [index,item] of SHELF_GOODS.entries()) {
     const row = document.createElement("div");
     row.className = `inventory-row${item.id === selectedItem ? " selected" : ""}${store.state.shopEconomy.bag[item.id]===0?" empty":""}`;
     row.setAttribute("role","button");
@@ -411,7 +411,7 @@ function renderInventory(selectedItem: ItemId): void {
   amount.textContent=`${bagCount}/${ECONOMY.bagCapacity}`;
   capacity.append(uiIcon("bag"),amount);
   inventoryHud.append(capacity);
-  const selectedStock=ITEMS.find(item=>item.id===selectedItem)!;
+  const selectedStock=SHELF_GOODS.find(item=>item.id===selectedItem)!;
   const selectedStatus=document.createElement("div");
   selectedStatus.className="hotbar-selected";
   selectedStatus.setAttribute("role","status");
@@ -420,7 +420,7 @@ function renderInventory(selectedItem: ItemId): void {
     store.state.shopEconomy.bag[selectedStock.id]+" in bag";
   inventoryHud.append(selectedStatus);
   const hint=document.createElement("span");hint.className="hotbar-hint";
-  hint.textContent="Wheel / 1–6 select · Click one · Shift+click fill / clear";
+  hint.textContent="Wheel / 1–5 select · Click one · Shift+click fill / clear";
   inventoryHud.append(hint);
   if (focusedItemId) rows.get(focusedItemId)?.focus({ preventScroll: true });
 }
