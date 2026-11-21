@@ -1,5 +1,6 @@
 import { excavateLevel5Cell, isValidLevel5Room, type RoomCell } from "./level5Room.ts";
 import {isValidCellarRoom} from "./cellarRoom.ts";
+import {isCellarPondUncovered} from "./cellarPond.ts";
 import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
@@ -148,8 +149,18 @@ export class GameStore {
     const result=excavateLevel5Cell(this.current.cellarRoom,cell);
     if(!result.ok)return result.reason;
     // The relocated cellar chest uses the same mined-floor validation as P.
+    const revealed=!isCellarPondUncovered(room)&&
+      isCellarPondUncovered(result.room);
     this.replace({...this.current,cellarRoom:result.room});
-    return "Cellar rock excavated.";
+    return revealed?"An underground pond has been uncovered.":"Cellar rock excavated.";
+  }
+
+  recordCellarCatch():string {
+    if(!isCellarPondUncovered(this.current.cellarRoom))
+      return "Excavate the pond first.";
+    if(this.current.cellarFishCaught>=1000000)return "Fishing record is full.";
+    this.replace({...this.current,cellarFishCaught:this.current.cellarFishCaught+1});
+    return "Cave fish caught! Total: "+this.current.cellarFishCaught+".";
   }
 
   unlockCellarExpansion(tier:number):string {
