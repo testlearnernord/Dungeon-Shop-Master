@@ -74,13 +74,14 @@ export function liveBossCheckpointProblem(
   if(!isRecord(motion.group)||!shape(motion.group,[
     "actors","bounds","obstacles","environment",
     "projectiles","events","time","outcome",
-  ]))return fail("has no genuine saved group combat authority");
+  ],["tacticsSeed"]))return fail("has no genuine saved group combat authority");
   const group=(motion as SharedBossPreview).group;
   let canonical;
   try{canonical=createGroupCombat(caveTrollGroupOptions(opts as
     Parameters<typeof caveTrollGroupOptions>[0]));}
   catch{return fail("cannot reconstruct the real Level-6 encounter");}
   if(group.environment!=="cave-lava"||
+     group.tacticsSeed!==opts.tacticsSeed||
      group.outcome!=="fighting"||
      !Array.isArray(group.actors)||group.actors.length!==2||
      JSON.stringify(group.bounds)!==JSON.stringify(canonical.bounds)||
