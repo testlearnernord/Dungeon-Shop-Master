@@ -34,6 +34,7 @@ import {setupHeroBuybackHud} from "./heroBuybackHud.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import {setupWorldEventFeed} from "./worldEventFeedHud.ts";
+import {findCommittedDeathFootage} from "./game/deathFootage.ts";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
 import { setupBedtime, type BedtimeController } from "./bedtime.ts";
 import { resetReplayDisclosure } from "./replayDisclosure.ts";
@@ -475,6 +476,23 @@ watchLiveHero=id=>store.state.liveDungeon.bossCombat?.heroId===id
 // Exactly one global event layer, shared by the shop, LIVE floors and both
 // combat stages. Its projections never schedule, settle or simulate events.
 setupWorldEventFeed(store,target=>{
+  if(target.kind==="death-footage"){
+    const tape=findCommittedDeathFootage(store.state,
+      target.heroId,target.signalId);
+    if(arena.isActive)arena.close();
+    if(tape.kind==="active-combat")
+      return dungeon.openLiveEncounter(tape.fightId);
+    if(tape.kind==="boss-recording"){
+      if(dungeon.isActive)dungeon.close();
+      arena.open(tape.eventId);return arena.isActive;
+    }
+    if(tape.kind==="expedition-recording")
+      return dungeon.openDeathReplay(tape.eventId,target.heroId);
+    // No saved combat or expedition footage, never invent a death scene.
+    if(dungeon.isActive)dungeon.close();
+    openRoster(target.heroId);
+    return true;
+  }
   if(target.kind==="roster"){
     if(arena.isActive)arena.close();
     if(dungeon.isActive)dungeon.close();
@@ -488,6 +506,8 @@ setupWorldEventFeed(store,target=>{
   }
   if(arena.isActive)arena.close();
   if(target.kind==="combat")return dungeon.openLiveEncounter(target.fightId);
+  if(target.kind==="floor-site")
+    return dungeon.openFloorSite(target.floor,target.x,target.z);
   return watchLiveHero(target.heroId);
 });
 setupExpeditionArchiveHud(canvas,camera,store,
