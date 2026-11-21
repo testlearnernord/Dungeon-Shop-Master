@@ -2,7 +2,7 @@ import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { useHealingSupplies, generateAdventurer, type AdventurerState } from "../../src/game/adventurers.ts";
-import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
+import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, SHELF_GOODS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
 import { advanceDay, type GameState } from "../../src/game/gameState.ts";
 import {quoteCustomerCheckout,checkoutCustomer} from "../../src/game/customerCheckout.ts";
 
@@ -43,6 +43,8 @@ function stock(state: GameState, itemId: ItemId, quantity: number, index = 0): G
 
 test("catalog, starter economy and shelf layout are complete, independent and bounded", () => {
   assert.deepEqual(ITEMS.map((item) => item.id), ["healing-herb", "mana-potion", "iron-ore", "coal", "bread", "iron-sword", "leather-vest"]);
+  assert.deepEqual(SHELF_GOODS.map(item=>item.id),
+    ["healing-herb","mana-potion","bread","iron-sword","leather-vest"]);
   for (const item of ITEMS) {
     assert(item.wholesaleCost > 0 && item.salePrice > item.wholesaleCost);
     assert(item.color.startsWith("#") && item.name.length > 0);
