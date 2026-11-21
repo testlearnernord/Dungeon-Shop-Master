@@ -34,7 +34,7 @@ import {createDungeonFeaturePalette,createReadableDungeonChest,
 import {installGhoulMapInstances,type GhoulMapSite}
   from "./dungeonGhoulMapInstances.ts";
 import {dungeonPreviewExplanation} from "./dungeonIntentPreview.ts";
-import {liveHeroCard} from "./heroCardView.ts";
+import {liveHeroCard,recordedHeroCard} from "./heroCardView.ts";
 import {renderHeroCard} from "../heroCard.ts";
 import {hoverHeroId,hideHeroHover} from "../worldHeroCards.ts";
 import {minimapPointFromClient,isKnownMinimapCell}
@@ -131,6 +131,7 @@ export class DungeonViewer {
   private readonly archiveControls=document.querySelector<HTMLElement>("#dungeon-archive-controls")!;
   private readonly archiveButton=document.querySelector<HTMLButtonElement>("#dungeon-open-archive")!;
   private readonly heroDetailPanel=document.querySelector<HTMLElement>("#dungeon-hero-detail")!;
+  private recordedCardSignature="";
   private readonly heroDetailTitle=document.querySelector<HTMLElement>("#dungeon-hero-detail-title")!;
   private readonly heroDetailValues=document.querySelector<HTMLElement>("#dungeon-hero-detail-values")!;
   private readonly clearHeroButton=document.querySelector<HTMLButtonElement>("#dungeon-clear-hero")!;
@@ -904,6 +905,7 @@ export class DungeonViewer {
     this.liveHeroId=null;
     this.liveFloor=null;this.liveFloorFightId=null;
     this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
+    this.recordedCardSignature="";
     this.heroLocatorLabel.hidden=true;
     this.heroLocator.value="";
     this.minimap.tabIndex=-1;
@@ -1455,6 +1457,25 @@ export class DungeonViewer {
     this.timeLabel.textContent=frame.time.toFixed(1)+" / "+frame.duration.toFixed(1)+" s";
     this.playbackButton.textContent=this.playing?"Pause (Space)":"Play (Space)";
     const record=scene.currentReplay;
+    if(this.liveArena.isActive)this.heroDetailPanel.hidden=true;
+    else{
+      // The historical Hero Card reads the saved tape, never present-day
+      // attributes. Rebuild only after HP/action/tile actually changes.
+      const x=Math.round(frame.x),z=Math.round(frame.z);
+      const key=this.replaySelector.value+"|"+Math.round(frame.hp)+
+        "|"+frame.action+"|"+x+"|"+z;
+      if(this.recordedCardSignature!==key){
+        this.recordedCardSignature=key;
+        const name=this.store.state.adventurers.find(h=>h.id===record.heroId)
+          ?.name??record.heroId;
+        const step={...record.steps[0]!,x,z,hp:Math.round(frame.hp)};
+        const card=recordedHeroCard(record,name,step);
+        this.heroDetailTitle.textContent="RECORDED HERO";
+        this.heroDetailValues.replaceChildren(renderHeroCard(
+          {...card,activity:frame.action},"expanded"));
+      }
+      this.heroDetailPanel.hidden=false;
+    }
     const ending=frame.finished?" · Expedition ended: "+record.outcome:"";
     this.playbackStatus.textContent="Recorded "+frame.action+
       " · HP "+Math.round(frame.hp)+
