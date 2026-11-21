@@ -27,8 +27,8 @@ import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
-import {floorHeroLocatorOptions,formatHeroDungeonFinds}
-  from "./liveDungeonInspector.ts";
+import {floorHeroLocatorOptions,floorFightLocatorOptions,
+  formatHeroDungeonFinds} from "./liveDungeonInspector.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
   orbitDungeonMap,panDungeonMap,zoomDungeonMap,
   type DungeonMapPose} from "./dungeonMapCamera.ts";
@@ -109,6 +109,9 @@ export class DungeonViewer {
   private readonly heroLocatorLabel=document.querySelector<HTMLElement>("#dungeon-hero-locator-label")!;
   private readonly heroLocator=document.querySelector<HTMLSelectElement>("#dungeon-hero-locator")!;
   private heroLocatorSignature="";
+  private readonly fightLocatorLabel=document.querySelector<HTMLElement>("#dungeon-fight-locator-label")!;
+  private readonly fightLocator=document.querySelector<HTMLSelectElement>("#dungeon-fight-locator")!;
+  private fightLocatorSignature="";
   private readonly archiveControls=document.querySelector<HTMLElement>("#dungeon-archive-controls")!;
   private readonly archiveButton=document.querySelector<HTMLButtonElement>("#dungeon-open-archive")!;
   private readonly heroDetailPanel=document.querySelector<HTMLElement>("#dungeon-hero-detail")!;
@@ -203,6 +206,22 @@ export class DungeonViewer {
     this.heroLocator.addEventListener("change",()=>{
       if(!this.active||this.liveFloor===null||this.liveArena.isActive)return;
       this.selectFloorHero(this.heroLocator.value||null);
+      this.canvas.focus();
+    });
+    this.fightLocator.addEventListener("change",()=>{
+      if(!this.active||this.liveFloor===null||this.liveArena.isActive||
+        !this.layout)return;
+      const view=selectLiveFloorSpectatorFrame(this.store.state,this.liveFloor);
+      const fight=view?.fights.find(item=>item.id===this.fightLocator.value);
+      if(!fight)return;
+      // Focusing a fight switches back to the spectator's full-floor
+      // overview. Do not project one hero's private vision onto the map.
+      this.selectFloorHero(null);
+      this.liveFloorFightId=fight.id;
+      const target=getWorld(this.layout,fight),pose=this.mapPose();
+      if(pose)this.setMapPose({...pose,x:target.x,z:target.z});
+      this.focusLabel.textContent="Focused LIVE encounter · ("+
+        fight.x+", "+fight.z+")";
       this.canvas.focus();
     });
     this.archiveButton.addEventListener("click",()=>{
@@ -434,6 +453,9 @@ export class DungeonViewer {
     this.heroLocatorLabel.hidden=true;
     this.heroLocator.value="";
     this.heroLocatorSignature="";
+    this.fightLocatorLabel.hidden=true;
+    this.fightLocator.value="";
+    this.fightLocatorSignature="";
     this.liveFloorProjectionCache=null;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
@@ -693,6 +715,8 @@ export class DungeonViewer {
     this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
     this.heroLocatorLabel.hidden=true;
     this.heroLocator.value="";
+    this.fightLocatorLabel.hidden=true;
+    this.fightLocator.value="";
     this.liveFloorProjectionCache=null;
     this.archiveControls.hidden=false;
     this.liveWorldTick=-1;
@@ -895,6 +919,21 @@ export class DungeonViewer {
     this.heroLocator.value=this.selectedFloorHeroId??"";
   }
 
+  /** The fight picker and camera only read committed 60Hz encounters.
+   * An encounter that ends disappears on the next projection update. */
+  private syncFightLocator(view:LiveFloorSpectatorFrame):void {
+    const options=floorFightLocatorOptions(view.fights);
+    this.fightLocatorLabel.hidden=this.liveFloor===null||
+      this.liveArena.isActive||options.length===0;
+    const signature=options.map(option=>option.id+"="+option.label).join("|");
+    if(signature!==this.fightLocatorSignature){
+      this.fightLocator.replaceChildren(new Option("No active encounters",""),
+        ...options.map(option=>new Option(option.label,option.id)));
+      this.fightLocatorSignature=signature;
+    }
+    this.fightLocator.value=this.liveFloorFightId??"";
+  }
+
   private paintFloor(view:LiveFloorSpectatorFrame):void {
     if(this.layout){
       const unresolved=this.layout.features.filter(feature=>
@@ -920,6 +959,7 @@ export class DungeonViewer {
     }
     this.replayScene?.setSelectedFloorHero(this.selectedFloorHeroId);
     this.syncHeroLocator(view);
+    this.syncFightLocator(view);
     this.renderFloorHeroDetail(view);
     this.paintFloorVisionLabel(view);
     this.liveCombatPanel.hidden=view.fights.length===0;
@@ -978,6 +1018,7 @@ export class DungeonViewer {
     this.archiveControls.hidden=true;
     this.liveHeroId=heroId;
     this.heroLocatorLabel.hidden=true;
+    this.fightLocatorLabel.hidden=true;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
     this.playing=false;
