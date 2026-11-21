@@ -274,3 +274,19 @@
 - WASD is camera-relative (W toward the top of the current view); the
   underlying world remains fixed while the camera rotates.
 - No change to world clock, monster AI, combat camera or archived events.
+
+## PR #278 · Actual dungeon entrance and staircase landmarks
+
+- Floor navigation markers use the **same seeded source tiles** as the
+  authoritative expedition motor: layout.entrance for return/ascend, and
+  dungeonDownStair(layout) for the far connected descent landing.
+- Each supported floor 1–4 and 7 displays a 3D stone stair with a lit
+  arch, consistent world/map location, minimap color, read-only hover
+  target and a camera landmark.
+- Only floors 1, 2 and 3 claim a real lower transition. Floors 4 and 7
+  explicitly show the further stone passage as **SEALED** because there
+  is not yet an active climb-down implementation for that link.
+- All stair geometry reuses the existing marker visibility/fog pipeline,
+  so personal fog cannot expose unseen stairs and archive replays do
+  not materialize new visits. Pure unit and real Babylon smoke assert
+  deterministic coordinates and real rendered 3D steps.
