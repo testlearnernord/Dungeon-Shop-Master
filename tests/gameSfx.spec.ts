@@ -103,8 +103,15 @@ test("curated Troll MP3s resolve under the deployed base path",async({page})=>{
     expect(response.ok(),file).toBe(true);
     expect(response.headers()["content-type"]).toContain("audio/");
   }
+  for(const file of ["ghoul_aggro_shriek.wav","ghoul_claw_hit_01_fast.wav",
+    "ghoul_death_02_final_agony.wav","ghoul_leap_landing_02.wav"]){
+    const response=await page.request.get("./audio/sfx/ghoul/"+file);
+    expect(response.ok(),file).toBe(true);
+    expect(response.headers()["content-type"]).toContain("audio/");
+  }
   await page.keyboard.press("v");
   await page.locator("#arena-sfx-debug-toggle").click();
+  await expect(page.locator('#arena-sfx-debug-auditions [data-cue="ghoul-claw-hit"]')).toContainText("WAV");
   await expect(page.locator('#arena-sfx-debug-auditions [data-cue="troll-roar"]')).toContainText("MP3");
   await expect(page.locator('#arena-sfx-debug-auditions [data-cue="troll-death"]')).toContainText("synth");
 });
