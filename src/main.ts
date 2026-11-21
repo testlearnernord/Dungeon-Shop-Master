@@ -34,6 +34,7 @@ import {setupHeroBuybackHud} from "./heroBuybackHud.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import {setupWorldEventFeed} from "./worldEventFeedHud.ts";
+import {WorldHeroCards} from "./worldHeroCards.ts";
 import {findCommittedDeathFootage} from "./game/deathFootage.ts";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
 import { setupBedtime, type BedtimeController } from "./bedtime.ts";
@@ -66,6 +67,7 @@ import "./cashierLive.css";
 import "./expeditionArchive.css";
 import "./dungeonMapHud.css";
 import "./worldEventFeed.css";
+import "./heroCard.css";
 
 async function startGame(): Promise<void> {
 setupInterfaceIcons();
@@ -95,6 +97,7 @@ const runtimePerf=setupPerformanceHud({
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
+const heroCards = new WorldHeroCards(store);
 setupHeroBuybackHud(store);
 // Live time is the exclusive owner in real gameplay. Unit fixtures that
 // directly advance a legacy day do not run simultaneous spatial motors.
@@ -156,7 +159,7 @@ worldItems.push(...portraitMeshes.map(mesh=>({id:mesh.name,mesh,kind:"cellar-doo
 worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
 let watchLiveHero:(heroId:string)=>boolean=()=>false;
 const openRoster = setupRosterBoardHud(canvas, camera, store,
-  id=>watchLiveHero(id));
+  id=>watchLiveHero(id),heroCards);
 const debtBook=setupDebtBookHud(canvas,camera,store);
 let bedtime:BedtimeController|null=null;
 let ledger:MerchantLedger|null=null;
@@ -493,9 +496,12 @@ setupWorldEventFeed(store,target=>{
     openRoster(target.heroId);
     return true;
   }
-  if(target.kind==="roster"||target.kind==="hero-profile"){
-    // One stable, global hero-profile target. Until the reusable worldwide
-    // hover card ships, the existing full Adventurer Board is the fallback.
+  if(target.kind==="hero-profile"){
+    // World Feed opens the SAME worldwide expanded inspector, without
+    // unloading an in-progress battle or rewinding the Dungeon camera.
+    return heroCards.open(target.heroId);
+  }
+  if(target.kind==="roster"){
     if(arena.isActive)arena.close();
     if(dungeon.isActive)dungeon.close();
     openRoster(target.heroId);
