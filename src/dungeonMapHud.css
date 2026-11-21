@@ -1,7 +1,7 @@
 /* V.004 read-only map spectator facelift. This HUD consumes only saved world
  * projections; it must never become a second dungeon simulator. */
 #dungeon-hud .dungeon-toolbar{
-  top:12px;left:16px;right:16px;
+  top:12px;left:16px;right:16px;z-index:24;
   padding:13px 17px;gap:18px;
   border:1px solid #827151;border-radius:12px;
   background:linear-gradient(130deg,rgba(21,29,30,.97),rgba(9,15,19,.95));
