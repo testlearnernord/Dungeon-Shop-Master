@@ -23,6 +23,8 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   await page.locator("#lab-hero-role").selectOption("healer");
   await page.locator("#lab-hero-hp").fill("321");
   await page.locator("#lab-hero-damage").fill("17");
+  await expect(page.locator("#lab-cinematics-toggle"))
+    .toHaveAttribute("aria-pressed","true");
   await page.locator("#lab-start").click();
   const summary=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))
@@ -31,15 +33,38 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   expect((await summary()).arenaHeroes).toBe(3);
   expect((await summary()).isArena).toBe(true);
   expect((await summary()).legacyMonsterPlaceholders).toBe(0);
+  await expect(page.locator(".group-combat-cinematic")).toHaveAttribute(
+    "data-kind","normal");
+  await expect(page.locator(".group-combat-cinematic")).toBeVisible();
+  // Pause during intro. OFF must skip the film without advancing/rerolling
+  // any 60Hz ticks and restore the real battle HUD immediately.
   await page.locator("#lab-pause").click();
+  await page.locator("#lab-cinematics-toggle").click();
+  await expect(page.locator("#lab-cinematics-toggle"))
+    .toHaveAttribute("aria-pressed","false");
+  await expect(page.locator(".group-combat-cinematic")).toBeHidden();
+  await expect(page.locator("#group-combat-world-hud"))
+    .toHaveCSS("visibility","visible");
   await page.locator("#lab-step").click();
   await expect(page.locator("#lab-status")).toContainText("0.02s");
+  // The local preference persists over a configured fight restart,
+  // but never writes to the campaign or modifies its saved combat state.
+  await page.locator("#lab-start").click();
+  await expect(page.locator(".group-combat-cinematic")).toBeHidden();
+  await expect(page.locator("#lab-cinematics-toggle"))
+    .toHaveAttribute("aria-pressed","false");
+  // Turning ON does not rewind the current battle. The next boss test
+  // starts with a brand-new intro and the correct boss camera treatment.
+  await page.locator("#lab-cinematics-toggle").click();
+  await expect(page.locator(".group-combat-cinematic")).toBeHidden();
   await page.locator("#lab-enemy").selectOption("cave-troll");
   await expect(page.locator("#lab-enemy-count")).toHaveValue("1");
   await page.locator("#lab-arena").selectOption("cave-troll");
   await page.locator("#lab-start").click();
   await expect.poll(async()=>(await summary()).arenaMonsters).toBe(1);
   await expect(page.locator(".group-combat-cinematic")).toBeVisible();
+  await expect(page.locator(".group-combat-cinematic")).toHaveAttribute(
+    "data-kind","boss");
   await expect(page.locator(".group-combat-cinematic strong")).toHaveText(
     "THE ASHEN TUNNEL MAULER");
   await expect(page.locator("#group-combat-world-hud"))
