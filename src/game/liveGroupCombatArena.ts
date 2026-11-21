@@ -12,6 +12,8 @@ import {createCombatSpectatorStage,flyCombatSpectatorCamera,
 import {buildCryptCombatArenaArt} from "./cryptCombatArenaArt.ts";
 import {buildCaveTrollArenaArt,paintCaveTrollFloor} from "./caveTrollArenaArt.ts";
 import {createTripoCaveTrollVisual} from "./tripoCaveTrollVisual.ts";
+import {createCaveTrollImpactVisual,type CaveTrollImpactVisual}
+  from "./caveTrollImpactVisual.ts";
 import type {CaveTrollVisual} from "./caveTrollVisual.ts";
 import type {BossPhase} from "./arenaCombatMotion.ts";
 import {GRAPPLE_TIMING} from "./combatGrapple.ts";
@@ -78,6 +80,7 @@ export class LiveGroupCombatArena{
   private readonly actorPhases=new Map<string,GroupPhase>();
   private readonly stepDistances=new Map<string,number>();
   private readonly observedGrips=new Map<string,ObservedGrip>();
+  private readonly bossImpactVisuals=new Map<string,CaveTrollImpactVisual>();
   private intro:GroupIntroTrack|null=null;
   private introElapsed=0;
   private developerStage:CombatStageTheme|null=null;
@@ -217,17 +220,22 @@ export class LiveGroupCombatArena{
           actor.phase==="throw"?"throw":
           actor.phase==="windup"?"windup":
           actor.phase==="strike"?"strike":"recover";
+        const phaseAge=ghoulRecordedPhaseAge(fight.frames,id,frame.t);
+        const slam=actor.ability==="troll-slam";
+        const attackType=actor.ability==="grapple"||
+          phase==="grab"||phase==="throw"||phase==="grabMiss"
+            ?"grab":slam?"slam":"smash";
         model.troll.animate({
-          phase,phaseAge:ghoulRecordedPhaseAge(fight.frames,id,frame.t),
-          // A strike must not pretend it is a grab. Actual grab/throw phases
-          // remain authored by the motor; historical v1 frames do not carry
-          // an exact smash/slam variant.
-          slam:actor.ability==="troll-slam",
-          attackType:actor.ability==="grapple"||
-            phase==="grab"||phase==="throw"||phase==="grabMiss"
-              ?"grab":actor.ability==="troll-slam"?"slam":"smash",
+          phase,phaseAge,slam,attackType,
           time:frame.t,
           moved,delta:timeDelta,hp:actor.hp,maxHp:model.spec.maxHp,
+          ...(this.intro?{introTime:this.introElapsed}:{}),
+        });
+        // One visual pool per real Troll. The saved motor's phase/ability
+        // owns every glow, arc and impact, never a scene-owned damage roll.
+        this.bossImpactVisuals.get(id)?.paint({
+          phase,phaseAge,slam,attackType,
+          lockedHeading:actor.heading,x:actor.x,z:actor.z,
         });
       }
       if(model.hero){
@@ -381,7 +389,9 @@ export class LiveGroupCombatArena{
       const actor=frame.actors.find(a=>a.id===event.actorId)
         ??view.combat.actors.find(a=>a.id===event.actorId);
       if(!actor)continue;
-      this.sfx.play(event.cue,{x:actor.x,z:actor.z},listener);
+      this.sfx.play(event.cue,{x:actor.x,z:actor.z},listener,
+        false,event.cue==="troll-impact"&&
+          "ability" in actor&&actor.ability==="troll-slam");
     }
   }
 
@@ -452,6 +462,8 @@ export class LiveGroupCombatArena{
     this.bossStage=false;
     this.introSfxIndex=0;
     for(const model of this.actors.values())model.ghoul?.dispose();
+    for(const fx of this.bossImpactVisuals.values())fx.dispose();
+    this.bossImpactVisuals.clear();
     this.hud?.dispose();this.hud=null;
     this.observedPositions.clear();
     this.actorPhases.clear();
@@ -525,6 +537,8 @@ export class LiveGroupCombatArena{
           // Optional party boss, SAME skinned Troll asset and animations as
           // the Level-6 preview. Never misrepresent a boss as a Ghoul.
           const troll=createTripoCaveTrollVisual(scene);
+          this.bossImpactVisuals.set(spec.id,
+            createCaveTrollImpactVisual(scene,"group-"+spec.id));
           troll.root.metadata={...troll.root.metadata,liveArenaOnly:true,
             actorId:spec.id};
           this.actors.set(spec.id,{spec,hero:null,ghoul:null,troll});

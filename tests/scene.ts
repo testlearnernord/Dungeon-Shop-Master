@@ -948,6 +948,20 @@ export function inspectLiveCombatPresentation(){
     }).length,
     legacyMonsterPlaceholders:scene.meshes.filter(mesh=>
       mesh.name.startsWith("live-fight-monster-")).length,
+    // The same authored attack effects as the Level-6 reference must be
+    // instantiated only in an explicitly observed boss combat scene.
+    trollImpactDustCount:scene.meshes.filter(mesh=>
+      mesh.name.endsWith("-impact-dust")&&
+      mesh.name.startsWith("group-")).length,
+    trollDebrisCount:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("group-")&&mesh.name.includes("-debris-")).length,
+    trollWarningSectorCount:scene.meshes.filter(mesh=>
+      mesh.name.startsWith("group-")&&
+      (mesh.name.endsWith("-smash-warning")||
+       mesh.name.endsWith("-slam-warning"))).length,
+    trollImpactFlashCount:scene.lights.filter(light=>
+      light.name.startsWith("group-")&&
+      light.name.endsWith("-impact-flash")).length,
     spectatorCamera:scene.activeCamera?.name??"none",
     cryptSetpieces:scene.meshes.filter(mesh=>
       mesh.name.startsWith("crypt-")).length,
