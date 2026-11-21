@@ -32,3 +32,16 @@ CSS, GLB, MP3, WAV, JSON and other asset imports are intentionally not classifie
 ## Protected boundaries
 
 Keep `gameState.advanceDay` for current day close/fixtures, `level6Combat.ts` and Troll/Group combat distinctions, physical shop exit, two-day rotations, live world clock, replay archive, source GLBs, authored cues, PR #233's interpolated Combat Lab, and the existing full smoke matrix. **No mass deletion from a graph report; human call-site review and fresh explicit merge approval for every follow-up.**
+
+## Verified first clean-checkout report (C2 pre-lexer-warning fix)
+
+The real **Build and unit tests** job in [Actions run 44887675777](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/44887675777) completed successfully after switching away from the unavailable TypeScript 7 compiler API. Its read-only graph report identified:
+
+- **166** TypeScript source modules in \`src/\`, with **165** conservatively reachable from \`src/main.ts\`.
+- **1** test-only module: \`src/game/liveBossEncounter.ts\`. Its \`prepareLiveBossEncounter\` helper is imported by \`tests/unit/liveBossEncounter.test.ts\`; no production caller was found by this graph or a targeted code search. **Do not delete yet**: review how the current LIVE boss is actually constructed and whether this represents a disposable unused adapter, a testing fixture, or important design code.
+- **0** completely unreferenced source modules.
+- **0** unresolved relative TypeScript-looking source imports.
+
+The first report also flagged several *false-positive* unknown static imports because the lightweight lexer saw a parameter named \`from\` in ordinary exported functions. The subsequent C2 commit now restricts \`export ... from\` scanning to real named/star reexports and adds a regression fixture. This repairs warning quality without changing entrypoint reachability. Remaining computed imports and runtime references still require manual inspection.
+
+**Conclusion:** no evidence supports mass TypeScript-file removal. C3 should target the **single** test-only boss adapter by comparing it directly to the real LIVE boss constructor, or investigate duplicate function-level responsibilities in small focused PRs. Do not conflate source-file reachability with unused exports, render-loop costs or gameplay performance.
