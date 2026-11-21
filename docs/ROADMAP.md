@@ -20,9 +20,9 @@ Owner rule: **no lost gameplay, scenes, animations, cues, saves, rendering quali
 
 | Phase | State | Work |
 | --- | --- | --- |
-| A1: audited baseline | **Review pending** | Evidence inventory, correct false status and provide safety references (PR #235; not merged at this snapshot) |
-| A2: living documentation | **In progress** | Replace dated PR accumulation in README/AGENTS/Architecture/Bible/Roadmap with current module map, approved choices and status distinctions |
-| B1: audio ownership | **Review pending** | Proposed removal of one exact root music copy; canonical audio untouched; generated Ghoul GLB ignored and owners documented |
+| A1: audited baseline | **Merged (#235)** | Evidence inventory, correct false status and provide safety references (PR #235; not merged at this snapshot) |
+| A2: living documentation | **Merged (#236)** | Replace dated PR accumulation in README/AGENTS/Architecture/Bible/Roadmap with current module map, approved choices and status distinctions |
+| B1: audio ownership | **Review pending (#237)** | Proposed removal of one exact root music copy; canonical audio untouched; generated Ghoul GLB ignored and owners documented |
 | B2: model provenance | **Planned** | Preserve all Tripo GLB sources and animation graft outputs; only relocate with simultaneous generator/runtime/test updates |
 | C: TypeScript | **Planned** | Explicit call/import graph, proven dead code and redundant ownership. No deletion by name; one domain per PR |
 | D: CI and acceptance | **Planned** | Required regressions, Pages asset URL checks, full-browser review, before/after measurements and final doc sync |
