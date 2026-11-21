@@ -43,7 +43,7 @@ test("a real Level-6 Troll battle is witnessed LIVE without replacing its saved 
   });
   const before=await record();
   await page.locator("#open-roster").click();
-  const card=page.locator('#roster-detail-list [data-hero-id="'+heroId+'"]');
+  const card=page.locator('#roster-detail-list details.roster-card[data-hero-id="'+heroId+'"]');
   await expect(card).toBeVisible();
   await card.locator("summary").click();
   await card.locator(".roster-watch-live").click();
