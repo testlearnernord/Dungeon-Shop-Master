@@ -20,6 +20,8 @@ import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts
 import type {CombatantSpec,GroupPhase,GroupReplayFrame} from "./groupCombat.ts";
 import {sampleGroupReplayPresentation} from "./groupReplayPresentation.ts";
 import {ghoulRecordedPhaseAge,ghoulRecordedStrikeOrdinal} from "./ghoulMotion.ts";
+import {GroupCombatSoundCursor} from "./groupCombatSfx.ts";
+import type {GameSfx,SoundListener} from "../gameSfx.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import {createGroupCombatIntro,sampleGroupCombatIntro,
   type GroupIntroTrack} from "./groupCombatIntro.ts";
@@ -64,6 +66,7 @@ export class LiveGroupCombatArena{
   private intro:GroupIntroTrack|null=null;
   private introElapsed=0;
   private developerStage:CombatStageTheme|null=null;
+  private audioCursor:GroupCombatSoundCursor|null=null;
 
   /** V-mode presentation override ONLY. Never changes contact/hazard rules. */
   setDeveloperTheme(theme:CombatStageTheme|null):void{
@@ -73,7 +76,8 @@ export class LiveGroupCombatArena{
 
   constructor(private readonly engine:Engine,
     private readonly canvas:HTMLCanvasElement,
-    private readonly panel:HTMLElement) {}
+    private readonly panel:HTMLElement,
+    private readonly sfx?:GameSfx) {}
 
   get isActive():boolean{return this.scene!==null;}
   get currentScene():Scene|null{return this.scene;}
@@ -95,6 +99,11 @@ export class LiveGroupCombatArena{
     if(this.fightId!==view.combat.id){
       this.dispose();
       this.create(view);
+      // Join at the current committed time: do not retroactively play
+      // archived strikes, even when opening the viewer halfway through.
+      this.audioCursor=new GroupCombatSoundCursor(
+        view.combat.actors,view.combat.frame.t);
+      this.sfx?.prepareCombatSamples();
       // The LIVE world commits 0.5s batches. Present the most recent half
       // second of ALREADY committed frames at screen refresh rate, rather
       // than jumping between 0.5-second poses. This is a read-only buffer,
@@ -135,6 +144,7 @@ export class LiveGroupCombatArena{
     const fight=view.combat;
     if(!fight||!this.scene)return;
     this.hud?.show(frame);
+    this.playRecordedCues(view,frame);
     const timeDelta=this.lastPoseTime>=0&&frame.t>=this.lastPoseTime
       ?Math.min(.1,frame.t-this.lastPoseTime):0;
     this.lastPoseTime=frame.t;
@@ -213,6 +223,23 @@ export class LiveGroupCombatArena{
     if(!deferHud)this.hud?.render(this.scene,0);
   }
 
+  /** Play only the authoritative saved action stream at the observed pose.
+   * Never infer hits from an animation, camera FPS, or interpolated HP. */
+  private playRecordedCues(view:CombatArenaView,frame:GroupReplayFrame):void {
+    if(!this.sfx||!this.audioCursor||!view.combat)return;
+    const sounds=this.audioCursor.advance(view.combat.cues??[],frame.t);
+    if(!sounds.length)return;
+    const listener:SoundListener|undefined=this.camera
+      ?{x:this.camera.position.x,z:this.camera.position.z,
+          yaw:this.camera.rotation.y}:undefined;
+    for(const event of sounds){
+      const actor=frame.actors.find(a=>a.id===event.actorId)
+        ??view.combat.actors.find(a=>a.id===event.actorId);
+      if(!actor)continue;
+      this.sfx.play(event.cue,{x:actor.x,z:actor.z},listener);
+    }
+  }
+
   /** Same Level-6 spectator camera: free-flight and focus cycle. */
   updateCamera(dt:number,pressed:ReadonlySet<string>):void {
     if(!this.camera)return;
@@ -264,6 +291,8 @@ export class LiveGroupCombatArena{
   }
 
   dispose():void{
+    this.audioCursor=null;
+    this.sfx?.stopCombatSamples();
     for(const model of this.actors.values())model.ghoul?.dispose();
     this.hud?.dispose();this.hud=null;
     this.observedPositions.clear();
