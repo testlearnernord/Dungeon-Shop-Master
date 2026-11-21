@@ -58,7 +58,7 @@ export function caveTrollGroupOptions(
         style:"melee",x:0,z:2,hp:280,maxHp:280,
         damage:33,armor:10,speed:3.25,reach:1.8,
         radius:1.8,agility:7,specialAbility:"grapple-throw",
-        grappleDamage:42,staggerThreshold:19,
+        grappleDamage:42,staggerThreshold:62,
       },
     ],
   };
