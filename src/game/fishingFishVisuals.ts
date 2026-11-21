@@ -135,6 +135,11 @@ export function setupFishingFishVisuals(scene:Scene,camera:UniversalCamera){
     camera.rotation.y=baseYaw+yawOffset;
     camera.rotation.x=basePitch+pitchOffset;
     appliedYaw=yawOffset;appliedPitch=pitchOffset;
+    if(fish.metadata){
+      fish.metadata.cameraYawTug=yawOffset;
+      fish.metadata.cameraPitchTug=pitchOffset;
+      fish.metadata.lineTension=tension;
+    }
   };
 
   return {

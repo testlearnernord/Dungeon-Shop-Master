@@ -175,7 +175,7 @@ export function setupFishingRodVisuals(scene:Scene,camera:UniversalCamera){
     },
     resolve(won:boolean){
       hookedFish.resolved(won);
-      impact=won?.45:1.1;
+      impact=won ? .45 : 1.1;
       resolveRemaining=.78;
     },
     flick(dx:number,dy:number){
