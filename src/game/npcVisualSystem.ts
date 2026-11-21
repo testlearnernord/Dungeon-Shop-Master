@@ -25,6 +25,7 @@ import {customerBark, customerBarkPriority,
 import type { ItemId } from "./economy.ts";
 import type {LiveServiceRequest} from "./shopServiceFocus.ts";
 import { ITEMS } from "./economy.ts";
+import {getShopStockTemplates,cloneShopStockModel} from "./shopStockAssets.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import {checkoutQueueIndex,checkoutQueuePoints,checkoutWaitAlreadyAtSlot} from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, canShareGateLanes, gateTravelLane, isInExitCorridor, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot, type WaypointProgress, type GateTrafficActor } from "./npcTraffic.ts";
@@ -236,6 +237,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
 
 export class NpcVisualSystem {
   private readonly npcs = new Map<string, NpcVisual>();
+  private stockTemplates:ReadonlyMap<ItemId,Mesh>|null=null;
   private readonly portraits = new Image();
   private readonly doors: Record<GateSide, Mesh | null>;
   private readonly doorY: Record<GateSide, number> = { level4: DOOR_CLOSED_Y, level6: DOOR_CLOSED_Y };
@@ -461,6 +463,17 @@ export class NpcVisualSystem {
 
   constructor(private readonly scene: Scene) {
     this.customerBubble=createNpcCustomerBubble();
+    // Same single GLB source / scene cache as the physical shop shelves.
+    // No primitive "customer edition" of an item is ever generated.
+    void getShopStockTemplates(scene).then(templates=>{
+      if(scene.isDisposed)return;
+      this.stockTemplates=templates;
+      for(const npc of this.npcs.values()){
+        if(!npc.heldLines.length)continue;
+        npc.heldKey="";
+        this.syncCarriedProducts(npc,npc.heldLines);
+      }
+    }).catch(error=>console.error("Carried shop GLB assets unavailable",error));
     this.portraits.addEventListener("load", () => {
       for (const npc of this.npcs.values()) paintIdentity(npc, this.portraits);
     });
@@ -827,11 +840,7 @@ export class NpcVisualSystem {
   ):boolean {
     const key=JSON.stringify(lines);
     if(key===npc.heldKey)return false;
-    for(const mesh of npc.heldMeshes){
-      const mat=mesh.material;
-      mesh.dispose();
-      mat?.dispose();
-    }
+    for(const mesh of npc.heldMeshes)mesh.dispose();
     npc.heldMeshes=[];
     npc.heldKey=key;
     npc.heldLines=lines;
@@ -839,20 +848,19 @@ export class NpcVisualSystem {
     for(const line of lines){
       const item=ITEMS.find(entry=>entry.id===line.itemId);
       if(!item)continue;
-      const mesh=(item.id==="healing-herb"||item.id==="mana-potion")
-        ? MeshBuilder.CreateCylinder("npc-carried-"+npc.visitor.id+"-"+position,
-          {height:0.27,diameter:0.2},this.scene)
-        : item.id==="bread"
-        ? MeshBuilder.CreateSphere("npc-carried-"+npc.visitor.id+"-"+position,
-          {diameter:0.27},this.scene)
-        : MeshBuilder.CreateBox("npc-carried-"+npc.visitor.id+"-"+position,
-          {size:0.27},this.scene);
+      const template=this.stockTemplates?.get(item.id);
+      if(!template)continue; // Load is in flight; do not fabricate cube/sphere stock.
+      const mesh=cloneShopStockModel(template,
+        "npc-carried-"+npc.visitor.id+"-"+position);
       mesh.parent=npc.arms[1];
       mesh.position.set(0.08+0.07*(position%2),-0.50-0.15*Math.floor(position/2),
         -0.22-0.16*(position%2));
-      mesh.material=material(this.scene,
-        "npc-carried-"+npc.visitor.id+"-"+position+"-mat",
-        Color3.FromHexString(item.color));
+      mesh.scaling.setAll(item.id==="iron-sword"?.58:
+        item.id==="leather-vest"?.55:.72);
+      mesh.rotation.set(item.id==="iron-sword"?-.28:0,0,
+        item.id==="iron-sword"?.8:0);
+      mesh.metadata={...mesh.metadata,carriedItemId:item.id,
+        carriedItemSource:"shared-shop-stock-glb"};
       mesh.isPickable=false;
       mesh.checkCollisions=false;
       npc.heldMeshes.push(mesh);
