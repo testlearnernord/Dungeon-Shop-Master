@@ -863,11 +863,11 @@ export function inspectWallPortrait(){
 
 /** Non-interactive 3D stock meshes must exist for every catalog item. */
 export async function inspectPhysicalStockMeshes() {
-  const {ITEMS}=await import("../src/game/economy.ts");
+  const {SHELF_GOODS}=await import("../src/game/economy.ts");
   const {getShopStockTemplates}=await import("../src/game/shopStockAssets.ts");
   const scene=Engine.LastCreatedScene!;
   const templates=await getShopStockTemplates(scene);
-  return ITEMS.map(item=>{
+  return SHELF_GOODS.map(item=>{
     const model=templates.get(item.id)!;
     const data={
       itemId:item.id,
@@ -883,7 +883,7 @@ export async function inspectPhysicalStockMeshes() {
   });
 }
 
-/** Wait for six real GLB imports and Shop's pending stock refresh. */
+/** Wait for the five displayable stock GLBs and Shop's pending refresh. */
 export async function waitForShopStockAssets(){
   const scene=Engine.LastCreatedScene!;
   const {getShopStockTemplates}=await import("../src/game/shopStockAssets.ts");

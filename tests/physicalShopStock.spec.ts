@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-test("the six physical shop goods are 3D meshes, not pickable shelf blockers", async ({ page }) => {
+test("the five displayable goods use real GLBs, not pickable shelf blockers", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("./");
@@ -11,7 +11,7 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
     return testScene.inspectPhysicalStockMeshes();
   });
   expect(models.map(model => model.itemId)).toEqual([
-    "healing-herb", "mana-potion", "iron-ore",
+    "healing-herb", "mana-potion",
     "bread", "iron-sword", "leather-vest",
   ]);
   for (const model of models) {
@@ -23,6 +23,8 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
     expect(model.collisions, model.itemId).toBe(false);
     expect(model.size.every(value => value > 0), model.itemId).toBe(true);
   }
+  // No coal.glb is required; coal and iron ore are acquired at the
+  // staffed adventurer buyback counter, never displayed on shelves.
   // The browser loaded each source GLB into the render templates above.
   // Independently verify binary files in the checkout, not the SPA fallback.
   for(const item of models){
@@ -40,7 +42,7 @@ test("the six physical shop goods are 3D meshes, not pickable shelf blockers", a
   expect(pageErrors).toEqual([]);
 });
 
-test("actual stocked shelf meshes follow saved quantities for all six products @ci-smoke",async({page})=>{
+test("actual stocked shelf meshes follow saved quantities for real shop goods @ci-smoke",async({page})=>{
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
@@ -85,7 +87,7 @@ test("actual stocked shelf meshes follow saved quantities for all six products @
     await scene.waitForShopStockAssets();
     return scene.inspectRenderedShopStock("shelf-1");
   });
-  await seed(["healing-herb","mana-potion","iron-ore","bread"],[3,1,5,2]);
+  await seed(["healing-herb","mana-potion","bread","iron-sword"],[3,1,5,2]);
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
   // A world-clock autosave is queued on boot and again after reload.

@@ -2,7 +2,7 @@ import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { useHealingSupplies, generateAdventurer, type AdventurerState } from "../../src/game/adventurers.ts";
-import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
+import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, SHELF_GOODS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
 import { advanceDay, type GameState } from "../../src/game/gameState.ts";
 import {quoteCustomerCheckout,checkoutCustomer} from "../../src/game/customerCheckout.ts";
 
@@ -43,6 +43,8 @@ function stock(state: GameState, itemId: ItemId, quantity: number, index = 0): G
 
 test("catalog, starter economy and shelf layout are complete, independent and bounded", () => {
   assert.deepEqual(ITEMS.map((item) => item.id), ["healing-herb", "mana-potion", "iron-ore", "coal", "bread", "iron-sword", "leather-vest"]);
+  assert.deepEqual(SHELF_GOODS.map(item=>item.id),
+    ["healing-herb","mana-potion","bread","iron-sword","leather-vest"]);
   for (const item of ITEMS) {
     assert(item.wholesaleCost > 0 && item.salePrice > item.wholesaleCost);
     assert(item.color.startsWith("#") && item.name.length > 0);
@@ -349,4 +351,16 @@ test("Shift-clear preserves reserved carts, bag limit and last-slot identity",()
     lines:[{slotId,itemId:"healing-herb",quantity:1,subtotal:6}]}]};
   assert.equal(transferShelf(reserved,slotId,"healing-herb","remove",5).state,reserved);
   assert.equal(transferShelf(reserved,slotId,"healing-herb","stock",5).state,reserved);
+});
+
+test("coal and iron ore cannot be bought wholesale or placed into shelves",()=>{
+  const state=createGameState();
+  for(const itemId of ["iron-ore","coal"] as const){
+    const wholesaled=buyWholesale(state,itemId,1);
+    assert.strictEqual(wholesaled.state,state);
+    assert.match(wholesaled.message,/only purchased from returning adventurers/i);
+    const shelved=transferShelf(state,state.shopEconomy.slots[0].id,itemId,"stock");
+    assert.strictEqual(shelved.state,state);
+    assert.match(shelved.message,/cannot be placed/i);
+  }
 });
