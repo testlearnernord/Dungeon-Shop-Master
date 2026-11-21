@@ -1,5 +1,8 @@
 # Live Adventurer Board and lean day-end ledger
 
+> **Current implementation summary (21 November 2026):** the knowledge-safe LIVE Board, bounded replay timeline, two-page night book, death signals and physical two-day rotation are implemented. Earlier “existing code / replace in future” tables below are **historical migration records**, not ongoing tasks. See [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) for present ownership and remaining release work.
+
+
 ### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)
 
 - Physical shopper crossing is authoritative: `NpcVisualSystem` removes the outer-gate actor, `shopTraffic` persists its cleared checkpoint, and only then `GameStore.completePhysicalShopExit` books one ticked `shop-departure` event.
