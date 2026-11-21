@@ -92,6 +92,8 @@ export interface WorldEvent {
   readonly itemId?: ItemId;
   readonly quantity?: number;
   readonly revenue?: number;
+  /** Gold paid to an adventurer for a recovered dungeon item; not sales revenue. */
+  readonly cost?: number;
   /** Manual cash register vs. automated settlement; absent means legacy auto sale. */
   readonly saleChannel?: "manual" | "reserved";
   /** Face value written to the merchant debt ledger; no cash was earned. */
