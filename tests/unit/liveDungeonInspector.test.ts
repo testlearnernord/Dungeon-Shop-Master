@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {floorHeroLocatorOptions,formatHeroDungeonFinds}
+import {floorHeroLocatorOptions,floorFightLocatorOptions,formatHeroDungeonFinds}
   from "../../src/game/liveDungeonInspector.ts";
 
 test("LIVE locator lists only actual floor heroes in stable order and flags genuine fights",()=>{
@@ -27,4 +27,23 @@ test("inspector shows saved individual physical finds, not phantom abstract loot
   assert.equal(formatHeroDungeonFinds(undefined),"None carried");
   assert.equal(formatHeroDungeonFinds({coal:0}),"None carried");
   assert.equal(JSON.stringify(finds),original);
+});
+
+test("fight locator reports only actual saved combatants in stable tile order",()=>{
+  const fights=[
+    {id:"battle-b",x:4,z:8,heroIds:["a"],
+      actors:[{team:"heroes"},{team:"monsters"},{team:"monsters"}]},
+    {id:"battle-a",x:2,z:4,heroIds:["a","b"],
+      actors:[{team:"heroes"},{team:"heroes"},{team:"monsters"}]},
+  ];
+  const snapshot=JSON.stringify(fights);
+  assert.deepEqual(floorFightLocatorOptions(fights),[
+    {id:"battle-a",x:2,z:4,
+      label:"Engagement 1 · 1 Ghoul / 2 heroes · (2, 4)"},
+    {id:"battle-b",x:4,z:8,
+      label:"Engagement 2 · 2 Ghouls / 1 hero · (4, 8)"},
+  ]);
+  assert.deepEqual(floorFightLocatorOptions([]),[]);
+  assert.equal(JSON.stringify(fights),snapshot,
+    "Looking up a fight never changes the 60Hz combat state");
 });
