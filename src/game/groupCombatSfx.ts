@@ -9,6 +9,8 @@ export interface GroupSoundEvent {
 
 const isGhoul=(actor:CombatantSpec|undefined):boolean=>
   !!actor&&actor.team==="monsters"&&actor.specialAbility!=="grapple-throw";
+const isTroll=(actor:CombatantSpec|undefined):boolean=>
+  !!actor&&actor.team==="monsters"&&actor.specialAbility==="grapple-throw";
 
 function upperBound(events:readonly GroupCombatCue[],time:number):number {
   let lo=0,hi=events.length;
@@ -52,7 +54,9 @@ export class GroupCombatSoundCursor {
       const target=this.actors.get(e.targetId??"");
       // Ignore archived events at/before the camera's initial timestamp.
       if(e.t>this.time+1e-6){
-        if(e.kind==="attack"&&isGhoul(actor)){
+        if(e.kind==="attack"&&isTroll(actor)){
+          add("troll-grunt",actor!.id);
+        }else if(e.kind==="attack"&&isGhoul(actor)){
           const count=(this.attacks.get(actor!.id)??0)+1;
           this.attacks.set(actor!.id,count);
           if(count===1)add("ghoul-aggro",actor!.id);
@@ -64,6 +68,11 @@ export class GroupCombatSoundCursor {
             add("ghoul-leap-air",actor!.id);
           }
         }else if(e.kind==="hit"){
+          if(isTroll(actor)){
+            add("troll-impact",actor!.id);
+            if(target)add("hero-hurt",target.id);
+          }
+          if(isTroll(target))add("boss-hurt",target!.id);
           if(isGhoul(actor)){
             add("ghoul-claw-hit",actor!.id);
             if(this.leaping.delete(actor!.id))
@@ -78,6 +87,8 @@ export class GroupCombatSoundCursor {
                 ?"ghoul-stagger":"ghoul-hurt",target!.id);
             }
           }
+        }else if(e.kind==="miss"&&isTroll(actor)){
+          add("troll-swing",actor!.id);
         }else if(e.kind==="miss"&&isGhoul(actor)){
           add("ghoul-claw-whiff",actor!.id);
           if(this.leaping.delete(actor!.id))
@@ -88,6 +99,26 @@ export class GroupCombatSoundCursor {
           if(this.leaping.delete(target!.id))
             add("ghoul-leap-land",target!.id);
           if(e.kind==="parry")add("ghoul-stagger",target!.id);
+        }else if((e.kind==="dodge"||e.kind==="parry")&&isTroll(target)){
+          if(e.kind==="dodge"){
+            add("dodge",actor?.id??e.actorId);
+            add("troll-impact",target!.id);
+          }else{
+            add("shield-parry",actor?.id??e.actorId);
+            add("stagger",target!.id);
+          }
+        }else if(e.kind==="grab"&&isTroll(actor)){
+          add("troll-grunt",actor!.id);
+          if(target)add("hero-hurt",target.id);
+        }else if(e.kind==="throw"&&isTroll(actor)){
+          add("troll-swing",actor!.id);
+        }else if(e.kind==="landing"&&isTroll(actor)){
+          add("troll-impact",target?.id??actor!.id);
+          if(target)add("hero-hurt",target.id);
+        }else if(e.kind==="escape"&&isTroll(target)){
+          add("dodge",actor?.id??e.actorId);
+        }else if(e.kind==="death"&&isTroll(actor)){
+          add("troll-death",actor!.id);
         }else if(e.kind==="death"&&isGhoul(actor)){
           add("ghoul-death",actor!.id);
           this.leaping.delete(actor!.id);
