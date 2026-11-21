@@ -557,6 +557,14 @@ function commitDungeonTick(state:GameState):GameState {
           reportedZone:zone(floor),
            ...(highlight?{dungeonHighlight:highlight}:{}),
           ...(decision?{dungeonGoal:decision.goal,floorAction:decision.action}:{}),
+          // A fatal trap previously saved ONLY the magical loss signal and
+          // threw away the actual spatial frames. The player cannot watch
+          // a recording that was never persisted. Retain the immutable
+          // already-resolved death tape ONLY for genuine dead adventurers;
+          // no additional simulation, RNG, AI or routine-step save bloat.
+          ...(individual.adventurer.status==="dead"?
+            (floor===7?{level7Replay:individual.replay}:
+              {dungeonReplay:individual.replay}):{}),
           message:`${individual.adventurer.name}'s expedition changed. Details await a report.`,
         });
       }
