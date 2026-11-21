@@ -29,6 +29,7 @@ import type {GameSfx,SoundListener} from "../gameSfx.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import {createGroupCombatIntro,sampleGroupCombatIntro,
   type GroupIntroTrack} from "./groupCombatIntro.ts";
+import {GroupCombatIntroHud} from "./groupCombatIntroHud.ts";
 import type {CinematicFrame} from "./combatCinematic.ts";
 
 /** Shared presentation contract for committed LIVE and archived fight frames. */
@@ -82,6 +83,7 @@ export class LiveGroupCombatArena{
   private readonly observedGrips=new Map<string,ObservedGrip>();
   private readonly bossImpactVisuals=new Map<string,CaveTrollImpactVisual>();
   private intro:GroupIntroTrack|null=null;
+  private introHud:GroupCombatIntroHud|null=null;
   private introElapsed=0;
   private developerStage:CombatStageTheme|null=null;
   private audioCursor:GroupCombatSoundCursor|null=null;
@@ -111,6 +113,8 @@ export class LiveGroupCombatArena{
     if(!this.intro)return;
     this.intro=null;
     this.introSfxIndex=3;
+    this.introHud?.hide();
+    this.hud?.setIntroActive(false);
     this.resetCamera();
   }
 
@@ -138,6 +142,8 @@ export class LiveGroupCombatArena{
       this.intro=createGroupCombatIntro(view.combat.id,view.combat.actors,
         view.combat.frame);
       this.introElapsed=0;
+      this.introHud?.show(sampleGroupCombatIntro(this.intro,0));
+      this.hud?.setIntroActive(true);
     }
     this.show(view);
     return true;
@@ -426,7 +432,12 @@ export class LiveGroupCombatArena{
       const frame=sampleGroupCombatIntro(this.intro,this.introElapsed);
       this.camera.position.set(...frame.eye);
       this.camera.setTarget(new Vector3(...frame.look));
-      if(this.introElapsed>=this.intro.duration)this.intro=null;
+      this.introHud?.show(frame);
+      if(this.introElapsed>=this.intro.duration){
+        this.intro=null;
+        this.introHud?.hide();
+        this.hud?.setIntroActive(false);
+      }
     }else flyCombatSpectatorCamera(this.camera,pressed,dt);
     if(this.scene)this.hud?.render(this.scene,dt);
   }
@@ -464,6 +475,7 @@ export class LiveGroupCombatArena{
     for(const model of this.actors.values())model.ghoul?.dispose();
     for(const fx of this.bossImpactVisuals.values())fx.dispose();
     this.bossImpactVisuals.clear();
+    this.introHud?.dispose();this.introHud=null;
     this.hud?.dispose();this.hud=null;
     this.observedPositions.clear();
     this.actorPhases.clear();
@@ -515,6 +527,7 @@ export class LiveGroupCombatArena{
     this.resetCamera();
     this.hud=new CombatGroupWorldHud(
       this.engine,this.canvas,this.panel,fight.actors,fight.frame.t);
+    this.introHud=new GroupCombatIntroHud(this.panel,fight.actors);
     this.focusIds=fight.actors.map(actor=>actor.id);
     const heroById=new Map(view.heroes.map(hero=>[hero.id,hero]));
     this.projectileMaterial=new StandardMaterial("live-fight-projectile",scene);

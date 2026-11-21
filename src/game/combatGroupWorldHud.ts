@@ -53,6 +53,12 @@ export class CombatGroupWorldHud{
     host.append(this.root);
   }
 
+  /** Hide future committed HP while the merchant is watching an intro.
+   * Visibility only, never a source of combat data or battle timing. */
+  setIntroActive(active:boolean):void{
+    this.root.style.visibility=active?"hidden":"visible";
+  }
+
   show(frame:GroupReplayFrame):void{
     if(this.current?.t===frame.t)return;
     this.previous=this.current;

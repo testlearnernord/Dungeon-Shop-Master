@@ -326,6 +326,9 @@ export class Level6Arena {
       return;
     }
     if(document.pointerLockElement)void document.exitPointerLock();
+    // The Lab owns its own 3D spectator and title HUD. The Tripo inspector
+    // cannot keep that scene rendered invisibly behind its model viewer.
+    if(this.lab.isActive)this.lab.suspendForModelInspector();
     this.introActive=false;
     this.cinematic.hidden=true;
     this.panel.dataset.intro="false";
