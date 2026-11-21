@@ -151,6 +151,16 @@ export class DeveloperCombatLab {
     this.accumulated=0;
     this.presentedTime=0;this.lastRenderedTime=-1;this.statusElapsed=0;
   }
+  /** The asset inspector owns a different Babylon scene. Its activation
+   * must dispose the Lab spectator, including cinematic/HP DOM overlays,
+   * without discarding the local encounter configuration or touching GameStore.
+   * Returning via restart constructs exactly one fresh observed fight. */
+  suspendForModelInspector():void{
+    if(!this.active)return;
+    this.paused=true;
+    this.renderer.dispose();
+  }
+
   /** Full restart from the configured immutable fixture, no random reroll. */
   restart():void{if(this.active)this.start();}
 
