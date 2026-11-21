@@ -1,9 +1,14 @@
 import type {GameState,WorldEvent} from "./gameState.ts";
+import {ITEMS,type ItemId} from "./economy.ts";
+import type {AdventurerState} from "./adventurers.ts";
 
-/** This is a read-only projection. Authoritative world events and the single
- * live combat registry are the only sources; never roll AI, award loot or
- * peek into sealed replay frames to invent a notification. */
-export type WorldFeedCategory="death"|"boss"|"combat"|"party"|"treasure"|"travel";
+/** The ONE global world feed reads committed events and actual state deltas.
+ * This is not an alternate world clock, loot generator or party simulator. */
+export type WorldFeedCategory=
+  "death"|"boss"|"combat"|"party"|"treasure"|"trap"|"depth"|"travel";
+export const WORLD_FEED_CATEGORIES:readonly WorldFeedCategory[]=[
+  "death","boss","combat","party","treasure","trap","depth","travel",
+];
 export type WorldFeedTarget=
   |{kind:"roster";heroId:string}
   |{kind:"hero";heroId:string}
@@ -22,9 +27,10 @@ export interface WorldFeedEntry{
 const heroName=(state:GameState,id:string)=>
   state.adventurers.find(hero=>hero.id===id)?.name??"An adventurer";
 
-function eventEntry(
-  event:WorldEvent,state:GameState,
-):WorldFeedEntry|null{
+const findHero=(state:GameState,id:string)=>
+  state.adventurers.find(hero=>hero.id===id);
+
+function eventEntry(event:WorldEvent,state:GameState):WorldFeedEntry|null{
   if(event.type==="hero-death-signal"&&event.adventurerId){
     return {id:event.id,category:"death",priority:3,
       title:"LIFE-SIGNATURE EXTINGUISHED",
@@ -43,14 +49,6 @@ function eventEntry(
         (party?" · Floor "+party.floor:" · Companions joined"),
       target:{kind:"hero",heroId:event.adventurerId}};
   }
-  if(event.type==="dungeon-live"&&
-     event.dungeonHighlight==="treasure"&&event.adventurerId){
-    return {id:event.id,category:"treasure",priority:1,
-      title:"TREASURE DISCOVERED",
-      detail:heroName(state,event.adventurerId)+
-        " discovered something valuable.",
-      target:{kind:"hero",heroId:event.adventurerId}};
-  }
   if(event.type==="shop-arrival"&&event.adventurerId){
     return {id:event.id,category:"travel",priority:1,
       title:"AN ADVENTURER RETURNS",
@@ -59,16 +57,119 @@ function eventEntry(
   }
   return null;
 }
+const itemName=(id:ItemId)=>ITEMS.find(item=>item.id===id)?.name??id;
+const plural=(quantity:number,label:string)=>
+  quantity+" "+label;
+
+/** Exact physical loot is reconstructed from the same committed before and
+ * after inventory snapshots. Equipped Sword/Vest are also real chest finds,
+ * even though those gear slots bypass inventory.finds. */
+function newDungeonLoot(
+  before:GameState,after:GameState,memberIds:readonly string[],
+):{items:string;gold:number}{
+  const amounts=new Map<ItemId,number>();
+  let gold=0;
+  for(const id of memberIds){
+    const prior=findHero(before,id),next=findHero(after,id);
+    if(!prior||!next)continue;
+    gold+=Math.max(0,next.gold-prior.gold);
+    for(const item of ITEMS){
+      const gained=Math.max(0,(next.inventory.finds?.[item.id]??0)-
+        (prior.inventory.finds?.[item.id]??0));
+      if(gained)amounts.set(item.id,(amounts.get(item.id)??0)+gained);
+    }
+    if(!prior.equipment.weapon&&next.equipment.weapon==="Iron Sword")
+      amounts.set("iron-sword",(amounts.get("iron-sword")??0)+1);
+    if(!prior.equipment.armor&&next.equipment.armor==="Leather Vest")
+      amounts.set("leather-vest",(amounts.get("leather-vest")??0)+1);
+  }
+  return {items:[...amounts].map(([id,quantity])=>
+    plural(quantity,itemName(id))).join(" · "),gold};
+}
+
+/** A genuine co-located party is a single event recipient even though each
+ * individual hero retains their own HP and physical loot ownership. Only
+ * members with this SAME committed category+tick are coalesced. */
+function siteParticipants(
+  event:WorldEvent,before:GameState,after:GameState,
+  newEvents:readonly WorldEvent[],category:"treasure"|"trap"|"depth",
+):readonly string[]{
+  const id=event.adventurerId!;
+  const party=[...(after.dungeonParties??[]),...(before.dungeonParties??[])]
+    .find(p=>p.memberIds.includes(id));
+  const candidate=party?.memberIds??[id];
+  const same=(e:WorldEvent):boolean=>
+    e.type==="dungeon-live"&&e.worldTick===event.worldTick&&
+    (category==="depth"?
+      (e.floorAction==="ascend"||e.floorAction==="descend")&&
+      !!e.adventurerId&&findHero(before,e.adventurerId)?.floor!==
+        findHero(after,e.adventurerId)?.floor
+      :e.dungeonHighlight===category);
+  const participating=new Set(newEvents.filter(same).map(e=>e.adventurerId));
+  return [...new Set(candidate.filter(heroId=>participating.has(heroId)))]
+    .sort();
+}
+
+function dungeonSiteEntry(event:WorldEvent,before:GameState,after:GameState,
+  newEvents:readonly WorldEvent[]):WorldFeedEntry|null{
+  if(event.type!=="dungeon-live"||!event.adventurerId)return null;
+  const id=event.adventurerId;
+  const oldHero=findHero(before,id),newHero=findHero(after,id);
+  if(!oldHero||!newHero)return null;
+  const depthChanged=oldHero.floor!==newHero.floor&&
+    (event.floorAction==="ascend"||event.floorAction==="descend");
+  const category:"treasure"|"trap"|"depth"|null=
+    event.dungeonHighlight==="treasure"?"treasure":
+    event.dungeonHighlight==="trap"?"trap":depthChanged?"depth":null;
+  if(!category)return null;
+  const ids=siteParticipants(event,before,after,newEvents,category);
+  if(!ids.length)return null;
+  const floor=category==="depth"?newHero.floor:oldHero.floor;
+  const names=ids.map(heroId=>heroName(after,heroId)).join(" + ");
+  const lead=ids[0];
+  const key="world-site:"+event.day+":"+(event.worldTick??0)+":"+
+    category+":"+floor+":"+ids.join("+");
+  if(category==="treasure"){
+    const gained=newDungeonLoot(before,after,ids);
+    const contents=[gained.items,gained.gold?"+"+gained.gold+" gold":""]
+      .filter(Boolean).join(" · ");
+    return {id:key,category:"treasure",priority:2,
+      title:ids.length>1?"PARTY CHEST LOOTED":"CHEST LOOTED",
+      detail:names+" · Floor "+floor+" · "+
+        (contents||"No recoverable items"),
+      target:{kind:"hero",heroId:lead}};
+  }
+  if(category==="trap"){
+    const hurt=ids.map(heroId=>{
+      const previous=findHero(before,heroId),current=findHero(after,heroId);
+      return previous&&current?{
+        name:heroName(after,heroId),
+        damage:Math.max(0,previous.health-current.health),
+      }:null;
+    }).filter((entry):entry is {name:string;damage:number}=>!!entry);
+    const losses=hurt.map(entry=>entry.name+" −"+entry.damage+" HP").join(" · ");
+    return {id:key,category:"trap",priority:2,
+      title:ids.length>1?"PARTY TRIGGERED A TRAP":"TRAP TRIGGERED",
+      detail:"Floor "+floor+" · "+losses,
+      target:{kind:"hero",heroId:lead}};
+  }
+  const action=newHero.floor>oldHero.floor?"DESCENDED":"ASCENDED";
+  return {id:key,category:"depth",priority:2,
+    title:ids.length>1?"PARTY "+action:"ADVENTURER "+action,
+    detail:names+" · Floor "+oldHero.floor+" → "+newHero.floor,
+    target:{kind:"hero",heroId:lead}};
+}
 
 export function projectWorldFeedChanges(
   before:GameState,after:GameState,
 ):readonly WorldFeedEntry[]{
   const results:WorldFeedEntry[]=[];
   const oldEvents=new Set(before.events.map(event=>event.id));
+  const newEvents=after.events.filter(event=>!oldEvents.has(event.id));
   const unique=new Set<string>();
-  for(const event of after.events){
-    if(oldEvents.has(event.id))continue;
-    const candidate=eventEntry(event,after);
+  for(const event of newEvents){
+    const candidate=dungeonSiteEntry(event,before,after,newEvents)??
+      eventEntry(event,after);
     if(candidate&&!unique.has(candidate.id)){
       results.push(candidate);
       unique.add(candidate.id);
@@ -95,18 +196,11 @@ export function projectWorldFeedChanges(
         " has engaged the Cave Troll · Floor 6",
       target:{kind:"boss",heroId:newBoss.heroId}});
   }
-  // The most urgent information takes priority when multiple real
-  // checkpoints are committed by one deterministic world step.
   return results.sort((a,b)=>b.priority-a.priority||
     a.id.localeCompare(b.id));
 }
 
-/** Preserve the pre-existing critical death warning on loading a campaign,
- * without replaying old combat starts, routine parties or every shop visit.
- * Dismissed/snoozed toasts are UI-only and never rewrite WorldEvent history. */
-export function initialWorldFeedCritical(
-  state:GameState,
-):WorldFeedEntry|null{
+export function initialWorldFeedCritical(state:GameState):WorldFeedEntry|null{
   const last=state.events.filter(event=>event.type==="hero-death-signal"&&
     event.day===state.day).at(-1);
   return last?eventEntry(last,state):null;
