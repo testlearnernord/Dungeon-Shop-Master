@@ -114,10 +114,10 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   const locator=page.locator("#dungeon-hero-locator");
   await expect(locator).toBeVisible();
   await expect(locator.locator("option")).toHaveCount(4);
-  const camera=()=>page.evaluate(async()=>(
+  const mapFocus=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))
       .inspectLiveFloorCameraFocus());
-  const cameraBefore=await camera();
+  const cameraBefore=await mapFocus();
   await locator.selectOption(ids[2]);
   await expect(locator).toHaveValue(ids[2]);
   await expect(page.locator("#dungeon-hero-detail")).toBeVisible();
@@ -127,7 +127,7 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
     "Iron Ore ×1");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText(
     "Coal ×2");
-  const cameraAfter=await camera();
+  const cameraAfter=await mapFocus();
   expect(cameraAfter.target.x).toBeCloseTo(third.x,2);
   expect(cameraAfter.target.z).toBeCloseTo(third.z,2);
   expect(cameraAfter.offset.x).toBeCloseTo(cameraBefore.offset.x,2);
