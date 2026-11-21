@@ -635,7 +635,7 @@
 #music-panel .music-actions label{font-size:9px}
 #music-panel button{border-radius:7px}
 
-/* Tiny screens still display all six item slots, without horizontal scrolling. */
+/* Tiny screens still display all five stocking slots, without scrolling. */
 @media(max-width:780px){
   #hud .shop-title{top:7px;left:8px;padding:6px 8px;font-size:11px}
   #hud .shop-title span{font-size:9px}
