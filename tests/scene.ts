@@ -1054,3 +1054,15 @@ export function inspectCellarGate() {
     chest:!!scene.getMeshByName("cellar-chest-body"),
   };
 }
+
+/** Pond visual and first-person entry probes for the actual shop scene. */
+export function inspectFishingPond(){
+  const scene=Engine.LastCreatedScene!;
+  const mesh=scene.getMeshByName("cellar-pond-water");
+  return {exists:!!mesh,visible:!!mesh?.isEnabled(),pickable:!!mesh?.isPickable};
+}
+export function aimAtFishingPond():void{
+  inspectPlayer({x:-6.25,y:-2.7,z:-27});
+  const scene=Engine.LastCreatedScene!;
+  (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-8.4,-4.31,-27));
+}

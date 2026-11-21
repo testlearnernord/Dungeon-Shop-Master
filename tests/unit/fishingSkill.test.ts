@@ -6,6 +6,9 @@ import {createCellarRoom} from "../../src/game/cellarRoom.ts";
 import {POND_CELLS,isCellarPondUncovered,pondExcavationRemaining} from
   "../../src/game/cellarPond.ts";
 import {excavateLevel5Cell} from "../../src/game/level5Room.ts";
+import {createGameState} from "../../src/game/gameState.ts";
+import {GameStore} from "../../src/game/gameStore.ts";
+import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 
 test("the basin is revealed by the EXISTING connected six-cell excavation",()=>{
   let room=createCellarRoom();
@@ -30,4 +33,23 @@ test("flicks require movement direction, sufficient travel and speed",()=>{
   assert.equal(FISHING_FLICKS.length,8);
   assert.equal(REQUIRED_FLICKS,3);
   assert.deepEqual(fishingDirectionFor(0,0),fishingDirectionFor(0,0));
+});
+
+test("only a fully excavated pool can award durable catch records",()=>{
+  const {state:initial,store}=(()=>{const state=createGameState();
+    return {state,store:new GameStore(state)};})();
+  assert.equal(store.recordCellarCatch(),"Excavate the pond first.");
+  assert.strictEqual(store.state,initial);
+  for(const cell of POND_CELLS){
+    const msg=store.excavateCellarCell(cell);
+    assert.match(msg,/Cellar rock excavated|underground pond/);
+  }
+  assert.equal(store.recordCellarCatch(),"Cave fish caught! Total: 1.");
+  assert.equal(store.state.cellarFishCaught,1);
+  assert.equal(store.state.worldClock.tick,initial.worldClock.tick);
+  const saved=parseSave(JSON.stringify(createSave(store.state)));
+  assert.equal(saved.cellarFishCaught,1);
+  const corrupt=createSave(store.state);
+  (corrupt.payload as any).cellarFishCaught=-1;
+  assert.throws(()=>parseSave(JSON.stringify(corrupt)),/cellarFishCaught/);
 });
