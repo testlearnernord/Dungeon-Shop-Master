@@ -352,3 +352,15 @@ test("Shift-clear preserves reserved carts, bag limit and last-slot identity",()
   assert.equal(transferShelf(reserved,slotId,"healing-herb","remove",5).state,reserved);
   assert.equal(transferShelf(reserved,slotId,"healing-herb","stock",5).state,reserved);
 });
+
+test("coal and iron ore cannot be bought wholesale or placed into shelves",()=>{
+  const state=createGameState();
+  for(const itemId of ["iron-ore","coal"] as const){
+    const wholesaled=buyWholesale(state,itemId,1);
+    assert.strictEqual(wholesaled.state,state);
+    assert.match(wholesaled.message,/only purchased from returning adventurers/i);
+    const shelved=transferShelf(state,state.shopEconomy.slots[0].id,itemId,"stock");
+    assert.strictEqual(shelved.state,state);
+    assert.match(shelved.message,/cannot be placed/i);
+  }
+});
