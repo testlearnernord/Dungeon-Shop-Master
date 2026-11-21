@@ -25,7 +25,7 @@ Browser input / shop interactions
 
 - `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 24`.
 - `worldClock.ts` persists a monotonic tick and ordered future events, with 50-ms ticks, 20 ticks per game minute and 28,800 ticks per game day. Stable lane/sequence ordering is part of determinism. Gameplay events, not Babylon frames, advance customers, timed dungeon steps and combat.
-- `liveDungeonRuntime.ts` schedules one connected spatial dungeon step every **600 world ticks** and commits batches of **30 actual 60-Hz fight ticks** every **10 world ticks**. The unique Floor-6 boss also persists real fight state through this world clock.
+- `liveDungeonRuntime.ts` schedules one connected spatial dungeon step every **600 world ticks** and commits batches of **30 actual 60-Hz fight ticks** every **10 world ticks**. The unique Floor-6 boss also persists real fight state through this world clock. The live boss is constructed via `createCombatPreview` in `liveDungeonRuntime.ts` and uses `stepCombatPreview` at 60 Hz, **not** the unused group-combat `liveBossEncounter.ts` adapter audited for retirement in [C3](CODE_CLEANUP_C3.md).
 - `gameStore.ts` records actual player and shop actions, physical shop-exit events, accepted credit, paid cart settlement, save operations and bed closure. Day closure does not reroll live expeditions.
 
 **Authority vs presentation:** no HUD, board, arena, particle effect, preview, music timer or replay may call game-progressing combat AI for authoritative outcomes. Render interpolation, camera easing and scene animation do not write HP, loot, purchases or hidden world information.

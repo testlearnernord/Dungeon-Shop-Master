@@ -79,3 +79,33 @@ test("boss save rejects fake HP, phase, clock, snapshots and actor identity",()=
   tamper(s=>{s.liveDungeon.bossCombat.heroId="ghost";},/bossCombat/);
   assert.deepEqual(parseSave(JSON.stringify(original)),state);
 });
+
+test("two concurrent Floor-6 explorers cannot spawn duplicate live Troll combats",()=>{
+  const initial=createGameState(7351);
+  const [first,second]=initial.adventurers;
+  const contestants=new Set([first.id,second.id]);
+  const adventurers=initial.adventurers.map(hero=>contestants.has(hero.id)
+    ?{...hero,status:"expedition" as const,floor:6 as const,
+      level6Permit:true,health:hero.stats.maxHealth}:hero);
+  const store=new GameStore({...initial,adventurers});
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const boss=store.state.liveDungeon.bossCombat;
+  assert(boss,"Only the real saved Cave Troll motor can own Floor 6");
+  assert.equal(boss.heroId,first.id,"Roster order must choose a stable boss challenger");
+  assert.equal(boss.state.bossHp,280);
+  assert.equal(boss.state.outcome,"fighting");
+  assert.equal(store.state.liveDungeon.combats.length,0,
+    "A second challenger must not create a parallel group boss or dummy fight");
+  assert.equal(store.state.worldClock.pending.filter(e=>
+    e.lane==="expedition"&&e.subjectId==="dungeon-combat").length,1,
+    "One world clock event owns all ongoing real fights");
+  assert.equal(store.state.events.filter(e=>e.type==="level6-combat").length,0);
+  assert.equal(store.state.adventurers.find(h=>h.id===second.id)?.health,
+    second.stats.maxHealth,"Spectator or arbitration must not damage other heroes");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+  store.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
+  assert.equal(store.state.liveDungeon.bossCombat?.heroId,first.id);
+  assert(Math.abs(store.state.liveDungeon.bossCombat!.state.time-.5)<1e-6,
+    "Exactly 30 real 60Hz motor steps must elapse per scheduled 10-world-tick batch");
+});
