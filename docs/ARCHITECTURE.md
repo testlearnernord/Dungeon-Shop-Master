@@ -117,3 +117,13 @@ are derived only from saved delta, including auto-equipped chest gear.
 Floor-change notices require a truly changed floor, never a plan alone.
 The renderer's eight configurable categories reuse a single HUD and
 the same camera/hero jump methods, never a second dungeon runtime.
+
+**World Echoes victory / progression:** The same global worldFeedProjection.ts
+observes true newly committed saved dungeon replay encounters and level
+transitions. It publishes one post-combat victory per authentic settled party
+with per-hero XP and tangible inventory/gold deltas, and a separate level-up
+per changed hero. Recorded victories open existing immutable Combat Lab-quality
+arena playback; boss victories open authored boss footage. The `hero-profile`
+navigation contract is independent of the current Adventurer Board fallback
+and can later serve the shared world-wide hero tooltip. Neither notification
+projection nor its click handler drives the world clock or rewards.
