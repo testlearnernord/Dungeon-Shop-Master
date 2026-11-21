@@ -333,6 +333,10 @@ function validateLevel7Replay(
         validNumber(actor[key],a+"."+key,-10000,100000);
       if(actor.radius!==undefined)validNumber(actor.radius,a+".radius",0.1,3);
       if(actor.healCharges!==undefined)integer(actor.healCharges,a+".healCharges",0,10);
+      if(actor.magicHeals!==undefined){
+        if(actor.role!=="healer")fail(a+".magicHeals","requires healer");
+        integer(actor.magicHeals,a+".magicHeals",0,10);
+      }
     });
     if(heroCount<1||heroCount>3||
        monsterCount<1||monsterCount>MAX_GHOUL_PACK||
@@ -506,7 +510,7 @@ function validateLiveCombatCheckpoints(
       const spec=object(rawSpec,sp,[
         "id","team","role","style","x","z","hp","maxHp","damage",
         "armor","speed","reach",
-      ],["radius","healCharges","equipment","meleeAbility","specialAbility",
+      ],["radius","healCharges","magicHeals","equipment","meleeAbility","specialAbility",
         "agility","grappleDamage","staggerThreshold"]);
       text(spec.id,sp+".id");
     });
@@ -567,7 +571,7 @@ function validateLiveCombatCheckpoints(
         "hp","stamina","heading","lockedHeading","phase","phaseAge",
         "cooldown","applied","targetId","rollX","rollZ",
         "healCharges","distanceTraveled",
-      ],["specialAbility"]);
+      ],["specialAbility","magicHeals"]);
       const original=initial.actors[i];
       for(const key of ["id","team","role","style","maxHp","damage",
         "armor","speed","reach","radius","meleeAbility","agility",
@@ -582,6 +586,7 @@ function validateLiveCombatCheckpoints(
         fail(ap+".hp","must retain bounded genuine vitality");
       integer(a.attacksStarted,ap+".attacksStarted",0,10000);
       integer(a.healCharges,ap+".healCharges",0,10);
+      if(a.magicHeals!==undefined)integer(a.magicHeals,ap+".magicHeals",0,10);
       if(typeof a.applied!=="boolean")fail(ap+".applied","must be boolean");
       choice(a.phase,["move","windup","strike","recover","cast","heal",
         "roll","parry","hurt","dead","grab","grabMiss","throw",
