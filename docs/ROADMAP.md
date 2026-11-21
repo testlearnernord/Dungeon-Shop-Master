@@ -20,9 +20,9 @@ Owner rule: **no lost gameplay, scenes, animations, cues, saves, rendering quali
 
 | Phase | State | Work |
 | --- | --- | --- |
-| A1: audited baseline | **Merged (#235)** | Evidence inventory, correct false status and provide safety references (PR #235; not merged at this snapshot) |
+| A1: audited baseline | **Merged (#235)** | Source-verified inventory, contradictions, and original safety baseline |
 | A2: living documentation | **Merged (#236)** | Replace dated PR accumulation in README/AGENTS/Architecture/Bible/Roadmap with current module map, approved choices and status distinctions |
-| B1: audio ownership | **Review pending (#237)** | Proposed removal of one exact root music copy; canonical audio untouched; generated Ghoul GLB ignored and owners documented |
+| B1: audio ownership | **Merged (#237)** | Proposed removal of one exact root music copy; canonical audio untouched; generated Ghoul GLB ignored and owners documented |
 | B2: model provenance | **Review pending (#238)** | Archive the original Troll Grab/Throw source with unchanged Git blob; update generator, manifest, docs and integrity test |
 | C: TypeScript | **Planned** | Explicit call/import graph, proven dead code and redundant ownership. No deletion by name; one domain per PR |
 | D: CI and acceptance | **Planned** | Required regressions, Pages asset URL checks, full-browser review, before/after measurements and final doc sync |
