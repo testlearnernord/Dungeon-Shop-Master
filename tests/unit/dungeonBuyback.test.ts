@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createGameState,type GameState} from "../../src/game/gameState.ts";
+import {createGameState,advanceDay,type GameState} from "../../src/game/gameState.ts";
+import {summarizeLedger} from "../../src/merchantLedger.ts";
 import {ITEMS,ECONOMY,type ItemId} from "../../src/game/economy.ts";
 import {buyHeroDungeonFind,availableDungeonOffers,dungeonBuybackPrice}
   from "../../src/game/dungeonBuyback.ts";
@@ -51,6 +52,17 @@ test("buyback transfers one physical item and its gold exactly once per receipt"
   assert.deepEqual(loaded.adventurers[0].inventory.finds,
     second.state.adventurers[0].inventory.finds);
   assert.equal(loaded.events.at(-1)?.id,second.state.events.at(-1)?.id);
+});
+
+test("merchant ledger records purchases as expenses, never as sales income",()=>{
+  const state=stockedHero(),heroId=state.adventurers[0].id;
+  const purchased=buyHeroDungeonFind(state,heroId,"iron-ore").state;
+  const next=advanceDay(purchased).state;
+  const summary=summarizeLedger(purchased,next);
+  assert.equal(summary.buybacks.length,1);
+  assert.equal(summary.buybackCost,dungeonBuybackPrice("iron-ore"));
+  assert.equal(summary.buybacks[0].cost,summary.buybackCost);
+  assert.ok(summary.receipts.every(receipt=>receipt.id!==summary.buybacks[0].id));
 });
 
 test("buyback cannot take an offer from a hero who is not actually at the shop",()=>{
