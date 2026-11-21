@@ -25,6 +25,11 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
+import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
+import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
+import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
+  orbitDungeonMap,panDungeonMap,zoomDungeonMap,
+  type DungeonMapPose} from "./dungeonMapCamera.ts";
 import {
   generateExpeditionLayout, tileAt, type DungeonLayout,
   type DungeonFeature, type DungeonPoint,
@@ -32,7 +37,6 @@ import {
 
 const TILE_SIZE = 2.5;
 const WALL_HEIGHT = 4.5;
-const MONSTER_COLOR = "#93ad7b";
 const getWorld = (map: DungeonLayout, p: DungeonPoint) => new Vector3(
   (p.x-(map.width-1)/2)*TILE_SIZE, 0, (p.z-(map.height-1)/2)*TILE_SIZE,
 );
@@ -51,6 +55,16 @@ export class DungeonViewer {
   private layout: DungeonLayout | null = null;
   private active = false;
   private readonly keys = new Set<string>();
+  private orbitPointer:null|{
+    button:0|2;lastX:number;lastY:number;startX:number;startY:number;moved:boolean;
+  }=null;
+  private suppressNextMapClick=false;
+  private readonly hoverTooltip=document.querySelector<HTMLElement>(
+    "#dungeon-hover-tooltip")!;
+  private readonly mapStatus=document.querySelector<HTMLElement>(
+    "#dungeon-map-status")!;
+  private readonly mapCounts=document.querySelector<HTMLElement>(
+    "#dungeon-map-counts")!;
   private readonly panel = document.querySelector<HTMLElement>("#dungeon-hud")!;
   private readonly summary = document.querySelector<HTMLElement>("#dungeon-summary")!;
   private readonly focusLabel = document.querySelector<HTMLElement>("#dungeon-focus")!;
@@ -145,6 +159,10 @@ export class DungeonViewer {
     // Clicking the encounter beacon opts in; toolbar remains keyboard accessible.
     this.canvas.addEventListener("click",event=>{
       if(!this.active||!this.scene||this.liveArena.isActive)return;
+      if(this.suppressNextMapClick){
+        this.suppressNextMapClick=false;
+        return; // A drag must never also select an unrelated hero.
+      }
       const rect=this.canvas.getBoundingClientRect();
       const picked=this.scene.pick(event.clientX-rect.left,
         event.clientY-rect.top,mesh=>mesh.metadata?.abstractBattle===true);
@@ -271,6 +289,50 @@ export class DungeonViewer {
       this.keys.delete(event.code);
     }, true);
     window.addEventListener("blur", () => this.keys.clear());
+    // Both mouse buttons can orbit and tilt the floor map by dragging.
+    // A stationary left click still picks a hero/combat marker as before.
+    canvas.addEventListener("pointerdown",event=>{
+      if(!this.active||!this.camera||this.liveArena.isActive||
+        (event.button!==0&&event.button!==2))return;
+      this.orbitPointer={button:event.button as 0|2,
+        startX:event.clientX,startY:event.clientY,
+        lastX:event.clientX,lastY:event.clientY,moved:false};
+      if(event.button===2)event.preventDefault();
+    },true);
+    window.addEventListener("pointermove",event=>{
+      if(!this.active||!this.scene||!this.camera||this.liveArena.isActive)
+        return;
+      const drag=this.orbitPointer;
+      if(drag&&(event.buttons&(drag.button===0?1:2))){
+        const dx=event.clientX-drag.lastX,dy=event.clientY-drag.lastY;
+        drag.lastX=event.clientX;drag.lastY=event.clientY;
+        if(Math.hypot(event.clientX-drag.startX,
+          event.clientY-drag.startY)>4)drag.moved=true;
+        if(drag.moved){
+          event.preventDefault();
+          const pose=this.mapPose();
+          if(pose)this.setMapPose(orbitDungeonMap(pose,dx,dy));
+          this.followActor=null;
+          this.hoverTooltip.hidden=true;
+        }
+        return;
+      }
+      this.showMapHover(event.clientX,event.clientY);
+    },true);
+    window.addEventListener("pointerup",event=>{
+      const drag=this.orbitPointer;
+      if(drag&&event.button===drag.button){
+        if(drag.moved&&drag.button===0)this.suppressNextMapClick=true;
+        this.orbitPointer=null;
+      }
+    },true);
+    window.addEventListener("blur",()=>{this.orbitPointer=null;});
+    canvas.addEventListener("contextmenu",event=>{
+      if(this.active&&!this.liveArena.isActive)event.preventDefault();
+    },true);
+    canvas.addEventListener("pointerleave",()=>{
+      this.hoverTooltip.hidden=true;
+    });
     // Use the same spectator mouse-flight contract as Level-6, but only
     // after opting into the actual 3D fight. Map picking stays untouched.
     canvas.addEventListener("pointerdown",()=>{
@@ -287,8 +349,9 @@ export class DungeonViewer {
       if (!this.active || !this.camera || this.liveArena.isActive) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      this.camera.position.y = Math.max(12, Math.min(100,
-        this.camera.position.y + Math.sign(event.deltaY) * 4));
+      const pose=this.mapPose();
+      if(pose)this.setMapPose(zoomDungeonMap(pose,event.deltaY));
+      this.followActor=null;
     }, {capture:true,passive:false});
   }
 
@@ -344,6 +407,9 @@ export class DungeonViewer {
     if (!this.active) return;
     this.active = false;
     this.keys.clear();
+    this.orbitPointer=null;
+    this.hoverTooltip.hidden=true;
+    this.mapStatus.hidden=true;
     document.body.classList.remove("dungeon-active");
     this.panel.hidden = true;
     this.replayScene?.dispose();
@@ -353,6 +419,7 @@ export class DungeonViewer {
     this.followActor=null;
     this.liveHeroId=null;
     this.liveFloor=null;this.liveFloorFightId=null;
+    this.mapStatus.hidden=true;
     this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
     this.liveFloorProjectionCache=null;
     this.liveWorldTick=-1;
@@ -367,6 +434,50 @@ export class DungeonViewer {
     this.sceneChanged(false);
     this.shopCamera.attachControl(this.canvas,true);
     this.canvas.focus();
+  }
+
+  private mapPose():DungeonMapPose|null {
+    return this.camera?mapPoseFromCamera(this.camera.position,
+      this.camera.getTarget()):null;
+  }
+  private setMapPose(pose:DungeonMapPose):void{
+    if(!this.camera)return;
+    const p=mapCameraPosition(pose),t=mapCameraTarget(pose);
+    this.camera.position.set(p.x,p.y,p.z);
+    this.camera.setTarget(new Vector3(t.x,t.y,t.z));
+  }
+  private showMapHover(clientX:number,clientY:number):void{
+    if(!this.scene||this.liveFloor===null){
+      this.hoverTooltip.hidden=true;return;
+    }
+    const rect=this.canvas.getBoundingClientRect();
+    const hit=this.scene.pick(clientX-rect.left,clientY-rect.top,mesh=>
+      typeof mesh.metadata?.floorHeroId==="string"||
+      typeof mesh.metadata?.spectatorFeatureId==="string"||
+      mesh.metadata?.abstractBattle===true);
+    const meta=hit?.pickedMesh?.metadata;
+    const view=this.liveFloorProjectionCache?.view;
+    let label="";
+    if(typeof meta?.floorHeroId==="string"){
+      const hero=view?.heroes.find(h=>h.id===meta.floorHeroId);
+      if(hero)label=hero.name+" · Lv "+hero.level+" "+hero.role+
+        " · "+Math.round(hero.health)+"/"+hero.stats.maxHealth+" HP"+
+        (hero.goal?" · "+hero.goal:"");
+    }else if(typeof meta?.spectatorFeatureId==="string"&&this.layout){
+      const feature=this.layout.features.find(f=>f.id===meta.spectatorFeatureId);
+      if(feature&&!view?.resolved.includes(feature.id))
+        label=(feature.kind==="treasure"?"CHEST · Unlooted":feature.kind==="trap"?
+          "TRAP · Armed":"GHOUL · Spawn Site")+" · Tile "+feature.x+", "+feature.z;
+    }else if(meta?.abstractBattle===true){
+      label="LIVE FIGHT · Click to watch the actual arena";
+    }
+    this.hoverTooltip.hidden=!label;
+    if(!label)return;
+    this.hoverTooltip.textContent=label;
+    this.hoverTooltip.style.left=Math.max(8,
+      Math.min(window.innerWidth-260,clientX+15))+"px";
+    this.hoverTooltip.style.top=Math.max(95,
+      Math.min(window.innerHeight-92,clientY+15))+"px";
   }
 
   private createScene(layout: DungeonLayout): void {
@@ -397,7 +508,7 @@ export class DungeonViewer {
     const roomStone=makeMat("dungeon-room-floor",CRYPT_STONE);
     const gold=makeMat("dungeon-gold","#d8a548",true);
     const spike=makeMat("dungeon-spikes","#b75a4b",true);
-    const monster=makeMat("dungeon-monster",MONSTER_COLOR,true);
+    const ghoulIcon=createGhoulMapIconMaterial(scene);
     const underlay=MeshBuilder.CreateBox("dungeon-foundation",{
       width:layout.width*TILE_SIZE,height:0.35,depth:layout.height*TILE_SIZE,
     },scene);
@@ -461,6 +572,12 @@ export class DungeonViewer {
           {width:1.25,height:0.85,depth:0.9},scene);
         chest.position.set(pos.x,0.52,pos.z);
         chest.material=gold;
+        chest.metadata={spectatorFeatureId:feature.id,
+          spectatorFeatureKind:"treasure"};
+        const lid=MeshBuilder.CreateBox("dungeon-chest-lid-"+feature.id,
+          {width:1.29,height:.25,depth:1.02},scene);
+        lid.parent=chest;lid.position.y=.58;lid.material=gold;
+        lid.isPickable=false;
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
           kind:feature.kind,mesh:chest});
       } else if(feature.kind==="trap"){
@@ -469,17 +586,24 @@ export class DungeonViewer {
         marker.position.set(pos.x,0.18,pos.z);
         marker.rotation.y=Math.PI/4;
         marker.material=spike;
+        marker.metadata={spectatorFeatureId:feature.id,
+          spectatorFeatureKind:"trap"};
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
           kind:feature.kind,mesh:marker});
       } else {
-        // Development-map marker only; the ACTUAL encounter instantiates
-        // the animated skinned Ghoul in DungeonReplayScene.
-        const enemy=MeshBuilder.CreateCylinder("dungeon-monster-"+feature.id,
-          {diameterTop:.4,diameterBottom:.95,height:.36,tessellation:6},scene);
-        enemy.position.set(pos.x,.22,pos.z);
-        enemy.material=monster;
-        enemy.metadata={kind:"spawn-marker",subtype:feature.subtype,
-          label:"Ghoul presence (map marker, not fighter model)"};
+        // Detailed illustrated Ghoul icon shares one tiny GPU texture.
+        // Neutral map deliberately never spawns an animated combat monster:
+        // the existing opt-in combat arena still owns the actual actor rig.
+        const enemy=MeshBuilder.CreatePlane("dungeon-monster-"+feature.id,
+          {width:1.75,height:1.75},scene);
+        enemy.rotation.x=-Math.PI/2;
+        enemy.position.set(pos.x,.28,pos.z);
+        enemy.material=ghoulIcon;
+        enemy.isPickable=true;
+        enemy.checkCollisions=false;
+        enemy.metadata={spectatorFeatureId:feature.id,
+          spectatorFeatureKind:"monster",subtype:feature.subtype,
+          label:"Ghoul spawn · illustrated map icon"};
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
           kind:feature.kind,mesh:enemy});
       }
@@ -598,6 +722,7 @@ export class DungeonViewer {
     if(!view)return false;
     this.leaveLiveCombat();
     this.liveFloor=floor;
+    this.mapStatus.hidden=false;
     this.liveFloorFightId=null;
     this.selectedFloorHeroId=focusHeroId;
     this.liveFloorProjectionCache=null;
@@ -699,6 +824,10 @@ export class DungeonViewer {
     const ongoing=hero.inCombat?"LIVE combat":
       hero.activity==="backtracking"?"Walking to portal":
       hero.activity==="portal"?"Portal transit":"Exploring";
+    const intended=this.layout?predictDungeonHeroSteps(this.layout,hero):[];
+    const preview=intended.length?intended.map((point,i)=>
+      (i+1)+": ("+point.x+", "+point.z+")").join(" → "):
+      "No safe step predicted";
     const entries:[string,string][]=[
       ["Health",Math.round(hero.health)+" / "+hero.stats.maxHealth+" HP"],
       ["Level",String(hero.level)],
@@ -712,6 +841,7 @@ export class DungeonViewer {
       ["Current activity",ongoing],
       ["Short-term floor action",hero.plannedAction??"No committed plan"],
       ["Medium-term goal",hero.goal??"No committed plan"],
+      ["Next two steps · PREVIEW",preview],
       ["Traits",hero.traits.positive+", "+hero.traits.neutral+
         ", "+hero.traits.negative],
       ["Party",party],
@@ -735,6 +865,16 @@ export class DungeonViewer {
   }
 
   private paintFloor(view:LiveFloorSpectatorFrame):void {
+    if(this.layout){
+      const unresolved=this.layout.features.filter(feature=>
+        !view.resolved.includes(feature.id));
+      const count=(kind:DungeonFeature["kind"])=>
+        unresolved.filter(feature=>feature.kind===kind).length;
+      const parties=new Set(view.heroes.map(hero=>hero.partyId).filter(Boolean));
+      this.mapCounts.textContent=view.heroes.length+" heroes · "+
+        parties.size+" parties · "+count("monster")+" Ghoul sites · "+
+        count("treasure")+" chests · "+count("trap")+" traps";
+    }
     const selected=view.fights.find(f=>f.id===this.liveFloorFightId)??view.fights[0];
     this.liveFloorFightId=selected?.id??null;
     if(this.liveArena.isActive){
@@ -1132,14 +1272,20 @@ export class DungeonViewer {
       this.paintCombatIntro();
     }else {
     const speed=dt*(this.keys.has("ShiftLeft")||this.keys.has("ShiftRight")?44:15);
-    const dx=(Number(this.keys.has("KeyD"))-Number(this.keys.has("KeyA")))*speed;
-    const dz=(Number(this.keys.has("KeyS"))-Number(this.keys.has("KeyW")))*speed;
-    const extentX=this.layout.width*TILE_SIZE/2;
-    const extentZ=this.layout.height*TILE_SIZE/2;
-    this.camera.position.x=Math.max(-extentX,Math.min(extentX,this.camera.position.x+dx));
-    this.camera.position.z=Math.max(-extentZ-18,Math.min(extentZ+18,this.camera.position.z+dz));
-    if(this.keys.has("KeyQ")) this.camera.position.y=Math.min(100,this.camera.position.y+speed);
-    if(this.keys.has("KeyE")) this.camera.position.y=Math.max(12,this.camera.position.y-speed);
+    const right=Number(this.keys.has("KeyD"))-Number(this.keys.has("KeyA"));
+    const forward=Number(this.keys.has("KeyW"))-Number(this.keys.has("KeyS"));
+    const pose=this.mapPose();
+    if(pose&&(right||forward)){
+      this.setMapPose(panDungeonMap(pose,right,forward,speed,
+        {halfX:this.layout.width*TILE_SIZE/2,
+          halfZ:this.layout.height*TILE_SIZE/2}));
+      this.followActor=null;
+    }
+    if(pose&&(this.keys.has("KeyQ")||this.keys.has("KeyE"))){
+      this.setMapPose(zoomDungeonMap(this.mapPose()!,
+        (Number(this.keys.has("KeyQ"))-Number(this.keys.has("KeyE")))*dt*380));
+      this.followActor=null;
+    }
     }
     if(this.liveFloor!==null){
       const state=this.store.state;

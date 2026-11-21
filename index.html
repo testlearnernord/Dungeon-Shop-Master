@@ -306,10 +306,23 @@
           <div class="dungeon-actions">
             <button id="dungeon-watch-live-combat" type="button" hidden>⚔ Watch fight in arena</button>
             <button id="dungeon-return-from-combat" type="button" hidden>Return to dungeon map (Esc)</button>
-            <button id="dungeon-reset-camera" type="button">Reset / Focus (R)</button>
+            <button id="dungeon-reset-camera" type="button">Reset view <kbd>R</kbd></button>
             <button id="close-dungeon" type="button">Return to shop (G / Esc)</button>
           </div>
         </header>
+        <aside id="dungeon-map-status" class="dungeon-map-status" aria-label="LIVE dungeon floor summary" hidden>
+          <strong><span class="dungeon-live-indicator"></span> LIVE FLOOR OVERVIEW</strong>
+          <div id="dungeon-map-counts" aria-live="off">Waiting for confirmed dungeon data</div>
+          <div class="dungeon-map-legend" aria-label="Dungeon map legend">
+            <span class="dungeon-legend-hero">● Heroes</span>
+            <span class="dungeon-legend-party">◎ Parties</span>
+            <span class="dungeon-legend-ghoul">☠ Ghouls</span>
+            <span class="dungeon-legend-chest">▣ Treasure</span>
+            <span class="dungeon-legend-trap">◆ Traps</span>
+          </div>
+          <small>WASD move · Left/right drag orbit + tilt · Wheel zoom · Click hero to inspect · Tab cycle · R reset</small>
+        </aside>
+        <div id="dungeon-hover-tooltip" class="dungeon-hover-tooltip" role="tooltip" hidden></div>
         <div id="dungeon-fight-cinematic" class="dungeon-fight-cinematic" hidden
           aria-label="Optional fight introduction" aria-live="off">
           <div class="dungeon-fight-cinematic-copy">
@@ -349,7 +362,7 @@
         <aside class="dungeon-minimap-panel" aria-label="Development layout map">
           <strong id="dungeon-minimap-heading">Dungeon layout · developer preview</strong>
           <canvas id="dungeon-minimap" width="186" height="186" aria-label="Full map layout preview, not hero fog of war"></canvas>
-          <small id="dungeon-minimap-note">Green: entrance · Orange: monsters · Gold: chests · Red: traps</small>
+          <small id="dungeon-minimap-note">Green: entrance · Rust: Ghouls · Gold: chests · Red: traps</small>
         </aside>
         <footer class="dungeon-bottom">
           <div id="dungeon-playback-controls" class="dungeon-playback-controls" hidden>
