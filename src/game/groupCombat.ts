@@ -253,7 +253,7 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
     validNumber(grappleDamage,1,10000,spec.id+".grappleDamage");
     const staggerThreshold=spec.staggerThreshold??
       (spec.specialAbility==="grapple-throw"
-        ? Math.max(10,Math.round(spec.damage/2)):0);
+        ? Math.max(62,Math.round(spec.maxHp*.22)):0);
     validNumber(staggerThreshold,0,10000,spec.id+".staggerThreshold");
     const radius = spec.radius ?? 0.5;
     validNumber(radius, 0.1, 3, spec.id + ".radius");
