@@ -227,6 +227,7 @@ export function setupWorldEventFeed(
       return;
     }
     if(next.events===previous.events&&
+       next.adventurers===previous.adventurers&&
        next.liveDungeon.combats===previous.liveDungeon.combats&&
        next.liveDungeon.bossCombat===previous.liveDungeon.bossCombat){
       previous=next;return;
