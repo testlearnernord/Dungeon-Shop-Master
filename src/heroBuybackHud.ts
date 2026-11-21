@@ -1,6 +1,6 @@
 import type {GameStore} from "./game/gameStore.ts";
-import {availableDungeonOffers,dungeonBuybackPrice} from "./game/dungeonBuyback.ts";
-import {ITEMS,type ItemId} from "./game/economy.ts";
+import {availableDungeonOffers} from "./game/dungeonBuyback.ts";
+import {ECONOMY,ITEMS} from "./game/economy.ts";
 
 /** The Dungeon Shop Master's own staffed counter offer book. All contents
  * come from actual living visitors' individual dungeon finds. Clicking
@@ -42,7 +42,7 @@ export function setupHeroBuybackHud(store:GameStore):void{
     if(!modal.open)return;
     budget.textContent="Galvik: "+store.state.shopEconomy.balance+
       " gold · Bag "+Object.values(store.state.shopEconomy.bag).reduce(
-        (sum,value)=>sum+value,0)+"/24";
+        (sum,value)=>sum+value,0)+"/"+ECONOMY.bagCapacity;
     offers.replaceChildren();
     if(!entries.length){
       const empty=document.createElement("p");
@@ -51,7 +51,7 @@ export function setupHeroBuybackHud(store:GameStore):void{
       offers.append(empty);return;
     }
     const bagFull=Object.values(store.state.shopEconomy.bag).reduce(
-      (sum,value)=>sum+value,0)>=24;
+      (sum,value)=>sum+value,0)>=ECONOMY.bagCapacity;
     for(const offer of entries){
       const item=ITEMS.find(entry=>entry.id===offer.itemId)!;
       const row=document.createElement("article");
