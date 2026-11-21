@@ -28,7 +28,9 @@ export function findCommittedDeathFootage(
   const dungeon=recorded.find(event=>{
     const tape=event.dungeonReplay??event.level7Replay;
     return tape&&(tape.outcome==="death"||
-      tape.steps.some(step=>step.action==="death")||
+      tape.steps.some(step=>step.hp<=0&&
+        (step.action==="trap"||step.action==="death"||
+         step.action==="combat"))||
       tape.encounters.some(encounter=>
         encounter.combat.frames.some(frame=>
           frame.actors.some(actor=>actor.id===heroId&&actor.hp<=0))));
