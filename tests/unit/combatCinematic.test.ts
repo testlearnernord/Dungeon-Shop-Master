@@ -80,7 +80,11 @@ test("Genuine solo ghoul and boss casts retain their true identities",()=>{
   assert.match(sampleGroupCombatIntro(intro,4).caption,/ONE HERO/);
   const troll=[ghoul[0],actor("troll","monsters",5,1,true)];
   const bossIntro=createGroupCombatIntro("boss-1",troll,frame(troll));
-  assert.match(sampleGroupCombatIntro(bossIntro,2).caption,/CAVE TROLL/);
+  assert.equal(bossIntro.duration,BOSS_INTRO_SECONDS,
+    "the shared viewer must not shorten the authored boss introduction");
+  assert.match(sampleGroupCombatIntro(bossIntro,5.7).caption,/TUNNEL MAULER/);
+  assert.deepEqual(sampleGroupCombatIntro(bossIntro,0).eye,
+    [-8.5,7.8,-13], "camera shifts relative to the real saved boss spawn");
   assert.equal(bossIntro.monsterIds.length,1);
   assert.throws(()=>createGroupCombatIntro("solo",[ghoul[0]],frame([ghoul[0]])),
     RangeError);
