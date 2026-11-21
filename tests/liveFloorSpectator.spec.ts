@@ -58,8 +58,34 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   });
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
+  // The explicit Adventurer Board uses actual saved hero levels, HP,
+  // equipment, gold and floor. Passive magical signals remain separate.
+  await page.locator("#open-roster").click();
+  const liveCard=page.locator('#roster-detail-list [data-hero-id="'+ids[2]+'"]');
+  await expect(liveCard.locator("summary")).toContainText("Lv 1");
+  await expect(liveCard.locator("summary")).toContainText("Floor 1");
+  await expect(liveCard.locator(".roster-hp")).toHaveAttribute("aria-valuenow",/\d+/);
+  await liveCard.locator("summary").click();
+  await expect(liveCard.locator(".roster-card-extended")).toContainText("LIVE · exploring · Floor 1");
+  await expect(liveCard.locator(".roster-card-extended")).toContainText("Recovered goods");
+  await expect(liveCard.locator(".roster-card-extended")).toContainText("iron-ore ×1");
+  await page.locator("#close-roster").click();
   await page.locator("#open-dungeon").click();
   await expect(page.locator("#dungeon-floor-select")).toHaveValue("1");
+  const floorOverview=page.locator("#dungeon-map-status");
+  const partyCard=page.locator("#dungeon-temporary-party");
+  await expect(floorOverview).toBeVisible();
+  await expect(partyCard).toBeVisible();
+  const positions=await page.evaluate(()=>{
+    const first=document.querySelector("#dungeon-map-status")!.getBoundingClientRect();
+    const second=document.querySelector("#dungeon-temporary-party")!.getBoundingClientRect();
+    const rail=document.querySelector("#dungeon-left-rail")!.getBoundingClientRect();
+    return {overview:{top:first.top,bottom:first.bottom},
+      party:{top:second.top,bottom:second.bottom},
+      rail:{top:rail.top,bottom:rail.bottom}};
+  });
+  expect(positions.party.top).toBeGreaterThanOrEqual(positions.overview.bottom+3);
+  expect(positions.party.bottom).toBeLessThanOrEqual(positions.rail.bottom+1);
   await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor");
   await expect(page.locator("#dungeon-archive-controls")).toBeHidden();
   const inspect=()=>page.evaluate(async()=>(
