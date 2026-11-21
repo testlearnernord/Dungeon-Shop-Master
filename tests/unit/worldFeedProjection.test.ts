@@ -85,3 +85,75 @@ test("routine world time, unknown events and unrevealed recordings never create 
     }],
   }),[]);
 });
+
+test("one real party chest creates one notice with exact items, equipment and gold",()=>{
+  const seed=createGameState(7351),[a,b]=seed.adventurers;
+  const before={...seed,adventurers:seed.adventurers.map(h=>
+    h.id===a.id||h.id===b.id?{...h,floor:1,status:"exploring" as const}:h),
+    dungeonParties:[{memberIds:[a.id,b.id],floor:1 as const,formedDay:1}]};
+  const updated=before.adventurers.map(h=>{
+    if(h.id===a.id)return {...h,gold:h.gold+5,
+      inventory:{...h.inventory,finds:{...h.inventory.finds,"iron-ore":2}}};
+    if(h.id===b.id)return {...h,gold:h.gold+8,
+      inventory:{...h.inventory,finds:{...h.inventory.finds,coal:1}},
+      equipment:{...h.equipment,weapon:"Iron Sword" as const}};
+    return h;
+  });
+  const events=[a,b].map(h=>({
+    id:"treasure:"+h.id,day:1,worldTick:200,
+    type:"dungeon-live" as const,adventurerId:h.id,
+    dungeonHighlight:"treasure" as const,
+    message:"Committed real spatial treasure step",
+  }));
+  const after={...before,adventurers:updated,
+    events:[...before.events,...events]};
+  const feed=projectWorldFeedChanges(before,after);
+  assert.equal(feed.length,1,"One party, one real chest, one notification");
+  assert.equal(feed[0].title,"PARTY CHEST LOOTED");
+  assert.match(feed[0].detail,/2 Iron Ore/);
+  assert.match(feed[0].detail,/1 Coal/);
+  assert.match(feed[0].detail,/1 Iron Sword/);
+  assert.match(feed[0].detail,/\+13 gold/);
+  assert.match(feed[0].detail,/Floor 1/);
+  assert.deepEqual(projectWorldFeedChanges(after,after),[]);
+});
+
+test("one real group trap publishes each hero's actual damage exactly once",()=>{
+  const seed=createGameState(7351),[a,b]=seed.adventurers;
+  const before={...seed,adventurers:seed.adventurers.map(h=>
+    h.id===a.id||h.id===b.id?{...h,floor:2,status:"exploring" as const}:h),
+    dungeonParties:[{memberIds:[a.id,b.id],floor:2 as const,formedDay:1}]};
+  const after={...before,adventurers:before.adventurers.map(h=>
+    h.id===a.id?{...h,health:h.health-5}:
+    h.id===b.id?{...h,health:h.health-8}:h),
+    events:[...before.events,...[a,b].map(h=>({
+      id:"trap:"+h.id,day:1,worldTick:300,
+      type:"dungeon-live" as const,adventurerId:h.id,
+      dungeonHighlight:"trap" as const,message:"Real trap committed",
+    }))]};
+  const feed=projectWorldFeedChanges(before,after);
+  assert.equal(feed.length,1);
+  assert.equal(feed[0].title,"PARTY TRIGGERED A TRAP");
+  assert.match(feed[0].detail,new RegExp(a.name+".*−5 HP"));
+  assert.match(feed[0].detail,new RegExp(b.name+".*−8 HP"));
+  assert.deepEqual(projectWorldFeedChanges(after,after),[]);
+});
+
+test("only ACTUAL floor crossing announces ascend/descend, never route intent",()=>{
+  const seed=createGameState(7351),hero=seed.adventurers[0];
+  const before={...seed,adventurers:seed.adventurers.map(h=>
+    h.id===hero.id?{...h,floor:2,status:"exploring" as const}:h)};
+  const event={id:"actual-floor-change",day:1,worldTick:450,
+    type:"dungeon-live" as const,adventurerId:hero.id,
+    floorAction:"descend" as const,message:"Planned descent"};
+  const planned={...before,events:[...before.events,event]};
+  assert.deepEqual(projectWorldFeedChanges(before,planned),[],
+    "Choosing a descent without reaching the stairs is not a floor change");
+  const crossed={...planned,adventurers:before.adventurers.map(h=>
+    h.id===hero.id?{...h,floor:3}:h)};
+  const feed=projectWorldFeedChanges(before,crossed);
+  assert.equal(feed.length,1);
+  assert.equal(feed[0].category,"depth");
+  assert.match(feed[0].detail,/Floor 2 → 3/);
+  assert.equal(feed[0].title,"ADVENTURER DESCENDED");
+});
