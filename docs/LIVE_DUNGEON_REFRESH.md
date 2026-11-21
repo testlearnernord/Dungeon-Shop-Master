@@ -174,3 +174,20 @@
   corrupt-save rejection and deterministic v25->v26 migration; the mandatory
   buyback browser smoke checks actual saved reserve accounting and the
   five-good hotbar.
+
+## PR #272 · HUD layout and explicit Adventurer Board visibility
+
+- The LIVE floor overview and Temporary Parties panel use a **single
+  vertical left information rail**. Their cards cannot use competing
+  fixed top-left offsets, and their parent is scroll-bounded on small screens.
+  Archive party cards remain independently visible when floor overview
+  is hidden.
+- The deliberately opened Adventurer Board (R or the physical wall board)
+  now displays actual saved hero names, level, floor, status, current HP,
+  gold, equipment, traits and recovered goods, including remote explorers.
+  These are explicitly labeled LIVE data and trigger no world actions.
+- The passive shop HUD's last-confirmed reports and magical death signals
+  still use the separate knowledge-limited selector. No sealed combat
+  replay details are invented.
+- Required floor browser smoke checks DOM bounding boxes for overview and
+  genuine saved Temporary Party, and verifies unmasked remote hero data.
