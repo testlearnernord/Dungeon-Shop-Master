@@ -1040,11 +1040,11 @@ export function aimAtCellarPortrait():void {
   const scene=Engine.LastCreatedScene!;
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,2.15,-12.02));
 }
-export function aimAtCellarStairs():void {
+export function aimAtCellarStairs(x=-.85):void {
   // Begin BEFORE the rear wall: teleporting behind the seam hid the bug.
-  inspectPlayer({x:-.85,y:1.7,z:-11.55});
+  inspectPlayer({x,y:1.7,z:-11.55});
   const scene=Engine.LastCreatedScene!;
-  (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,.5,-21));
+  (scene.activeCamera as UniversalCamera).setTarget(new Vector3(x,.5,-21));
 }
 const cellarCollisions:string[]=[];
 export function trackCellarCollisions():void{
