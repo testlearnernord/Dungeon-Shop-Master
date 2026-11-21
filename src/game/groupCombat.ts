@@ -380,8 +380,13 @@ function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor |
     const isSignature=other.specialAbility==="grapple-throw";
     const signature=isSignature?trollSignatureProfile(
       fromTrollGroupAbility(other.activeMeleeAbility as TrollGroupMelee)):null;
+    // Defense contact windows are 0.10–0.36s for parry and 0.09–0.43s
+    // for roll. Reacting a quarter-second before windup ends means the
+    // parry has EXPIRED by the 0.14s smash impact (or 0.30s grab impact).
+    // This is the same late committed warning used in the authored duel.
     const lead=signature
-      ?Math.max(.20,signature.windupSeconds-.25)
+      ?Math.max(.20,signature.windupSeconds-
+        (signature.attack==="grab"?.04:.15))
       :other.meleeAbility==="heavy"
         ?meleeAbilityProfile("heavy").windupSeconds+
           meleeAbilityProfile("heavy").strikeDelaySeconds-.28
@@ -633,9 +638,15 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       const action=chosen?.groupAbility??a.meleeAbility;
       const posture=chooseCombatPosture({
         distance:gap,ready:a.cooldown===0&&a.stamina>=13&&
+          // Troll chooses to close the physical gap before beginning a
+          // signature move, so a real 5.1m grab can occur instead of
+          // eternally opening at the 5.78m smash maximum.
+          !(a.specialAbility==="grapple-throw"&&gap>4.8)&&
           !(enemy.specialAbility==="grapple-throw"&&enemy.phase==="windup"),
         clearShot:lineClear(s,a,enemy),
-        attackRange:ranged?11:chosen?.reach??a.reach+enemy.radius,
+        attackRange:ranged?11:
+          a.team==="heroes"&&enemy.specialAbility==="grapple-throw"
+            ?5.3:chosen?.reach??a.reach+enemy.radius,
         approachBeyond:ranged?7:chosen?
           Math.max(3.15,chosen.reach-1.7):
           a.reach+enemy.radius-.20,
