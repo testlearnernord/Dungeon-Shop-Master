@@ -88,7 +88,7 @@
           <div id="inventory" class="inventory" aria-label="Stocking hotbar"></div>
           <details class="controls" aria-label="Keyboard controls"><summary>Controls <span aria-hidden="true">?</span></summary><div class="controls-keys">
             <strong>WASD</strong> move <span>·</span> <strong>Shift</strong> sprint <span>·</span> <strong>Mouse</strong> look
-            <span>·</span> <strong>1–6 / Wheel</strong> select
+            <span>·</span> <strong>1–5 / Wheel</strong> select
             <span>·</span> <strong>Left-click</strong> stock
             <span>·</span> <strong>Right-click</strong> remove
             <span>·</span> <strong>F</strong> select urgent requested item
@@ -123,6 +123,7 @@
             <p class="simulation-note">Level 6 expeditions require individual authorization. Use the roster board for details.</p>
             <ul id="adventurer-roster" aria-label="Active adventurers"></ul>
             <p id="shelf-supplies" class="simulation-note"></p>
+             <p id="material-reserve" class="simulation-note" aria-label="Workshop material reserve"></p>
           </div>
         </section>
         <div id="status" class="status">Loading campaign…</div>
@@ -482,10 +483,10 @@
               <option value="all">All goods</option>
               <option value="supplies">Supplies &amp; provisions</option>
               <option value="equipment">Equipment</option>
-              <option value="materials">Materials</option>
             </select></label>
-          <output id="wholesale-count" aria-live="polite">6 / 6 items</output>
+          <output id="wholesale-count" aria-live="polite">5 / 5 items</output>
         </div>
+        <p class="simulation-note">Iron Ore and Coal come exclusively from returning adventurers and go to the workshop reserve, not the shelves.</p>
         <div id="wholesale-catalog" aria-label="Supplier goods"></div>
         <details>
           <summary>Free bag space (discard, no refund)</summary>

@@ -6,7 +6,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
-import { ITEMS, type ItemId, type Slot } from "./inventory";
+import { SHELF_GOODS,isShelfGood, type ItemId, type Slot } from "./economy.ts";
 import { cloneShopStockModel, getShopStockTemplates } from "./shopStockAssets.ts";
 import { GameStore } from "./gameStore";
 import { getDungeonSurfaces } from "./dungeonSurfaces";
@@ -28,7 +28,7 @@ export class Shop {
   private readonly itemVisuals = new Map<string, Mesh[]>();
   private stockTemplates: ReadonlyMap<ItemId, Mesh> | null = null;
   private readonly shelves = new Map<ShelfId, ShelfGroup>();
-  private selectedItemId: ItemId = ITEMS[0].id;
+  private selectedItemId: ItemId = SHELF_GOODS[0].id;
 
   constructor(
     private readonly scene: Scene,
@@ -67,7 +67,7 @@ export class Shop {
     }).catch(error => console.error("Shop stock GLB loading failed", error));
   }
 
-  select(itemId: ItemId): void { this.selectedItemId = itemId; }
+  select(itemId: ItemId): void { if(isShelfGood(itemId))this.selectedItemId = itemId; }
   stock(slot: Slot, units = 1): string {
     return this.store.transfer(slot.id, this.selectedItemId, "stock", units);
   }

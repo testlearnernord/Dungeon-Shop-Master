@@ -152,3 +152,25 @@
 - Pure unit tests cover scaled hit-testing, bounds and personal knowledge.
   Existing mandatory browser smoke verifies real saved explored/unexplored
   targets, preserved Babylon camera offset and unchanged saved GameState.
+
+## PR #271 · Purchased dungeon minerals into future-forge reserve
+
+- **Coal and Iron Ore are not merchandise.** Only real returning
+  adventurers may offer these recovered minerals for money; they are excluded
+  from wholesale, shelf restocking, merchant bag consumption/discarding and
+  all five stocking hotbar positions.
+- A paid `hero-buyback` now moves one owned ore/coal unit directly into
+  `shopEconomy.materialStorage`. It still transfers the exact amount of gold,
+  decrements the adventurer's individual saved find and records an expense.
+  Bag fullness cannot block material purchases, but lack of gold still can.
+- The workshop reserve is persisted and visible in the buyback panel and
+  management information. **No working forge/crafting gameplay is implied.**
+- Campaign format **v26** strictly validates mineral storage. Existing valid
+  **v25** campaigns automatically move exact ore/coal quantities from both
+  the bag and previously stocked shelf slots into the saved reserve without
+  minting or destroying goods. Current purchase events and all other
+  world/hero fields remain intact. Versions earlier than v25 are not migrated.
+- Unit tests cover conservation, full-bag raw purchases, storage limits,
+  corrupt-save rejection and deterministic v25->v26 migration; the mandatory
+  buyback browser smoke checks actual saved reserve accounting and the
+  five-good hotbar.

@@ -1,6 +1,6 @@
 import type {GameStore} from "./game/gameStore.ts";
 import {availableDungeonOffers} from "./game/dungeonBuyback.ts";
-import {ECONOMY,ITEMS} from "./game/economy.ts";
+import {ECONOMY,ITEMS,isMaterial} from "./game/economy.ts";
 
 /** The Dungeon Shop Master's own staffed counter offer book. All contents
  * come from actual living visitors' individual dungeon finds. Clicking
@@ -51,7 +51,9 @@ export function setupHeroBuybackHud(store:GameStore):void{
     if(!modal.open)return;
     budget.textContent="Galvik: "+state.shopEconomy.balance+
       " gold · Bag "+Object.values(state.shopEconomy.bag).reduce(
-        (sum,value)=>sum+value,0)+"/"+ECONOMY.bagCapacity;
+        (sum,value)=>sum+value,0)+"/"+ECONOMY.bagCapacity+
+      " · Workshop reserve: Iron Ore "+state.shopEconomy.materialStorage["iron-ore"]+
+      " · Coal "+state.shopEconomy.materialStorage.coal;
     offers.replaceChildren();
     if(!entries.length){
       const empty=document.createElement("p");
@@ -72,11 +74,15 @@ export function setupHeroBuybackHud(store:GameStore):void{
       const good=document.createElement("strong");
       good.textContent=item.name+" ×"+offer.count;
       const seller=document.createElement("small");
-      seller.textContent=offer.heroName+" · Found in dungeon";
+      seller.textContent=offer.heroName+" · Found in dungeon"+
+        (isMaterial(offer.itemId)?" · To workshop reserve":" · To shop bag");
       summary.append(good,seller);
       const action=document.createElement("button");
       action.type="button";action.textContent="Buy · "+offer.price+"g";
-      action.disabled=bagFull||state.shopEconomy.balance<offer.price;
+      action.disabled=(!isMaterial(offer.itemId)&&bagFull)||
+        state.shopEconomy.balance<offer.price||
+        (isMaterial(offer.itemId)&&
+         state.shopEconomy.materialStorage[offer.itemId]>=Number.MAX_SAFE_INTEGER);
       action.setAttribute("aria-label","Buy one "+item.name+" from "+offer.heroName);
       action.addEventListener("click",()=>{
         feedback.textContent=store.buyDungeonFind(offer.heroId,offer.itemId);

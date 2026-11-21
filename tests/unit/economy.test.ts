@@ -56,7 +56,9 @@ test("catalog, starter economy and shelf layout are complete, independent and bo
   assert.notEqual(first.slots, second.slots);
   assert.deepEqual(first.slots,[]);
   assert.deepEqual(second.slots,[]);
-  assert.deepEqual(first.bag, { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2, "iron-sword": 0, "leather-vest": 0, coal:0 });
+  assert.deepEqual(first.bag, { "healing-herb": 5, "mana-potion": 3, "iron-ore": 0, bread: 2, "iron-sword": 0, "leather-vest": 0, coal:0 });
+  assert.deepEqual(first.materialStorage,{"iron-ore":0,coal:0});
+  assert.notStrictEqual(first.materialStorage,second.materialStorage);
   assert.equal(first.slots.length,0,"merchandise stays in the bag until a real shelf is built");
 });
 
@@ -81,12 +83,12 @@ test("wholesale rejects invalid quantities, item IDs, insufficient funds and ove
   const poor = { ...state, shopEconomy: { ...state.shopEconomy, balance: 1 } };
   assert.equal(buyWholesale(poor, "bread", 1).state, poor);
   const full = { ...state, shopEconomy: { ...state.shopEconomy, balance: 100, bag: {
-    ...state.shopEconomy.bag, bread: 12,
+    ...state.shopEconomy.bag, bread: 16,
   } } };
   assert.equal(buyWholesale(full, "bread", 1).state, full);
-  const almostFull = { ...full, shopEconomy: { ...full.shopEconomy, bag: { ...full.shopEconomy.bag, bread: 11 } } };
+  const almostFull = { ...full, shopEconomy: { ...full.shopEconomy, bag: { ...full.shopEconomy.bag, bread: 15 } } };
   assert.equal(buyWholesale(almostFull, "bread", 2).state, almostFull);
-  assert.equal(buyWholesale(almostFull, "bread", 1).state.shopEconomy.bag.bread, 12);
+  assert.equal(buyWholesale(almostFull, "bread", 1).state.shopEconomy.bag.bread, 16);
 });
 
 test("shelf stock/remove conserves each item and gold, and clears the last unit", () => {
@@ -105,18 +107,19 @@ test("shelf stock/remove conserves each item and gold, and clears the last unit"
 test("discarding removes exactly one bag unit without refund and is pure and deterministic", () => {
   const state = freeze(createGameState());
   const snapshot = structuredClone(state);
-  const result = discardBag(state, "iron-ore");
+  const result = discardBag(state, "bread");
   assert.match(result.message, /^Discarded/);
-  assert.equal(result.state.shopEconomy.bag["iron-ore"], state.shopEconomy.bag["iron-ore"] - 1);
+  assert.equal(result.state.shopEconomy.bag.bread, state.shopEconomy.bag.bread - 1);
   assert.equal(result.state.shopEconomy.balance, state.shopEconomy.balance);
   assert.equal(result.state.shopEconomy.slots, state.shopEconomy.slots);
   assert.deepEqual(state, snapshot);
-  assert.deepEqual(discardBag(state, "iron-ore"), result);
+  assert.deepEqual(discardBag(state, "bread"), result);
+  assert.strictEqual(discardBag(state,"iron-ore").state,state);
   assert.equal(discardBag(state, "missing" as ItemId).state, state);
   const empty = freeze({
-    ...state, shopEconomy: { ...state.shopEconomy, bag: { ...state.shopEconomy.bag, "iron-ore": 0 } },
+    ...state, shopEconomy: { ...state.shopEconomy, bag: { ...state.shopEconomy.bag, bread: 0 } },
   });
-  assert.equal(discardBag(empty, "iron-ore").state, empty);
+  assert.equal(discardBag(empty, "bread").state, empty);
 });
 
 test("bankrupt merchants cannot receive free healing stock", () => {
@@ -143,7 +146,7 @@ test("shelf transactions reject missing, full, wrong-item, empty and invalid ope
   assert.equal(transferShelf(full, slotId, "bread", "stock").state, full);
   const emptyBag = { ...state, shopEconomy: { ...state.shopEconomy, bag: { ...state.shopEconomy.bag, bread: 0 } } };
   assert.equal(transferShelf(emptyBag, slotId, "bread", "stock").state, emptyBag);
-  const fullBag = { ...state, shopEconomy: { ...state.shopEconomy, bag: { ...state.shopEconomy.bag, bread: 12 } } };
+  const fullBag = { ...state, shopEconomy: { ...state.shopEconomy, bag: { ...state.shopEconomy.bag, bread: 16 } } };
   assert.equal(transferShelf(fullBag, "shelf-1-slot-2", "bread", "remove").state, fullBag);
 });
 
@@ -340,10 +343,10 @@ test("Shift-clear preserves reserved carts, bag limit and last-slot identity",()
   assert.equal(removed.state.shopEconomy.slots[0].itemId,null);
   assert.deepEqual(removed.state,state);
   const fullBag={...stocked,shopEconomy:{...stocked.shopEconomy,
-    bag:{...stocked.shopEconomy.bag,"iron-ore":19}}};
+    bag:{...stocked.shopEconomy.bag,"iron-sword":19}}};
   assert.equal(transferShelf(fullBag,slotId,"healing-herb","remove",5).state,fullBag);
   const oneFree={...stocked,shopEconomy:{...stocked.shopEconomy,
-    bag:{...stocked.shopEconomy.bag,"iron-ore":18}}};
+    bag:{...stocked.shopEconomy.bag,"iron-sword":18}}};
   const partial=transferShelf(oneFree,slotId,"healing-herb","remove",5);
   assert.equal(partial.state.shopEconomy.slots[0].quantity,4);
   assert.equal(partial.state.shopEconomy.bag["healing-herb"],1);

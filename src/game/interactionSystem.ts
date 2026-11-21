@@ -5,7 +5,7 @@ import "@babylonjs/core/Culling/ray";
 import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Scene } from "@babylonjs/core/scene";
-import { ITEMS, type ItemId } from "./inventory";
+import {SHELF_GOODS,type ItemId} from "./economy.ts";
 import { Shop } from "./shop";
 import {describeShelfFocus} from "./shopServiceFocus.ts";
 import type { WorldInteractable } from "./world";
@@ -41,17 +41,17 @@ export class InteractionSystem {
     private readonly onMerchantAction: (action:MerchantAction)=>void = () => {},
     private readonly openFishing:()=>boolean=()=>false,
   ) {
-    this.shop.select(ITEMS[0].id);
+    this.shop.select(SHELF_GOODS[0].id);
     this.registerEvents();
     this.publish();
   }
 
   selectItem(itemId:ItemId):void {
-    const index=ITEMS.findIndex(item=>item.id===itemId);
+    const index=SHELF_GOODS.findIndex(item=>item.id===itemId);
     if(index<0)return;
     this.selectedIndex=index;
     this.shop.select(itemId);
-    this.message=`Selected ${ITEMS[index].name}.`;
+    this.message=`Selected ${SHELF_GOODS[index].name}.`;
     this.publish();
   }
 
@@ -60,7 +60,7 @@ export class InteractionSystem {
     this.heldButton = null;
     this.heldSlotId = null;
     this.selectedIndex = 0;
-    this.shop.select(ITEMS[0].id);
+    this.shop.select(SHELF_GOODS[0].id);
     this.message = "Campaign ready. Click to enter the shop.";
     this.publish();
   }
@@ -82,9 +82,9 @@ export class InteractionSystem {
       if (document.querySelector("dialog[open]")) return;
       event.preventDefault();
       const direction = Math.sign(event.deltaY);
-      this.selectedIndex = (this.selectedIndex + direction + ITEMS.length) % ITEMS.length;
-      this.shop.select(ITEMS[this.selectedIndex].id);
-      this.message = `Selected ${ITEMS[this.selectedIndex].name}.`;
+      this.selectedIndex = (this.selectedIndex + direction + SHELF_GOODS.length) % SHELF_GOODS.length;
+      this.shop.select(SHELF_GOODS[this.selectedIndex].id);
+      this.message = `Selected ${SHELF_GOODS[this.selectedIndex].name}.`;
       this.publish();
     }, { passive: false });
     this.canvas.addEventListener("pointerdown", (event) => {
@@ -121,8 +121,8 @@ export class InteractionSystem {
           !event.metaKey && !event.shiftKey && this.isShopActive() && !document.querySelector("dialog[open]") &&
           !(event.target instanceof HTMLElement &&
             (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT","BUTTON"].includes(event.target.tagName))) &&
-          /^Digit[1-6]$/.test(event.code)){
-        this.selectItem(ITEMS[Number(event.code.slice(-1))-1].id);
+          /^Digit[1-5]$/.test(event.code)){
+        this.selectItem(SHELF_GOODS[Number(event.code.slice(-1))-1].id);
         event.preventDefault();
         return;
       }
@@ -218,7 +218,7 @@ export class InteractionSystem {
     }
     const locked=this.store.state.shopCarts.some(cart=>
       cart.lines.some(line=>line.slotId===current.id));
-    const hint=describeShelfFocus(current,ITEMS[this.selectedIndex].id,
+    const hint=describeShelfFocus(current,SHELF_GOODS[this.selectedIndex].id,
       this.store.state.shopEconomy.bag,locked);
     if(heading.textContent!==hint.title)heading.textContent=hint.title;
     if(action.textContent!==hint.instruction)
@@ -321,6 +321,6 @@ export class InteractionSystem {
   }
 
   private publish(): void {
-    this.onUpdate(this.message, ITEMS[this.selectedIndex].id);
+    this.onUpdate(this.message, SHELF_GOODS[this.selectedIndex].id);
   }
 }

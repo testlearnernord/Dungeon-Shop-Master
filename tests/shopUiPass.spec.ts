@@ -7,17 +7,17 @@ test("wholesale shows live bag and shelf counts, matching icons and filtered pro
   await expect(page.locator("#day")).toHaveText("Day 1");
   await page.locator("#open-wholesale").click();
   await expect(page.locator("#wholesale-gold")).toHaveText("20g");
-  await expect(page.locator("#wholesale-bag-fill")).toHaveText("14 / 24 bag slots");
+  await expect(page.locator("#wholesale-bag-fill")).toHaveText("10 / 24 bag slots");
   const cards=page.locator("#wholesale-catalog .catalog-row");
-  await expect(cards).toHaveCount(6);
-  await expect(page.locator("#wholesale-count")).toHaveText("6 / 6 items");
+  await expect(cards).toHaveCount(5);
+  await expect(page.locator("#wholesale-count")).toHaveText("5 / 5 items");
   const symbolIds=await cards.locator(".catalog-item-icon use").evaluateAll(nodes=>
     nodes.map(node=>node.getAttribute("href")));
-  expect(symbolIds).toHaveLength(6);
+  expect(symbolIds).toHaveLength(5);
   expect(symbolIds.every(uri=>uri?.includes("assets/ui-item-icons.svg#"))).toBe(true);
   await page.locator("#wholesale-category").selectOption("equipment");
   await expect(cards.filter({visible:true})).toHaveCount(2);
-  await expect(page.locator("#wholesale-count")).toHaveText("2 / 6 items");
+  await expect(page.locator("#wholesale-count")).toHaveText("2 / 5 items");
   await page.locator("#wholesale-category").selectOption("all");
   await page.locator("#wholesale-search").fill("waybread");
   await expect(cards.filter({visible:true})).toHaveCount(1);
@@ -27,7 +27,7 @@ test("wholesale shows live bag and shelf counts, matching icons and filtered pro
   await bread.getByRole("button",{name:"Buy 1 Waybread"}).click();
   await expect(bread.locator(".catalog-bag-amount")).toHaveText("Bag: 3");
   await expect(page.locator("#wholesale-gold")).toHaveText("18g");
-  await expect(page.locator("#wholesale-bag-fill")).toHaveText("15 / 24 bag slots");
+  await expect(page.locator("#wholesale-bag-fill")).toHaveText("11 / 24 bag slots");
   expect(errors).toEqual([]);
 });
 

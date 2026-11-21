@@ -1,5 +1,5 @@
 import type {GameState,WorldEvent} from "./gameState.ts";
-import {ECONOMY,ITEMS,type ItemId} from "./economy.ts";
+import {ECONOMY,ITEMS,isMaterial,type ItemId} from "./economy.ts";
 
 export interface HeroDungeonOffer {
   readonly heroId:string;
@@ -34,10 +34,12 @@ export function buyHeroDungeonFind(
     o.heroId===heroId&&o.itemId===itemId);
   if(!offer)return {state,message:"That adventurer has no such goods to sell."};
   const held=Object.values(state.shopEconomy.bag).reduce((a,b)=>a+b,0);
-  if(held>=ECONOMY.bagCapacity)
+  if(!isMaterial(itemId)&&held>=ECONOMY.bagCapacity)
     return {state,message:"Galvik's bag is full."};
   if(state.shopEconomy.balance<offer.price)
     return {state,message:"Not enough gold for this offer."};
+  if(isMaterial(itemId)&&state.shopEconomy.materialStorage[itemId]>=Number.MAX_SAFE_INTEGER)
+    return {state,message:"The workshop reserve is at its numeric limit."};
   const hero=state.adventurers.find(h=>h.id===heroId)!;
   if(hero.gold+offer.price>Number.MAX_SAFE_INTEGER)
     return {state,message:"The trade would exceed the gold ledger."};
@@ -59,7 +61,14 @@ export function buyHeroDungeonFind(
         inventory:{...member.inventory,finds}}:member),
     shopEconomy:{...state.shopEconomy,
       balance:state.shopEconomy.balance-offer.price,
-      bag:{...state.shopEconomy.bag,
+      // Materials go straight into the saved workshop reserve and never
+      // consume Galvik's 24 carried shop-goods slots.
+      materialStorage:isMaterial(itemId)?{
+        ...state.shopEconomy.materialStorage,
+        [itemId]:state.shopEconomy.materialStorage[itemId]+1,
+      }:state.shopEconomy.materialStorage,
+      bag:isMaterial(itemId)?state.shopEconomy.bag:{
+        ...state.shopEconomy.bag,
         [itemId]:(state.shopEconomy.bag[itemId]??0)+1}},
     events:[...state.events,event],
   },message:event.message};

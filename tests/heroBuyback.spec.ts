@@ -18,15 +18,19 @@ test("returning adventurer sells one real find to Galvik, saved with a paid expe
     await new CampaignStorage().saveGame(state);
     return {heroId:seller.id,startingGold:seller.gold,
       shopGold:state.shopEconomy.balance,
-      bagOre:state.shopEconomy.bag["iron-ore"]};
+      reserveOre:state.shopEconomy.materialStorage["iron-ore"]};
   });
   await page.reload();
   await expect(page.locator("#save-status")).toHaveText(/Continued saved Day 1\./);
+  await expect(page.locator("#inventory .inventory-row")).toHaveCount(5);
+  await expect(page.locator('#inventory [data-item-id="iron-ore"]')).toHaveCount(0);
+  await expect(page.locator('#inventory [data-item-id="coal"]')).toHaveCount(0);
   const trigger=page.locator("#open-hero-offers");
   await expect(trigger).toContainText("Hero loot");
   await trigger.click();
   const modal=page.locator("#hero-buyback-hud");
   await expect(modal).toBeVisible();
+  await expect(modal.locator(".hero-buyback-budget")).toContainText("Workshop reserve");
   const offer=modal.locator(".hero-buyback-offer").filter({hasText:"Iron Ore"});
   await expect(offer).toContainText("×2");
   await offer.getByRole("button",{name:/Buy one Iron Ore/}).click();
@@ -46,14 +50,16 @@ test("returning adventurer sells one real find to Galvik, saved with a paid expe
     if(!state)throw new Error("The real campaign was not saved");
     return {
       merchantGold:state.shopEconomy.balance,
-      merchantOre:state.shopEconomy.bag["iron-ore"],
+      merchantOre:state.shopEconomy.materialStorage["iron-ore"],
+      bagOre:state.shopEconomy.bag["iron-ore"],
       heroGold:state.adventurers.find(h=>h.id===(state.adventurers[0].id))!.gold,
       heroOre:state.adventurers[0].inventory.finds?.["iron-ore"],
       receipts:state.events.filter(e=>e.type==="hero-buyback"),
     };
   });
   expect(stored.merchantGold).toBe(fixture.shopGold-2);
-  expect(stored.merchantOre).toBe(fixture.bagOre+1);
+  expect(stored.merchantOre).toBe(fixture.reserveOre+1);
+  expect(stored.bagOre).toBe(0);
   expect(stored.heroGold).toBe(fixture.startingGold+2);
   expect(stored.heroOre).toBe(1);
   expect(stored.receipts).toHaveLength(1);

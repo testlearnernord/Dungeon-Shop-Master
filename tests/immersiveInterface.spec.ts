@@ -9,7 +9,7 @@ test("default shop HUD is transparent and the full shop remains in view",async({
   await expect(page.locator("#merchant-gold")).toBeVisible();
   await expect(page.locator("#open-wholesale")).toBeVisible();
   const dock=page.locator("#inventory");
-  await expect(dock.locator(".inventory-row")).toHaveCount(6);
+  await expect(dock.locator(".inventory-row")).toHaveCount(5);
   const appearance=await dock.evaluate(element=>{
     const box=element.getBoundingClientRect(),css=getComputedStyle(element);
     return {width:box.width,height:box.height,bg:css.backgroundColor,

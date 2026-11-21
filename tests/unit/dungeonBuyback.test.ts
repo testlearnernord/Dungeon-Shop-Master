@@ -31,8 +31,9 @@ test("buyback transfers one physical item and its gold exactly once per receipt"
   assert.equal(first.state.adventurers[0].inventory.finds?.["iron-ore"],1);
   assert.equal(first.state.adventurers[0].gold,before.adventurers[0].gold+price);
   assert.equal(first.state.shopEconomy.balance,before.shopEconomy.balance-price);
-  assert.equal(first.state.shopEconomy.bag["iron-ore"],
-    before.shopEconomy.bag["iron-ore"]+1);
+  assert.equal(first.state.shopEconomy.materialStorage["iron-ore"],
+    before.shopEconomy.materialStorage["iron-ore"]+1);
+  assert.equal(first.state.shopEconomy.bag["iron-ore"],0);
   const receipt=first.state.events.at(-1)!;
   assert.equal(receipt.type,"hero-buyback");
   assert.equal(receipt.quantity,1);
@@ -83,7 +84,12 @@ test("buyback rejects insufficient funds and a full inventory atomically",()=>{
     item.id,item.id==="healing-herb"?ECONOMY.bagCapacity:0,
   ])) as Record<ItemId,number>;
   const full:GameState={...before,shopEconomy:{...before.shopEconomy,bag}};
-  assert.strictEqual(buyHeroDungeonFind(full,id,"coal").state,full);
+  const boughtCoal=buyHeroDungeonFind(full,id,"coal");
+  assert.notStrictEqual(boughtCoal.state,full,
+    "Materials do not consume any shop bag capacity");
+  assert.equal(boughtCoal.state.shopEconomy.materialStorage.coal,
+    full.shopEconomy.materialStorage.coal+1);
+  assert.equal(boughtCoal.state.shopEconomy.bag.coal,0);
   assert.equal(full.events.length,before.events.length);
 });
 
@@ -100,4 +106,23 @@ test("site loot and multi-hero ownership are deterministic and never duplicate i
   assert.equal(count,items.length);
   assert.equal(heroes.every(hero=>hero.inventory.finds===undefined),true,
     "The supplied adventurer snapshot must remain untouched");
+});
+
+test("shop bag full blocks recovered consumables but not forge materials",()=>{
+  const base=stockedHero(),id=base.adventurers[0].id;
+  const withHerb:GameState={...base,adventurers:base.adventurers.map(hero=>
+    hero.id===id?{...hero,inventory:{...hero.inventory,
+      finds:{...hero.inventory.finds,"healing-herb":1}}}:hero)};
+  const bag=Object.fromEntries(ITEMS.map(item=>[
+    item.id,item.id==="bread"?ECONOMY.bagCapacity:0,
+  ])) as Record<ItemId,number>;
+  const full={...withHerb,shopEconomy:{...withHerb.shopEconomy,bag}};
+  assert.strictEqual(buyHeroDungeonFind(full,id,"healing-herb").state,full);
+  const coal=buyHeroDungeonFind(full,id,"coal");
+  assert.notStrictEqual(coal.state,full);
+  assert.equal(coal.state.shopEconomy.bag.bread,ECONOMY.bagCapacity);
+  assert.equal(coal.state.shopEconomy.materialStorage.coal,1);
+  assert.equal(coal.state.shopEconomy.balance,
+    full.shopEconomy.balance-dungeonBuybackPrice("coal"));
+  assert.deepEqual(parseSave(serializeSave(coal.state)),coal.state);
 });

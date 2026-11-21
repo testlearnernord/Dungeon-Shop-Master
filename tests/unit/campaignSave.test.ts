@@ -48,7 +48,7 @@ test("seeded 45-day spatial-dungeon continuation preserves history, RNG, legitim
     for (let tick = 0; tick < 45; tick += 1) {
       function step(state: GameState): GameState {
         if (tick % 3 === 0) state = buyWholesale(state, "bread", 1).state;
-        if (tick % 5 === 0) state = discardBag(state, "iron-ore").state;
+        if (tick % 5 === 0) state = discardBag(state, "bread").state;
         state = transferShelf(state, "shelf-2-slot-1", "bread", "stock").state;
         if (tick % 7 === 0) state = transferShelf(state, "shelf-1-slot-3", "healing-herb", "remove").state;
         return advanceDay(state).state;
@@ -156,7 +156,7 @@ test("rejects malformed envelopes and incompatible versions without migrations",
     for (const version of [0, 999, "1", null]) {
       const envelope: any = JSON.parse(encoded());
       envelope[key] = version;
-      assert.throws(() => parseSave(JSON.stringify(envelope)), /incompatible.*no migrations/);
+      assert.throws(() => parseSave(JSON.stringify(envelope)), /incompatible/);
     }
   }
   for (const savedAt of ["yesterday", "2026-02-30T00:00:00.000Z", "2026-01-01", null, 42]) {
@@ -470,4 +470,50 @@ test("explicit saves and deletion recover structurally corrupt IndexedDB records
     assert.equal(stored, undefined);
     assert.equal(await storage.loadGame(), null);
   }
+});
+
+test("v25 campaigns migrate existing Ore/Coal from bag and shelves without duplication",()=>{
+  const now=createGameState(7351);
+  const old=JSON.parse(serializeSave(now));
+  old.simulationVersion=25;
+  old.payload.simulationVersion=25;
+  delete old.payload.shopEconomy.materialStorage;
+  old.payload.shopEconomy.bag["iron-ore"]=4;
+  old.payload.shopEconomy.bag.coal=2;
+  old.payload.shopEconomy.slots[0].itemId="coal";
+  old.payload.shopEconomy.slots[0].quantity=3;
+  old.payload.shopEconomy.slots[1].itemId="iron-ore";
+  old.payload.shopEconomy.slots[1].quantity=2;
+  const raw=JSON.stringify(old);
+  const migrated=parseSave(raw);
+  assert.equal(migrated.simulationVersion,SIMULATION_VERSION);
+  assert.deepEqual(migrated.shopEconomy.materialStorage,{"iron-ore":6,coal:5});
+  assert.equal(migrated.shopEconomy.bag["iron-ore"],0);
+  assert.equal(migrated.shopEconomy.bag.coal,0);
+  assert.deepEqual(migrated.shopEconomy.slots.slice(0,2).map(slot=>({
+    id:slot.itemId,quantity:slot.quantity,
+  })),[{id:null,quantity:0},{id:null,quantity:0}]);
+  assert.equal(migrated.shopEconomy.balance,now.shopEconomy.balance);
+  assert.equal(migrated.events.length,now.events.length);
+  assert.equal(migrated.adventurers.length,now.adventurers.length);
+  assert.deepEqual(parseSave(serializeSave(migrated)),migrated);
+  assert.deepEqual(parseSave(raw),migrated,"Migration must not mint goods on repeat loads");
+  assert.throws(()=>serializeSave({...now,shopEconomy:{
+    ...now.shopEconomy,bag:{...now.shopEconomy.bag,coal:1},
+  }}),/raw materials belong/);
+  const forged=structuredClone(old);
+  forged.payload.shopEconomy.materialStorage={"iron-ore":500,coal:500};
+  assert.throws(()=>parseSave(JSON.stringify(forged)),
+    /materialStorage.*not supported|materialStorage/);
+});
+
+test("v26 campaigns enforce strict workshop stock schema and prohibit materials on shelves",()=>{
+  const state=createGameState();
+  assert.throws(()=>serializeSave({...state,shopEconomy:{
+    ...state.shopEconomy,materialStorage:{"iron-ore":-1,coal:0},
+  }}),/materialStorage.iron-ore/);
+  assert.throws(()=>serializeSave({...state,shopEconomy:{
+    ...state.shopEconomy,slots:state.shopEconomy.slots.map((slot,i)=>
+      i===0?{...slot,itemId:"iron-ore" as const,quantity:1}:slot),
+  }}),/itemId/);
 });

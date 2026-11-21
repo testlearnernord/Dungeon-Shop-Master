@@ -39,21 +39,21 @@ test("store deduplicates discard requests and rejects empty discards without not
   const store = new GameStore(initial);
   let notifications = 0;
   store.subscribe(() => { notifications += 1; });
-  assert.match(store.discard("iron-ore", 100), /^Discarded/);
+  assert.match(store.discard("bread", 100), /^Discarded/);
   const discarded = store.state;
-  assert.equal(discarded.shopEconomy.bag["iron-ore"], initial.shopEconomy.bag["iron-ore"] - 1);
+  assert.equal(discarded.shopEconomy.bag.bread, initial.shopEconomy.bag.bread - 1);
   assert.equal(discarded.shopEconomy.balance, initial.shopEconomy.balance);
   assert.equal(notifications, 1);
-  assert.match(store.discard("iron-ore", 100), /already processed/);
+  assert.match(store.discard("bread", 100), /already processed/);
   assert.match(store.purchase("bread", 1, 100), /already processed/);
   assert.equal(store.state, discarded);
   assert.equal(notifications, 1);
   const emptyInitial = {
-    ...initial, shopEconomy: { ...initial.shopEconomy, bag: { ...initial.shopEconomy.bag, "iron-ore": 0 } },
+    ...initial, shopEconomy: { ...initial.shopEconomy, bag: { ...initial.shopEconomy.bag, bread: 0 } },
   };
   const empty = new GameStore(emptyInitial);
   empty.subscribe(() => { notifications += 1; });
-  assert.match(empty.discard("iron-ore", 101), /out of/);
+  assert.match(empty.discard("bread", 101), /out of/);
   assert.equal(empty.state, emptyInitial);
   assert.equal(notifications, 1);
 });

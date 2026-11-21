@@ -23,7 +23,7 @@ Browser input / shop interactions
               (read-only presentation)
 ```
 
-- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 25`.
+- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 26`.
 - `worldClock.ts` persists a monotonic tick and ordered future events, with 50-ms ticks, 20 ticks per game minute and 28,800 ticks per game day. Stable lane/sequence ordering is part of determinism. Gameplay events, not Babylon frames, advance customers, timed dungeon steps and combat.
 - `liveDungeonRuntime.ts` schedules one connected spatial dungeon step every **200 world ticks** (10 unpaused seconds) and commits batches of **30 actual 60-Hz fight ticks** every **10 world ticks**. All newly generated combat, including the unique Floor-6 boss, now steps the real `groupCombat.ts` motor at 60 Hz. Floor 6 uses `sharedBossCombat.ts` solely to project those confirmed group actor positions, HP, defense, throws and cues into the existing BossReplay-v1 film/ledger shape; that projection does not reroll AI, deal damage or own a separate fight clock. The obsolete `liveBossEncounter.ts` adapter was retired in C3.
 - `gameStore.ts` records actual player and shop actions, physical shop-exit events, accepted credit, paid cart settlement, save operations and bed closure. Day closure does not reroll live expeditions.
@@ -35,7 +35,7 @@ Browser input / shop interactions
 | Domain | Responsibility | Current modules |
 | --- | --- | --- |
 | World and saves | State contract, deterministic time/events, strict persisted validation | `gameState.ts`, `gameStore.ts`, `worldClock.ts`, `liveDungeonRuntime.ts`, `campaignSave.ts` |
-| Physical commerce | Inventory, carts, genuine register transactions, debt, arriving/departing shoppers, paid adventurer loot buyback | `economy.ts`, `shopCarts.ts`, `shopCredit.ts`, `customerCheckout.ts`, `dungeonBuyback.ts`, `dungeonLoot.ts`, `shopArrivals.ts`, `shopTraffic.ts` |
+| Physical commerce | Inventory, independent saved Ore/Coal workshop reserve, carts, genuine register transactions, debt, arriving/departing shoppers, paid adventurer loot buyback | `economy.ts`, `shopCarts.ts`, `shopCredit.ts`, `customerCheckout.ts`, `dungeonBuyback.ts`, `dungeonLoot.ts`, `shopArrivals.ts`, `shopTraffic.ts` |
 | NPC travel and service | Saved visitor locations/waypoints and exclusive shelf/queue reservations, visuals follow simulation | `npcVisualSystem.ts`, `shopperNavigation.ts`, `shopServiceSpots.ts`, `checkoutQueue.ts` |
 | Shop layout | One furniture registry, placement validation, mined room, service reachability | `furnitureRegistry.ts`, `furniturePlacement.ts`, `furnitureBlueprint.ts`, `level5Room.ts`, `shopServiceReachability.ts` |
 | Individual heroes | Persistent stats, equipment, medium-term intentions, voluntary parties | `adventurers.ts`, `dungeonDecisions.ts`, `dungeonParties.ts` |
