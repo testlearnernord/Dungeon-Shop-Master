@@ -241,3 +241,25 @@
 - Pure tests cover imported old yaw, direction clamps and drag lock;
   mandatory real Babylon browser smoke verifies W moves north after
   mouse-dragging and that the N marker is visible.
+
+## PR #276 · Real overview props and shared static Ghoul presentation
+
+- Every seeded treasure site now has a visibly wooden **3D chest** with
+  raised lid, brass bands and lock plate. Trap sites show an actual metal
+  pressure plate with **five visible spikes**, not a red square/diamond.
+  These are Babylon presentation children of the **same existing feature
+  roots**: existing saved resolved feature IDs, hero fog and tooltip
+  pick identity are not duplicated or overridden.
+- Ordinary Ghoul spawn sites initially retain their illustrated fallback
+  while the build-generated **authored Tripo Ghoul GLB** is loaded exactly
+  once per Babylon floor. The same real render geometry is then shared
+  through static scene instances at each seeded spawn tile. No Ghoul
+  combat AI, animation groups, 60-Hz fighter stepping or second model load
+  per spawn is initiated in the overview.
+- A load failure leaves the illustrated fallback visible and records
+  the actual error on the marker. The required LIVE floor browser test
+  insists on a successful authored 3D model load, all chest lids/bands,
+  five spikes per trap, and zero leftover icon fallbacks.
+- The optional 3D fight arena remains the only home of the full
+  **animated** skinned monster performances; floor models are static
+  read-only landmarks tied to true saved dungeon sites.

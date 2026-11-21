@@ -68,6 +68,8 @@ Browser input / shop interactions
 
 **LIVE map compass invariant:** the physical LIVE floor observer uses world +Z as fixed north and keeps its Babylon map yaw at zero. W/S travel +Z/-Z; A/D travel -X/+X regardless of prior camera pose, and mouse dragging slides/tilts without changing north-up. This map-only control policy does not apply to opt-in boss/ordinary arenas or the Combat Lab.
 
+**LIVE floor visual props:** dungeonFeatureProps.ts creates recognizable wooden chests and spiked pressure plates as child meshes of the existing feature roots. dungeonGhoulMapInstances.ts loads the authored build-generated Ghoul GLB once per Babylon floor scene and shares its static render mesh at actual seeded monster sites; failures keep the old illustrated fallback visible. Only the opt-in dungeonGhoulVisual.ts combat actor samples the 15 authored animation clips. The pure LIVE dungeon world and shared 60-Hz combat tick owner are unchanged.
+
 **LIVE floor update boundary:** `liveFloorSceneDiff.ts` classifies committed floor-geometry/fog changes separately from combat-only frame and HP changes. `DungeonReplayScene.showLiveFloor` preserves the real updated frame and HP metadata on every new checkpoint while skipping costly Babylon lights, route meshes, fog and minimap redraws unless a spatial fact changes. It must not gate `GameStore`, 60-Hz combat, arena frames, loot or clock events.
 
 ## 5. Rendering and performance boundary

@@ -26,6 +26,10 @@ import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
+import {createDungeonFeaturePalette,createReadableDungeonChest,
+  createReadableDungeonTrap} from "./dungeonFeatureProps.ts";
+import {installGhoulMapInstances,type GhoulMapSite}
+  from "./dungeonGhoulMapInstances.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
 import {minimapPointFromClient,isKnownMinimapCell}
   from "./dungeonMinimapNavigation.ts";
@@ -618,9 +622,10 @@ export class DungeonViewer {
     const rock=makeMat("dungeon-rock",CRYPT_WALL);
     const floor=makeMat("dungeon-corridor-floor",CRYPT_FLOOR);
     const roomStone=makeMat("dungeon-room-floor",CRYPT_STONE);
-    const gold=makeMat("dungeon-gold","#d8a548",true);
-    const spike=makeMat("dungeon-spikes","#b75a4b",true);
+    const featurePaint=createDungeonFeaturePalette(scene);
     const ghoulIcon=createGhoulMapIconMaterial(scene);
+    const ghoulMarkerMat=makeMat("dungeon-3d-ghoul-site-hitbox","#442d26");
+    ghoulMarkerMat.alpha=0;
     const underlay=MeshBuilder.CreateBox("dungeon-foundation",{
       width:layout.width*TILE_SIZE,height:0.35,depth:layout.height*TILE_SIZE,
     },scene);
@@ -677,49 +682,49 @@ export class DungeonViewer {
         scene,room,getWorld(layout,room),i));
     });
 
+    const ghoulSites:GhoulMapSite[]=[];
     for(const feature of layout.features){
       const pos=getWorld(layout,feature);
       if(feature.kind==="treasure"){
-        const chest=MeshBuilder.CreateBox("dungeon-treasure-"+feature.id,
-          {width:1.25,height:0.85,depth:0.9},scene);
-        chest.position.set(pos.x,0.52,pos.z);
-        chest.material=gold;
-        chest.metadata={spectatorFeatureId:feature.id,
-          spectatorFeatureKind:"treasure"};
-        const lid=MeshBuilder.CreateBox("dungeon-chest-lid-"+feature.id,
-          {width:1.29,height:.25,depth:1.02},scene);
-        lid.parent=chest;lid.position.y=.58;lid.material=gold;
-        lid.isPickable=false;
+        const chest=createReadableDungeonChest(
+          scene,feature,pos,featurePaint);
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
           kind:feature.kind,mesh:chest});
       } else if(feature.kind==="trap"){
-        const marker=MeshBuilder.CreateCylinder("dungeon-trap-"+feature.id,
-          {height:0.22,diameter:1.4,tessellation:4},scene);
-        marker.position.set(pos.x,0.18,pos.z);
-        marker.rotation.y=Math.PI/4;
-        marker.material=spike;
-        marker.metadata={spectatorFeatureId:feature.id,
-          spectatorFeatureKind:"trap"};
+        const plate=createReadableDungeonTrap(
+          scene,feature,pos,featurePaint);
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
-          kind:feature.kind,mesh:marker});
+          kind:feature.kind,mesh:plate});
       } else {
-        // Detailed illustrated Ghoul icon shares one tiny GPU texture.
-        // Neutral map deliberately never spawns an animated combat monster:
-        // the existing opt-in combat arena still owns the actual actor rig.
-        const enemy=MeshBuilder.CreatePlane("dungeon-monster-"+feature.id,
-          {width:1.75,height:1.75},scene);
-        enemy.rotation.x=-Math.PI/2;
-        enemy.position.set(pos.x,.28,pos.z);
-        enemy.material=ghoulIcon;
-        enemy.isPickable=true;
-        enemy.checkCollisions=false;
-        enemy.metadata={spectatorFeatureId:feature.id,
+        // A genuinely three-dimensional Tripo Ghoul replaces the illustrated
+        // fallback when the single shared scene GLB is ready. The root keeps
+        // the SAME saved feature ID, picks and subjective fog semantics.
+        const root=MeshBuilder.CreateBox("dungeon-monster-"+feature.id,
+          {width:1.65,height:.07,depth:1.65},scene);
+        root.position.set(pos.x,.33,pos.z);
+        root.material=ghoulMarkerMat;
+        root.isPickable=true;root.checkCollisions=false;
+        root.metadata={spectatorFeatureId:feature.id,
           spectatorFeatureKind:"monster",subtype:feature.subtype,
-          label:"Ghoul spawn · illustrated map icon"};
+          visualKind:"loading-authored-ghoul",
+          label:"Ghoul spawn · shared authored 3D model"};
+        const fallback=MeshBuilder.CreatePlane("ghoul-fallback-"+feature.id,
+          {width:1.75,height:1.75},scene);
+        fallback.parent=root;
+        fallback.rotation.x=-Math.PI/2;
+        fallback.position.y=.025;
+        fallback.material=ghoulIcon;
+        fallback.isPickable=false;
+        fallback.checkCollisions=false;
         replayMarkers.push({id:feature.id,x:feature.x,z:feature.z,
-          kind:feature.kind,mesh:enemy});
+          kind:feature.kind,mesh:root});
+        ghoulSites.push({id:feature.id,root,fallback});
       }
     }
+    // This is purely presentation. No GLB load advances world time or
+    // instantiates a second combat AI; the existing marker roots still own
+    // LIVE visibility, saved site resolution and player tooltips.
+    void installGhoulMapInstances(scene,ghoulSites);
     // A recognizable hero at the entrance is strictly a static reference model.
     // No AI walking or fake combat is started before the exploration milestone.
     const hero=this.store.state.adventurers.find(h=>h.status==="at-shop"&&h.health>0)
