@@ -15,6 +15,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   const heroId=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {GameStore}=await import("/Dungeon-Shop-Master/src/game/gameStore.ts");
+    const {DUNGEON_STEP_INTERVAL_TICKS}=await import("/Dungeon-Shop-Master/src/game/liveDungeonRuntime.ts");
     const {generateExpeditionLayout,dungeonNeighbors}=
       await import("/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
     const {emptyLevel7World}=await import("/Dungeon-Shop-Master/src/game/level7Exploration.ts");
@@ -36,8 +37,9 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
       }}],
     });
     store.enableLiveDungeon();
-    store.advanceWorldTime(600);
-    store.advanceWorldTime(10);
+    // One spatial step reaches the known monster; the 10-tick event records
+    // an authentic combat frame without accidentally finishing the duel.
+    store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS+10);
     if(!store.state.liveDungeon.combats.some(f=>f.heroIds.includes(hero.id)))
       throw Error("Expected authentic running fight");
     await new CampaignStorage().saveGame(store.state);
