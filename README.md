@@ -8,7 +8,7 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Implemented on the audited main baseline
 
-Status last checked against source and tests after merged **PR #234** (21 November 2026). For a later change, inspect its actual source and merged PR first.
+Gameplay implementation last source-verified through merged **PR #241** (21 November 2026); Phase D1 artifact verification is separately proposed in #242. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
 
 | Area | Currently implemented |
 | --- | --- |
@@ -80,7 +80,8 @@ npm test
 - **[Roadmap](docs/ROADMAP.md):** only current open work and release gates, not a chronological list of PRs.
 - **[The Living Dungeon](docs/THE_LIVING_DUNGEON.md):** detailed design target; historically accumulated implementation notes are not a live status report.
 - **[World Clock contract](docs/LIVING_WORLD_CLOCK.md)**, **[LIVE Board/Ledger design](docs/LIVE_BOARD_LEDGER_AUDIT.md)**, **[Floor Spectator contract](docs/FLOOR_SPECTATOR_CONTRACT.md)** and **[Monster asset pipeline](docs/MONSTER_ASSET_PIPELINE.md):** deeper subsystem contracts.
-- **[Great Cleanup audit](docs/CLEANUP_AUDIT.md):** dated evidence snapshot, asset dependencies and outstanding cleanup risks.
+- **[Great Cleanup audit](docs/CLEANUP_AUDIT.md):** original dated baseline, asset dependencies and historical risks.
+- **[Great Cleanup closeout](docs/GREAT_CLEANUP_CLOSEOUT.md):** verified before/after Git-tree counts, completed PR scopes, CI results and remaining acceptance gates.
 
 **Source-of-truth order:** current `main` code/assets and tests → merged PR and CI evidence → these living docs for agreed intent. For old text, Git history is the archive. Never infer that a proposed branch merged just because a past chat or document mentioned it.
 

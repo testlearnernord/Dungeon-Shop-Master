@@ -1,6 +1,6 @@
 # Dungeon Shop Master — current technical architecture
 
-> Verified against current source after merged PR #234 (21 November 2026). This document describes **present runtime responsibilities**, not proposed PR order. Inspect referenced modules and tests before modifying them. See [audit](CLEANUP_AUDIT.md), [Game Bible](GAME_BIBLE.md), [Roadmap](ROADMAP.md) and deep specialist contracts for details.
+> Runtime module responsibilities re-verified through merged PR #241 (21 November 2026); D1/D2 audit and artifact safeguards are review proposals until separately merged. This document describes **present runtime responsibilities**, not proposed PR order. Inspect referenced modules and tests before modifying them. See [audit](CLEANUP_AUDIT.md), [Game Bible](GAME_BIBLE.md), [Roadmap](ROADMAP.md) and deep specialist contracts for details.
 
 ## 1. Execution model and ownership
 

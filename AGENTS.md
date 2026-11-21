@@ -1,6 +1,6 @@
 # Dungeon Shop Master — contributor and AI working contract
 
-This is the compact, **current** instruction file for developing Dungeon Shop Master through ChatGPT and GitHub. Last audited after merged PR #234 (21 November 2026); always verify the **latest** `main`, open PRs and CI before editing. The detailed evidence snapshot is [CLEANUP_AUDIT.md](docs/CLEANUP_AUDIT.md).
+This is the compact, **current** instruction file for developing Dungeon Shop Master through ChatGPT and GitHub. Source responsibilities re-checked through merged PR #241 (21 November 2026); D1/D2 closeout proposals remain separate from the shipped runtime. Always verify the **latest** `main`, open PRs and CI before editing. The detailed evidence snapshot is [CLEANUP_AUDIT.md](docs/CLEANUP_AUDIT.md).
 
 ## Source of truth and status words
 
