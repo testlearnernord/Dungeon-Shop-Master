@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {FISHING_FLICKS,scoreFishingFlick,REQUIRED_FLICKS,
-  fishingDirectionFor} from "../../src/game/fishingSkill.ts";
+  FLICK_DISTANCE_BY_COUNTER,FLICK_SAMPLE_MS,fishingFlickDistanceFor,
+  fishingFlickProgress,fishingDirectionFor} from "../../src/game/fishingSkill.ts";
 import {createCellarRoom} from "../../src/game/cellarRoom.ts";
 import {POND_CELLS,isCellarPondUncovered,pondExcavationRemaining} from
   "../../src/game/cellarPond.ts";
@@ -23,16 +24,43 @@ test("the basin is revealed by the EXISTING connected six-cell excavation",()=>{
   assert.equal(isCellarPondUncovered(room),true);
 });
 
-test("flicks require movement direction, sufficient travel and speed",()=>{
-  assert.equal(scoreFishingFlick(-75,0,95,{x:-1,y:0}),"perfect");
-  assert.equal(scoreFishingFlick(-45,0,195,{x:-1,y:0}),"good");
-  assert.equal(scoreFishingFlick(80,0,95,{x:-1,y:0}),"miss");
-  assert.equal(scoreFishingFlick(-9,0,60,{x:-1,y:0}),"too-small");
-  assert.equal(scoreFishingFlick(-100,0,300,{x:-1,y:0}),"too-slow");
-  assert.equal(scoreFishingFlick(90,-90,140,{x:1,y:-1}),"perfect");
+test("three counters require increasing quick mouse sweeps, not tiny nudges",()=>{
+  assert.deepEqual(FLICK_DISTANCE_BY_COUNTER,[120,165,210]);
+  assert.equal(FLICK_SAMPLE_MS,400);
+  assert.deepEqual([0,1,2,3,4].map(fishingFlickDistanceFor),
+    [120,165,210,210,210]);
+  for(let index=0;index<REQUIRED_FLICKS;index++){
+    const distance=fishingFlickDistanceFor(index);
+    assert.equal(scoreFishingFlick(distance-1,0,100,{x:1,y:0},distance),
+      "too-small");
+    assert.equal(scoreFishingFlick(distance+2,0,300,{x:1,y:0},distance),
+      "good");
+    assert.equal(scoreFishingFlick(distance*1.25,0,180,{x:1,y:0},distance),
+      "perfect");
+    assert.equal(scoreFishingFlick(-distance*1.3,0,180,{x:1,y:0},distance),
+      "miss");
+    assert.equal(scoreFishingFlick(distance*1.25,0,460,{x:1,y:0},distance),
+      "too-slow");
+  }
+  assert.equal(scoreFishingFlick(190,-190,190,{x:1,y:-1},210),"perfect");
   assert.equal(FISHING_FLICKS.length,8);
   assert.equal(REQUIRED_FLICKS,3);
   assert.deepEqual(fishingDirectionFor(0,0),fishingDirectionFor(0,0));
+});
+
+test("visible pull progress measures forward movement, not side-to-side travel",()=>{
+  assert.deepEqual(fishingFlickProgress(60,0,{x:1,y:0},120),
+    {projected:60,ratio:.5});
+  assert.deepEqual(fishingFlickProgress(0,400,{x:1,y:0},120),
+    {projected:0,ratio:0});
+  assert.deepEqual(fishingFlickProgress(-400,0,{x:1,y:0},120),
+    {projected:0,ratio:0});
+  assert.deepEqual(fishingFlickProgress(230,0,{x:1,y:0},210),
+    {projected:230,ratio:1});
+  const diagonal=fishingFlickProgress(100,100,{x:1,y:1},210);
+  assert.ok(diagonal.ratio>.67&&diagonal.ratio<.68);
+  assert.deepEqual(fishingFlickProgress(100,100,{x:0,y:0},210),
+    {projected:0,ratio:0});
 });
 
 test("only a fully excavated pool can award durable catch records",()=>{
