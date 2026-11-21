@@ -40,7 +40,7 @@ function eventEntry(
         [...party.memberIds].sort().join("+"):event.id,
       category:"party",priority:2,title:"TEMPORARY PARTY FORMED",
       detail:names.join(" + ")+
-        (party?" · Dungeon floor "+party.floor:" · Companions joined"),
+        (party?" · Floor "+party.floor:" · Companions joined"),
       target:{kind:"hero",heroId:event.adventurerId}};
   }
   if(event.type==="dungeon-live"&&
