@@ -37,6 +37,7 @@ import {floorHeroLocatorOptions,floorFightLocatorOptions,
   formatHeroDungeonFinds} from "./liveDungeonInspector.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
   orbitDungeonMap,panDungeonMap,zoomDungeonMap,DUNGEON_NORTH_YAW,
+  dungeonNorthNeedleDegrees,
   type DungeonMapPose} from "./dungeonMapCamera.ts";
 import {
   generateExpeditionLayout, tileAt, type DungeonLayout,
@@ -78,6 +79,8 @@ export class DungeonViewer {
   private readonly focusLabel = document.querySelector<HTMLElement>("#dungeon-focus")!;
   private readonly seedLabel = document.querySelector<HTMLElement>("#dungeon-seed")!;
   private readonly minimap = document.querySelector<HTMLCanvasElement>("#dungeon-minimap")!;
+  private readonly compassNeedle=document.querySelector<HTMLElement>("#dungeon-compass-needle")!;
+  private readonly compassButton=document.querySelector<HTMLButtonElement>("#dungeon-compass-reset")!;
   private landmarks: { name: string; point: DungeonPoint }[] = [];
   private focus = 0;
   private replayScene: DungeonReplayScene | null = null;
@@ -199,6 +202,12 @@ export class DungeonViewer {
     document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
     document.querySelector("#close-dungeon")!.addEventListener("click", () => this.close());
     document.querySelector("#dungeon-reset-camera")!.addEventListener("click", () => this.resetCamera());
+    this.compassButton.addEventListener("click",()=>{
+      if(!this.active||this.liveArena.isActive)return;
+      const pose=this.mapPose();
+      if(pose)this.setMapPose({...pose,yaw:DUNGEON_NORTH_YAW});
+      this.canvas.focus();
+    });
     this.replaySelector.addEventListener("change",()=>{
       const id=this.replaySelector.value;
       if(id.startsWith("live:"))this.startLive(id.slice(5));
@@ -372,13 +381,8 @@ export class DungeonViewer {
           event.preventDefault();
           const pose=this.mapPose();
           if(pose&&this.layout){
-            const tilted=orbitDungeonMap(pose,dx,dy);
-            // Horizontal drag slides the map while vertical drag tilts it.
-            // Unlike the old 360-degree orbit, north never leaves screen-up.
-            this.setMapPose(panDungeonMap(tilted,-dx,0,
-              Math.max(.05,tilted.distance*.001),
-              {halfX:this.layout.width*TILE_SIZE/2,
-                halfZ:this.layout.height*TILE_SIZE/2}));
+            // Mouse orbit is unrestricted; the compass preserves bearing.
+            this.setMapPose(orbitDungeonMap(pose,dx,dy));
           }
           this.followActor=null;
           this.hoverTooltip.hidden=true;
@@ -528,11 +532,19 @@ export class DungeonViewer {
   }
   private setMapPose(pose:DungeonMapPose):void{
     if(!this.camera)return;
-    // Every observer focus, minimap jump and zoom must preserve grid north.
-    const northPose={...pose,yaw:DUNGEON_NORTH_YAW};
-    const p=mapCameraPosition(northPose),t=mapCameraTarget(northPose);
+    const p=mapCameraPosition(pose),t=mapCameraTarget(pose);
     this.camera.position.set(p.x,p.y,p.z);
     this.camera.setTarget(new Vector3(t.x,t.y,t.z));
+    this.updateCompass();
+  }
+  private updateCompass():void {
+    const pose=this.mapPose();
+    if(!pose)return;
+    this.compassNeedle.style.transform=
+      "rotate("+dungeonNorthNeedleDegrees(pose.yaw)+"deg)";
+    const heading=((pose.yaw*180/Math.PI)%360+360)%360;
+    this.compassButton.title="North bearing · camera "+Math.round(heading)+
+      "° · Click to face north · R resets full view";
   }
   /** Minimap controls are spectator camera actions only. Personal fog
    * cannot be bypassed by moving the camera to an unseen cell. */
@@ -609,6 +621,7 @@ export class DungeonViewer {
     camera.fov = 0.92;
     camera.setTarget(Vector3.Zero());
     scene.activeCamera = camera;
+    this.updateCompass();
 
     const ambient = new HemisphericLight("dungeon-ambient",new Vector3(0,1,0),scene);
     ambient.intensity = 0.85;
@@ -1383,6 +1396,10 @@ export class DungeonViewer {
   }
   private resetCamera():void {
     if(this.liveArena.isActive){this.liveArena.resetCamera();return;}
+    const restore=()=>{
+      const pose=this.mapPose();
+      if(pose)this.setMapPose({...pose,yaw:0,pitch:1.2,distance:70});
+    };
     if(this.liveFloor!==null){
       if(this.followActor)this.replayScene?.follow(this.followActor);
       else this.centerOn(0);
@@ -1393,6 +1410,7 @@ export class DungeonViewer {
       this.followActor=this.replayScene.currentReplay.heroId;
       this.paintPlayback();
     }else this.centerOn(0);
+    restore();
   }
   private centerOn(index:number):void {
     if(!this.camera||!this.layout||!this.landmarks.length)return;
@@ -1402,6 +1420,7 @@ export class DungeonViewer {
     const height= Math.max(20,this.camera.position.y);
     this.camera.position.set(target.x,height,target.z-18);
     this.camera.setTarget(new Vector3(target.x,0,target.z));
+    this.updateCompass();
     this.focusLabel.textContent="Camera focus: "+landmark.name+
       " ("+landmark.point.x+", "+landmark.point.z+")";
   }

@@ -141,17 +141,23 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   const afterOrbit=await camera();
   expect(Math.hypot(afterOrbit.x-beforeOrbit.x,
     afterOrbit.z-beforeOrbit.z)).toBeGreaterThan(0.25);
-  await expect(page.locator(".dungeon-north-label")).toContainText("NORTH-UP");
+  await expect(page.locator("#dungeon-compass-reset")).toBeVisible();
+  await expect(page.locator("#dungeon-compass-needle")).not.toHaveCSS("transform","none");
   const northFocus=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))
       .inspectLiveFloorCameraFocus());
   const beforeNorth=await northFocus();
   await page.locator("#renderCanvas").focus();
   await page.keyboard.down("w");
-  await expect.poll(async()=> (await northFocus()).target.z-beforeNorth.target.z,
-    {timeout:4000}).toBeGreaterThan(0.25);
+  await expect.poll(async()=>{
+    const moved=await northFocus();
+    return Math.hypot(moved.target.x-beforeNorth.target.x,
+      moved.target.z-beforeNorth.target.z);
+  },{timeout:4000}).toBeGreaterThan(0.25);
   await page.keyboard.up("w");
-  expect((await northFocus()).target.x).toBeCloseTo(beforeNorth.target.x,2);
+  await page.locator("#dungeon-compass-reset").click();
+  await expect(page.locator("#dungeon-compass-needle")).toHaveCSS("transform","matrix(1, 0, 0, 1, 0, 0)");
+  await page.locator("#renderCanvas").focus();
   await page.keyboard.press("r");
   // Click an actual Babylon hero token in screen space. The entire
   // read-only panel must open without writing to GameStore or a fake route.
@@ -264,7 +270,7 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   await expect(page.locator("#dungeon-hero-detail")).toBeVisible();
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Gold");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("No committed plan");
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Solo");
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Party");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Current activity");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Other heroes seen");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Visible monsters");

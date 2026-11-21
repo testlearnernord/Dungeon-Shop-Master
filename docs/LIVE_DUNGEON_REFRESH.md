@@ -263,3 +263,14 @@
 - The optional 3D fight arena remains the only home of the full
   **animated** skinned monster performances; floor models are static
   read-only landmarks tied to true saved dungeon sites.
+
+## PR #277 · Restore player free-orbit and true-north compass
+
+- LIVE dungeon maps support complete 360° mouse orbit (both mouse buttons)
+  and pitch/zoom again. North is the fixed WORLD +Z direction, not a locked
+  camera heading. The compass needle rotates correctly as the camera orbits.
+- Clicking the compass faces the camera north without losing zoom or
+  location; R / Reset view restores north, comfortable pitch and zoom.
+- WASD is camera-relative (W toward the top of the current view); the
+  underlying world remains fixed while the camera rotates.
+- No change to world clock, monster AI, combat camera or archived events.
