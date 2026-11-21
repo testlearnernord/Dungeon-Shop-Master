@@ -4,9 +4,9 @@ import {ITEMS,type ItemId} from "./economy.ts";
 /** The ONE global world feed reads committed events and actual state deltas.
  * This is not an alternate world clock, loot generator or party simulator. */
 export type WorldFeedCategory=
-  "death"|"boss"|"combat"|"party"|"treasure"|"trap"|"depth"|"travel";
+  "death"|"boss"|"combat"|"levelup"|"party"|"treasure"|"trap"|"depth"|"travel";
 export const WORLD_FEED_CATEGORIES:readonly WorldFeedCategory[]=[
-  "death","boss","combat","party","treasure","trap","depth","travel",
+  "death","boss","combat","levelup","party","treasure","trap","depth","travel",
 ];
 export type WorldFeedTarget=
   |{kind:"roster";heroId:string}
@@ -14,6 +14,9 @@ export type WorldFeedTarget=
   |{kind:"hero";heroId:string}
   |{kind:"floor-site";floor:number;x:number;z:number;heroId:string}
   |{kind:"combat";fightId:string}
+  |{kind:"recorded-fight";eventId:string;featureId:string;siteCycle:number}
+  |{kind:"boss-recording";eventId:string}
+  |{kind:"hero-profile";heroId:string}
   |{kind:"boss";heroId:string};
 
 export interface WorldFeedEntry{
@@ -38,6 +41,13 @@ function eventEntry(event:WorldEvent,state:GameState):WorldFeedEntry|null{
       detail:event.message+" · A magical signal, not a report of where or how.",
       target:{kind:"death-footage",heroId:event.adventurerId,
         signalId:event.id}};
+  }
+  if(event.type==="level6-combat"&&event.adventurerId&&
+     event.combatOutcome==="victory"&&event.combatReplay?.frames.length){
+    return {id:"boss-victory:"+event.id,category:"boss",priority:3,
+      title:"CAVE TROLL DEFEATED",
+      detail:heroName(state,event.adventurerId)+" · Floor 6",
+      target:{kind:"boss-recording",eventId:event.id}};
   }
   if(event.type==="temporary-party-join"&&event.adventurerId){
     const party=state.dungeonParties?.find(p=>
@@ -174,6 +184,74 @@ function dungeonSiteEntry(event:WorldEvent,before:GameState,after:GameState,
     target:observedFloorTarget(after,lead)};
 }
 
+/** Every recorded battle has an immutable encounter and a real result.
+ * Coalesce the per-hero expedition tapes from the SAME completed fight into
+ * one feed notice. Derive EXP/loot/gold from that checkpoint's actual deltas
+ * rather than rerolling the drop table or reading an encounter prediction. */
+function recordedVictoryEntry(
+  event:WorldEvent,before:GameState,after:GameState,
+  newEvents:readonly WorldEvent[],
+):WorldFeedEntry|null {
+  if(event.type!=="dungeon-live"||!event.adventurerId)return null;
+  const replay=event.dungeonReplay??event.level7Replay;
+  const encounter=replay?.encounters.find(e=>
+    e.combat.outcome==="heroes"&&e.combat.frames.length>0);
+  if(!replay||!encounter)return null;
+  const generation=encounter.siteCycle??0;
+  const matching=(candidate:WorldEvent):boolean=>{
+    if(candidate.type!=="dungeon-live"||
+       candidate.worldTick!==event.worldTick||
+       candidate.day!==event.day||!candidate.adventurerId)return false;
+    const tape=candidate.dungeonReplay??candidate.level7Replay;
+    return tape?.floor===replay.floor&&tape.encounters.some(e=>
+      e.featureId===encounter.featureId&&
+      (e.siteCycle??0)===generation&&e.combat.outcome==="heroes")===true;
+  };
+  const linked=newEvents.filter(matching);
+  const ids=[...new Set(linked.map(e=>e.adventurerId!))].sort();
+  if(!ids.length)return null;
+  const saved=linked.find(e=>e.dungeonReplay||e.level7Replay)!;
+  const gains=ids.map(id=>{
+    const old=findHero(before,id),hero=findHero(after,id);
+    if(!old||!hero)return null;
+    return {name:hero.name,xp:Math.max(0,hero.xp-old.xp)};
+  }).filter((value):value is {name:string;xp:number}=>value!==null);
+  const experience=gains.filter(g=>g.xp>0).map(g=>
+    g.name+" +"+g.xp+" XP").join(" · ");
+  const loot=newDungeonLoot(before,after,ids);
+  const rewards=[
+    experience||"No XP awarded",
+    loot.items||"No items found",
+    loot.gold?"+"+loot.gold+" gold":"",
+  ].filter(Boolean).join(" · ");
+  const key="fight-victory:"+event.day+":"+(event.worldTick??0)+":"+
+    replay.floor+":"+encounter.featureId+":"+generation;
+  return {id:key,category:"combat",priority:2,
+    title:ids.length>1?"PARTY VICTORIOUS":"DUNGEON VICTORY",
+    detail:ids.map(id=>heroName(after,id)).join(" + ")+
+      " · Floor "+replay.floor+" · "+rewards,
+    target:{kind:"recorded-fight",eventId:saved.id,
+      featureId:encounter.featureId,siteCycle:generation}};
+}
+
+/** A level-up is a committed before/after character change, not a calculated
+ * milestone guess. Each hero receives their own click target, even if an
+ * entire party levels up at the same shared world tick. */
+function heroLevelUps(before:GameState,after:GameState):
+  readonly WorldFeedEntry[] {
+  return after.adventurers.flatMap(hero=>{
+    const previous=findHero(before,hero.id);
+    if(!previous||hero.level<=previous.level)return [];
+    const earned=Math.max(0,hero.xp-previous.xp);
+    return [{id:"hero-level:"+hero.id+":"+hero.level+":"+after.day,
+      category:"levelup" as const,priority:2 as const,
+      title:"HERO LEVEL UP",
+      detail:hero.name+" · Level "+previous.level+" → "+hero.level+
+        (earned?" · +"+earned+" XP":""),
+      target:{kind:"hero-profile" as const,heroId:hero.id}}];
+  });
+}
+
 export function projectWorldFeedChanges(
   before:GameState,after:GameState,
 ):readonly WorldFeedEntry[]{
@@ -182,11 +260,32 @@ export function projectWorldFeedChanges(
   const newEvents=after.events.filter(event=>!oldEvents.has(event.id));
   const unique=new Set<string>();
   for(const event of newEvents){
-    const candidate=dungeonSiteEntry(event,before,after,newEvents)??
+    let candidate=recordedVictoryEntry(event,before,after,newEvents)??
+      dungeonSiteEntry(event,before,after,newEvents)??
       eventEntry(event,after);
+    if(candidate?.target.kind==="boss-recording"&&event.adventurerId){
+      const earlier=findHero(before,event.adventurerId);
+      const now=findHero(after,event.adventurerId);
+      if(earlier&&now){
+        const earned=Math.max(0,now.xp-earlier.xp);
+        const gain=newDungeonLoot(before,after,[event.adventurerId]);
+        const abstractLoot=Math.max(0,
+          now.inventory.loot-earlier.inventory.loot);
+        const reward=[earned?"+"+earned+" XP":"",
+          gain.items,abstractLoot?abstractLoot+" loot tokens":"",
+          gain.gold?"+"+gain.gold+" gold":""].filter(Boolean).join(" · ");
+        candidate={...candidate,detail:candidate.detail+
+          (reward?" · "+reward:" · No rewards")};
+      }
+    }
     if(candidate&&!unique.has(candidate.id)){
       results.push(candidate);
       unique.add(candidate.id);
+    }
+  }
+  for(const levelUp of heroLevelUps(before,after)){
+    if(!unique.has(levelUp.id)){
+      results.push(levelUp);unique.add(levelUp.id);
     }
   }
   const oldFights=new Set(before.liveDungeon.combats.map(f=>f.id));
