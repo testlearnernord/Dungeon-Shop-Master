@@ -390,7 +390,8 @@ export class LiveGroupCombatArena{
         ??view.combat.actors.find(a=>a.id===event.actorId);
       if(!actor)continue;
       this.sfx.play(event.cue,{x:actor.x,z:actor.z},listener,
-        false,event.cue==="troll-impact"&&actor.ability==="troll-slam");
+        false,event.cue==="troll-impact"&&
+          "ability" in actor&&actor.ability==="troll-slam");
     }
   }
 
