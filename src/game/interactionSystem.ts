@@ -136,18 +136,23 @@ export class InteractionSystem {
         !document.querySelector("dialog[open]")&&!event.altKey&&!event.ctrlKey&&
         !event.metaKey&&!(event.target instanceof HTMLElement&&
           (event.target.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(event.target.tagName)))){
+        const cellar=this.camera.position.z<-19.3&&this.camera.position.y< -1.5;
         if(event.shiftKey){
-          const tier=this.store.state.level5Room.expansionTier;
-          this.message=this.store.unlockShopExpansion(tier+1);
+          const tier=cellar?this.store.state.cellarRoom.expansionTier:
+            this.store.state.level5Room.expansionTier;
+          this.message=cellar?this.store.unlockCellarExpansion(tier+1):
+            this.store.unlockShopExpansion(tier+1);
           this.publish();event.preventDefault();return;
         }
         if(this.miningMode){
           this.setMiningMode(false);
           this.message="Mining mode off.";
         }else{
-          const tier=this.store.state.level5Room.expansionTier;
+          const tier=cellar?this.store.state.cellarRoom.expansionTier:
+            this.store.state.level5Room.expansionTier;
           if(tier===0)this.message=this.store.unlockShopExpansion(1);
-          const unlocked=(this.store.state.level5Room.expansionTier)>0;
+          const unlocked=(cellar?this.store.state.cellarRoom.expansionTier:
+            this.store.state.level5Room.expansionTier)>0;
           this.setMiningMode(unlocked);
           this.message=unlocked
             ?"Mining mode ON · Left-click exposed rock · U / Esc / right-click to cancel."
@@ -231,13 +236,17 @@ export class InteractionSystem {
     const hit = this.scene.pick(pickX, pickY);
     if (!hit?.hit || !hit.pickedMesh) return;
 
-    const mineCell=(hit.pickedMesh.metadata as {level5MineCell?:{x:number;z:number}}|null)?.level5MineCell;
+    const metadata=hit.pickedMesh.metadata as {
+      level5MineCell?:{x:number;z:number};cellarMineCell?:{x:number;z:number}
+    }|null;
+    const mineCell=metadata?.level5MineCell??metadata?.cellarMineCell;
     if(mineCell){
       if(!this.miningMode||button!==0||!this.store)return;
       if(hit.distance>this.maxInteractionDistance)this.message="Move closer to the rock.";
       else{
         const before=this.store.state;
-        this.message=this.store.excavateShopCell(mineCell);
+        this.message=metadata?.cellarMineCell
+          ?this.store.excavateCellarCell(mineCell):this.store.excavateShopCell(mineCell);
         if(this.store.state!==before)this.onMerchantAction("mine");
       }
       this.publish();return;
@@ -271,6 +280,9 @@ export class InteractionSystem {
           this.message = "Adventurer roster opened.";
           this.openRoster();
         }
+      } else if(target?.kind==="cellar-door"&&button===0&&this.store){
+        this.message=hit.distance<=this.maxInteractionDistance
+          ?this.store.toggleCellarDoor():"Move closer to the portrait.";
       } else if(target?.kind==="debt-book" && button===0){
         if(hit.distance>this.maxInteractionDistance)this.message="Move closer to Galvik's account book.";
         else {this.message="Galvik's Book of Debts opened.";this.openDebtBook();}
@@ -288,6 +300,8 @@ export class InteractionSystem {
     } else if (target?.kind === "roster-board") {
       this.message = "Adventurer roster opened.";
       this.openRoster();
+    } else if(target?.kind==="cellar-door"&&this.store){
+      this.message=this.store.toggleCellarDoor();
     } else if(target?.kind==="debt-book"){
       this.message="Galvik's Book of Debts opened.";
       this.openDebtBook();

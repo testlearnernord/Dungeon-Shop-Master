@@ -24,7 +24,7 @@ export interface ShopFloorBounds {
 }
 
 export type FurnitureKind=`shelf-${number}`|"counter"|
-  "desk"|"chest"|"candle"|"bed"|"adventurer-board"|"galvik-portrait";
+  "desk"|"chest"|"candle"|"bed"|"adventurer-board"|"galvik-portrait"|"cellar-chest";
 export type FurnitureMount="shop-floor"|"private-floor"|"shop-wall";
 export type FurniturePurpose="stock"|"checkout"|"sleep"|"debt"|"storage"|
   "light"|"roster"|"decoration";
@@ -86,6 +86,8 @@ export const FURNITURE_REGISTRY={
     surfaces:["floor"],width:1.18,depth:.76,height:1.25,focusY:.65,collides:true,
     interaction:{reach:1.8,label:"Book of Debts"}},
   chest:{label:"Storage chest",mount:"private-floor",purpose:"storage",
+    surfaces:["floor"],width:1.04,depth:.72,height:.9,focusY:.45,collides:true},
+  "cellar-chest":{label:"Cellar storage chest",mount:"private-floor",purpose:"storage",
     surfaces:["floor"],width:1.04,depth:.72,height:.9,focusY:.45,collides:true},
   candle:{label:"Bedside candle + stool",mount:"private-floor",purpose:"light",
     surfaces:["floor"],width:.66,depth:.66,height:1.2,focusY:.60,collides:true},

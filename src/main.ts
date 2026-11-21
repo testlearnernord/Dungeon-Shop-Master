@@ -27,6 +27,7 @@ import { setupRosterBoardHud } from "./rosterBoardHud";
 import { Shop } from "./game/shop";
 import { setupBlueprintHud } from "./blueprintHud.ts";
 import { setupBedroomFurnitureVisuals } from "./game/bedroomFurnitureVisuals.ts";
+import {setupCellarFurnitureVisuals} from "./game/cellarFurnitureVisuals.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
@@ -115,19 +116,30 @@ document.addEventListener("visibilitychange",()=>{
   ignoreNextClockFrame=true;
 });
 setupBedroomFurnitureVisuals(scene,store);
+setupCellarFurnitureVisuals(scene,store);
 const roomVisuals=createLevel5RoomVisuals(scene);
+const cellarVisuals=createLevel5RoomVisuals(scene,"cellar");
 let lastDrawnRoom:typeof store.state.level5Room|null=null;
+let lastDrawnCellar:typeof store.state.cellarRoom|null=null;
 const refreshRoom=()=>{
   const room=store.state.level5Room;
   if(room===lastDrawnRoom)return;
   lastDrawnRoom=room;
   roomVisuals.update(room);
 };
+const refreshCellar=()=>{
+  if(store.state.cellarRoom===lastDrawnCellar)return;
+  lastDrawnCellar=store.state.cellarRoom;
+  cellarVisuals.update(store.state.cellarRoom);
+};
 store.subscribe(refreshRoom);
 refreshRoom();
+store.subscribe(refreshCellar);
+refreshCellar();
 const shop = new Shop(scene, store);
 const board = createRosterBoard(scene, store);
-setupWallPortraitVisuals(scene,store);
+const portraitMeshes=setupWallPortraitVisuals(scene,store);
+worldItems.push(...portraitMeshes.map(mesh=>({id:mesh.name,mesh,kind:"cellar-door" as const})));
 worldItems.push({ id: "adventurer-roster-board", mesh: board.mesh, kind: "roster-board" });
 let watchLiveHero:(heroId:string)=>boolean=()=>false;
 const openRoster = setupRosterBoardHud(canvas, camera, store,

@@ -1,4 +1,5 @@
 import { excavateLevel5Cell, isValidLevel5Room, type RoomCell } from "./level5Room.ts";
+import {isValidCellarRoom} from "./cellarRoom.ts";
 import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
@@ -134,6 +135,31 @@ export class GameStore {
       return "Move Galvik's portrait before mining its supporting rock.";
     this.replace({...this.current,level5Room:result.room});
     return "Rock excavated.";
+  }
+
+  toggleCellarDoor():string {
+    this.replace({...this.current,cellarDoorOpen:!this.current.cellarDoorOpen});
+    return this.current.cellarDoorOpen
+      ?"The portrait swings aside. A staircase descends into the dark."
+      :"Galvik's secret passage is concealed again.";
+  }
+
+  excavateCellarCell(cell:RoomCell):string {
+    const result=excavateLevel5Cell(this.current.cellarRoom,cell);
+    if(!result.ok)return result.reason;
+    // The relocated cellar chest uses the same mined-floor validation as P.
+    this.replace({...this.current,cellarRoom:result.room});
+    return "Cellar rock excavated.";
+  }
+
+  unlockCellarExpansion(tier:number):string {
+    const room=this.current.cellarRoom;
+    if(!Number.isSafeInteger(tier)||tier!==room.expansionTier+1||tier>3)
+      return "Invalid cellar expansion tier.";
+    const next={...room,expansionTier:tier};
+    if(!isValidCellarRoom(next))return "Invalid cellar geometry.";
+    this.replace({...this.current,cellarRoom:next});
+    return "Cellar expansion unlocked.";
   }
 
   unlockShopExpansion(tier:number):string {

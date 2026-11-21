@@ -3,6 +3,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { VertexBuffer } from "@babylonjs/core/Buffers/buffer";
 import { getDungeonSurfaces } from "./dungeonSurfaces.ts";
 import type { Scene } from "@babylonjs/core/scene";
+import {CELLAR_ORIGIN_Z,CELLAR_FLOOR_Y} from "./cellarRoom.ts";
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { level5RockFaces } from "./level5WallFaces.ts";
 
@@ -43,13 +44,17 @@ function inheritSideWallUV(slice:Mesh,original:Mesh):void {
  * mesh/geometry spikes during repeated swings, especially in big excavations.
  * Stable mesh names, UV inheritance and original-wall behaviour are retained.
  */
-export function createLevel5RoomVisuals(scene:Scene) {
+export function createLevel5RoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop") {
+  const cellar=scope==="cellar";
+  const prefix=cellar?"cellar-":"";
+  const originZ=cellar?CELLAR_ORIGIN_Z:0;
+  const floorY=cellar?CELLAR_FLOOR_Y:0;
   const surfaces=getDungeonSurfaces(scene);
   const blocks=new Map<string,Mesh>();
   let previous="";
   const originalWalls=[
-    scene.getMeshByName("left-wall") as Mesh|null,
-    scene.getMeshByName("right-wall") as Mesh|null,
+    scene.getMeshByName(prefix+"left-wall") as Mesh|null,
+    scene.getMeshByName(prefix+"right-wall") as Mesh|null,
   ];
   function update(room:Level5Room=createLevel5Room()):void {
     const signature=JSON.stringify(room);
@@ -68,18 +73,18 @@ export function createLevel5RoomVisuals(scene:Scene) {
       for(const entry of room.excavatedCells){
         const [x,z]=entry.split(",").map(Number);
         ensure("floor:"+entry,()=>{
-          const floor=MeshBuilder.CreateBox(`excavated-floor-${entry}`,
+          const floor=MeshBuilder.CreateBox(`${prefix}excavated-floor-${entry}`,
             {width:1,height:.4,depth:1},scene);
-          floor.position.set(x,-.2,z);
+          floor.position.set(x,floorY-.2,z+originZ);
           floor.material=surfaces.floor;
           floor.checkCollisions=true;
           floor.isPickable=true;
           return floor;
         });
         ensure("ceiling:"+entry,()=>{
-          const ceiling=MeshBuilder.CreateBox(`excavated-ceiling-${entry}`,
+          const ceiling=MeshBuilder.CreateBox(`${prefix}excavated-ceiling-${entry}`,
             {width:1,height:.35,depth:1},scene);
-          ceiling.position.set(x,4.1,z);
+          ceiling.position.set(x,floorY+4.1,z+originZ);
           ceiling.material=surfaces.stone;
           ceiling.checkCollisions=true;
           ceiling.isPickable=false;
@@ -97,9 +102,10 @@ export function createLevel5RoomVisuals(scene:Scene) {
         ensure(key,()=>{
           // Stable topology-based names replace old index-based identities.
           // A neighbour's index used to change whenever a cell was mined.
-          const wall=MeshBuilder.CreateBox("excavation-rock-face-"+key.slice(5),
+          const wall=MeshBuilder.CreateBox(prefix+"excavation-rock-face-"+key.slice(5),
             {width:face.width,height:4,depth:face.depth},scene);
-          wall.position.set(untouched?(side===0?-7.24:7.24):face.x,2,face.z);
+          wall.position.set(untouched?(side===0?-7.24:7.24):face.x,
+            floorY+2,face.z+originZ);
           wall.material=surfaces.stone;
           wall.checkCollisions=!untouched;
           if(untouched){
@@ -109,7 +115,8 @@ export function createLevel5RoomVisuals(scene:Scene) {
             const original=originalWalls[side];
             if(original)inheritSideWallUV(wall,original);
           }
-          if(face.mineCell)wall.metadata={level5MineCell:face.mineCell};
+          if(face.mineCell)wall.metadata=cellar
+            ?{cellarMineCell:face.mineCell}:{level5MineCell:face.mineCell};
           return wall;
         });
       }

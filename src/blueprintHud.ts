@@ -14,6 +14,7 @@ import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { GameStore } from "./game/gameStore.ts";
 import {getCounterPlacement,isShelfId,nextShelfId} from "./game/shopLayout.ts";
 import {turnShopOffset} from "./game/furnitureRegistry.ts";
+import {CELLAR_FLOOR_Y} from "./game/cellarRoom.ts";
 import {
   blueprintAtSurface,FURNITURE_CATALOG,surfaceFromMesh,
   type FurnitureId,type FurnitureDraft,
@@ -33,6 +34,7 @@ export function setupBlueprintHud(
   const openButton=document.querySelector<HTMLButtonElement>("#open-blueprint")!;
   const buildShelfButton=document.querySelector<HTMLButtonElement>("#build-shelf");
   const buildPortraitButton=document.querySelector<HTMLButtonElement>("#build-portrait");
+  if(buildPortraitButton)buildPortraitButton.hidden=true;
   const panel=document.createElement("aside");
   panel.id="blueprint-panel";
   panel.hidden=true;
@@ -206,6 +208,7 @@ export function setupBlueprintHud(
     if(id==="counter")return {id,...getCounterPlacement(store.state.shopLayout)};
     if(id==="adventurer-board")return {id,...store.state.rosterBoard};
     if(id==="galvik-portrait")return {id,...store.state.wallPortrait!};
+    if(id==="cellar-chest")return store.state.cellarChest;
     if(isBedroomFurnitureId(id))return getBedroomFurniture(store.state.bedroomFurniture,id);
     return store.state.shopLayout.shelves.find(item=>item.id===id)!;
   };
@@ -247,7 +250,8 @@ export function setupBlueprintHud(
       const offset=turnShopOffset(0.48,0,saved.rotation);
       x+=offset.x;z+=offset.z;
     }
-    focusMesh.position.set(x,found.focusY,z);
+    focusMesh.position.set(x,found.focusY+
+      (found.movableId==="cellar-chest"?CELLAR_FLOOR_Y:0),z);
     focusMesh.scaling.set(dimensions.width,dimensions.height,dimensions.depth);
     focusMesh.rotation.y=saved.rotation*Math.PI/2;
     focusMesh.setEnabled(true);
@@ -309,17 +313,19 @@ export function setupBlueprintHud(
       return;
     }
     draft=p;
-    ghost.position.set(p.x,0,p.z);
+    ghost.position.set(p.x,p.id==="cellar-chest"?CELLAR_FLOOR_Y:0,p.z);
     ghost.rotation.y=p.rotation*Math.PI/2;
     const type:GhostType=p.id==="counter"?"counter":
       p.id==="adventurer-board"?"adventurer-board":
       p.id==="galvik-portrait"?"galvik-portrait":
-      isBedroomFurnitureId(p.id)?p.id:"shelf";
+      p.id==="cellar-chest"?"chest":
+       isBedroomFurnitureId(p.id)?p.id:"shelf";
     const state=store.state;
     const staticCheck=validator.evaluate(p,state.shopLayout,state.level5Room,
       performance.now(),immediate,
       p.id==="adventurer-board"||p.id==="galvik-portrait"?
-        state.rosterBoard:state.bedroomFurniture);
+        state.rosterBoard:p.id==="cellar-chest"?state.cellarRoom:
+       state.bedroomFurniture);
     const occupied=occupiedBy(p);
     const isChecking=!staticCheck.ready&&!occupied;
     reason=occupied??(staticCheck.ready
@@ -394,24 +400,6 @@ export function setupBlueprintHud(
       .catch(()=>updateStatus("Click the game to enable free camera look.",false));
     updateGhost();
   };
-  /** Unique picture: build via the shared wall ghost, move later with P. */
-  const buildPortrait=():void=>{
-    if(enabled){close();return;}
-    if(!canEdit()||document.querySelector("dialog[open]"))return;
-    if(store.state.wallPortrait){
-      focusHint.textContent="The portrait already hangs in the shop. Aim at it and press P to move.";
-      focusHint.hidden=false;
-      return;
-    }
-    enabled=true;panel.hidden=false;activeId="galvik-portrait";rotation=2;draft=null;
-    title.textContent="HANG · GALVIK'S LOST BELOVED";
-    updateStatus("Aim at a solid shop wall, then click to hang the portrait.",false);
-    document.body.classList.add("blueprint-active");
-    focusMesh.setEnabled(false);focusHint.hidden=true;
-    if(document.pointerLockElement!==canvas)void canvas.requestPointerLock()
-      .catch(()=>updateStatus("Click the game to enable free camera look.",false));
-    updateGhost();
-  };
   const commit=():void=>{
     // The first click always completes validation synchronously, even when
     // hovering began less than 140 ms ago. GameStore repeats authoritative
@@ -422,6 +410,7 @@ export function setupBlueprintHud(
     if(occupied){updateStatus(occupied,false);return;}
     const result=store.placeFurniture(draft);
     if(result==="Counter placement saved."||result==="Shelf placement saved."||
+       result==="Cellar chest placed."||
        result==="Bedroom furniture placed."||result==="Adventurer board placed."||
        result==="Portrait hung."){
       close();
@@ -430,7 +419,7 @@ export function setupBlueprintHud(
 
   openButton.addEventListener("click",open);
   buildShelfButton?.addEventListener("click",buildShelf);
-  buildPortraitButton?.addEventListener("click",buildPortrait);
+  // Galvik\u0027s beloved is a fixed architectural door, not movable furniture.
   cancel.addEventListener("click",close);
   // Capture before ordinary shelf stocking and register interaction handlers.
   canvas.addEventListener("pointerdown",event=>{
@@ -448,7 +437,7 @@ export function setupBlueprintHud(
     if(event.repeat||event.ctrlKey||event.altKey||event.metaKey)return;
     if(event.code==="KeyN"){
       event.preventDefault();event.stopImmediatePropagation();
-      if(event.shiftKey)buildPortrait();else buildShelf();
+      if(!event.shiftKey)buildShelf();
       return;
     }
     if(event.code==="KeyP"&&!event.shiftKey){

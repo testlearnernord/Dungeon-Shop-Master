@@ -3,14 +3,15 @@ import {furnitureDefinition,type FurnitureSurface} from "./furnitureRegistry.ts"
 import {isShelfId} from "./shopLayout.ts";
 import type {BedroomFurnitureId,BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 import {isBedroomFurnitureId} from "./bedroomFurniture.ts";
+import type {CellarChestPlacement} from "./cellarRoom.ts";
 import {rosterBoardAtWall,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 import {wallPortraitAtWall,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 
-export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait";
+export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait"|"cellar-chest";
 export type BlueprintSurface=FurnitureSurface;
 export type FurnitureDraft=ShelfPlacement|(CounterPlacement&{readonly id:"counter"})|BedroomFurniturePlacement|
   (RosterBoardPlacement&{readonly id:"adventurer-board"})|
-  (WallPortraitPlacement&{readonly id:"galvik-portrait"});
+  (WallPortraitPlacement&{readonly id:"galvik-portrait"})|CellarChestPlacement;
 
 export interface FurnitureDefinition {
   readonly id:FurnitureId;
@@ -22,7 +23,7 @@ export interface FurnitureDefinition {
 }
 
 const CATALOG_IDS:readonly Exclude<FurnitureId,ShelfId>[]=[
-  "counter","desk","chest","candle","bed","adventurer-board","galvik-portrait",
+  "counter","desk","chest","cellar-chest","candle","bed","adventurer-board",
 ];
 export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=CATALOG_IDS.map(id=>{
   const definition=furnitureDefinition(id);
@@ -34,9 +35,10 @@ export const snapQuarter=(value:number):number=>Math.round(value*4)/4;
 
 export function surfaceFromMesh(name:string):BlueprintSurface|null {
   if(name==="stone-floor"||name==="bedroom-floor-skin"||
-     /^excavated-floor--?\d+,-?\d+$/.test(name))return "floor";
+     name==="cellar-floor"||
+     /^(?:cellar-)?excavated-floor--?\d+,-?\d+$/.test(name))return "floor";
   if(name==="stone-ceiling")return "ceiling";
-  if(/^excavation-rock-face--?\d+(?:\.\d+)?:-?\d+(?:\.\d+)?:\d+(?:\.\d+)?:\d+(?:\.\d+)?:(?:-?\d+)?:(?:-?\d+)?:(?:true|false)$/.test(name))
+  if(/^(?:cellar-)?excavation-rock-face--?\d+(?:\.\d+)?:-?\d+(?:\.\d+)?:\d+(?:\.\d+)?:\d+(?:\.\d+)?:(?:-?\d+)?:(?:-?\d+)?:(?:true|false)$/.test(name))
     return "rock-wall";
   if(name==="left-wall")return "left-wall";
   if(name==="right-wall")return "right-wall";

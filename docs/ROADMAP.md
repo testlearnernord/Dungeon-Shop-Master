@@ -69,3 +69,7 @@ See [CLEANUP_AUDIT.md](CLEANUP_AUDIT.md) for the source-verified A1 baseline and
 Hunger, arbitrary three-phase daily engine, fake replay video and automatic endless archives are **REJECTED**. Full 100-floor release, protagonist transfer/curse ending, forge/pond and big new economy systems are **DEFERRED or OPEN**. Do not convert speculative lore to locked canon.
 
 **Delivery discipline:** keep each feature/cleanup PR cohesive; inspect actual code and the [architecture](ARCHITECTURE.md), [Game Bible](GAME_BIBLE.md) and [AGENTS.md](../AGENTS.md). Update status in place, run the relevant checks, state what is and is not proven, then wait for explicit merge approval.
+
+## V.004 concept prototype (unmerged branch)
+
+The V.004 **walkable cellar** is being prototyped independently of outstanding V.003 release gates. The proposed change makes Galvik's beloved portrait a fixed hinged doorway in his rear bedroom wall and extends the same Babylon shop scene with a sloping stair and lower cave. Cellar excavation reuses `excavateLevel5Cell`, `level5RockFaces` and `createLevel5RoomVisuals`; the first chest reuses the canonical furniture registry and P blueprint/commit. Its door, room cells and furniture transform persist on the same campaign state/world clock (strict save version 25). No new economics, fishing, pond or dungeon simulation is included. Playwright and human in-browser staircase/collision checks remain a release gate.

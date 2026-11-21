@@ -26,20 +26,20 @@ function carvedWall():Level5Room{
   return room;
 }
 
-test("all nine furniture types share one geometry and mounting registry",()=>{
+test("all registered furniture types share one geometry and mounting registry",()=>{
   const ids:FurnitureKind[]=[
     "shelf-1","shelf-2","counter","desk","chest","candle","bed",
-    "adventurer-board","galvik-portrait",
+    "adventurer-board","galvik-portrait","cellar-chest",
   ];
   assert.deepEqual(Object.keys(FURNITURE_REGISTRY),
-    ["shelf","counter","desk","chest","candle","bed","adventurer-board","galvik-portrait"],
+    ["shelf","counter","desk","chest","cellar-chest","candle","bed","adventurer-board","galvik-portrait"],
     "registry lists one shelf template plus unique furniture types");
   for(const id of ids){
     const def=furnitureDefinition(id);
     const visual=FURNITURE_CATALOG.find(x=>x.id===id);
     if(id.startsWith("shelf-"))assert.equal(visual,undefined,
       "modular shelves have a shared instance definition, not fixed catalog positions");
-    else {
+    else if(id!=="galvik-portrait"){
       assert(visual,"Blueprint catalog must register "+id);
       assert.equal(visual.width,def.width);
       assert.equal(visual.depth,def.depth);
