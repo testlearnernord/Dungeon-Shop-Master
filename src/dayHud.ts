@@ -5,7 +5,7 @@ import { hasObservedReplay } from "./replayDisclosure.ts";
 import {reportCategory,reportIcon,reportCounts,type ReportCategory} from "./reportPresentation.ts";
 import {uiIcon} from "./uiIcons.ts";
 import {goldIcon} from "./uiIcons.ts";
-import {selectLiveBoardHeroes,committedDeathSignals} from "./game/liveBoardProjection.ts";
+import {selectLiveBoardHeroes} from "./game/liveBoardProjection.ts";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
@@ -71,46 +71,10 @@ export function setupDayHud(
     }));
   };
   let previousVisitors: readonly VisitorSnapshot[] = [];
-  const dismissedSignals=new Set<string>();
-  const deathAlert=document.createElement("aside");
-  deathAlert.id="live-death-signal";
-  deathAlert.setAttribute("role","alert");
-  deathAlert.setAttribute("aria-live","assertive");
-  deathAlert.hidden=true;
-  document.body.append(deathAlert);
-  function renderDeathAlert():void{
-    const pending=committedDeathSignals(store.state)
-      .filter(e=>!dismissedSignals.has(e.id));
-    const newest=pending.at(-1);
-    if(!newest){deathAlert.hidden=true;deathAlert.replaceChildren();return;}
-    deathAlert.hidden=false;
-    const icon=uiIcon("skull");
-    const copy=document.createElement("div");
-    const heading=document.createElement("strong");
-    heading.textContent="LIFE-SIGNATURE EXTINGUISHED"+
-      (pending.length>1?" · "+pending.length+" signals":"");
-    const detail=document.createElement("span");
-    detail.textContent=newest.message+
-      " · A magical signal, not a report of where or how they died.";
-    copy.append(heading,detail);
-    const button=document.createElement("button");
-    button.type="button";
-    button.className="live-death-dismiss";
-    button.title="Acknowledge death warning";
-    button.setAttribute("aria-label","Acknowledge life-signature warning");
-    button.append(uiIcon("close"));
-    button.addEventListener("click",()=>{
-      for(const e of pending)dismissedSignals.add(e.id);
-      renderDeathAlert();
-    });
-    deathAlert.replaceChildren(icon,copy,button);
-  }
-
   const render = (): void => {
     const state = store.state;
     day.textContent = `Day ${state.day}`;
     events.replaceChildren(...state.events.slice(-3).reverse().map(eventRow));
-    renderDeathAlert();
     const today = [];
     for (let index = state.events.length - 1; index >= 0 && today.length < 100; index -= 1) {
       const event = state.events[index];
