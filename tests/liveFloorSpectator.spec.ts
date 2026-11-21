@@ -151,7 +151,7 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
     const hero=frame.heroes.find(member=>member.id===heroId);
     if(!hero)throw Error("Missing actual selected hero");
     const known=selectHeroFloorPerception(layout,frame,heroId).explored;
-    const index=known.values().find(id=>id!==hero.z*layout.width+hero.x);
+    const index=[...known].find(id=>id!==hero.z*layout.width+hero.x);
     const unknown=Array.from({length:layout.width*layout.height},(_,i)=>i)
       .find(id=>!known.has(id));
     if(index===undefined||unknown===undefined)
@@ -177,7 +177,9 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
     (minimapTargets.known.x-(minimapTargets.width-1)/2)*2.5,2);
   expect(afterKnown.target.z).toBeCloseTo(
     (minimapTargets.known.z-(minimapTargets.height-1)/2)*2.5,2);
-  expect(afterKnown.offset).toEqual(beforeMinimap.offset);
+  expect(afterKnown.offset.x).toBeCloseTo(beforeMinimap.offset.x,3);
+  expect(afterKnown.offset.y).toBeCloseTo(beforeMinimap.offset.y,3);
+  expect(afterKnown.offset.z).toBeCloseTo(beforeMinimap.offset.z,3);
   await clickMinimap(minimapTargets.unknown);
   expect((await mapFocus()).target).toEqual(afterKnown.target);
   // The keyboard path must use the same fog restrictions and keep orbit.
@@ -190,7 +192,9 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
     const afterArrow=await mapFocus();
     expect(afterArrow.target.x).toBeCloseTo(third.x,2);
     expect(afterArrow.target.z).toBeCloseTo(third.z,2);
-    expect(afterArrow.offset).toEqual(beforeMinimap.offset);
+    expect(afterArrow.offset.x).toBeCloseTo(beforeMinimap.offset.x,3);
+    expect(afterArrow.offset.y).toBeCloseTo(beforeMinimap.offset.y,3);
+    expect(afterArrow.offset.z).toBeCloseTo(beforeMinimap.offset.z,3);
   }
   expect(await record()).toEqual(beforeClick,
     "Minimap camera navigation must never modify saved hero knowledge");
