@@ -190,6 +190,9 @@ export class Level6Arena {
     // Capture input before the shop's old listeners. Spectating never interacts,
     // spends money, confirms End Day, or changes the shop player's movement.
     window.addEventListener("keydown", (event) => {
+      if(event.code==="Escape"&&
+         !document.querySelector<HTMLElement>("#world-hero-card")?.hidden)
+        return;
       if (!this.active) {
         if (event.code === "KeyV" && !event.repeat &&
           !document.querySelector("dialog[open]") &&
