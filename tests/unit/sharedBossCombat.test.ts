@@ -111,4 +111,24 @@ test("diagnostics: seeded Troll grab opportunities and physical strike outcomes"
   }
   console.log("Shared-Troll-telegraph-diagnostics",{
     grabEncounters,throwEncounters,smashHits,grappleAttempts,late,examples});
+  const champions=[
+    {role:"tank" as const,sword:false,armor:false,strength:80,agility:80},
+    {role:"tank" as const,sword:true,armor:true,strength:75,agility:40},
+    {role:"DPS" as const,sword:true,armor:true,strength:75,agility:40},
+  ];
+  const winners=champions.map(champion=>{
+    let victories=0;const states:unknown[]=[];
+    for(let seed=0;seed<32;seed++){
+      const s=createSharedBossPreview({...options,...champion,
+        health:100,maxHealth:100,tacticsSeed:seed});
+      for(let tick=0;tick<5400&&s.outcome==="fighting";tick++)
+        stepSharedBossPreview(s,1/60);
+      if(s.outcome==="victory")victories++;
+      if(seed<4)states.push({seed,outcome:s.outcome,time:+s.time.toFixed(1),
+        heroHp:s.heroHp,bossHp:s.bossHp,
+        heroHits:s.group.events.filter(e=>e.kind==="hit"&&e.actorId==="hero").length});
+    }
+    return {role:champion.role,sword:champion.sword,victories,states};
+  });
+  console.log("Shared-Troll-champion-diagnostics",winners);
 });
