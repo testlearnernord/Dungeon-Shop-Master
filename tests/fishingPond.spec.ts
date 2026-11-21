@@ -109,39 +109,32 @@ test("mined pond reveals water and opens fishing by E @ci-smoke",async({page})=>
   });
   // A random escape now interrupts the ongoing reel session. The old
   // immediate-on-bite flick flow no longer exists.
-  await expect.poll(()=>page.locator("#fishing-hud").getAttribute("data-phase"),
-    {timeout:11000,intervals:[120,180,260]}).toBe("flick");
+  // Read the active target, hooked shadow, water motion and camera offset
+  // in ONE browser frame. Reading them across separate await calls races
+  // with the real 1750ms flick window and can see the next recovery phase.
   await expect.poll(async()=>page.evaluate(async()=>{
-    const fish=(await import("/Dungeon-Shop-Master/tests/scene.ts"))
-      .inspectHookedFishingFish();
-    return fish.visible&&fish.wakeVisible&&
-      fish.lineTension!==null&&fish.lineTension>.08;
-  }),{timeout:5000,intervals:[100,140,180]}).toBe(true);
-  const hooked=await page.evaluate(async()=>{
-    const fish=(await import("/Dungeon-Shop-Master/tests/scene.ts"))
-      .inspectHookedFishingFish();
+    const phase=document.querySelector("#fishing-hud")?.getAttribute("data-phase");
+    if(phase!=="flick")return false;
     const {FISHING_FLICKS}=await import(
       "/Dungeon-Shop-Master/src/game/fishingSkill.ts");
     const targetSymbol=document.querySelector("#fishing-arrow")?.textContent;
     const target=FISHING_FLICKS.find(flick=>flick.glyph===targetSymbol);
-    return {...fish,target};
-  });
-  expect(hooked).toMatchObject({
-    exists:true,visible:true,wakeVisible:true,sameScene:true,
-  });
-  expect(hooked.target).toBeTruthy();
-  if(!hooked.target)throw Error("Missing hooked counter direction.");
-  // The fish always fights the existing target direction.
-  expect((hooked.pull.x??0)*hooked.target.x+
-    (hooked.pull.y??0)*hooked.target.y).toBeLessThan(-.95);
-  const displacementX=(hooked.position.x??0)-(-8.5);
-  const displacementZ=(hooked.position.z??0)-(-27);
-  expect(displacementX*(hooked.waterDirection.x??0)+
-    displacementZ*(hooked.waterDirection.z??0)).toBeGreaterThan(.02);
-  expect(Math.hypot(hooked.cameraTug.yaw??0,
-    hooked.cameraTug.pitch??0)).toBeGreaterThan(.0001);
-  await expect(page.locator("#fishing-fish-direction")).toContainText("FISH PULLS");
-  await expect(page.locator("#fishing-fish-direction")).toContainText("COUNTER");
+    const fish=(await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .inspectHookedFishingFish();
+    const direction=document.querySelector("#fishing-fish-direction")?.textContent??"";
+    if(!target||!fish.exists||!fish.visible||!fish.wakeVisible||
+      !fish.sameScene||fish.lineTension===null||fish.lineTension<=.08||
+      !direction.includes("FISH PULLS")||!direction.includes("COUNTER"))
+      return false;
+    const alignment=(fish.pull.x??0)*target.x+(fish.pull.y??0)*target.y;
+    const displacementX=(fish.position.x??0)-(-8.5);
+    const displacementZ=(fish.position.z??0)-(-27);
+    const waterMove=displacementX*(fish.waterDirection.x??0)+
+      displacementZ*(fish.waterDirection.z??0);
+    const cameraShake=Math.hypot(fish.cameraTug.yaw??0,
+      fish.cameraTug.pitch??0);
+    return alignment<-.95&&waterMove>.02&&cameraShake>.0001;
+  }),{timeout:11000,intervals:[90,120,160]}).toBe(true);
   // End without granting a fake catch. Esc must restore the real FPS camera.
   await page.keyboard.press("Escape");
   await expect(page.locator("#fishing-hud")).toBeHidden();
