@@ -139,3 +139,9 @@
 #world-event-feed .world-feed-categories input{
   margin:0;accent-color:#c9ac76;
 }
+
+#world-event-feed .world-feed-toast:is(
+  [data-category="treasure"],[data-category="trap"],[data-category="depth"]
+) .world-feed-jump span{
+  max-height:4.6em;-webkit-line-clamp:3;
+}
