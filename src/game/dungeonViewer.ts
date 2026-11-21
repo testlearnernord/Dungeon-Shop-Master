@@ -27,6 +27,8 @@ import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
+import {floorHeroLocatorOptions,formatHeroDungeonFinds}
+  from "./liveDungeonInspector.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
   orbitDungeonMap,panDungeonMap,zoomDungeonMap,
   type DungeonMapPose} from "./dungeonMapCamera.ts";
@@ -104,6 +106,9 @@ export class DungeonViewer {
   }=null;
   private readonly replaySelector = document.querySelector<HTMLSelectElement>("#dungeon-replay-select")!;
   private readonly floorSelector=document.querySelector<HTMLSelectElement>("#dungeon-floor-select")!;
+  private readonly heroLocatorLabel=document.querySelector<HTMLElement>("#dungeon-hero-locator-label")!;
+  private readonly heroLocator=document.querySelector<HTMLSelectElement>("#dungeon-hero-locator")!;
+  private heroLocatorSignature="";
   private readonly archiveControls=document.querySelector<HTMLElement>("#dungeon-archive-controls")!;
   private readonly archiveButton=document.querySelector<HTMLButtonElement>("#dungeon-open-archive")!;
   private readonly heroDetailPanel=document.querySelector<HTMLElement>("#dungeon-hero-detail")!;
@@ -194,6 +199,11 @@ export class DungeonViewer {
       const floor=Number(this.floorSelector.value);
       if(LIVE_SPECTATOR_FLOORS.some(candidate=>candidate===floor))
         this.startFloor(floor as SpatialDungeonFloor);
+    });
+    this.heroLocator.addEventListener("change",()=>{
+      if(!this.active||this.liveFloor===null||this.liveArena.isActive)return;
+      this.selectFloorHero(this.heroLocator.value||null);
+      this.canvas.focus();
     });
     this.archiveButton.addEventListener("click",()=>{
       const first=this.availableReplays()[0]?.id??"preview";
@@ -421,6 +431,9 @@ export class DungeonViewer {
     this.liveFloor=null;this.liveFloorFightId=null;
     this.mapStatus.hidden=true;
     this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
+    this.heroLocatorLabel.hidden=true;
+    this.heroLocator.value="";
+    this.heroLocatorSignature="";
     this.liveFloorProjectionCache=null;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
@@ -678,6 +691,8 @@ export class DungeonViewer {
     this.liveHeroId=null;
     this.liveFloor=null;this.liveFloorFightId=null;
     this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
+    this.heroLocatorLabel.hidden=true;
+    this.heroLocator.value="";
     this.liveFloorProjectionCache=null;
     this.archiveControls.hidden=false;
     this.liveWorldTick=-1;
@@ -782,6 +797,7 @@ export class DungeonViewer {
     if(!view)return;
     const confirmed=heroId&&view.heroes.some(h=>h.id===heroId)?heroId:null;
     this.selectedFloorHeroId=confirmed;
+    this.heroLocator.value=confirmed??"";
     this.followActor=confirmed;
     this.replayScene?.setSelectedFloorHero(confirmed);
     this.renderFloorHeroDetail(view);
@@ -838,6 +854,7 @@ export class DungeonViewer {
       ["Armor",hero.equipment.armor??"None"],
       ["Inventory","Loot "+hero.inventory.loot+" · Waybread "+
         hero.inventory.bread+" · Healing "+hero.inventory.healing],
+      ["Recovered goods",formatHeroDungeonFinds(hero.inventory.finds)],
       ["Current activity",ongoing],
       ["Short-term floor action",hero.plannedAction??"No committed plan"],
       ["Medium-term goal",hero.goal??"No committed plan"],
@@ -864,6 +881,20 @@ export class DungeonViewer {
     this.heroDetailValues.replaceChildren(fragment);
   }
 
+  /** Options are based only on this saved floor projection. Changes to
+   * the clock without roster changes never rebuild the selector. */
+  private syncHeroLocator(view:LiveFloorSpectatorFrame):void {
+    this.heroLocatorLabel.hidden=this.liveFloor===null||this.liveArena.isActive;
+    const options=floorHeroLocatorOptions(view.heroes);
+    const signature=options.map(option=>option.id+"="+option.label).join("|");
+    if(signature!==this.heroLocatorSignature){
+      this.heroLocator.replaceChildren(new Option("Whole floor · no hero selected",""),
+        ...options.map(option=>new Option(option.label,option.id)));
+      this.heroLocatorSignature=signature;
+    }
+    this.heroLocator.value=this.selectedFloorHeroId??"";
+  }
+
   private paintFloor(view:LiveFloorSpectatorFrame):void {
     if(this.layout){
       const unresolved=this.layout.features.filter(feature=>
@@ -888,6 +919,7 @@ export class DungeonViewer {
       this.selectedFloorHeroId=null;this.followActor=null;
     }
     this.replayScene?.setSelectedFloorHero(this.selectedFloorHeroId);
+    this.syncHeroLocator(view);
     this.renderFloorHeroDetail(view);
     this.paintFloorVisionLabel(view);
     this.liveCombatPanel.hidden=view.fights.length===0;
@@ -945,6 +977,7 @@ export class DungeonViewer {
     this.liveFloorProjectionCache=null;
     this.archiveControls.hidden=true;
     this.liveHeroId=heroId;
+    this.heroLocatorLabel.hidden=true;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
     this.playing=false;
