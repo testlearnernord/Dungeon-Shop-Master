@@ -118,3 +118,19 @@ test("checkout navigation blocks rotated countertop and reserves accessible queu
   const invalid=replaceCounterPlacement(base,{x:4,z:-5.5,rotation:0});
   assert.strictEqual(invalid.layout,base,"A counter without a usable queue must be rejected");
 });
+
+test("a stable physical queue slot does not trigger an outward re-route",async()=>{
+  const {checkoutWaitAlreadyAtSlot}=await import(
+    "../../src/game/checkoutQueue.ts");
+  const standing={x:2,z:1};
+  assert.equal(checkoutWaitAlreadyAtSlot("queueing","awaiting-checkout",1,
+    standing,{x:2.02,z:1},false),true);
+  assert.equal(checkoutWaitAlreadyAtSlot("queueing","awaiting-checkout",0,
+    standing,{x:2,z:1.8},false),false,
+    "Promoted customers must still walk forward to their new place.");
+  assert.equal(checkoutWaitAlreadyAtSlot("queueing","awaiting-checkout",1,
+    standing,standing,true),false,
+    "Moving furniture must revalidate reachability.");
+  assert.equal(checkoutWaitAlreadyAtSlot("leaving","awaiting-checkout",1,
+    standing,standing,false),false);
+});

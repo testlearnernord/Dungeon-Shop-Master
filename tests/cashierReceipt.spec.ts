@@ -188,3 +188,55 @@ test("two customers are processed consecutively at one staffed register without 
   await expect(dialog).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+test("checkout stays non-modal and the authoritative shop traffic tick continues @ci-smoke",async({page})=>{
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  const entry=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/cashierHarness.ts")).openCashierHarness());
+  expect(entry.openResult).toContain("Register ready");
+  const overlay=page.locator("#cashier-overlay");
+  await expect(overlay).toBeVisible();
+  const initial=await page.evaluate(()=>{
+    const hooks=window as Window&{__shopTestTraffic?:()=>{tick:number}};
+    return {tick:hooks.__shopTestTraffic?.().tick??-1,
+      modal:(document.querySelector("#cashier-overlay") as HTMLDialogElement).matches(":modal")};
+  });
+  expect(initial.modal).toBe(false);
+  expect(initial.tick).toBeGreaterThanOrEqual(0);
+  await expect.poll(async()=>page.evaluate(()=>{
+    const hooks=window as Window&{__shopTestTraffic?:()=>{tick:number}};
+    return hooks.__shopTestTraffic?.().tick??-1;
+  }),{timeout:5000}).toBeGreaterThan(initial.tick+4);
+  // The original timing semantics, cart and tip are still untouched.
+  expect(await stampAtMarker(page)).toBe(true);
+  expect(await stampAtMarker(page)).toBe(true);
+  await expect(overlay.locator(".cashier-settlement")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(overlay).toBeHidden();
+});
+
+test("the cashier timer is drawn as an anchored bottom-screen brass ring",async({page})=>{
+  await page.goto("./");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/cashierHarness.ts")).openCashierHarness());
+  const meter=page.locator("#cashier-overlay .cashier-meter");
+  await expect(meter).toBeVisible();
+  const geometry=await page.evaluate(()=>{
+    const panel=document.querySelector<HTMLDialogElement>("#cashier-overlay")!;
+    const meter=panel.querySelector<HTMLElement>(".cashier-meter")!;
+    const p=panel.getBoundingClientRect(),m=meter.getBoundingClientRect();
+    return {radius:getComputedStyle(meter).borderRadius,width:m.width,height:m.height,
+      panelBottom:p.bottom,viewportHeight:window.innerHeight,
+      start:meter.style.getPropertyValue("--success-start"),
+      end:meter.style.getPropertyValue("--success-end")};
+  });
+  expect(geometry.radius).toBe("50%");
+  expect(geometry.width).toBeGreaterThan(75);
+  expect(Math.abs(geometry.width-geometry.height)).toBeLessThan(3);
+  expect(geometry.start).toContain("deg");
+  expect(geometry.end).toContain("deg");
+  expect(geometry.panelBottom).toBeGreaterThan(geometry.viewportHeight*.5);
+});
