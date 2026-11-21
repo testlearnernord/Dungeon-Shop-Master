@@ -488,6 +488,8 @@ setupWorldEventFeed(store,target=>{
   }
   if(arena.isActive)arena.close();
   if(target.kind==="combat")return dungeon.openLiveEncounter(target.fightId);
+  if(target.kind==="floor-site")
+    return dungeon.openFloorSite(target.floor,target.x,target.z);
   return watchLiveHero(target.heroId);
 });
 setupExpeditionArchiveHud(canvas,camera,store,
