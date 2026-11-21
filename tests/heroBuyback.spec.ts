@@ -22,11 +22,15 @@ test("returning adventurer sells one real find to Galvik, saved with a paid expe
   });
   await page.reload();
   await expect(page.locator("#save-status")).toHaveText(/Continued saved Day 1\./);
+  await expect(page.locator("#inventory .inventory-row")).toHaveCount(5);
+  await expect(page.locator('#inventory [data-item-id="iron-ore"]')).toHaveCount(0);
+  await expect(page.locator('#inventory [data-item-id="coal"]')).toHaveCount(0);
   const trigger=page.locator("#open-hero-offers");
   await expect(trigger).toContainText("Hero loot");
   await trigger.click();
   const modal=page.locator("#hero-buyback-hud");
   await expect(modal).toBeVisible();
+  await expect(modal.locator(".hero-buyback-budget")).toContainText("Workshop reserve");
   const offer=modal.locator(".hero-buyback-offer").filter({hasText:"Iron Ore"});
   await expect(offer).toContainText("×2");
   await offer.getByRole("button",{name:/Buy one Iron Ore/}).click();
