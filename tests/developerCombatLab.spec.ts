@@ -29,17 +29,17 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   const summary=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))
       .inspectLiveCombatPresentation());
+  await expect(page.locator(".group-combat-cinematic")).toHaveAttribute(
+    "data-kind","normal");
+  await expect(page.locator(".group-combat-cinematic")).toBeVisible();
+  // Pause during intro, before waiting for asynchronous Ghoul GLB assets.
+  // OFF must skip the film without advancing/rerolling any 60Hz ticks.
+  await page.locator("#lab-pause").click();
+  await page.locator("#lab-cinematics-toggle").click();
   await expect.poll(async()=>(await summary()).arenaMonsters).toBe(3);
   expect((await summary()).arenaHeroes).toBe(3);
   expect((await summary()).isArena).toBe(true);
   expect((await summary()).legacyMonsterPlaceholders).toBe(0);
-  await expect(page.locator(".group-combat-cinematic")).toHaveAttribute(
-    "data-kind","normal");
-  await expect(page.locator(".group-combat-cinematic")).toBeVisible();
-  // Pause during intro. OFF must skip the film without advancing/rerolling
-  // any 60Hz ticks and restore the real battle HUD immediately.
-  await page.locator("#lab-pause").click();
-  await page.locator("#lab-cinematics-toggle").click();
   await expect(page.locator("#lab-cinematics-toggle"))
     .toHaveAttribute("aria-pressed","false");
   await expect(page.locator(".group-combat-cinematic")).toBeHidden();
