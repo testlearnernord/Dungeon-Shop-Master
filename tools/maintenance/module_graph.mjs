@@ -2,12 +2,12 @@
  * Conservative source reachability audit. This is evidence for human review,
  * NOT a dead-code deletion tool: type imports are counted as dependencies,
  * and computed imports/reflection are deliberately flagged as unknown.
+ * Source is tokenized without dependency on the removed TypeScript 7 Compiler API.
  * Usage: node tools/maintenance/module_graph.mjs [--json]
  */
 import {readFileSync, readdirSync, existsSync} from "node:fs";
 import {dirname, extname, join, relative, resolve, sep} from "node:path";
 import {pathToFileURL} from "node:url";
-import ts from "typescript";
 
 const sourceExtensions=new Set([".ts",".tsx"]);
 const recognizedImports=new Set(["",".ts",".tsx",".js",".jsx",".mjs",".mts"]);
@@ -19,33 +19,69 @@ function walk(directory){
       !entry.name.endsWith(".d.ts")?[join(directory,entry.name)]:[])
     .sort();
 }
+/** Conservative lexer: ignore comments, preserve strings and token positions.
+ * Not a complete TypeScript parser or a proof of runtime reachability.
+ */
+function tokensOf(input){
+  const tokens=[];
+  let i=0,line=1;
+  const next=()=>{if(input[i]==="\n")line++;i++;};
+  while(i<input.length){
+    const c=input[i],startLine=line;
+    if(/\s/.test(c)){next();continue;}
+    if(c==="/"&&input[i+1]==="/"){
+      while(i<input.length&&input[i]!=="\n")next();continue;
+    }
+    if(c==="/"&&input[i+1]==="*"){
+      next();next();
+      while(i<input.length&&!(input[i]==="*"&&input[i+1]==="/"))next();
+      if(i<input.length){next();next();}continue;
+    }
+    if(c==='"'||c==="'"||c==="\x60"){
+      const quote=c,kind=c==="\x60"?"template":"string";
+      let value="";next();
+      while(i<input.length&&input[i]!==quote){
+        if(input[i]==="\\"&&i+1<input.length){next();value+=input[i];next();}
+        else{value+=input[i];next();}
+      }
+      if(i<input.length)next();
+      tokens.push({kind,value,line:startLine});continue;
+    }
+    if(/[a-zA-Z_$]/.test(c)){
+      let value="";
+      while(i<input.length&&/[a-zA-Z0-9_$]/.test(input[i])){value+=input[i];next();}
+      tokens.push({kind:"identifier",value,line:startLine});continue;
+    }
+    tokens.push({kind:"punct",value:c,line:startLine});next();
+  }
+  return tokens;
+}
 function moduleReferences(file){
-  const input=readFileSync(file,"utf8");
-  const ast=ts.createSourceFile(file,input,ts.ScriptTarget.Latest,true,
-    file.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
+  const tokens=tokensOf(readFileSync(file,"utf8"));
   const references=[],computed=[];
-  const capture=(value,kind,node)=>{
-    if(value&&ts.isStringLiteralLike(value))references.push({specifier:value.text,kind});
-    else{
-      const pos=ast.getLineAndCharacterOfPosition(node.getStart(ast));
-      computed.push({line:pos.line+1,kind});
-    }
+  const record=(token,kind,position)=>{
+    if(token?.kind==="string")references.push({specifier:token.value,kind});
+    else computed.push({line:position.line,kind});
   };
-  const visit=node=>{
-    if(ts.isImportDeclaration(node)||ts.isExportDeclaration(node)){
-      if(node.moduleSpecifier)capture(node.moduleSpecifier,"static",node);
-    }else if(ts.isCallExpression(node)&&node.expression.kind===ts.SyntaxKind.ImportKeyword){
-      capture(node.arguments[0],"dynamic",node);
-    }else if(ts.isImportTypeNode(node)){
-      const argument=node.argument;
-      if(ts.isLiteralTypeNode(argument))capture(argument.literal,"type",node);
-      else capture(null,"type",node);
-    }else if(ts.isImportEqualsDeclaration(node)&&ts.isExternalModuleReference(node.moduleReference)){
-      capture(node.moduleReference.expression,"static",node);
+  for(let i=0;i<tokens.length;i++){
+    const node=tokens[i],next=tokens[i+1];
+    if(node.kind!=="identifier"||(node.value!=="import"&&node.value!=="export"))continue;
+    if(next?.value===".")continue;
+    if(node.value==="import"&&next?.value==="("){
+      record(tokens[i+2],"dynamic",node);continue;
     }
-    ts.forEachChild(node,visit);
-  };
-  visit(ast);
+    if(node.value==="import"&&next?.kind==="string"){
+      record(next,"static",node);continue;
+    }
+    for(let j=i+1;j<tokens.length&&j<i+240;j++){
+      const part=tokens[j];
+      if(part.value===";"||((part.value==="import"||part.value==="export")&&part.kind==="identifier"))break;
+      if(part.value==="from"&&part.kind==="identifier"){
+        record(tokens[j+1],next?.value==="type"?"type":"static",node);
+        break;
+      }
+    }
+  }
   return {references,computed};
 }
 function key(root,file){return relative(root,file).split(sep).join("/");}
