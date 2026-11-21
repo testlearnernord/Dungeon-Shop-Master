@@ -493,11 +493,24 @@ setupWorldEventFeed(store,target=>{
     openRoster(target.heroId);
     return true;
   }
-  if(target.kind==="roster"){
+  if(target.kind==="roster"||target.kind==="hero-profile"){
+    // One stable, global hero-profile target. Until the reusable worldwide
+    // hover card ships, the existing full Adventurer Board is the fallback.
     if(arena.isActive)arena.close();
     if(dungeon.isActive)dungeon.close();
     openRoster(target.heroId);
     return true;
+  }
+  if(target.kind==="recorded-fight"){
+    if(arena.isActive)arena.close();
+    return dungeon.openRecordedCombat(target.eventId,
+      target.featureId,target.siteCycle);
+  }
+  if(target.kind==="boss-recording"){
+    if(dungeon.isActive)dungeon.close();
+    if(arena.isActive)arena.close();
+    arena.open(target.eventId);
+    return arena.isActive;
   }
   if(target.kind==="boss"){
     if(dungeon.isActive)dungeon.close();
