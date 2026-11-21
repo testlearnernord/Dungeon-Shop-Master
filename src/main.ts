@@ -58,6 +58,7 @@ import "./blueprintHud.css";
 import "./debtBookHud.css";
 import "./fishingHud.css";
 import "./immersiveUi.css";
+import "./cashierLive.css";
 import "./expeditionArchive.css";
 
 async function startGame(): Promise<void> {
@@ -509,19 +510,13 @@ let lastResolutionFrame=0;
 engine.runRenderLoop(() => {
   const frameMs=ignoreNextClockFrame?0:engine.getDeltaTime();
   ignoreNextClockFrame=false;
-  // The register is a DOM-only modal. Its world clock is paused already,
-  // so avoid wasting GPU/CPU on a hidden 3D scene while input matters.
-  if(cashier?.isOpen||document.body.classList.contains("cashier-active")){
-    npcVisuals.setWorldPaused(true);
-    worldClockPacer.reset();
-    return;
-  }
+  // Cashier is a live, non-modal HUD, not a paused alternate game scene.
   // LIVE spectator is a camera only: the saved world and physical shop
   // customers must continue on the one authoritative 50ms clock.
   const paused=document.hidden||
     (!isShopActive()&&!(fishing?.isActive??false)&&
        !dungeon.isWatchingLive&&!arena.isWatchingLiveBoss)||
-    !!document.querySelector("dialog[open]")||
+    !!document.querySelector("dialog[open]:not(#cashier-overlay)")||
     document.body.classList.contains("blueprint-active");
   npcVisuals.setWorldPaused(paused);
   const worldStarted=performance.now();

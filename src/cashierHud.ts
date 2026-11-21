@@ -85,6 +85,7 @@ export function setupCashierHud(
   const nextButton=root.querySelector<HTMLButtonElement>(".cashier-next")!;
   const finishButton=root.querySelector<HTMLButtonElement>(".cashier-finish")!;
   const hint=root.querySelector<HTMLElement>(".cashier-hint")!;
+  const meter=root.querySelector<HTMLElement>(".cashier-meter")!;
   const needle=root.querySelector<HTMLElement>(".cashier-needle")!;
   const target=root.querySelector<HTMLElement>(".cashier-target")!;
   const stageCount=root.querySelector<HTMLElement>(".cashier-stage-count")!;
@@ -127,6 +128,11 @@ export function setupCashierHud(
     stageDetail.textContent=stage.detail;
     target.style.left=((stage.target-CASHIER_TIMING_TOLERANCE)*100)+"%";
     target.style.width=(CASHIER_TIMING_TOLERANCE*200)+"%";
+    // Presentation only: grading keeps the original normalized linear value.
+    meter.style.setProperty("--success-start",
+      (stage.target-CASHIER_TIMING_TOLERANCE)*360+"deg");
+    meter.style.setProperty("--success-end",
+      (stage.target+CASHIER_TIMING_TOLERANCE)*360+"deg");
     for(let index=0;index<stamps.length;index++){
       stamps[index].classList.toggle("is-complete",index<hits);
       stamps[index].classList.toggle("is-active",index===hits);
@@ -198,6 +204,7 @@ export function setupCashierHud(
       }
       paintedPosition=phase();
       needle.style.left=(paintedPosition*100)+"%";
+      meter.style.setProperty("--needle-angle",paintedPosition*360+"deg");
       pulse(Math.floor((performance.now()-started)/(Math.PI*CASHIER_NEEDLE_PERIOD_MS)));
     }else if(settled){
       if(!shopActive()){close();return;}
@@ -296,7 +303,8 @@ export function setupCashierHud(
     beginCustomer(buyer);
     if(document.pointerLockElement)void document.exitPointerLock();
     camera.detachControl();
-    root.showModal();
+    // Keep the world and customers visible, running on the shared world clock.
+    root.show();
     document.body.classList.add("cashier-active");
     sound("open");
     root.focus();

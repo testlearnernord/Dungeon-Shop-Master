@@ -26,7 +26,7 @@ import type { ItemId } from "./economy.ts";
 import type {LiveServiceRequest} from "./shopServiceFocus.ts";
 import { ITEMS } from "./economy.ts";
 import type { ShopCart } from "./shopCarts.ts";
-import { checkoutQueueIndex, checkoutQueuePoints } from "./checkoutQueue.ts";
+import {checkoutQueueIndex,checkoutQueuePoints,checkoutWaitAlreadyAtSlot} from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, canShareGateLanes, gateTravelLane, isInExitCorridor, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot, type WaypointProgress, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
 import { ShopServiceSpots } from "./shopServiceSpots.ts";
@@ -613,8 +613,16 @@ export class NpcVisualSystem {
       const queueIndex=checkoutQueueIndex(carts,npc.visitor.id);
       const key=JSON.stringify([plan?.items,plan?.reason,plan?.wantedItemId,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex],roomSignature]);
       if(key===npc.intentKey)continue;
+      const alreadyWaiting=checkoutWaitAlreadyAtSlot(
+        npc.phase,String(npc.root.metadata.shoppingPhase??""),
+        queueIndex,{x:npc.root.position.x,z:npc.root.position.z},
+        queuePoints[queueIndex],furnitureMoved);
       npc.intent=plan;
       npc.intentKey=key;
+      if(alreadyWaiting){
+        npc.root.metadata.checkoutQueueIndex=queueIndex;
+        continue;
+      }
       npc.targetIndex=0;
       npc.trafficReroutes=0;
       npc.routeProgress=null;
@@ -1411,9 +1419,18 @@ export class NpcVisualSystem {
     const overflow=checkoutIndex>=0&&!route
       ?this.serviceOverflowRoute(npc):null;
     const safeRoute=route??overflow;
+    // When a buyer advances to a newly freed checkout position, move
+    // directly along the unobstructed queue lane, not out and back via A*.
+    const oldIndex=Number(npc.root.metadata.checkoutQueueIndex);
+    const queueAdvance=checkoutIndex>=0&&!!route&&!!target&&
+      Number.isSafeInteger(oldIndex)&&oldIndex>checkoutIndex&&
+      ["awaiting-checkout","walking-to-checkout"].includes(
+        String(npc.root.metadata.shoppingPhase??""))&&
+      shopSegmentClear(origin,{x:target.x,z:target.z},this.layout!,this.room);
     npc.phase=safeRoute?"browsing":"queueing";npc.toQueue=!!safeRoute;
     npc.wait=safeRoute?0:1.2+(npc.slot%4)*.25;
-    npc.route=(safeRoute?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
+    npc.route=queueAdvance?[new Vector3(target!.x,0,target!.z)]:
+      (safeRoute?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
     npc.waypoint=0;
     npc.root.metadata.shoppingTargetSlot=null;
     npc.root.metadata.shoppingPhase=checkoutIndex>=0
