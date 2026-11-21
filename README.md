@@ -21,7 +21,7 @@ Core V.003 systems were audited through PR #241 (21 November 2026). The subseque
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Strict version-25 campaigns now include the cellar door, excavation and movable chest; older alpha saves need separate migration work |
+| Persistence | Strict version-26 campaigns persist the cellar, shop and separate material reserve. Existing version-25 saves migrate their exact Ore/Coal quantities from bag and shelf into that reserve; older alpha formats remain unsupported |
 
 **V.004 cellar (merged PRs #252 and #254):** Galvik's fixed fiancée portrait opens a secret, physically traversable stairway to the cellar. The widened corridor and ramp support normal first-person descent, ascent and off-centre approaches. Cellar mining uses the same rock cells and U excavation tool; a chest uses the same P furniture blueprint registry and save state.
 
@@ -51,7 +51,7 @@ Core V.003 systems were audited through PR #241 (21 November 2026). The subseque
 | Input | Purpose |
 | --- | --- |
 | WASD / mouse / Shift | Move, look, sprint |
-| 1–6 / mouse wheel | Choose a carried item |
+| 1–5 / mouse wheel | Choose an actual shelf-stock item |
 | Left / right click on shelf | Add / remove one item |
 | Shift + left / right click | Fill / empty reachable slot, respecting stock rules |
 | B / F | Open wholesale / select urgent restock item |
