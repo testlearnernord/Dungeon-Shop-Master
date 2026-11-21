@@ -11,7 +11,8 @@
     "test": "playwright test",
     "test:smoke": "playwright test --grep @ci-smoke",
     "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "audit:modules": "node tools/maintenance/module_graph.mjs"
   },
   "dependencies": {
     "@babylonjs/core": "^9.31.0",

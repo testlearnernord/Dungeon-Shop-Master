@@ -91,6 +91,8 @@ Committed original Tripo GLBs
 
 ## 7. CI, verification and release state
 
+`npm run audit:modules` extracts conservative static, type-only and literal dynamic TypeScript imports from the actual `index.html` entrypoint. It reports test-only, unreferenced and computed-import candidates for **manual review only**; it does not remove code or prove unreachable dynamic/reflection paths. See [C2 graph audit](CODE_CLEANUP_C2.md).
+
 `npm run build` executes both asset generators, TypeScript type checking and Vite bundling. `npm run test:unit` runs Node tests, `npm run test:smoke` runs tagged Playwright checks; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit/two-browser-shard smoke; full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
 
 The shipped HUD still labels the game **V.002 ALPHA**; V.003 remains a release target. The shared world clock, partial living dungeon, observed fights, LIVE spectator, updated SFX and post-shop rotation already exist and must **not** be described as merely planned. Remaining content and release gates are tracked only in [Roadmap](ROADMAP.md), not appended as PR-numbered sections here.

@@ -24,6 +24,8 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:unit
+      # Static reachability report only: candidates require separate human review.
+      - run: npm run audit:modules -- --json
 
   smoke:
     name: Browser smoke (shard ${{ matrix.shard }}/2)
