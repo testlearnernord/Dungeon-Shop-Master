@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {generateExpeditionLayout,dungeonNeighbors}
+import {generateExpeditionLayout,dungeonNeighbors,tileAt}
   from "../../src/game/dungeonLayout.ts";
-import {chooseLevel7Step} from "../../src/game/level7Exploration.ts";
+import {chooseLevel7Step,chooseRenewedSiteStep} from "../../src/game/level7Exploration.ts";
 import {predictDungeonHeroSteps,dungeonPreviewExplanation}
   from "../../src/game/dungeonIntentPreview.ts";
 
@@ -54,4 +54,44 @@ test("every absent or partial preview gives a truthful reason, never fake motion
     activity:"portal"}),/portal.*no floor route/i);
   assert.match(dungeonPreviewExplanation(layout,{...hero,
     plannedAction:"ascend"}),/At staircase/);
+});
+
+
+test("unknown stair does not erase an ordinary autonomous exploration step",()=>{
+  const layout=generateExpeditionLayout(7349,1);
+  const home=layout.entrance;
+  const visited=[home.z*layout.width+home.x];
+  const hero={id:"solo",...home,visited,activity:"exploring" as const,
+    inCombat:false,plannedAction:"descend" as const};
+  const direct=chooseLevel7Step(layout,{heroId:hero.id,...home,visited});
+  assert.ok(direct,"The seeded floor needs a valid initial frontier");
+  assert.deepEqual(predictDungeonHeroSteps(layout,hero)[0],direct,
+    "Not knowing the staircase cannot make a moving hero appear frozen");
+  assert.deepEqual(hero.visited,visited,"Rendering cannot reveal new tiles");
+});
+
+test("fully explored hero previews authoritative renewed-site fallback",()=>{
+  const layout=generateExpeditionLayout(7351,1);
+  const visited:number[]=[];
+  for(let z=0;z<layout.height;z++)for(let x=0;x<layout.width;x++){
+    if(tileAt(layout,x,z)!=="wall")visited.push(z*layout.width+x);
+  }
+  const start=layout.entrance;
+  const progress={heroId:"scout",...start,visited};
+  assert.equal(chooseLevel7Step(layout,progress),null,
+    "Already fully explored cells have no fresh frontier");
+  const renewed=chooseRenewedSiteStep(layout,start,new Set(visited),new Set());
+  assert.ok(renewed,"Seeded floor has at least one physically reachable site");
+  const hero={id:"scout",...start,visited,activity:"exploring" as const,
+    inCombat:false,plannedAction:"stay" as const};
+  const before=JSON.stringify(hero);
+  const preview=predictDungeonHeroSteps(layout,hero);
+  assert.deepEqual(preview[0],renewed,
+    "Preview must not omit the navigator's real replenished-site movement");
+  assert.equal(JSON.stringify(hero),before);
+  const resolved=layout.features.map(f=>f.id);
+  assert.deepEqual(predictDungeonHeroSteps(layout,hero,resolved),[],
+    "With no frontier or renewed site, do not invent motion");
+  assert.match(dungeonPreviewExplanation(layout,hero,resolved),
+    /No connected next tile/);
 });
