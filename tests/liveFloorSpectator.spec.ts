@@ -99,6 +99,13 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
       .inspectDungeonFeatureProps());
   await expect.poll(async()=>(await featureArt()).ghoulModels,
     {timeout:15000}).toBeGreaterThan(0);
+  const stairArt=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonStairMarkers());
+  expect(stairArt).toHaveLength(2);
+  expect(stairArt.map(stair=>stair.kind)).toEqual(["descend","exit"]);
+  expect(stairArt.map(stair=>stair.steps)).toEqual([4,4]);
+  expect(stairArt.find(stair=>stair.kind==="descend")?.destination).toBe(2);
+  expect(stairArt.find(stair=>stair.kind==="exit")?.destination).toBeNull();
   const visuals=await featureArt();
   expect(visuals.chests).toBeGreaterThan(0);
   expect(visuals.lids).toBe(visuals.chests);
