@@ -277,7 +277,7 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   await expect(page.locator("#dungeon-hero-detail")).toBeVisible();
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Gold");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("No committed plan");
-  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Solo");
+  await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Party");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Current activity");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Other heroes seen");
   await expect(page.locator("#dungeon-hero-detail-values")).toContainText("Visible monsters");
