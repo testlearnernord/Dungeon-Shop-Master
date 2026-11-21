@@ -656,7 +656,10 @@ export function simulateSpatialDungeonPartyDay(
     });
     const replay:Level7Replay={
       version:1,day,heroId:m.hero.id,floor:floor as SpatialDungeonFloor,
-      appearance:{role:m.hero.role,equipment:{...m.hero.equipment}},
+      // The replay starts BEFORE chest loot can equip the hero. Preserve
+      // the original entering gear; live inventory still receives the drop.
+      appearance:{role:party.find(hero=>hero.id===m.hero.id)!.role,
+        equipment:{...party.find(hero=>hero.id===m.hero.id)!.equipment}},
       knownAtStart:[...m.progress.visited],
       resolvedAtStart:[...refreshed.resolvedFeatureIds],
       ...(party.length>1?{
