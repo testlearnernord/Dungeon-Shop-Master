@@ -1324,6 +1324,12 @@ function validateState(value: unknown): asserts value is GameState {
         fail(path+".worldTick","is mandatory for real live dungeon events");
     }
     let suffix = event.type === "day-started" ? "started" : event.type;
+    if(event.type==="hero-buyback"){
+      const prefix="day-"+eventDay+":"+event.adventurerId+":";
+      if(!id.startsWith(prefix))
+        fail(path+".id","must reference the trading hero");
+      suffix=id.slice(prefix.length);
+    }
     if(event.type==="dungeon-live")suffix="dungeon-live:"+event.worldTick;
     if(event.type==="hero-death-signal")
       suffix="hero-death-signal:"+event.worldTick;

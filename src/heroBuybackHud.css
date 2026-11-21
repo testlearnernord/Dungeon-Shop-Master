@@ -1,0 +1,40 @@
+#hero-buyback-hud{
+  box-sizing:border-box;width:min(720px,calc(100vw - 24px));
+  max-height:min(82vh,780px);overflow-y:auto;margin:auto;
+  border:1px solid #ad8a59;border-radius:15px;padding:19px 22px;
+  color:#e9dfcc;background:
+    radial-gradient(ellipse at 18% -18%,#4a5a3b42,transparent 65%),
+    linear-gradient(155deg,#182428,#10181c);
+  box-shadow:0 23px 95px #000d,0 0 0 1px #2b3432;
+  text-shadow:none;font:13px/1.55 system-ui,sans-serif;
+}
+#hero-buyback-hud::backdrop{background:rgba(4,9,12,.72);backdrop-filter:blur(5px)}
+#hero-buyback-hud header{display:flex;justify-content:space-between;gap:14px;
+  border-bottom:1px solid #8f7a575f;padding-bottom:13px}
+#hero-buyback-hud header small{color:#b6d2b5;letter-spacing:.13em;font-weight:700}
+#hero-buyback-hud h2{margin:4px 0;font:700 25px Georgia,serif;color:#e3c98f}
+#hero-buyback-hud header p{margin:4px 0;color:#b5c6bd}
+#hero-buyback-hud button{border:1px solid #a48c68;border-radius:7px;
+  padding:8px 11px;color:#f4e5cb;background:#31403b;font:600 12px system-ui,sans-serif;cursor:pointer}
+#hero-buyback-hud button:hover:not(:disabled){background:#46624d}
+#hero-buyback-hud button:disabled{opacity:.42;cursor:not-allowed}
+#hero-buyback-hud button:focus-visible{outline:2px solid #aee0b4;outline-offset:2px}
+#hero-buyback-hud .hero-buyback-budget{margin:13px 0;color:#d7c49b;
+  font:600 12px system-ui,sans-serif}
+#hero-buyback-hud .hero-buyback-offers{display:grid;gap:8px}
+#hero-buyback-hud .hero-buyback-offer{display:grid;grid-template-columns:32px 1fr auto;
+  gap:12px;align-items:center;padding:10px 11px;background:#263434ab;
+  border:1px solid #7d8b755f;border-radius:9px}
+#hero-buyback-hud .hero-buyback-offer strong{display:block;color:#e9e5da;font-size:14px}
+#hero-buyback-hud .hero-buyback-offer small{display:block;color:#a7c2b4}
+#hero-buyback-hud .hero-buyback-item-swatch{display:block;width:25px;height:25px;
+  border:2px solid #b4a47c;border-radius:5px;box-shadow:inset 0 0 10px #1119}
+#hero-buyback-hud .hero-buyback-empty{padding:22px 6px;color:#b9c7bf;text-align:center}
+#hero-buyback-hud .hero-buyback-feedback{color:#c4dcaf;min-height:19px;margin:14px 0 0}
+@media(max-width:600px){
+  #hero-buyback-hud{padding:12px}
+  #hero-buyback-hud h2{font-size:20px}
+  #hero-buyback-hud .hero-buyback-offer{grid-template-columns:22px 1fr auto;gap:7px}
+  #hero-buyback-hud .hero-buyback-item-swatch{width:18px;height:18px}
+  #hero-buyback-hud .hero-buyback-offer small{font-size:10px}
+}
