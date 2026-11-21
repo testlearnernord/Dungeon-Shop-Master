@@ -72,7 +72,11 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   // camera cannot graze a seam and peek into the unrendered cave exterior.
   cube("bedroom-left-wall", 0.85, 4, 6.05, -3.25, 2, -9.68, wall, true);
   cube("bedroom-right-wall", 0.85, 4, 6.05, 3.25, 2, -9.68, wall, true);
-  cube("bedroom-rear-wall", 6.9, 4, 0.65, 0, 2, -12.35, wall, true);
+  // The hidden rear opening is permanently structural; a portrait-operated
+  // collision barrier keeps it closed until Galvik uncovers the stairs.
+  cube("bedroom-rear-left",2.0,4,.65,-2.45,2,-12.35,wall,true);
+  cube("bedroom-rear-right",3.7,4,.65,1.60,2,-12.35,wall,true);
+  cube("bedroom-secret-lintel",1.20,1.20,.65,-.85,3.40,-12.35,wall,true);
   const flagstone = surfaces.floor;
   const bedroomFloor=cube("bedroom-floor-skin", 6.05, 0.025, 5.08, 0, 0.012, -9.68, flagstone);
   bedroomFloor.isPickable=true; // Blueprint floor targeting; not a gameplay interactable
@@ -105,6 +109,7 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
     const mesh = MeshBuilder.CreateIcoSphere("bedroom-rear-rock-" + i,
       { radius: 0.5, subdivisions: 1, flat: true }, scene);
     mesh.position.set(x, 2.15 + (i % 3) * 0.38, -12.06);
+    if(x>-1.5&&x<-.2)continue; // Do not cover the portrait doorway.
     mesh.scaling.set(0.44, 0.55 + (i % 2) * 0.24, 0.23);
     mesh.rotation.y = i * 0.47;
     mesh.material = i % 3 === 0 ? stoneHighlight : masonry;
@@ -248,16 +253,16 @@ export function buildBedroom(scene: Scene, surfaces: DungeonSurfaces): Mesh {
   // Uneven tally cuts, like someone has been counting far too many nights.
   const scratches = mat("tally", new Color3(0.46, 0.34, 0.23),
     new Color3(0.035, 0.022, 0.009));
-  cube("bedroom-tally-board", 1.20, 0.95, 0.10, -1.5, 2.17, -12.10, timber);
+  cube("bedroom-tally-board", 1.20, 0.95, 0.10, -2.20, 2.17, -12.10, timber);
   for (let group = 0; group < 3; group++) {
     for (let line = 0; line < 4; line++) {
       const cut = cube("bedroom-tally-mark-" + group + "-" + line,
-        0.019, 0.33, 0.016, -1.92 + group * 0.42 + line * 0.079,
+        0.019, 0.33, 0.016, -2.62 + group * 0.42 + line * 0.079,
         2.24 - group * 0.055, -12.024, scratches);
       cut.rotation.z = ((line + group) % 3 - 1) * 0.06;
     }
     const diagonal = cube("bedroom-tally-strike-" + group,
-      0.021, 0.42, 0.018, -1.80 + group * 0.42,
+      0.021, 0.42, 0.018, -2.50 + group * 0.42,
       2.24 - group * 0.055, -12.005, scratches);
     diagonal.rotation.z = 1.05;
   }

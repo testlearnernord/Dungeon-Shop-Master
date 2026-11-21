@@ -11,11 +11,12 @@ import type { Interactable } from "./inventory";
 import { NEW_GAME_COUNTER_PLACEMENT } from "./shopLayout";
 import {shopFurnitureDefinition} from "./furnitureRegistry.ts";
 import { buildBedroom } from "./bedroom";
+import {buildCellarGeometry} from "./cellarGeometry.ts";
 import { getDungeonSurfaces, tileLargeFloorUV } from "./dungeonSurfaces";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
-  kind: "register" | "corridor" | "roster-board" | "bed" | "debt-book";
+  kind: "register" | "corridor" | "roster-board" | "bed" | "debt-book" | "cellar-door";
 }
 
 function material(scene: Scene, name: string, color: Color3): StandardMaterial {
@@ -98,6 +99,7 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   box(scene, "front-right-wall", { width: 5, height: 4, depth: 0.4 }, new Vector3(5, 2, -7), rock, true, surfaces.stone);
   // Keep the first-person room's structure and decoration isolated.
   const bed=buildBedroom(scene,surfaces);
+  buildCellarGeometry(scene,surfaces);
   // Babylon plane front faces -Z by default; this sign must face +Z
   // so visitors in the main shop read the text instead of its mirror.
   sign(scene,"bedroom-sign","GALVIK'S REST",new Vector3(0,2.8,-6.58)).rotation.y=Math.PI;
