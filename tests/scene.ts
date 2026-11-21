@@ -1123,3 +1123,13 @@ export function inspectHookedFishingFish(){
     sameScene:node?.getScene()===scene,
   };
 }
+
+/** Read only the actual active Babylon map camera for LIVE inspector tests. */
+export function inspectLiveFloorCameraFocus(){
+  const camera=Engine.LastCreatedScene!.activeCamera as UniversalCamera;
+  if(!camera)throw new Error("No active LIVE dungeon camera");
+  const target=camera.getTarget(),position=camera.position;
+  return {target:{x:target.x,z:target.z},
+    offset:{x:position.x-target.x,y:position.y-target.y,
+      z:position.z-target.z}};
+}

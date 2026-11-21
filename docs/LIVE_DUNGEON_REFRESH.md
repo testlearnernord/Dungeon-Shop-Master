@@ -77,3 +77,22 @@
   reservation, combat continuity and single-owner rewards in the mandatory
   suite. Use optional full browser regression for the cinematic and
   multi-Ghoul presentation journeys.
+
+## PR #265 · LIVE hero locator and concrete loot inspection
+
+- The LIVE floor toolbar lists **only the actual committed heroes on that floor**,
+  ordered by name and stable ID, with level, role and the genuine in-combat flag.
+  Selecting a hero focuses their committed tile and opens the existing personal
+  fog-of-war / inspector state. The empty choice returns to the whole-floor view.
+- A focus change now preserves the player's current Babylon map yaw, pitch
+  and zoom, instead of forcing a new overhead camera preset. This also works
+  when the hero's animated model is hidden during an abstract live fight.
+- The hero details now display the actual saved `inventory.finds` item names
+  and quantities. Abstract `inventory.loot` tokens are deliberately shown
+  separately; no speculative inventory or shop-owned merchandise is implied.
+- The locator is absent during archived recordings, standalone Board hero
+  modes and arena playback. Opening it never commits a world event, rolls loot,
+  orders heroes or alters the active battle.
+- Browser regression locates a real saved hero, verifies the Babylon camera
+  target/orbit and known physical finds, then proves the campaign snapshot is
+  unchanged. Separate fast unit tests cover stable options and item labels.
