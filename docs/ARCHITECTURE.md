@@ -102,3 +102,11 @@ Committed original Tripo GLBs
 `npm run build` executes both asset generators, TypeScript type checking and Vite bundling. D1 #242 runs `npm run verify:pages` immediately after build in PR CI **and** the Pages deploy workflow: it checks final `dist/` JS/CSS URL base, canonical music, all 32 creature SFX and generated/curated GLB copies without changing runtime assets. See [D1 artifact contract](CODE_CLEANUP_D1.md). `npm run test:unit` runs Node tests, `npm run test:smoke` runs the curated browser-flow whitelist; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit and **one core browser-smoke job**; the full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
 
 The shipped HUD still labels the game **V.002 ALPHA**; V.003 remains a release target. The shared world clock, partial living dungeon, observed fights, LIVE spectator, updated SFX and post-shop rotation already exist and must **not** be described as merely planned. Remaining content and release gates are tracked only in [Roadmap](ROADMAP.md), not appended as PR-numbered sections here.
+
+**Dungeon transitions:** dungeonStairways.ts projects the actual layout entrance
+and dungeonDownStair(...) cells as view-only stair landmarks. 3D stone steps
+and lit arch meshes belong to the existing replayScene marker visibility
+pipeline. The current runtime only allows descent on floors 1–3; lower
+passages on floors 4 and 7 are visibly SEALED, not fictional transitions.
+No new floor crossing is synthesized by the renderer.
+

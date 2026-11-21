@@ -444,6 +444,19 @@ export function inspectDungeonLayout() {
 
 /** Inspect actual scene props; absent/stale authored GLB is visible as a
  * failure, rather than being silently replaced by a flat dummy shape. */
+export function inspectDungeonStairMarkers(){
+  const scene=Engine.LastCreatedScene!;
+  return scene.meshes.filter(mesh=>mesh.metadata?.visualKind==="3d-stairway"&&
+    mesh.name==="dungeon-"+mesh.metadata.kind+"-stair-"+
+      mesh.metadata.dungeonStairwayId)
+    .map(mesh=>({id:String(mesh.metadata.dungeonStairwayId),
+      kind:String(mesh.metadata.kind),label:String(mesh.metadata.label),
+      x:Number(mesh.metadata.gridX),z:Number(mesh.metadata.gridZ),
+      destination:mesh.metadata.destinationFloor as number|null,
+      steps:scene.meshes.filter(child=>child.name.startsWith(mesh.name+"-step-")).length,
+    })).sort((a,b)=>a.id.localeCompare(b.id));
+}
+
 export function inspectDungeonFeatureProps(){
   const scene=Engine.LastCreatedScene!;
   const withPrefix=(prefix:string)=>scene.meshes.filter(mesh=>

@@ -327,7 +327,10 @@ export class DungeonReplayScene {
     }
     for(const marker of this.markers){
       ctx.fillStyle=marker.kind==="treasure"?"#e6b845":
-        marker.kind==="trap"?"#c94c42":"#e27c62";
+        marker.kind==="trap"?"#c94c42":
+        marker.kind==="stair-descend"?"#e7bf75":
+        marker.kind==="stair-sealed"?"#a35e5e":
+        marker.kind.startsWith("stair-")?"#70d2b4":"#e27c62";
       ctx.fillRect(marker.x*cell+1,marker.z*cell+1,cell-2,cell-2);
     }
     ctx.fillStyle="#83d4ad";
@@ -353,7 +356,10 @@ export class DungeonReplayScene {
       const idx=marker.z*this.layout.width+marker.x;
       if(!visible.has(idx)||snapshot.resolved.has(marker.id))continue;
       ctx.fillStyle=marker.kind==="treasure"?"#e6b845":
-        marker.kind==="trap"?"#c94c42":"#e27c62";
+        marker.kind==="trap"?"#c94c42":
+        marker.kind==="stair-descend"?"#e7bf75":
+        marker.kind==="stair-sealed"?"#a35e5e":
+        marker.kind.startsWith("stair-")?"#70d2b4":"#e27c62";
       ctx.fillRect(marker.x*cell+1,marker.z*cell+1,cell-2,cell-2);
     }
     ctx.fillStyle="#a5ebc7";
@@ -620,7 +626,10 @@ export class DungeonReplayScene {
       if(!perception.visible.has(marker.z*this.layout.width+marker.x)||
          resolved.has(marker.id))continue;
       ctx.fillStyle=marker.kind==="treasure"?"#e6b845":
-        marker.kind==="trap"?"#c94c42":"#e27c62";
+        marker.kind==="trap"?"#c94c42":
+        marker.kind==="stair-descend"?"#e7bf75":
+        marker.kind==="stair-sealed"?"#a35e5e":
+        marker.kind.startsWith("stair-")?"#70d2b4":"#e27c62";
       ctx.fillRect(marker.x*cell+1,marker.z*cell+1,cell-2,cell-2);
     }
     for(const hero of frame.heroes){

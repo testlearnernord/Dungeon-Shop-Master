@@ -26,6 +26,8 @@ import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
+import {dungeonFloorStairways} from "./dungeonStairways.ts";
+import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
 import {createDungeonFeaturePalette,createReadableDungeonChest,
   createReadableDungeonTrap} from "./dungeonFeatureProps.ts";
 import {installGhoulMapInstances,type GhoulMapSite}
@@ -582,6 +584,7 @@ export class DungeonViewer {
     const hit=this.scene.pick(clientX-rect.left,clientY-rect.top,mesh=>
       typeof mesh.metadata?.floorHeroId==="string"||
       typeof mesh.metadata?.spectatorFeatureId==="string"||
+      typeof mesh.metadata?.dungeonStairwayId==="string"||
       mesh.metadata?.abstractBattle===true);
     const meta=hit?.pickedMesh?.metadata;
     const view=this.liveFloorProjectionCache?.view;
@@ -591,6 +594,8 @@ export class DungeonViewer {
       if(hero)label=hero.name+" · Lv "+hero.level+" "+hero.role+
         " · "+Math.round(hero.health)+"/"+hero.stats.maxHealth+" HP"+
         (hero.goal?" · "+hero.goal:"");
+    }else if(typeof meta?.dungeonStairwayId==="string"){
+      label=String(meta.label)+" · Tile "+meta.gridX+", "+meta.gridZ;
     }else if(typeof meta?.spectatorFeatureId==="string"&&this.layout){
       const feature=this.layout.features.find(f=>f.id===meta.spectatorFeatureId);
       if(feature&&!view?.resolved.includes(feature.id))
@@ -734,6 +739,14 @@ export class DungeonViewer {
         ghoulSites.push({id:feature.id,root,fallback});
       }
     }
+    // Real entrance and staircase sites share the EXISTING dungeon tile
+    // coordinates and the replay scene's personal fog-of-war handling.
+    const stairs=dungeonFloorStairways(layout);
+    for(const stair of stairs){
+      const mesh=createDungeonStairwayProp(scene,stair,getWorld(layout,stair));
+      replayMarkers.push({id:stair.id,x:stair.x,z:stair.z,
+        kind:"stair-"+stair.kind,mesh});
+    }
     // This is purely presentation. No GLB load advances world time or
     // instantiates a second combat AI; the existing marker roots still own
     // LIVE visibility, saved site resolution and player tooltips.
@@ -753,7 +766,7 @@ export class DungeonViewer {
       reference=model;
     }
     this.landmarks=[
-      {name:"Entrance",point:layout.entrance},
+      ...stairs.map(stair=>({name:stair.label,point:stair})),
       ...layout.rooms.map(room=>({name:"Room "+(Number(room.id.slice(5))+1),point:room})),
       ...layout.features.map(f=>({name:f.kind+" ("+f.subtype+")",point:f})),
     ];
@@ -1440,8 +1453,13 @@ export class DungeonViewer {
         f.kind==="trap"?"#c94c42":"#e27c62";
       ctx.fillRect(f.x*cell+1,f.z*cell+1,cell-2,cell-2);
     }
-    ctx.fillStyle="#83d4ad";
-    ctx.fillRect(layout.entrance.x*cell,layout.entrance.z*cell,cell,cell);
+    for(const stair of dungeonFloorStairways(layout)){
+      ctx.fillStyle=stair.kind==="descend"?"#e7bf75":
+        stair.kind==="sealed"?"#a35e5e":"#70d2b4";
+      ctx.fillRect(stair.x*cell,stair.z*cell,cell,cell);
+      ctx.fillStyle="#0b191c";
+      ctx.fillRect(stair.x*cell+2,stair.z*cell+2,Math.max(1,cell-4),Math.max(1,cell-4));
+    }
   }
   update(deltaSeconds:number):void {
     if(!this.active||!this.camera||!this.layout)return;
