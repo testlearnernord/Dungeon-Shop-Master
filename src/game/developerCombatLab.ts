@@ -46,6 +46,7 @@ export class DeveloperCombatLab {
   private readonly seed:HTMLInputElement;
   private readonly status:HTMLElement;
   private readonly pauseButton:HTMLButtonElement;
+  private readonly cinematicsButton:HTMLButtonElement;
   private readonly speed:HTMLSelectElement;
   private heroes:DeveloperHero[]=[{...DEFAULT_DEVELOPER_HERO}];
   private state:GroupCombatState|null=null;
@@ -59,6 +60,8 @@ export class DeveloperCombatLab {
   private statusElapsed=0;
   private paused=false;
   private active=false;
+  /** Local developer presentation preference, not part of any game save. */
+  private cinematicsEnabled=true;
 
   constructor(
     engine:Engine,canvas:HTMLCanvasElement,
@@ -85,6 +88,7 @@ export class DeveloperCombatLab {
     this.seed=get("#lab-seed");
     this.status=get("#lab-status");
     this.pauseButton=get("#lab-pause");
+    this.cinematicsButton=get("#lab-cinematics-toggle");
     this.speed=get("#lab-speed");
     this.panel.hidden=true;
     this.seed.value=String(DEFAULT_DEVELOPER_CONFIG.seed);
@@ -111,6 +115,12 @@ export class DeveloperCombatLab {
       this.start();
     });
     get<HTMLButtonElement>("#lab-start").addEventListener("click",()=>this.start());
+    this.cinematicsButton.addEventListener("click",()=>{
+      this.cinematicsEnabled=!this.cinematicsEnabled;
+      this.renderer.setCinematicsEnabled(this.cinematicsEnabled);
+      this.paintCinematicsButton();
+    });
+    this.paintCinematicsButton();
     this.pauseButton.addEventListener("click",()=>{
       this.paused=!this.paused;
       // An explicitly paused test must show the EXACT committed state.
@@ -127,6 +137,12 @@ export class DeveloperCombatLab {
       this.paintStatus();
     });
     this.loadSelectedHero();
+  }
+  private paintCinematicsButton():void{
+    this.cinematicsButton.setAttribute("aria-pressed",
+      String(this.cinematicsEnabled));
+    this.cinematicsButton.textContent=
+      "Cinematic camera: "+(this.cinematicsEnabled?"ON":"OFF");
   }
   get isActive():boolean{return this.active;}
   get currentScene():Scene|null{return this.active?this.renderer.currentScene:null;}
@@ -250,6 +266,7 @@ export class DeveloperCombatLab {
       const state=createGroupCombat(options);
       this.renderer.dispose();
       this.renderer.setDeveloperTheme(config.arena);
+      this.renderer.setCinematicsEnabled(this.cinematicsEnabled);
       this.options=options;this.state=state;
       this.frames=[captureGroupCombatFrame(state)];
       this.session++;
