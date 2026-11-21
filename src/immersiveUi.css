@@ -1299,3 +1299,19 @@
 .group-combat-cinematic-progress{
   width:0;height:100%;background:#e9bc7b;
 }
+
+/* Ordinary contacts are a fast tactical flyover, not a miniature boss film.
+ * The boss retains the full authored-title treatment, and neither overlay
+ * accepts pointer events from the active developer workbench. */
+.group-combat-cinematic[data-kind="normal"]{
+  background:linear-gradient(180deg,transparent 0%,
+    rgba(2,7,8,.08) 55%,rgba(2,7,8,.55) 100%);
+  padding-bottom:clamp(58px,8vh,90px);
+}
+.group-combat-cinematic[data-kind="normal"] .arena-cinematic-copy strong{
+  font-size:clamp(20px,2.4vw,31px);
+  letter-spacing:.075em;
+}
+.group-combat-cinematic[data-kind="boss"] .arena-cinematic-copy strong{
+  font-size:clamp(27px,4vw,50px);
+}

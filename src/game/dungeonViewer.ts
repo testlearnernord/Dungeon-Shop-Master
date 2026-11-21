@@ -21,7 +21,6 @@ import {
   type LiveFloorSpectatorFrame,type LiveFloorFight,
 } from "./liveFloorSpectator.ts";
 import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.ts";
-import {GROUP_COMBAT_INTRO_SECONDS} from "./groupCombatIntro.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
@@ -889,8 +888,9 @@ export class DungeonViewer {
 
   private skipFightIntro():void {
     if(!this.liveArena.isIntroActive)return;
+    const duration=this.liveArena.introDurationSeconds;
     this.liveArena.skipIntro();
-    this.skipCombatScoreTo(GROUP_COMBAT_INTRO_SECONDS);
+    this.skipCombatScoreTo(duration);
     this.paintCombatIntro();
     this.canvas.focus();
   }
