@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {readFileSync} from "node:fs";
+import {existsSync,readFileSync} from "node:fs";
+import {createHash} from "node:crypto";
 import {resolve} from "node:path";
 
 function info(path:string) {
@@ -39,4 +40,23 @@ test("curated 65-bone troll keeps original clips and gains both authored tracks"
       assert(output.json.nodes[channel.target.node]?.name?.startsWith("mixamorig:"));
     }
   }
+});
+
+test("Troll grab and throw original source is byte-identical and lives under assets/tripo/source",()=>{
+  const root=process.cwd();
+  const source=resolve(root,"assets/tripo/source/tripo_convert_ad846d87-3b98-4c37-a128-20fc302b37c7.glb");
+  assert.equal(existsSync(resolve(root,"tripo_convert_ad846d87-3b98-4c37-a128-20fc302b37c7.glb")),false,
+    "Original Tripo export belongs in assets/tripo/source, not repository root");
+  assert.ok(existsSync(source),"The original Grab/Throw GLB is required on clean checkouts");
+  const original=info(source);
+  assert.equal(original.bytes.length,11449256);
+  const gitBlob=createHash("sha1")
+    .update("blob "+original.bytes.length+"\0")
+    .update(original.bytes).digest("hex");
+  assert.equal(gitBlob,"d1f42cc107cc733d94874c7315871373e0071f75");
+  assert.equal(original.json.skins[0].joints.length,65);
+  assert.deepEqual(original.json.animations.map((animation:{name:string})=>animation.name),[
+    "Big Cave Troll who grabs and holds the enemy hero with one hand",
+    "Big Cave Troll who throws the grabbed Hero.001",
+  ]);
 });

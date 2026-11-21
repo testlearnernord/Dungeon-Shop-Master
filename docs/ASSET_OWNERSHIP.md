@@ -32,7 +32,7 @@ Other root-level MP3 songs have no proven byte-identical runtime duplicates and 
 | --- | --- | --- |
 | `assets/tripo/source/tripo_convert_2f6b9c66-0c5e-4c3b-8410-2277a099e788.glb` | Original Ghoul export | Required build source |
 | `assets/tripo/source/tripo_convert_6edd4581-b0ef-49c3-9b0d-ebbee934e866.glb` | Ghoul combat idle source | Required build source |
-| `tripo_convert_ad846d87-3b98-4c37-a128-20fc302b37c7.glb` | Troll Grab/Throw export in repo root | Required build source; DO NOT delete |
+| `assets/tripo/source/tripo_convert_ad846d87-3b98-4c37-a128-20fc302b37c7.glb` | Archived Troll Grab/Throw source, original Git blob `d1f42cc107cc733d94874c7315871373e0071f75` | Required build source; DO NOT delete |
 | `public/assets/models/ashen-tunnel-mauler-tripo.glb` | Curated Troll input | Required build source and model comparison |
 | `public/assets/models/ashen-tunnel-mauler-tripo-combat.glb` | Merged combat runtime model | Build-generated; ignored |
 | `public/assets/models/dungeon-ghoul-tripo.glb` | Consolidated Ghoul runtime model | Build-generated; **newly ignored by B1** |
