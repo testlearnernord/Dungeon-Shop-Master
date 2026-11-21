@@ -1,3 +1,20 @@
+### Ghoul SFX audio integration (after Combat Lab smoothing)
+
+The original owner-approved 21 Ghoul WAVs are shipped exactly once in
+`public/audio/sfx/ghoul/`. The five listening-preview MP3s are not runtime
+assets and have been removed from the repository root. The existing eleven
+Cave Troll MP3 assets remain in `public/audio/sfx/cave-troll/` unchanged.
+`gameSfxSamples.ts` and `sfxCatalog.ts` are the single asset/cue inventory.
+`GroupCombatSoundCursor` maps exclusively authoritative committed
+`GroupCombatCue` events to Ghoul sounds in the one `LiveGroupCombatArena`
+shared by LIVE, archived recordings and V Combat Lab. No audio path may
+advance the combat motor, modify saves/replay, predict hit results or create
+an alternate physics/AI loop. Whiff and hit are mutually exclusive; a fatal
+hit should not also trigger a hurt vocal. Rewind/seek and repeated render
+frames must not replay old sound events. Shared GameSfx master mute, volume,
+positional panning and throttling remain in effect. Final animation/SFX
+alignment and audible mix remain subject to the owner's browser approval.
+
 # Dungeon Shop Master — Contributor Guide
 
 
