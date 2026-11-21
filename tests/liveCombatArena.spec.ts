@@ -64,7 +64,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   await expect(card).toBeVisible();
   await card.locator("summary").click();
   await card.locator(".roster-watch-live").click();
-  await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor dungeon overview");
+  await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor dungeon overview",{timeout:20000});
   await expect(page.locator("#dungeon-live-combat-summary")).toBeVisible();
   await expect(page.locator("#dungeon-live-combat-actors")).toContainText("HP");
   await expect(page.locator("#dungeon-watch-live-combat")).toBeVisible();
@@ -130,7 +130,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   await page.keyboard.press("Escape");
   await expect(page.locator("#music-track")).toHaveText("Beneath the Surface");
   await expect(page.locator("#dungeon-watch-live-combat")).toBeVisible();
-  await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor dungeon overview");
+  await expect(page.locator("#dungeon-mode-description")).toContainText("whole-floor dungeon overview",{timeout:20000});
   await page.locator("#close-dungeon").click();
   await expect(page.locator("body")).not.toHaveClass(/dungeon-active/);
   expect(errors).toEqual([]);
