@@ -366,7 +366,9 @@ function validateLevel7Replay(
       const frameIds=new Set<string | number>();
       snapshots.forEach((a,k)=>{
         const ap=fp+".actors["+k+"]";
-        const snapshot=object(a,ap,["id","x","z","hp","stamina","heading","phase"]);
+        const snapshot=object(a,ap,["id","x","z","hp","stamina","heading","phase"],["ability"]);
+        if(snapshot.ability!==undefined)
+          choice(snapshot.ability,["troll-smash","troll-slam","grapple"],ap+".ability");
         if(!actorIds.has(snapshot.id as string))
           fail(ap+".id","must match a combat actor");
         unique(snapshot.id as string,frameIds,ap+".id");
@@ -395,7 +397,7 @@ function validateLevel7Replay(
         fail(cp+".targetId","is unknown");
       choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
         "parry","heal","death","blocked",
-        "grab","throw","landing","escape"],cp+".kind");
+        "grab","throw","landing","escape","lava"],cp+".kind");
       validNumber(cue.t,cp+".t",0,26);
       if(cue.amount!==undefined)validNumber(cue.amount,cp+".amount",0,100000);
     });
@@ -491,7 +493,9 @@ function validateLiveCombatCheckpoints(
 
     const options=object(encounter.options,cp+".encounter.options",[
       "actors","bounds","obstacles",
-    ]);
+    ],["environment"]);
+    if(options.environment!==undefined)
+      choice(options.environment,["cave-lava"],cp+".encounter.options.environment");
     const specs=array(options.actors,cp+".encounter.options.actors");
     if(specs.length<members.length+1||
        specs.length>members.length+MAX_GHOUL_PACK)
@@ -537,7 +541,9 @@ function validateLiveCombatCheckpoints(
 
     const combat=object(battle.state,cp+".state",[
       "actors","bounds","obstacles","projectiles","events","time","outcome",
-    ]);
+    ],["environment"]);
+    if(combat.environment!==initial.environment)
+      fail(cp+".state.environment","must match the real encounter rules");
     if(combat.outcome!=="fighting")fail(cp+".state.outcome","must still be active");
     const completed=(combatTick-started)*3;
     const time=validNumber(combat.time,cp+".state.time",0,LEVEL7_COMBAT_SECONDS);
@@ -618,7 +624,7 @@ function validateLiveCombatCheckpoints(
         cue.targetId!==undefined&&!actorIds.has(cue.targetId as string)))
         fail(qp+".actorId","must reference existing fighters");
       choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
-        "parry","heal","death","blocked","grab","throw","landing","escape"],qp+".kind");
+        "parry","heal","death","blocked","grab","throw","landing","escape","lava"],qp+".kind");
       validNumber(cue.t,qp+".t",0,26);
       if(cue.amount!==undefined)validNumber(cue.amount,qp+".amount",0,100000);
     });
@@ -636,7 +642,9 @@ function validateLiveCombatCheckpoints(
       if(snapshots.length!==actors.length)fail(fp+".actors","must retain all fighters");
       snapshots.forEach((rawSnapshot,j)=>{
         const sp=fp+".actors["+j+"]";
-        const snapshot=object(rawSnapshot,sp,["id","x","z","hp","stamina","heading","phase"]);
+        const snapshot=object(rawSnapshot,sp,["id","x","z","hp","stamina","heading","phase"],["ability"]);
+        if(snapshot.ability!==undefined)
+          choice(snapshot.ability,["troll-smash","troll-slam","grapple"],sp+".ability");
         if(snapshot.id!==(actors[j] as RecordValue).id)
           fail(sp+".id","must match the live actor order");
         for(const key of ["x","z","hp","stamina","heading"])
