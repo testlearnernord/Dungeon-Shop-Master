@@ -524,10 +524,15 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   if (a.phase === "move") {
     a.heading = combatHeading(a,enemy);
     const threat = attackerThreat(s,a);
+    // Tanks prefer to meet an incoming strike with steel, but do not lose
+    // the ability to sidestep. One stable per-attack read, not render RNG.
+    const tankParry=a.role==="tank"&&a.style==="melee";
+    const parryRead=threat?deterministicGrappleSample(
+      threat.id,a.id+"|parry",Math.max(1,threat.attacksStarted)):0;
     const reaction=chooseCombatDefense({
       threatened:!!threat,stamina:a.stamina,
-      preferParry:a.role==="tank"&&a.style==="melee",
-      canParry:a.role==="tank"&&a.style==="melee",
+      preferParry:tankParry&&parryRead<.78,
+      canParry:tankParry,
     });
     // The Level-6 duel already has a finite response chance. A group
     // member must not become a perfect 100%-dodge machine against the
