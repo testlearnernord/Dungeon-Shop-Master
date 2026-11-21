@@ -5,6 +5,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
+import type { LinesMesh } from "@babylonjs/core/Meshes/linesMesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Scene } from "@babylonjs/core/scene";
 import { createHeroVisual, type HeroVisual } from "./heroVisual.ts";
@@ -25,6 +26,7 @@ import {
 import type { GroupPhase } from "./groupCombat.ts";
 import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import type {LiveFloorSpectatorFrame,LiveFloorHero} from "./liveFloorSpectator.ts";
+import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
 import {selectHeroFloorPerception,type HeroFloorPerception}
   from "./heroPerception.ts";
 import {
@@ -59,6 +61,7 @@ export class DungeonReplayScene {
   private floorFrame:LiveFloorSpectatorFrame|null=null;
   private readonly floorModels=new Map<string,HeroVisual>();
   private readonly floorMarkers=new Map<string,Mesh>();
+  private readonly floorRouteHints=new Map<string,{mesh:LinesMesh;signature:string}>();
   private readonly floorTravel=new Map<string,{step:CommittedPartyStep;seconds:number;gait:number}>();
   private readonly floorHeadings=new Map<string,number>();
   private selectedFloorHero:string|null=null;
@@ -111,6 +114,8 @@ export class DungeonReplayScene {
     this.floorModels.clear();
     for(const marker of this.floorMarkers.values())marker.dispose(false,true);
     this.floorMarkers.clear();
+    for(const hint of this.floorRouteHints.values())hint.mesh.dispose();
+    this.floorRouteHints.clear();
     this.floorTravel.clear();this.floorHeadings.clear();
     this.selectedFloorHero=null;
     this.hero?.root.dispose(false,true);
@@ -438,6 +443,47 @@ export class DungeonReplayScene {
       model.root.metadata.floorPartyId=hero.partyId;
       model.root.setEnabled(!hero.inCombat);
     }
+    // Two short PREVIEW segments follow the existing autonomous navigator.
+    // These arrows are visual forecasts, not persisted plans or invented
+    // movement checkpoints. They stop at any unresolved site interaction.
+    for(const [id,hint] of this.floorRouteHints){
+      if(!present.has(id)){
+        hint.mesh.dispose();this.floorRouteHints.delete(id);
+      }
+    }
+    for(const hero of view.heroes){
+      const points=predictDungeonHeroSteps(this.layout,hero);
+      const signature=[hero.x,hero.z,...points.flatMap(p=>[p.x,p.z])]
+        .join(",")+"|"+hero.activity+"|"+hero.plannedAction;
+      const old=this.floorRouteHints.get(hero.id);
+      if(old?.signature===signature)continue;
+      old?.mesh.dispose();
+      this.floorRouteHints.delete(hero.id);
+      if(!points.length)continue;
+      const positions=[
+        toWorld(this.layout,hero),
+        ...points.map(point=>toWorld(this.layout,point)),
+      ];
+      for(const position of positions)position.y=.32;
+      const tip=positions.at(-1)!;
+      const prior=positions[positions.length-2]!;
+      const vx=tip.x-prior.x,vz=tip.z-prior.z;
+      const magnitude=Math.hypot(vx,vz)||1;
+      const fx=vx/magnitude,fz=vz/magnitude;
+      const left=new Vector3(tip.x-fx*.47-fz*.30,.32,
+        tip.z-fz*.47+fx*.30);
+      const right=new Vector3(tip.x-fx*.47+fz*.30,.32,
+        tip.z-fz*.47-fx*.30);
+      const line=MeshBuilder.CreateLines("dungeon-floor-intent-"+hero.id,{
+        points:[...positions,left,tip,right],
+      },this.scene);
+      line.color=Color3.FromHexString(hero.partyId?"#f4d58f":"#9de5d2");
+      line.alpha=.90;
+      line.isPickable=false;line.checkCollisions=false;
+      line.metadata={previewOnly:true,floorHeroId:hero.id,
+        label:"Two-step route forecast, not an actual saved route"};
+      this.floorRouteHints.set(hero.id,{mesh:line,signature});
+    }
     for(const [id,marker] of this.floorMarkers){
       if(!view.fights.some(f=>f.id===id)){
         marker.dispose(false,true);this.floorMarkers.delete(id);
@@ -514,6 +560,13 @@ export class DungeonReplayScene {
       const fight=frame.fights.find(entry=>entry.id===id);
       marker.setEnabled(!!fight&&(!visible||
         visible.has(fight.z*this.layout.width+fight.x)));
+    }
+    for(const [id,hint] of this.floorRouteHints){
+      const hero=frame.heroes.find(entry=>entry.id===id);
+      const seen=!perspective||id===perspective.heroId||
+        perspective.visibleHeroIds.includes(id);
+      hint.mesh.setEnabled(!!hero&&!hero.inCombat&&seen&&
+        (!this.selectedFloorHero||this.selectedFloorHero===id));
     }
     if(!perspective){
       this.drawDevelopmentMap();

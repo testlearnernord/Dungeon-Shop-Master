@@ -26,6 +26,7 @@ import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
+import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
   orbitDungeonMap,panDungeonMap,zoomDungeonMap,
   type DungeonMapPose} from "./dungeonMapCamera.ts";
@@ -824,6 +825,10 @@ export class DungeonViewer {
     const ongoing=hero.inCombat?"LIVE combat":
       hero.activity==="backtracking"?"Walking to portal":
       hero.activity==="portal"?"Portal transit":"Exploring";
+    const intended=this.layout?predictDungeonHeroSteps(this.layout,hero):[];
+    const preview=intended.length?intended.map((point,i)=>
+      (i+1)+": ("+point.x+", "+point.z+")").join(" → "):
+      "No safe step predicted";
     const entries:[string,string][]=[
       ["Health",Math.round(hero.health)+" / "+hero.stats.maxHealth+" HP"],
       ["Level",String(hero.level)],
@@ -837,6 +842,7 @@ export class DungeonViewer {
       ["Current activity",ongoing],
       ["Short-term floor action",hero.plannedAction??"No committed plan"],
       ["Medium-term goal",hero.goal??"No committed plan"],
+      ["Next two steps · PREVIEW",preview],
       ["Traits",hero.traits.positive+", "+hero.traits.neutral+
         ", "+hero.traits.negative],
       ["Party",party],
