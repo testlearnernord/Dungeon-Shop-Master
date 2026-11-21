@@ -26,3 +26,9 @@ Add one current-route regression: the Expedition Archive must remain **read-only
 - The current LIVE Board secrecy, death-signal and archive lifecycle tests must remain and pass.
 - No money, combat, time, customer pathing, art, SFX, GLB or player UI implementation changes. This is strictly removal of old unused exports.
 - Re-audit any other potential duplicate in a separate PR; a name like `legacy` does **not** establish that code is unused.
+
+## Measured scope and honest limits
+
+The two removed source modules previously occupied **10,714 bytes** of tracked TypeScript; their two obsolete, module-only tests occupied **8,709 bytes**. The new current-route archive regression adds roughly **1.6 KB** to the existing test suite. Those old modules were not imported into the browser application, so this change is **maintenance simplification**, not a claimed runtime FPS or download-size improvement.
+
+GitHub code-search results establish absence of ordinary imports at this audited revision, not a universal proof of every possible reflection/dynamic import. The production TypeScript/Vite build and the two browser-smoke shards are required to detect an overlooked real dependency. Do not expand this deletion to fixture-only combat or day-closure authorities without a separate call-site review.
