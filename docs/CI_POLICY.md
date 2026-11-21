@@ -12,6 +12,7 @@ The PR pipeline is intentionally small and protects correctness rather than repl
   - `liveCombatArena.spec.ts`: the live battle is abstract on the map; opening the arena is observational, not a second simulation.
   - `liveFloorSpectator.spec.ts`: the floor selector and party spectator are driven by saved world state.
   - `heroBuyback.spec.ts`: an actual returning hero sells one owned item for merchant gold, with a strictly saved receipt.
+  - `physicalShopStock.spec.ts`: every real shelf item renders as imported 3D stock in a saved four-slot shelf, with exact quantities; absent raw-material GLBs can never blank every shelf.
 
 Run the exact PR browser set with `npm run test:smoke`. The existing `@ci-smoke` labels on other tests are historical metadata and **do not** place them back in the mandatory suite. Only the explicit file whitelist is authoritative.
 
