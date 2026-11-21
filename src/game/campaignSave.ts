@@ -1552,10 +1552,11 @@ function migrateV25Materials(raw:unknown):GameState{
   const old=object(raw,"payload",[
     "day","worldClock","shopRequests","shopTraffic","liveDungeon",
     "simulationVersion","events","savedReplayIds","adventurers","shopEconomy",
-    "dungeonFloors","population","level5Room","cellarRoom","shopLayout",
-    "bedroomFurniture","rosterBoard","wallPortrait","shopCarts","shopDebts",
-    "rngState","seed","level7World","earlyDungeonWorlds","dungeonParties",
-  ],["level6","level7","expeditionArchive","dailyReport"]);
+    "dungeonFloors","seed","rngState","populationConfig","nextAdventurerId",
+    "level7World","shopLayout","shopCarts","shopDebts","level5Room",
+    "bedroomFurniture","rosterBoard","cellarRoom","cellarChest",
+    "cellarDoorOpen","cellarFishCaught",
+  ],["wallPortrait","earlyDungeonWorlds","dungeonParties"]);
   // v25 saves have no workshop reserve: accepting one here could duplicate stock.
   const economy=object(old.shopEconomy,"payload.shopEconomy",
     ["balance","bag","slots","dailySales"]);
