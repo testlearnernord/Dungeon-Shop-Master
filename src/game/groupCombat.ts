@@ -603,6 +603,15 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   }
   const enemy = closestEnemy(s, a);
   if (!enemy) return;
+  // A highly agile hero can abandon an unfinished swing or its recovery
+  // when a real boss windup is already threatening the actor. No instant
+  // roll during an applied strike, no attack refund, no camera-side defense.
+  if(a.team==="heroes"&&a.agility>=25&&
+     enemy.specialAbility==="grapple-throw"&&
+     (a.phase==="windup"||a.phase==="recover")&&
+     a.stamina>=20&&attackerThreat(s,a)){
+    phase(a,"move");
+  }
   if (a.phase === "move") {
     a.heading = combatHeading(a,enemy);
     const threat = attackerThreat(s,a);
