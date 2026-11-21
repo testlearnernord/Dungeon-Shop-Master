@@ -153,10 +153,11 @@ body.dungeon-active:not(.arena-active) #renderCanvas:active{
  * absolute offsets. The same rail serves LIVE overview, solo focus
  * and archived parties; hidden children take no space. */
 #dungeon-hud .dungeon-left-rail{
-  position:absolute;top:148px;left:16px;z-index:12;
+  position:absolute;top:var(--dungeon-panels-top,148px);left:16px;z-index:12;
   display:flex;flex-direction:column;gap:10px;align-items:stretch;
   width:min(290px,calc(100vw - 32px));
-  max-height:calc(100dvh - 270px);overflow-y:auto;overflow-x:hidden;
+  max-height:max(0px,calc(100dvh - var(--dungeon-panels-top,148px) - 112px));
+  overflow-y:auto;overflow-x:hidden;
   overscroll-behavior:contain;box-sizing:border-box;
   pointer-events:none;
   scrollbar-color:#8576537d transparent;scrollbar-width:thin;
@@ -175,17 +176,16 @@ body.dungeon-active:not(.arena-active) #renderCanvas:active{
   max-height:min(23vh,180px);overflow-y:auto;overflow-x:hidden;
 }
 @media(max-width:860px){
-  #dungeon-hud .dungeon-left-rail{top:172px;width:225px}
+  #dungeon-hud .dungeon-left-rail{width:225px}
 }
 @media(max-width:700px){
   #dungeon-hud .dungeon-left-rail{
-    top:219px;left:6px;width:min(174px,calc(100vw - 170px));
-    max-height:calc(100dvh - 295px);gap:6px;
+    left:6px;width:min(174px,calc(100vw - 170px));gap:6px;
   }
 }
 @media(max-height:620px){
   #dungeon-hud .dungeon-left-rail{
-    max-height:calc(100dvh - 215px);
+    max-height:max(0px,calc(100dvh - var(--dungeon-panels-top,148px) - 92px));
   }
 }
 
@@ -196,4 +196,10 @@ body.dungeon-active:not(.arena-active) #renderCanvas:active{
   border:1px solid #9ab59b8c;border-radius:5px;
   color:#c1e0bc!important;background:#153127bd;
   font:800 10px/1.3 system-ui,sans-serif;letter-spacing:.1em;
+}
+
+/* Match the minimap's start to the same responsive toolbar edge. The
+ * floor rail stays scrollable above the bottom timeline on short screens. */
+#dungeon-hud .dungeon-minimap-panel{
+  top:max(152px,var(--dungeon-panels-top,148px));
 }
