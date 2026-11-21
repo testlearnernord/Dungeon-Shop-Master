@@ -1386,14 +1386,14 @@ function validateState(value: unknown): asserts value is GameState {
       }
     }
     if(event.type==="hero-buyback"){
-      allowed.push("itemId","quantity","revenue");
+      allowed.push("itemId","quantity","cost");
       choice(event.itemId,itemIds,path+".itemId");
       if(integer(event.quantity,path+".quantity",1,1)!==1)
         fail(path+".quantity","must represent one actual purchased item");
       const item=ITEMS.find(entry=>entry.id===event.itemId)!;
       const price=Math.max(1,Math.min(item.wholesaleCost,item.salePrice-1));
-      if(event.revenue!==price)
-        fail(path+".revenue","must match the real merchant buyback price");
+      if(event.cost!==price)
+        fail(path+".cost","must match the real merchant buyback price");
       const prefix="day-"+eventDay+":"+event.adventurerId+
         ":hero-buyback:"+event.itemId+":";
       const serial=id.startsWith(prefix)?Number(id.slice(prefix.length)):NaN;
