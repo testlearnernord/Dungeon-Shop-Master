@@ -30,11 +30,12 @@ test("greedy heroes actively target adjacent live chests without omniscience",()
   assert.deepEqual(preferKnownDungeonResourceGoal(
     {goal:"farm",action:"stay"},hero,progress,layout,world),
     {goal:"loot-chest",action:"stay"});
-  assert.deepEqual(chooseKnownResourceStep(layout,progress,chest),chest);
+  assert.deepEqual(chooseKnownResourceStep(layout,progress,chest),
+    {x:chest.x,z:chest.z});
   const route=predictDungeonHeroSteps(layout,
     {...progress,id:hero.id,activity:"exploring",inCombat:false,
       plannedAction:"stay" as const,goal:"loot-chest"},world.resolvedFeatureIds);
-  assert.deepEqual(route[0],chest);
+  assert.deepEqual(route[0],{x:chest.x,z:chest.z});
 });
 
 test("cleared, unknown and unsafe sites cannot become objectives",()=>{
