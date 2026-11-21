@@ -82,6 +82,8 @@ export class LiveGroupCombatArena{
   private introElapsed=0;
   private developerStage:CombatStageTheme|null=null;
   private audioCursor:GroupCombatSoundCursor|null=null;
+  private introSfxIndex=0;
+  private bossStage=false;
 
   /** V-mode presentation override ONLY. Never changes contact/hazard rules. */
   setDeveloperTheme(theme:CombatStageTheme|null):void{
@@ -105,6 +107,7 @@ export class LiveGroupCombatArena{
   skipIntro():void{
     if(!this.intro)return;
     this.intro=null;
+    this.introSfxIndex=3;
     this.resetCamera();
   }
 
@@ -118,7 +121,9 @@ export class LiveGroupCombatArena{
       // archived strikes, even when opening the viewer halfway through.
       this.audioCursor=new GroupCombatSoundCursor(
         view.combat.actors,view.combat.frame.t);
-      this.sfx?.prepareCombatSamples();
+      if(this.bossStage)this.sfx?.beginArena();
+      else this.sfx?.prepareCombatSamples();
+      this.introSfxIndex=0;
       // The LIVE world commits 0.5s batches. Present the most recent half
       // second of ALREADY committed frames at screen refresh rate, rather
       // than jumping between 0.5-second poses. This is a read-only buffer,
@@ -217,8 +222,11 @@ export class LiveGroupCombatArena{
           // A strike must not pretend it is a grab. Actual grab/throw phases
           // remain authored by the motor; historical v1 frames do not carry
           // an exact smash/slam variant.
-          slam:false,attackType:phase==="grab"||phase==="throw"||
-            phase==="grabMiss"?"grab":"smash",time:frame.t,
+          slam:actor.ability==="troll-slam",
+          attackType:actor.ability==="grapple"||
+            phase==="grab"||phase==="throw"||phase==="grabMiss"
+              ?"grab":actor.ability==="troll-slam"?"slam":"smash",
+          time:frame.t,
           moved,delta:timeDelta,hp:actor.hp,maxHp:model.spec.maxHp,
         });
       }
@@ -395,6 +403,16 @@ export class LiveGroupCombatArena{
     if(this.intro){
       this.introElapsed=Math.min(this.intro.duration,
         this.introElapsed+bounded);
+      if(this.bossStage){
+        const landmarks=[{at:1.8,cue:"troll-breath" as const},
+          {at:5.9,cue:"troll-roar" as const},
+          {at:11.2,cue:"troll-breath" as const}];
+        while(this.introSfxIndex<landmarks.length&&
+            this.introElapsed>=landmarks[this.introSfxIndex].at){
+          const entry=landmarks[this.introSfxIndex++];
+          this.sfx?.play(entry.cue);
+        }
+      }
       const frame=sampleGroupCombatIntro(this.intro,this.introElapsed);
       this.camera.position.set(...frame.eye);
       this.camera.setTarget(new Vector3(...frame.look));
@@ -429,7 +447,10 @@ export class LiveGroupCombatArena{
 
   dispose():void{
     this.audioCursor=null;
+    this.sfx?.endArena();
     this.sfx?.stopCombatSamples();
+    this.bossStage=false;
+    this.introSfxIndex=0;
     for(const model of this.actors.values())model.ghoul?.dispose();
     this.hud?.dispose();this.hud=null;
     this.observedPositions.clear();
@@ -454,6 +475,7 @@ export class LiveGroupCombatArena{
     const hasTroll=fight.actors.some(spec=>spec.specialAbility==="grapple-throw");
     const trollStage=this.developerStage
       ?this.developerStage==="cave-troll":hasTroll;
+    this.bossStage=trollStage;
     // The existing Level-6 Cave Troll spectator stage is the baseline:
     // monster variants change art and assets; multi-hero parties merely add actors.
     const {scene,camera}=createCombatSpectatorStage(this.engine,

@@ -81,10 +81,13 @@ export interface CombatBounds {
   readonly minZ: number; readonly maxZ: number;
 }
 export interface CombatObstacle extends CombatBounds { readonly id: string }
+/** Battle rule, not visual theme: used equally by LIVE and local training. */
+export type CombatEnvironment="cave-lava";
 export interface GroupCombatOptions {
   readonly actors: readonly CombatantSpec[];
   readonly bounds: CombatBounds;
   readonly obstacles?: readonly CombatObstacle[];
+  readonly environment?:CombatEnvironment;
 }
 
 export interface GroupActor extends CombatActorRuntime<GroupPhase> {
@@ -114,7 +117,7 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
 
 export type GroupCueKind = "attack" | "cast" | "projectile" | "hit" |
   "miss" | "dodge" | "parry" | "heal" | "death" | "blocked" |
-  "grab" | "throw" | "landing" | "escape";
+  "grab" | "throw" | "landing" | "escape" | "lava";
 export interface GroupCombatCue {
   readonly t: number;
   readonly actorId: string;
@@ -135,6 +138,7 @@ export interface GroupCombatState {
   readonly actors: GroupActor[];
   readonly bounds: CombatBounds;
   readonly obstacles: readonly CombatObstacle[];
+  readonly environment?:CombatEnvironment;
   readonly projectiles: GroupProjectile[];
   readonly events: GroupCombatCue[];
   time: number;
@@ -147,6 +151,8 @@ export interface GroupReplayFrame {
     readonly id: string; readonly x: number; readonly z: number;
     readonly hp: number; readonly stamina: number;
     readonly heading: number; readonly phase: GroupPhase;
+    /** Authored boss attack for animation, sourced from the 60 Hz motor. */
+    readonly ability?:TrollGroupMelee;
   }[];
   readonly projectiles: readonly {
     readonly ownerId: string; readonly x: number; readonly z: number;
@@ -157,6 +163,7 @@ export interface GroupCombatReplay {
   readonly actors: readonly CombatantSpec[];
   readonly bounds: CombatBounds;
   readonly obstacles: readonly CombatObstacle[];
+  readonly environment?:CombatEnvironment;
   readonly frames: readonly GroupReplayFrame[];
   readonly cues: readonly GroupCombatCue[];
   readonly outcome: Exclude<GroupOutcome, "fighting">;
@@ -189,6 +196,8 @@ function insideObstacle(p: Point2, obstacle: CombatObstacle, radius: number): bo
 
 export function createGroupCombat(options: GroupCombatOptions): GroupCombatState {
   validateBounds(options.bounds);
+  if(options.environment!==undefined&&options.environment!=="cave-lava")
+    throw new RangeError("Unknown combat environment");
   if (options.actors.length < 2 || options.actors.length > 24)
     throw new RangeError("Group combat requires 2-24 actors");
   const ids = new Set<string>();
@@ -274,6 +283,7 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
   if (teams.size !== 2) throw new RangeError("Both opposing teams are required");
   return {
     actors, bounds: { ...options.bounds }, obstacles: obstacles.map(o => ({...o})),
+    ...(options.environment?{environment:options.environment}:{}),
     projectiles: [], events: [], time: 0, outcome: "fighting",
   };
 }
@@ -720,11 +730,36 @@ function updateProjectiles(s: GroupCombatState, dt: number, batch: GroupCombatCu
  * driver as boss hero/grapple actions. Canonical actor ordering is set
  * when the group is created, not when its viewer loads a replay.
  */
+function resolveArenaHazards(s:GroupCombatState,batch:GroupCombatCue[]):void{
+  if(s.environment!=="cave-lava")return;
+  // The authored Level-6 rock platform has walkable radius 16.8.
+  // Match its safe hero limit without a second renderer-owned collision rule.
+  const rockRadius=16.8;
+  for(const actor of s.actors){
+    if(actor.team!=="heroes"||actor.hp<=0)continue;
+    const safe=rockRadius-actor.radius-1;
+    const distance=Math.hypot(actor.x,actor.z);
+    if(distance<=rockRadius)continue;
+    const result=applyCombatHit(actor.hp,12,0);
+    actor.hp=result.hp;
+    cue(batch,s,actor,"lava",undefined,result.amount);
+    // Do not permit the next tick to inflict infinite boundary damage.
+    const scale=safe/distance;
+    actor.x*=scale;actor.z*=scale;
+    if(actor.hp<=0){
+      phase(actor,"dead");
+      cue(batch,s,actor,"death");
+    }else if(actor.phase!=="thrown"&&actor.phase!=="grabbed"){
+      phase(actor,"hurt");
+    }
+  }
+}
 const GROUP_PIPELINE: EncounterPipeline<GroupCombatState,GroupActor,GroupCombatCue>={
   actors:state=>state.actors,
   updateActor:(state,actor,dt,frame)=>updateActor(state,actor,dt,frame.cues),
   projectiles:(state,dt,frame)=>updateProjectiles(state,dt,frame.cues),
-  finish:state=>{
+  finish:(state,dt,frame)=>{
+    resolveArenaHazards(state,frame.cues);
     // A dead boss immediately releases victims still in its grip.
     // Already-airborne victims must actually land before the win is
     // committed, otherwise the fall becomes free healing by cutscene.
@@ -757,6 +792,7 @@ export function captureGroupCombatFrame(s: GroupCombatState): GroupReplayFrame {
       id:a.id,x:round(a.x),z:round(a.z),
       hp:round(a.hp),stamina:round(a.stamina),
       heading:round(a.heading),phase:a.phase,
+      ...(a.specialAbility?{ability:a.activeMeleeAbility as TrollGroupMelee}:{}),
     })),
     projectiles:s.projectiles.map(p=>({ownerId:p.ownerId,x:round(p.x),z:round(p.z)})),
   };
@@ -773,6 +809,7 @@ export function groupCombatReplayFromFrames(
       ...(a.equipment?{equipment:{...a.equipment}}:{})})),
     bounds:{...options.bounds},
     obstacles:(options.obstacles??[]).map(o=>({...o})),
+    ...(options.environment?{environment:options.environment}:{}),
     frames:[...frames],cues:[...state.events],outcome:state.outcome,
   };
 }

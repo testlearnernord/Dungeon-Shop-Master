@@ -137,5 +137,6 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
         grappleDamage:42,staggerThreshold:19}:{}),
     });
   }
-  return {actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},obstacles:[]};
+  return {actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},obstacles:[],
+    ...(config.arena==="cave-troll"?{environment:"cave-lava" as const}:{})};
 }

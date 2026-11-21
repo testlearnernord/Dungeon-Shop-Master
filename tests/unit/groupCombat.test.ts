@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  createGroupCombat, resolveGroupCombat, stepGroupCombat,
+  createGroupCombat, resolveGroupCombat, stepGroupCombat, captureGroupCombatFrame,
   type CombatantSpec, type GroupCombatOptions,
 } from "../../src/game/groupCombat.ts";
 
@@ -217,4 +217,39 @@ test("a tank usually parries but can dodge the same telegraphed Troll attack",()
     "shield-first tanks should mostly parry");
   assert(choices.some(phase=>phase==="roll"),
     "a tank must retain actual timed dodge movement");
+});
+
+test("the real cave arena damages a boundary-crossing hero, but crypt does not",()=>{
+  const actors=[
+    fighter("hero","heroes",14.5,10,{role:"tank",hp:100,maxHp:100}),
+    fighter("boss","monsters",0,0,{specialAbility:"grapple-throw",
+      hp:280,maxHp:280,damage:33}),
+  ];
+  const lava=createGroupCombat({actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},
+    environment:"cave-lava"});
+  const crypt=createGroupCombat({actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15}});
+  const cues=stepGroupCombat(lava);
+  stepGroupCombat(crypt);
+  const burned=lava.actors.find(a=>a.id==="hero")!;
+  assert.equal(burned.hp,88);
+  assert(cues.some(c=>c.kind==="lava"&&c.actorId===burned.id&&c.amount===12));
+  assert(Math.hypot(burned.x,burned.z)<16.8,
+    "the hero must land back inside real authored stone");
+  assert.equal(crypt.actors.find(a=>a.id==="hero")!.hp,100,
+    "changing the lab arena must change real environment rules");
+});
+
+test("committed group frames retain real Troll slam/grab skill provenance",()=>{
+  const s=createGroupCombat({actors:[
+    fighter("hero","heroes",0,-5),
+    fighter("troll","monsters",0,4,{specialAbility:"grapple-throw",hp:280,maxHp:280}),
+  ],bounds});
+  const troll=s.actors.find(a=>a.id==="troll")!;
+  troll.phase="windup";
+  troll.activeMeleeAbility="troll-slam";
+  assert.equal(captureGroupCombatFrame(s).actors.find(a=>a.id==="troll")?.ability,
+    "troll-slam");
+  troll.activeMeleeAbility="grapple";
+  assert.equal(captureGroupCombatFrame(s).actors.find(a=>a.id==="troll")?.ability,
+    "grapple");
 });
