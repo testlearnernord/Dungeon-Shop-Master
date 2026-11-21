@@ -1,6 +1,7 @@
 import type {Engine} from "@babylonjs/core/Engines/engine";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameStore} from "./gameStore.ts";
+import type {GameSfx} from "../gameSfx.ts";
 import {
   developerPresentationTime,LAB_CAPTURE_STRIDE,
 } from "./developerCombatPresentation.ts";
@@ -62,9 +63,10 @@ export class DeveloperCombatLab {
   constructor(
     engine:Engine,canvas:HTMLCanvasElement,
     host:HTMLElement,private readonly store:GameStore,
+    private readonly sfx?:GameSfx,
   ){
     this.panel=host.querySelector<HTMLElement>("#arena-lab-panel")!;
-    this.renderer=new LiveGroupCombatArena(engine,canvas,host);
+    this.renderer=new LiveGroupCombatArena(engine,canvas,host,this.sfx);
     const get=<T extends Element>(selector:string)=>this.panel.querySelector<T>(selector)!;
     this.opponent=get("#lab-enemy");
     this.enemyCount=get("#lab-enemy-count");
@@ -226,6 +228,7 @@ export class DeveloperCombatLab {
         id:"developer-combat-"+this.session,
         featureId:"lab-opponents",x:0,z:0,
         actors:options.actors,frame:latest,frames:this.frames,
+        cues:state.events,
       },
     };
   }
