@@ -1,6 +1,6 @@
 # Dungeon Shop Master — active roadmap
 
-> Current planning snapshot after merged PR #234, 21 November 2026. **Not a PR history.** Verify current `main` and open branches before work. The browser still labels the game V.002 ALPHA; V.003 ALPHA is a release target. Source and tests establish feature status, not earlier roadmap promises.
+> Current planning snapshot after merged PR #241, 21 November 2026. **Not a PR history.** Verify current `main` and open branches before work. The browser still labels the game V.002 ALPHA; V.003 ALPHA is a release target. Source and tests establish feature status, not earlier roadmap promises.
 
 ## Completed foundations (IMPLEMENTED; do not schedule again)
 
@@ -25,7 +25,7 @@ Owner rule: **no lost gameplay, scenes, animations, cues, saves, rendering quali
 | B1: audio ownership | **Merged (#237)** | Proposed removal of one exact root music copy; canonical audio untouched; generated Ghoul GLB ignored and owners documented |
 | B2: model provenance | **Merged (#238)** | Archive the original Troll Grab/Throw source with unchanged Git blob; update generator, manifest, docs and integrity test |
 | C: TypeScript | **Merged (#239–241)** | Retired obsolete nightly ledger projections, audited module reachability and removed the unused group-boss adapter while preserving the real LIVE Troll with new tests |
-| D: CI and acceptance | **D1 draft (#242)** | Validate finished GitHub Pages dist/ asset paths, bytes and generated GLBs before both PR CI and deployment; later full-browser regression and closeout measurements remain open |
+| D: CI and acceptance | **D1 merged/deployed (#242); D2 draft (#243)** | Published Pages build now verifies dist/ audio/model copies and asset URLs; D2 reconciles before/after metrics and retains open full-browser, device, audio and FPS acceptance gates |
 
 See [CLEANUP_AUDIT.md](CLEANUP_AUDIT.md) for the source-verified A1 baseline and known risk classifications.
 

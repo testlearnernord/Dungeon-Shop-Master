@@ -1,6 +1,6 @@
 # Dungeon Shop Master — current technical architecture
 
-> Verified against current source after merged PR #234 (21 November 2026). This document describes **present runtime responsibilities**, not proposed PR order. Inspect referenced modules and tests before modifying them. See [audit](CLEANUP_AUDIT.md), [Game Bible](GAME_BIBLE.md), [Roadmap](ROADMAP.md) and deep specialist contracts for details.
+> Runtime module responsibilities re-verified through merged PR #241 (21 November 2026); D1 artifact verification is merged and deployed (#242); D2 closeout is a documentation-only review draft (#243). This document describes **present runtime responsibilities**, not proposed PR order. Inspect referenced modules and tests before modifying them. See [audit](CLEANUP_AUDIT.md), [Game Bible](GAME_BIBLE.md), [Roadmap](ROADMAP.md) and deep specialist contracts for details.
 
 ## 1. Execution model and ownership
 
@@ -93,6 +93,6 @@ Committed original Tripo GLBs
 
 `npm run audit:modules` extracts conservative static, type-only and literal dynamic TypeScript imports from the actual `index.html` entrypoint. It reports test-only, unreferenced and computed-import candidates for **manual review only**; it does not remove code or prove unreachable dynamic/reflection paths. See [C2 graph audit](CODE_CLEANUP_C2.md).
 
-`npm run build` executes both asset generators, TypeScript type checking and Vite bundling. Proposed D1 adds `npm run verify:pages` immediately after build in PR CI **and** the Pages deploy workflow: it checks final `dist/` JS/CSS URL base, canonical music, all 32 creature SFX and generated/curated GLB copies without changing runtime assets. See [D1 artifact contract](CODE_CLEANUP_D1.md). `npm run test:unit` runs Node tests, `npm run test:smoke` runs tagged Playwright checks; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit/two-browser-shard smoke; full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
+`npm run build` executes both asset generators, TypeScript type checking and Vite bundling. D1 #242 runs `npm run verify:pages` immediately after build in PR CI **and** the Pages deploy workflow: it checks final `dist/` JS/CSS URL base, canonical music, all 32 creature SFX and generated/curated GLB copies without changing runtime assets. See [D1 artifact contract](CODE_CLEANUP_D1.md). `npm run test:unit` runs Node tests, `npm run test:smoke` runs tagged Playwright checks; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit/two-browser-shard smoke; full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
 
 The shipped HUD still labels the game **V.002 ALPHA**; V.003 remains a release target. The shared world clock, partial living dungeon, observed fights, LIVE spectator, updated SFX and post-shop rotation already exist and must **not** be described as merely planned. Remaining content and release gates are tracked only in [Roadmap](ROADMAP.md), not appended as PR-numbered sections here.
