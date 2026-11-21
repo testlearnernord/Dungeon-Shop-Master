@@ -337,7 +337,7 @@
             <span class="dungeon-legend-chest">▣ Treasure</span>
             <span class="dungeon-legend-trap">◆ Traps</span>
           </div>
-          <small>WASD cardinal (W = north) · Drag horizontal to slide / vertical to tilt · Wheel zoom · Click hero · Tab cycle · R reset</small>
+          <small>WASD moves relative to the camera · Left/right drag: orbit + tilt · Click compass: north · R: reset</small>
         </aside>
         <aside id="dungeon-temporary-party" class="dungeon-temporary-party"
           hidden aria-label="Recorded Temporary Party members">
@@ -379,7 +379,7 @@
         </aside>
         <aside class="dungeon-minimap-panel" aria-label="Dungeon minimap and camera navigation">
           <strong id="dungeon-minimap-heading">Dungeon layout · developer preview</strong>
-          <small class="dungeon-north-label" aria-label="Dungeon map is permanently north-up">↑ N · NORTH-UP</small>
+          <button class="dungeon-compass" id="dungeon-compass-reset" type="button" aria-label="Compass. Click to point camera north" title="Click to face north"><span id="dungeon-compass-needle" aria-hidden="true">↑</span><span>N</span></button>
           <canvas id="dungeon-minimap" width="186" height="186" tabindex="-1" role="button"
             aria-label="LIVE dungeon minimap. Click a known cell or use arrow keys to move the camera."
             aria-describedby="dungeon-minimap-note"></canvas>
@@ -404,7 +404,7 @@
           <p id="dungeon-focus">Camera focus: entrance</p>
           <p id="dungeon-summary">Loading dungeon layout...</p>
           <details class="spectator-help"><summary>Controls</summary>
-            <p>WASD cardinal navigation (W north) · Shift turbo · Drag to slide / tilt · Wheel zoom · Tab focus · R reset · Space replay · G / Esc return</p>
+            <p>WASD camera-relative · Shift turbo · Drag to orbit / tilt · Compass shows north · Wheel zoom · Tab focus · R reset · Space replay · G / Esc return</p>
           </details>
           <small>LIVE is read-only and follows the real world clock. Saved footage never changes outcomes. Full map is available only in the explicit development preview.</small>
         </footer>
