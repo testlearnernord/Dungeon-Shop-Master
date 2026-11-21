@@ -27,6 +27,8 @@ import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
+import {minimapPointFromClient,isKnownMinimapCell}
+  from "./dungeonMinimapNavigation.ts";
 import {floorHeroLocatorOptions,floorFightLocatorOptions,
   formatHeroDungeonFinds} from "./liveDungeonInspector.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
@@ -202,6 +204,31 @@ export class DungeonViewer {
       const floor=Number(this.floorSelector.value);
       if(LIVE_SPECTATOR_FLOORS.some(candidate=>candidate===floor))
         this.startFloor(floor as SpatialDungeonFloor);
+    });
+    this.minimap.addEventListener("click",event=>{
+      if(!this.active||this.liveFloor===null||this.liveArena.isActive||
+         !this.layout)return;
+      const rect=this.minimap.getBoundingClientRect();
+      const known=this.minimapKnownTiles();
+      if(known===null)return;
+      const cell=minimapPointFromClient(event.clientX,event.clientY,rect,
+        this.layout.width,this.layout.height,known);
+      if(cell)this.focusMinimapTile(cell,known);
+    });
+    this.minimap.addEventListener("keydown",event=>{
+      if(!this.active||this.liveFloor===null||this.liveArena.isActive||
+         !this.layout)return;
+      const offset=event.code==="ArrowLeft"?{x:-1,z:0}:
+        event.code==="ArrowRight"?{x:1,z:0}:
+        event.code==="ArrowUp"?{x:0,z:-1}:
+        event.code==="ArrowDown"?{x:0,z:1}:null;
+      if(!offset)return;
+      event.preventDefault();event.stopPropagation();
+      const pose=this.mapPose();
+      if(!pose)return;
+      const cell={x:Math.round(pose.x/TILE_SIZE+(this.layout.width-1)/2)+offset.x,
+        z:Math.round(pose.z/TILE_SIZE+(this.layout.height-1)/2)+offset.z};
+      this.focusMinimapTile(cell,this.minimapKnownTiles());
     });
     this.heroLocator.addEventListener("change",()=>{
       if(!this.active||this.liveFloor===null||this.liveArena.isActive)return;
@@ -453,6 +480,7 @@ export class DungeonViewer {
     this.heroLocatorLabel.hidden=true;
     this.heroLocator.value="";
     this.heroLocatorSignature="";
+    this.minimap.tabIndex=-1;
     this.fightLocatorLabel.hidden=true;
     this.fightLocator.value="";
     this.fightLocatorSignature="";
@@ -481,6 +509,34 @@ export class DungeonViewer {
     this.camera.position.set(p.x,p.y,p.z);
     this.camera.setTarget(new Vector3(t.x,t.y,t.z));
   }
+  /** Minimap controls are spectator camera actions only. Personal fog
+   * cannot be bypassed by moving the camera to an unseen cell. */
+  private minimapKnownTiles():ReadonlySet<number>|undefined|null{
+    if(!this.layout||this.liveFloor===null)return null;
+    if(!this.selectedFloorHeroId)return undefined;
+    const view=selectLiveFloorSpectatorFrame(this.store.state,this.liveFloor);
+    if(!view||!view.heroes.some(h=>h.id===this.selectedFloorHeroId))
+      return null;
+    return selectHeroFloorPerception(this.layout,view,
+      this.selectedFloorHeroId).explored;
+  }
+
+  private focusMinimapTile(
+    cell:DungeonPoint,known:ReadonlySet<number>|undefined|null,
+  ):void{
+    if(!this.active||this.liveFloor===null||this.liveArena.isActive||
+       !this.layout||known===null||
+       !isKnownMinimapCell(cell,this.layout.width,this.layout.height,known))
+      return;
+    const pose=this.mapPose();
+    if(!pose)return;
+    const target=getWorld(this.layout,cell);
+    this.setMapPose({...pose,x:target.x,z:target.z});
+    this.followActor=null;
+    this.focusLabel.textContent="Minimap camera · Floor "+this.liveFloor+
+      " · tile ("+cell.x+", "+cell.z+")";
+  }
+
   private showMapHover(clientX:number,clientY:number):void{
     if(!this.scene||this.liveFloor===null){
       this.hoverTooltip.hidden=true;return;
@@ -715,6 +771,7 @@ export class DungeonViewer {
     this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
     this.heroLocatorLabel.hidden=true;
     this.heroLocator.value="";
+    this.minimap.tabIndex=-1;
     this.fightLocatorLabel.hidden=true;
     this.fightLocator.value="";
     this.liveFloorProjectionCache=null;
@@ -834,12 +891,14 @@ export class DungeonViewer {
 
   private paintFloorVisionLabel(view:LiveFloorSpectatorFrame):void {
     const hero=view.heroes.find(h=>h.id===this.selectedFloorHeroId);
+    this.minimap.tabIndex=this.liveArena.isActive?-1:0;
     this.minimapTitle.textContent=hero
       ?"LIVE · "+hero.name+" · Personal Fog of War"
       :"LIVE · Full Floor "+view.floor+" Overview";
-    this.minimapNote.textContent=hero
-      ?"Bright: currently visible · Dim: personally explored · Black: unknown. No other hero's knowledge."
-      :"All confirmed adventurers on this floor. Select one to see their own sight.";
+    this.minimapNote.textContent=(hero
+      ?"Bright: visible · Dim: explored · Black: unknown. Unexplored tiles cannot be focused."
+      :"All confirmed adventurers visible. Select a hero for personal fog.")
+      +" Click a tile or use arrow keys to focus the camera.";
   }
 
   private renderFloorHeroDetail(view:LiveFloorSpectatorFrame):void {
@@ -1019,6 +1078,7 @@ export class DungeonViewer {
     this.liveHeroId=heroId;
     this.heroLocatorLabel.hidden=true;
     this.fightLocatorLabel.hidden=true;
+    this.minimap.tabIndex=-1;
     this.liveWorldTick=-1;
     this.liveProjectionCache=null;
     this.playing=false;
