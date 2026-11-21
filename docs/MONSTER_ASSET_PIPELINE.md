@@ -59,6 +59,23 @@ accepts `monster`. Before any new species can be called implemented:
   a specific authored identity, distinct animation/sounds and explicit
   approved design. Capability flags are not random loot tables.
 
+## Cave Troll visual effects in the shared 3D spectator
+
+The original Level-6 boss remains the authored quality reference. Optional
+`LiveGroupCombatArena` playback now constructs one bounded
+`caveTrollImpactVisual.ts` mesh/light pool for each actual Troll identity.
+Its attack-sector telegraph, shockwave, 16 reusable rock fragments and flash
+sample the existing `bossStrikeGeometry` and `sampleMaulerImpact` curves from
+**committed** group actor phases. Authored Tripo melee clips and the heavy
+slam sound variation use the real recorded `troll-slam` ability; a throw
+cannot invent a smash hit or spawn additional damage.
+
+This system renders **only when the player explicitly watches a fight**
+or opens V Developer Combat Lab. The LIVE dungeon map remains abstract,
+and neither animation nor sound is a combat authority. Browser tests
+assert the full Troll impact stage exists in the Lab. Audible quality,
+frame pacing and final artistic sign-off still require human review.
+
 ## Ghoul first playable runtime pass: still needs visual and audio approval
 
 The owner supplied a rigged retopologized Tripo Ghoul GLB with 14 clips,
