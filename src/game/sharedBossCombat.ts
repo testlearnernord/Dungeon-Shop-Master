@@ -33,6 +33,7 @@ export function caveTrollGroupOptions(
       Math.floor(Math.max(0,intellect-6)/3);
   return {
     environment:"cave-lava",
+    ...(options.tacticsSeed!==undefined?{tacticsSeed:options.tacticsSeed}:{}),
     bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},
     obstacles:[],
     actors:[
