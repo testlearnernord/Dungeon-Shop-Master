@@ -3,7 +3,7 @@ import type {GameStore} from "./game/gameStore.ts";
 import {liveBoardHeroesForFilter,selectLiveBoardHeroes} from "./game/liveBoardProjection.ts";
 import {portraitIndex} from "./game/rosterView.ts";
 import {heroDisplayNames} from "./game/heroIdentity.ts";
-import {itemIcon,uiIcon,goldIcon} from "./uiIcons.ts";
+import {itemIcon,goldIcon} from "./uiIcons.ts";
 import {portraitCssFrame} from "./game/portraitAtlas.ts";
 import {WORLD_TICKS_PER_DAY,WORLD_TICKS_PER_GAME_MINUTE} from "./game/worldClock.ts";
 
@@ -151,8 +151,8 @@ export function setupRosterBoardHud(
         extended.append(permit);
         }
       }
-      // Every remote non-lost signature gets the SAME explicit opt-in.
-      // Whether a view exists is not itself leaked onto the board.
+      // Opt-in LIVE camera is offered for registered remote adventurers.
+      // The explicit Board now shows the real current status and statistics.
       if(hero.status!=="lost"&&hero.status!=="at-shop"){
         const watch=document.createElement("button");
         watch.type="button";
@@ -160,9 +160,8 @@ export function setupRosterBoardHud(
         watch.textContent="Watch LIVE (opt in)";
         watch.setAttribute("aria-label","Watch "+hero.name+" in real time");
         watch.addEventListener("click",()=>{
-          // The Board deliberately does not expose remote coordinates. The
-          // user explicitly opts into observation before checking the actual
-          // world snapshot. If it is not ready, keep the reason visible here.
+          // A spectator view requires a real committed position or fight.
+          // Never invent an encounter just because the Board has stats.
           closeRoster();
           if(watchLive(hero.id))return;
           openRoster();
