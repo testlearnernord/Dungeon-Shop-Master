@@ -8,7 +8,7 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Implemented on the audited main baseline
 
-Gameplay implementation last source-verified through merged **PR #241** (21 November 2026); Phase D1 artifact verification is separately proposed in #242. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
+Gameplay implementation last source-verified through merged **PR #241** (21 November 2026); Phase D1 artifact verification was merged in #242 and its Pages deploy passed; D2 closeout documentation remains in draft #243. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
 
 | Area | Currently implemented |
 | --- | --- |
