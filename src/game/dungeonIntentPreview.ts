@@ -47,3 +47,31 @@ export function predictDungeonHeroSteps(
   }
   return result;
 }
+
+/** Explain WHY only one or zero arrow segments are visible. A route is an
+ * observation-time forecast, not a queued AI order or a second navigator. */
+export function dungeonPreviewExplanation(
+  layout:DungeonLayout,
+  hero:Parameters<typeof predictDungeonHeroSteps>[1],
+  resolved:readonly string[]=[],
+):string{
+  if(hero.inCombat)return "In LIVE combat · route forecast paused";
+  if(hero.activity==="portal")return "Crossing the portal · no floor route";
+  const next=predictDungeonHeroSteps(layout,hero,resolved);
+  if(next.length===2)return next.map((p,i)=>
+    (i+1)+": ("+p.x+", "+p.z+")").join(" → ")+" · PREVIEW";
+  if(next.length===1){
+    const cell=next[0],feature=layout.features.find(f=>
+      f.x===cell.x&&f.z===cell.z&&!resolved.includes(f.id));
+    return "1: ("+cell.x+", "+cell.z+") · "+
+      (feature?"Site interaction next; step 2 depends on outcome":
+        "Second step not predictable");
+  }
+  const stair=hero.plannedAction==="descend"?
+    dungeonDownStair(layout):layout.entrance;
+  if((hero.plannedAction==="descend"||hero.plannedAction==="ascend"||
+      hero.plannedAction==="shop")&&
+     hero.x===stair.x&&hero.z===stair.z)
+    return "At staircase / exit · awaiting committed transition";
+  return "No safe next tile predicted · awaiting a new world decision";
+}
