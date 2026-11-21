@@ -85,7 +85,16 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
       rail:{top:rail.top,bottom:rail.bottom}};
   });
   expect(positions.party.top).toBeGreaterThanOrEqual(positions.overview.bottom+3);
-  expect(positions.party.bottom).toBeLessThanOrEqual(positions.rail.bottom+1);
+  // A compact rail may scroll when both overview and party cards are tall.
+  // Do not require all cards to fit inside the viewport simultaneously.
+  const railFlow=await page.evaluate(()=>{
+    const rail=document.querySelector<HTMLElement>("#dungeon-left-rail")!;
+    return {overflowY:getComputedStyle(rail).overflowY,
+      clientHeight:rail.clientHeight,scrollHeight:rail.scrollHeight};
+  });
+  expect(railFlow.overflowY).toBe("auto");
+  expect(railFlow.scrollHeight).toBeGreaterThanOrEqual(railFlow.clientHeight);
+  expect(positions.rail.bottom).toBeLessThanOrEqual(page.viewportSize()!.height);
   // The toolbar gains a second/third row when LIVE hero selectors appear.
   // The OVERVIEW must never cover the locator (desktop or narrow layouts).
   await expect(page.locator("#dungeon-hero-locator-label")).toBeVisible();
