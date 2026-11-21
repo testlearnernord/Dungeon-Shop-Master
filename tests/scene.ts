@@ -1041,9 +1041,19 @@ export function aimAtCellarPortrait():void {
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,2.15,-12.02));
 }
 export function aimAtCellarStairs():void {
-  inspectPlayer({x:-.85,y:1.72,z:-12.9});
+  // Begin BEFORE the rear wall: teleporting behind the seam hid the bug.
+  inspectPlayer({x:-.85,y:1.7,z:-11.55});
   const scene=Engine.LastCreatedScene!;
-  (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,0,-21));
+  (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,.5,-21));
+}
+const cellarCollisions:string[]=[];
+export function trackCellarCollisions():void{
+  cellarCollisions.length=0;
+  const camera=Engine.LastCreatedScene!.activeCamera as UniversalCamera;
+  camera.onCollide=mesh=>{if(cellarCollisions.length<50)cellarCollisions.push(mesh.name);};
+}
+export function inspectCellarCollisions():readonly string[]{
+  return [...cellarCollisions];
 }
 export function inspectCellarGate() {
   const scene=Engine.LastCreatedScene!;
@@ -1065,4 +1075,9 @@ export function aimAtFishingPond():void{
   inspectPlayer({x:-6.25,y:-2.7,z:-27});
   const scene=Engine.LastCreatedScene!;
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-8.4,-4.31,-27));
+}
+
+export function aimUpCellarStairs():void{
+  const scene=Engine.LastCreatedScene!;
+  (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,1.4,-10.2));
 }

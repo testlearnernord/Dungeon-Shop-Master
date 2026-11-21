@@ -21,17 +21,34 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
   expect(gate).toEqual({blocked:false,ramp:true,cellarFloor:true,chest:true});
   // Start at the actual upper stair landing and WALK downhill. The real FPS
   // camera must follow the slope, not be teleported to a second world.
-  await page.evaluate(async()=>
-    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtCellarStairs());
+  await page.evaluate(async()=>{
+    const helper=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    helper.aimAtCellarStairs();
+    helper.trackCellarCollisions();
+  });
   await page.locator("#renderCanvas").focus();
   await page.keyboard.down("w");
-  await page.waitForTimeout(550);
+  await page.waitForTimeout(2200);
   await page.keyboard.up("w");
   const after=await page.evaluate(async()=>{
+    const helper=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    return {player:helper.inspectPlayer(),hits:helper.inspectCellarCollisions()};
+  });
+  console.log("Cellar descent diagnostic",JSON.stringify(after));
+  expect(after.player.z).toBeLessThan(-20.0);
+  expect(after.player.y).toBeLessThan(-2.4);
+  // Re-aim UP the actual staircase and walk back through the same door.
+  await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimUpCellarStairs());
+  await page.keyboard.down("w");
+  await page.waitForTimeout(2200);
+  await page.keyboard.up("w");
+  const returned=await page.evaluate(async()=>{
     const {inspectPlayer}=await import("/Dungeon-Shop-Master/tests/scene.ts");
     return inspectPlayer();
   });
-  expect(after.z).toBeLessThan(-13.5);
-  expect(after.y).toBeLessThan(1.65);
+  console.log("Cellar return diagnostic",JSON.stringify(returned));
+  expect(returned.z).toBeGreaterThan(-12.2);
+  expect(returned.y).toBeGreaterThan(.75);
   expect(errors).toEqual([]);
 });
