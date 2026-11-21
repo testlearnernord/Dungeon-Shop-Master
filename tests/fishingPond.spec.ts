@@ -68,7 +68,8 @@ test("mined pond reveals water and opens fishing by E @ci-smoke",async({page})=>
       required:document.querySelector("#fishing-pull-distance")?.textContent,
       progress:document.querySelector<HTMLElement>("#fishing-pull-fill")?.style.width};
   });
-  expect(presentation.goldGoalWidth).toBeGreaterThan(90);
+  expect(presentation.goldGoalWidth).toBeGreaterThan(50);
+  expect(presentation.goldGoalWidth).toBeLessThan(72);
   expect(presentation.actualAttemptWidth).toBe(0);
   expect(presentation.required).toBe("0 / 120 px");
   expect(presentation.progress).toBe("0.0%");

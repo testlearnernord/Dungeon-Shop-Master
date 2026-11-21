@@ -83,15 +83,19 @@ export function setupFishingHud(
   let sampleStarted=0,sampleLast=0,dx=0,dy=0;
   let target:FishingFlick=fishingDirectionFor(0,0);
   let requiredDistance=fishingFlickDistanceFor(0);
+  // Stable screen scale: each later counter moves the GOLD end marker
+  // farther away, and the cyan mouse attempt uses that same px-to-UI ratio.
+  const pullVisualScale=102/fishingFlickDistanceFor(REQUIRED_FLICKS-1);
   const showPull=(x:number,y:number)=>{
+    aim.style.setProperty("--goal-length",
+      (requiredDistance*pullVisualScale).toFixed(1)+"px");
     const progress=fishingFlickProgress(x,y,target,requiredDistance);
     const travelled=Math.hypot(x,y);
-    // Render the actual vector at exactly the same scale as the brass goal.
-    // A reverse or sideways pull is visible, but cannot fill the progress.
-    const scale=102/requiredDistance;
+    // Reverse or sideways pulls still draw visibly in the wrong direction,
+    // but they cannot fill the projected forward-progress bar.
     const angle=Math.atan2(y,x)*180/Math.PI;
     motion.style.transform="rotate("+angle+"deg)";
-    motion.style.width=Math.min(119,travelled*scale)+"px";
+    motion.style.width=Math.min(119,travelled*pullVisualScale)+"px";
     pullDistance.textContent=Math.round(progress.projected)+" / "+requiredDistance+" px";
     pullFill.style.width=(progress.ratio*100).toFixed(1)+"%";
     pullFill.dataset.complete=String(progress.ratio>=1);

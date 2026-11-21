@@ -120,8 +120,9 @@ The three original counters now require **120, 165 and 210 px** of real
 pointer-lock motion, respectively, within one 400 ms directional sample.
 A valid counter still needs angular accuracy and the existing bite window;
 misses do not lower the current counter's required distance. The crosshair
-shows a fixed brass reference line and end marker, and a separate turquoise
-vector showing the player's actual signed mouse movement at the same scale.
+shows an increasingly long brass reference line (the goal distance) and
+end marker, plus a turquoise vector showing the player's actual signed mouse
+movement at the SAME fixed screen scale.
 The bottom HUD displays projected forward progress versus required distance;
 sideways or reverse motion cannot fill it. The world clock, rod, water and
 catch economy are unchanged. Manual mouse/DPI difficulty validation remains

@@ -40,7 +40,7 @@
 }
 .fishing-aim-goal{
   position:absolute;left:50%;top:calc(50% - 2px);
-  width:102px;height:4px;border-radius:3px;pointer-events:none;
+  width:var(--goal-length,58.3px);height:4px;border-radius:3px;pointer-events:none;
   transform-origin:left center;transform:rotate(var(--target-angle));
   background:linear-gradient(90deg,#caaa6780,#f9d990e0);
   border-top:1px solid #ffdd92;box-shadow:0 0 9px #d5a454;
