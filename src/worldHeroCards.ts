@@ -8,7 +8,11 @@ import {renderHeroCard} from "./heroCard.ts";
 let currentHeroCards:WorldHeroCards|null=null;
 export function inspectHeroCard(view:HeroCardView):boolean{
   if(!currentHeroCards)return false;
-  if(view.source==="live")return currentHeroCards.open(view.id);
+  // LIVE combat frames are more current than the last settled GameStore
+  // roster. Inspect that actual frame instead of replacing its HP/phase with
+  // a stale post-shop or pre-fight saved health value.
+  if(view.source==="live"&&view.activity!=="combat"&&!view.combat)
+    return currentHeroCards.open(view.id);
   currentHeroCards.openSnapshot(view);return true;
 }
 export function inspectHeroId(heroId:string):boolean{
