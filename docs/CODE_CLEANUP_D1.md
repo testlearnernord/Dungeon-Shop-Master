@@ -1,6 +1,6 @@
 # Phase D1 — production GitHub Pages artifact verification
 
-> Draft PR #242 on top of C3 (#241) merged `main`. No gameplay source, animation, music, model or 60-Hz timing is changed.
+> **D1 merged as PR #242**, 21 November 2026. Its built-asset check and Pages deploy succeeded ([run 44889663336](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/44889663336)). No gameplay source, animation, music, model or 60-Hz timing was changed.
 
 ## Measured CI baseline
 
@@ -31,10 +31,10 @@ The old source-level tests proved that `public/audio/` source files existed, but
 
 ## Verification and explicit limits
 
-The D1 PR triggers unchanged TypeScript/Vite + generators, existing unit suite and two independent browser shards, with an additional `verify:pages` step in `.github/workflows/ci.yml`. The same command runs immediately before `actions/upload-pages-artifact` in `.github/workflows/deploy.yml`. The actual deploy workflow runs on `main` after a separately approved merge; its success is **not** established merely by a green PR build.
+The D1 PR triggers unchanged TypeScript/Vite + generators, existing unit suite and two independent browser shards, with an additional `verify:pages` step in `.github/workflows/ci.yml`. The same command runs immediately before `actions/upload-pages-artifact` in `.github/workflows/deploy.yml`. The actual deploy workflow completed successfully on merged `main` ([run 44889663336](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/44889663336)), including `npm run verify:pages`, Pages artifact upload and deploy steps.
 
 The script checks the built artifact **before upload**, not live network/CDN responses, autoplay behavior, audible mixing, timing, FPS or visual quality. Those need the separate full-browser workflow and human device review. It does not seek to shorten CI or remove smoke tests.
 
 ## Remaining Great Cleanup closeout
 
-D2: run and inspect the manually-dispatched **Full browser regression** (workflow already exists but cannot be assumed to have run); collect final repository before/after counts and verified hashes, document open visual/audio/performance acceptance, reconcile last stale documentation and produce the source-grounded closeout. No declaration of “cleanup complete” before these gates.
+D2's separately reviewed [closeout ledger](GREAT_CLEANUP_CLOSEOUT.md) records the verified before/after Git-tree numbers, asset provenance and accepted CI/deploy evidence. The manually dispatched **Full browser regression**, actual Pages CDN checks and human visual/audio/performance acceptance remain open and must not be silently marked complete.

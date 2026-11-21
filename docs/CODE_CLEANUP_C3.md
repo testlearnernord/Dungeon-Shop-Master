@@ -1,6 +1,6 @@
 # Phase C3 — retire inactive group-boss adapter, protect the real boss
 
-> C3 is a focused review PR targeting current `main` after C2 (#240) merged, not a new boss design. No new player mechanic or change in combat outcomes is intended.
+> **C3 merged as PR #241**, 21 November 2026, after C2 (#240). This is a historical scope/evidence contract, not a new boss design. No new player mechanic or change in combat outcomes is intended.
 
 ## Proven real ownership
 
@@ -25,4 +25,4 @@ The **separate** `src/game/liveBossEncounter.ts` module was the one test-only C2
 - An import graph or plain-text search alone is insufficient; the actual construction/scheduler and source-level callers were manually inspected.
 - Run all unit tests, clean build and both browser-smoke shards. The new test protects actual boss uniqueness rather than merely verifying an unused helper.
 - Game design and visual acceptance remain separate from CI. Deleting the unused adapter does **not** prove FPS, JS bundle or runtime memory improvement; it removes only inactive source/test maintenance burden.
-- C2 #240 is merged. This C3 draft targets `main`. Run full CI on the current C3 head and do not merge without independent user approval.
+- C2 #240 and C3 #241 are merged with explicit owner approval. C3's [full PR CI](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/44888389226) passed build, units and both browser shards. Future changes still require independent CI and owner approval.
