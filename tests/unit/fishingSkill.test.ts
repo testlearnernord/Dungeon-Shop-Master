@@ -45,7 +45,7 @@ test("three counters require increasing quick mouse sweeps, not tiny nudges",()=
   assert.equal(scoreFishingFlick(900,-900,190,{x:1,y:-1},945),"perfect");
   // Long but angled: raw travel exceeds the required distance, yet the
   // forward projection remains short of the marker. It must not score.
-  assert.equal(scoreFishingFlick(900,700,290,{x:1,y:0},945),"too-small");
+  assert.equal(scoreFishingFlick(900,450,290,{x:1,y:0},945),"too-small");
   // Enough projected travel and accurate direction is a proper good hit.
   assert.equal(scoreFishingFlick(950,150,290,{x:1,y:0},945),"good");
   assert.equal(FISHING_FLICKS.length,8);
