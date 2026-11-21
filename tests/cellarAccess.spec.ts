@@ -23,6 +23,7 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
   // camera must follow the slope, not be teleported to a second world.
   await page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtCellarStairs());
+  await page.locator("#renderCanvas").focus();
   await page.keyboard.down("w");
   await page.waitForTimeout(550);
   await page.keyboard.up("w");

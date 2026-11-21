@@ -534,7 +534,7 @@ export function inspectBedroom() {
   return {
     exists:!!bed,
     collides:bed?.checkCollisions??false,
-    rearWall:!!scene.getMeshByName("bedroom-rear-wall"),
+    rearWall:!!scene.getMeshByName("bedroom-rear-left")&&!!scene.getMeshByName("bedroom-rear-right"),
     oldWall:!!scene.getMeshByName("front-middle-wall"),
   };
 }
