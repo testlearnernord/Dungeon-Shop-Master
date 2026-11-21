@@ -172,6 +172,11 @@
 .hero-combat-roster .hero-card--combat{cursor:pointer}
 .hero-combat-roster .hero-card--combat[data-focused="true"]{
   border-color:#f1c079;box-shadow:0 0 0 1px #d19c59b0,0 6px 22px #0008}
+/* Abstract engagement summaries are for the FLOOR map. They must vanish
+ * when the player opts into the real 3D arena and its Combat Party Cards. */
+#dungeon-hud[data-live-combat-mode="arena"] .dungeon-live-combat-summary{
+  display:none!important;
+}
 #dungeon-hud[data-live-combat-mode="arena"] .dungeon-left-rail,
 #dungeon-hud[data-live-combat-mode="arena"] #dungeon-hero-detail{
   display:none!important;
