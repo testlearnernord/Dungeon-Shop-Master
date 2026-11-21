@@ -1,6 +1,6 @@
 # Dungeon Shop Master · One Living World Clock
 
-> **Current implementation summary (21 November 2026):** the shared 50-ms world clock, scheduled real dungeon movement and 60-Hz fights, physical returns/off-duty days and LIVE spectator already exist. The older “design only / future PR” implementation notes below are historical. Use [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) for current status; retain this document as the detailed time/ordering contract.
+> **Current implementation summary (21 November 2026, through PR #266):** the shared 50-ms world clock, **200-tick (10-second) connected dungeon moves**, 60-Hz real combat, physical returns/off-duty days, concrete dungeon loot/buyback and opt-in LIVE hero/fight spectator already exist. Older “design only / future PR” notes below are historical. Use [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) for current status; retain this document as the detailed time/ordering contract.
 
 
 ### PR #213 physical shop rotation (merged)
@@ -9,7 +9,7 @@
 - `at-shop` -> `departing` starts an actual pedestrian walk; manual checkout, unsatisfied walkout and sleeping alone **do not** start cooldown. After observed exit on day D, the hero is absent from both shop and dungeon for complete days D+1 and D+2; earliest reentry is D+3.
 - Reentry uses the seeded safe known entrance, retains discovered routes, HP, equipment, supplies and true committed site generations; no free healing, RNG or second simulation. The old individually granted Level-6/7 boss permit is temporarily honored **only after** the required off-duty days.
 - The night book now has only **The Reckoning** and **Goods & Receipts**; LIVE Board and the bounded Expedition Timeline replace duplicate nightly hero/replay pages. Old four-page session indices are safely reset.
-- Strict `SIMULATION_VERSION = 24` snapshots validate new statuses, `offDutyUntilDay` and real clock-stamped departures. Earlier Alpha snapshots do not migrate.
+- Current `SIMULATION_VERSION = 25` snapshots validate actual statuses, `offDutyUntilDay`, scheduled movement and real clock-stamped departures. Older Alpha saves are not automatically migrated.
 - **NOT SHIPPED V.003:** cursed special-floor single physical portal, Floor-10 permit, deeper progression, unified boss fight architecture and integrated performance acceptance are still open.
 
 > **Approved design; PR #201–211 merged, #212 bounded highlight timeline in progress · 2026-11-19.**

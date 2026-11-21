@@ -8,16 +8,16 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Implemented on the audited main baseline
 
-Core V.003 systems were audited through PR #241 (21 November 2026). The subsequent merged V.004 cellar, fishing and LIVE cashier additions are listed below. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
+Core V.003 systems were audited through PR #241 (21 November 2026). The subsequent merged V.004 cellar, fishing, LIVE cashier, dungeon autonomy, physical loot and spectator QoL additions are listed below. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
 
 | Area | Currently implemented |
 | --- | --- |
 | Physical shop | First-person movement, independently built four-slot shelves, real bag/shelf inventory, wholesale purchases, excavation and furniture placement |
-| Customers and economy | Saved physical navigation, shelf claims, unpaid carts, a LIVE two-stage cashier QTE with compact circular timing HUD, real paid receipts, credit/debt, restock requests, walkouts and finite checkout queue |
+| Customers and economy | Saved physical navigation, shelf claims, unpaid carts, LIVE two-stage cashier QTE, real paid receipts, credit/debt, restock requests, walkouts, finite checkout queue and real gold/item buyback of returning adventurers' found goods |
 | Persistent world | One ordered 50-ms saved world-tick scheduler; shop, active dungeon expeditions and scheduled fights advance on that shared clock. Only the bed ends a shop day |
-| Heroes and exploration | Individual HP, equipment, purchases and intentions; seeded connected exploration on Floors **1–4 and 7**, persistent site generation/refresh and voluntary Temporary Parties |
+| Heroes and exploration | Individual HP, equipment, purchases and intentions; connected exploration every **200 world ticks** (10 unpaused seconds) on Floors **1–4 and 7**, persistent site generation/refresh, loot-/Ghoul-seeking goals, personally owned physical finds and voluntary Temporary Parties |
 | Combat | Deterministic **60-Hz** combat; ordinary multi-hero/multi-Ghoul encounters; authentic **Floor 6 Cave Troll** boss abilities including grab/throw and lava. Original boss presentation is the quality reference |
-| LIVE observation | Knowledge-limited Adventurer Board, death signals, floor-wide LIVE spectator for Floors 1–4 and 7, abstract fight markers and opt-in 3D arena. Observation never advances a second fight simulation |
+| LIVE observation | Knowledge-limited Adventurer Board, death signals, floor-wide LIVE spectator for Floors 1–4 and 7, orbit/pan map camera, actual hero and fight locator, concrete loot inspector, abstract fight markers and opt-in 3D arena. Observation never advances a second fight simulation |
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
@@ -28,6 +28,12 @@ Core V.003 systems were audited through PR #241 (21 November 2026). The subseque
 **V.004 pond and fishing (merged PRs #253 and #256):** excavate six connected cells on the cellar's left wall with U to uncover the water. E/click opens a LIVE first-person fishing interaction with a visible rod, 3D line and bobber, a small bottom HUD and crosshair-guided mouse flicks. Three accurate pulls win a persistent trophy count (not saleable fish goods); the five original synth sounds use GameSfx volume/mute settings. The world clock runs during fishing.
 
 **V.004 cashier (merged PR #255):** the original two accurate stamps, receipts and tip/payment rules remain unchanged. Checkout is now a non-modal LIVE HUD showing a brass timing ring at the bottom of the screen, while NPCs and the common world clock continue running. Existing queue positions are preserved and advancing shoppers prefer clear, direct steps rather than an outward route detour.
+
+**V.004 LIVE Dungeon overhaul (merged PRs #261 and #262):** a readable floor-wide dungeon map with camera orbit, W/S movement correction, knowledge-safe two-step hero previews and resource intentions. The authoritative scheduler commits one connected move every 200 ticks (10 unpaused real seconds), while ordinary and boss fights continue using their shared 60-Hz combat authority.
+
+**V.004 dungeon economy (merged PR #264):** resolved Ghoul sites and treasure chests grant deterministic concrete goods to one living adventurer. Equipment can be retained; surplus ore, coal, herbs and gear remain in individual inventories. Only a confirmed shop buyback transfers an owned item and paid gold, recorded in Galvik's ledger as **cost**, not sales income.
+
+**V.004 spectator QoL (merged PRs #265 and #266):** locate actual LIVE heroes and running fights through compact selectors. Focusing a target preserves the player's orbit and zoom; the inspector shows real saved finds. Selecting a fight focuses its committed tile and the existing Watch action opens that exact opt-in 3D encounter.
 
 **Partially implemented / not yet released:** integrated deeper dungeon progression and Floor 8–10 content, a single physical cursed portal replacing the numbered-floor shop access, the individual Floor-10 pass, full ten-day gameplay/pacing acceptance and visual/audio acceptance on real hardware. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
 
@@ -77,7 +83,7 @@ npm test
 
 `predev` and `prebuild` first construct the **Troll Grab/Throw** and **Ghoul** animation GLBs from committed source assets. Do not delete or relocate those sources without adjusting and verifying the generators. Vite uses `/Dungeon-Shop-Master/` as its Pages base.
 
-**GitHub Actions:** PR CI performs the production build, all unit tests and two separate browser-smoke shards. The *complete* Playwright regression runs through the **manual** `Full browser regression` workflow; `main` pushes run the GitHub Pages deployment. A successful build is not an audible SFX sign-off, visual-combat review or measured end-user FPS test.
+**GitHub Actions:** PR CI performs the production build, all unit tests and one curated browser-core smoke runner. The *complete* Playwright regression runs through the **manual** `Full browser regression` workflow; `main` pushes run the GitHub Pages deployment. A successful build is not an audible SFX sign-off, visual-combat review or measured end-user FPS test.
 
 ## Project documents
 
