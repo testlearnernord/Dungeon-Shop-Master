@@ -1,5 +1,5 @@
 import {expect,test} from "@playwright/test";
-test("all six hotbar symbols are centered independently of their counters",async({page})=>{
+test("all five shop-good hotbar symbols are centered independently of their counters",async({page})=>{
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
   const points=await page.locator("#inventory .inventory-row").evaluateAll(rows=>
@@ -9,7 +9,7 @@ test("all six hotbar symbols are centered independently of their counters",async
       return {dx:(art.left+art.width/2)-(box.left+box.width/2),
         dy:(art.top+art.height/2)-(box.top+box.height/2)};
     }));
-  expect(points).toHaveLength(6);
+  expect(points).toHaveLength(5);
   for(const point of points){
     expect(Math.abs(point.dx)).toBeLessThan(1.2);
     expect(Math.abs(point.dy)).toBeLessThan(1.2);
