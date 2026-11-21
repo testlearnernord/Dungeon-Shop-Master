@@ -59,6 +59,8 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   await page.locator("#lab-model").click();
   await expect(page.locator(".group-combat-cinematic")).toHaveCount(0);
   await expect(page.locator("#arena-model-panel")).toBeVisible();
+  const inspectorScene=await summary();
+  expect(inspectorScene.sceneCount).toBeLessThanOrEqual(trollScene.sceneCount);
   await page.locator("#arena-model-preset").selectOption("ghoul-tripo");
   await expect(page.locator("#arena-model-info")).toContainText("15 imported clips",{timeout:30000});
   await expect(page.locator("#arena-model-clip option")).toHaveCount(15);
