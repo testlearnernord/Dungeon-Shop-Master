@@ -78,57 +78,34 @@ test("seeded sword tanks can physically parry and dodge committed Troll strikes"
   assert(dodges>0,"tanks remain capable of rolling rather than always parrying");
 });
 
-test("diagnostics: seeded Troll grab opportunities and physical strike outcomes",()=>{
-  const fight={...options,role:"DPS" as const,health:185,maxHealth:185,
-    healingSupplies:2};
-  let grabEncounters=0,throwEncounters=0;
-  let smashHits=0,grappleAttempts=0,late=0;
-  const examples:unknown[]=[];
-  for(let seed=0;seed<48;seed++){
-    const s=createSharedBossPreview({...fight,tacticsSeed:seed});
-    let sawGrab=false,sawThrow=false;
-    let firstGrabGap:number|null=null;
-    let bossAttacks=0,heroHits=0;
-    for(let tick=0;tick<5400&&s.outcome==="fighting";tick++){
-      stepSharedBossPreview(s,1/60);
-      const boss=s.group.actors.find(a=>a.id==="cave-troll")!;
-      const hero=s.group.actors.find(a=>a.id==="hero")!;
-      if(boss.phase==="grab"){
-        if(!sawGrab)firstGrabGap=Math.hypot(boss.x-hero.x,boss.z-hero.z);
-        sawGrab=true;
-      }
-      if(boss.phase==="throw")sawThrow=true;
-    }
-    bossAttacks=s.group.events.filter(e=>e.kind==="attack"&&e.actorId==="cave-troll").length;
-    heroHits=s.group.events.filter(e=>e.kind==="hit"&&e.actorId==="cave-troll").length;
-    smashHits+=heroHits;
-    grappleAttempts+=bossAttacks;
-    if(sawGrab)grabEncounters++;
-    if(sawThrow)throwEncounters++;
-    if(s.time>18)late++;
-    if(seed<5)examples.push({seed,time:Number(s.time.toFixed(1)),bossAttacks,heroHits,
-      firstGrabGap,sawGrab,sawThrow,heroHp:s.heroHp});
+test("new shared Troll fights retain real grapples and throws instead of permanent stun",()=>{
+  const duel={...options,role:"DPS" as const,health:185,maxHealth:185,
+    healingSupplies:2,tacticsSeed:17};
+  const first=createSharedBossPreview(duel);
+  const second=createSharedBossPreview({...duel,tacticsSeed:18});
+  for(let tick=0;tick<5400;tick++){
+    if(first.outcome==="fighting")stepSharedBossPreview(first,1/60);
+    if(second.outcome==="fighting")stepSharedBossPreview(second,1/60);
   }
-  console.log("Shared-Troll-telegraph-diagnostics",{
-    grabEncounters,throwEncounters,smashHits,grappleAttempts,late,examples});
-  const champions=[
-    {role:"tank" as const,sword:false,armor:false,strength:80,agility:80},
-    {role:"tank" as const,sword:true,armor:true,strength:75,agility:40},
-    {role:"DPS" as const,sword:true,armor:true,strength:75,agility:40},
-  ];
-  const winners=champions.map(champion=>{
-    let victories=0;const states:unknown[]=[];
-    for(let seed=0;seed<32;seed++){
-      const s=createSharedBossPreview({...options,...champion,
-        health:100,maxHealth:100,tacticsSeed:seed});
-      for(let tick=0;tick<5400&&s.outcome==="fighting";tick++)
-        stepSharedBossPreview(s,1/60);
-      if(s.outcome==="victory")victories++;
-      if(seed<4)states.push({seed,outcome:s.outcome,time:+s.time.toFixed(1),
-        heroHp:s.heroHp,bossHp:s.bossHp,
-        heroHits:s.group.events.filter(e=>e.kind==="hit"&&e.actorId==="hero").length});
-    }
-    return {role:champion.role,sword:champion.sword,victories,states};
-  });
-  console.log("Shared-Troll-champion-diagnostics",winners);
+  const trollEvents=first.group.events.filter(e=>e.actorId==="cave-troll");
+  assert(trollEvents.filter(e=>e.kind==="attack").length>=2,
+    "ordinary sword contact must not perpetually stunlock the Troll");
+  assert(trollEvents.some(e=>e.kind==="grab"),
+    "the production group motor must genuinely hold a hero");
+  assert(trollEvents.some(e=>e.kind==="throw"),
+    "the original signature throw must be represented in committed gameplay");
+  assert.notDeepEqual(first.group.events,second.group.events,
+    "different explicit balancing seeds must allow different tactics");
+});
+
+test("exceptionally skilled but unarmed tanks can genuinely defeat the Troll",()=>{
+  for(const tacticsSeed of [0,7,17,31]){
+    const duel=createSharedBossPreview({...options,sword:false,armor:false,
+      strength:80,agility:80,health:100,maxHealth:100,tacticsSeed});
+    for(let tick=0;tick<5400&&duel.outcome==="fighting";tick++)
+      stepSharedBossPreview(duel,1/60);
+    assert.equal(duel.outcome,"victory",
+      "exceptional gear-free player stats must not be a disguised losing fixture");
+    assert.equal(duel.bossHp,0);
+  }
 });
