@@ -23,6 +23,8 @@ export function hideHeroHover():void{currentHeroCards?.hideMini();}
 export class WorldHeroCards {
   private readonly host=document.createElement("aside");
   private readonly mini=document.createElement("aside");
+  private miniHeroId:string|null=null;
+  private miniRoster:readonly AdventurerState[]|null=null;
   private current:string|null=null;
   private snapshot:HeroCardView|null=null;
   private lastRoster:readonly AdventurerState[]|null=null;
@@ -76,10 +78,18 @@ export class WorldHeroCards {
   }
   showMini(heroId:string,clientX:number,clientY:number):void{
     if(!this.host.hidden)return;
-    const hero=liveHeroCard(this.store.state,heroId);
-    if(!hero)return;
-    this.mini.replaceChildren(renderHeroCard(hero,"mini"));
-    this.mini.hidden=false;
+    // Pointermove is often 60-144 Hz. Reuse the same DOM subtree until
+    // either the inspected identity or its authoritative roster checkpoint
+    // changes. Movement only updates two cheap positioning properties.
+    if(this.mini.hidden||this.miniHeroId!==heroId||
+       this.miniRoster!==this.store.state.adventurers){
+      const hero=liveHeroCard(this.store.state,heroId);
+      if(!hero)return;
+      this.mini.replaceChildren(renderHeroCard(hero,"mini"));
+      this.miniHeroId=heroId;
+      this.miniRoster=this.store.state.adventurers;
+      this.mini.hidden=false;
+    }
     // Flip near screen edges. No DOM-measurement loops in the render thread.
     const width=278,height=195;
     this.mini.style.left=Math.max(6,Math.min(innerWidth-width-6,
@@ -88,7 +98,9 @@ export class WorldHeroCards {
       clientY+16))+"px";
   }
   hideMini():void{
+    if(this.mini.hidden)return;
     this.mini.hidden=true;this.mini.replaceChildren();
+    this.miniHeroId=null;this.miniRoster=null;
   }
   /** Hover/focus is unified across roster, world feed and future shop hits. */
   bindHover(element:HTMLElement,heroId:string):void{
