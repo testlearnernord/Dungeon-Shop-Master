@@ -662,8 +662,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
               const tangentX=-heading.z,tangentZ=heading.x;
               const length=Math.hypot(heading.x*3.25+tangentX*.45,
                 heading.z*3.25+tangentZ*.45);
-              move(s,a,(heading.x*3.25+tangentX*.45)/length*a.speed/3.25*dt,
-                (heading.z*3.25+tangentZ*.45)/length*a.speed/3.25*dt);
+              move(s,a,(heading.x*3.25+tangentX*.45)/length*a.speed*dt,
+                (heading.z*3.25+tangentZ*.45)/length*a.speed*dt);
             }else move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
           }else if(posture.withdraw)
             move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
