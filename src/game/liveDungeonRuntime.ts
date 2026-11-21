@@ -2,7 +2,7 @@ import type {GameState,WorldEvent,EarlyDungeonFloorWorld} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
-import {chooseLiveHeroDungeonDecision,
+import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,
   type HeroDungeonDecision} from "./dungeonDecisions.ts";
 import {choosePersistentDungeonParty,negotiatePartyFloorDecisions,
   settlePersistentDungeonParties,temporaryPartyChanges,
@@ -459,9 +459,19 @@ function commitDungeonTick(state:GameState):GameState {
       ((priorPlan.action==="ascend"&&floor>1&&floor<=4)||
        (priorPlan.action==="descend"&&floor<4))
       ?actualStair(state.seed,floor,priorPlan.action):undefined;
+    // A saved autonomous loot/hunt intention may redirect a step only to a
+    // personally known, still-active chest/monster site. Never let the
+    // omniscient spectator map plan hero movement.
+    const known=getLevel7Progress(world,hero.id,layout);
+    const resourceKind=priorPlan?.floor===floor?
+      priorPlan.goal==="loot-chest"?"treasure":
+      priorPlan.goal==="hunt-ghouls"?"monster":null:null;
+    const resourceTarget=resourceKind&&!homeward&&!directed
+      ?selectKnownResourceSite(layout,known,world,resourceKind):null;
     const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
       {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
         ...(directed?{routeToKnownTarget:directed}:{}),
+        ...(resourceTarget?{routeToResource:resourceTarget}:{}),
         blockedCombatSites:blocked});
     if(readyGroup.length>=2)
       sharedGroups.push(readyGroup.map(member=>member.id));
@@ -488,7 +498,7 @@ function commitDungeonTick(state:GameState):GameState {
         p.heroId===individual.adventurer.id);
       independent.set(individual.adventurer.id,
         chooseLiveHeroDungeonDecision(individual.adventurer,
-          progress,individual.replay));
+          progress,individual.replay,layout,result.world));
     }
     const agreed=readyGroup.length>1
       ?negotiatePartyFloorDecisions(result.ticks.map(t=>t.adventurer),
