@@ -24,7 +24,7 @@ Owner rule: **no lost gameplay, scenes, animations, cues, saves, rendering quali
 | A2: living documentation | **Merged (#236)** | Replace dated PR accumulation in README/AGENTS/Architecture/Bible/Roadmap with current module map, approved choices and status distinctions |
 | B1: audio ownership | **Merged (#237)** | Proposed removal of one exact root music copy; canonical audio untouched; generated Ghoul GLB ignored and owners documented |
 | B2: model provenance | **Merged (#238)** | Archive the original Troll Grab/Throw source with unchanged Git blob; update generator, manifest, docs and integrity test |
-| C: TypeScript | **C1 merged (#239), C2 review pending (#240)** | Two unused night-book modules retired; conservative reachability tooling proposed to classify real entry imports, test-only helpers, computed imports and candidates for future domain-by-domain cleanup |
+| C: TypeScript | **C1 merged (#239), C2 review pending (#240), C3 draft (#241)** | C2 measures actual entry/test-only imports; C3 proposes removing its sole unreferenced-by-gameplay boss adapter only after real specialized boss save/clock/single-instance tests are confirmed |
 | D: CI and acceptance | **Planned; C2 adds non-gating graph report** | Required regressions, Pages asset URL checks, full-browser review, before/after measurements and final doc sync |
 
 See [CLEANUP_AUDIT.md](CLEANUP_AUDIT.md) for the source-verified A1 baseline and known risk classifications.

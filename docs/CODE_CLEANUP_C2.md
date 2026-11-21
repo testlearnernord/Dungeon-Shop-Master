@@ -45,3 +45,10 @@ The real **Build and unit tests** job in [Actions run 44887675777](https://githu
 The first report also flagged several *false-positive* unknown static imports because the lightweight lexer saw a parameter named `from` in ordinary exported functions. The subsequent C2 commit now restricts `export ... from` scanning to real named/star reexports and adds a regression fixture. This repairs warning quality without changing entrypoint reachability. Remaining computed imports and runtime references still require manual inspection.
 
 **Conclusion:** no evidence supports mass TypeScript-file removal. C3 should target the **single** test-only boss adapter by comparing it directly to the real LIVE boss constructor, or investigate duplicate function-level responsibilities in small focused PRs. Do not conflate source-file reachability with unused exports, render-loop costs or gameplay performance.
+
+
+## C3 follow-up (separate review)
+
+Inspection of the authoritative `src/game/liveDungeonRuntime.ts` at the C2 baseline confirms that the unique Floor-6 Troll currently creates an `arenaCombatMotion.createCombatPreview` state and commits 30 `stepCombatPreview` ticks per 10 world ticks, preserving a boss replay and strict save validation. The C2 test-only `liveBossEncounter.ts` instead creates a **never-wired 1–3 hero GroupCombatOptions adapter**. It does not own live boss HP, attacks, signature grabs, loot, replay, saves or uniqueness. Its two standalone adapter tests are not evidence that the actual live boss is a three-hero group encounter.
+
+Proposed C3 removes **only** that unused adapter and its adapter-specific tests, adds an **actual GameStore** regression for simultaneous Floor-6 challengers, and keeps the existing full live boss, GroupCombat grapple signature, deterministic 60-Hz, save/reload and browser tests. This does not reject future multi-hero boss designs; any such implementation would require an explicit new gameplay PR and tests. C3 is separately reviewed and must not be merged from the audit result alone.
