@@ -78,6 +78,7 @@ export class DungeonViewer {
   private readonly mapCounts=document.querySelector<HTMLElement>(
     "#dungeon-map-counts")!;
   private readonly panel = document.querySelector<HTMLElement>("#dungeon-hud")!;
+  private readonly toolbar = this.panel.querySelector<HTMLElement>(".dungeon-toolbar")!;
   private readonly summary = document.querySelector<HTMLElement>("#dungeon-summary")!;
   private readonly focusLabel = document.querySelector<HTMLElement>("#dungeon-focus")!;
   private readonly seedLabel = document.querySelector<HTMLElement>("#dungeon-seed")!;
@@ -163,6 +164,11 @@ export class DungeonViewer {
     private readonly skipCombatScoreTo:(seconds:number)=>void=()=>{},
     private readonly sfx?:GameSfx,
   ) {
+    // The hero/fight locators can add rows after LIVE data arrives.
+    // Observe the real header height instead of stacking the overview at
+    // a hard-coded offset that overlaps an interactive select.
+    new ResizeObserver(()=>this.alignHudPanels()).observe(this.toolbar);
+    window.addEventListener("resize",()=>this.alignHudPanels());
     this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel,this.sfx);
     this.watchCombatButton.addEventListener("click",()=>{
       if(this.liveFloor!==null)this.watchFloorCombat();
@@ -437,6 +443,16 @@ export class DungeonViewer {
   }
   get map(): DungeonLayout | null { return this.layout; }
 
+  /** Position the read-only floor rail/minimap below the actual toolbar,
+   * including when the hero locator wraps, fonts change or the window resizes.
+   * This is presentation only; no game-world simulation work is scheduled. */
+  private alignHudPanels():void {
+    if(this.panel.hidden)return;
+    const bottom=this.toolbar.getBoundingClientRect().bottom;
+    if(bottom>0)this.panel.style.setProperty(
+      "--dungeon-panels-top",Math.ceil(bottom+12)+"px");
+  }
+
   open(initialReplayId?:string): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("arena-active")) return;
@@ -446,6 +462,7 @@ export class DungeonViewer {
     this.keys.clear();
     document.body.classList.add("dungeon-active");
     this.panel.hidden = false;
+    this.alignHudPanels();
     this.layout = generateExpeditionLayout(this.store.state.seed,7);
     this.createScene(this.layout);
     this.refreshReplaySelector(initialReplayId);
