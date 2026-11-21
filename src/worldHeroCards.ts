@@ -4,6 +4,16 @@ import {renderHeroCard} from "./heroCard.ts";
 
 /** The single globally mounted inspector. Full cards can be pinned; mini
  * previews never steal input. This module creates NO world clock or scene. */
+let currentHeroCards:WorldHeroCards|null=null;
+export function inspectHeroCard(view:HeroCardView):boolean{
+  if(!currentHeroCards)return false;
+  if(view.source==="live")return currentHeroCards.open(view.id);
+  currentHeroCards.openSnapshot(view);return true;
+}
+export function inspectHeroId(heroId:string):boolean{
+  return currentHeroCards?.open(heroId)??false;
+}
+
 export class WorldHeroCards {
   private readonly host=document.createElement("aside");
   private readonly mini=document.createElement("aside");
@@ -11,6 +21,7 @@ export class WorldHeroCards {
   private snapshot:HeroCardView|null=null;
   private lastRoster:typeof this.store.state.adventurers|null=null;
   constructor(private readonly store:GameStore){
+    currentHeroCards=this;
     this.host.id="world-hero-card";
     this.host.hidden=true;
     this.host.setAttribute("aria-label","Hero profile");
