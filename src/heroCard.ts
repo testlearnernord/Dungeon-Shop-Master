@@ -196,7 +196,7 @@ function combat(hero:HeroCardView):HTMLElement{
   zone.append(metric("swords","Damage",String(c.damage)),
     metric("shield","Armor",String(c.armor)));
   if(hero.role==="healer"||c.heals>0)
-    zone.append(metric("heart","Healing resources",String(c.heals)));
+    zone.append(metric("heart","Prepared healing charges",String(c.heals)));
   if(c.stamina!==null)
     zone.append(metric("spark","Stamina",String(Math.round(c.stamina))));
   return zone;
