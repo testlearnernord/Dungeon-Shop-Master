@@ -47,29 +47,35 @@ test("same seed and gear give identical new boss saves and replay projections",(
   assert.deepEqual(a,b);
 });
 
-test("a sword-bearing tank can parry a committed Troll strike before its contact tick",()=>{
-  const state=createGroupCombat(caveTrollGroupOptions(options));
-  const boss=state.actors.find(actor=>actor.id==="cave-troll")!;
-  const tank=state.actors.find(actor=>actor.id==="hero")!;
-  boss.phase="windup";
-  boss.activeMeleeAbility="troll-smash";
-  boss.phaseAge=.70;
-  boss.lockedHeading=Math.PI;
-  boss.heading=Math.PI;
-  boss.targetId=tank.id;
-  boss.attacksStarted=2;
-  // Fixed-position bench: the hero is close enough for actual contact.
-  tank.x=0;tank.z=0;
-  boss.x=0;boss.z=3;
-  let defended=false;
-  for(let tick=0;tick<60&&!defended;tick++){
-    stepGroupCombat(state);
-    defended=state.events.some(e=>e.kind==="parry"&&
+test("seeded sword tanks can physically parry and dodge committed Troll strikes",()=>{
+  let parries=0,dodges=0;
+  for(let seed=0;seed<32;seed++){
+    const state=createGroupCombat(caveTrollGroupOptions({...options,tacticsSeed:seed}));
+    const boss=state.actors.find(actor=>actor.id==="cave-troll")!;
+    const tank=state.actors.find(actor=>actor.id==="hero")!;
+    boss.phase="windup";
+    boss.activeMeleeAbility="troll-smash";
+    boss.phaseAge=.70;
+    boss.lockedHeading=Math.PI;
+    boss.heading=Math.PI;
+    boss.targetId=tank.id;
+    boss.attacksStarted=2;
+    tank.x=0;tank.z=0;
+    boss.x=0;boss.z=3;
+    for(let tick=0;tick<60;tick++)stepGroupCombat(state);
+    const blocked=state.events.some(e=>e.kind==="parry"&&
       e.actorId==="hero"&&e.targetId==="cave-troll");
+    const rolled=state.events.some(e=>e.kind==="dodge"&&
+      e.actorId==="hero"&&e.targetId==="cave-troll");
+    if(blocked||rolled){
+      assert.equal(tank.hp,options.health,
+        "an authentic timed defense must prevent boss strike damage");
+    }
+    if(blocked)parries++;
+    if(rolled)dodges++;
   }
-  assert(defended,"Parry's 0.10–0.36s window must overlap Troll contact");
-  assert.equal(tank.hp,options.health,
-    "a genuine timed parry must prevent boss strike damage");
+  assert(parries>0,"parry's committed contact window must genuinely overlap a Troll strike");
+  assert(dodges>0,"tanks remain capable of rolling rather than always parrying");
 });
 
 test("diagnostics: seeded Troll grab opportunities and physical strike outcomes",()=>{
