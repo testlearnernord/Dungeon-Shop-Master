@@ -37,7 +37,6 @@ import {
 
 const TILE_SIZE = 2.5;
 const WALL_HEIGHT = 4.5;
-const MONSTER_COLOR = "#93ad7b";
 const getWorld = (map: DungeonLayout, p: DungeonPoint) => new Vector3(
   (p.x-(map.width-1)/2)*TILE_SIZE, 0, (p.z-(map.height-1)/2)*TILE_SIZE,
 );
