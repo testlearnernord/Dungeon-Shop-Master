@@ -253,3 +253,20 @@ test("committed group frames retain real Troll slam/grab skill provenance",()=>{
   assert.equal(captureGroupCombatFrame(s).actors.find(a=>a.id==="troll")?.ability,
     "grapple");
 });
+
+test("healer magic is distinct from purchased herbs and runs in the common motor",()=>{
+  const s=createGroupCombat({actors:[
+    fighter("healer","heroes",-3,0,{role:"healer",style:"ranged",
+      hp:30,maxHp:100,healCharges:0,magicHeals:2,damage:8}),
+    fighter("monster","monsters",9,9,{speed:0,hp:300,maxHp:300}),
+  ],bounds});
+  const healer=s.actors.find(a=>a.id==="healer")!;
+  for(let i=0;i<180;i++)stepGroupCombat(s);
+  assert.equal(healer.healCharges,0,
+    "magic must not mint any purchased herb");
+  assert.equal(healer.magicHeals,0);
+  assert(healer.hp>=80);
+  const spells=s.events.filter(e=>e.kind==="heal"&&e.actorId==="healer");
+  assert.equal(spells.length,2);
+  assert(spells.every(e=>e.amount===25));
+});
