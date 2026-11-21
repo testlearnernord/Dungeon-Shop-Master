@@ -6,7 +6,7 @@ import {createLiveDungeonState,finishLiveDungeonDay,
   type LiveDungeonState} from "./liveDungeonRuntime.ts";
 import type {ShopRequest} from "./shopRuntime.ts";
 import { useHealingSupplies, generateAdventurer, generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
-import { createEconomy, type ItemId, type Slot } from "./economy.ts";
+import { createEconomy, type ItemId, type MaterialItemId, type Slot } from "./economy.ts";
 import {
   chooseHeroDungeonDecision,
   type HeroDungeonDecision, type HeroDungeonGoal, type HeroFloorAction,
@@ -35,7 +35,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 25;
+export const SIMULATION_VERSION = 26;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -47,6 +47,8 @@ export interface EarlyDungeonFloorWorld {
 export interface ShopEconomyState {
   readonly balance: number;
   readonly bag: Record<ItemId, number>;
+  /** Separate forge-input reserve. Not a bag slot, shelf, wholesale good or hotbar item. */
+  readonly materialStorage:Record<MaterialItemId,number>;
   readonly slots: Slot[];
   readonly dailySales: { readonly day: number; readonly units: number; readonly revenue: number };
 }
