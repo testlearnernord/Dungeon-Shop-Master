@@ -12,6 +12,7 @@ export const WORLD_FEED_CATEGORIES:readonly WorldFeedCategory[]=[
 export type WorldFeedTarget=
   |{kind:"roster";heroId:string}
   |{kind:"hero";heroId:string}
+  |{kind:"floor-site";floor:number;x:number;z:number;heroId:string}
   |{kind:"combat";fightId:string}
   |{kind:"boss";heroId:string};
 
@@ -47,7 +48,7 @@ function eventEntry(event:WorldEvent,state:GameState):WorldFeedEntry|null{
       category:"party",priority:2,title:"TEMPORARY PARTY FORMED",
       detail:names.join(" + ")+
         (party?" · Floor "+party.floor:" · Companions joined"),
-      target:{kind:"hero",heroId:event.adventurerId}};
+      target:observedFloorTarget(state,event.adventurerId)};
   }
   if(event.type==="shop-arrival"&&event.adventurerId){
     return {id:event.id,category:"travel",priority:1,
@@ -56,6 +57,18 @@ function eventEntry(event:WorldEvent,state:GameState):WorldFeedEntry|null{
       target:{kind:"roster",heroId:event.adventurerId}};
   }
   return null;
+}
+/** Tile is the actual persisted hero position after the committed site
+ * resolution, not a guessed treasure marker or passive omniscient route. */
+function observedFloorTarget(state:GameState,heroId:string):WorldFeedTarget{
+  const hero=findHero(state,heroId);
+  if(!hero)return {kind:"hero",heroId};
+  const world=hero.floor===7?state.level7World:
+    state.earlyDungeonWorlds?.find(entry=>entry.floor===hero.floor)?.world;
+  const progress=world?.heroes.find(entry=>entry.heroId===heroId);
+  return progress?
+    {kind:"floor-site",floor:hero.floor,x:progress.x,z:progress.z,heroId}:
+    {kind:"hero",heroId};
 }
 const itemName=(id:ItemId)=>ITEMS.find(item=>item.id===id)?.name??id;
 const plural=(quantity:number,label:string)=>
@@ -137,7 +150,7 @@ function dungeonSiteEntry(event:WorldEvent,before:GameState,after:GameState,
       title:ids.length>1?"PARTY CHEST LOOTED":"CHEST LOOTED",
       detail:names+" · Floor "+floor+" · "+
         (contents||"No recoverable items"),
-      target:{kind:"hero",heroId:lead}};
+      target:observedFloorTarget(after,lead)};
   }
   if(category==="trap"){
     const hurt=ids.map(heroId=>{
@@ -151,13 +164,13 @@ function dungeonSiteEntry(event:WorldEvent,before:GameState,after:GameState,
     return {id:key,category:"trap",priority:2,
       title:ids.length>1?"PARTY TRIGGERED A TRAP":"TRAP TRIGGERED",
       detail:"Floor "+floor+" · "+losses,
-      target:{kind:"hero",heroId:lead}};
+      target:observedFloorTarget(after,lead)};
   }
   const action=newHero.floor>oldHero.floor?"DESCENDED":"ASCENDED";
   return {id:key,category:"depth",priority:2,
     title:ids.length>1?"PARTY "+action:"ADVENTURER "+action,
     detail:names+" · Floor "+oldHero.floor+" → "+newHero.floor,
-    target:{kind:"hero",heroId:lead}};
+    target:observedFloorTarget(after,lead)};
 }
 
 export function projectWorldFeedChanges(
