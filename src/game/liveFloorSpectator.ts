@@ -1,7 +1,7 @@
 import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonFloor} from "./level7Exploration.ts";
-import type {CombatantSpec,GroupReplayFrame} from "./groupCombat.ts";
+import type {CombatantSpec,GroupReplayFrame,GroupCombatCue} from "./groupCombat.ts";
 
 /** The supported *physical* expedition floors, not a fictional set of 100. */
 export const LIVE_SPECTATOR_FLOORS=[1,2,3,4,7] as const satisfies readonly SpatialDungeonFloor[];
@@ -36,6 +36,7 @@ export interface LiveFloorFight {
   readonly actors:readonly CombatantSpec[];
   readonly frame:GroupReplayFrame;
   readonly frames:readonly GroupReplayFrame[];
+  readonly cues:readonly GroupCombatCue[];
 }
 export interface LiveFloorSpectatorFrame {
   readonly day:number;
@@ -63,7 +64,7 @@ export function selectLiveFloorSpectatorFrame(
     return frame?[{
       id:f.id,featureId:f.encounter.featureId,x:f.encounter.x,z:f.encounter.z,
       heroIds:f.heroIds,actors:f.encounter.options.actors,
-      frame,frames:f.frames,
+      frame,frames:f.frames,cues:f.state.events,
     }]:[];
   });
   const activeStatus=floor===7?"expedition":"exploring";
