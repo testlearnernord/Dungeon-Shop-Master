@@ -7,11 +7,11 @@ import {
 } from "../../src/gameSfxSamples.ts";
 import {SFX_CATALOG} from "../../src/sfxCatalog.ts";
 
-test("each of the 11 curated recordings exists in the served directory",()=>{
+test("each of the 32 curated recordings exists in the served directory",()=>{
   assert.equal(SFX_SAMPLE_FILES.length,32);
-  assert.equal(new Set(SFX_SAMPLE_FILES).size,11);
+  assert.equal(new Set(SFX_SAMPLE_FILES).size,32);
   for(const file of SFX_SAMPLE_FILES){
-    assert.ok(file.endsWith(".mp3"));
+    assert.ok(file.endsWith(".mp3")||file.endsWith(".wav"));
     assert.ok(existsSync(new URL("../../public/"+SFX_SAMPLE_DIR+file,import.meta.url)),file);
   }
   const ids=new Set(SFX_CATALOG.map(x=>x.id));
