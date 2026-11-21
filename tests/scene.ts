@@ -440,7 +440,9 @@ export function inspectDungeonLayout() {
  * failure, rather than being silently replaced by a flat dummy shape. */
 export function inspectDungeonStairMarkers(){
   const scene=Engine.LastCreatedScene!;
-  return scene.meshes.filter(mesh=>mesh.metadata?.visualKind==="3d-stairway")
+  return scene.meshes.filter(mesh=>mesh.metadata?.visualKind==="3d-stairway"&&
+    mesh.name==="dungeon-"+mesh.metadata.kind+"-stair-"+
+      mesh.metadata.dungeonStairwayId)
     .map(mesh=>({id:String(mesh.metadata.dungeonStairwayId),
       kind:String(mesh.metadata.kind),label:String(mesh.metadata.label),
       x:Number(mesh.metadata.gridX),z:Number(mesh.metadata.gridZ),
