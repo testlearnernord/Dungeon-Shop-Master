@@ -4,6 +4,9 @@ import { VertexBuffer } from "@babylonjs/core/Buffers/buffer";
 import { getDungeonSurfaces } from "./dungeonSurfaces.ts";
 import type { Scene } from "@babylonjs/core/scene";
 import {CELLAR_ORIGIN_Z,CELLAR_FLOOR_Y} from "./cellarRoom.ts";
+import {isPondBasinCell} from "./cellarPond.ts";
+import {Color3} from "@babylonjs/core/Maths/math.color";
+import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { level5RockFaces } from "./level5WallFaces.ts";
 
@@ -50,6 +53,13 @@ export function createLevel5RoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop"
   const originZ=cellar?CELLAR_ORIGIN_Z:0;
   const floorY=cellar?CELLAR_FLOOR_Y:0;
   const surfaces=getDungeonSurfaces(scene);
+  // The damp blue-green seam marks pond rock on the existing mineable
+  // wall faces. It has no separate collision, mining or saving logic.
+  const dampStone=cellar?surfaces.stone.clone("cellar-pond-damp-stone") as StandardMaterial:null;
+  if(dampStone){
+    dampStone.diffuseColor=new Color3(.12,.29,.29);
+    dampStone.emissiveColor=new Color3(.018,.075,.085);
+  }
   const blocks=new Map<string,Mesh>();
   let previous="";
   const originalWalls=[
@@ -106,11 +116,12 @@ export function createLevel5RoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop"
             {width:face.width,height:4,depth:face.depth},scene);
           wall.position.set(untouched?(side===0?-7.24:7.24):face.x,
             floorY+2,face.z+originZ);
-          wall.material=surfaces.stone;
+          const damp=cellar&&!!face.mineCell&&isPondBasinCell(face.mineCell);
+          wall.material=damp&&dampStone?dampStone:surfaces.stone;
           wall.checkCollisions=!untouched;
           if(untouched){
             wall.scaling.x=.1;
-            wall.visibility=0.000001;
+            wall.visibility=damp?.70:0.000001;
           }else if(originalSide){
             const original=originalWalls[side];
             if(original)inheritSideWallUV(wall,original);

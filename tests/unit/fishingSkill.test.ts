@@ -42,7 +42,7 @@ test("only a fully excavated pool can award durable catch records",()=>{
   assert.strictEqual(store.state,initial);
   for(const cell of POND_CELLS){
     const msg=store.excavateCellarCell(cell);
-    assert.match(msg,/Cellar rock excavated|underground pond/);
+    assert.match(msg,/Cellar rock excavated|underground pond|Damp rock/);
   }
   assert.equal(store.recordCellarCatch(),"Cave fish caught! Total: 1.");
   assert.equal(store.state.cellarFishCaught,1);

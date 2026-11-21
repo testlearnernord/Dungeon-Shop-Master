@@ -8,6 +8,8 @@ export const POND_CELLS:readonly RoomCell[]=[
   {x:-8,z:-1},{x:-8,z:0},{x:-8,z:1},
   {x:-9,z:-1},{x:-9,z:0},{x:-9,z:1},
 ] as const;
+export const isPondBasinCell=(cell:RoomCell):boolean=>
+  POND_CELLS.some(c=>c.x===cell.x&&c.z===cell.z);
 export const POND_CENTER={x:-8.5,z:CELLAR_ORIGIN_Z} as const;
 export const POND_WIDTH=2, POND_LENGTH=3;
 export function pondExcavationRemaining(room:CellarRoom):number{

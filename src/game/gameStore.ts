@@ -1,6 +1,6 @@
 import { excavateLevel5Cell, isValidLevel5Room, type RoomCell } from "./level5Room.ts";
 import {isValidCellarRoom} from "./cellarRoom.ts";
-import {isCellarPondUncovered} from "./cellarPond.ts";
+import {isCellarPondUncovered,pondExcavationRemaining} from "./cellarPond.ts";
 import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
@@ -146,13 +146,18 @@ export class GameStore {
   }
 
   excavateCellarCell(cell:RoomCell):string {
-    const result=excavateLevel5Cell(this.current.cellarRoom,cell);
+    const previousRoom=this.current.cellarRoom;
+    const result=excavateLevel5Cell(previousRoom,cell);
     if(!result.ok)return result.reason;
     // The relocated cellar chest uses the same mined-floor validation as P.
     const revealed=!isCellarPondUncovered(this.current.cellarRoom)&&
       isCellarPondUncovered(result.room);
     this.replace({...this.current,cellarRoom:result.room});
-    return revealed?"An underground pond has been uncovered.":"Cellar rock excavated.";
+    if(revealed)return "An underground pond has been uncovered.";
+    const remaining=pondExcavationRemaining(result.room);
+    if(remaining<pondExcavationRemaining(previousRoom))
+      return "Damp rock cracked. "+remaining+" pond cells remain.";
+    return "Cellar rock excavated.";
   }
 
   recordCellarCatch():string {
