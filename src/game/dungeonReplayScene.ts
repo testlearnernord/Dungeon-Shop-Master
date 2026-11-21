@@ -452,7 +452,7 @@ export class DungeonReplayScene {
       }
     }
     for(const hero of view.heroes){
-      const points=predictDungeonHeroSteps(this.layout,hero);
+      const points=predictDungeonHeroSteps(this.layout,hero,view.resolved);
       const signature=[hero.x,hero.z,...points.flatMap(p=>[p.x,p.z])]
         .join(",")+"|"+hero.activity+"|"+hero.plannedAction;
       const old=this.floorRouteHints.get(hero.id);

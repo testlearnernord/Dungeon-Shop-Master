@@ -1,7 +1,8 @@
 import type {DungeonLayout,DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonDownStair,dungeonNeighbors} from "./dungeonLayout.ts";
-import {chooseKnownRouteStep,chooseLevel7Step,
+import {chooseKnownRouteStep,chooseLevel7Step,chooseKnownResourceStep,
   type Level7HeroProgress} from "./level7Exploration.ts";
+import {selectKnownResourceSite} from "./dungeonDecisions.ts";
 import type {LiveFloorHero} from "./liveFloorSpectator.ts";
 
 /** Pure, speculative TWO-STEP floor annotation. Never writes an intention or
@@ -10,7 +11,9 @@ import type {LiveFloorHero} from "./liveFloorSpectator.ts";
  * The tooltip must always say PREVIEW, never "committed route". */
 export function predictDungeonHeroSteps(
   layout:DungeonLayout,hero:Pick<LiveFloorHero,
-    "id"|"x"|"z"|"visited"|"activity"|"inCombat"|"plannedAction">,
+    "id"|"x"|"z"|"visited"|"activity"|"inCombat"|"plannedAction"> &
+  {readonly goal?:LiveFloorHero["goal"]},
+  resolved:readonly string[]=[],
 ):readonly DungeonPoint[]{
   if(hero.inCombat||hero.activity==="portal")return [];
   let current:Level7HeroProgress={
@@ -21,12 +24,17 @@ export function predictDungeonHeroSteps(
     hero.plannedAction==="shop"||hero.plannedAction==="ascend"
     ?layout.entrance:
     hero.plannedAction==="descend"?dungeonDownStair(layout):null;
+  const resource=hero.goal==="loot-chest"?"treasure":
+    hero.goal==="hunt-ghouls"?"monster":null;
+  const resourceTarget=resource?selectKnownResourceSite(layout,current,
+    {resolvedFeatureIds:resolved,heroes:[]},resource):null;
   for(let i=0;i<2;i++){
     let next:DungeonPoint|null=null;
     if(target){
       next=chooseKnownRouteStep(layout,current,target);
       if(!next)return result;
-    }else next=chooseLevel7Step(layout,current);
+    }else if(resourceTarget)next=chooseKnownResourceStep(layout,current,resourceTarget);
+    else next=chooseLevel7Step(layout,current);
     if(!next||!dungeonNeighbors(layout,current).some(point=>
       point.x===next!.x&&point.z===next!.z))break;
     result.push(next);

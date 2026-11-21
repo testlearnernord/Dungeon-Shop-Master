@@ -824,7 +824,7 @@ export class DungeonViewer {
     const ongoing=hero.inCombat?"LIVE combat":
       hero.activity==="backtracking"?"Walking to portal":
       hero.activity==="portal"?"Portal transit":"Exploring";
-    const intended=this.layout?predictDungeonHeroSteps(this.layout,hero):[];
+    const intended=this.layout?predictDungeonHeroSteps(this.layout,hero,view.resolved):[];
     const preview=intended.length?intended.map((point,i)=>
       (i+1)+": ("+point.x+", "+point.z+")").join(" → "):
       "No safe step predicted";

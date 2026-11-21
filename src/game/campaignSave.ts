@@ -693,7 +693,8 @@ function validateLivePlans(
     const id=text(plan.heroId,path+".heroId");
     unique(id,ids,path+".heroId");
     choice(plan.floor,[1,2,3,4,7],path+".floor");
-    choice(plan.goal,["farm","progress","test-gear","caution","resupply"],
+    choice(plan.goal,["farm","progress","test-gear","caution","resupply",
+      "loot-chest","hunt-ghouls"],
       path+".goal");
     choice(plan.action,["stay","ascend","descend","shop"],path+".action");
     integer(plan.updatedTick,path+".updatedTick",0,clockTick);
@@ -1351,7 +1352,8 @@ function validateState(value: unknown): asserts value is GameState {
     if(event.type==="dungeon-exploration"||event.type==="dungeon-live"){
       if(event.dungeonGoal!==undefined){
         allowed.push("dungeonGoal");
-        choice(event.dungeonGoal,["farm","progress","test-gear","caution","resupply"],
+        choice(event.dungeonGoal,["farm","progress","test-gear","caution","resupply",
+          "loot-chest","hunt-ghouls"],
           path+".dungeonGoal");
       }
       if(event.floorAction!==undefined){

@@ -9,6 +9,7 @@ test("a real Level-6 Troll battle is witnessed LIVE without replacing its saved 
   const heroId=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {GameStore}=await import("/Dungeon-Shop-Master/src/game/gameStore.ts");
+    const {DUNGEON_STEP_INTERVAL_TICKS}=await import("/Dungeon-Shop-Master/src/game/liveDungeonRuntime.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const initial=createGameState(7351);
     const first=initial.adventurers[0];
@@ -17,7 +18,8 @@ test("a real Level-6 Troll battle is witnessed LIVE without replacing its saved 
         health:hero.stats.maxHealth,level6Permit:true}:hero);
     const store=new GameStore({...initial,adventurers});
     store.enableLiveDungeon();
-    store.advanceWorldTime(600+30);
+    // Seed the first authoritative dungeon event and one real combat event.
+    store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS+10);
     const battle=store.state.liveDungeon.bossCombat;
     if(!battle||battle.state.outcome!=="fighting"||
        battle.frames.length<2)
