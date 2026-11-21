@@ -31,7 +31,7 @@ async function sampleAnimationFrames(page:import("@playwright/test").Page,
   }),count);
 }
 
-test("world-only clocks never rerender level-6 history; cashier leaves Babylon idle while DOM input keeps drawing @ci-smoke",async({page})=>{
+test("world-only clocks do not redraw history; LIVE cashier keeps the real shop rendering @ci-smoke",async({page})=>{
   test.setTimeout(120000);
   const errors:string[]=[];
   page.on("pageerror",e=>errors.push(e.message));
@@ -74,15 +74,25 @@ test("world-only clocks never rerender level-6 history; cashier leaves Babylon i
       throw Error("The real cashier harness did not admit a customer");
   });
   await expect(page.locator("#cashier-overlay")).toBeVisible();
-  // The global world/3D render must stay frozen while the separate cashier
-  // needle and button keep their own DOM requestAnimationFrame updates.
-  const frameBefore=await page.evaluate(async()=>(
-    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectPlayer().frame);
+  // After the performance fix the cashier is no longer a modal freeze.
+  // Both its timing needle and the original Babylon scene keep rendering.
+  const before=await page.evaluate(async()=>{
+    const scene=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    const hook=window as Window&{__shopTestTraffic?:()=>{tick:number}};
+    return {frame:scene.inspectPlayer().frame,
+      tick:hook.__shopTestTraffic?.().tick??-1};
+  });
   const cashierFrames=await sampleAnimationFrames(page);
-  const frameAfter=await page.evaluate(async()=>(
-    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectPlayer().frame);
-  expect(frameAfter).toBe(frameBefore,
-    "Babylon must not render the hidden 3D scene during cashier input");
+  const after=await page.evaluate(async()=>{
+    const scene=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    const hook=window as Window&{__shopTestTraffic?:()=>{tick:number}};
+    return {frame:scene.inspectPlayer().frame,
+      tick:hook.__shopTestTraffic?.().tick??-1};
+  });
+  expect(after.frame).toBeGreaterThan(before.frame,
+    "The live shop scene must keep rendering behind cashier input");
+  expect(after.tick).toBeGreaterThan(before.tick,
+    "The authoritative shop world clock must continue during checkout");
   expect(cashierFrames.count).toBe(36);
   expect(cashierFrames.p50Ms).toBeGreaterThan(0);
   expect(cashierFrames.p95Ms).toBeGreaterThanOrEqual(cashierFrames.p50Ms);
@@ -93,7 +103,7 @@ test("world-only clocks never rerender level-6 history; cashier leaves Babylon i
     worst:Math.round(sample.worstMs*10)/10,
     over50ms:sample.slowFrames,
   });
-  console.log("[PR214 browser RAF sample, virtual CI hardware, ms]",JSON.stringify({
+  console.log("[LIVE cashier browser RAF sample, virtual CI hardware, ms]",JSON.stringify({
     shop:print(shopFrames),cashier:print(cashierFrames),
   }));
   await page.keyboard.press("Escape");

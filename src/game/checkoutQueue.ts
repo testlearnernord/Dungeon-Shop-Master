@@ -68,3 +68,16 @@ export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: 
   return allocated;
 }
 
+
+/** Preserve customers already at their real physical checkout slot when an
+ * unrelated customer pays; do not send them through a fresh A* detour. */
+export function checkoutWaitAlreadyAtSlot(
+  phase:string,shoppingPhase:string,queueIndex:number,
+  origin:ShopPoint,target:ShopPoint|undefined,furnitureMoved:boolean,
+):boolean {
+  return !furnitureMoved&&queueIndex>=0&&
+    (phase==="queueing"||phase==="browsing")&&
+    (shoppingPhase==="awaiting-checkout"||
+     shoppingPhase==="walking-to-checkout")&&!!target&&
+    Math.hypot(origin.x-target.x,origin.z-target.z)<.15;
+}
