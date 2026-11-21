@@ -107,3 +107,35 @@ test("saving is bounded and unavailable or invented records cannot be pinned",()
   save.payload.savedReplayIds=["forged"];
   assert.throws(()=>parseSave(JSON.stringify(save)),/savedReplayIds/);
 });
+
+test("current Expedition Archive never projects hidden fight outcome text or secret resources",()=>{
+  const original=createGameState(7351);
+  const hero=original.adventurers[0];
+  const event:WorldEvent={
+    id:"day-1:"+hero.id+":level6-combat",day:1,type:"level6-combat",
+    adventurerId:hero.id,message:"SECRET: 999 gold, death, hidden rare loot",
+    combatOutcome:"death",combatReplay:{} as NonNullable<WorldEvent["combatReplay"]>,
+  };
+  const baseline={...original,events:[event]};
+  const visible=selectExpeditionArchive(baseline);
+  assert.equal(visible.length,1);
+  assert.equal(visible[0].kind,"combat");
+  assert.equal(visible[0].label,"Recorded expedition");
+  assert.equal(visible[0].hasReplay,true);
+  assert.equal(visible[0].heroId,hero.id);
+  const hiddenChange={...baseline,
+    adventurers:original.adventurers.map(h=>h.id===hero.id?{
+      ...h,health:0,status:"dead" as const,level:99,xp:99999,gold:999999,
+      inventory:{...h.inventory,loot:9999},
+    }:h),
+    events:[{...event,message:"VICTORY: 3000 gold, secret chamber",
+      combatOutcome:"victory" as const,
+      combatReplay:{superSecret:"do not reveal"} as unknown as NonNullable<WorldEvent["combatReplay"]>}],
+  };
+  assert.deepEqual(selectExpeditionArchive(hiddenChange),visible,
+    "A list entry must not reveal the new combat outcome, loot, HP, XP or gold");
+  assert(!/SECRET|VICTORY|999|death|secret chamber/i.test(JSON.stringify(visible)));
+  const unchanged=structuredClone(hiddenChange);
+  selectExpeditionArchive(hiddenChange);
+  assert.deepEqual(hiddenChange,unchanged,"Archive projection must not write gameplay");
+});
