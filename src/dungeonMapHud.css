@@ -117,6 +117,10 @@
 #dungeon-hud #dungeon-minimap:focus-visible{
   outline:2px solid #c6e6a9;outline-offset:3px;
 }
+#dungeon-hud .dungeon-minimap-panel{
+  pointer-events:auto;
+  z-index:16;
+}
 #dungeon-hud .dungeon-minimap-panel strong{
   font:700 12px system-ui,sans-serif;color:#e1d29f;
 }
