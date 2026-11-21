@@ -80,9 +80,9 @@ test("seeded sword tanks can physically parry and dodge committed Troll strikes"
 
 test("new shared Troll fights retain real grapples and throws instead of permanent stun",()=>{
   const duel={...options,role:"DPS" as const,health:185,maxHealth:185,
-    healingSupplies:2,tacticsSeed:17};
+    healingSupplies:2,tacticsSeed:0};
   const first=createSharedBossPreview(duel);
-  const second=createSharedBossPreview({...duel,tacticsSeed:18});
+  const second=createSharedBossPreview({...duel,tacticsSeed:2});
   for(let tick=0;tick<5400;tick++){
     if(first.outcome==="fighting")stepSharedBossPreview(first,1/60);
     if(second.outcome==="fighting")stepSharedBossPreview(second,1/60);
