@@ -13,6 +13,7 @@ import type {GameState} from "./gameState.ts";
 import { createHeroVisual } from "./heroVisual.ts";
 import type { HeroVisual } from "./heroVisual.ts";
 import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type DungeonRoomDecoration } from "./dungeonReplayScene.ts";
+import {buildDungeonPlayback} from "./dungeonReplayPlayback.ts";
 import type { Level7Replay,SpatialDungeonFloor } from "./level7Exploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
 import {selectLiveSpectatorFrame,type LiveSpectatorFrame} from "./liveSpectator.ts";
@@ -492,6 +493,27 @@ export class DungeonViewer {
     if(!this.active||!this.startFloor(encounter.encounter.floor))return false;
     this.watchFloorCombat(fightId);
     return this.liveArena.isActive&&this.liveArena.observedFightId===fightId;
+  }
+
+  /** An explicit death notice opens the REAL fatal battle from its first
+   * saved frame. Trap-only deaths show the real recorded expedition instead.
+   * No dungeon clock, fight state, RNG or hero is ever replay-simulated. */
+  openDeathReplay(eventId:string,heroId:string):boolean{
+    const tape=this.availableReplays().find(entry=>entry.id===eventId)?.record;
+    if(!tape||tape.heroId!==heroId)return false;
+    const timeline=buildDungeonPlayback(tape);
+    const fatal=timeline.segments.find(segment=>segment.kind==="combat"&&
+      segment.encounter?.combat.frames.some(frame=>
+        frame.actors.some(actor=>actor.id===heroId&&actor.hp<=0)));
+    const start=fatal?Math.min(fatal.end-.001,fatal.start+.001):0;
+    if(!this.openReplayAt(eventId,start))return false;
+    this.playing=true;
+    if(fatal){
+      this.watchRecordedCombat();
+      return this.liveArena.isActive;
+    }
+    this.paintPlayback();
+    return true;
   }
 
   /** Open exactly one already committed tape and seek solely its LOCAL
