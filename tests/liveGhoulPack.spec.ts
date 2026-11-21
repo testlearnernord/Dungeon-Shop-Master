@@ -74,7 +74,7 @@ test("one real LIVE Ghoul pack is abstract on the floor and individually rendere
   });
   const before=await record();
   await page.locator("#open-roster").click();
-  const card=page.locator('#roster-detail-list [data-hero-id="'+prepared.heroId+'"]');
+  const card=page.locator('#roster-detail-list details.roster-card[data-hero-id="'+prepared.heroId+'"]');
   await expect(card).toBeVisible();
   await card.locator("summary").click();
   await card.locator(".roster-watch-live").click();
