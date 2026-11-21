@@ -225,3 +225,19 @@
 - Unit and real Chromium smoke tests verify suppression of historical
   events and repeated combat frames, party de-duplication, magical death
   privacy, exact navigation and only a single death popup.
+
+## PR #274 · Cardinal north-up dungeon camera
+
+- The ordinary LIVE/recorded dungeon **map** has a permanent north-up
+  heading (world +Z is north). W always pans to +Z, S to -Z, A to -X
+  and D to +X, irrespective of old camera poses, focus, minimap jumps
+  or player mouse movement. This does NOT constrain the opt-in cinematic
+  fight camera or the independent Developer Combat Lab.
+- Horizontal left/right drag now **slides** the map; vertical drag still
+  **tilts** with the existing pitch limits. Mouse wheel zoom, Q/E and
+  Tab focus continue working. Map yaw is always normalized to north.
+- A small **N ↑ NORTH-UP** marker lives alongside the minimap, and both
+  toolbar and help copy reflect the actual cardinal controls.
+- Pure tests cover imported old yaw, direction clamps and drag lock;
+  mandatory real Babylon browser smoke verifies W moves north after
+  mouse-dragging and that the N marker is visible.
