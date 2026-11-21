@@ -1,5 +1,5 @@
 import {
-  BOSS_MAX_HP, createCombatPreview, stepCombatPreview,
+  BOSS_MAX_HP,
   type ActorPhase, type BossPhase, type ArenaCue, type CombatPreviewOptions,
   type CombatPreviewState,
 } from "./arenaCombatMotion.ts";
