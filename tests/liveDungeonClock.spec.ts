@@ -18,15 +18,15 @@ test("live dungeon advances shared floor positions before bed and resumes after 
     const storage=new CampaignStorage();
     for(let i=0;i<30;i++){
       const state=await storage.loadGame();
-      if(state?.liveDungeon.lastStepTick>=600)return state;
+      if(state?.liveDungeon.lastStepTick>=200)return state;
       await new Promise(resolve=>setTimeout(resolve,100));
     }
     throw new Error("The real live dungeon step was not saved");
   }) as GameState;
   expect(current.day).toBe(1);
-  expect(current.worldClock.tick).toBeGreaterThanOrEqual(600);
+  expect(current.worldClock.tick).toBeGreaterThanOrEqual(200);
   expect(current.liveDungeon.enabled).toBe(true);
-  expect(current.liveDungeon.lastStepTick).toBe(600);
+  expect(current.liveDungeon.lastStepTick).toBe(200);
   expect(current.earlyDungeonWorlds?.some(x=>x.world.heroes.length>0)).toBe(true);
   expect(current.events.filter(e=>e.type==="dungeon-exploration")).toHaveLength(0);
   expect(current.worldClock.pending.filter(e=>e.lane==="expedition")).toHaveLength(1);

@@ -204,8 +204,8 @@ if(import.meta.env.VITE_E2E==="1"){
     npcVisuals.setRestockTimeForE2E(heroId,seconds);
   hooks.__shopTestReadyCheckout=()=>npcVisuals.readyCheckoutHeroId();
   // This invokes the real scheduled world event owner, not a second
-  // explorer/combat engine. Test-only fast-forward avoids 30s wall delay.
-  hooks.__shopTestAdvanceDungeonTick=()=>store.advanceWorldTime(600);
+  // explorer/combat engine. Test-only fast-forward avoids a 10s wall delay.
+  hooks.__shopTestAdvanceDungeonTick=()=>store.advanceWorldTime(200);
   // Single genuine scheduler, with a small test-controlled tick count.
   // This only instruments the fast/slow render-path guard; production has
   // no hook and no alternate movement or economic resolver.

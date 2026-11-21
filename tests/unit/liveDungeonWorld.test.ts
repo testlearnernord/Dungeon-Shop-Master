@@ -441,3 +441,7 @@ test("v21 rejects fabricated AI intentions and invalid plan-tick ownership",()=>
   tamper(s=>{s.liveDungeon.plans.push(s.liveDungeon.plans[0]);},/plans/);
   assert.deepEqual(parseSave(JSON.stringify(raw)),store.state);
 });
+
+test("LIVE dungeon commits one physical tile every ten real seconds",()=>{
+  assert.equal(DUNGEON_STEP_INTERVAL_TICKS,200);
+});
