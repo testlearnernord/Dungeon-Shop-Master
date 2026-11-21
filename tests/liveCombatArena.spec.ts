@@ -132,6 +132,22 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   expect(arena.cryptSetpieces).toBeGreaterThan(24);
   expect(arena.activeArenaLights).toBeGreaterThanOrEqual(4);
   expect(arena.worldHudBarCount).toBe(arena.arenaHeroes+arena.arenaMonsters);
+  // One tactical Party Card per saved hero, but zero duplicated 3D HP plates.
+  const partyCards=page.locator(
+    "#dungeon-hero-party-roster .hero-card--combat");
+  await expect(partyCards).toHaveCount(arena.arenaHeroes);
+  await expect(page.locator("#dungeon-hero-party-roster"))
+    .toContainText("PARTY");
+  await expect(partyCards.first().locator(".hero-card-portrait"))
+    .toHaveAttribute("data-portrait-id",/\d+/);
+  await expect(partyCards.first().locator(".hero-card-combat-phase"))
+    .toBeVisible();
+  await partyCards.first().locator(".hero-card-inspect").click();
+  await expect(page.locator("#world-hero-card .hero-card--expanded"))
+    .toBeVisible();
+  await expect(page.locator("#world-hero-card")).toContainText(
+    "CARRIED GOODS");
+  await page.locator("#world-hero-card-close").click();
 
   // The fixture pauses the one authoritative world clock. An asynchronously
   // loaded Ghoul must still become visible from the last committed frame
