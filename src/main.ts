@@ -33,6 +33,7 @@ import {setupFishingHud} from "./fishingHud.ts";
 import {setupHeroBuybackHud} from "./heroBuybackHud.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
+import {setupWorldEventFeed} from "./worldEventFeedHud.ts";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
 import { setupBedtime, type BedtimeController } from "./bedtime.ts";
 import { resetReplayDisclosure } from "./replayDisclosure.ts";
@@ -63,6 +64,7 @@ import "./immersiveUi.css";
 import "./cashierLive.css";
 import "./expeditionArchive.css";
 import "./dungeonMapHud.css";
+import "./worldEventFeed.css";
 
 async function startGame(): Promise<void> {
 setupInterfaceIcons();
@@ -470,6 +472,24 @@ const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
 }, seconds=>soundtrack.skipCombatIntro(seconds),sfx);
 watchLiveHero=id=>store.state.liveDungeon.bossCombat?.heroId===id
   ?arena.openLiveBoss(id):dungeon.openLive(id);
+// Exactly one global event layer, shared by the shop, LIVE floors and both
+// combat stages. Its projections never schedule, settle or simulate events.
+setupWorldEventFeed(store,target=>{
+  if(target.kind==="roster"){
+    if(arena.isActive)arena.close();
+    if(dungeon.isActive)dungeon.close();
+    openRoster(target.heroId);
+    return true;
+  }
+  if(target.kind==="boss"){
+    if(dungeon.isActive)dungeon.close();
+    if(arena.isActive)arena.close();
+    return arena.openLiveBoss(target.heroId);
+  }
+  if(arena.isActive)arena.close();
+  if(target.kind==="combat")return dungeon.openLiveEncounter(target.fightId);
+  return watchLiveHero(target.heroId);
+});
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
   eventId=>{arena.open(eventId);return arena.isActive;});
