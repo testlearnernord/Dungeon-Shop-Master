@@ -1,6 +1,6 @@
 import type {UniversalCamera} from "@babylonjs/core/Cameras/universalCamera";
 import type {GameStore} from "./game/gameStore.ts";
-import {liveBoardHeroesForFilter,selectLiveBoardHeroes} from "./game/liveBoardProjection.ts";
+import {selectLiveBoardHeroes} from "./game/liveBoardProjection.ts";
 import {portraitIndex} from "./game/rosterView.ts";
 import {heroDisplayNames} from "./game/heroIdentity.ts";
 import {itemIcon,goldIcon} from "./uiIcons.ts";
@@ -15,7 +15,7 @@ import {WORLD_TICKS_PER_DAY,WORLD_TICKS_PER_GAME_MINUTE} from "./game/worldClock
 export function setupRosterBoardHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
   watchLive:(heroId:string)=>boolean,
-):()=>void {
+):(heroId?:string)=>void {
   const dialog=document.querySelector<HTMLDialogElement>("#roster-dialog")!;
   const list=document.querySelector<HTMLElement>("#roster-detail-list")!;
   const totals=document.querySelector<HTMLElement>("#roster-totals")!;
@@ -33,21 +33,23 @@ export function setupRosterBoardHud(
   function render():void{
     const state=store.state;
     const known=selectLiveBoardHeroes(state);
-    const fallen=known.filter(h=>h.status==="lost").length;
+    const fallen=state.adventurers.filter(h=>h.status==="dead").length;
     totals.textContent=(known.length-fallen)+" active · "+fallen+
       " fallen · Day "+state.day+
       (filterValue==="fallen"&&fallen>40?" · Showing last 40":"");
     const expanded=new Set([...list.querySelectorAll<HTMLDetailsElement>(
       "details[open][data-hero-id]")].map(node=>node.dataset.heroId));
-    const heroes=liveBoardHeroesForFilter(state,filterValue);
-    const names=heroDisplayNames(state.adventurers);
     const actualHeroes=new Map(state.adventurers.map(actor=>[actor.id,actor]));
+    const heroes=known.filter(hero=>
+      filterValue==="fallen"?actualHeroes.get(hero.id)?.status==="dead":
+        actualHeroes.get(hero.id)?.status!=="dead");
+    const names=heroDisplayNames(state.adventurers);
     list.replaceChildren(...heroes.map(hero=>{
       const current=actualHeroes.get(hero.id)!;
       const card=document.createElement("details");
       card.className="roster-card";
       card.dataset.heroId=hero.id;
-      card.dataset.status=hero.status;
+      card.dataset.status=current.status==="dead"?"lost":hero.status;
       card.open=expanded.has(hero.id);
       const summary=document.createElement("summary");
       const portrait=document.createElement("span");
@@ -153,7 +155,7 @@ export function setupRosterBoardHud(
       }
       // Opt-in LIVE camera is offered for registered remote adventurers.
       // The explicit Board now shows the real current status and statistics.
-      if(hero.status!=="lost"&&hero.status!=="at-shop"){
+      if(current.status!=="dead"&&current.status!=="at-shop"){
         const watch=document.createElement("button");
         watch.type="button";
         watch.className="roster-watch-live";
@@ -191,10 +193,20 @@ export function setupRosterBoardHud(
       list.append(empty);
     }
   }
-  function openRoster():void{
+  function openRoster(heroId?:string):void{
     if(dialog.open||document.querySelector("dialog[open]"))return;
+    const focused=heroId?store.state.adventurers.find(h=>h.id===heroId):null;
+    if(focused){
+      filterValue=focused.status==="dead"?"fallen":"active";
+      filter.value=filterValue;
+    }
     if(document.pointerLockElement===canvas)void document.exitPointerLock();
     camera.detachControl();render();dialog.showModal();
+    if(focused){
+      const entry=[...list.querySelectorAll<HTMLDetailsElement>(
+        "details[data-hero-id]")].find(card=>card.dataset.heroId===focused.id);
+      if(entry){entry.open=true;entry.scrollIntoView({block:"nearest"});}
+    }
   }
   function closeRoster():void{if(dialog.open)dialog.close();}
   dialog.addEventListener("close",()=>{
@@ -202,7 +214,7 @@ export function setupRosterBoardHud(
       camera.attachControl(canvas,true);
   });
   close.addEventListener("click",closeRoster);
-  openButton.addEventListener("click",openRoster);
+  openButton.addEventListener("click",()=>openRoster());
   filter.addEventListener("change",()=>{
     filterValue=filter.value==="fallen"?"fallen":"active";render();
   });
