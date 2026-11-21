@@ -135,7 +135,7 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
       speed:troll?2.7:3.0,reach:troll?1.8:1.6,
       radius:troll?1.8:.5,agility:troll?7:9,
       ...(troll?{specialAbility:"grapple-throw" as const,
-        grappleDamage:42,staggerThreshold:19}:{}),
+        grappleDamage:42,staggerThreshold:62}:{}),
     });
   }
   return {actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},obstacles:[],
