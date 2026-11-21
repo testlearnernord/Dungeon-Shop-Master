@@ -1,6 +1,6 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
 import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
-import { ECONOMY, ITEMS,createEmptyShelfSlots,isMaterial,SHELF_GOODS,type MaterialItemId } from "./economy.ts";
+import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,type MaterialItemId } from "./economy.ts";
 import {
   SIMULATION_VERSION, type GameState, type EarlyDungeonFloorWorld,
 } from "./gameState.ts";
