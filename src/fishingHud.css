@@ -1,0 +1,37 @@
+#fishing-hud[hidden]{display:none!important}
+#fishing-hud{position:fixed;inset:0;z-index:210;display:grid;place-items:center;
+  background:radial-gradient(ellipse at center,rgba(3,17,19,.72),rgba(2,7,10,.91));
+  color:#e2d6bd;font-family:inherit;pointer-events:none}
+#fishing-hud .fishing-frame{width:min(480px,calc(100vw - 30px));padding:26px 30px 22px;
+  background:linear-gradient(160deg,#1b2928,#121b21);
+  border:1px solid #88704c;box-shadow:0 10px 70px #000b,0 0 40px #2f7a7330;
+  text-align:center;pointer-events:auto}
+#fishing-hud h2{font-size:27px;letter-spacing:2px;color:#e7c68f;margin:3px 0 12px}
+.fishing-eyebrow{font-size:10px;letter-spacing:3px;color:#79b9b6;font-weight:800}
+.fishing-water{position:relative;height:150px;overflow:hidden;border-radius:50% 50% 10px 10px;
+  background:radial-gradient(ellipse at 50% 90%,#2c6069,#143238 64%,#0d2025);
+  border:1px solid #3c696d}
+.fishing-ripple{position:absolute;width:120px;height:48px;top:87px;left:calc(50% - 60px);
+  border:2px solid #92cdd3a8;border-radius:50%;box-shadow:0 0 22px #8dced450;
+  animation:fishing-ripple 2.4s ease-in-out infinite}
+.fishing-line{position:absolute;left:50%;top:-15px;width:1px;height:107px;
+  background:linear-gradient(transparent,#b1c4af 70%,#8ad0ce)}
+#fishing-arrow{position:absolute;left:calc(50% - 36px);top:33px;width:72px;
+  font-size:75px;font-weight:800;line-height:1;color:#f3c56f;
+  text-shadow:0 0 20px #e6a649;font-family:Arial,sans-serif}
+#fishing-arrow[data-active=true]{animation:fishing-target-pulse .48s ease-in-out infinite alternate}
+#fishing-phase{font-size:17px;min-height:26px;font-weight:700;color:#f1d499;margin:13px 0 5px}
+#fishing-hint{font-size:12px;min-height:38px;color:#aabfbd}
+.fishing-meter{height:7px;background:#0b171b;border:1px solid #517477;margin:12px 0 10px}
+#fishing-timer-fill{height:100%;background:linear-gradient(90deg,#c68749,#75e0d0)}
+.fishing-progress{display:flex;justify-content:space-between;font-size:12px;
+  color:#b6d8ce;letter-spacing:.4px}
+.fishing-actions{display:flex;gap:10px;justify-content:center;margin:20px 0 12px}
+.fishing-actions button{border:1px solid #d4ac6c;background:#614b30;
+  color:#f9e1b1;padding:9px 18px;cursor:pointer}
+.fishing-actions button:last-child{background:#20302e;border-color:#6a8b88;color:#d0e5dd}
+.fishing-actions button[hidden]{display:none}
+#fishing-hud small{font-size:10px;color:#8eaaa8}
+@keyframes fishing-ripple{50%{transform:scale(1.5);opacity:.38}}
+@keyframes fishing-target-pulse{to{transform:scale(1.12);filter:brightness(1.3)}}
+@media(max-width:550px){#fishing-hud .fishing-frame{padding:17px}#fishing-hud h2{font-size:23px}}

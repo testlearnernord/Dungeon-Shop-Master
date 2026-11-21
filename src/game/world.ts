@@ -16,7 +16,7 @@ import { getDungeonSurfaces, tileLargeFloorUV } from "./dungeonSurfaces";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
-  kind: "register" | "corridor" | "roster-board" | "bed" | "debt-book" | "cellar-door";
+  kind: "register" | "corridor" | "roster-board" | "bed" | "debt-book" | "cellar-door" | "cellar-pond";
 }
 
 function material(scene: Scene, name: string, color: Color3): StandardMaterial {

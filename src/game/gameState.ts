@@ -125,6 +125,8 @@ export interface GameState {
   readonly cellarRoom: CellarRoom;
   readonly cellarChest: CellarChestPlacement;
   readonly cellarDoorOpen: boolean;
+  /** Fishing score only; fish goods will use the normal economy when added. */
+  readonly cellarFishCaught: number;
   readonly shopCarts: readonly ShopCart[];
   readonly shopDebts: readonly ShopDebt[];
   readonly dungeonFloors: readonly DungeonFloorProgress[];
@@ -174,6 +176,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     cellarRoom: createCellarRoom(),
     cellarChest: {...DEFAULT_CELLAR_CHEST},
     cellarDoorOpen: false,
+    cellarFishCaught: 0,
     shopCarts: [],
     shopDebts: [],
     dungeonFloors: [],

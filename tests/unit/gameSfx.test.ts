@@ -37,8 +37,8 @@ import {
 } from "../../src/sfxCatalog.ts";
 
 test("every registered effect has one explicit owner and audible category",()=>{
-  assert.equal(SFX_CATALOG.length,30);
-  assert.equal(new Set(SFX_CATALOG.map(entry=>entry.id)).size,30);
+  assert.equal(SFX_CATALOG.length,35);
+  assert.equal(new Set(SFX_CATALOG.map(entry=>entry.id)).size,SFX_CATALOG.length);
   for(const entry of SFX_CATALOG){
     assert.ok(SFX_OWNERS.some(o=>o.id===entry.owner),entry.id+" owner");
     assert.ok(SFX_FAMILIES.some(f=>f.id===entry.family),entry.id+" family");

@@ -73,3 +73,25 @@ Hunger, arbitrary three-phase daily engine, fake replay video and automatic endl
 ## V.004 concept prototype (unmerged branch)
 
 The V.004 **walkable cellar** is being prototyped independently of outstanding V.003 release gates. The proposed change makes Galvik's beloved portrait a fixed hinged doorway in his rear bedroom wall and extends the same Babylon shop scene with a sloping stair and lower cave. Cellar excavation reuses `excavateLevel5Cell`, `level5RockFaces` and `createLevel5RoomVisuals`; the first chest reuses the canonical furniture registry and P blueprint/commit. Its door, room cells and furniture transform persist on the same campaign state/world clock (strict save version 25). No new economics, fishing, pond or dungeon simulation is included. Playwright and human in-browser staircase/collision checks remain a release gate.
+
+## V.004 pond and fishing (PR #253; draft, not released)
+
+A sealed two-by-three basin occupies connected left-side cellar excavation
+cells `x=-8,-9`, `z=-1..1` in room-local coordinates. The existing U pickaxe
+must excavate all six before a water-surface interaction appears. The pond is
+rendered in the same physical shop scene, with no added time or inventory owner.
+The first fishing implementation is intentionally small: cast, wait for bite,
+land three direction/speed-validated pointer-lock mouse flicks before three
+misses, and receive a durable trophy count through GameStore. The existing SFX
+mixer plays provisional cast/bite/flick/miss/catch sounds. No saleable fish or
+independent fishing economy yet.
+
+### Acceptance gates
+- Real U excavation of each pond tile, water only after all six cells
+- Enter and leave the fishing interaction with E / Esc
+- Mouse delta quality and miss/timeout validation
+- Original Babylon FPS controls restored after closing the game
+- Existing shop/dungeon shared clock continues while the fishing UI is active
+- Mute/volume honored, no duplicate sound engine
+- Saved fish count survives strict load; shop economy stays untouched
+- Browser smoke, manual pointer-lock feel and actual audio check
