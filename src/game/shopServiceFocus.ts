@@ -1,4 +1,4 @@
-import {ITEMS,type ItemId,type Slot} from "./economy.ts";
+import {ITEMS,SHELF_GOODS,type ItemId,type Slot} from "./economy.ts";
 
 /** Live visual customer requests. Never inferred from long-term forecast:
  * a real visitor must still be present with a live 60-second petition timer.
@@ -51,7 +51,7 @@ export function describeShelfFocus(
     return {title,instruction:"Reserved stock · wait for checkout before changing this slot",
       tone:"blocked"};
   if(item&&item.id!==selected){
-    const key=ITEMS.findIndex(entry=>entry.id===item.id)+1;
+    const key=SHELF_GOODS.findIndex(entry=>entry.id===item.id)+1;
     return {title,instruction:"Press "+key+" to select "+item.name+
       " · Right-click: remove one · Shift+right-click: clear slot",tone:"warning"};
   }
