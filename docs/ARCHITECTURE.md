@@ -127,3 +127,15 @@ arena playback; boss victories open authored boss footage. The `hero-profile`
 navigation contract is independent of the current Adventurer Board fallback
 and can later serve the shared world-wide hero tooltip. Neither notification
 projection nor its click handler drives the world clock or rewards.
+
+**World Wide Hero Cards:** `heroCardView.ts` projects true live state or
+strictly bounded historical replay fields into one immutable UI model.
+`heroCard.ts` is the sole HTML renderer for mini / expanded / combat
+variants. `worldHeroCards.ts` mounts one global non-modal inspection
+surface. `combatPartyRoster.ts` updates individual combat phase and
+tactical metrics from immutable group frames without building 60Hz DOM
+trees or duplicating world-space HP plates. The ordinary LIVE Dungeon
+inspector, roster's legacy raw stat paragraphs, and generic hero hover
+text have been replaced. Combat AI, World Clock, RNG, Replay generation,
+shop price/inventory authority and Babylon character construction are
+unaffected. Historical omissions must remain unknown.

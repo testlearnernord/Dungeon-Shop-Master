@@ -227,3 +227,43 @@ The latter is defined in [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 - **Training SFX Lab:** The opt-in `SFX Lab` toolbar control is visible only for the unsaved V training preview. Its small, scrollable overlay exposes accessible independent Solo/Mute buttons by source and type, Reset mix, an optional collapsible 19-cue audition library and a bounded read-only activity feed. `aria-pressed` reflects active filtering. It never replaces the separate global music/SFX controls, never opens for saved footage or while inspecting models, and must not steal Space/Enter intro skips when focused.
 - The Level 6 cinematic presents one hero and the boss without inventing additional party members. Its centre-bottom title/shot captions never intercept the camera; current HP, replay outcomes and combat cues remain hidden until the 13.5s downbeat. Space/Enter skips the intro, V/Escape closes the viewer, and the existing soundtrack panel remains available. The replay stays untouched while the camera runs.
 - Batch shelf fill/clear is implemented through `GameStore.transfer`. Customer remarks use the same read-only world projection as request bubbles, but never replace their item icon or timer. One speaker is rendered at a time; the rate limit and short lifetime prevent dialogue walls. Additional narrative reactions and cashier polish remain subject to [ROADMAP](ROADMAP.md).
+
+## World Wide Hero Cards · Single visual source of truth
+
+The project uses exactly one shared `HeroCardView` read-only presentation
+projection (`src/game/heroCardView.ts`) and one DOM renderer
+(`src/heroCard.ts`) with variants `mini`, `expanded` and `combat`.
+The same 5×5 hero portrait atlas (`hero-portraits.webp`), stable
+`heroPortraitIndex`, `ui-interface-icons.svg` and `ui-item-icons.svg`
+are mandatory everywhere. Existing equipment names and icon IDs must
+not be duplicated or redesigned in another view.
+
+Entry points:
+- **Shop:** hover a projected actual NPC to preview Mini. Alt-click the
+  NPC to open the non-modal expanded card. The world clock and customer
+  collision/shelf-selection remain untouched.
+- **World Echoes:** level-up `hero-profile` click opens the global expanded
+  card directly. The Feed does not need to open/close the whole Board.
+- **Adventurer Board:** same Mini summaries and Expanded contents, retaining
+  its permit, filters, LIVE observation and last known contact reports.
+- **LIVE Dungeon:** hero hover uses the global Mini, selected hero uses
+  Expanded, with personally visible fog information and route preview.
+- **Dungeon archive:** historical Expanded profile uses only recorded
+  role, gear, HP, day/position/action; missing historical stats are unknown.
+- **LIVE fights, saved Group Combat and V Lab:** `CombatPartyRoster` shows
+  Combat Compact for every participating hero. Role, equipment, phase,
+  attack, defense and recorded stamina come from genuine actor specs/frames.
+  The old floating **world-space** HP plates and damage numbers stay in
+  place. The side roster never duplicates those HP bars.
+- **Level 6 boss:** one Compact version uses the same renderer. The
+  original Cave Troll HP plates and cinematic remain.
+
+A Card is NEVER another simulation authority. In recorded contexts it
+must never borrow current XP, levels, attributes, gold, inventory or gear
+from the live roster. Only the immutable replay's recorded fields are
+shown. Missing data is deliberately left blank or explicitly unknown.
+The global panel does not pause shop, dungeon or battle clocks.
+
+Do not add new per-context stat tables, portrait crop algorithms or
+secondary equipment item icon atlases. Do not remove 3D combat health
+plates or hit feedback when cleaning obsolete HTML inspectors.

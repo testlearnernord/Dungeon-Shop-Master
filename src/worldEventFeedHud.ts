@@ -1,4 +1,5 @@
 import type {GameStore} from "./game/gameStore.ts";
+import {hoverHeroId,hideHeroHover} from "./worldHeroCards.ts";
 import type {WorldFeedCategory,WorldFeedEntry,WorldFeedTarget}
   from "./game/worldFeedProjection.ts";
 import {initialWorldFeedCritical,projectWorldFeedChanges,WORLD_FEED_CATEGORIES}
@@ -182,7 +183,20 @@ export function setupWorldEventFeed(
       toast.addEventListener("focusout",event=>{
         if(!toast.contains(event.relatedTarget as Node|null))arm();
       });
+      const targetHeroId=item.target.kind==="hero-profile"||
+        item.target.kind==="roster"||
+        item.target.kind==="death-footage"||
+        item.target.kind==="hero"?
+          item.target.heroId:null;
+      if(targetHeroId){
+        action.addEventListener("pointerenter",e=>
+          hoverHeroId(targetHeroId,e.clientX,e.clientY));
+        action.addEventListener("pointermove",e=>
+          hoverHeroId(targetHeroId,e.clientX,e.clientY));
+        action.addEventListener("pointerleave",hideHeroHover);
+      }
       action.addEventListener("click",()=>{
+        hideHeroHover();
         if(onJump(item.target))dispose();
         else {
           prompt.textContent="EVENT NO LONGER LIVE · CHECK THE BOARD";

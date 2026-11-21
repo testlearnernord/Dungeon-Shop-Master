@@ -21,9 +21,10 @@ test("Board LIVE watch observes the real world while physical shop traffic conti
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
   await page.locator("#open-roster").click();
-  const card=page.locator("#roster-detail-list [data-hero-id='"+heroId+"']");
+  const card=page.locator("#roster-detail-list details.roster-card[data-hero-id='"+heroId+"']");
   await expect(card).toBeVisible();
-  await expect(card).toContainText("HP ?");
+  await expect(card.locator("summary .hero-card-vital-track"))
+    .toHaveAttribute("aria-valuenow",/\d+/);
   await card.locator("summary").click();
   await card.locator(".roster-watch-live").click();
   await expect(page.locator("body")).toHaveClass(/dungeon-active/);
@@ -39,8 +40,9 @@ test("Board LIVE watch observes the real world while physical shop traffic conti
   await page.locator("#close-dungeon").click();
   await expect(page.locator("body")).not.toHaveClass(/dungeon-active/);
   await page.locator("#open-roster").click();
-  await expect(page.locator("#roster-detail-list [data-hero-id='"+heroId+"']"))
-    .toContainText("HP ?");
+  await expect(page.locator(
+    "#roster-detail-list details.roster-card[data-hero-id='"+heroId+"']"))
+    .toContainText("HP");
   expect(errors).toEqual([]);
 });
 

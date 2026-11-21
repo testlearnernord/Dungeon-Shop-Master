@@ -34,10 +34,13 @@ import {createDungeonFeaturePalette,createReadableDungeonChest,
 import {installGhoulMapInstances,type GhoulMapSite}
   from "./dungeonGhoulMapInstances.ts";
 import {dungeonPreviewExplanation} from "./dungeonIntentPreview.ts";
+import {liveHeroCard,recordedHeroCard} from "./heroCardView.ts";
+import {renderHeroCard} from "../heroCard.ts";
+import {hoverHeroId,hideHeroHover} from "../worldHeroCards.ts";
 import {minimapPointFromClient,isKnownMinimapCell}
   from "./dungeonMinimapNavigation.ts";
-import {floorHeroLocatorOptions,floorFightLocatorOptions,
-  formatHeroDungeonFinds} from "./liveDungeonInspector.ts";
+import {floorHeroLocatorOptions,floorFightLocatorOptions}
+  from "./liveDungeonInspector.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
   orbitDungeonMap,panDungeonMap,zoomDungeonMap,DUNGEON_NORTH_YAW,
   dungeonNorthNeedleDegrees,
@@ -128,6 +131,7 @@ export class DungeonViewer {
   private readonly archiveControls=document.querySelector<HTMLElement>("#dungeon-archive-controls")!;
   private readonly archiveButton=document.querySelector<HTMLButtonElement>("#dungeon-open-archive")!;
   private readonly heroDetailPanel=document.querySelector<HTMLElement>("#dungeon-hero-detail")!;
+  private recordedCardSignature="";
   private readonly heroDetailTitle=document.querySelector<HTMLElement>("#dungeon-hero-detail-title")!;
   private readonly heroDetailValues=document.querySelector<HTMLElement>("#dungeon-hero-detail-values")!;
   private readonly clearHeroButton=document.querySelector<HTMLButtonElement>("#dungeon-clear-hero")!;
@@ -169,7 +173,7 @@ export class DungeonViewer {
     // a hard-coded offset that overlaps an interactive select.
     new ResizeObserver(()=>this.alignHudPanels()).observe(this.toolbar);
     window.addEventListener("resize",()=>this.alignHudPanels());
-    this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel,this.sfx);
+    this.liveArena=new LiveGroupCombatArena(engine,canvas,this.panel,this.sfx,store);
     this.watchCombatButton.addEventListener("click",()=>{
       if(this.liveFloor!==null)this.watchFloorCombat();
       else if(this.liveHeroId)this.watchLiveCombat();
@@ -296,6 +300,10 @@ export class DungeonViewer {
       this.paintPlayback();
     });
     window.addEventListener("keydown", event => {
+      // Give the shared hero inspector first refusal on Escape; do not
+      // accidentally close the entire spectator arena behind its card.
+      if(!document.querySelector<HTMLElement>("#world-hero-card")?.hidden)
+        return;
       if (!this.active) {
         if (event.code === "KeyG" && !event.repeat &&
           !document.querySelector("dialog[open]") &&
@@ -412,7 +420,7 @@ export class DungeonViewer {
       if(this.active&&!this.liveArena.isActive)event.preventDefault();
     },true);
     canvas.addEventListener("pointerleave",()=>{
-      this.hoverTooltip.hidden=true;
+      this.hoverTooltip.hidden=true;hideHeroHover();
     });
     // Use the same spectator mouse-flight contract as Level-6, but only
     // after opting into the actual 3D fight. Map picking stays untouched.
@@ -670,9 +678,9 @@ export class DungeonViewer {
     let label="";
     if(typeof meta?.floorHeroId==="string"){
       const hero=view?.heroes.find(h=>h.id===meta.floorHeroId);
-      if(hero)label=hero.name+" · Lv "+hero.level+" "+hero.role+
-        " · "+Math.round(hero.health)+"/"+hero.stats.maxHealth+" HP"+
-        (hero.goal?" · "+hero.goal:"");
+      if(hero)hoverHeroId(hero.id,clientX,clientY);
+      this.hoverTooltip.hidden=true;
+      return;
     }else if(typeof meta?.dungeonStairwayId==="string"){
       label=String(meta.label)+" · Tile "+meta.gridX+", "+meta.gridZ;
     }else if(typeof meta?.spectatorFeatureId==="string"&&this.layout){
@@ -683,6 +691,7 @@ export class DungeonViewer {
     }else if(meta?.abstractBattle===true){
       label="LIVE FIGHT · Click to watch the actual arena";
     }
+    hideHeroHover();
     this.hoverTooltip.hidden=!label;
     if(!label)return;
     this.hoverTooltip.textContent=label;
@@ -900,6 +909,7 @@ export class DungeonViewer {
     this.liveHeroId=null;
     this.liveFloor=null;this.liveFloorFightId=null;
     this.selectedFloorHeroId=null;this.heroDetailPanel.hidden=true;
+    this.recordedCardSignature="";
     this.heroLocatorLabel.hidden=true;
     this.heroLocator.value="";
     this.minimap.tabIndex=-1;
@@ -1035,63 +1045,39 @@ export class DungeonViewer {
   private renderFloorHeroDetail(view:LiveFloorSpectatorFrame):void {
     const hero=view.heroes.find(h=>h.id===this.selectedFloorHeroId);
     this.heroDetailPanel.hidden=!hero||this.liveArena.isActive;
-    if(!hero){
-      this.heroDetailValues.replaceChildren();
-      return;
-    }
-    this.heroDetailTitle.textContent=hero.name+" · "+hero.role;
-    const names=new Map(view.heroes.map(member=>[member.id,member.name]));
-    const party=hero.partyMemberIds.length>1
-      ?hero.partyMemberIds.map(id=>names.get(id)??id).join(", "):"Solo";
+    if(!hero){this.heroDetailValues.replaceChildren();return;}
+    // The same worldwide card used by Shop, World Echoes, Roster and
+    // combat. Dungeon-specific observations are read-only and depend on
+    // this hero's actual visible geometry; never reveal other explorers'
+    // unseen treasure or private routes.
     const perception=this.layout?
       selectHeroFloorPerception(this.layout,view,hero.id):null;
-    const seenNames=perception?.visibleHeroIds.map(id=>
-      names.get(id)??id).join(", ")||"Nobody currently in sight";
-    const groupNames=perception?.partyVisibleHeroIds.map(id=>
-      names.get(id)??id).join(", ")||"No outside contacts";
-    const seenMonsters=perception?.visibleMonsterIds.join(", ")||
-      "No monsters in sight";
     const ongoing=hero.inCombat?"LIVE combat":
       hero.activity==="backtracking"?"Walking to portal":
       hero.activity==="portal"?"Portal transit":"Exploring";
-    const preview=this.layout?
-      dungeonPreviewExplanation(this.layout,hero,view.resolved):
-      "No dungeon geometry available";
-    const entries:[string,string][]=[
-      ["Health",Math.round(hero.health)+" / "+hero.stats.maxHealth+" HP"],
-      ["Level",String(hero.level)],
-      ["Attributes","STR "+hero.stats.strength+" · AGI "+hero.stats.agility+
-        " · INT "+hero.stats.intellect],
-      ["Gold",String(hero.gold)],
-      ["Weapon",hero.equipment.weapon??"None"],
-      ["Armor",hero.equipment.armor??"None"],
-      ["Inventory","Loot "+hero.inventory.loot+" · Waybread "+
-        hero.inventory.bread+" · Healing "+hero.inventory.healing],
-      ["Recovered goods",formatHeroDungeonFinds(hero.inventory.finds)],
-      ["Current activity",ongoing],
-      ["Short-term floor action",hero.plannedAction??"No committed plan"],
-      ["Medium-term goal",hero.goal??"No committed plan"],
-      ["Next two steps · PREVIEW",preview],
-      ["Traits",hero.traits.positive+", "+hero.traits.neutral+
-        ", "+hero.traits.negative],
-      ["Party",party],
-      ["Position","Floor "+view.floor+" · tile ("+hero.x+", "+hero.z+")"],
-      ["Visited cells",String(hero.visited.length)],
-      ["Sight",perception?perception.visible.size+" visible · "+
-        perception.explored.size+" explored tiles":"Unknown"],
-      ["Other heroes seen",seenNames],
-      ["Party sightings",groupNames],
-      ["Visible monsters",seenMonsters],
+    const source=liveHeroCard(this.store.state,hero.id,{
+      health:hero.health,activity:ongoing,goal:hero.goal,
+      action:hero.plannedAction,
+    });
+    if(!source)return;
+    const observations:NonNullable<typeof source.observations>=[
+      {icon:"map",text:"Tile ("+hero.x+", "+hero.z+")"},
+      {icon:"map",text:"Next two steps · "+
+        (this.layout?dungeonPreviewExplanation(this.layout,hero,view.resolved):
+          "No dungeon geometry")},
+      ...(perception?[{icon:"search" as const,
+        text:perception.visible.size+" visible · "+
+          perception.explored.size+" explored tiles"},
+        {icon:"swords" as const,
+          text:perception.visibleMonsterIds.length+
+            " visible monsters"},
+        {icon:"users" as const,
+          text:perception.visibleHeroIds.length+" heroes seen"},
+      ]:[]),
     ];
-    const fragment=document.createDocumentFragment();
-    for(const [label,value] of entries){
-      const key=document.createElement("dt");
-      key.textContent=label;
-      const detail=document.createElement("dd");
-      detail.textContent=value;
-      fragment.append(key,detail);
-    }
-    this.heroDetailValues.replaceChildren(fragment);
+    const card=renderHeroCard({...source,observations},"expanded");
+    this.heroDetailTitle.textContent="HERO PROFILE";
+    this.heroDetailValues.replaceChildren(card);
   }
 
   /** Options are based only on this saved floor projection. Changes to
@@ -1475,6 +1461,25 @@ export class DungeonViewer {
     this.timeLabel.textContent=frame.time.toFixed(1)+" / "+frame.duration.toFixed(1)+" s";
     this.playbackButton.textContent=this.playing?"Pause (Space)":"Play (Space)";
     const record=scene.currentReplay;
+    if(this.liveArena.isActive)this.heroDetailPanel.hidden=true;
+    else{
+      // The historical Hero Card reads the saved tape, never present-day
+      // attributes. Rebuild only after HP/action/tile actually changes.
+      const x=Math.round(frame.x),z=Math.round(frame.z);
+      const key=this.replaySelector.value+"|"+Math.round(frame.hp)+
+        "|"+frame.action+"|"+x+"|"+z;
+      if(this.recordedCardSignature!==key){
+        this.recordedCardSignature=key;
+        const name=this.store.state.adventurers.find(h=>h.id===record.heroId)
+          ?.name??record.heroId;
+        const step={...record.steps[0]!,x,z,hp:Math.round(frame.hp)};
+        const card=recordedHeroCard(record,name,step);
+        this.heroDetailTitle.textContent="RECORDED HERO";
+        this.heroDetailValues.replaceChildren(renderHeroCard(
+          {...card,activity:frame.action},"expanded"));
+      }
+      this.heroDetailPanel.hidden=false;
+    }
     const ending=frame.finished?" · Expedition ended: "+record.outcome:"";
     this.playbackStatus.textContent="Recorded "+frame.action+
       " · HP "+Math.round(frame.hp)+

@@ -367,16 +367,7 @@ body,
   background: radial-gradient(circle at 30% 25%, #7d8c8b, #282d34 70%);
   font: 700 28px Georgia, serif; text-shadow: 0 1px 3px #101010;
 }
-.roster-role-healer { background: radial-gradient(circle at 30% 25%, #759c83, #23372c 75%); }
-.roster-role-dps { background: radial-gradient(circle at 30% 25%, #bb7d6e, #4b292d 75%); }
-.roster-card-primary { min-width: 0; flex: 1; display: grid; gap: 5px; }
-.roster-card-primary strong { font-size: 13px; overflow-wrap: anywhere; }
-.roster-card-primary small { color: #d4caaf; }
-.roster-hp { height: 8px; background: #492b27; border-radius: 5px; overflow: hidden; display: block; }
-.roster-hp > span { display: block; height: 100%; background: #8eaf6d; }
-.roster-hp-value { color: #d1c6ad; font-size: 12px; white-space: nowrap; }
 .roster-card-extended { padding: 9px 6px 0; font-size: 12px; line-height: 1.45; color: #cfc8b8; }
-.roster-items { color: #f0d9a9; }
 @media(max-width: 600px) { #roster-dialog { padding: 12px; } .roster-heading h2 { font-size: 21px; } }
 
 /* Original compressed atlas artwork supplied for this project. */
@@ -385,15 +376,6 @@ body,
   background-repeat: no-repeat;
   color: transparent;
 }
-.roster-items { display: flex; gap: 8px; flex-wrap: wrap; }
-.roster-item-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; white-space: nowrap; }
-.roster-item-icon {
-  display: inline-block; width: 26px; height: 26px; flex: 0 0 26px;
-  background-size: 700% 500%;
-  background-repeat: no-repeat;
-  border-radius: 50%;
-}
-
 /* Merchant receipts are a projection of authoritative day-tick sales events. */
 .sales-banner {
   position: absolute;

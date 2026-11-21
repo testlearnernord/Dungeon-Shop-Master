@@ -32,6 +32,9 @@ import { buildCaveTrollArenaArt, paintCaveTrollFloor } from "./caveTrollArenaArt
 import { BOSS_INTRO_SECONDS, sampleBossIntro } from "./bossCinematic.ts";
 import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 import { BossCombatHud } from "./bossCombatHud.ts";
+import {renderHeroCard} from "../heroCard.ts";
+import {liveHeroCard,type HeroCardView} from "./heroCardView.ts";
+import {inspectHeroCard} from "../worldHeroCards.ts";
 import { BossModelLab } from "./bossModelLab.ts";
 import { nextBossTrainingScenario, type BossTrainingScenario } from "./bossTrainingScenario.ts";
 import { DeveloperCombatLab } from "./developerCombatLab.ts";
@@ -92,6 +95,8 @@ export class Level6Arena {
   private heroLegs: TransformNode[] = [];
   private readonly panel: HTMLElement;
   private readonly worldHud: BossCombatHud;
+  private bossHeroCard:HTMLElement|null=null;
+  private bossCardData:HeroCardView|null=null;
   private readonly sfxLab:Level6SfxDebugPanel;
   private readonly status: HTMLElement;
   private readonly focusText: HTMLElement;
@@ -185,6 +190,8 @@ export class Level6Arena {
     // Capture input before the shop's old listeners. Spectating never interacts,
     // spends money, confirms End Day, or changes the shop player's movement.
     window.addEventListener("keydown", (event) => {
+      if(!document.querySelector<HTMLElement>("#world-hero-card")?.hidden)
+        return;
       if (!this.active) {
         if (event.code === "KeyV" && !event.repeat &&
           !document.querySelector("dialog[open]") &&
@@ -366,6 +373,8 @@ export class Level6Arena {
     if (!this.active) return;
     this.active = false;
     this.lab.close();
+    this.bossHeroCard?.remove();this.bossHeroCard=null;
+    this.bossCardData=null;
     this.panel.dataset.devLab="false";
     this.labToggle.textContent="Developer Combat Lab";
     this.modelLab?.dispose();
@@ -416,6 +425,8 @@ export class Level6Arena {
     this.sfx?.endArena();
     this.scene?.dispose();
     this.worldHud.reset();
+    this.bossHeroCard?.remove();this.bossHeroCard=null;
+    this.bossCardData=null;
     this.heroLegs = [];
     this.trollVisual = null;
     this.targets = [];
@@ -673,6 +684,7 @@ export class Level6Arena {
       ? "Recorded fight ready. The same committed actions will play back."
       : "The Cave Troll is guarding Level 6.";
     this.updateHud();
+    this.buildBossHeroCard();
     this.startCinematic();
   }
 
@@ -1163,8 +1175,79 @@ export class Level6Arena {
       hero.root.position.clone());
   }
 
+  /** Historical Level-6 recordings lack full personal stats. We render
+   * ONLY their saved role/equipment/vitals, never today's roster values.
+   * The existing world-space boss and hero HP plates remain untouched. */
+  private buildBossHeroCard():void {
+    this.bossHeroCard?.remove();this.bossHeroCard=null;
+    const fighter=this.fighter,replay=this.replay;
+    const actual=this.watchingLiveHeroId&&fighter?
+      liveHeroCard(this.store.state,fighter.id):null;
+    const id=replay?.heroId??this.training?.id??fighter?.id??"preview";
+    const role=replay?.role??this.training?.options.role??fighter?.role??"tank";
+    const sword=replay?replay.sword:
+      this.training?.options.sword??(fighter?.equipment.weapon==="Iron Sword");
+    const armor=replay?replay.armor:
+      this.training?.options.armor??(fighter?.equipment.armor==="Leather Vest");
+    const snapshot:HeroCardView=actual?{
+      ...actual,health:this.motion?.heroHp??actual.health,activity:"combat",
+      equipment:{weapon:sword?"Iron Sword":null,
+        armor:armor?"Leather Vest":null},combat:null,
+    }:{
+      id,name:fighter?.name??this.training?.label??"Training hero",
+      role,source:replay?"recorded":"training",
+      level:null,health:this.motion?.heroHp??null,
+      maxHealth:replay?.maxHp??this.motion?.options.maxHealth??null,
+      xp:null,gold:null,floor:replay?6:null,status:"combat",
+      activity:"combat",goal:null,action:null,party:[],stats:null,
+      traits:null,equipment:{weapon:sword?"Iron Sword":null,
+        armor:armor?"Leather Vest":null},
+      inventory:null,recent:[],combat:null,
+    };
+    this.bossCardData=snapshot;
+    const root=document.createElement("aside");
+    root.className="hero-combat-roster";root.id="arena-boss-hero-card";
+    root.setAttribute("aria-label","Cave Troll battle hero card");
+    const header=document.createElement("strong");
+    header.className="hero-combat-roster-heading";
+    header.textContent="BOSS ENGAGEMENT · HERO";
+    const card=renderHeroCard(snapshot,"combat");
+    card.tabIndex=0;card.setAttribute("role","button");
+    card.addEventListener("click",()=>this.focusCamera());
+    const inspect=document.createElement("button");
+    inspect.type="button";inspect.className="hero-card-inspect";
+    inspect.textContent="⊞";inspect.title="Inspect hero";
+    inspect.setAttribute("aria-label","Inspect hero");
+    inspect.addEventListener("click",event=>{
+      event.stopPropagation();
+      if(this.bossCardData)inspectHeroCard(this.bossCardData);
+    });
+    card.append(inspect);root.append(header,card);
+    this.panel.append(root);this.bossHeroCard=root;
+  }
+
+  private paintBossHeroCard():void{
+    if(!this.bossHeroCard||!this.motion)return;
+    const hero=this.motion;
+    const status=this.bossHeroCard.querySelector<HTMLElement>(
+      ".hero-card-status");
+    const phase=this.bossHeroCard.querySelector<HTMLElement>(
+      ".hero-card-phase-value");
+    const phaseRow=this.bossHeroCard.querySelector<HTMLElement>(
+      ".hero-card-combat-phase");
+    if(status)status.textContent=(this.replay?"RECORDED":"LIVE")+
+      " · "+Math.round(hero.heroHp)+" HP";
+    if(phase)phase.textContent=String(hero.heroPhase).toUpperCase();
+    if(phaseRow)phaseRow.dataset.phase=String(hero.heroPhase);
+    if(this.bossCardData)this.bossCardData={
+      ...this.bossCardData,health:Math.round(hero.heroHp),
+      activity:String(hero.heroPhase),
+    };
+  }
+
   private updateHud(): void {
     if (!this.hero || !this.boss) return;
+    this.paintBossHeroCard();
     this.healthText.textContent = "HERO HP " + this.hero.hp + "/" + this.hero.max;
     this.bossText.textContent = "CAVE TROLL HP " + this.boss.hp + "/" + this.boss.max;
     if (this.motion) {

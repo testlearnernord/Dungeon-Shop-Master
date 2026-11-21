@@ -19,6 +19,9 @@ import type {BossPhase} from "./arenaCombatMotion.ts";
 import {GRAPPLE_TIMING} from "./combatGrapple.ts";
 import {airborneRootFromGrip} from "./tripoGripPresentation.ts";
 import {CombatGroupWorldHud} from "./combatGroupWorldHud.ts";
+import {CombatPartyRoster} from "./combatPartyRoster.ts";
+import type {GameStore} from "./gameStore.ts";
+import {heroDisplayNames} from "./heroIdentity.ts";
 import {createHeroVisual,type HeroVisual} from "./heroVisual.ts";
 import {createDungeonGhoulVisual,type GhoulVisual} from "./dungeonGhoulVisual.ts";
 import type {CombatantSpec,GroupPhase,GroupReplayFrame} from "./groupCombat.ts";
@@ -69,6 +72,7 @@ export class LiveGroupCombatArena{
   private projectiles:Mesh[]=[];
   private projectileMaterial:StandardMaterial|null=null;
   private hud:CombatGroupWorldHud|null=null;
+  private partyRoster:CombatPartyRoster|null=null;
   private focusIds:string[]=[];
   private focusedId:string|null=null;
   private lastPoseTime=-1;
@@ -101,7 +105,8 @@ export class LiveGroupCombatArena{
   constructor(private readonly engine:Engine,
     private readonly canvas:HTMLCanvasElement,
     private readonly panel:HTMLElement,
-    private readonly sfx?:GameSfx) {}
+    private readonly sfx?:GameSfx,
+    private readonly store?:GameStore) {}
 
   get isActive():boolean{return this.scene!==null;}
   get currentScene():Scene|null{return this.scene;}
@@ -124,6 +129,7 @@ export class LiveGroupCombatArena{
     this.introSfxIndex=3;
     this.introHud?.hide();
     this.hud?.setIntroActive(false);
+    this.partyRoster?.setIntroActive(false);
     this.resetCamera();
   }
 
@@ -132,7 +138,7 @@ export class LiveGroupCombatArena{
     if(!view.combat)return false;
     if(this.fightId!==view.combat.id){
       this.dispose();
-      this.create(view);
+      this.create(view,mode);
       // Join at the current committed time: do not retroactively play
       // archived strikes, even when opening the viewer halfway through.
       this.audioCursor=new GroupCombatSoundCursor(
@@ -156,9 +162,11 @@ export class LiveGroupCombatArena{
       if(this.intro){
         this.introHud?.show(sampleGroupCombatIntro(this.intro,0));
         this.hud?.setIntroActive(true);
+        this.partyRoster?.setIntroActive(true);
       }else{
         this.introHud?.hide();
         this.hud?.setIntroActive(false);
+        this.partyRoster?.setIntroActive(false);
         this.resetCamera();
       }
     }
@@ -190,6 +198,7 @@ export class LiveGroupCombatArena{
     const fight=view.combat;
     if(!fight||!this.scene)return;
     this.hud?.show(frame);
+    this.partyRoster?.show(frame);
     this.hud?.showCues(fight.cues??[],frame);
     this.playRecordedCues(view,frame);
     const fromTime=this.lastPoseTime;
@@ -454,6 +463,9 @@ export class LiveGroupCombatArena{
         this.intro=null;
         this.introHud?.hide();
         this.hud?.setIntroActive(false);
+        this.partyRoster?.setIntroActive(false);
+        if(this.lastCommittedView?.combat)
+          this.partyRoster?.show(this.lastCommittedView.combat.frame);
       }
     }else flyCombatSpectatorCamera(this.camera,pressed,dt);
     if(this.scene)this.hud?.render(this.scene,dt);
@@ -465,11 +477,21 @@ export class LiveGroupCombatArena{
     if(this.intro||!this.camera||!this.focusIds.length)return null;
     const index=this.focusIds.indexOf(this.focusedId??"");
     this.focusedId=this.focusIds[(index+1)%this.focusIds.length];
+    this.partyRoster?.markFocus(this.focusedId);
     const pos=this.observedPositions.get(this.focusedId);
     if(pos)focusCombatSpectatorCamera(this.camera,pos,
       new Vector3(4,5,-8),pos.add(new Vector3(0,2,0)));
     return this.focusedId;
   }
+  /** Combat roster focuses the actual recorded body, never moves AI. */
+  focusHero(id:string):void{
+    if(this.intro||!this.camera||!this.focusIds.includes(id))return;
+    this.focusedId=id;this.partyRoster?.markFocus(id);
+    const pos=this.observedPositions.get(id);
+    if(pos)focusCombatSpectatorCamera(this.camera,pos,
+      new Vector3(4,5,-8),pos.add(new Vector3(0,2,0)));
+  }
+
   resetCamera():void{
     const camera=this.camera;
     if(!camera||!this.scene)return;
@@ -477,6 +499,7 @@ export class LiveGroupCombatArena{
       cx:number;cz:number;width:number;depth:number;
     };
     this.focusedId=null;
+    this.partyRoster?.markFocus(null);
     camera.position.set(bounds.cx+Math.min(9,bounds.width*.35),
       Math.max(7,bounds.width*.64),
       bounds.cz-Math.max(14,bounds.depth*1.25));
@@ -494,6 +517,7 @@ export class LiveGroupCombatArena{
     this.bossImpactVisuals.clear();
     this.introHud?.dispose();this.introHud=null;
     this.hud?.dispose();this.hud=null;
+    this.partyRoster?.dispose();this.partyRoster=null;
     this.observedPositions.clear();
     this.actorPhases.clear();
     this.stepDistances.clear();
@@ -509,7 +533,7 @@ export class LiveGroupCombatArena{
     this.scene=null;this.camera=null;this.fightId=null;
   }
 
-  private create(view:CombatArenaView):void{
+  private create(view:CombatArenaView,mode:"live"|"recorded"):void{
     const fight=view.combat;
     if(!fight)return;
     const bounds=fitBounds(fight.actors);
@@ -546,6 +570,13 @@ export class LiveGroupCombatArena{
     this.resetCamera();
     this.hud=new CombatGroupWorldHud(
       this.engine,this.canvas,this.panel,fight.actors,fight.frame.t);
+    const names=this.store?heroDisplayNames(this.store.state.adventurers):
+      new Map<string,string>();
+    this.partyRoster=new CombatPartyRoster(this.panel,fight.actors,
+      id=>names.get(id)??id.replace(/^adventurer-/,"Hero "),
+      id=>mode==="live"
+        ?this.store?.state.adventurers.find(h=>h.id===id)??null:null,
+      id=>this.focusHero(id),mode==="recorded",!this.store);
     this.introHud=new GroupCombatIntroHud(this.panel,fight.actors);
     this.focusIds=fight.actors.map(actor=>actor.id);
     const heroById=new Map(view.heroes.map(hero=>[hero.id,hero]));

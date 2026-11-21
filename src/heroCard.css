@@ -1,0 +1,201 @@
+/* WORLD WIDE HERO CARDS
+ * One design surface for Shop, LIVE Dungeon, Roster, World Echoes and combat.
+ * Sprites from hero-portraits.webp, items from ui-item-icons.svg.
+ * Kept outside the Babylon render loop; pointer events are presentation-only.
+ */
+.hero-card{
+  --hc-ink:#eee5cc;--hc-gold:#d5ad70;--hc-muted:#9eaca6;
+  position:relative;box-sizing:border-box;min-width:0;
+  color:var(--hc-ink);font:500 12px/1.4 system-ui,sans-serif;
+  background:linear-gradient(150deg,rgba(34,46,44,.97),rgba(13,23,26,.98) 72%);
+  border:1px solid rgba(195,155,95,.58);border-radius:12px;
+  box-shadow:0 14px 40px #0009,inset 0 1px #fff1;
+  padding:12px;display:grid;gap:10px;
+}
+.hero-card[hidden],#world-hero-card[hidden],#world-hero-card-mini[hidden],
+.hero-combat-roster[hidden]{display:none!important}
+.hero-card[data-role="tank"]{--hc-gold:#abc3db}
+.hero-card[data-role="healer"]{--hc-gold:#9fd3b4}
+.hero-card-identity{display:flex;align-items:center;gap:10px;min-width:0}
+.hero-card-person{min-width:0;flex:1;display:grid;gap:3px}
+.hero-card-name{font:700 13px/1.3 Georgia,serif;letter-spacing:.02em;
+  color:#f4dfb6;overflow-wrap:anywhere}
+.hero-card-status{font:700 9px/1.35 system-ui,sans-serif;
+  letter-spacing:.09em;color:var(--hc-muted)}
+.hero-card-portrait.roster-portrait{flex:0 0 62px;width:62px;height:62px;
+  display:block;border:2px solid var(--hc-gold);border-radius:8px;
+  background-color:#20322f;background-repeat:no-repeat;
+  box-shadow:inset 0 0 0 2px #100f0e,0 0 0 1px #edd69a26}
+.hero-card-identity .hero-card-role{margin-left:auto;color:var(--hc-gold)}
+.hero-card-glyph{display:inline-flex;align-items:center;justify-content:center;
+  width:17px;height:17px;color:var(--hc-gold);flex:none}
+.hero-card-glyph .ui-icon,.hero-card-chip>.ui-icon,.hero-card-echo>.ui-icon{
+  width:100%;height:100%;fill:none}
+.hero-card-overline{display:block;color:var(--hc-gold);letter-spacing:.17em;
+  font:750 9px/1.4 system-ui,sans-serif;margin-bottom:5px}
+.hero-card-vitals{display:grid;gap:6px}
+.hero-card-vital-heading{display:flex;align-items:center;gap:4px;color:#a9c1b3}
+.hero-card-vital-value{margin-left:auto;font-variant-numeric:tabular-nums;
+  color:#f3dfcf}
+.hero-card-vital-track{display:block;height:7px;border-radius:6px;
+  background:#442c2c;overflow:hidden;border:1px solid #f9e8b014}
+.hero-card-xp-track{height:3px;display:block;background:#3a3d39;
+  border-radius:5px;overflow:hidden}
+.hero-card-xp-fill{display:block;height:100%;background:linear-gradient(
+  90deg,#866c4c,#edd29a);border-radius:inherit}
+.hero-card-vital-fill{display:block;height:100%;border-radius:inherit;
+  background:linear-gradient(90deg,#4c9473,#91d09b)}
+.hero-card-vital-track[data-risk="critical"] .hero-card-vital-fill{
+  background:linear-gradient(90deg,#923b36,#f07858)}
+.hero-card-vital-track[data-risk="wounded"] .hero-card-vital-fill{
+  background:linear-gradient(90deg,#986042,#ebaf64)}
+.hero-card-economy,.hero-card-combat-info{display:flex;gap:10px;flex-wrap:wrap;
+  align-items:center;justify-content:space-between}
+.hero-card-metric{display:inline-flex;gap:4px;align-items:center;
+  color:#e8ddc6;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hero-card-metric-value{font:700 11px/1.3 system-ui,sans-serif}
+.hero-card-gold-icon{width:17px;height:17px;object-fit:contain}
+.hero-card-equipment{display:flex;align-items:stretch;gap:7px;flex-wrap:wrap}
+.hero-card-equipment>.hero-card-overline{flex-basis:100%;margin-bottom:0}
+.hero-card-slot{flex:1;min-width:0;padding:7px;display:flex;align-items:center;
+  gap:7px;border:1px solid #b1a18150;border-radius:8px;
+  background:linear-gradient(120deg,#21322f,#141f21);color:#ead4aa}
+.hero-card-slot[data-empty="true"]{opacity:.48}
+.hero-card-slot-label{font:650 10px/1.3 system-ui,sans-serif;
+  overflow-wrap:anywhere}
+.hero-card-item{display:inline-flex;align-items:center;gap:3px;min-width:0;
+  border-radius:6px}
+.hero-card-item-art{width:35px;height:35px;display:block;flex:none}
+.hero-card-item-count{font:700 10px system-ui,sans-serif;color:#f4d5a0}
+.hero-card-stats{display:flex;gap:5px;flex-wrap:wrap;justify-content:space-between}
+.hero-card-stats>.hero-card-overline{flex-basis:100%}
+.hero-card-stats .hero-card-metric{padding:8px 7px;flex:1;justify-content:center;
+  background:#0c1b1cb3;border:1px solid #7690844a;border-radius:7px}
+.hero-card-situation,.hero-card-inventory,.hero-card-events,.hero-card-traits{
+  display:grid;gap:5px;min-width:0}
+.hero-card-chips,.hero-card-item-list{display:flex;flex-wrap:wrap;gap:5px}
+.hero-card-chip{display:inline-flex;gap:4px;align-items:center;
+  border:1px solid #708a7559;border-radius:20px;padding:4px 8px;
+  color:#c7ded1;background:#28413b5f;font-size:10px;max-width:100%}
+.hero-card-chip>.ui-icon{width:13px;height:13px;flex:none}
+.hero-card-item-list .hero-card-item{padding:3px 7px 3px 3px;
+  border:1px solid #95826a63;background:#0b171a9a}
+.hero-card-echo{display:flex;gap:7px;align-items:flex-start;
+  margin:0;color:#b7c3b7;font:500 10px/1.5 system-ui,sans-serif}
+.hero-card-echo .ui-icon{width:13px;height:13px;flex:none;color:var(--hc-gold)}
+.hero-card-unknown{color:#a8aba6;font-style:italic}
+.hero-card--mini{padding:9px;width:100%;gap:6px}
+.hero-card--mini .hero-card-portrait{flex-basis:44px;width:44px;height:44px}
+.hero-card--mini .hero-card-name{font-size:12px}
+.hero-card--mini .hero-card-status{font-size:8px}
+.hero-card--mini .hero-card-slot{padding:2px 5px;max-width:65px}
+.hero-card--mini .hero-card-item-art{width:22px;height:22px}
+.hero-card--mini .hero-card-equipment{justify-content:flex-start}
+.hero-card--mini .hero-card-vitals{gap:5px}
+.hero-card--mini .hero-card-economy{justify-content:flex-start;gap:15px}
+.hero-card--expanded{width:100%;max-width:455px;max-height:min(86dvh,810px);
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  scrollbar-color:#977e58 transparent}
+.hero-card--combat{gap:6px;padding:9px;width:100%;border-color:#87775c99}
+.hero-card--combat .hero-card-portrait{flex-basis:39px;width:39px;height:39px}
+.hero-card--combat .hero-card-name{font-size:11px}
+.hero-card--combat .hero-card-status{font-size:8px}
+.hero-card-combat-phase{display:flex;align-items:center;gap:4px;
+  color:#bce2c6;font-size:10px;letter-spacing:.08em}
+.hero-card-combat-phase[data-phase="dead"],
+.hero-card-combat-phase[data-phase="hurt"]{color:#ef9d87}
+.hero-card-combat-phase[data-phase="parry"],
+.hero-card-combat-phase[data-phase="roll"]{color:#c9d9ec}
+.hero-card-combat-info .hero-card-metric{font-size:10px}
+.hero-card--combat .hero-card-slot{padding:2px 4px;min-width:0;flex:none}
+.hero-card--combat .hero-card-equipment{position:absolute;bottom:7px;right:8px;
+  gap:3px}
+.hero-card--combat .hero-card-combat-info{padding-right:75px;
+  justify-content:flex-start;gap:10px}
+.hero-card--combat .hero-card-item-art{width:21px;height:21px}
+.hero-card--combat .hero-card-item-count{display:none}
+/* The former LIVE dungeon dt/dd inspector is replaced by the SAME
+ * reusable card. Its outer shell owns alignment, not content styling. */
+#dungeon-hud .dungeon-hero-detail{padding:8px;right:216px;
+  width:min(380px,calc(100vw - 265px));top:var(--dungeon-panels-top,172px);
+  max-height:calc(100dvh - var(--dungeon-panels-top,172px) - 120px);
+  overflow:auto;scrollbar-width:thin}
+#dungeon-hud #dungeon-hero-detail-values{display:block;max-width:100%}
+#dungeon-hud #dungeon-hero-detail-values .hero-card{max-height:none}
+#dungeon-hud .dungeon-hero-detail-header{padding:3px 5px 8px}
+/* The old roster header is now a shared Mini Card. The expanded view is
+ * embedded inside the native details body, preserving permits and actions. */
+#roster-dialog .roster-card>summary{align-items:stretch}
+#roster-dialog .roster-card>summary>.hero-card{flex:1;border:0;
+  box-shadow:none;padding:6px;background:transparent}
+#roster-dialog .roster-card-extended{display:grid;gap:10px}
+#roster-dialog .roster-card-extended>.hero-card{max-width:none;max-height:none}
+#roster-dialog .roster-card .hero-card-portrait{
+  background-repeat:no-repeat!important}
+#roster-dialog .roster-card .hero-card-vital-track{min-height:6px}
+#roster-dialog .roster-card .hero-card-slot{max-width:170px}
+#roster-dialog .roster-card-extended>.roster-known-report{
+  font-size:11px;color:#baa78b}
+/* Expanded global inspection is non-modal: the world never pauses and the
+ * player can still inspect fights and shop guests. Click X to dismiss. */
+#world-hero-card{position:fixed;right:16px;top:84px;width:min(420px,calc(100vw - 24px));
+  z-index:1800;pointer-events:auto;filter:drop-shadow(0 16px 36px #0009)}
+#world-hero-card>.hero-card{max-height:calc(100dvh - 120px)}
+#world-hero-card-close{position:absolute;right:9px;top:8px;z-index:2;
+  border:1px solid #bfa47c77;border-radius:7px;background:#19292b;
+  color:#eddbbb;padding:3px 7px;cursor:pointer;font:700 14px system-ui}
+#world-hero-card-mini{position:fixed;z-index:1700;
+  width:min(278px,calc(100vw - 18px));pointer-events:none}
+.hero-card-inspect{position:absolute;top:4px;right:5px;z-index:2;
+  min-width:25px;min-height:25px;border:1px solid #ad8e5f72;
+  border-radius:6px;color:#edcda0;background:#14242af0;cursor:pointer;
+  font:700 15px/1 system-ui,sans-serif}
+.hero-card-inspect:is(:hover,:focus-visible){border-color:#e4ba7d;
+  outline:1px solid #e4ba7d}
+.hero-card--combat .hero-card-role{margin-right:23px}
+#arena-hud[data-intro="true"] #arena-boss-hero-card,
+#arena-hud[data-dev-lab="true"] #arena-boss-hero-card,
+#arena-hud[data-model-viewer="true"] #arena-boss-hero-card{
+  display:none!important
+}
+@media(max-width:760px){
+  #dungeon-hud .dungeon-hero-detail{right:6px;top:var(--dungeon-panels-top,172px);
+    width:min(340px,calc(100vw - 14px));max-height:45dvh}
+}
+/* Side roster is tactical identification, NOT a duplicate world-space HP HUD. */
+.hero-combat-roster{position:absolute;z-index:42;left:14px;top:154px;
+  width:225px;max-height:calc(100dvh - 285px);display:grid;gap:5px;
+  overflow-y:auto;scrollbar-width:thin;pointer-events:auto}
+.hero-combat-roster-heading{padding:6px 8px;border-radius:7px;
+  color:#e0c9a3;background:#102024e0;border:1px solid #9e83565d;
+  font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.1em}
+.hero-combat-roster .hero-card--combat{cursor:pointer}
+.hero-combat-roster .hero-card--combat[data-focused="true"]{
+  border-color:#f1c079;box-shadow:0 0 0 1px #d19c59b0,0 6px 22px #0008}
+/* Abstract engagement summaries are for the FLOOR map. They must vanish
+ * when the player opts into the real 3D arena and its Combat Party Cards. */
+#dungeon-hud[data-live-combat-mode="arena"] .dungeon-live-combat-summary{
+  display:none!important;
+}
+#dungeon-hud[data-live-combat-mode="arena"] .dungeon-left-rail,
+#dungeon-hud[data-live-combat-mode="arena"] #dungeon-hero-detail{
+  display:none!important;
+}
+@media(max-width:860px){
+  .hero-combat-roster{left:6px;top:136px;width:164px;max-height:45dvh}
+  .hero-card--combat .hero-card-combat-info{padding-right:0}
+  .hero-card--combat .hero-card-equipment{display:none}
+  .hero-card--combat .hero-card-portrait{flex-basis:34px;width:34px;height:34px}
+  .hero-combat-roster .hero-card-name{font-size:10px}
+}
+@media(max-width:560px){
+  #world-hero-card{right:6px;top:55px;width:calc(100vw - 12px)}
+  #world-hero-card>.hero-card{max-height:calc(100dvh - 65px)}
+  .hero-combat-roster{top:auto;bottom:115px;max-height:35dvh;
+    width:142px}
+  .hero-card--combat{padding:6px}
+  .hero-card--combat .hero-card-combat-info .hero-card-metric:nth-child(n+3){
+    display:none}
+}
+@media(prefers-reduced-motion:reduce){.hero-card *{animation:none!important;
+  transition:none!important}}
