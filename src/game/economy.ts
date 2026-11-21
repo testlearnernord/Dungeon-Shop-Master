@@ -19,6 +19,10 @@ export type ItemId = (typeof ITEMS)[number]["id"];
 export const SHELF_GOODS = ITEMS.filter(item=>item.kind!=="material");
 export const isShelfGood=(id:ItemId):boolean=>SHELF_GOODS.some(item=>item.id===id);
 export type ItemDefinition = (typeof ITEMS)[number];
+export type MaterialItemId=Extract<ItemDefinition,{kind:"material"}>["id"];
+export const MATERIAL_ITEMS=ITEMS.filter(item=>item.kind==="material");
+export const isMaterial=(id:ItemId):id is MaterialItemId=>
+  MATERIAL_ITEMS.some(item=>item.id===id);
 
 export interface Slot {
   id: string;
@@ -50,8 +54,9 @@ export function createEmptyShelfSlots(shelfId:string):Slot[]{
 export function createEconomy(): ShopEconomyState {
   return {
     balance: ECONOMY.startingGold,
-    bag: { "healing-herb": 5, "mana-potion": 3, "iron-ore": 4, bread: 2,
+    bag: { "healing-herb": 5, "mana-potion": 3, "iron-ore": 0, bread: 2,
       "iron-sword": 0, "leather-vest": 0, coal:0 },
+    materialStorage:{"iron-ore":0,coal:0},
     // Merchandising begins only after the player builds a real shelf.
     slots:[],
     dailySales: { day: 1, units: 0, revenue: 0 },
@@ -85,6 +90,7 @@ export function buyWholesale(state: GameState, itemId: ItemId, quantity: number)
 export function discardBag(state: GameState, itemId: ItemId): { state: GameState; message: string } {
   const item = ITEMS.find((entry) => entry.id === itemId);
   if (!item) return { state, message: "Choose a valid item." };
+  if(isMaterial(itemId))return {state,message:"Raw materials are held in the workshop reserve, not the shop bag."};
   const economy = state.shopEconomy;
   if (economy.bag[itemId] < 1) return { state, message: "You're out of the selected item." };
   return {
@@ -108,7 +114,7 @@ export function transferShelf(
   if (state.shopCarts.some(cart => cart.lines.some(line =>
     line.slotId === slotId)))
     return {state, message: "This shelf slot contains items held by customers."};
-  if (direction==="stock"&&item&&!isShelfGood(item.id))
+  if (item&&!isShelfGood(item.id))
     return {state,message:"Raw materials cannot be placed on shop shelves."};
   if (!item || !slot || (direction !== "stock" && direction !== "remove") ||
       !Number.isSafeInteger(requestedUnits) || requestedUnits < 1) {
