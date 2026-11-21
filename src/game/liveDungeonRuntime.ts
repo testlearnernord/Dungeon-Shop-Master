@@ -724,7 +724,7 @@ function commitLiveCombatTick(state:GameState):GameState{
     const world=floor===7?level7World:earlyDungeonWorlds.find(e=>
       e.floor===floor)?.world??emptyLevel7World();
     const settled=settleSpatialDungeonCombat(party,world,state.day,
-      fight.encounter,combat,replay,fight.arrivals);
+      fight.encounter,combat,replay,fight.arrivals,state.seed);
     if(floor===7)level7World=settled.world;
     else earlyDungeonWorlds=[
       ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
