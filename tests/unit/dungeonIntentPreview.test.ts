@@ -3,7 +3,7 @@ import test from "node:test";
 import {generateExpeditionLayout,dungeonNeighbors}
   from "../../src/game/dungeonLayout.ts";
 import {chooseLevel7Step} from "../../src/game/level7Exploration.ts";
-import {predictDungeonHeroSteps}
+import {predictDungeonHeroSteps,dungeonPreviewExplanation}
   from "../../src/game/dungeonIntentPreview.ts";
 
 test("two-step map intentions are connected forecasts, never authoritative steps",()=>{
@@ -37,4 +37,21 @@ test("combat and portal actors advertise no invented movement",()=>{
   assert.deepEqual(predictDungeonHeroSteps(layout,hero),[]);
   assert.deepEqual(predictDungeonHeroSteps(layout,{...hero,
     activity:"portal",inCombat:false}),[]);
+});
+
+test("every absent or partial preview gives a truthful reason, never fake motion",()=>{
+  const layout=generateExpeditionLayout(7350,2);
+  const p=layout.entrance;
+  const hero={id:"hero",x:p.x,z:p.z,visited:[p.z*layout.width+p.x],
+    activity:"exploring" as const,inCombat:false,
+    plannedAction:"stay" as const};
+  const msg=dungeonPreviewExplanation(layout,hero);
+  assert.ok(msg.includes("PREVIEW")||msg.includes("Second step")||
+    msg.includes("Site interaction"));
+  assert.match(dungeonPreviewExplanation(layout,{...hero,
+    activity:"combat",inCombat:true}),/LIVE combat.*paused/);
+  assert.match(dungeonPreviewExplanation(layout,{...hero,
+    activity:"portal"}),/portal.*no floor route/i);
+  assert.match(dungeonPreviewExplanation(layout,{...hero,
+    plannedAction:"ascend"}),/At staircase/);
 });

@@ -33,7 +33,7 @@ import {createDungeonFeaturePalette,createReadableDungeonChest,
   createReadableDungeonTrap} from "./dungeonFeatureProps.ts";
 import {installGhoulMapInstances,type GhoulMapSite}
   from "./dungeonGhoulMapInstances.ts";
-import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
+import {dungeonPreviewExplanation} from "./dungeonIntentPreview.ts";
 import {minimapPointFromClient,isKnownMinimapCell}
   from "./dungeonMinimapNavigation.ts";
 import {floorHeroLocatorOptions,floorFightLocatorOptions,
@@ -1017,10 +1017,9 @@ export class DungeonViewer {
     const ongoing=hero.inCombat?"LIVE combat":
       hero.activity==="backtracking"?"Walking to portal":
       hero.activity==="portal"?"Portal transit":"Exploring";
-    const intended=this.layout?predictDungeonHeroSteps(this.layout,hero,view.resolved):[];
-    const preview=intended.length?intended.map((point,i)=>
-      (i+1)+": ("+point.x+", "+point.z+")").join(" → "):
-      "No safe step predicted";
+    const preview=this.layout?
+      dungeonPreviewExplanation(this.layout,hero,view.resolved):
+      "No dungeon geometry available";
     const entries:[string,string][]=[
       ["Health",Math.round(hero.health)+" / "+hero.stats.maxHealth+" HP"],
       ["Level",String(hero.level)],
