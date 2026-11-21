@@ -178,6 +178,17 @@ export function setupWorldEventFeed(
   if(critical)enqueue([critical]);
   store.subscribe(()=>{
     const next=store.state;
+    // Loading a different campaign or starting a New Game is not a stream
+    // of new events in the old campaign. Clear the old queue and IDs first.
+    if(next.seed!==previous.seed||next.day<previous.day||
+       next.worldClock.tick<previous.worldClock.tick){
+      for(const item of active.values()){item.clear();item.node.remove();}
+      active.clear();pending.length=0;seen.clear();
+      previous=next;
+      const first=initialWorldFeedCritical(next);
+      if(first)enqueue([first]);
+      return;
+    }
     if(next.events===previous.events&&
        next.liveDungeon.combats===previous.liveDungeon.combats&&
        next.liveDungeon.bossCombat===previous.liveDungeon.bossCombat){
