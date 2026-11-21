@@ -91,6 +91,23 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   const inspect=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectLiveDungeonFloor());
   const floorOne=await inspect();
+  // The actual seeded dungeon has recognisable three-dimensional treasure
+  // chests, pressure-plate spikes and true shared Tripo Ghoul instances.
+  // No animated battle actors are allocated in the overview.
+  const featureArt=()=>page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts"))
+      .inspectDungeonFeatureProps());
+  await expect.poll(async()=>(await featureArt()).ghoulModels,
+    {timeout:15000}).toBeGreaterThan(0);
+  const visuals=await featureArt();
+  expect(visuals.chests).toBeGreaterThan(0);
+  expect(visuals.lids).toBe(visuals.chests);
+  expect(visuals.chestBands).toBe(visuals.chests*2);
+  expect(visuals.traps).toBeGreaterThan(0);
+  expect(visuals.spikes).toBe(visuals.traps*5);
+  expect(visuals.ghoulModels).toBe(visuals.ghoulMarkers);
+  expect(visuals.fallbackIcons).toBe(0);
+  expect(visuals.errors).toEqual([]);
   expect(new Set(floorOne.heroes.map(h=>h.id))).toEqual(new Set(ids.slice(0,3)));
   expect(floorOne.heroes.filter(h=>h.partyId)).toHaveLength(2);
   expect(floorOne.heroes.find(h=>h.id===ids[2])?.partyId).toBeNull();
