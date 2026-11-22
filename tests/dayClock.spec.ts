@@ -277,7 +277,7 @@ test("a paid visitor never respawns on roster changes or extends their visit ove
     const paid=initial.adventurers[0],other=initial.adventurers[1];
     const prepared={...initial,
       adventurers:initial.adventurers.map((hero,index)=>index<2
-        ?{...hero,status:"at-shop" as const,floor:5 as const,
+        ?{...hero,status:"at-shop" as const,floor:"shop" as const,
           shopStayDays:0,bossPass:false,gold:100,
           inventory:{...hero.inventory,bread:0,healing:0}}
         :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),

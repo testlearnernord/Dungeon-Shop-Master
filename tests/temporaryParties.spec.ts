@@ -27,7 +27,7 @@ test("Temporary Party appears in day feed, both roster and saved dungeon footage
     const prepared={...base,
       adventurers:base.adventurers.map(hero=>
         pair.find(candidate=>candidate.id===hero.id)??{
-          ...hero,status:"at-shop" as const,floor:5 as const,shopStayDays:0,
+          ...hero,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0,
         }),
       earlyDungeonWorlds:[{floor:1 as const,world}],
     };

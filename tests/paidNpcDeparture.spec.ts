@@ -10,7 +10,7 @@ test("same-day manual receipts send customers toward the exit, not back to the s
     const hero=initial.adventurers[0];
     const prepared={...initial,
       adventurers:initial.adventurers.map(person=>person.id===hero.id
-        ?{...person,status:"at-shop" as const,floor:5 as const}:person),
+        ?{...person,status:"at-shop" as const,floor:"shop" as const}:person),
       events:[...initial.events,{
         id:"day-1:"+hero.id+":sale:shelf-1-slot-2:manual",
         type:"sale" as const,saleChannel:"manual" as const,day:1,

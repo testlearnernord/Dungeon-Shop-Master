@@ -58,7 +58,7 @@ test("off-duty heroes consume only their owned medicine, not phantom daily heali
   const first=createGameState(7351,{dailyInflux:0,maxActive:10});
   const hero=first.adventurers[0];
   const wounded={...hero,
-    status:"off-duty" as const,floor:5 as const,offDutyUntilDay:4,
+    status:"off-duty" as const,floor:"away" as const,offDutyUntilDay:4,
     health:hero.stats.maxHealth-20,
     inventory:{...hero.inventory,healing:1,bread:1},
   };
