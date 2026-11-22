@@ -65,16 +65,16 @@ export function liveBossCheckpointProblem(
   const progress=heroProgression(hero);
   // Old mid-boss saves have no bonus fields and must finish the exact
   // fight they began. New fights commit all three bounded bonuses.
-  const expected=hasProgression?progress:hero.stats;
+  const expectedHero=hasProgression?progress:hero.stats;
   if(!shape(opts,optsKeys,bonusKeys)||
      opts.role!==hero.role||
      opts.sword!==(hero.equipment.weapon==="Iron Sword")||
      opts.armor!==(hero.equipment.armor==="Leather Vest")||
-     opts.health!==hero.health||opts.maxHealth!==expected.maxHealth||
+     opts.health!==hero.health||opts.maxHealth!==expectedHero.maxHealth||
      opts.healingSupplies!==hero.inventory.healing||
-     opts.strength!==expected.strength||
-     opts.agility!==expected.agility||
-     opts.intellect!==expected.intellect||
+     opts.strength!==expectedHero.strength||
+     opts.agility!==expectedHero.agility||
+     opts.intellect!==expectedHero.intellect||
      (hasProgression&&(
        opts.progressionDamageBonus!==progress.damageBonus||
        opts.progressionArmorBonus!==progress.armorBonus||
