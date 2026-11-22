@@ -215,7 +215,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
   try{initial=createGroupCombat({
     actors:rec.actors,bounds:rec.bounds,obstacles:rec.obstacles,
     environment:rec.environment,tacticsSeed:rec.tacticsSeed,
-  } as GroupCombatOptions);}catch{
+  } as unknown as GroupCombatOptions);}catch{
     return fail("fighters are invalid to the single authoritative motor");
   }
   if(!Array.isArray(rec.frames)||rec.frames.length<2||
