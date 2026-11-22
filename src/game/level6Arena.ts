@@ -493,11 +493,11 @@ export class Level6Arena {
         (this.fighter?heroProgression(this.fighter).maxHealth:50),
       healingSupplies: this.training?.options.healingSupplies ?? this.fighter?.inventory.healing ?? 0,
       strength: this.training?.options.strength ??
-        (this.fighter?heroProgression(this.fighter).strength:undefined),
+        (!this.replay&&this.fighter?heroProgression(this.fighter).strength:undefined),
       agility: this.training?.options.agility ??
-        (this.fighter?heroProgression(this.fighter).agility:undefined),
+        (!this.replay&&this.fighter?heroProgression(this.fighter).agility:undefined),
       intellect: this.training?.options.intellect ??
-        (this.fighter?heroProgression(this.fighter).intellect:undefined),
+        (!this.replay&&this.fighter?heroProgression(this.fighter).intellect:undefined),
       ...(!this.training&&!this.replay&&this.fighter?{
         progressionDamageBonus:heroProgression(this.fighter).damageBonus,
         progressionArmorBonus:heroProgression(this.fighter).armorBonus,
