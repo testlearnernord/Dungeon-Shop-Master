@@ -53,3 +53,7 @@ A saved ordinary Floor-6 exploration must never be classified by `floor===6` as 
 ## Strict current-save event cleanup after archive routing
 
 The current strict Alpha-v30 parser rejects retired `level6-departure`, `level6-combat`, `level6-return`, `level7-departure`, `combatOutcome`, and the old one-hero `combatReplay` event payload. Historical names are no longer report, LIVE Board, or archive output categories; a fabricated Solo-F6 event can no longer be loaded to impersonate current gameplay. The old `WorldEvent` interface and isolated boss arena still retain internal tape-facing type/read references pending a separate preview-only refactor; **this is not yet the final removal of all code mentions**. Real `partyBossReplay` and ordinary `dungeonReplay` remain fully supported, with no Alpha save migration.
+
+## PR #310 — single public GameStore cashier boundary
+
+The redundant `GameStore.quoteCheckout()/checkout()` mutation route is retired. Only `GameStore.pickUpShopItem()` (actual reserved shelf stock) and `GameStore.payReservedCart()` (physical till) can pay for ordinary merchandise in the game's public state API. The GroupCombat paid-gear regression now obtains its equipment through these actual paths, rather than a forecast-only direct charge. Legacy standalone `customerCheckout.ts` and its dependent historical test fixtures are the **next** removal; they are not a second production UI. No Save schema change or migrations, and no change to real pricing or tip mechanics.
