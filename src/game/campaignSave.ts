@@ -159,7 +159,7 @@ function validateLevel7World(
     // floor's lower stair, not the unexplored upper portal. Preserve
     // truthful fog of war instead of forging a visit to the entrance.
     const upper=map.entrance.z*map.width+map.entrance.x;
-    const lower=floor>=2&&floor<=4?dungeonDownStair(map):null;
+    const lower=floor>=2&&floor<=9?dungeonDownStair(map):null;
     const lowerIndex=lower?lower.z*map.width+lower.x:null;
     if(!visitedIds.has(upper)&&
         (lowerIndex===null||!visitedIds.has(lowerIndex)))
@@ -448,7 +448,7 @@ function validateLiveCombatCheckpoints(
     const encounter=object(battle.encounter,cp+".encounter",[
       "featureId","floor","x","z","siteCycle","elite","options",
     ]);
-    choice(encounter.floor,[1,2,3,4,7],cp+".encounter.floor");
+    choice(encounter.floor,[1,2,3,4,5,6,7,8,9],cp+".encounter.floor");
     const floor=encounter.floor as number;
     const featureId=text(encounter.featureId,cp+".encounter.featureId");
     const layout=generateExpeditionLayout(state.seed as number,
@@ -472,7 +472,7 @@ function validateLiveCombatCheckpoints(
       unique(id,known,cp+".heroIds["+i+"]");
       const hero=roster.find(h=>h.id===id) as GameState["adventurers"][number]|undefined;
       if(!hero||hero.floor!==floor||hero.health<=0||
-        hero.status!==(floor===7?"expedition":"exploring"))
+        !(hero.status==="exploring"||floor===7&&hero.status==="expedition"))
         fail(cp+".heroIds["+i+"]","must identify a living co-located explorer");
       members.push(hero);
     });
@@ -718,7 +718,7 @@ function validateLivePlans(
     const plan=object(raw,path,["heroId","floor","goal","action","updatedTick"]);
     const id=text(plan.heroId,path+".heroId");
     unique(id,ids,path+".heroId");
-    choice(plan.floor,[1,2,3,4,7],path+".floor");
+    choice(plan.floor,[1,2,3,4,5,6,7,8,9],path+".floor");
     choice(plan.goal,["farm","progress","test-gear","caution","resupply",
       "loot-chest","hunt-ghouls"],
       path+".goal");
@@ -729,10 +729,9 @@ function validateLivePlans(
       hero.status!==(plan.floor===7?"expedition":"exploring"))
       fail(path+".heroId","must name a living committed explorer on the recorded floor");
     if((plan.action==="ascend"&&(plan.floor as number)<=1)||
-      (plan.action==="descend"&&(plan.floor as number)>=4))
+      (plan.action==="descend"&&(plan.floor as number)>=9))
       fail(path+".action","must be an authored adjacent early-floor transition");
-    if(plan.floor===7&&plan.action!=="shop"&&plan.action!=="stay")
-      fail(path+".action","cannot invent an unauthored deeper floor");
+ 
   }
 }
 
@@ -752,7 +751,7 @@ function validateLivePortalReturns(
       ["dueTick"]);
     const heroId=text(journey.heroId,path+".heroId");
     unique(heroId,indexed,path+".heroId");
-    choice(journey.fromFloor,[1,2,3,4,6,7],path+".fromFloor");
+    choice(journey.fromFloor,[1,2,3,4,5,6,7,8,9],path+".fromFloor");
     const floor=journey.fromFloor as number;
     const started=integer(journey.startedTick,path+".startedTick",0,clockTick);
     choice(journey.phase,["backtrack","portal"],path+".phase");
@@ -788,9 +787,9 @@ function validateLivePortalReturns(
     }else{
       if(journey.dueTick!==undefined)
         fail(path+".dueTick","is only allowed during portal transit");
-      if(![1,2,3,4,7].includes(floor)||
+      if(![1,2,3,4,5,6,7,8,9].includes(floor)||
         hero.floor!==floor||
-        hero.status!==(floor===7?"expedition":"exploring"))
+        !(hero.status==="exploring"||floor===7&&hero.status==="expedition"))
         fail(path,"must backtrack on the real hero floor");
       const world:Level7World=floor===7?
         state.level7World as Level7World:
@@ -1015,7 +1014,7 @@ function validateState(value: unknown): asserts value is GameState {
         total+=integer(quantity,path+".inventory.finds."+id,1,1000);
       if(total>1000)fail(path+".inventory.finds","is oversized");
     }
-    const floor = integer(hero.floor, `${path}.floor`, 1, 7);
+    const floor = integer(hero.floor, `${path}.floor`, 1, 10);
     choice(hero.status, ["exploring", "traveling", "at-shop",
       "returning", "expedition", "departing", "off-duty", "dead"], `${path}.status`);
     if ((hero.status === "dead") !== (health === 0)) fail(`${path}.status`, "must agree with health");
@@ -1023,9 +1022,9 @@ function validateState(value: unknown): asserts value is GameState {
       active += 1;
       if (((hero.status === "at-shop" || hero.status === "departing" ||
              hero.status === "off-duty") && floor !== 5) ||
-          (hero.status === "exploring" && floor > 4) ||
+          (hero.status === "exploring" && floor > 9) ||
           ((hero.status === "traveling" || hero.status === "returning") && floor !== 4) ||
-          (hero.status === "expedition" && floor !== 6 && floor !== 7)) {
+          (hero.status === "expedition" && floor !== 6 && floor !== 7 && floor!==10)) {
         fail(`${path}.floor`, "must agree with status");
       }
     }
@@ -1046,12 +1045,13 @@ function validateState(value: unknown): asserts value is GameState {
   validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds,day);
   if(state.earlyDungeonWorlds!==undefined){
     const worlds=array(state.earlyDungeonWorlds,"payload.earlyDungeonWorlds");
-    if(worlds.length>4)fail("payload.earlyDungeonWorlds","must cover at most four floors");
+    if(worlds.length>8)fail("payload.earlyDungeonWorlds","must cover at most eight ordinary floors");
     const seenFloors=new Set<string|number>();
     worlds.forEach((value,i)=>{
       const path="payload.earlyDungeonWorlds["+i+"]";
       const entry=object(value,path,["floor","world"]);
-      const floor=integer(entry.floor,path+".floor",1,4);
+      const floor=integer(entry.floor,path+".floor",1,9);
+      if(floor===7)fail(path+".floor","uses the saved dedicated Floor-7 world");
       unique(floor,seenFloors,path+".floor");
       validateLevel7World(entry.world,path+".world",campaignSeed,heroIds,day,floor);
     });
@@ -1069,8 +1069,7 @@ function validateState(value: unknown): asserts value is GameState {
     groups.forEach((raw,i)=>{
       const path="payload.dungeonParties["+i+"]";
       const group=object(raw,path,["memberIds","floor","formedDay"]);
-      const floor=integer(group.floor,path+".floor",1,7);
-      if(floor===5||floor===6)fail(path+".floor","must be a shared spatial floor");
+      const floor=integer(group.floor,path+".floor",1,9);
       integer(group.formedDay,path+".formedDay",1,day);
       const ids=array(group.memberIds,path+".memberIds");
       if(ids.length<2||ids.length>3)
@@ -1083,7 +1082,7 @@ function validateState(value: unknown): asserts value is GameState {
         unique(id,assigned,p);
         const hero=heroes.get(id);
         if(!hero||hero.floor!==floor||
-          hero.status!==(floor===7?"expedition":"exploring")||
+          !(hero.status==="exploring"||floor===7&&hero.status==="expedition")||
           (hero.health as number)<=0)
           fail(p,"must be a living explorer on the party floor");
         return hero;
@@ -1291,7 +1290,7 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.dungeonFloors, "payload.dungeonFloors").forEach((value, index) => {
     const path = `payload.dungeonFloors[${index}]`;
     const floor = object(value, path, ["floor", "cleared"]);
-    unique(integer(floor.floor, `${path}.floor`, 1, 7), floors, `${path}.floor`);
+    unique(integer(floor.floor, `${path}.floor`, 1, 10), floors, `${path}.floor`);
     if (typeof floor.cleared !== "boolean") fail(`${path}.cleared`, "must be a boolean");
   });
 
@@ -1416,7 +1415,8 @@ function validateState(value: unknown): asserts value is GameState {
         const replay=object(event.dungeonReplay,path+".dungeonReplay",[
           "version","day","heroId","floor","appearance","steps","encounters","outcome",
         ],["knownAtStart","resolvedAtStart","partyMemberIds","partyAppearances"]);
-        const floor=integer(replay.floor,path+".dungeonReplay.floor",1,4);
+        const floor=integer(replay.floor,path+".dungeonReplay.floor",1,9);
+        if(floor===7)fail(path+".dungeonReplay.floor","must use the dedicated Floor-7 tape");
         validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
           event.adventurerId as string,eventDay,campaignSeed,floor,heroIds);
       }
