@@ -863,7 +863,9 @@ function validateState(value: unknown): asserts value is GameState {
       z:validNumber(raw.z,"payload.cellarTable.z",-41,-13),
       rotation:integer(raw.rotation,"payload.cellarTable.rotation",0,3) as 0|1|2|3,
     };
-    const problem=cellarTableProblem(table,state.cellarRoom,state.cellarChest);
+    // The cellar chest was strictly parsed and validated immediately above.
+    const problem=cellarTableProblem(table,state.cellarRoom,
+      state.cellarChest as CellarChestPlacement);
     if(problem)fail("payload.cellarTable",problem);
   }
   const day = integer(state.day, "payload.day", 1, MAX_WORLD_DAY);
