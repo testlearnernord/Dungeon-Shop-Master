@@ -16,6 +16,7 @@ export interface DeveloperHero {
   readonly armor:number;
   readonly agility:number;
   readonly healCharges:number;
+  readonly magicHeals?:number;
   readonly sword:boolean;
   readonly vest:boolean;
   readonly label:string;
@@ -59,7 +60,11 @@ export function validateDeveloperCombat(config:DeveloperCombatConfig):void {
        !within(hero.maxHp,1,10000)||!within(hero.damage,1,1000)||
        !within(hero.armor,0,1000)||!within(hero.agility,0,1000)||
        !Number.isSafeInteger(hero.healCharges)||hero.healCharges<0||
-       hero.healCharges>10||typeof hero.sword!=="boolean"||
+       hero.healCharges>10||
+       (hero.magicHeals!==undefined&&(
+         !Number.isSafeInteger(hero.magicHeals)||hero.magicHeals<0||
+         hero.magicHeals>10||hero.role!=="healer"))||
+       typeof hero.sword!=="boolean"||
        typeof hero.vest!=="boolean"||typeof hero.label!=="string"||
        hero.label.length>80)
       throw new RangeError("Invalid developer hero attributes");
@@ -101,7 +106,8 @@ export function developerHeroFromRoster(hero:AdventurerState):DeveloperHero{
       hero.role==="DPS"?progress.agility:progress.strength)/2)+
       (hero.equipment.weapon==="Iron Sword"?5:0)+progress.damageBonus,
     armor:(hero.equipment.armor==="Leather Vest"?5:1)+progress.armorBonus,
-    agility:progress.agility,healCharges:Math.min(10,hero.inventory.healing),
+    agility:progress.agility,healCharges:Math.min(2,hero.inventory.healing),
+    ...(hero.role==="healer"?{magicHeals:progress.dungeonMagicHeals}:{}),
     sword:hero.equipment.weapon==="Iron Sword",
     vest:hero.equipment.armor==="Leather Vest",
   };
@@ -121,7 +127,7 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
         "ranged":"melee",
       ...pos,hp:hero.maxHp,maxHp:hero.maxHp,damage:hero.damage,
       armor:hero.armor,agility:hero.agility,speed:hero.role==="tank"?2.5:3.1,
-      ...(hero.role==="healer"?{magicHeals:2}:{}),
+      ...(hero.role==="healer"?{magicHeals:hero.magicHeals??2}:{}),
       reach:1.75,healCharges:hero.healCharges,
       equipment:{weapon:hero.sword?"Iron Sword":null,
         armor:hero.vest?"Leather Vest":null},
