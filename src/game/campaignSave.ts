@@ -986,7 +986,7 @@ function validateState(value: unknown): asserts value is GameState {
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
       "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilDay", "level6Permit",
-    ]);
+    ],["lastDungeonFloor"]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
     if (!match || !Number.isSafeInteger(Number(match[1])) || Number(match[1]) >= nextId) {
@@ -1025,6 +1025,8 @@ function validateState(value: unknown): asserts value is GameState {
       if(total>1000)fail(path+".inventory.finds","is oversized");
     }
     const floor = integer(hero.floor, `${path}.floor`, 1, 10);
+    if(hero.lastDungeonFloor!==undefined)
+      integer(hero.lastDungeonFloor,path+".lastDungeonFloor",1,9);
     choice(hero.status, ["exploring", "traveling", "at-shop",
       "returning", "expedition", "departing", "off-duty", "dead"], `${path}.status`);
     if ((hero.status === "dead") !== (health === 0)) fail(`${path}.status`, "must agree with health");
