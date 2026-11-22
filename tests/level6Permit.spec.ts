@@ -4,7 +4,7 @@ test("Level 6 passes are per-hero, autosaved, and never unlock the physical gate
   await page.goto("./");
   await page.locator("#toggle-adventurer-details").click();
   await expect(page.locator("#day")).toHaveText("Day 1");
-  const buttons = page.locator("#adventurer-roster .level6-permit");
+  const buttons = page.locator("#adventurer-roster .boss-pass");
   await expect(buttons).toHaveCount(3);
   const first = buttons.first();
   const id = await first.getAttribute("data-adventurer-id");

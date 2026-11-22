@@ -50,7 +50,7 @@ test("an authorized Level 6 adventurer appears in the spectator preview without 
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
   await page.locator("#toggle-adventurer-details").click();
-  const selected = page.locator('#adventurer-roster button.level6-permit').first();
+  const selected = page.locator('#adventurer-roster button.boss-pass').first();
   await selected.click();
   await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");

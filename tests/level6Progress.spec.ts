@@ -9,7 +9,7 @@ test("historic solo Troll footage survives reload in the one Expedition Archive"
   await page.goto("./");
   await page.locator("#toggle-adventurer-details").click();
   const visitor=page.locator('#adventurer-roster li[data-status="at-shop"]').first();
-  await visitor.locator(".level6-permit").click();
+  await visitor.locator(".boss-pass").click();
   await advanceTestDay(page);
   await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 3");

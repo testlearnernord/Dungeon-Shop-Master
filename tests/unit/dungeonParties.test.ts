@@ -20,7 +20,7 @@ function party(floor:1|7=7):AdventurerState[]{
     traits:{...hero.traits,negative:"stubborn"},
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
     inventory:{...hero.inventory,healing:2},
-    health:hero.stats.maxHealth,level6Permit:floor===7,
+    health:hero.stats.maxHealth,bossPass:floor===7,
   }));
 }
 function atUnresolvedSite(
