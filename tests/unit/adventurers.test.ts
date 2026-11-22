@@ -121,21 +121,21 @@ test("strategic choices respond to actual HP, equipment, loot and map knowledge"
     {...progress,visited:[1]},{...replay,outcome:"exploring"}).action,"stay");
 });
 
-test("a spatial day resolves one genuine shared world and saves its sealed replay", () => {
+test("a LIVE day resolves one persistent spatial world and records actual movement", () => {
   const first=createGameState(7351);
   const {state,events}=advanceDay(first);
   assert.equal(state.day,2);
-  assert(events.some(e=>e.type==="dungeon-exploration"&&e.dungeonReplay));
+  assert(events.some(e=>e.type==="dungeon-live"),
+    "Only actual scheduled LIVE movement can report an expedition");
   assert(!events.some(e=>e.type==="dungeon-outcome"),
     "retired Floor 1–4 dice path must never run in new campaigns");
   const worlds=state.dungeonWorlds??[];
   assert(worlds.length>0&&worlds.length<=4);
   assert.deepEqual([...worlds.map(w=>w.floor)].sort((a,b)=>a-b),
     worlds.map(w=>w.floor));
-  for(const e of events.filter(e=>e.type==="dungeon-exploration")) {
-    assert(e.dungeonReplay);
-    assert(e.dungeonReplay.floor>=1&&e.dungeonReplay.floor<=4);
-    assert(e.dungeonReplay.steps.every(step=>Number.isFinite(step.hp)));
+  for(const e of events.filter(e=>e.dungeonReplay)){
+    assert(e.dungeonReplay!.floor>=1&&e.dungeonReplay!.floor<=9);
+    assert(e.dungeonReplay!.steps.every(step=>Number.isFinite(step.hp)));
   }
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
   assert.deepEqual(advanceDay(first),{state,events});
@@ -173,7 +173,7 @@ test("multi-day play and save/reload are deterministic with real shared encounte
     assert.equal(a.simulationVersion,34);
     assert(a.adventurers.filter(hero=>hero.status!=="dead").length<=20);
   }
-  assert(a.events.some(e=>e.type==="dungeon-exploration"));
+  assert(a.events.some(e=>e.type==="dungeon-live"));
   assert(a.dungeonWorlds?.some(entry=>entry.world.heroes.length>0));
 });
 

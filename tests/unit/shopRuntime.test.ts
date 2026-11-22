@@ -92,7 +92,10 @@ test("day closure fast-forwards outstanding requests once and clears shop-only f
   assert.equal(store.state.day,2);
   assert.equal(store.state.worldClock.tick,WORLD_TICKS_PER_DAY);
   assert.equal(store.state.shopRequests.length,0);
-  assert.equal(store.state.worldClock.pending.length,0);
+  assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="visitor").length,0,
+    "No expired customer request survives the bedtime boundary");
+  assert(store.state.worldClock.pending.every(e=>e.dueTick>store.state.worldClock.tick),
+    "Only legitimate future events may remain queued");
   assert.equal(store.state.events.filter(e=>e.type==="shop-walkout"&&e.adventurerId===buyerId).length,1);
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
   store.advanceWorldTime(200);

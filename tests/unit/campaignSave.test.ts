@@ -62,7 +62,7 @@ test("seeded 45-day spatial-dungeon continuation preserves history, RNG, legitim
     // possibility, not a required random outcome in every seeded campaign.
     assert(resumed.adventurers.every(hero=>
       (hero.status==="dead")===(hero.health===0)));
-    assert(resumed.events.some(event=>event.type==="dungeon-exploration"),
+    assert(resumed.events.some(event=>event.type==="dungeon-live"),
       "The campaign must still simulate real dungeon expeditions");
     assert(!resumed.events.some((event) => event.type === "sale"),
       "Wholesale and restocking without a real checkout must not mint sales");
@@ -187,10 +187,10 @@ test("checks event-specific outcome, prices, quantities, links and chronology", 
   mutateEvent("sale", (event) => { event.revenue += 1; }, /revenue/);
   mutateEvent("sale", (event) => { event.quantity = 0; }, /quantity/);
   mutateEvent("sale", (event) => { event.id = "day-2:adventurer-1:sale:unknown"; }, /shelf slot/);
-  mutateEvent("dungeon-exploration", (event) => {
-    event.dungeonReplay.floor = 11;
-  }, /floor/);
-  mutateEvent("dungeon-exploration", (event) => {
+  mutateEvent("dungeon-live", (event) => {
+    event.worldTick = 0;
+  }, /worldTick/);
+  mutateEvent("dungeon-live", (event) => {
     event.dungeonGoal = "cheat";
   }, /dungeonGoal/);
   mutateEvent("day-started", (event) => { event.adventurerId = "adventurer-1"; }, /not valid/);

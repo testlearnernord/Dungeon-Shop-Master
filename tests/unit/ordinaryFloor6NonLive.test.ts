@@ -16,16 +16,16 @@ test("legacy day closure never creates a solo Floor-6 Troll or a pass-driven sho
   assert.deepEqual(advanceDay(permitted),next);
 });
 
-test("the regular non-LIVE Floor-6 test fixture uses the seeded spatial exploration motor",()=>{
+test("Floor 6 uses the real LIVE scheduler, never a parallel daily solver",()=>{
   const start=createGameState(7351);
   const shopper=start.adventurers[0];
   const explorer={...shopper,status:"exploring" as const,floor:6 as const};
   const state={...start,adventurers:start.adventurers.map(h=>h.id===shopper.id?explorer:h)};
   const result=advanceDay(state);
-  const event=result.events.find(e=>e.adventurerId===shopper.id&&
-    e.type==="dungeon-exploration");
-  assert(event?.dungeonReplay);
-  assert.equal(event.dungeonReplay.floor,6);
+  assert(result.events.some(e=>e.adventurerId===shopper.id&&
+    e.type==="dungeon-live"),
+    "A genuine numbered Floor 6 must produce live expedition activity");
+  assert(result.state.dungeonWorlds.some(entry=>entry.floor===6));
   assert(!result.events.some(e=>e.type==="level6-combat"));
 });
 

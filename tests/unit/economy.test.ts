@@ -186,7 +186,8 @@ test("day transitions bring visitors but never perform invisible sales", () => {
   const state = freeze(stock(market(heroes), "bread", 5));
   const result = advanceDay(state);
   assert.equal(result.state.shopEconomy.dailySales.units, 0);
-  assert.equal(result.state.adventurers[0].status, "at-shop");
+  assert.equal(result.state.adventurers[0].status, "traveling",
+    "A fabricated transit hero cannot arrive without a scheduled portal crossing");
   assert.equal(result.state.adventurers[0].inventory.bread, 0);
   assert.equal(result.state.adventurers[3], heroes[3]);
   assert(!advanceDay(result.state).events.some(event=>event.type==="sale"),
