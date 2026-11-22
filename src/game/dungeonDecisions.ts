@@ -66,6 +66,7 @@ export function chooseHeroDungeonDecision(
 export function chooseLiveHeroDungeonDecision(
   hero:AdventurerState,progress:Level7HeroProgress|undefined,
   replay:Level7Replay,layout?:DungeonLayout,world?:Level7World,
+  bossPartyReady=false,
 ):HeroDungeonDecision {
   if(hero.floor<1||hero.floor>9||hero.health<=0||
     (hero.status!=="exploring"&&
@@ -73,6 +74,10 @@ export function chooseLiveHeroDungeonDecision(
     throw new RangeError("Only a living ordinary-floor explorer can make a LIVE choice.");
   if(replay.outcome==="retreat")
     return {goal:"resupply",action:"shop"};
+  if(hero.floor===9&&bossPartyReady&&
+     (progress?.visited.length??0)>=13&&
+     hero.health/heroProgression(hero).maxHealth>=0.60)
+    return {goal:"progress",action:"descend"};
   return preferKnownDungeonResourceGoal(
     chooseHeroDungeonDecision(hero,progress,replay),hero,progress,layout,world);
 }
