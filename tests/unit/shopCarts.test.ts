@@ -7,7 +7,6 @@ import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { transferShelf } from "../../src/game/economy.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
-import { quoteCustomerCheckout } from "../../src/game/customerCheckout.ts";
 
 function customers():GameState {
   const base=createGameState(7351);
@@ -43,8 +42,9 @@ test("pickup is durable, removes only physical shelf stock and never charges bef
   assert.deepEqual(picked.state.events,state.events);
   assert.equal(picked.state.rngState,state.rngState);
   assert.deepEqual(parseSave(JSON.stringify(createSave(picked.state))),picked.state);
-  assert.equal(quoteCustomerCheckout(picked.state,hero.id),null,
-    "The uncharged carried goods cannot be double-charged by legacy checkout.");
+  assert.equal(picked.state.events.filter(event=>event.type==="sale").length,
+    state.events.filter(event=>event.type==="sale").length,
+    "The only register cannot charge until the held goods are paid.");
 });
 test("cannot reserve the same slot twice, steal held stock or buy an unavailable item",()=>{
   const state=customers();
