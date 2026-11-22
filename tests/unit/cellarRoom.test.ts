@@ -17,7 +17,7 @@ test("cellar is a separate saved cave using the existing mining rules",()=>{
   assert.equal(store.excavateCellarCell({x:8,z:0}),
     "Cellar rock excavated.");
   assert.equal(store.state.cellarRoom.excavatedCells[0],"8,0");
-  assert.strictEqual(store.state.level5Room,initial.level5Room,
+  assert.strictEqual(store.state.shopRoom,initial.shopRoom,
     "Cellar excavation must not mine the public shop.");
   assert.equal(store.state.shopEconomy,initial.shopEconomy);
   assert.equal(store.state.worldClock,initial.worldClock);
