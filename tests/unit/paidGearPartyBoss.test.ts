@@ -36,12 +36,17 @@ test("physically purchased gear carries into the real Floor-10 GroupCombat hero"
   const stocked=merchant.state;
   assert.equal(stocked.shopEconomy.bag["iron-sword"],0);
   assert.equal(stocked.shopEconomy.bag["leather-vest"],0);
-  const quote=merchant.quoteCheckout(first.id);
-  assert(quote,"The buyer must receive a real eligible checkout quote");
-  assert.deepEqual(new Set(quote.lines.map(line=>line.itemId)),
+  // Physically take stock off the real shelves. No hypothetical direct
+  // checkout may award equipment without reserving those actual goods.
+  assert.match(merchant.pickUpShopItem(first.id,"shelf-1-slot-1"),/picked up/);
+  assert.match(merchant.pickUpShopItem(first.id,"shelf-1-slot-2"),/picked up/);
+  const cart=merchant.state.shopCarts.find(c=>c.heroId===first.id)!;
+  assert.deepEqual(new Set(cart.lines.map(line=>line.itemId)),
     new Set(["iron-sword","leather-vest"]));
-  assert.equal(quote.total,17);
-  assert.match(merchant.checkout(quote),/Paid 17g for 2 items/);
+  assert.equal(cart.lines.reduce((sum,line)=>sum+line.subtotal,0),17);
+  assert.equal(merchant.state.shopEconomy.balance,stocked.shopEconomy.balance,
+    "Picking up items is not a paid sale.");
+  assert.match(merchant.payReservedCart(first.id),/paid 17g for 2 line/);
   const paid=merchant.state;
   const buyer=paid.adventurers.find(hero=>hero.id===first.id)!;
   assert.equal(buyer.equipment.weapon,"Iron Sword");
@@ -52,7 +57,7 @@ test("physically purchased gear carries into the real Floor-10 GroupCombat hero"
   assert.deepEqual(paid.events.filter(event=>
     event.type==="sale"&&event.adventurerId===buyer.id).map(event=>event.itemId).sort(),
     ["iron-sword","leather-vest"]);
-  assert.match(merchant.checkout(quote),/already paid today/);
+  assert.match(merchant.payReservedCart(first.id),/no payable cart/);
   assert.strictEqual(merchant.state,paid,"A paid cart cannot settle twice");
   assert.deepEqual(parseSave(JSON.stringify(createSave(paid))),paid);
 

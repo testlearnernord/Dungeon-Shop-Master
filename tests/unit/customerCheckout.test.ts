@@ -146,21 +146,31 @@ test("manual sale is not replayed automatically for the same hero at the next da
     afterDay.state);
 });
 
-test("GameStore exposes a pure preview and commits only once after validation",()=>{
+test("GameStore only commits physical pickup and a single staffed-register payment",()=>{
   const store=new GameStore(shopState());
-  const quote=store.quoteCheckout(store.state.adventurers[0].id);
-  assert(quote);
-  const before=store.state;
-  let notifies=0;
-  store.subscribe(()=>notifies++);
-  assert.strictEqual(store.state,before);
-  const msg=store.checkout(quote);
-  assert.match(msg,/Paid .*g for/);
-  assert.equal(notifies,1);
-  const now=store.state;
-  assert.match(store.checkout(quote),/already paid today/);
-  assert.strictEqual(store.state,now);
-  assert.equal(notifies,1);
+  const heroId=store.state.adventurers[0].id;
+  const intent=forecastShoppingIntents(store.state).get(heroId)!;
+  assert(intent.items.length>0);
+  const first=intent.items[0];
+  const original=store.state;
+  let notifications=0;
+  store.subscribe(()=>notifications++);
+  assert.strictEqual(store.state,original);
+  assert.match(store.pickUpShopItem(heroId,first.slotId),/picked up/);
+  assert.equal(notifications,1);
+  const reserved=store.state;
+  assert.equal(reserved.shopEconomy.balance,original.shopEconomy.balance,
+    "Unpaid goods cannot generate revenue.");
+  assert.match(store.payReservedCart(heroId),/paid/);
+  assert.equal(notifications,2);
+  const paid=store.state;
+  assert.equal(paid.shopCarts.length,0);
+  assert.equal(paid.shopEconomy.balance,
+    original.shopEconomy.balance+first.subtotal);
+  assert.match(store.payReservedCart(heroId),/no payable cart/);
+  assert.strictEqual(store.state,paid);
+  assert.equal(notifications,2);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(paid))),paid);
 });
 
 test("Copilot regression: a customer paid once cannot claim freshly restocked bread twice",()=>{

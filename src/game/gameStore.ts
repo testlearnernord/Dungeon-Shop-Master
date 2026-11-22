@@ -6,7 +6,6 @@ import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.
 import {buyHeroDungeonFind} from "./dungeonBuyback.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
 import {resolveFurniturePlacement} from "./furniturePlacement.ts";
-import { checkoutCustomer, quoteCustomerCheckout, type CheckoutQuote } from "./customerCheckout.ts";
 import { pickUpShopItem, returnShopCart, payReservedShopCart } from "./shopCarts.ts";
 import { walkOutWithoutPurchase } from "./shopWalkout.ts";
 import { issueShopCredit, quoteBeggingRequest } from "./shopCredit.ts";
@@ -236,17 +235,6 @@ export class GameStore {
 
   payReservedCart(heroId:string,perfectTiming=false):string {
     const result=payReservedShopCart(this.current,heroId,perfectTiming);
-    this.replace(result.state);
-    return result.message;
-  }
-
-  quoteCheckout(heroId: string): CheckoutQuote | null {
-    return quoteCustomerCheckout(this.current, heroId);
-  }
-
-  /** The only commit point for the future staffed-register UI. */
-  checkout(quote: CheckoutQuote): string {
-    const result = checkoutCustomer(this.current, quote);
     this.replace(result.state);
     return result.message;
   }
