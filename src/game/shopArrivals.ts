@@ -41,7 +41,7 @@ export function scheduleShopVisit(
     rngState: random.state,
     adventurer: {
       ...hero,
-      floor: stay || livePhysicalExit ? "shop" : 4,
+      floor: stay || livePhysicalExit ? "shop" : "transit",
       status: stay ? "at-shop" : livePhysicalExit ? "departing" : "returning",
       shopStayDays: stay ? 1 : 0,
     },

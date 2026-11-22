@@ -165,7 +165,7 @@ function beginPortalReturn(
   const nextClock=scheduleWorldEvent(clock,"report",dueTick,
     SHOP_PORTAL_RETURN_PREFIX+hero.id);
   return {
-    hero:{...hero,status:"traveling",floor:4,shopStayDays:0,
+    hero:{...hero,status:"traveling",floor:"transit",shopStayDays:0,
       lastDungeonFloor:hero.floor===10?9:
         hero.floor as AdventurerState["lastDungeonFloor"]},
     clock:nextClock,
@@ -184,7 +184,7 @@ function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState
   const hero=state.adventurers.find(h=>h.id===id);
   if(!journey||journey.phase!=="portal"||
      journey.dueTick!==state.worldClock.tick||
-     !hero||hero.status!=="traveling"||hero.floor!==4)
+     !hero||hero.status!=="traveling"||hero.floor!=="transit")
     throw new RangeError("Portal arrival lacks a committed physical return.");
   // Multiple genuine visits in a day are legal. The identity is tied
   // to the ONE consumed portal crossing, not to a lossy per-day hero flag.

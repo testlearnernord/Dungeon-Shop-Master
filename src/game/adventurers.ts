@@ -33,8 +33,8 @@ export interface AdventurerState {
     readonly finds?:Partial<Record<ItemId,number>>;
   };
   /** Numbered depth ONLY while in the dungeon; the cursed shop and off-duty
-   * days are explicitly non-numeric places, not fake Floor 5. */
-  readonly floor: DungeonFloor | "shop" | "away";
+   * days and portal transit are non-numeric places, never fake dungeon floors. */
+  readonly floor: DungeonFloor | "shop" | "away" | "transit";
   /** The real numbered depth at which this hero can resume after visiting
    * Galvik's unnumbered cursed shop. Old saves omit it and resume Floor 1. */
   readonly lastDungeonFloor?:1|2|3|4|5|6|7|8|9;
