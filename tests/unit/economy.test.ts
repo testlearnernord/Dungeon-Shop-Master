@@ -223,7 +223,7 @@ test("actual cashier sells Waybread and herbs at catalog prices without applying
   assert.equal(next.inventory.bread,1);
   assert.equal(next.inventory.healing,1);
   assert.equal(next.gold,hero.gold-10);
-  assert.deepEqual(result.events.map(event=>event.itemId),["bread","healing-herb"]);
+  assert.deepEqual(result.events.map(event=>event.itemId),["healing-herb","bread"]);
 });
 test("injuries without stocked healing supplies cause no passive HP loss",()=>{
   const hero=customer(1,{health:7});

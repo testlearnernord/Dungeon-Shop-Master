@@ -73,17 +73,21 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
     if(hero.status!=="at-shop"||hero.health<=0)continue;
     if(paidHeroIds.has(hero.id))continue;
     const items=byHero.get(hero.id)??[];
+    // An unpaid held cart has already reserved a real portion of stock
+    // and the customer's budget. Classify the remaining needs using
+    // that same virtual inventory, not items already in the cart.
+    const projectedHero=virtualHeroes.find(entry=>entry.id===hero.id)??hero;
     let reason:ShoppingReason="interested";
     if(!items.length){
       const needs=ITEMS.filter(item=>{
-        if(item.id==="bread")return hero.inventory.bread<ECONOMY.breadTarget;
-        if(item.id==="healing-herb")return hero.inventory.healing<ECONOMY.healingTarget;
-        if(item.kind==="weapon")return hero.equipment.weapon===null;
-        if(item.kind==="armor")return hero.equipment.armor===null;
+        if(item.id==="bread")return projectedHero.inventory.bread<ECONOMY.breadTarget;
+        if(item.id==="healing-herb")return projectedHero.inventory.healing<ECONOMY.healingTarget;
+        if(item.kind==="weapon")return projectedHero.equipment.weapon===null;
+        if(item.kind==="armor")return projectedHero.equipment.armor===null;
         return false;
       });
       if(!needs.length)reason="no-need";
-      else if(needs.some(item=>hero.gold>=item.salePrice)){
+      else if(needs.some(item=>projectedHero.gold>=item.salePrice)){
         // Classify affordability against ALL unmet needs, not just goods
         // currently on shelves. A hero with 4g can afford sold-out Waybread
         // even if the only stocked product is a 9g sword. The empty forecast
@@ -92,10 +96,12 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
         reason="unavailable";
       }else reason="cannot-afford";
     }
-    // Choose one truthful and affordable unmet need for an out-of-stock
-    // request bubble. Healing supplies are more urgent than equipment.
-    const projectedHero=virtualHeroes.find(entry=>entry.id===hero.id)??hero;
-    const priorities:readonly ItemId[]=["bread","healing-herb","iron-sword","leather-vest"];
+    // Restock/begging petitions represent urgent affordable necessities,
+    // NOT the same budget trade-off as a funded purchase. Keep bread first
+    // so a penniless hero asks Galvik for food instead of an 8g vest.
+    // When supplies are stocked, paid gear follows the role-aware forecast.
+    const priorities:readonly ItemId[]=["bread","healing-herb",
+      "iron-sword","leather-vest"];
     const wantedItemId=(reason==="unavailable"||reason==="cannot-afford")?
       priorities.find(id=>{
         const item=ITEMS.find(entry=>entry.id===id)!;

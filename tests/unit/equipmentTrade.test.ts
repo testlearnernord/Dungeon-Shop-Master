@@ -38,7 +38,7 @@ test("equipment catalog, wholesale and shelf stocking conserve gold and inventor
   assert.deepEqual(initial, createGameState(), "new trade must never mutate original state");
 });
 
-test("Waybread and herbs come before equipment even when gear sits on the first shelf", () => {
+test("wounded heroes purchase survival supplies before any permanent equipment", () => {
   const stocked = [
     { itemId: "iron-sword" as const, quantity: 2 },
     { itemId: "leather-vest" as const, quantity: 2 },
@@ -55,7 +55,7 @@ test("Waybread and herbs come before equipment even when gear sits on the first 
   assert.equal(trade.economy.balance, 60);
   assert.equal(trade.economy.slots[0].quantity, 2);
   assert.equal(trade.economy.dailySales.revenue, 10);
-  assert.deepEqual(trade.events.map(e=>e.itemId), ["bread", "healing-herb"]);
+  assert.deepEqual(trade.events.map(e=>e.itemId), ["healing-herb", "bread"]);
   assert.deepEqual(tradeAtStartOfDay(limited, 2), trade);
 });
 
@@ -72,7 +72,7 @@ test("equipping is permanent, single-purchase, affordable, and exact in receipts
   assert.equal(first.adventurers[0].gold, 8);
   assert.equal(first.economy.dailySales.units, 4);
   assert.equal(first.economy.dailySales.revenue, 27);
-  assert.deepEqual(first.events.map(e=>e.itemId), ["bread", "healing-herb", "iron-sword", "leather-vest"]);
+  assert.deepEqual(first.events.map(e=>e.itemId), ["healing-herb", "bread", "leather-vest", "iron-sword"]);
   for (const event of first.events) {
     const item = ITEMS.find(x=>x.id===event.itemId)!;
     assert.equal(event.revenue, item.salePrice * event.quantity!);

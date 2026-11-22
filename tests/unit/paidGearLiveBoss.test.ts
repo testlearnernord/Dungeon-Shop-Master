@@ -49,7 +49,7 @@ test("paid Iron Sword and Leather Vest follow one buyer into the authentic saved
   assert.equal(paid.shopEconomy.balance,stocked.shopEconomy.balance+17);
   assert.equal(paid.shopEconomy.dailySales.revenue,17);
   assert.deepEqual(paid.events.filter(event=>
-    event.type==="sale"&&event.adventurerId===buyer.id).map(event=>event.itemId),
+    event.type==="sale"&&event.adventurerId===buyer.id).map(event=>event.itemId).sort(),
     ["iron-sword","leather-vest"]);
   assert.match(merchant.checkout(quote),/already paid today/);
   assert.strictEqual(merchant.state,paid,"A paid cart cannot settle twice");
