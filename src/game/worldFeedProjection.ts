@@ -65,7 +65,7 @@ function eventEntry(event:WorldEvent,state:GameState):WorldFeedEntry|null{
  * resolution, not a guessed treasure marker or passive omniscient route. */
 function observedFloorTarget(state:GameState,heroId:string):WorldFeedTarget{
   const hero=findHero(state,heroId);
-  if(!hero)return {kind:"hero",heroId};
+  if(!hero||typeof hero.floor!=="number")return {kind:"hero",heroId};
   const world=hero.floor===7?state.level7World:
     state.earlyDungeonWorlds?.find(entry=>entry.floor===hero.floor)?.world;
   const progress=world?.heroes.find(entry=>entry.heroId===heroId);
