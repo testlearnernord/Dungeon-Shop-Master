@@ -1,4 +1,6 @@
 import { isLevel5Air, type Level5Room } from "./level5Room.ts";
+import {SHOP_PORTAL_BUILD_CLEARANCE,SEALED_PASSAGE_BUILD_CLEARANCE,
+  overlapsShopPortalClearance} from "./shopPortal.ts";
 import {
   cashierServicePoint,shelfServicePoint,
   shopFixtureBounds,shopFixtureTouches,
@@ -92,8 +94,8 @@ const barriers: readonly Bounds[] = [
   // shelf checkout reachability are tested against actual room geometry
   // after placement, including excavated floor, instead of excluding two
   // large rectangles even when a perfectly safe alternate route exists.
-  {minX:-5.6,maxX:-2.4,minZ:3.15,maxZ:7.0}, // Level 4 corridor
-  {minX:2.4,maxX:5.6,minZ:3.15,maxZ:7.0}, // Level 6 corridor
+  SHOP_PORTAL_BUILD_CLEARANCE, // actual cursed threshold / NPC clearance
+  SEALED_PASSAGE_BUILD_CLEARANCE, // permanent rock over the old right opening
   {minX:-1.8,maxX:1.8,minZ:3.1,maxZ:7.0}, // queue and central walking route
 ];
 const overlap=(a:Bounds,b:Bounds,padding=0)=>
@@ -154,7 +156,8 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
     if(room ? !onRoomFloor(box,room) :
       box.minX < -7.3||box.maxX>7.3||box.minZ< -6.8||box.maxZ>6.8)
       return unsupportedFootprintMessage(box,room,"shelf");
-    if(overlap(box,movableCounterBounds(layout),0.04)||barriers.some(zone=>overlap(box,zone,0.04)))
+    if(overlap(box,movableCounterBounds(layout),0.04)||
+      overlapsShopPortalClearance(box,0.04)||barriers.some(zone=>overlap(box,zone,0.04)))
       return "Keep the counter, entrances and visitor aisles clear.";
   }
   for(let i=0;i<layout.shelves.length;i++)
@@ -171,7 +174,8 @@ export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|nu
       return unsupportedFootprintMessage(box,room,"counter");
     // Keep the actual gate approach clear regardless of counter rotation.
     const gateApproach={minX:-1.8,maxX:1.8,minZ:4,maxZ:7};
-    if(barriers.slice(0,-1).some(zone=>overlap(box,zone,0.04))||
+    if(overlapsShopPortalClearance(box,0.04)||
+      barriers.slice(0,-1).some(zone=>overlap(box,zone,0.04))||
       overlap(box,gateApproach,0.04)||
       layout.shelves.some(shelf=>overlap(box,shelfBounds(shelf),0.04)))
       return "Keep the counter, entrances and visitor aisles clear.";
