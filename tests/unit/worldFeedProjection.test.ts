@@ -61,15 +61,17 @@ test("live fight and boss notifications are based on new authoritative IDs only"
     ...after,worldClock:{...after.worldClock,tick:10},
     liveDungeon:{...after.liveDungeon,combats:[{...combat}]},
   }),[],"A 60Hz combat frame is not a second fight start");
+  const companion=before.adventurers[1];
   const boss={
-    id:"real-boss-1",heroId:hero.id,startedTick:200,
-  } as NonNullable<typeof before.liveDungeon.bossCombat>;
+    id:"real-party-boss-1",heroIds:[hero.id,companion.id],
+  } as NonNullable<typeof before.liveDungeon.partyBossCombat>;
   const facingBoss={...after,liveDungeon:{...after.liveDungeon,
-    bossCombat:boss}};
+    partyBossCombat:boss}};
   const important=projectWorldFeedChanges(after,facingBoss);
   assert.equal(important.length,1);
   assert.equal(important[0].category,"boss");
-  assert.deepEqual(important[0].target,{kind:"boss",heroId:hero.id});
+  assert.equal(important[0].title,"FLOOR 10 · THE CAVE TROLL AWAKENS");
+  assert.deepEqual(important[0].target,{kind:"combat",fightId:boss.id});
   assert.equal(important[0].priority,3);
 });
 
