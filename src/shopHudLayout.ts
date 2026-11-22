@@ -116,7 +116,7 @@ export function setupShopServiceBrief(
       restock.dataset.itemId=wanted.id;
       restock.dataset.urgent=String(seconds<=15);
       restock.title=count>0
-        ?"F or click: select "+wanted.name+" in the hotbar; then stock a shelf"
+        ?"F (when not aiming at a hero) or click: select "+wanted.name+" in the hotbar; then stock a shelf"
         :"No "+wanted.name+" in bag. B opens wholesale.";
       icon.setAttribute("href",import.meta.env.BASE_URL+
         "assets/ui-item-icons.svg#"+wanted.id);

@@ -270,8 +270,11 @@ plates or hit feedback when cleaning obsolete HTML inspectors.
 
 ### V.004 Hero Inspection usability and acceptance
 
-- In the first-person shop, **I** opens the full worldwide Hero Card for
-  the actual projected customer under Galvik's reticle. The small crosshair
+- In the first-person shop, **F** opens the full worldwide Hero Card for
+  the actual projected customer under Galvik's reticle. It takes priority over
+  the existing **F = urgent restock item** shortcut only when a real hero is
+  targeted; otherwise the original item shortcut still works. The former I
+  key has no Hero Card binding. The small crosshair
   prompt appears only for a real eligible nearby customer, not a fabricated
   customer. While the card is open, release mouse lock and temporarily
   detach Galvik's FPS camera inputs, **without pausing** the shared clock.

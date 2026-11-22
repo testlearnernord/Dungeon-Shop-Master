@@ -588,9 +588,10 @@ canvas.addEventListener("pointerdown",event=>{
   event.preventDefault();event.stopImmediatePropagation();
   heroCards.open(id);
 },true);
-// For pointer-locked FPS, I inspects the actual visible customer at center.
+// In pointer-locked FPS, F inspects an actual hero at the reticle.
+// Otherwise the existing F urgent-restock shortcut still runs unmodified.
 window.addEventListener("keydown",event=>{
-  if(event.code!=="KeyI"||event.repeat||event.defaultPrevented||
+  if(event.code!=="KeyF"||event.repeat||event.defaultPrevented||
      event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||
      !canInspectShopHero()||
      (event.target instanceof HTMLElement&&event.target.closest(
@@ -647,7 +648,7 @@ engine.runRenderLoop(() => {
       const id=centeredShopHeroId();
       const hero=id?store.state.adventurers.find(h=>h.id===id):null;
       heroInspectHint.hidden=!hero;
-      if(hero)heroInspectHint.textContent="I · INSPECT "+hero.name;
+      if(hero)heroInspectHint.textContent="F · INSPECT "+hero.name;
     }else heroInspectHint.hidden=true;
   }
   // Cashier is a live, non-modal HUD, not a paused alternate game scene.
