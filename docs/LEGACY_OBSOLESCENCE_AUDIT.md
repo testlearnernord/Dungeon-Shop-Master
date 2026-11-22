@@ -30,7 +30,7 @@
 - `CURSED_SHOP_REALM="cursed-shop"` is not one of the normal numbered dungeon maps.
 - `OrdinaryDungeonFloor = 1|2|3|4|5|6|7|8|9`; `CAVE_TROLL_FLOOR=10`.
 - Real Floor 9 lower stair + a stored 2–3-person valid party, pass checks, HP and scheduled world time starts a Floor-10 boss. The **single saved 60-Hz group motor** owns results and cues. Old Floor-6 solo footage stays as compatible historical data.
-- **Current v34 status:** numeric Floor 5 means the genuine ordinary map, not Galvik's shop. The required persisted shop geometry is `shopRoom`; the three unnumbered hero places are `"shop"`, `"away"` and `"transit"`, and real shop traffic owns just one `portal` gate. Historical `level5Room.ts` naming is functional geometry code, not another serialized shop floor. Still pending: retired Floor-7-only event/status variants and the non-LIVE day solver.
+- **Current v35 status:** numeric Floor 5 means the genuine ordinary map, not Galvik's shop. The required persisted shop geometry is `shopRoom`; the three unnumbered hero places are `"shop"`, `"away"` and `"transit"`, and real shop traffic owns just one `portal` gate. Historical `level5Room.ts` naming is functional geometry code, not another serialized shop floor. Still pending: retired Floor-7-only event/status variants and the non-LIVE day solver.
 
 ## Regression and release obligations
 
@@ -40,7 +40,7 @@
 4. Current floor 5 and floor 6 exist as ordinary maps, normal stairs and real exits. Floor 10 needs a true group. The old one-door compatibility fields must not grant solo group-boss access.
 5. Do not mark issue #294 resolved until new 20/50/100-day runs on *current main*, economic sell-through and real-world browser customer traffic are evaluated. Earlier post-progression runs are useful comparisons, not today's evidence.
 
-**Owner policy (22 November 2026): NO SAVE MIGRATIONS IN ALPHA.** Shop occupancy, room/gate and Boss Pass fields are already canonical in v34. The next refactor must instead retire the non-LIVE day motor, Floor-7-specific runtime/event branches, old Solo-F6 replay readers and test-only compatibility where genuinely obsolete. Bump the format if needed and **reject incompatible old saves with a clear new-campaign message**. Do not write fixture migration for `floor=5`, old routes or imported campaigns; do not maintain both schemas. Preserve genuine assets and actual current gameplay, not historical save import compatibility. Track as [#300](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/300).
+**Owner policy (22 November 2026): NO SAVE MIGRATIONS IN ALPHA.** Shop occupancy, room/gate and Boss Pass fields are already canonical in v35. The independent non-LIVE day motor was removed in #319; dedicated old Solo-F6/Floor-7 event readers are removed in #320. Remaining work concerns Floor-7-only status allowances, legacy abstract loot tokens, and safe renames of genuinely used modules. Bump the format if needed and **reject incompatible old saves with a clear new-campaign message**. Do not write fixture migration for `floor=5`, old routes or imported campaigns; do not maintain both schemas. Preserve genuine assets and actual current gameplay, not historical save import compatibility. Track as [#300](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/300).
 
 ## Alpha v30 — cellar furniture save cut (PR #305)
 
@@ -77,3 +77,7 @@ The real Dungeon Floor 4 cannot masquerade as a portal journey: the LIVE returni
 ### Alpha v34: one canonical ordinary-floor world checkpoint (#315)
 
 Every genuine Dungeon Floor 1–9, including Floor 7, now uses the same required persisted `dungeonWorlds` collection, keyed by its real numeric floor. There is no independent `level7World`, optional `earlyDungeonWorlds` extension or parallel save authority. LIVE movement, combat settlement, party positions, World Feed observation, spectator and viewer invalidation read the same per-floor collection. The strict validator rejects missing keys, duplicate floors, out-of-range floors and obsolete v33 fields. The current Alpha is v34; v33 and older saves require a New Game, without migration. Historical `level7Replay` event payloads and the independent non-LIVE day engine are **not** removed by this change and remain separate issue #300 work.
+
+### Alpha v35 current-event cutover (#320)
+
+The actual once-per-tick LIVE scheduler is the single runtime motor after #319. The strict current event vocabulary now drops obsolete Solo-F6 departure/combat/return and old Floor-7/day-batch event types; all numbered Floor 1–9 recordings use `dungeonReplay` and the unique Floor-10 party encounter uses `partyBossReplay`. Old Alpha saves are rejected, not converted. Other dated sections above intentionally document earlier historical stages.
