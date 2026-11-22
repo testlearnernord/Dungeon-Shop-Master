@@ -19,6 +19,7 @@ import {
 } from "./dungeonParties.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
 import type { BossCombatReplay } from "./bossCombatReplay.ts";
+import type {GroupCombatReplay} from "./groupCombat.ts";
 import {compactReplayFootage} from "./replayRetention.ts";
 import {
   emptyLevel7World, getLevel7Progress,
@@ -84,6 +85,8 @@ export interface WorldEvent {
   readonly combatOutcome?: "victory" | "retreat" | "death";
   /** Exact replay of the committed fixed-step combat. Older events omit this. */
   readonly combatReplay?: BossCombatReplay;
+  /** Full 60Hz archived Cave Troll PARTY fight; no recomputation after death. */
+  readonly partyBossReplay?:GroupCombatReplay;
   /** Committed path and battles of one Level 7 day. */
   readonly level7Replay?: Level7Replay;
   /** Same shared spatial engine/format on an earlier numbered floor. */
