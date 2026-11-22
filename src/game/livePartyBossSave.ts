@@ -200,9 +200,9 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
      monsters.length!==1||
      monsters[0].id!=="cave-troll"||
      monsters[0].specialAbility!=="grapple-throw"||
-     monsters[0].maxHp!==560||
-     monsters[0].damage!==42||
-     monsters[0].armor!==13||
+     monsters[0].maxHp!==700||
+     monsters[0].damage!==46||
+     monsters[0].armor!==16||
      monsters[0].grappleDamage!==55||
      monsters[0].staggerThreshold!==92)
     return fail("must match real saved Level-10 party and boss archetype");

@@ -115,7 +115,7 @@ export function caveTrollPartyOptions(
       ...oldTroll,
       // The unique Floor-10 Cave Troll is a party-grade boss, not the
       // previous single-hero Floor-6 training encounter.
-      hp:560,maxHp:560,damage:42,armor:13,grappleDamage:55,
+      hp:700,maxHp:700,damage:46,armor:16,grappleDamage:55,
       staggerThreshold:92,
     }],
   };

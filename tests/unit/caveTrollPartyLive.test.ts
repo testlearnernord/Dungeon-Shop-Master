@@ -60,7 +60,7 @@ test("real Floor-9 stair commits exactly one party boss, with 60Hz saved fighter
   assert.deepEqual(battle.heroIds,ids);
   assert.equal(battle.options.actors.length,4);
   assert.equal(battle.options.actors.filter(a=>a.specialAbility==="grapple-throw").length,1);
-  assert.equal(battle.options.actors.at(-1)?.maxHp,560);
+  assert.equal(battle.options.actors.at(-1)?.maxHp,700);
   assert(store.state.adventurers.filter(h=>
     ids.includes(h.id)&&h.floor===10&&h.status==="expedition").length===3);
   const view=selectLiveFloorSpectatorFrame(store.state,10)!;
@@ -154,6 +154,9 @@ test("party gateway rejects solo or unauthorized attempts, and gear determines m
     equippedBossHp:fight.state.actors.find(a=>a.id==="cave-troll")?.hp,
     unarmedBossHp:naked.state.actors.find(a=>a.id==="cave-troll")?.hp,
   }));
-  assert.notEqual(fight.state.outcome,"fighting");
+  assert.equal(fight.state.outcome,"heroes",
+    "An equipped, healthy temporary party must be able to defeat the Level-10 boss");
+  assert.notEqual(naked.state.outcome,"heroes",
+    "An unequipped temporary party must not casually beat the Cave Troll");
   assert.equal(fight.replay.frames.length>1,true);
 });
