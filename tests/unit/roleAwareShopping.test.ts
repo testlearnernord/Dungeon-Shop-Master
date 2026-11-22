@@ -74,14 +74,19 @@ test("a gravely injured DPS buys actual treatment before a sword, without free h
   assert.equal(checkout.events[0].itemId,"healing-herb");
 });
 
-test("class-specific stockout petitions request the item the customer needs most",()=>{
+test("scarcity asks Galvik for essentials first, then class gear when supplies are full",()=>{
   const {state,heroId}=prepared("DPS",9);
   const empty={...state,shopEconomy:{...state.shopEconomy,
     slots:state.shopEconomy.slots.map(slot=>({...slot,itemId:null,quantity:0}))}};
   const intent=forecastShoppingIntents(empty).get(heroId)!;
   assert.equal(intent.reason,"unavailable");
-  assert.equal(intent.wantedItemId,"iron-sword");
+  assert.equal(intent.wantedItemId,"bread");
   assert.equal(intent.items.length,0);
+  const supplied={...empty,adventurers:empty.adventurers.map(h=>
+    h.id===heroId?{...h,inventory:{...h.inventory,bread:2,healing:1}}:h)};
+  const gearRequest=forecastShoppingIntents(supplied).get(heroId)!;
+  assert.equal(gearRequest.reason,"unavailable");
+  assert.equal(gearRequest.wantedItemId,"iron-sword");
 });
 
 test("physical held-cart reservation honors changing needs and balances without rerolling",()=>{
