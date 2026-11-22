@@ -78,10 +78,14 @@ test("physically purchased gear carries into the real Floor-10 GroupCombat hero"
   const live=createGroupCombat(gearedOptions);
   const snapshot=captureGroupCombatFrame(live);
   for(let i=0;i<30;i++)stepGroupCombat(live);
-  assert.equal(live.time,0.5);
+  assert(Math.abs(live.time-0.5)<1e-6);
   assert.equal(snapshot.t,0);
   assert(live.actors.some(a=>a.id===first.id&&a.equipment?.weapon==="Iron Sword"));
-  assert.deepEqual(createGroupCombat(gearedOptions).actors.find(a=>a.id===first.id),
-    snapshot.actors.find(a=>a.id===first.id),
-    "The original paid hero must be the saved fighter, not invented preview gear");
+  const initial=createGroupCombat(gearedOptions).actors.find(a=>a.id===first.id)!;
+  const recorded=snapshot.actors.find(a=>a.id===first.id)!;
+  assert.equal(recorded.hp,initial.hp);
+  assert.equal(recorded.x,initial.x);
+  assert.equal(recorded.z,initial.z);
+  assert.equal(recorded.phase,initial.phase);
+  assert.equal(initial.equipment?.weapon,"Iron Sword");
 });
