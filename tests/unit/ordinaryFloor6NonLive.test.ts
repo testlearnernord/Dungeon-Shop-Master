@@ -34,5 +34,5 @@ test("forged historical solo Floor-6 expedition cannot be silently reinterpreted
   const hero=state.adventurers[0];
   const forged={...state,adventurers:state.adventurers.map(h=>h.id===hero.id
     ?{...hero,status:"expedition" as const,floor:6 as const}:h)};
-  assert.throws(()=>advanceDay(forged),/Floor 6.*solo boss expedition/);
+  assert.throws(()=>advanceDay(forged),/Only Floor 10 supports boss expedition/);
 });
