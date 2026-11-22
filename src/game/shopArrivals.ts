@@ -22,8 +22,8 @@ export function scheduleShopVisit(
 ): { adventurer: AdventurerState; events: readonly WorldEvent[]; rngState: number } {
   if (hero.status === "traveling") {
     return {
-      adventurer: { ...hero, floor: "shop", status: "at-shop",
-        // Keep all genuinely owned finds, equipment and supplies intact. },
+      // The already owned physical inventory is unchanged by portal travel.
+      adventurer: { ...hero, floor: "shop", status: "at-shop" },
       events: [arrivalEvent(hero, day)],
       rngState,
     };
