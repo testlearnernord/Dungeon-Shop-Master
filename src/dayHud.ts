@@ -146,8 +146,8 @@ export function setupDayHud(
         permit.className="level6-permit";
         permit.dataset.adventurerId=hero.id;
         permit.setAttribute("aria-pressed",String(hero.visible.level6Permit));
-        permit.textContent=hero.visible.level6Permit?"Revoke L6 pass":"Grant L6 pass";
-        permit.title="Approve this physically present hero's next Level 6 departure.";
+        permit.textContent=hero.visible.level6Permit?"Revoke Boss Pass":"Grant Boss Pass";
+        permit.title="Allow this visitor to join an equipped Temporary Party for the Floor-10 Cave Troll.";
         permit.addEventListener("click",()=>{
           store.setLevel6Permit(hero.id,!hero.visible!.level6Permit);
         });
