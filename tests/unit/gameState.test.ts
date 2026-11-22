@@ -27,7 +27,8 @@ test("one tick advances exactly one day and returns only that tick's determinist
   const initial = createGameState();
   const result = advanceDay(initial);
   assert.equal(result.state.day, 2);
-  assert.deepEqual(result.events.at(-1), { id: "day-2:started", type: "day-started", day: 2, message: "Day 2 begins." });
+  assert.deepEqual(result.events.find(e=>e.type==="day-started"&&e.day===2),{
+    id:"day-2:started",type:"day-started",day:2,message:"Day 2 begins."});
   assert(result.events.some(event=>event.day===1&&event.type==="dungeon-live"),
     "The live scheduler must resolve real events before the bed closes Day 1");
   const priorIds=new Set(initial.events.map(event=>event.id));

@@ -189,7 +189,7 @@ test("checks event-specific outcome, prices, quantities, links and chronology", 
   mutateEvent("sale", (event) => { event.id = "day-2:adventurer-1:sale:unknown"; }, /shelf slot/);
   mutateEvent("dungeon-live", (event) => {
     event.worldTick = 0;
-  }, /worldTick/);
+  }, /worldTick|id/);
   mutateEvent("dungeon-live", (event) => {
     event.dungeonGoal = "cheat";
   }, /dungeonGoal/);

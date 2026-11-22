@@ -47,21 +47,28 @@ test("strict v33 rejects fake numeric transit and old Alpha v32 without migratio
     "A shop visitor cannot occupy an abstract portal transit.");
 });
 
-test("isolated day motor resumes remembered true depth, never fake Floor 4",()=>{
+test("LIVE off-duty reentry resumes the last real depth, never a fake Floor 4",()=>{
   const initial=createGameState(7351);
   const hero=initial.adventurers.find(h=>h.status==="at-shop")!;
-  const returning={...hero,status:"returning" as const,
-    floor:"transit" as const,lastDungeonFloor:3 as const,shopStayDays:0};
+  const away={...hero,status:"off-duty" as const,floor:"away" as const,
+    lastDungeonFloor:3 as const,offDutyUntilDay:3,shopStayDays:0};
   const state={...initial,adventurers:initial.adventurers.map(h=>
-    h.id===hero.id?returning:h)};
+    h.id===hero.id?away:h)};
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
-  const step=advanceDay(state).state;
-  const ordinary=step.events.filter(e=>e.adventurerId===hero.id&&
-    e.day===2&&e.type==="dungeon-exploration");
-  assert.equal(ordinary.length,1);
-  assert.match(ordinary[0].message,/Floor 3/);
-  assert.notEqual(step.adventurers.find(h=>h.id===hero.id)?.floor,"transit");
-  assert.equal(step.events.some(e=>e.adventurerId===hero.id&&e.day===2&&
-    e.type==="sale"),false,"The transfer cannot invent money or goods.");
-  assert.deepEqual(parseSave(JSON.stringify(createSave(step))),step);
+  const day2=advanceDay(state).state;
+  const resting=day2.adventurers.find(h=>h.id===hero.id)!;
+  assert.equal(resting.status,"off-duty");
+  assert.equal(resting.floor,"away");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(day2))),day2);
+  const day3=advanceDay(day2).state;
+  const resumed=day3.adventurers.find(h=>h.id===hero.id)!;
+  assert.equal(resumed.floor,3,
+    "Remembered dungeon depth is a real seeded floor, not shop transit");
+  assert.equal(resumed.status,"exploring");
+  assert(day3.events.some(e=>e.adventurerId===hero.id&&
+    e.day===3&&e.type==="dungeon-live"),
+    "A real clock event records the renewed expedition");
+  assert(!day3.events.some(e=>e.adventurerId===hero.id&&e.day===3&&
+    e.type==="sale"),"Reentry cannot invent merchant revenue");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(day3))),day3);
 });
