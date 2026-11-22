@@ -78,7 +78,7 @@ function acceptanceFixture():{
         tile!=="wall"&&i!==monsterIndex?[i]:[])}],
   };
   return {state:{...base,adventurers,
-      earlyDungeonWorlds:[{floor:1 as const,world},
+      dungeonWorlds:[{floor:1 as const,world},
         {floor:2 as const,world:fightWorld}]},
     debtorId:debtor.id,buyerId:buyer.id,
     victimId:victim.id,pairIds:[first.id,second.id]};

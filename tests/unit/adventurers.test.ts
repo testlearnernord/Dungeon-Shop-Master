@@ -128,7 +128,7 @@ test("a spatial day resolves one genuine shared world and saves its sealed repla
   assert(events.some(e=>e.type==="dungeon-exploration"&&e.dungeonReplay));
   assert(!events.some(e=>e.type==="dungeon-outcome"),
     "retired Floor 1–4 dice path must never run in new campaigns");
-  const worlds=state.earlyDungeonWorlds??[];
+  const worlds=state.dungeonWorlds??[];
   assert(worlds.length>0&&worlds.length<=4);
   assert.deepEqual([...worlds.map(w=>w.floor)].sort((a,b)=>a-b),
     worlds.map(w=>w.floor));
@@ -141,13 +141,11 @@ test("a spatial day resolves one genuine shared world and saves its sealed repla
   assert.deepEqual(advanceDay(first),{state,events});
 });
 
-test("saved old v13 campaigns without early worlds still load and gain them on the next day", () => {
+test("Alpha v34 rejects missing canonical floor worlds rather than migrating", () => {
   const original=createGameState(7351);
-  const {earlyDungeonWorlds:_unused,...old}=original;
-  assert.deepEqual(parseSave(JSON.stringify(createSave(old))),old);
-  const next=advanceDay(old).state;
-  assert((next.earlyDungeonWorlds?.length??0)>0);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(next))),next);
+  const malformed=structuredClone(createSave(original));
+  delete (malformed.payload as {dungeonWorlds?:unknown}).dungeonWorlds;
+  assert.throws(()=>parseSave(JSON.stringify(malformed)),/dungeonWorlds/);
 });
 
 test("a confirmed shop visit does not re-roll purchases, and dead heroes cannot return", () => {
@@ -176,7 +174,7 @@ test("multi-day play and save/reload are deterministic with real shared encounte
     assert(a.adventurers.filter(hero=>hero.status!=="dead").length<=20);
   }
   assert(a.events.some(e=>e.type==="dungeon-exploration"));
-  assert(a.earlyDungeonWorlds?.some(entry=>entry.world.heroes.length>0));
+  assert(a.dungeonWorlds?.some(entry=>entry.world.heroes.length>0));
 });
 
 test("multi-day populations remain bounded with persistent identities", () => {

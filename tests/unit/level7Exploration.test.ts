@@ -200,7 +200,7 @@ test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Trol
       dailySales:{...initial.shopEconomy.dailySales,day}},
     adventurers:initial.adventurers.map(a=>
       a.id===hero.id?first.adventurer:a),
-    level7World:first.world,
+    dungeonWorlds:[{floor:7 as const,world:first.world}],
     dungeonFloors:[{floor:6,cleared:true}],
     events:[...initial.events,{
       id:`day-${day}:${hero.id}:level7-exploration`,

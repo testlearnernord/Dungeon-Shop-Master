@@ -143,7 +143,7 @@ test("one party day commits all member outcomes into v14 campaign replays",()=>{
       dailySales:{...base.shopEconomy.dailySales,day:12}},
     adventurers:base.adventurers.map(h=>
       result.ticks.find(t=>t.adventurer.id===h.id)?.adventurer??h),
-    level7World:result.world,dungeonFloors:[{floor:6,cleared:true}],
+    dungeonWorlds:[{floor:7 as const,world:result.world}],dungeonFloors:[{floor:6,cleared:true}],
     events:[...base.events,...result.ticks.map(t=>({
       id:`day-12:${t.adventurer.id}:level7-exploration`,
       day:12,type:"level7-exploration" as const,
@@ -180,7 +180,7 @@ test("normal committed day uses a single group encounter for co-located heroes",
   const state={...base,
     adventurers:base.adventurers.map(h=>
       heroes.find(p=>p.id===h.id)??h),
-    earlyDungeonWorlds:[{floor:1 as const,world}],
+    dungeonWorlds:[{floor:1 as const,world}],
   };
   const result=advanceDay(state);
   assert.deepEqual(advanceDay(state),result);
