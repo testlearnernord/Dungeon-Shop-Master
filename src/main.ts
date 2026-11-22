@@ -358,7 +358,6 @@ store.subscribe(()=>{
     syncTrafficCheckpoint();
 });
 setupSalesHud(store);
-setupExpeditionHud(store);
 let selectedItemId: ItemId = SHELF_GOODS[0].id;
 setupCampaignHud(store, campaign, () => {
   replacingCampaign=true;
