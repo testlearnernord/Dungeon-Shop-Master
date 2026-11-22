@@ -72,20 +72,22 @@ export class WorldHeroCards {
   private paint(view:HeroCardView):void {
     this.hideMini();
     const wasHidden=this.host.hidden;
-    const oldScroll=this.host.querySelector<HTMLElement>(
-      ".hero-card--expanded")?.scrollTop??0;
+    const existing=this.host.querySelector<HTMLElement>(
+      ".hero-card--expanded");
+    const oldScroll=existing?.dataset.heroId===view.id?
+      existing.scrollTop:0;
     const closeHadFocus=document.activeElement?.id==="world-hero-card-close";
     if(wasHidden)this.previouslyFocused=
       document.activeElement instanceof HTMLElement?
         document.activeElement:null;
     const card=renderHeroCard(view,"expanded");
-    card.scrollTop=oldScroll;
     const close=document.createElement("button");
     close.type="button";close.id="world-hero-card-close";
     close.textContent="×";close.title="Close hero card";
     close.setAttribute("aria-label","Close hero card");
     close.addEventListener("click",()=>this.close());
     this.host.replaceChildren(card,close);this.host.hidden=false;
+    card.scrollTop=oldScroll;
     if(wasHidden){
       this.onVisibilityChange?.(true);
       close.focus({preventScroll:true});
