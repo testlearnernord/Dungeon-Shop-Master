@@ -12,11 +12,13 @@ import {
 } from "./groupCombat.ts";
 
 /**
- * ONE gameplay authority for new Floor-6 encounters.
+ * ONE shared 60-Hz combat authority. The current Floor-10 party boss
+ * and ordinary live encounters consume the group motor; this adapter
+ * also supports historical solo Floor-6 previews.
  *
  * The group motor is the only AI, position, HP and damage writer. The
  * historic flat BossCombatReplay-v1 state is a read-only projection from
- * that motor for the existing cinematic/ledger renderer. Keeping this
+ * that motor for the existing historical cinematic renderer. Keeping this
  * projection avoids inventing a second combat resolver or rerolling replays.
  */
 export type SharedBossPreview=CombatPreviewState & {
