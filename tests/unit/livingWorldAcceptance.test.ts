@@ -5,7 +5,7 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
-import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 import {selectExpeditionArchive,archiveAvailableDays} from "../../src/game/expeditionArchive.ts";
 import {selectLiveBoardHeroes} from "../../src/game/liveBoardProjection.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS} from "../../src/game/liveDungeonRuntime.ts";
@@ -62,7 +62,7 @@ function acceptanceFixture():{
     if(h.status==="exploring")return {...h,floor:4 as const};
     return h;
   });
-  const world={...emptyLevel7World(),
+  const world={...emptySpatialDungeonWorld(),
     resolvedFeatureIds:layout.features.filter(f=>f.id!==trap.id).map(f=>f.id),
     heroes:[
       ...[first.id,second.id].map(heroId=>({
@@ -70,7 +70,7 @@ function acceptanceFixture():{
       {heroId:victim.id,...approach,visited:layout.tiles.flatMap((tile,i)=>
         tile!=="wall"&&i!==trapIndex?[i]:[])},
     ]};
-  const fightWorld={...emptyLevel7World(),
+  const fightWorld={...emptySpatialDungeonWorld(),
     resolvedFeatureIds:fightLayout.features.filter(f=>f.id!==monster.id)
       .map(f=>f.id),
     heroes:[{heroId:fighter.id,...fightApproach,

@@ -1,4 +1,4 @@
-import type {Level5Room} from "./level5Room.ts";
+import type {ShopRoomGeometry} from "./shopRoomGeometry.ts";
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
 import {shelfServicePoint,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 import {checkoutQueuePoints} from "./checkoutQueue.ts";
@@ -48,7 +48,7 @@ export class ShopServiceSpots{
   private roam:readonly ShopPoint[]=[];
   private checkout:readonly ShopPoint[]=[];
 
-  configure(layout:ShopLayout,room?:Level5Room):void {
+  configure(layout:ShopLayout,room?:ShopRoomGeometry):void {
     const signature=JSON.stringify([layout,room??null]);
     if(signature===this.layoutSignature)return;
     this.layoutSignature=signature;
@@ -81,7 +81,7 @@ export class ShopServiceSpots{
     this.claims.clear();this.shelfOwners.clear();this.layoutSignature="";
     this.idle=[];this.idleCount=0;
   }
-  private ensureIdle(layout:ShopLayout,room:Level5Room|undefined,count:number):void {
+  private ensureIdle(layout:ShopLayout,room:ShopRoomGeometry|undefined,count:number):void {
     if(this.idleCount>=count)return;
     this.idleCount=Math.min(100,Math.max(24,count));
     this.idle=idleShopPositions(layout,this.idleCount,room);
@@ -107,7 +107,7 @@ export class ShopServiceSpots{
   restoreClaims(
     claims:readonly ShopServiceClaim[],
     shelves:readonly {readonly shelfId:string;readonly heroId:string}[],
-    layout:ShopLayout,room?:Level5Room,
+    layout:ShopLayout,room?:ShopRoomGeometry,
   ):void{
     this.configure(layout,room);
     this.claims.clear();this.shelfOwners.clear();
@@ -123,7 +123,7 @@ export class ShopServiceSpots{
    */
   reserveShelfAccess(
     heroId:string,shelfId:string,slotIndex:number,from:ShopPoint,
-    layout:ShopLayout,room?:Level5Room,request:ShopServiceRequest={},
+    layout:ShopLayout,room?:ShopRoomGeometry,request:ShopServiceRequest={},
   ):ReservedShopRoute|null {
     this.configure(layout,room);
     if(!heroId||!isFinitePoint(from)||this.shelfBusyFor(shelfId,heroId))
@@ -157,7 +157,7 @@ export class ShopServiceSpots{
    */
   reserve(
     heroId:string,role:ShopWaitingRole,from:ShopPoint,
-    layout:ShopLayout,room?:Level5Room,request:ShopServiceRequest={},
+    layout:ShopLayout,room?:ShopRoomGeometry,request:ShopServiceRequest={},
   ):ReservedShopRoute|null{
     this.configure(layout,room);
     if(!heroId||!isFinitePoint(from)){

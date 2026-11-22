@@ -8,9 +8,9 @@ import {
   dungeonNeighbors, generateExpeditionLayout,
 } from "../../src/game/dungeonLayout.ts";
 import {
-  emptyLevel7World, simulateSpatialDungeonDay,
-  type Level7HeroProgress, type Level7Replay,
-} from "../../src/game/level7Exploration.ts";
+  emptySpatialDungeonWorld, simulateSpatialDungeonDay,
+  type SpatialDungeonHeroProgress, type SpatialDungeonReplay,
+} from "../../src/game/spatialDungeonExploration.ts";
 import { advanceDay, createGameState } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { SeededRandom } from "../../src/game/random.ts";
@@ -51,10 +51,10 @@ test("character generation, world layout and seeded simulations reproduce across
     const layout=generateExpeditionLayout(7351,floor);
     assert.equal(layout.floor,floor);
     assert.equal(layout.width,19);
-    const hero=explorer(7351,floor),world=emptyLevel7World();
+    const hero=explorer(7351,floor),world=emptySpatialDungeonWorld();
     const first=simulateSpatialDungeonDay(hero,world,7351,2);
     assert.deepEqual(first,simulateSpatialDungeonDay(hero,world,7351,2));
-    assert.deepEqual(world,emptyLevel7World(),"pure simulation must not mutate world");
+    assert.deepEqual(world,emptySpatialDungeonWorld(),"pure simulation must not mutate world");
     assert.equal(first.replay.floor,floor);
     assert.equal(first.replay.heroId,hero.id);
     assert(first.replay.steps.length>1);
@@ -94,10 +94,10 @@ test("real trap damage, not a death dice roll, can kill a weakened early-floor h
 
 test("strategic choices respond to actual HP, equipment, loot and map knowledge", () => {
   const hero=explorer(7351,2);
-  const progress:Level7HeroProgress={
+  const progress:SpatialDungeonHeroProgress={
     heroId:hero.id,x:1,z:1,visited:Array.from({length:26},(_,i)=>i+1),
   };
-  const replay:Level7Replay={
+  const replay:SpatialDungeonReplay={
     version:1,day:2,heroId:hero.id,floor:2,
     appearance:{role:hero.role,equipment:hero.equipment},
     steps:[{x:1,z:1,t:0,action:"enter",hp:hero.health}],

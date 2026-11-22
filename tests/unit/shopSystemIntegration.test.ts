@@ -3,7 +3,7 @@ import test from "node:test";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {advanceDay} from "../../src/game/gameState.ts";
 import {createStockedShopState as createGameState} from "./shopFixtures.ts";
-import {createLevel5Room,excavateLevel5Cell,isValidLevel5Room} from "../../src/game/level5Room.ts";
+import {createShopRoomGeometry,excavateShopRoomCell,isValidShopRoomGeometry} from "../../src/game/shopRoomGeometry.ts";
 import {shopServiceReachabilityProblem} from "../../src/game/shopServiceReachability.ts";
 import {restockWaitingPositions} from "../../src/game/restockWaitingPlaces.ts";
 import {checkoutQueuePoints} from "../../src/game/checkoutQueue.ts";
@@ -11,7 +11,7 @@ import {ShopServiceSpots} from "../../src/game/shopServiceSpots.ts";
 import {isObstructed,pathToShopGoal,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 import {type ShopLayout} from "../../src/game/shopLayout.ts";
 import {shelfServicePoint,SHELF_SLOT_COUNT} from "../../src/game/furnitureRegistry.ts";
-import type {Level5Room} from "../../src/game/level5Room.ts";
+import type {ShopRoomGeometry} from "../../src/game/shopRoomGeometry.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {getBedroomFurniture} from "../../src/game/bedroomFurniture.ts";
@@ -21,17 +21,17 @@ const entrance=shopPortalServicePoint("entering");
 const exit=shopPortalServicePoint("leaving");
 const distance=(a:{x:number;z:number},b:{x:number;z:number})=>
   Math.hypot(a.x-b.x,a.z-b.z);
-function carveWing():Level5Room{
-  let room:Level5Room={...createLevel5Room(),expansionTier:2};
+function carveWing():ShopRoomGeometry{
+  let room:ShopRoomGeometry={...createShopRoomGeometry(),expansionTier:2};
   for(let x=8;x<=11;x++)for(let z=-6;z<=6;z++){
-    const attempt=excavateLevel5Cell(room,{x,z});
+    const attempt=excavateShopRoomCell(room,{x,z});
     assert(attempt.ok,"all mined cells must be exposed: "+x+","+z);
     room=attempt.room;
   }
-  assert(isValidLevel5Room(room));
+  assert(isValidShopRoomGeometry(room));
   return room;
 }
-function assertRoute(layout:ShopLayout,room:Level5Room,
+function assertRoute(layout:ShopLayout,room:ShopRoomGeometry,
   from:{x:number;z:number},to:{x:number;z:number}){
   const route=pathToShopGoal(from,to,layout,room);
   assert(route,"unreachable "+JSON.stringify({from,to}));

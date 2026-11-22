@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { replaceShelfPlacement } from "../../src/game/shopLayout.ts";
 import {shelfServicePoint,SHELF_SLOT_COUNT} from "../../src/game/furnitureRegistry.ts";
-import { createLevel5Room } from "../../src/game/level5Room.ts";
+import { createShopRoomGeometry } from "../../src/game/shopRoomGeometry.ts";
 import {createShopRoutePlanner,isObstructed,pathToShopGoal,pathToShelfAccess,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 
 const distance=(a:{x:number;z:number},b:{x:number;z:number})=>
@@ -76,7 +76,7 @@ test("unreachable and invalid requests fail cleanly instead of inventing targets
 });
 
 test("batch planner preserves the exact paths for both entrances, every shelf slot and invalid targets",()=>{
-  const room=createLevel5Room(),layout=createShopLayout();
+  const room=createShopRoomGeometry(),layout=createShopLayout();
   const route=createShopRoutePlanner(layout,room);
   const targets=layout.shelves.flatMap(shelf=>Array.from({length:SHELF_SLOT_COUNT},
     (_,i)=>shelfServicePoint(shelf,i)));
@@ -100,7 +100,7 @@ test("batch planner preserves the exact paths for both entrances, every shelf sl
 });
 
 test("clear-floor buyers walk diagonally rather than following a raster staircase",()=>{
-  const room=createLevel5Room(),layout=createShopLayout();
+  const room=createShopRoomGeometry(),layout=createShopLayout();
   const from={x:-2,z:0},to={x:2,z:2};
   const direct=pathToShopGoal(from,to,layout,room);
   assert(direct);

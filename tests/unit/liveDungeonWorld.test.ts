@@ -11,7 +11,7 @@ import {WORLD_TICKS_PER_DAY,lastWorldTickOfDay}
   from "../../src/game/worldClock.ts";
 import {generateExpeditionLayout,dungeonDownStair,dungeonNeighbors,dungeonShortestPath,tileAt}
   from "../../src/game/dungeonLayout.ts";
-import {emptyLevel7World,chooseKnownReturnStep} from "../../src/game/level7Exploration.ts";
+import {emptySpatialDungeonWorld,chooseKnownReturnStep} from "../../src/game/spatialDungeonExploration.ts";
 
 test("real world-clock event advances one dungeon step during shop play, not at bedtime",()=>{
   const store=new GameStore(createGameState(7351));
@@ -108,7 +108,7 @@ function activeFightFixture():GameStore {
   assert(hero,"Fixture needs an existing live explorer.");
   const positioned={...initial,
     dungeonWorlds:[{floor:1 as const,world:{
-      ...emptyLevel7World(),heroes:[{
+      ...emptySpatialDungeonWorld(),heroes:[{
         heroId:hero.id,x:approach.x,z:approach.z,visited,
       }],
     }}],
@@ -203,7 +203,7 @@ function shortRealReturnFixture():{store:GameStore;heroId:string;path:{x:number;
     health:Math.max(1,Math.floor(h.stats.maxHealth/3)),
     inventory:{...h.inventory,finds:{"iron-ore":1}},
   }:h);
-  const world={...emptyLevel7World(),heroes:[{
+  const world={...emptySpatialDungeonWorld(),heroes:[{
     heroId:hero.id,x:path.at(-1)!.x,z:path.at(-1)!.z,
     visited:path.map(p=>p.z*layout.width+p.x),
   }]};
@@ -335,7 +335,7 @@ function livePartyFixture():{store:GameStore;ids:readonly string[]} {
     inventory:{...h.inventory},
   }:h.status==="exploring"?{...h,floor:4 as const}:h);
   const entrance=layout.entrance.z*layout.width+layout.entrance.x;
-  const world={...emptyLevel7World(),
+  const world={...emptySpatialDungeonWorld(),
     resolvedFeatureIds:layout.features.map(f=>f.id),
     heroes:ids.map(heroId=>({heroId,...layout.entrance,visited:[entrance]})),
   };
@@ -397,7 +397,7 @@ function authoredStairFixture():{store:GameStore;heroId:string;stair:{x:number;z
     inventory:{...h.inventory},
   }:h.status==="exploring"?{...h,floor:4 as const}:h);
   const known=layout.tiles.flatMap((cell,i)=>cell==="wall"?[]:[i]);
-  const world={...emptyLevel7World(),
+  const world={...emptySpatialDungeonWorld(),
     resolvedFeatureIds:layout.features.map(f=>f.id),
     heroes:[{heroId:hero.id,...stair,visited:known}]};
   return {heroId:hero.id,stair,store:new GameStore({...base,adventurers,

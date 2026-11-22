@@ -55,7 +55,7 @@ export function blueprintAtSurface(
   id:FurnitureId,surface:BlueprintSurface,
   hit:{readonly x:number;readonly z:number},
   rotation:0|1|2|3,
-  room?:import("./level5Room.ts").Level5Room,
+  room?:import("./shopRoomGeometry.ts").ShopRoomGeometry,
 ):FurnitureDraft|null {
   if(!Number.isFinite(hit.x)||!Number.isFinite(hit.z))return null;
   const permitted=furnitureDefinition(id).surfaces;

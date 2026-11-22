@@ -6,7 +6,7 @@ import {FISHING_FLICKS,scoreFishingFlick,REQUIRED_FLICKS,
 import {createCellarRoom} from "../../src/game/cellarRoom.ts";
 import {POND_CELLS,isCellarPondUncovered,pondExcavationRemaining} from
   "../../src/game/cellarPond.ts";
-import {excavateLevel5Cell} from "../../src/game/level5Room.ts";
+import {excavateShopRoomCell} from "../../src/game/shopRoomGeometry.ts";
 import {createGameState} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
@@ -16,7 +16,7 @@ test("the basin is revealed by the EXISTING connected six-cell excavation",()=>{
   assert.equal(pondExcavationRemaining(room),6);
   assert.equal(isCellarPondUncovered(room),false);
   for(const cell of POND_CELLS){
-    const cut=excavateLevel5Cell(room,cell);
+    const cut=excavateShopRoomCell(room,cell);
     assert.equal(cut.ok,true,JSON.stringify(cell));
     if(cut.ok)room=cut.room;
   }

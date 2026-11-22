@@ -1,7 +1,7 @@
 import {furnitureBounds,furnitureBoundsOverlap} from "./furnitureRegistry.ts";
 import {DEFAULT_ROSTER_BOARD,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 import {shelfBounds,type ShopLayout} from "./shopLayout.ts";
-import type {Level5Room} from "./level5Room.ts";
+import type {ShopRoomGeometry} from "./shopRoomGeometry.ts";
 import {supportedExcavatedWall,wallFurnitureAtWall,
   type WallFurniturePlacement} from "./wallFurniturePlacement.ts";
 
@@ -11,13 +11,13 @@ const width=1.08,half=width/2+.08;
 
 export function wallPortraitAtWall(
   surface:string,hit:{readonly x:number;readonly z:number},
-  room?:Level5Room,
+  room?:ShopRoomGeometry,
 ):WallPortraitPlacement|null{
   return wallFurnitureAtWall(surface,hit,room,true);
 }
 
 export function wallPortraitProblem(
-  pose:WallPortraitPlacement,layout:ShopLayout,room?:Level5Room,
+  pose:WallPortraitPlacement,layout:ShopLayout,room?:ShopRoomGeometry,
   board:RosterBoardPlacement=DEFAULT_ROSTER_BOARD,
 ):string|null{
   if(!pose||![pose.x,pose.z].every(Number.isFinite)||
@@ -52,7 +52,7 @@ export function wallPortraitProblem(
 
 export function replaceWallPortrait(
   current:WallPortraitPlacement|undefined,next:WallPortraitPlacement,
-  layout:ShopLayout,room?:Level5Room,
+  layout:ShopLayout,room?:ShopRoomGeometry,
   board:RosterBoardPlacement=DEFAULT_ROSTER_BOARD,
 ):{placement:WallPortraitPlacement|undefined;message:string}{
   const problem=wallPortraitProblem(next,layout,room,board);

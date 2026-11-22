@@ -20,8 +20,8 @@ test("a real lethal dungeon step raises ONE global world-feed warning and opens 
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const {generateExpeditionLayout,dungeonNeighbors}=
       await import("/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
-    const {emptyLevel7World}=
-      await import("/Dungeon-Shop-Master/src/game/level7Exploration.ts");
+    const {emptySpatialDungeonWorld}=
+      await import("/Dungeon-Shop-Master/src/game/spatialDungeonExploration.ts");
     const initial=createGameState(7351);
     const layout=generateExpeditionLayout(7351,1);
     const trap=layout.features.find(f=>f.kind==="trap"&&
@@ -39,7 +39,7 @@ test("a real lethal dungeon step raises ONE global world-feed warning and opens 
           status:"exploring" as const}
         :h.status==="exploring"?{...h,floor:4 as const}:h),
       dungeonWorlds:[{floor:1 as const,world:{
-        ...emptyLevel7World(),heroes:[{heroId:hero.id,...position,visited}],
+        ...emptySpatialDungeonWorld(),heroes:[{heroId:hero.id,...position,visited}],
       }}],
     });
     game.enableLiveDungeon();

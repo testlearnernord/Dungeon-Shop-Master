@@ -20,7 +20,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
     const {DUNGEON_STEP_INTERVAL_TICKS}=await import("/Dungeon-Shop-Master/src/game/liveDungeonRuntime.ts");
     const {generateExpeditionLayout,dungeonNeighbors}=
       await import("/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
-    const {emptyLevel7World}=await import("/Dungeon-Shop-Master/src/game/level7Exploration.ts");
+    const {emptySpatialDungeonWorld}=await import("/Dungeon-Shop-Master/src/game/spatialDungeonExploration.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const initial=createGameState(7351);
     const map=generateExpeditionLayout(7351,1);
@@ -35,7 +35,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
     if(!hero)throw Error("Missing real explorer");
     const store=new GameStore({...initial,
       dungeonWorlds:[{floor:1 as const,world:{
-        ...emptyLevel7World(),heroes:[{heroId:hero.id,...approach,visited}],
+        ...emptySpatialDungeonWorld(),heroes:[{heroId:hero.id,...approach,visited}],
       }}],
     });
     store.enableLiveDungeon();

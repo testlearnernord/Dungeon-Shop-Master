@@ -1,5 +1,5 @@
-import {createLevel5Room,isLevel5Air,isValidLevel5Room,
-  type Level5Room,type RoomCell} from "./level5Room.ts";
+import {createShopRoomGeometry,isShopRoomAir,isValidShopRoomGeometry,
+  type ShopRoomGeometry,type RoomCell} from "./shopRoomGeometry.ts";
 import {furnitureBounds,furnitureBoundsOverlap} from "./furnitureRegistry.ts";
 /** Render-independent world mapping shared by mining, furniture and visuals. */
 export const CELLAR_ORIGIN_Z=-27;
@@ -9,18 +9,18 @@ export const CELLAR_ENTRY_X=-.85;
 /** A second physical room, but the SAME authoritative excavation rules,
  * cell coordinates, wall-face generator, blueprint validator and world clock.
  * Only the mapping from local cave cells to world coordinates differs. */
-export type CellarRoom=Level5Room;
+export type CellarRoom=ShopRoomGeometry;
 export const createCellarRoom=():CellarRoom=>({
-  ...createLevel5Room(),expansionTier:1,
+  ...createShopRoomGeometry(),expansionTier:1,
 });
 export const isValidCellarRoom=(room:unknown):room is CellarRoom=>
-  isValidLevel5Room(room)&&
+  isValidShopRoomGeometry(room)&&
   (room as CellarRoom).expansionTier>=1;
 export const cellarLocalCell=(x:number,z:number):RoomCell=>({
   x:Math.floor(x+.5),z:Math.floor(z-CELLAR_ORIGIN_Z+.5),
 });
 export const isCellarFloor=(room:CellarRoom,x:number,z:number):boolean=>
-  isLevel5Air(room,cellarLocalCell(x,z));
+  isShopRoomAir(room,cellarLocalCell(x,z));
 export const CELLAR_CHEST_ID="cellar-chest" as const;
 export interface CellarChestPlacement {
   readonly id:typeof CELLAR_CHEST_ID;

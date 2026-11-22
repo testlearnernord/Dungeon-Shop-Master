@@ -9,9 +9,9 @@ import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,
 import {choosePersistentDungeonParty,negotiatePartyFloorDecisions,
   settlePersistentDungeonParties,temporaryPartyChanges,
   type DungeonPartyState} from "./dungeonParties.ts";
-import {advanceSpatialDungeonPartyStep,emptyLevel7World,settleSpatialDungeonCombat,
-  LEVEL7_COMBAT_SECONDS,getLevel7Progress,type PreparedSpatialEncounter,type Level7Replay,
-  type SpatialDungeonFloor,type Level7World} from "./level7Exploration.ts";
+import {advanceSpatialDungeonPartyStep,emptySpatialDungeonWorld,settleSpatialDungeonCombat,
+  SPATIAL_DUNGEON_COMBAT_SECONDS,getSpatialDungeonProgress,type PreparedSpatialEncounter,type SpatialDungeonReplay,
+  type SpatialDungeonFloor,type SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
   groupCombatReplayFromFrames,type GroupCombatState,
   type GroupReplayFrame,type GroupCombatOptions} from "./groupCombat.ts";
@@ -51,7 +51,7 @@ export interface LiveDungeonCombat {
   readonly startedTick:number;
   readonly encounter:PreparedSpatialEncounter;
   readonly heroIds:readonly string[];
-  readonly arrivals:readonly Level7Replay[];
+  readonly arrivals:readonly SpatialDungeonReplay[];
   readonly state:GroupCombatState;
   readonly frames:readonly GroupReplayFrame[];
 }
@@ -143,7 +143,7 @@ function scheduleLiveCombat(state:GameState):GameState{
     LIVE_COMBAT_EVENT_SUBJECT)};
 }
 
-function spatialWorld(state:GameState,floor:SpatialDungeonFloor):Level7World{
+function spatialWorld(state:GameState,floor:SpatialDungeonFloor):SpatialDungeonWorld{
   return dungeonWorldAt(state.dungeonWorlds,floor);
 }
 /** A hero crosses only after physically reaching the floor's entrance.
@@ -229,7 +229,7 @@ function actualStair(
  */
 function settleLivePartyRelationships(
   prior:readonly DungeonPartyState[],encountered:readonly (readonly string[])[],
-  roster:readonly AdventurerState[],worldForFloor:(floor:SpatialDungeonFloor)=>Level7World,
+  roster:readonly AdventurerState[],worldForFloor:(floor:SpatialDungeonFloor)=>SpatialDungeonWorld,
   plans:ReadonlyMap<string,LiveDungeonPlan>,seed:number,day:number,tick:number,
 ):{parties:readonly DungeonPartyState[];events:WorldEvent[]} {
   const claimed=new Set(encountered.flat());
@@ -307,7 +307,7 @@ function commitDungeonTick(state:GameState):GameState {
       ((priorPlan.action==="ascend"&&floor>1&&floor<=9)||
        (priorPlan.action==="descend"&&floor<10))){
       const target=actualStair(state.seed,floor,priorPlan.action);
-      const at=getLevel7Progress(world,hero.id,layout);
+      const at=getSpatialDungeonProgress(world,hero.id,layout);
       if(at.x===target.x&&at.z===target.z){
         // A staircase consumes this scheduled movement event; it may be
         // crossed only from the real saved tile. Co-located companions
@@ -319,7 +319,7 @@ function commitDungeonTick(state:GameState):GameState {
           .filter(Boolean)??[hero];
         const crossing=participants.length>1&&participants.every(member=>{
           const plan=plans.get(member.id);
-          const pos=getLevel7Progress(world,member.id,layout);
+          const pos=getSpatialDungeonProgress(world,member.id,layout);
           return !processed.has(member.id)&&eligible(member)&&
             member.floor===floor&&plan?.action===priorPlan.action&&
             pos.x===target.x&&pos.z===target.z&&
@@ -406,7 +406,7 @@ function commitDungeonTick(state:GameState):GameState {
       }
     }
     if(homeward){
-      const current=getLevel7Progress(world,hero.id,layout);
+      const current=getSpatialDungeonProgress(world,hero.id,layout);
       if(current.x===layout.entrance.x&&current.z===layout.entrance.z){
         const journey=beginPortalReturn(hero,tick,clock,returns);
         byId.set(hero.id,journey.hero);
@@ -423,7 +423,7 @@ function commitDungeonTick(state:GameState):GameState {
     // must never be unable to close the day because a newly started
     // encounter still owns the 60Hz clock after midnight. Defer optional
     // map steps until next morning; portal/stair crossings above still work.
-    if(tick+LEVEL7_COMBAT_SECONDS*20+LIVE_COMBAT_INTERVAL_TICKS>
+    if(tick+SPATIAL_DUNGEON_COMBAT_SECONDS*20+LIVE_COMBAT_INTERVAL_TICKS>
        lastWorldTickOfDay(day)){
       processed.add(hero.id);
       stepCounts.set(hero.id,{heroId:hero.id,
@@ -448,7 +448,7 @@ function commitDungeonTick(state:GameState):GameState {
     // A saved autonomous loot/hunt intention may redirect a step only to a
     // personally known, still-active chest/monster site. Never let the
     // omniscient spectator map plan hero movement.
-    const known=getLevel7Progress(world,hero.id,layout);
+    const known=getSpatialDungeonProgress(world,hero.id,layout);
     const resourceKind=priorPlan?.floor===floor?
       priorPlan.goal==="loot-chest"?"treasure":
       priorPlan.goal==="hunt-ghouls"?"monster":null:null;
@@ -677,9 +677,9 @@ function commitLiveCombatTick(state:GameState):GameState{
     const frames=[...fight.frames];
     for(let i=0;i<LIVE_COMBAT_INTERVAL_TICKS*3&&combat.outcome==="fighting";i++){
       const step=Math.round(combat.time*60)+1;
-      if(step>LEVEL7_COMBAT_SECONDS*60){combat.outcome="draw";break;}
+      if(step>SPATIAL_DUNGEON_COMBAT_SECONDS*60){combat.outcome="draw";break;}
       stepGroupCombat(combat);
-      if(combat.outcome==="fighting"&&step===LEVEL7_COMBAT_SECONDS*60)
+      if(combat.outcome==="fighting"&&step===SPATIAL_DUNGEON_COMBAT_SECONDS*60)
         combat.outcome="draw";
       if(step%6===0||combat.outcome!=="fighting")
         frames.push(captureGroupCombatFrame(combat));

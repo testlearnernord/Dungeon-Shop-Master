@@ -4,7 +4,7 @@ import test from "node:test";
 import { advanceDay, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { tradeAtStartOfDay, buyWholesale, transferShelf, ITEMS } from "../../src/game/economy.ts";
 import { generateExpeditionLayout, dungeonNeighbors } from "../../src/game/dungeonLayout.ts";
-import { simulateSpatialDungeonDay } from "../../src/game/level7Exploration.ts";
+import { simulateSpatialDungeonDay } from "../../src/game/spatialDungeonExploration.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
 function merchantState(gold: number, stocked: ReadonlyArray<{ itemId: "iron-sword" | "leather-vest" | "bread" | "healing-herb"; quantity: number }>) {

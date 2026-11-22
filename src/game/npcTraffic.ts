@@ -1,4 +1,4 @@
-import type { Level5Room } from "./level5Room.ts";
+import type { ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
 import {shelfServicePoint} from "./furnitureRegistry.ts";
 import type { GateSide } from "./npcVisitors.ts";
@@ -142,7 +142,7 @@ const idleCache=new WeakMap<import("./shopLayout.ts").ShopLayout,{
   signature:string;positions:ShopPoint[];requestedCount:number;
 }>();
 export function idleShopPositions(
-  layout:import("./shopLayout.ts").ShopLayout,count:number,room?:Level5Room,
+  layout:import("./shopLayout.ts").ShopLayout,count:number,room?:ShopRoomGeometry,
 ):ShopPoint[] {
   if(!Number.isSafeInteger(count)||count<0||count>1000)
     throw new RangeError("Invalid visitor count");

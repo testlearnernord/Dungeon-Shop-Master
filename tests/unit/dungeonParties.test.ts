@@ -8,8 +8,8 @@ import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { generateExpeditionLayout, dungeonNeighbors, tileAt } from "../../src/game/dungeonLayout.ts";
 import { chooseCoLocatedDungeonParty } from "../../src/game/dungeonParties.ts";
 import {
-  simulateSpatialDungeonPartyDay, type Level7World,
-} from "../../src/game/level7Exploration.ts";
+  simulateSpatialDungeonPartyDay, type SpatialDungeonWorld,
+} from "../../src/game/spatialDungeonExploration.ts";
 import type { AdventurerState } from "../../src/game/adventurers.ts";
 
 const SEED=7351;
@@ -26,7 +26,7 @@ function party(floor:1|7=7):AdventurerState[]{
 function atUnresolvedSite(
   heroes:readonly AdventurerState[],kind:"monster"|"trap"|"treasure",
   generation=0,
-):{world:Level7World;featureId:string}{
+):{world:SpatialDungeonWorld;featureId:string}{
   const layout=generateExpeditionLayout(SEED,heroes[0].floor);
   const feature=layout.features.find(f=>f.kind===kind&&
     (kind!=="monster"||generation===0||

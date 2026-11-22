@@ -1,5 +1,5 @@
 import { createMerchantActions } from "./game/merchantActions.ts";
-import { createLevel5RoomVisuals } from "./game/level5RoomVisuals.ts";
+import { createShopRoomVisuals } from "./game/shopRoomVisuals.ts";
 import { createCashierSfx } from "./cashierSfx.ts";
 import { setupGameSfx } from "./gameSfx.ts";
 import {setupPerformanceHud} from "./performanceHud.ts";
@@ -142,8 +142,8 @@ document.addEventListener("visibilitychange",()=>{
 setupBedroomFurnitureVisuals(scene,store);
 setupCellarFurnitureVisuals(scene,store);
 setupCellarTableVisuals(scene,store);
-const roomVisuals=createLevel5RoomVisuals(scene);
-const cellarVisuals=createLevel5RoomVisuals(scene,"cellar");
+const roomVisuals=createShopRoomVisuals(scene);
+const cellarVisuals=createShopRoomVisuals(scene,"cellar");
 let lastDrawnRoom:typeof store.state.shopRoom|null=null;
 let lastDrawnCellar:typeof store.state.cellarRoom|null=null;
 const refreshRoom=()=>{

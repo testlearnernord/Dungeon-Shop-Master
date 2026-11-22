@@ -1,4 +1,4 @@
-import type { Level5Room } from "./level5Room.ts";
+import type { ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import type { ShopCart } from "./shopCarts.ts";
 import { NPC_STATION_CLEARANCE } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, type ShopPoint } from "./shopperNavigation.ts";
@@ -29,7 +29,7 @@ export const CHECKOUT_QUEUE_SPACING=
  * Queue allocation is based on actual path endpoints, not desired coordinates:
  * path snapping must never cause two customers to share a position.
  */
-export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: number, room?:Level5Room): readonly ShopPoint[] {
+export function checkoutQueuePoints(layout: ShopLayout, from: ShopPoint, count: number, room?:ShopRoomGeometry): readonly ShopPoint[] {
   if (!Number.isSafeInteger(count) || count < 0) throw new RangeError("Invalid queue capacity");
   if (count === 0) return [];
   const candidates: ShopPoint[] = [];

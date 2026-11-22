@@ -1,5 +1,5 @@
-import { level5FloorWalkable, level5FloorSegmentWalkable } from "./level5Walkability.ts";
-import type { Level5Room } from "./level5Room.ts";
+import { shopFloorWalkable, shopFloorSegmentWalkable } from "./shopWalkability.ts";
+import type { ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import {shopFloorFixtures,type ShopLayout} from "./shopLayout.ts";
 import {pointTouchesShopBounds,shelfServicePoint,turnShopOffset,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 
@@ -10,8 +10,8 @@ export interface ShopperRoute {
 }
 const STEP=0.5;
 const MIN=-6.5,MAX=6.5;
-export function isObstructed(p:ShopPoint,layout:ShopLayout,room?:Level5Room):boolean{
-  if(room)return !level5FloorWalkable(p,room,layout);
+export function isObstructed(p:ShopPoint,layout:ShopLayout,room?:ShopRoomGeometry):boolean{
+  if(room)return !shopFloorWalkable(p,room,layout);
   const pad=0.36;
   // Furniture, counter and wall-adjacent space; entrance lanes z>6.5
   // are handled by the existing level-door route.
@@ -28,8 +28,8 @@ export function isObstructed(p:ShopPoint,layout:ShopLayout,room?:Level5Room):boo
 /** Sampling a whole segment (not just its endpoints) prevents off-grid
  * connectors from cutting diagonally through movable furniture.
  */
-export function shopSegmentClear(a:ShopPoint,b:ShopPoint,layout:ShopLayout,room?:Level5Room):boolean {
-  if(room)return level5FloorSegmentWalkable(a,b,room,layout);
+export function shopSegmentClear(a:ShopPoint,b:ShopPoint,layout:ShopLayout,room?:ShopRoomGeometry):boolean {
+  if(room)return shopFloorSegmentWalkable(a,b,room,layout);
   const distance=Math.hypot(b.x-a.x,b.z-a.z);
   if(!Number.isFinite(distance))return false;
   const samples=Math.max(1,Math.ceil(distance/0.1));
@@ -72,7 +72,7 @@ export function shopPointSegmentDistance(
  * Cache only rock and furniture obstacles; never cache moving NPCs.
  * Discard after a layout or room change. */
 export function createShopRoutePlanner(
-  layout:ShopLayout,room?:Level5Room,
+  layout:ShopLayout,room?:ShopRoomGeometry,
   /** Ephemeral occupied cashier stations for this one route batch. */
   avoidStations:readonly ShopPoint[]=[],
 ): (from:ShopPoint,to:ShopPoint)=>ShopperRoute|null {
@@ -186,7 +186,7 @@ export function createShopRoutePlanner(
 
 /** One-shot navigator: creates fresh geometry and returns the original route. */
 export function pathToShopGoal(
-  from:ShopPoint,to:ShopPoint,layout:ShopLayout,room?:Level5Room,
+  from:ShopPoint,to:ShopPoint,layout:ShopLayout,room?:ShopRoomGeometry,
 ):ShopperRoute|null {
   return createShopRoutePlanner(layout,room)(from,to);
 }
@@ -199,7 +199,7 @@ export function pathToShopGoal(
  */
 export function pathToShelfAccess(
   from:ShopPoint,layout:ShopLayout,shelfId:string,slotIndex:number,
-  room?:Level5Room,
+  room?:ShopRoomGeometry,
   canUseStandingPoint?:(point:ShopPoint)=>boolean,
 ):ShopperRoute|null {
   const shelf=layout.shelves.find(entry=>entry.id===shelfId);

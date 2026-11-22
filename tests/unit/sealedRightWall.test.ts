@@ -5,8 +5,8 @@ import {blueprintAtSurface,surfaceFromMesh}
 import {wallPortraitAtWall} from "../../src/game/wallPortraitPlacement.ts";
 import {isSealedPassageWallHit,overlapsShopPortalClearance}
   from "../../src/game/shopPortal.ts";
-import {createLevel5Room,isProtectedRoomCell,excavateLevel5Cell}
-  from "../../src/game/level5Room.ts";
+import {createShopRoomGeometry,isProtectedRoomCell,excavateShopRoomCell}
+  from "../../src/game/shopRoomGeometry.ts";
 import {createGameState} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 
@@ -20,8 +20,8 @@ test("sealed right exit is rock, not a second editable back-wall or mining targe
   assert.equal(surfaceFromMesh("back-right-wall"),null);
   assert.equal(surfaceFromMesh("back-middle-wall"),"back-wall");
   assert.equal(isProtectedRoomCell({x:4,z:7}),true);
-  const room={...createLevel5Room(),expansionTier:3};
-  const mine=excavateLevel5Cell(room,{x:4,z:7});
+  const room={...createShopRoomGeometry(),expansionTier:3};
+  const mine=excavateShopRoomCell(room,{x:4,z:7});
   assert.equal(mine.ok,false);
   assert.equal(room.excavatedCells.length,0);
 });

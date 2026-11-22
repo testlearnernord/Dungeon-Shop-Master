@@ -5,8 +5,8 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {generateExpeditionLayout,dungeonDownStair,dungeonNeighbors}
   from "../../src/game/dungeonLayout.ts";
-import {chooseKnownReturnStep,chooseKnownRouteStep,emptyLevel7World}
-  from "../../src/game/level7Exploration.ts";
+import {chooseKnownReturnStep,chooseKnownRouteStep,emptySpatialDungeonWorld}
+  from "../../src/game/spatialDungeonExploration.ts";
 
 test("seed 9321: climbing from below can discover a real portal route without fake map knowledge",()=>{
   const seed=9321,floor=2;
@@ -24,7 +24,7 @@ test("seed 9321: climbing from below can discover a real portal route without fa
     adventurers:initial.adventurers.map(h=>h.id===hero.id?{
       ...h,floor:2 as const,status:"exploring" as const}:h),
     dungeonWorlds:[{floor:2 as const,world:{
-      ...emptyLevel7World(),heroes:[{heroId:hero.id,...current,visited:[...visited]}],
+      ...emptySpatialDungeonWorld(),heroes:[{heroId:hero.id,...current,visited:[...visited]}],
     }}],
   };
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state,

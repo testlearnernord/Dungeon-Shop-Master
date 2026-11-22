@@ -1,8 +1,8 @@
 import type {DungeonLayout,DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonDownStair,dungeonNeighbors} from "./dungeonLayout.ts";
-import {chooseKnownRouteStep,chooseLevel7Step,chooseKnownResourceStep,
+import {chooseKnownRouteStep,chooseSpatialDungeonStep,chooseKnownResourceStep,
   chooseRenewedSiteStep,
-  type Level7HeroProgress} from "./level7Exploration.ts";
+  type SpatialDungeonHeroProgress} from "./spatialDungeonExploration.ts";
 import {selectKnownResourceSite} from "./dungeonDecisions.ts";
 import type {LiveFloorHero} from "./liveFloorSpectator.ts";
 
@@ -17,7 +17,7 @@ export function predictDungeonHeroSteps(
   resolved:readonly string[]=[],
 ):readonly DungeonPoint[]{
   if(hero.inCombat||hero.activity==="portal")return [];
-  let current:Level7HeroProgress={
+  let current:SpatialDungeonHeroProgress={
     heroId:hero.id,x:hero.x,z:hero.z,visited:[...hero.visited],
   };
   const result:DungeonPoint[]=[];
@@ -44,7 +44,7 @@ export function predictDungeonHeroSteps(
     if(!next&&homeward)break;
     if(!next&&resourceTarget)
       next=chooseKnownResourceStep(layout,current,resourceTarget);
-    next??=chooseLevel7Step(layout,current);
+    next??=chooseSpatialDungeonStep(layout,current);
     next??=chooseRenewedSiteStep(layout,current,
       new Set(current.visited),new Set(resolved));
     if(!next||!dungeonNeighbors(layout,current).some(point=>

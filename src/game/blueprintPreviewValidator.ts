@@ -1,4 +1,4 @@
-import type { Level5Room } from "./level5Room.ts";
+import type { ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import type { FurnitureDraft } from "./furnitureBlueprint.ts";
 import type { ShopLayout } from "./shopLayout.ts";
 
@@ -15,20 +15,20 @@ export interface BlueprintPreviewCheck {
  * occupancy intentionally stays outside the cache.
  */
 export function createBlueprintPreviewValidator(
-  validate:(draft:FurnitureDraft,layout:ShopLayout,room?:Level5Room)=>string|null,
+  validate:(draft:FurnitureDraft,layout:ShopLayout,room?:ShopRoomGeometry)=>string|null,
   quietMs=140,
 ):{
-  evaluate:(draft:FurnitureDraft,layout:ShopLayout,room:Level5Room|undefined,
+  evaluate:(draft:FurnitureDraft,layout:ShopLayout,room:ShopRoomGeometry|undefined,
     now:number,immediate?:boolean,revision?:unknown)=>BlueprintPreviewCheck;
 }{
   let currentLayout:ShopLayout|null=null;
-  let currentRoom:Level5Room|undefined;
+  let currentRoom:ShopRoomGeometry|undefined;
   let currentRevision:unknown;
   let activeKey="";
   let enteredAt=0;
   const cache=new Map<string,string|null>();
   const evaluate=(
-    draft:FurnitureDraft,layout:ShopLayout,room:Level5Room|undefined,
+    draft:FurnitureDraft,layout:ShopLayout,room:ShopRoomGeometry|undefined,
     now:number,immediate=false,revision?:unknown,
   ):BlueprintPreviewCheck=>{
     if(layout!==currentLayout||room!==currentRoom||revision!==currentRevision){

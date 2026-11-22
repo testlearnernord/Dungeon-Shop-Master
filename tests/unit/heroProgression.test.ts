@@ -4,7 +4,7 @@ import {createGameState} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
-import {prepareSpatialDungeonCombat,emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {prepareSpatialDungeonCombat,emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 import {lastWorldTickOfDay} from "../../src/game/worldClock.ts";
 import {developerHeroFromRoster,buildDeveloperCombat,DEFAULT_DEVELOPER_CONFIG}
   from "../../src/game/developerCombatScenario.ts";
@@ -179,7 +179,7 @@ test("late-night ordinary encounters defer their start instead of trapping Galvi
       ...h,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0,
     }),
     dungeonWorlds:[{floor:1 as const,world:{
-      ...emptyLevel7World(),resolvedFeatureIds:layout.features.filter(f=>f.id!==site.id)
+      ...emptySpatialDungeonWorld(),resolvedFeatureIds:layout.features.filter(f=>f.id!==site.id)
         .map(f=>f.id),
       heroes:[{heroId:hero.id,...approach,visited:walkable}],
     }}],

@@ -1,4 +1,4 @@
-import { createLevel5Room, type Level5Room } from "./level5Room.ts";
+import { createShopRoomGeometry, type ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import {createCellarRoom,DEFAULT_CELLAR_CHEST,DEFAULT_CELLAR_TABLE,
   type CellarChestPlacement,type CellarTablePlacement,type CellarRoom} from "./cellarRoom.ts";
 import {createWorldClock,advanceWorldUntil,lastWorldTickOfDay,MAX_WORLD_DAY,type WorldClockState} from "./worldClock.ts";
@@ -11,7 +11,7 @@ import { createEconomy, type ItemId, type MaterialItemId, type Slot } from "./ec
 import {type HeroDungeonGoal,type HeroFloorAction} from "./dungeonDecisions.ts";
 import type {DungeonPartyState} from "./dungeonParties.ts";
 import type {GroupCombatReplay} from "./groupCombat.ts";
-import type {Level7Replay} from "./level7Exploration.ts";
+import type {SpatialDungeonReplay} from "./spatialDungeonExploration.ts";
 import type {DungeonFloorWorld} from "./dungeonWorldState.ts";
 import { DEFAULT_SEED } from "./random.ts";
 import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
@@ -61,7 +61,7 @@ export interface WorldEvent {
   /** Full 60Hz archived Cave Troll PARTY fight; no recomputation after death. */
   readonly partyBossReplay?:GroupCombatReplay;
   /** Any ordinary Floor 1–9 uses this one immutable committed spatial tape. */
-  readonly dungeonReplay?: Level7Replay;
+  readonly dungeonReplay?: SpatialDungeonReplay;
   /** Autonomous strategy and directional choice after the day's real exploration. */
   readonly dungeonGoal?: HeroDungeonGoal;
   readonly floorAction?: HeroFloorAction;
@@ -99,7 +99,7 @@ export interface GameState {
   readonly rosterBoard: RosterBoardPlacement;
   /** Optional one-of-a-kind wall decoration, absent until the player hangs it. */
   readonly wallPortrait?: WallPortraitPlacement;
-  readonly shopRoom: Level5Room;
+  readonly shopRoom: ShopRoomGeometry;
   readonly cellarRoom: CellarRoom;
   readonly cellarChest: CellarChestPlacement;
   readonly cellarTable: CellarTablePlacement;
@@ -150,7 +150,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     shopLayout: createShopLayout(),
     bedroomFurniture: createBedroomFurnitureLayout(),
     rosterBoard: DEFAULT_ROSTER_BOARD,
-    shopRoom: createLevel5Room(),
+    shopRoom: createShopRoomGeometry(),
     cellarRoom: createCellarRoom(),
     cellarChest: {...DEFAULT_CELLAR_CHEST},
     cellarTable: {...DEFAULT_CELLAR_TABLE},

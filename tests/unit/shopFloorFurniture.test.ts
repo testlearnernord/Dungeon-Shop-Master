@@ -9,8 +9,8 @@ import {
 import { replaceShelfPlacement, replaceCounterPlacement, counterDockPoint, shelfBounds, compactCounterBounds, shopFloorFixtures,  } from "../../src/game/shopLayout.ts";
 import {FURNITURE_CATALOG} from "../../src/game/furnitureBlueprint.ts";
 import {classifyFurnitureMesh} from "../../src/game/furnitureSelection.ts";
-import {level5FloorWalkable} from "../../src/game/level5Walkability.ts";
-import {createLevel5Room,excavateLevel5Cell} from "../../src/game/level5Room.ts";
+import {shopFloorWalkable} from "../../src/game/shopWalkability.ts";
+import {createShopRoomGeometry,excavateShopRoomCell} from "../../src/game/shopRoomGeometry.ts";
 import {checkoutQueuePoints} from "../../src/game/checkoutQueue.ts";
 import {isObstructed,pathToShopGoal,shopSegmentClear} from "../../src/game/shopperNavigation.ts";
 import {shopServiceReachabilityProblem} from "../../src/game/shopServiceReachability.ts";
@@ -81,7 +81,7 @@ test("the shelf and cashier's visible models, blueprints, focus and hitboxes hav
 });
 
 test("registered solid collision is the same for nav in original and excavated floor",()=>{
-  const layout=createShopLayout(),room=createLevel5Room();
+  const layout=createShopLayout(),room=createShopRoomGeometry();
   const fixtures=shopFloorFixtures(layout);
   assert.strictEqual(shopFloorFixtures(layout),fixtures,
     "do not rebuild furniture boxes in every BFS navigation cell");
@@ -91,7 +91,7 @@ test("registered solid collision is the same for nav in original and excavated f
       x:(fixture.solid.minX+fixture.solid.maxX)/2,
       z:(fixture.solid.minZ+fixture.solid.maxZ)/2,
     };
-    assert.equal(level5FloorWalkable(center,room,layout),false);
+    assert.equal(shopFloorWalkable(center,room,layout),false);
     assert.equal(isObstructed(center,layout,room),true);
     assert.equal(isObstructed(center,layout),true);
   }
@@ -114,9 +114,9 @@ test("registered solid collision is the same for nav in original and excavated f
 
 test("new registry drives persisted shelf in mined wing while keeping trade decisions unchanged",()=>{
   const first=createGameState(7351);
-  let room={...createLevel5Room(),expansionTier:2};
+  let room={...createShopRoomGeometry(),expansionTier:2};
   for(let x=8;x<=11;x++)for(let z=-6;z<=6;z++){
-    const dug=excavateLevel5Cell(room,{x,z});
+    const dug=excavateShopRoomCell(room,{x,z});
     assert(dug.ok);
     room=dug.room;
   }

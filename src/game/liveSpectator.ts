@@ -1,7 +1,7 @@
 import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {GroupReplayFrame,CombatantSpec,GroupCombatCue} from "./groupCombat.ts";
-import type {SpatialDungeonFloor} from "./level7Exploration.ts";
+import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import {generateExpeditionLayout,type DungeonLayout} from "./dungeonLayout.ts";
 
 /** Presentation-only cache of immutable seeded geometry, never game state. */

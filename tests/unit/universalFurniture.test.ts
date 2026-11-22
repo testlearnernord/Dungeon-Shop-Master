@@ -6,20 +6,20 @@ import {FURNITURE_CATALOG,blueprintAtSurface,surfaceFromMesh} from
   "../../src/game/furnitureBlueprint.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createGameState,advanceDay} from "../../src/game/gameState.ts";
-import {createLevel5Room,excavateLevel5Cell,type Level5Room} from
-  "../../src/game/level5Room.ts";
+import {createShopRoomGeometry,excavateShopRoomCell,type ShopRoomGeometry} from
+  "../../src/game/shopRoomGeometry.ts";
 import {rosterBoardAtWall,rosterBoardProblem} from
   "../../src/game/rosterBoardPlacement.ts";
 import {shopServiceReachabilityProblem} from
   "../../src/game/shopServiceReachability.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 
-function carvedWall():Level5Room{
-  let room:Level5Room={...createLevel5Room(),expansionTier:2};
+function carvedWall():ShopRoomGeometry{
+  let room:ShopRoomGeometry={...createShopRoomGeometry(),expansionTier:2};
   // Real connected 1m-cell excavation, with a full-width exposed rock wall
   // at x=9.5. A board cannot float on a one-metre wall stub.
   for(let x=8;x<=9;x++)for(let z=-3;z<=3;z++){
-    const next=excavateLevel5Cell(room,{x,z});
+    const next=excavateShopRoomCell(room,{x,z});
     assert(next.ok,JSON.stringify(next));
     room=next.room;
   }
@@ -124,8 +124,8 @@ test("universal wall furniture mounts to real mined wall, survives saves and blo
 });
 
 test("a single rock cell cannot support a wall-wide Adventurer Board",()=>{
-  let room:Level5Room={...createLevel5Room(),expansionTier:1};
-  const dug=excavateLevel5Cell(room,{x:8,z:0});
+  let room:ShopRoomGeometry={...createShopRoomGeometry(),expansionTier:1};
+  const dug=excavateShopRoomCell(room,{x:8,z:0});
   assert(dug.ok);room=dug.room;
   const board=rosterBoardAtWall("rock-wall",{x:8.45,z:0},room);
   assert(board);

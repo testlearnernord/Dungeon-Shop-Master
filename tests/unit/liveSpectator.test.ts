@@ -7,7 +7,7 @@ import {selectLiveSpectatorFrame} from "../../src/game/liveSpectator.ts";
 import {selectLiveBoardHeroes} from "../../src/game/liveBoardProjection.ts";
 import {generateExpeditionLayout,dungeonNeighbors}
   from "../../src/game/dungeonLayout.ts";
-import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
   from "../../src/game/liveDungeonRuntime.ts";
 
@@ -43,7 +43,7 @@ test("LIVE combat observation displays only committed frames, never a synthetic 
     tile!=="wall"&&i!==monsterIndex?[i]:[]);
   const hero=initial.adventurers.find(h=>h.floor===1&&h.status==="exploring")!;
   const store=new GameStore({...initial,dungeonWorlds:[{
-    floor:1 as const,world:{...emptyLevel7World(),heroes:[{
+    floor:1 as const,world:{...emptySpatialDungeonWorld(),heroes:[{
       heroId:hero.id,...approach,visited,
     }]},
   }]});

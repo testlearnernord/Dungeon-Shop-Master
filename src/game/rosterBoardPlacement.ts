@@ -1,5 +1,5 @@
 import {furnitureBounds,furnitureBoundsOverlap} from "./furnitureRegistry.ts";
-import type {Level5Room} from "./level5Room.ts";
+import type {ShopRoomGeometry} from "./shopRoomGeometry.ts";
 import {shelfBounds,type ShopLayout} from "./shopLayout.ts";
 import {supportedExcavatedWall,wallFurnitureAtWall,
   type WallFurniturePlacement} from "./wallFurniturePlacement.ts";
@@ -12,13 +12,13 @@ const intersects=furnitureBoundsOverlap;
 
 export function rosterBoardAtWall(
   surface:string,hit:{readonly x:number;readonly z:number},
-  room?:Level5Room,
+  room?:ShopRoomGeometry,
 ):RosterBoardPlacement|null{
   return wallFurnitureAtWall(surface,hit,room,false);
 }
 
 export function rosterBoardProblem(
-  board:RosterBoardPlacement,layout:ShopLayout,room?:Level5Room,
+  board:RosterBoardPlacement,layout:ShopLayout,room?:ShopRoomGeometry,
 ):string|null{
   if(!board||![board.x,board.z].every(Number.isFinite)||
      !Number.isInteger(board.rotation)||board.rotation<0||board.rotation>3)
@@ -51,7 +51,7 @@ export function rosterBoardProblem(
 }
 export function replaceRosterBoard(
   current:RosterBoardPlacement,next:RosterBoardPlacement,
-  layout:ShopLayout,room?:Level5Room,
+  layout:ShopLayout,room?:ShopRoomGeometry,
 ):{placement:RosterBoardPlacement;message:string}{
   const problem=rosterBoardProblem(next,layout,room);
   if(problem)return {placement:current,message:problem};

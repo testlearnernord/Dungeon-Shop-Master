@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { replaceCounterPlacement } from "../../src/game/shopLayout.ts";
 import {checkoutQueuePoints} from "../../src/game/checkoutQueue.ts";
-import {createLevel5Room,excavateLevel5Cell} from "../../src/game/level5Room.ts";
+import {createShopRoomGeometry,excavateShopRoomCell} from "../../src/game/shopRoomGeometry.ts";
 import {ShopServiceSpots} from "../../src/game/shopServiceSpots.ts";
 import {NPC_STATION_CLEARANCE} from "../../src/game/npcTraffic.ts";
 import {classifyFurnitureMesh} from "../../src/game/furnitureSelection.ts";
@@ -13,7 +13,7 @@ const distance=(a:{x:number;z:number},b:{x:number;z:number})=>
 const start={x:-3.43,z:4.65};
 
 test("all customer service intents reserve exclusive actual reachable floor positions",()=>{
-  const layout=createShopLayout(),room=createLevel5Room();
+  const layout=createShopLayout(),room=createShopRoomGeometry();
   const manager=new ShopServiceSpots();
   const stockout=manager.reserve("stockout","restock",start,layout,room);
   const begging=manager.reserve("beggar","credit",start,layout,room);
@@ -44,7 +44,7 @@ test("all customer service intents reserve exclusive actual reachable floor posi
 });
 
 test("claims are released on departure and invalidated only by real room/furniture updates",()=>{
-  const manager=new ShopServiceSpots(),layout=createShopLayout(),room=createLevel5Room();
+  const manager=new ShopServiceSpots(),layout=createShopLayout(),room=createShopRoomGeometry();
   const first=manager.reserve("a","restock",start,layout,room);
   assert(first);
   manager.configure({...layout,shelves:layout.shelves.map(x=>({...x}))},room);
@@ -58,7 +58,7 @@ test("claims are released on departure and invalidated only by real room/furnitu
   assert.equal(moved.message,"Counter placement saved.");
   manager.configure(moved.layout,room);
   assert.equal(manager.claim("b"),null,"counter relocation invalidates earlier service sockets");
-  const mined=excavateLevel5Cell({...room,expansionTier:1},{x:8,z:0});
+  const mined=excavateShopRoomCell({...room,expansionTier:1},{x:8,z:0});
   assert(mined.ok);
   manager.reserve("c","idle",start,moved.layout,room);
   manager.configure(moved.layout,mined.room);
@@ -68,7 +68,7 @@ test("claims are released on departure and invalidated only by real room/furnitu
 });
 
 test("reserved shelf wait uses the moved shelf's access socket and never steals checkout",()=>{
-  const layout=createShopLayout(),room=createLevel5Room();
+  const layout=createShopLayout(),room=createShopRoomGeometry();
   const service=new ShopServiceSpots();
   const checkout=checkoutQueuePoints(layout,{x:0,z:-1},1,room)[0];
   assert(checkout);
@@ -89,7 +89,7 @@ test("reserved shelf wait uses the moved shelf's access socket and never steals 
 });
 
 test("a shelf browser reserves its precise arrival point as well as its shelf",()=>{
-  const layout=createShopLayout(),room=createLevel5Room();
+  const layout=createShopLayout(),room=createShopRoomGeometry();
   const manager=new ShopServiceSpots();
   const shopper=manager.reserveShelfAccess("browser","shelf-2",2,
     start,layout,room);
@@ -115,7 +115,7 @@ test("a shelf browser reserves its precise arrival point as well as its shelf",(
 });
 
 test("a busy shelf approach is not considered free just because the shelf ID is free",()=>{
-  const layout=createShopLayout(),room=createLevel5Room();
+  const layout=createShopLayout(),room=createShopRoomGeometry();
   const manager=new ShopServiceSpots();
   const initial=manager.reserveShelfAccess("initial","shelf-1",2,
     start,layout,room);
@@ -141,7 +141,7 @@ test("orange counter focus follows the actual counter body, not its old 2.5m cle
 test("shelf slots on a moved modular shelf share one exclusive service owner",()=>{
   const spots=new ShopServiceSpots();
   const layout=createShopLayout();
-  spots.configure(layout,createLevel5Room());
+  spots.configure(layout,createShopRoomGeometry());
   assert.equal(spots.claimShelf("shelf-2","hero-a"),true);
   assert.equal(spots.claimShelf("shelf-2","hero-a"),true);
   assert.equal(spots.shelfBusyFor("shelf-2","hero-b"),true);
@@ -156,7 +156,7 @@ test("shelf slots on a moved modular shelf share one exclusive service owner",()
 
 test("adjacent buyers can claim successive single-file cashier stations",()=>{
   const layout=createShopLayout();
-  const room=createLevel5Room();
+  const room=createShopRoomGeometry();
   const positions=checkoutQueuePoints(layout,{x:0,z:-1},5,room);
   assert.equal(positions.length,5);
   for(let i=1;i<positions.length;i++)
@@ -174,7 +174,7 @@ test("adjacent buyers can claim successive single-file cashier stations",()=>{
 });
 
 test("moving a shelf browser to checkout atomically frees the old shelf",()=>{
-  const layout=createShopLayout(),room=createLevel5Room();
+  const layout=createShopLayout(),room=createShopRoomGeometry();
   const spots=new ShopServiceSpots();
   const first=spots.reserveShelfAccess("shopper","shelf-1",2,start,layout,room);
   assert(first);
@@ -193,7 +193,7 @@ test("moving a shelf browser to checkout atomically frees the old shelf",()=>{
 });
 
 test("checkout customers do not walk through already reserved cashier stations",()=>{
-  const layout=createShopLayout(),room=createLevel5Room();
+  const layout=createShopLayout(),room=createShopRoomGeometry();
   const stations=checkoutQueuePoints(layout,start,4,room);
   assert(stations.length>=3);
   const spots=new ShopServiceSpots();
@@ -216,7 +216,7 @@ test("checkout customers do not walk through already reserved cashier stations",
 });
 
 test("credit and restock petitions use nearby quiet stands and do not pace across the cave",()=>{
-  const layout=createShopLayout(),room=createLevel5Room();
+  const layout=createShopLayout(),room=createShopRoomGeometry();
   const spots=new ShopServiceSpots();
   const origin={x:4,z:-2.5};
   const wait=spots.reserve("petition","credit",origin,layout,room);
@@ -234,7 +234,7 @@ test("credit and restock petitions use nearby quiet stands and do not pace acros
 });
 
 test("fifteen simultaneous intents retain exclusive, reachable stations without checkout crowding",()=>{
-  const layout=createShopLayout(),room=createLevel5Room();
+  const layout=createShopLayout(),room=createShopRoomGeometry();
   const stations=checkoutQueuePoints(layout,start,15,room);
   const spots=new ShopServiceSpots();
   let cashierCount=0;

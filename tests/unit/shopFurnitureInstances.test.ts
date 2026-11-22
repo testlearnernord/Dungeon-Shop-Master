@@ -5,7 +5,7 @@ import {createGameState,advanceDay,SIMULATION_VERSION} from "../../src/game/game
 import {createEmptyShelfSlots,tradeAtStartOfDay} from "../../src/game/economy.ts";
 import {nextShelfId,replaceShelfPlacement,MAX_SHOP_SHELVES} from "../../src/game/shopLayout.ts";
 import {SHELF_SLOT_COUNT,shelfServicePoint} from "../../src/game/furnitureRegistry.ts";
-import {createLevel5Room,excavateLevel5Cell,type Level5Room} from "../../src/game/level5Room.ts";
+import {createShopRoomGeometry,excavateShopRoomCell,type ShopRoomGeometry} from "../../src/game/shopRoomGeometry.ts";
 import {shopServiceReachabilityProblem} from "../../src/game/shopServiceReachability.ts";
 import {createShopRoutePlanner,pathToShelfAccess,pathToShopGoal,isObstructed} from "../../src/game/shopperNavigation.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
@@ -13,10 +13,10 @@ import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {shopPortalServicePoint} from "../../src/game/shopPortal.ts";
 
 const origin=shopPortalServicePoint("entering");
-function openWing():Level5Room{
-  let room:Level5Room={...createLevel5Room(),expansionTier:3};
+function openWing():ShopRoomGeometry{
+  let room:ShopRoomGeometry={...createShopRoomGeometry(),expansionTier:3};
   for(let x=8;x<=13;x++)for(let z=-5;z<=5;z++){
-    const cut=excavateLevel5Cell(room,{x,z});
+    const cut=excavateShopRoomCell(room,{x,z});
     assert(cut.ok,"mining must open "+x+","+z);
     room=cut.room;
   }

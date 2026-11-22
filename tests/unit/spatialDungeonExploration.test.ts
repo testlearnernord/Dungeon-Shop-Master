@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { generateDungeonLayout, dungeonNeighbors, tileAt } from "../../src/game/dungeonLayout.ts";
 import {
-  emptyLevel7World, getLevel7Progress, simulateSpatialDungeonDay,
-  chooseLevel7Step, LEVEL7_STEP_BUDGET,
-  type Level7World,
-} from "../../src/game/level7Exploration.ts";
+  emptySpatialDungeonWorld, getSpatialDungeonProgress, simulateSpatialDungeonDay,
+  chooseSpatialDungeonStep, SPATIAL_DUNGEON_STEP_BUDGET,
+  type SpatialDungeonWorld,
+} from "../../src/game/spatialDungeonExploration.ts";
 import { advanceDay, createGameState } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import type { AdventurerState } from "../../src/game/adventurers.ts";
@@ -21,9 +21,9 @@ function dungeonHero(): AdventurerState {
 
 test("level 7 autonomous navigation stays on connected grid edges, never crosses walls", () => {
   const map=generateDungeonLayout(7351,7);
-  let route=getLevel7Progress(emptyLevel7World(),"adventurer-1",map);
+  let route=getSpatialDungeonProgress(emptySpatialDungeonWorld(),"adventurer-1",map);
   for(let i=0;i<300;i++){
-    const next=chooseLevel7Step(map,route);
+    const next=chooseSpatialDungeonStep(map,route);
     if(!next)break;
     assert(dungeonNeighbors(map,route).some(p=>p.x===next.x&&p.z===next.z),
       "AI must make only legal adjacent moves");
@@ -36,12 +36,12 @@ test("level 7 autonomous navigation stays on connected grid edges, never crosses
 });
 
 test("same hero and world produce identical bounded routes and authoritative combat outcomes", () => {
-  const hero=dungeonHero(), start=emptyLevel7World();
+  const hero=dungeonHero(), start=emptySpatialDungeonWorld();
   const first=simulateSpatialDungeonDay(hero,start,7351,4);
   const again=simulateSpatialDungeonDay(hero,start,7351,4);
   assert.deepEqual(first,again);
-  assert.deepEqual(start,emptyLevel7World(),"Simulator must not mutate inputs");
-  assert(first.replay.steps.length<=1+LEVEL7_STEP_BUDGET*3+3);
+  assert.deepEqual(start,emptySpatialDungeonWorld(),"Simulator must not mutate inputs");
+  assert(first.replay.steps.length<=1+SPATIAL_DUNGEON_STEP_BUDGET*3+3);
   assert.equal(first.replay.heroId,hero.id);
   assert.equal(first.replay.appearance.equipment.weapon,"Iron Sword");
   assert.equal(first.adventurer.floor,7);
@@ -52,7 +52,7 @@ test("same hero and world produce identical bounded routes and authoritative com
 test("persistent shared monsters, traps, loot and fights never reroll on camera/replay", () => {
   const hero=dungeonHero();
   const map=generateDungeonLayout(7351,7);
-  let world:Level7World=emptyLevel7World();
+  let world:SpatialDungeonWorld=emptySpatialDungeonWorld();
   let sawCombat=false, sawLoot=false, sawTrap=false;
   const allEncounterFeatures=new Set<string>();
   for(let day=2;day<70;day++){
@@ -121,7 +121,7 @@ test("dungeon healer pays a real supply for each actual fixed-step healing actio
     ...hero,role:"healer",health:Math.floor(hero.stats.maxHealth/2),
     inventory:{...hero.inventory,healing:3},
   };
-  const world:Level7World={
+  const world:SpatialDungeonWorld={
     resolvedFeatureIds:map.features.filter(f=>f.id!==monster.id).map(f=>f.id),
     heroes:[{heroId:hero.id,x:approach.x,z:approach.z,visited}],
   };
@@ -146,7 +146,7 @@ test("a tank really spends purchased Herbs in a committed ordinary encounter",()
     ...base,role:"tank",health:Math.floor(base.stats.maxHealth/2),
     inventory:{...base.inventory,healing:2},
   };
-  const world:Level7World={
+  const world:SpatialDungeonWorld={
     resolvedFeatureIds:map.features.filter(feature=>feature.id!==monster.id)
       .map(feature=>feature.id),
     heroes:[{heroId:tank.id,x:approach.x,z:approach.z,visited}],
@@ -174,7 +174,7 @@ test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Trol
   const visited=layout.tiles.map((kind,i)=>kind!=="wall"&&i!==index?i:-1)
     .filter(i=>i>=0);
   const hero=dungeonHero();
-  const world:Level7World={
+  const world:SpatialDungeonWorld={
     resolvedFeatureIds:layout.features.filter(f=>f.id!==eliteSite.id).map(f=>f.id),
     heroes:[{heroId:hero.id,x:approach.x,z:approach.z,visited}],
     siteCycles:[{id:eliteSite.id,cycle:1,resolvedDay:null}],
@@ -219,7 +219,7 @@ test("ordinary first-generation Floor 7 encounters do not silently become bosses
     tileAt(layout,f.x,f.z)==="room")!;
   const approach=dungeonNeighbors(layout,monster)[0];
   const index=monster.z*layout.width+monster.x;
-  const world:Level7World={
+  const world:SpatialDungeonWorld={
     resolvedFeatureIds:layout.features.filter(f=>f.id!==monster.id).map(f=>f.id),
     heroes:[{heroId:dungeonHero().id,x:approach.x,z:approach.z,
       visited:layout.tiles.map((kind,i)=>kind!=="wall"&&i!==index?i:-1)

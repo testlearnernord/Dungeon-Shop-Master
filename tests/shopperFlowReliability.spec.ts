@@ -387,7 +387,7 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
   await page.goto("./");
   const ids=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
-    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const {excavateShopRoomCell}=await import("/Dungeon-Shop-Master/src/game/shopRoomGeometry.ts");
     const {replaceShelfPlacement,replaceCounterPlacement}=await import(
       "/Dungeon-Shop-Master/src/game/shopLayout.ts");
     const {shopServiceReachabilityProblem}=await import(
@@ -398,7 +398,7 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
     const original=createGameState(7351);
     let room={...original.shopRoom,expansionTier:2};
     for(let x=8;x<=9;x++)for(let z=-6;z<=6;z++){
-      const next=excavateLevel5Cell(room,{x,z});
+      const next=excavateShopRoomCell(room,{x,z});
       if(!next.ok)throw Error(next.reason);
       room=next.room;
     }

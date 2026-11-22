@@ -14,7 +14,7 @@ import { createHeroVisual } from "./heroVisual.ts";
 import type { HeroVisual } from "./heroVisual.ts";
 import { DungeonReplayScene, type DungeonTileMesh, type DungeonMarkerMesh, type DungeonRoomDecoration } from "./dungeonReplayScene.ts";
 import {buildDungeonPlayback} from "./dungeonReplayPlayback.ts";
-import type { Level7Replay,SpatialDungeonFloor } from "./level7Exploration.ts";
+import type { SpatialDungeonReplay,SpatialDungeonFloor } from "./spatialDungeonExploration.ts";
 import { observeReplay } from "../replayDisclosure.ts";
 import {selectLiveSpectatorFrame,type LiveSpectatorFrame} from "./liveSpectator.ts";
 import {
@@ -920,7 +920,7 @@ export class DungeonViewer {
     this.centerOn(0);
   }
 
-  private availableReplays(): {id:string;record:Level7Replay;name:string}[] {
+  private availableReplays(): {id:string;record:SpatialDungeonReplay;name:string}[] {
     // Both early floors and Floor 7 are recorded by the SAME spatial engine.
     // Outcomes remain sealed in this selection list.
     return this.store.state.events.filter(e=>
@@ -1435,7 +1435,7 @@ export class DungeonViewer {
     if(this.followActor)this.replayScene?.follow(this.followActor);
   }
   /** Identity is taken from THIS saved tape, never a later party. */
-  private renderTemporaryParty(record:Level7Replay|null):void {
+  private renderTemporaryParty(record:SpatialDungeonReplay|null):void {
     const ids=record?.partyMemberIds??[];
     this.temporaryPartyPanel.hidden=ids.length<2;
     this.temporaryPartyMembers.replaceChildren();

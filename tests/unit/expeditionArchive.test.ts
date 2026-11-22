@@ -10,7 +10,7 @@ import {compactReplayFootage,MAX_SAVED_REPLAYS}
   from "../../src/game/replayRetention.ts";
 import {generateExpeditionLayout,dungeonNeighbors}
   from "../../src/game/dungeonLayout.ts";
-import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
@@ -73,7 +73,7 @@ test("real saved 60Hz fight can be pinned, bookmarked and reloaded without chang
   const visited=layout.tiles.flatMap((cell,i)=>cell!=="wall"&&i!==index?[i]:[]);
   const hero=initial.adventurers.find(h=>h.status==="exploring"&&h.floor===1)!;
   const store=new GameStore({...initial,dungeonWorlds:[{
-    floor:1 as const,world:{...emptyLevel7World(),heroes:[{
+    floor:1 as const,world:{...emptySpatialDungeonWorld(),heroes:[{
       heroId:hero.id,...approach,visited,
     }]},
   }]});

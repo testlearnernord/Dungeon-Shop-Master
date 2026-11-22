@@ -5,7 +5,7 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {generateExpeditionLayout,dungeonNeighbors}
   from "../../src/game/dungeonLayout.ts";
-import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 import {selectLiveBoardHeroes,liveBoardHeroesForFilter,committedDeathSignals}
   from "../../src/game/liveBoardProjection.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS}
@@ -47,7 +47,7 @@ function realTrapDeath():{store:GameStore;id:string}{
   const adventurers=initial.adventurers.map(h=>h.id===hero.id
     ?{...h,health:1,floor:1 as const,status:"exploring" as const}
     :h.status==="exploring"?{...h,floor:4 as const}:h);
-  const world={...emptyLevel7World(),heroes:[{
+  const world={...emptySpatialDungeonWorld(),heroes:[{
     heroId:hero.id,...approach,visited,
   }]};
   const store=new GameStore({...initial,adventurers,

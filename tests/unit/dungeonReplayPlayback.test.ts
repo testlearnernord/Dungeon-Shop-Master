@@ -4,7 +4,7 @@ import {
   buildDungeonPlayback, dungeonPlaybackAt, dungeonVisibleTiles,
 } from "../../src/game/dungeonReplayPlayback.ts";
 import { generateDungeonLayout, dungeonNeighbors } from "../../src/game/dungeonLayout.ts";
-import { simulateSpatialDungeonDay, emptyLevel7World } from "../../src/game/level7Exploration.ts";
+import { simulateSpatialDungeonDay, emptySpatialDungeonWorld } from "../../src/game/spatialDungeonExploration.ts";
 import {createGameState} from "../../src/game/gameState.ts";
 import {realSpatialTapeFixture} from "./realSpatialTapeFixture.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
@@ -18,7 +18,7 @@ function heroForReplay() {
 test("fog starts from historical knowledge and never leaks future walked tiles",()=>{
   const layout=generateDungeonLayout(7351,7);
   const hero=heroForReplay();
-  const result=simulateSpatialDungeonDay(hero,emptyLevel7World(),7351,5);
+  const result=simulateSpatialDungeonDay(hero,emptySpatialDungeonWorld(),7351,5);
   const replay=result.replay;
   assert.deepEqual(replay.knownAtStart,
     [layout.entrance.z*layout.width+layout.entrance.x]);

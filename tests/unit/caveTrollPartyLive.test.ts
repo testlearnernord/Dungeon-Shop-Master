@@ -3,7 +3,7 @@ import test from "node:test";
 import {createGameState} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {activateLiveDungeon} from "../../src/game/liveDungeonRuntime.ts";
-import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 import {generateExpeditionLayout,dungeonShortestPath,dungeonDownStair}
   from "../../src/game/dungeonLayout.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
@@ -36,7 +36,7 @@ function bossEntry(){
       ...h,floor:"shop" as const,status:"at-shop" as const,
     }),
     dungeonWorlds:[{floor:9 as const,world:{
-      ...emptyLevel7World(),
+      ...emptySpatialDungeonWorld(),
       heroes:selected.map(h=>({heroId:h.id,...down,visited})),
     }}],
     dungeonParties:[{floor:9 as const,memberIds:ids,formedDay:1}],

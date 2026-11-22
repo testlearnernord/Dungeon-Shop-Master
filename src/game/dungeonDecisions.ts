@@ -1,6 +1,6 @@
 import type { AdventurerState } from "./adventurers.ts";
-import type {Level7HeroProgress,Level7Replay,Level7World} from "./level7Exploration.ts";
-import {chooseKnownRouteStep} from "./level7Exploration.ts";
+import type {SpatialDungeonHeroProgress,SpatialDungeonReplay,SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
+import {chooseKnownRouteStep} from "./spatialDungeonExploration.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {dungeonNeighbors,type DungeonLayout,type DungeonFeature} from "./dungeonLayout.ts";
 
@@ -20,8 +20,8 @@ export interface HeroDungeonDecision {
 }
 
 export function chooseHeroDungeonDecision(
-  hero: AdventurerState, progress: Level7HeroProgress | undefined,
-  replay: Level7Replay,
+  hero: AdventurerState, progress: SpatialDungeonHeroProgress | undefined,
+  replay: SpatialDungeonReplay,
 ): HeroDungeonDecision {
   if(hero.status!=="exploring"||
       hero.health<=0||typeof hero.floor!=="number"||hero.floor<1||hero.floor>9)
@@ -70,8 +70,8 @@ export function chooseHeroDungeonDecision(
  * Every ordinary floor shares the same autonomous goals and physical steps.
  */
 export function chooseLiveHeroDungeonDecision(
-  hero:AdventurerState,progress:Level7HeroProgress|undefined,
-  replay:Level7Replay,layout?:DungeonLayout,world?:Level7World,
+  hero:AdventurerState,progress:SpatialDungeonHeroProgress|undefined,
+  replay:SpatialDungeonReplay,layout?:DungeonLayout,world?:SpatialDungeonWorld,
   bossPartyReady=false,
 ):HeroDungeonDecision {
   if(typeof hero.floor!=="number"||hero.floor<1||hero.floor>9||hero.health<=0||
@@ -90,7 +90,7 @@ export function chooseLiveHeroDungeonDecision(
 /** The full-floor spectator is omniscient; the AI is not. Only personally
  * visited or directly adjacent unresolved site coordinates are eligible. */
 export function selectKnownResourceSite(
-  layout:DungeonLayout,progress:Level7HeroProgress,world:Level7World,
+  layout:DungeonLayout,progress:SpatialDungeonHeroProgress,world:SpatialDungeonWorld,
   kind:"treasure"|"monster",
 ):DungeonFeature|null {
   const known=new Set(progress.visited);
@@ -111,8 +111,8 @@ export function selectKnownResourceSite(
  * opening a map. Greedy heroes prioritize chests; prepared fighters hunt. */
 export function preferKnownDungeonResourceGoal(
   base:HeroDungeonDecision,hero:AdventurerState,
-  progress:Level7HeroProgress|undefined,layout:DungeonLayout|undefined,
-  world:Level7World|undefined,
+  progress:SpatialDungeonHeroProgress|undefined,layout:DungeonLayout|undefined,
+  world:SpatialDungeonWorld|undefined,
 ):HeroDungeonDecision {
   if(base.action!=="stay"||!progress||!layout||!world||
     hero.health/heroProgression(hero).maxHealth<.62)return base;

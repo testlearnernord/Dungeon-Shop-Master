@@ -1,29 +1,29 @@
 import {createStockedShopLayout as createShopLayout} from "./shopFixtures.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createLevel5Room,excavateLevel5Cell,isValidLevel5Room,type Level5Room}
-  from "../../src/game/level5Room.ts";
-import {level5RockFaces} from "../../src/game/level5WallFaces.ts";
+import {createShopRoomGeometry,excavateShopRoomCell,isValidShopRoomGeometry,type ShopRoomGeometry}
+  from "../../src/game/shopRoomGeometry.ts";
+import {shopRockFaces} from "../../src/game/shopWallFaces.ts";
 import { shopLayoutProblem, type ShopLayout } from "../../src/game/shopLayout.ts";
 import {idleShopPositions} from "../../src/game/npcTraffic.ts";
 import {isObstructed,pathToShopGoal} from "../../src/game/shopperNavigation.ts";
 
-function opened(...cells:readonly string[]):Level5Room {
-  return {...createLevel5Room(),expansionTier:1,excavatedCells:[...cells]};
+function opened(...cells:readonly string[]):ShopRoomGeometry {
+  return {...createShopRoomGeometry(),expansionTier:1,excavatedCells:[...cells]};
 }
 test("excavation excludes non-rendered rooms and protected entrances",()=>{
   const room=opened();
-  assert.equal(excavateLevel5Cell(room,{x:0,z:8}).ok,false);
-  assert.equal(excavateLevel5Cell(room,{x:8,z:7}).ok,false);
-  assert.equal(isValidLevel5Room(opened("0,8")),false);
-  assert.equal(isValidLevel5Room(opened("8,7")),false);
-  const mined=excavateLevel5Cell(room,{x:8,z:0});
+  assert.equal(excavateShopRoomCell(room,{x:0,z:8}).ok,false);
+  assert.equal(excavateShopRoomCell(room,{x:8,z:7}).ok,false);
+  assert.equal(isValidShopRoomGeometry(opened("0,8")),false);
+  assert.equal(isValidShopRoomGeometry(opened("8,7")),false);
+  const mined=excavateShopRoomCell(room,{x:8,z:0});
   assert.equal(mined.ok,true);
-  if(mined.ok)assert.equal(isValidLevel5Room(mined.room),true);
+  if(mined.ok)assert.equal(isValidShopRoomGeometry(mined.room),true);
 });
 test("every exposed rock edge matches an air/solid boundary",()=>{
   const room=opened("8,0","9,0","8,1");
-  const faces=level5RockFaces(room);
+  const faces=shopRockFaces(room);
   assert.equal(faces.some(f=>f.x===7.5&&f.z===0),false,
     "original side wall must open only where mined");
   assert.equal(faces.some(f=>f.x===7.5&&f.z===2&&f.mineCell?.z===2),true,

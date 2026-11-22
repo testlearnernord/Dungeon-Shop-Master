@@ -3,8 +3,8 @@ import type { AdventurerState } from "./adventurers.ts";
 import type { DungeonLayout } from "./dungeonLayout.ts";
 import { generateExpeditionLayout } from "./dungeonLayout.ts";
 import {
-  getLevel7Progress, type Level7World, type SpatialDungeonFloor,
-} from "./level7Exploration.ts";
+  getSpatialDungeonProgress, type SpatialDungeonWorld, type SpatialDungeonFloor,
+} from "./spatialDungeonExploration.ts";
 import type {
   HeroDungeonDecision, HeroFloorAction,
 } from "./dungeonDecisions.ts";
@@ -32,19 +32,19 @@ export function willingToTravelTogether(hero:AdventurerState):boolean {
  */
 export function chooseCoLocatedDungeonParty(
   leader:AdventurerState, roster:readonly AdventurerState[],
-  world:Level7World, layout:DungeonLayout,
+  world:SpatialDungeonWorld, layout:DungeonLayout,
   processed:ReadonlySet<string>,
 ):readonly AdventurerState[] {
   const validStatus="exploring";
   if(processed.has(leader.id)||leader.floor!==layout.floor||
     leader.status!==validStatus||!willingToTravelTogether(leader))
     return [leader];
-  const start=getLevel7Progress(world,leader.id,layout);
+  const start=getSpatialDungeonProgress(world,leader.id,layout);
   const companions=roster.filter(hero=>
     hero.id!==leader.id&&!processed.has(hero.id)&&
     hero.floor===layout.floor&&hero.status===validStatus&&
     willingToTravelTogether(hero)&&
-    (()=>{const p=getLevel7Progress(world,hero.id,layout);
+    (()=>{const p=getSpatialDungeonProgress(world,hero.id,layout);
       return p.x===start.x&&p.z===start.z;})());
   companions.sort((a,b)=>Number(a.role===leader.role)-
     Number(b.role===leader.role)||a.id.localeCompare(b.id));
@@ -54,7 +54,7 @@ export function chooseCoLocatedDungeonParty(
 function availableOldMembers(
   party:DungeonPartyState,
   roster:readonly AdventurerState[],
-  world:Level7World, layout:DungeonLayout,
+  world:SpatialDungeonWorld, layout:DungeonLayout,
   processed:ReadonlySet<string>,
 ):readonly AdventurerState[]|null {
   if(party.floor!==layout.floor||party.memberIds.length<2||
@@ -66,9 +66,9 @@ function availableOldMembers(
     hero.floor!==layout.floor||hero.status!==expectedStatus||
     !willingToTravelTogether(hero)))return null;
   const ready=members as AdventurerState[];
-  const start=getLevel7Progress(world,ready[0].id,layout);
+  const start=getSpatialDungeonProgress(world,ready[0].id,layout);
   return ready.every(hero=>{
-    const p=getLevel7Progress(world,hero.id,layout);
+    const p=getSpatialDungeonProgress(world,hero.id,layout);
     return p.x===start.x&&p.z===start.z;
   })?ready:null;
 }
@@ -80,7 +80,7 @@ function availableOldMembers(
  */
 export function choosePersistentDungeonParty(
   leader:AdventurerState, roster:readonly AdventurerState[],
-  world:Level7World, layout:DungeonLayout,
+  world:SpatialDungeonWorld, layout:DungeonLayout,
   processed:ReadonlySet<string>,
   saved:readonly DungeonPartyState[],
 ):readonly AdventurerState[] {
@@ -101,7 +101,7 @@ export function settlePersistentDungeonParties(
   previous:readonly DungeonPartyState[],
   sharedEncounters:readonly (readonly string[])[],
   roster:readonly AdventurerState[],
-  worldForFloor:(floor:SpatialDungeonFloor)=>Level7World,
+  worldForFloor:(floor:SpatialDungeonFloor)=>SpatialDungeonWorld,
   campaignSeed:number, day:number,
   decisions:ReadonlyMap<string,HeroFloorAction>,
 ):readonly DungeonPartyState[] {
@@ -126,9 +126,9 @@ export function settlePersistentDungeonParties(
     const sharedFloor=floor as SpatialDungeonFloor;
     const world=worldForFloor(sharedFloor);
     const layout=generateExpeditionLayout(campaignSeed,sharedFloor);
-    const first=getLevel7Progress(world,members[0].id,layout);
+    const first=getSpatialDungeonProgress(world,members[0].id,layout);
     if(!members.every(hero=>{
-      const position=getLevel7Progress(world,hero.id,layout);
+      const position=getSpatialDungeonProgress(world,hero.id,layout);
       return position.x===first.x&&position.z===first.z;
     }))continue;
     const memberIds=members.map(hero=>hero.id);
