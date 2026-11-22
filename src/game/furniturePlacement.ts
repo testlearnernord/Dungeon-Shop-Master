@@ -51,12 +51,12 @@ export function resolveFurniturePlacement(
   }
   if(draft.id==="adventurer-board"){
     const result=replaceRosterBoard(state.rosterBoard,draft,
-      state.shopLayout,state.level5Room);
+      state.shopLayout,state.shopRoom);
     if(result.message!=="Adventurer board placed.")
       return unchanged(result.message,result.message);
     if(state.wallPortrait){
       const blocked=wallPortraitProblem(state.wallPortrait,state.shopLayout,
-        state.level5Room,result.placement!);
+        state.shopRoom,result.placement!);
       if(blocked)return unchanged(blocked,blocked);
     }
     return {state:result.placement===state.rosterBoard?state:
@@ -74,29 +74,29 @@ export function resolveFurniturePlacement(
   }
   if(draft.id==="counter"){
     const result=replaceCounterPlacement(state.shopLayout,draft,
-      state.level5Room);
+      state.shopRoom);
     if(result.message!=="Counter placement saved.")
       return unchanged(result.message,result.message);
-    const problem=shopServiceReachabilityProblem(result.layout,state.level5Room);
+    const problem=shopServiceReachabilityProblem(result.layout,state.shopRoom);
     if(problem)return unchanged(problem,problem);
     return {state:result.layout===state.shopLayout?state:
       {...state,shopLayout:result.layout},problem:null,
       message:result.message};
   }
   const result=replaceShelfPlacement(state.shopLayout,draft as ShelfPlacement,
-    state.level5Room);
+    state.shopRoom);
   if(result.message!=="Shelf placement saved.")
     return unchanged(result.message,result.message);
   // A new shelf may cover the board even if it leaves the cashier reachable.
   const boardProblem=rosterBoardProblem(
-    state.rosterBoard,result.layout,state.level5Room);
+    state.rosterBoard,result.layout,state.shopRoom);
   if(boardProblem)return unchanged(boardProblem,boardProblem);
   if(state.wallPortrait){
     const blocked=wallPortraitProblem(state.wallPortrait,result.layout,
-      state.level5Room,state.rosterBoard);
+      state.shopRoom,state.rosterBoard);
     if(blocked)return unchanged(blocked,blocked);
   }
-  const problem=shopServiceReachabilityProblem(result.layout,state.level5Room);
+  const problem=shopServiceReachabilityProblem(result.layout,state.shopRoom);
   if(problem)return unchanged(problem,problem);
   const isNew=!state.shopLayout.shelves.some(shelf=>shelf.id===draft.id);
   const economy=isNew?{...state.shopEconomy,
