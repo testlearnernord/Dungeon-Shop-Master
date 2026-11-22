@@ -48,6 +48,10 @@ function snap(s,dayCompleted) {
     hasHealing:living.filter(h=>h.inventory.healing>0).length,
     hasBread:living.filter(h=>h.inventory.bread>0).length,
     zeroGold:living.filter(h=>h.gold===0).length,
+    abstractLootTokens:sum(living,h=>h.inventory.loot),
+    heroesWithTwoLootTokens:living.filter(h=>h.inventory.loot>=2).length,
+    heroPlans:counts(s.liveDungeon.plans.map(p=>p.action)),
+    worldSiteCycles:sum(s.earlyDungeonWorlds??[],w=>w.world.siteCycles?.length??0),
     floorsCleared:s.dungeonFloors.filter(f=>f.cleared).map(f=>f.floor),
     activeCombats:s.liveDungeon.combats.length+(s.liveDungeon.bossCombat?1:0),
     events:s.events.length,
@@ -182,7 +186,8 @@ function run(mode){
     starting:initial, milestones:[initial], eventTypes:{}, salesUnits:{},
     salesRevenue:{},healingUsed:{},credits:{},replayStepActions:{},
     encounterOutcomes:{}, deathCauses:{},deathFloors:{},deathRecords:[],
-    wholesaleUnits:{},wholesaleSpent:0,servedCustomers:0,
+    wholesaleUnits:{},wholesaleSpent:0,influxGold:0,
+    lateEventTypes:{}, xpGrowthDays:[], servedCustomers:0,
     unservedCustomers:0,gateExits:0,failedCheckout:{},nextRequestId:1,
   };
   for(let completed=1;completed<=DAYS;completed++){
@@ -198,6 +203,13 @@ function run(mode){
     if(store.state.day!==startDay+1)throw Error("World day did not advance");
     const added=store.state.events.slice(firstEvent);
     summarizeEvents(metrics,added);
+    if(completed>20)for(const e of added)add(metrics.lateEventTypes,e.type,1);
+    for(const e of added.filter(e=>e.type==="influx")){
+      const newcomer=store.state.adventurers.find(h=>h.id===e.adventurerId);
+      if(newcomer)metrics.influxGold+=newcomer.gold;
+    }
+    if(sum(before,h=>h.xp)!==sum(store.state.adventurers,h=>h.xp))
+      metrics.xpGrowthDays.push(completed);
     classifyDeaths(metrics,before,store.state,added);
     const result=snap(store.state,completed);
     if([1,5,10,20,25,50,75,100,150,200].includes(completed)||
@@ -215,13 +227,14 @@ function run(mode){
   metrics.paidUnits=sum(Object.values(metrics.salesUnits),x=>x);
   metrics.paidGold=sum(Object.values(metrics.salesRevenue),x=>x);
   metrics.debtOutstanding=sum(store.state.shopDebts,d=>d.outstandingGold);
-  metrics.estimatedNetDungeonGoldCreated=final.totalRecordedGold-
-    initial.totalRecordedGold+metrics.wholesaleSpent;
+  metrics.estimatedDungeonGoldCreated=final.totalRecordedGold-
+    initial.totalRecordedGold+metrics.wholesaleSpent-metrics.influxGold;
+  metrics.lastXpGrowthDay=metrics.xpGrowthDays.at(-1)??null;
   metrics.remainingGoods={bag:store.state.shopEconomy.bag,
     shelves:store.state.shopEconomy.slots.map(s=>({itemId:s.itemId,quantity:s.quantity}))};
   metrics.topSurvivors=store.state.adventurers.filter(h=>h.status!=="dead")
     .sort((a,b)=>b.xp-a.xp).slice(0,12).map(h=>({
-      id:h.id,level:h.level,xp:h.xp,dayAlive:h.id,role:h.role,
+      id:h.id,level:h.level,xp:h.xp,lootTokens:h.inventory.loot,role:h.role,
       hp:h.health,maxHp:h.stats.maxHealth,gold:h.gold,
       weapon:h.equipment.weapon,armor:h.equipment.armor,status:h.status,
       floor:h.floor
