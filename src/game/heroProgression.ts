@@ -1,4 +1,4 @@
-import type {AdventurerRole,AdventurerState} from "./adventurers.ts";
+import type {AdventurerState} from "./adventurers.ts";
 
 /**
  * Level is derived from real XP, while stored hero.stats remain immutable
