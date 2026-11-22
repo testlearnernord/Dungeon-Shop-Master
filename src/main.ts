@@ -97,7 +97,17 @@ const runtimePerf=setupPerformanceHud({
 const camera = createFirstPersonCamera(canvas, scene);
 const worldItems = buildWorld(scene);
 const store = new GameStore(campaign.state);
-const heroCards = new WorldHeroCards(store);
+const heroCards = new WorldHeroCards(store,visible=>{
+  // The world keeps ticking, but an inspection must release FPS mouse-look.
+  if(!isShopActive())return;
+  if(visible){
+    camera.detachControl();
+    if(document.pointerLockElement===canvas)void document.exitPointerLock();
+  }else if(!document.querySelector("dialog[open]")&&
+           !document.body.classList.contains("blueprint-active")){
+    camera.attachControl(canvas,true);
+  }
+});
 setupHeroBuybackHud(store);
 // Live time is the exclusive owner in real gameplay. Unit fixtures that
 // directly advance a legacy day do not run simultaneous spatial motors.
@@ -538,21 +548,54 @@ isShopActive=()=>!arena.isActive&&!dungeon.isActive&&
  * The visual pick is throttled and never enables Babylon NPC mesh picking,
  * so shelf checkout/collision decisions stay untouched. */
 let nextShopHover=0;
+const heroInspectHint=document.createElement("div");
+heroInspectHint.id="hero-inspect-hint";
+heroInspectHint.hidden=true;
+heroInspectHint.setAttribute("aria-hidden","true");
+document.body.append(heroInspectHint);
+let nextShopInspectHint=0;
+const shopHeroIdAt=(clientX:number,clientY:number)=>
+  npcVisuals.heroAtScreen(clientX,clientY,canvas);
+const centeredShopHeroId=()=>{
+  const rect=canvas.getBoundingClientRect();
+  return shopHeroIdAt(rect.left+rect.width/2,rect.top+rect.height/2);
+};
+const canInspectShopHero=()=>isShopActive()&&
+  !heroCards.isExpandedOpen&&
+  !document.querySelector("dialog[open]")&&
+  !document.body.classList.contains("blueprint-active");
+
 canvas.addEventListener("pointermove",event=>{
-  if(!isShopActive()||document.pointerLockElement===canvas){
+  if(!canInspectShopHero()||document.pointerLockElement===canvas){
     heroCards.hideMini();return;
   }
   const now=performance.now();
   if(now<nextShopHover)return;
   nextShopHover=now+95;
-  const id=npcVisuals.heroAtScreen(event.clientX,event.clientY,canvas);
+  const id=shopHeroIdAt(event.clientX,event.clientY);
   if(id)heroCards.showMini(id,event.clientX,event.clientY);
   else heroCards.hideMini();
 },{passive:true});
 canvas.addEventListener("pointerleave",()=>heroCards.hideMini());
-canvas.addEventListener("click",event=>{
-  if(!isShopActive()||!event.altKey)return;
-  const id=npcVisuals.heroAtScreen(event.clientX,event.clientY,canvas);
+// Capture BEFORE the shop pointerdown handler, which otherwise may pick up
+// goods and request pointer lock before a later 'click' ever fires.
+canvas.addEventListener("pointerdown",event=>{
+  if(!canInspectShopHero()||event.button!==0||!event.altKey||
+     event.ctrlKey||event.metaKey)return;
+  const id=document.pointerLockElement===canvas?centeredShopHeroId():
+    shopHeroIdAt(event.clientX,event.clientY);
+  if(!id)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  heroCards.open(id);
+},true);
+// For pointer-locked FPS, I inspects the actual visible customer at center.
+window.addEventListener("keydown",event=>{
+  if(event.code!=="KeyI"||event.repeat||event.defaultPrevented||
+     event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||
+     !canInspectShopHero()||
+     (event.target instanceof HTMLElement&&event.target.closest(
+       "input,textarea,select,button,[contenteditable]")))return;
+  const id=centeredShopHeroId();
   if(!id)return;
   event.preventDefault();event.stopImmediatePropagation();
   heroCards.open(id);
@@ -596,6 +639,17 @@ let lastResolutionFrame=0;
 engine.runRenderLoop(() => {
   const frameMs=ignoreNextClockFrame?0:engine.getDeltaTime();
   ignoreNextClockFrame=false;
+  // Read-only crosshair affordance. Avoid costly pointer projections at 144Hz.
+  const inspectNow=performance.now();
+  if(inspectNow>=nextShopInspectHint){
+    nextShopInspectHint=inspectNow+170;
+    if(document.pointerLockElement===canvas&&canInspectShopHero()){
+      const id=centeredShopHeroId();
+      const hero=id?store.state.adventurers.find(h=>h.id===id):null;
+      heroInspectHint.hidden=!hero;
+      if(hero)heroInspectHint.textContent="I · INSPECT "+hero.name;
+    }else heroInspectHint.hidden=true;
+  }
   // Cashier is a live, non-modal HUD, not a paused alternate game scene.
   // LIVE spectator is a camera only: the saved world and physical shop
   // customers must continue on the one authoritative 50ms clock.
