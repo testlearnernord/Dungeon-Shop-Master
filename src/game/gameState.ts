@@ -286,7 +286,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         if(floor===7)level7World=result.world;
         else earlyDungeonWorlds=[
           ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
-          {floor,world:result.world},
+          {floor:floor as EarlyDungeonFloorWorld["floor"],world:result.world},
         ].sort((a,b)=>a.floor-b.floor);
         tick=committedFights.get(ready.id)!;
       }
