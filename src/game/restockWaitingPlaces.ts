@@ -3,6 +3,7 @@ import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import { idleShopPositions, NPC_STATION_CLEARANCE } from "./npcTraffic.ts";
 import { shelfBounds, type ShopLayout } from "./shopLayout.ts";
 import { createShopRoutePlanner, isObstructed, type ShopPoint } from "./shopperNavigation.ts";
+import {shopPortalServicePoint} from "./shopPortal.ts";
 
 export const RESTOCK_WAIT_CLEARANCE=NPC_STATION_CLEARANCE;
 const distance=(a:ShopPoint,b:ShopPoint)=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -31,17 +32,16 @@ export function isQuietPetitionArea(point:ShopPoint):boolean{
 
 /** Generate request/credit stations from the current excavated room and moved
  * furniture. These are presentation destinations, not baked coordinates from
- * the original cave. Both entrances must be able to reach every returned spot.
+ * the original cave. Requesters enter and exit through the same cursed portal.
  */
 export function restockWaitingPositions(
   layout:ShopLayout,room?:Level5Room,
 ):readonly ShopPoint[] {
   const checkout=checkoutQueuePoints(layout,{x:0,z:-1},12,room);
-  const entrances:readonly ShopPoint[]=[
-    {x:-3.43,z:4.65},{x:4.57,z:4.65},
-  ];
+  const entrance=shopPortalServicePoint("entering");
+  const exit=shopPortalServicePoint("leaving");
   const positions:ShopPoint[]=[];
-  // A single topology-scoped grid serves both gates and all candidates.
+  // One topology-scoped grid serves the two lanes of the SAME portal.
   // Constructing a new planner twice per candidate needlessly multiplied
   // the expensive grid work when validating moved furniture.
   const routeTo=createShopRoutePlanner(layout,room);
@@ -52,11 +52,11 @@ export function restockWaitingPositions(
        checkout.some(other=>distance(point,other)<1.8)||
        positions.some(other=>distance(point,other)<1.65))
       continue;
-    const reachable=entrances.every(origin=>{
-      const route=routeTo(origin,point);
-      const end=route?.waypoints.at(-1)??origin;
-      return !!route&&distance(end,point)<=0.17;
-    });
+    const arriving=routeTo(entrance,point);
+    const departing=routeTo(point,exit);
+    const reachable=!!arriving&&!!departing&&
+      distance(arriving.waypoints.at(-1)??entrance,point)<=0.17&&
+      distance(departing.waypoints.at(-1)??point,exit)<=0.17;
     if(reachable)positions.push(point);
   }
   return positions;

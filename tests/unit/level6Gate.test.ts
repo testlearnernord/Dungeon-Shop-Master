@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {SHOP_PORTAL_GATE,SHOP_PORTAL_X,shopPortalTravelLane,
+import {SHOP_PORTAL_GATE,SHOP_PORTAL_X,shopPortalTravelLane,shopPortalServicePoint,
   insideShopPortalCorridor,inShopPortalThroat,
   overlapsShopPortalClearance} from "../../src/game/shopPortal.ts";
 
@@ -9,6 +9,10 @@ test("one portal has distinct inbound/outbound lanes and no right-gate escape",(
   assert.equal(SHOP_PORTAL_X,-4);
   assert.equal(shopPortalTravelLane("entering"),-4.57);
   assert.equal(shopPortalTravelLane("leaving"),-3.43);
+  assert.deepEqual(shopPortalServicePoint("entering"),{x:-4.57,z:4.65});
+  assert.deepEqual(shopPortalServicePoint("leaving"),{x:-3.43,z:4.65});
+  assert.notEqual(shopPortalServicePoint("entering").x,4.57,
+    "the sealed right opening cannot become a second pathfinding origin");
   assert.equal(insideShopPortalCorridor({x:-4.57,z:8}),true);
   assert.equal(insideShopPortalCorridor({x:4,z:8}),false);
   assert.equal(inShopPortalThroat({x:-4,z:7}),true);

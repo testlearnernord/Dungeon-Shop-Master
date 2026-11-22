@@ -44,6 +44,15 @@ export function shopPortalTravelLane(phase:PortalTrafficPhase):number{
   // 1.14 m between traffic lanes, comfortably above shoulder separation.
   return SHOP_PORTAL_X+(phase==="entering"?-0.57:0.57);
 }
+/** Both lanes belong to ONE physical shop portal, not two doorways.
+ * Service/path checks must use these staging points rather than a second
+ * phantom entrance near the permanently sealed former right-hand exit.
+ */
+export function shopPortalServicePoint(phase:PortalTrafficPhase):{
+  readonly x:number;readonly z:number;
+}{
+  return {x:shopPortalTravelLane(phase),z:SHOP_PORTAL_STAGING_Z};
+}
 export function insideShopPortalCorridor(
   point:{readonly x:number;readonly z:number},innerZ=SHOP_PORTAL_INNER_Z,
 ):boolean{

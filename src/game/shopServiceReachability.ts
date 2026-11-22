@@ -4,6 +4,7 @@ import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
 import { createShopRoutePlanner, isObstructed, type ShopPoint } from "./shopperNavigation.ts";
 import {shopLayoutProblem,type ShopLayout} from "./shopLayout.ts";
 import {shelfServicePoint,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
+import {shopPortalServicePoint} from "./shopPortal.ts";
 
 /** A furniture commit is invalid if the physical entrance, checkout and
  * shelf service sockets no longer share a walkable component.
@@ -15,29 +16,26 @@ import {shelfServicePoint,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Room):string|null {
   const geometryError=shopLayoutProblem(layout,room);
   if(geometryError)return geometryError;
-  // A blueprint commit checks multiple gates and every stocked slot against
-  // the same immutable draft layout. Reuse the static walkability grid while
-  // keeping all original full-route and off-grid connector validations.
+  // Both visitor lanes are inside the ONE cursed portal. Check arrival and
+  // physical departure without inventing a second door in the sealed wall.
   const route=createShopRoutePlanner(layout,room);
-  const entrances:ShopPoint[]=[
-    {x:-3.43,z:4.65},{x:4.57,z:4.65},
-  ];
+  const entrance:ShopPoint=shopPortalServicePoint("entering");
+  const exit:ShopPoint=shopPortalServicePoint("leaving");
   const queue=checkoutQueuePoints(layout,{x:0,z:-1},8,room);
   if(queue.length<1)
     return "The checkout has no reachable customer standing position.";
   const cashier=queue[0];
   if(isObstructed(cashier,layout,room))
     return "The checkout is obstructed.";
-  for(const [index,origin] of entrances.entries()){
-    const entranceRoute=route(origin,cashier);
-    if(!entranceRoute)
-      return "Entrance "+(index+1)+" cannot reach the checkout.";
-  }
+  if(!route(entrance,cashier))
+    return "The cursed portal cannot reach the checkout.";
+  if(!route(cashier,exit))
+    return "The checkout cannot reach the cursed portal exit.";
   // An editor may not commit furniture that leaves buyers able to reach
   // shelves and checkout but traps all stockout/credit petitioners. Two
-  // independent request pockets must remain reachable from both gates.
+  // independent request pockets must remain reachable through the portal.
   const requests=restockWaitingPositions(layout,room).filter(point=>
-    entrances.every(origin=>route(origin,point)!==null));
+    route(entrance,point)!==null&&route(point,exit)!==null);
   const petitionPair=requests.some((a,index)=>requests.slice(index+1)
     .some(b=>Math.hypot(a.x-b.x,a.z-b.z)>=1.18));
   if(!petitionPair)
@@ -47,8 +45,7 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Roo
       const service=shelfServicePoint(shelf,slot);
       if(isObstructed(service,layout,room))
         return "Customer standing space is blocked at "+shelf.id+" slot "+(slot+1)+".";
-      if(entrances.some(origin=>!route(origin,service))||
-         !route(service,cashier))
+      if(!route(entrance,service)||!route(service,cashier))
         return "A shelf service point cannot reach the entrance and checkout.";
     }
   }
