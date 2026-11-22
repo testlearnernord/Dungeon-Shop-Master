@@ -15,11 +15,16 @@ test("every physical floor shows exact entrance, and only real traversable desce
     assert.deepEqual({x:stairs[1].x,z:stairs[1].z},
       dungeonDownStair(layout));
     assert.ok(dungeonShortestPath(layout,layout.entrance,stairs[1]).length>1);
-    assert.equal(stairs[1].kind,floor<=9?"descend":"sealed");
-    assert.equal(stairs[1].destinationFloor,floor<=9?floor+1:null);
-    assert.match(stairs[1].label,floor<=9?/DESCEND/:/CAVE TROLL/);
+    assert.equal(stairs[1].kind,"descend");
+    assert.equal(stairs[1].destinationFloor,floor+1);
+    assert.match(stairs[1].label,/DESCEND/);
+    if(floor===9)assert.match(stairs[1].label,/CAVE TROLL.*PARTY ONLY/);
     assert.deepEqual(dungeonFloorStairways(layout),stairs,"No new RNG/site generation");
     assert.equal(layout.features.some(feature=>stairs.some(stair=>
       stair.id===feature.id)),false,"Stairs cannot be resolved as loot sites");
   }
+  const boss=dungeonFloorStairways(generateExpeditionLayout(7351,10));
+  assert.equal(boss.length,1,"Floor 10 is a boss destination, not an ordinary downward route");
+  assert.equal(boss[0].kind,"ascend");
+  assert.equal(boss[0].destinationFloor,9);
 });
