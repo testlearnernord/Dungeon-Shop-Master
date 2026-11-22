@@ -76,7 +76,7 @@ export interface LiveBossCombat {
 
 export interface LiveDungeonReturn {
   readonly heroId:string;
-  readonly fromFloor:1|2|3|4|6|7;
+  readonly fromFloor:SpatialDungeonFloor;
   readonly startedTick:number;
   /** Backtracking walks actual visited tiles; portal waits on a saved event. */
   readonly phase:"backtrack"|"portal";
