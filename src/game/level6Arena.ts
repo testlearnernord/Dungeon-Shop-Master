@@ -35,6 +35,7 @@ import { BossCombatHud } from "./bossCombatHud.ts";
 import {renderHeroCard} from "../heroCard.ts";
 import {liveHeroCard,type HeroCardView} from "./heroCardView.ts";
 import {inspectHeroCard} from "../worldHeroCards.ts";
+import {uiIcon} from "../uiIcons.ts";
 import { BossModelLab } from "./bossModelLab.ts";
 import { nextBossTrainingScenario, type BossTrainingScenario } from "./bossTrainingScenario.ts";
 import { DeveloperCombatLab } from "./developerCombatLab.ts";
@@ -1211,18 +1212,27 @@ export class Level6Arena {
     const header=document.createElement("strong");
     header.className="hero-combat-roster-heading";
     header.textContent="BOSS ENGAGEMENT · HERO";
+    const wrapper=document.createElement("div");
+    wrapper.className="hero-combat-roster-item";
     const card=renderHeroCard(snapshot,"combat");
     card.tabIndex=0;card.setAttribute("role","button");
+    card.setAttribute("aria-label","Focus boss fight hero");
     card.addEventListener("click",()=>this.focusCamera());
+    card.addEventListener("keydown",event=>{
+      if(event.code==="Enter"||event.code==="Space"){
+        event.preventDefault();this.focusCamera();
+      }
+    });
     const inspect=document.createElement("button");
     inspect.type="button";inspect.className="hero-card-inspect";
-    inspect.textContent="⊞";inspect.title="Inspect hero";
+    inspect.replaceChildren(uiIcon("search"));
+    inspect.title="Inspect hero";
     inspect.setAttribute("aria-label","Inspect hero");
     inspect.addEventListener("click",event=>{
       event.stopPropagation();
       if(this.bossCardData)inspectHeroCard(this.bossCardData);
     });
-    card.append(inspect);root.append(header,card);
+    wrapper.append(card,inspect);root.append(header,wrapper);
     this.panel.append(root);this.bossHeroCard=root;
   }
 
@@ -1238,7 +1248,22 @@ export class Level6Arena {
     if(status)status.textContent=(this.replay?"RECORDED":"LIVE")+
       " · "+Math.round(hero.heroHp)+" HP";
     if(phase)phase.textContent=String(hero.heroPhase).toUpperCase();
-    if(phaseRow)phaseRow.dataset.phase=String(hero.heroPhase);
+    if(phaseRow&&phaseRow.dataset.phase!==hero.heroPhase){
+      phaseRow.dataset.phase=hero.heroPhase;
+      const glyph=phaseRow.querySelector<HTMLElement>(".hero-card-glyph");
+      if(glyph)glyph.replaceChildren(uiIcon(
+        hero.heroPhase==="parry"?"shield":
+        hero.heroPhase==="roll"?"arrow-right":
+        hero.heroPhase==="hurt"?"warning":"swords"));
+    }
+    const card=this.bossHeroCard.querySelector<HTMLElement>(
+      ".hero-card--combat");
+    if(card){
+      const ratio=this.hero&&this.hero.max>0?
+        hero.heroHp/this.hero.max:0;
+      card.dataset.condition=hero.heroHp<=0?"fallen":
+        ratio<=.3?"critical":ratio<=.6?"wounded":"healthy";
+    }
     if(this.bossCardData)this.bossCardData={
       ...this.bossCardData,health:Math.round(hero.heroHp),
       activity:String(hero.heroPhase),
