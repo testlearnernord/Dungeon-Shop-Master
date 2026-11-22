@@ -8,7 +8,8 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { reconcileVisitors, shouldLeaveShopVisual, type GateSide, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
-import {SHOP_PORTAL_GATE,SHOP_PORTAL_X} from "./shopPortal.ts";
+import {SHOP_PORTAL_GATE,SHOP_PORTAL_X,SHOP_PORTAL_INNER_Z,
+  SHOP_PORTAL_OUTER_Z} from "./shopPortal.ts";
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
 import {portraitSourceRect} from "./portraitAtlas.ts";
@@ -110,8 +111,8 @@ const DOOR_CLOSED_Y = 0.9;
 const DOOR_OPEN_Y = 3.8;
 const DOOR_PASSAGE_CLEAR_Y = 3.4;
 const CORRIDOR_X: Record<GateSide, number> = {portal:SHOP_PORTAL_X};
-const CORRIDOR_INNER_Z = 6.0;
-const CORRIDOR_OUTER_Z = 13;
+const CORRIDOR_INNER_Z=SHOP_PORTAL_INNER_Z;
+const CORRIDOR_OUTER_Z=SHOP_PORTAL_OUTER_Z;
 
 function material(scene: Scene, name: string, color: Color3): StandardMaterial {
   const result = new StandardMaterial(name, scene);
