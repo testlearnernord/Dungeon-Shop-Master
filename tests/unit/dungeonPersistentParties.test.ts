@@ -111,7 +111,7 @@ test("new parties persist through a real confirmed floor transition and the foll
     ...base,
     adventurers:base.adventurers.map(h=>h.id===first.id?first:
       h.id===second.id?second:
-      {...h,status:"at-shop" as const,floor:5 as const,shopStayDays:0}),
+      {...h,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0}),
     earlyDungeonWorlds:[{floor:1 as const,world}],
   };
   const firstDay=advanceDay(initial);

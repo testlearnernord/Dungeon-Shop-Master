@@ -37,7 +37,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.earlyDungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,31);
+  assert.equal(SIMULATION_VERSION,32);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -246,7 +246,7 @@ test("actual shop return crosses known tiles, survives reload and arrives DURING
   assert.deepEqual(a.state,b.state,"Return path, portal and shops resume identically.");
   const traveler=a.state.adventurers.find(h=>h.id===heroId)!;
   assert.equal(traveler.status,"at-shop");
-  assert.equal(traveler.floor,5);
+  assert.equal(traveler.floor,"shop");
   assert.equal(traveler.inventory.loot,0,
     "Depositing a trip's abstract haul must stop the endless return-to-shop loop.");
   assert.deepEqual(traveler.inventory.finds,{"iron-ore":1},

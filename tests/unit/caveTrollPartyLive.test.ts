@@ -33,7 +33,7 @@ function bossEntry(){
   const state={
     ...base,
     adventurers:base.adventurers.map(h=>selected.find(p=>p.id===h.id)??{
-      ...h,floor:5 as const,status:"at-shop" as const,
+      ...h,floor:"shop" as const,status:"at-shop" as const,
     }),
     earlyDungeonWorlds:[{floor:9 as const,world:{
       ...emptyLevel7World(),

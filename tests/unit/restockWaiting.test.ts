@@ -12,7 +12,7 @@ function emptyShop(){
   const state={
     ...original,
     adventurers:original.adventurers.map((person,index)=>index===0
-      ?{...person,status:"at-shop" as const,floor:5 as const,gold:100,
+      ?{...person,status:"at-shop" as const,floor:"shop" as const,gold:100,
         inventory:{...person.inventory,bread:0},equipment:{weapon:null,armor:null}}
       :{...person,status:"exploring" as const}),
     shopEconomy:{...original.shopEconomy,slots:original.shopEconomy.slots.map(slot=>({

@@ -71,7 +71,7 @@ function preparedDay(){
   return {...base,
     adventurers:base.adventurers.map(hero=>{
       const match=two.find(person=>person.id===hero.id);
-      return match??{...hero,status:"at-shop" as const,floor:5 as const,
+      return match??{...hero,status:"at-shop" as const,floor:"shop" as const,
         shopStayDays:0};
     }),
     earlyDungeonWorlds:[{floor:1 as const,world}],

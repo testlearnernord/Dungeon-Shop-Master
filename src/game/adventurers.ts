@@ -32,7 +32,9 @@ export interface AdventurerState {
     /** Real generated goods owned by this individual; not Galvik's stock. */
     readonly finds?:Partial<Record<ItemId,number>>;
   };
-  readonly floor: DungeonFloor;
+  /** Numbered depth ONLY while in the dungeon; the cursed shop and off-duty
+   * days are explicitly non-numeric places, not fake Floor 5. */
+  readonly floor: DungeonFloor | "shop" | "away";
   /** The real numbered depth at which this hero can resume after visiting
    * Galvik's unnumbered cursed shop. Old saves omit it and resume Floor 1. */
   readonly lastDungeonFloor?:1|2|3|4|5|6|7|8|9;
@@ -121,7 +123,7 @@ export function generateStartingPopulation(rngState: number): { adventurers: rea
     random.state = generated.rngState;
     const hero = generated.adventurer;
     return index < 3
-      ? { ...hero, floor: 5 as const, status: "at-shop" as const }
+      ? { ...hero, floor: "shop" as const, status: "at-shop" as const }
       : { ...hero, floor: (1 + random.int(4)) as DungeonFloor };
   });
   return { adventurers, rngState: random.state };

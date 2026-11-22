@@ -52,7 +52,8 @@ export function selectLiveSpectatorFrame(
   if(!state.liveDungeon.enabled)return null;
   const hero=state.adventurers.find(h=>h.id===heroId);
   if(!hero||hero.health<=0||
-     !(hero.status==="exploring"&&hero.floor>=1&&hero.floor<=9||
+     !(hero.status==="exploring"&&typeof hero.floor==="number"&&
+       hero.floor>=1&&hero.floor<=9||
        hero.status==="expedition"&&(hero.floor===7||hero.floor===10)))return null;
   const floor=hero.floor as SpatialDungeonFloor;
   const world=floor===7?state.level7World:

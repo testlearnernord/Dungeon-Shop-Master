@@ -23,7 +23,7 @@ test("a single buyer can reach and request service at a rotated register @ci-smo
     const hero=initial.adventurers[0];
     const state={...initial,shopLayout:moved.layout,
       adventurers:initial.adventurers.map((visitor,index)=>index===0
-        ?{...visitor,status:"at-shop" as const,floor:5 as const,gold:100,
+        ?{...visitor,status:"at-shop" as const,floor:"shop" as const,gold:100,
           inventory:{...visitor.inventory,bread:0}}
         :{...visitor,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       shopEconomy:{...initial.shopEconomy,
@@ -98,7 +98,7 @@ test("eight incoming customers return unpaid carts at bed-close without phantom 
     const state={
       ...original,shopLayout:movedCounter.layout,
       adventurers:original.adventurers.map((hero,index)=>index<8
-        ?{...hero,status:"at-shop" as const,floor:5 as const,
+        ?{...hero,status:"at-shop" as const,floor:"shop" as const,
           gold:index%4===0?0:index%4===1?8:100,
           inventory:{...hero.inventory,bread:index%4===1?ECONOMY.breadTarget:0,healing:0},
           equipment:{weapon:null,armor:null}}
@@ -412,7 +412,7 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
     if(problem)throw Error(problem);
     const state={...original,shopRoom:room,shopLayout:till.layout,
       adventurers:original.adventurers.map((hero,index)=>index<4
-        ?{...hero,status:"at-shop" as const,floor:5 as const,
+        ?{...hero,status:"at-shop" as const,floor:"shop" as const,
           gold:index===0?0:index===1?8:100,
           inventory:{...hero.inventory,
             bread:index===1?ECONOMY.breadTarget:0,healing:0},
@@ -511,7 +511,7 @@ test("a real stockout produces one short, nonblocking customer comment",async({p
     const hero=state.adventurers[0]!;
     await new CampaignStorage().saveGame({...state,
       adventurers:state.adventurers.map((entry,index)=>index===0
-        ?{...entry,status:"at-shop" as const,floor:5 as const,
+        ?{...entry,status:"at-shop" as const,floor:"shop" as const,
             gold:100,inventory:{...entry.inventory,bread:0,healing:0},
             equipment:{weapon:null,armor:null}}
         :{...entry,status:"exploring" as const,floor:4 as const,shopStayDays:0}),

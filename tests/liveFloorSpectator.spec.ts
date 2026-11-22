@@ -26,7 +26,7 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
             finds:{"iron-ore":1,coal:2}}}:{})};
       if(hero.id===four.id)
         return {...hero,status:"exploring" as const,floor:2 as const};
-      return {...hero,status:"at-shop" as const,floor:5 as const,
+      return {...hero,status:"at-shop" as const,floor:"shop" as const,
         shopStayDays:0};
     });
     const entry=(x:number,z:number,width:number)=>z*width+x;

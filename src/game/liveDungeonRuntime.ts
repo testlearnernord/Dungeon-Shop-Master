@@ -100,7 +100,8 @@ export const createLiveDungeonState=():LiveDungeonState=>({
 
 const eligible=(hero:AdventurerState)=>
   hero.health>0&&(
-    hero.status==="exploring"&&hero.floor>=1&&hero.floor<=9||
+    hero.status==="exploring"&&typeof hero.floor==="number"&&
+      hero.floor>=1&&hero.floor<=9||
     hero.status==="expedition"&&hero.floor===7
   );
 function nextDungeonTick(tick:number,day:number):number|null{
@@ -195,7 +196,7 @@ function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState
     message:hero.name+" emerged through Galvik's portal into the shop.",
   };
   return {...state,adventurers:state.adventurers.map(h=>h.id===id?
-      {...h,status:"at-shop" as const,floor:5 as const,shopStayDays:0,
+      {...h,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0,
         // The abstract chest counter is a trip-haul threshold, not a
         // sellable item. Unload it upon reaching Galvik; retain the real
         // owned finds and all actual gold/equipment for manual buyback.
@@ -870,7 +871,8 @@ export function finishLiveDungeonDay(
       return {...ready,status:"exploring" as const,
         floor:target,offDutyUntilDay:null};
     }
-    if(ready.status==="returning"&&ready.floor>=1&&ready.floor<=9)
+    if(ready.status==="returning"&&typeof ready.floor==="number"&&
+       ready.floor>=1&&ready.floor<=9)
       return {...ready,status:"exploring" as const};
     // Sleeping cannot complete a portal journey which is still scheduled
     // for a subsequent live world tick.

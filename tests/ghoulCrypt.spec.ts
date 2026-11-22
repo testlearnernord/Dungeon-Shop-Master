@@ -28,7 +28,7 @@ test("historical map stays abstract; opting into archive arena loads the authore
     const prepared={
       ...base,
       adventurers:base.adventurers.map((h,i)=>i===0?hero:{
-        ...h,floor:5 as const,status:"at-shop" as const,shopStayDays:0,
+        ...h,floor:"shop" as const,status:"at-shop" as const,shopStayDays:0,
       }),
       earlyDungeonWorlds:[{floor:1 as const,world:{
         resolvedFeatureIds:map.features.filter(f=>f.id!==monster.id).map(f=>f.id),

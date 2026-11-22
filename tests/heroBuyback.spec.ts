@@ -12,7 +12,7 @@ test("returning adventurer sells one real find to Galvik, saved with a paid expe
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const base=createGameState(7351),seller=base.adventurers[0];
     const state={...base,adventurers:base.adventurers.map(hero=>hero.id!==seller.id
-      ?hero:{...hero,status:"at-shop" as const,floor:5 as const,
+      ?hero:{...hero,status:"at-shop" as const,floor:"shop" as const,
         health:hero.stats.maxHealth,
         inventory:{...hero.inventory,finds:{"iron-ore":2}}})};
     await new CampaignStorage().saveGame(state);

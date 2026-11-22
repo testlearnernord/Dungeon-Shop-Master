@@ -30,7 +30,7 @@ export function walkOutWithoutPurchase(
     ...state,
     adventurers:state.adventurers.map(person=>person.id===heroId?
       {...person,status:state.liveDungeon.enabled?"departing" as const:"returning" as const,
-        floor:state.liveDungeon.enabled?5 as const:4 as const,shopStayDays:0}:person),
+        floor:state.liveDungeon.enabled?"shop" as const:4 as const,shopStayDays:0}:person),
     events:[...state.events,walkout],
   };
 }

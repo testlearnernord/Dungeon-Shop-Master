@@ -102,7 +102,7 @@ test("live night schedule does not invent a physical departure for a paid or unr
   const staying={...hero,shopStayDays:1};
   const next=scheduleShopVisit(staying,2,100,true,true);
   assert.equal(next.adventurer.status,"departing");
-  assert.equal(next.adventurer.floor,5);
+  assert.equal(next.adventurer.floor,"shop");
   assert.deepEqual(next.events,[],"the real exit receives its own ticked event");
   assert.equal(next.rngState,100);
   const old=scheduleShopVisit(staying,2,100,true);

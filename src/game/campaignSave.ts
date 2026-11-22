@@ -1028,7 +1028,8 @@ function validateState(value: unknown): asserts value is GameState {
         total+=integer(quantity,path+".inventory.finds."+id,1,1000);
       if(total>1000)fail(path+".inventory.finds","is oversized");
     }
-    const floor = integer(hero.floor, `${path}.floor`, 1, 10);
+    const floor = hero.floor === "shop" || hero.floor === "away"
+      ? hero.floor : integer(hero.floor, `${path}.floor`, 1, 10);
     if((state.liveDungeon as GameState["liveDungeon"]).enabled&&
        hero.status==="expedition"&&floor===6)
       fail(`${path}.status`,"Floor 6 is an ordinary dungeon; no solo boss expedition exists");
@@ -1039,9 +1040,11 @@ function validateState(value: unknown): asserts value is GameState {
     if ((hero.status === "dead") !== (health === 0)) fail(`${path}.status`, "must agree with health");
     if (hero.status !== "dead") {
       active += 1;
-      if (((hero.status === "at-shop" || hero.status === "departing" ||
-             hero.status === "off-duty") && floor !== 5) ||
-          (hero.status === "exploring" && floor > 9) ||
+      if (((hero.status === "at-shop" || hero.status === "departing") &&
+             floor !== "shop") ||
+          (hero.status === "off-duty" && floor !== "away") ||
+          (hero.status === "exploring" &&
+             (typeof floor !== "number" || floor > 9)) ||
           ((hero.status === "traveling" || hero.status === "returning") && floor !== 4) ||
           (hero.status === "expedition" && floor !== 6 && floor !== 7 && floor!==10)) {
         fail(`${path}.floor`, "must agree with status");
