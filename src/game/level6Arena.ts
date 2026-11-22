@@ -34,7 +34,7 @@ import { BOSS_INTRO_SECONDS, sampleBossIntro } from "./bossCinematic.ts";
 import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 import { BossCombatHud } from "./bossCombatHud.ts";
 import {renderHeroCard} from "../heroCard.ts";
-import {liveHeroCard,type HeroCardView} from "./heroCardView.ts";
+import type {HeroCardView} from "./heroCardView.ts";
 import {inspectHeroCard} from "../worldHeroCards.ts";
 import {uiIcon} from "../uiIcons.ts";
 import { BossModelLab } from "./bossModelLab.ts";
@@ -1186,7 +1186,7 @@ export class Level6Arena {
       ".hero-card-phase-value");
     const phaseRow=this.bossHeroCard.querySelector<HTMLElement>(
       ".hero-card-combat-phase");
-    if(status)status.textContent=(this.replay?"RECORDED":"LIVE")+
+    if(status)status.textContent=(this.replay?"RECORDED":"PREVIEW")+
       " · "+Math.round(hero.heroHp)+" HP";
     if(phase)phase.textContent=String(hero.heroPhase).toUpperCase();
     if(phaseRow&&phaseRow.dataset.phase!==hero.heroPhase){
