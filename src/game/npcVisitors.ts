@@ -1,6 +1,8 @@
 export type VisitorStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "departing" | "off-duty" | "dead";
 export type VisitorRole = "tank" | "DPS" | "healer";
-export type GateSide = "level4" | "level6";
+import type {ShopPortalGate} from "./shopPortal.ts";
+/** One physical doorway. Never encode dungeon floor numbers in NPC routes. */
+export type GateSide=ShopPortalGate;
 
 /** Derive cosmetic return routes from the authoritative daily event history. */
 export function level6ReturnIds(
