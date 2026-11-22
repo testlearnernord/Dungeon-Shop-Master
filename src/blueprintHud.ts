@@ -84,7 +84,7 @@ export function setupBlueprintHud(
   // The golden arrow ALWAYS indicates the customer-facing side. All pieces
   // are visual-only; the saved footprint remains the authoritative geometry.
   const ghost=new TransformNode("blueprint-preview-root",scene);
-  type GhostType="shelf"|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait";
+  type GhostType="shelf"|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait"|"cellar-table";
   const parts:{mesh:import("@babylonjs/core/Meshes/mesh").Mesh;
     type:GhostType;direction?:boolean}[]=[];
   const previewBox=(
@@ -127,6 +127,14 @@ export function setupBlueprintHud(
   previewBox("blueprint-bed-headboard",1.74,1.1,0.2,0,0.8,-1.18,"bed");
   previewBox("blueprint-bed-pillow",1.05,0.15,0.4,0,0.82,-0.85,"bed");
   previewBox("blueprint-bed-foot",1.74,0.55,0.15,0,0.5,1.17,"bed");
+  // Full-size ghost of the recessed tabletop, rim and four legs.
+  previewBox("blueprint-table-surface",2.45,.12,1.52,0,1.18,0,"cellar-table");
+  for(const x of [-1.17,1.17])for(const z of [-.7,.7])
+    previewBox("blueprint-table-leg",.3,1.05,.28,x,.525,z,"cellar-table");
+  for(const z of [-.81,.81])
+    previewBox("blueprint-table-rim",2.7,.14,.13,0,1.33,z,"cellar-table");
+  for(const x of [-1.29,1.29])
+    previewBox("blueprint-table-side",.12,.14,1.64,x,1.33,0,"cellar-table");
   // A vertical wall-mounted roster with an obvious front, not a floor cube.
   previewBox("blueprint-roster-board-face",3.25,2.02,0.09,0,2.17,0,"adventurer-board");
   previewBox("blueprint-roster-board-frame-top",3.4,0.12,0.15,0,3.22,0,"adventurer-board");
@@ -164,6 +172,8 @@ export function setupBlueprintHud(
     previewBox("blueprint-"+kind+"-front",0.16,0.12,0.35,
       0,1.3,0.55,kind,true);
   }
+  previewBox("blueprint-table-front",.16,.12,.40,
+    0,1.44,1.03,"cellar-table",true);
   previewBox("blueprint-board-facing",0.15,0.15,0.55,
     0,2.16,-0.48,"adventurer-board",true);
   const facingMaterial=new StandardMaterial("blueprint-facing-arrow",scene);
@@ -209,6 +219,7 @@ export function setupBlueprintHud(
     if(id==="adventurer-board")return {id,...store.state.rosterBoard};
     if(id==="galvik-portrait")return {id,...store.state.wallPortrait!};
     if(id==="cellar-chest")return store.state.cellarChest;
+    if(id==="cellar-table")return store.state.cellarTable;
     if(isBedroomFurnitureId(id))return getBedroomFurniture(store.state.bedroomFurniture,id);
     return store.state.shopLayout.shelves.find(item=>item.id===id)!;
   };
@@ -251,7 +262,7 @@ export function setupBlueprintHud(
       x+=offset.x;z+=offset.z;
     }
     focusMesh.position.set(x,found.focusY+
-      (found.movableId==="cellar-chest"?CELLAR_FLOOR_Y:0),z);
+      (found.movableId==="cellar-chest"||found.movableId==="cellar-table"?CELLAR_FLOOR_Y:0),z);
     focusMesh.scaling.set(dimensions.width,dimensions.height,dimensions.depth);
     focusMesh.rotation.y=saved.rotation*Math.PI/2;
     focusMesh.setEnabled(true);
@@ -313,19 +324,22 @@ export function setupBlueprintHud(
       return;
     }
     draft=p;
-    ghost.position.set(p.x,p.id==="cellar-chest"?CELLAR_FLOOR_Y:0,p.z);
+    ghost.position.set(p.x,p.id==="cellar-chest"||p.id==="cellar-table"?CELLAR_FLOOR_Y:0,p.z);
     ghost.rotation.y=p.rotation*Math.PI/2;
     const type:GhostType=p.id==="counter"?"counter":
       p.id==="adventurer-board"?"adventurer-board":
       p.id==="galvik-portrait"?"galvik-portrait":
       p.id==="cellar-chest"?"chest":
+       p.id==="cellar-table"?"cellar-table":
        isBedroomFurnitureId(p.id)?p.id:"shelf";
     const state=store.state;
-    const staticCheck=validator.evaluate(p,state.shopLayout,state.level5Room,
+    const inCellar=p.id==="cellar-chest"||p.id==="cellar-table";
+    const staticCheck=validator.evaluate(p,state.shopLayout,
+      inCellar?state.cellarRoom:state.level5Room,
       performance.now(),immediate,
       p.id==="adventurer-board"||p.id==="galvik-portrait"?
-        state.rosterBoard:p.id==="cellar-chest"?state.cellarRoom:
-       state.bedroomFurniture);
+        state.rosterBoard:p.id==="cellar-chest"?state.cellarTable:
+        p.id==="cellar-table"?state.cellarChest:state.bedroomFurniture);
     const occupied=occupiedBy(p);
     const isChecking=!staticCheck.ready&&!occupied;
     reason=occupied??(staticCheck.ready
@@ -410,7 +424,7 @@ export function setupBlueprintHud(
     if(occupied){updateStatus(occupied,false);return;}
     const result=store.placeFurniture(draft);
     if(result==="Counter placement saved."||result==="Shelf placement saved."||
-       result==="Cellar chest placed."||
+       result==="Cellar chest placed."||result==="Galvik's Table placed."||
        result==="Bedroom furniture placed."||result==="Adventurer board placed."||
        result==="Portrait hung."){
       close();
