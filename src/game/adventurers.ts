@@ -27,7 +27,7 @@ export interface AdventurerState {
   readonly health: number;
   readonly gold: number;
   readonly equipment: { readonly weapon: string | null; readonly armor: string | null };
-  readonly inventory: { readonly loot: number; readonly bread: number;
+  readonly inventory: { readonly bread: number;
     readonly healing: number;
     /** Real generated goods owned by this individual; not Galvik's stock. */
     readonly finds?:Partial<Record<ItemId,number>>;
@@ -75,7 +75,7 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
     health: maxHealth,
     gold: 5 + random.int(11),
     equipment: { weapon: null, armor: null },
-    inventory: { loot: 0, bread: 0, healing: 0 },
+    inventory: { bread: 0, healing: 0 },
     floor: 1,
     status: "exploring",
     shopStayDays: 0,

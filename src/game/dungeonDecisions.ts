@@ -38,8 +38,13 @@ export function chooseHeroDungeonDecision(
   const prepared=hasGear||healthRatio>0.70||reckless;
   const enoughExperience=known >= (reckless?9:careful?17:13) ||
     replay.outcome==="completed";
-  // Their own purpose can change after a real injury or a real looted chest.
-  if(lowHealth || hero.inventory.loot >= 2 ||
+  // Only physically carried, individually owned goods can motivate a
+  // treasure haul return. Trigger on the real chest event, not on old unsold
+  // goods after reentry; repeated shop trips must not arise from stale stock.
+  const carriedFinds=Object.values(hero.inventory.finds??{})
+    .reduce((total,count)=>total+(count??0),0);
+  const newChest=replay.steps.some(step=>step.action==="treasure");
+  if(lowHealth || (newChest&&carriedFinds>=2) ||
      (hero.floor===9 && hero.gold>=22 && known>=8)) {
     return {goal:"resupply",action:"shop"};
   }

@@ -22,7 +22,7 @@ export interface HeroCardView {
   readonly stats:Readonly<{strength:number;agility:number;intellect:number;maxHealth:number}>|null;
   readonly traits:Readonly<{positive:string;neutral:string;negative:string}>|null;
   readonly equipment:Readonly<{weapon:string|null;armor:string|null}>;
-  readonly inventory:Readonly<{loot:number;bread:number;healing:number;
+  readonly inventory:Readonly<{bread:number;healing:number;
     finds?:Partial<Record<ItemId,number>>}>|null;
   readonly recent:readonly string[];
   readonly observations?:readonly {icon:"map"|"search"|"swords"|"users"|"info";text:string}[];

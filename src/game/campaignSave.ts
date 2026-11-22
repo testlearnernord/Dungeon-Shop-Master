@@ -1013,8 +1013,8 @@ function validateState(value: unknown): asserts value is GameState {
       if (equipment[key] !== null) text(equipment[key], `${path}.equipment.${key}`);
     }
     const inventory = object(hero.inventory, `${path}.inventory`,
-      ["loot", "bread", "healing"],["finds"]);
-    for (const key of ["loot","bread","healing"])
+      ["bread", "healing"],["finds"]);
+    for (const key of ["bread","healing"])
       integer(inventory[key], `${path}.inventory.${key}`);
     if(inventory.finds!==undefined){
       const finds=object(inventory.finds,path+".inventory.finds",[],itemIds);
