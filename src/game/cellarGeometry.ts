@@ -5,7 +5,7 @@ import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import type {Mesh} from "@babylonjs/core/Meshes/mesh";
 import type {Scene} from "@babylonjs/core/scene";
-import type {DungeonSurfaces} from "./dungeonSurfaces.ts";
+import {applyCaveWorldUV,type DungeonSurfaces} from "./dungeonSurfaces.ts";
 import {CELLAR_ORIGIN_Z,CELLAR_FLOOR_Y,CELLAR_ENTRY_X} from "./cellarRoom.ts";
 
 /** Existing cave world, not a second scene or simulation. All world coordinates
@@ -18,6 +18,7 @@ export function buildCellarGeometry(scene:Scene,surfaces:DungeonSurfaces):void{
     const mesh=MeshBuilder.CreateBox(name,{width,height,depth},scene);
     mesh.position.set(x,y,z);
     mesh.material=surfaces.stone;
+    if(name!=="cellar-stair-walkable-ramp")applyCaveWorldUV(mesh);
     mesh.checkCollisions=solid;
     mesh.isPickable=!name.includes("ceiling")&&!name.includes("barrier");
     return mesh;
