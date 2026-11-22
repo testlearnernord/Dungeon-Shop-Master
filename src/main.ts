@@ -598,8 +598,7 @@ ledger=setupMerchantLedger(()=>{
   camera.attachControl(canvas,true);
   statusHud.textContent="Morning has come. The shop is open.";
 },(event)=>{
-  if((event.type==="level7-exploration"&&event.level7Replay) ||
-     (event.type==="dungeon-exploration"&&event.dungeonReplay)){
+  if(event.type==="dungeon-live"&&event.dungeonReplay){
     // The night ledger opens the separately archived tape directly.
     // The default LIVE floor selector never mixes historical recordings.
     return dungeon.openReplayAt(event.id);

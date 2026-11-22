@@ -924,11 +924,9 @@ export class DungeonViewer {
     // Both early floors and Floor 7 are recorded by the SAME spatial engine.
     // Outcomes remain sealed in this selection list.
     return this.store.state.events.filter(e=>
-      (e.type==="level7-exploration"&&!!e.level7Replay) ||
-      (e.type==="dungeon-exploration"&&!!e.dungeonReplay) ||
-      (e.type==="dungeon-live"&&!!(e.dungeonReplay||e.level7Replay)))
+      e.type==="dungeon-live"&&!!e.dungeonReplay)
       .reverse().map(e=>({
-        id:e.id,record:(e.level7Replay??e.dungeonReplay)!,
+        id:e.id,record:e.dungeonReplay!,
         name:this.store.state.adventurers.find(h=>h.id===e.adventurerId)?.name ??
           e.adventurerId ?? "Unknown hero",
       }));

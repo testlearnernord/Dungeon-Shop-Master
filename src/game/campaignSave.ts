@@ -88,10 +88,9 @@ function unique(value: string | number, seen: Set<string | number>, path: string
 
 const itemIds = ITEMS.map((item) => item.id);
 const eventTypes = [
-  "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure", "shop-walkout",
-  "influx", "sale", "tip", "healed",
-  "level7-exploration", "shop-credit",
-  "dungeon-exploration","dungeon-live","hero-death-signal",
+  "welcome", "day-started", "shop-arrival", "shop-stay", "shop-departure", "shop-walkout",
+  "influx", "sale", "tip", "healed", "shop-credit",
+  "dungeon-live","hero-death-signal",
   "temporary-party-join","temporary-party-leave","hero-buyback",
 ] as const;
 
@@ -1315,8 +1314,8 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
-      ["adventurerId", "worldTick", "reportedZone", "dungeonHighlight", "shopReason", "outcome", "itemId", "quantity", "revenue", "cost",
-        "partyBossReplay", "level7Replay", "dungeonReplay",
+      ["adventurerId", "worldTick", "reportedZone", "dungeonHighlight", "shopReason", "itemId", "quantity", "revenue", "cost",
+        "partyBossReplay", "dungeonReplay",
         "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
@@ -1347,7 +1346,6 @@ function validateState(value: unknown): asserts value is GameState {
       ...(event.type==="dungeon-live"?["worldTick",
         ...(event.reportedZone!==undefined?["reportedZone"]:[]),
         ...(event.dungeonHighlight!==undefined?["dungeonHighlight"]:[]),
-        ...(event.level7Replay!==undefined?["level7Replay"]:[]),
         ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[]),
         ...(event.partyBossReplay!==undefined?["partyBossReplay"]:[])]:[]),
       ...(!global ? ["adventurerId"] : [])];
@@ -1401,18 +1399,7 @@ function validateState(value: unknown): asserts value is GameState {
       suffix="shop-arrival:"+event.worldTick;
     if(event.type==="shop-departure"&&event.worldTick!==undefined)
       suffix="shop-departure:"+event.worldTick;
-    if (event.type === "dungeon-outcome") {
-      allowed.push("outcome");
-      choice(event.outcome, ["advance", "stay", "retreat", "death"], `${path}.outcome`);
-      suffix = "dungeon";
-    }
-    if((event.type === "level7-exploration"||event.type==="dungeon-live") &&
-      event.level7Replay !== undefined) {
-      allowed.push("level7Replay");
-      validateLevel7Replay(event.level7Replay,`${path}.level7Replay`,
-        event.adventurerId as string,eventDay,campaignSeed,7,heroIds);
-    }
-    if(event.type==="dungeon-exploration"||event.type==="dungeon-live"){
+    if(event.type==="dungeon-live"){
       if(event.dungeonGoal!==undefined){
         allowed.push("dungeonGoal");
         choice(event.dungeonGoal,["farm","progress","test-gear","caution","resupply",

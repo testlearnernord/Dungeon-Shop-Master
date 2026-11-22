@@ -84,7 +84,7 @@ export function selectExpeditionArchive(
     if(day==="saved"?!saved||!hasReplay:event.day!==selected)return [];
     const kind=classify(event);
     if(!kind)return [];
-    const spatial=event.dungeonReplay??event.level7Replay;
+    const spatial=event.dungeonReplay;
     return [{
       id:event.id,kind:kind.kind,day:event.day,
       worldTick:event.worldTick??null,
@@ -109,7 +109,7 @@ export function archiveBookmarks(
 ):readonly ArchiveBookmark[]{
   const event=state.events.find(e=>e.id===eventId);
   if(!event)return [];
-  const spatial=event.dungeonReplay??event.level7Replay;
+  const spatial=event.dungeonReplay;
   if(!spatial){
     return event.partyBossReplay?
       [{id:"start",label:"Watch saved combat",replaySeconds:0}]:[];

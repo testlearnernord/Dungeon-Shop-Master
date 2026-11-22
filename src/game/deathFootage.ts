@@ -34,7 +34,7 @@ export function findCommittedDeathFootage(
   if(partyBossTape)
     return {kind:"party-boss-recording",eventId:partyBossTape.id};
   const dungeon=recorded.find(event=>{
-    const tape=event.dungeonReplay??event.level7Replay;
+    const tape=event.dungeonReplay;
     return tape&&(tape.outcome==="death"||
       tape.steps.some(step=>step.hp<=0&&
         (step.action==="trap"||step.action==="death"||

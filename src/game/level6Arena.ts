@@ -22,7 +22,6 @@ import {
 import type { AdventurerState } from "./adventurers.ts";
 import {heroProgression} from "./heroProgression.ts";
 import type { BossCombatReplay, BossReplayFrame } from "./bossCombatReplay.ts";
-import { observeReplay } from "../replayDisclosure.ts";
 import type { GameStore } from "./gameStore.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import { createHeroVisual } from "./heroVisual.ts";
@@ -65,11 +64,9 @@ export class Level6Arena {
   private active = false;
   private motion: SharedBossPreview | null = null;
   private replay: BossCombatReplay | null = null;
-  private requestedReplayId: string | null = null;
   private replayTime = 0;
   private replayFrameIndex = 0;
   private replayFinished = false;
-  private forcePreview = false;
   private training: BossTrainingScenario | null = null;
   private modelLab: BossModelLab | null = null;
   private readonly lab:DeveloperCombatLab;
@@ -181,9 +178,6 @@ export class Level6Arena {
       this.useTripoModel=!this.useTripoModel;
       this.restart(true); // Same fighter/training scenario; restart only the spectator presentation.
     });
-    this.sourceToggle.addEventListener("click", () => {
-      this.toggleSource();
-    });
     document.querySelector("#open-arena")!.addEventListener("click", () => this.open());
     document.querySelector("#close-arena")!.addEventListener("click", () => this.close());
     document.querySelector("#restart-arena")!.addEventListener("click", () => this.restart());
@@ -232,7 +226,6 @@ export class Level6Arena {
       }
       if(event.code==="Escape"||event.code==="KeyV")this.close();
       else if(event.code==="KeyM")this.musicToggle.focus();
-      else if(event.code==="KeyC"&&!this.sourceToggle.hidden)this.toggleSource();
       else if(this.introActive)return; // The audience cannot interrupt the filmed camera.
       else if(event.code==="Tab")this.nextFocus();
       else this.pressed.add(event.code);
@@ -296,12 +289,6 @@ export class Level6Arena {
     this.status.textContent="Independent combat balance test";
   }
 
-  private toggleSource(): void {
-    if(this.modelLab)return;
-    this.forcePreview = !this.forcePreview;
-    this.restart();
-  }
-
   private toggleModelLab():void {
     if(!this.active)return;
     if(this.modelLab){
@@ -330,19 +317,17 @@ export class Level6Arena {
     this.modelLab=new BossModelLab(this.engine,this.canvas,this.modelPanel);
   }
 
-  open(eventId?: string): void {
+  open(_eventId?: string): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("dungeon-active")) return;
-    this.requestedReplayId=eventId??null;
     this.modelPanel.hidden=true;
     this.panel.dataset.modelViewer="false";
     this.shopCamera.detachControl();
     if (document.pointerLockElement) void document.exitPointerLock();
     this.active = true;
     this.onActiveChange(true);
-    // V always opens a fresh practice duel. Explicit ledger footage opens
-    // the immutable saved recording; the C control switches either way.
-    this.forcePreview = !eventId;
+    // V opens an isolated practice duel; actual saved Floor-10 party fights
+    // are handled by the shared DungeonViewer, never this old solo stage.
     this.pressed.clear();
     this.panel.hidden = false;
     document.body.classList.add("arena-active");
@@ -381,7 +366,6 @@ export class Level6Arena {
     this.resetGripPresentation();
     this.motion = null;
     this.replay = null;
-    this.requestedReplayId=null;
     this.projectiles = [];
     this.telegraph = null;
     this.slamTelegraph = null;
@@ -432,20 +416,12 @@ export class Level6Arena {
     this.resetGripPresentation();
     this.result = "fighting";
     const state = this.store.state;
-    const recorded = [...state.events].reverse()
-      .find(event => event.type === "level6-combat" && event.combatReplay &&
-        (!this.requestedReplayId || event.id===this.requestedReplayId));
-    const saved=recorded?.combatReplay??null;
-    // The arena remains a developer training preview and a read-only
-    // historical tape viewer. LIVE boss ownership is exclusively Floor 10
-    // through the DungeonViewer's true 60Hz GroupCombat stage.
-    this.replay=this.forcePreview?null:saved;
-    if(this.replay&&recorded)observeReplay(recorded.id);
-    this.sourceToggle.hidden=!saved;
-    this.sourceToggle.textContent=this.replay
-      ?"Preview current expedition":"Watch last saved combat";
-    this.panel.dataset.replay=this.replay?"recorded":"preview";
-    this.sfxLab.setAvailable(!this.replay);
+    // The obsolete Solo-F6 saved-event viewer is gone in current Alpha.
+    // Actual Floor-10 recordings use the general live GroupCombat spectator.
+    this.replay=null;
+    this.sourceToggle.hidden=true;
+    this.panel.dataset.replay="preview";
+    this.sfxLab.setAvailable(true);
     this.fighter = this.replay
       ? state.adventurers.find(hero => hero.id === this.replay!.heroId) ?? null
       : state.adventurers.find(hero => hero.status === "expedition") ?? null;

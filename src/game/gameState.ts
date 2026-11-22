@@ -10,7 +10,6 @@ import { generateStartingPopulation, type AdventurerState } from "./adventurers.
 import { createEconomy, type ItemId, type MaterialItemId, type Slot } from "./economy.ts";
 import {type HeroDungeonGoal,type HeroFloorAction} from "./dungeonDecisions.ts";
 import type {DungeonPartyState} from "./dungeonParties.ts";
-import type { BossCombatReplay } from "./bossCombatReplay.ts";
 import type {GroupCombatReplay} from "./groupCombat.ts";
 import type {Level7Replay} from "./level7Exploration.ts";
 import type {DungeonFloorWorld} from "./dungeonWorldState.ts";
@@ -23,10 +22,7 @@ import type {ShopCart} from "./shopCarts.ts";
 import {arrivalEvent} from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 34;
-
-/** Kept for read-only historical v13 outcome records. No live roll simulation. */
-export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
+export const SIMULATION_VERSION = 35;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -49,11 +45,9 @@ export interface PopulationConfig {
 
 export interface WorldEvent {
   readonly id: string;
-  readonly type: "welcome" | "day-started" | "dungeon-outcome" | "shop-arrival" | "shop-stay" | "shop-departure" | "shop-walkout" | "influx" |
-    "sale" | "tip" | "healed" |
-    "level6-departure" | "level6-combat" | "level6-return" |
-    "level7-departure" | "level7-exploration" | "shop-credit" |
-    "dungeon-exploration" | "dungeon-live" | "hero-death-signal" |
+  readonly type: "welcome" | "day-started" | "shop-arrival" | "shop-stay" |
+    "shop-departure" | "shop-walkout" | "influx" | "sale" | "tip" | "healed" |
+    "shop-credit" | "dungeon-live" | "hero-death-signal" |
     "temporary-party-join" | "temporary-party-leave" | "hero-buyback";
   readonly day: number;
   readonly message: string;
@@ -64,15 +58,9 @@ export interface WorldEvent {
   readonly dungeonHighlight?: "treasure"|"trap";
   readonly shopReason?: "unavailable"|"cannot-afford"|"no-need"|"interested";
   readonly adventurerId?: string;
-  readonly outcome?: DungeonOutcome;
-  readonly combatOutcome?: "victory" | "retreat" | "death";
-  /** Exact replay of the committed fixed-step combat. Older events omit this. */
-  readonly combatReplay?: BossCombatReplay;
   /** Full 60Hz archived Cave Troll PARTY fight; no recomputation after death. */
   readonly partyBossReplay?:GroupCombatReplay;
-  /** Committed path and battles of one Level 7 day. */
-  readonly level7Replay?: Level7Replay;
-  /** Same shared spatial engine/format on an earlier numbered floor. */
+  /** Any ordinary Floor 1–9 uses this one immutable committed spatial tape. */
   readonly dungeonReplay?: Level7Replay;
   /** Autonomous strategy and directional choice after the day's real exploration. */
   readonly dungeonGoal?: HeroDungeonGoal;
