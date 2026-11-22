@@ -24,10 +24,16 @@ test("current Alpha rejects obsolete Floor-7 solo expedition state",()=>{
 test("Floor 6 cannot revive a solo boss when the LIVE flag is absent",()=>{
   const baseline=createGameState(7351);
   const forged=structuredClone(createSave(baseline)) as any;
-  forged.payload.liveDungeon.enabled=false;
   forged.payload.adventurers[0].floor=6;
   forged.payload.adventurers[0].status="expedition";
   forged.payload.adventurers[0].bossPass=true;
   assert.throws(()=>parseSave(JSON.stringify(forged)),
     /Only Floor 10 supports boss expeditions/);
+  const invalid={...baseline,
+    liveDungeon:{...baseline.liveDungeon,enabled:false},
+    adventurers:baseline.adventurers.map((h,i)=>i===0?{
+      ...h,floor:6 as const,status:"expedition" as const,bossPass:true,
+    }:h)};
+  assert.throws(()=>advanceDay(invalid),
+    /Only Floor 10 supports boss expedition status/);
 });
