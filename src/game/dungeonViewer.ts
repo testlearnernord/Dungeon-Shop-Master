@@ -96,6 +96,8 @@ export class DungeonViewer {
   private playbackTime = 0;
   private playbackSpeed = 1;
   private archivePlayingBeforeIntro=false;
+  /** Read-only Level-10 party tape. It has no live GameStore combat owner. */
+  private archivedPartyBoss:{view:CombatArenaView;time:number}|null=null;
   private followActor: string | null = null;
   private liveHeroId: string | null = null;
   private liveFloor:SpatialDungeonFloor|null=null;
@@ -522,6 +524,47 @@ export class DungeonViewer {
     return this.liveArena.isActive&&this.liveArena.observedFightId===fightId;
   }
 
+  /** Reopen the actual committed multi-hero Cave Troll fight. No reroll,
+   * no invented survivor or present-day party equipment leakage.
+   * Playback samples saved 60Hz frames in the existing 3D group arena.
+   */
+  openRecordedPartyBoss(eventId:string):boolean{
+    const event=this.store.state.events.find(e=>e.id===eventId);
+    const tape=event?.partyBossReplay;
+    if(!tape?.frames.length)return false;
+    if(!this.active)this.open();
+    if(!this.active||!this.startFloor(10))return false;
+    const view:CombatArenaView={
+      heroes:tape.actors.filter(actor=>actor.team==="heroes").map(actor=>({
+        id:actor.id,
+        role:actor.role==="monster"?"DPS":actor.role,
+        equipment:actor.equipment??{weapon:null,armor:null},
+        health:actor.hp,
+      })),
+      combat:{
+        id:"archived-party-boss:"+eventId,
+        featureId:"cave-troll",x:0,z:0,
+        actors:tape.actors,frame:tape.frames[0],
+        frames:tape.frames,cues:tape.cues,
+      },
+    };
+    if(!this.liveArena.watch(view,"recorded"))return false;
+    // A completed recording is not affected by the changing LIVE floor.
+    this.liveFloor=null;this.liveHeroId=null;
+    this.liveFloorFightId=null;this.liveFloorProjectionCache=null;
+    this.archivedPartyBoss={view,time:0};
+    this.playing=true;
+    this.enterFightSoundtrack(tape.actors);
+    this.paintCombatIntro();
+    this.watchCombatButton.hidden=true;
+    this.returnCombatButton.hidden=false;
+    this.panel.dataset.liveCombatMode="arena";
+    this.modeDescription.textContent="ARCHIVED FLOOR 10 · CAVE TROLL PARTY · "+
+      "true committed combat footage (read-only)";
+    this.returnCombatButton.focus();
+    return true;
+  }
+
   /** A won fight in World Echoes opens the actual, immutable saved
    * encounter at its FIRST recorded frame. Do not simulate it a second time
    * or open a now-unrelated live fight at the same dungeon location. */
@@ -590,6 +633,7 @@ export class DungeonViewer {
     this.replayScene=null;
     this.playing=false;
     this.archivePlayingBeforeIntro=false;
+    this.archivedPartyBoss=null;
     this.followActor=null;
     this.liveHeroId=null;
     this.liveFloor=null;this.liveFloorFightId=null;
@@ -963,6 +1007,7 @@ export class DungeonViewer {
     this.liveFloor=floor;
     this.mapStatus.hidden=false;
     this.liveFloorFightId=null;
+    this.archivedPartyBoss=null;
     this.selectedFloorHeroId=focusHeroId;
     this.liveFloorProjectionCache=null;
     this.liveHeroId=null;this.liveProjectionCache=null;
@@ -1324,6 +1369,7 @@ export class DungeonViewer {
   }
 
   private returnToDungeonMap():void{
+    if(this.archivedPartyBoss){this.close();return;}
     this.leaveLiveCombat();
     if(this.liveFloor!==null){
       const view=selectLiveFloorSpectatorFrame(this.store.state,this.liveFloor);
@@ -1624,6 +1670,18 @@ export class DungeonViewer {
       // the two committed tile checkpoints. No per-frame map/AI projection.
       if(!this.liveArena.isActive)
         this.replayScene?.advanceLivePresentation(dt);
+    }else if(this.archivedPartyBoss){
+      // The campaign keeps running; replay time is LOCAL and samples
+      // original fixed-step frames, not a replacement combat simulation.
+      if(this.liveArena.isActive&&!this.liveArena.isIntroActive){
+        const archive=this.archivedPartyBoss;
+        const duration=archive.view.combat?.frames.at(-1)?.t??0;
+        if(this.playing){
+          archive.time=Math.min(duration,archive.time+dt*this.playbackSpeed);
+          if(archive.time>=duration)this.playing=false;
+        }
+        this.liveArena.show(archive.view,archive.time);
+      }
     }else if(this.replayScene?.currentReplay){
       if(this.playing){
         this.playbackTime=Math.min(this.replayScene.duration,
