@@ -292,9 +292,10 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       }
       const progress=getLevel7Progress(tick.world,ready.id,
         generateExpeditionLayout(state.seed,floor));
-      const decision=tick.adventurer.status==="dead"?null:
-        coordinatedDecisions.get(ready.id) ??
-        chooseHeroDungeonDecision(tick.adventurer,progress,tick.replay);
+      const decision=(tick.adventurer.status!=="exploring"&&
+        !(tick.adventurer.floor===7&&tick.adventurer.status==="expedition"))
+        ?null:coordinatedDecisions.get(ready.id) ??
+          chooseHeroDungeonDecision(tick.adventurer,progress,tick.replay);
       if(decision)floorChoices.set(ready.id,decision.action);
       const moved=decision?.action==="descend"&&floor<9
         ? {...tick.adventurer,floor:(floor+1) as SpatialDungeonFloor}
