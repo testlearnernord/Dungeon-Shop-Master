@@ -827,12 +827,12 @@ function validateState(value: unknown): asserts value is GameState {
     "day", "worldClock", "shopRequests", "shopTraffic", "liveDungeon", "simulationVersion", "events", "savedReplayIds", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
-    "level5Room","bedroomFurniture","rosterBoard",
+    "shopRoom","bedroomFurniture","rosterBoard",
     "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught",
   ], ["wallPortrait","earlyDungeonWorlds","dungeonParties"]);
-  const room=state.level5Room;
+  const room=state.shopRoom;
   if (!isValidLevel5Room(room))
-    fail("payload.level5Room", "has invalid excavation geometry");
+    fail("payload.shopRoom", "has invalid excavation geometry");
   if(!isValidCellarRoom(state.cellarRoom))
     fail("payload.cellarRoom","has invalid cellar excavation geometry");
   integer(state.cellarFishCaught,"payload.cellarFishCaught",0,1000000);
