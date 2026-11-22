@@ -144,10 +144,10 @@ setupCellarFurnitureVisuals(scene,store);
 setupCellarTableVisuals(scene,store);
 const roomVisuals=createLevel5RoomVisuals(scene);
 const cellarVisuals=createLevel5RoomVisuals(scene,"cellar");
-let lastDrawnRoom:typeof store.state.level5Room|null=null;
+let lastDrawnRoom:typeof store.state.shopRoom|null=null;
 let lastDrawnCellar:typeof store.state.cellarRoom|null=null;
 const refreshRoom=()=>{
-  const room=store.state.level5Room;
+  const room=store.state.shopRoom;
   if(room===lastDrawnRoom)return;
   lastDrawnRoom=room;
   roomVisuals.update(room);
@@ -285,7 +285,7 @@ const refreshShoppingIntents = () => {
     lastShoppingState.shopEconomy===state.shopEconomy&&
     lastShoppingState.shopCarts===state.shopCarts&&
     lastShoppingState.shopLayout===state.shopLayout&&
-    lastShoppingState.level5Room===state.level5Room&&
+    lastShoppingState.shopRoom===state.shopRoom&&
     lastShoppingState.events===state.events)return;
   lastShoppingState=state;
   npcVisuals.setShoppingIntents(
@@ -297,7 +297,7 @@ const refreshShoppingIntents = () => {
     return store.state!==previous;
   },
   manuallyPaidVisitors(state.events,state.day),
-  (heroId,reason)=>store.walkOutWithoutPurchase(heroId,reason),state.level5Room,{
+  (heroId,reason)=>store.walkOutWithoutPurchase(heroId,reason),state.shopRoom,{
     start:(heroId,itemId,reason)=>{
       const due=store.startShopRequest(heroId,itemId,reason);
       return due===null?null:

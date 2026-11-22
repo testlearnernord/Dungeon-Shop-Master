@@ -25,14 +25,14 @@ test("shelf and register cannot occupy portal or sealed-gate clearance in previe
     const preview=store.previewFurniturePlacement(draft);
     assert.match(preview??"",/entrances|aisles|clear/i);
     const check=validator.evaluate(draft,store.state.shopLayout,
-      store.state.level5Room,1000,true);
+      store.state.shopRoom,1000,true);
     assert.equal(check.ready,true);
     assert.equal(check.problem,preview,
       "The ghost and the actual placement must reject the exact same bounds");
     assert.equal(store.placeFurniture(draft),preview);
     assert.deepEqual(store.state,before);
   }
-  assert.equal(shopLayoutProblem(store.state.shopLayout,store.state.level5Room),null);
+  assert.equal(shopLayoutProblem(store.state.shopLayout,store.state.shopRoom),null);
 });
 test("the only portal lanes stay unbuildable, while a normal shop site stays valid",()=>{
   for(const phase of ["entering","leaving"] as const){
@@ -42,9 +42,9 @@ test("the only portal lanes stay unbuildable, while a normal shop site stays val
   assert.equal(overlapsShopPortalClearance(
     {minX:-1,maxX:1,minZ:-2,maxZ:-1}),false);
 });
-test("v30 save rejects old two-door traffic state without importing a legacy path",()=>{
+test("v31 save rejects old two-door traffic state without importing a legacy path",()=>{
   const state=createGameState(4321);
-  assert.equal(SIMULATION_VERSION,30);
+  assert.equal(SIMULATION_VERSION,31);
   const saved=createSave(state);
   assert.deepEqual(parseSave(JSON.stringify(saved)),state);
   const old=structuredClone(saved) as any;

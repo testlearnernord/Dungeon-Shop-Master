@@ -45,7 +45,7 @@ function assertRoute(layout:ShopLayout,room:Level5Room,
 
 test("connected excavated wing, moved shelf and counter preserve all customer services",()=>{
   const room=carveWing(),initial=createGameState(7351);
-  const store=new GameStore({...initial,level5Room:room});
+  const store=new GameStore({...initial,shopRoom:room});
   const shelf={id:"shelf-2" as const,x:8.25,z:0,rotation:2 as const};
   assert.equal(store.previewFurniturePlacement(shelf),null);
   assert.equal(store.placeFurniture(shelf),"Shelf placement saved.");
@@ -79,18 +79,18 @@ test("connected excavated wing, moved shelf and counter preserve all customer se
     assert(distance(c.point,b.point)>=1.18);
   }else assert.equal(manager.claim("roamer"),null);
   assert.deepEqual(forecastShoppingIntents(store.state),
-    forecastShoppingIntents({...initial,level5Room:room}));
+    forecastShoppingIntents({...initial,shopRoom:room}));
   assert.deepEqual(advanceDay(store.state).state.shopEconomy,
-    advanceDay({...initial,level5Room:room}).state.shopEconomy);
+    advanceDay({...initial,shopRoom:room}).state.shopEconomy);
   const saved=parseSave(JSON.stringify(createSave(store.state)));
-  assert.deepEqual(saved.level5Room,room);
+  assert.deepEqual(saved.shopRoom,room);
   assert.deepEqual(saved.shopLayout,layout);
-  assert.equal(shopServiceReachabilityProblem(saved.shopLayout,saved.level5Room),null);
+  assert.equal(shopServiceReachabilityProblem(saved.shopLayout,saved.shopRoom),null);
 });
 
 test("bedroom, bed and board stay independent of retail navigation in an enlarged shop",()=>{
   const initial=createGameState(7351),room=carveWing();
-  const store=new GameStore({...initial,level5Room:room});
+  const store=new GameStore({...initial,shopRoom:room});
   assert.equal(store.placeFurniture({id:"adventurer-board",x:-5,z:-6.45,rotation:2}),
     "Adventurer board placed.");
   assert.equal(store.placeFurniture({id:"desk",x:-2.25,z:-9.75,rotation:1}),
@@ -102,5 +102,5 @@ test("bedroom, bed and board stay independent of retail navigation in an enlarge
   const saved=parseSave(JSON.stringify(createSave(store.state)));
   assert.deepEqual(saved.rosterBoard,store.state.rosterBoard);
   assert.deepEqual(saved.bedroomFurniture,store.state.bedroomFurniture);
-  assert.deepEqual(saved.level5Room,room);
+  assert.deepEqual(saved.shopRoom,room);
 });

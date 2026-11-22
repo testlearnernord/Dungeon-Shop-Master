@@ -41,7 +41,7 @@ test("exact traffic checkpoint survives strict campaign JSON and restores routes
   assert.deepEqual(loaded.worldClock,state.worldClock);
   assert.equal(loaded.events.filter(event=>event.type==="sale").length,
     state.events.filter(event=>event.type==="sale").length);
-  assert.equal(SIMULATION_VERSION,30);
+  assert.equal(SIMULATION_VERSION,31);
   assert.equal(loaded.shopTraffic.actors[0].route[1].z,1.8);
   assert.equal(loaded.shopTraffic.actors[0].routeProgress?.stagnantSeconds,0.15);
 });
@@ -74,7 +74,7 @@ test("service claims roundtrip without recomputing routes or stealing another re
   const {state,checkpoint,heroId}=shopFixture();
   const spots=new ShopServiceSpots();
   spots.restoreClaims(checkpoint.claims,checkpoint.shelfOwners,
-    state.shopLayout,state.level5Room);
+    state.shopLayout,state.shopRoom);
   assert.deepEqual(spots.snapshot(),checkpoint.claims);
   assert.deepEqual(spots.snapshotShelfOwners(),[]);
   assert.equal(spots.claim(heroId)?.role,"restock");

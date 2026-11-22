@@ -28,7 +28,7 @@ test("seven actual adjoining rock cells support shelf relocation; one cell canno
   assert.equal(proposed.message,"Shelf placement saved.");
   assert.equal(shopServiceReachabilityProblem(proposed.layout,room),null);
   const before=createGameState(7351);
-  const store=new GameStore({...before,level5Room:room});
+  const store=new GameStore({...before,shopRoom:room});
   assert.equal(store.placeFurniture(placement),"Shelf placement saved.");
   assert.deepEqual(store.state.shopLayout.shelves[1],placement);
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))).shopLayout,
@@ -45,7 +45,7 @@ test("a valid cashier on mined floor is accepted by the same preview and GameSto
     room=result.room;
   }
   const state=createGameState(7351);
-  const store=new GameStore({...state,level5Room:room});
+  const store=new GameStore({...state,shopRoom:room});
   const counter={id:"counter" as const,x:9.25,z:0,rotation:0 as const};
   const proposed=replaceCounterPlacement(state.shopLayout,counter,room);
   assert.equal(proposed.message,"Counter placement saved.");

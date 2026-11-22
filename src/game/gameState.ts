@@ -36,7 +36,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 30;
+export const SIMULATION_VERSION = 31;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -128,7 +128,7 @@ export interface GameState {
   readonly rosterBoard: RosterBoardPlacement;
   /** Optional one-of-a-kind wall decoration, absent until the player hangs it. */
   readonly wallPortrait?: WallPortraitPlacement;
-  readonly level5Room: Level5Room;
+  readonly shopRoom: Level5Room;
   readonly cellarRoom: CellarRoom;
   readonly cellarChest: CellarChestPlacement;
   readonly cellarTable: CellarTablePlacement;
@@ -180,7 +180,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     shopLayout: createShopLayout(),
     bedroomFurniture: createBedroomFurnitureLayout(),
     rosterBoard: DEFAULT_ROSTER_BOARD,
-    level5Room: createLevel5Room(),
+    shopRoom: createLevel5Room(),
     cellarRoom: createCellarRoom(),
     cellarChest: {...DEFAULT_CELLAR_CHEST},
     cellarTable: {...DEFAULT_CELLAR_TABLE},

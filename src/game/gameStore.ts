@@ -129,7 +129,7 @@ export class GameStore {
   }
 
   excavateShopCell(cell:RoomCell):string {
-    const room=this.current.level5Room;
+    const room=this.current.shopRoom;
     const result=excavateLevel5Cell(room,cell);
     if(!result.ok)return result.reason;
     // The mineable rock is also a possible *wall mount*. Excavating its
@@ -140,7 +140,7 @@ export class GameStore {
     if(this.current.wallPortrait&&wallPortraitProblem(this.current.wallPortrait,
       this.current.shopLayout,result.room,board))
       return "Move Galvik's portrait before mining its supporting rock.";
-    this.replace({...this.current,level5Room:result.room});
+    this.replace({...this.current,shopRoom:result.room});
     return "Rock excavated.";
   }
 
@@ -185,12 +185,12 @@ export class GameStore {
   }
 
   unlockShopExpansion(tier:number):string {
-    const room=this.current.level5Room;
+    const room=this.current.shopRoom;
     if(!Number.isSafeInteger(tier)||tier!==room.expansionTier+1||tier>3)
       return "Invalid expansion tier.";
     const next={...room,expansionTier:tier};
     if(!isValidLevel5Room(next))return "Invalid room geometry.";
-    this.replace({...this.current,level5Room:next});
+    this.replace({...this.current,shopRoom:next});
     return "Shop expansion unlocked.";
   }
 

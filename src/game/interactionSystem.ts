@@ -140,7 +140,7 @@ export class InteractionSystem {
         const cellar=this.camera.position.z<-19.3&&this.camera.position.y< -1.5;
         if(event.shiftKey){
           const tier=cellar?this.store.state.cellarRoom.expansionTier:
-            this.store.state.level5Room.expansionTier;
+            this.store.state.shopRoom.expansionTier;
           this.message=cellar?this.store.unlockCellarExpansion(tier+1):
             this.store.unlockShopExpansion(tier+1);
           this.publish();event.preventDefault();return;
@@ -150,10 +150,10 @@ export class InteractionSystem {
           this.message="Mining mode off.";
         }else{
           const tier=cellar?this.store.state.cellarRoom.expansionTier:
-            this.store.state.level5Room.expansionTier;
+            this.store.state.shopRoom.expansionTier;
           if(tier===0)this.message=this.store.unlockShopExpansion(1);
           const unlocked=(cellar?this.store.state.cellarRoom.expansionTier:
-            this.store.state.level5Room.expansionTier)>0;
+            this.store.state.shopRoom.expansionTier)>0;
           this.setMiningMode(unlocked);
           this.message=unlocked
             ?"Mining mode ON · Left-click exposed rock · U / Esc / right-click to cancel."

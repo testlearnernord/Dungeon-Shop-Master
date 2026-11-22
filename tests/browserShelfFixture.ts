@@ -8,7 +8,7 @@ import {replaceShelfPlacement} from "../src/game/shopLayout.ts";
 export function withStockedSmallShelf(state:GameState):GameState {
   const built=replaceShelfPlacement(state.shopLayout,{
     id:"shelf-1",x:-7,z:0,rotation:0,
-  },state.level5Room);
+  },state.shopRoom);
   if(built.message!=="Shelf placement saved.")
     throw new Error("Cannot prepare browser shelf: "+built.message);
   const slots=createEmptyShelfSlots("shelf-1").map(slot=>
