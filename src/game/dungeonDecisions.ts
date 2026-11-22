@@ -23,8 +23,7 @@ export function chooseHeroDungeonDecision(
   hero: AdventurerState, progress: Level7HeroProgress | undefined,
   replay: Level7Replay,
 ): HeroDungeonDecision {
-  if((hero.status!=="exploring"&&
-      !(hero.status==="expedition"&&hero.floor===7))||
+  if(hero.status!=="exploring"||
       hero.health<=0||typeof hero.floor!=="number"||hero.floor<1||hero.floor>9)
     throw new RangeError("Only living numbered-floor explorers can plan movement");
   const healthRatio=hero.health/heroProgression(hero).maxHealth;
@@ -69,8 +68,7 @@ export function chooseLiveHeroDungeonDecision(
   bossPartyReady=false,
 ):HeroDungeonDecision {
   if(typeof hero.floor!=="number"||hero.floor<1||hero.floor>9||hero.health<=0||
-    (hero.status!=="exploring"&&
-      !(hero.status==="expedition"&&hero.floor===7)))
+    hero.status!=="exploring")
     throw new RangeError("Only a living ordinary-floor explorer can make a LIVE choice.");
   if(replay.outcome==="retreat")
     return {goal:"resupply",action:"shop"};

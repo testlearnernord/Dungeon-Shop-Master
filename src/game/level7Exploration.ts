@@ -165,16 +165,14 @@ export function prepareSpatialDungeonCombat(
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
     (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0,cycle));
   // Only renewable sentries can become elites. No unique boss is regenerated.
-  const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
+  const elite=cycle>0 && cycle%4===1 &&
     tileAt(layout,monster.x,monster.z)==="room";
   // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
   // Toughness is authoritative, not a slowed replay: each extra party member
   // adds some resistance so a three-hero party does not erase one Ghoul
   // before its authored attacks can play out. All choices stay seed-stable.
   // The 25-second encounter bound and actual hero/monster damage remain real.
-  const baseGhoulHp=(layout.floor===7
-    ?22+monsterRand.int(13):12+layout.floor*3+monsterRand.int(7))+
-    (elite?24:0);
+  const baseGhoulHp=12+layout.floor*3+monsterRand.int(7)+(elite?24:0);
   const partyToughness=1+Math.max(0,party.length-1)*0.65;
   const monsterHp=Math.round(baseGhoulHp*2.4*partyToughness);
 
@@ -230,8 +228,7 @@ export function prepareSpatialDungeonCombat(
   // Every extra monster gets its own stable ID, actual collision position,
   // HP, AI decisions and saved 60Hz frames. Never duplicate the primary
   // feature or create more world sites/reward settlements for companions.
-  const baseDamage=(layout.floor===7?8+monsterRand.int(4):
-    2+layout.floor+monsterRand.int(3))+(elite?4:0);
+  const baseDamage=2+layout.floor+monsterRand.int(3)+(elite?4:0);
   for(let index=0;index<packCount;index++){
     const spawn=index===0?monster:freePackSpawns[index-1]!;
     specs.push({

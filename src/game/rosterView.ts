@@ -33,7 +33,7 @@ export function rosterPartyDetails(state:GameState,heroId:string):{
   const members=party.memberIds.map(id=>byId.get(id));
   if(members.some(member=>!member||member.health<=0||
     member.floor!==party.floor||
-    member.status!==(party.floor===7?"expedition":"exploring")))
+    member.status!=="exploring"))
     return null;
   return {formedDay:party.formedDay,floor:party.floor,
     members:members as AdventurerState[]};
