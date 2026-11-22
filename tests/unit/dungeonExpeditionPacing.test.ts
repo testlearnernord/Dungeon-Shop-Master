@@ -100,23 +100,24 @@ test("one real committed day can contain two DISTINCT fights without repeated re
     id===a.id||id===b.id).sort(),[a.id,b.id].sort());
 
   const base=createGameState(seed);
+  const committedTick=WORLD_TICKS_PER_DAY+200;
   const saved={
-    ...base,day:2,worldClock:{...base.worldClock,tick:WORLD_TICKS_PER_DAY},
-    shopTraffic:emptyShopTraffic(2,WORLD_TICKS_PER_DAY),
+    ...base,day:2,worldClock:{...base.worldClock,tick:committedTick},
+    shopTraffic:emptyShopTraffic(2,committedTick),
     shopEconomy:{...base.shopEconomy,
       dailySales:{...base.shopEconomy.dailySales,day:2}},
     adventurers:base.adventurers.map(h=>first.ticks.find(t=>
       t.adventurer.id===h.id)?.adventurer??h),
     dungeonWorlds:[{floor:1 as const,world:first.world}],
     events:[...base.events,...first.ticks.map(t=>({
-      id:"day-2:"+t.adventurer.id+":dungeon-exploration",
-      day:2,type:"dungeon-exploration" as const,
+      id:"day-2:"+t.adventurer.id+":dungeon-live:"+committedTick,
+      day:2,worldTick:committedTick,type:"dungeon-live" as const,
       adventurerId:t.adventurer.id,message:"Recorded expedition.",
       dungeonReplay:t.replay,
     }))],
   };
   assert.deepEqual(parseSave(JSON.stringify(createSave(saved))),saved,
-    "v14 campaign must validate TWO genuine encounters");
+    "Current v35 campaign must validate TWO genuine encounters");
 });
 
 test("historical one-encounter recordings remain playable and verify unchanged",()=>{
