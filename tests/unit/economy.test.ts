@@ -4,7 +4,7 @@ import test from "node:test";
 import { useHealingSupplies, generateAdventurer, type AdventurerState } from "../../src/game/adventurers.ts";
 import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, SHELF_GOODS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
 import { advanceDay, type GameState } from "../../src/game/gameState.ts";
-import {quoteCustomerCheckout,checkoutCustomer} from "../../src/game/customerCheckout.ts";
+import {payWantedItems} from "./physicalCheckoutFixture.ts";
 
 function freeze<T>(value: T): T {
   if (value !== null && typeof value === "object") {
@@ -215,9 +215,7 @@ test("actual cashier sells Waybread and herbs at catalog prices without applying
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"}});
   let state=stock(market([hero]),"bread",1);
   state=freeze(stock(state,"healing-herb",1,1));
-  const quote=quoteCustomerCheckout(state,hero.id);
-  assert(quote);
-  const result=checkoutCustomer(state,quote);
+  const result=payWantedItems(state,hero.id);
   const next=result.state.adventurers[0];
   assert.equal(next.health,10,"Buying supplies must not heal the hero retroactively");
   assert.equal(next.inventory.bread,1);
@@ -235,9 +233,7 @@ test("injuries without stocked healing supplies cause no passive HP loss",()=>{
 test("manual revenue belongs only to the paid day and resets on next day", () => {
   const hero=customer(1,{inventory:{bread:0,healing:0,loot:0}});
   const state=stock(market([hero]),"bread",1);
-  const quote=quoteCustomerCheckout(state,hero.id);
-  assert(quote);
-  const paid=checkoutCustomer(state,quote).state;
+  const paid=payWantedItems(state,hero.id).state;
   assert.equal(paid.shopEconomy.dailySales.units,1);
   const first=advanceDay(paid).state;
   assert.deepEqual(first.shopEconomy.dailySales,{day:2,units:0,revenue:0});

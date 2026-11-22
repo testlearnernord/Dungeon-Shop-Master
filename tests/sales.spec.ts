@@ -16,7 +16,8 @@ test("manual checkout receipts are real and bedtime cannot sell stock by itself 
   await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
-    const {quoteCustomerCheckout,checkoutCustomer}=await import("/Dungeon-Shop-Master/src/game/customerCheckout.ts");
+    const {forecastShoppingIntents}=await import("/Dungeon-Shop-Master/src/game/shopperIntents.ts");
+    const {pickUpShopItem,payReservedShopCart}=await import("/Dungeon-Shop-Master/src/game/shopCarts.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const base=withStockedSmallShelf(createGameState(7351));
     const buyer=base.adventurers.find(hero=>hero.status==="at-shop");
@@ -24,10 +25,18 @@ test("manual checkout receipts are real and bedtime cannot sell stock by itself 
     const ready={...base,adventurers:base.adventurers.map(hero=>hero.id===buyer.id
       ?{...hero,gold:100,inventory:{...hero.inventory,bread:0,healing:0},
         equipment:{weapon:null,armor:null}}:hero)};
-    const quote=quoteCustomerCheckout(ready,buyer.id);
-    if(!quote)throw new Error("No valid physical sale to verify.");
-    const paid=checkoutCustomer(ready,quote);
-    if(paid.state===ready)throw new Error(paid.message);
+    const plan=forecastShoppingIntents(ready).get(buyer.id);
+    if(!plan?.items.length)throw new Error("No desired stocked merchandise.");
+    let held=ready;
+    for(const line of plan.items){
+      const picked=pickUpShopItem(held,buyer.id,line.slotId);
+      if(picked.state===held)throw new Error(picked.message);
+      held=picked.state;
+    }
+    if(held.shopEconomy.balance!==ready.shopEconomy.balance)
+      throw new Error("Goods were paid without cashier confirmation.");
+    const paid=payReservedShopCart(held,buyer.id);
+    if(paid.state===held)throw new Error(paid.message);
     await new CampaignStorage().saveGame(paid.state);
   });
   await page.reload();

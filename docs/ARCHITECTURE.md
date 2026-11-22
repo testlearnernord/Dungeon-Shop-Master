@@ -53,7 +53,7 @@ Browser input / shop interactions
 - The physical customer motor owns enter/browse/consider/queue/leave positions and claims; its authoritative checkpoint is `shopTraffic.ts`. Babylon actors represent, never re-decide, those positions.
 - Picking up goods reserves an **unpaid** cart. A successful staff-side cashier interaction makes a **real paid sale**, while explicit approval of credit writes a debt. Unpaid stock returns without false revenue when the day closes.
 - A shop visitor is not off-duty merely because checkout finished: the saved real **outer-gate crossing** starts two complete subsequent days outside both shop and dungeon. Existing return/reentry policy retains prior stats and explored paths without phantom healing.
-- Existing quote-based checkout APIs may be retained for legitimate callers/tests; never remove by filename alone.
+- The old quote-based direct checkout has been removed. The staffed register settles ONLY physically reserved `shopCarts` through `payReservedShopCart` (GameStore `payReservedCart`); customer preference forecasts remain read-only.
 
 ## 4. Dungeon, combat, LIVE and replay
 
@@ -150,4 +150,6 @@ The parser and writer use only `SIMULATION_VERSION=30`; v29 and older Alpha camp
 
 **Current v30 Save/event boundary (#300 follow-up):** No legitimate v30 gameplay ever emits `level6-departure`, `level6-combat`, `level6-return` or the former `level7-departure` shortcut. The strict save parser now explicitly rejects all four event types and their obsolete Solo-F6 `combatOutcome/combatReplay` metadata, while continuing to validate authentic ordinary dungeon and Floor-10 party tapes. This is a rejection of unreachable old fixture formats, not a migration or a new save version. Historical interface types and isolated arena preview implementation remain separate cleanup tasks.
 
-**PR #310 / shadow checkout boundary:** GameStore no longer exposes forecast-only quote/checkout settlement. Its sole staffed cash register is `payReservedCart` on durable, physically held `shopCarts`. Current paid-gear vs. Floor-10 party boss tests use real shelf pickup and this register. Unused direct `customerCheckout.ts` remains only for historical tests until removed in the following scoped cleanup. Alpha save schema remains v30.
+**PR #310 / shadow checkout boundary:** GameStore no longer exposes forecast-only quote/checkout settlement. Its sole staffed cash register is `payReservedCart` on durable, physically held `shopCarts`. Current paid-gear vs. Floor-10 party boss tests use real shelf pickup and this register. The obsolete direct `customerCheckout.ts` module and its historical unit-only tests were removed in the following PR; tests now pay using actual shelf pickup, reservation and register settlement. Alpha save schema remains v30.
+
+**PR #311 / single sale authority:** The alternative forecast-to-sale transaction is deleted, not merely unreachable from the UI. Current unit and browser receipt tests use real held stock, one cashier settlement, current-format save/reload and gold conservation. The shopping intent engine remains a read-only consumer-needs forecast for choosing actual items, not a payment engine. `payReservedShopCart` is the only normal merchant sale commit; `issueShopCredit` and loot buyback retain their distinct economic semantics. No schema bump in v30 because no persisted field changed.

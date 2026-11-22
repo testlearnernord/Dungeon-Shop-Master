@@ -7,7 +7,7 @@ import {
 } from "../../src/game/campaignSave.ts";
 import { advanceDay, SIMULATION_VERSION, type GameState } from "../../src/game/gameState.ts";
 import { buyWholesale, discardBag, transferShelf } from "../../src/game/economy.ts";
-import {quoteCustomerCheckout,checkoutCustomer} from "../../src/game/customerCheckout.ts";
+import {payWantedItems} from "./physicalCheckoutFixture.ts";
 
 function encoded(state = createGameState()): string {
   return JSON.stringify(createSave(state));
@@ -176,9 +176,7 @@ test("checks event-specific outcome, prices, quantities, links and chronology", 
   const buyer=initial.adventurers[0];
   const ready={...initial,adventurers:initial.adventurers.map(hero=>
     hero.id===buyer.id?{...hero,gold:100,inventory:{...hero.inventory,bread:0,healing:0}}:hero)};
-  const quote=quoteCustomerCheckout(ready,buyer.id);
-  assert(quote,"Fixture must contain a real checkout");
-  let state=advanceDay(checkoutCustomer(ready,quote).state).state;
+  let state=advanceDay(payWantedItems(ready,buyer.id).state).state;
   const mutateEvent = (type: string, mutate: (event: any) => void, message: RegExp) => {
     const envelope = JSON.parse(encoded(state));
     const event = envelope.payload.events.find((event: any) => event.type === type);

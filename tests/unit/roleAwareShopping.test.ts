@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
-import {quoteCustomerCheckout,checkoutCustomer} from "../../src/game/customerCheckout.ts";
+import {payWantedItems} from "./physicalCheckoutFixture.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {pickUpShopItem,payReservedShopCart} from "../../src/game/shopCarts.ts";
 import {preferredShopItemOrder} from "../../src/game/economy.ts";
@@ -36,8 +36,7 @@ test("a healthy DPS buys a real sword with 9g instead of spending the budget on 
   assert.deepEqual(plan.items.map(item=>item.itemId),["iron-sword"]);
   assert.equal(plan.total,9);
   assert.deepEqual(state,before,"A purchase forecast may not change physical stock");
-  const quote=quoteCustomerCheckout(state,heroId)!;
-  const checkout=checkoutCustomer(state,quote);
+  const checkout=payWantedItems(state,heroId);
   const hero=checkout.state.adventurers.find(h=>h.id===heroId)!;
   assert.equal(hero.equipment.weapon,"Iron Sword");
   assert.equal(hero.inventory.bread,0);
@@ -54,8 +53,7 @@ test("an equipped tank first protects itself with armor, not excess bread",()=>{
   assert.deepEqual(preferredShopItemOrder(state.adventurers[0]),
     ["leather-vest","iron-sword","bread","healing-herb"]);
   assert.deepEqual(plan.items.map(line=>line.itemId),["leather-vest"]);
-  const quote=quoteCustomerCheckout(state,heroId)!;
-  const purchased=checkoutCustomer(state,quote).state.adventurers[0];
+  const purchased=payWantedItems(state,heroId).state.adventurers[0];
   assert.equal(purchased.equipment.armor,"Leather Vest");
   assert.equal(purchased.inventory.bread,0);
 });
@@ -64,8 +62,7 @@ test("a gravely injured DPS buys actual treatment before a sword, without free h
   const {state,heroId}=prepared("DPS",9,0.40);
   const plan=forecastShoppingIntents(state).get(heroId)!;
   assert.deepEqual(plan.items.map(line=>line.itemId),["healing-herb"]);
-  const quote=quoteCustomerCheckout(state,heroId)!;
-  const checkout=checkoutCustomer(state,quote);
+  const checkout=payWantedItems(state,heroId);
   const after=checkout.state.adventurers[0];
   assert.equal(after.health,state.adventurers[0].health);
   assert.equal(after.inventory.healing,1);

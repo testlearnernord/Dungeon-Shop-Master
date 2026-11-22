@@ -4,8 +4,16 @@ test("a real lethal dungeon step raises ONE global world-feed warning and opens 
   test.setTimeout(95000);
   const errors:string[]=[];
   page.on("pageerror",err=>errors.push(err.message));
+  // Seed IndexedDB in a same-origin HTML shell WITHOUT booting the game.
+  // The previous harness saved from a second GameStore while the real shop
+  // was already running and autosaving, racing away the seeded death signal.
+  const fixtureRoute="**/Dungeon-Shop-Master/";
+  await page.route(fixtureRoute,route=>route.fulfill({
+    status:200,contentType:"text/html",
+    body:"<!doctype html><html><head><title>Fixture Host</title></head><body></body></html>",
+  }));
   await page.goto("./");
-  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.unroute(fixtureRoute);
   const heroId=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {GameStore}=await import("/Dungeon-Shop-Master/src/game/gameStore.ts");
@@ -41,11 +49,25 @@ test("a real lethal dungeon step raises ONE global world-feed warning and opens 
     await new CampaignStorage().saveGame(game.state);
     return hero.id;
   });
+  // Now boot ONE authoritative game process against the saved lethal step.
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
+  // "Day 1" can be shown before the Babylon scene and asynchronous saved
+  // World Feed have finished bootstrapping, especially on the CI GPU.
+  // Wait for the actual notification owner, not an unrelated HUD label.
+  await expect(page.locator("#world-event-feed")).toHaveCount(1,{timeout:20000});
   const alert=page.locator('#world-event-feed .world-feed-toast[data-category="death"]');
   await expect(page.locator("#live-death-signal")).toHaveCount(0);
-  await expect(alert).toBeVisible();
+  const snapshot=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    return {day:state?.day,deathSignals:state?.events.filter(e=>
+      e.type==="hero-death-signal").map(e=>({id:e.id,day:e.day})),
+      visibleFeed:document.querySelectorAll("#world-event-feed .world-feed-toast").length,
+      feedRoot:!!document.querySelector("#world-event-feed")};
+  });
+  console.log("Reloaded authoritative death-signal UI diagnostic",JSON.stringify(snapshot));
+  await expect(alert).toBeVisible({timeout:20000});
   await expect(alert).toContainText("LIFE-SIGNATURE EXTINGUISHED");
   await expect(alert).not.toContainText(/trap|spikes|floor [0-9]|loot|killer/i);
   await expect(alert).toHaveAttribute("role","alert");
