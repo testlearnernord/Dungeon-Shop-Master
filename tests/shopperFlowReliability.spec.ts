@@ -93,7 +93,7 @@ test("eight incoming customers return unpaid carts at bed-close without phantom 
     if(movedCounter.message!=="Counter placement saved.")
       throw Error(movedCounter.message);
     const problem=shopServiceReachabilityProblem(
-      movedCounter.layout,original.level5Room);
+      movedCounter.layout,original.shopRoom);
     if(problem)throw Error(problem);
     const state={
       ...original,shopLayout:movedCounter.layout,
@@ -396,7 +396,7 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
     const {ECONOMY,createEmptyShelfSlots}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
     const {forecastShoppingIntents}=await import("/Dungeon-Shop-Master/src/game/shopperIntents.ts");
     const original=createGameState(7351);
-    let room={...original.level5Room,expansionTier:2};
+    let room={...original.shopRoom,expansionTier:2};
     for(let x=8;x<=9;x++)for(let z=-6;z<=6;z++){
       const next=excavateLevel5Cell(room,{x,z});
       if(!next.ok)throw Error(next.reason);
@@ -410,7 +410,7 @@ test("mined shop lets requesting visitors roam while buyers shop and finished cu
     if(till.message!=="Counter placement saved.")throw Error(till.message);
     const problem=shopServiceReachabilityProblem(till.layout,room);
     if(problem)throw Error(problem);
-    const state={...original,level5Room:room,shopLayout:till.layout,
+    const state={...original,shopRoom:room,shopLayout:till.layout,
       adventurers:original.adventurers.map((hero,index)=>index<4
         ?{...hero,status:"at-shop" as const,floor:5 as const,
           gold:index===0?0:index===1?8:100,

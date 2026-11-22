@@ -103,7 +103,7 @@ test("strict saves reject injected, incomplete or obstructing furniture geometry
   const mutations:[string,(data:any)=>void][]=[
     ["shopLayout",(s)=>{delete s.shopLayout;}],
     ["shopLayout",(s)=>{delete s.shopLayout.counter;}],
-    ["level5Room",(s)=>{delete s.level5Room;}],
+    ["shopRoom",(s)=>{delete s.shopRoom;}],
     ["bedroomFurniture",(s)=>{delete s.bedroomFurniture;}],
     ["rosterBoard",(s)=>{delete s.rosterBoard;}],
     ["shopLayout",(s)=>{s.shopLayout.extra="unrecognized";}],

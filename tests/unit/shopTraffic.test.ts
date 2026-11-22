@@ -74,7 +74,7 @@ test("service claims roundtrip without recomputing routes or stealing another re
   const {state,checkpoint,heroId}=shopFixture();
   const spots=new ShopServiceSpots();
   spots.restoreClaims(checkpoint.claims,checkpoint.shelfOwners,
-    state.shopLayout,state.level5Room);
+    state.shopLayout,state.shopRoom);
   assert.deepEqual(spots.snapshot(),checkpoint.claims);
   assert.deepEqual(spots.snapshotShelfOwners(),[]);
   assert.equal(spots.claim(heroId)?.role,"restock");
