@@ -200,7 +200,8 @@ function shortRealReturnFixture():{store:GameStore;heroId:string;path:{x:number;
   assert(hero);
   const adventurers=initial.adventurers.map(h=>h.id===hero.id?{
     ...h,floor:1 as const,status:"exploring" as const,
-    inventory:{...h.inventory,loot:2},
+    inventory:{...h.inventory,loot:2,
+      finds:{"iron-ore":1}},
   }:h);
   const world={...emptyLevel7World(),heroes:[{
     heroId:hero.id,x:path.at(-1)!.x,z:path.at(-1)!.z,
@@ -246,6 +247,10 @@ test("actual shop return crosses known tiles, survives reload and arrives DURING
   const traveler=a.state.adventurers.find(h=>h.id===heroId)!;
   assert.equal(traveler.status,"at-shop");
   assert.equal(traveler.floor,5);
+  assert.equal(traveler.inventory.loot,0,
+    "Depositing a trip's abstract haul must stop the endless return-to-shop loop.");
+  assert.deepEqual(traveler.inventory.finds,{"iron-ore":1},
+    "Real unsold material ownership remains with the hero for optional buyback.");
   assert.equal(a.state.day,1,"The bed, not an arrival, ends the day.");
   const arrival=a.state.events.filter(e=>
     e.type==="shop-arrival"&&e.adventurerId===heroId);
