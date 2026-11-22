@@ -102,7 +102,7 @@ export function setupWorldEventFeed(
     categories.append(label);categoryInputs.set(category,checkbox);
   }
   const help=document.createElement("small");
-  help.textContent="One saved world event source · Click to observe.";
+  help.textContent="One saved world event source · Click to observe. Death warnings stay until dismissed.";
   panel.append(levelLabel,durationLabel,categories,help);
   footer.append(settingsButton,panel);
   root.append(stack,footer);
@@ -176,7 +176,13 @@ export function setupWorldEventFeed(
         stop();active.delete(item.id);toast.remove();
         drain();
       };
-      const arm=()=>{stop();timer=setTimeout(dispose,settings.seconds*1000);};
+      const arm=()=>{
+        stop();
+        // Critical death warnings are meaningful until acknowledged.
+        // A slow save reload cannot make the only death signal disappear.
+        if(item.category!=="death")
+          timer=setTimeout(dispose,settings.seconds*1000);
+      };
       toast.addEventListener("mouseenter",stop);
       toast.addEventListener("mouseleave",arm);
       toast.addEventListener("focusin",stop);
