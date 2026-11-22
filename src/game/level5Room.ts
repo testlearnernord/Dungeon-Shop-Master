@@ -1,4 +1,6 @@
-/** Authoritative, renderer-independent Level 5 excavation delta.
+/** Authoritative, renderer-independent excavation delta for Galvik's cursed
+ * shop. "Level5" is a retained serialized/API key for existing v26 saves;
+ * it is NOT the playable dungeon Floor 5. Do not rename without migration.
  * The existing cave remains walkable without any mined cells. Expansion is
  * deliberately restricted to its side walls until a shared nav mesh exists.
  */
