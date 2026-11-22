@@ -215,7 +215,7 @@ function run(mode){
       metrics.xpGrowthDays.push(completed);
     classifyDeaths(metrics,before,store.state,added);
     const result=snap(store.state,completed);
-    if([1,5,10,20,25,50,75,100,150,200].includes(completed)||
+    if([1,5,10,20,25,50,75,80,100,150,200].includes(completed)||
        completed===DAYS)metrics.milestones.push(result);
     if(completed%10===0||completed===DAYS)
       console.log("AUDIT_PROGRESS "+JSON.stringify({
