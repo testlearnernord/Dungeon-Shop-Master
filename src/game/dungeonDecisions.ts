@@ -39,12 +39,14 @@ export function chooseHeroDungeonDecision(
   const enoughExperience=known >= (reckless?9:careful?17:13) ||
     replay.outcome==="completed";
   // Only physically carried, individually owned goods can motivate a
-  // treasure haul return. Trigger on the real chest event, not on old unsold
-  // goods after reentry; repeated shop trips must not arise from stale stock.
+  // treasure haul return. A chest yields at most three real goods, so a
+  // four-item threshold preserves multi-chest expedition pacing and stops
+  // one lucky chest from instantly splitting prepared travelling parties.
+  // Trigger on a NEW chest, never on stale unsold stock after reentry.
   const carriedFinds=Object.values(hero.inventory.finds??{})
     .reduce((total,count)=>total+(count??0),0);
   const newChest=replay.steps.some(step=>step.action==="treasure");
-  if(lowHealth || (newChest&&carriedFinds>=2) ||
+  if(lowHealth || (newChest&&carriedFinds>=4) ||
      (hero.floor===9 && hero.gold>=22 && known>=8)) {
     return {goal:"resupply",action:"shop"};
   }
