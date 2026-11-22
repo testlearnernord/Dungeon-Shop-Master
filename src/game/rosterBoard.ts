@@ -1,3 +1,4 @@
+import {heroProgression} from "./heroProgression.ts";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
@@ -134,7 +135,7 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       ctx.font="bold 18px sans-serif";
       ctx.fillText(hero.visible?hero.visible.gold+"g":"?",714,y+1,55);
       const hpRatio=hero.visible
-        ?Math.max(0,Math.min(1,hero.visible.health/hero.visible.stats.maxHealth))
+        ?Math.max(0,Math.min(1,hero.visible.health/heroProgression(hero.visible).maxHealth))
         :null;
       ctx.fillStyle = "#352a20";
       ctx.fillRect(780, y - 20, 175, 12);
@@ -145,7 +146,7 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
       ctx.fillStyle=hero.status==="lost"?"#ff9c8c":"#f0e4c9";
       ctx.font="bold 15px sans-serif";
       ctx.fillText(hero.visible
-        ?hero.visible.health+"/"+hero.visible.stats.maxHealth+" HP"
+        ?hero.visible.health+"/"+heroProgression(hero.visible).maxHealth+" HP"
         :hero.status==="lost"?"SIGNAL LOST":"HP unknown",783,y+9,171);
     });
     ctx.fillStyle = "#c8ae7d";
