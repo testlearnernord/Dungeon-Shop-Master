@@ -160,7 +160,6 @@ export function setupWorldEventFeed(
       const prompt=document.createElement("small");
       prompt.className="world-feed-prompt";
       prompt.textContent=item.target.kind==="recorded-fight"||
-        item.target.kind==="boss-recording"||
         item.target.kind==="party-boss-recording"?"CLICK TO WATCH REPLAY":
         item.target.kind==="hero-profile"?"CLICK TO VIEW HERO":
         "CLICK TO OBSERVE";

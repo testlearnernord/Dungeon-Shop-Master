@@ -7,6 +7,10 @@ import {WORLD_TICKS_PER_DAY,WORLD_TICKS_PER_GAME_MINUTE} from "./worldClock.ts";
  * Heavy recorded frames are NEVER copied into these list entries.
  */
 export type ArchiveDay=number|"saved";
+/** Every ordinary dungeon floor, including Floor 6, uses the same replay viewer.
+ * Only a recorded Floor-10 Temporary Party enters the boss viewer. */
+export const archiveRecordingDestination=(entry:Pick<ExpeditionHighlight,"partyBoss">):
+  "dungeon"|"party-boss"=>entry.partyBoss?"party-boss":"dungeon";
 export interface ExpeditionHighlight {
   readonly id:string;
   readonly kind:"combat"|"treasure"|"trap"|"party"|"death"|"departure"|"return"|"activity";
@@ -90,7 +94,7 @@ export function selectExpeditionArchive(
       heroId:event.adventurerId,
       heroName:names.get(event.adventurerId)??event.adventurerId,
       label:kind.label,hasReplay,saved,
-      floor:event.partyBossReplay?10:spatial?.floor??(event.combatReplay?6:null),
+      floor:event.partyBossReplay?10:spatial?.floor??null,
       partySize:event.partyBossReplay?
         event.partyBossReplay.actors.filter(actor=>actor.team==="heroes").length:
         spatial?.partyMemberIds?.length??0,
@@ -109,7 +113,7 @@ export function archiveBookmarks(
   if(!event)return [];
   const spatial=event.dungeonReplay??event.level7Replay;
   if(!spatial){
-    return event.combatReplay||event.partyBossReplay?
+    return event.partyBossReplay?
       [{id:"start",label:"Watch saved combat",replaySeconds:0}]:[];
   }
   const timeline=buildDungeonPlayback(spatial);

@@ -1,6 +1,7 @@
 import type {UniversalCamera} from "@babylonjs/core/Cameras/universalCamera";
 import type {GameStore} from "./game/gameStore.ts";
-import {archiveAvailableDays,archiveBookmarks,selectExpeditionArchive,
+import {archiveAvailableDays,archiveBookmarks,archiveRecordingDestination,
+  selectExpeditionArchive,
   type ArchiveDay,type ExpeditionHighlight} from "./game/expeditionArchive.ts";
 import {MAX_SAVED_REPLAYS} from "./game/replayRetention.ts";
 
@@ -10,7 +11,6 @@ import {MAX_SAVED_REPLAYS} from "./game/replayRetention.ts";
 export function setupExpeditionArchiveHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
   openDungeonRecording:(eventId:string,seconds:number)=>boolean,
-  openBossRecording:(eventId:string)=>boolean,
   openPartyBossRecording:(eventId:string)=>boolean,
 ):()=>void {
   const dialog=document.querySelector<HTMLDialogElement>("#archive-dialog")!;
@@ -100,7 +100,7 @@ export function setupExpeditionArchiveHud(
       render();
     });
     actions.append(save);
-    if(entry.floor!==6&&!entry.partyBoss){
+    if(!entry.partyBoss){
       const jumps=document.createElement("button");
       jumps.type="button";
       jumps.textContent="Highlights / Jump to…";
@@ -128,9 +128,9 @@ export function setupExpeditionArchiveHud(
   }
   function watchFootage(entry:ExpeditionHighlight,seconds:number):void {
     dialog.close();
-    const ok=entry.partyBoss?openPartyBossRecording(entry.id):
-      entry.floor===6?openBossRecording(entry.id):
-      openDungeonRecording(entry.id,seconds);
+    const ok=archiveRecordingDestination(entry)==="party-boss"
+      ?openPartyBossRecording(entry.id)
+      :openDungeonRecording(entry.id,seconds);
     if(!ok){
       const status=document.querySelector<HTMLElement>("#status");
       if(status)status.textContent="These recorded frames are no longer available.";

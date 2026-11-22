@@ -15,7 +15,6 @@ export type WorldFeedTarget=
   |{kind:"floor-site";floor:number;x:number;z:number;heroId:string}
   |{kind:"combat";fightId:string}
   |{kind:"recorded-fight";eventId:string;featureId:string;siteCycle:number}
-  |{kind:"boss-recording";eventId:string}
   |{kind:"party-boss-recording";eventId:string}
   |{kind:"hero-profile";heroId:string};
 
@@ -41,13 +40,6 @@ function eventEntry(event:WorldEvent,state:GameState):WorldFeedEntry|null{
       detail:event.message+" · A magical signal, not a report of where or how.",
       target:{kind:"death-footage",heroId:event.adventurerId,
         signalId:event.id}};
-  }
-  if(event.type==="level6-combat"&&event.adventurerId&&
-     event.combatOutcome==="victory"&&event.combatReplay?.frames.length){
-    return {id:"boss-victory:"+event.id,category:"boss",priority:3,
-      title:"CAVE TROLL DEFEATED",
-      detail:heroName(state,event.adventurerId)+" · Floor 6",
-      target:{kind:"boss-recording",eventId:event.id}};
   }
   if(event.type==="temporary-party-join"&&event.adventurerId){
     const party=state.dungeonParties?.find(p=>
@@ -263,21 +255,6 @@ export function projectWorldFeedChanges(
     let candidate=recordedVictoryEntry(event,before,after,newEvents)??
       dungeonSiteEntry(event,before,after,newEvents)??
       eventEntry(event,after);
-    if(candidate?.target.kind==="boss-recording"&&event.adventurerId){
-      const earlier=findHero(before,event.adventurerId);
-      const now=findHero(after,event.adventurerId);
-      if(earlier&&now){
-        const earned=Math.max(0,now.xp-earlier.xp);
-        const gain=newDungeonLoot(before,after,[event.adventurerId]);
-        const abstractLoot=Math.max(0,
-          now.inventory.loot-earlier.inventory.loot);
-        const reward=[earned?"+"+earned+" XP":"",
-          gain.items,abstractLoot?abstractLoot+" loot tokens":"",
-          gain.gold?"+"+gain.gold+" gold":""].filter(Boolean).join(" · ");
-        candidate={...candidate,detail:candidate.detail+
-          (reward?" · "+reward:" · No rewards")};
-      }
-    }
     if(candidate&&!unique.has(candidate.id)){
       results.push(candidate);
       unique.add(candidate.id);

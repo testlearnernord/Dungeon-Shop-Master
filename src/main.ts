@@ -494,10 +494,6 @@ setupWorldEventFeed(store,target=>{
     if(arena.isActive)arena.close();
     if(tape.kind==="active-combat")
       return dungeon.openLiveEncounter(tape.fightId);
-    if(tape.kind==="boss-recording"){
-      if(dungeon.isActive)dungeon.close();
-      arena.open(tape.eventId);return arena.isActive;
-    }
     if(tape.kind==="party-boss-recording"){
       if(arena.isActive)arena.close();
       return dungeon.openRecordedPartyBoss(tape.eventId);
@@ -525,12 +521,6 @@ setupWorldEventFeed(store,target=>{
     return dungeon.openRecordedCombat(target.eventId,
       target.featureId,target.siteCycle);
   }
-  if(target.kind==="boss-recording"){
-    if(dungeon.isActive)dungeon.close();
-    if(arena.isActive)arena.close();
-    arena.open(target.eventId);
-    return arena.isActive;
-  }
   if(target.kind==="party-boss-recording"){
     if(arena.isActive)arena.close();
     return dungeon.openRecordedPartyBoss(target.eventId);
@@ -544,7 +534,6 @@ setupWorldEventFeed(store,target=>{
 });
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
-  eventId=>{arena.open(eventId);return arena.isActive;},
   eventId=>dungeon.openRecordedPartyBoss(eventId));
 isShopActive=()=>!arena.isActive&&!dungeon.isActive&&
   !(bedtime?.isBlocking??false)&&!(fishing?.isActive??false);
@@ -609,10 +598,6 @@ ledger=setupMerchantLedger(()=>{
   camera.attachControl(canvas,true);
   statusHud.textContent="Morning has come. The shop is open.";
 },(event)=>{
-  if(event.type==="level6-combat"&&event.combatReplay){
-    arena.open(event.id);
-    return arena.isActive;
-  }
   if((event.type==="level7-exploration"&&event.level7Replay) ||
      (event.type==="dungeon-exploration"&&event.dungeonReplay)){
     // The night ledger opens the separately archived tape directly.
