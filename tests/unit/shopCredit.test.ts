@@ -49,7 +49,7 @@ test("credit costs exactly one real item and records debt, never cash or an auto
   assert.equal(hero.inventory.bread,1);
   assert.equal(hero.gold,0);
   assert.equal(hero.status,"returning");
-  assert.equal(hero.floor,4);
+  assert.equal(hero.floor,"transit");
   assert.equal(result.state.shopDebts[0].outstandingGold,quote.price);
   assert.equal(result.state.shopEconomy.balance,state.shopEconomy.balance);
   assert.deepEqual(result.state.shopEconomy.dailySales,state.shopEconomy.dailySales);
@@ -72,7 +72,7 @@ test("no stock, held carts and paid/absent heroes cannot obtain credit",()=>{
   assert.equal(quoteBeggingRequest(empty,heroId)?.available,false);
   assert.equal(issueShopCredit(empty,heroId).state,empty);
   const away={...state,adventurers:state.adventurers.map(hero=>hero.id===heroId
-    ?{...hero,status:"returning" as const,floor:4 as const}:hero)};
+    ?{...hero,status:"returning" as const,floor:"transit" as const}:hero)};
   assert.equal(quoteBeggingRequest(away,heroId),null);
   const cart={...state,shopCarts:[{heroId,day:state.day,lines:[
     {slotId:"shelf-1-slot-2",itemId:"bread" as const,quantity:1,subtotal:4},
