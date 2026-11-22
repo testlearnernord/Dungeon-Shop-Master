@@ -1,7 +1,7 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import {createCellarRoom,DEFAULT_CELLAR_CHEST,DEFAULT_CELLAR_TABLE,
   type CellarChestPlacement,type CellarTablePlacement,type CellarRoom} from "./cellarRoom.ts";
-import {createWorldClock,advanceWorldUntil,lastWorldTickOfDay,type WorldClockState} from "./worldClock.ts";
+import {createWorldClock,advanceWorldUntil,lastWorldTickOfDay,MAX_WORLD_DAY,type WorldClockState} from "./worldClock.ts";
 import {emptyShopTraffic,type ShopTrafficCheckpoint} from "./shopTraffic.ts";
 import {activateLiveDungeon,createLiveDungeonState,finishLiveDungeonDay,
   commitLiveWorldEvent,type LiveDungeonState} from "./liveDungeonRuntime.ts";
@@ -185,10 +185,19 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
  * motor; it does not invoke an alternative seeded day-long loot/combat roll.
  */
 export function advanceDay(state:GameState):{state:GameState;events:readonly WorldEvent[]}{
+  if(state.simulationVersion!==SIMULATION_VERSION)
+    throw new RangeError("Unsupported simulation version.");
+  if(!Number.isSafeInteger(state.day)||state.day<1||state.day>=MAX_WORLD_DAY)
+    throw new RangeError("The current day is outside the supported range.");
+  if(state.adventurers.some(hero=>hero.status==="expedition"&&hero.floor!==10))
+    throw new RangeError("Floor 6 and other ordinary floors have no solo boss expedition.");
   const live=state.liveDungeon.enabled?state:activateLiveDungeon(state);
   const settled=advanceWorldUntil(live,lastWorldTickOfDay(live.day),
     commitLiveWorldEvent);
-  return finishLiveDungeonDay(closeShopRequests(settled));
+  const finished=finishLiveDungeonDay(closeShopRequests(settled));
+  const priorIds=new Set(state.events.map(event=>event.id));
+  return {state:finished.state,events:finished.state.events.filter(event=>
+    !priorIds.has(event.id))};
 }
 
 /** Grant/revoke an explicit Floor-10 Temporary-Party Boss Pass only
