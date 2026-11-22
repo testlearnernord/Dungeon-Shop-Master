@@ -1,5 +1,6 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
 import {heroLevel,heroProgression} from "./heroProgression.ts";
+import {livePartyBossCheckpointProblem} from "./livePartyBossSave.ts";
 import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,type MaterialItemId } from "./economy.ts";
 import {
@@ -751,7 +752,7 @@ function validateLivePortalReturns(
       ["dueTick"]);
     const heroId=text(journey.heroId,path+".heroId");
     unique(heroId,indexed,path+".heroId");
-    choice(journey.fromFloor,[1,2,3,4,5,6,7,8,9],path+".fromFloor");
+    choice(journey.fromFloor,[1,2,3,4,5,6,7,8,9,10],path+".fromFloor");
     const floor=journey.fromFloor as number;
     const started=integer(journey.startedTick,path+".startedTick",0,clockTick);
     choice(journey.phase,["backtrack","portal"],path+".phase");
@@ -762,7 +763,7 @@ function validateLivePortalReturns(
       // A normal-floor portal can only be triggered from the known real
       // entrance tile. The saved last location is intentionally retained
       // until the portal event resolves; a bare fabricated timer is not enough.
-      if(floor!==6){
+      if(floor!==6&&floor!==10){
         const world:Level7World=floor===7?
           state.level7World as Level7World:
           ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
@@ -880,7 +881,7 @@ function validateState(value: unknown): asserts value is GameState {
   {
     const live=object(state.liveDungeon,"payload.liveDungeon",
       ["enabled","lastStepTick","heroes","combatTick","combats","returns","plans"],
-      ["bossCombat"]);
+      ["bossCombat","partyBossCombat"]);
     if(typeof live.enabled!=="boolean")
       fail("payload.liveDungeon.enabled","must be boolean");
     const last=integer(live.lastStepTick,"payload.liveDungeon.lastStepTick",0,clockTick);
@@ -899,6 +900,9 @@ function validateState(value: unknown): asserts value is GameState {
     const combats=array(live.combats,"payload.liveDungeon.combats");
     if(combats.length>100)fail("payload.liveDungeon.combats","is oversized");
     const boss=live.bossCombat??null;
+    const partyBoss=live.partyBossCombat??null;
+    if(boss&&partyBoss)fail("payload.liveDungeon",
+      "a historical solo boss cannot overlap the Floor-10 group boss");
     if(boss&&combats.some(raw=>Array.isArray((raw as RecordValue).heroIds)&&
         ((raw as RecordValue).heroIds as unknown[]).includes(
           (boss as RecordValue).heroId)))
@@ -916,7 +920,8 @@ function validateState(value: unknown): asserts value is GameState {
       e.subjectId===LIVE_COMBAT_EVENT_SUBJECT);
     if(!live.enabled){
       if(last!==0||progress.length||dungeonEvents.length||
-        combatTick!==0||combats.length||boss||returning.length||plans.length)
+        combatTick!==0||combats.length||boss||partyBoss||
+        returning.length||plans.length)
         fail("payload.liveDungeon","legacy mode cannot have scheduled dungeon work");
     }else{
       if(last<firstWorldTickOfDay(day))
@@ -924,15 +929,20 @@ function validateState(value: unknown): asserts value is GameState {
       const due=last+DUNGEON_STEP_INTERVAL_TICKS;
       if(movements.length!==(due<=lastWorldTickOfDay(day)?1:0)||
          movements.some(e=>e.dueTick!==due)||
-         fights.length!==(combats.length||boss?1:0)||
+         fights.length!==(combats.length||boss||partyBoss?1:0)||
          fights.some(e=>e.dueTick!==combatTick+LIVE_COMBAT_INTERVAL_TICKS)||
          dungeonEvents.length!==movements.length+fights.length)
         fail("payload.liveDungeon","must own its exact next movement and combat ticks");
     }
-    validateLiveCombatCheckpoints(state,combats,day,clockTick,last,combatTick,!!boss);
+    validateLiveCombatCheckpoints(state,combats,day,clockTick,last,combatTick,
+      !!boss||!!partyBoss);
     const bossProblem=liveBossCheckpointProblem(
       state as unknown as GameState,boss,combatTick,last);
     if(bossProblem)fail("payload.liveDungeon.bossCombat",bossProblem);
+    const partyBossProblem=livePartyBossCheckpointProblem(
+      state as unknown as GameState,partyBoss,combatTick,last);
+    if(partyBossProblem)
+      fail("payload.liveDungeon.partyBossCombat",partyBossProblem);
     validateLivePortalReturns(state,returning,pending,clockTick,!!live.enabled);
   }
   const shopRequests=array(state.shopRequests,"payload.shopRequests");
