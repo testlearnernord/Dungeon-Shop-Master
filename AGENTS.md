@@ -1,6 +1,6 @@
 # Dungeon Shop Master — contributor and AI working contract
 
-This is the compact, **current** instruction file for developing Dungeon Shop Master through ChatGPT and GitHub. Runtime and CI claims were refreshed on 22 November 2026 after merged #295–#298. The earlier Great Cleanup evidence remains in [CLEANUP_AUDIT.md](docs/CLEANUP_AUDIT.md), but it is a historical snapshot. Always verify the **latest** `main`, open PRs and GitHub Actions before editing.
+This is the compact, **current** instruction file for developing Dungeon Shop Master through ChatGPT and GitHub. Runtime and CI claims were refreshed on 22 November 2026 through merged #315 (Alpha v34). The earlier Great Cleanup evidence remains in [CLEANUP_AUDIT.md](docs/CLEANUP_AUDIT.md), but it is a historical snapshot. Always verify the **latest** `main`, open PRs and GitHub Actions before editing.
 
 ## Source of truth and status words
 
@@ -31,7 +31,7 @@ Read [README](README.md), [Architecture](docs/ARCHITECTURE.md), [Game Bible](doc
 | Concern | Start with |
 | --- | --- |
 | State, time, save | `src/game/gameState.ts`, `gameStore.ts`, `worldClock.ts`, `campaignSave.ts` |
-| Customers, checkout, credit | `shopTraffic.ts`, `npcVisualSystem.ts`, `shopServiceSpots.ts`, `shopCarts.ts`, `customerCheckout.ts`, `shopCredit.ts`, `src/cashierHud.ts` |
+| Customers, checkout, credit | `shopTraffic.ts`, `npcVisualSystem.ts`, `shopServiceSpots.ts`, `shopCarts.ts`, `shopCredit.ts`, `src/cashierHud.ts` |
 | Dungeon topology, decisions, party and boss | `dungeonTopology.ts`, `liveDungeonRuntime.ts`, `level7Exploration.ts`, `dungeonDecisions.ts`, `dungeonParties.ts`, `dungeonRegeneration.ts`, `livePartyBossSave.ts` |
 | Combat | `combatEncounter.ts`, `groupCombat.ts`, `arenaCombatMotion.ts`, `combatGrapple.ts`, `combatTactics.ts` |
 | LIVE and archives | `liveBoardProjection.ts`, `liveFloorSpectator.ts`, `dungeonViewer.ts`, `expeditionArchive.ts`, `dungeonReplayPlayback.ts` |
@@ -52,6 +52,6 @@ Names here are navigational, not a promise that any function is unused or safely
 
 ## Scope and design decisions
 
-V.003 remains a **release target** (in-game HUD still says V.002), while V.004 Alpha systems are already merged. **Ordinary dungeon Floors 1–9**, the separate cursed shop realm and shared normal shop threshold, the **Floor-10 2–3-member party boss**, bounded class progression, smarter paid shopping, real loot, buyback, the LIVE Board/Feed, archive, shop cellar and pond are implemented. Hero floor positions now distinguish `"shop"`, `"away"`, `"transit"` and actual Dungeon Floors 1–10; numeric Floor 4 remains exclusively a real dungeon level; the gate is only `portal` and the Boss Pass is already canonical. A future fresh-save cleanup must retire the non-LIVE day motor and isolated Floor-7 storage, without migrations. Individually unique authored deep-floor content, new 100-day balance/physical route evidence, real-device acceptance and this cleanup remain open. The transfer-of-the-curse ending, extra shops, forge expansion and wider lore are **not locked canon**. The existing cellar fishing pond is implemented. An all-history video archive and hunger system have been rejected.
+V.003 remains a **release target** (in-game HUD still says V.002), while V.004 Alpha systems are already merged. **Ordinary dungeon Floors 1–9**, the separate cursed shop realm and shared normal shop threshold, the **Floor-10 2–3-member party boss**, bounded class progression, smarter paid shopping, real loot, buyback, the LIVE Board/Feed, archive, shop cellar and pond are implemented. Hero floor positions now distinguish `"shop"`, `"away"`, `"transit"` and actual Dungeon Floors 1–10; numeric Floor 4 remains exclusively a real dungeon level; the gate is only `portal` and the Boss Pass is already canonical. A future fresh-save cleanup must retire the non-LIVE day motor and dedicated Floor-7 status/replay contracts, without migrations. Canonical Floor-7 storage was already replaced by `dungeonWorlds` in #315. Individually unique authored deep-floor content, new 100-day balance/physical route evidence, real-device acceptance and this cleanup remain open. The transfer-of-the-curse ending, extra shops, forge expansion and wider lore are **not locked canon**. The existing cellar fishing pond is implemented. An all-history video archive and hunger system have been rejected.
 
 No new gameplay features should sneak into a cleanup PR. Classify genuinely active code versus compatibility-only Alpha leftovers using [the legacy audit](docs/LEGACY_OBSOLESCENCE_AUDIT.md), not filename folklore. An incompatible Alpha save may be reset without an upgrade path.

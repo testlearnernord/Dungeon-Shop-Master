@@ -167,7 +167,7 @@ superseded by PR #210):** the physical Board marks every
   All icons retain accessible text/legend and never become the sole means
   to interpret urgent equipment/HP information.
 - **Special-floor status:** the shop is already the cursed, unnumbered realm;
-  never display it as dungeon F5, regardless of the internal v26 `floor=5` key. Show **At Galvik's shop**, **Outside world · off duty**
+  never display it as dungeon F5. Alpha v34 already stores the unnumbered `"shop"` place rather than a numeric shop floor. Show **At Galvik's shop**, **Outside world · off duty**
   (with actual two-day cooldown/return eligibility when known), or
   **Dungeon Floor N** as mutually exclusive states. For dungeon-active
   heroes, expose short move direction and medium-term goal where known;
@@ -193,10 +193,7 @@ superseded by PR #210):** the physical Board marks every
   continue; expanded UI supports many heroes and responsive widths.
   Contrast and reduced-motion settings must stay useful in the dark cave.
 
-This is a **future interaction contract**; the current game still uses
-a nine-hero wall texture and current roster details without an
-event-based known-state timeline or a unified live shop/dungeon clock.
-The latter is defined in [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
+The worldwide Hero Cards, live event feed and shared 50-ms shop/dungeon world clock are **implemented**. Some in-world wall texture, notification styling, discoverability and timeline polish remain future UX work; this section is not evidence of a missing LIVE clock. The authority and observation boundary is defined in [LIVING_WORLD_CLOCK.md](LIVING_WORLD_CLOCK.md).
 
 ## Invariants and review gates
 - Never hide a campaign save **error** behind a collapsed panel.

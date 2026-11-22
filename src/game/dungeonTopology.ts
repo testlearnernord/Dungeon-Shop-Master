@@ -3,8 +3,8 @@
  * realm, NOT numeric dungeon Floor 5. All Floors 1–9 are ordinary seeded
  * locations; Floor 10 is the Cave Troll party encounter. These pure
  * predicates never move heroes or spawn fights: the persisted LIVE motor
- * commits travel. Legacy save fields may still use numeric 5 for shop
- * occupancy and bossPass for gate access; neither redefines this map.
+ * commits travel. The Alpha v34 save uses explicit `"shop"`/`"away"`/`"transit"` places;
+ * `bossPass` is the current Floor-10 party gate credential.
  */
 export const CURSED_SHOP_REALM="cursed-shop" as const;
 export const FIRST_DUNGEON_FLOOR=1;
