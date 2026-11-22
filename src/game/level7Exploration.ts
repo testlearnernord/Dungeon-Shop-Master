@@ -59,7 +59,7 @@ export interface Level7ReplayEncounter {
   readonly combat: GroupCombatReplay;
 }
 /** Replays from all spatial early floors share the same immutable frame schema. */
-export type SpatialDungeonFloor = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type SpatialDungeonFloor = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export interface Level7Replay {
   readonly version: 1;
   readonly day: number;
