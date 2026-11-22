@@ -513,9 +513,11 @@ export class DungeonViewer {
    * authority. It never spawns a new Ghoul or re-simulates a completed fight. */
   openLiveEncounter(fightId:string):boolean {
     const encounter=this.store.state.liveDungeon.combats.find(f=>f.id===fightId);
-    if(!encounter)return false;
+    const boss=this.store.state.liveDungeon.partyBossCombat;
+    const floor=encounter?.encounter.floor??(boss?.id===fightId?10:null);
+    if(floor===null)return false;
     if(!this.active)this.open();
-    if(!this.active||!this.startFloor(encounter.encounter.floor))return false;
+    if(!this.active||!this.startFloor(floor))return false;
     this.watchFloorCombat(fightId);
     return this.liveArena.isActive&&this.liveArena.observedFightId===fightId;
   }
