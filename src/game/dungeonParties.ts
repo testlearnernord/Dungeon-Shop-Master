@@ -27,16 +27,15 @@ export function willingToTravelTogether(hero:AdventurerState):boolean {
 }
 
 /**
- * The original opportunistic formation remains the fallback for old saves,
- * newly arriving explorers and parties which have naturally broken up.
+ * Opportunistic formation handles new explorers and parties which have
+ * naturally broken up. It is not a compatibility path for old Alpha saves.
  */
 export function chooseCoLocatedDungeonParty(
   leader:AdventurerState, roster:readonly AdventurerState[],
   world:Level7World, layout:DungeonLayout,
   processed:ReadonlySet<string>,
 ):readonly AdventurerState[] {
-  const validStatus=leader.status==="expedition"&&layout.floor===7?
-    "expedition":"exploring";
+  const validStatus="exploring";
   if(processed.has(leader.id)||leader.floor!==layout.floor||
     leader.status!==validStatus||!willingToTravelTogether(leader))
     return [leader];
@@ -61,8 +60,7 @@ function availableOldMembers(
   if(party.floor!==layout.floor||party.memberIds.length<2||
     party.memberIds.length>3)return null;
   const lead=roster.find(hero=>hero.id===party.memberIds[0]);
-  const expectedStatus=lead?.status==="expedition"&&layout.floor===7?
-    "expedition":"exploring";
+  const expectedStatus="exploring";
   const members=party.memberIds.map(id=>roster.find(hero=>hero.id===id));
   if(members.some(hero=>!hero||processed.has(hero.id)||
     hero.floor!==layout.floor||hero.status!==expectedStatus||

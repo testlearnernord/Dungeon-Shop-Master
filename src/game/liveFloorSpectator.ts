@@ -80,7 +80,7 @@ export function selectLiveFloorSpectatorFrame(
   const heroes:LiveFloorHero[]=state.adventurers
     .filter(h=>h.floor===floor&&h.health>0&&
       (h.status==="exploring"||
-       (floor===7||floor===10)&&h.status==="expedition"))
+       floor===10&&h.status==="expedition"))
     .flatMap(hero=>{
       const site=progress.get(hero.id);
       const fight=fights.find(f=>f.heroIds.includes(hero.id));

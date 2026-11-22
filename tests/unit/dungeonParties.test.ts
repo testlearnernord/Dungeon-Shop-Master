@@ -15,7 +15,7 @@ import type { AdventurerState } from "../../src/game/adventurers.ts";
 const SEED=7351;
 function party(floor:1|7=7):AdventurerState[]{
   return createGameState(SEED).adventurers.slice(0,3).map((hero,index)=>({
-    ...hero,floor,status:floor===7?"expedition" as const:"exploring" as const,
+    ...hero,floor,status:"exploring" as const,
     role:(["tank","healer","DPS"] as const)[index],
     traits:{...hero.traits,negative:"stubborn"},
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},

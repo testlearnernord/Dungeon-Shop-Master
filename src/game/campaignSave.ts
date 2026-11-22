@@ -1430,7 +1430,6 @@ function validateState(value: unknown): asserts value is GameState {
           "version","day","heroId","floor","appearance","steps","encounters","outcome",
         ],["knownAtStart","resolvedAtStart","partyMemberIds","partyAppearances"]);
         const floor=integer(replay.floor,path+".dungeonReplay.floor",1,9);
-        if(floor===7)fail(path+".dungeonReplay.floor","must use the dedicated Floor-7 tape");
         validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
           event.adventurerId as string,eventDay,campaignSeed,floor,heroIds);
       }

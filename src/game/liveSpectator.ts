@@ -54,7 +54,7 @@ export function selectLiveSpectatorFrame(
   if(!hero||hero.health<=0||
      !(hero.status==="exploring"&&typeof hero.floor==="number"&&
        hero.floor>=1&&hero.floor<=9||
-       hero.status==="expedition"&&(hero.floor===7||hero.floor===10)))return null;
+       hero.status==="expedition"&&hero.floor===10))return null;
   const floor=hero.floor as SpatialDungeonFloor;
   const world=state.dungeonWorlds.find(f=>f.floor===floor)?.world;
   const layout=spectatorLayout(state.seed,floor);

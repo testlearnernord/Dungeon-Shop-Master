@@ -100,11 +100,8 @@ export const createLiveDungeonState=():LiveDungeonState=>({
 });
 
 const eligible=(hero:AdventurerState)=>
-  hero.health>0&&(
-    hero.status==="exploring"&&typeof hero.floor==="number"&&
-      hero.floor>=1&&hero.floor<=9||
-    hero.status==="expedition"&&hero.floor===7
-  );
+  hero.health>0&&hero.status==="exploring"&&
+    typeof hero.floor==="number"&&hero.floor>=1&&hero.floor<=9;
 function nextDungeonTick(tick:number,day:number):number|null{
   const due=tick+DUNGEON_STEP_INTERVAL_TICKS;
   return due<=lastWorldTickOfDay(day)?due:null;
@@ -292,7 +289,6 @@ function commitDungeonTick(state:GameState):GameState {
     .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   const stepCounts=new Map(state.liveDungeon.heroes.map(v=>[v.heroId,v]));
   let dungeonWorlds=[...state.dungeonWorlds];
-  let clearedLevel7=state.dungeonFloors.some(f=>f.floor===7&&f.cleared);
   const clearedLevel10=state.dungeonFloors.some(f=>
     f.floor===CAVE_TROLL_FLOOR&&f.cleared);
   let rngState=state.rngState;
@@ -540,8 +536,6 @@ function commitDungeonTick(state:GameState):GameState {
         committedHero.status==="traveling"||
         (individual.replay.outcome!=="exploring"&&!wantsTravel);
       stepCounts.set(id,{heroId:id,steps:count,finished:stopped});
-      if(individual.replay.outcome==="completed"&&floor===7)
-        clearedLevel7=true;
       if(important||stopped||planChanged){
         // The merchant knows that the magic life-signature changed, but not
         // details of unseen loot or battles. Actual facts remain in the
@@ -558,8 +552,7 @@ function commitDungeonTick(state:GameState):GameState {
           // already-resolved death tape ONLY for genuine dead adventurers;
           // no additional simulation, RNG, AI or routine-step save bloat.
           ...(individual.adventurer.status==="dead"?
-            (floor===7?{level7Replay:individual.replay}:
-              {dungeonReplay:individual.replay}):{}),
+            {dungeonReplay:individual.replay}:{}),
           message:`${individual.adventurer.name}'s expedition changed. Details await a report.`,
         });
       }
@@ -574,11 +567,6 @@ function commitDungeonTick(state:GameState):GameState {
     adventurers:finalRoster,
     dungeonWorlds,
     rngState,
-    dungeonFloors:[
-      ...state.dungeonFloors,
-      ...(clearedLevel7&&!state.dungeonFloors.some(x=>x.floor===7&&x.cleared)
-        ?[{floor:7,cleared:true}]:[]),
-    ],
     liveDungeon:{enabled:true,lastStepTick:tick,
       heroes:[...stepCounts.values()],
       combatTick:combats.length||partyBossCombat?
@@ -754,7 +742,7 @@ function commitLiveCombatTick(state:GameState):GameState{
         id:"day-"+state.day+":"+id+":dungeon-live:"+state.worldClock.tick,
         day:state.day,worldTick:state.worldClock.tick,type:"dungeon-live",
         adventurerId:id,reportedZone:zone(floor),
-        ...(floor===7?{level7Replay:tick.replay}:{dungeonReplay:tick.replay}),
+        dungeonReplay:tick.replay,
         ...(plans.get(id)?{dungeonGoal:plans.get(id)!.goal,
           floorAction:plans.get(id)!.action}:{}),
         message:tick.adventurer.name+"'s life-signature changed during an expedition. Details await a report.",
