@@ -145,7 +145,7 @@ test("current Expedition Archive never projects hidden fight outcome text or sec
 test("authentic Level-10 party footage is browsable and pinnable in the same archive",()=>{
   const initial=createGameState(7351);
   const actual=initial.adventurers.slice(0,3).map(hero=>({
-    ...hero,level6Permit:true,level:12,xp:1100,
+    ...hero,bossPass:true,level:12,xp:1100,
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
     inventory:{...hero.inventory,bread:2,healing:3},
   }));

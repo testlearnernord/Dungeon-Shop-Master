@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { advanceTestDay } from "./advanceTestDay";
-import { advanceDay, createGameState, setLevel6Permit } from "../src/game/gameState";
+import { advanceDay, createGameState, setBossPass } from "../src/game/gameState";
 
 test("Level 6 visitors use the right gate while the cursed player stays behind its barrier", async ({ page }) => {
   const errors: string[] = [];
@@ -15,7 +15,7 @@ test("Level 6 visitors use the right gate while the cursed player stays behind i
   const state = createGameState();
   const choices = state.adventurers.filter((hero) => hero.status === "at-shop");
   const survivors = choices.filter((hero) => {
-    let projected = setLevel6Permit(state, hero.id, true);
+    let projected = setBossPass(state, hero.id, true);
     projected = advanceDay(advanceDay(projected).state).state;
     return projected.adventurers.find((h) => h.id === hero.id)?.status === "traveling";
   });
@@ -32,7 +32,7 @@ test("Level 6 visitors use the right gate while the cursed player stays behind i
   expect(first.playerBarrier6Solid).toBe(true);
   expect(first.playerBarrier6Hidden).toBe(true);
 
-  await page.locator(`#adventurer-roster button.level6-permit[data-adventurer-id="${id}"]`).click();
+  await page.locator(`#adventurer-roster button.boss-pass[data-adventurer-id="${id}"]`).click();
   await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
 

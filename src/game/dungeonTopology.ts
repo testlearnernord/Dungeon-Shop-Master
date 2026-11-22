@@ -4,7 +4,7 @@
  * locations; Floor 10 is the Cave Troll party encounter. These pure
  * predicates never move heroes or spawn fights: the persisted LIVE motor
  * commits travel. Legacy save fields may still use numeric 5 for shop
- * occupancy and level6Permit for gate access; neither redefines this map.
+ * occupancy and bossPass for gate access; neither redefines this map.
  */
 export const CURSED_SHOP_REALM="cursed-shop" as const;
 export const FIRST_DUNGEON_FLOOR=1;

@@ -7,7 +7,7 @@ test("confirmed Level 6 combat becomes an actual saved replay without double res
   await page.goto("./");
   await page.locator("#toggle-adventurer-details").click();
   await expect(page.locator("#day")).toHaveText("Day 1");
-  await page.locator('#adventurer-roster button.level6-permit').first().click();
+  await page.locator('#adventurer-roster button.boss-pass').first().click();
   await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   await advanceTestDay(page);

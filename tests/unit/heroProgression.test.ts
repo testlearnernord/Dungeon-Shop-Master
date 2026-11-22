@@ -130,7 +130,7 @@ test("levelled saves accept earned HP capacity but reject forged health, plus re
   const old=base.adventurers.find(h=>h.status==="at-shop")!;
   const leveled={...old,level:10,xp:900};
   const cap=heroProgression(leveled).maxHealth;
-  const hero={...leveled,health:cap,level6Permit:true,
+  const hero={...leveled,health:cap,bossPass:true,
     status:"expedition" as const,floor:6 as const};
   const state={...base,adventurers:base.adventurers.map(h=>h.id===old.id?hero:h)};
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);

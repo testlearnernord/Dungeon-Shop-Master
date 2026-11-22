@@ -11,7 +11,7 @@ import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 function heroForReplay() {
   const original=createGameState(7351).adventurers[0];
   return {...original, status:"expedition" as const, floor:7 as const,
-    level6Permit:true, health:original.stats.maxHealth};
+    bossPass:true, health:original.stats.maxHealth};
 }
 
 test("fog starts from historical knowledge and never leaks future walked tiles",()=>{
@@ -104,7 +104,7 @@ test("version 8 optional historical fog snapshots round-trip and reject forged i
   const initial=createGameState(7351);
   const first={...initial,dungeonFloors:[{floor:6,cleared:true}],
     adventurers:initial.adventurers.map((h,i)=>i===0
-      ?{...h,status:"expedition" as const,floor:7 as const,level6Permit:true}
+      ?{...h,status:"expedition" as const,floor:7 as const,bossPass:true}
       :h)};
   const second=advanceDay(first).state;
   const replay=second.events.find(e=>e.type==="level7-exploration")?.level7Replay;

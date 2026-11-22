@@ -36,7 +36,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 26;
+export const SIMULATION_VERSION = 27;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -359,7 +359,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       if (combat.victory) clearedLevel6 = true;
       return combat.adventurer;
     }
-    if (ready.status === "at-shop" && ready.level6Permit && ready.health > 0 &&
+    if (ready.status === "at-shop" && ready.bossPass && ready.health > 0 &&
         level7UnlockedAtStart && !clearedLevel7) {
       events.push({
         id: `day-${day}:${ready.id}:level7-departure`, type: "level7-departure",
@@ -368,7 +368,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       });
       return { ...ready, status: "expedition" as const, floor: 7 as const, shopStayDays: 0 };
     }
-    if (ready.status === "at-shop" && ready.level6Permit && ready.health > 0 &&
+    if (ready.status === "at-shop" && ready.bossPass && ready.health > 0 &&
         !level7UnlockedAtStart) {
       events.push({
         id: `day-${day}:${ready.id}:level6-departure`, type: "level6-departure",
@@ -463,21 +463,17 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   };
 }
 
-/**
- * Grant or revoke the legacy-named boss pass only while a living hero
- * visits Galvik's shop. This is a player decision, not RNG or a clock tick.
- * LIVE uses level6Permit at the Floor-9-to-10 Temporary Party gate;
- * the historic non-LIVE solo solver still reads the same v26 save field.
- * A rename needs a versioned migration and legacy regression coverage.
+/** Grant/revoke an explicit Floor-10 Temporary-Party Boss Pass only
+ * for a living hero visiting Galvik's shop. No old-format save migrations.
  */
-export function setLevel6Permit(state: GameState, heroId: string, permitted: boolean): GameState {
-  if (typeof permitted !== "boolean") throw new TypeError("Level 6 permission must be boolean.");
+export function setBossPass(state: GameState, heroId: string, permitted: boolean): GameState {
+  if (typeof permitted !== "boolean") throw new TypeError("Boss pass must be boolean.");
   const hero = state.adventurers.find((entry) => entry.id === heroId);
-  if (!hero || hero.status !== "at-shop" || hero.health <= 0 || hero.level6Permit === permitted) return state;
+  if (!hero || hero.status !== "at-shop" || hero.health <= 0 || hero.bossPass === permitted) return state;
   return {
     ...state,
     adventurers: state.adventurers.map((entry) =>
-      entry.id === heroId ? { ...entry, level6Permit: permitted } : entry),
+      entry.id === heroId ? { ...entry, bossPass: permitted } : entry),
   };
 }
 

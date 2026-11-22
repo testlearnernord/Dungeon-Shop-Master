@@ -143,13 +143,13 @@ export function setupDayHud(
         entry.append(cash);
         const permit=document.createElement("button");
         permit.type="button";
-        permit.className="level6-permit";
+        permit.className="boss-pass";
         permit.dataset.adventurerId=hero.id;
-        permit.setAttribute("aria-pressed",String(hero.visible.level6Permit));
-        permit.textContent=hero.visible.level6Permit?"Revoke Boss Pass":"Grant Boss Pass";
+        permit.setAttribute("aria-pressed",String(hero.visible.bossPass));
+        permit.textContent=hero.visible.bossPass?"Revoke Boss Pass":"Grant Boss Pass";
         permit.title="Allow this visitor to join an equipped Temporary Party for the Floor-10 Cave Troll.";
         permit.addEventListener("click",()=>{
-          store.setLevel6Permit(hero.id,!hero.visible!.level6Permit);
+          store.setBossPass(hero.id,!hero.visible!.bossPass);
         });
         entry.append(" ",permit);
       }

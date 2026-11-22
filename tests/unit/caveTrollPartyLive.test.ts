@@ -23,7 +23,7 @@ function bossEntry(){
   assert(path.length>=2);
   const visited=path.map(p=>p.z*layout.width+p.x);
   const selected=base.adventurers.slice(0,3).map(h=>{
-    const veteran={...h,level:12,xp:1100,level6Permit:true,
+    const veteran={...h,level:12,xp:1100,bossPass:true,
       floor:9 as const,status:"exploring" as const,
       equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
       inventory:{...h.inventory,healing:3,bread:2}};
@@ -143,7 +143,7 @@ test("party gateway rejects solo or unauthorized attempts, and gear determines m
   assert.deepEqual(caveTrollPartyOptions(heroes,42),equipped);
   assert.throws(()=>caveTrollPartyOptions([heroes[0]],42),/party/);
   assert.throws(()=>caveTrollPartyOptions([
-    {...heroes[0],level6Permit:false},heroes[1]],42),/party/);
+    {...heroes[0],bossPass:false},heroes[1]],42),/party/);
   assert.equal(createGroupCombat(equipped).actors.length,4);
   const fight=resolveGroupCombat(equipped,90);
   const naked=resolveGroupCombat(unarmed,90);

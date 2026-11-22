@@ -21,7 +21,7 @@ Core systems were reconciled on 22 November 2026 after merged #295–#298. V.004
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Strict current version-26 saves persist the cellar, shop and separate material reserve. An **older v25 conversion remains in today's code**, but is legacy implementation, **not a promise** to support old saves in future Alpha releases. Breaking schema refactors will require a **fresh campaign without migration** |
+| Persistence | Strict current version-27 saves persist the cellar, shop and material reserve. The old v25 Ore/Coal migration function has been deleted. **V25/V26 files are incompatible and rejected**, not converted. Breaking schema refactors will require a **fresh campaign without migration** |
 
 **V.004 cellar (merged PRs #252 and #254):** Galvik's fixed fiancée portrait opens a secret, physically traversable stairway to the cellar. The widened corridor and ramp support normal first-person descent, ascent and off-centre approaches. Cellar mining uses the same rock cells and U excavation tool; a chest uses the same P furniture blueprint registry and save state.
 

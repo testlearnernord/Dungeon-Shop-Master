@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {advanceDay,createGameState,setLevel6Permit,type WorldEvent}
+import {advanceDay,createGameState,setBossPass,type WorldEvent}
   from "../../src/game/gameState.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {selectExpeditionArchive,archiveBookmarks}
@@ -9,7 +9,7 @@ import {selectExpeditionArchive,archiveBookmarks}
 test("legacy non-LIVE solo boss events retain truthful historical archive access",()=>{
   let state=createGameState();
   const shopper=state.adventurers.find(h=>h.status==="at-shop")!;
-  state=setLevel6Permit(state,shopper.id,true);
+  state=setBossPass(state,shopper.id,true);
   state=advanceDay(state).state;
   assert.equal(state.events.filter(e=>e.type==="level6-combat").length,0);
   state=advanceDay(state).state;
@@ -31,7 +31,7 @@ test("legacy daily simulation still generates save-safe histories without old HU
   let state=createGameState();
   for(let day=0;day<130;day++){
     for(const hero of state.adventurers.filter(h=>h.status==="at-shop"))
-      state=setLevel6Permit(state,hero.id,true);
+      state=setBossPass(state,hero.id,true);
     state=advanceDay(state).state;
     const combatEvents=state.events.filter(e=>e.type==="level6-combat");
     assert(combatEvents.every(e=>

@@ -98,7 +98,7 @@ test("manual payment closes a shop visit instead of randomly sending the buyer b
   const state={...initial,
     adventurers:initial.adventurers.map(person=>person.id===buyer.id
       ?{...person,status:"at-shop" as const,floor:5 as const,
-        shopStayDays:0,level6Permit:false,gold:100}:person),
+        shopStayDays:0,bossPass:false,gold:100}:person),
     events:[...initial.events,{
       id:`day-1:${buyer.id}:sale:shelf-1-slot-2:manual`,
       type:"sale" as const,saleChannel:"manual" as const,day:1,
@@ -122,7 +122,7 @@ test("bed returns unpaid stock without a sale; an L6 pass still takes precedence
   const visiting={...initial,
     adventurers:initial.adventurers.map(person=>person.id===buyer.id
       ?{...person,status:"at-shop" as const,floor:5 as const,
-        shopStayDays:0,gold:100,level6Permit:false}:person),
+        shopStayDays:0,gold:100,bossPass:false}:person),
     shopCarts:[{heroId:buyer.id,day:1,
       lines:[{itemId:"bread" as const,slotId:"shelf-1-slot-2",
         quantity:1,subtotal:4}]}],
@@ -136,7 +136,7 @@ test("bed returns unpaid stock without a sale; an L6 pass still takes precedence
     "An unprocessed cart cannot pay itself while Galvik sleeps");
   const permitted={...visiting,
     adventurers:visiting.adventurers.map(person=>person.id===buyer.id
-      ?{...person,level6Permit:true}:person),
+      ?{...person,bossPass:true}:person),
   };
   const next=advanceDay(permitted);
   const expedition=next.state.adventurers.find(person=>person.id===buyer.id)!;

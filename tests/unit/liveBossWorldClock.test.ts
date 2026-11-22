@@ -12,7 +12,7 @@ function campaignWithBoss(){
   const first=initial.adventurers[0];
   const roster=initial.adventurers.map(hero=>hero.id===first.id
     ?{...hero,status:"expedition" as const,floor:6 as const,
-      level6Permit:true,health:hero.stats.maxHealth}:hero);
+      bossPass:true,health:hero.stats.maxHealth}:hero);
   return {id:first.id,store:new GameStore({...initial,adventurers:roster})};
 }
 
@@ -91,7 +91,7 @@ test("two concurrent Floor-6 explorers cannot spawn duplicate live Troll combats
   const contestants=new Set([first.id,second.id]);
   const adventurers=initial.adventurers.map(hero=>contestants.has(hero.id)
     ?{...hero,status:"expedition" as const,floor:6 as const,
-      level6Permit:true,health:hero.stats.maxHealth}:hero);
+      bossPass:true,health:hero.stats.maxHealth}:hero);
   const store=new GameStore({...initial,adventurers});
   store.enableLiveDungeon();
   store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);

@@ -40,9 +40,8 @@ export interface AdventurerState {
   readonly shopStayDays: number;
   /** First eligible new expedition day following an observed shop exit. */
   readonly offDutyUntilDay: number | null;
-  /** Historic v26 field name; now permits joining a Floor-10 boss party.
-   * Rename only with a real versioned campaign-save migration. */
-  readonly level6Permit: boolean;
+  /** Eligibility for a real Floor-10 Temporary-Party boss attempt. */
+  readonly bossPass: boolean;
 }
 
 const names = ["Ada", "Bram", "Cora", "Dain", "Eira", "Finn", "Gwen", "Hale", "Iris", "Joss"];
@@ -79,7 +78,7 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
     status: "exploring",
     shopStayDays: 0,
     offDutyUntilDay: null,
-    level6Permit: false,
+    bossPass: false,
   };
   return { adventurer, rngState: random.state };
 }
