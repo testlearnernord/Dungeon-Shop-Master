@@ -550,7 +550,8 @@ setupWorldEventFeed(store,target=>{
 });
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
-  eventId=>{arena.open(eventId);return arena.isActive;});
+  eventId=>{arena.open(eventId);return arena.isActive;},
+  eventId=>dungeon.openRecordedPartyBoss(eventId));
 isShopActive=()=>!arena.isActive&&!dungeon.isActive&&
   !(bedtime?.isBlocking??false)&&!(fishing?.isActive??false);
 /** Shop floor uses the same worldwide Hero Card as LIVE Dungeon.
