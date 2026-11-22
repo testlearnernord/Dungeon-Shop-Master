@@ -80,7 +80,12 @@ test("physically purchased gear carries into the real Floor-10 GroupCombat hero"
   for(let i=0;i<30;i++)stepGroupCombat(live);
   assert(Math.abs(live.time-0.5)<1e-6);
   assert.equal(snapshot.t,0);
-  assert(live.actors.some(a=>a.id===first.id&&a.equipment?.weapon==="Iron Sword"));
+  // Actor runtime intentionally stores combat stats rather than duplicating
+  // full inventory. Equipment remains in the canonical saved encounter options.
+  assert(gearedOptions.actors.some(a=>a.id===first.id&&
+    a.equipment?.weapon==="Iron Sword"));
+  assert.equal(live.actors.find(a=>a.id===first.id)?.armor,geared.armor);
+  assert.equal(live.actors.find(a=>a.id===first.id)?.damage,geared.damage);
   const initialActor=createGroupCombat(gearedOptions).actors.find(a=>a.id===first.id)!;
   const recorded=snapshot.actors.find(a=>a.id===first.id)!;
   assert.equal(recorded.hp,initialActor.hp);
