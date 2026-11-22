@@ -8,7 +8,6 @@ import {
   SIMULATION_VERSION, type GameState, type EarlyDungeonFloorWorld,
 } from "./gameState.ts";
 import { validateBossReplay } from "./bossCombatReplay.ts";
-import {liveBossCheckpointProblem} from "./liveBossSave.ts";
 import {
   LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS, LEVEL7_COMBAT_SECONDS,
   getLevel7Progress, prepareSpatialDungeonCombat, chooseKnownReturnStep,
@@ -883,7 +882,7 @@ function validateState(value: unknown): asserts value is GameState {
   {
     const live=object(state.liveDungeon,"payload.liveDungeon",
       ["enabled","lastStepTick","heroes","combatTick","combats","returns","plans"],
-      ["bossCombat","partyBossCombat"]);
+      ["partyBossCombat"]);
     if(typeof live.enabled!=="boolean")
       fail("payload.liveDungeon.enabled","must be boolean");
     const last=integer(live.lastStepTick,"payload.liveDungeon.lastStepTick",0,clockTick);
@@ -901,14 +900,7 @@ function validateState(value: unknown): asserts value is GameState {
       "payload.liveDungeon.combatTick",0,clockTick);
     const combats=array(live.combats,"payload.liveDungeon.combats");
     if(combats.length>100)fail("payload.liveDungeon.combats","is oversized");
-    const boss=live.bossCombat??null;
     const partyBoss=live.partyBossCombat??null;
-    if(boss&&partyBoss)fail("payload.liveDungeon",
-      "a historical solo boss cannot overlap the Floor-10 group boss");
-    if(boss&&combats.some(raw=>Array.isArray((raw as RecordValue).heroIds)&&
-        ((raw as RecordValue).heroIds as unknown[]).includes(
-          (boss as RecordValue).heroId)))
-      fail("payload.liveDungeon.bossCombat","cannot duplicate a normal combat participant");
     const returning=array(live.returns,"payload.liveDungeon.returns");
     if(returning.length>100)fail("payload.liveDungeon.returns","is oversized");
     const plans=array(live.plans,"payload.liveDungeon.plans");
@@ -922,7 +914,7 @@ function validateState(value: unknown): asserts value is GameState {
       e.subjectId===LIVE_COMBAT_EVENT_SUBJECT);
     if(!live.enabled){
       if(last!==0||progress.length||dungeonEvents.length||
-        combatTick!==0||combats.length||boss||partyBoss||
+        combatTick!==0||combats.length||partyBoss||
         returning.length||plans.length)
         fail("payload.liveDungeon","legacy mode cannot have scheduled dungeon work");
     }else{
@@ -931,16 +923,13 @@ function validateState(value: unknown): asserts value is GameState {
       const due=last+DUNGEON_STEP_INTERVAL_TICKS;
       if(movements.length!==(due<=lastWorldTickOfDay(day)?1:0)||
          movements.some(e=>e.dueTick!==due)||
-         fights.length!==(combats.length||boss||partyBoss?1:0)||
+         fights.length!==(combats.length||partyBoss?1:0)||
          fights.some(e=>e.dueTick!==combatTick+LIVE_COMBAT_INTERVAL_TICKS)||
          dungeonEvents.length!==movements.length+fights.length)
         fail("payload.liveDungeon","must own its exact next movement and combat ticks");
     }
     validateLiveCombatCheckpoints(state,combats,day,clockTick,last,combatTick,
-      !!boss||!!partyBoss);
-    const bossProblem=liveBossCheckpointProblem(
-      state as unknown as GameState,boss,combatTick,last);
-    if(bossProblem)fail("payload.liveDungeon.bossCombat",bossProblem);
+      !!partyBoss);
     const partyBossProblem=livePartyBossCheckpointProblem(
       state as unknown as GameState,partyBoss,combatTick,last);
     if(partyBossProblem)

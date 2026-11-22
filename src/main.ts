@@ -482,8 +482,7 @@ const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(observingFight
     ?bossFight?"boss":"combat":"dungeon");
 }, seconds=>soundtrack.skipCombatIntro(seconds),sfx);
-watchLiveHero=id=>store.state.liveDungeon.bossCombat?.heroId===id
-  ?arena.openLiveBoss(id):dungeon.openLive(id);
+watchLiveHero=id=>dungeon.openLive(id);
 // Exactly one global event layer, shared by the shop, LIVE floors and both
 // combat stages. Its projections never schedule, settle or simulate events.
 setupWorldEventFeed(store,target=>{
@@ -533,11 +532,6 @@ setupWorldEventFeed(store,target=>{
   if(target.kind==="party-boss-recording"){
     if(arena.isActive)arena.close();
     return dungeon.openRecordedPartyBoss(target.eventId);
-  }
-  if(target.kind==="boss"){
-    if(dungeon.isActive)dungeon.close();
-    if(arena.isActive)arena.close();
-    return arena.openLiveBoss(target.heroId);
   }
   if(arena.isActive)arena.close();
   if(target.kind==="combat")return dungeon.openLiveEncounter(target.fightId);
@@ -664,7 +658,7 @@ engine.runRenderLoop(() => {
   // customers must continue on the one authoritative 50ms clock.
   const paused=document.hidden||
     (!isShopActive()&&!(fishing?.isActive??false)&&
-       !dungeon.isWatchingLive&&!arena.isWatchingLiveBoss)||
+       !dungeon.isWatchingLive)||
     !!document.querySelector("dialog[open]:not(#cashier-overlay)")||
     document.body.classList.contains("blueprint-active");
   npcVisuals.setWorldPaused(paused);

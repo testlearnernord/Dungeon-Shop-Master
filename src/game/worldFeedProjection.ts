@@ -337,14 +337,6 @@ export function projectWorldFeedChanges(
         :{kind:"roster",heroId:survivorIds[0]??previousPartyBoss.heroIds[0]},
     });
   }
-  const newBoss=after.liveDungeon.bossCombat;
-  if(newBoss&&newBoss.id!==before.liveDungeon.bossCombat?.id){
-    results.push({id:"boss:"+newBoss.id,category:"boss",priority:3,
-      title:"THE CAVE TROLL AWAKENS",
-      detail:heroName(after,newBoss.heroId)+
-        " is finishing a historical Floor-6 encounter",
-      target:{kind:"boss",heroId:newBoss.heroId}});
-  }
   return results.sort((a,b)=>b.priority-a.priority||
     a.id.localeCompare(b.id));
 }
