@@ -89,7 +89,7 @@ export interface LivePartyBossCombat {
 
 export interface LiveDungeonReturn {
   readonly heroId:string;
-  readonly fromFloor:SpatialDungeonFloor;
+  readonly fromFloor:SpatialDungeonFloor|10;
   readonly startedTick:number;
   /** Backtracking walks actual visited tiles; portal waits on a saved event. */
   readonly phase:"backtrack"|"portal";
@@ -791,6 +791,74 @@ function commitLiveCombatTick(state:GameState):GameState{
       }
     }
   }
+  let partyBossContinuing:LivePartyBossCombat|null=null;
+  const partyBoss=state.liveDungeon.partyBossCombat;
+  if(partyBoss){
+    const combat:GroupCombatState=structuredClone(partyBoss.state);
+    const frames=[...partyBoss.frames];
+    for(let i=0;i<LIVE_COMBAT_INTERVAL_TICKS*3&&combat.outcome==="fighting";i++){
+      const step=Math.round(combat.time*60)+1;
+      if(step>REPLAY_MAX_SECONDS*60){combat.outcome="draw";break;}
+      stepGroupCombat(combat);
+      if(combat.outcome==="fighting"&&step===REPLAY_MAX_SECONDS*60)
+        combat.outcome="draw";
+      if(step%6===0||combat.outcome!=="fighting")
+        frames.push(captureGroupCombatFrame(combat));
+    }
+    for(const id of partyBoss.heroIds){
+      const before=partyBoss.state.actors.find(a=>a.id===id);
+      const after=combat.actors.find(a=>a.id===id);
+      if(before&&after&&before.hp>0&&after.hp<=0){
+        const hero=byId.get(id);
+        if(!hero)throw new RangeError("Boss fighter has no original hero.");
+        activities.push(deathSignal(hero,state.day,state.worldClock.tick));
+      }
+    }
+    if(combat.outcome==="fighting"){
+      partyBossContinuing={...partyBoss,state:combat,frames};
+    }else{
+      const winner=combat.outcome==="heroes";
+      if(winner)bossCleared=true;
+      const living=partyBoss.heroIds.filter(id=>
+        (combat.actors.find(a=>a.id===id)?.hp??0)>0).sort();
+      const rewardPot=winner?60:0;
+      for(const id of partyBoss.heroIds){
+        const old=byId.get(id),actor=combat.actors.find(a=>a.id===id);
+        if(!old||!actor)
+          throw new RangeError("Boss settlement lost a real party actor.");
+        const hp=Math.max(0,Math.round(actor.hp));
+        const used=Math.min(10,old.inventory.healing)-actor.healCharges;
+        if(used<0||used>old.inventory.healing)
+          throw new RangeError("Boss fight invented a healing supply.");
+        const gold=winner&&hp>0?
+          Math.floor(rewardPot/living.length)+
+            (living.indexOf(id)<rewardPot%living.length?1:0):0;
+        const next=settleHeroExperience(old,old.xp+
+          (winner&&hp>0?120:0),hp);
+        const hero:AdventurerState={...next,
+          status:hp>0?"expedition":"dead",
+          gold:old.gold+gold,
+          inventory:{...old.inventory,healing:old.inventory.healing-used,
+            loot:old.inventory.loot+(winner&&hp>0?2:0)},
+        };
+        byId.set(id,hero);
+        activities.push({
+          id:"day-"+state.day+":"+id+":dungeon-live:"+state.worldClock.tick,
+          type:"dungeon-live",day:state.day,worldTick:state.worldClock.tick,
+          adventurerId:id,reportedZone:"deep",
+          message:old.name+(winner?" survived the Level-10 Cave Troll's defeat.":
+            hp<=0?" was slain challenging the Level-10 Cave Troll.":
+              " escaped the Level-10 Cave Troll with injuries."),
+        });
+        if(hp>0){
+          const journey=beginPortalReturn(hero,state.worldClock.tick,
+            clock,returns);
+          byId.set(id,journey.hero);
+          clock=journey.clock;returns=journey.returns;
+        }
+      }
+    }
+  }
   for(const fight of state.liveDungeon.combats){
     // Copy the authoritative mutable actors before stepping, preserving the
     // previous immutable checkpoint for deterministic save comparisons.
@@ -877,16 +945,18 @@ function commitLiveCombatTick(state:GameState):GameState{
     sharedGroups,roster,floor=>floor===7?level7World:
       earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
       emptyLevel7World(),plans,state.seed,state.day,state.worldClock.tick);
-  const active=continuing.length>0||!!bossContinuing;
+  const active=continuing.length>0||!!bossContinuing||
+    !!partyBossContinuing;
   const next:GameState={...state,
     worldClock:clock,rngState,
     adventurers:roster,dungeonParties:parties.parties,
     earlyDungeonWorlds,level7World,
     dungeonFloors:bossCleared&&
-      !state.dungeonFloors.some(f=>f.floor===6&&f.cleared)
-        ?[...state.dungeonFloors,{floor:6,cleared:true}]:state.dungeonFloors,
+      !state.dungeonFloors.some(f=>f.floor===10&&f.cleared)
+        ?[...state.dungeonFloors,{floor:10,cleared:true}]:state.dungeonFloors,
     liveDungeon:{...state.liveDungeon,combats:continuing,
-      bossCombat:bossContinuing,returns,plans:[...plans.values()],
+      bossCombat:bossContinuing,partyBossCombat:partyBossContinuing,
+      returns,plans:[...plans.values()],
       combatTick:active?state.worldClock.tick:0,
       heroes:[...counts.values()]},
     events:[...state.events,...activities,...parties.events],
