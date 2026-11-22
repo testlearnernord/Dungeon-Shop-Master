@@ -12,6 +12,7 @@ import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 import {createGroupCombat,resolveGroupCombat} from "../../src/game/groupCombat.ts";
 import {selectLiveFloorSpectatorFrame} from "../../src/game/liveFloorSpectator.ts";
 import {projectWorldFeedChanges} from "../../src/game/worldFeedProjection.ts";
+import {findCommittedDeathFootage} from "../../src/game/deathFootage.ts";
 
 const SEED=7351;
 function bossEntry(){
@@ -87,6 +88,26 @@ test("party boss outcome is deterministic through mid-fight reload with exactly 
   resumed.advanceWorldTime(2200);
   assert.deepEqual(original.state,resumed.state);
   assert.equal(original.state.liveDungeon.partyBossCombat,null);
+  const archived=original.state.events.filter(e=>e.partyBossReplay);
+  assert.equal(archived.length,1,
+    "One shared immutable boss recording for the entire party, not one per hero.");
+  const tape=archived[0].partyBossReplay!;
+  assert.equal(tape.actors.length,4);
+  assert.equal(tape.actors.at(-1)?.id,"cave-troll");
+  assert(tape.frames.length>2);
+  const historical=projectWorldFeedChanges(checkpoint,original.state);
+  const result=historical.find(entry=>
+    entry.id.startsWith("boss-result:"));
+  assert(result,"Committed boss settlement must appear in World Feed.");
+  assert.deepEqual(result.target,
+    {kind:"party-boss-recording",eventId:archived[0].id},
+    "Result opens preserved 60Hz footage, not a hero profile.");
+  const forged=structuredClone(createSave(original.state));
+  const recorded=forged.payload.events.find(e=>e.partyBossReplay)!;
+  if(!recorded.partyBossReplay)throw new Error("No original tape");
+  (recorded.partyBossReplay.actors.at(-1) as {maxHp:number}).maxHp=99999;
+  assert.throws(()=>parseSave(JSON.stringify(forged)),/partyBossReplay/,
+    "Save validator must reject fabricated boss health in historical footage.");
   const after=original.state.adventurers.filter(h=>ids.includes(h.id));
   assert.equal(after.length,3);
   assert(after.every(h=>h.status==="dead"||h.status==="at-shop"||
@@ -97,6 +118,14 @@ test("party boss outcome is deterministic through mid-fight reload with exactly 
   assert.equal(battleResults.length,3,"One real result per fighter, not one per 60Hz frame");
   const wasWon=original.state.dungeonFloors.some(f=>f.floor===10&&f.cleared);
   if(wasWon)assert(after.some(h=>h.health>0));
+  for(const dead of after.filter(hero=>hero.status==="dead")){
+    const signal=original.state.events.find(event=>
+      event.type==="hero-death-signal"&&event.adventurerId===dead.id);
+    assert(signal,"Fatal party battle must emit the real death signal.");
+    assert.deepEqual(findCommittedDeathFootage(original.state,dead.id,signal.id),
+      {kind:"party-boss-recording",eventId:archived[0].id},
+      "Any dead member can review the ONE shared original boss footage.");
+  }
   assert.deepEqual(parseSave(JSON.stringify(createSave(original.state))),
     original.state);
 });
