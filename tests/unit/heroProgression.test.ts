@@ -4,7 +4,8 @@ import {createGameState} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
-import {prepareSpatialDungeonCombat} from "../../src/game/level7Exploration.ts";
+import {prepareSpatialDungeonCombat,emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {lastWorldTickOfDay} from "../../src/game/worldClock.ts";
 import {developerHeroFromRoster,buildDeveloperCombat,DEFAULT_DEVELOPER_CONFIG}
   from "../../src/game/developerCombatScenario.ts";
 import {caveTrollGroupOptions} from "../../src/game/sharedBossCombat.ts";
@@ -158,4 +159,34 @@ test("levelled heroes can spend real medicine above base HP without forging item
   assert.equal(healed.adventurer.health,wounded.health+8);
   assert.equal(healed.adventurer.inventory.bread,0);
   assert.equal(healed.events.length,1);
+});
+
+test("late-night ordinary encounters defer their start instead of trapping Galvik before bedtime",()=>{
+  const seed=7351,base=createGameState(seed);
+  const layout=generateExpeditionLayout(seed,1);
+  const site=layout.features.find(f=>f.kind==="monster"&&
+    dungeonNeighbors(layout,f).length>0)!;
+  const approach=dungeonNeighbors(layout,site)[0];
+  const hero=base.adventurers[0];
+  const walkable=layout.tiles.flatMap((t,i)=>t!=="wall"&&
+    i!==site.z*layout.width+site.x?[i]:[]);
+  const state={...base,adventurers:base.adventurers.map(h=>h.id===hero.id?
+    {...h,status:"exploring" as const,floor:1 as const}:{
+      ...h,status:"at-shop" as const,floor:5 as const,shopStayDays:0,
+    }),
+    earlyDungeonWorlds:[{floor:1 as const,world:{
+      ...emptyLevel7World(),resolvedFeatureIds:layout.features.filter(f=>f.id!==site.id)
+        .map(f=>f.id),
+      heroes:[{heroId:hero.id,...approach,visited:walkable}],
+    }}],
+  };
+  const store=new GameStore(state);
+  store.advanceWorldTime(lastWorldTickOfDay(1)-300);
+  store.enableLiveDungeon();
+  store.advanceWorldTime(200);
+  assert.equal(store.state.liveDungeon.combats.length,0,
+    "Do not start a 25-second fight with less than 25 seconds remaining.");
+  assert.doesNotThrow(()=>store.endDay(),"Galvik must still be able to sleep");
+  assert.equal(store.state.day,2);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
 });
