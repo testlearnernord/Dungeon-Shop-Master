@@ -189,7 +189,9 @@ function beginPortalReturn(
   const nextClock=scheduleWorldEvent(clock,"report",dueTick,
     SHOP_PORTAL_RETURN_PREFIX+hero.id);
   return {
-    hero:{...hero,status:"traveling",floor:4,shopStayDays:0},
+    hero:{...hero,status:"traveling",floor:4,shopStayDays:0,
+      lastDungeonFloor:hero.floor===10?9:
+        hero.floor as AdventurerState["lastDungeonFloor"]},
     clock:nextClock,
     returns:[...returns.filter(j=>j.heroId!==hero.id),{
       heroId:hero.id,fromFloor:hero.floor as LiveDungeonReturn["fromFloor"],
@@ -1017,21 +1019,19 @@ export function finishLiveDungeonDay(
     // Two complete off-duty days remain protected from dungeon/shop events.
     if(ready.status==="off-duty"){
       if(!reenteringIds.has(ready.id))return ready;
-      // Interim compatibility: the existing individually granted Level-6/7
-      // boss permit remains playable, but never bypasses physical shop exit
-      // or the two whole off-duty days. The Floor-10 gate is still future work.
-      const target=hero.level6Permit&&!previouslyCleared7?
-        previouslyCleared6?7 as const:6 as const:1 as const;
+      // The cursed threshold can connect to the hero's remembered depth.
+      // It never teleports a solo customer into the Level-10 boss arena.
+      const target=ready.lastDungeonFloor??1;
       events.push({
         id:`day-${day}:${hero.id}:dungeon-live:${clock.tick}`,type:"dungeon-live",day,
         worldTick:clock.tick,adventurerId:hero.id,
         reportedZone:target>=6?"deep" as const:"upper" as const,
         message:`${hero.name} began a new expedition after two full days away.`,
       });
-      return {...ready,status:target===1?"exploring" as const:"expedition" as const,
+      return {...ready,status:"exploring" as const,
         floor:target,offDutyUntilDay:null};
     }
-    if(ready.status==="returning"&&ready.floor>=1&&ready.floor<=4)
+    if(ready.status==="returning"&&ready.floor>=1&&ready.floor<=9)
       return {...ready,status:"exploring" as const};
     // Sleeping cannot complete a portal journey which is still scheduled
     // for a subsequent live world tick.
@@ -1062,13 +1062,13 @@ export function finishLiveDungeonDay(
   // retain personally visited cells, site generations and other heroes.
   let morningWorlds=closed.earlyDungeonWorlds??[];
   let morningLevel7=closed.level7World;
-  for(const floor of [1,7] as const){
+  for(const floor of [1,2,3,4,5,6,7,8,9] as const){
     const ids=adventurers.filter(h=>reenteringIds.has(h.id)&&h.floor===floor)
       .map(h=>h.id);
     if(!ids.length)continue;
     const layout=generateExpeditionLayout(state.seed,floor);
     const saved=floor===7?morningLevel7:
-      morningWorlds.find(w=>w.floor===1)?.world??emptyLevel7World();
+      morningWorlds.find(w=>w.floor===floor)?.world??emptyLevel7World();
     const heroes=[...saved.heroes];
     const spawn=layout.entrance,cell=spawn.z*layout.width+spawn.x;
     for(const id of ids){
@@ -1080,8 +1080,8 @@ export function finishLiveDungeonDay(
       else heroes.push(landed);
     }
     if(floor===7)morningLevel7={...saved,heroes};
-    else morningWorlds=[...morningWorlds.filter(w=>w.floor!==1),
-      {floor:1 as const,world:{...saved,heroes}}].sort((a,b)=>a.floor-b.floor);
+    else morningWorlds=[...morningWorlds.filter(w=>w.floor!==floor),
+      {floor,world:{...saved,heroes}}].sort((a,b)=>a.floor-b.floor);
   }
   const next:GameState={
     ...closed,day,worldClock:clock,earlyDungeonWorlds:morningWorlds,
