@@ -40,10 +40,9 @@ test("fallen roster is ordered by latest event before limiting to 40 heroes", ()
     status: "dead" as const,
   }));
   const deaths = [...heroes.slice(1), heroes[0]].map((hero, index) => ({
-    id: `death-${index}`,
-    type: "dungeon-outcome" as const,
-    outcome:"death" as const,
-    day: index + 1,
+    id:`day-${index+1}:${hero.id}:hero-death-signal:${index*28800+200}`,
+    type:"hero-death-signal" as const,worldTick:index*28800+200,
+    day:index+1,
     message: `${hero.name} died.`,
     adventurerId: hero.id,
   }));

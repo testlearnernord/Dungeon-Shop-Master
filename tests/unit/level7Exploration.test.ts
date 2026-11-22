@@ -193,9 +193,10 @@ test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Trol
   assert.equal(fight.actors.length,2);
   assert.deepEqual(world.heroes[0].visited,visited,"Exploration never mutates prior knowledge");
   const initial=createGameState(seed);
+  const committedTick=(day-1)*WORLD_TICKS_PER_DAY+200;
   const saved={
-    ...initial,day,worldClock:{...initial.worldClock,tick:(day-1)*WORLD_TICKS_PER_DAY},
-    shopTraffic:emptyShopTraffic(day,(day-1)*WORLD_TICKS_PER_DAY),
+    ...initial,day,worldClock:{...initial.worldClock,tick:committedTick},
+    shopTraffic:emptyShopTraffic(day,committedTick),
     shopEconomy:{...initial.shopEconomy,
       dailySales:{...initial.shopEconomy.dailySales,day}},
     adventurers:initial.adventurers.map(a=>
@@ -203,9 +204,9 @@ test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Trol
     dungeonWorlds:[{floor:7 as const,world:first.world}],
     dungeonFloors:[{floor:6,cleared:true}],
     events:[...initial.events,{
-      id:`day-${day}:${hero.id}:level7-exploration`,
-      day,type:"level7-exploration" as const,adventurerId:hero.id,
-      message:"Recorded Level 7 expedition.",level7Replay:first.replay,
+      id:`day-${day}:${hero.id}:dungeon-live:${committedTick}`,
+      day,type:"dungeon-live" as const,worldTick:committedTick,adventurerId:hero.id,
+      message:"Recorded normal Floor-7 expedition.",dungeonReplay:first.replay,
     }],
   };
   assert.deepEqual(parseSave(JSON.stringify(createSave(saved))),saved,

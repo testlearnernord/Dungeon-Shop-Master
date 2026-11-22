@@ -136,38 +136,39 @@ test("one party day commits all member outcomes into v14 campaign replays",()=>{
   const result=simulateSpatialDungeonPartyDay(heroes,world,SEED,12,
     new Set(heroes.map(h=>h.id)));
   const base=createGameState(SEED);
+  const committedTick=11*WORLD_TICKS_PER_DAY+200;
   const updated={
-    ...base,day:12,worldClock:{...base.worldClock,tick:11*WORLD_TICKS_PER_DAY},
-    shopTraffic:emptyShopTraffic(12,11*WORLD_TICKS_PER_DAY),
+    ...base,day:12,worldClock:{...base.worldClock,tick:committedTick},
+    shopTraffic:emptyShopTraffic(12,committedTick),
     shopEconomy:{...base.shopEconomy,
       dailySales:{...base.shopEconomy.dailySales,day:12}},
     adventurers:base.adventurers.map(h=>
       result.ticks.find(t=>t.adventurer.id===h.id)?.adventurer??h),
     dungeonWorlds:[{floor:7 as const,world:result.world}],dungeonFloors:[{floor:6,cleared:true}],
     events:[...base.events,...result.ticks.map(t=>({
-      id:`day-12:${t.adventurer.id}:level7-exploration`,
-      day:12,type:"level7-exploration" as const,
+      id:`day-12:${t.adventurer.id}:dungeon-live:${committedTick}`,
+      day:12,type:"dungeon-live" as const,worldTick:committedTick,
       adventurerId:t.adventurer.id,message:"Expedition footage saved.",
-      level7Replay:t.replay,
+      dungeonReplay:t.replay,
     }))],
   };
   assert.deepEqual(parseSave(JSON.stringify(createSave(updated))),updated);
   const oldV1=structuredClone(createSave(updated));
   for(const event of oldV1.payload.events){
-    for(const entry of event.level7Replay?.encounters??[])
+    for(const entry of event.dungeonReplay?.encounters??[])
       for(const actor of entry.combat.actors)delete (actor as any).equipment;
   }
   assert.doesNotThrow(()=>parseSave(JSON.stringify(oldV1)),
     "Old v1 fight recordings without a gear snapshot must remain readable");
   const wrongGear=structuredClone(createSave(updated));
-  const firstFight=wrongGear.payload.events.find(e=>e.level7Replay)!
-    .level7Replay!.encounters[0].combat;
+  const firstFight=wrongGear.payload.events.find(e=>e.dungeonReplay)!
+    .dungeonReplay!.encounters[0].combat;
   (firstFight.actors.find(a=>a.team==="heroes")!.equipment as any).armor=
     "Invented Dragon Plate";
   assert.throws(()=>parseSave(JSON.stringify(wrongGear)),/equipment.armor/,
     "Forged purchased equipment must not enter historical recordings");
   const forged=structuredClone(createSave(updated));
-  const record=forged.payload.events.find(e=>e.level7Replay)!.level7Replay!;
+  const record=forged.payload.events.find(e=>e.dungeonReplay)!.dungeonReplay!;
   (record.encounters[0].combat.frames[0].actors as any)[1]=
     {...record.encounters[0].combat.frames[0].actors[0]};
   assert.throws(()=>parseSave(JSON.stringify(forged)),/unique|duplicate|exactly once/i,
