@@ -40,7 +40,7 @@ export const SIMULATION_VERSION = 26;
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
 export interface EarlyDungeonFloorWorld {
-  readonly floor: 1 | 2 | 3 | 4;
+  readonly floor: 1 | 2 | 3 | 4 | 5 | 6 | 8 | 9;
   readonly world: Level7World;
 }
 
