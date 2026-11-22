@@ -167,7 +167,7 @@ superseded by PR #210):** the physical Board marks every
   All icons retain accessible text/legend and never become the sole means
   to interpret urgent equipment/HP information.
 - **Special-floor status:** the shop is already the cursed, unnumbered realm;
-  never display it as dungeon F5. Alpha v34 already stores the unnumbered `"shop"` place rather than a numeric shop floor. Show **At Galvik's shop**, **Outside world · off duty**
+  never display it as dungeon F5. Alpha v35 already stores the unnumbered `"shop"` place rather than a numeric shop floor. Show **At Galvik's shop**, **Outside world · off duty**
   (with actual two-day cooldown/return eligibility when known), or
   **Dungeon Floor N** as mutually exclusive states. For dungeon-active
   heroes, expose short move direction and medium-term goal where known;

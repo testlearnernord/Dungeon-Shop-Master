@@ -184,7 +184,7 @@ function recordedVictoryEntry(
   newEvents:readonly WorldEvent[],
 ):WorldFeedEntry|null {
   if(event.type!=="dungeon-live"||!event.adventurerId)return null;
-  const replay=event.dungeonReplay??event.level7Replay;
+  const replay=event.dungeonReplay;
   const encounter=replay?.encounters.find(e=>
     e.combat.outcome==="heroes"&&e.combat.frames.length>0);
   if(!replay||!encounter)return null;
@@ -193,7 +193,7 @@ function recordedVictoryEntry(
     if(candidate.type!=="dungeon-live"||
        candidate.worldTick!==event.worldTick||
        candidate.day!==event.day||!candidate.adventurerId)return false;
-    const tape=candidate.dungeonReplay??candidate.level7Replay;
+    const tape=candidate.dungeonReplay;
     return tape?.floor===replay.floor&&tape.encounters.some(e=>
       e.featureId===encounter.featureId&&
       (e.siteCycle??0)===generation&&e.combat.outcome==="heroes")===true;
@@ -201,7 +201,7 @@ function recordedVictoryEntry(
   const linked=newEvents.filter(matching);
   const ids=[...new Set(linked.map(e=>e.adventurerId!))].sort();
   if(!ids.length)return null;
-  const saved=linked.find(e=>e.dungeonReplay||e.level7Replay)!;
+  const saved=linked.find(e=>e.dungeonReplay)!;
   const gains=ids.map(id=>{
     const old=findHero(before,id),hero=findHero(after,id);
     if(!old||!hero)return null;

@@ -1,6 +1,6 @@
 # Dungeon Shop Master — current technical architecture
 
-> Runtime responsibilities were reconciled on 22 November 2026 through merged #315 (Alpha v34). The older PR #241/D1 audit remains historical evidence, not the current head. This document describes **present runtime responsibilities**, not proposed PR order. Inspect referenced modules and tests before modifying them. See [audit](CLEANUP_AUDIT.md), [Game Bible](GAME_BIBLE.md), [Roadmap](ROADMAP.md) and deep specialist contracts for details.
+> Runtime responsibilities were reconciled on 22 November 2026 through merged #319; current strict event schema is Alpha v35. The older PR #241/D1 audit remains historical evidence, not the current head. This document describes **present runtime responsibilities**, not proposed PR order. Inspect referenced modules and tests before modifying them. See [audit](CLEANUP_AUDIT.md), [Game Bible](GAME_BIBLE.md), [Roadmap](ROADMAP.md) and deep specialist contracts for details.
 
 ## 1. Execution model and ownership
 
@@ -23,7 +23,7 @@ Browser input / shop interactions
               (read-only presentation)
 ```
 
-- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 34`.
+- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 35`.
 - `worldClock.ts` persists a monotonic tick and ordered future events, with 50-ms ticks, 20 ticks per game minute and 28,800 ticks per game day. Stable lane/sequence ordering is part of determinism. Gameplay events, not Babylon frames, advance customers, timed dungeon steps and combat.
 - `liveDungeonRuntime.ts` schedules one connected spatial movement every **200 world ticks** and commits groups of **30 actual 60-Hz combat steps** every **10 world ticks**. The **Floor-10 2–3-member Temporary Party Cave Troll** uses the same `groupCombat.ts` authority as ordinary fights, with saved 60-Hz frames and replay validation through `livePartyBossSave.ts`. The old single-hero Floor-6 BossReplay-v1 adaptor remains for historical recordings/training; it is not the active deep-dungeon boss.
 - `gameStore.ts` records actual player and shop actions, physical shop-exit events, accepted credit, paid cart settlement, save operations and bed closure. Day closure does not reroll live expeditions.
@@ -142,7 +142,7 @@ unaffected. Historical omissions must remain unknown.
 
 ### Historical Alpha v29 hard save boundary (Issue #300, third code slice)
 
-The current parser and writer use only `SIMULATION_VERSION=34`; v33 and older Alpha campaigns are rejected with an explicit New Game message, without migration. The LIVE Solo-Troll/Floor-6 `bossCombat` checkpoint is no longer accepted or generated, while legitimate Floor-10 group battles use `partyBossCombat` exclusively. `bossPass` is the only stored hero permission field used for the Floor-10 Temporary Party gate. Numeric shop occupancy was replaced by explicit `"shop"`/`"away"` in v32; the non-LIVE daily batch and historical solo source types still require separate removal. The persisted `level5Room` key was replaced by `shopRoom` in v31. The solo Floor-6 day dispatcher itself is retired. The two physical `level4|level6` traffic gates have been deleted in favor of one portal, including a single-`doorY` checkpoint and reserved furniture clearance. The original and mined cave use one world-aligned stone/floor UV projection; the dungeon spectator shares the same authored surface family. They require separate gameplay-aware removal, not save migrations.
+The current parser and writer use only `SIMULATION_VERSION=35`; v34 and older Alpha campaigns are rejected with an explicit New Game message, without migration. The LIVE Solo-Troll/Floor-6 `bossCombat` checkpoint is no longer accepted or generated, while legitimate Floor-10 group battles use `partyBossCombat` exclusively. `bossPass` is the only stored hero permission field used for the Floor-10 Temporary Party gate. Numeric shop occupancy was replaced by explicit `"shop"`/`"away"` in v32; the non-LIVE daily batch and historical solo source types still require separate removal. The persisted `level5Room` key was replaced by `shopRoom` in v31. The solo Floor-6 day dispatcher itself is retired. The two physical `level4|level6` traffic gates have been deleted in favor of one portal, including a single-`doorY` checkpoint and reserved furniture clearance. The original and mined cave use one world-aligned stone/floor UV projection; the dungeon spectator shares the same authored surface family. They require separate gameplay-aware removal, not save migrations.
 
 **Alpha v30 / Galvik's Table (#305):** Galvik's one-of-a-kind Tripo table uses the shared P/Blueprint furniture transaction in the cellar. The required `cellarTable` transform is validated and persisted alongside `cellarChest`; prior v29 saves are intentionally incompatible, with no adapter or migration. The model is presentation-only and does not add another simulation or combat system.
 
@@ -169,3 +169,7 @@ The canonical hero floor value distinguishes actual dungeon depths 1–10 from u
 ### Alpha v34: one canonical ordinary-floor world checkpoint (#315)
 
 Every genuine Dungeon Floor 1–9, including Floor 7, now uses the same required persisted `dungeonWorlds` collection, keyed by its real numeric floor. There is no independent `level7World`, optional `earlyDungeonWorlds` extension or parallel save authority. LIVE movement, combat settlement, party positions, World Feed observation, spectator and viewer invalidation read the same per-floor collection. The strict validator rejects missing keys, duplicate floors, out-of-range floors and obsolete v33 fields. The current Alpha is v34; v33 and older saves require a New Game, without migration. Historical `level7Replay` event payloads and the independent non-LIVE day engine are **not** removed by this change and remain separate issue #300 work.
+
+### Alpha v35: current event and recording boundary (#320)
+
+The historical standalone end-of-day simulation was removed in merged #319: all day closure fixtures use the same LIVE event scheduler. The current v35 `WorldEvent` vocabulary no longer includes Solo-F6 `level6-*`, `level7-departure`, old `dungeon-outcome`/`dungeon-exploration`, or the dedicated `level7-exploration` shape. Ordinary Floor 1–9 footage has exactly one `dungeonReplay` property, and the unique actual Floor-10 party boss uses `partyBossReplay`. Neither the saved schema nor the old V preview loads a Solo-F6 campaign recording. These are breaking changes with no older-Alpha migration.

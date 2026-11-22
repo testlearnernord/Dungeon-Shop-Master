@@ -82,7 +82,7 @@ test("routine world time, unknown events and unrevealed recordings never create 
   }),[]);
   assert.deepEqual(projectWorldFeedChanges(before,{
     ...before,events:[...before.events,{
-      id:"test-sealed-replay",day:1,type:"dungeon-exploration" as const,
+      id:"test-unrelated-shop-stay",day:1,type:"shop-stay" as const,
       message:"SECRET OUTCOME! This cannot be shown by a passive feed.",
     }],
   }),[]);

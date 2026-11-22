@@ -6,7 +6,7 @@ import type {WorldEvent} from "./gameState.ts";
 export const REPLAY_LOOKBACK_DAYS=2;
 export const MAX_SAVED_REPLAYS=12;
 export const containsReplay=(event:WorldEvent):boolean=>
-  !!(event.level7Replay||event.dungeonReplay||event.partyBossReplay);
+  !!(event.dungeonReplay||event.partyBossReplay);
 
 /** The event trail is retained for world knowledge and accountability,
  * but heavy positional/combat frames expire. Never touch event identities,
@@ -20,8 +20,7 @@ export function compactReplayFootage(
   return events.map(event=>{
     if(event.day>=currentDay-REPLAY_LOOKBACK_DAYS||
       pinned.has(event.id)||!containsReplay(event))return event;
-    const {level7Replay:_level7,dungeonReplay:_dungeon,
-      partyBossReplay:_partyBoss,...fact}=event;
+    const {dungeonReplay:_dungeon,partyBossReplay:_partyBoss,...fact}=event;
     return fact;
   });
 }
