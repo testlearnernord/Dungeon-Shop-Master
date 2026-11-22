@@ -1,5 +1,7 @@
 # Legacy / obsolescence audit — 22 November 2026
 
+> **Latest code baseline:** Through merged #320 (Alpha v35), the solo Floor-6 event readers, parallel day motor and dedicated Floor-7 replay contract are gone. PR #321 closes the obsolete Floor-7 `"expedition"` status allowance in runtime/save validation and removes its test-only wrapper; only Floor 10 may use boss expedition status. The remaining abstract loot counter and internal `level5*` / `level7*` geometry names need separate, safety-aware work. Historical phase notes below are preserved as dated evidence, not current TODOs.
+
 > **Phase 3 / Alpha v29 (PR #306):** The LIVE Floor-6 Solo Troll state, ticking/reward branch, save checkpoint validator and direct viewer route are **deleted**. The sole actual LIVE Cave Troll is the authenticated Floor-10 Temporary Party in shared GroupCombat. V28 saves are incompatible; **no migration**. The old non-LIVE daily batch, archived solo event readers/preview, numeric shop-Floor-5 state and alternate checkout APIs are **still open**. The Solo-F6 dispatcher in that daily batch is removed in the follow-up. Do not confuse this first execution-engine cut with the full #300 closure.
 
 
@@ -30,7 +32,7 @@
 - `CURSED_SHOP_REALM="cursed-shop"` is not one of the normal numbered dungeon maps.
 - `OrdinaryDungeonFloor = 1|2|3|4|5|6|7|8|9`; `CAVE_TROLL_FLOOR=10`.
 - Real Floor 9 lower stair + a stored 2–3-person valid party, pass checks, HP and scheduled world time starts a Floor-10 boss. The **single saved 60-Hz group motor** owns results and cues. Old Floor-6 solo footage stays as compatible historical data.
-- **Current v35 status:** numeric Floor 5 means the genuine ordinary map, not Galvik's shop. The required persisted shop geometry is `shopRoom`; the three unnumbered hero places are `"shop"`, `"away"` and `"transit"`, and real shop traffic owns just one `portal` gate. Historical `level5Room.ts` naming is functional geometry code, not another serialized shop floor. Still pending: retired Floor-7-only event/status variants and the non-LIVE day solver.
+- **Current v35 status:** numeric Floor 5 means the genuine ordinary map, not Galvik's shop. The required persisted shop geometry is `shopRoom`; the three unnumbered hero places are `"shop"`, `"away"` and `"transit"`, and real shop traffic owns just one `portal` gate. Historical `level5Room.ts` naming is functional geometry code, not another serialized shop floor. Floor-7-only event types and non-LIVE day solver were retired in #319/#320; #321 removes the remaining ordinary-Floor-7 boss-status exception.
 
 ## Regression and release obligations
 
@@ -40,7 +42,7 @@
 4. Current floor 5 and floor 6 exist as ordinary maps, normal stairs and real exits. Floor 10 needs a true group. The old one-door compatibility fields must not grant solo group-boss access.
 5. Do not mark issue #294 resolved until new 20/50/100-day runs on *current main*, economic sell-through and real-world browser customer traffic are evaluated. Earlier post-progression runs are useful comparisons, not today's evidence.
 
-**Owner policy (22 November 2026): NO SAVE MIGRATIONS IN ALPHA.** Shop occupancy, room/gate and Boss Pass fields are already canonical in v35. The independent non-LIVE day motor was removed in #319; dedicated old Solo-F6/Floor-7 event readers are removed in #320. Remaining work concerns Floor-7-only status allowances, legacy abstract loot tokens, and safe renames of genuinely used modules. Bump the format if needed and **reject incompatible old saves with a clear new-campaign message**. Do not write fixture migration for `floor=5`, old routes or imported campaigns; do not maintain both schemas. Preserve genuine assets and actual current gameplay, not historical save import compatibility. Track as [#300](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/300).
+**Owner policy (22 November 2026): NO SAVE MIGRATIONS IN ALPHA.** Shop occupancy, room/gate and Boss Pass fields are already canonical in v35. The independent non-LIVE day motor was removed in #319; dedicated old Solo-F6/Floor-7 event readers are removed in #320. PR #321 retires Floor-7-only status allowances; remaining work concerns legacy abstract loot tokens and safe renames of genuinely used modules. Bump the format if needed and **reject incompatible old saves with a clear new-campaign message**. Do not write fixture migration for `floor=5`, old routes or imported campaigns; do not maintain both schemas. Preserve genuine assets and actual current gameplay, not historical save import compatibility. Track as [#300](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/300).
 
 ## Alpha v30 — cellar furniture save cut (PR #305)
 
