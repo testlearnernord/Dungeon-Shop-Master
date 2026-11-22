@@ -730,7 +730,7 @@ function validateLivePlans(
       hero.status!==(plan.floor===7?"expedition":"exploring"))
       fail(path+".heroId","must name a living committed explorer on the recorded floor");
     if((plan.action==="ascend"&&(plan.floor as number)<=1)||
-      (plan.action==="descend"&&(plan.floor as number)>=9))
+      (plan.action==="descend"&&(plan.floor as number)>=10))
       fail(path+".action","must be an authored adjacent early-floor transition");
  
   }
