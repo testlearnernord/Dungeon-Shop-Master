@@ -1,4 +1,5 @@
 import type {GameState} from "./gameState.ts";
+import {heroProgression} from "./heroProgression.ts";
 import type {LiveBossCombat} from "./liveDungeonRuntime.ts";
 import {
   caveTrollGroupOptions,createSharedBossPreview,projectSharedBossState,
@@ -58,15 +59,26 @@ export function liveBossCheckpointProblem(
   const opts=motion.options;
   const optsKeys=["role","sword","armor","health","maxHealth",
     "healingSupplies","strength","agility","intellect","tacticsSeed"];
-  if(!shape(opts,optsKeys)||
+  const bonusKeys=["progressionDamageBonus","progressionArmorBonus",
+    "progressionMagicHeals"];
+  const hasProgression=bonusKeys.some(key=>Object.hasOwn(opts,key));
+  const progress=heroProgression(hero);
+  // Old mid-boss saves have no bonus fields and must finish the exact
+  // fight they began. New fights commit all three bounded bonuses.
+  const expected=hasProgression?progress:hero.stats;
+  if(!shape(opts,optsKeys,bonusKeys)||
      opts.role!==hero.role||
      opts.sword!==(hero.equipment.weapon==="Iron Sword")||
      opts.armor!==(hero.equipment.armor==="Leather Vest")||
-     opts.health!==hero.health||opts.maxHealth!==hero.stats.maxHealth||
+     opts.health!==hero.health||opts.maxHealth!==expected.maxHealth||
      opts.healingSupplies!==hero.inventory.healing||
-     opts.strength!==hero.stats.strength||
-     opts.agility!==hero.stats.agility||
-     opts.intellect!==hero.stats.intellect||
+     opts.strength!==expected.strength||
+     opts.agility!==expected.agility||
+     opts.intellect!==expected.intellect||
+     (hasProgression&&(
+       opts.progressionDamageBonus!==progress.damageBonus||
+       opts.progressionArmorBonus!==progress.armorBonus||
+       opts.progressionMagicHeals!==progress.bonusMagicHeals))||
      !nonnegativeInteger(opts.tacticsSeed,31))
     return fail("options do not match the actual original hero");
   // New Floor-6 fights have ONE actual 60-Hz authority: GroupCombat.
@@ -143,7 +155,7 @@ export function liveBossCheckpointProblem(
     "heroAge","heroCooldown","bossAge","bossCooldown","bossStamina",
     "distanceTraveled"])
     if(!range(runtime[key],-100,100000))return fail("invalid "+key);
-  if(!range(motion.heroHp,0,hero.stats.maxHealth)||
+  if(!range(motion.heroHp,0,opts.maxHealth)||
      !range(motion.bossHp,0,280)||!range(motion.stamina,0,100)||
      motion.heroHp===0||motion.bossHp===0)
     return fail("invalid fighting HP or stamina");
@@ -191,7 +203,7 @@ export function liveBossCheckpointProblem(
       validateBossReplay({
         version:1,day:state.day,heroId:hero.id,
         role:hero.role,sword:opts.sword,armor:opts.armor,
-        maxHp:hero.stats.maxHealth,outcome:"retreat",frames:value.frames,
+        maxHp:opts.maxHealth,outcome:"retreat",frames:value.frames,
       },"payload.liveDungeon.bossCombat.frames",hero.id,state.day,"retreat");
     }catch{return fail("invalid replay frame payload");}
   }
