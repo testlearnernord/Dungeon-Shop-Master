@@ -1,5 +1,39 @@
 # Dungeon Shop Master | 100-day gameplay loop audit
 
+## Post-fix verification — 22 November 2026
+
+**Status: the seed-9321 crash and permanent merchant-era return/loot plateau have been fixed in the audit branch.** This section supersedes the historical baseline table and "P0" findings below. The original results remain for before/after comparison.
+
+Fixes in source:
+- `level7Exploration.ts`: a hero arriving on the lower stair may explore genuine adjacent connected tiles when the upper portal is unknown. No teleport, global hidden-map knowledge or fabricated saved path.
+- `campaignSave.ts`: strict saves accept an actual lower stair arrival on Floors 2–4 while rejecting arbitrary unanchored locations.
+- `liveDungeonRuntime.ts` / `shopArrivals.ts`: unloading the old abstract `inventory.loot` haul counter on arrival breaks the eternal loot-triggered resupply cycle, without selling or deleting any real `inventory.finds`, cash or equipment.
+- `liveDungeonRuntime.ts`: during the two protected off-duty days, heroes can spend genuinely owned bread/herbs to heal (one dose per day). There is **no free healing**, gold, item creation, dungeon movement or premature reentry.
+- Seeded regression and strict save tests were added or updated. The four-seed × 100-day diagnostic run [45011370044](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/45011370044) completed **successfully in all four jobs**.
+
+### Actual post-fix 100-day outcomes
+
+The full assortment uses optimistic scripted cashier/door service, not a simulated Babylon pedestrian motor. "Last XP day" is based on the committed state after each closed day.
+
+| Seed | Policy | Dead accumulated | Original ten survivors | Peak level | Last XP gain day | Galvik gold | Living hero gold |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 7351 | No merchant | 16 | 4 | 1 | 18 | 20 | 439 |
+| 7351 | Consumables only | 22 | 4 | 13 | 100 | 467 | 165 |
+| 7351 | Equipment only | 18 | 5 | 3 | 36 | 150 | 257 |
+| 7351 | Full assortment | 17 | 4 | 9 | 99 | 390 | 96 |
+| 42 | No merchant | 9 | 8 | 3 | 23 | 20 | 529 |
+| 42 | Full assortment | 30 | 4 | 12 | 99 | 454 | 163 |
+| 2026 | No merchant | 34 | 3 | 3 | 29 | 20 | 449 |
+| 2026 | Full assortment | 47 | 2 | 11 | 100 | 340 | 101 |
+| 9321 | No merchant | 6 | 7 | 4 | 21 | 20 | 569 |
+| 9321 | Full assortment | 22 | 5 | 10 | 100 | 627 | 134 |
+
+**Interpretation:** the P0 navigation crash is eliminated on the reproducing seed, and provisioned heroes keep generating XP through Day 99/100. Unprovisioned or equipment-only campaigns can still stagnate because injured heroes cannot recover and item demand changes. High death rates and very large gold imbalance remain balance risks, **not fully corrected**. XP `level` is still a displayed progress number without general stat growth, and this fix does not claim player-fun proof.
+
+Do not turn the original baseline tables below into current performance claims. They describe the state *before* these code fixes.
+
+---
+
 **Date:** 2026-11-22
 **Base:** `main` at `af62940df94307e70fd39712710987761536258f`, simulation version 26.
 **Execution:** Production `GameStore` + `activateLiveDungeon` + 200-tick movement + authentic scheduled 60-Hz fights, automated from `tools/analysis/gameplay-100day-audit.mjs`.
@@ -14,7 +48,7 @@
 - Same seed does not guarantee the same future encounters across scenarios: different purchases alter individual behavior, routes, survival, party choices and generated influx. Differences are observational, **not isolated item-effect estimates**.
 - 3 complete seeds are informative regression samples, **not statistically meaningful game-balance confidence intervals**.
 
-## Topline at Day 100
+## Historical baseline at Day 100 (before fixes)
 
 | Seed | Scenario | Living | Dead accumulated | Original 10 survivors | Peak level | Last XP increase day | Galvik gold | Living hero gold | Dead hero gold |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -30,7 +64,7 @@
 
 Every completed seed eventually **stops generating XP before Day 50** while shop visits, walkouts, party reports and dungeon step events continue. This is a major lack of sustained gameplay feedback, even where heroes still live and the nominal world clock advances. Active population caps at 20; early deaths are replaced by 2/day until full. The peak level in these samples is 5 but there is no continuing character strength system attached to XP levels.
 
-### Fatal reproducible runtime bug
+### Historical P0 crash, now addressed
 
 On seed `9321`, both scenarios abort with:
 
@@ -126,4 +160,4 @@ Run multiple seeds across **100 days**, plus fixed-seed scripted policies:
 - The same runs under **slow customer service** and **simulated stockouts/underinvestment** as with optimistic instant scripted checkouts.
 - Native 3D/manual playtesting remains mandatory to judge player delight and camera/audio fatigue.
 
-**Conclusion:** the first 5–40 days can produce believable, individually consequential stories, but the tested long run does not currently have a satisfactory sustainable gameplay loop. The clock and event infrastructure are real, yet progression and trading ultimately stall, and a valid seed crashes the navigation engine. Prioritize structural fixes before adding cosmetics or more dungeon content.
+**Historical conclusion before the fixes:** the original first 5–40 days could produce real stories, but the long run stalled and seed 9321 crashed. **Post-fix tests above supersede this baseline**: supplied/provisioned campaigns now keep moving through Day 99/100, while long-run balance, scarce goods, no-merchant recovery, class scaling and human 3D playtesting remain open.
