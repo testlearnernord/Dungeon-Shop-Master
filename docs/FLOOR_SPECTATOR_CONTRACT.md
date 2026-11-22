@@ -21,7 +21,7 @@
 - Clicking a genuine committed combat beacon opens the existing opt-in `LiveGroupCombatArena` / shared spectator stage, not a separate combat solver. It may replay or follow committed actor frames.
 - Normal Ghoul/multi-hero fights and the Floor-10 Troll share the `groupCombat.ts` motor. The latter has actual saved **partyBossCombat** state, death links and a shared **partyBossReplay** record.
 - Opening the World Feed's Floor-10 boss result uses `DungeonViewer.openRecordedPartyBoss`; the **Expedition Archive** routes that same tape there. Its team, win/loss and 60-Hz cues remain immutable. Do not send it to the old solo BossReplay-v1 viewer.
-- Historical **Level-6 solo** test tapes remain available in the present compatibility viewer, but Alpha v27 rejects old saved campaigns rather than migrating them. The current world boss remains the real Floor-10 party encounter.
+- The historical **Level-6 solo** *training preview* remains available but current Alpha v34 campaigns do not produce or load the obsolete solo battle events. New regular Floor-6 recordings use the general dungeon replay and the Floor-10 boss uses the true party replay. The current world boss remains the real Floor-10 party encounter.
 - Event timelines contain today plus two previous days; up to 12 explicitly pinned real recordings persist. No new footage may be manufactured for a marker that has no saved frames.
 
 ## Identity, UX and accessibility

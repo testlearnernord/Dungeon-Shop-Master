@@ -36,6 +36,6 @@
 
 **Implemented and testable:** shared tick owner; 200-tick spatial pacing; 60-Hz combat; physical shop cart/checkout; portal return; two-day rotation; genuine group boss; bounded archive.
 
-**Still open:** full 20-/50-/100-day current-code balancing; actual physical NPC pathfinding under slow checkout/service; re-entry and shop gate migration out of legacy keys; representative device frame pacing and audio/visual acceptance. See [Roadmap](ROADMAP.md) and open issue #294.
+**Still open:** full 20-/50-/100-day current-code balancing; actual physical NPC pathfinding under slow checkout/service; re-entry quality and the obsolete Floor-7/non-LIVE contracts (not a physical two-gate migration); representative device frame pacing and audio/visual acceptance. See [Roadmap](ROADMAP.md) and open issue #294.
 
 Never “fix” stalled XP by fast-forwarding the calendar, inventing loot, granting invisible purchases, or letting an observer HUD simulate extra battles.
