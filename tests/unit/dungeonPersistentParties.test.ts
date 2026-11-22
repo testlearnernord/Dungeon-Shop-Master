@@ -119,7 +119,16 @@ test("new parties persist through a real confirmed floor transition and the foll
     "Party decisions cannot depend on render order or a second RNG tick");
   const pair=firstDay.state.dungeonParties?.find(p=>
     p.memberIds.includes(first.id)&&p.memberIds.includes(second.id));
-  assert(pair,"Prepared partners should agree to descend together");
+  assert(pair,"Prepared partners should agree to descend together; got: "+
+    JSON.stringify({heroes:firstDay.state.adventurers.filter(h=>
+      h.id===first.id||h.id===second.id).map(h=>({
+        id:h.id,floor:h.floor,status:h.status,health:h.health,
+        finds:h.inventory.finds})),
+      parties:firstDay.state.dungeonParties,
+      plans:firstDay.state.liveDungeon.plans,
+      lastEvents:firstDay.events.filter(e=>
+        e.adventurerId===first.id||e.adventurerId===second.id)
+        .slice(-8).map(e=>({type:e.type,message:e.message}))}));
   assert.deepEqual(pair.memberIds,[first.id,second.id]);
   assert(pair.floor>=2&&pair.floor<=9,
     "Autonomous heroes may cross more than one genuine staircase per live day");
