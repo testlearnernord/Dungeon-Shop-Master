@@ -154,11 +154,11 @@ function validateLevel7World(
       unique(idx,visitedIds,item+".visited["+n+"]");
     });
     if(!visitedIds.has(z*map.width+x))fail(item+".visited","must include current location");
-    // A hero who has climbed from the floor below may only know this
-    // floor's lower stair, not the unexplored upper portal. Preserve
-    // truthful fog of war instead of forging a visit to the entrance.
+    // Physical ascent from Floor 2 can land on Floor 1's lower stair too.
+    // No upper-entrance tile should be fabricated for genuine stair arrivals.
+    // Any ordinary Floor 1–9 may be entered at its own upper or lower stair.
     const upper=map.entrance.z*map.width+map.entrance.x;
-    const lower=floor>=2&&floor<=9?dungeonDownStair(map):null;
+    const lower=dungeonDownStair(map);
     const lowerIndex=lower?lower.z*map.width+lower.x:null;
     if(!visitedIds.has(upper)&&
         (lowerIndex===null||!visitedIds.has(lowerIndex)))
