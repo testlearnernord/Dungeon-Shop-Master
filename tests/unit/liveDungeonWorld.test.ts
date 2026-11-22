@@ -37,7 +37,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.earlyDungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,32);
+  assert.equal(SIMULATION_VERSION,33);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -281,8 +281,12 @@ test("strict v20 saves reject forged backtracks and duplicated portal events",()
     store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   const portal=store.state.liveDungeon.returns.find(j=>j.heroId===heroId);
   assert.equal(portal?.phase,"portal");
+  assert.equal(store.state.adventurers.find(h=>h.id===heroId)?.floor,"transit",
+    "A real LIVE portal traveler is not on playable Dungeon Floor 4.");
   const stable=createSave(store.state);
   tamper(stable,s=>{s.liveDungeon.returns[0].dueTick+=1;},/dueTick|returns/);
+  tamper(stable,s=>{s.adventurers.find((h:any)=>h.id===heroId).floor=4;},
+    /floor|returns/);
   tamper(stable,s=>{s.worldClock.pending=s.worldClock.pending.filter(
     (e:any)=>!e.subjectId.startsWith(SHOP_PORTAL_RETURN_PREFIX));},/dueTick|returns/);
   tamper(stable,s=>{s.adventurers.find((h:any)=>h.id===heroId).status="at-shop";},/floor|returns/);
