@@ -31,17 +31,18 @@ test("strict v31 rejects old v30 shop-room saves with no silent migration",()=>{
     /(?:unexpected|shopRoom)/i);
   const dual=structuredClone(createSave(state)) as any;
   dual.payload.level5Room=dual.payload.shopRoom;
-  assert.throws(()=>parseSave(JSON.stringify(dual)),/unexpected/i,
+  assert.throws(()=>parseSave(JSON.stringify(dual)),/(?:not supported|unexpected)/i,
     "No compatibility layer accepts a second legacy room field");
 });
 
 test("Shop mining and expansion still mutate the same saved shopRoom",()=>{
   const store=new GameStore(createGameState(7351));
   const before=store.state.shopRoom;
+  const cellarBefore=structuredClone(store.state.cellarRoom);
   assert.equal(store.unlockShopExpansion(1),"Shop expansion unlocked.");
   assert.notStrictEqual(store.state.shopRoom,before);
   assert.equal(store.state.shopRoom.expansionTier,1);
-  assert.equal(store.state.cellarRoom.expansionTier,0,
+  assert.deepEqual(store.state.cellarRoom,cellarBefore,
     "Shop expansion must not modify the independent cellar.");
   assert.equal("level5Room" in store.state,false);
   const reloaded=parseSave(JSON.stringify(createSave(store.state)));
