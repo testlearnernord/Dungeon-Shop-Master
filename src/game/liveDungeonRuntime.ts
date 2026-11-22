@@ -453,6 +453,18 @@ function commitDungeonTick(state:GameState):GameState {
         continue;
       }
     }
+    // A full ordinary fight can now legitimately consume its entire 25s
+    // budget (especially when veteran healers take part). The shopkeeper
+    // must never be unable to close the day because a newly started
+    // encounter still owns the 60Hz clock after midnight. Defer optional
+    // map steps until next morning; portal/stair crossings above still work.
+    if(tick+LEVEL7_COMBAT_SECONDS*20+LIVE_COMBAT_INTERVAL_TICKS>
+       lastWorldTickOfDay(day)){
+      processed.add(hero.id);
+      stepCounts.set(hero.id,{heroId:hero.id,
+        steps:(stepCounts.get(hero.id)?.steps??0)+1,finished:true});
+      continue;
+    }
     const returningIds=new Set(returns.map(j=>j.heroId));
     const group=homeward?[hero]:choosePersistentDungeonParty(hero,roster,world,layout,
       processed,state.dungeonParties??[]).filter(member=>
