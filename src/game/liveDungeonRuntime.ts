@@ -506,7 +506,8 @@ function commitDungeonTick(state:GameState):GameState {
         if(nextFloor===7)level7World={...previousWorld,heroes:nextHeroes};
         else earlyDungeonWorlds=[
           ...earlyDungeonWorlds.filter(e=>e.floor!==nextFloor),
-          {floor:nextFloor,world:{...previousWorld,heroes:nextHeroes}},
+          {floor:nextFloor as EarlyDungeonFloorWorld["floor"],
+            world:{...previousWorld,heroes:nextHeroes}},
         ].sort((a,b)=>a.floor-b.floor);
         if(crossing.length>=2)sharedGroups.push(crossing.map(h=>h.id));
         continue;
