@@ -543,13 +543,31 @@ function validateLiveCombatCheckpoints(
       layout.seed,layout,initialApproach,cycle,true);
     const legacyCanonical=prepareSpatialDungeonCombat(members,feature!,
       layout.seed,layout,initialApproach,cycle,false);
-    // Existing in-progress single-Ghoul saves remain valid; newly reserved
-    // LIVE pack sites must exactly match their seeded, physical actor roster.
-    if(![liveCanonical,legacyCanonical].some(canonical=>
+    // Pre-progression saves may contain a fight begun at higher XP with
+    // seeded BASE stats and no ordinary healer spells. The saved 60Hz
+    // fight must finish with precisely its original actors, not be
+    // rewritten mid-swing by a gameplay update. Match either exact
+    // historical footprint, never accept arbitrary forged fighter values.
+    const historicalMembers=members.map(member=>({...member,level:1}));
+    const historicalLive=prepareSpatialDungeonCombat(historicalMembers,feature!,
+      layout.seed,layout,initialApproach,cycle,true);
+    const historicalSolo=prepareSpatialDungeonCombat(historicalMembers,feature!,
+      layout.seed,layout,initialApproach,cycle,false);
+    const withoutNewSpells=(canonical:typeof historicalLive)=>
+      ({...canonical,options:{...canonical.options,
+        actors:canonical.options.actors.map(actor=>{
+          if(actor.team!=="heroes")return actor;
+          const {magicHeals:_historicalNewSpell,...legacyActor}=actor;
+          return legacyActor;
+        }),
+      }});
+    const candidates=[liveCanonical,legacyCanonical,
+      withoutNewSpells(historicalLive),withoutNewSpells(historicalSolo)];
+    if(!candidates.some(canonical=>
       canonical.elite===encounter.elite&&
       JSON.stringify(canonical.options)===JSON.stringify(options)))
       fail(cp+".encounter.options",
-        "must match a seeded LIVE pack or historical single Ghoul stats");
+        "must match a seeded LIVE pack or historical pre-progression actor");
     let initial;
     try {initial=createGroupCombat(options as unknown as GroupCombatOptions);}
     catch {fail(cp+".encounter.options","is not a valid group combat");}
