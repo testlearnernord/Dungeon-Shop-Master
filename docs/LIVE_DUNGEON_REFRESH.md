@@ -20,7 +20,7 @@
 ## Shop and equipment economy
 
 - Physically owned ore, coal, herbs, gear and other `inventory.finds` belong to one real adventurer. Only an explicit **paid buyback** changes that owner and Galvik's gold/workshop storage.
-- The obsolete abstract `inventory.loot` counter is a trip-haul decision token and is cleared on genuine shop arrival; it must not pretend to be actual stock or trigger infinite resupply.
+- Alpha v36 no longer persists or displays the obsolete abstract `inventory.loot` counter. Shop-return decisions can use real injury or newly collected physical `inventory.finds`; unsold items persist with their owner until an authentic paid buyback.
 - Customers with a paid budget now prioritize useful class gear if healthy and owned supplies if injured. Penniless customers' begging/restock requests remain survival-first; a desire is not a free transfer.
 - The merchant's future forge/repair supply chain, better late-game item tiers and truly useful Mana Potions remain OPEN design/economy tasks.
 

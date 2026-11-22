@@ -55,7 +55,7 @@ test("hero details expose saved gear, inventory and goals without invented inten
     ...initial,
     adventurers:initial.adventurers.map(h=>h.id===hero.id?{
       ...h,status:"exploring" as const,floor:1 as const,
-      gold:23,inventory:{loot:2,bread:4,healing:1},
+      gold:23,inventory:{bread:4,healing:1,finds:{"iron-ore":2}},
       equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
     }:h),
     liveDungeon:{...initial.liveDungeon,enabled:true,
@@ -71,7 +71,7 @@ test("hero details expose saved gear, inventory and goals without invented inten
   const view=selectLiveFloorSpectatorFrame(saved,1)!;
   const actor=view.heroes.find(h=>h.id===hero.id)!;
   assert.equal(actor.gold,23);
-  assert.deepEqual(actor.inventory,{loot:2,bread:4,healing:1});
+  assert.deepEqual(actor.inventory,{bread:4,healing:1,finds:{"iron-ore":2}});
   assert.deepEqual(actor.equipment,{
     weapon:"Iron Sword",armor:"Leather Vest",
   });

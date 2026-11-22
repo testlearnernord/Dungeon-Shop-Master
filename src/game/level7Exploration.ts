@@ -544,8 +544,8 @@ export function simulateSpatialDungeonPartyDay(
       shareGold(gain);
       const living=members.filter(m=>m.hp>0).sort((a,b)=>
         a.hero.id.localeCompare(b.hero.id));
-      // The legacy abstract loot token represents a single unique chest.
-      // Rotate ownership; never duplicate a one-off token among companions.
+      // The transient number of resolved chests remains a replay diagnostic,
+      // never an imaginary inventory item. Keep stable per-party attribution.
       if(living.length)living[(idx+dungeonSiteGeneration(siteCycles,feature.id))%
         living.length].loot+=1;
       const cycle=dungeonSiteGeneration(siteCycles,feature.id);
@@ -654,8 +654,7 @@ export function simulateSpatialDungeonPartyDay(
       floor:returning?"transit":floor,
       ...(returning?{lastDungeonFloor:7 as const}:{}),
       status:dead?"dead":returning?"traveling":"exploring",
-      inventory:{...m.hero.inventory,
-        loot:m.hero.inventory.loot+m.loot,healing:m.healing},
+      inventory:{...m.hero.inventory,healing:m.healing},
     };
     if(!dead&&!returning)survivors.push({
       heroId:m.hero.id,...current,visited:m.visitedOrder,

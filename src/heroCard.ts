@@ -29,17 +29,6 @@ const item=(id:string,count:string,title:string)=>{
     make("span","hero-card-item-count",count));
   return cell;
 };
-const lootToken=(quantity:number):HTMLElement=>{
-  // Legacy loot is NOT physical iron ore. Use our generic treasure symbol,
-  // never misrepresent an abstract counter as a specific mined commodity.
-  const cell=make("span","hero-card-item");
-  cell.dataset.itemId="legacy-loot";
-  cell.title="Legacy loot tokens ×"+quantity;
-  cell.setAttribute("aria-label",cell.title);
-  cell.append(uiIcon("treasure","hero-card-item-art"),
-    make("span","hero-card-item-count","×"+quantity));
-  return cell;
-};
 const label=(text:string)=>make("small","hero-card-overline",text);
 
 function portrait(hero:HeroCardView):HTMLElement {
@@ -194,7 +183,6 @@ function inventory(hero:HeroCardView):HTMLElement{
     const label=ITEMS.find(x=>x.id===id)?.name??id;
     list.append(item(id,"×"+n,label+" ×"+n));
   }
-  if(inv.loot)list.append(lootToken(inv.loot));
   if(!list.childElementCount)list.append(make("small","hero-card-unknown",
     "No carried goods"));
   zone.append(list);return zone;

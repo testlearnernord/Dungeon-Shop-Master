@@ -52,7 +52,7 @@
 
 The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper contract. Decisions below are approved direction, **not** claims of full current implementation.
 
-- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v35. Historic room names are source-module labels, not extra saved doors or a numbered shop.
+- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v36. Historic room names are source-module labels, not extra saved doors or a numbered shop.
 - Heroes choose **stay / deeper / higher** based on individual medium-term goals such as farming, testing gear, survival or progress. **CURRENT:** plans and parts of same-day movement already persist; deeper/full-floor progression remains incomplete.
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers leave for **two complete off-duty days** outside shop and dungeon. **CURRENT:** physical departure, saved cooldown and safe entry already exist; the future portal topology/reentry presentation remains open.

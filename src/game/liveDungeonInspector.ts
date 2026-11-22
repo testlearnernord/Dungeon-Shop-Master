@@ -31,8 +31,8 @@ export function floorFightLocatorOptions(
   });
 }
 
-/** The abstract `inventory.loot` counter is not a physical item.
- * Show only goods that a real saved adventurer currently owns. */
+/** Show only concrete goods truly owned by this saved adventurer.
+ * The removed abstract chest counter cannot appear as merchandise. */
 export function formatHeroDungeonFinds(
   finds:Readonly<Partial<Record<ItemId,number>>>|undefined,
 ):string {

@@ -37,7 +37,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,35);
+  assert.equal(SIMULATION_VERSION,36);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -200,8 +200,8 @@ function shortRealReturnFixture():{store:GameStore;heroId:string;path:{x:number;
   assert(hero);
   const adventurers=initial.adventurers.map(h=>h.id===hero.id?{
     ...h,floor:1 as const,status:"exploring" as const,
-    inventory:{...h.inventory,loot:2,
-      finds:{"iron-ore":1}},
+    health:Math.max(1,Math.floor(h.stats.maxHealth/3)),
+    inventory:{...h.inventory,finds:{"iron-ore":1}},
   }:h);
   const world={...emptyLevel7World(),heroes:[{
     heroId:hero.id,x:path.at(-1)!.x,z:path.at(-1)!.z,
@@ -236,7 +236,7 @@ test("actual shop return crosses known tiles, survives reload and arrives DURING
   const initial=a.state;
   a.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   assert(a.state.liveDungeon.returns.some(j=>j.heroId===heroId&&j.phase==="backtrack"),
-    "The actual looted hero chooses to start a return, not teleport to the shop.");
+    "An injured hero decides to backtrack rather than teleport to the shop.");
   assert.equal(a.state.adventurers.find(h=>h.id===heroId)?.status,"exploring");
   assert.equal(a.state.worldClock.tick,DUNGEON_STEP_INTERVAL_TICKS);
   const b=new GameStore(parseSave(JSON.stringify(createSave(a.state))));
@@ -247,8 +247,6 @@ test("actual shop return crosses known tiles, survives reload and arrives DURING
   const traveler=a.state.adventurers.find(h=>h.id===heroId)!;
   assert.equal(traveler.status,"at-shop");
   assert.equal(traveler.floor,"shop");
-  assert.equal(traveler.inventory.loot,0,
-    "Depositing a trip's abstract haul must stop the endless return-to-shop loop.");
   assert.deepEqual(traveler.inventory.finds,{"iron-ore":1},
     "Real unsold material ownership remains with the hero for optional buyback.");
   assert.equal(a.state.day,1,"The bed, not an arrival, ends the day.");
@@ -334,7 +332,7 @@ function livePartyFixture():{store:GameStore;ids:readonly string[]} {
     ...h,floor:1 as const,status:"exploring" as const,
     health:h.stats.maxHealth,role: h.id===ids[0]?"healer" as const:"tank" as const,
     traits:{...h.traits,negative:"stubborn"},
-    inventory:{...h.inventory,loot:0},
+    inventory:{...h.inventory},
   }:h.status==="exploring"?{...h,floor:4 as const}:h);
   const entrance=layout.entrance.z*layout.width+layout.entrance.x;
   const world={...emptyLevel7World(),
@@ -371,11 +369,12 @@ test("LIVE Temporary Party forms on one physical tile, persists and splits on in
 
   // An actual independent need overrides companionship; Galvik never commands it.
   const forced={...store.state,adventurers:store.state.adventurers.map(h=>
-    h.id===fixture.ids[0]?{...h,inventory:{...h.inventory,loot:2}}:h)};
+    h.id===fixture.ids[0]?{...h,
+      health:Math.max(1,Math.floor(h.stats.maxHealth/3))}:h)};
   const next=new GameStore(forced);
   next.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   assert(next.state.liveDungeon.returns.some(j=>j.heroId===fixture.ids[0]),
-    "Actual loot creates the hero's own resupply decision.");
+    "A genuine injury creates the hero's independent resupply decision.");
   assert(!next.state.dungeonParties?.some(p=>fixture.ids.every(id=>
     p.memberIds.includes(id))),"Dissent disbands rather than forcing travel.");
   const leaves=next.state.events.filter(e=>e.type==="temporary-party-leave"&&
@@ -395,7 +394,7 @@ function authoredStairFixture():{store:GameStore;heroId:string;stair:{x:number;z
   const adventurers=base.adventurers.map(h=>h.id===hero.id?{
     ...h,floor:1 as const,status:"exploring" as const,
     health:h.stats.maxHealth,equipment:{...h.equipment,weapon:"Iron Sword" as const},
-    inventory:{...h.inventory,loot:0},
+    inventory:{...h.inventory},
   }:h.status==="exploring"?{...h,floor:4 as const}:h);
   const known=layout.tiles.flatMap((cell,i)=>cell==="wall"?[]:[i]);
   const world={...emptyLevel7World(),

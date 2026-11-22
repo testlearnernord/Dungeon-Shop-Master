@@ -8,7 +8,7 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Implemented on the audited main baseline
 
-Core systems were reconciled on 22 November 2026 through merged #319 (current Alpha v35). V.004 cellar, fishing, LIVE cashier, dungeon autonomy and spectators already exist, together with real class progression and the Floor-10 group boss. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
+Core systems were reconciled on 22 November 2026 through merged #321 (Alpha v36 inventory proposal). V.004 cellar, fishing, LIVE cashier, dungeon autonomy and spectators already exist, together with real class progression and the Floor-10 group boss. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
 
 | Area | Currently implemented |
 | --- | --- |
@@ -21,7 +21,7 @@ Core systems were reconciled on 22 November 2026 through merged #319 (current Al
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Strict current **Alpha v35** saves persist the independently mined cursed `shopRoom`, one `portal` traffic checkpoint, explicit `"shop"`/`"away"`/`"transit"` hero places, ordinary Floor 1–9 `dungeonWorlds`, real Floor-10 group combat and immutable recordings. **V34 and older Alpha files are incompatible**, not migrated; breaking changes require a fresh campaign |
+| Persistence | Strict current **Alpha v36** saves persist the independently mined cursed `shopRoom`, one `portal` traffic checkpoint, explicit `"shop"`/`"away"`/`"transit"` hero places, ordinary Floor 1–9 `dungeonWorlds`, real Floor-10 group combat and immutable recordings. **V35 and older Alpha files are incompatible**, not migrated; breaking changes require a fresh campaign |
 
 **V.004 cellar (merged PRs #252 and #254):** Galvik's fixed fiancée portrait opens a secret, physically traversable stairway to the cellar. The widened corridor and ramp support normal first-person descent, ascent and off-centre approaches. Cellar mining uses the same rock cells and U excavation tool; a chest uses the same P furniture blueprint registry and save state.
 
@@ -37,7 +37,7 @@ Core systems were reconciled on 22 November 2026 through merged #319 (current Al
 
 **V.004 spectator QoL (merged PRs #265 and #266):** locate actual LIVE heroes and running fights through compact selectors. Focusing a target preserves the player's orbit and zoom; the inspector shows real saved finds. Selecting a fight focuses its committed tile and the existing Watch action opens that exact opt-in 3D encounter.
 
-**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. Still open are the **retirement of remaining Floor-7-only status allowances, abstract loot tokens and obsolete internal naming** (not numeric shop-floor saves), fully authored deep-floor variety, an actual 20/50/100-day post-#298 economy audit, ten-day hands-on pacing and real-device visual/audio acceptance. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
+**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. Still open are the **verification of physical-loot inventory and remaining obsolete internal naming** (not numeric shop-floor saves), fully authored deep-floor variety, an actual 20/50/100-day post-#298 economy audit, ten-day hands-on pacing and real-device visual/audio acceptance. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
 
 ## Start playing
 

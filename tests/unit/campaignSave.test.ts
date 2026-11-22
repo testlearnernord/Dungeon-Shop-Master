@@ -101,7 +101,7 @@ const badPayloads: [string, (state: any) => void, RegExp][] = [
   ["invalid equipment", (s) => { s.adventurers[0].equipment.weapon = 42; }, /weapon/],
   ["negative hero gold", (s) => { s.adventurers[0].gold = -1; }, /gold/],
   ["negative inventory", (s) => { s.adventurers[0].inventory.bread = -1; }, /bread/],
-  ["fractional inventory", (s) => { s.adventurers[0].inventory.loot = 0.5; }, /loot/],
+  ["obsolete abstract loot", (s) => { s.adventurers[0].inventory.loot = 2; }, /loot/],
   ["bad level", (s) => { s.adventurers[0].level = 2; }, /level.*XP/],
   ["negative XP", (s) => { s.adventurers[0].xp = -1; }, /xp/],
   ["bad floor", (s) => { s.adventurers[0].floor = 6; }, /floor/],

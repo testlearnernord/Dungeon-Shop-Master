@@ -48,8 +48,9 @@ function snap(s,dayCompleted) {
     hasHealing:living.filter(h=>h.inventory.healing>0).length,
     hasBread:living.filter(h=>h.inventory.bread>0).length,
     zeroGold:living.filter(h=>h.gold===0).length,
-    abstractLootTokens:sum(living,h=>h.inventory.loot),
-    heroesWithTwoLootTokens:living.filter(h=>h.inventory.loot>=2).length,
+    physicalFinds:sum(living,h=>sum(Object.values(h.inventory.finds??{}),v=>v??0)),
+    heroesWithTwoPhysicalFinds:living.filter(h=>
+      sum(Object.values(h.inventory.finds??{}),v=>v??0)>=2).length,
     heroPlans:counts(s.liveDungeon.plans.map(p=>p.action)),
     worldSiteCycles:sum(s.dungeonWorlds,w=>w.world.siteCycles?.length??0),
     floorsCleared:s.dungeonFloors.filter(f=>f.cleared).map(f=>f.floor),
@@ -234,7 +235,8 @@ function run(mode){
     shelves:store.state.shopEconomy.slots.map(s=>({itemId:s.itemId,quantity:s.quantity}))};
   metrics.topSurvivors=store.state.adventurers.filter(h=>h.status!=="dead")
     .sort((a,b)=>b.xp-a.xp).slice(0,12).map(h=>({
-      id:h.id,level:h.level,xp:h.xp,lootTokens:h.inventory.loot,role:h.role,
+      id:h.id,level:h.level,xp:h.xp,physicalFinds:
+        sum(Object.values(h.inventory.finds??{}),v=>v??0),role:h.role,
       hp:h.health,maxHp:h.stats.maxHealth,gold:h.gold,
       weapon:h.equipment.weapon,armor:h.equipment.armor,status:h.status,
       floor:h.floor

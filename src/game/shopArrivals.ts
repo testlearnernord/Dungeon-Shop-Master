@@ -22,10 +22,7 @@ export function scheduleShopVisit(
 ): { adventurer: AdventurerState; events: readonly WorldEvent[]; rngState: number } {
   if (hero.status === "traveling") {
     return {
-      adventurer: { ...hero, floor: "shop", status: "at-shop",
-        // Legacy day-based fixture: physical finds persist, but old
-        // abstract chest haul no longer triggers endless resupply loops.
-        inventory:{...hero.inventory,loot:0} },
+      adventurer: { ...hero, floor: "shop", status: "at-shop" },
       events: [arrivalEvent(hero, day)],
       rngState,
     };

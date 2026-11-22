@@ -1,5 +1,7 @@
 # Dungeon Shop Master | 100-day gameplay loop audit
 
+> **HISTORICAL MEASUREMENT, predating Alpha v36.** The old `inventory.loot` token and its arrival-time reset were removed in the v36 cleanup; references to that field below describe earlier code, not current gameplay. Fresh long-game economy evidence is still required by #294.
+>
 > **HISTORICAL MEASUREMENT.** The tables below are exact evidence for
 > earlier tested source revisions, not for merged #296–#298. Current code has
 > real class progression, role-aware shopping, Floors 1–9 and a Floor-10

@@ -22,7 +22,7 @@ test("LIVE Board never exposes hidden remote HP, loot, gear or a silent death",(
     h.id===remote.id?{...h,health:0,status:"dead" as const,
       gold:999999,equipment:{weapon:"Iron Sword" as const,
         armor:"Leather Vest" as const},
-      inventory:{...h.inventory,loot:500}}:h)};
+      inventory:{...h.inventory,finds:{"iron-ore":500}}}:h)};
   const after=selectLiveBoardHeroes(changed).find(h=>h.id===remote.id)!;
   assert.deepEqual(after,observed,
     "Raw real dungeon death/HP, coins, gear and loot must not leak.");

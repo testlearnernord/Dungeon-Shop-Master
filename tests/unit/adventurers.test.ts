@@ -36,7 +36,7 @@ test("Day 1 has ten persistent heroes, exactly three distinct shop visitors", ()
     assert.equal(hero.health,hero.stats.maxHealth);
     assert.equal(hero.level,1);
     assert.equal(hero.xp,0);
-    assert.deepEqual(hero.inventory,{bread:0,loot:0,healing:0});
+    assert.deepEqual(hero.inventory,{bread:0,healing:0});
     assert.deepEqual(hero.equipment,{weapon:null,armor:null});
   }
 });
@@ -65,7 +65,8 @@ test("character generation, world layout and seeded simulations reproduce across
     assert.equal(first.adventurer.level,
       1+Math.floor(first.adventurer.xp/100));
     assert(first.adventurer.gold>=hero.gold);
-    assert(first.adventurer.inventory.loot>=hero.inventory.loot);
+    assert(first.adventurer.inventory.finds===undefined||
+      Object.values(first.adventurer.inventory.finds).every(n=>n>=0));
     assert(first.replay.steps.every(step=>layout.tiles[step.z*layout.width+step.x]!=="wall"));
   }
 });
@@ -106,8 +107,16 @@ test("strategic choices respond to actual HP, equipment, loot and map knowledge"
   const injured={...hero,health:1};
   assert.deepEqual(chooseHeroDungeonDecision(injured,progress,replay),
     {goal:"resupply",action:"shop"});
-  const loaded={...hero,inventory:{...hero.inventory,loot:3}};
-  assert.equal(chooseHeroDungeonDecision(loaded,progress,replay).action,"shop");
+  const loaded={...hero,inventory:{...hero.inventory,finds:{"iron-ore":4}}};
+  const chestReplay={...replay,
+    steps:[...replay.steps,{x:1,z:2,t:1,action:"treasure" as const,hp:hero.health}]};
+  assert.equal(chooseHeroDungeonDecision(loaded,progress,chestReplay).action,"shop");
+  assert.notEqual(chooseHeroDungeonDecision({...loaded,
+    inventory:{...loaded.inventory,finds:{"iron-ore":2}}},progress,
+    chestReplay).action,"shop",
+    "One chest alone cannot break a well-prepared travelling party");
+  assert.notEqual(chooseHeroDungeonDecision(loaded,progress,replay).action,"shop",
+    "Unsold old finds must not cause a repeated automatic shop return");
   const floor4={...hero,floor:4 as const};
   assert.equal(chooseHeroDungeonDecision(floor4,progress,
     {...replay,floor:4}).action,"descend",
@@ -170,7 +179,7 @@ test("multi-day play and save/reload are deterministic with real shared encounte
     b=advanceDay(parseSave(JSON.stringify(createSave(b)))).state;
     assert.deepEqual(a,b);
     assert.equal(new Set(a.events.map(e=>e.id)).size,a.events.length);
-    assert.equal(a.simulationVersion,35);
+    assert.equal(a.simulationVersion,36);
     assert(a.adventurers.filter(hero=>hero.status!=="dead").length<=20);
   }
   assert(a.events.some(e=>e.type==="dungeon-live"));
