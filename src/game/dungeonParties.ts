@@ -35,7 +35,8 @@ export function chooseCoLocatedDungeonParty(
   world:Level7World, layout:DungeonLayout,
   processed:ReadonlySet<string>,
 ):readonly AdventurerState[] {
-  const validStatus=layout.floor===7?"expedition":"exploring";
+  const validStatus=leader.status==="expedition"&&layout.floor===7?
+    "expedition":"exploring";
   if(processed.has(leader.id)||leader.floor!==layout.floor||
     leader.status!==validStatus||!willingToTravelTogether(leader))
     return [leader];
@@ -59,7 +60,9 @@ function availableOldMembers(
 ):readonly AdventurerState[]|null {
   if(party.floor!==layout.floor||party.memberIds.length<2||
     party.memberIds.length>3)return null;
-  const expectedStatus=layout.floor===7?"expedition":"exploring";
+  const lead=roster.find(hero=>hero.id===party.memberIds[0]);
+  const expectedStatus=lead?.status==="expedition"&&layout.floor===7?
+    "expedition":"exploring";
   const members=party.memberIds.map(id=>roster.find(hero=>hero.id===id));
   if(members.some(hero=>!hero||processed.has(hero.id)||
     hero.floor!==layout.floor||hero.status!==expectedStatus||
@@ -114,15 +117,14 @@ export function settlePersistentDungeonParties(
         (hero.status==="exploring"||hero.status==="expedition"));
     if(members.length<2||members.length>3)continue;
     const floor=members[0].floor;
-    if(!([1,2,3,4,7] as readonly number[]).includes(floor) ||
+    if(!(floor>=1&&floor<=9) ||
       members.some(hero=>hero.floor!==floor||
         hero.status!==members[0].status||occupied.has(hero.id)))continue;
     const firstAction=decisions.get(members[0].id);
     // A group stays together only if its living explorers autonomously
     // chose the SAME transition. "shop" always ends that expedition.
-    if(floor!==7 && (firstAction===undefined||firstAction==="shop"||
-      members.some(hero=>decisions.get(hero.id)!==firstAction)))continue;
-    if(floor===7 && members[0].status!=="expedition")continue;
+    if(firstAction===undefined||firstAction==="shop"||
+      members.some(hero=>decisions.get(hero.id)!==firstAction))continue;
     const sharedFloor=floor as SpatialDungeonFloor;
     const world=worldForFloor(sharedFloor);
     const layout=generateExpeditionLayout(campaignSeed,sharedFloor);
