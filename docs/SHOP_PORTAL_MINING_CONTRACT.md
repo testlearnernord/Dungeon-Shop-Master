@@ -37,3 +37,5 @@ At the time of PR #303, the unrelated `hero.floor=5` at-shop occupancy, `level5R
 - Build and Pages verification, module graph and strict current-save roundtrip must remain green.
 
 **Manual sign-off still required:** mine both shop wings and the cellar on a real GPU, check texture scale and seams with torches on; try P/N repositioning over both gate footprints; cross the true portal, jam the gate with simultaneous customers, test the former right tunnel, and evaluate FPS/lighting. Automated tests cannot certify beauty.
+
+**Current Alpha v31 update:** The single physical shop mined-room checkpoint is now `payload.shopRoom`, not `level5Room`. Existing `level5Room.ts` and `level5WallFaces.ts` are geometry/renderer source-module names, not live numeric dungeon floors. Strict v31 Save/Load rejects previous v30 campaigns; all genuine mining and furniture clearance use one physical shop room. This does not yet replace hero `floor=5` occupancy; see issue #300.
