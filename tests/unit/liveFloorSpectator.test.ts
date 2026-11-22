@@ -44,7 +44,7 @@ test("missing checkpoints remain unknown, combat stays on actual floor",()=>{
     "No invented entrance position before the first committed checkpoint");
   assert.deepEqual(view.fights,[]);
   assert.equal(selectLiveFloorSpectatorFrame(base,1),null);
-  assert.deepEqual(LIVE_SPECTATOR_FLOORS,[1,2,3,4,5,6,7,8,9]);
+  assert.deepEqual(LIVE_SPECTATOR_FLOORS,[1,2,3,4,5,6,7,8,9,10]);
 });
 
 
