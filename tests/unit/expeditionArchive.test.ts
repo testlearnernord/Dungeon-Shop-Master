@@ -10,6 +10,8 @@ import {compactReplayFootage,MAX_SAVED_REPLAYS}
 import {generateExpeditionLayout,dungeonNeighbors}
   from "../../src/game/dungeonLayout.ts";
 import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
+import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
   from "../../src/game/liveDungeonRuntime.ts";
 
@@ -138,4 +140,39 @@ test("current Expedition Archive never projects hidden fight outcome text or sec
   const unchanged=structuredClone(hiddenChange);
   selectExpeditionArchive(hiddenChange);
   assert.deepEqual(hiddenChange,unchanged,"Archive projection must not write gameplay");
+});
+
+test("authentic Level-10 party footage is browsable and pinnable in the same archive",()=>{
+  const initial=createGameState(7351);
+  const actual=initial.adventurers.slice(0,3).map(hero=>({
+    ...hero,level6Permit:true,level:12,xp:1100,
+    equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+    inventory:{...hero.inventory,bread:2,healing:3},
+  }));
+  const options=caveTrollPartyOptions(actual,42);
+  const fight=resolveGroupCombat(options,90);
+  assert.equal(fight.replay.actors.length,4);
+  const hero=actual[0];
+  const event:WorldEvent={
+    id:"day-1:"+hero.id+":dungeon-live:200",day:1,type:"dungeon-live",
+    worldTick:200,adventurerId:hero.id,
+    message:"Authentic saved Floor-10 Cave Troll fight.",
+    partyBossReplay:fight.replay,
+  };
+  const state={...initial,events:[event],savedReplayIds:[]};
+  const before=structuredClone(state);
+  const entry=selectExpeditionArchive(state)[0];
+  assert.equal(entry.id,event.id);
+  assert.equal(entry.floor,10);
+  assert.equal(entry.partySize,3);
+  assert.equal(entry.partyBoss,true);
+  assert.equal(entry.kind,"combat");
+  assert.equal(entry.hasReplay,true);
+  assert.deepEqual(archiveBookmarks(state,event.id),[
+    {id:"start",label:"Watch saved combat",replaySeconds:0},
+  ]);
+  assert.deepEqual(selectExpeditionArchive(
+    {...state,savedReplayIds:[event.id]},"saved").map(e=>e.id),[event.id]);
+  assert.deepEqual(state,before,
+    "Listing recorded party fights must never simulate or change the world");
 });
