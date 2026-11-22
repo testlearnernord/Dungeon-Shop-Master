@@ -384,8 +384,11 @@ export function chooseKnownResourceStep(
   return directly??chooseKnownRouteStep(layout,progress,target);
 }
 
-/** Return routes are stricter than elective stair travel: the entrance
- * was explored already and every leg MUST remain connected.
+/** A visitor descending from the floor below arrives at a real DOWN stair,
+ * not necessarily at this floor's upper portal. First follow the saved
+ * explored route home. If the portal is not yet personally connected, map
+ * ONE adjacent frontier tile through ordinary exploration until it is.
+ * Never teleport to the entrance or reveal an unseen map route.
  */
 export function chooseKnownReturnStep(
   layout:DungeonLayout,progress:Level7HeroProgress,
@@ -393,12 +396,11 @@ export function chooseKnownReturnStep(
   const start=tileIndex(layout,progress);
   const goal=tileIndex(layout,layout.entrance);
   if(start===goal)return null;
-  const known=new Set(progress.visited);
-  if(!known.has(start)||!known.has(goal))
-    throw new RangeError("Return route needs visited start and entrance");
-  const next=chooseKnownRouteStep(layout,progress,layout.entrance);
-  if(!next)throw new RangeError("Visited return route is disconnected");
-  return next;
+  const known=chooseKnownRouteStep(layout,progress,layout.entrance);
+  if(known)return known;
+  const exploration=chooseLevel7Step(layout,progress);
+  if(exploration)return exploration;
+  throw new RangeError("No physical connected route to dungeon entrance");
 }
 
 export interface SpatialDungeonAdvanceOptions {
