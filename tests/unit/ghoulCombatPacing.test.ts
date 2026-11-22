@@ -5,7 +5,7 @@ import {ghoulRecordedPhaseAge} from "../../src/game/ghoulMotion.ts";
 import type {GroupReplayFrame} from "../../src/game/groupCombat.ts";
 import {createGameState} from "../../src/game/gameState.ts";
 import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
-import {prepareSpatialDungeonCombat} from "../../src/game/level7Exploration.ts";
+import {prepareSpatialDungeonCombat} from "../../src/game/spatialDungeonExploration.ts";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 
 const pose=(t:number,x:number,hp:number,phase:"move"|"windup")=>({

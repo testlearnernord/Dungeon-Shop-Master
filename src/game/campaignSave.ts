@@ -1,4 +1,4 @@
-import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
+import { BASE_ROOM_HALF_EXTENT, isValidShopRoomGeometry } from "./shopRoomGeometry.ts";
 import {heroLevel,heroProgression} from "./heroProgression.ts";
 import {livePartyBossCheckpointProblem,partyBossReplayProblem}
   from "./livePartyBossSave.ts";
@@ -9,11 +9,11 @@ import {
   SIMULATION_VERSION, type GameState,
 } from "./gameState.ts";
 import {
-  LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS, LEVEL7_COMBAT_SECONDS,
-  getLevel7Progress, prepareSpatialDungeonCombat, chooseKnownReturnStep,
-  type Level7World,
+  SPATIAL_DUNGEON_STEP_BUDGET, SPATIAL_DUNGEON_MAX_ENCOUNTERS, SPATIAL_DUNGEON_COMBAT_SECONDS,
+  getSpatialDungeonProgress, prepareSpatialDungeonCombat, chooseKnownReturnStep,
+  type SpatialDungeonWorld,
   type SpatialDungeonFloor,
-} from "./level7Exploration.ts";
+} from "./spatialDungeonExploration.ts";
 import { dungeonDownStair, generateDungeonLayout, generateExpeditionLayout, tileAt } from "./dungeonLayout.ts";
 import {isShelfId,MAX_SHOP_SHELVES,shopLayoutProblem,
   type ShelfPlacement,type ShopLayout} from "./shopLayout.ts";
@@ -101,7 +101,7 @@ function validNumber(value: unknown, path: string, low: number, high: number): n
     fail(path,"must be a finite number within bounds");
   return value as number;
 }
-function validateLevel7World(
+function validateSpatialDungeonWorld(
   raw: unknown, path: string, campaignSeed: number,
   heroIds: Set<string | number>, day: number, floor=7,
 ): void {
@@ -165,7 +165,7 @@ function validateLevel7World(
       fail(item+".visited","must include dungeon entrance or arrival stair");
   });
 }
-function validateLevel7Replay(
+function validateSpatialDungeonReplay(
   raw: unknown, path: string, heroId: string, day: number,
   campaignSeed: number, expectedFloor=7,
   knownHeroIds?:ReadonlySet<string|number>,
@@ -250,14 +250,14 @@ function validateLevel7Replay(
     });
   }
   const steps=array(record.steps,path+".steps");
-  if(steps.length<1||steps.length>1+LEVEL7_STEP_BUDGET*3+3)
+  if(steps.length<1||steps.length>1+SPATIAL_DUNGEON_STEP_BUDGET*3+3)
     fail(path+".steps","must have a bounded length");
   let lastT=-1,previous:{x:number;z:number}|null=null;
   steps.forEach((value,i)=>{
     const item=path+".steps["+i+"]";
     const step=object(value,item,["x","z","t","action","hp"],["featureId"]);
     const x=integer(step.x,item+".x",0,map.width-1),z=integer(step.z,item+".z",0,map.height-1);
-    const t=validNumber(step.t,item+".t",0,LEVEL7_STEP_BUDGET+1);
+    const t=validNumber(step.t,item+".t",0,SPATIAL_DUNGEON_STEP_BUDGET+1);
     if(t<lastT)fail(item+".t","must be chronological");lastT=t;
     if(tileAt(map,x,z)==="wall")fail(item,"cannot occur on a wall");
     choice(step.action,["enter","walk","treasure","trap","combat",
@@ -276,7 +276,7 @@ function validateLevel7Replay(
     previous={x,z};
   });
   const encounters=array(record.encounters,path+".encounters");
-  if(encounters.length>LEVEL7_MAX_ENCOUNTERS)
+  if(encounters.length>SPATIAL_DUNGEON_MAX_ENCOUNTERS)
     fail(path+".encounters","must contain only actual bounded day encounters");
   encounters.forEach((value,i)=>{
     const item=path+".encounters["+i+"]";
@@ -364,7 +364,7 @@ function validateLevel7Replay(
       text(ob.id,item+".combat.obstacles["+j+"].id");
     });
     const frames=array(combat.frames,item+".combat.frames");
-    if(frames.length<1||frames.length>LEVEL7_STEP_BUDGET*20)
+    if(frames.length<1||frames.length>SPATIAL_DUNGEON_STEP_BUDGET*20)
       fail(item+".combat.frames","must contain bounded frames");
     let lastFrame=-1;
     frames.forEach((f,j)=>{
@@ -475,8 +475,8 @@ function validateLiveCombatCheckpoints(
         fail(cp+".heroIds["+i+"]","must identify a living co-located explorer");
       members.push(hero);
     });
-    const world:Level7World=
-      ((state.dungeonWorlds as {floor:number;world:Level7World}[]|undefined)
+    const world:SpatialDungeonWorld=
+      ((state.dungeonWorlds as {floor:number;world:SpatialDungeonWorld}[]|undefined)
         ?.find(entry=>entry.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
     if(world.resolvedFeatureIds.includes(featureId)||
       (world.siteCycles?.find(x=>x.id===featureId)?.cycle??0)!==cycle)
@@ -491,7 +491,7 @@ function validateLiveCombatCheckpoints(
       fail(cp+".arrivals","must retain each real party member's approach");
     arrivals.forEach((rawArrival,i)=>{
       const ap=cp+".arrivals["+i+"]";
-      validateLevel7Replay(rawArrival,ap,members[i].id,day,
+      validateSpatialDungeonReplay(rawArrival,ap,members[i].id,day,
         state.seed as number,floor,new Set(roster.map(x=>x.id as string)));
       const r=rawArrival as RecordValue;
       const steps=r.steps as {x:number;z:number;action:string;featureId?:string}[];
@@ -580,9 +580,9 @@ function validateLiveCombatCheckpoints(
       integer(combat.tacticsSeed,cp+".state.tacticsSeed",0,0xffffffff);
     if(combat.outcome!=="fighting")fail(cp+".state.outcome","must still be active");
     const completed=(combatTick-started)*3;
-    const time=validNumber(combat.time,cp+".state.time",0,LEVEL7_COMBAT_SECONDS);
+    const time=validNumber(combat.time,cp+".state.time",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
     if(Math.abs(time*60-completed)>0.001||
-      completed>=LEVEL7_COMBAT_SECONDS*60)
+      completed>=SPATIAL_DUNGEON_COMBAT_SECONDS*60)
       fail(cp+".state.time","must match committed 60Hz world-clock steps");
     if(JSON.stringify(combat.bounds)!==JSON.stringify(initial.bounds)||
       JSON.stringify(combat.obstacles)!==JSON.stringify(initial.obstacles))
@@ -761,8 +761,8 @@ function validateLivePortalReturns(
       // entrance tile. The saved last location is intentionally retained
       // until the portal event resolves; a bare fabricated timer is not enough.
       if(floor!==10){
-        const world:Level7World=
-          ((state.dungeonWorlds as {floor:number;world:Level7World}[]|undefined)
+        const world:SpatialDungeonWorld=
+          ((state.dungeonWorlds as {floor:number;world:SpatialDungeonWorld}[]|undefined)
             ?.find(w=>w.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
         const progress=world.heroes.find(p=>p.heroId===heroId);
         const entrance=generateExpeditionLayout(state.seed as number,floor).entrance;
@@ -788,8 +788,8 @@ function validateLivePortalReturns(
         hero.floor!==floor||
         hero.status!=="exploring")
         fail(path,"must backtrack on the real hero floor");
-      const world:Level7World=
-        ((state.dungeonWorlds as {floor:number;world:Level7World}[]|undefined)
+      const world:SpatialDungeonWorld=
+        ((state.dungeonWorlds as {floor:number;world:SpatialDungeonWorld}[]|undefined)
           ?.find(w=>w.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
       const progress=world.heroes.find(p=>p.heroId===heroId);
       if(!progress)
@@ -826,7 +826,7 @@ function validateState(value: unknown): asserts value is GameState {
     "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught",
   ], ["wallPortrait","dungeonParties"]);
   const room=state.shopRoom;
-  if (!isValidLevel5Room(room))
+  if (!isValidShopRoomGeometry(room))
     fail("payload.shopRoom", "has invalid excavation geometry");
   if(!isValidCellarRoom(state.cellarRoom))
     fail("payload.cellarRoom","has invalid cellar excavation geometry");
@@ -1067,7 +1067,7 @@ function validateState(value: unknown): asserts value is GameState {
     const entry=object(value,path,["floor","world"]);
     const floor=integer(entry.floor,path+".floor",1,9);
     unique(floor,seenFloors,path+".floor");
-    validateLevel7World(entry.world,path+".world",campaignSeed,heroIds,day,floor);
+    validateSpatialDungeonWorld(entry.world,path+".world",campaignSeed,heroIds,day,floor);
   });
   // Optional v13 party relationships cannot invent explorers, create a
   // leaderless group, overlap membership or assert a shared location that
@@ -1100,14 +1100,14 @@ function validateState(value: unknown): asserts value is GameState {
           fail(p,"must be a living explorer on the party floor");
         return hero;
       });
-      const savedWorld=((state.dungeonWorlds??[]) as {floor:number;world:Level7World}[])
+      const savedWorld=((state.dungeonWorlds??[]) as {floor:number;world:SpatialDungeonWorld}[])
         .find(entry=>entry.floor===floor)?.world ??
         {resolvedFeatureIds:[],heroes:[]};
       const layout=generateExpeditionLayout(campaignSeed,floor);
-      const first=getLevel7Progress(savedWorld,
+      const first=getSpatialDungeonProgress(savedWorld,
         members[0].id as string,layout);
       if(members.some(hero=>{
-        const position=getLevel7Progress(savedWorld,hero.id as string,layout);
+        const position=getSpatialDungeonProgress(savedWorld,hero.id as string,layout);
         return position.x!==first.x||position.z!==first.z;
       }))fail(path+".memberIds","must physically share the saved dungeon tile");
     });
@@ -1415,7 +1415,7 @@ function validateState(value: unknown): asserts value is GameState {
           "version","day","heroId","floor","appearance","steps","encounters","outcome",
         ],["knownAtStart","resolvedAtStart","partyMemberIds","partyAppearances"]);
         const floor=integer(replay.floor,path+".dungeonReplay.floor",1,9);
-        validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
+        validateSpatialDungeonReplay(event.dungeonReplay,path+".dungeonReplay",
           event.adventurerId as string,eventDay,campaignSeed,floor,heroIds);
       }
     }

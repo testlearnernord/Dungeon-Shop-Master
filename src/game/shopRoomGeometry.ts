@@ -1,17 +1,17 @@
 /** Authoritative renderer-independent excavation state for Galvik's cursed
- * shop. "Level5" is still an internal Alpha name, not Dungeon Floor 5.
- * There are NO save migrations: on a future naming cleanup, incompatible
- * Alpha saves can be rejected, while current saves remain strict.
+ * shop, independent of every numbered dungeon floor.
+ * This type is the existing required GameState.shopRoom payload. The
+ * source-name cleanup does not alter saved fields or introduce migrations.
  * The cave starts walkable; expansion uses its exposed side-wall cells.
  */
-export interface Level5Room {
+export interface ShopRoomGeometry {
   readonly schemaVersion: 1;
   readonly expansionTier: number;
   readonly excavatedCells: readonly string[];
 }
 export interface RoomCell { readonly x:number; readonly z:number }
 export type MineResult =
-  | { readonly ok:true; readonly room:Level5Room; readonly cell:RoomCell }
+  | { readonly ok:true; readonly room:ShopRoomGeometry; readonly cell:RoomCell }
   | { readonly ok:false; readonly reason:string };
 
 export const BASE_ROOM_HALF_EXTENT=7;
@@ -29,12 +29,12 @@ export function isProtectedRoomCell(c:RoomCell):boolean {
   return Math.abs(c.z)>=BASE_ROOM_HALF_EXTENT&&
     ((c.x>=-6&&c.x<=-2)||(c.x>=2&&c.x<=6));
 }
-export function createLevel5Room():Level5Room {
+export function createShopRoomGeometry():ShopRoomGeometry {
   return {schemaVersion:1,expansionTier:0,excavatedCells:[]};
 }
-export function isValidLevel5Room(value:unknown):value is Level5Room {
+export function isValidShopRoomGeometry(value:unknown):value is ShopRoomGeometry {
   if(!value||typeof value!=="object")return false;
-  const room=value as Partial<Level5Room>;
+  const room=value as Partial<ShopRoomGeometry>;
   if(room.schemaVersion!==1||!Number.isSafeInteger(room.expansionTier)||
     (room.expansionTier as number)<0||(room.expansionTier as number)>MAX_EXPANSION_TIER||
     !Array.isArray(room.excavatedCells)||room.excavatedCells.length>MAX_MINED_CELLS)return false;
@@ -64,19 +64,19 @@ export function isValidLevel5Room(value:unknown):value is Level5Room {
   }
   return connected.size===seen.size;
 }
-export function isLevel5Air(room:Level5Room,c:RoomCell):boolean {
+export function isShopRoomAir(room:ShopRoomGeometry,c:RoomCell):boolean {
   return isIntegerCell(c)&&(baseAir(c)||room.excavatedCells.includes(key(c.x,c.z)));
 }
 /** Pure commit operation. The caller handles tool cost, save persistence,
  * collision mesh regeneration and navigation invalidation atomically.
  */
-export function excavateLevel5Cell(room:Level5Room,c:RoomCell):MineResult {
-  if(!isValidLevel5Room(room))return {ok:false,reason:"Invalid room state."};
+export function excavateShopRoomCell(room:ShopRoomGeometry,c:RoomCell):MineResult {
+  if(!isValidShopRoomGeometry(room))return {ok:false,reason:"Invalid room state."};
   if(!isIntegerCell(c))return {ok:false,reason:"Mining targets integer cells."};
   if(room.expansionTier===0)return {ok:false,reason:"Unlock shop expansion first."};
   if(isProtectedRoomCell(c))return {ok:false,reason:"Dungeon entrances are protected."};
   if(!inSideTunnel(c))return {ok:false,reason:"Only the side tunnels can be excavated."};
-  if(isLevel5Air(room,c))return {ok:false,reason:"That cell is already open."};
+  if(isShopRoomAir(room,c))return {ok:false,reason:"That cell is already open."};
   const limit=allowedExtent(room.expansionTier);
   if(Math.abs(c.x)>limit||Math.abs(c.z)>limit)
     return {ok:false,reason:"Outside the unlocked expansion boundary."};
@@ -84,7 +84,7 @@ export function excavateLevel5Cell(room:Level5Room,c:RoomCell):MineResult {
     return {ok:false,reason:"Maximum excavation capacity reached."};
   const neighbours=[{x:c.x+1,z:c.z},{x:c.x-1,z:c.z},
     {x:c.x,z:c.z+1},{x:c.x,z:c.z-1}];
-  if(!neighbours.some(next=>isLevel5Air(room,next)))
+  if(!neighbours.some(next=>isShopRoomAir(room,next)))
     return {ok:false,reason:"Only exposed rock can be mined."};
   return {ok:true,cell:c,room:{...room,excavatedCells:[...room.excavatedCells,key(c.x,c.z)]}};
 }

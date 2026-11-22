@@ -10,7 +10,7 @@ on:
       - .github/workflows/gameplay-100day-audit.yml
       - src/game/heroProgression.ts
       - src/game/liveDungeonRuntime.ts
-      - src/game/level7Exploration.ts
+      - src/game/spatialDungeonExploration.ts
       - src/game/campaignSave.ts
       - src/game/shopArrivals.ts
       - tests/unit/liveDungeonReturnRegression.test.ts

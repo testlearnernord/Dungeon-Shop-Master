@@ -7,8 +7,8 @@ import {generateExpeditionLayout,dungeonNeighbors,tileAt}
   from "../../src/game/dungeonLayout.ts";
 import {ghoulPackActorId,ghoulPackCount,MAX_GHOUL_PACK}
   from "../../src/game/ghoulPack.ts";
-import {prepareSpatialDungeonCombat,emptyLevel7World}
-  from "../../src/game/level7Exploration.ts";
+import {prepareSpatialDungeonCombat,emptySpatialDungeonWorld}
+  from "../../src/game/spatialDungeonExploration.ts";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
   from "../../src/game/liveDungeonRuntime.ts";
@@ -100,7 +100,7 @@ test("single authored Ghoul pack LIVE combat saves and reloads one authoritative
   const positioned={...initial,
     adventurers:initial.adventurers.map(a=>a.id===active.id?active:a),
     dungeonWorlds:[{floor:3 as const,world:{
-      ...emptyLevel7World(),heroes:[{
+      ...emptySpatialDungeonWorld(),heroes:[{
         heroId:active.id,...approach,visited,
       }],
     }}],

@@ -16,8 +16,8 @@ test("one real LIVE Ghoul pack is abstract on the floor and individually rendere
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const {generateExpeditionLayout,dungeonNeighbors}=
       await import("/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
-    const {prepareSpatialDungeonCombat,emptyLevel7World}=
-      await import("/Dungeon-Shop-Master/src/game/level7Exploration.ts");
+    const {prepareSpatialDungeonCombat,emptySpatialDungeonWorld}=
+      await import("/Dungeon-Shop-Master/src/game/spatialDungeonExploration.ts");
     let chosen:null|{seed:number;siteId:string;approach:{x:number;z:number};
       visited:number[];pack:number}=null;
     for(let seed=7351;seed<7380&&!chosen;seed++){
@@ -44,7 +44,7 @@ test("one real LIVE Ghoul pack is abstract on the floor and individually rendere
     const store=new GameStore({...initial,
       adventurers:initial.adventurers.map(a=>a.id===moved.id?moved:a),
       dungeonWorlds:[{floor:3 as const,world:{
-        ...emptyLevel7World(),heroes:[{
+        ...emptySpatialDungeonWorld(),heroes:[{
           heroId:moved.id,...chosen.approach,visited:chosen.visited,
         }],
       }}],

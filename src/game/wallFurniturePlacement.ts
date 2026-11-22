@@ -1,6 +1,6 @@
-import {level5RockFaces} from "./level5WallFaces.ts";
-import {isLevel5Air,type Level5Room} from "./level5Room.ts";
-import {level5FloorWalkable} from "./level5Walkability.ts";
+import {shopRockFaces} from "./shopWallFaces.ts";
+import {isShopRoomAir,type ShopRoomGeometry} from "./shopRoomGeometry.ts";
+import {shopFloorWalkable} from "./shopWalkability.ts";
 import type {ShopLayout} from "./shopLayout.ts";
 import {isSealedPassageWallHit} from "./shopPortal.ts";
 
@@ -13,7 +13,7 @@ const snap=(n:number)=>Math.round(n*4)/4;
 
 export function wallFurnitureAtWall(
   surface:string,hit:{readonly x:number;readonly z:number},
-  room?:Level5Room,allowBack=false,
+  room?:ShopRoomGeometry,allowBack=false,
 ):WallFurniturePlacement|null{
   if(!Number.isFinite(hit.x)||!Number.isFinite(hit.z))return null;
   if(surface==="back-wall"&&isSealedPassageWallHit(hit))return null;
@@ -22,18 +22,18 @@ export function wallFurnitureAtWall(
   if(surface==="left-wall")return {x:-7.22,z:snap(hit.z),rotation:3};
   if(surface==="right-wall")return {x:7.22,z:snap(hit.z),rotation:1};
   if(surface!=="rock-wall"||!room)return null;
-  const candidates=level5RockFaces(room).filter(face=>
+  const candidates=shopRockFaces(room).filter(face=>
     Math.abs(hit.x-face.x)<=face.width/2+.25&&
     Math.abs(hit.z-face.z)<=face.depth/2+.25);
   for(const face of candidates){
     if(face.width<face.depth){
-      const left=isLevel5Air(room,{x:Math.round(face.x-.5),z:Math.round(face.z)});
-      const right=isLevel5Air(room,{x:Math.round(face.x+.5),z:Math.round(face.z)});
+      const left=isShopRoomAir(room,{x:Math.round(face.x-.5),z:Math.round(face.z)});
+      const right=isShopRoomAir(room,{x:Math.round(face.x+.5),z:Math.round(face.z)});
       if(left&&!right)return {x:snap(face.x-.28),z:snap(hit.z),rotation:1};
       if(right&&!left)return {x:snap(face.x+.28),z:snap(hit.z),rotation:3};
     }else{
-      const north=isLevel5Air(room,{x:Math.round(face.x),z:Math.round(face.z+.5)});
-      const south=isLevel5Air(room,{x:Math.round(face.x),z:Math.round(face.z-.5)});
+      const north=isShopRoomAir(room,{x:Math.round(face.x),z:Math.round(face.z+.5)});
+      const south=isShopRoomAir(room,{x:Math.round(face.x),z:Math.round(face.z-.5)});
       if(north&&!south)return {x:snap(hit.x),z:snap(face.z+.28),rotation:2};
       if(south&&!north)return {x:snap(hit.x),z:snap(face.z-.28),rotation:0};
     }
@@ -42,9 +42,9 @@ export function wallFurnitureAtWall(
 }
 
 export function supportedExcavatedWall(
-  placement:WallFurniturePlacement,room:Level5Room,layout:ShopLayout,width:number,
+  placement:WallFurniturePlacement,room:ShopRoomGeometry,layout:ShopLayout,width:number,
 ):boolean{
-  const faces=level5RockFaces(room);
+  const faces=shopRockFaces(room);
   const vertical=placement.rotation===1||placement.rotation===3;
   const plane=vertical
     ?placement.x+(placement.rotation===1?.28:-.28)
@@ -62,7 +62,7 @@ export function supportedExcavatedWall(
   const outward=placement.rotation===1?{x:-.65,z:0}
     :placement.rotation===3?{x:.65,z:0}
     :placement.rotation===2?{x:0,z:.65}:{x:0,z:-.65};
-  return level5FloorWalkable({
+  return shopFloorWalkable({
     x:placement.x+outward.x,z:placement.z+outward.z,
   },room,layout,.25);
 }

@@ -6,9 +6,9 @@ import {
   generateExpeditionLayout,dungeonNeighbors,
 } from "../../src/game/dungeonLayout.ts";
 import {
-  chooseLevel7Step,choosePartyDungeonStep,
-  type Level7HeroProgress,
-} from "../../src/game/level7Exploration.ts";
+  chooseSpatialDungeonStep,choosePartyDungeonStep,
+  type SpatialDungeonHeroProgress,
+} from "../../src/game/spatialDungeonExploration.ts";
 import {
   negotiatePartyFloorDecisions,
 } from "../../src/game/dungeonParties.ts";
@@ -97,9 +97,9 @@ test("route voting uses only known lawful edges and is deterministic under roste
   const base=(p:{x:number;z:number})=>p.z*layout.width+p.x;
   const [left,right]=neighbors;
   const current=pivot;
-  const voteLeft:Level7HeroProgress={heroId:"adventurer-1",
+  const voteLeft:SpatialDungeonHeroProgress={heroId:"adventurer-1",
     ...current,visited:[base(current),base(right)]};
-  const voteRight:Level7HeroProgress={heroId:"adventurer-2",
+  const voteRight:SpatialDungeonHeroProgress={heroId:"adventurer-2",
     ...current,visited:[base(current),base(left)]};
   const tie=choosePartyDungeonStep(layout,[voteRight,voteLeft]);
   assert.deepEqual(tie,left,
@@ -116,12 +116,12 @@ test("route voting uses only known lawful edges and is deterministic under roste
     {...voteRight,heroId:"adventurer-3"},voteLeft,voteRight,
   ]),majority,"Voting must not change when the roster is re-sorted");
   assert.deepEqual(choosePartyDungeonStep(layout,[voteLeft]),
-    chooseLevel7Step(layout,voteLeft),"Solo route must be identical");
+    chooseSpatialDungeonStep(layout,voteLeft),"Solo route must be identical");
   assert(dungeonNeighbors(layout,current).some(p=>p.x===majority?.x&&p.z===majority?.z));
   assert.throws(()=>choosePartyDungeonStep(layout,[
     voteLeft,{...voteRight,x:left.x,z:left.z},
   ]),/separate tiles/);
-  const none:[Level7HeroProgress,Level7HeroProgress]=[
+  const none:[SpatialDungeonHeroProgress,SpatialDungeonHeroProgress]=[
     {...voteLeft,visited:layout.tiles.map((t,i)=>t==="wall"?-1:i).filter(i=>i>=0)},
     {...voteRight,visited:layout.tiles.map((t,i)=>t==="wall"?-1:i).filter(i=>i>=0)},
   ];

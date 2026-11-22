@@ -1,5 +1,5 @@
 import type { CombatantSpec, GroupPhase } from "./groupCombat.ts";
-import type { Level7Replay } from "./level7Exploration.ts";
+import type { SpatialDungeonReplay } from "./spatialDungeonExploration.ts";
 import type { DungeonPlaybackSnapshot } from "./dungeonReplayPlayback.ts";
 
 /**
@@ -20,7 +20,7 @@ export interface RecordedDungeonActor {
 }
 
 /** Historical cast metadata is recorded at fight creation, never read from today's roster. */
-export function dungeonReplayCast(replay: Level7Replay): readonly CombatantSpec[] {
+export function dungeonReplayCast(replay: SpatialDungeonReplay): readonly CombatantSpec[] {
   const cast = new Map<string, CombatantSpec>();
   for (const encounter of replay.encounters) {
     for (const actor of encounter.combat.actors) {
@@ -35,7 +35,7 @@ export function dungeonReplayCast(replay: Level7Replay): readonly CombatantSpec[
  * finds a monster. Older recordings can use authentic recorded fighters;
  * without either record, no fake equipped companion model is created. */
 export function recordedTemporaryPartyVisuals(
-  replay:Level7Replay,
+  replay:SpatialDungeonReplay,
 ):readonly {
   id:string;role:"tank"|"DPS"|"healer";
   equipment:{weapon:"Iron Sword"|null;armor:"Leather Vest"|null};
@@ -99,7 +99,7 @@ export function visibleDungeonCombatActors(
 
 /** TAB only cycles actors visible in the current footage, not future opponents. */
 export function dungeonReplayFocusIds(
-  replay: Level7Replay, snapshot: DungeonPlaybackSnapshot | null,
+  replay: SpatialDungeonReplay, snapshot: DungeonPlaybackSnapshot | null,
 ): readonly string[] {
   const actors=snapshot?visibleDungeonCombatActors(snapshot):[];
   const companions=recordedTemporaryPartyVisuals(replay).map(actor=>actor.id)

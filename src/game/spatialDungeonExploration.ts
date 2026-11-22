@@ -20,36 +20,36 @@ import {
  * same spatial authority with maxSteps=1 and determine cadence from world
  * time, not silently make 36 moves when a whole day ends.
  */
-export const LEVEL7_STEP_BUDGET = 36;
-export const LEVEL7_REPLAY_KEEP = 3;
+export const SPATIAL_DUNGEON_STEP_BUDGET = 36;
+export const SPATIAL_DUNGEON_REPLAY_KEEP = 3;
 /** Bound battle frequency within a longer day without inventing encounters. */
-export const LEVEL7_MAX_ENCOUNTERS = 2;
-export const LEVEL7_COMBAT_SECONDS = 25;
+export const SPATIAL_DUNGEON_MAX_ENCOUNTERS = 2;
+export const SPATIAL_DUNGEON_COMBAT_SECONDS = 25;
 
 /** A durable, global shared dungeon world plus per-hero independent exploration. */
-export interface Level7HeroProgress {
+export interface SpatialDungeonHeroProgress {
   readonly heroId: string;
   readonly x: number;
   readonly z: number;
   /** Canonical grid indices, in the order the hero first visited them. */
   readonly visited: readonly number[];
 }
-export interface Level7World {
+export interface SpatialDungeonWorld {
   readonly resolvedFeatureIds: readonly string[];
-  readonly heroes: readonly Level7HeroProgress[];
+  readonly heroes: readonly SpatialDungeonHeroProgress[];
   /** Version-13 backwards compatible; each ordinary site's current generation. */
   readonly siteCycles?: readonly DungeonSiteCycle[];
 }
-export type Level7Outcome = "exploring" | "retreat" | "death" | "completed";
-export type Level7Action = "enter" | "walk" | "treasure" | "trap" |
+export type SpatialDungeonOutcome = "exploring" | "retreat" | "death" | "completed";
+export type SpatialDungeonAction = "enter" | "walk" | "treasure" | "trap" |
   "combat" | "defeat-monster" | "retreat" | "death" | "complete";
-export interface Level7ReplayStep extends DungeonPoint {
+export interface SpatialDungeonReplayStep extends DungeonPoint {
   readonly t: number;
-  readonly action: Level7Action;
+  readonly action: SpatialDungeonAction;
   readonly hp: number;
   readonly featureId?: string;
 }
-export interface Level7ReplayEncounter {
+export interface SpatialDungeonReplayEncounter {
   readonly featureId: string;
   readonly x: number;
   readonly z: number;
@@ -60,7 +60,7 @@ export interface Level7ReplayEncounter {
 }
 /** Replays from all spatial early floors share the same immutable frame schema. */
 export type SpatialDungeonFloor = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-export interface Level7Replay {
+export interface SpatialDungeonReplay {
   readonly version: 1;
   readonly day: number;
   readonly heroId: string;
@@ -81,16 +81,16 @@ export interface Level7Replay {
     readonly role:AdventurerState["role"];
     readonly equipment:AdventurerState["equipment"];
   }[];
-  readonly steps: readonly Level7ReplayStep[];
-  readonly encounters: readonly Level7ReplayEncounter[];
-  readonly outcome: Level7Outcome;
+  readonly steps: readonly SpatialDungeonReplayStep[];
+  readonly encounters: readonly SpatialDungeonReplayEncounter[];
+  readonly outcome: SpatialDungeonOutcome;
 }
-export const emptyLevel7World = (): Level7World => ({
+export const emptySpatialDungeonWorld = (): SpatialDungeonWorld => ({
   resolvedFeatureIds: [], heroes: [],
 });
-export function getLevel7Progress(
-  world: Level7World, heroId: string, layout: DungeonLayout,
-): Level7HeroProgress {
+export function getSpatialDungeonProgress(
+  world: SpatialDungeonWorld, heroId: string, layout: DungeonLayout,
+): SpatialDungeonHeroProgress {
   return world.heroes.find(h => h.heroId === heroId) ?? {
     heroId, ...layout.entrance,
     visited: [layout.entrance.z * layout.width + layout.entrance.x],
@@ -105,8 +105,8 @@ const byPoint = (a: DungeonPoint,b: DungeonPoint) => a.z-b.z||a.x-b.x;
  * and their immediate open neighbours; it does not navigate directly to
  * unknown monster/chest coordinates. No UI/camera input is consulted.
  */
-export function chooseLevel7Step(
-  layout: DungeonLayout, progress: Level7HeroProgress,
+export function chooseSpatialDungeonStep(
+  layout: DungeonLayout, progress: SpatialDungeonHeroProgress,
 ): DungeonPoint | null {
   const current = {x:progress.x,z:progress.z};
   const known = new Set(progress.visited);
@@ -268,7 +268,7 @@ function fightAgainst(
   outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay;elite:boolean;
 } {
   const prepared=prepareSpatialDungeonCombat(party,monster,campaignSeed,layout,approach,cycle);
-  const encounter=resolveGroupCombat(prepared.options,LEVEL7_COMBAT_SECONDS);
+  const encounter=resolveGroupCombat(prepared.options,SPATIAL_DUNGEON_COMBAT_SECONDS);
   return {
     survivors:party.map(hero=>{
       const actor=encounter.state.actors.find(a=>a.id===hero.id)!;
@@ -291,16 +291,16 @@ function fightAgainst(
  */
 export function choosePartyDungeonStep(
   layout:DungeonLayout,
-  progress:readonly Level7HeroProgress[],
+  progress:readonly SpatialDungeonHeroProgress[],
 ):DungeonPoint|null {
   if(!progress.length)return null;
   if(progress.some(hero=>hero.x!==progress[0].x||
     hero.z!==progress[0].z))
     throw new RangeError("A party cannot vote on paths from separate tiles");
-  if(progress.length===1)return chooseLevel7Step(layout,progress[0]);
+  if(progress.length===1)return chooseSpatialDungeonStep(layout,progress[0]);
   const counts=new Map<string,{point:DungeonPoint;votes:number;unknown:number}>();
   for(const hero of progress){
-    const candidate=chooseLevel7Step(layout,hero);
+    const candidate=chooseSpatialDungeonStep(layout,hero);
     if(!candidate)continue;
     const key=candidate.x+":"+candidate.z;
     const existing=counts.get(key);
@@ -316,18 +316,18 @@ export function choosePartyDungeonStep(
     byPoint(a.point,b.point))[0].point;
 }
 
-export interface Level7Tick {
+export interface SpatialDungeonTick {
   readonly adventurer: AdventurerState;
-  readonly world: Level7World;
-  readonly replay: Level7Replay;
+  readonly world: SpatialDungeonWorld;
+  readonly replay: SpatialDungeonReplay;
   readonly gainedGold: number;
   readonly gainedLoot: number;
   readonly defeatedMonsters: number;
 }
 /** One committed world and one replay viewpoint per real participant. */
-export interface Level7PartyTick {
-  readonly ticks: readonly Level7Tick[];
-  readonly world: Level7World;
+export interface SpatialDungeonPartyTick {
+  readonly ticks: readonly SpatialDungeonTick[];
+  readonly world: SpatialDungeonWorld;
   /** A reserved, not-yet-resolved monster: combat advances via the world clock. */
   readonly pendingCombat?:PreparedSpatialEncounter;
 }
@@ -350,7 +350,7 @@ export interface PreparedSpatialEncounter {
  * The last tile is the dungeon entrance, which connects to Galvik's portal.
  */
 export function chooseKnownRouteStep(
-  layout:DungeonLayout,progress:Level7HeroProgress,target:DungeonPoint,
+  layout:DungeonLayout,progress:SpatialDungeonHeroProgress,target:DungeonPoint,
 ):DungeonPoint|null {
   const start=tileIndex(layout,progress);
   const goal=tileIndex(layout,target);
@@ -380,7 +380,7 @@ export function chooseKnownRouteStep(
 /** Directly adjacent resource sites are known even if still unvisited.
  * Other resource routes must remain on the hero's own explored tiles. */
 export function chooseKnownResourceStep(
-  layout:DungeonLayout,progress:Level7HeroProgress,target:DungeonPoint,
+  layout:DungeonLayout,progress:SpatialDungeonHeroProgress,target:DungeonPoint,
 ):DungeonPoint|null {
   if(progress.x===target.x&&progress.z===target.z)return null;
   const directly=dungeonNeighbors(layout,progress).find(p=>
@@ -395,14 +395,14 @@ export function chooseKnownResourceStep(
  * Never teleport to the entrance or reveal an unseen map route.
  */
 export function chooseKnownReturnStep(
-  layout:DungeonLayout,progress:Level7HeroProgress,
+  layout:DungeonLayout,progress:SpatialDungeonHeroProgress,
 ):DungeonPoint|null {
   const start=tileIndex(layout,progress);
   const goal=tileIndex(layout,layout.entrance);
   if(start===goal)return null;
   const known=chooseKnownRouteStep(layout,progress,layout.entrance);
   if(known)return known;
-  const exploration=chooseLevel7Step(layout,progress);
+  const exploration=chooseSpatialDungeonStep(layout,progress);
   if(exploration)return exploration;
   throw new RangeError("No physical connected route to dungeon entrance");
 }
@@ -430,18 +430,18 @@ export interface SpatialDungeonAdvanceOptions {
  * yield one generation of loot/gold, no matter how many heroes fight it.
  */
 export function simulateSpatialDungeonPartyDay(
-  party: readonly AdventurerState[], world: Level7World,
+  party: readonly AdventurerState[], world: SpatialDungeonWorld,
   campaignSeed: number, day: number,
   occupiedHeroIds?: ReadonlySet<string>,
   options:SpatialDungeonAdvanceOptions={},
-): Level7PartyTick {
-  const maxSteps=options.maxSteps??LEVEL7_STEP_BUDGET;
-  const maxEncounters=options.maxEncounters??LEVEL7_MAX_ENCOUNTERS;
+): SpatialDungeonPartyTick {
+  const maxSteps=options.maxSteps??SPATIAL_DUNGEON_STEP_BUDGET;
+  const maxEncounters=options.maxEncounters??SPATIAL_DUNGEON_MAX_ENCOUNTERS;
   if(!Number.isSafeInteger(maxSteps)||maxSteps<1||
-     maxSteps>LEVEL7_STEP_BUDGET)
+     maxSteps>SPATIAL_DUNGEON_STEP_BUDGET)
     throw new RangeError("Spatial dungeon steps must be a positive bounded integer.");
   if(!Number.isSafeInteger(maxEncounters)||maxEncounters<1||
-     maxEncounters>LEVEL7_MAX_ENCOUNTERS)
+     maxEncounters>SPATIAL_DUNGEON_MAX_ENCOUNTERS)
     throw new RangeError("Spatial dungeon encounters must be bounded.");
   if(party.length<1||party.length>3)
     throw new RangeError("Spatial expeditions support 1–3 co-located heroes");
@@ -453,7 +453,7 @@ export function simulateSpatialDungeonPartyDay(
       hero.status!=="exploring"))
     throw new RangeError("Party members must be distinct living explorers on one floor");
   const layout=generateExpeditionLayout(campaignSeed,floor);
-  const progress=party.map(hero=>getLevel7Progress(world,hero.id,layout));
+  const progress=party.map(hero=>getSpatialDungeonProgress(world,hero.id,layout));
   const entry=progress[0];
   if(party.some((_,index)=>progress[index].x!==entry.x||
     progress[index].z!==entry.z) ||
@@ -473,16 +473,16 @@ export function simulateSpatialDungeonPartyDay(
     visitedOrder:[...progress[index].visited],
     hp:hero.health,healing:hero.inventory.healing,
     xp:0,gold:0,loot:0,kills:0,
-    steps:[{x:entry.x,z:entry.z,t:0,action:"enter" as Level7Action,
-      hp:hero.health}] as Level7ReplayStep[],
+    steps:[{x:entry.x,z:entry.z,t:0,action:"enter" as SpatialDungeonAction,
+      hp:hero.health}] as SpatialDungeonReplayStep[],
   }));
-  const encounters:Level7ReplayEncounter[]=[];
+  const encounters:SpatialDungeonReplayEncounter[]=[];
   let current:DungeonPoint={x:entry.x,z:entry.z};
-  let outcome:Level7Outcome="exploring";
+  let outcome:SpatialDungeonOutcome="exploring";
   let encountersResolved=0;
   let pendingCombat:PreparedSpatialEncounter|undefined;
 
-  const step=(t:number,action:Level7Action,featureId?:string):void=>{
+  const step=(t:number,action:SpatialDungeonAction,featureId?:string):void=>{
     for(const m of members)m.steps.push({
       ...current,t,action,hp:m.hp,...(featureId?{featureId}:{}),
     });
@@ -642,9 +642,9 @@ export function simulateSpatialDungeonPartyDay(
 
   const partyIds=new Set(party.map(h=>h.id));
   const survivors=world.heroes.filter(progress=>!partyIds.has(progress.heroId));
-  const outcomes:Omit<Level7Tick,"world">[]=members.map(m=>{
+  const outcomes:Omit<SpatialDungeonTick,"world">[]=members.map(m=>{
     const dead=m.hp<=0;
-    const personalOutcome:Level7Outcome=dead?"death":outcome;
+    const personalOutcome:SpatialDungeonOutcome=dead?"death":outcome;
     const returning=!options.deferReturn&&floor===7 && !dead &&
       (personalOutcome==="retreat"||personalOutcome==="completed");
     const xp=m.hero.xp+m.xp;
@@ -659,7 +659,7 @@ export function simulateSpatialDungeonPartyDay(
     if(!dead&&!returning)survivors.push({
       heroId:m.hero.id,...current,visited:m.visitedOrder,
     });
-    const replay:Level7Replay={
+    const replay:SpatialDungeonReplay={
       version:1,day,heroId:m.hero.id,floor:floor as SpatialDungeonFloor,
       // The replay starts BEFORE chest loot can equip the hero. Preserve
       // the original entering gear; live inventory still receives the drop.
@@ -678,7 +678,7 @@ export function simulateSpatialDungeonPartyDay(
     return {adventurer,replay,
       gainedGold:m.gold,gainedLoot:m.loot,defeatedMonsters:m.kills};
   });
-  const updatedWorld:Level7World={
+  const updatedWorld:SpatialDungeonWorld={
     resolvedFeatureIds:[...resolved],heroes:survivors,siteCycles,
   };
   // Every viewpoint references the SAME settled world, not separate copies
@@ -690,9 +690,9 @@ export function simulateSpatialDungeonPartyDay(
 
 /** The existing one-hero public API is now just the size-one party path. */
 export function simulateSpatialDungeonDay(
-  hero: AdventurerState, world: Level7World, campaignSeed: number, day: number,
+  hero: AdventurerState, world: SpatialDungeonWorld, campaignSeed: number, day: number,
   occupiedHeroIds?: ReadonlySet<string>,
-): Level7Tick {
+): SpatialDungeonTick {
   return simulateSpatialDungeonPartyDay([hero],world,campaignSeed,day,
     occupiedHeroIds).ticks[0];
 }
@@ -707,11 +707,11 @@ export function simulateSpatialDungeonDay(
  * a separate, explicit live-combat integration step; don't claim otherwise.
  */
 export function advanceSpatialDungeonPartyStep(
-  party:readonly AdventurerState[],world:Level7World,
+  party:readonly AdventurerState[],world:SpatialDungeonWorld,
   campaignSeed:number,day:number,occupiedHeroIds?:ReadonlySet<string>,
   liveOptions:Pick<SpatialDungeonAdvanceOptions,"deferCombat"|"blockedCombatSites"|
     "returnToEntrance"|"deferReturn"|"routeToKnownTarget"|"routeToResource">={},
-):Level7PartyTick {
+):SpatialDungeonPartyTick {
   return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
     occupiedHeroIds,{maxSteps:1,maxEncounters:1,...liveOptions});
 }
@@ -723,11 +723,11 @@ export function advanceSpatialDungeonPartyStep(
  * This function never invokes combat AI, RNG or a viewer.
  */
 export function settleSpatialDungeonCombat(
-  party:readonly AdventurerState[],world:Level7World,day:number,
+  party:readonly AdventurerState[],world:SpatialDungeonWorld,day:number,
   encounter:PreparedSpatialEncounter,combat:GroupCombatState,
-  recording:GroupCombatReplay,arrivals:readonly Level7Replay[],
+  recording:GroupCombatReplay,arrivals:readonly SpatialDungeonReplay[],
   campaignSeed=0,
-):Level7PartyTick {
+):SpatialDungeonPartyTick {
   if(party.length<1||party.length>3||party.length!==arrivals.length||
     combat.outcome==="fighting"||recording.outcome!==combat.outcome)
     throw new RangeError("LIVE battle is not ready for settlement.");
@@ -771,14 +771,14 @@ export function settleSpatialDungeonCombat(
   const noSafeContinuation=alive.some(({hero,actor})=>
     actor.hp/heroProgression(hero).maxHealth<0.35&&actor.healCharges===0);
   const retreats=!winner||alive.length!==party.length||noSafeContinuation;
-  const result:Omit<Level7Tick,"world">[]=party.map((hero,index)=>{
+  const result:Omit<SpatialDungeonTick,"world">[]=party.map((hero,index)=>{
     const actor=roster.get(hero.id)!;
     const hp=Math.max(0,Math.round(actor.hp));
     const dead=hp===0;
     const used=Math.min(2,hero.inventory.healing)-actor.healCharges;
     if(used<0||used>hero.inventory.healing)
       throw new RangeError("LIVE combat invented a Healing Herb.");
-    const personalOutcome:Level7Outcome=dead?"death":retreats?"retreat":"exploring";
+    const personalOutcome:SpatialDungeonOutcome=dead?"death":retreats?"retreat":"exploring";
     // LIVE campaigns never jump to a shop floor on battle termination.
     // The one shared world motor must physically backtrack first.
     const xp=hero.xp+(winner&&!dead?
@@ -796,7 +796,7 @@ export function settleSpatialDungeonCombat(
     if(!dead&&oldProgress)survivors.push(oldProgress);
     const arrival=arrivals[index];
     const t=arrival.steps[arrival.steps.length-1]?.t??1.1;
-    const tail:Level7ReplayStep[]=[{
+    const tail:SpatialDungeonReplayStep[]=[{
       x:encounter.x,z:encounter.z,t:t+0.1,
       action:dead?"death":winner?"defeat-monster":"retreat",
       hp,featureId:encounter.featureId,
@@ -815,7 +815,7 @@ export function settleSpatialDungeonCombat(
         ?monsterKills:0,
     };
   });
-  const nextWorld:Level7World={
+  const nextWorld:SpatialDungeonWorld={
     ...world,heroes:survivors,
     ...(winner?{
       resolvedFeatureIds:[...world.resolvedFeatureIds,encounter.featureId],

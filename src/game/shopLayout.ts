@@ -1,4 +1,4 @@
-import { isLevel5Air, type Level5Room } from "./level5Room.ts";
+import { isShopRoomAir, type ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import {SHOP_PORTAL_BUILD_CLEARANCE,SEALED_PASSAGE_BUILD_CLEARANCE,
   overlapsShopPortalClearance} from "./shopPortal.ts";
 import {
@@ -116,7 +116,7 @@ export function shelfBounds(p:ShelfPlacement):Bounds {
 function outsideOriginalSide(box:Bounds):boolean{
   return box.minX< -7.5||box.maxX>7.5;
 }
-function unsupportedFootprintMessage(box:Bounds,room:Level5Room|undefined,
+function unsupportedFootprintMessage(box:Bounds,room:ShopRoomGeometry|undefined,
   furniture:"shelf"|"counter"):string{
   return room&&room.expansionTier>0&&outsideOriginalSide(box)
     ?"Excavate connected floor beneath the entire "+furniture+
@@ -125,18 +125,18 @@ function unsupportedFootprintMessage(box:Bounds,room:Level5Room|undefined,
 }
 /** Descriptive validation is shared by editor, GameStore and strict save loading. */
 /** Every quarter-metre of a furniture footprint must rest on excavated floor. */
-function onRoomFloor(box:Bounds,room:Level5Room):boolean {
+function onRoomFloor(box:Bounds,room:ShopRoomGeometry):boolean {
   for(let x=box.minX+.05;x<box.maxX;x+=.25){
     for(let z=box.minZ+.05;z<box.maxZ;z+=.25){
-      if(!isLevel5Air(room,{x:Math.floor(x+.5),z:Math.floor(z+.5)}))return false;
+      if(!isShopRoomAir(room,{x:Math.floor(x+.5),z:Math.floor(z+.5)}))return false;
     }
   }
   for(const x of [box.minX+.02,box.maxX-.02])
     for(const z of [box.minZ+.02,box.maxZ-.02])
-      if(!isLevel5Air(room,{x:Math.floor(x+.5),z:Math.floor(z+.5)}))return false;
+      if(!isShopRoomAir(room,{x:Math.floor(x+.5),z:Math.floor(z+.5)}))return false;
   return true;
 }
-export function shopLayoutProblem(layout:ShopLayout,room?:Level5Room): string|null {
+export function shopLayoutProblem(layout:ShopLayout,room?:ShopRoomGeometry): string|null {
   if(!layout||!Array.isArray(layout.shelves))
     return "A valid furniture instance list is required.";
   if(layout.shelves.length>MAX_SHOP_SHELVES)
@@ -213,7 +213,7 @@ export function shelfOverlapsActor(
 }
 
 export function replaceShelfPlacement(
-  layout:ShopLayout,placement:ShelfPlacement,room?:Level5Room,
+  layout:ShopLayout,placement:ShelfPlacement,room?:ShopRoomGeometry,
 ): {layout:ShopLayout;message:string} {
   if(!canonical(placement.id))
     return {layout,message:"Unknown shelf."};
@@ -231,7 +231,7 @@ export function replaceShelfPlacement(
 }
 
 /** Counter placement shares the shelf editor's immutable commit/validation flow. */
-export function replaceCounterPlacement(layout:ShopLayout,placement:CounterPlacement,room?:Level5Room):
+export function replaceCounterPlacement(layout:ShopLayout,placement:CounterPlacement,room?:ShopRoomGeometry):
   {layout:ShopLayout;message:string} {
   const old=getCounterPlacement(layout);
   if(old.x===placement.x&&old.z===placement.z&&old.rotation===placement.rotation)

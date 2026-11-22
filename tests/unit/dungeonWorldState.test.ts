@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import {createGameState,SIMULATION_VERSION} from "../../src/game/gameState.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {dungeonWorldAt,setDungeonWorld} from "../../src/game/dungeonWorldState.ts";
-import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 
 test("Alpha v34 uses exactly one immutable ordinary-floor checkpoint collection",()=>{
   assert.equal(SIMULATION_VERSION,36);
   const initial=createGameState(7351);
-  const floor7=emptyLevel7World();
-  const floor2=emptyLevel7World();
+  const floor7=emptySpatialDungeonWorld();
+  const floor2=emptySpatialDungeonWorld();
   const first=setDungeonWorld(initial.dungeonWorlds,7,floor7);
   const both=setDungeonWorld(first,2,floor2);
   assert.deepEqual(initial.dungeonWorlds,[],"writing a floor may not mutate an older campaign");
@@ -27,6 +27,6 @@ test("Alpha v34 uses exactly one immutable ordinary-floor checkpoint collection"
   falseFloor.payload.dungeonWorlds[0].floor=10;
   assert.throws(()=>parseSave(JSON.stringify(falseFloor)),/dungeonWorlds/);
   const obsolete=structuredClone(createSave(state)) as any;
-  obsolete.payload.level7World=emptyLevel7World();
+  obsolete.payload.level7World=emptySpatialDungeonWorld();
   assert.throws(()=>parseSave(JSON.stringify(obsolete)),/level7World|payload/);
 });

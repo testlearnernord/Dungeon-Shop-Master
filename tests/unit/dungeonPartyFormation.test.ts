@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type {Level7Replay} from "../../src/game/level7Exploration.ts";
+import type {SpatialDungeonReplay} from "../../src/game/spatialDungeonExploration.ts";
 import {
   buildDungeonPlayback,type DungeonPlaybackSnapshot,
 } from "../../src/game/dungeonReplayPlayback.ts";
@@ -12,7 +12,7 @@ import {
 } from "../../src/game/dungeonPartyFormation.ts";
 
 const heroes=["adventurer-1","adventurer-2","adventurer-3"];
-const replay=(count:1|2|3=3):Level7Replay=>{
+const replay=(count:1|2|3=3):SpatialDungeonReplay=>{
   const ids=heroes.slice(0,count);
   return {
     version:1,day:5,heroId:ids[0],floor:1,

@@ -5,7 +5,7 @@ import {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath}
   from "../../src/game/dungeonLayout.ts";
 import {selectKnownResourceSite,preferKnownDungeonResourceGoal}
   from "../../src/game/dungeonDecisions.ts";
-import {chooseKnownResourceStep} from "../../src/game/level7Exploration.ts";
+import {chooseKnownResourceStep} from "../../src/game/spatialDungeonExploration.ts";
 import {predictDungeonHeroSteps} from "../../src/game/dungeonIntentPreview.ts";
 
 test("greedy heroes actively target adjacent live chests without omniscience",()=>{

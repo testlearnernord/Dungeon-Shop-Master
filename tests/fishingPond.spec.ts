@@ -10,13 +10,13 @@ test("mined pond reveals water and opens fishing by E @ci-smoke",async({page})=>
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const {excavateShopRoomCell}=await import("/Dungeon-Shop-Master/src/game/shopRoomGeometry.ts");
     const {POND_CELLS}=await import("/Dungeon-Shop-Master/src/game/cellarPond.ts");
     const storage=new CampaignStorage(),state=await storage.loadGame();
     if(!state)throw Error("Missing campaign.");
     let room=state.cellarRoom;
     for(const cell of POND_CELLS){
-      const dug=excavateLevel5Cell(room,cell);
+      const dug=excavateShopRoomCell(room,cell);
       if(!dug.ok)throw Error(dug.reason);
       room=dug.room;
     }

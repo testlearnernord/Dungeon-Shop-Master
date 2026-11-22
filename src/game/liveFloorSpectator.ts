@@ -1,6 +1,6 @@
 import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
-import type {SpatialDungeonFloor} from "./level7Exploration.ts";
+import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import {generateExpeditionLayout} from "./dungeonLayout.ts";
 import type {CombatantSpec,GroupReplayFrame,GroupCombatCue} from "./groupCombat.ts";
 

@@ -5,7 +5,7 @@ import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import {
   generateExpeditionLayout, dungeonNeighbors,
 } from "../../src/game/dungeonLayout.ts";
-import { emptyLevel7World, type Level7World } from "../../src/game/level7Exploration.ts";
+import { emptySpatialDungeonWorld, type SpatialDungeonWorld } from "../../src/game/spatialDungeonExploration.ts";
 import {
   choosePersistentDungeonParty, settlePersistentDungeonParties,
   type DungeonPartyState,
@@ -26,8 +26,8 @@ function preparedHeroes(){
 function savedPair():DungeonPartyState {
   return {memberIds:["adventurer-1","adventurer-2"],floor:1,formedDay:2};
 }
-function rosterWorld():Level7World {
-  return emptyLevel7World();
+function rosterWorld():SpatialDungeonWorld {
+  return emptySpatialDungeonWorld();
 }
 
 test("a saved pair stays together ahead of an otherwise eligible outsider",()=>{
@@ -68,7 +68,7 @@ test("consensual floor move keeps founding day but dissent or different map posi
     "Individual choices must never be overridden by the party leader");
   const layout=generateExpeditionLayout(SEED,2);
   const exit=dungeonNeighbors(layout,layout.entrance)[0];
-  const worldAfterSplit:Level7World={
+  const worldAfterSplit:SpatialDungeonWorld={
     resolvedFeatureIds:[],
     heroes:[{
       heroId:two.id,...exit,visited:[
@@ -101,7 +101,7 @@ test("new parties persist through a real confirmed floor transition and the foll
   const [first,second]=preparedHeroes();
   const layout=generateExpeditionLayout(SEED,1);
   const known=layout.tiles.map((tile,i)=>tile==="wall"?-1:i).filter(i=>i>=0);
-  const world:Level7World={
+  const world:SpatialDungeonWorld={
     resolvedFeatureIds:layout.features.map(f=>f.id),
     heroes:[first,second].map(hero=>({
       heroId:hero.id,...layout.entrance,visited:[...known],

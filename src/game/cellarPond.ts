@@ -1,6 +1,6 @@
 import type {CellarRoom} from "./cellarRoom.ts";
 import {CELLAR_ORIGIN_Z} from "./cellarRoom.ts";
-import type {RoomCell} from "./level5Room.ts";
+import type {RoomCell} from "./shopRoomGeometry.ts";
 
 /** The pond is not a separate building action. Galvik reveals its basin by
  * mining a connected six-cell pocket with the existing U excavation tool. */

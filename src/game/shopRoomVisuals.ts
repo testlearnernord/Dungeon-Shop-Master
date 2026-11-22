@@ -6,15 +6,15 @@ import {CELLAR_ORIGIN_Z,CELLAR_FLOOR_Y} from "./cellarRoom.ts";
 import {isPondBasinCell} from "./cellarPond.ts";
 import {Color3} from "@babylonjs/core/Maths/math.color";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
-import { createLevel5Room, type Level5Room } from "./level5Room.ts";
-import { level5RockFaces } from "./level5WallFaces.ts";
+import { createShopRoomGeometry, type ShopRoomGeometry } from "./shopRoomGeometry.ts";
+import { shopRockFaces } from "./shopWallFaces.ts";
 
 /** Apply only topology deltas. Mining one cell must not dispose and rebuild
  * every existing floor, ceiling and wall slice. That generated large Babylon
  * mesh/geometry spikes during repeated swings, especially in big excavations.
  * Stable mesh names, UV inheritance and original-wall behaviour are retained.
  */
-export function createLevel5RoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop") {
+export function createShopRoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop") {
   const cellar=scope==="cellar";
   const prefix=cellar?"cellar-":"";
   const originZ=cellar?CELLAR_ORIGIN_Z:0;
@@ -33,7 +33,7 @@ export function createLevel5RoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop"
     scene.getMeshByName(prefix+"left-wall") as Mesh|null,
     scene.getMeshByName(prefix+"right-wall") as Mesh|null,
   ];
-  function update(room:Level5Room=createLevel5Room()):void {
+  function update(room:ShopRoomGeometry=createShopRoomGeometry()):void {
     const signature=JSON.stringify(room);
     if(signature===previous)return;
     previous=signature;
@@ -70,7 +70,7 @@ export function createLevel5RoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop"
           return ceiling;
         });
       }
-      for(const face of level5RockFaces(room)){
+      for(const face of shopRockFaces(room)){
         const originalSide=face.width===.4&&face.depth===1&&
           Math.abs(face.x)===7.5;
         const side=face.x<0?0:1;

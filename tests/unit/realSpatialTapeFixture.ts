@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {createGameState,type GameState,type WorldEvent} from "../../src/game/gameState.ts";
 import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
-import {simulateSpatialDungeonPartyDay} from "../../src/game/level7Exploration.ts";
+import {simulateSpatialDungeonPartyDay} from "../../src/game/spatialDungeonExploration.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 
 type OrdinaryFloor=1|2|3|4|5|6|7|8|9;

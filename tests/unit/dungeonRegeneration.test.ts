@@ -9,7 +9,7 @@ import {
 } from "../../src/game/dungeonRegeneration.ts";
 import { createGameState } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
-import { emptyLevel7World, simulateSpatialDungeonDay } from "../../src/game/level7Exploration.ts";
+import { emptySpatialDungeonWorld, simulateSpatialDungeonDay } from "../../src/game/spatialDungeonExploration.ts";
 
 const map = generateDungeonLayout(7351, 7);
 
@@ -77,8 +77,8 @@ test("Floor 7 uses persistent saved generations and rejects forged save cycles",
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
     health:original.stats.maxHealth, status:"exploring" as const,
     floor:7 as const, bossPass:true};
-  const result = simulateSpatialDungeonDay(hero,emptyLevel7World(),7351,3);
-  const again = simulateSpatialDungeonDay(hero,emptyLevel7World(),7351,3);
+  const result = simulateSpatialDungeonDay(hero,emptySpatialDungeonWorld(),7351,3);
+  const again = simulateSpatialDungeonDay(hero,emptySpatialDungeonWorld(),7351,3);
   assert.deepEqual(result,again);
   assert(Array.isArray(result.world.siteCycles));
   for (const id of result.world.resolvedFeatureIds) {

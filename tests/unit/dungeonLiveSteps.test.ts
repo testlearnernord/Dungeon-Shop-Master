@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {createGameState} from "../../src/game/gameState.ts";
 import {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath} from "../../src/game/dungeonLayout.ts";
-import {advanceSpatialDungeonPartyStep,emptyLevel7World,
-  simulateSpatialDungeonPartyDay,LEVEL7_STEP_BUDGET,type Level7World}
-  from "../../src/game/level7Exploration.ts";
+import {advanceSpatialDungeonPartyStep,emptySpatialDungeonWorld,
+  simulateSpatialDungeonPartyDay,SPATIAL_DUNGEON_STEP_BUDGET,type SpatialDungeonWorld}
+  from "../../src/game/spatialDungeonExploration.ts";
 import type {AdventurerState} from "../../src/game/adventurers.ts";
 
 const seed=7351,day=4;
@@ -17,7 +17,7 @@ function explorer(index=0):AdventurerState {
 }
 test("single step is the EXISTING spatial authority with a budget of exactly one",()=>{
   const hero=explorer();
-  const world=emptyLevel7World();
+  const world=emptySpatialDungeonWorld();
   const expected=simulateSpatialDungeonPartyDay([hero],world,seed,day,
     undefined,{maxSteps:1,maxEncounters:1});
   const actual=advanceSpatialDungeonPartyStep([hero],world,seed,day);
@@ -27,11 +27,11 @@ test("single step is the EXISTING spatial authority with a budget of exactly one
   const map=generateExpeditionLayout(seed,1);
   assert(dungeonNeighbors(map,steps[0]).some(
     next=>next.x===steps[1].x&&next.z===steps[1].z));
-  assert.deepEqual(world,emptyLevel7World(),"Never mutate the saved input");
+  assert.deepEqual(world,emptySpatialDungeonWorld(),"Never mutate the saved input");
 });
 test("multiple committed single steps resume from the persisted real tile, independent of replay calls",()=>{
   let hero=explorer();
-  let world:Level7World=emptyLevel7World();
+  let world:SpatialDungeonWorld=emptySpatialDungeonWorld();
   const map=generateExpeditionLayout(seed,1);
   const path=[];
   for(let tick=0;tick<8;tick++){
@@ -60,7 +60,7 @@ test("already settled chest generation cannot mint a second payment on an immedi
   const visited=map.tiles.map((tile,index)=>tile!=="wall"?
     index:-1).filter(index=>index>=0).filter(index=>
       index!==chest.z*map.width+chest.x);
-  const world:Level7World={
+  const world:SpatialDungeonWorld={
     resolvedFeatureIds:map.features.filter(f=>f.id!==chest.id).map(f=>f.id),
     heroes:[{heroId:explorer().id,...near,visited}],
   };
@@ -74,14 +74,14 @@ test("already settled chest generation cannot mint a second payment on an immedi
   assert.equal(first.world.resolvedFeatureIds.filter(id=>id===chest.id).length,1);
 });
 test("per-commit bound is validated, but old full-day replay stays exactly unchanged",()=>{
-  const hero=explorer(),world=emptyLevel7World();
+  const hero=explorer(),world=emptySpatialDungeonWorld();
   assert.throws(()=>simulateSpatialDungeonPartyDay([hero],world,seed,day,
     undefined,{maxSteps:0}),/steps must/);
   assert.throws(()=>simulateSpatialDungeonPartyDay([hero],world,seed,day,
-    undefined,{maxSteps:LEVEL7_STEP_BUDGET+1}),/steps must/);
+    undefined,{maxSteps:SPATIAL_DUNGEON_STEP_BUDGET+1}),/steps must/);
   assert.throws(()=>simulateSpatialDungeonPartyDay([hero],world,seed,day,
     undefined,{maxEncounters:0}),/encounters must/);
   assert.deepEqual(simulateSpatialDungeonPartyDay([hero],world,seed,day),
     simulateSpatialDungeonPartyDay([hero],world,seed,day,
-      undefined,{maxSteps:LEVEL7_STEP_BUDGET,maxEncounters:2}));
+      undefined,{maxSteps:SPATIAL_DUNGEON_STEP_BUDGET,maxEncounters:2}));
 });

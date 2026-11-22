@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {generateExpeditionLayout,dungeonNeighbors,tileAt}
   from "../../src/game/dungeonLayout.ts";
-import {chooseLevel7Step,chooseRenewedSiteStep} from "../../src/game/level7Exploration.ts";
+import {chooseSpatialDungeonStep,chooseRenewedSiteStep} from "../../src/game/spatialDungeonExploration.ts";
 import {predictDungeonHeroSteps,dungeonPreviewExplanation}
   from "../../src/game/dungeonIntentPreview.ts";
 
@@ -16,7 +16,7 @@ test("two-step map intentions are connected forecasts, never authoritative steps
   const saved=JSON.stringify(hero);
   const preview=predictDungeonHeroSteps(layout,hero);
   assert.ok(preview.length>=1&&preview.length<=2);
-  const first=chooseLevel7Step(layout,{
+  const first=chooseSpatialDungeonStep(layout,{
     heroId:hero.id,...entry,visited:hero.visited});
   assert.deepEqual(preview[0],first);
   let last=entry;
@@ -63,7 +63,7 @@ test("unknown stair does not erase an ordinary autonomous exploration step",()=>
   const visited=[home.z*layout.width+home.x];
   const hero={id:"solo",...home,visited,activity:"exploring" as const,
     inCombat:false,plannedAction:"descend" as const};
-  const direct=chooseLevel7Step(layout,{heroId:hero.id,...home,visited});
+  const direct=chooseSpatialDungeonStep(layout,{heroId:hero.id,...home,visited});
   assert.ok(direct,"The seeded floor needs a valid initial frontier");
   assert.deepEqual(predictDungeonHeroSteps(layout,hero)[0],direct,
     "Not knowing the staircase cannot make a moving hero appear frozen");
@@ -78,7 +78,7 @@ test("fully explored hero previews authoritative renewed-site fallback",()=>{
   }
   const start=layout.entrance;
   const progress={heroId:"scout",...start,visited};
-  assert.equal(chooseLevel7Step(layout,progress),null,
+  assert.equal(chooseSpatialDungeonStep(layout,progress),null,
     "Already fully explored cells have no fresh frontier");
   const renewed=chooseRenewedSiteStep(layout,start,new Set(visited),new Set());
   assert.ok(renewed,"Seeded floor has at least one physically reachable site");

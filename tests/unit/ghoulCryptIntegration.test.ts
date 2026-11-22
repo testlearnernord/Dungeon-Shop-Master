@@ -8,7 +8,7 @@ import {
 import {cryptRelicPositions,CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "../../src/game/ghoulCryptPlan.ts";
 import type {GroupReplayFrame} from "../../src/game/groupCombat.ts";
 import {createGameState} from "../../src/game/gameState.ts";
-import {simulateSpatialDungeonDay,emptyLevel7World} from "../../src/game/level7Exploration.ts";
+import {simulateSpatialDungeonDay,emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 
 test("every authored dungeon monster site is now a Ghoul on all playable ordinary floors",()=>{
   for(const floor of [1,2,3,4,7]){
@@ -84,7 +84,7 @@ test("a new real Ghoul encounter records an actual enemy fight with no Troll spe
     health:hero.stats.maxHealth,
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
   };
-  const day=simulateSpatialDungeonDay(visitor,emptyLevel7World(),seed,2);
+  const day=simulateSpatialDungeonDay(visitor,emptySpatialDungeonWorld(),seed,2);
   assert(day.replay.version===1);
   assert(map.features.some(f=>f.id===monster.id&&f.subtype==="ghoul"));
   assert(day.replay.encounters.every(e=>e.combat.actors.every(a=>

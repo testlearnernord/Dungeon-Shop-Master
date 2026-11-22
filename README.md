@@ -8,7 +8,7 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Implemented on the audited main baseline
 
-Core systems were reconciled on 22 November 2026 through merged #321 (Alpha v36 inventory proposal). V.004 cellar, fishing, LIVE cashier, dungeon autonomy and spectators already exist, together with real class progression and the Floor-10 group boss. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
+Core systems were reconciled on 22 November 2026 through merged #322 (Alpha v36). V.004 cellar, fishing, LIVE cashier, dungeon autonomy and spectators already exist, together with real class progression and the Floor-10 group boss. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
 
 | Area | Currently implemented |
 | --- | --- |
@@ -37,7 +37,7 @@ Core systems were reconciled on 22 November 2026 through merged #321 (Alpha v36 
 
 **V.004 spectator QoL (merged PRs #265 and #266):** locate actual LIVE heroes and running fights through compact selectors. Focusing a target preserves the player's orbit and zoom; the inspector shows real saved finds. Selecting a fight focuses its committed tile and the existing Watch action opens that exact opt-in 3D encounter.
 
-**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. Still open are the **verification of physical-loot inventory and remaining obsolete internal naming** (not numeric shop-floor saves), fully authored deep-floor variety, an actual 20/50/100-day post-#298 economy audit, ten-day hands-on pacing and real-device visual/audio acceptance. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
+**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. Still open are the **verification of physical-loot inventory and remaining verified source module naming** (not numeric shop-floor saves), fully authored deep-floor variety, an actual 20/50/100-day post-#298 economy audit, ten-day hands-on pacing and real-device visual/audio acceptance. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
 
 ## Start playing
 

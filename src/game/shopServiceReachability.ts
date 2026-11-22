@@ -1,4 +1,4 @@
-import type { Level5Room } from "./level5Room.ts";
+import type { ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
 import { createShopRoutePlanner, isObstructed, type ShopPoint } from "./shopperNavigation.ts";
@@ -13,7 +13,7 @@ import {shopPortalServicePoint} from "./shopPortal.ts";
  * rearranged store. It must be consulted at the UI AND authoritative commit.
  * A returned error never changes any saved layout or shelf contents.
  */
-export function shopServiceReachabilityProblem(layout:ShopLayout,room?:Level5Room):string|null {
+export function shopServiceReachabilityProblem(layout:ShopLayout,room?:ShopRoomGeometry):string|null {
   const geometryError=shopLayoutProblem(layout,room);
   if(geometryError)return geometryError;
   // Both visitor lanes are inside the ONE cursed portal. Check arrival and

@@ -93,7 +93,7 @@ test("N builds then P moves the first compact shelf onto excavated floor @ci-smo
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const {excavateShopRoomCell}=await import("/Dungeon-Shop-Master/src/game/shopRoomGeometry.ts");
     const storage=new CampaignStorage();
     const state=await storage.loadGame();
     if(!state)throw new Error("Missing campaign");
@@ -101,7 +101,7 @@ test("N builds then P moves the first compact shelf onto excavated floor @ci-smo
     // A continuous six-cell side tunnel permits a long, unobstructed
     // crosshair ray from Galvik's original showroom (>16m to the target).
     for(let x=8;x<=13;x++)for(let z=-3;z<=3;z++){
-      const next=excavateLevel5Cell(room,{x,z});
+      const next=excavateShopRoomCell(room,{x,z});
       if(!next.ok)throw new Error(next.reason);
       room=next.room;
     }
@@ -156,14 +156,14 @@ test("contextual P mounts the board on freshly excavated stone and survives a re
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const {excavateShopRoomCell}=await import("/Dungeon-Shop-Master/src/game/shopRoomGeometry.ts");
     const storage=new CampaignStorage(),state=await storage.loadGame();
     if(!state)throw new Error("Missing campaign");
     let room={...state.shopRoom,expansionTier:2};
     // A continuous 7m wall and connected 2m side wing; the rock at 10,0
     // is still solid and available as a real wall-mounted support.
     for(let x=8;x<=9;x++)for(let z=-3;z<=3;z++){
-      const mined=excavateLevel5Cell(room,{x,z});
+      const mined=excavateShopRoomCell(room,{x,z});
       if(!mined.ok)throw new Error(mined.reason);
       room=mined.room;
     }
@@ -207,13 +207,13 @@ test("build the first four-slot shelf with N on mined floor and persist every re
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const {excavateShopRoomCell}=await import("/Dungeon-Shop-Master/src/game/shopRoomGeometry.ts");
     const storage=new CampaignStorage();
     const state=await storage.loadGame();
     if(!state)throw new Error("Missing campaign");
     let room={...state.shopRoom,expansionTier:3};
     for(let x=8;x<=13;x++)for(let z=-5;z<=5;z++){
-      const cut=excavateLevel5Cell(room,{x,z});
+      const cut=excavateShopRoomCell(room,{x,z});
       if(!cut.ok)throw new Error(cut.reason);
       room=cut.room;
     }
@@ -292,12 +292,12 @@ test("the portrait hangs using the FPS wall blueprint, moves onto mined stone an
   // Re-use the existing real excavation topology fixture, never a fake wall.
   await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const {excavateLevel5Cell}=await import("/Dungeon-Shop-Master/src/game/level5Room.ts");
+    const {excavateShopRoomCell}=await import("/Dungeon-Shop-Master/src/game/shopRoomGeometry.ts");
     const storage=new CampaignStorage(),state=await storage.loadGame();
     if(!state)throw Error("Missing campaign");
     let room={...state.shopRoom,expansionTier:2};
     for(let x=8;x<=9;x++)for(let z=-3;z<=3;z++){
-      const next=excavateLevel5Cell(room,{x,z});
+      const next=excavateShopRoomCell(room,{x,z});
       if(!next.ok)throw Error(next.reason);
       room=next.room;
     }

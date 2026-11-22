@@ -1,4 +1,4 @@
-import type { Level5Room } from "./level5Room.ts";
+import type { ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import { idleShopPositions, NPC_STATION_CLEARANCE } from "./npcTraffic.ts";
 import { shelfBounds, type ShopLayout } from "./shopLayout.ts";
@@ -35,7 +35,7 @@ export function isQuietPetitionArea(point:ShopPoint):boolean{
  * the original cave. Requesters enter and exit through the same cursed portal.
  */
 export function restockWaitingPositions(
-  layout:ShopLayout,room?:Level5Room,
+  layout:ShopLayout,room?:ShopRoomGeometry,
 ):readonly ShopPoint[] {
   const checkout=checkoutQueuePoints(layout,{x:0,z:-1},12,room);
   const entrance=shopPortalServicePoint("entering");

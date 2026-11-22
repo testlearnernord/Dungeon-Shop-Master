@@ -8,9 +8,9 @@ import {
   generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath,
 } from "../../src/game/dungeonLayout.ts";
 import {
-  LEVEL7_MAX_ENCOUNTERS,LEVEL7_STEP_BUDGET,emptyLevel7World,
+  SPATIAL_DUNGEON_MAX_ENCOUNTERS,SPATIAL_DUNGEON_STEP_BUDGET,emptySpatialDungeonWorld,
   simulateSpatialDungeonPartyDay,simulateSpatialDungeonDay,
-} from "../../src/game/level7Exploration.ts";
+} from "../../src/game/spatialDungeonExploration.ts";
 import {buildDungeonPlayback,dungeonPlaybackAt} from "../../src/game/dungeonReplayPlayback.ts";
 import type {AdventurerState} from "../../src/game/adventurers.ts";
 
@@ -26,14 +26,14 @@ function hero(index:number):AdventurerState {
 test("longer real day captures 36 actual legal walks, never synthetic idle footage",()=>{
   const map=generateExpeditionLayout(seed,1);
   const allCleared={
-    ...emptyLevel7World(),resolvedFeatureIds:map.features.map(f=>f.id),
+    ...emptySpatialDungeonWorld(),resolvedFeatureIds:map.features.map(f=>f.id),
   };
   const first=simulateSpatialDungeonDay(hero(0),allCleared,seed,2);
   const again=simulateSpatialDungeonDay(hero(0),allCleared,seed,2);
   assert.deepEqual(first,again);
-  assert.equal(LEVEL7_STEP_BUDGET,36);
+  assert.equal(SPATIAL_DUNGEON_STEP_BUDGET,36);
   const walks=first.replay.steps.filter(s=>s.action==="walk");
-  assert.equal(walks.length,LEVEL7_STEP_BUDGET);
+  assert.equal(walks.length,SPATIAL_DUNGEON_STEP_BUDGET);
   assert(first.replay.encounters.length===0);
   const timeline=buildDungeonPlayback(first.replay);
   assert(timeline.duration>=30,"Longer footage must come from actual saved movement");
@@ -70,7 +70,7 @@ test("one real committed day can contain two DISTINCT fights without repeated re
   assert.deepEqual(first,simulateSpatialDungeonPartyDay(heroes,world,seed,2,
     new Set(heroes.map(h=>h.id))),"No random second payout from replay");
   assert.equal(first.ticks.length,3);
-  assert.equal(first.ticks[0].replay.encounters.length,LEVEL7_MAX_ENCOUNTERS);
+  assert.equal(first.ticks[0].replay.encounters.length,SPATIAL_DUNGEON_MAX_ENCOUNTERS);
   for(const tick of first.ticks){
     const ids=tick.replay.encounters.map(e=>e.featureId);
     assert.equal(new Set(ids).size,2);

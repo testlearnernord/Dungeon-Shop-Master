@@ -1,4 +1,4 @@
-import type { Level5Room } from "./level5Room.ts";
+import type { ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Matrix,Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
@@ -244,7 +244,7 @@ export class NpcVisualSystem {
   private readonly doors: Record<GateSide, Mesh | null>;
   private readonly doorY: Record<GateSide, number> = {portal:DOOR_CLOSED_Y};
   private layout:ShopLayout|null=null;
-  private room:Level5Room|undefined;
+  private room:ShopRoomGeometry|undefined;
   private shop:Shop|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
@@ -594,7 +594,7 @@ export class NpcVisualSystem {
     onPickUp:(heroId:string,slotId:string)=>boolean,
     paidHeroIds:ReadonlySet<string>=new Set(),
     onWalkout?:((heroId:string,reason:ShoppingIntent["reason"])=>void),
-    room?:Level5Room,
+    room?:ShopRoomGeometry,
     clock?:ShopRequestClockAccess,
   ):void {
     this.shopRequestClock=clock??null;

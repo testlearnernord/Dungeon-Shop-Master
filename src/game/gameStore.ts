@@ -1,4 +1,4 @@
-import { excavateLevel5Cell, isValidLevel5Room, type RoomCell } from "./level5Room.ts";
+import { excavateShopRoomCell, isValidShopRoomGeometry, type RoomCell } from "./shopRoomGeometry.ts";
 import {isValidCellarRoom} from "./cellarRoom.ts";
 import {isCellarPondUncovered,pondExcavationRemaining} from "./cellarPond.ts";
 import { advanceDay, createGameState, setBossPass, type GameState } from "./gameState.ts";
@@ -130,7 +130,7 @@ export class GameStore {
 
   excavateShopCell(cell:RoomCell):string {
     const room=this.current.shopRoom;
-    const result=excavateLevel5Cell(room,cell);
+    const result=excavateShopRoomCell(room,cell);
     if(!result.ok)return result.reason;
     // The mineable rock is also a possible *wall mount*. Excavating its
     // supporting stone must not strand a saved board in midair.
@@ -153,7 +153,7 @@ export class GameStore {
 
   excavateCellarCell(cell:RoomCell):string {
     const previousRoom=this.current.cellarRoom;
-    const result=excavateLevel5Cell(previousRoom,cell);
+    const result=excavateShopRoomCell(previousRoom,cell);
     if(!result.ok)return result.reason;
     // The relocated cellar chest uses the same mined-floor validation as P.
     const revealed=!isCellarPondUncovered(this.current.cellarRoom)&&
@@ -189,7 +189,7 @@ export class GameStore {
     if(!Number.isSafeInteger(tier)||tier!==room.expansionTier+1||tier>3)
       return "Invalid expansion tier.";
     const next={...room,expansionTier:tier};
-    if(!isValidLevel5Room(next))return "Invalid room geometry.";
+    if(!isValidShopRoomGeometry(next))return "Invalid room geometry.";
     this.replace({...this.current,shopRoom:next});
     return "Shop expansion unlocked.";
   }

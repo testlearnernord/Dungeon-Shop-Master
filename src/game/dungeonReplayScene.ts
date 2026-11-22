@@ -11,7 +11,7 @@ import type { Scene } from "@babylonjs/core/scene";
 import { createHeroVisual, type HeroVisual } from "./heroVisual.ts";
 import type { DungeonLayout, DungeonPoint } from "./dungeonLayout.ts";
 import { tileAt } from "./dungeonLayout.ts";
-import type { Level7Replay } from "./level7Exploration.ts";
+import type { SpatialDungeonReplay } from "./spatialDungeonExploration.ts";
 import {
   dungeonVisibleTiles, dungeonPlaybackAt, buildDungeonPlayback,
   type DungeonPlaybackTimeline, type DungeonPlaybackSnapshot,
@@ -59,7 +59,7 @@ export interface DungeonRoomDecoration {
  * Never imports GameStore, SeededRandom, advanceDay, or any combat simulator.
  */
 export class DungeonReplayScene {
-  private replay:Level7Replay|null=null;
+  private replay:SpatialDungeonReplay|null=null;
   private liveFrame:LiveSpectatorFrame|null=null;
   private floorFrame:LiveFloorSpectatorFrame|null=null;
   private readonly floorModels=new Map<string,HeroVisual>();
@@ -134,7 +134,7 @@ export class DungeonReplayScene {
     this.combatMaterials.length=0;
   }
 
-  setReplay(record:Level7Replay|null):void {
+  setReplay(record:SpatialDungeonReplay|null):void {
     this.floorFrame=null;
     this.liveTransit=null;
     this.liveTransitSeconds=0;

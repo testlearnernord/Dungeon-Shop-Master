@@ -1,5 +1,7 @@
 # One cursed shop portal and consistent mined surfaces
 
+> **Current Alpha v36 / #323:** The one portal, persisted `shopRoom` and mining/blueprint clearance remain unchanged. Current TypeScript geometry modules use `shopRoomGeometry.ts`, `shopWallFaces.ts`, and `shopRoomVisuals.ts`; dated v31 notes below describe former file names, not active aliases.
+
 > Current implementation contract: Alpha v28, PR #303 (22 November 2026). This document is a *source map* for code, not evidence of manual art acceptance.
 
 ## One physical entrance/exit
@@ -21,7 +23,7 @@
 - `dungeonSurfaces.ts` still bakes exactly **three** deterministic material textures per Babylon scene: stone, flagstone and timber. No new texture asset, RNG consumer or lighting system was introduced.
 - `caveSurfaceProjection.ts` defines **2 m per texture repeat** from world XYZ. `applyCaveWorldUV` uses actual mesh positions and face normals, not each box's width/depth.
 - Original shop floor/walls/ceiling, new 1 m mined floor/ceilings/exposed faces, cellar floor/walls and the read-only dungeon floor spectator now share the authored stone/flagstone family. The spectator remains a distinct overview with tinted room squares; it is **not** a claim that the top-down tiles are a seamless first-person continuous world.
-- Excavation topology stays renderer-independent in `level5Room.ts` and `level5WallFaces.ts`: only real connected side-rock cells can be removed. `level5RoomVisuals.ts` continues rebuilding only changed rock/floor meshes, not the full cave or the gameplay world.
+- Excavation topology stays renderer-independent in `shopRoomGeometry.ts` and `shopWallFaces.ts`: only real connected side-rock cells can be removed. `shopRoomVisuals.ts` continues rebuilding only changed rock/floor meshes, not the full cave or the gameplay world.
 - Cave world-space UV projection applies to **unrotated box geometry only**, not the rotated cellar ramp or decorative timber. No changes to physical footprints, mining cooldown, tool costs, player collisions or excavation saves.
 
 ## Alpha save policy
@@ -38,4 +40,4 @@ At the time of PR #303, the unrelated `hero.floor=5` at-shop occupancy, `level5R
 
 **Manual sign-off still required:** mine both shop wings and the cellar on a real GPU, check texture scale and seams with torches on; try P/N repositioning over both gate footprints; cross the true portal, jam the gate with simultaneous customers, test the former right tunnel, and evaluate FPS/lighting. Automated tests cannot certify beauty.
 
-**Current Alpha v31 update:** The single physical shop mined-room checkpoint is now `payload.shopRoom`, not `level5Room`. Existing `level5Room.ts` and `level5WallFaces.ts` are geometry/renderer source-module names, not live numeric dungeon floors. Strict v31 Save/Load rejects previous v30 campaigns; all genuine mining and furniture clearance use one physical shop room. This does not yet replace hero `floor=5` occupancy; see issue #300.
+**Historical Alpha v31 update (file names at that time):** The single physical shop mined-room checkpoint is now `payload.shopRoom`, not `level5Room`. Existing `level5Room.ts` and `level5WallFaces.ts` are geometry/renderer source-module names, not live numeric dungeon floors. Strict v31 Save/Load rejects previous v30 campaigns; all genuine mining and furniture clearance use one physical shop room. This does not yet replace hero `floor=5` occupancy; see issue #300.

@@ -1,5 +1,5 @@
 import type {DungeonPlaybackSnapshot,DungeonPlaybackTimeline} from "./dungeonReplayPlayback.ts";
-import type {Level7Replay} from "./level7Exploration.ts";
+import type {SpatialDungeonReplay} from "./spatialDungeonExploration.ts";
 import {recordedTemporaryPartyVisuals} from "./dungeonReplayCast.ts";
 
 /**
@@ -16,7 +16,7 @@ export interface TemporaryPartyFormationActor {
 }
 
 export function recordedTemporaryPartyFormation(
-  replay:Level7Replay,timeline:DungeonPlaybackTimeline,
+  replay:SpatialDungeonReplay,timeline:DungeonPlaybackTimeline,
   snapshot:DungeonPlaybackSnapshot,
 ):readonly TemporaryPartyFormationActor[] {
   if(snapshot.encounter&&snapshot.frame)return [];

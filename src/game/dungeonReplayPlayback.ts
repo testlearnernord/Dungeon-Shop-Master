@@ -1,7 +1,7 @@
 import type { DungeonLayout, DungeonPoint } from "./dungeonLayout.ts";
 import type {
-  Level7Replay, Level7ReplayStep, Level7ReplayEncounter,
-} from "./level7Exploration.ts";
+  SpatialDungeonReplay, SpatialDungeonReplayStep, SpatialDungeonReplayEncounter,
+} from "./spatialDungeonExploration.ts";
 import type { GroupReplayFrame } from "./groupCombat.ts";
 import {sampleGroupReplayPresentation} from "./groupReplayPresentation.ts";
 
@@ -16,8 +16,8 @@ export interface DungeonPlaybackSegment {
   readonly end: number;
   readonly from: DungeonPoint;
   readonly to: DungeonPoint;
-  readonly step: Level7ReplayStep;
-  readonly encounter?: Level7ReplayEncounter;
+  readonly step: SpatialDungeonReplayStep;
+  readonly encounter?: SpatialDungeonReplayEncounter;
 }
 export interface DungeonPlaybackTimeline {
   readonly segments: readonly DungeonPlaybackSegment[];
@@ -32,7 +32,7 @@ export interface DungeonPlaybackSnapshot {
   readonly action: string;
   readonly known: ReadonlySet<number>;
   readonly resolved: ReadonlySet<string>;
-  readonly encounter: Level7ReplayEncounter | null;
+  readonly encounter: SpatialDungeonReplayEncounter | null;
   readonly frame: GroupReplayFrame | null;
   readonly finished: boolean;
   readonly percent: number;
@@ -40,14 +40,14 @@ export interface DungeonPlaybackSnapshot {
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const grid=(layout:DungeonLayout,p:DungeonPoint)=>p.z*layout.width+p.x;
 
-export function buildDungeonPlayback(replay:Level7Replay): DungeonPlaybackTimeline {
+export function buildDungeonPlayback(replay:SpatialDungeonReplay): DungeonPlaybackTimeline {
   if(!replay.steps.length) throw new RangeError("Replay has no steps");
   const segments:DungeonPlaybackSegment[]=[];
   let cursor=0;
   let previous=replay.steps[0];
   for(let i=1;i<replay.steps.length;i++){
     const step=replay.steps[i];
-    let encounter:Level7ReplayEncounter|undefined;
+    let encounter:SpatialDungeonReplayEncounter|undefined;
     let duration=0.48;
     let kind:DungeonSegmentKind="event";
     if(step.action==="walk"){
@@ -70,7 +70,7 @@ export function buildDungeonPlayback(replay:Level7Replay): DungeonPlaybackTimeli
 }
 
 export function dungeonPlaybackAt(
-  replay:Level7Replay, timeline:DungeonPlaybackTimeline,
+  replay:SpatialDungeonReplay, timeline:DungeonPlaybackTimeline,
   layout:DungeonLayout, elapsed:number,
 ): DungeonPlaybackSnapshot {
   const time=clamp(Number.isFinite(elapsed)?elapsed:0,0,timeline.duration);
@@ -80,7 +80,7 @@ export function dungeonPlaybackAt(
   const first=replay.steps[0];
   let x=first.x,z=first.z,hp=first.hp;
   let action="enter";
-  let encounter:Level7ReplayEncounter|null=null,frame:GroupReplayFrame|null=null;
+  let encounter:SpatialDungeonReplayEncounter|null=null,frame:GroupReplayFrame|null=null;
   for(const segment of timeline.segments) {
     if(time>=segment.end-1e-7){
       x=segment.to.x;z=segment.to.z;

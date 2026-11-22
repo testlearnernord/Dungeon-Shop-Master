@@ -2,7 +2,7 @@ import type {AdventurerState,AdventurerRole} from "./adventurers.ts";
 import {heroProgression} from "./heroProgression.ts";
 import type {GameState} from "./gameState.ts";
 import type {ItemId} from "./economy.ts";
-import type {Level7Replay} from "./level7Exploration.ts";
+import type {SpatialDungeonReplay} from "./spatialDungeonExploration.ts";
 import type {CombatantSpec,GroupReplayFrame,GroupPhase} from "./groupCombat.ts";
 import {heroDisplayNames} from "./heroIdentity.ts";
 
@@ -93,7 +93,7 @@ export function heroXpProgress(xp:number|null):number|null{
 /** Outside combat, spatial recordings know the historical role, gear, path,
  * position and HP, but not every RPG attribute. No present-day values leak. */
 export function recordedHeroCard(
-  record:Level7Replay,name:string,
+  record:SpatialDungeonReplay,name:string,
   observedStep=record.steps[0],
 ):HeroCardView {
   return {

@@ -6,7 +6,7 @@ import { buildDungeonPlayback, dungeonPlaybackAt } from "../../src/game/dungeonR
 import {
   dungeonReplayCast, dungeonReplayFocusIds, visibleDungeonCombatActors,
 } from "../../src/game/dungeonReplayCast.ts";
-import type { Level7Replay } from "../../src/game/level7Exploration.ts";
+import type { SpatialDungeonReplay } from "../../src/game/spatialDungeonExploration.ts";
 
 const encounter = resolveGroupCombat({
   bounds:{minX:-10,maxX:10,minZ:-10,maxZ:10},
@@ -22,7 +22,7 @@ const encounter = resolveGroupCombat({
   ],
 },12).replay;
 
-function fixture(): Level7Replay {
+function fixture(): SpatialDungeonReplay {
   return {
     version:1,day:5,heroId:"hero-1",floor:7,
     appearance:{role:"tank",equipment:{weapon:"Iron Sword",armor:"Leather Vest"}},
