@@ -448,7 +448,7 @@ export function simulateSpatialDungeonPartyDay(
   const floor=party[0].floor;
   const ids=new Set(party.map(hero=>hero.id));
   if(ids.size!==party.length ||
-    !(floor>=1&&floor<=9) ||
+    (typeof floor!=="number"||!(floor>=1&&floor<=9)) ||
     party.some(hero=>hero.floor!==floor||hero.health<=0||
       (hero.status!=="exploring"&&
         !(floor===7&&hero.status==="expedition"))))

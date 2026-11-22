@@ -240,7 +240,8 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   const healed=postTradeHeroes.map(hero=>useHealingSupplies(hero,day));
   const readyRoster=healed.map(result=>{
     const ready=result.adventurer;
-    return ready.status==="returning"&&ready.floor>=1&&ready.floor<=9
+    return ready.status==="returning"&&typeof ready.floor==="number"&&
+      ready.floor>=1&&ready.floor<=9
       ?{...ready,status:"exploring" as const}:ready;
   });
   const committedFights=new Map<string,Level7Tick>();
@@ -254,7 +255,8 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
     // Newly authorized departures cannot fight on their departure day.
     events.push(...healed[index].events);
     const ready = readyRoster[index];
-    if(ready.status==="exploring"&&ready.floor>=1&&ready.floor<=9){
+    if(ready.status==="exploring"&&typeof ready.floor==="number"&&
+       ready.floor>=1&&ready.floor<=9){
       const floor=ready.floor as SpatialDungeonFloor;
       const world=floor===7?level7World:
         earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world ??

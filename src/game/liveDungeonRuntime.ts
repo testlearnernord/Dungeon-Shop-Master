@@ -100,7 +100,8 @@ export const createLiveDungeonState=():LiveDungeonState=>({
 
 const eligible=(hero:AdventurerState)=>
   hero.health>0&&(
-    hero.status==="exploring"&&hero.floor>=1&&hero.floor<=9||
+    hero.status==="exploring"&&typeof hero.floor==="number"&&
+      hero.floor>=1&&hero.floor<=9||
     hero.status==="expedition"&&hero.floor===7
   );
 function nextDungeonTick(tick:number,day:number):number|null{
@@ -870,7 +871,8 @@ export function finishLiveDungeonDay(
       return {...ready,status:"exploring" as const,
         floor:target,offDutyUntilDay:null};
     }
-    if(ready.status==="returning"&&ready.floor>=1&&ready.floor<=9)
+    if(ready.status==="returning"&&typeof ready.floor==="number"&&
+       ready.floor>=1&&ready.floor<=9)
       return {...ready,status:"exploring" as const};
     // Sleeping cannot complete a portal journey which is still scheduled
     // for a subsequent live world tick.

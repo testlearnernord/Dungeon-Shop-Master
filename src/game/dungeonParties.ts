@@ -117,7 +117,7 @@ export function settlePersistentDungeonParties(
         (hero.status==="exploring"||hero.status==="expedition"));
     if(members.length<2||members.length>3)continue;
     const floor=members[0].floor;
-    if(!(floor>=1&&floor<=9) ||
+    if(typeof floor!=="number"||!(floor>=1&&floor<=9) ||
       members.some(hero=>hero.floor!==floor||
         hero.status!==members[0].status||occupied.has(hero.id)))continue;
     const firstAction=decisions.get(members[0].id);
