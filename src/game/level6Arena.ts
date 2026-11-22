@@ -65,8 +65,6 @@ export class Level6Arena {
   private active = false;
   private motion: SharedBossPreview | null = null;
   private replay: BossCombatReplay | null = null;
-  /** A LIVE witness never steps the boss; it projects only world-clock frames. */
-  private watchingLiveHeroId:string|null=null;
   private requestedReplayId: string | null = null;
   private replayTime = 0;
   private replayFrameIndex = 0;
@@ -266,23 +264,6 @@ export class Level6Arena {
   get currentScene(): Scene | null { return this.active ?
     (this.modelLab?.scene ?? this.lab.currentScene ?? this.scene) : null; }
   get isActive(): boolean { return this.active; }
-  /** Allow the live world, including physical shop visitors, to advance. */
-  get isWatchingLiveBoss():boolean {
-    return this.active&&this.watchingLiveHeroId!==null;
-  }
-
-  /** Public roster entry for the one real running Level-6 fight. */
-  openLiveBoss(heroId:string):boolean{
-    const boss=this.store.state.liveDungeon.bossCombat;
-    if(!boss||boss.heroId!==heroId||this.active)return false;
-    this.watchingLiveHeroId=heroId;
-    // LIVE boss always prefers the actual Tripo 14-clip cinematic actor,
-    // never the training-only legacy geometric stand-in.
-    this.useTripoModel=true;
-    this.open();
-    return this.active;
-  }
-
   private toggleDeveloperLab():void{
     if(!this.active||this.modelLab)return;
     if(this.lab.isActive){
@@ -292,7 +273,6 @@ export class Level6Arena {
       this.restart();
       return;
     }
-    this.watchingLiveHeroId=null; // Sandbox must pause the REAL world again.
     this.sfx?.endArena();
     this.sfxLab.setAvailable(false);
     this.worldHud.reset();
@@ -318,7 +298,6 @@ export class Level6Arena {
 
   private toggleSource(): void {
     if(this.modelLab)return;
-    this.watchingLiveHeroId=null;
     this.forcePreview = !this.forcePreview;
     this.restart();
   }
@@ -354,7 +333,6 @@ export class Level6Arena {
   open(eventId?: string): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("dungeon-active")) return;
-    if(eventId)this.watchingLiveHeroId=null;
     this.requestedReplayId=eventId??null;
     this.modelPanel.hidden=true;
     this.panel.dataset.modelViewer="false";
@@ -404,7 +382,6 @@ export class Level6Arena {
     this.motion = null;
     this.replay = null;
     this.requestedReplayId=null;
-    this.watchingLiveHeroId=null;
     this.projectiles = [];
     this.telegraph = null;
     this.slamTelegraph = null;
@@ -459,19 +436,15 @@ export class Level6Arena {
       .find(event => event.type === "level6-combat" && event.combatReplay &&
         (!this.requestedReplayId || event.id===this.requestedReplayId));
     const saved=recorded?.combatReplay??null;
-    const live=this.watchingLiveHeroId?
-      state.liveDungeon.bossCombat?.heroId===this.watchingLiveHeroId
-        ?state.liveDungeon.bossCombat:null:null;
-    this.replay=live?{
-      version:1,day:state.day,heroId:live.heroId,
-      role:live.state.options.role,sword:live.state.options.sword,
-      armor:live.state.options.armor,maxHp:live.state.options.maxHealth,
-      outcome:"retreat",frames:live.frames,
-    }:this.forcePreview?null:saved;
-    if(this.replay&&recorded&&!live)observeReplay(recorded.id);
-    this.sourceToggle.hidden = !saved||!!live;
-    this.sourceToggle.textContent = this.replay ? "Preview current expedition" : "Watch last saved combat";
-    this.panel.dataset.replay = live?"live":this.replay?"recorded":"preview";
+    // The arena remains a developer training preview and a read-only
+    // historical tape viewer. LIVE boss ownership is exclusively Floor 10
+    // through the DungeonViewer's true 60Hz GroupCombat stage.
+    this.replay=this.forcePreview?null:saved;
+    if(this.replay&&recorded)observeReplay(recorded.id);
+    this.sourceToggle.hidden=!saved;
+    this.sourceToggle.textContent=this.replay
+      ?"Preview current expedition":"Watch last saved combat";
+    this.panel.dataset.replay=this.replay?"recorded":"preview";
     this.sfxLab.setAvailable(!this.replay);
     this.fighter = this.replay
       ? state.adventurers.find(hero => hero.id === this.replay!.heroId) ?? null
@@ -755,18 +728,6 @@ export class Level6Arena {
     if(skipped)this.skipBossThemeTo(BOSS_INTRO_SECONDS);
     this.pressed.clear();
     this.focusCamera();
-    if(this.watchingLiveHeroId&&this.replay){
-      // The world advanced during the cinematic. Jump ONLY the spectator
-      // cursor near the last already committed frame, never world time.
-      const committed=this.store.state.liveDungeon.bossCombat;
-      if(committed?.heroId===this.watchingLiveHeroId)
-        this.replay={...this.replay,frames:committed.frames};
-      this.replayTime=Math.max(0,this.replay.frames.at(-1)!.t-.5);
-      let frameIndex=0;
-      for(let i=1;i<this.replay.frames.length;i++)
-        if(this.replay.frames[i].t<=this.replayTime)frameIndex=i;
-      this.replayFrameIndex=frameIndex;
-    }
     this.status.textContent=this.replay
       ?"Recorded combat · original saved frames, no new damage or rewards."
       :"The Ashen Tunnel Mauler is attacking · training only.";
@@ -859,24 +820,6 @@ export class Level6Arena {
 
   private updateRecordedFight(dt: number): void {
     let replay=this.replay;
-    if(this.watchingLiveHeroId){
-      const active=this.store.state.liveDungeon.bossCombat;
-      if(active?.heroId===this.watchingLiveHeroId&&replay){
-        // Refreshed LIVE frames come only from committed world-time updates.
-        // No hero AI, boss damage or RNG runs in the spectator.
-        replay={...replay,frames:active.frames};
-        this.replay=replay;
-      }else if(!active){
-        const completed=[...this.store.state.events].reverse().find(event=>
-          event.type==="level6-combat"&&
-          event.adventurerId===this.watchingLiveHeroId&&
-          event.combatReplay);
-        if(completed?.combatReplay){
-          replay=completed.combatReplay;
-          this.replay=replay;
-        }
-      }
-    }
     if (!replay || !this.motion) return;
     const frames = replay.frames;
     const end = frames[frames.length-1].t;
@@ -903,12 +846,7 @@ export class Level6Arena {
         (next.bossAge-current.bossAge)*alpha;
     }
     this.motion.time = this.replayTime;
-    const stillLive=!!(this.watchingLiveHeroId&&
-      this.store.state.liveDungeon.bossCombat?.heroId===this.watchingLiveHeroId);
-    if(stillLive&&this.replayTime>=end){
-      this.motion.outcome="fighting";
-      this.status.textContent="LIVE · Waiting for the next committed world-clock frame.";
-    }else if (this.replayTime >= end && !this.replayFinished) {
+    if(this.replayTime>=end&&!this.replayFinished){
       this.replayFinished = true;
       this.motion.outcome = replay.outcome === "death" ? "defeat" :
         replay.outcome === "victory" ? "victory" : "fighting";
@@ -1191,19 +1129,13 @@ export class Level6Arena {
   private buildBossHeroCard():void {
     this.bossHeroCard?.remove();this.bossHeroCard=null;
     const fighter=this.fighter,replay=this.replay;
-    const actual=this.watchingLiveHeroId&&fighter?
-      liveHeroCard(this.store.state,fighter.id):null;
     const id=replay?.heroId??this.training?.id??fighter?.id??"preview";
     const role=replay?.role??this.training?.options.role??fighter?.role??"tank";
     const sword=replay?replay.sword:
       this.training?.options.sword??(fighter?.equipment.weapon==="Iron Sword");
     const armor=replay?replay.armor:
       this.training?.options.armor??(fighter?.equipment.armor==="Leather Vest");
-    const snapshot:HeroCardView=actual?{
-      ...actual,health:this.motion?.heroHp??actual.health,activity:"combat",
-      equipment:{weapon:sword?"Iron Sword":null,
-        armor:armor?"Leather Vest":null},combat:null,
-    }:{
+    const snapshot:HeroCardView={
       id,name:fighter?.name??this.training?.label??"Training hero",
       role,source:replay?"recorded":"training",
       level:null,health:this.motion?.heroHp??null,
