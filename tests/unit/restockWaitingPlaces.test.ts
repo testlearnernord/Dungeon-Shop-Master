@@ -4,10 +4,12 @@ import { checkoutQueuePoints } from "../../src/game/checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE } from "../../src/game/npcTraffic.ts";
 import { createShopLayout, replaceShelfPlacement, shelfBounds } from "../../src/game/shopLayout.ts";
 import { isObstructed, pathToShopGoal } from "../../src/game/shopperNavigation.ts";
+import {shopPortalServicePoint} from "../../src/game/shopPortal.ts";
 import { RESTOCK_WAIT_CLEARANCE, isQuietPetitionArea,
   restockWaitingPositions } from "../../src/game/restockWaitingPlaces.ts";
 
-const entrances=[{x:-3.43,z:4.65},{x:4.57,z:4.65}] as const;
+const entry=shopPortalServicePoint("entering");
+const exit=shopPortalServicePoint("leaving");
 
 test("request stations are generated from current reachable shop topology",()=>{
   const layout=createShopLayout();
@@ -19,12 +21,13 @@ test("request stations are generated from current reachable shop topology",()=>{
     assert(isQuietPetitionArea(point),
       "petitioners must not wait in entrance approaches or central lanes");
     assert(queues.every(q=>Math.hypot(point.x-q.x,point.z-q.z)>=1.8));
-    for(const origin of entrances){
-      const route=pathToShopGoal(origin,point,layout);
-      assert(route,"request pocket must be reachable from both entrances");
-      assert(Math.hypot((route!.waypoints.at(-1)??origin).x-point.x,
-        (route!.waypoints.at(-1)??origin).z-point.z)<=0.17);
-    }
+    const arrival=pathToShopGoal(entry,point,layout);
+    const departure=pathToShopGoal(point,exit,layout);
+    assert(arrival&&departure,"petition station must connect to the one portal in both directions");
+    assert(Math.hypot((arrival.waypoints.at(-1)??entry).x-point.x,
+      (arrival.waypoints.at(-1)??entry).z-point.z)<=0.17);
+    assert(Math.hypot((departure.waypoints.at(-1)??point).x-exit.x,
+      (departure.waypoints.at(-1)??point).z-exit.z)<=0.17);
     for(const previous of positions.slice(0,i))
       assert(Math.hypot(point.x-previous.x,point.z-previous.z)>=
         Math.max(NPC_CENTER_CLEARANCE,RESTOCK_WAIT_CLEARANCE));
@@ -47,7 +50,8 @@ test("moving shelves regenerates request stations without fixed cave pockets",()
       const dz=Math.max(b.minZ-point.z,0,point.z-b.maxZ);
       assert(Math.hypot(dx,dz)>=1.35);
     }
-    for(const origin of entrances)assert(pathToShopGoal(origin,point,moved.layout));
+    assert(pathToShopGoal(entry,point,moved.layout));
+    assert(pathToShopGoal(point,exit,moved.layout));
   }
 });
 

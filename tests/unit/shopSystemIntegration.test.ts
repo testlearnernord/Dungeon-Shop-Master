@@ -15,8 +15,10 @@ import type {Level5Room} from "../../src/game/level5Room.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {getBedroomFurniture} from "../../src/game/bedroomFurniture.ts";
+import {shopPortalServicePoint} from "../../src/game/shopPortal.ts";
 
-const entrance={x:-3.43,z:4.65},farEntrance={x:4.57,z:4.65};
+const entrance=shopPortalServicePoint("entering");
+const exit=shopPortalServicePoint("leaving");
 const distance=(a:{x:number;z:number},b:{x:number;z:number})=>
   Math.hypot(a.x-b.x,a.z-b.z);
 function carveWing():Level5Room{
@@ -57,7 +59,7 @@ test("connected excavated wing, moved shelf and counter preserve all customer se
   const checkout=checkoutQueuePoints(layout,entrance,5,room);
   const requests=restockWaitingPositions(layout,room);
   assert(checkout.length>=1&&requests.length>=2);
-  for(const door of [entrance,farEntrance]){
+  for(const door of [entrance,exit]){
     assertRoute(layout,room,door,checkout[0]);
     for(const petition of requests.slice(0,2))assertRoute(layout,room,door,petition);
     for(const shelf of layout.shelves)for(let slot=0;slot<SHELF_SLOT_COUNT;slot++){

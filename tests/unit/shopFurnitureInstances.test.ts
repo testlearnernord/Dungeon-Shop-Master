@@ -10,8 +10,9 @@ import {shopServiceReachabilityProblem} from "../../src/game/shopServiceReachabi
 import {createShopRoutePlanner,pathToShelfAccess,pathToShopGoal,isObstructed} from "../../src/game/shopperNavigation.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
+import {shopPortalServicePoint} from "../../src/game/shopPortal.ts";
 
-const origin={x:-3.43,z:4.65};
+const origin=shopPortalServicePoint("entering");
 function openWing():Level5Room{
   let room:Level5Room={...createLevel5Room(),expansionTier:3};
   for(let x=8;x<=13;x++)for(let z=-5;z<=5;z++){
@@ -129,7 +130,7 @@ test("three deliberately built shelves use the same real mined-floor routes afte
     assert.equal(store.placeFurniture(pose),"Shelf placement saved.");
   assert.equal(store.state.shopEconomy.slots.length,3*SHELF_SLOT_COUNT);
   const layout=store.state.shopLayout,batch=createShopRoutePlanner(layout,room);
-  const gateways=[{x:-3.43,z:4.65},{x:4.57,z:4.65}];
+  const gateways=[shopPortalServicePoint("entering"),shopPortalServicePoint("leaving")];
   for(const shelf of layout.shelves)for(let slot=0;slot<SHELF_SLOT_COUNT;slot++){
     const target=shelfServicePoint(shelf,slot);
     for(const gate of gateways)
