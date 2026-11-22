@@ -1,6 +1,6 @@
 import {expect,test} from "@playwright/test";
 
-test("FPS customer inspection works by I and safe Alt-click without shop actions @ci-smoke",async({page})=>{
+test("FPS customer inspection uses F, not I, and safe Alt-click without shop actions @ci-smoke",async({page})=>{
   test.setTimeout(75000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
@@ -18,6 +18,8 @@ test("FPS customer inspection works by I and safe Alt-click without shop actions
   await aim();
   await page.waitForTimeout(180); // allow Babylon's view matrix to repaint
   await page.keyboard.press("i");
+  await expect(page.locator("#world-hero-card")).toBeHidden();
+  await page.keyboard.press("f");
   const expanded=page.locator("#world-hero-card .hero-card--expanded");
   await expect(expanded).toBeVisible();
   await expect(expanded).toHaveAttribute("data-hero-id",id);
