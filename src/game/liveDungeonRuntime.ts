@@ -280,7 +280,7 @@ function deathSignal(hero:AdventurerState,day:number,tick:number):WorldEvent {
     message:hero.name+"'s life-signature has been extinguished.",
   };
 }
-const zone=(floor:number):"upper"|"deep"=>floor===7?"deep":"upper";
+const zone=(floor:number):"upper"|"deep"=>floor>=5?"deep":"upper";
 
 function commitDungeonTick(state:GameState):GameState {
   const tick=state.worldClock.tick;
@@ -383,15 +383,15 @@ function commitDungeonTick(state:GameState):GameState {
     const priorPlan=plans.get(hero.id);
     if(!homeward&&priorPlan?.floor===floor&&
       (priorPlan.action==="ascend"||priorPlan.action==="descend")&&
-      ((priorPlan.action==="ascend"&&floor>1&&floor<=4)||
-       (priorPlan.action==="descend"&&floor<4))){
+      ((priorPlan.action==="ascend"&&floor>1&&floor<=9)||
+       (priorPlan.action==="descend"&&floor<9))){
       const target=actualStair(state.seed,floor,priorPlan.action);
       const at=getLevel7Progress(world,hero.id,layout);
       if(at.x===target.x&&at.z===target.z){
         // A staircase consumes this scheduled movement event; it may be
         // crossed only from the real saved tile. Co-located companions
         // who consented to the same direction cross TOGETHER.
-        const nextFloor=(floor+(priorPlan.action==="ascend"?-1:1)) as EarlyDungeonFloorWorld["floor"];
+        const nextFloor=(floor+(priorPlan.action==="ascend"?-1:1)) as SpatialDungeonFloor;
         const priorParty=(state.dungeonParties??[]).find(p=>
           p.floor===floor&&p.memberIds.includes(hero.id));
         const participants=priorParty?.memberIds.map(id=>byId.get(id)!)
@@ -407,8 +407,9 @@ function commitDungeonTick(state:GameState):GameState {
         const destinationLayout=generateExpeditionLayout(state.seed,nextFloor);
         const arrival=priorPlan.action==="ascend"
           ?dungeonDownStair(destinationLayout):destinationLayout.entrance;
-        const previousWorld=earlyDungeonWorlds.find(e=>e.floor===nextFloor)?.world
-          ??emptyLevel7World();
+        const previousWorld=nextFloor===7?level7World:
+          earlyDungeonWorlds.find(e=>e.floor===nextFloor)?.world??
+          emptyLevel7World();
         const nextHeroes=[...previousWorld.heroes];
         for(const member of crossing){
           const old=nextHeroes.find(p=>p.heroId===member.id);
@@ -432,7 +433,8 @@ function commitDungeonTick(state:GameState):GameState {
             message:member.name+"'s expedition changed depth. Details await a report.",
           });
         }
-        earlyDungeonWorlds=[
+        if(nextFloor===7)level7World={...previousWorld,heroes:nextHeroes};
+        else earlyDungeonWorlds=[
           ...earlyDungeonWorlds.filter(e=>e.floor!==nextFloor),
           {floor:nextFloor,world:{...previousWorld,heroes:nextHeroes}},
         ].sort((a,b)=>a.floor-b.floor);
@@ -477,8 +479,8 @@ function commitDungeonTick(state:GameState):GameState {
       key.startsWith(floor+":")).map(key=>key.slice((floor+":").length)));
     const directed=priorPlan?.floor===floor&&
       (priorPlan.action==="ascend"||priorPlan.action==="descend")&&
-      ((priorPlan.action==="ascend"&&floor>1&&floor<=4)||
-       (priorPlan.action==="descend"&&floor<4))
+      ((priorPlan.action==="ascend"&&floor>1&&floor<=9)||
+       (priorPlan.action==="descend"&&floor<9))
       ?actualStair(state.seed,floor,priorPlan.action):undefined;
     // A saved autonomous loot/hunt intention may redirect a step only to a
     // personally known, still-active chest/monster site. Never let the
@@ -560,8 +562,8 @@ function commitDungeonTick(state:GameState):GameState {
         s.action==="combat"||s.action==="death");
       const committedHero=byId.get(id)!;
       const wantsTravel=returns.some(r=>r.heroId===id&&r.phase==="backtrack")||
-        (decision?.action==="ascend"&&floor>1&&floor<=4)||
-        (decision?.action==="descend"&&floor<4);
+        (decision?.action==="ascend"&&floor>1&&floor<=9)||
+        (decision?.action==="descend"&&floor<9);
       const stopped=committedHero.status==="dead"||
         committedHero.status==="traveling"||
         (individual.replay.outcome!=="exploring"&&!wantsTravel);
