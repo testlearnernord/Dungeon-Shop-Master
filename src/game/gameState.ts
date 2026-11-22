@@ -1,5 +1,6 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
-import {createCellarRoom,DEFAULT_CELLAR_CHEST,type CellarChestPlacement,type CellarRoom} from "./cellarRoom.ts";
+import {createCellarRoom,DEFAULT_CELLAR_CHEST,DEFAULT_CELLAR_TABLE,
+  type CellarChestPlacement,type CellarTablePlacement,type CellarRoom} from "./cellarRoom.ts";
 import { beginNextWorldDay, createWorldClock, MAX_WORLD_DAY, type WorldClockState } from "./worldClock.ts";
 import {emptyShopTraffic,type ShopTrafficCheckpoint} from "./shopTraffic.ts";
 import {createLiveDungeonState,finishLiveDungeonDay,
@@ -35,7 +36,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 29;
+export const SIMULATION_VERSION = 30;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -130,6 +131,7 @@ export interface GameState {
   readonly level5Room: Level5Room;
   readonly cellarRoom: CellarRoom;
   readonly cellarChest: CellarChestPlacement;
+  readonly cellarTable: CellarTablePlacement;
   readonly cellarDoorOpen: boolean;
   /** Fishing score only; fish goods will use the normal economy when added. */
   readonly cellarFishCaught: number;
@@ -181,6 +183,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     level5Room: createLevel5Room(),
     cellarRoom: createCellarRoom(),
     cellarChest: {...DEFAULT_CELLAR_CHEST},
+    cellarTable: {...DEFAULT_CELLAR_TABLE},
     cellarDoorOpen: false,
     cellarFishCaught: 0,
     shopCarts: [],
