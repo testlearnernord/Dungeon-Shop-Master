@@ -639,7 +639,7 @@ function commitDungeonTick(state:GameState):GameState {
       const committedHero=byId.get(id)!;
       const wantsTravel=returns.some(r=>r.heroId===id&&r.phase==="backtrack")||
         (decision?.action==="ascend"&&floor>1&&floor<=9)||
-        (decision?.action==="descend"&&floor<9);
+        (decision?.action==="descend"&&floor<10);
       const stopped=committedHero.status==="dead"||
         committedHero.status==="traveling"||
         (individual.replay.outcome!=="exploring"&&!wantsTravel);
