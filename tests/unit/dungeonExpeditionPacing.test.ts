@@ -107,7 +107,7 @@ test("one real committed day can contain two DISTINCT fights without repeated re
       dailySales:{...base.shopEconomy.dailySales,day:2}},
     adventurers:base.adventurers.map(h=>first.ticks.find(t=>
       t.adventurer.id===h.id)?.adventurer??h),
-    earlyDungeonWorlds:[{floor:1 as const,world:first.world}],
+    dungeonWorlds:[{floor:1 as const,world:first.world}],
     events:[...base.events,...first.ticks.map(t=>({
       id:"day-2:"+t.adventurer.id+":dungeon-exploration",
       day:2,type:"dungeon-exploration" as const,

@@ -43,7 +43,7 @@ test("one real LIVE Ghoul pack is abstract on the floor and individually rendere
     const moved={...hero,status:"exploring" as const,floor:3 as const};
     const store=new GameStore({...initial,
       adventurers:initial.adventurers.map(a=>a.id===moved.id?moved:a),
-      earlyDungeonWorlds:[{floor:3 as const,world:{
+      dungeonWorlds:[{floor:3 as const,world:{
         ...emptyLevel7World(),heroes:[{
           heroId:moved.id,...chosen.approach,visited:chosen.visited,
         }],

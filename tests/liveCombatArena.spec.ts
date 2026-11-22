@@ -34,7 +34,7 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
     const hero=initial.adventurers.find(h=>h.status==="exploring"&&h.floor===1);
     if(!hero)throw Error("Missing real explorer");
     const store=new GameStore({...initial,
-      earlyDungeonWorlds:[{floor:1 as const,world:{
+      dungeonWorlds:[{floor:1 as const,world:{
         ...emptyLevel7World(),heroes:[{heroId:hero.id,...approach,visited}],
       }}],
     });

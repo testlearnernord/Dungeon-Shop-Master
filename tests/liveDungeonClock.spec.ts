@@ -29,7 +29,7 @@ test("live dungeon advances shared floor positions before bed and resumes after 
   expect(current.worldClock.tick).toBeGreaterThanOrEqual(stepTicks);
   expect(current.liveDungeon.enabled).toBe(true);
   expect(current.liveDungeon.lastStepTick).toBe(stepTicks);
-  expect(current.earlyDungeonWorlds?.some(x=>x.world.heroes.length>0)).toBe(true);
+  expect(current.dungeonWorlds?.some(x=>x.world.heroes.length>0)).toBe(true);
   expect(current.events.filter(e=>e.type==="dungeon-exploration")).toHaveLength(0);
   expect(current.worldClock.pending.filter(e=>e.lane==="expedition")).toHaveLength(1);
   await page.reload();
@@ -39,7 +39,7 @@ test("live dungeon advances shared floor positions before bed and resumes after 
     return new CampaignStorage().loadGame();
   });
   expect(resumed?.liveDungeon).toEqual(current.liveDungeon);
-  expect(resumed?.earlyDungeonWorlds).toEqual(current.earlyDungeonWorlds);
+  expect(resumed?.dungeonWorlds).toEqual(current.dungeonWorlds);
   await page.evaluate(()=>{
     const hooks=window as Window&{__shopTestAdvanceDungeonTick?:()=>void};
     hooks.__shopTestAdvanceDungeonTick?.();

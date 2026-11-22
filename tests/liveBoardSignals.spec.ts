@@ -38,7 +38,7 @@ test("a real lethal dungeon step raises ONE global world-feed warning and opens 
         h.id===hero.id?{...h,health:1,floor:1 as const,
           status:"exploring" as const}
         :h.status==="exploring"?{...h,floor:4 as const}:h),
-      earlyDungeonWorlds:[{floor:1 as const,world:{
+      dungeonWorlds:[{floor:1 as const,world:{
         ...emptyLevel7World(),heroes:[{heroId:hero.id,...position,visited}],
       }}],
     });

@@ -140,7 +140,7 @@ test("real multi-day party strategy is reproducible after a v13 save/reload",()=
       const member=first.find(f=>f.id===h.id);
       return member??h;
     }),
-    earlyDungeonWorlds:[{floor:1 as const,world:{
+    dungeonWorlds:[{floor:1 as const,world:{
       resolvedFeatureIds:[] as string[],heroes:first.map(h=>({
         heroId:h.id,...entry,
         visited:[entry.z*layout.width+entry.x],
