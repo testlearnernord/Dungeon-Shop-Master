@@ -46,9 +46,9 @@ export function chooseHeroDungeonDecision(
   }
   if(damaged && hero.floor>1 && !prepared)
     return {goal:"caution",action:"ascend"};
-  // The Level-10 gate requires a genuine temporary party, not an
-  // individual deep-floor intent. Until that gate is committed, a prepared
-  // Floor-9 hero resupplies rather than walking into an unimplemented boss.
+  // Normal solo Floor-9 logic cannot initiate a group fight. The LIVE
+  // override below may descend only with an actual saved, permitted party;
+  // otherwise returning to Galvik is a valid recovery choice.
   if(hero.floor===9 && enoughExperience)
     return {goal:"resupply",action:"shop"};
   if(hero.floor<9 && prepared && enoughExperience)

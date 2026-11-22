@@ -1,5 +1,11 @@
 # Dungeon Shop Master | 100-day gameplay loop audit
 
+> **HISTORICAL MEASUREMENT.** The tables below are exact evidence for
+> earlier tested source revisions, not for merged #296–#298. Current code has
+> real class progression, role-aware shopping, Floors 1–9 and a Floor-10
+> party boss; new 20/50/100-day multi-seed results are still required.
+> Track the remaining work in GitHub issue #294 and the [current roadmap](ROADMAP.md).
+
 ## Post-fix verification — 22 November 2026
 
 **Status: the seed-9321 crash and permanent merchant-era return/loot plateau have been fixed in the audit branch.** This section supersedes the historical baseline table and "P0" findings below. The original results remain for before/after comparison.

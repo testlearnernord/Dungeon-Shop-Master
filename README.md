@@ -8,16 +8,16 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Implemented on the audited main baseline
 
-Core V.003 systems were audited through PR #241 (21 November 2026). The subsequent merged V.004 cellar, fishing, LIVE cashier, dungeon autonomy, physical loot and spectator QoL additions are listed below. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
+Core systems were reconciled on 22 November 2026 after merged #295–#298. V.004 cellar, fishing, LIVE cashier, dungeon autonomy and spectators already exist, together with real class progression and the Floor-10 group boss. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
 
 | Area | Currently implemented |
 | --- | --- |
 | Physical shop | First-person movement, independently built four-slot shelves, real bag/shelf inventory, wholesale purchases, excavation and furniture placement |
 | Customers and economy | Saved physical navigation, shelf claims, unpaid carts, LIVE two-stage cashier QTE, real paid receipts, credit/debt, restock requests, walkouts, finite checkout queue and real gold/item buyback of returning adventurers' found goods |
 | Persistent world | One ordered 50-ms saved world-tick scheduler; shop, active dungeon expeditions and scheduled fights advance on that shared clock. Only the bed ends a shop day |
-| Heroes and exploration | Individual HP, equipment, purchases and intentions; connected exploration every **200 world ticks** (10 unpaused seconds) on Floors **1–4 and 7**, persistent site generation/refresh, loot-/Ghoul-seeking goals, personally owned physical finds and voluntary Temporary Parties |
-| Combat | Deterministic **60-Hz** combat; ordinary multi-hero/multi-Ghoul encounters; authentic **Floor 6 Cave Troll** boss abilities including grab/throw and lava. Original boss presentation is the quality reference |
-| LIVE observation | Knowledge-limited Adventurer Board, death signals, floor-wide LIVE spectator for Floors 1–4 and 7, orbit/pan map camera, actual hero and fight locator, concrete loot inspector, abstract fight markers and opt-in 3D arena. Observation never advances a second fight simulation |
+| Heroes and exploration | Class-dependent effective stats (capped at Level 20), role/injury-aware purchases, individually saved goals, Temporary Parties, real loot and connected exploration every **200 world ticks** on ordinary numbered Floors **1–9** |
+| Combat | Deterministic **60-Hz** shared group combat; ordinary multi-hero/Ghoul encounters; authentic **Floor-10 Cave Troll** for permitted **2–3-hero Temporary Parties**, including throw/lava and immutable footage. The former Floor-6 solo arena remains a historical/training presentation reference |
+| LIVE observation | Knowledge-limited Board, one World Feed, worldwide Hero Cards, genuine death signals and replays, floor-wide LIVE spectator for ordinary Floors 1–9, real hero/fight locators, concrete loot inspector and opt-in 3D arenas. Observation does not run game simulation |
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
@@ -35,15 +35,15 @@ Core V.003 systems were audited through PR #241 (21 November 2026). The subseque
 
 **V.004 spectator QoL (merged PRs #265 and #266):** locate actual LIVE heroes and running fights through compact selectors. Focusing a target preserves the player's orbit and zoom; the inspector shows real saved finds. Selecting a fight focuses its committed tile and the existing Watch action opens that exact opt-in 3D encounter.
 
-**Partially implemented / not yet released:** integrated deeper dungeon progression and Floor 8–10 content, a single physical cursed portal replacing the numbered-floor shop access, the individual Floor-10 pass, full ten-day gameplay/pacing acceptance and visual/audio acceptance on real hardware. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
+**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. Still open are migration of legacy internal floor/permit/gate fields, fully authored deep-floor variety, an actual 20/50/100-day post-#298 economy audit, ten-day hands-on pacing and real-device visual/audio acceptance. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
 
 ## Start playing
 
 1. Start or load a campaign. Fresh shops contain **no built shelves**. Press **N** to build a four-slot shelf and stock it with carried merchandise.
 2. Select an item with **1–6** or the mouse wheel. Look at a shelf slot: left-click stocks, right-click removes. **Shift + click** fills/clears within actual inventory and reservation limits.
 3. Use **B** to purchase wholesale stock. **F** selects the most urgent live restock request's item; you must still restock it physically.
-4. Work from the **staff** side of the checkout. **E** opens the real customer transaction, with a two-stage payment/receipt interaction. Credits are debts, never instant cash.
-5. Inspect the live roster with **R** or the wall Board. **G** opens the Dungeon viewer; watch a marked battle in its separate 3D arena, or open a previously committed recording. The LIVE map itself stays abstract during combat.
+4. Work from the **staff** side of the checkout. **E** opens the real customer transaction, with a two-stage payment/receipt interaction. Credits are debts, never instant cash. Healthy heroes can prefer class-appropriate gear, injured heroes survival supplies.
+5. Inspect heroes with the in-world Board, **R** roster or contextual **F** Hero Card. **G** opens the Dungeon viewer; watch a marked battle in its separate 3D arena, or open a previously committed recording. The LIVE map itself stays abstract during combat.
 6. **V** opens developer combat testing; its configuration does not modify real customers, world time or saved outcomes. Hold **E** at Galvik's bed to close the day.
 
 ### Common controls
@@ -91,8 +91,9 @@ npm test
 - **[Architecture](docs/ARCHITECTURE.md):** current module ownership, data flow, authoritative simulation and presentation boundaries.
 - **[Game Bible](docs/GAME_BIBLE.md):** identity, approved rules, lore and *implemented / partial / planned / rejected* distinctions.
 - **[Roadmap](docs/ROADMAP.md):** only current open work and release gates, not a chronological list of PRs.
-- **[The Living Dungeon](docs/THE_LIVING_DUNGEON.md):** detailed design target; historically accumulated implementation notes are not a live status report.
+- **[The Living Dungeon](docs/THE_LIVING_DUNGEON.md):** current consolidated design/acceptance contract; obsolete PR chronology lives in Git history.
 - **[World Clock contract](docs/LIVING_WORLD_CLOCK.md)**, **[LIVE Board/Ledger design](docs/LIVE_BOARD_LEDGER_AUDIT.md)**, **[Floor Spectator contract](docs/FLOOR_SPECTATOR_CONTRACT.md)** and **[Monster asset pipeline](docs/MONSTER_ASSET_PIPELINE.md):** deeper subsystem contracts.
+- **[Legacy and obsolescence audit](docs/LEGACY_OBSOLESCENCE_AUDIT.md):** current code/docs/asset candidate classifications and migration safety.
 - **[Great Cleanup audit](docs/CLEANUP_AUDIT.md):** original dated baseline, asset dependencies and historical risks.
 - **[Great Cleanup closeout](docs/GREAT_CLEANUP_CLOSEOUT.md):** verified before/after Git-tree counts, completed PR scopes, CI results and remaining acceptance gates.
 

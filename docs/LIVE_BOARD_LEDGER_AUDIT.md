@@ -1,5 +1,8 @@
 # Live Adventurer Board and lean day-end ledger
 
+> **Historical subsystem audit / implementation evidence.** This document records earlier PR stages, not current unfinished work. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Legacy audit](LEGACY_OBSOLESCENCE_AUDIT.md) for the present world. In particular, the obsolete `src/expeditionHud.ts` widget and `level6Progress.ts` projection have now been retired in favor of one World Feed / Expedition Archive; saved solo v26 recordings remain readable.
+
+
 > **C1 maintenance update (review pending):** The old standalone `src/ledgerHeroChronicle.ts` and `src/ledgerSealedExpeditions.ts` were verified to have no production imports and are retired in Phase C1, with their obsolete module-only tests replaced by a current Expedition Archive no-spoiler regression. The historical migration table below remains historical evidence, not current live code.
 
 

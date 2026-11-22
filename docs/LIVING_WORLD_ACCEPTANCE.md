@@ -1,5 +1,8 @@
 # PR #214 — Ten-day acceptance and browser performance baseline
 
+> **Historical subsystem audit / implementation evidence.** This document records earlier PR stages, not current unfinished work. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Legacy audit](LEGACY_OBSOLESCENCE_AUDIT.md) for the present world. In particular, the obsolete `src/expeditionHud.ts` widget and `level6Progress.ts` projection have now been retired in favor of one World Feed / Expedition Archive; saved solo v26 recordings remain readable.
+
+
 This is a **regression and profiling gate**, not a declaration that V.003 Alpha is
 ready to ship. All claims are grounded in executed tests, saved world events
 and the actual UI. Old save formats remain deliberately incompatible with v24.

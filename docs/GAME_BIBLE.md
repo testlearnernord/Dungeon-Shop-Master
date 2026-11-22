@@ -1,6 +1,6 @@
 # Dungeon Shop Master — living Game Bible
 
-> **Current design and lore**, audited after merged PR #234 on 21 November 2026. Current implementation is verified in source; accepted intent is distinguished from implemented features below. This is **not** a PR diary. Consult [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and the detailed [Living Dungeon design](THE_LIVING_DUNGEON.md).
+> **Current design and lore**, reconciled 22 November 2026 after merged #295–#298. Current implementation is verified in source; accepted intent is distinguished from implemented features below. This is **not** a PR diary. Consult [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and the detailed [Living Dungeon design](THE_LIVING_DUNGEON.md).
 
 ## 1. Identity and player experience — LOCKED
 
@@ -20,12 +20,12 @@
 | --- | --- |
 | Physical shop and customer economy | **IMPLEMENTED:** first-person room, mining, modular four-slot shelves, furniture/portrait placement, real inventory and wholesale, unpaid carts, staffed receipt minigame, debt, saved physical NPC traffic and service decisions |
 | One saved paced world | **IMPLEMENTED:** same deterministic 50-ms world clock for in-day shop, spatial expeditions and actual fight scheduling. Bed interaction closes the day |
-| Heroes and renewable dungeon | **PARTIAL:** saved autonomous intentions, independent HP/equipment, seeded connected Floors 1–4 and 7, common-site regeneration, real Temporary Parties and retreat/return journeys; broader content remains incomplete |
-| Boss | **IMPLEMENTED reference fight:** unique Cave Troll on Floor 6, including real telegraphs, imperfect dodges/parries, grabs, throws and lava. Signature abilities remain even when shared motor helpers are used |
-| LIVE information and observer | **PARTIAL:** in-world Board, bounded magical death signal, history and read-only LIVE spatial spectator; supported numbered spatial floors are 1–4 and 7, with a separate Floor-6 boss view. Observation does not control a hero |
+| Heroes and renewable dungeon | **IMPLEMENTED core, PARTIAL art/content:** saved autonomous goals, real class-dependent capped progression, seeded connected **ordinary Floors 1–9**, common-site regeneration, Temporary Parties and physically connected shop-return journeys. Unique authored deep-floor content and full-run tuning remain unfinished |
+| Boss | **IMPLEMENTED LIVE:** one Cave Troll on **Floor 10**, fought by an actual permitted **2–3-hero Temporary Party** in the shared 60-Hz motor; saved event/replay, telegraphs, dodge/parry, grabs, throws and lava. The old Floor-6 solo arena remains a training/recording quality reference |
+| LIVE information and observer | **IMPLEMENTED core:** global World Feed, worldwide Hero Cards, in-world Board, bounded magical death signals, history, read-only LIVE spectator for ordinary Floors **1–9**, optional 3D fights and authentic Floor-10 party recordings. Observation never controls a hero |
 | Replay and night accounts | **IMPLEMENTED core:** immutable recorded fights, three-day rolling event/footage window plus up to 12 player-pinned recordings; two-page nightly merchant accounts |
 | Quality and tooling | **IMPLEMENTED trial:** real Tripo Ghoul, crypt arena, multi-Ghoul fights, V Developer Combat Lab and interpolated presentation, 21 Ghoul WAV + 11 Troll MP3 samples, distinct battle music |
-| First V.003 chapter | **OPEN for release:** full authored deeper floors, unnumbered cursed-shop access with one portal, individual Floor-10 pass, balance/pacing and comprehensive visual/audio/hardware sign-off |
+| First V.003 chapter | **PARTIAL release acceptance:** ordinary floors and the cursed shop realm, shared physical normal threshold and Floor-10 party gate are wired. Deep authored content, renaming legacy saved keys, 20/50/100-day economy, real gameplay/pacing and visual/audio/hardware sign-off remain OPEN |
 
 **Implemented does not mean final polish.** The Tripo troll/ghoul rig, hit contact alignment, audio mix, multiple-enemy camera composition and hardware FPS still require actual human observation. All externally added animation sources must remain intact until explicitly reviewed.
 
@@ -46,18 +46,18 @@
 - All combat results come from deterministic actual steps. Boss cinematics, spectator cameras, animation, music and SFX can only *present* authentic cues.
 - The LIVE merchant Board is limited to information Galvik could legitimately possess; unknown offscreen health, location, loot or cause of death is not automatically public. The explicit viewer may reveal legitimate currently observed or previously recorded detail.
 - The compact timeline covers today and the previous two completed days. At most 12 manually saved authentic recordings persist beyond the rolling retention policy. A marker without video must never become manufactured footage.
-- The **Floor-6 Cave Troll** is the authored quality reference for all dungeon combat. Ordinary enemies may have different art and behaviors but must not be downgraded to sterile combat spreadsheets.
+- The **original Floor-6 Cave Troll presentation** is the authored quality reference for the current Floor-10 group boss and all dungeon combat. Ordinary enemies may have different art and behaviors but must not be downgraded to sterile combat spreadsheets.
 
 ## 4. Approved V.003 direction: partially delivered, still unfinished
 
 The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper contract. Decisions below are approved direction, **not** claims of full current implementation.
 
-- **The shop eventually becomes one cursed special floor, not numbered Floor 5.** One physical magical portal replaces the current separate numbered-floor entrances. Galvik operates one shop instance.
+- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold; older saved shop gate and numeric room identifiers are still compatibility fields, not map lore.
 - Heroes choose **stay / deeper / higher** based on individual medium-term goals such as farming, testing gear, survival or progress. **CURRENT:** plans and parts of same-day movement already persist; deeper/full-floor progression remains incomplete.
-- On an upward transition a hero may terminate an expedition to visit the same shop **from any depth**. **CURRENT:** connected physical backtracking and timed returns exist, but the approved universally accessible single-portal flow is not implemented.
+- **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers leave for **two complete off-duty days** outside shop and dungeon. **CURRENT:** physical departure, saved cooldown and safe entry already exist; the future portal topology/reentry presentation remains open.
-- Ordinary room opponents, eligible traps and chests refresh on saved deterministic intervals; unique victories and permanent discoveries do not. **CURRENT:** renewable common sites are wired for Floors 1–4 and 7.
-- The early chapter should contain substantive **Floors 1–10**, with **an individual Galvik-granted pass before Floor 10**. This pass and deeper-floor content remain **PLANNED**. Moving the Cave Troll from current Floor 6 to Floor 10 is **OPEN**, not enacted.
+- Common opponents, traps and chests refresh on saved intervals across ordinary Floors 1–9; unique boss victories and persistent discoveries do not respawn as common loot.
+- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved permitted Temporary Party of two or three heroes. Individual eligibility remains encoded as historical `level6Permit`; migrating that field to a truthful name is separate work. Substantive *authored* variety and a full playable progression audit are still open.
 - Full 100-floor progression is a long-range fiction/ambition, **not** a claim of implemented, promised or budgeted launch content.
 
 ## 5. Galvik and the story
@@ -66,7 +66,7 @@ The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper contract.
 
 **OPEN / NON-CANON:** precise origin and enforcement of Galvik's curse, whether dead adventurers become Ghouls, a singular extremely greedy adventurer becoming a bound shopkeeper, potential transfer of the curse to another character, 400-year service, a new protagonist/NG+, the ending choice, specific alliances and a broader 100-floor mythology. These are promising *story concepts*, not locked implemented triggers. A previously discarded amulet should not be smuggled back as a mandatory explanation.
 
-**Deferred:** cellar, forge, pond, extra supply chains, permanent social leadership and wider hero models with individualized wearables remain separate design work, not commitments of this release. Any new monster or hero must respect actual rig/equipment requirements and the existing [asset pipeline](MONSTER_ASSET_PIPELINE.md).
+**Implemented:** the physical cellar, fiancée portrait passage and pond/fishing exist. **Deferred:** forge, enhanced material economy, permanent social leadership and individual hero wearable rigs remain separate design work, not automatic commitments. Any new monster or hero must respect actual rig/equipment requirements and the existing [asset pipeline](MONSTER_ASSET_PIPELINE.md).
 
 ## 6. Rejected or superseded
 

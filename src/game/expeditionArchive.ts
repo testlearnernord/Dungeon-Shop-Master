@@ -20,6 +20,8 @@ export interface ExpeditionHighlight {
   readonly saved:boolean;
   readonly floor:number|null;
   readonly partySize:number;
+  /** Existing v26 Floor-10 group tape, never the old solo BossReplay. */
+  readonly partyBoss:boolean;
 }
 export interface ArchiveBookmark {
   readonly id:string;
@@ -88,8 +90,11 @@ export function selectExpeditionArchive(
       heroId:event.adventurerId,
       heroName:names.get(event.adventurerId)??event.adventurerId,
       label:kind.label,hasReplay,saved,
-      floor:spatial?.floor??(event.combatReplay?6:null),
-      partySize:spatial?.partyMemberIds?.length??0,
+      floor:event.partyBossReplay?10:spatial?.floor??(event.combatReplay?6:null),
+      partySize:event.partyBossReplay?
+        event.partyBossReplay.actors.filter(actor=>actor.team==="heroes").length:
+        spatial?.partyMemberIds?.length??0,
+      partyBoss:!!event.partyBossReplay,
     }];
   });
 }
@@ -104,7 +109,8 @@ export function archiveBookmarks(
   if(!event)return [];
   const spatial=event.dungeonReplay??event.level7Replay;
   if(!spatial){
-    return event.combatReplay?[{id:"start",label:"Watch saved combat",replaySeconds:0}]:[];
+    return event.combatReplay||event.partyBossReplay?
+      [{id:"start",label:"Watch saved combat",replaySeconds:0}]:[];
   }
   const timeline=buildDungeonPlayback(spatial);
   const marks:ArchiveBookmark[]=[{

@@ -464,9 +464,11 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
 }
 
 /**
- * Grant or revoke Level 6 access only while a living hero is visiting the shop.
- * This is an explicit player decision, not a tick or a hidden RNG roll.
- * The Level 6 expedition system consumes this flag when a visitor departs.
+ * Grant or revoke the legacy-named boss pass only while a living hero
+ * visits Galvik's shop. This is a player decision, not RNG or a clock tick.
+ * LIVE uses level6Permit at the Floor-9-to-10 Temporary Party gate;
+ * the historic non-LIVE solo solver still reads the same v26 save field.
+ * A rename needs a versioned migration and legacy regression coverage.
  */
 export function setLevel6Permit(state: GameState, heroId: string, permitted: boolean): GameState {
   if (typeof permitted !== "boolean") throw new TypeError("Level 6 permission must be boolean.");

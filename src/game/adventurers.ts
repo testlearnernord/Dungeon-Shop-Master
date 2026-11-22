@@ -40,7 +40,8 @@ export interface AdventurerState {
   readonly shopStayDays: number;
   /** First eligible new expedition day following an observed shop exit. */
   readonly offDutyUntilDay: number | null;
-  /** Explicit, player-controlled future access to dungeon Level 6. */
+  /** Historic v26 field name; now permits joining a Floor-10 boss party.
+   * Rename only with a real versioned campaign-save migration. */
   readonly level6Permit: boolean;
 }
 

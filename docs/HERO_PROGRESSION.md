@@ -2,8 +2,9 @@
 
 Gameplay goal: XP creates a **real, observable difference** in one shared fight
 motor, but does not turn veterans into immortal dungeon sweepers. The same
-derived actor statistics drive ordinary fights, Level 6's Troll, and the
-development Combat Lab.
+derived actor statistics drive ordinary fights, the genuine Floor-10
+Temporary Party Cave Troll, and the development Combat Lab. The older
+Level-6 solo presentation/recording contract remains for compatibility.
 
 ## Authoritative calculation
 
@@ -34,8 +35,8 @@ owned consumables. Healers can also purchase and consume real supplies.
 
 - `heroProgression(hero)` is the sole pure source of effective maxima, class
   attributes and bonuses. It doesn't roll RNG or write a save.
-- `settleHeroExperience(hero,xp,hp)` is the sole XP/level/health settlement
-  routine shared by ordinary LIVE, legacy spatial and Troll battles.
+- `settleHeroExperience(hero,xp,hp)` is the XP/level/health settlement
+  routine shared by ordinary LIVE, non-LIVE legacy spatial and Troll battles.
 - Saved `stats` retain historical values. Old campaigns, including pre-feature
   high-level heroes, load unchanged and receive their derived power on the
   next battle. Save validation now accepts real earned effective HP but rejects
@@ -60,7 +61,11 @@ Do not balance by artificially awarding XP, healing dead heroes, mutating
 historical replay frames or raising monster HP solely to compensate for the
 level number.
 
-## First 100-day post-progression measurement (four-seed regression)
+## Historical first 100-day post-progression measurement (four-seed regression)
+
+> This table measures the specific pre-#297/#298 code used in the linked run.
+> It is **not** evidence for the current Floor-10 party boss or the latest
+> role-aware shopping/merchant balance. Issue #294 remains open.
 
 The deterministic world-clock audit [run 45013948343](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/45013948343)
 completed all four seeds successfully, including the previously broken late-night

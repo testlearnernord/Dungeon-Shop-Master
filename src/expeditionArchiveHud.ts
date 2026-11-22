@@ -11,6 +11,7 @@ export function setupExpeditionArchiveHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
   openDungeonRecording:(eventId:string,seconds:number)=>boolean,
   openBossRecording:(eventId:string)=>boolean,
+  openPartyBossRecording:(eventId:string)=>boolean,
 ):()=>void {
   const dialog=document.querySelector<HTMLDialogElement>("#archive-dialog")!;
   const openButton=document.querySelector<HTMLButtonElement>("#open-archive")!;
@@ -99,7 +100,7 @@ export function setupExpeditionArchiveHud(
       render();
     });
     actions.append(save);
-    if(entry.floor!==6){
+    if(entry.floor!==6&&!entry.partyBoss){
       const jumps=document.createElement("button");
       jumps.type="button";
       jumps.textContent="Highlights / Jump to…";
@@ -127,7 +128,8 @@ export function setupExpeditionArchiveHud(
   }
   function watchFootage(entry:ExpeditionHighlight,seconds:number):void {
     dialog.close();
-    const ok=entry.floor===6?openBossRecording(entry.id):
+    const ok=entry.partyBoss?openPartyBossRecording(entry.id):
+      entry.floor===6?openBossRecording(entry.id):
       openDungeonRecording(entry.id,seconds);
     if(!ok){
       const status=document.querySelector<HTMLElement>("#status");

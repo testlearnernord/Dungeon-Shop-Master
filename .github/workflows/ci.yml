@@ -25,6 +25,8 @@ jobs:
       - run: npm run build
       - run: npm run verify:pages
       - run: npm run test:unit
+      # Conservative report only: never auto-delete modules by import graph.
+      - run: npm run audit:modules
 
   smoke:
     name: Browser core smoke

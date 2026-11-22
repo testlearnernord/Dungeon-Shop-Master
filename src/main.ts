@@ -41,7 +41,6 @@ import { setupBedtime, type BedtimeController } from "./bedtime.ts";
 import { resetReplayDisclosure } from "./replayDisclosure.ts";
 import { setupEconomyHud } from "./economyHud";
 import { setupSalesHud } from "./salesHud";
-import { setupExpeditionHud } from "./expeditionHud";
 import {setupExpeditionArchiveHud} from "./expeditionArchiveHud.ts";
 import { currentDayReceipts } from "./game/saleView";
 import { loadCampaign, setupCampaignHud } from "./campaignHud";
@@ -359,7 +358,6 @@ store.subscribe(()=>{
     syncTrafficCheckpoint();
 });
 setupSalesHud(store);
-setupExpeditionHud(store);
 let selectedItemId: ItemId = SHELF_GOODS[0].id;
 setupCampaignHud(store, campaign, () => {
   replacingCampaign=true;
@@ -550,7 +548,8 @@ setupWorldEventFeed(store,target=>{
 });
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
-  eventId=>{arena.open(eventId);return arena.isActive;});
+  eventId=>{arena.open(eventId);return arena.isActive;},
+  eventId=>dungeon.openRecordedPartyBoss(eventId));
 isShopActive=()=>!arena.isActive&&!dungeon.isActive&&
   !(bedtime?.isBlocking??false)&&!(fishing?.isActive??false);
 /** Shop floor uses the same worldwide Hero Card as LIVE Dungeon.

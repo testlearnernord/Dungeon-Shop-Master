@@ -1,8 +1,8 @@
 # Dungeon Shop Master · Immersive UI Contract
 
-### Level-6 quality rule (owner LOCKED, 20 Nov 2026)
+### Cave Troll presentation quality rule (owner LOCKED; current Floor 10)
 
-The Cave Troll arena's framing, volumetric art, directional lighting, 3D character animations, focus/fly controls, world-space health plates and hit effects are the **reference for every opt-in fight**. Different enemies get different authored arenas and attacks; Temporary Parties add actors and bars without downgrading the presentation. The ordinary LIVE/replay dungeon map stays abstract. The common stage and world-projection implementation is `combatSpectatorStage.ts` and `combatHudProjection.ts`; the Crypt is a themed art variant, not an alternate combat engine. The authoritative Troll solo-motor migration remains OPEN.
+The Cave Troll arena's framing, volumetric art, directional lighting, 3D character animations, focus/fly controls, world-space health plates and hit effects are the **reference for every opt-in fight**. Different enemies get different authored arenas and attacks; Temporary Parties add actors and bars without downgrading the presentation. The ordinary LIVE/replay dungeon map stays abstract. The common stage and world-projection implementation is `combatSpectatorStage.ts` and `combatHudProjection.ts`; the Crypt is a themed art variant, not an alternate combat engine. The Floor-10 Temporary Party boss uses the shared 60-Hz group motor; the former Level-6 solo arena remains a historical/training visual reference.
 
 
 > **Current implementation contract, reviewed 2026-11-18.** Read this
@@ -11,7 +11,7 @@ The Cave Troll arena's framing, volumetric art, directional lighting, 3D charact
 > are distinguished there; package numbers are not reserved.
 
 ## Purpose
-The Level 5 shop is a first-person **cave**, not a desktop dashboard. Gameplay,
+Galvik's **unnumbered cursed shop** is a first-person **cave**, not a desktop dashboard. Gameplay,
 exploration and characters should remain visible; management is accessible
 through contextual controls and focused overlays.
 
@@ -73,11 +73,11 @@ This document is a maintainable implementation contract.
 | Cashier | Two-stage timed receipt overlay opened from the real staff socket; item pictograms, real collected gold and tip, paid receipt remains visible; **E** explicitly takes the next physically-ready customer's cart without a modal/pointer-lock roundtrip, **Esc** exits; the GameStore is the only payment authority |
 | Blueprint / placement / mining | Context prompt and real-world ghost; not a permanent sidebar |
 | World nameplates / request bubbles | Portrait, level, role, gold and HP; individual icon-based restock/credit requests with real deadlines; one optional short role/item-aware customer remark above a visible NPC at a time, without intercepting world input |
-| Level 6 / 7 spectator | Compact panels, optional controls legend, same focus style. Level 6 adds click-through world-projected hero/troll HP plates and cue-driven floating numbers: gold hero→boss, red boss→hero, orange lava, green healing. Numeric HP remains in the bottom HUD. |
+| Normal-floor / Troll spectator | Compact panels, optional controls legend, same focus style. The historical Troll arena and current Floor-10 party stage support world-projected HP plates and cue-driven floating numbers: gold hero→boss, red boss→hero, orange lava, green healing. Numeric HP remains in the bottom HUD. |
 | Level 6 local model lab | In the existing spectator toolbar, `Inspect Tripo GLB` opens an explicit read-only asset inspection panel with a browser-local GLB file input, accessible animation selector, drag-orbit/zoom camera and Escape-to-return behavior. No saved fighter or combat details are written. The regular battle HUD and cinematic are hidden while inspecting. |
 | Audio / notifications / campaign | Minimal chrome, consistent buttons and persistent errors; Level 6 has one transient music-led cinematic overlay before the original HUD and combat data appear |
 
-## V.003 Adventurer Board 2.0 — APPROVED TARGET, NOT SHIPPED
+## V.003 Adventurer Board 2.0 — IMPLEMENTED CORE / PARTIAL POLISH
 
 **LIVE status is required** once the shared world clock ships: real
 legitimate reports reach the existing physical board and expanded E/R
@@ -166,21 +166,23 @@ superseded by PR #210):** the physical Board marks every
   semantic sprite atlas deliberately, not with decorative emoji controls.
   All icons retain accessible text/legend and never become the sole means
   to interpret urgent equipment/HP information.
-- **Special-floor status:** don't label the shop as dungeon F5
-  in V.003. Show **At Galvik's shop**, **Outside world · off duty**
+- **Special-floor status:** the shop is already the cursed, unnumbered realm;
+  never display it as dungeon F5, regardless of the internal v26 `floor=5` key. Show **At Galvik's shop**, **Outside world · off duty**
   (with actual two-day cooldown/return eligibility when known), or
   **Dungeon Floor N** as mutually exclusive states. For dungeon-active
   heroes, expose short move direction and medium-term goal where known;
   label absent heroes accurately, without implying they are present
   at shelves or currently fighting.
-- **One portal visual and service contract:** both customer arrivals
-  and exits share a single legible cursed vortex/doorway in the physical
-  shop; do not keep legacy two-door Floor 4/Floor 6 wayfinding,
+- **One portal visual and service contract:** current normal customer arrivals
+  and exits share one cursed doorway in the physical shop. Retained
+  historical `level4/level6` traffic keys need migration, not two visible
+  dungeon-floor directions. Do not restore legacy Floor 4/Floor 6 signage,
   unreachable checkout lines or blocked entry paths. Placement and
   reachability tests must follow the new geometry. A swirling instance
   portal is the proposed visual direction, not a finished asset.
-- **Floor 10 gate:** when a pass is absent, show a truthful blocked-floor
-  state without spoiling bosses or overriding the hero's autonomous
+- **Floor 10 gate:** show a truthful blocked-party attempt when fewer than
+  two living, eligible, saved temporary companions reach the real Floor-9
+  lower stair. Never pretend a solo pass grants a new party; respect autonomous
   medium-term goals. Permit remains a temporary per-hero merchant decision.
 - **Knowledge safety:** no future-state backfill of earlier reports,
   guaranteed fatality labels for missing heroes, leaked sealed outcomes or
