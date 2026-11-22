@@ -1,115 +1,41 @@
-# Floor LIVE Spectator Contract (PR #223 design handoff)
+# Floor LIVE Spectator — current contract
 
-Status: **PR #223 establishes the boundaries and fixes LIVE party gait.**
-The floor selector, per-hero clicks and subjective perception are **NOT implemented** by this document. They belong to #224–226. The opt-in Level-6-quality combat arena integration belongs to #227–231.
+> Reconciled 22 November 2026. The original PR #223–#231 handoff and obsolete “not implemented” entries are preserved in Git history. This file documents the **actual projection boundary**, not an instruction to implement already-shipped selectors.
 
-## Source of truth, read boundary and clocks
+## One source of truth
 
-- Authoritative world: `GameStore.state`, `worldClock.tick`,
-  `liveDungeon`, each floor's `Level7World.heroes`, `dungeonParties`,
-  and the one authoritative set of `LiveDungeonCombat` states.
-- Read-only projections: `selectLiveSpectatorFrame` today, and a future
-  `selectLiveFloorSpectatorFrame(state, floor)` when #224 is implemented.
-  Projections may select/filter/copy saved data, never run AI, combat or RNG.
-- One selected floor at a time. Valid playable spatial floor keys today:
-  1, 2, 3, 4, 7. Other floors and the cursed special floor must be
-  explicitly supported by gameplay before being offered in the selector.
-- The floor overview may intentionally reveal all **committed** positions to
-  the Dungeon Shop Master. Hero knowledge is separate, does not inherit
-  spectator observations and must not leak to passive merchant Board reports.
-- One world clock keeps the shop, dungeon exploration and 60Hz combats alive.
-  An optional viewing/camera/render update is never a simulation tick.
-  Saved/reloaded data must be bit-for-bit independent of watching.
-- Boss combat still has a separate authoritative solo motor. #229 must
-  migrate it to one shared motor using parity tests before retiring anything.
+- The saved `GameStore.state`, `liveDungeonRuntime.ts`, `worldClock.ts`, per-floor exploration checkpoints and `dungeonParties` own heroes, combat, resource changes, portals, and time.
+- `selectLiveFloorSpectatorFrame(state,floor)` / `selectLiveSpectatorFrame(state,heroId)` derive **read-only** representations. They never make travel decisions, allocate loot, change RNG, run another fight or fill private hero knowledge.
+- Ordinary **Floors 1–9** use the same live floor-world and seeded map semantics. The unique **Floor-10** Cave Troll is a saved 2–3-hero party encounter. Galvik's `cursed-shop` realm is not numbered Dungeon Floor 5.
+- Visual observation may show **committed** floor facts while the passive shop Board remains restricted to plausible reported knowledge. Watching is never an information source for AI movement.
 
-## Data contract for #224
+## LIVE map
 
-A pure `FloorSpectatorFrame` projection (not persisted, not the Board)
-should expose:
+- Show actual saved hero positions, health/equipment relevant to that view, party memberships, intentions, resolved sites and running fight beacons. Each hero has an individual saved checkpoint; never project one actor's tile onto all party members.
+- Readable chests, traps, monsters and stairways use **seeded physical coordinates**, not fabricated resource rolls. Stairs on ordinary Floors 1–9 are real landmarks; Floor-9 descent must still pass the saved party/permit gate before a battle starts.
+- The floor camera can pan, orbit, tilt, zoom and restore north. Knowledge-safe short route previews come only from the hero's actual saved plan/route. The map does not autorun combat or warp a hero when viewed.
+- Camera movement, scene props, Babylon caching and diff-based redraw are **presentation**. The 50-ms shop/world clock and 60-Hz actor authority proceed independently while the viewer is open.
 
-- `floor`, `worldTick`, `day`, `layoutKey`
-- `heroes[]`: stable hero ID, committed x/z checkpoint, role, current
-  actual HP, equipment, gold/inventory, goals/intentions from *existing*
-  saved records, saved party ID/member IDs and current activity; no
-  invented information or default goals presented as truth
-- `combats[]`: real saved fight ID and site, committed actor IDs and
-  latest frame reference, and whether the fight is still running
-- `features[]`: saved/seeded geometry and feature state as a spectator
-  layer, not individual hero discoveries
-- `knowledgeByHeroId`: read-only **per-hero** visited/visible data,
-  never the union silently passed back to the hero AI
+## LIVE battle and historical recordings
 
-Do not derive hero positions by taking one focused actor's x/z for every
-other actor. Read each hero's saved checkpoint from its floor world. Multiple
-independent parties and solo explorers must coexist on the same map.
+- Clicking a genuine committed combat beacon opens the existing opt-in `LiveGroupCombatArena` / shared spectator stage, not a separate combat solver. It may replay or follow committed actor frames.
+- Normal Ghoul/multi-hero fights and the Floor-10 Troll share the `groupCombat.ts` motor. The latter has actual saved **partyBossCombat** state, death links and a shared **partyBossReplay** record.
+- Opening the World Feed's Floor-10 boss result uses `DungeonViewer.openRecordedPartyBoss`; the **Expedition Archive** routes that same tape there. Its team, win/loss and 60-Hz cues remain immutable. Do not send it to the old solo BossReplay-v1 viewer.
+- Historical **Level-6 solo** tapes in existing version-26 saves still open in the compatible `level6Arena.ts` viewer. This is evidence preserved for old campaigns and training, **not** the present world boss's floor.
+- Event timelines contain today plus two previous days; up to 12 explicitly pinned real recordings persist. No new footage may be manufactured for a marker that has no saved frames.
 
-## UI and interaction for #224–226
+## Identity, UX and accessibility
 
-1. Main toolbar selects a **floor**, never an individual hero tape.
-   A detached **Replay archive** is still available to deliberately load
-   historical expedition footage with its own local playback clock.
-2. Dungeon map renders every committed hero/party on the selected floor.
-   Group colors/markers must have unambiguous, selectable IDs.
-3. Picking a hero opens a detail panel, adjusts only presentation fog to
-   that hero's current and visited cells and follows their saved position
-   if requested. Deselecting restores the neutral full-floor overview.
-4. Clicking a real committed fight beacon enters the existing opt-in
-   `LiveGroupCombatArena`; returning resumes the **same** floor, selected
-   hero and map camera. No combat results may be resimulated on transition.
-5. All object picking must have clear collision/priority between hero icons,
-   combat beacons and the neutral map. Input on HUD controls must not be
-   interpreted as world picking.
+- Use the same worldwide Hero Card, role indicators, equipment symbols and health semantics in shop, roster, floor and combat side roster. Different views can show only information legitimately available in that mode.
+- Show a compact party strip in fights without covering world HP plates and cinematic camera action. Normal fights and boss intros have separate framing.
+- Clicking HUD controls never becomes a map click. Existing auto-follow targets, replay controls, watch/return buttons and hero inspection must remain usable with mouse/keyboard.
+- Dispose heavy 3D actors and scene resources on close/change while preserving the saved battle and the player's last selected map orientation.
 
-## Current reusable adapter, no new movement engine
+## Acceptance
 
-- `liveSpectator.ts`: single-hero LIVE projection today. #224 should
-  reuse its saved world and fog/visibility filters, not clone a resolver.
-- `dungeonReplayScene.ts`: cheap abstract Babylon map and recorded route
-  presenter; `dungeonViewer.ts` manages the map and archive view and
-  switches one opt-in 3D fight scene.
-- `livePartyPresentation.ts` (PR #223): pure, **cosmetic** adapter from
-  two committed adjacent party checkpoints into a bounded 0.85s gait.
-  No move when a checkpoint stays put, members change, a fight begins,
-  the floor changes or steps were missed. Rendering at 60FPS is allowed
-  to move meshes **only** along the known saved edge, never change state.
-- `recordedTemporaryPartyFormation`: immutable historical party
-  formation and its replay-local clock, not a second live movement source.
-- `combatSpectatorStage.ts`, `combatHudProjection.ts`,
-  `LiveGroupCombatArena`: existing Level-6-based visual fight stage/HUD.
-  Visual reuse does **not** unify the separate authoritative combat motors.
+- Floor selection, individual hero/fight focus and scene interpolation never change world data or tick frequency.
+- Save/Load resumes actual portal transit, party formation, combat and original replay result without new reward/HP mutations.
+- Verify Floor 5 and 6 as **normal dungeon maps**, the Floor 9 lower stair party gate and Floor 10 original group footage.
+- Validate physical rendering and performance with browser smoke and manual real-device inspection; unit tests alone cannot approve quality.
 
-## Legacy removal checklist
-
-After the floor selector is working and covered by tests, remove the mixed
-`#dungeon-replay-select` LIVE-hero + archived-tape chooser and obsolete
-single-hero-only UI paths. Preserve the Board's explicit LIVE entry point,
-which should open the relevant floor with that hero preselected. Preserve
-the archived `openReplayAt` entry point in a separate archive. Only then
-remove dead UI listeners, fixtures and documentation. Never delete the
-Level-6 motor or regress saved combat to a graphical-only encounter.
-
-## Required verification
-
-- Pure tests: unchanged checkpoints, adjacent movement, member/floor/fight
-  transitions, independent membership ordering, stable per-hero positions.
-- Browser: selected floor shows two independent parties and solo actors,
-  hero click/deselect, fog/view isolation, LIVE combat/beacon transition,
-  return camera/selection and archive separation.
-- Save/reload and watched/unwatched simulations have identical HP, loot,
-  RNG, actor steps, deaths and clocks. No expensive per-fight model
-  allocation in the neutral floor view. Build, unit suite and two
-  Playwright browser smoke shards required before merge.
-
-## Implementation update · #226
-
-The hero detail click now selects a subjective sight mode using
-`heroPerception.ts`; the neutral player view still sees the entire floor.
-`hasDungeonLineOfSight` raycasts seeded tile geometry and blocks views
-beyond walls. `dungeonExploredSight` uses the immutable travel history
-of one character, not other explorers or the player's omniscient map.
-Non-current revealed geometry is dimmed. Monster/hero/fight beacons appear
-only if in current sight. The detail panel lists line-of-sight contacts.
-No hero AI or passive Board receives observer-derived information;
-persistent cross-hero communication is not part of #226.
-
+[Architecture](ARCHITECTURE.md) · [Game Bible](GAME_BIBLE.md) · [Legacy audit](LEGACY_OBSOLESCENCE_AUDIT.md)
