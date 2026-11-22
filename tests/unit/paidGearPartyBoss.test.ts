@@ -92,5 +92,5 @@ test("physically purchased gear carries into the real Floor-10 GroupCombat hero"
   assert.equal(recorded.x,initialActor.x);
   assert.equal(recorded.z,initialActor.z);
   assert.equal(recorded.phase,initialActor.phase);
-  assert.equal(initialActor.equipment?.weapon,"Iron Sword");
+  assert.equal(gearedOptions.actors.find(a=>a.id===first.id)?.equipment?.weapon,"Iron Sword");
 });
