@@ -1,6 +1,7 @@
 import {loadAssetContainerAsync} from "@babylonjs/core/Loading/sceneLoader";
 import {Color3} from "@babylonjs/core/Maths/math.color";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
+import type {BaseTexture} from "@babylonjs/core/Materials/Textures/baseTexture";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import {Mesh} from "@babylonjs/core/Meshes/mesh";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
@@ -12,7 +13,11 @@ import "@babylonjs/loaders/glTF/2.0";
 
 /** Presentation only: movement and save identity come from the shared GameStore.
  * The imported Tripo prop has one predictable physical collision hull. */
-export function setupCellarTableVisuals(scene:Scene,store:GameStore):void{
+export interface CellarTableVisuals {
+  /** A read-only texture from the existing spectator renderer, not a UI. */
+  setDungeonTexture(texture:BaseTexture|null):void;
+}
+export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTableVisuals{
   const def=furnitureDefinition("cellar-table");
   const root=new TransformNode("cellar-table-root",scene);
   const hull=MeshBuilder.CreateBox("cellar-table-collider",{
@@ -30,6 +35,34 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):void{
   const material=new StandardMaterial("cellar-table-fallback-wood",scene);
   material.diffuseColor=new Color3(.19,.12,.07);
   backup.material=material;
+
+  // The inset is a real 3D plane INSIDE the dark recessed panel of the
+  // movable GLB, never a fullscreen HUD or a second copy of the tabletop.
+  // Coordinates are local to the shared furniture root, so P repositioning
+  // and Q/R rotation carry the image along with the entire table.
+  const inset=MeshBuilder.CreatePlane("cellar-table-live-inset",{
+    width:def.width*.61,height:def.depth*.56,
+  },scene);
+  inset.parent=root;
+  inset.position.set(0,def.height*.83,-def.depth*.10);
+  inset.rotation.x=-Math.PI/2; // face the ceiling, parallel to the recess
+  inset.isPickable=false;
+  inset.checkCollisions=false;
+  inset.isVisible=false;
+  const screenMat=new StandardMaterial("cellar-table-live-inset-mat",scene);
+  screenMat.diffuseColor=new Color3(1,1,1);
+  screenMat.specularColor=Color3.Black();
+  screenMat.disableLighting=true;
+  screenMat.backFaceCulling=false;
+  inset.material=screenMat;
+  let modelReady=false;
+  let dungeonTexture:BaseTexture|null=null;
+  const setDungeonTexture=(texture:BaseTexture|null)=>{
+    if(dungeonTexture===texture)return;
+    dungeonTexture=texture;
+    screenMat.diffuseTexture=texture;
+    inset.isVisible=modelReady&&texture!==null;
+  };
 
   let previous:typeof store.state.cellarTable|null=null;
   const sync=()=>{
@@ -64,7 +97,10 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):void{
       mesh.checkCollisions=false;
     }
     backup.dispose();
+    modelReady=true;
+    inset.isVisible=dungeonTexture!==null;
   }).catch(error=>{
     console.warn("Galvik's Table GLB unavailable; keeping pickable fallback.",error);
   });
+  return {setDungeonTexture};
 }

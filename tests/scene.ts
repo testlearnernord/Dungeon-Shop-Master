@@ -5,8 +5,48 @@ import {Ray} from "@babylonjs/core/Culling/ray";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
 
+/** Once the table creates a passive offscreen spectator scene, Babylon's
+ * LastCreatedScene is no longer necessarily the visible shop. A test probe
+ * should inspect the active UI mode rather than whichever scene was made last. */
+function currentTestScene(){
+  const latest=Engine.LastCreatedScene;
+  if(!latest||document.body.classList.contains("dungeon-active")||
+      document.body.classList.contains("arena-active"))return latest;
+  return latest.getEngine().scenes.find(scene=>
+    scene.getMeshByName("cellar-table-collider")!==null)??latest;
+}
+
+/** Inspect the actual physical inset, texture and unchanged shop controls. */
+export function inspectGalviksLiveTable(){
+  const scene=currentTestScene();
+  const inset=scene?.getMeshByName("cellar-table-live-inset");
+  const material=inset?.material instanceof StandardMaterial?inset.material:null;
+  const texture=material?.diffuseTexture??null;
+  return {
+    insetExists:!!inset,
+    insetVisible:inset?.isVisible??false,
+    textureName:texture?.name??null,
+    shopCamera:scene?.activeCamera?.name??null,
+    shopMode:!document.body.classList.contains("dungeon-active"),
+    inShopScene:!!scene?.getMeshByName("cellar-table-collider"),
+  };
+}
+
+export function aimAtGalviksTable(){
+  const scene=currentTestScene();
+  const camera=scene?.activeCamera as UniversalCamera|undefined;
+  const root=scene?.getTransformNodeByName("cellar-table-root");
+  if(!camera||!root)throw Error("Missing Galvik shop camera or table root");
+  const center=root.getAbsolutePosition();
+  camera.position.set(center.x,center.y+1.65,center.z+3.4);
+  camera.setTarget(center.add(new Vector3(0,1.08,0)));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
+
 export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
-  const scene = Engine.LastCreatedScene!;
+  const scene = currentTestScene()!;
   const camera = scene.activeCamera as UniversalCamera;
   if (reset) {
     camera.position.set(reset.x, reset.y, reset.z);
@@ -28,7 +68,7 @@ export function inspectPlayer(reset?: { x: number; y: number; z: number }) {
 
 /** E2E camera position for interacting with a real stationary NPC, no UI hooks. */
 export function aimAtBeggingVisitor(heroId:string):void {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const node=scene.transformNodes.find(candidate=>
     candidate.metadata?.adventurerId===heroId);
   if(!node)throw new Error("Cannot find the requested visitor mesh.");
@@ -42,7 +82,7 @@ export function aimAtBeggingVisitor(heroId:string):void {
 /** E2E aim only: inspect a real committed shop NPC with the same FPS
  * sightline that the in-game I / Alt-click interaction uses. */
 export function aimAtHeroInspectionVisitor(heroId:string):void {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const node=scene.transformNodes.find(candidate=>
     candidate.metadata?.adventurerId===heroId);
   if(!node)throw Error("Missing physical shop visitor for Hero Card");
@@ -57,7 +97,7 @@ export function aimAtHeroInspectionVisitor(heroId:string):void {
 /** Center the *overhead* customer-bark position in a genuine FPS camera.
  * Normal credit conversations use the separate lower torso aim helper. */
 export function aimAtCustomerBark(heroId:string):void {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const node=scene.transformNodes.find(candidate=>
     candidate.metadata?.adventurerId===heroId);
   if(!node)throw new Error("Cannot find customer for speech-bubble camera.");
@@ -70,7 +110,7 @@ export function aimAtCustomerBark(heroId:string):void {
 
 /** Select the actual cash register using the FPS crosshair before P. */
 export function aimAtFurniture(name:string,distance=3.2):void {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const camera=scene.activeCamera as UniversalCamera;
   const mesh=scene.getMeshByName(name);
   if(!mesh)throw new Error("Missing furniture: "+name);
@@ -91,7 +131,7 @@ export function aimAtFurniture(name:string,distance=3.2):void {
 }
 
 export function aimAtBlueprintFloor():void {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const camera=scene.activeCamera as UniversalCamera;
   camera.position.set(0,1.7,-4.6);
   camera.setTarget(new Vector3(0,0,0));
@@ -101,7 +141,7 @@ export function aimAtBlueprintFloor():void {
 
 export function aimAtRosterBoard() {
   inspectPlayer({ x: -5, y: 1.7, z: -4.2 });
-  const scene = Engine.LastCreatedScene!;
+  const scene = currentTestScene()!;
   (scene.activeCamera as UniversalCamera).setTarget(scene.getMeshByName("adventurer-roster-board")!.getAbsolutePosition());
   return scene.getFrameId();
 }
@@ -109,14 +149,14 @@ export function aimAtRosterBoard() {
 /** Aim the FPS camera at the actual mattress, not nearby bedroom props. */
 export function aimAtBed() {
   inspectPlayer({ x: 0.6, y: 1.7, z: -8.95 });
-  const scene = Engine.LastCreatedScene!;
+  const scene = currentTestScene()!;
   (scene.activeCamera as UniversalCamera).setTarget(scene.getMeshByName("galvik-bed")!.getAbsolutePosition());
 }
 
 /** Regression probe for objects around the bed that must not trigger sleep. */
 /** The account book must be reachable without triggering Galvik's bed hold-E. */
 export function aimAtDebtBook():void {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const camera=scene.activeCamera as UniversalCamera;
   const book=scene.getMeshByName("bedroom-account-pages")!;
   camera.position.set(-1.7,1.7,-8.0);
@@ -127,12 +167,12 @@ export function aimAtDebtBook():void {
 
 export function aimAtBedroomProp(name:string) {
   inspectPlayer({ x: 0.6, y: 1.7, z: -8.95 });
-  const scene = Engine.LastCreatedScene!;
+  const scene = currentTestScene()!;
   (scene.activeCamera as UniversalCamera).setTarget(scene.getMeshByName(name)!.getAbsolutePosition());
 }
 
 export function inspectBedroomSightlines() {
-  const scene = Engine.LastCreatedScene!;
+  const scene = currentTestScene()!;
   const at=(name:string)=>scene.getMeshByName(name)!;
   return {
     rosterX:at("adventurer-roster-board").getAbsolutePosition().x,
@@ -181,7 +221,7 @@ export async function waitForShelfSlotMesh(
 ):Promise<void> {
   const deadline=performance.now()+timeoutMs;
   while(performance.now()<deadline){
-    if(Engine.LastCreatedScene?.getMeshByName(name))return;
+    if(currentTestScene()?.getMeshByName(name))return;
     await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
   }
   throw Error("Physical shelf slot never appeared: "+name);
@@ -189,14 +229,14 @@ export async function waitForShelfSlotMesh(
 
 export function aimAtShelfSlot() {
   const start = inspectPlayer({ x: -5.05, y: 1.7, z: -2 });
-  const scene = Engine.LastCreatedScene!;
+  const scene = currentTestScene()!;
   const camera = scene.activeCamera as UniversalCamera;
   camera.setTarget(scene.getMeshByName("shelf-1-slot-1")!.getAbsolutePosition());
   return start.frame;
 }
 
 export function inspectNpcVisuals() {
-  const scene = Engine.LastCreatedScene!;
+  const scene = currentTestScene()!;
   const corridorWalls = scene.meshes.filter(({ name }) => name.startsWith("corridor-wall-") || name.startsWith("corridor-end-"));
   return {
     frame: scene.getFrameId(),
@@ -284,7 +324,7 @@ export function inspectNpcVisuals() {
  * colliding mesh from x=-2.75 to the right wall x=7.5.
  */
 export function inspectFormerRightExit(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const wall=scene.getMeshByName("back-middle-wall");
   wall?.computeWorldMatrix(true);
   const bounds=wall?.getBoundingInfo().boundingBox;
@@ -312,13 +352,13 @@ export function inspectFormerRightExit(){
 }
 export function aimAtFormerRightExit():void{
   inspectPlayer({x:4,y:1.7,z:3.25});
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(4,1.7,7));
 }
 
 /** Called via Vite's module URL, avoiding bare-specifier imports from page.evaluate. */
 export function inspectBossArena() {
-  const scene = Engine.LastCreatedScene!;
+  const scene = currentTestScene()!;
   const hero = scene.transformNodes.find(node => node.name.startsWith("arena-hero-"));
   const boss = scene.transformNodes.find(node => node.name === "arena-boss-troll");
   return {
@@ -403,7 +443,7 @@ export function inspectBossArena() {
 export async function inspectCaveTrollDeathPose():Promise<{
   elapsed:number;fall:number;weapon:number;vertices:number;
 }> {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const {createCaveTrollVisual}=await import("../src/game/caveTrollVisual.ts");
   const model=createCaveTrollVisual(scene);
   for(let i=0;i<22;i++)model.animate({
@@ -428,7 +468,7 @@ export async function inspectCaveTrollMotion():Promise<{
   windup:number;strike:number;liftAtWindup:number;jawAtWindup:number;
   contactCompression:number;recoveredCompression:number;
 }> {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const {createCaveTrollVisual}=await import("../src/game/caveTrollVisual.ts");
   const model=createCaveTrollVisual(scene);
   const foot=model.root.getChildMeshes(false)
@@ -461,7 +501,7 @@ export async function inspectCaveTrollMotion():Promise<{
 
 /** Shared scene-agnostic visual identity inspection for browser tests. */
 export function inspectHeroModels() {
-  const scene = Engine.LastCreatedScene!;
+  const scene = currentTestScene()!;
   return scene.transformNodes.filter(node =>
     node.name.startsWith("npc-adventurer-") ||
     node.name.startsWith("arena-hero-adventurer-")).filter(node =>
@@ -485,7 +525,7 @@ export function inspectHeroModels() {
 
 /** Inspection of the isolated read-only Babylon dungeon-layout preview. */
 export function inspectDungeonLayout() {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   return {
     wallCount:scene.meshes.filter(m=>m.name.startsWith("dungeon-wall-")).length,
     floorCount:scene.meshes.filter(m=>m.name.startsWith("dungeon-corridor-tile-") ||
@@ -504,7 +544,7 @@ export function inspectDungeonLayout() {
 /** Inspect actual scene props; absent/stale authored GLB is visible as a
  * failure, rather than being silently replaced by a flat dummy shape. */
 export function inspectDungeonStairMarkers(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   return scene.meshes.filter(mesh=>mesh.metadata?.visualKind==="3d-stairway"&&
     mesh.name==="dungeon-"+mesh.metadata.kind+"-stair-"+
       mesh.metadata.dungeonStairwayId)
@@ -517,7 +557,7 @@ export function inspectDungeonStairMarkers(){
 }
 
 export function inspectDungeonFeatureProps(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const withPrefix=(prefix:string)=>scene.meshes.filter(mesh=>
     mesh.name.startsWith(prefix));
   const roots=withPrefix("dungeon-monster-");
@@ -542,7 +582,7 @@ export function inspectDungeonFeatureProps(){
 
 /** Inspect actual Level 7 playback meshes without invoking any simulator. */
 export function inspectDungeonPlayback() {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const hero=scene.transformNodes.find(node=>node.name.startsWith("dungeon-replay-")&&
     node.metadata?.replayOnly);
   return {
@@ -603,7 +643,7 @@ export function inspectDungeonPlayback() {
 
 /** Browser regression probe for fixtures and Shift movement. */
 export function inspectShopPolish() {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const camera=scene.activeCamera as UniversalCamera;
   return {
     speed:camera.speed,
@@ -622,7 +662,7 @@ export function inspectShopPolish() {
 /** Test-only world-matrix inspection of the persisted furniture transforms. */
 /** Read a genuinely instantiated extra shelf from the Babylon scene. */
 export function inspectAdditionalShelf(id:string){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const root=scene.getTransformNodeByName(id+"-root");
   const slots=scene.meshes.filter(mesh=>mesh.metadata?.kind==="shelf-slot"&&
     typeof mesh.metadata.slotId==="string"&&
@@ -633,7 +673,7 @@ export function inspectAdditionalShelf(id:string){
 
 /** Browser-friendly scene probe for Galvik's new sleeping room. */
 export function inspectBedroom() {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const bed=scene.getMeshByName("galvik-bed");
   return {
     exists:!!bed,
@@ -645,7 +685,7 @@ export function inspectBedroom() {
 
 /** Dedicated structural and dressing probe. Decorative meshes must be inert. */
 export function inspectBedroomAtmosphere() {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const pick=(name:string)=>scene.getMeshByName(name);
   const decor=scene.meshes.filter(mesh=>
     mesh.name.startsWith("bedroom-rock-rib-")||
@@ -675,7 +715,7 @@ export function inspectBedroomAtmosphere() {
 
 /** Check material reuse on actual gameplay meshes without adding a production debug API. */
 export function inspectDungeonSurfaces() {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const at=(name:string)=>scene.getMeshByName(name);
   const material=(name:string)=>at(name)?.material;
   const textured=(name:string)=>!!(material(name) &&
@@ -707,7 +747,7 @@ export function inspectDungeonSurfaces() {
 
 /** Deterministic visual-only placement for the observed day-3 reversal jam. */
 export function stageReturningNpcVisualsInsideShop():void {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   for(const [id,x,z] of [
     ["adventurer-1",-0.6,1],["adventurer-2",-5,-0.37],
   ] as const){
@@ -719,7 +759,7 @@ export function stageReturningNpcVisualsInsideShop():void {
 
 /** Aim at a real pickable rock face, not at an artificially injected UI hook. */
 export function aimAtLevel5Rock(x:number,z:number):string {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const mesh=scene.meshes.find(mesh=>
     mesh.metadata?.level5MineCell?.x===x&&
     mesh.metadata?.level5MineCell?.z===z);
@@ -734,7 +774,7 @@ export function aimAtLevel5Rock(x:number,z:number):string {
 
 /** Read the visible mounted board's world transform after a reload. */
 export function inspectMountedRosterBoardX():number|null {
-  const board=Engine.LastCreatedScene?.getMeshByName("adventurer-roster-board");
+  const board=currentTestScene()?.getMeshByName("adventurer-roster-board");
   if(!board)return null;
   board.computeWorldMatrix(true);
   return Math.round(board.getAbsolutePosition().x*100)/100;
@@ -744,7 +784,7 @@ export function inspectMountedRosterBoardX():number|null {
  * next unmined rock wall. Never teleport the board or fake a wall surface.
  */
 export function aimAtExcavatedBoardWall(nextX:number,z:number):string{
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const face=scene.meshes.find(mesh=>
     mesh.metadata?.level5MineCell?.x===nextX&&
     mesh.metadata?.level5MineCell?.z===z&&
@@ -766,7 +806,7 @@ export function aimAtExcavatedBoardWall(nextX:number,z:number):string{
 
 /** Wall and floor observations from the rendered Babylon scene. */
 export function inspectLevel5Rock(x:number,z:number) {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   return {
     floor:!!scene.getMeshByName(`excavated-floor-${x},${z}`),
     clickableRock:scene.meshes.some(mesh=>
@@ -778,7 +818,7 @@ export function inspectLevel5Rock(x:number,z:number) {
 
 /** Browser probe uses the rendered first-person meshes, not private game hooks. */
 export function inspectGalvikBody(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const hands=[-1,1].map(side=>scene.getMeshByName(`galvik-hand-${side}`));
   const boots=[-1,1].map(side=>scene.getMeshByName(`galvik-boot-${side}`));
   const arms=[-1,1].map(side=>scene.getTransformNodeByName(`galvik-arm-pivot-${side}`));
@@ -798,7 +838,7 @@ export function inspectGalvikBody(){
 
 /** E2E-only camera target inside the private room, aimed at real floor geometry. */
 export function aimAtBedroomPlacement(x:number,z:number):void {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const camera=scene.activeCamera as UniversalCamera;
   camera.position.set(-0.8,1.7,-8.0);
   camera.setTarget(new Vector3(x,0.018,z));
@@ -807,7 +847,7 @@ export function aimAtBedroomPlacement(x:number,z:number):void {
 }
 
 export function inspectModularBedroom(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const coords=(name:string)=>{
     const node=scene.getMeshByName(name);
     if(!node)throw Error("Missing bedroom mesh "+name);
@@ -831,7 +871,7 @@ export function inspectModularBedroom(){
 
 /** Drive the real FPS crosshair rather than synthesizing UI clicks. */
 export function aimAtMainShopWall(x:number,z:number):void{
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const camera=scene.activeCamera as UniversalCamera;
   camera.position.set(x,1.7,z+2.5);
   camera.setTarget(new Vector3(x,1.65,z));
@@ -839,7 +879,7 @@ export function aimAtMainShopWall(x:number,z:number):void{
   camera.cameraRotation.setAll(0);
 }
 export function aimAtRelocatedRosterBoard():void{
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const camera=scene.activeCamera as UniversalCamera;
   const mesh=scene.getMeshByName("adventurer-roster-board")!;
   mesh.computeWorldMatrix(true);
@@ -850,7 +890,7 @@ export function aimAtRelocatedRosterBoard():void{
   camera.cameraRotation.setAll(0);
 }
 export function inspectMovedBedAndBoard(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const at=(name:string)=>{
     const mesh=scene.getMeshByName(name)!;
     mesh.computeWorldMatrix(true);
@@ -866,7 +906,7 @@ export function inspectMovedBedAndBoard(){
 
 /** The same material and pickability invariant used by the FPS blueprint. */
 export function inspectMinedFloorSurface(cell:string){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const floor=scene.getMeshByName("excavated-floor-"+cell);
   const original=scene.getMeshByName("stone-floor");
   return {
@@ -878,7 +918,7 @@ export function inspectMinedFloorSurface(cell:string){
 
 /** U must not alter the original full-wall meshes until this side is mined. */
 export function inspectMiningWallVisuals(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const left=scene.getMeshByName("left-wall");
   const right=scene.getMeshByName("right-wall");
   const targets=scene.meshes.filter(m=>m.metadata?.level5MineCell);
@@ -901,11 +941,11 @@ export function inspectMiningWallVisuals(){
 /** Mesh identity is stable for unchanged excavated floor while a second
  * nearby rock cell is removed. Rebuilding the entire cave breaks this. */
 export function level5MeshIdentity(name:string):number|null {
-  return Engine.LastCreatedScene?.getMeshByName(name)?.uniqueId??null;
+  return currentTestScene()?.getMeshByName(name)?.uniqueId??null;
 }
 
 export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const name=`excavated-floor-${Math.floor(x+.5)},${Math.floor(z+.5)}`;
   const floor=scene.getMeshByName(name);
   if(!floor||!floor.isPickable)throw new Error("Mined floor cannot be targeted");
@@ -931,7 +971,7 @@ export function aimAtExcavatedBlueprintFloor(x:number,z:number):string{
 
 /** Point the real FPS ray at a standard front-wall segment for wall decor. */
 export function aimAtPortraitWall(x=4.25):string{
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const camera=scene.activeCamera as UniversalCamera;
   camera.position.set(x,1.7,-4.6);
   camera.setTarget(new Vector3(x,2.15,-6.8));
@@ -945,7 +985,7 @@ export function aimAtPortraitWall(x=4.25):string{
 
 /** Target the real portrait canvas so contextual P uses ray picking. */
 export function aimAtWallPortrait():void{
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const camera=scene.activeCamera as UniversalCamera;
   const canvas=scene.getMeshByName("galvik-portrait-canvas");
   if(!canvas||!canvas.isEnabled())throw new Error("Portrait not hanging");
@@ -956,7 +996,7 @@ export function aimAtWallPortrait():void{
   camera.cameraRotation.setAll(0);
 }
 export function inspectWallPortrait(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const root=scene.getTransformNodeByName("galvik-portrait-root");
   const plane=scene.getMeshByName("galvik-portrait-canvas");
   return {enabled:!!root?.isEnabled(),
@@ -969,7 +1009,7 @@ export function inspectWallPortrait(){
 export async function inspectPhysicalStockMeshes() {
   const {SHELF_GOODS}=await import("../src/game/economy.ts");
   const {getShopStockTemplates}=await import("../src/game/shopStockAssets.ts");
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const templates=await getShopStockTemplates(scene);
   return SHELF_GOODS.map(item=>{
     const model=templates.get(item.id)!;
@@ -989,7 +1029,7 @@ export async function inspectPhysicalStockMeshes() {
 
 /** Wait for the five displayable stock GLBs and Shop's pending refresh. */
 export async function waitForShopStockAssets(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const {getShopStockTemplates}=await import("../src/game/shopStockAssets.ts");
   await getShopStockTemplates(scene);
   // Shop registered its refresh callback before the browser test did.
@@ -999,7 +1039,7 @@ export async function waitForShopStockAssets(){
 /** Observe the actual rendered shelf inventory, not only a template factory.
  * This must agree with saved slot quantities. */
 export function inspectRenderedShopStock(shelfId="shelf-1"){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   return [1,2,3,4].map(index=>{
     const slotId=shelfId+"-slot-"+index;
     const pad=scene.getMeshByName(slotId);
@@ -1022,7 +1062,7 @@ export function inspectRenderedShopStock(shelfId="shelf-1"){
  * Read-only inspection. Never advances combat or mutates the campaign.
  */
 export function inspectLiveCombatPresentation(){
-  const scene=Engine.LastCreatedScene;
+  const scene=currentTestScene();
   if(!scene)throw Error("Missing active spectator Babylon scene");
   const isArena=!!scene.getMeshByName("live-fight-arena-floor");
   return {
@@ -1079,7 +1119,7 @@ export function inspectLiveCombatPresentation(){
 
 /** #224 opt-in full-floor inspector. Never reads or affects the GameStore. */
 export function inspectLiveDungeonFloor(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   return {
     heroes:scene.transformNodes.filter(node=>
       node.name.startsWith("dungeon-floor-")&&node.metadata?.liveFloorOnly===true)
@@ -1102,7 +1142,7 @@ export function inspectLiveDungeonFloor(){
 
 /** Browser-only physical canvas click location of a real rendered hero token. */
 export function liveFloorHeroClickPoint(heroId:string):{x:number;y:number}{
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const node=scene.getMeshByName("dungeon-floor-token-"+heroId);
   const camera=scene.activeCamera;
   if(!node||!camera||!node.isEnabled())throw new Error(
@@ -1123,7 +1163,7 @@ export function liveFloorHeroClickPoint(heroId:string):{x:number;y:number}{
 
 /** #226 read-only Babylon visibility audit, on the actual floor scene. */
 export function inspectLiveFloorFog(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const tiles=scene.meshes.filter(mesh=>
     /^dungeon-(wall|corridor|room)-\d+-\d+$/.test(mesh.name));
   const selected=scene.transformNodes.filter(node=>
@@ -1141,26 +1181,26 @@ export function inspectLiveFloorFog(){
 /** Physical basement regression helpers: only orient the real shop camera. */
 export function aimAtCellarPortrait():void {
   inspectPlayer({x:-.85,y:1.7,z:-11.55});
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,2.15,-12.02));
 }
 export function aimAtCellarStairs(x=-.85):void {
   // Begin BEFORE the rear wall: teleporting behind the seam hid the bug.
   inspectPlayer({x,y:1.7,z:-11.55});
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(x,.5,-21));
 }
 const cellarCollisions:string[]=[];
 export function trackCellarCollisions():void{
   cellarCollisions.length=0;
-  const camera=Engine.LastCreatedScene!.activeCamera as UniversalCamera;
+  const camera=currentTestScene()!.activeCamera as UniversalCamera;
   camera.onCollide=mesh=>{if(cellarCollisions.length<50)cellarCollisions.push(mesh.name);};
 }
 export function inspectCellarCollisions():readonly string[]{
   return [...cellarCollisions];
 }
 export function inspectCellarGate() {
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   return {
     blocked:scene.getMeshByName("cellar-portrait-barrier")?.checkCollisions,
     ramp:scene.getMeshByName("cellar-stair-walkable-ramp")?.checkCollisions,
@@ -1171,24 +1211,24 @@ export function inspectCellarGate() {
 
 /** Pond visual and first-person entry probes for the actual shop scene. */
 export function inspectFishingPond(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const mesh=scene.getMeshByName("cellar-pond-water");
   return {exists:!!mesh,visible:!!mesh?.isEnabled(),pickable:!!mesh?.isPickable};
 }
 export function aimAtFishingPond():void{
   inspectPlayer({x:-6.25,y:-2.7,z:-27});
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-8.4,-4.31,-27));
 }
 
 export function aimUpCellarStairs():void{
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,1.4,-10.2));
 }
 
 /** Read-only 3D fishing diagnostics; no scene mutation or fake catches. */
 export function inspectFishingRod(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const rod=scene.getMeshByName("fishing-rod-visible-shaft");
   const line=scene.getMeshByName("fishing-rod-visible-line");
   const bobber=scene.getMeshByName("fishing-water-bobber");
@@ -1203,7 +1243,7 @@ export function inspectFishingRod(){
 /** Read-only hooks for verifying that the real fishing target drives the
  * hooked fish's world-space shadow and camera spring in Babylon. */
 export function inspectHookedFishingFish(){
-  const scene=Engine.LastCreatedScene!;
+  const scene=currentTestScene()!;
   const node=scene.getTransformNodeByName("fishing-hooked-shadow-root");
   const body=scene.getMeshByName("fishing-hooked-shadow-body");
   const wake=scene.getMeshByName("fishing-hooked-wake");
@@ -1230,7 +1270,7 @@ export function inspectHookedFishingFish(){
 
 /** Read only the actual active Babylon map camera for LIVE inspector tests. */
 export function inspectLiveFloorCameraFocus(){
-  const camera=Engine.LastCreatedScene!.activeCamera as UniversalCamera;
+  const camera=currentTestScene()!.activeCamera as UniversalCamera;
   if(!camera)throw new Error("No active LIVE dungeon camera");
   const target=camera.getTarget(),position=camera.position;
   return {target:{x:target.x,z:target.z},
