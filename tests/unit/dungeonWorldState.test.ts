@@ -6,7 +6,7 @@ import {dungeonWorldAt,setDungeonWorld} from "../../src/game/dungeonWorldState.t
 import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
 
 test("Alpha v34 uses exactly one immutable ordinary-floor checkpoint collection",()=>{
-  assert.equal(SIMULATION_VERSION,34);
+  assert.equal(SIMULATION_VERSION,35);
   const initial=createGameState(7351);
   const floor7=emptyLevel7World();
   const floor2=emptyLevel7World();
