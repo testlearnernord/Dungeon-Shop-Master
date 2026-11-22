@@ -12,7 +12,7 @@ import { NEW_GAME_COUNTER_PLACEMENT } from "./shopLayout";
 import {shopFurnitureDefinition} from "./furnitureRegistry.ts";
 import { buildBedroom } from "./bedroom";
 import {buildCellarGeometry} from "./cellarGeometry.ts";
-import { getDungeonSurfaces, tileLargeFloorUV } from "./dungeonSurfaces";
+import { getDungeonSurfaces, applyCaveWorldUV } from "./dungeonSurfaces";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
@@ -37,6 +37,8 @@ function box(
   const mesh = MeshBuilder.CreateBox(name, size, scene);
   mesh.position.copyFrom(position);
   mesh.material = surface ?? material(scene, `${name}-material`, color);
+  if(surface===getDungeonSurfaces(scene).stone||
+     surface===getDungeonSurfaces(scene).floor)applyCaveWorldUV(mesh);
   mesh.checkCollisions = collides;
   return mesh;
 }
@@ -89,7 +91,6 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   const rock = new Color3(0.2, 0.18, 0.16);
   const floor = box(scene, "stone-floor", { width: 15, height: 0.4, depth: 25 }, new Vector3(0, -0.2, 0), new Color3(0.25, 0.22, 0.18), true, surfaces.floor);
   floor.checkCollisions = true;
-  tileLargeFloorUV(floor, 15, 25);
   const ceiling = box(scene, "stone-ceiling", { width: 15, height: 0.35, depth: 25 }, new Vector3(0, 4.1, 0), rock, true, surfaces.stone);
   ceiling.checkCollisions = true;
 
