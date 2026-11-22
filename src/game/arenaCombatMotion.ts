@@ -53,6 +53,10 @@ export type CombatPreviewOptions = {
   strength?: number;
   agility?: number;
   intellect?: number;
+  /** Saved campaign level bonuses; absent in historical training/replay fixtures. */
+  progressionDamageBonus?:number;
+  progressionArmorBonus?:number;
+  progressionMagicHeals?:number;
   tacticsSeed?: number;
 };
 export type Projectile = { x: number; z: number; dx: number; dz: number; damage: number; ttl: number };
