@@ -1,4 +1,4 @@
-import { ECONOMY, ITEMS, preferredShopItemOrder, tradeAtStartOfDay, type ItemId } from "./economy.ts";
+import { ECONOMY, ITEMS, tradeAtStartOfDay, type ItemId } from "./economy.ts";
 import type { GameState } from "./gameState.ts";
 
 /** Read-only shopping intent planning based on the deterministic inventory
@@ -96,9 +96,12 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
         reason="unavailable";
       }else reason="cannot-afford";
     }
-    // A waiting or begging bubble follows exactly the class-specific
-    // buying preferences of the authoritative trade forecast.
-    const priorities=preferredShopItemOrder(projectedHero);
+    // Restock/begging petitions represent urgent affordable necessities,
+    // NOT the same budget trade-off as a funded purchase. Keep bread first
+    // so a penniless hero asks Galvik for food instead of an 8g vest.
+    // When supplies are stocked, paid gear follows the role-aware forecast.
+    const priorities:readonly ItemId[]=["bread","healing-herb",
+      "iron-sword","leather-vest"];
     const wantedItemId=(reason==="unavailable"||reason==="cannot-afford")?
       priorities.find(id=>{
         const item=ITEMS.find(entry=>entry.id===id)!;
