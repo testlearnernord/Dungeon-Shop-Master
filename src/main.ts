@@ -41,7 +41,6 @@ import { setupBedtime, type BedtimeController } from "./bedtime.ts";
 import { resetReplayDisclosure } from "./replayDisclosure.ts";
 import { setupEconomyHud } from "./economyHud";
 import { setupSalesHud } from "./salesHud";
-import { setupExpeditionHud } from "./expeditionHud";
 import {setupExpeditionArchiveHud} from "./expeditionArchiveHud.ts";
 import { currentDayReceipts } from "./game/saleView";
 import { loadCampaign, setupCampaignHud } from "./campaignHud";
