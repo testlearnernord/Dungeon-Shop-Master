@@ -17,8 +17,7 @@ export type WorldFeedTarget=
   |{kind:"recorded-fight";eventId:string;featureId:string;siteCycle:number}
   |{kind:"boss-recording";eventId:string}
   |{kind:"party-boss-recording";eventId:string}
-  |{kind:"hero-profile";heroId:string}
-  |{kind:"boss";heroId:string};
+  |{kind:"hero-profile";heroId:string};
 
 export interface WorldFeedEntry{
   readonly id:string;
