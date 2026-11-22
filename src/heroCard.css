@@ -199,3 +199,51 @@
 }
 @media(prefers-reduced-motion:reduce){.hero-card *{animation:none!important;
   transition:none!important}}
+
+/* V.004 Hero Inspection UX: prevent misplaced crosshair hints and inaccessible
+ * inspector controls while preserving the world-space health HUD. */
+#hero-inspect-hint{
+  position:fixed;left:50%;top:calc(50% + 37px);transform:translateX(-50%);
+  z-index:1450;max-width:min(290px,90vw);padding:5px 12px;
+  border:1px solid rgba(207,170,109,.7);border-radius:999px;
+  background:linear-gradient(90deg,rgba(12,25,26,.92),rgba(30,38,31,.95));
+  color:#f5dfb5;font:700 10px/1.4 system-ui,sans-serif;
+  letter-spacing:.08em;text-align:center;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 7px 24px #0008;pointer-events:none;
+}
+#hero-inspect-hint[hidden]{display:none!important}
+#world-hero-card-close{
+  width:34px;height:34px;display:grid;place-items:center;
+  font-size:18px;line-height:1;
+}
+#world-hero-card>.hero-card .hero-card-identity{padding-right:28px}
+#world-hero-card-close:focus-visible,
+.hero-card-inspect:focus-visible,
+.hero-combat-roster-item .hero-card--combat:focus-visible{
+  outline:2px solid #f1cf92;outline-offset:2px;
+}
+.hero-combat-roster-item{position:relative;min-width:0}
+.hero-combat-roster-item .hero-card-inspect{
+  display:grid;place-items:center;min-height:30px;min-width:30px;
+  right:7px;top:7px;
+}
+.hero-card-inspect .ui-icon{width:17px;height:17px}
+.hero-card--combat[data-condition="critical"]{
+  border-color:#eb916e;box-shadow:0 0 0 1px #b55b4577,0 8px 20px #0007;
+}
+.hero-card--combat[data-condition="wounded"]{border-color:#bc995b}
+.hero-card--combat[data-condition="fallen"]{
+  border-color:#783e44;opacity:.72;filter:saturate(.57);
+}
+.hero-card--combat .hero-card-combat-phase[data-phase="heal"],
+.hero-card--combat .hero-card-combat-phase[data-phase="cast"]{
+  color:#9de2b1;
+}
+.hero-card--combat .hero-card-combat-phase[data-phase="strike"]{
+  color:#f2cb85;
+}
+@media(max-width:560px){
+  #hero-inspect-hint{top:calc(50% + 29px);padding:4px 9px}
+  #world-hero-card>.hero-card .hero-card-identity{padding-right:34px}
+}
