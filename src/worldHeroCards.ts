@@ -32,7 +32,9 @@ export class WorldHeroCards {
   private current:string|null=null;
   private snapshot:HeroCardView|null=null;
   private lastRoster:readonly AdventurerState[]|null=null;
-  constructor(private readonly store:GameStore){
+  private previouslyFocused:HTMLElement|null=null;
+  constructor(private readonly store:GameStore,
+    private readonly onVisibilityChange?:(visible:boolean)=>void){
     currentHeroCards=this;
     this.host.id="world-hero-card";
     this.host.hidden=true;
@@ -55,6 +57,7 @@ export class WorldHeroCards {
       else this.close();
     });
   }
+  get isExpandedOpen():boolean{return !this.host.hidden;}
   open(heroId:string):boolean {
     const view=liveHeroCard(this.store.state,heroId);
     if(!view)return false;
@@ -68,17 +71,34 @@ export class WorldHeroCards {
   }
   private paint(view:HeroCardView):void {
     this.hideMini();
+    const wasHidden=this.host.hidden;
+    const oldScroll=this.host.querySelector<HTMLElement>(
+      ".hero-card--expanded")?.scrollTop??0;
+    const closeHadFocus=document.activeElement?.id==="world-hero-card-close";
+    if(wasHidden)this.previouslyFocused=
+      document.activeElement instanceof HTMLElement?
+        document.activeElement:null;
     const card=renderHeroCard(view,"expanded");
+    card.scrollTop=oldScroll;
     const close=document.createElement("button");
     close.type="button";close.id="world-hero-card-close";
     close.textContent="×";close.title="Close hero card";
     close.setAttribute("aria-label","Close hero card");
     close.addEventListener("click",()=>this.close());
     this.host.replaceChildren(card,close);this.host.hidden=false;
+    if(wasHidden){
+      this.onVisibilityChange?.(true);
+      close.focus({preventScroll:true});
+    }else if(closeHadFocus)close.focus({preventScroll:true});
   }
   close():void{
+    if(this.host.hidden)return;
     this.current=null;this.snapshot=null;this.host.hidden=true;
     this.host.replaceChildren();this.hideMini();
+    this.onVisibilityChange?.(false);
+    const previous=this.previouslyFocused;
+    this.previouslyFocused=null;
+    if(previous?.isConnected)previous.focus({preventScroll:true});
   }
   showMini(heroId:string,clientX:number,clientY:number):void{
     if(!this.host.hidden)return;
