@@ -17,8 +17,7 @@ export type WorldFeedTarget=
   |{kind:"recorded-fight";eventId:string;featureId:string;siteCycle:number}
   |{kind:"boss-recording";eventId:string}
   |{kind:"party-boss-recording";eventId:string}
-  |{kind:"hero-profile";heroId:string}
-  |{kind:"boss";heroId:string};
+  |{kind:"hero-profile";heroId:string};
 
 export interface WorldFeedEntry{
   readonly id:string;
@@ -336,14 +335,6 @@ export function projectWorldFeedChanges(
         ?{kind:"party-boss-recording",eventId:replayEvent.id}
         :{kind:"roster",heroId:survivorIds[0]??previousPartyBoss.heroIds[0]},
     });
-  }
-  const newBoss=after.liveDungeon.bossCombat;
-  if(newBoss&&newBoss.id!==before.liveDungeon.bossCombat?.id){
-    results.push({id:"boss:"+newBoss.id,category:"boss",priority:3,
-      title:"THE CAVE TROLL AWAKENS",
-      detail:heroName(after,newBoss.heroId)+
-        " is finishing a historical Floor-6 encounter",
-      target:{kind:"boss",heroId:newBoss.heroId}});
   }
   return results.sort((a,b)=>b.priority-a.priority||
     a.id.localeCompare(b.id));

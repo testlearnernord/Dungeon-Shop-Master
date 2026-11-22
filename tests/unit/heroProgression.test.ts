@@ -8,7 +8,7 @@ import {prepareSpatialDungeonCombat,emptyLevel7World} from "../../src/game/level
 import {lastWorldTickOfDay} from "../../src/game/worldClock.ts";
 import {developerHeroFromRoster,buildDeveloperCombat,DEFAULT_DEVELOPER_CONFIG}
   from "../../src/game/developerCombatScenario.ts";
-import {caveTrollGroupOptions} from "../../src/game/sharedBossCombat.ts";
+import {caveTrollGroupOptions,caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 import {useHealingSupplies} from "../../src/game/adventurers.ts";
 import {
   heroLevel,heroProgression,settleHeroExperience,HERO_POWER_CAP_LEVEL,
@@ -125,30 +125,34 @@ test("boss group authority applies role bonuses without altering training fixtur
   }
 });
 
-test("levelled saves accept earned HP capacity but reject forged health, plus real mid-boss roundtrip",()=>{
+test("levelled v29 saves validate earned HP and feed the unique Floor-10 party motor",()=>{
   const seed=7351,base=createGameState(seed);
-  const old=base.adventurers.find(h=>h.status==="at-shop")!;
-  const leveled={...old,level:10,xp:900};
+  const original=base.adventurers.find(h=>h.status==="at-shop")!;
+  const leveled={...original,level:10,xp:900};
   const cap=heroProgression(leveled).maxHealth;
-  const hero={...leveled,health:cap,bossPass:true,
-    status:"expedition" as const,floor:6 as const};
-  const state={...base,adventurers:base.adventurers.map(h=>h.id===old.id?hero:h)};
+  const hero={...leveled,health:cap,bossPass:true};
+  const state={...base,adventurers:base.adventurers.map(h=>h.id===original.id?hero:h)};
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
   const tampered=structuredClone(createSave(state));
   const target=tampered.payload.adventurers.find(h=>h.id===hero.id)!;
   (target as {health:number}).health=cap+1;
   assert.throws(()=>parseSave(JSON.stringify(tampered)),/health/);
-  const store=new GameStore(state);
-  store.enableLiveDungeon();
-  store.advanceWorldTime(200);
-  const fight=store.state.liveDungeon.bossCombat;
-  assert(fight,"Veteran must enter the real saved boss motor.");
-  const actor=fight.state.group.actors.find(a=>a.team==="heroes")!;
+
+  // World-clock ownership and actual saved co-located stair crossing are
+  // tested in caveTrollPartyLive.test.ts. Fighter stats are composed ONLY
+  // from real roster heroes; no surviving solo Floor-6 boss option exists.
+  const fighters=state.adventurers.slice(0,3).map(h=>({
+    ...h,bossPass:true,status:"expedition" as const,floor:10 as const,
+  }));
+  const fight=caveTrollPartyOptions(fighters,42);
+  const actor=fight.actors.find(a=>a.id===hero.id)!;
+  assert(actor,"Real hero must be part of the actual Floor-10 party.");
   assert.equal(actor.maxHp,cap);
   assert.equal(actor.armor,
     (hero.equipment.armor==="Leather Vest"?7:0)+
     (hero.role==="tank"?3:0)+heroProgression(hero).armorBonus);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+  assert.equal(fight.actors.filter(a=>a.team==="heroes").length,3);
+  assert.equal(fight.actors.find(a=>a.id==="cave-troll")?.maxHp,700);
 });
 
 test("levelled heroes can spend real medicine above base HP without forging items",()=>{

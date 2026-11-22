@@ -21,7 +21,7 @@ Core systems were reconciled on 22 November 2026 after merged #295–#298. V.004
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Strict current version-28 saves persist the cellar, shop, one-portal traffic checkpoint and material reserve. V25/V26/V27 files are incompatible and rejected, not converted. Breaking schema refactors will require a **fresh campaign without migration** |
+| Persistence | Strict current **version-29** saves persist the cellar, shop, one-portal traffic checkpoint and material reserve, and explicitly **reject historical LIVE solo Floor-6 boss checkpoints**. V28 and older files are incompatible, not converted. Breaking schema refactors will require a **fresh campaign without migration** |
 
 **V.004 cellar (merged PRs #252 and #254):** Galvik's fixed fiancée portrait opens a secret, physically traversable stairway to the cellar. The widened corridor and ramp support normal first-person descent, ascent and off-centre approaches. Cellar mining uses the same rock cells and U excavation tool; a chest uses the same P furniture blueprint registry and save state.
 
@@ -35,7 +35,7 @@ Core systems were reconciled on 22 November 2026 after merged #295–#298. V.004
 
 **V.004 spectator QoL (merged PRs #265 and #266):** locate actual LIVE heroes and running fights through compact selectors. Focusing a target preserves the player's orbit and zoom; the inspector shows real saved finds. Selecting a fight focuses its committed tile and the existing Watch action opens that exact opt-in 3D encounter.
 
-**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. Still open are the **migration-free breaking replacement** of legacy internal floor/permit/gate fields, fully authored deep-floor variety, an actual 20/50/100-day post-#298 economy audit, ten-day hands-on pacing and real-device visual/audio acceptance. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
+**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. Still open are the **migration-free breaking replacement** of remaining numeric shop-floor and historic non-LIVE day/event fields, fully authored deep-floor variety, an actual 20/50/100-day post-#298 economy audit, ten-day hands-on pacing and real-device visual/audio acceptance. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
 
 ## Start playing
 
