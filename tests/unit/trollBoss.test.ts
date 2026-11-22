@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState, advanceDay, setLevel6Permit } from "../../src/game/gameState.ts";
+import { createGameState, advanceDay, setBossPass } from "../../src/game/gameState.ts";
 import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
 import { BOSS_MAX_HP } from "../../src/game/arenaCombatMotion.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
 function expedition() {
   const original = createGameState().adventurers[0];
-  return { ...original, status: "expedition" as const, floor: 6 as const, level6Permit: true };
+  return { ...original, status: "expedition" as const, floor: 6 as const, bossPass: true };
 }
 
 test("Level 6 is always the same fixed Cave Troll Boss, with deterministic action timeline", () => {
@@ -106,7 +106,7 @@ test("healer can self-heal and attack at range, tank can parry, DPS can fail def
 });
 
 test("boss fights still obey single confirmed tick and legacy save compatibility", () => {
-  let state = setLevel6Permit(createGameState(), "adventurer-1", true);
+  let state = setBossPass(createGameState(), "adventurer-1", true);
   state = advanceDay(state).state;
   const pending = parseSave(JSON.stringify(createSave(state)));
   const result = advanceDay(state).state;
