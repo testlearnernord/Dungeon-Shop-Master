@@ -1,4 +1,5 @@
 import type { AdventurerState } from "./adventurers.ts";
+import {heroProgression} from "./heroProgression.ts";
 import type { GameState } from "./gameState.ts";
 export { heroPortraitIndex as portraitIndex } from "./heroIdentity.ts";
 
@@ -61,7 +62,7 @@ export function rosterBoardEquipment(hero:AdventurerState):{
   return {
     weapon:hero.equipment.weapon!==null,
     armor:hero.equipment.armor!==null,
-    hp:hero.health+"/"+hero.stats.maxHealth,
+    hp:hero.health+"/"+heroProgression(hero).maxHealth,
   };
 }
 

@@ -1,4 +1,5 @@
 import type { AdventurerState } from "./adventurers.ts";
+import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import type { WorldEvent } from "./gameState.ts";
 import { SeededRandom } from "./random.ts";
 import { resolveSpatialBoss } from "./bossCombatReplay.ts";
@@ -32,14 +33,18 @@ export function simulateLevel6Combat(
   }
   const rng = new SeededRandom(rngState);
   const tacticsSeed = rng.int(32);
+  const progress=heroProgression(hero);
   const { final, replay } = resolveSpatialBoss(hero.id, day, {
     role: hero.role,
     sword: hero.equipment.weapon === "Iron Sword",
     armor: hero.equipment.armor === "Leather Vest",
-    health: hero.health, maxHealth: hero.stats.maxHealth,
+    health: hero.health, maxHealth: progress.maxHealth,
     healingSupplies: hero.inventory.healing,
-    strength: hero.stats.strength, agility: hero.stats.agility,
-    intellect: hero.stats.intellect,
+    strength: progress.strength, agility: progress.agility,
+    intellect: progress.intellect,
+    progressionDamageBonus:progress.damageBonus,
+    progressionArmorBonus:progress.armorBonus,
+    progressionMagicHeals:progress.bonusMagicHeals,
     tacticsSeed,
   });
   const victory = replay.outcome === "victory";
@@ -48,12 +53,10 @@ export function simulateLevel6Combat(
   const lootGain = victory ? 2 + rng.int(2) : 0;
   const outcome = replay.outcome;
   const adventurer: AdventurerState = {
-    ...hero,
+    ...settleHeroExperience(hero,hero.xp+xpGain,
+      outcome === "death" ? 0 : final.heroHp),
     status: outcome === "death" ? "dead" : "traveling",
     floor: outcome === "death" ? 6 : 4,
-    health: outcome === "death" ? 0 : final.heroHp,
-    xp: hero.xp + xpGain,
-    level: 1 + Math.floor((hero.xp + xpGain) / 100),
     gold: hero.gold + goldGain,
     inventory: {
       ...hero.inventory,

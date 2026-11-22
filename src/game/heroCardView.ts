@@ -1,4 +1,5 @@
 import type {AdventurerState,AdventurerRole} from "./adventurers.ts";
+import {heroProgression} from "./heroProgression.ts";
 import type {GameState} from "./gameState.ts";
 import type {ItemId} from "./economy.ts";
 import type {Level7Replay} from "./level7Exploration.ts";
@@ -18,7 +19,7 @@ export interface HeroCardView {
   readonly status:string;readonly activity:string|null;
   readonly goal:string|null;readonly action:string|null;
   readonly party:readonly string[];
-  readonly stats:Readonly<{strength:number;agility:number;intellect:number}>|null;
+  readonly stats:Readonly<{strength:number;agility:number;intellect:number;maxHealth:number}>|null;
   readonly traits:Readonly<{positive:string;neutral:string;negative:string}>|null;
   readonly equipment:Readonly<{weapon:string|null;armor:string|null}>;
   readonly inventory:Readonly<{loot:number;bread:number;healing:number;
@@ -27,6 +28,11 @@ export interface HeroCardView {
   readonly observations?:readonly {icon:"map"|"search"|"swords"|"users"|"info";text:string}[];
   readonly combat:Readonly<{damage:number;armor:number;heals:number;
     phase:GroupPhase|null;stamina:number|null}>|null;
+}
+
+function displayedHeroStats(hero:AdventurerState){
+  const {strength,agility,intellect,maxHealth}=heroProgression(hero);
+  return {strength,agility,intellect,maxHealth};
 }
 
 export function liveHeroCard(
@@ -44,11 +50,11 @@ export function liveHeroCard(
   return {
     id:hero.id,name:names.get(hero.id)??hero.name,role:hero.role,
     source:"live",level:hero.level,
-    health:context.health??hero.health,maxHealth:hero.stats.maxHealth,
+    health:context.health??hero.health,maxHealth:heroProgression(hero).maxHealth,
     xp:hero.xp,gold:hero.gold,floor:hero.floor,status:hero.status,
     activity:context.activity??null,goal:context.goal??plan?.goal??null,
     action:context.action??plan?.action??null,
-    party:group?.memberIds??[],stats:hero.stats,traits:hero.traits,
+    party:group?.memberIds??[],stats:displayedHeroStats(hero),traits:hero.traits,
     equipment:hero.equipment,inventory:hero.inventory,recent,observations:[],
     combat:null,
   };
@@ -68,7 +74,7 @@ export function combatHeroCard(
     maxHealth:spec.maxHp,xp:live?.xp??null,gold:live?.gold??null,
     floor:live?.floor??null,status:actor?.hp===0?"dead":"combat",
     activity:actor?.phase??null,goal:null,action:null,party:[],
-    stats:live?.stats??null,traits:live?.traits??null,
+    stats:live?displayedHeroStats(live):null,traits:live?.traits??null,
     equipment:spec.equipment??live?.equipment??{weapon:null,armor:null},
     inventory:live?.inventory??null,recent:[],observations:[],
     combat:{damage:spec.damage,armor:spec.armor,

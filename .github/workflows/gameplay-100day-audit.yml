@@ -7,6 +7,7 @@ on:
     paths:
       - tools/analysis/gameplay-100day-audit.mjs
       - .github/workflows/gameplay-100day-audit.yml
+      - src/game/heroProgression.ts
       - src/game/liveDungeonRuntime.ts
       - src/game/level7Exploration.ts
       - src/game/campaignSave.ts

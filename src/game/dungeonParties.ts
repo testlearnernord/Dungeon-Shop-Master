@@ -1,3 +1,4 @@
+import {heroProgression} from "./heroProgression.ts";
 import type { AdventurerState } from "./adventurers.ts";
 import type { DungeonLayout } from "./dungeonLayout.ts";
 import { generateExpeditionLayout } from "./dungeonLayout.ts";
@@ -22,7 +23,7 @@ export interface DungeonPartyState {
 export function willingToTravelTogether(hero:AdventurerState):boolean {
   return hero.health>0 &&
     (hero.role==="healer" || hero.traits.negative!=="reckless" ||
-      hero.health/hero.stats.maxHealth<0.6);
+      hero.health/heroProgression(hero).maxHealth<0.6);
 }
 
 /**
@@ -230,7 +231,7 @@ export function negotiatePartyFloorDecisions(
     // to retreat upward, but never against a personal resupply/descend goal.
     if(members.every(member=>decisions.get(member.id)!.action==="ascend"||
       (member.role==="healer"||member.traits.positive==="generous")&&
-        member.health/member.stats.maxHealth>=0.55))
+        member.health/heroProgression(member).maxHealth>=0.55))
       return change("ascend");
     return decisions;
   }
@@ -245,7 +246,7 @@ export function negotiatePartyFloorDecisions(
   // obligation to race after an impatient companion.
   const canFollow=stayers.every(member=>{
     const goal=decisions.get(member.id)!.goal;
-    const health=member.health/member.stats.maxHealth;
+    const health=member.health/heroProgression(member).maxHealth;
     const equipped=member.equipment.weapon!==null||
       member.equipment.armor!==null;
     const threshold=member.traits.positive==="careful"?0.92:0.78;

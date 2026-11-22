@@ -7,6 +7,7 @@ import { resolveGroupCombat, type CombatantSpec, type GroupCombatOptions,
   type GroupCombatState, type GroupCombatReplay } from "./groupCombat.ts";
 import { SeededRandom } from "./random.ts";
 import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
+import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import type {ItemId} from "./economy.ts";
 import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK}
   from "./ghoulPack.ts";
@@ -207,19 +208,22 @@ export function prepareSpatialDungeonCombat(
   const specs:CombatantSpec[]=party.map((hero,index)=>{
     const spawn=available[index];
     const sword=hero.equipment.weapon==="Iron Sword";
+    const progression=heroProgression(hero);
     return {
       id:hero.id,team:"heroes",role:hero.role,
       style:hero.role==="healer"||hero.role==="DPS"&&!sword?"ranged":"melee",
       x:(spawn.x-monster.x)*2.5,z:(spawn.z-monster.z)*2.5,
-      hp:hero.health,maxHp:hero.stats.maxHealth,
-      damage:6+Math.floor((hero.role==="healer"?hero.stats.intellect:
-        hero.role==="DPS"?hero.stats.agility:hero.stats.strength)/2)+(sword?5:0),
-      armor:hero.equipment.armor==="Leather Vest"?5:1,
+      hp:hero.health,maxHp:progression.maxHealth,
+      damage:6+Math.floor((hero.role==="healer"?progression.intellect:
+        hero.role==="DPS"?progression.agility:progression.strength)/2)+
+        (sword?5:0)+progression.damageBonus,
+      armor:(hero.equipment.armor==="Leather Vest"?5:1)+progression.armorBonus,
       equipment:{weapon:sword?"Iron Sword":null,
         armor:hero.equipment.armor==="Leather Vest"?"Leather Vest":null},
-      agility:hero.stats.agility,
+      agility:progression.agility,
       speed:hero.role==="tank"?2.5:3.1,reach:1.75,
       healCharges:Math.min(2,hero.inventory.healing),
+      ...(hero.role==="healer"?{magicHeals:progression.dungeonMagicHeals}:{}),
     };
   });
   // One *real* source feature can spawn a bounded physical Ghoul pack.
@@ -615,7 +619,7 @@ export function simulateSpatialDungeonPartyDay(
         // abandon the body and immediately charge into another battle.
         const casualty=members.some(m=>m.hp===0);
         const endangered=members.some(m=>m.hp>0 &&
-          m.hp/m.hero.stats.maxHealth<0.35 && m.healing===0);
+          m.hp/heroProgression(m.hero).maxHealth<0.35 && m.healing===0);
         if(casualty||endangered){
           outcome="retreat";
           for(const m of members)if(m.hp>0)m.steps.push({...current,t:t+0.3,
@@ -645,7 +649,7 @@ export function simulateSpatialDungeonPartyDay(
       (personalOutcome==="retreat"||personalOutcome==="completed");
     const xp=m.hero.xp+m.xp;
     const adventurer:AdventurerState={
-      ...m.hero,health:m.hp,xp,level:1+Math.floor(xp/100),
+      ...settleHeroExperience(m.hero,xp,m.hp),
       gold:m.hero.gold+m.gold,
       floor:returning?4:floor,
       status:dead?"dead":returning?"traveling":
@@ -775,7 +779,7 @@ export function settleSpatialDungeonCombat(
   });
   const survivors=world.heroes.filter(progress=>!ids.has(progress.heroId));
   const noSafeContinuation=alive.some(({hero,actor})=>
-    actor.hp/hero.stats.maxHealth<0.35&&actor.healCharges===0);
+    actor.hp/heroProgression(hero).maxHealth<0.35&&actor.healCharges===0);
   const retreats=!winner||alive.length!==party.length||noSafeContinuation;
   const result:Omit<Level7Tick,"world">[]=party.map((hero,index)=>{
     const actor=roster.get(hero.id)!;
@@ -793,7 +797,7 @@ export function settleSpatialDungeonCombat(
     const gold=shares.get(hero.id)??0;
     const owner=foundOwners.get(hero.id)??hero;
     const adventurer:AdventurerState={
-      ...owner,health:hp,xp,level:1+Math.floor(xp/100),
+      ...settleHeroExperience(owner,xp,hp),
       gold:hero.gold+gold,
       floor:returning?4:hero.floor,
       status:dead?"dead":returning?"traveling":hero.status,

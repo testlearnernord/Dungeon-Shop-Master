@@ -1,4 +1,5 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
+import {heroLevel,heroProgression} from "./heroProgression.ts";
 import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,type MaterialItemId } from "./economy.ts";
 import {
@@ -303,7 +304,7 @@ function validateLevel7Replay(
       const a=item+".combat.actors["+j+"]",actor=object(rawActor,a,[
         "id","team","role","style","x","z","hp","maxHp","damage",
         "armor","speed","reach",
-      ],["radius","healCharges","equipment","meleeAbility","specialAbility","agility",
+      ],["radius","healCharges","magicHeals","equipment","meleeAbility","specialAbility","agility",
         "grappleDamage","staggerThreshold"]);
       if(actor.meleeAbility!==undefined)
         choice(actor.meleeAbility,["heavy"],a+".meleeAbility");
@@ -542,13 +543,31 @@ function validateLiveCombatCheckpoints(
       layout.seed,layout,initialApproach,cycle,true);
     const legacyCanonical=prepareSpatialDungeonCombat(members,feature!,
       layout.seed,layout,initialApproach,cycle,false);
-    // Existing in-progress single-Ghoul saves remain valid; newly reserved
-    // LIVE pack sites must exactly match their seeded, physical actor roster.
-    if(![liveCanonical,legacyCanonical].some(canonical=>
+    // Pre-progression saves may contain a fight begun at higher XP with
+    // seeded BASE stats and no ordinary healer spells. The saved 60Hz
+    // fight must finish with precisely its original actors, not be
+    // rewritten mid-swing by a gameplay update. Match either exact
+    // historical footprint, never accept arbitrary forged fighter values.
+    const historicalMembers=members.map(member=>({...member,level:1}));
+    const historicalLive=prepareSpatialDungeonCombat(historicalMembers,feature!,
+      layout.seed,layout,initialApproach,cycle,true);
+    const historicalSolo=prepareSpatialDungeonCombat(historicalMembers,feature!,
+      layout.seed,layout,initialApproach,cycle,false);
+    const withoutNewSpells=(canonical:typeof historicalLive)=>
+      ({...canonical,options:{...canonical.options,
+        actors:canonical.options.actors.map(actor=>{
+          if(actor.team!=="heroes")return actor;
+          const {magicHeals:_historicalNewSpell,...legacyActor}=actor;
+          return legacyActor;
+        }),
+      }});
+    const candidates=[liveCanonical,legacyCanonical,
+      withoutNewSpells(historicalLive),withoutNewSpells(historicalSolo)];
+    if(!candidates.some(canonical=>
       canonical.elite===encounter.elite&&
       JSON.stringify(canonical.options)===JSON.stringify(options)))
       fail(cp+".encounter.options",
-        "must match a seeded LIVE pack or historical single Ghoul stats");
+        "must match a seeded LIVE pack or historical pre-progression actor");
     let initial;
     try {initial=createGroupCombat(options as unknown as GroupCombatOptions);}
     catch {fail(cp+".encounter.options","is not a valid group combat");}
@@ -969,14 +988,18 @@ function validateState(value: unknown): asserts value is GameState {
     choice(hero.role, ["tank", "DPS", "healer"], `${path}.role`);
     const stats = object(hero.stats, `${path}.stats`, ["strength", "agility", "intellect", "maxHealth"]);
     for (const key of Object.keys(stats)) integer(stats[key], `${path}.stats.${key}`, 1);
-    const health = integer(hero.health, `${path}.health`, 0, stats.maxHealth as number);
+    const xp = integer(hero.xp, `${path}.xp`);
+    const level=integer(hero.level, `${path}.level`, 1);
+    if(level!==heroLevel(xp))
+      fail(`${path}.level`, "must agree with XP");
+    const maxHealth=heroProgression({
+      role:hero.role as "tank"|"DPS"|"healer",level,
+      stats:stats as unknown as {strength:number;agility:number;intellect:number;maxHealth:number},
+    }).maxHealth;
+    const health = integer(hero.health, `${path}.health`, 0, maxHealth);
     const traits = object(hero.traits, `${path}.traits`, ["positive", "neutral", "negative"]);
     for (const key of Object.keys(traits)) text(traits[key], `${path}.traits.${key}`);
-    const xp = integer(hero.xp, `${path}.xp`);
-    if (integer(hero.level, `${path}.level`, 1) !== 1 + Math.floor(xp / 100)) {
-      fail(`${path}.level`, "must agree with XP");
-    }
-    integer(hero.gold, `${path}.gold`);
+     integer(hero.gold, `${path}.gold`);
     const equipment = object(hero.equipment, `${path}.equipment`, ["weapon", "armor"]);
     for (const key of Object.keys(equipment)) {
       if (equipment[key] !== null) text(equipment[key], `${path}.equipment.${key}`);

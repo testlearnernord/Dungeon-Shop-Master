@@ -44,13 +44,15 @@ export function caveTrollGroupOptions(
         // The historical Troll had zero armor in the solo hit formula.
         // Group armor is real, so add its 10-point mitigation to preserve
         // the intended old raw hit value when testing the same equipment.
-        damage:base+10,armor:(options.armor?7:0)+
-          (options.role==="tank"?3:0),
+        damage:base+10+(options.progressionDamageBonus??0),
+        armor:(options.armor?7:0)+(options.role==="tank"?3:0)+
+          (options.progressionArmorBonus??0),
         agility:options.agility??10,
         speed:options.role==="tank"?2.7:3.7,
         reach:options.sword?4.2:3.2,
         radius:.58,healCharges:options.healingSupplies,
-        ...(options.role==="healer"?{magicHeals:2}:{}),
+        ...(options.role==="healer"?{
+          magicHeals:2+(options.progressionMagicHeals??0)}:{}),
         equipment:{weapon:options.sword?"Iron Sword":null,
           armor:options.armor?"Leather Vest":null},
       },

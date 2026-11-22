@@ -1,6 +1,7 @@
 import type {GameState,WorldEvent,EarlyDungeonFloorWorld} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
+import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,
   type HeroDungeonDecision} from "./dungeonDecisions.ts";
@@ -344,13 +345,17 @@ function commitDungeonTick(state:GameState):GameState {
       const rng=new SeededRandom(rngState);
       const tacticsSeed=rng.int(32);
       rngState=rng.state;
+      const progress=heroProgression(hero);
       const motion=createSharedBossPreview({
         role:hero.role,sword:hero.equipment.weapon==="Iron Sword",
         armor:hero.equipment.armor==="Leather Vest",
-        health:hero.health,maxHealth:hero.stats.maxHealth,
+        health:hero.health,maxHealth:progress.maxHealth,
         healingSupplies:hero.inventory.healing,
-        strength:hero.stats.strength,agility:hero.stats.agility,
-        intellect:hero.stats.intellect,tacticsSeed,
+        strength:progress.strength,agility:progress.agility,
+        intellect:progress.intellect,
+        progressionDamageBonus:progress.damageBonus,
+        progressionArmorBonus:progress.armorBonus,
+        progressionMagicHeals:progress.bonusMagicHeals,tacticsSeed,
       });
       bossCombat={
         id:"live-boss:"+day+":"+tick+":"+hero.id,
@@ -447,6 +452,18 @@ function commitDungeonTick(state:GameState):GameState {
           steps:(stepCounts.get(hero.id)?.steps??0)+1,finished:true});
         continue;
       }
+    }
+    // A full ordinary fight can now legitimately consume its entire 25s
+    // budget (especially when veteran healers take part). The shopkeeper
+    // must never be unable to close the day because a newly started
+    // encounter still owns the 60Hz clock after midnight. Defer optional
+    // map steps until next morning; portal/stair crossings above still work.
+    if(tick+LEVEL7_COMBAT_SECONDS*20+LIVE_COMBAT_INTERVAL_TICKS>
+       lastWorldTickOfDay(day)){
+      processed.add(hero.id);
+      stepCounts.set(hero.id,{heroId:hero.id,
+        steps:(stepCounts.get(hero.id)?.steps??0)+1,finished:true});
+      continue;
     }
     const returningIds=new Set(returns.map(j=>j.heroId));
     const group=homeward?[hero]:choosePersistentDungeonParty(hero,roster,world,layout,
@@ -668,8 +685,8 @@ function commitLiveCombatTick(state:GameState):GameState{
       if(outcome==="victory")bossCleared=true;
       const hp=outcome==="death"?0:Math.max(0,Math.round(motion.heroHp));
       const nextXp=original.xp+xpGain;
-      const hero:AdventurerState={...original,
-        health:hp,xp:nextXp,level:1+Math.floor(nextXp/100),
+      const hero:AdventurerState={
+        ...settleHeroExperience(original,nextXp,hp),
         gold:original.gold+goldGain,
         status:hp<=0?"dead":"expedition",floor:6,
         inventory:{...original.inventory,

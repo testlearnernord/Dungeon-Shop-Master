@@ -1,5 +1,6 @@
 import { SeededRandom } from "./random.ts";
 import { ECONOMY, ITEMS,type ItemId } from "./economy.ts";
+import {heroProgression} from "./heroProgression.ts";
 import type { WorldEvent } from "./gameState.ts";
 
 export type AdventurerRole = "tank" | "DPS" | "healer";
@@ -85,9 +86,10 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
 export function useHealingSupplies(hero: AdventurerState, day: number): {
   adventurer: AdventurerState; events: WorldEvent[];
 } {
-  if (hero.status === "dead" || hero.health >= hero.stats.maxHealth)
+  const maxHealth=heroProgression(hero).maxHealth;
+  if (hero.status === "dead" || hero.health >= maxHealth)
     return { adventurer: hero, events: [] };
-  const missing = hero.stats.maxHealth - hero.health;
+  const missing = maxHealth - hero.health;
   const herb = ITEMS.find(item => item.id === "healing-herb")!;
   const bread = ITEMS.find(item => item.id === "bread")!;
   const useHerb = hero.inventory.healing > 0 &&

@@ -1,6 +1,7 @@
 import type { AdventurerState } from "./adventurers.ts";
 import type {Level7HeroProgress,Level7Replay,Level7World} from "./level7Exploration.ts";
 import {chooseKnownRouteStep} from "./level7Exploration.ts";
+import {heroProgression} from "./heroProgression.ts";
 import {dungeonNeighbors,type DungeonLayout,type DungeonFeature} from "./dungeonLayout.ts";
 
 /**
@@ -24,7 +25,7 @@ export function chooseHeroDungeonDecision(
 ): HeroDungeonDecision {
   if(hero.status!=="exploring"||hero.health<=0||hero.floor>4)
     throw new RangeError("Only living early-floor explorers can plan movement");
-  const healthRatio=hero.health/hero.stats.maxHealth;
+  const healthRatio=hero.health/heroProgression(hero).maxHealth;
   const careful=hero.traits.positive==="careful";
   const reckless=hero.traits.negative==="reckless";
   const armed=hero.equipment.weapon!==null;
@@ -70,7 +71,7 @@ export function chooseLiveHeroDungeonDecision(
   if(hero.floor!==7||hero.status!=="expedition"||hero.health<=0)
     throw new RangeError("Only a living spatial explorer can make a LIVE choice.");
   if(replay.outcome==="completed"||replay.outcome==="retreat"||
-    hero.health/hero.stats.maxHealth<0.48||hero.inventory.loot>=2)
+    hero.health/heroProgression(hero).maxHealth<0.48||hero.inventory.loot>=2)
     return {goal:"resupply",action:"shop"};
   return preferKnownDungeonResourceGoal({goal:hero.equipment.weapon?"test-gear":"caution",action:"stay"},hero,progress,layout,world);
 }
@@ -103,7 +104,7 @@ export function preferKnownDungeonResourceGoal(
   world:Level7World|undefined,
 ):HeroDungeonDecision {
   if(base.action!=="stay"||!progress||!layout||!world||
-    hero.health/hero.stats.maxHealth<.62)return base;
+    hero.health/heroProgression(hero).maxHealth<.62)return base;
   const chest=selectKnownResourceSite(layout,progress,world,"treasure");
   const monster=hero.equipment.weapon!==null||
     hero.traits.positive==="brave"
