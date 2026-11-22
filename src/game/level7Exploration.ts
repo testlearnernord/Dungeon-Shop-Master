@@ -652,7 +652,8 @@ export function simulateSpatialDungeonPartyDay(
     const adventurer:AdventurerState={
       ...settleHeroExperience(m.hero,xp,m.hp),
       gold:m.hero.gold+m.gold,
-      floor:returning?4:floor,
+      floor:returning?"transit":floor,
+      lastDungeonFloor:returning?7:m.hero.lastDungeonFloor,
       status:dead?"dead":returning?"traveling":
         m.hero.status==="expedition"&&floor===7?"expedition":"exploring",
       inventory:{...m.hero.inventory,
@@ -792,7 +793,6 @@ export function settleSpatialDungeonCombat(
     const personalOutcome:Level7Outcome=dead?"death":retreats?"retreat":"exploring";
     // LIVE campaigns never jump to a shop floor on battle termination.
     // The one shared world motor must physically backtrack first.
-    const returning=false;
     const xp=hero.xp+(winner&&!dead?
       (encounter.elite?28:12)*monsterKills:0);
     const gold=shares.get(hero.id)??0;
@@ -800,12 +800,12 @@ export function settleSpatialDungeonCombat(
     const adventurer:AdventurerState={
       ...settleHeroExperience(owner,xp,hp),
       gold:hero.gold+gold,
-      floor:returning?4:hero.floor,
-      status:dead?"dead":returning?"traveling":hero.status,
+      floor:hero.floor,
+      status:dead?"dead":hero.status,
       inventory:{...owner.inventory,healing:hero.inventory.healing-used},
     };
     const oldProgress=world.heroes.find(p=>p.heroId===hero.id);
-    if(!dead&&!returning&&oldProgress)survivors.push(oldProgress);
+    if(!dead&&oldProgress)survivors.push(oldProgress);
     const arrival=arrivals[index];
     const t=arrival.steps[arrival.steps.length-1]?.t??1.1;
     const tail:Level7ReplayStep[]=[{
