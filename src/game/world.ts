@@ -113,7 +113,7 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   box(scene,"sealed-right-passage-stone",
     {width:2.45,height:4,depth:0.45},new Vector3(4,2,7),
     rock,true,surfaces.stone).isPickable=false;
-  for (const x of [-5.3, -2.7]) {
+  for (const x of [SHOP_PORTAL_X-1.3,SHOP_PORTAL_X+1.3]) {
     box(scene, `corridor-wall-${x}`, { width: 0.25, height: 4, depth: 5.5 }, new Vector3(x, 2, 9.65), rock, true, surfaces.stone);
   }
   box(scene, "corridor-end-left-outer", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(-5.2, 2, 12.2), rock, true, surfaces.stone);
