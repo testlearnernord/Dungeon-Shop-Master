@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createGameState} from "../../src/game/gameState.ts";
+import {useHealingSupplies} from "../../src/game/adventurers.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {walkOutWithoutPurchase} from "../../src/game/shopWalkout.ts";
@@ -46,13 +47,16 @@ test("shop departure is a committed outer-gate crossing, not an intent or a cash
   assert.equal(board.report?.eventId,exits[0].id);
 });
 
-test("two FULL days outside preserve gear, HP, loot and seeded world, then safe reentry",()=>{
+test("two FULL days outside preserve gear and gold, consume owned healing, then safely reenter",()=>{
   const {state,hero}=exitFixture();
   const exiting=completeObservedShopExit(state,hero.id,13);
   const injured={...exiting,adventurers:exiting.adventurers.map(h=>h.id===hero.id
     ?{...h,health:Math.max(1,h.health-12),inventory:{...h.inventory,healing:2}}
     :h)};
   const startHero=injured.adventurers.find(h=>h.id===hero.id)!;
+  const rested=useHealingSupplies(startHero,2).adventurer;
+  assert.equal(rested.health,startHero.stats.maxHealth);
+  assert.equal(rested.inventory.healing,1);
   const uninterrupted=new GameStore(injured);
   const loaded=new GameStore(parseSave(JSON.stringify(createSave(injured))));
   for(const day of [2,3,4]){
@@ -63,16 +67,17 @@ test("two FULL days outside preserve gear, HP, loot and seeded world, then safe 
     const current=uninterrupted.state.adventurers.find(h=>h.id===hero.id)!;
     if(day<=3){
       assert.equal(current.status,"off-duty");
-      assert.equal(current.health,startHero.health);
-      assert.deepEqual(current.inventory,startHero.inventory,"no free downtime healing or supply use");
+      assert.equal(current.health,rested.health);
+      assert.deepEqual(current.inventory,rested.inventory,
+        "actual off-duty healing spends one owned herb, never mints supplies");
       assert.equal(current.gold,startHero.gold);
       assert(!uninterrupted.state.liveDungeon.combats.some(f=>f.heroIds.includes(hero.id)));
     }else{
       assert.equal(current.status,"exploring");
       assert.equal(current.floor,1);
       assert.equal(current.offDutyUntilDay,null);
-      assert.equal(current.health,startHero.health);
-      assert.deepEqual(current.inventory,startHero.inventory);
+      assert.equal(current.health,rested.health);
+      assert.deepEqual(current.inventory,rested.inventory);
       const layout=generateExpeditionLayout(injured.seed,1);
       const pos=uninterrupted.state.earlyDungeonWorlds?.find(w=>w.floor===1)?.world
         .heroes.find(h=>h.heroId===hero.id);
@@ -86,6 +91,9 @@ test("two FULL days outside preserve gear, HP, loot and seeded world, then safe 
   }
   assert.equal(uninterrupted.state.events.filter(e=>e.type==="shop-departure"&&
     e.adventurerId===hero.id).length,1);
+  assert.equal(uninterrupted.state.events.filter(e=>e.type==="healed"&&
+    e.adventurerId===hero.id).length,1,
+    "one real herb use, no duplicated healing on the second off-duty day");
 });
 
 test("live night schedule does not invent a physical departure for a paid or unresolved shopper",()=>{
