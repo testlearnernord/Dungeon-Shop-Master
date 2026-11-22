@@ -6,7 +6,7 @@ import {liveHeroCard} from "../../src/game/heroCardView.ts";
 
 test("Alpha v33 distinguishes real Dungeon Floor 4 from unnumbered transit",()=>{
   const start=createGameState(7351);
-  assert.equal(SIMULATION_VERSION,35);
+  assert.equal(SIMULATION_VERSION,36);
   const visitor=start.adventurers.find(hero=>hero.status==="at-shop")!;
   const genuine={...visitor,status:"exploring" as const,floor:4 as const,
     shopStayDays:0};
