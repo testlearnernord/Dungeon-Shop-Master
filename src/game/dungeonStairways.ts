@@ -23,10 +23,11 @@ export function dungeonFloorStairways(layout:DungeonLayout):readonly DungeonStai
   };
   if(floor<1||floor>9)return [up];
   const down=dungeonDownStair(layout);
-  const traversable=floor<9;
+  const traversable=floor<=9;
   return [up,{...down,id:"stair-down-floor-"+floor,
     kind:traversable?"descend":"sealed",
-    label:traversable?"DESCEND · FLOOR "+(floor+1):
+    label:floor===9?"DESCEND · FLOOR 10 · CAVE TROLL (PARTY ONLY)":
+      traversable?"DESCEND · FLOOR "+(floor+1):
       "CAVE TROLL CHAMBER · PARTY GATE (NOT YET OPEN)",
     destinationFloor:traversable?floor+1:null}];
 }
