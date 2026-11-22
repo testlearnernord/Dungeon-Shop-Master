@@ -110,7 +110,12 @@ test("strategic choices respond to actual HP, equipment, loot and map knowledge"
   assert.equal(chooseHeroDungeonDecision(loaded,progress,replay).action,"shop");
   const floor4={...hero,floor:4 as const};
   assert.equal(chooseHeroDungeonDecision(floor4,progress,
-    {...replay,floor:4}).action,"shop");
+    {...replay,floor:4}).action,"descend",
+    "Floor 4 is no longer the last ordinary floor.");
+  const floor9={...hero,floor:9 as const};
+  assert.equal(chooseHeroDungeonDecision(floor9,progress,
+    {...replay,floor:9}).action,"shop",
+    "The authored boss-gate choice is separate from normal solo strategy.");
   const fresh={...hero,gold:3};
   assert.equal(chooseHeroDungeonDecision(fresh,
     {...progress,visited:[1]},{...replay,outcome:"exploring"}).action,"stay");

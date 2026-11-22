@@ -59,7 +59,7 @@ export interface Level7ReplayEncounter {
   readonly combat: GroupCombatReplay;
 }
 /** Replays from all spatial early floors share the same immutable frame schema. */
-export type SpatialDungeonFloor = 1 | 2 | 3 | 4 | 7;
+export type SpatialDungeonFloor = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export interface Level7Replay {
   readonly version: 1;
   readonly day: number;
@@ -448,9 +448,10 @@ export function simulateSpatialDungeonPartyDay(
   const floor=party[0].floor;
   const ids=new Set(party.map(hero=>hero.id));
   if(ids.size!==party.length ||
-    !([1,2,3,4,7] as readonly number[]).includes(floor) ||
+    !(floor>=1&&floor<=9) ||
     party.some(hero=>hero.floor!==floor||hero.health<=0||
-      (floor===7?hero.status!=="expedition":hero.status!=="exploring")))
+      (hero.status!=="exploring"&&
+        !(floor===7&&hero.status==="expedition"))))
     throw new RangeError("Party members must be distinct living explorers on one floor");
   const layout=generateExpeditionLayout(campaignSeed,floor);
   const progress=party.map(hero=>getLevel7Progress(world,hero.id,layout));
@@ -653,7 +654,7 @@ export function simulateSpatialDungeonPartyDay(
       gold:m.hero.gold+m.gold,
       floor:returning?4:floor,
       status:dead?"dead":returning?"traveling":
-        floor===7?"expedition":"exploring",
+        m.hero.status==="expedition"&&floor===7?"expedition":"exploring",
       inventory:{...m.hero.inventory,
         loot:m.hero.inventory.loot+m.loot,healing:m.healing},
     };

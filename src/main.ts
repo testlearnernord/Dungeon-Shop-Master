@@ -499,6 +499,10 @@ setupWorldEventFeed(store,target=>{
       if(dungeon.isActive)dungeon.close();
       arena.open(tape.eventId);return arena.isActive;
     }
+    if(tape.kind==="party-boss-recording"){
+      if(arena.isActive)arena.close();
+      return dungeon.openRecordedPartyBoss(tape.eventId);
+    }
     if(tape.kind==="expedition-recording")
       return dungeon.openDeathReplay(tape.eventId,target.heroId);
     // No saved combat or expedition footage, never invent a death scene.
@@ -528,6 +532,10 @@ setupWorldEventFeed(store,target=>{
     arena.open(target.eventId);
     return arena.isActive;
   }
+  if(target.kind==="party-boss-recording"){
+    if(arena.isActive)arena.close();
+    return dungeon.openRecordedPartyBoss(target.eventId);
+  }
   if(target.kind==="boss"){
     if(dungeon.isActive)dungeon.close();
     if(arena.isActive)arena.close();
@@ -537,7 +545,8 @@ setupWorldEventFeed(store,target=>{
   if(target.kind==="combat")return dungeon.openLiveEncounter(target.fightId);
   if(target.kind==="floor-site")
     return dungeon.openFloorSite(target.floor,target.x,target.z);
-  return watchLiveHero(target.heroId);
+  if(target.kind==="hero")return watchLiveHero(target.heroId);
+  return false;
 });
 setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),

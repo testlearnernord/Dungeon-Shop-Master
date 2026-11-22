@@ -23,8 +23,10 @@ export function chooseHeroDungeonDecision(
   hero: AdventurerState, progress: Level7HeroProgress | undefined,
   replay: Level7Replay,
 ): HeroDungeonDecision {
-  if(hero.status!=="exploring"||hero.health<=0||hero.floor>4)
-    throw new RangeError("Only living early-floor explorers can plan movement");
+  if((hero.status!=="exploring"&&
+      !(hero.status==="expedition"&&hero.floor===7))||
+      hero.health<=0||hero.floor<1||hero.floor>9)
+    throw new RangeError("Only living numbered-floor explorers can plan movement");
   const healthRatio=hero.health/heroProgression(hero).maxHealth;
   const careful=hero.traits.positive==="careful";
   const reckless=hero.traits.negative==="reckless";
@@ -39,14 +41,17 @@ export function chooseHeroDungeonDecision(
     replay.outcome==="completed";
   // Their own purpose can change after a real injury or a real looted chest.
   if(lowHealth || hero.inventory.loot >= 2 ||
-     (hero.floor===4 && hero.gold>=22 && known>=8)) {
+     (hero.floor===9 && hero.gold>=22 && known>=8)) {
     return {goal:"resupply",action:"shop"};
   }
   if(damaged && hero.floor>1 && !prepared)
     return {goal:"caution",action:"ascend"};
-  if(hero.floor===4 && enoughExperience)
+  // The Level-10 gate requires a genuine temporary party, not an
+  // individual deep-floor intent. Until that gate is committed, a prepared
+  // Floor-9 hero resupplies rather than walking into an unimplemented boss.
+  if(hero.floor===9 && enoughExperience)
     return {goal:"resupply",action:"shop"};
-  if(hero.floor<4 && prepared && enoughExperience)
+  if(hero.floor<9 && prepared && enoughExperience)
     return {goal:"progress",action:"descend"};
   if(damaged)
     return {goal:"caution",action:"stay"};
@@ -56,24 +61,25 @@ export function chooseHeroDungeonDecision(
 }
 
 /** Reuse the existing individual needs-based AI on the LIVE world clock.
- * Floor 7 is a special unlocked expedition: it cannot invent Floor 8
- * until the next authored progression slice exists.
+ * Every ordinary floor shares the same autonomous goals and physical steps.
  */
 export function chooseLiveHeroDungeonDecision(
   hero:AdventurerState,progress:Level7HeroProgress|undefined,
   replay:Level7Replay,layout?:DungeonLayout,world?:Level7World,
+  bossPartyReady=false,
 ):HeroDungeonDecision {
-  if(hero.floor>=1&&hero.floor<=4) {
-    if(replay.outcome==="retreat")
-      return {goal:"resupply",action:"shop"};
-    return preferKnownDungeonResourceGoal(chooseHeroDungeonDecision(hero,progress,replay),hero,progress,layout,world);
-  }
-  if(hero.floor!==7||hero.status!=="expedition"||hero.health<=0)
-    throw new RangeError("Only a living spatial explorer can make a LIVE choice.");
-  if(replay.outcome==="completed"||replay.outcome==="retreat"||
-    hero.health/heroProgression(hero).maxHealth<0.48||hero.inventory.loot>=2)
+  if(hero.floor<1||hero.floor>9||hero.health<=0||
+    (hero.status!=="exploring"&&
+      !(hero.status==="expedition"&&hero.floor===7)))
+    throw new RangeError("Only a living ordinary-floor explorer can make a LIVE choice.");
+  if(replay.outcome==="retreat")
     return {goal:"resupply",action:"shop"};
-  return preferKnownDungeonResourceGoal({goal:hero.equipment.weapon?"test-gear":"caution",action:"stay"},hero,progress,layout,world);
+  if(hero.floor===9&&bossPartyReady&&
+     (progress?.visited.length??0)>=13&&
+     hero.health/heroProgression(hero).maxHealth>=0.60)
+    return {goal:"progress",action:"descend"};
+  return preferKnownDungeonResourceGoal(
+    chooseHeroDungeonDecision(hero,progress,replay),hero,progress,layout,world);
 }
 
 /** The full-floor spectator is omniscient; the AI is not. Only personally

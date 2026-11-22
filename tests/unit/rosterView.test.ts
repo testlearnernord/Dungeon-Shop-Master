@@ -14,7 +14,7 @@ test("roster entries show shop visitors first and stable portrait IDs", () => {
   assert.equal(portraitIndex("adventurer-1"), 0);
   assert.equal(portraitIndex("adventurer-25"), 24);
   assert.equal(portraitIndex("adventurer-26"), 0);
-  assert.equal(locationLabel(active[0]), "F5 · Shop");
+  assert.equal(locationLabel(active[0]), "Galvik's Cursed Shop");
   assert.equal(rosterEntries(state, "fallen").length, 0);
   assert.equal(state.rngState, createGameState().rngState);
 });

@@ -128,7 +128,10 @@ test("replay snapshots remain bounded; older replays are compacted without chang
     // confirmed tick to exercise replay history retention without increasing RNG.
     state=advanceDay(state).state;
     const records=state.events.filter(e=>e.type==="level7-exploration"&&e.level7Replay);
-    assert(records.length<=3);
+    assert(records.every(event=>event.day>=state.day-2),
+      "Heavy positional footage must expire after two completed days.");
+    assert(records.length<=3*state.adventurers.length,
+      "Multiple live Floor-7 visitors may each retain their last three days.");
   }
   const currentRecords=state.events.filter(e=>e.type==="level7-exploration");
   assert(currentRecords.length>=1);

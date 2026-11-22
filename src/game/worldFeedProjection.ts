@@ -16,6 +16,7 @@ export type WorldFeedTarget=
   |{kind:"combat";fightId:string}
   |{kind:"recorded-fight";eventId:string;featureId:string;siteCycle:number}
   |{kind:"boss-recording";eventId:string}
+  |{kind:"party-boss-recording";eventId:string}
   |{kind:"hero-profile";heroId:string}
   |{kind:"boss";heroId:string};
 
@@ -301,12 +302,47 @@ export function projectWorldFeedChanges(
         " · Floor "+fight.encounter.floor,
       target:{kind:"combat",fightId:fight.id}});
   }
+  const previousPartyBoss=before.liveDungeon.partyBossCombat;
+  const currentPartyBoss=after.liveDungeon.partyBossCombat;
+  if(currentPartyBoss&&currentPartyBoss.id!==previousPartyBoss?.id){
+    const participants=currentPartyBoss.heroIds.map(id=>heroName(after,id));
+    results.push({
+      id:"boss-party:"+currentPartyBoss.id,
+      category:"boss",priority:3,
+      title:"FLOOR 10 · THE CAVE TROLL AWAKENS",
+      detail:"TEMPORARY PARTY CHALLENGE · "+
+        participants.join(" + ")+" · "+
+        participants.length+" real adventurers enter the boss chamber.",
+      target:{kind:"combat",fightId:currentPartyBoss.id},
+    });
+  }
+  if(previousPartyBoss&&previousPartyBoss.id!==currentPartyBoss?.id){
+    const won=!before.dungeonFloors.some(f=>f.floor===10&&f.cleared)&&
+      after.dungeonFloors.some(f=>f.floor===10&&f.cleared);
+    const survivorIds=previousPartyBoss.heroIds.filter(id=>
+      (after.adventurers.find(hero=>hero.id===id)?.health??0)>0);
+    const total=previousPartyBoss.heroIds.length;
+    const replayEvent=newEvents.find(event=>!!event.partyBossReplay&&
+      event.partyBossReplay.actors.some(actor=>
+        previousPartyBoss.heroIds.includes(actor.id)));
+    results.push({
+      id:"boss-result:"+previousPartyBoss.id,
+      category:"boss",priority:3,
+      title:won?"THE CAVE TROLL HAS FALLEN":"THE CAVE TROLL ENDURES",
+      detail:previousPartyBoss.heroIds.map(id=>heroName(after,id))
+        .join(" + ")+(won?" · A historic party victory!":
+        " · "+survivorIds.length+" of "+total+" survived the attempt."),
+      target:replayEvent
+        ?{kind:"party-boss-recording",eventId:replayEvent.id}
+        :{kind:"roster",heroId:survivorIds[0]??previousPartyBoss.heroIds[0]},
+    });
+  }
   const newBoss=after.liveDungeon.bossCombat;
   if(newBoss&&newBoss.id!==before.liveDungeon.bossCombat?.id){
     results.push({id:"boss:"+newBoss.id,category:"boss",priority:3,
       title:"THE CAVE TROLL AWAKENS",
       detail:heroName(after,newBoss.heroId)+
-        " has engaged the Cave Troll · Floor 6",
+        " is finishing a historical Floor-6 encounter",
       target:{kind:"boss",heroId:newBoss.heroId}});
   }
   return results.sort((a,b)=>b.priority-a.priority||

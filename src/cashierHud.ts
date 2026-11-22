@@ -29,7 +29,7 @@ export function setupCashierHud(
   root.setAttribute("aria-labelledby","cashier-title");
   root.innerHTML=`<section class="cashier-panel">
     <header class="cashier-panel-header">
-      <span class="cashier-eyebrow">GALVIK'S SHOP · LEVEL 5</span>
+      <span class="cashier-eyebrow">GALVIK'S SHOP · CURSED REALM</span>
       <span class="cashier-serial">COUNTER / 01</span>
     </header>
     <div class="cashier-heading">

@@ -1,10 +1,11 @@
 import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonFloor} from "./level7Exploration.ts";
+import {generateExpeditionLayout} from "./dungeonLayout.ts";
 import type {CombatantSpec,GroupReplayFrame,GroupCombatCue} from "./groupCombat.ts";
 
 /** The supported *physical* expedition floors, not a fictional set of 100. */
-export const LIVE_SPECTATOR_FLOORS=[1,2,3,4,7] as const satisfies readonly SpatialDungeonFloor[];
+export const LIVE_SPECTATOR_FLOORS=[1,2,3,4,5,6,7,8,9,10] as const satisfies readonly SpatialDungeonFloor[];
 
 export interface LiveFloorHero {
   readonly id:string;
@@ -67,9 +68,20 @@ export function selectLiveFloorSpectatorFrame(
       frame,frames:f.frames,cues:f.state.events,
     }]:[];
   });
-  const activeStatus=floor===7?"expedition":"exploring";
+  if(floor===10&&state.liveDungeon.partyBossCombat){
+    const boss=state.liveDungeon.partyBossCombat;
+    const frame=boss.frames.at(-1);
+    const entrance=generateExpeditionLayout(state.seed,10).entrance;
+    if(frame)fights.push({
+      id:boss.id,featureId:"cave-troll",...entrance,
+      heroIds:boss.heroIds,actors:boss.options.actors,
+      frame,frames:boss.frames,cues:boss.state.events,
+    });
+  }
   const heroes:LiveFloorHero[]=state.adventurers
-    .filter(h=>h.floor===floor&&h.status===activeStatus&&h.health>0)
+    .filter(h=>h.floor===floor&&h.health>0&&
+      (h.status==="exploring"||
+       (floor===7||floor===10)&&h.status==="expedition"))
     .flatMap(hero=>{
       const site=progress.get(hero.id);
       const fight=fights.find(f=>f.heroIds.includes(hero.id));

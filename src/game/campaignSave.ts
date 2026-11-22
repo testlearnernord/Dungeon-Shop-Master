@@ -1,5 +1,7 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
 import {heroLevel,heroProgression} from "./heroProgression.ts";
+import {livePartyBossCheckpointProblem,partyBossReplayProblem}
+  from "./livePartyBossSave.ts";
 import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,type MaterialItemId } from "./economy.ts";
 import {
@@ -159,7 +161,7 @@ function validateLevel7World(
     // floor's lower stair, not the unexplored upper portal. Preserve
     // truthful fog of war instead of forging a visit to the entrance.
     const upper=map.entrance.z*map.width+map.entrance.x;
-    const lower=floor>=2&&floor<=4?dungeonDownStair(map):null;
+    const lower=floor>=2&&floor<=9?dungeonDownStair(map):null;
     const lowerIndex=lower?lower.z*map.width+lower.x:null;
     if(!visitedIds.has(upper)&&
         (lowerIndex===null||!visitedIds.has(lowerIndex)))
@@ -448,7 +450,7 @@ function validateLiveCombatCheckpoints(
     const encounter=object(battle.encounter,cp+".encounter",[
       "featureId","floor","x","z","siteCycle","elite","options",
     ]);
-    choice(encounter.floor,[1,2,3,4,7],cp+".encounter.floor");
+    choice(encounter.floor,[1,2,3,4,5,6,7,8,9],cp+".encounter.floor");
     const floor=encounter.floor as number;
     const featureId=text(encounter.featureId,cp+".encounter.featureId");
     const layout=generateExpeditionLayout(state.seed as number,
@@ -472,7 +474,7 @@ function validateLiveCombatCheckpoints(
       unique(id,known,cp+".heroIds["+i+"]");
       const hero=roster.find(h=>h.id===id) as GameState["adventurers"][number]|undefined;
       if(!hero||hero.floor!==floor||hero.health<=0||
-        hero.status!==(floor===7?"expedition":"exploring"))
+        !(hero.status==="exploring"||floor===7&&hero.status==="expedition"))
         fail(cp+".heroIds["+i+"]","must identify a living co-located explorer");
       members.push(hero);
     });
@@ -718,7 +720,7 @@ function validateLivePlans(
     const plan=object(raw,path,["heroId","floor","goal","action","updatedTick"]);
     const id=text(plan.heroId,path+".heroId");
     unique(id,ids,path+".heroId");
-    choice(plan.floor,[1,2,3,4,7],path+".floor");
+    choice(plan.floor,[1,2,3,4,5,6,7,8,9],path+".floor");
     choice(plan.goal,["farm","progress","test-gear","caution","resupply",
       "loot-chest","hunt-ghouls"],
       path+".goal");
@@ -726,13 +728,13 @@ function validateLivePlans(
     integer(plan.updatedTick,path+".updatedTick",0,clockTick);
     const hero=roster.find(h=>h.id===id);
     if(!enabled||!hero||hero.health===0||hero.floor!==plan.floor||
-      hero.status!==(plan.floor===7?"expedition":"exploring"))
+      !(hero.status==="exploring"||
+        plan.floor===7&&hero.status==="expedition"))
       fail(path+".heroId","must name a living committed explorer on the recorded floor");
     if((plan.action==="ascend"&&(plan.floor as number)<=1)||
-      (plan.action==="descend"&&(plan.floor as number)>=4))
+      (plan.action==="descend"&&(plan.floor as number)>=10))
       fail(path+".action","must be an authored adjacent early-floor transition");
-    if(plan.floor===7&&plan.action!=="shop"&&plan.action!=="stay")
-      fail(path+".action","cannot invent an unauthored deeper floor");
+ 
   }
 }
 
@@ -752,7 +754,7 @@ function validateLivePortalReturns(
       ["dueTick"]);
     const heroId=text(journey.heroId,path+".heroId");
     unique(heroId,indexed,path+".heroId");
-    choice(journey.fromFloor,[1,2,3,4,6,7],path+".fromFloor");
+    choice(journey.fromFloor,[1,2,3,4,5,6,7,8,9,10],path+".fromFloor");
     const floor=journey.fromFloor as number;
     const started=integer(journey.startedTick,path+".startedTick",0,clockTick);
     choice(journey.phase,["backtrack","portal"],path+".phase");
@@ -763,7 +765,7 @@ function validateLivePortalReturns(
       // A normal-floor portal can only be triggered from the known real
       // entrance tile. The saved last location is intentionally retained
       // until the portal event resolves; a bare fabricated timer is not enough.
-      if(floor!==6){
+      if(floor!==6&&floor!==10){
         const world:Level7World=floor===7?
           state.level7World as Level7World:
           ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
@@ -788,9 +790,9 @@ function validateLivePortalReturns(
     }else{
       if(journey.dueTick!==undefined)
         fail(path+".dueTick","is only allowed during portal transit");
-      if(![1,2,3,4,7].includes(floor)||
+      if(![1,2,3,4,5,6,7,8,9].includes(floor)||
         hero.floor!==floor||
-        hero.status!==(floor===7?"expedition":"exploring"))
+        !(hero.status==="exploring"||floor===7&&hero.status==="expedition"))
         fail(path,"must backtrack on the real hero floor");
       const world:Level7World=floor===7?
         state.level7World as Level7World:
@@ -881,7 +883,7 @@ function validateState(value: unknown): asserts value is GameState {
   {
     const live=object(state.liveDungeon,"payload.liveDungeon",
       ["enabled","lastStepTick","heroes","combatTick","combats","returns","plans"],
-      ["bossCombat"]);
+      ["bossCombat","partyBossCombat"]);
     if(typeof live.enabled!=="boolean")
       fail("payload.liveDungeon.enabled","must be boolean");
     const last=integer(live.lastStepTick,"payload.liveDungeon.lastStepTick",0,clockTick);
@@ -900,6 +902,9 @@ function validateState(value: unknown): asserts value is GameState {
     const combats=array(live.combats,"payload.liveDungeon.combats");
     if(combats.length>100)fail("payload.liveDungeon.combats","is oversized");
     const boss=live.bossCombat??null;
+    const partyBoss=live.partyBossCombat??null;
+    if(boss&&partyBoss)fail("payload.liveDungeon",
+      "a historical solo boss cannot overlap the Floor-10 group boss");
     if(boss&&combats.some(raw=>Array.isArray((raw as RecordValue).heroIds)&&
         ((raw as RecordValue).heroIds as unknown[]).includes(
           (boss as RecordValue).heroId)))
@@ -917,7 +922,8 @@ function validateState(value: unknown): asserts value is GameState {
       e.subjectId===LIVE_COMBAT_EVENT_SUBJECT);
     if(!live.enabled){
       if(last!==0||progress.length||dungeonEvents.length||
-        combatTick!==0||combats.length||boss||returning.length||plans.length)
+        combatTick!==0||combats.length||boss||partyBoss||
+        returning.length||plans.length)
         fail("payload.liveDungeon","legacy mode cannot have scheduled dungeon work");
     }else{
       if(last<firstWorldTickOfDay(day))
@@ -925,15 +931,20 @@ function validateState(value: unknown): asserts value is GameState {
       const due=last+DUNGEON_STEP_INTERVAL_TICKS;
       if(movements.length!==(due<=lastWorldTickOfDay(day)?1:0)||
          movements.some(e=>e.dueTick!==due)||
-         fights.length!==(combats.length||boss?1:0)||
+         fights.length!==(combats.length||boss||partyBoss?1:0)||
          fights.some(e=>e.dueTick!==combatTick+LIVE_COMBAT_INTERVAL_TICKS)||
          dungeonEvents.length!==movements.length+fights.length)
         fail("payload.liveDungeon","must own its exact next movement and combat ticks");
     }
-    validateLiveCombatCheckpoints(state,combats,day,clockTick,last,combatTick,!!boss);
+    validateLiveCombatCheckpoints(state,combats,day,clockTick,last,combatTick,
+      !!boss||!!partyBoss);
     const bossProblem=liveBossCheckpointProblem(
       state as unknown as GameState,boss,combatTick,last);
     if(bossProblem)fail("payload.liveDungeon.bossCombat",bossProblem);
+    const partyBossProblem=livePartyBossCheckpointProblem(
+      state as unknown as GameState,partyBoss,combatTick,last);
+    if(partyBossProblem)
+      fail("payload.liveDungeon.partyBossCombat",partyBossProblem);
     validateLivePortalReturns(state,returning,pending,clockTick,!!live.enabled);
   }
   const shopRequests=array(state.shopRequests,"payload.shopRequests");
@@ -977,7 +988,7 @@ function validateState(value: unknown): asserts value is GameState {
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
       "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilDay", "level6Permit",
-    ]);
+    ],["lastDungeonFloor"]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
     if (!match || !Number.isSafeInteger(Number(match[1])) || Number(match[1]) >= nextId) {
@@ -1015,7 +1026,9 @@ function validateState(value: unknown): asserts value is GameState {
         total+=integer(quantity,path+".inventory.finds."+id,1,1000);
       if(total>1000)fail(path+".inventory.finds","is oversized");
     }
-    const floor = integer(hero.floor, `${path}.floor`, 1, 7);
+    const floor = integer(hero.floor, `${path}.floor`, 1, 10);
+    if(hero.lastDungeonFloor!==undefined)
+      integer(hero.lastDungeonFloor,path+".lastDungeonFloor",1,9);
     choice(hero.status, ["exploring", "traveling", "at-shop",
       "returning", "expedition", "departing", "off-duty", "dead"], `${path}.status`);
     if ((hero.status === "dead") !== (health === 0)) fail(`${path}.status`, "must agree with health");
@@ -1023,9 +1036,9 @@ function validateState(value: unknown): asserts value is GameState {
       active += 1;
       if (((hero.status === "at-shop" || hero.status === "departing" ||
              hero.status === "off-duty") && floor !== 5) ||
-          (hero.status === "exploring" && floor > 4) ||
+          (hero.status === "exploring" && floor > 9) ||
           ((hero.status === "traveling" || hero.status === "returning") && floor !== 4) ||
-          (hero.status === "expedition" && floor !== 6 && floor !== 7)) {
+          (hero.status === "expedition" && floor !== 6 && floor !== 7 && floor!==10)) {
         fail(`${path}.floor`, "must agree with status");
       }
     }
@@ -1046,12 +1059,13 @@ function validateState(value: unknown): asserts value is GameState {
   validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds,day);
   if(state.earlyDungeonWorlds!==undefined){
     const worlds=array(state.earlyDungeonWorlds,"payload.earlyDungeonWorlds");
-    if(worlds.length>4)fail("payload.earlyDungeonWorlds","must cover at most four floors");
+    if(worlds.length>8)fail("payload.earlyDungeonWorlds","must cover at most eight ordinary floors");
     const seenFloors=new Set<string|number>();
     worlds.forEach((value,i)=>{
       const path="payload.earlyDungeonWorlds["+i+"]";
       const entry=object(value,path,["floor","world"]);
-      const floor=integer(entry.floor,path+".floor",1,4);
+      const floor=integer(entry.floor,path+".floor",1,9);
+      if(floor===7)fail(path+".floor","uses the saved dedicated Floor-7 world");
       unique(floor,seenFloors,path+".floor");
       validateLevel7World(entry.world,path+".world",campaignSeed,heroIds,day,floor);
     });
@@ -1069,8 +1083,7 @@ function validateState(value: unknown): asserts value is GameState {
     groups.forEach((raw,i)=>{
       const path="payload.dungeonParties["+i+"]";
       const group=object(raw,path,["memberIds","floor","formedDay"]);
-      const floor=integer(group.floor,path+".floor",1,7);
-      if(floor===5||floor===6)fail(path+".floor","must be a shared spatial floor");
+      const floor=integer(group.floor,path+".floor",1,9);
       integer(group.formedDay,path+".formedDay",1,day);
       const ids=array(group.memberIds,path+".memberIds");
       if(ids.length<2||ids.length>3)
@@ -1083,7 +1096,7 @@ function validateState(value: unknown): asserts value is GameState {
         unique(id,assigned,p);
         const hero=heroes.get(id);
         if(!hero||hero.floor!==floor||
-          hero.status!==(floor===7?"expedition":"exploring")||
+          !(hero.status==="exploring"||floor===7&&hero.status==="expedition")||
           (hero.health as number)<=0)
           fail(p,"must be a living explorer on the party floor");
         return hero;
@@ -1291,7 +1304,7 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.dungeonFloors, "payload.dungeonFloors").forEach((value, index) => {
     const path = `payload.dungeonFloors[${index}]`;
     const floor = object(value, path, ["floor", "cleared"]);
-    unique(integer(floor.floor, `${path}.floor`, 1, 7), floors, `${path}.floor`);
+    unique(integer(floor.floor, `${path}.floor`, 1, 10), floors, `${path}.floor`);
     if (typeof floor.cleared !== "boolean") fail(`${path}.cleared`, "must be a boolean");
   });
 
@@ -1302,7 +1315,7 @@ function validateState(value: unknown): asserts value is GameState {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
       ["adventurerId", "worldTick", "reportedZone", "dungeonHighlight", "shopReason", "outcome", "itemId", "quantity", "revenue", "cost", "combatOutcome",
-        "combatReplay", "level7Replay", "dungeonReplay",
+        "combatReplay", "partyBossReplay", "level7Replay", "dungeonReplay",
         "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
@@ -1334,7 +1347,8 @@ function validateState(value: unknown): asserts value is GameState {
         ...(event.reportedZone!==undefined?["reportedZone"]:[]),
         ...(event.dungeonHighlight!==undefined?["dungeonHighlight"]:[]),
         ...(event.level7Replay!==undefined?["level7Replay"]:[]),
-        ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[])]:[]),
+        ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[]),
+        ...(event.partyBossReplay!==undefined?["partyBossReplay"]:[])]:[]),
       ...(!global ? ["adventurerId"] : [])];
     if(event.shopReason!==undefined){
       if(event.type!=="shop-walkout")fail(path+".shopReason","is not supported");
@@ -1346,12 +1360,20 @@ function validateState(value: unknown): asserts value is GameState {
       if(event.worldTick===undefined)
         fail(path+".worldTick","is required for a real death signal");
       const hero=(state.adventurers as RecordValue[]).find(h=>h.id===event.adventurerId);
-      const inCombat=(state.liveDungeon as GameState["liveDungeon"]).combats.some(f=>
-        f.state.actors.some(a=>a.id===event.adventurerId&&a.hp<=0));
+      const dungeonState=state.liveDungeon as GameState["liveDungeon"];
+      const inCombat=dungeonState.combats.some(f=>
+        f.state.actors.some(a=>a.id===event.adventurerId&&a.hp<=0))||
+        !!dungeonState.partyBossCombat?.state.actors.some(a=>
+          a.id===event.adventurerId&&a.hp<=0);
       if(!hero||(!(hero.status==="dead"&&hero.health===0)&&!inCombat))
         fail(path+".adventurerId","must be a real fallen hero or active zero-HP fighter");
     }
     if(event.type==="dungeon-live"){
+      if(event.partyBossReplay!==undefined){
+        const problem=partyBossReplayProblem(event.partyBossReplay,
+          String(event.adventurerId));
+        if(problem)fail(path+".partyBossReplay",problem);
+      }
       if(event.dungeonHighlight!==undefined)
         choice(event.dungeonHighlight,["treasure","trap"],path+".dungeonHighlight");
       if(event.reportedZone!==undefined)
@@ -1416,7 +1438,8 @@ function validateState(value: unknown): asserts value is GameState {
         const replay=object(event.dungeonReplay,path+".dungeonReplay",[
           "version","day","heroId","floor","appearance","steps","encounters","outcome",
         ],["knownAtStart","resolvedAtStart","partyMemberIds","partyAppearances"]);
-        const floor=integer(replay.floor,path+".dungeonReplay.floor",1,4);
+        const floor=integer(replay.floor,path+".dungeonReplay.floor",1,9);
+        if(floor===7)fail(path+".dungeonReplay.floor","must use the dedicated Floor-7 tape");
         validateLevel7Replay(event.dungeonReplay,path+".dungeonReplay",
           event.adventurerId as string,eventDay,campaignSeed,floor,heroIds);
       }

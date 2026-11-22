@@ -6,6 +6,7 @@ import type {GameState,WorldEvent} from "./gameState.ts";
 export type DeathFootage=
   |{kind:"active-combat";fightId:string}
   |{kind:"boss-recording";eventId:string}
+  |{kind:"party-boss-recording";eventId:string}
   |{kind:"expedition-recording";eventId:string}
   |{kind:"none"};
 
@@ -20,11 +21,22 @@ export function findCommittedDeathFootage(
     fight.heroIds.includes(heroId)&&fight.state.actors.some(actor=>
       actor.id===heroId&&actor.hp<=0));
   if(active)return {kind:"active-combat",fightId:active.id};
+  const partyBoss=state.liveDungeon.partyBossCombat;
+  if(partyBoss?.heroIds.includes(heroId)&&
+     partyBoss.state.actors.some(a=>a.id===heroId&&a.hp<=0))
+    return {kind:"active-combat",fightId:partyBoss.id};
   const recorded=[...state.events].reverse().filter((event:WorldEvent)=>
     event.day===signal.day&&event.adventurerId===heroId);
   const boss=recorded.find(event=>event.type==="level6-combat"&&
     event.combatOutcome==="death"&&event.combatReplay?.frames.length);
   if(boss)return {kind:"boss-recording",eventId:boss.id};
+  const partyBossTape=[...state.events].reverse().find(event=>
+    event.day===signal.day&&
+    event.partyBossReplay?.actors.some(actor=>actor.id===heroId)&&
+    event.partyBossReplay.frames.some(frame=>
+      frame.actors.some(actor=>actor.id===heroId&&actor.hp<=0)));
+  if(partyBossTape)
+    return {kind:"party-boss-recording",eventId:partyBossTape.id};
   const dungeon=recorded.find(event=>{
     const tape=event.dungeonReplay??event.level7Replay;
     return tape&&(tape.outcome==="death"||

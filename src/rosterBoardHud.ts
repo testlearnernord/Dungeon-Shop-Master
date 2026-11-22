@@ -62,7 +62,7 @@ export function setupRosterBoardHud(
         permit.type="button";permit.className="roster-permit";
         permit.setAttribute("aria-pressed",String(current.level6Permit));
         permit.textContent=current.level6Permit?
-          "Revoke Level 6 permit":"Grant Level 6 permit";
+          "Revoke Boss Pass":"Grant Boss Pass";
         permit.addEventListener("click",()=>{
           store.setLevel6Permit(hero.id,!current.level6Permit);
           list.querySelector<HTMLButtonElement>(

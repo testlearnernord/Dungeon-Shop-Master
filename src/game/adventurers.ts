@@ -5,7 +5,7 @@ import type { WorldEvent } from "./gameState.ts";
 
 export type AdventurerRole = "tank" | "DPS" | "healer";
 export type AdventurerStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "departing" | "off-duty" | "dead";
-export type DungeonFloor = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type DungeonFloor = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export interface AdventurerState {
   readonly id: string;
@@ -33,6 +33,9 @@ export interface AdventurerState {
     readonly finds?:Partial<Record<ItemId,number>>;
   };
   readonly floor: DungeonFloor;
+  /** The real numbered depth at which this hero can resume after visiting
+   * Galvik's unnumbered cursed shop. Old saves omit it and resume Floor 1. */
+  readonly lastDungeonFloor?:1|2|3|4|5|6|7|8|9;
   readonly status: AdventurerStatus;
   readonly shopStayDays: number;
   /** First eligible new expedition day following an observed shop exit. */

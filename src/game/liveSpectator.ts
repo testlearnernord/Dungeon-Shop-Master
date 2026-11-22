@@ -52,16 +52,18 @@ export function selectLiveSpectatorFrame(
   if(!state.liveDungeon.enabled)return null;
   const hero=state.adventurers.find(h=>h.id===heroId);
   if(!hero||hero.health<=0||
-     !(hero.status==="exploring"&&hero.floor>=1&&hero.floor<=4||
-       hero.status==="expedition"&&hero.floor===7))return null;
+     !(hero.status==="exploring"&&hero.floor>=1&&hero.floor<=9||
+       hero.status==="expedition"&&(hero.floor===7||hero.floor===10)))return null;
   const floor=hero.floor as SpatialDungeonFloor;
   const world=floor===7?state.level7World:
     state.earlyDungeonWorlds?.find(f=>f.floor===floor)?.world;
   const layout=spectatorLayout(state.seed,floor);
   const progress=world?.heroes.find(h=>h.heroId===heroId);
   const fight=state.liveDungeon.combats.find(c=>c.heroIds.includes(heroId));
-  if(!progress&&!fight)return null;
-  const partyIds=fight?.heroIds??
+  const partyBoss=state.liveDungeon.partyBossCombat?.heroIds.includes(heroId)
+    ?state.liveDungeon.partyBossCombat:null;
+  if(!progress&&!fight&&!partyBoss)return null;
+  const partyIds=partyBoss?.heroIds??fight?.heroIds??
     state.dungeonParties?.find(p=>p.floor===floor&&
       p.memberIds.includes(heroId))?.memberIds??[heroId];
   const party=partyIds.map(id=>state.adventurers.find(h=>h.id===id))
@@ -77,12 +79,17 @@ export function selectLiveSpectatorFrame(
     const site=layout.features.find(feature=>feature.id===id);
     return !!site&&known.has(site.z*layout.width+site.x);
   });
-  const last=fight?.frames.at(-1);
+  const last=partyBoss?.frames.at(-1)??fight?.frames.at(-1);
   return {
     worldTick:state.worldClock.tick,day:state.day,heroId,floor,
     heroes:party.map(h=>({id:h.id,role:h.role,equipment:h.equipment,health:h.health})),
     x,z,visited,resolved,
-    combat:fight&&last?{
+    combat:partyBoss&&last?{
+      id:partyBoss.id,featureId:"cave-troll",
+      x:layout.entrance.x,z:layout.entrance.z,
+      actors:partyBoss.options.actors,frame:last,
+      frames:partyBoss.frames,cues:partyBoss.state.events,
+    }:fight&&last?{
       id:fight.id,featureId:fight.encounter.featureId,
       x:fight.encounter.x,z:fight.encounter.z,
       actors:fight.encounter.options.actors,frame:last,frames:fight.frames,

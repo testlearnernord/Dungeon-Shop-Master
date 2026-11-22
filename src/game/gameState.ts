@@ -19,6 +19,7 @@ import {
 } from "./dungeonParties.ts";
 import { simulateLevel6Combat } from "./level6Combat.ts";
 import type { BossCombatReplay } from "./bossCombatReplay.ts";
+import type {GroupCombatReplay} from "./groupCombat.ts";
 import {compactReplayFootage} from "./replayRetention.ts";
 import {
   emptyLevel7World, getLevel7Progress,
@@ -40,7 +41,7 @@ export const SIMULATION_VERSION = 26;
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
 export interface EarlyDungeonFloorWorld {
-  readonly floor: 1 | 2 | 3 | 4;
+  readonly floor: 1 | 2 | 3 | 4 | 5 | 6 | 8 | 9;
   readonly world: Level7World;
 }
 
@@ -84,6 +85,8 @@ export interface WorldEvent {
   readonly combatOutcome?: "victory" | "retreat" | "death";
   /** Exact replay of the committed fixed-step combat. Older events omit this. */
   readonly combatReplay?: BossCombatReplay;
+  /** Full 60Hz archived Cave Troll PARTY fight; no recomputation after death. */
+  readonly partyBossReplay?:GroupCombatReplay;
   /** Committed path and battles of one Level 7 day. */
   readonly level7Replay?: Level7Replay;
   /** Same shared spatial engine/format on an earlier numbered floor. */
@@ -237,7 +240,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   const healed=postTradeHeroes.map(hero=>useHealingSupplies(hero,day));
   const readyRoster=healed.map(result=>{
     const ready=result.adventurer;
-    return ready.status==="returning"&&ready.floor>=1&&ready.floor<=4
+    return ready.status==="returning"&&ready.floor>=1&&ready.floor<=9
       ?{...ready,status:"exploring" as const}:ready;
   });
   const committedFights=new Map<string,Level7Tick>();
@@ -251,9 +254,10 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
     // Newly authorized departures cannot fight on their departure day.
     events.push(...healed[index].events);
     const ready = readyRoster[index];
-    if(ready.status==="exploring"&&ready.floor>=1&&ready.floor<=4){
-      const floor=ready.floor as EarlyDungeonFloorWorld["floor"];
-      const world=earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world ??
+    if(ready.status==="exploring"&&ready.floor>=1&&ready.floor<=9){
+      const floor=ready.floor as SpatialDungeonFloor;
+      const world=floor===7?level7World:
+        earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world ??
         emptyLevel7World();
       let tick=committedFights.get(ready.id);
       if(!tick){
@@ -282,26 +286,34 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
             .map(t=>t.adventurer),proposals);
         for(const [id,decision] of negotiations)
           coordinatedDecisions.set(id,decision);
-        earlyDungeonWorlds=[
+        if(floor===7)level7World=result.world;
+        else earlyDungeonWorlds=[
           ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
-          {floor,world:result.world},
+          {floor:floor as EarlyDungeonFloorWorld["floor"],world:result.world},
         ].sort((a,b)=>a.floor-b.floor);
         tick=committedFights.get(ready.id)!;
       }
       const progress=getLevel7Progress(tick.world,ready.id,
         generateExpeditionLayout(state.seed,floor));
-      const decision=tick.adventurer.status==="dead"?null:
-        coordinatedDecisions.get(ready.id) ??
-        chooseHeroDungeonDecision(tick.adventurer,progress,tick.replay);
+      const decision=(tick.adventurer.status!=="exploring"&&
+        !(tick.adventurer.floor===7&&tick.adventurer.status==="expedition"))
+        ?null:coordinatedDecisions.get(ready.id) ??
+          chooseHeroDungeonDecision(tick.adventurer,progress,tick.replay);
       if(decision)floorChoices.set(ready.id,decision.action);
-      const moved=decision?.action==="descend"&&floor<4
-        ? {...tick.adventurer,floor:(floor+1) as EarlyDungeonFloorWorld["floor"]}
+      const moved=decision?.action==="descend"&&floor<9
+        ? {...tick.adventurer,floor:(floor+1) as SpatialDungeonFloor}
         : decision?.action==="ascend"&&floor>1
-        ? {...tick.adventurer,floor:(floor-1) as EarlyDungeonFloorWorld["floor"]}
+        ? {...tick.adventurer,floor:(floor-1) as SpatialDungeonFloor}
         : decision?.action==="shop"
         ? {...tick.adventurer,status:"traveling" as const,floor:4 as const}
         : tick.adventurer;
-      events.push({
+      if(floor===7)events.push({
+        id:`day-${day}:${ready.id}:level7-exploration`,
+        type:"level7-exploration",day,adventurerId:ready.id,
+        level7Replay:tick.replay,
+        message:`${ready.name}'s Floor 7 expedition was recorded.`,
+      });
+      else events.push({
         id:`day-${day}:${ready.id}:dungeon-exploration`,
         type:"dungeon-exploration",day,adventurerId:ready.id,
         dungeonReplay:tick.replay,

@@ -14,18 +14,20 @@ export interface DungeonStairway extends DungeonPoint{
  * is a purely visual landmark, NEVER a traversable floor transition. */
 export function dungeonFloorStairways(layout:DungeonLayout):readonly DungeonStairway[]{
   const floor=layout.floor;
-  const exit= floor===1||floor===7;
+  const exit=floor===1;
   const up: DungeonStairway={...layout.entrance,
     id:"stair-up-floor-"+floor,kind:exit?"exit":"ascend",
-    label:exit?"EXIT · RETURN TO SHOP":"ASCEND · FLOOR "+(floor-1),
+    label:exit?"ASCEND · CURSED SHOP PORTAL":"ASCEND · FLOOR "+(floor-1)+
+      " / CURSED SHOP PORTAL",
     destinationFloor:exit?null:floor-1,
   };
-  if(floor!==1&&floor!==2&&floor!==3&&floor!==4&&floor!==7)return [up];
+  if(floor<1||floor>9)return [up];
   const down=dungeonDownStair(layout);
-  const traversable=floor<4;
+  const traversable=floor<=9;
   return [up,{...down,id:"stair-down-floor-"+floor,
     kind:traversable?"descend":"sealed",
-    label:traversable?"DESCEND · FLOOR "+(floor+1):
-      "SEALED LOWER PASSAGE · NOT TRAVERSABLE",
+    label:floor===9?"DESCEND · FLOOR 10 · CAVE TROLL (PARTY ONLY)":
+      traversable?"DESCEND · FLOOR "+(floor+1):
+      "CAVE TROLL CHAMBER · PARTY GATE (NOT YET OPEN)",
     destinationFloor:traversable?floor+1:null}];
 }

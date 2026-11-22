@@ -310,7 +310,7 @@ export class Level6Arena {
     // only in the historical solo preview.
     this.sfxLab.setAvailable(true);
     this.panel.dataset.devLab="true";
-    this.labToggle.textContent="Return to Level 6 preview";
+    this.labToggle.textContent="Return to Cave Troll preview";
     this.previewText.textContent=
       "DEVELOPER COMBAT LAB · Real 60Hz test simulation, no campaign writes.";
     this.status.textContent="Independent combat balance test";
@@ -692,7 +692,7 @@ export class Level6Arena {
     this.focusCamera();
     this.status.textContent = this.replay
       ? "Recorded fight ready. The same committed actions will play back."
-      : "The Cave Troll is guarding Level 6.";
+      : "The Cave Troll awaits in the Floor-10 chamber.";
     this.updateHud();
     this.buildBossHeroCard();
     this.startCinematic();

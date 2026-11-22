@@ -1,6 +1,6 @@
 import { GameStore } from "./game/gameStore";
 import {heroProgression} from "./game/heroProgression.ts";
-import { level6ReturnIds, type VisitorSnapshot } from "./game/npcVisitors";
+import { type VisitorSnapshot } from "./game/npcVisitors";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
 import { hasObservedReplay } from "./replayDisclosure.ts";
 import {reportCategory,reportIcon,reportCounts,type ReportCategory} from "./reportPresentation.ts";
@@ -62,14 +62,15 @@ export function setupDayHud(
   };
   const snapshotVisitors = (): readonly VisitorSnapshot[] => {
     const state = store.state;
-    const fromLevel6 = level6ReturnIds(state.events, state.day);
-    const names = heroDisplayNames(state.adventurers);
+     const names = heroDisplayNames(state.adventurers);
     return state.adventurers.filter(({ status }) => status !== "dead").map(hero => ({
       id:hero.id, name:hero.name, role:hero.role, level:hero.level,
       status:hero.status, equipment:hero.equipment, gold:hero.gold, health:hero.health,
       maxHealth:heroProgression(hero).maxHealth,
       displayName: names.get(hero.id) ?? hero.name,
-      entranceGate: fromLevel6.has(hero.id) ? "level6" as const : "level4" as const,
+      // New clients always enter via the same cursed threshold.
+      // Old saved right-gate positions are preserved by the NPC checkpoint.
+      entranceGate:"level4" as const,
     }));
   };
   let previousVisitors: readonly VisitorSnapshot[] = [];
@@ -145,8 +146,8 @@ export function setupDayHud(
         permit.className="level6-permit";
         permit.dataset.adventurerId=hero.id;
         permit.setAttribute("aria-pressed",String(hero.visible.level6Permit));
-        permit.textContent=hero.visible.level6Permit?"Revoke L6 pass":"Grant L6 pass";
-        permit.title="Approve this physically present hero's next Level 6 departure.";
+        permit.textContent=hero.visible.level6Permit?"Revoke Boss Pass":"Grant Boss Pass";
+        permit.title="Allow this visitor to join an equipped Temporary Party for the Floor-10 Cave Troll.";
         permit.addEventListener("click",()=>{
           store.setLevel6Permit(hero.id,!hero.visible!.level6Permit);
         });
