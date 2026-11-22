@@ -1,6 +1,7 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Vector3,Matrix } from "@babylonjs/core/Maths/math.vector";
+import {Ray} from "@babylonjs/core/Culling/ray";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
 
@@ -276,6 +277,43 @@ export function inspectNpcVisuals() {
     })(),
     hasSecondGate:scene.getMeshByName("level-6-barrier")!==null,
   };
+}
+
+/** Geometry regression against the ACTUAL Babylon scene, not a logical
+ * can-build flag. Sweep the former two-sided seam and confirm one continuous
+ * colliding mesh from x=-2.75 to the right wall x=7.5.
+ */
+export function inspectFormerRightExit(){
+  const scene=Engine.LastCreatedScene!;
+  const wall=scene.getMeshByName("back-middle-wall");
+  wall?.computeWorldMatrix(true);
+  const bounds=wall?.getBoundingInfo().boundingBox;
+  const seamXs=[2.74,2.75,2.76,2.78,3,4,5,5.22,5.25,5.26,6.5];
+  const rays=seamXs.map(x=>{
+    const ray=new Ray(new Vector3(x,1.7,5),new Vector3(0,0,1),4);
+    const hit=scene.pickWithRay(ray,mesh=>mesh.name==="back-middle-wall"&&
+      mesh.isEnabled()&&mesh.checkCollisions);
+    return !!hit?.hit&&hit.pickedMesh?.name==="back-middle-wall"&&
+      hit.distance>=1.7&&hit.distance<=2.4;
+  });
+  const leftRay=new Ray(new Vector3(-4,1.7,5),new Vector3(0,0,1),3);
+  const actualPortal=scene.pickWithRay(leftRay,mesh=>
+    mesh.name.startsWith("back-")||mesh.name.startsWith("sealed-right"));
+  return {
+    wallContinuous:!!wall?.checkCollisions&&!!bounds&&
+      bounds.minimumWorld.x<=-2.75&&bounds.maximumWorld.x>=7.5&&
+      bounds.minimumWorld.z<=6.8&&bounds.maximumWorld.z>=7.2,
+    allRaysHitRock:rays.every(Boolean),
+    oldPlugExists:!!scene.getMeshByName("sealed-right-passage-stone"),
+    oldRightWallExists:!!scene.getMeshByName("back-right-wall"),
+    actualPortalClear:!actualPortal?.hit,
+    ghostEnabled:scene.getTransformNodeByName("blueprint-preview-root")?.isEnabled()??false,
+  };
+}
+export function aimAtFormerRightExit():void{
+  inspectPlayer({x:4,y:1.7,z:3.25});
+  const scene=Engine.LastCreatedScene!;
+  (scene.activeCamera as UniversalCamera).setTarget(new Vector3(4,1.7,7));
 }
 
 /** Called via Vite's module URL, avoiding bare-specifier imports from page.evaluate. */
