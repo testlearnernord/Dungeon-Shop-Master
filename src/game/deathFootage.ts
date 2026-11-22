@@ -30,7 +30,8 @@ export function findCommittedDeathFootage(
   const boss=recorded.find(event=>event.type==="level6-combat"&&
     event.combatOutcome==="death"&&event.combatReplay?.frames.length);
   if(boss)return {kind:"boss-recording",eventId:boss.id};
-  const partyBossTape=recorded.find(event=>
+  const partyBossTape=[...state.events].reverse().find(event=>
+    event.day===signal.day&&
     event.partyBossReplay?.actors.some(actor=>actor.id===heroId)&&
     event.partyBossReplay.frames.some(frame=>
       frame.actors.some(actor=>actor.id===heroId&&actor.hp<=0)));
