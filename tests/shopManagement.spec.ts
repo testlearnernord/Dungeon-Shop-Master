@@ -18,7 +18,7 @@ test("shop management keeps daily actions visible and reports optional", async (
   await expect(management).toHaveAttribute("open","");
   await expect(page.locator("#world-events")).toBeVisible();
   await expect(page.locator("#sales-ledger")).toBeVisible();
-  await expect(page.locator("#level6-expedition-ledger")).toBeVisible();
+  await expect(page.locator("#open-archive")).toBeVisible();
   await expect(page.locator(".campaign-panel")).toBeVisible();
   await expect(page.locator(".bedtime-tip")).toBeVisible();
 });
