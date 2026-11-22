@@ -451,7 +451,7 @@ export function simulateSpatialDungeonPartyDay(
     !(floor>=1&&floor<=9) ||
     party.some(hero=>hero.floor!==floor||hero.health<=0||
       (hero.status!=="exploring"&&
-        !(floor===7&&hero.status==="expedition")))
+        !(floor===7&&hero.status==="expedition"))))
     throw new RangeError("Party members must be distinct living explorers on one floor");
   const layout=generateExpeditionLayout(campaignSeed,floor);
   const progress=party.map(hero=>getLevel7Progress(world,hero.id,layout));
