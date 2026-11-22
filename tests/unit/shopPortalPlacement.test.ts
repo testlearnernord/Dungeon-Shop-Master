@@ -25,14 +25,14 @@ test("shelf and register cannot occupy portal or sealed-gate clearance in previe
     const preview=store.previewFurniturePlacement(draft);
     assert.match(preview??"",/entrances|aisles|clear/i);
     const check=validator.evaluate(draft,store.state.shopLayout,
-      store.state.level5Room,1000,true);
+      store.state.shopRoom,1000,true);
     assert.equal(check.ready,true);
     assert.equal(check.problem,preview,
       "The ghost and the actual placement must reject the exact same bounds");
     assert.equal(store.placeFurniture(draft),preview);
     assert.deepEqual(store.state,before);
   }
-  assert.equal(shopLayoutProblem(store.state.shopLayout,store.state.level5Room),null);
+  assert.equal(shopLayoutProblem(store.state.shopLayout,store.state.shopRoom),null);
 });
 test("the only portal lanes stay unbuildable, while a normal shop site stays valid",()=>{
   for(const phase of ["entering","leaving"] as const){

@@ -79,7 +79,7 @@ test("bed, desk and counter use one authoritative preview/commit API",()=>{
   assert.equal(store.previewFurniturePlacement(counter),null);
   assert.equal(store.placeFurniture(counter),"Counter placement saved.");
   assert.equal(shopServiceReachabilityProblem(
-    store.state.shopLayout,store.state.level5Room),null);
+    store.state.shopLayout,store.state.shopRoom),null);
   assert.deepEqual(advanceDay(store.state).state.shopEconomy,
     advanceDay({...original,
       bedroomFurniture:store.state.bedroomFurniture,
@@ -93,7 +93,7 @@ test("bed, desk and counter use one authoritative preview/commit API",()=>{
 
 test("universal wall furniture mounts to real mined wall, survives saves and blocks destructive mining",()=>{
   const initial=createGameState(7351);
-  const room=carvedWall(),store=new GameStore({...initial,level5Room:room});
+  const room=carvedWall(),store=new GameStore({...initial,shopRoom:room});
   assert.equal(surfaceFromMesh(
     "excavation-rock-face-9.5:0:0.4:1:10:0:false"),"rock-wall");
   const board=rosterBoardAtWall("rock-wall",{x:9.45,z:0},room);
@@ -115,12 +115,12 @@ test("universal wall furniture mounts to real mined wall, survives saves and blo
   })!==null,true);
   const loaded=parseSave(JSON.stringify(createSave(store.state)));
   assert.deepEqual(loaded.rosterBoard,board);
-  assert.deepEqual(loaded.level5Room,room);
+  assert.deepEqual(loaded.shopRoom,room);
   assert.equal(store.placeFurniture({
     id:"adventurer-board",x:-5.55,z:-6.45,rotation:2,
   }),"Adventurer board placed.");
   assert.equal(store.excavateShopCell({x:10,z:0}),"Rock excavated.");
-  assert(store.state.level5Room.excavatedCells.includes("10,0"));
+  assert(store.state.shopRoom.excavatedCells.includes("10,0"));
 });
 
 test("a single rock cell cannot support a wall-wide Adventurer Board",()=>{

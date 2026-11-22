@@ -120,7 +120,7 @@ test("new registry drives persisted shelf in mined wing while keeping trade deci
     assert(dug.ok);
     room=dug.room;
   }
-  const store=new GameStore({...first,level5Room:room});
+  const store=new GameStore({...first,shopRoom:room});
   const moved={id:"shelf-2" as const,x:8.25,z:0,rotation:2 as const};
   assert.equal(store.previewFurniturePlacement(moved),null);
   assert.equal(store.placeFurniture(moved),"Shelf placement saved.");
@@ -136,8 +136,8 @@ test("new registry drives persisted shelf in mined wing while keeping trade deci
   assert(front&&pathToShopGoal(service,front,store.state.shopLayout,room));
   const reloaded=parseSave(JSON.stringify(createSave(store.state)));
   assert.deepEqual(reloaded.shopLayout,store.state.shopLayout);
-  assert.deepEqual(reloaded.level5Room,room);
+  assert.deepEqual(reloaded.shopRoom,room);
   assert.deepEqual(advanceDay(store.state).state.shopEconomy,
-    advanceDay({...first,level5Room:room}).state.shopEconomy,
+    advanceDay({...first,shopRoom:room}).state.shopEconomy,
     "furniture geometry must not change the authoritative economy");
 });
