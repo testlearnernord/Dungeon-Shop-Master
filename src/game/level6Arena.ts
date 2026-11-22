@@ -254,6 +254,15 @@ export class Level6Arena {
     }, true);
   }
 
+  /** Current Alpha recordings are exclusively spatial or party-boss tapes.
+   * Keep the opt-in practice preview isolated from deprecated solo events. */
+  private enterTrainingPreview():void{
+    this.replay=null;
+    this.sourceToggle.hidden=true;
+    this.panel.dataset.replay="preview";
+    this.sfxLab.setAvailable(true);
+  }
+
   get currentScene(): Scene | null { return this.active ?
     (this.modelLab?.scene ?? this.lab.currentScene ?? this.scene) : null; }
   get isActive(): boolean { return this.active; }
@@ -418,10 +427,7 @@ export class Level6Arena {
     const state = this.store.state;
     // The obsolete Solo-F6 saved-event viewer is gone in current Alpha.
     // Actual Floor-10 recordings use the general live GroupCombat spectator.
-    this.replay=null;
-    this.sourceToggle.hidden=true;
-    this.panel.dataset.replay="preview";
-    this.sfxLab.setAvailable(true);
+    this.enterTrainingPreview();
     this.fighter = this.replay
       ? state.adventurers.find(hero => hero.id === this.replay!.heroId) ?? null
       : state.adventurers.find(hero => hero.status === "expedition") ?? null;
