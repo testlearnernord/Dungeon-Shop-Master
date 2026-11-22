@@ -108,7 +108,7 @@ export const createLiveDungeonState=():LiveDungeonState=>({
 
 const eligible=(hero:AdventurerState)=>
   hero.health>0&&(
-    hero.status==="exploring"&&hero.floor>=1&&hero.floor<=4||
+    hero.status==="exploring"&&hero.floor>=1&&hero.floor<=9||
     hero.status==="expedition"&&hero.floor===7||
     hero.status==="expedition"&&hero.floor===6
   );
@@ -311,7 +311,7 @@ function commitDungeonTick(state:GameState):GameState {
     const hero=byId.get(original.id)!;
     if(!eligible(hero)||processed.has(hero.id)||
        stepCounts.get(hero.id)?.finished)continue;
-    if(hero.floor===6){
+    if(hero.floor===6&&hero.status==="expedition"){
       // The unique boss now starts a real *saved* 60Hz fight on the shared
       // world clock. Never resolve a hidden 90-second fight in this step.
       // A second arrival cannot instantiate a clone of the same Troll.
