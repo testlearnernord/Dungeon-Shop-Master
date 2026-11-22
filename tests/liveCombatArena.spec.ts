@@ -142,7 +142,13 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
     .toHaveAttribute("data-portrait-id",/\d+/);
   await expect(partyCards.first().locator(".hero-card-combat-phase"))
     .toBeVisible();
-  await partyCards.first().locator(".hero-card-inspect").click();
+  await expect(partyCards.first()).toHaveAttribute("role","button");
+  await expect(page.locator("#dungeon-hero-party-roster .hero-combat-roster-item"))
+    .toHaveCount(arena.arenaHeroes);
+  await expect(partyCards.first().locator(".hero-card-combat-phase"))
+    .toHaveAttribute("data-phase",/move|windup|strike|recover|heal|parry|roll|hurt|dead|cast/);
+  await page.locator("#dungeon-hero-party-roster .hero-card-inspect")
+    .first().click();
   await expect(page.locator("#world-hero-card .hero-card--expanded"))
     .toBeVisible();
   await expect(page.locator("#world-hero-card")).toContainText(

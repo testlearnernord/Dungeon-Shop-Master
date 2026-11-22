@@ -29,6 +29,17 @@ const item=(id:string,count:string,title:string)=>{
     make("span","hero-card-item-count",count));
   return cell;
 };
+const lootToken=(quantity:number):HTMLElement=>{
+  // Legacy loot is NOT physical iron ore. Use our generic treasure symbol,
+  // never misrepresent an abstract counter as a specific mined commodity.
+  const cell=make("span","hero-card-item");
+  cell.dataset.itemId="legacy-loot";
+  cell.title="Legacy loot tokens ×"+quantity;
+  cell.setAttribute("aria-label",cell.title);
+  cell.append(uiIcon("treasure","hero-card-item-art"),
+    make("span","hero-card-item-count","×"+quantity));
+  return cell;
+};
 const label=(text:string)=>make("small","hero-card-overline",text);
 
 function portrait(hero:HeroCardView):HTMLElement {
@@ -183,8 +194,7 @@ function inventory(hero:HeroCardView):HTMLElement{
     const label=ITEMS.find(x=>x.id===id)?.name??id;
     list.append(item(id,"×"+n,label+" ×"+n));
   }
-  if(inv.loot)list.append(item("iron-ore","×"+inv.loot,
-    "Unspecified legacy loot tokens ×"+inv.loot));
+  if(inv.loot)list.append(lootToken(inv.loot));
   if(!list.childElementCount)list.append(make("small","hero-card-unknown",
     "No carried goods"));
   zone.append(list);return zone;
@@ -229,8 +239,11 @@ export function renderHeroCard(
     const phase=make("div","hero-card-combat-phase");
     const text=hero.combat?.phase??hero.activity??"Awaiting pose";
     phase.dataset.phase=text;
-    phase.append(pict(text==="parry"?"shield":text==="heal"?"heart":
-      text==="dead"?"skull":"swords",text),
+    phase.append(pict(text==="parry"?"shield":
+      text==="heal"||text==="cast"?"heart":
+      text==="dead"?"skull":
+      text==="roll"?"arrow-right":
+      text==="hurt"?"warning":"swords",text),
       make("strong","hero-card-phase-value",text.toUpperCase()));
     root.append(phase,combat(hero),equipment(hero,true));
     return root;

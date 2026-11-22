@@ -3,11 +3,32 @@ import type {AdventurerState} from "./adventurers.ts";
 import {combatHeroCard,type HeroCardView} from "./heroCardView.ts";
 import {renderHeroCard} from "../heroCard.ts";
 import {inspectHeroCard} from "../worldHeroCards.ts";
+import {uiIcon,type InterfaceIcon} from "../uiIcons.ts";
+import type {GroupPhase} from "./groupCombat.ts";
+
+const phaseGlyph=(phase:GroupPhase|"dead"):InterfaceIcon=>
+  phase==="parry"?"shield":
+  phase==="heal"||phase==="cast"?"heart":
+  phase==="dead"?"skull":
+  phase==="roll"?"arrow-right":
+  phase==="hurt"||phase==="thrown"?"warning":"swords";
+const phaseCaption=(phase:GroupPhase|"dead"):string=>
+  phase==="windup"?"WINDING UP":
+  phase==="recover"?"RECOVERING":
+  phase==="roll"?"DODGING":
+  phase==="parry"?"PARRYING":
+  phase==="cast"?"CASTING":
+  phase==="heal"?"HEALING":
+  phase==="strike"?"ATTACKING":
+  phase==="hurt"?"HIT":
+  phase.replace(/([a-z])([A-Z])/g,"$1 $2").toUpperCase();
 
 interface Slot {
   readonly root:HTMLElement;
   readonly phase:HTMLElement;
+  readonly phaseGlyph:HTMLElement;
   readonly status:HTMLElement;
+  readonly maxHealth:number;
   readonly damage:HTMLElement|null;
   readonly armor:HTMLElement|null;
   readonly stamina:HTMLElement|null;
@@ -45,6 +66,8 @@ export class CombatPartyRoster {
       })),projectiles:[]};
     for(const spec of heroes){
       const view=this.view(spec,first);
+      const wrapper=document.createElement("div");
+      wrapper.className="hero-combat-roster-item";
       const card=renderHeroCard(view,"combat");
       card.tabIndex=0;card.setAttribute("role","button");
       card.setAttribute("aria-label","Focus fighter "+view.name);
@@ -61,17 +84,20 @@ export class CombatPartyRoster {
       inspect.className="hero-card-inspect";
       inspect.type="button";inspect.title="Inspect "+view.name;
       inspect.setAttribute("aria-label","Inspect "+view.name);
-      inspect.textContent="⊞";
+      inspect.replaceChildren(uiIcon("search"));
       inspect.addEventListener("click",event=>{
         event.stopPropagation();
         inspectHeroCard(this.view(spec,this.currentFrame??first));
       });
-      card.append(inspect);
-      this.root.append(card);
+      wrapper.append(card,inspect);
+      this.root.append(wrapper);
       this.slots.set(spec.id,{
         root:card,
         phase:card.querySelector<HTMLElement>(".hero-card-phase-value")!,
+        phaseGlyph:card.querySelector<HTMLElement>(
+          ".hero-card-combat-phase .hero-card-glyph")!,
         status:card.querySelector<HTMLElement>(".hero-card-status")!,
+        maxHealth:spec.maxHp,
         damage:card.querySelector<HTMLElement>(".hero-card-combat-info .hero-card-metric:nth-child(1) .hero-card-metric-value"),
         armor:card.querySelector<HTMLElement>(".hero-card-combat-info .hero-card-metric:nth-child(2) .hero-card-metric-value"),
         stamina:card.querySelector<HTMLElement>(".hero-card-combat-info .hero-card-metric:last-child .hero-card-metric-value"),
@@ -104,8 +130,17 @@ export class CombatPartyRoster {
       if(!actor){slot.root.hidden=true;continue;}
       slot.root.hidden=false;
       const phase=actor.hp<=0?"dead":actor.phase;
-      slot.phase.textContent=phase.toUpperCase();
-      slot.phase.parentElement!.dataset.phase=phase;
+      const phaseRow=slot.phase.parentElement!;
+      if(phaseRow.dataset.phase!==phase){
+        phaseRow.dataset.phase=phase;
+        slot.phaseGlyph.replaceChildren(uiIcon(phaseGlyph(phase)));
+        slot.phaseGlyph.title=phaseCaption(phase);
+        slot.phaseGlyph.setAttribute("aria-label",phaseCaption(phase));
+      }
+      slot.phase.textContent=phaseCaption(phase);
+      const ratio=slot.maxHealth>0?actor.hp/slot.maxHealth:0;
+      slot.root.dataset.condition=actor.hp<=0?"fallen":
+        ratio<=0.3?"critical":ratio<=0.6?"wounded":"healthy";
       slot.status.textContent=(this.historical?"RECORDED":"LIVE")+
         " · "+Math.round(actor.hp)+" HP";
       if(slot.stamina)slot.stamina.textContent=String(Math.round(actor.stamina));

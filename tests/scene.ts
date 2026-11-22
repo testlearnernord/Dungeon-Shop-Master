@@ -38,6 +38,21 @@ export function aimAtBeggingVisitor(heroId:string):void {
   camera.cameraRotation.setAll(0);
 }
 
+/** E2E aim only: inspect a real committed shop NPC with the same FPS
+ * sightline that the in-game I / Alt-click interaction uses. */
+export function aimAtHeroInspectionVisitor(heroId:string):void {
+  const scene=Engine.LastCreatedScene!;
+  const node=scene.transformNodes.find(candidate=>
+    candidate.metadata?.adventurerId===heroId);
+  if(!node)throw Error("Missing physical shop visitor for Hero Card");
+  const target=node.getAbsolutePosition().add(new Vector3(0,1.65,0));
+  const camera=scene.activeCamera as UniversalCamera;
+  camera.position.set(target.x+2.3,target.y+.05,target.z+2.3);
+  camera.setTarget(target);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
 /** Center the *overhead* customer-bark position in a genuine FPS camera.
  * Normal credit conversations use the separate lower torso aim helper. */
 export function aimAtCustomerBark(heroId:string):void {

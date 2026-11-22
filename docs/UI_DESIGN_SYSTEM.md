@@ -267,3 +267,34 @@ The global panel does not pause shop, dungeon or battle clocks.
 Do not add new per-context stat tables, portrait crop algorithms or
 secondary equipment item icon atlases. Do not remove 3D combat health
 plates or hit feedback when cleaning obsolete HTML inspectors.
+
+### V.004 Hero Inspection usability and acceptance
+
+- In the first-person shop, **I** opens the full worldwide Hero Card for
+  the actual projected customer under Galvik's reticle. The small crosshair
+  prompt appears only for a real eligible nearby customer, not a fabricated
+  customer. While the card is open, release mouse lock and temporarily
+  detach Galvik's FPS camera inputs, **without pausing** the shared clock.
+  Closing restores the previous UI focus and normal camera controls.
+- **Alt + left-click** on an actual projected customer is intercepted on
+  `pointerdown` in the capture phase. A shop shelf/customer click must NOT
+  already run before the inspection action, transfer goods, create sales or
+  request pointer lock. Plain click still uses the existing merchant controls.
+- Mini Card hover remains on true physical/shop and LIVE spectator entry
+  points, but the Adventurer Board's inline Mini summaries do not create a
+  redundant second floating Mini within the native board dialog.
+- Group and Level 6 boss Compact combat cards use independent focus targets
+  and accessible inspection buttons. The HUD maps **real committed phases**
+  to corresponding action glyphs (parry, dodge, casting/healing, strike,
+  hurt, death) and uses genuine HP ratio for danger-state border treatment.
+  No second health bar or combat result solver is created.
+- **Coal** has its own pictogram in the one canonical item icon atlas.
+  Legacy abstract loot tokens use the shared treasure symbol, never the
+  Iron Ore pictogram. A regression prevents catalog items without art.
+- Responsive checks on phone/tablet/desktop verify the expanded card and
+  close control stay inside the viewport; restoring keyboard focus works
+  on Escape. Browser validation verifies actual shop NPC inspection and
+  existing LIVE combat/cards without modifying the game world.
+- Automated layout tests are necessary but NOT an artistic manual sign-off:
+  review portrait cropping, target spacing, mobile device feel and audio
+  against the deployed Pages build separately.

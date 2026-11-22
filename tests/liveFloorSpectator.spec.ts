@@ -229,6 +229,8 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   await expect(page.locator("#dungeon-hero-detail-values .hero-card")).toHaveAttribute("data-source","live");
   await expect(page.locator("#dungeon-hero-detail-values .hero-card-item[aria-label='Iron Ore ×1']")).toHaveCount(1);
   await expect(page.locator("#dungeon-hero-detail-values .hero-card-item[aria-label='Coal ×2']")).toHaveCount(1);
+  await expect(page.locator("#dungeon-hero-detail-values .hero-card-item[aria-label='Coal ×2'] use"))
+    .toHaveAttribute("href",/ui-item-icons\.svg#coal$/);
   const cameraAfter=await mapFocus();
   expect(cameraAfter.target.x).toBeCloseTo(third.x,2);
   expect(cameraAfter.target.z).toBeCloseTo(third.z,2);
