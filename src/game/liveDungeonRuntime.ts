@@ -1094,7 +1094,7 @@ export function finishLiveDungeonDay(
     ...closed,day,worldClock:clock,earlyDungeonWorlds:morningWorlds,
     level7World:morningLevel7,
     shopTraffic:{day,tick:clock.tick,initialized:false,actors:[],
-      claims:[],shelfOwners:[],doorY:{level4:0,level6:0}},
+      claims:[],shelfOwners:[],doorY:{portal:0}},
     shopEconomy:{...closed.shopEconomy,
       dailySales:{day,units:0,revenue:0}},
     adventurers,rngState,
