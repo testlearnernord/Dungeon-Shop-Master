@@ -163,16 +163,18 @@ function classifyDeaths(metrics,previous,state,added) {
   for(const hero of state.adventurers){
     if(hero.status!=="dead"||old.get(hero.id)?.status==="dead")continue;
     const relevant=added.filter(e=>e.adventurerId===hero.id);
-    const replay=relevant.find(e=>(e.dungeonReplay||e.level7Replay)&&
-      (e.dungeonReplay?.steps?.some(st=>st.action==="death")||
-       e.level7Replay?.steps?.some(st=>st.action==="death")||
-       e.dungeonReplay?.encounters?.length||
-       e.level7Replay?.encounters?.length));
-    const steps=replay?.dungeonReplay?.steps??replay?.level7Replay?.steps??[];
-    const encounters=replay?.dungeonReplay?.encounters??replay?.level7Replay?.encounters??[];
-    let cause=encounters.length?"combat":
+    // Only current committed replay/event contracts can explain a death.
+    // Floor 10 is the unique real party boss; retired Solo-F6 events and
+    // dedicated F7 replay payloads must never classify modern campaigns.
+    const replay=relevant.find(e=>e.dungeonReplay&&
+      (e.dungeonReplay.steps?.some(st=>st.action==="death")||
+       e.dungeonReplay.encounters?.length));
+    const steps=replay?.dungeonReplay?.steps??[];
+    const encounters=replay?.dungeonReplay?.encounters??[];
+    const origin=old.get(hero.id);
+    const cause=origin?.floor===10||hero.floor===10?"boss":
+      encounters.length?"combat":
       steps.some(step=>step.action==="trap")?"trap":"unclassified";
-    if(relevant.some(e=>e.type==="level6-combat"))cause="boss";
     add(metrics.deathCauses,cause,1);
     add(metrics.deathFloors,String(hero.floor),1);
     metrics.deathRecords.push({day:state.day,id:hero.id,level:hero.level,
