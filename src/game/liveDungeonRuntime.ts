@@ -843,9 +843,15 @@ export function finishLiveDungeonDay(
     hero.status==="off-duty"&&hero.offDutyUntilDay!==null&&
     day>=hero.offDutyUntilDay).map(hero=>hero.id));
   const adventurers=closed.adventurers.map(hero=>{
-    // Two whole days away: no shop presence, combat, free healing or supplies.
-    if(hero.status==="off-duty"){
-      if(!reenteringIds.has(hero.id))return hero;
+    // Consuming a genuinely owned supply is not free regeneration. Off-duty
+    // heroes can use their bread/herbs while resting, rather than return to
+    // combat wounded with untouched supplies in their pack.
+    const healed=useHealingSupplies(hero,day);
+    events.push(...healed.events);
+    const ready=healed.adventurer;
+    // Two complete off-duty days remain protected from dungeon/shop events.
+    if(ready.status==="off-duty"){
+      if(!reenteringIds.has(ready.id))return ready;
       // Interim compatibility: the existing individually granted Level-6/7
       // boss permit remains playable, but never bypasses physical shop exit
       // or the two whole off-duty days. The Floor-10 gate is still future work.
@@ -857,12 +863,9 @@ export function finishLiveDungeonDay(
         reportedZone:target>=6?"deep" as const:"upper" as const,
         message:`${hero.name} began a new expedition after two full days away.`,
       });
-      return {...hero,status:target===1?"exploring" as const:"expedition" as const,
+      return {...ready,status:target===1?"exploring" as const:"expedition" as const,
         floor:target,offDutyUntilDay:null};
     }
-    const healed=useHealingSupplies(hero,day);
-    events.push(...healed.events);
-    const ready=healed.adventurer;
     if(ready.status==="returning"&&ready.floor>=1&&ready.floor<=4)
       return {...ready,status:"exploring" as const};
     // Sleeping cannot complete a portal journey which is still scheduled
