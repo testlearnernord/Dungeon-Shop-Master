@@ -146,6 +146,14 @@ test("party gateway rejects solo or unauthorized attempts, and gear determines m
     {...heroes[0],level6Permit:false},heroes[1]],42),/party/);
   assert.equal(createGroupCombat(equipped).actors.length,4);
   const fight=resolveGroupCombat(equipped,90);
+  const naked=resolveGroupCombat(unarmed,90);
+  console.log("LEVEL10_BALANCE_PROBE",JSON.stringify({
+    equipped:fight.state.outcome,unarmed:naked.state.outcome,
+    equippedHeroHp:fight.state.actors.filter(a=>a.team==="heroes").map(a=>a.hp),
+    unarmedHeroHp:naked.state.actors.filter(a=>a.team==="heroes").map(a=>a.hp),
+    equippedBossHp:fight.state.actors.find(a=>a.id==="cave-troll")?.hp,
+    unarmedBossHp:naked.state.actors.find(a=>a.id==="cave-troll")?.hp,
+  }));
   assert.notEqual(fight.state.outcome,"fighting");
   assert.equal(fight.replay.frames.length>1,true);
 });
