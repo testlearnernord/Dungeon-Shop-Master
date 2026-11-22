@@ -27,9 +27,13 @@ test("one tick advances exactly one day and returns only that tick's determinist
   const initial = createGameState();
   const result = advanceDay(initial);
   assert.equal(result.state.day, 2);
-  assert.deepEqual(result.events[0], { id: "day-2:started", type: "day-started", day: 2, message: "Day 2 begins." });
-  assert(result.events.every((event) => event.day === 2));
-  assert.deepEqual(result.state.events, [...initial.events, ...result.events]);
+  assert.deepEqual(result.events.find(e=>e.type==="day-started"&&e.day===2),{
+    id:"day-2:started",type:"day-started",day:2,message:"Day 2 begins."});
+  assert(result.events.some(event=>event.day===1&&event.type==="dungeon-live"),
+    "The live scheduler must resolve real events before the bed closes Day 1");
+  const priorIds=new Set(initial.events.map(event=>event.id));
+  assert.deepEqual(result.state.events.filter(event=>!priorIds.has(event.id)),
+    result.events);
   assert.deepEqual(advanceDay(initial), result);
 });
 
@@ -108,11 +112,13 @@ test("manual payment closes a shop visit instead of randomly sending the buyer b
   };
   const next=advanceDay(state);
   const updated=next.state.adventurers.find(person=>person.id===buyer.id)!;
-  assert.equal(updated.status,"returning");
-  assert.equal(updated.floor,"transit");
+  assert.equal(updated.status,"departing",
+    "Payment does not physically move an NPC across the door");
+  assert.equal(updated.floor,"shop");
   assert.equal(updated.shopStayDays,0);
   assert.equal(next.events.filter(e=>e.adventurerId===buyer.id&&e.type==="shop-stay").length,0);
-  assert.equal(next.events.filter(e=>e.adventurerId===buyer.id&&e.type==="shop-departure").length,1);
+  assert.equal(next.events.filter(e=>e.adventurerId===buyer.id&&e.type==="shop-departure").length,0,
+    "Off duty starts only after an observed outside-gate crossing");
   assert.deepEqual(advanceDay(state),next,"a saved day tick must not reroll customer departures");
 });
 

@@ -28,7 +28,8 @@ test("real ordinary Floor-6 exploration and group boss save shape remain canonic
   const explorer={...hero,status:"exploring" as const,floor:6 as const};
   const next=advanceDay({...initial,
     adventurers:initial.adventurers.map(h=>h.id===hero.id?explorer:h)}).state;
-  assert(next.events.some(e=>e.type==="dungeon-exploration"&&
-    e.adventurerId===hero.id&&e.dungeonReplay?.floor===6));
+  assert(next.events.some(e=>e.type==="dungeon-live"&&
+    e.adventurerId===hero.id),
+    "A real Floor-6 hero must report scheduled live activity");
   assert.deepEqual(parseSave(JSON.stringify(createSave(next))),next);
 });

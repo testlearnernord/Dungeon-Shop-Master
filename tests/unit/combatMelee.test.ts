@@ -8,7 +8,7 @@ import {
   createGroupCombat, resolveGroupCombat, stepGroupCombat,
   type CombatantSpec,
 } from "../../src/game/groupCombat.ts";
-import { advanceDay, createGameState } from "../../src/game/gameState.ts";
+import {realSpatialTapeFixture} from "./realSpatialTapeFixture.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
 const attacker={x:0,z:2};
@@ -115,16 +115,9 @@ test("ordinary and heavy enemy strikes share contact logic but have meaningful t
 });
 
 test("historic no-ability v1 replays still validate; special abilities are strict and saved",()=>{
-  let state=createGameState(7351);
-  let event=state.events.find(e=>e.type==="dungeon-exploration"&&
-    !!e.dungeonReplay?.encounters.length);
-  for(let i=0; i<24 && !event;i++){
-    state=advanceDay(state).state;
-    event=state.events.find(e=>e.type==="dungeon-exploration"&&
-      !!e.dungeonReplay?.encounters.length);
-  }
-  assert(event?.dungeonReplay?.encounters.length,
-    "fixture needs a real early-floor monster replay");
+  const {state,event}=realSpatialTapeFixture(6,"monster");
+  assert(event.dungeonReplay?.encounters.length,
+    "Fixture requires an authentic seeded monster combat tape");
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
   const base:any=structuredClone(createSave(state));
   const saved=base.payload.events.find((e:any)=>e.id===event!.id);

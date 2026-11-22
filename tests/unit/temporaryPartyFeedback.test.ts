@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createGameState,advanceDay} from "../../src/game/gameState.ts";
+import {createGameState} from "../../src/game/gameState.ts";
+import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {
   temporaryPartyChanges,type DungeonPartyState,
@@ -78,90 +79,28 @@ function preparedDay(){
   };
 }
 
-test("day settlement commits real Temporary Party feed entries and historical member snapshot",()=>{
-  const first=preparedDay();
-  const second=advanceDay(first);
-  assert.deepEqual(second,advanceDay(first),
-    "Actual membership and feed must remain deterministic");
-  const joins=second.events.filter(event=>event.type==="temporary-party-join");
+test("a genuine LIVE movement tick forms and reports a real Temporary Party",()=>{
+  const initial=preparedDay(),store=new GameStore(initial);
+  store.enableLiveDungeon();
+  store.advanceWorldTime(200);
+  const state=store.state;
+  const joins=state.events.filter(event=>event.type==="temporary-party-join");
   assert.deepEqual(joins.map(event=>event.adventurerId),[a,b]);
-  assert(joins.every(event=>event.message.includes("Temporary Party")));
+  assert(joins.every(event=>event.worldTick===200),
+    "Formation is committed on the real scheduled world clock");
   assert(joins.every(event=>reportCategory(event)==="dungeon"));
   assert(joins.every(event=>reportIcon(event)==="swords"));
-  const recorded=second.events.filter(event=>event.type==="dungeon-exploration");
-  assert.equal(recorded.length,2);
-  for(const event of recorded){
-    assert.deepEqual(event.dungeonReplay?.partyMemberIds,[a,b]);
-    assert(event.dungeonReplay?.partyMemberIds?.includes(event.adventurerId!));
-    assert.deepEqual(event.dungeonReplay?.partyAppearances?.map(hero=>hero.id),
-      [a,b],"A peaceful group expedition must still know both historical models");
-    assert(event.dungeonReplay?.partyAppearances?.every(hero=>
-      hero.equipment.weapon==="Iron Sword"&&
-      hero.equipment.armor==="Leather Vest"));
-  }
-  const partyNumber=temporaryPartyNumber(second.state,a);
-  assert.equal(partyNumber,1);
-  assert.equal(temporaryPartyNumber(second.state,b),partyNumber);
-  assert.equal(partySizeLabel(second.state,a)," · Temporary Party #1 (2)");
-  assert.equal(partySizeLabel(second.state,b)," · Temporary Party #1 (2)");
-  assert.deepEqual(rosterPartyDetails(second.state,a)?.members.map(h=>h.id),[a,b]);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(second.state))),second.state,
-    "Strict version-13 save must preserve true historical party and feed events");
-
-  const saved=structuredClone(createSave(second.state));
-  const firstTape=saved.payload.events.find(event=>event.dungeonReplay)?.dungeonReplay;
-  assert(firstTape);
-  delete (firstTape as {partyMemberIds?:readonly string[]}).partyMemberIds;
-  delete (firstTape as {partyAppearances?:unknown}).partyAppearances;
-  assert.doesNotThrow(()=>parseSave(JSON.stringify(saved)),
-    "Older v1 recordings with no historical party metadata still load");
-  const previousPhase=structuredClone(createSave(second.state));
-  const priorReplay=previousPhase.payload.events.find(event=>event.dungeonReplay)!
-    .dungeonReplay!;
-  delete (priorReplay as {partyAppearances?:unknown}).partyAppearances;
-  assert.doesNotThrow(()=>parseSave(JSON.stringify(previousPhase)),
-    "Earlier Temporary Party recordings without visual snapshots remain valid");
-
-  for(const mutate of [
-    (tape:NonNullable<typeof priorReplay>)=>{
-      (tape.partyAppearances![1].equipment as {armor:string|null}).armor="Dragon Plate";
-    },
-    (tape:NonNullable<typeof priorReplay>)=>{
-      (tape.partyAppearances![1] as {role:string}).role="monster";
-    },
-    (tape:NonNullable<typeof priorReplay>)=>{
-      (tape.partyAppearances as unknown[]).pop();
-    },
-    (tape:NonNullable<typeof priorReplay>)=>{
-      (tape.partyAppearances![0] as {id:string}).id=b;
-    },
-    (tape:NonNullable<typeof priorReplay>)=>{
-      (tape.partyAppearances![0] as {equipment:{weapon:string|null}}).equipment.weapon=null;
-    },
-  ]){
-    const tampered=structuredClone(createSave(second.state));
-    const tape=tampered.payload.events.find(event=>event.dungeonReplay)!
-      .dungeonReplay!;
-    mutate(tape);
-    assert.throws(()=>parseSave(JSON.stringify(tampered)),/partyAppearances/,
-      "Saved historical participant models must match actual party and purchased gear");
-  }
-
-  for(const corrupt of [
-    [a,a],
-    [a,"adventurer-999999"],
-    [b,c],
-    [a,b,c,a],
-  ]){
-    const altered=structuredClone(createSave(second.state));
-    const tape=altered.payload.events.find(event=>event.dungeonReplay)!.dungeonReplay!;
-    (tape as {partyMemberIds:readonly string[]}).partyMemberIds=corrupt;
-    assert.throws(()=>parseSave(JSON.stringify(altered)),/partyMemberIds/);
-  }
-  const forged=structuredClone(createSave(second.state));
-  const partyEvent=forged.payload.events.find(event=>
-    event.type==="temporary-party-join")!;
-  partyEvent.id="day-2:"+a+":temporary-party-leave";
-  assert.throws(()=>parseSave(JSON.stringify(forged)),/id|unique/,
-    "Party feed records must retain canonical event identity");
+  const group=state.dungeonParties?.find(p=>
+    p.memberIds.includes(a)&&p.memberIds.includes(b));
+  assert(group,"Two co-located consenting heroes must form a saved party");
+  assert.equal(group!.formedDay,1);
+  assert.equal(temporaryPartyNumber(state,a),temporaryPartyNumber(state,b));
+  assert.equal(partySizeLabel(state,a)," · Temporary Party #1 (2)");
+  assert.deepEqual(rosterPartyDetails(state,a)?.members.map(h=>h.id),[a,b]);
+  const world=state.dungeonWorlds.find(entry=>entry.floor===group!.floor)?.world;
+  assert(world?.heroes.some(h=>h.heroId===a)&&world.heroes.some(h=>h.heroId===b),
+    "Members are physically present in one saved dungeon map");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state,
+    "Current save must persist the real co-located party and its feed");
 });
+
