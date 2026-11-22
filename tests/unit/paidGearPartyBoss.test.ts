@@ -81,11 +81,11 @@ test("physically purchased gear carries into the real Floor-10 GroupCombat hero"
   assert(Math.abs(live.time-0.5)<1e-6);
   assert.equal(snapshot.t,0);
   assert(live.actors.some(a=>a.id===first.id&&a.equipment?.weapon==="Iron Sword"));
-  const initial=createGroupCombat(gearedOptions).actors.find(a=>a.id===first.id)!;
+  const initialActor=createGroupCombat(gearedOptions).actors.find(a=>a.id===first.id)!;
   const recorded=snapshot.actors.find(a=>a.id===first.id)!;
-  assert.equal(recorded.hp,initial.hp);
-  assert.equal(recorded.x,initial.x);
-  assert.equal(recorded.z,initial.z);
-  assert.equal(recorded.phase,initial.phase);
-  assert.equal(initial.equipment?.weapon,"Iron Sword");
+  assert.equal(recorded.hp,initialActor.hp);
+  assert.equal(recorded.x,initialActor.x);
+  assert.equal(recorded.z,initialActor.z);
+  assert.equal(recorded.phase,initialActor.phase);
+  assert.equal(initialActor.equipment?.weapon,"Iron Sword");
 });

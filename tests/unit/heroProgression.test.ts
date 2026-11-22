@@ -8,7 +8,7 @@ import {prepareSpatialDungeonCombat,emptyLevel7World} from "../../src/game/level
 import {lastWorldTickOfDay} from "../../src/game/worldClock.ts";
 import {developerHeroFromRoster,buildDeveloperCombat,DEFAULT_DEVELOPER_CONFIG}
   from "../../src/game/developerCombatScenario.ts";
-import {caveTrollGroupOptions} from "../../src/game/sharedBossCombat.ts";
+import {caveTrollGroupOptions,caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 import {useHealingSupplies} from "../../src/game/adventurers.ts";
 import {
   heroLevel,heroProgression,settleHeroExperience,HERO_POWER_CAP_LEVEL,
@@ -144,7 +144,7 @@ test("levelled v29 saves validate earned HP and feed the unique Floor-10 party m
   const fighters=state.adventurers.slice(0,3).map(h=>({
     ...h,bossPass:true,status:"expedition" as const,floor:10 as const,
   }));
-  const fight=caveTrollGroupOptions(fighters,42);
+  const fight=caveTrollPartyOptions(fighters,42);
   const actor=fight.actors.find(a=>a.id===hero.id)!;
   assert(actor,"Real hero must be part of the actual Floor-10 party.");
   assert.equal(actor.maxHp,cap);

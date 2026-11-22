@@ -29,7 +29,7 @@ test("v29 strictly rejects a forged LIVE solo-boss checkpoint, no fallback or mi
   store.enableLiveDungeon();
   const save=structuredClone(createSave(store.state)) as any;
   save.payload.liveDungeon.bossCombat={id:"live-boss:1:200:forged",heroId:"adventurer-1"};
-  assert.throws(()=>parseSave(JSON.stringify(save)),/liveDungeon.*unknown fields/);
+  assert.throws(()=>parseSave(JSON.stringify(save)),/liveDungeon\\.bossCombat.*not supported/);
   const old=structuredClone(createSave(store.state)) as any;
   old.simulationVersion=28;
   old.payload.simulationVersion=28;
