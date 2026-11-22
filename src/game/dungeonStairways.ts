@@ -9,9 +9,10 @@ export interface DungeonStairway extends DungeonPoint{
   readonly destinationFloor:number|null;
 }
 
-/** Uses exactly the seeded entrance/down-stair coordinates that the single
- * authoritative LIVE expedition scheduler already uses. A sealed endpoint
- * is a purely visual landmark, NEVER a traversable floor transition. */
+/** Uses seeded entrance/down-stair coordinates from the authoritative LIVE
+ * map. Ordinary Floors 1–9 are traversable; the Floor-9 descent is subject
+ * to the separate saved party/pass check in liveDungeonRuntime.ts. The
+ * visual descriptor never grants access, awards a boss or changes state. */
 export function dungeonFloorStairways(layout:DungeonLayout):readonly DungeonStairway[]{
   const floor=layout.floor;
   const exit=floor===1;
@@ -23,11 +24,9 @@ export function dungeonFloorStairways(layout:DungeonLayout):readonly DungeonStai
   };
   if(floor<1||floor>9)return [up];
   const down=dungeonDownStair(layout);
-  const traversable=floor<=9;
   return [up,{...down,id:"stair-down-floor-"+floor,
-    kind:traversable?"descend":"sealed",
+    kind:"descend",
     label:floor===9?"DESCEND · FLOOR 10 · CAVE TROLL (PARTY ONLY)":
-      traversable?"DESCEND · FLOOR "+(floor+1):
-      "CAVE TROLL CHAMBER · PARTY GATE (NOT YET OPEN)",
-    destinationFloor:traversable?floor+1:null}];
+      "DESCEND · FLOOR "+(floor+1),
+    destinationFloor:floor+1}];
 }
