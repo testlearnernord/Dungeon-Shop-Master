@@ -1,4 +1,5 @@
 import type {AdventurerState,AdventurerRole} from "./adventurers.ts";
+import {heroProgression} from "./heroProgression.ts";
 import type {GameState} from "./gameState.ts";
 import type {ItemId} from "./economy.ts";
 import type {Level7Replay} from "./level7Exploration.ts";
@@ -44,11 +45,11 @@ export function liveHeroCard(
   return {
     id:hero.id,name:names.get(hero.id)??hero.name,role:hero.role,
     source:"live",level:hero.level,
-    health:context.health??hero.health,maxHealth:hero.stats.maxHealth,
+    health:context.health??hero.health,maxHealth:heroProgression(hero).maxHealth,
     xp:hero.xp,gold:hero.gold,floor:hero.floor,status:hero.status,
     activity:context.activity??null,goal:context.goal??plan?.goal??null,
     action:context.action??plan?.action??null,
-    party:group?.memberIds??[],stats:hero.stats,traits:hero.traits,
+    party:group?.memberIds??[],stats:heroProgression(hero),traits:hero.traits,
     equipment:hero.equipment,inventory:hero.inventory,recent,observations:[],
     combat:null,
   };
@@ -68,7 +69,7 @@ export function combatHeroCard(
     maxHealth:spec.maxHp,xp:live?.xp??null,gold:live?.gold??null,
     floor:live?.floor??null,status:actor?.hp===0?"dead":"combat",
     activity:actor?.phase??null,goal:null,action:null,party:[],
-    stats:live?.stats??null,traits:live?.traits??null,
+    stats:live?heroProgression(live):null,traits:live?.traits??null,
     equipment:spec.equipment??live?.equipment??{weapon:null,armor:null},
     inventory:live?.inventory??null,recent:[],observations:[],
     combat:{damage:spec.damage,armor:spec.armor,
