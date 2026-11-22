@@ -4,22 +4,6 @@ import type {ShopPortalGate} from "./shopPortal.ts";
 /** One physical doorway. Never encode dungeon floor numbers in NPC routes. */
 export type GateSide=ShopPortalGate;
 
-/** Derive cosmetic return routes from the authoritative daily event history. */
-export function level6ReturnIds(
-  events: readonly { readonly type: string; readonly day: number; readonly adventurerId?: string }[],
-  currentDay: number,
-): ReadonlySet<string> {
-  const ids = new Set<string>();
-  for (let i = events.length - 1; i >= 0; i -= 1) {
-    const event = events[i];
-    if (event.day < currentDay - 1) break;
-    if (event.day === currentDay - 1 && event.type === "level6-return" && event.adventurerId) {
-      ids.add(event.adventurerId);
-    }
-  }
-  return ids;
-}
-
 export interface VisitorSnapshot {
   readonly id: string;
   readonly name: string;
