@@ -480,15 +480,11 @@ export class Level6Arena {
     });
     if (this.replay) this.applyReplayFrame(this.replay.frames[0]);
     const names = heroDisplayNames(state.adventurers);
-    this.previewText.textContent = live
-      ?"LIVE BOSS · Shared world-clock combat · Read-only witness, no reroll or pause."
-      :this.replay
+    this.previewText.textContent = this.replay
       ? "RECORDED COMBAT · Day " + this.replay.day + " · " + this.replay.outcome +
         " · Exact saved fight, no additional damage or rewards."
-      : realExpedition
-        ? "EXPEDITION PREVIEW · Uncommitted training only. Confirm the day to record the real fight."
-        : "TRAINING PREVIEW · " + this.training?.label +
-          " · New sparring match each restart. No saved gameplay changes.";
+      : "TRAINING PREVIEW · " + (this.training?.label??this.fighter?.name??"Cave Troll") +
+        " · Isolated sparring match, never a solo Floor-6 campaign boss.";
     // Level-6 authored lighting and spectator camera are THE shared standard.
     // The Crypt variant uses this same stage, not a competing arena engine.
     const {scene,camera}=createCombatSpectatorStage(this.engine,"cave-troll");
