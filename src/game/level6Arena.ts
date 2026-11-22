@@ -20,6 +20,7 @@ import {
   type SharedBossPreview,
 } from "./sharedBossCombat.ts";
 import type { AdventurerState } from "./adventurers.ts";
+import {heroProgression} from "./heroProgression.ts";
 import type { BossCombatReplay, BossReplayFrame } from "./bossCombatReplay.ts";
 import { observeReplay } from "../replayDisclosure.ts";
 import type { GameStore } from "./gameStore.ts";
@@ -489,11 +490,19 @@ export class Level6Arena {
       health: this.replay?.frames[0].heroHp ?? this.training?.options.health ??
         this.fighter?.health ?? 45,
       maxHealth: this.replay?.maxHp ?? this.training?.options.maxHealth ??
-        this.fighter?.stats.maxHealth ?? 50,
+        (this.fighter?heroProgression(this.fighter).maxHealth:50),
       healingSupplies: this.training?.options.healingSupplies ?? this.fighter?.inventory.healing ?? 0,
-      strength: this.training?.options.strength,
-      agility: this.training?.options.agility,
-      intellect: this.training?.options.intellect,
+      strength: this.training?.options.strength ??
+        (this.fighter?heroProgression(this.fighter).strength:undefined),
+      agility: this.training?.options.agility ??
+        (this.fighter?heroProgression(this.fighter).agility:undefined),
+      intellect: this.training?.options.intellect ??
+        (this.fighter?heroProgression(this.fighter).intellect:undefined),
+      ...(!this.training&&!this.replay&&this.fighter?{
+        progressionDamageBonus:heroProgression(this.fighter).damageBonus,
+        progressionArmorBonus:heroProgression(this.fighter).armorBonus,
+        progressionMagicHeals:heroProgression(this.fighter).bonusMagicHeals,
+      }:{}),
       tacticsSeed: this.training?.options.tacticsSeed,
     });
     if (this.replay) this.applyReplayFrame(this.replay.frames[0]);
