@@ -240,6 +240,7 @@ export class NpcVisualSystem {
   private stockTemplates:ReadonlyMap<ItemId,Mesh>|null=null;
   private readonly portraits = new Image();
   private readonly doors: Record<GateSide, Mesh | null>;
+  private readonly obsoleteEntranceSeal:Mesh|null;
   private readonly doorY: Record<GateSide, number> = { level4: DOOR_CLOSED_Y, level6: DOOR_CLOSED_Y };
   private layout:ShopLayout|null=null;
   private room:Level5Room|undefined;
@@ -508,6 +509,8 @@ export class NpcVisualSystem {
       level4: scene.getMeshByName("level-4-barrier") as Mesh | null,
       level6: scene.getMeshByName("level-6-barrier") as Mesh | null,
     };
+    this.obsoleteEntranceSeal=scene.getMeshByName(
+      "obsolete-shop-entrance-seal") as Mesh|null;
     // Render frames may only draw the already-committed customer scene.
     // GameStore + WorldClockPacer explicitly invoke advanceWorldTicks. No
     // second frame-clock shopper solver is installed here.
@@ -944,6 +947,11 @@ export class NpcVisualSystem {
 
   private updateStep(delta:number):void {
     if(this.worldPaused)return; // World clock is frozen; never simulate a scene frame.
+    // The second corridor is inert rock for all new customers. Existing
+    // saved right-gate visitors may physically finish their old route;
+    // only their *actual* saved presence lifts this backward-compatible seal.
+    this.obsoleteEntranceSeal?.setEnabled(
+      ![...this.npcs.values()].some(npc=>npc.gateSide==="level6"));
     const open: Record<GateSide, boolean> = { level4: false, level6: false };
     // Compute from the same snapshot for every visitor this frame. Otherwise
     // the first actor moved would change right-of-way for subsequent actors.
