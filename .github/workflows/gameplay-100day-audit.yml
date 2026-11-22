@@ -3,8 +3,7 @@ name: Long-run Gameplay Simulation Audit
 on:
   push:
     branches:
-      - audit/gameplay-loop-100-days-20261122
-      - refactor/cursed-shop-dungeon-topology-20261122
+      - 'audit/gameplay-loop-*'
     paths:
       - tools/analysis/gameplay-100day-audit.mjs
       - .github/workflows/gameplay-100day-audit.yml
@@ -22,7 +21,7 @@ permissions:
 
 jobs:
   audit:
-    name: Real-world 100-day scenarios / ${{ matrix.seed }}
+    name: Real GameStore / scripted-storefront 100-day scenarios / ${{ matrix.seed }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
