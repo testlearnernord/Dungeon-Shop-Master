@@ -15,7 +15,7 @@ test("physically purchased gear carries into the real Floor-10 GroupCombat hero"
   const initial=createStockedShopState(7351,{dailyInflux:0,maxActive:10});
   const first=initial.adventurers[0];
   const originalHero={
-    ...first,status:"at-shop" as const,floor:5 as const,
+    ...first,status:"at-shop" as const,floor:"shop" as const,
     gold:100,health:first.stats.maxHealth,
     equipment:{weapon:null,armor:null},
     inventory:{...first.inventory,bread:2,healing:1},

@@ -11,7 +11,7 @@ import { GameStore } from "../../src/game/gameStore.ts";
 function customers():GameState {
   const base=createGameState(7351);
   return {...base,adventurers:base.adventurers.map((hero,index)=>
-    index<2 ? {...hero, status:"at-shop" as const, floor:5 as const,
+    index<2 ? {...hero, status:"at-shop" as const, floor:"shop" as const,
       gold:index===0?100:8, health:index===0?Math.max(1,hero.health-20):hero.health,
       inventory:{...hero.inventory,bread:0,healing:0},
       equipment:{weapon:null,armor:null}} :hero)};
@@ -163,7 +163,7 @@ test("unpaid items are returned at bed and do not block later shop visits",()=>{
   assert.equal(receipt,undefined,"A cart never settled at the till is not a sale.");
   // Simulate a subsequent shop visit with empty supplies and fresh stock.
   const visiting={...day2,adventurers:day2.adventurers.map(h=>h.id===hero.id
-    ? {...h,status:"at-shop" as const,floor:5 as const,
+    ? {...h,status:"at-shop" as const,floor:"shop" as const,
       inventory:{...h.inventory,bread:0},shopStayDays:0}
     :h)};
   const breadSlot=visiting.shopEconomy.slots.find(x=>x.itemId==="bread")!;

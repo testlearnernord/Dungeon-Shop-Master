@@ -12,7 +12,7 @@ function prepared() {
   return {
     ...state,
     adventurers:state.adventurers.map((hero,i)=>
-      i<3?{...hero,status:"at-shop" as const, floor:5 as const,
+      i<3?{...hero,status:"at-shop" as const, floor:"shop" as const,
         gold:i===0?100:i===1?8:0,
         health:i===0?Math.max(1,hero.health-20):hero.health,
         inventory:{...hero.inventory,bread:0,healing:0},

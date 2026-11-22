@@ -97,7 +97,7 @@ test("manual payment closes a shop visit instead of randomly sending the buyer b
   const buyer=initial.adventurers[0];
   const state={...initial,
     adventurers:initial.adventurers.map(person=>person.id===buyer.id
-      ?{...person,status:"at-shop" as const,floor:5 as const,
+      ?{...person,status:"at-shop" as const,floor:"shop" as const,
         shopStayDays:0,bossPass:false,gold:100}:person),
     events:[...initial.events,{
       id:`day-1:${buyer.id}:sale:shelf-1-slot-2:manual`,
@@ -121,7 +121,7 @@ test("bed returns unpaid stock without a sale; a boss pass never teleports a sol
   const buyer=initial.adventurers[0];
   const visiting={...initial,
     adventurers:initial.adventurers.map(person=>person.id===buyer.id
-      ?{...person,status:"at-shop" as const,floor:5 as const,
+      ?{...person,status:"at-shop" as const,floor:"shop" as const,
         shopStayDays:0,gold:100,bossPass:false}:person),
     shopCarts:[{heroId:buyer.id,day:1,
       lines:[{itemId:"bread" as const,slotId:"shelf-1-slot-2",

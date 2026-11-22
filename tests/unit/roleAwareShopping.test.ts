@@ -15,7 +15,7 @@ function prepared(role:AdventurerState["role"],gold:number,healthFraction=1):
   const original=initial.adventurers[0];
   const hero={...original,role,health:Math.max(1,
     Math.floor(original.stats.maxHealth*healthFraction)),
-    gold,status:"at-shop" as const,floor:5 as const,
+    gold,status:"at-shop" as const,floor:"shop" as const,
     inventory:{...original.inventory,bread:0,healing:0},
     equipment:{weapon:null,armor:null}};
   const items=["iron-sword","leather-vest","bread","healing-herb"] as const;

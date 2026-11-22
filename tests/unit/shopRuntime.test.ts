@@ -15,7 +15,7 @@ function waitingShop(){
   const state={
     ...base,
     adventurers:base.adventurers.map((hero,i)=>i===0
-      ?{...hero,status:"at-shop" as const,floor:5 as const,gold:100,
+      ?{...hero,status:"at-shop" as const,floor:"shop" as const,gold:100,
         inventory:{...hero.inventory,bread:0,healing:0},equipment:{weapon:null,armor:null}}
       :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
     shopEconomy:{...base.shopEconomy,
