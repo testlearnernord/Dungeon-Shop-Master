@@ -110,8 +110,8 @@ export function returnShopCart(
   };
 }
 
-/** Legacy core used by the actual staffed cash register ONLY. End Day
- * must never call this function to fabricate a purchase.
+/** Atomic held-cart settlement core, called by the real staffed till ONLY.
+ * End Day must always RETURN unpaid goods, never fabricate a payment.
  */
 export function settleHeldShopCarts(
   state: GameState, nextDay: number,
@@ -203,7 +203,7 @@ export function returnUnpaidCartsAtClose(state:GameState):GameState {
  * Staffed register: settle exactly one physically reserved cart.
  * Reuses the validated reservation settlement, which never consumes shelf
  * stock twice (the stock was removed when the hero picked it up).
- * This is deliberately separate from forecast-only checkoutCustomer.
+ * No forecast-only checkout can write a sale or modify inventory.
  */
 export function payReservedShopCart(state:GameState,heroId:string,perfectTiming=false):CartActionResult {
   const cart=state.shopCarts.find(entry=>entry.heroId===heroId);
