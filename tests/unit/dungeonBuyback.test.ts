@@ -13,7 +13,7 @@ function stockedHero():GameState {
   const base=createGameState(7351);
   const id=base.adventurers[0].id;
   return {...base,adventurers:base.adventurers.map(hero=>hero.id!==id?hero:{
-    ...hero,status:"at-shop" as const,floor:5 as const,
+    ...hero,status:"at-shop" as const,floor:"shop" as const,
     health:hero.stats.maxHealth,
     inventory:{...hero.inventory,finds:{"iron-ore":2,"coal":1}},
   })};

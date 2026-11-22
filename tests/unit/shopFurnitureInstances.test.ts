@@ -74,7 +74,7 @@ test("buying from newly constructed shelf drives forecast, sale and day simulati
   const base=createGameState(7351),room=openWing();
   const store=new GameStore({...base,shopRoom:room,
     adventurers:base.adventurers.map((hero,index)=>index===0
-      ?{...hero,status:"at-shop" as const,floor:5 as const,
+      ?{...hero,status:"at-shop" as const,floor:"shop" as const,
         gold:100,inventory:{...hero.inventory,bread:0,healing:0}}
       :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
   });

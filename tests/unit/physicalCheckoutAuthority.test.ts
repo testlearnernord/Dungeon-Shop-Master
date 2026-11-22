@@ -13,7 +13,7 @@ import {payWantedItems,reserveWantedItems} from "./physicalCheckoutFixture.ts";
 function shopState():GameState{
   const state=createStockedShopState(7351);
   return {...state,adventurers:state.adventurers.map((hero,index)=>
-    index===0?{...hero,status:"at-shop" as const,floor:5 as const,
+    index===0?{...hero,status:"at-shop" as const,floor:"shop" as const,
       gold:100,health:Math.max(1,hero.health-20),
       inventory:{...hero.inventory,bread:0,healing:0},
       equipment:{weapon:null,armor:null}}:hero)};
@@ -103,7 +103,7 @@ test("one customer cannot steal reserved bread; a later buyer can use only actua
   const first=state.adventurers[0],second=state.adventurers[1];
   const ready={...state,
     adventurers:state.adventurers.map(h=>h.id===first.id||h.id===second.id
-      ?{...h,status:"at-shop" as const,floor:5 as const,gold:100,
+      ?{...h,status:"at-shop" as const,floor:"shop" as const,gold:100,
         health:h.stats.maxHealth,
         equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
         inventory:{...h.inventory,bread:0,healing:1}}:h),

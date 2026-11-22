@@ -27,7 +27,7 @@ test("Day 1 has ten persistent heroes, exactly three distinct shop visitors", ()
   assert.equal(new Set(state.adventurers.map(hero=>hero.id)).size,10);
   const visitors=state.adventurers.filter(hero=>hero.status==="at-shop");
   assert.equal(visitors.length,3);
-  assert(visitors.every(hero=>hero.floor===5)); // CURRENT V.002 shop, pending cursed portal.
+  assert(visitors.every(hero=>hero.floor==="shop")); // Unnumbered cursed shop, not real Floor 5.
   assert(state.adventurers.slice(3).every(hero=>
     hero.floor<=4 && hero.status==="exploring"));
   assert.equal(state.events.filter(event=>event.type==="shop-arrival").length,3);
