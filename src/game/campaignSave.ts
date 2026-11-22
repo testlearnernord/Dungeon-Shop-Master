@@ -12,7 +12,7 @@ import {
   type Level7World,
   type SpatialDungeonFloor,
 } from "./level7Exploration.ts";
-import { generateDungeonLayout, generateExpeditionLayout, tileAt } from "./dungeonLayout.ts";
+import { dungeonDownStair, generateDungeonLayout, generateExpeditionLayout, tileAt } from "./dungeonLayout.ts";
 import {isShelfId,MAX_SHOP_SHELVES,shopLayoutProblem,
   type ShelfPlacement,type ShopLayout} from "./shopLayout.ts";
 import {rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
@@ -154,8 +154,15 @@ function validateLevel7World(
       unique(idx,visitedIds,item+".visited["+n+"]");
     });
     if(!visitedIds.has(z*map.width+x))fail(item+".visited","must include current location");
-    if(!visitedIds.has(map.entrance.z*map.width+map.entrance.x))
-      fail(item+".visited","must include dungeon entrance");
+    // A hero who has climbed from the floor below may only know this
+    // floor's lower stair, not the unexplored upper portal. Preserve
+    // truthful fog of war instead of forging a visit to the entrance.
+    const upper=map.entrance.z*map.width+map.entrance.x;
+    const lower=floor>=2&&floor<=4?dungeonDownStair(map):null;
+    const lowerIndex=lower?lower.z*map.width+lower.x:null;
+    if(!visitedIds.has(upper)&&
+        (lowerIndex===null||!visitedIds.has(lowerIndex)))
+      fail(item+".visited","must include dungeon entrance or arrival stair");
   });
 }
 function validateLevel7Replay(
@@ -777,7 +784,7 @@ function validateLivePortalReturns(
         chooseKnownReturnStep(generateExpeditionLayout(
           state.seed as number,floor),progress);
       } catch {
-        fail(path+".heroId","must have a fully connected known route home");
+        fail(path+".heroId","must have a connected, physically explorable route home");
       }
     }
   }
