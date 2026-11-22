@@ -52,7 +52,7 @@ export interface ShopTrafficCheckpoint {
 }
 export function emptyShopTraffic(day:number,tick:number):ShopTrafficCheckpoint {
   return {day,tick,initialized:false,actors:[],claims:[],shelfOwners:[],
-    doorY:{level4:0,level6:0}};
+    doorY:{portal:0}};
 }
 
 const fail=(path:string,message:string):never=>{
@@ -122,8 +122,8 @@ export function validateShopTraffic(
   const actors=arr(root.actors,"shopTraffic.actors",100);
   const claims=arr(root.claims,"shopTraffic.claims",100);
   const owners=arr(root.shelfOwners,"shopTraffic.shelfOwners",100);
-  const door=obj(root.doorY,"shopTraffic.doorY",["level4","level6"]);
-  for(const gate of ["level4","level6"])bounded(door[gate],"shopTraffic.doorY."+gate,-10,10);
+  const door=obj(root.doorY,"shopTraffic.doorY",["portal"]);
+  bounded(door.portal,"shopTraffic.doorY.portal",-10,10);
   if(!root.initialized&&(actors.length||claims.length||owners.length))
     fail("shopTraffic","cannot contain uninitialized NPCs or claims");
   const actorIds=new Set<string>();
@@ -139,7 +139,7 @@ export function validateShopTraffic(
     slots.add(slot);
     for(const key of ["x","z"])bounded(actor[key],p+"."+key,-40,40);
     bounded(actor.yaw,p+".yaw",-10000,10000);
-    if(!["level4","level6"].includes(actor.gateSide as string))
+    if(actor.gateSide!=="portal")
       fail(p+".gateSide","is not a gate");
     if(!PHASES.includes(actor.phase as string))fail(p+".phase","is unknown");
     str(actor.shoppingPhase,p+".shoppingPhase");
