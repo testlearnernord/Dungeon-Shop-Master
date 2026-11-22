@@ -36,7 +36,7 @@ test("Day 1 has ten persistent heroes, exactly three distinct shop visitors", ()
     assert.equal(hero.health,hero.stats.maxHealth);
     assert.equal(hero.level,1);
     assert.equal(hero.xp,0);
-    assert.deepEqual(hero.inventory,{bread:0,loot:0,healing:0});
+    assert.deepEqual(hero.inventory,{bread:0,healing:0});
     assert.deepEqual(hero.equipment,{weapon:null,armor:null});
   }
 });
@@ -65,7 +65,9 @@ test("character generation, world layout and seeded simulations reproduce across
     assert.equal(first.adventurer.level,
       1+Math.floor(first.adventurer.xp/100));
     assert(first.adventurer.gold>=hero.gold);
-    assert(first.adventurer.inventory.loot>=hero.inventory.loot);
+    assert(Object.values(first.adventurer.inventory.finds??{})
+      .every(count=>count!==undefined&&count>=0),
+      "Real loot must be stored as nonnegative individually owned goods");
     assert(first.replay.steps.every(step=>layout.tiles[step.z*layout.width+step.x]!=="wall"));
   }
 });
@@ -106,7 +108,7 @@ test("strategic choices respond to actual HP, equipment, loot and map knowledge"
   const injured={...hero,health:1};
   assert.deepEqual(chooseHeroDungeonDecision(injured,progress,replay),
     {goal:"resupply",action:"shop"});
-  const loaded={...hero,inventory:{...hero.inventory,loot:3}};
+  const loaded={...hero,inventory:{...hero.inventory,finds:{"iron-ore":3}}};
   assert.equal(chooseHeroDungeonDecision(loaded,progress,replay).action,"shop");
   const floor4={...hero,floor:4 as const};
   assert.equal(chooseHeroDungeonDecision(floor4,progress,

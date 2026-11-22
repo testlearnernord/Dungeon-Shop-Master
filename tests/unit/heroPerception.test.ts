@@ -24,7 +24,7 @@ function hero(id:string,x:number,z:number,
   return {id,name:id,role:"DPS",level:2,
     stats:{strength:6,agility:8,intellect:5,maxHealth:40},
     traits:{positive:"careful",neutral:"quiet",negative:"stubborn"},
-    inventory:{loot:0,bread:1,healing:0},equipment:{weapon:null,armor:null},
+    inventory:{bread:1,healing:0},equipment:{weapon:null,armor:null},
     x,z,visited,health:40,gold:5,partyMemberIds,
     partyId:partyMemberIds.length>1?"party:one":null,inCombat:false,
     goal:null,plannedAction:null,activity:"exploring"};

@@ -166,7 +166,7 @@ test("stable competing buyers exchange shelf units and gold exactly once, never 
 
 test("needs, funds and carried supplies bound sales across multiple shelves", () => {
   const first = customer(1, { gold: 7 });
-  const second = customer(2, { inventory: { bread: 2, healing: 1, loot: 0 } });
+  const second = customer(2, { inventory: { bread: 2, healing: 1 } });
   let state = stock(market([first, second]), "bread", 5);
   state = stock(state, "bread", 5, 1);
   const trade = tradeAtStartOfDay(freeze(state), 2);
@@ -195,7 +195,7 @@ test("day transitions bring visitors but never perform invisible sales", () => {
 });
 
 test("healing only happens to injured adventurers and consumes one item",()=>{
-  const hero=customer(1,{health:10,inventory:{bread:2,healing:1,loot:0}});
+  const hero=customer(1,{health:10,inventory:{bread:2,healing:1}});
   const breadOnly=useHealingSupplies({...hero,inventory:{...hero.inventory,healing:0}},2);
   assert.equal(breadOnly.adventurer.health,18);
   assert.equal(breadOnly.adventurer.inventory.bread,1);
@@ -212,7 +212,7 @@ test("healing only happens to injured adventurers and consumes one item",()=>{
 });
 test("actual cashier sells Waybread and herbs at catalog prices without applying remote healing",()=>{
   const hero=customer(1,{health:10,
-    inventory:{bread:0,healing:0,loot:0},
+    inventory:{bread:0,healing:0},
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"}});
   let state=stock(market([hero]),"bread",1);
   state=freeze(stock(state,"healing-herb",1,1));
@@ -232,7 +232,7 @@ test("injuries without stocked healing supplies cause no passive HP loss",()=>{
 });
 
 test("manual revenue belongs only to the paid day and resets on next day", () => {
-  const hero=customer(1,{inventory:{bread:0,healing:0,loot:0}});
+  const hero=customer(1,{inventory:{bread:0,healing:0}});
   const state=stock(market([hero]),"bread",1);
   const paid=payWantedItems(state,hero.id).state;
   assert.equal(paid.shopEconomy.dailySales.units,1);

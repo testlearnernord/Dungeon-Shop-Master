@@ -125,7 +125,7 @@ test("current Expedition Archive does not disclose unobserved fight outcome or s
   const hiddenChange={...baseline,
     adventurers:progressed.adventurers.map(h=>h.id===hero.id?{
       ...h,health:0,status:"dead" as const,level:99,xp:99999,gold:999999,
-      inventory:{...h.inventory,loot:9999},
+      inventory:{...h.inventory,finds:{"iron-ore":999}},
     }:h),
     events:[{...event,message:"VICTORY: 3000 gold, secret chamber"}],
   };
