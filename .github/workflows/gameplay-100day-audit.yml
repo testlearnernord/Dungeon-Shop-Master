@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - audit/gameplay-loop-100-days-20261122
+      - feat/real-hero-progression-20261122
     paths:
       - tools/analysis/gameplay-100day-audit.mjs
       - .github/workflows/gameplay-100day-audit.yml
+      - src/game/heroProgression.ts
       - src/game/liveDungeonRuntime.ts
       - src/game/level7Exploration.ts
       - src/game/campaignSave.ts
