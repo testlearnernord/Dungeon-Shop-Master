@@ -718,7 +718,8 @@ function commitLiveCombatTick(state:GameState):GameState{
   let returns=[...state.liveDungeon.returns];
   let clock=state.worldClock;
   let rngState=state.rngState;
-  let bossCleared=false;
+  let legacyBossCleared=false;
+  let partyBossCleared=false;
   const plans=new Map(state.liveDungeon.plans.map(p=>[p.heroId,p] as const));
   const sharedGroups:string[][]=state.liveDungeon.combats
     .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
@@ -761,7 +762,7 @@ function commitLiveCombatTick(state:GameState):GameState{
       const goldGain=outcome==="victory"?15+rng.int(11):0;
       const lootGain=outcome==="victory"?2+rng.int(2):0;
       rngState=rng.state;
-      if(outcome==="victory")bossCleared=true;
+      if(outcome==="victory")legacyBossCleared=true;
       const hp=outcome==="death"?0:Math.max(0,Math.round(motion.heroHp));
       const nextXp=original.xp+xpGain;
       const hero:AdventurerState={
@@ -820,7 +821,7 @@ function commitLiveCombatTick(state:GameState):GameState{
       partyBossContinuing={...partyBoss,state:combat,frames};
     }else{
       const winner=combat.outcome==="heroes";
-      if(winner)bossCleared=true;
+      if(winner)partyBossCleared=true;
       const living=partyBoss.heroIds.filter(id=>
         (combat.actors.find(a=>a.id===id)?.hp??0)>0).sort();
       const rewardPot=winner?60:0;
@@ -953,9 +954,13 @@ function commitLiveCombatTick(state:GameState):GameState{
     worldClock:clock,rngState,
     adventurers:roster,dungeonParties:parties.parties,
     earlyDungeonWorlds,level7World,
-    dungeonFloors:bossCleared&&
-      !state.dungeonFloors.some(f=>f.floor===10&&f.cleared)
-        ?[...state.dungeonFloors,{floor:10,cleared:true}]:state.dungeonFloors,
+    dungeonFloors:[
+      ...state.dungeonFloors,
+      ...(legacyBossCleared&&!state.dungeonFloors.some(f=>f.floor===6&&f.cleared)
+        ?[{floor:6,cleared:true}]:[]),
+      ...(partyBossCleared&&!state.dungeonFloors.some(f=>f.floor===10&&f.cleared)
+        ?[{floor:10,cleared:true}]:[]),
+    ],
     liveDungeon:{...state.liveDungeon,combats:continuing,
       bossCombat:bossContinuing,partyBossCombat:partyBossContinuing,
       returns,plans:[...plans.values()],
@@ -1004,9 +1009,7 @@ export function finishLiveDungeonDay(
     id:`day-${day}:started`,type:"day-started",day,
     message:`Day ${day} begins.`,
   }];
-  const previouslyCleared6=state.dungeonFloors.some(f=>f.floor===6&&f.cleared);
-  const previouslyCleared7=state.dungeonFloors.some(f=>f.floor===7&&f.cleared);
-  const reenteringIds=new Set(closed.adventurers.filter(hero=>
+   const reenteringIds=new Set(closed.adventurers.filter(hero=>
     hero.status==="off-duty"&&hero.offDutyUntilDay!==null&&
     day>=hero.offDutyUntilDay).map(hero=>hero.id));
   const adventurers=closed.adventurers.map(hero=>{
