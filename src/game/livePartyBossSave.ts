@@ -132,7 +132,8 @@ export function livePartyBossCheckpointProblem(
     if(!exactly(projectile,["ownerId","team","x","z","vx","vz","damage","ttl"])||
        !ids.has(projectile.ownerId)||!["heroes","monsters"].includes(projectile.team)||
        !["x","z","vx","vz","damage","ttl"].every(k=>
-         bounded(projectile[k],-10000,10000)))
+         bounded((projectile as unknown as Record<string,unknown>)[k],
+           -10000,10000)))
       return fail("has invalid physical projectile");
   }
   if(!Array.isArray(b.frames)||b.frames.length!==1+completed/6||
