@@ -246,7 +246,7 @@ test("actual shop return crosses known tiles, survives reload and arrives DURING
   assert.deepEqual(a.state,b.state,"Return path, portal and shops resume identically.");
   const traveler=a.state.adventurers.find(h=>h.id===heroId)!;
   assert.equal(traveler.status,"at-shop");
-  assert.equal(traveler.floor,5);
+  assert.equal(traveler.floor,"shop");
   assert.equal(traveler.inventory.loot,0,
     "Depositing a trip's abstract haul must stop the endless return-to-shop loop.");
   assert.deepEqual(traveler.inventory.finds,{"iron-ore":1},

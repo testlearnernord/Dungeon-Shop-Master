@@ -158,7 +158,7 @@ test("a confirmed shop visit does not re-roll purchases, and dead heroes cannot 
   const shopHero={...hero,status:"traveling" as const,floor:4 as const};
   const arrival=scheduleShopVisit(shopHero,3,1);
   assert.equal(arrival.adventurer.status,"at-shop");
-  assert.equal(arrival.adventurer.floor,5);
+  assert.equal(arrival.adventurer.floor,"shop");
   const departed=scheduleShopVisit(arrival.adventurer,4,1,true);
   assert.equal(departed.adventurer.status,"returning");
   assert.equal(departed.adventurer.floor,4);
@@ -172,7 +172,7 @@ test("multi-day play and save/reload are deterministic with real shared encounte
     b=advanceDay(parseSave(JSON.stringify(createSave(b)))).state;
     assert.deepEqual(a,b);
     assert.equal(new Set(a.events.map(e=>e.id)).size,a.events.length);
-    assert.equal(a.simulationVersion,31);
+    assert.equal(a.simulationVersion,32);
     assert(a.adventurers.filter(hero=>hero.status!=="dead").length<=20);
   }
   assert(a.events.some(e=>e.type==="dungeon-exploration"));

@@ -17,7 +17,7 @@ export function dungeonBuybackPrice(id:ItemId):number{
  * Galvik's shop. No viewer projection, fake stock, or automatic hero sale. */
 export function availableDungeonOffers(state:GameState):readonly HeroDungeonOffer[]{
   return state.adventurers.flatMap(hero=>{
-    if(hero.status!=="at-shop"||hero.floor!==5||hero.health<=0)return [];
+    if(hero.status!=="at-shop"||hero.floor!=="shop"||hero.health<=0)return [];
     return Object.entries(hero.inventory.finds??{}).flatMap(([id,count])=>{
       const item=ITEMS.find(entry=>entry.id===id);
       return item&&count&&count>0?[{
