@@ -3,11 +3,11 @@ import {advanceTestDay} from "./advanceTestDay";
 
 /**
  * Reproduce simultaneous fresh arrivals and shop departures across day ticks.
- * In the 2.4m Level 4 approach they must not be admitted in opposite
+ * In the 2.4m cursed portal approach they must not be admitted in opposite
  * directions at once. Full gameplay and real browser actor movement are used;
  * no fabricated DOM customer models or manually advanced transforms.
  */
-test("level 4 gate queues opposing customers without head-on jams",async({page})=>{
+test("single shop portal queues opposing customers without head-on jams",async({page})=>{
   test.setTimeout(110000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
@@ -15,7 +15,7 @@ test("level 4 gate queues opposing customers without head-on jams",async({page})
   await expect(page.locator("#day")).toHaveText("Day 1");
   const snapshot=async()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals().visitors
-      .filter(v=>v.gateSide==="level4"&&(v.phase==="entering"||v.phase==="leaving"))
+      .filter(v=>v.gateSide==="portal"&&(v.phase==="entering"||v.phase==="leaving"))
       .map(v=>({id:v.id,phase:v.phase,x:v.x,z:v.z,
         yielding:v.gateYield===true,blocked:v.blockedSeconds??0})));
   await page.waitForTimeout(7300);
@@ -32,7 +32,7 @@ test("level 4 gate queues opposing customers without head-on jams",async({page})
       Math.abs(v.x+4)<1.7);
     const directions=new Set(inGate.map(v=>v.phase));
     expect(directions.size,
-      "opposing Level 4 streams entered the same narrow corridor").toBeLessThanOrEqual(1);
+      "opposing portal streams entered the same narrow corridor").toBeLessThanOrEqual(1);
     await page.waitForTimeout(220);
   }
   const all=observations.flat();

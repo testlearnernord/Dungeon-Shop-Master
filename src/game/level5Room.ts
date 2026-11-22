@@ -1,8 +1,8 @@
-/** Authoritative, renderer-independent excavation delta for Galvik's cursed
- * shop. "Level5" is a retained serialized/API key for existing v26 saves;
- * it is NOT the playable dungeon Floor 5. Do not rename without migration.
- * The existing cave remains walkable without any mined cells. Expansion is
- * deliberately restricted to its side walls until a shared nav mesh exists.
+/** Authoritative renderer-independent excavation state for Galvik's cursed
+ * shop. "Level5" is still an internal Alpha name, not Dungeon Floor 5.
+ * There are NO save migrations: on a future naming cleanup, incompatible
+ * Alpha saves can be rejected, while current saves remain strict.
+ * The cave starts walkable; expansion uses its exposed side-wall cells.
  */
 export interface Level5Room {
   readonly schemaVersion: 1;
@@ -23,7 +23,8 @@ const baseAir=(c:RoomCell)=>Math.abs(c.x)<=BASE_ROOM_HALF_EXTENT&&Math.abs(c.z)<
 const allowedExtent=(tier:number)=>BASE_ROOM_HALF_EXTENT+2*tier;
 /** Only side tunnels are currently represented by the shop renderer. */
 const inSideTunnel=(c:RoomCell)=>Math.abs(c.x)>BASE_ROOM_HALF_EXTENT&&Math.abs(c.z)<=6;
-/** The north/south dungeon connections remain protected at every tier. */
+/** The one cursed threshold and the permanently sealed second opening
+ * remain protected from excavation at every tier. */
 export function isProtectedRoomCell(c:RoomCell):boolean {
   return Math.abs(c.z)>=BASE_ROOM_HALF_EXTENT&&
     ((c.x>=-6&&c.x<=-2)||(c.x>=2&&c.x<=6));

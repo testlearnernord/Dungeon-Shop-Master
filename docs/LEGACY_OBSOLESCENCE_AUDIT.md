@@ -1,5 +1,8 @@
 # Legacy / obsolescence audit — 22 November 2026
 
+> **Phase 2 complete in Alpha v28 (PR #303, 22 Nov):** The real NPC world now has one `SHOP_PORTAL_GATE="portal"`, one checkpoint `doorY.portal`, a permanent colliding stone plug at the old right opening, and the same build-clearance footprint in actual furniture placement and Blueprint preview. Old v27 campaigns are rejected; no migration or right-gate emergency compatibility remains. Shop, cellar, original and freshly excavated cave geometry now share deterministic world-aligned stone/flagstone UVs; the read-only dungeon viewer reuses the same material family. [Current portal/mining contract](SHOP_PORTAL_MINING_CONTRACT.md). The shop `floor=5` state and historical non-LIVE solo solver are **still open**, not magically removed by the gateway work.
+
+
 > **Step 1 complete in Alpha v27:** `bossPass` replaces `level6Permit`, and the old v25 materials converter is deleted. V25/v26 saves are intentionally rejected. Still awaiting a separate breaking cleanup: shop occupancy/gate/solo legacy systems.
 
 **Audit base:** `main` squash commit `09806aa` after #295–#298. The repository tree API listed **566 tracked paths**, with no truncated directory response. This document distinguishes confirmed obsolete **presentation/docs**, current version-26 serialized fields **to be removed on a breaking fresh-save cutover**, and **candidates requiring runtime evidence**. It is *not* a claim of exhaustive function-level static or live-browser coverage. Re-run `npm run audit:modules -- --json` from a complete checkout when reviewing future deletions.

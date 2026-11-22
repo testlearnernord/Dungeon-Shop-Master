@@ -175,7 +175,7 @@ superseded by PR #210):** the physical Board marks every
   at shelves or currently fighting.
 - **One portal visual and service contract:** current normal customer arrivals
   and exits share one cursed doorway in the physical shop. Retained
-  historical `level4/level6` traffic keys need migration, not two visible
+  old `level4/level6` physical traffic keys are deleted in v28, not two visible
   dungeon-floor directions. Do not restore legacy Floor 4/Floor 6 signage,
   unreachable checkout lines or blocked entry paths. Placement and
   reachability tests must follow the new geometry. A swirling instance

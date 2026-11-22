@@ -14,7 +14,7 @@
 ## Physical shop, returns and rotation
 
 1. An adventurer finishes a real exploration decision, may choose shop, and backtracks **known connected tiles** toward a seeded entrance. The LIVE clock schedules a real portal crossing, not an invented arrival from a hidden map.
-2. Galvik's shop is a separate **unnumbered cursed realm**. Normal NPC arrivals and departures share one physical shop threshold. Old `level4`/`level6` gate/door and `floor=5` save fields remain for version-26 migrations. Do not confuse these keys with Dungeon Floor 5 or 6.
+2. Galvik's shop is a separate **unnumbered cursed realm**. Normal NPC arrivals and departures share one physical shop threshold. The current v28 physical shop checkpoint contains exactly one `portal` door. Former `level4`/`level6` gates are removed and v27 saves are rejected (no migration); the separately named shop `floor=5` occupancy still needs its own cleanup.
 3. A paid/credited visitor still needs a **real physical departure** before `off-duty` begins. After leaving on Day D, the hero spends full Days D+1 and D+2 outside shop/dungeon. Earliest renewed expedition begins Day D+3.
 4. Off-duty healing consumes genuinely owned Waybread/Herbs if available. No passive full heal, debt cancellation, free item, gold grant or instant reentry.
 5. Time-bound restock waits and shopping-cart claims are durable saved events/objects. Cancelling/reloading a viewer never renews a deadline or sells a reserved cart. Day closure restores unpaid goods without phantom receipts.
@@ -30,7 +30,7 @@
 
 - World Feed entries and the Adventurer Board derive **committed** authentic events. The passive Board may hide unknown remote details; the optional LIVE floor viewer may inspect legitimate committed positions without teaching the hero AI secret information.
 - One timeline holds today + two prior days, with up to 12 deliberately pinned recordings. Expired footage disappears without deleting event facts or inserting a made-up film.
-- All current Save/Load, state migration, clock/event ordering, shop claims, portal returns, combat checkpoints, archive links and strict bounds must agree across a roundtrip.
+- All current-version Save/Load, clock/event ordering, shop claims, portal returns, combat checkpoints, archive links and strict bounds must agree across a roundtrip.
 
 ## Verification and remaining risks
 

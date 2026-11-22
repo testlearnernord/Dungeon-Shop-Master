@@ -13,7 +13,7 @@ function shopFixture(){
   const checkpoint:ShopTrafficCheckpoint={
     day:1,tick:0,initialized:true,
     actors:[{
-      heroId:hero.id,x:-3.6,z:2.75,yaw:0.42,slot:0,gateSide:"level4",
+      heroId:hero.id,x:-3.6,z:2.75,yaw:0.42,slot:0,gateSide:"portal",
       phase:"browsing",shoppingPhase:"walking-to-restock-wait",
       shoppingReason:"unavailable",shoppingTargetSlot:null,checkoutQueueIndex:-1,
       route:[{x:-3.2,z:2.4},{x:-2.8,z:1.8}],waypoint:1,
@@ -25,7 +25,7 @@ function shopFixture(){
       animationTime:3.42,performanceTime:4.13,browseSide:-1,
     }],
     claims:[{heroId:hero.id,role:"restock",point:{x:-2.8,z:1.8}}],
-    shelfOwners:[],doorY:{level4:0.72,level6:0.25},
+    shelfOwners:[],doorY:{portal:0.72},
   };
   return {state,heroId:hero.id,checkpoint};
 }
@@ -41,7 +41,7 @@ test("exact traffic checkpoint survives strict campaign JSON and restores routes
   assert.deepEqual(loaded.worldClock,state.worldClock);
   assert.equal(loaded.events.filter(event=>event.type==="sale").length,
     state.events.filter(event=>event.type==="sale").length);
-  assert.equal(SIMULATION_VERSION,27);
+  assert.equal(SIMULATION_VERSION,28);
   assert.equal(loaded.shopTraffic.actors[0].route[1].z,1.8);
   assert.equal(loaded.shopTraffic.actors[0].routeProgress?.stagnantSeconds,0.15);
 });

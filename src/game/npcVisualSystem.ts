@@ -8,6 +8,8 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { reconcileVisitors, shouldLeaveShopVisual, type GateSide, type VisitorRole, type VisitorSnapshot } from "./npcVisitors";
+import {SHOP_PORTAL_GATE,SHOP_PORTAL_X,SHOP_PORTAL_INNER_Z,
+  SHOP_PORTAL_OUTER_Z} from "./shopPortal.ts";
 import { salesByHero, type SaleReceipt } from "./saleView.ts";
 import { heroPortraitIndex } from "./heroIdentity.ts";
 import {portraitSourceRect} from "./portraitAtlas.ts";
@@ -108,9 +110,9 @@ const PERSONAL_SPACE = NPC_CENTER_CLEARANCE;
 const DOOR_CLOSED_Y = 0.9;
 const DOOR_OPEN_Y = 3.8;
 const DOOR_PASSAGE_CLEAR_Y = 3.4;
-const CORRIDOR_X: Record<GateSide, number> = { level4: -4, level6: 4 };
-const CORRIDOR_INNER_Z = 6.0;
-const CORRIDOR_OUTER_Z = 13;
+const CORRIDOR_X: Record<GateSide, number> = {portal:SHOP_PORTAL_X};
+const CORRIDOR_INNER_Z=SHOP_PORTAL_INNER_Z;
+const CORRIDOR_OUTER_Z=SHOP_PORTAL_OUTER_Z;
 
 function material(scene: Scene, name: string, color: Color3): StandardMaterial {
   const result = new StandardMaterial(name, scene);
@@ -218,7 +220,7 @@ function createHumanoid(scene: Scene, visitor: VisitorSnapshot, slot: number, po
     root, arms, legs, torso, model, visitor, phase: "entering", route: [], waypoint: 0, slot,
     elapsed: 0, wait: 0, browseSide: Number(visitor.id.replace(/\D/g, "")) % 2 ? -1 : 1, animationTime: 0, walkSpeed:0, confirmedAction:null,confirmedSeconds:0,
     performanceTime:slot*.37, blockedSeconds:0, routeProgress:null, trafficReroutes:0, idleYieldCooldown:0,
-    gateSide: visitor.entranceGate ?? "level4",
+    gateSide: visitor.entranceGate ?? "portal",
     restockSeconds:null,requestActive:false,roamLeg:0,
     wishItem:null,wishBubble:null,barkedEvents:new Set(),
     intent:null,intentKey:"",targetIndex:0,toQueue:false,
@@ -240,8 +242,7 @@ export class NpcVisualSystem {
   private stockTemplates:ReadonlyMap<ItemId,Mesh>|null=null;
   private readonly portraits = new Image();
   private readonly doors: Record<GateSide, Mesh | null>;
-  private readonly obsoleteEntranceSeal:Mesh|null;
-  private readonly doorY: Record<GateSide, number> = { level4: DOOR_CLOSED_Y, level6: DOOR_CLOSED_Y };
+  private readonly doorY: Record<GateSide, number> = {portal:DOOR_CLOSED_Y};
   private layout:ShopLayout|null=null;
   private room:Level5Room|undefined;
   private shop:Shop|null=null;
@@ -460,7 +461,7 @@ export class NpcVisualSystem {
     for(const [id,npc] of ordered)this.npcs.set(id,npc);
     this.serviceSpots.restoreClaims(checkpoint.claims,checkpoint.shelfOwners,
       this.layout,this.room);
-    for(const gate of ["level4","level6"] as const){
+    for(const gate of ["portal"] as const){
       this.doorY[gate]=checkpoint.doorY[gate];
       if(this.doors[gate])this.doors[gate]!.position.y=this.doorY[gate];
     }
@@ -505,12 +506,9 @@ export class NpcVisualSystem {
       for (const npc of this.npcs.values()) paintIdentity(npc, this.portraits);
     });
     this.portraits.src = import.meta.env.BASE_URL + "assets/hero-portraits.webp";
-    this.doors = {
-      level4: scene.getMeshByName("level-4-barrier") as Mesh | null,
-      level6: scene.getMeshByName("level-6-barrier") as Mesh | null,
+    this.doors={
+      portal:scene.getMeshByName("cursed-portal-door") as Mesh|null,
     };
-    this.obsoleteEntranceSeal=scene.getMeshByName(
-      "obsolete-shop-entrance-seal") as Mesh|null;
     // Render frames may only draw the already-committed customer scene.
     // GameStore + WorldClockPacer explicitly invoke advanceWorldTicks. No
     // second frame-clock shopper solver is installed here.
@@ -535,7 +533,7 @@ export class NpcVisualSystem {
         usedSlots.add(slot);
         // Concurrent arrivals have distinct lateral lanes and spawn depth.
         // Never create two physical models at the same position.
-        const gate=visitor.entranceGate??"level4";
+        const gate=visitor.entranceGate??"portal";
         const laneX=gateTravelLane(gate,"entering");
         const spawnZ=nextEntranceSpawnZ(laneX,[...this.npcs.values()].map(n=>({
           x:n.root.position.x,z:n.root.position.z,
@@ -565,7 +563,7 @@ export class NpcVisualSystem {
         let slot = 0;
         while (usedSlots.has(slot)) slot += 1;
         usedSlots.add(slot);
-        const gate=visitor.entranceGate??"level4";
+        const gate=visitor.entranceGate??"portal";
         const laneX=gateTravelLane(gate,"entering");
         const spawnZ=nextEntranceSpawnZ(laneX,[...this.npcs.values()].map(n=>({
           x:n.root.position.x,z:n.root.position.z,
@@ -947,12 +945,8 @@ export class NpcVisualSystem {
 
   private updateStep(delta:number):void {
     if(this.worldPaused)return; // World clock is frozen; never simulate a scene frame.
-    // The second corridor is inert rock for all new customers. Existing
-    // saved right-gate visitors may physically finish their old route;
-    // only their *actual* saved presence lifts this backward-compatible seal.
-    this.obsoleteEntranceSeal?.setEnabled(
-      ![...this.npcs.values()].some(npc=>npc.gateSide==="level6"));
-    const open: Record<GateSide, boolean> = { level4: false, level6: false };
+    // One physical threshold: the old right-side rock never retracts.
+    const open:Record<GateSide,boolean>={portal:false};
     // Compute from the same snapshot for every visitor this frame. Otherwise
     // the first actor moved would change right-of-way for subsequent actors.
     const gateActors:GateTrafficActor[]=[...this.npcs.values()]
@@ -1004,8 +998,7 @@ export class NpcVisualSystem {
           ?"walking-to-request-roam":"clearing-aisle";
     }
     const gateFlow:Record<GateSide,"entering"|"leaving">={
-      level4:gateFlowDirection("level4",gateActors),
-      level6:gateFlowDirection("level6",gateActors),
+      portal:gateFlowDirection(SHOP_PORTAL_GATE,gateActors),
     };
     for (const npc of this.npcs.values()) {
       const beforeMove={x:npc.root.position.x,z:npc.root.position.z};
@@ -1028,10 +1021,7 @@ export class NpcVisualSystem {
       }
       if (npc.phase === "entering" || npc.phase === "leaving") {
         open[npc.gateSide] = true;
-        // A hero switched to an L6 departure while still physically in the
-        // Level 4 approach. Open that gate too until they return to the shop.
-        if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x < 0) open.level4 = true;
-        if (npc.root.position.z > CORRIDOR_INNER_Z && npc.root.position.x > 0) open.level6 = true;
+        // Both directions open this exact same physical door.
       }
       if(npc.wishBubble&&this.wishBubblesVisible){
         updateNpcWishBubble(npc.wishBubble,this.scene,npc.root.position,
@@ -1138,7 +1128,7 @@ export class NpcVisualSystem {
         if(yielding)npc.root.metadata.movementMode="gate-yield";
         if(!yielding){
           const isMovingThroughGate = !!transit && npc.root.position.z > 11.3;
-          const physicalSide: GateSide = npc.root.position.x < 0 ? "level4" : "level6";
+          const physicalSide:GateSide=SHOP_PORTAL_GATE;
           if(!isMovingThroughGate || this.doorY[physicalSide]>=DOOR_PASSAGE_CLEAR_Y){
             this.move(npc,delta);
           }else npc.root.metadata.movementMode="door-opening";
@@ -1149,7 +1139,7 @@ export class NpcVisualSystem {
       if(this.npcs.get(npc.visitor.id)===npc)
         this.animate(npc,delta,beforeMove);
     }
-    for (const gate of ["level4", "level6"] as const) {
+    for (const gate of ["portal"] as const) {
       const target = open[gate] ? DOOR_OPEN_Y : DOOR_CLOSED_Y;
       const y = this.doorY[gate];
       this.doorY[gate] += Math.sign(target - y) * Math.min(Math.abs(target - y), delta * 4);
@@ -1169,7 +1159,7 @@ export class NpcVisualSystem {
     this.clearWish(npc);
     npc.slot = slot;
     npc.phase = "entering";
-    npc.gateSide = npc.visitor.entranceGate ?? "level4";
+    npc.gateSide = npc.visitor.entranceGate ?? "portal";
     // Do not send an already-inside shopper back to the entrance just because
     // the authoritative day tick reversed its earlier departure.
     const points=entranceApproachRoute(npc.gateSide,{
@@ -1188,7 +1178,7 @@ export class NpcVisualSystem {
 
   private beginLeaving(npc: NpcVisual, replan=false): void {
     // World-floor destination never selects a second physical shop doorway.
-    const desiredGate:GateSide="level4";
+    const desiredGate:GateSide="portal";
     const outside=isInExitCorridor({
       x:npc.root.position.x,z:npc.root.position.z,
     },CORRIDOR_INNER_Z);
@@ -1201,10 +1191,8 @@ export class NpcVisualSystem {
     npc.routeProgress=null;
     npc.phase="leaving";
     if(outside){
-      // If an entering actor becomes a departing one mid-corridor, leave
-      // through the corridor they are physically in. Never plan a return
-      // across the 2.4m corridor's walls to reach a preferred gate.
-      npc.gateSide=npc.root.position.x<0?"level4":"level6";
+      // Once in the portal throat, finish the existing outward route.
+      npc.gateSide=SHOP_PORTAL_GATE;
       npc.route=[new Vector3(npc.root.position.x,0,CORRIDOR_OUTER_Z)];
     }else{
       npc.gateSide=desiredGate;
@@ -1694,7 +1682,7 @@ export class NpcVisualSystem {
     const walkable=(next:{x:number;z:number}):boolean=>{
       // Inside the gates, entrance and exit flow each has its own corridor lane.
       if(next.z>6.6){
-        const center=next.x<0?CORRIDOR_X.level4:CORRIDOR_X.level6;
+        const center=CORRIDOR_X.portal;
         if(Math.abs(next.x-center)>0.68)return false;
       }
       if(!this.layout||(from.z>6.6&&next.z>6.6))return true;

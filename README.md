@@ -21,7 +21,7 @@ Core systems were reconciled on 22 November 2026 after merged #295–#298. V.004
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Strict current version-27 saves persist the cellar, shop and material reserve. The old v25 Ore/Coal migration function has been deleted. **V25/V26 files are incompatible and rejected**, not converted. Breaking schema refactors will require a **fresh campaign without migration** |
+| Persistence | Strict current version-28 saves persist the cellar, shop, one-portal traffic checkpoint and material reserve. V25/V26/V27 files are incompatible and rejected, not converted. Breaking schema refactors will require a **fresh campaign without migration** |
 
 **V.004 cellar (merged PRs #252 and #254):** Galvik's fixed fiancée portrait opens a secret, physically traversable stairway to the cellar. The widened corridor and ramp support normal first-person descent, ascent and off-centre approaches. Cellar mining uses the same rock cells and U excavation tool; a chest uses the same P furniture blueprint registry and save state.
 
@@ -58,7 +58,7 @@ Core systems were reconciled on 22 November 2026 after merged #295–#298. V.004
 | E / hold E at bed | Interact / end the day |
 | N | Build a shelf; Galvik's portrait is now a fixed secret door |
 | P / R / Q while placing | Move furniture / rotate |
-| U / Shift+U | Mine exposed rock / unlock another expansion tier, including in the cellar |
+| U / Shift+U | Mine exposed rock / unlock another expansion tier, including in the cellar. Exposed stone and flagstone now share world-aligned UVs with the original shop and dungeon viewer |
 | E at revealed cellar pond | Cast a line; perform three quick accurate mouse flicks to catch a fish |
 | R outside placement | Adventurer roster |
 | G | Dungeon spectator, LIVE or historical |

@@ -12,7 +12,8 @@ import { NEW_GAME_COUNTER_PLACEMENT } from "./shopLayout";
 import {shopFurnitureDefinition} from "./furnitureRegistry.ts";
 import { buildBedroom } from "./bedroom";
 import {buildCellarGeometry} from "./cellarGeometry.ts";
-import { getDungeonSurfaces, tileLargeFloorUV } from "./dungeonSurfaces";
+import { getDungeonSurfaces, applyCaveWorldUV } from "./dungeonSurfaces";
+import {SHOP_PORTAL_X,SHOP_PORTAL_DOOR_Z} from "./shopPortal.ts";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
@@ -37,6 +38,8 @@ function box(
   const mesh = MeshBuilder.CreateBox(name, size, scene);
   mesh.position.copyFrom(position);
   mesh.material = surface ?? material(scene, `${name}-material`, color);
+  if(surface===getDungeonSurfaces(scene).stone||
+     surface===getDungeonSurfaces(scene).floor)applyCaveWorldUV(mesh);
   mesh.checkCollisions = collides;
   return mesh;
 }
@@ -89,7 +92,6 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   const rock = new Color3(0.2, 0.18, 0.16);
   const floor = box(scene, "stone-floor", { width: 15, height: 0.4, depth: 25 }, new Vector3(0, -0.2, 0), new Color3(0.25, 0.22, 0.18), true, surfaces.floor);
   floor.checkCollisions = true;
-  tileLargeFloorUV(floor, 15, 25);
   const ceiling = box(scene, "stone-ceiling", { width: 15, height: 0.35, depth: 25 }, new Vector3(0, 4.1, 0), rock, true, surfaces.stone);
   ceiling.checkCollisions = true;
 
@@ -106,41 +108,29 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   box(scene, "back-left-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(-6.375, 2, 7), rock, true, surfaces.stone);
   box(scene, "back-middle-wall", { width: 5.5, height: 4, depth: 0.4 }, new Vector3(0, 2, 7), rock, true, surfaces.stone);
   box(scene, "back-right-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(6.375, 2, 7), rock, true, surfaces.stone);
-  // One physical threshold. The obsolete second room opening is sealed
-  // with real collision, not merely a removed sign. During a pre-upgrade
-  // saved right-gate NPC transit the sealed stone temporarily retracts
-  // until that checkpoint's original customer finishes crossing.
-  const obsoleteEntranceSeal=box(scene,"obsolete-shop-entrance-seal",
+  // The old right-hand passage is now permanent solid rock. There is no
+  // second exit, gate animation or compatibility-only NPC transit.
+  box(scene,"sealed-right-passage-stone",
     {width:2.45,height:4,depth:0.45},new Vector3(4,2,7),
-    rock,true,surfaces.stone);
-  obsoleteEntranceSeal.isPickable=false;
-  for (const x of [-5.3, -2.7, 2.7, 5.3]) {
+    rock,true,surfaces.stone).isPickable=false;
+  for (const x of [SHOP_PORTAL_X-1.3,SHOP_PORTAL_X+1.3]) {
     box(scene, `corridor-wall-${x}`, { width: 0.25, height: 4, depth: 5.5 }, new Vector3(x, 2, 9.65), rock, true, surfaces.stone);
   }
   box(scene, "corridor-end-left-outer", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(-5.2, 2, 12.2), rock, true, surfaces.stone);
   box(scene, "corridor-end-left-inner", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(-2.8, 2, 12.2), rock, true, surfaces.stone);
-  // The old right-hand tunnel is a sealed stone recess. Only legacy
-  // checkpoints which still have a visitor in this corridor can raise it
-  // long enough to finish that already-saved physical walk.
-  box(scene, "corridor-end-right-inner", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(2.8, 2, 12.2), rock, true, surfaces.stone);
-  box(scene, "corridor-end-right-outer", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(5.2, 2, 12.2), rock, true, surfaces.stone);
-
   sign(scene, "cursed-threshold-sign", "THE CURSED THRESHOLD",
-    new Vector3(-4, 2.8, 6.73));
-  const level4Door = box(scene, "level-4-barrier", { width: 2.2, height: 1.8, depth: 0.25 },
-    new Vector3(-4, 0.9, 11.7), new Color3(0.26, 0.12, 0.1), false);
-  level4Door.isPickable = false;
-  const playerBarrier = box(scene, "level-4-player-barrier", { width: 2.2, height: 1.8, depth: 0.25 },
-    new Vector3(-4, 0.9, 11.7), new Color3(0.26, 0.12, 0.1));
-  playerBarrier.visibility = 0;
-  playerBarrier.isPickable = false;
-  const level6Gate = box(scene, "level-6-barrier", { width: 2.2, height: 1.8, depth: 0.25 },
-    new Vector3(4, 0.9, 11.7), rock, false, surfaces.stone);
-  level6Gate.isPickable = false;
-  const level6PlayerBarrier = box(scene, "level-6-player-barrier", { width: 2.2, height: 2.6, depth: 0.25 },
-    new Vector3(4, 1.3, 11.7), new Color3(0.21, 0.24, 0.28));
-  level6PlayerBarrier.visibility = 0;
-  level6PlayerBarrier.isPickable = false;
+    new Vector3(SHOP_PORTAL_X,2.8,6.73));
+  const portalDoor=box(scene,"cursed-portal-door",
+    {width:2.2,height:1.8,depth:0.25},
+    new Vector3(SHOP_PORTAL_X,0.9,SHOP_PORTAL_DOOR_Z),
+    new Color3(0.26,0.12,0.1),false);
+  portalDoor.isPickable=false;
+  const playerBarrier=box(scene,"cursed-portal-player-barrier",
+    {width:2.2,height:1.8,depth:0.25},
+    new Vector3(SHOP_PORTAL_X,0.9,SHOP_PORTAL_DOOR_Z),
+    new Color3(0.26,0.12,0.1));
+  playerBarrier.visibility=0;
+  playerBarrier.isPickable=false;
 
   const counter=NEW_GAME_COUNTER_PLACEMENT;
   const counterDefinition=shopFurnitureDefinition("counter");

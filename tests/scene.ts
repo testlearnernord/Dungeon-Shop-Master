@@ -264,11 +264,10 @@ export function inspectNpcVisuals() {
           })),
       })),
     saleTags: scene.meshes.filter(({ name }) => name.startsWith("npc-sale-")).map(({ name }) => name),
-    gateY: scene.getMeshByName("level-4-barrier")?.position.y,
-    gate6Y: scene.getMeshByName("level-6-barrier")?.position.y,
-    playerBarrierSolid: scene.getMeshByName("level-4-player-barrier")?.checkCollisions ?? false,
-    playerBarrier6Solid: scene.getMeshByName("level-6-player-barrier")?.checkCollisions ?? false,
-    playerBarrier6Hidden: scene.getMeshByName("level-6-player-barrier")?.visibility === 0,
+    gateY:scene.getMeshByName("cursed-portal-door")?.position.y,
+    playerBarrierSolid:scene.getMeshByName("cursed-portal-player-barrier")?.checkCollisions??false,
+    sealedRightPassage:scene.getMeshByName("sealed-right-passage-stone")?.checkCollisions??false,
+    hasSecondGate:scene.getMeshByName("level-6-barrier")!==null,
   };
 }
 

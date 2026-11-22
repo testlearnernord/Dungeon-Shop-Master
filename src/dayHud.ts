@@ -68,9 +68,8 @@ export function setupDayHud(
       status:hero.status, equipment:hero.equipment, gold:hero.gold, health:hero.health,
       maxHealth:heroProgression(hero).maxHealth,
       displayName: names.get(hero.id) ?? hero.name,
-      // New clients always enter via the same cursed threshold.
-      // Old saved right-gate positions are preserved by the NPC checkpoint.
-      entranceGate:"level4" as const,
+      // Every customer shares Galvik's one physical cursed threshold.
+      entranceGate:"portal" as const,
     }));
   };
   let previousVisitors: readonly VisitorSnapshot[] = [];

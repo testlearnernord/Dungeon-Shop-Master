@@ -5,6 +5,7 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import { Texture } from "@babylonjs/core/Materials/Textures/texture";
 import type { Scene } from "@babylonjs/core/scene";
+import {caveSurfaceUV} from "./caveSurfaceProjection.ts";
 
 /**
  * Lightweight hand-authored procedural surfaces. No network, binary assets or
@@ -179,19 +180,28 @@ export function getDungeonSurfaces(scene: Scene): DungeonSurfaces {
   return surfaces;
 }
 
-/**
- * Repeats the already-cached flagstone texture on large horizontal geometry,
- * instead of stretching five stones across the whole 25-metre shop floor.
- * UV-only change: no extra meshes, colliders, pick targets or material clones.
+/** Project the *same cached texture* onto every unrotated cave box in
+ * world metres. This joins the 15 m original room, isolated mined 1 m tiles,
+ * exposed rock caps and the cellar at the same 2 m repeat scale. The
+ * projection operates on vertex data only. Geometry, collision and mining
+ * picks are unchanged. Don't call on rotated stair ramps.
  */
-export function tileLargeFloorUV(mesh: Mesh, width: number, depth: number): void {
-  const uvs = mesh.getVerticesData(VertexBuffer.UVKind);
-  if (!uvs) return;
-  const repeatsU = Math.max(1, Math.round(width / 5));
-  const repeatsV = Math.max(1, Math.round(depth / 5));
-  for (let index = 0; index < uvs.length; index += 2) {
-    uvs[index] *= repeatsU;
-    uvs[index + 1] *= repeatsV;
+export function applyCaveWorldUV(mesh:Mesh):void{
+  const positions=mesh.getVerticesData(VertexBuffer.PositionKind);
+  const normals=mesh.getVerticesData(VertexBuffer.NormalKind);
+  const uvs=mesh.getVerticesData(VertexBuffer.UVKind);
+  if(!positions||!normals||!uvs)return;
+  for(let i=0;i<positions.length/3;i++){
+    const p=i*3,uv=i*2;
+    const projected=caveSurfaceUV({
+      x:mesh.position.x+positions[p],
+      y:mesh.position.y+positions[p+1],
+      z:mesh.position.z+positions[p+2],
+    },{
+      x:normals[p],y:normals[p+1],z:normals[p+2],
+    });
+    uvs[uv]=projected.u;
+    uvs[uv+1]=projected.v;
   }
-  mesh.setVerticesData(VertexBuffer.UVKind, uvs, false);
+  mesh.setVerticesData(VertexBuffer.UVKind,uvs,false);
 }

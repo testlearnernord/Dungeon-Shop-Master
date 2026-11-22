@@ -2,6 +2,9 @@ import type { Level5Room } from "./level5Room.ts";
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
 import {shelfServicePoint} from "./furnitureRegistry.ts";
 import type { GateSide } from "./npcVisitors.ts";
+import {SHOP_PORTAL_X,SHOP_PORTAL_GATE,SHOP_PORTAL_STAGING_Z,
+  shopPortalTravelLane,insideShopPortalCorridor,inShopPortalThroat}
+  from "./shopPortal.ts";
 import * as navigation from "./shopperNavigation.ts";
 import type { ShopPoint } from "./shopperNavigation.ts";
 
@@ -55,19 +58,15 @@ export function crowdSafeStep(
   return null;
 }
 
-/** Separate inbound and outbound traffic within the 2.4m corridor. */
+/** Opposing lanes inside the one real 2.4 m cursed threshold. */
 export function gateTravelLane(gate:GateSide,phase:"entering"|"leaving"):number {
-  const center=gate==="level4"?-4:4;
-  const side=gate==="level4"?-1:1;
-  return center+side*(phase==="entering"?0.57:-0.57);
+  if(gate!==SHOP_PORTAL_GATE)throw new RangeError("Unknown shop portal");
+  return shopPortalTravelLane(phase);
 }
 
-/** Distinguish the actual two narrow exit corridors from the rest of the
- * rear shop floor. The original cave still reaches beyond z=6 along its
- * side walls; z alone does NOT mean a hero is already through a gate. */
+/** Only the actual left-side shop portal connects to the dungeon. */
 export function isInExitCorridor(position:ShopPoint,innerZ:number):boolean {
-  return position.z>innerZ+0.25 &&
-    (Math.abs(position.x+4)<=0.68||Math.abs(position.x-4)<=0.68);
+  return insideShopPortalCorridor(position,innerZ);
 }
 
 /** An arriving group needs more room than the bare collision radius; exact
@@ -156,7 +155,7 @@ export function idleShopPositions(
   const {isObstructed,createShopRoutePlanner}=navigation;
   const route=createShopRoutePlanner(layout,room);
   const positions:ShopPoint[]=[];
-  const origin={x:gateTravelLane("level4","entering"),z:6};
+  const origin={x:gateTravelLane(SHOP_PORTAL_GATE,"entering"),z:6};
   const extent=room?6.25+room.expansionTier*2:6.25;
   const columns=Math.floor(extent*2/1.05)+1;
   const candidates:ShopPoint[]=[];
@@ -186,7 +185,7 @@ export function idleShopPositions(
  * Otherwise the first entrant switches to browsing *inside the doorway* and
  * physically holds the entire line behind it.
  */
-export const ENTRANCE_STAGING_Z=4.65;
+export const ENTRANCE_STAGING_Z=SHOP_PORTAL_STAGING_Z;
 
 /** A visitor switching from leaving back to shopping must not go to the gate
  * if they have not even left the shop yet. For visitors already past the
@@ -226,7 +225,7 @@ export const GATE_CLEAR_INSIDE_Z = 4.45;
 export function gateFlowDirection(
   gate: GateSide, actors: readonly GateTrafficActor[],
 ): GateFlow {
-  const center = gate === "level4" ? -4 : 4;
+  const center=SHOP_PORTAL_X;
   const local = actors.filter(actor=>actor.gate===gate &&
     Math.abs(actor.x-center)<1.7);
   const insideEntering = local.some(actor=>actor.phase==="entering" &&
@@ -235,7 +234,7 @@ export function gateFlowDirection(
     actor.z>GATE_INNER_HOLD_Z && actor.z<13.2);
   if(insideEntering&&!insideLeaving)return "entering";
   if(insideLeaving)return "leaving";
-  // Both active from an old save: do not admit *more* incoming traffic.
+  // Opposing streams never admit more incoming traffic mid-transition.
   if(insideEntering)return "entering";
   if(local.some(actor=>actor.phase==="leaving"&&
     actor.z>=GATE_CLEAR_INSIDE_Z && actor.z<=GATE_INNER_HOLD_Z))
@@ -271,7 +270,7 @@ export function mustYieldAtGate(
   if(actor.phase===flow)return false;
   if(actor.phase==="entering")
     return actor.z>=GATE_OUTER_HOLD_Z;
-  const center=actor.gate==="level4"?-4:4;
+  const center=SHOP_PORTAL_X;
   return actor.z<=GATE_INNER_HOLD_Z &&
     actor.z>=GATE_CLEAR_INSIDE_Z &&
     Math.abs(actor.x-center)<1.7;
@@ -290,8 +289,7 @@ export const NPC_GATE_SOFT_PASS_AFTER_SECONDS=0.45;
  * They are not in the "entering" phase anymore, but can still block an
  * incoming customer at the shared throat on the shop side. */
 export function inGateTrafficThroat(point:ShopPoint):boolean {
-  return point.z>=4.8&&point.z<=13.2&&
-    (Math.abs(point.x+4)<1.45||Math.abs(point.x-4)<1.45);
+  return inShopPortalThroat(point);
 }
 export const NPC_FINAL_WAYPOINT_RADIUS = 0.16;
 
