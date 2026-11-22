@@ -1,5 +1,6 @@
 import type { AdventurerState } from "./adventurers.ts";
 import { HEALING_HERB_HP, WAYBREAD_HP } from "./combatVitality.ts";
+import {heroProgression} from "./heroProgression.ts";
 import {SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
 import type { GameState, ShopEconomyState, WorldEvent } from "./gameState.ts";
 
@@ -40,6 +41,27 @@ export const ECONOMY = {
   breadTarget: 2,
   healingTarget: 1,
 } as const;
+
+/** One shared real purchasing preference for physical customers, quote
+ * forecasting, and restock petitions. Injured heroes without supplies
+ * prioritize survival. Healthy heroes buy class-relevant permanent gear
+ * before spending the same money on an extra loaf of bread.
+ *
+ * A preference does NOT grant an item, reserve a shelf or make a sale.
+ * Mana Potions intentionally remain excluded until they have a real use. */
+export function preferredShopItemOrder(
+  hero:Pick<AdventurerState,"role"|"level"|"stats"|"health"|"inventory">,
+):readonly ItemId[]{
+  const equipment:readonly ItemId[]=hero.role==="DPS"
+    ?["iron-sword","leather-vest"]
+    :["leather-vest","iron-sword"];
+  const supply:readonly ItemId[]=["healing-herb","bread"];
+  const healthRatio=hero.health/heroProgression(hero).maxHealth;
+  const urgent=healthRatio<0.60||
+    (healthRatio<0.80&&hero.inventory.healing===0&&hero.inventory.bread===0);
+  return urgent?[...supply,...equipment]:
+    [...equipment,"bread","healing-herb"];
+}
 
 /** Instance-owned slots: stable identities, real goods and cart references.
  * Newly built shelving is EMPTY, never a source of free merchandise.
@@ -168,11 +190,17 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
     let healing = hero.inventory.healing;
     let weapon = hero.equipment.weapon;
     let armor = hero.equipment.armor;
-    // Purchase affordable healing reserves before permanent equipment.
-    const prioritized = [...economy.slots.filter((slot) =>
-      !["weapon", "armor"].includes(ITEMS.find((item) => item.id === slot.itemId)?.kind ?? "")),
-      ...economy.slots.filter((slot) =>
-        ["weapon", "armor"].includes(ITEMS.find((item) => item.id === slot.itemId)?.kind ?? ""))];
+    // Sort the physical slots by THIS hero's condition and class.
+    // The original slot order remains the stable tie-breaker. Forecasts
+    // and the real cashier both read these exact same priorities.
+    const preferences=preferredShopItemOrder(hero);
+    const rank=(id:ItemId|null):number=>{
+      if(id===null)return preferences.length;
+      const index=preferences.indexOf(id);
+      return index<0?preferences.length:index;
+    };
+    const prioritized=[...economy.slots].sort((a,b)=>
+      rank(a.itemId)-rank(b.itemId));
     for (const slot of prioritized) {
       const item = ITEMS.find((entry) => entry.id === slot.itemId);
       if (!item || slot.quantity < 1) continue;
