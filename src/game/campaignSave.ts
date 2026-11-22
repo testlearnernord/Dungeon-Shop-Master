@@ -1,6 +1,7 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
 import {heroLevel,heroProgression} from "./heroProgression.ts";
-import {livePartyBossCheckpointProblem} from "./livePartyBossSave.ts";
+import {livePartyBossCheckpointProblem,partyBossReplayProblem}
+  from "./livePartyBossSave.ts";
 import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,type MaterialItemId } from "./economy.ts";
 import {
@@ -1313,7 +1314,7 @@ function validateState(value: unknown): asserts value is GameState {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
       ["adventurerId", "worldTick", "reportedZone", "dungeonHighlight", "shopReason", "outcome", "itemId", "quantity", "revenue", "cost", "combatOutcome",
-        "combatReplay", "level7Replay", "dungeonReplay",
+        "combatReplay", "partyBossReplay", "level7Replay", "dungeonReplay",
         "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
@@ -1345,7 +1346,8 @@ function validateState(value: unknown): asserts value is GameState {
         ...(event.reportedZone!==undefined?["reportedZone"]:[]),
         ...(event.dungeonHighlight!==undefined?["dungeonHighlight"]:[]),
         ...(event.level7Replay!==undefined?["level7Replay"]:[]),
-        ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[])]:[]),
+        ...(event.dungeonReplay!==undefined?["dungeonReplay"]:[]),
+        ...(event.partyBossReplay!==undefined?["partyBossReplay"]:[])]:[]),
       ...(!global ? ["adventurerId"] : [])];
     if(event.shopReason!==undefined){
       if(event.type!=="shop-walkout")fail(path+".shopReason","is not supported");
@@ -1357,12 +1359,20 @@ function validateState(value: unknown): asserts value is GameState {
       if(event.worldTick===undefined)
         fail(path+".worldTick","is required for a real death signal");
       const hero=(state.adventurers as RecordValue[]).find(h=>h.id===event.adventurerId);
-      const inCombat=(state.liveDungeon as GameState["liveDungeon"]).combats.some(f=>
-        f.state.actors.some(a=>a.id===event.adventurerId&&a.hp<=0));
+      const dungeonState=state.liveDungeon as GameState["liveDungeon"];
+      const inCombat=dungeonState.combats.some(f=>
+        f.state.actors.some(a=>a.id===event.adventurerId&&a.hp<=0))||
+        !!dungeonState.partyBossCombat?.state.actors.some(a=>
+          a.id===event.adventurerId&&a.hp<=0);
       if(!hero||(!(hero.status==="dead"&&hero.health===0)&&!inCombat))
         fail(path+".adventurerId","must be a real fallen hero or active zero-HP fighter");
     }
     if(event.type==="dungeon-live"){
+      if(event.partyBossReplay!==undefined){
+        const problem=partyBossReplayProblem(event.partyBossReplay,
+          String(event.adventurerId));
+        if(problem)fail(path+".partyBossReplay",problem);
+      }
       if(event.dungeonHighlight!==undefined)
         choice(event.dungeonHighlight,["treasure","trap"],path+".dungeonHighlight");
       if(event.reportedZone!==undefined)
