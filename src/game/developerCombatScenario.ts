@@ -1,4 +1,5 @@
 import type {AdventurerState} from "./adventurers.ts";
+import {heroProgression} from "./heroProgression.ts";
 import type {GroupCombatOptions,CombatantSpec,GroupRole} from "./groupCombat.ts";
 import type {CombatStageTheme} from "./combatSpectatorStage.ts";
 
@@ -93,13 +94,14 @@ export function randomDeveloperHeroes(seed:number,count:number):DeveloperHero[]{
   });
 }
 export function developerHeroFromRoster(hero:AdventurerState):DeveloperHero{
+  const progress=heroProgression(hero);
   return {
-    role:hero.role,label:hero.name,maxHp:hero.stats.maxHealth,
-    damage:6+Math.floor((hero.role==="healer"?hero.stats.intellect:
-      hero.role==="DPS"?hero.stats.agility:hero.stats.strength)/2)+
-      (hero.equipment.weapon==="Iron Sword"?5:0),
-    armor:hero.equipment.armor==="Leather Vest"?5:1,
-    agility:hero.stats.agility,healCharges:Math.min(10,hero.inventory.healing),
+    role:hero.role,label:hero.name,maxHp:progress.maxHealth,
+    damage:6+Math.floor((hero.role==="healer"?progress.intellect:
+      hero.role==="DPS"?progress.agility:progress.strength)/2)+
+      (hero.equipment.weapon==="Iron Sword"?5:0)+progress.damageBonus,
+    armor:(hero.equipment.armor==="Leather Vest"?5:1)+progress.armorBonus,
+    agility:progress.agility,healCharges:Math.min(10,hero.inventory.healing),
     sword:hero.equipment.weapon==="Iron Sword",
     vest:hero.equipment.armor==="Leather Vest",
   };
