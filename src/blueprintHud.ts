@@ -316,7 +316,7 @@ export function setupBlueprintHud(
       return;
     }
     const p=blueprintAtSurface(activeId,surface,hit.pickedPoint,
-      rotation,store.state.level5Room);
+      rotation,store.state.shopRoom);
     if(!p){
       draft=null;placeable=false;ghost.setEnabled(false);
       facingReadout.textContent=facingLabel+" · unsupported mount";
@@ -335,7 +335,7 @@ export function setupBlueprintHud(
     const state=store.state;
     const inCellar=p.id==="cellar-chest"||p.id==="cellar-table";
     const staticCheck=validator.evaluate(p,state.shopLayout,
-      inCellar?state.cellarRoom:state.level5Room,
+      inCellar?state.cellarRoom:state.shopRoom,
       performance.now(),immediate,
       p.id==="adventurer-board"||p.id==="galvik-portrait"?
         state.rosterBoard:p.id==="cellar-chest"?state.cellarTable:
