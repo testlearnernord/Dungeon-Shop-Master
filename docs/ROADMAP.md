@@ -53,3 +53,5 @@
 - **Floor-6 recording route cleanup:** A floor number alone no longer selects a boss viewer. Current ordinary Floor-6 tapes use the shared dungeon route, while true Floor-10 group tapes use a distinct party-boss marker. Retire the remaining old `level6-*` event/save aliases separately before declaring #300 complete.
 
 - **Strict event cut:** Retired Solo-F6 event names and solitary boss replay fields are invalid at the current save boundary and absent from reporting. A future scoped refactor may remove the remaining internal legacy-facing `WorldEvent` and isolated arena preview types; preserve legitimate old training art and actual GroupCombat. Do not accidentally reintroduce an Alpha migration adapter.
+
+- **Single-sale authority (#310–#311):** Delete forecast-to-sale `customerCheckout` and its public GameStore methods. Only physically held shelf carts can close at the staffed register; read-only `forecastShoppingIntents` does not grant stock or money. Separate credit and buyback preserve their real accounting. Current-format cash/gear/sale regression coverage uses actual reserved carts.
