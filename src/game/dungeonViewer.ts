@@ -491,7 +491,7 @@ export class DungeonViewer {
       const mapSize=Math.max(layout.width,layout.height)*TILE_SIZE;
       this.camera.position.set(0,mapSize*1.55,-mapSize*.40);
       this.camera.setTarget(Vector3.Zero());
-      this.tableTarget=new RenderTargetTexture("galviks-table-live-floor",
+      this.tableTarget=new RenderTargetTexture("galviks-table-live-floor-"+floor,
         {width:768,height:448},this.scene,false,true);
       this.tableTarget.renderList=this.scene.meshes;
       this.tableTarget.activeCamera=this.camera;
