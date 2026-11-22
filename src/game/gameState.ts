@@ -178,7 +178,7 @@ export function advanceDay(state:GameState):{state:GameState;events:readonly Wor
   if(!Number.isSafeInteger(state.day)||state.day<1||state.day>=MAX_WORLD_DAY)
     throw new RangeError("The current day is outside the supported range.");
   if(state.adventurers.some(hero=>hero.status==="expedition"&&hero.floor!==10))
-    throw new RangeError("Floor 6 and other ordinary floors have no solo boss expedition.");
+    throw new RangeError("Only Floor 10 supports boss expedition status.");
   const live=state.liveDungeon.enabled?state:activateLiveDungeon(state);
   const settled=advanceWorldUntil(live,lastWorldTickOfDay(live.day),
     commitLiveWorldEvent);

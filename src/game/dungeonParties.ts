@@ -112,7 +112,7 @@ export function settlePersistentDungeonParties(
     // A casualty can leave two survivors from a three-person party.
     const members=group.map(id=>byId.get(id)).filter(
       (hero):hero is AdventurerState=>!!hero&&hero.health>0&&
-        (hero.status==="exploring"||hero.status==="expedition"));
+        hero.status==="exploring");
     if(members.length<2||members.length>3)continue;
     const floor=members[0].floor;
     if(typeof floor!=="number"||!(floor>=1&&floor<=9) ||

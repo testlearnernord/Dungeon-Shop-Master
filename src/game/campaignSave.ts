@@ -471,7 +471,7 @@ function validateLiveCombatCheckpoints(
       unique(id,known,cp+".heroIds["+i+"]");
       const hero=roster.find(h=>h.id===id) as GameState["adventurers"][number]|undefined;
       if(!hero||hero.floor!==floor||hero.health<=0||
-        !(hero.status==="exploring"||floor===7&&hero.status==="expedition"))
+        hero.status!=="exploring")
         fail(cp+".heroIds["+i+"]","must identify a living co-located explorer");
       members.push(hero);
     });
@@ -724,8 +724,7 @@ function validateLivePlans(
     integer(plan.updatedTick,path+".updatedTick",0,clockTick);
     const hero=roster.find(h=>h.id===id);
     if(!enabled||!hero||hero.health===0||hero.floor!==plan.floor||
-      !(hero.status==="exploring"||
-        plan.floor===7&&hero.status==="expedition"))
+      hero.status!=="exploring")
       fail(path+".heroId","must name a living committed explorer on the recorded floor");
     if((plan.action==="ascend"&&(plan.floor as number)<=1)||
       (plan.action==="descend"&&(plan.floor as number)>=10))
@@ -787,7 +786,7 @@ function validateLivePortalReturns(
         fail(path+".dueTick","is only allowed during portal transit");
       if(![1,2,3,4,5,6,7,8,9].includes(floor)||
         hero.floor!==floor||
-        !(hero.status==="exploring"||floor===7&&hero.status==="expedition"))
+        hero.status!=="exploring")
         fail(path,"must backtrack on the real hero floor");
       const world:Level7World=
         ((state.dungeonWorlds as {floor:number;world:Level7World}[]|undefined)
@@ -1027,9 +1026,8 @@ function validateState(value: unknown): asserts value is GameState {
     const floor = hero.floor === "shop" || hero.floor === "away" ||
       hero.floor === "transit"
       ? hero.floor : integer(hero.floor, `${path}.floor`, 1, 10);
-    if((state.liveDungeon as GameState["liveDungeon"]).enabled&&
-       hero.status==="expedition"&&floor===6)
-      fail(`${path}.status`,"Floor 6 is an ordinary dungeon; no solo boss expedition exists");
+    if(hero.status==="expedition"&&floor!==10)
+      fail(`${path}.status`,"Only Floor 10 supports boss expeditions");
     if(hero.lastDungeonFloor!==undefined)
       integer(hero.lastDungeonFloor,path+".lastDungeonFloor",1,9);
     choice(hero.status, ["exploring", "traveling", "at-shop",
@@ -1043,7 +1041,7 @@ function validateState(value: unknown): asserts value is GameState {
           (hero.status === "exploring" &&
              (typeof floor !== "number" || floor > 9)) ||
           ((hero.status === "traveling" || hero.status === "returning") && floor !== "transit") ||
-          (hero.status === "expedition" && floor !== 6 && floor !== 7 && floor!==10)) {
+          (hero.status === "expedition" && floor !== 10)) {
         fail(`${path}.floor`, "must agree with status");
       }
     }
@@ -1097,7 +1095,7 @@ function validateState(value: unknown): asserts value is GameState {
         unique(id,assigned,p);
         const hero=heroes.get(id);
         if(!hero||hero.floor!==floor||
-          !(hero.status==="exploring"||floor===7&&hero.status==="expedition")||
+          hero.status!=="exploring"||
           (hero.health as number)<=0)
           fail(p,"must be a living explorer on the party floor");
         return hero;

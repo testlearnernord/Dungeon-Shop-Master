@@ -24,7 +24,7 @@ test("Floor 6 remains an ordinary seeded LIVE dungeon, never a solo Cave Troll",
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
 });
 
-test("v33 strictly rejects a forged LIVE solo-boss checkpoint, no fallback or migration",()=>{
+test("v35 strictly rejects a forged LIVE solo-boss checkpoint, no fallback or migration",()=>{
   const store=new GameStore(createGameState(7351));
   store.enableLiveDungeon();
   const save=structuredClone(createSave(store.state)) as any;
@@ -38,7 +38,7 @@ test("v33 strictly rejects a forged LIVE solo-boss checkpoint, no fallback or mi
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
 });
 
-test("v33 rejects an injected old expedition Floor-6 hero in the LIVE motor",()=>{
+test("v35 rejects an injected old expedition Floor-6 hero in the LIVE motor",()=>{
   const initial=createGameState(7351);
   const id=initial.adventurers[0].id;
   const store=new GameStore({...initial,adventurers:initial.adventurers.map(h=>
@@ -48,5 +48,5 @@ test("v33 rejects an injected old expedition Floor-6 hero in the LIVE motor",()=
   store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   assert.equal("bossCombat" in store.state.liveDungeon,false);
   assert.throws(()=>createSave(store.state),
-    /Floor 6 is an ordinary dungeon/);
+    /Only Floor 10 supports boss expeditions/);
 });

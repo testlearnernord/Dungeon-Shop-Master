@@ -450,8 +450,7 @@ export function simulateSpatialDungeonPartyDay(
   if(ids.size!==party.length ||
     (typeof floor!=="number"||!(floor>=1&&floor<=9)) ||
     party.some(hero=>hero.floor!==floor||hero.health<=0||
-      (hero.status!=="exploring"&&
-        !(floor===7&&hero.status==="expedition"))))
+      hero.status!=="exploring"))
     throw new RangeError("Party members must be distinct living explorers on one floor");
   const layout=generateExpeditionLayout(campaignSeed,floor);
   const progress=party.map(hero=>getLevel7Progress(world,hero.id,layout));
@@ -654,8 +653,7 @@ export function simulateSpatialDungeonPartyDay(
       gold:m.hero.gold+m.gold,
       floor:returning?"transit":floor,
       ...(returning?{lastDungeonFloor:7 as const}:{}),
-      status:dead?"dead":returning?"traveling":
-        m.hero.status==="expedition"&&floor===7?"expedition":"exploring",
+      status:dead?"dead":returning?"traveling":"exploring",
       inventory:{...m.hero.inventory,
         loot:m.hero.inventory.loot+m.loot,healing:m.healing},
     };
@@ -698,15 +696,6 @@ export function simulateSpatialDungeonDay(
 ): Level7Tick {
   return simulateSpatialDungeonPartyDay([hero],world,campaignSeed,day,
     occupiedHeroIds).ticks[0];
-}
-
-/** Legacy Level 7 API remains a strict wrapper over the SAME motor. */
-export function simulateLevel7Day(
-  hero: AdventurerState, world: Level7World, campaignSeed: number, day: number,
-): Level7Tick {
-  if(hero.status!=="expedition"||hero.floor!==7||hero.health<=0)
-    throw new RangeError("Level 7 run requires a living F7 expedition hero");
-  return simulateSpatialDungeonDay(hero,world,campaignSeed,day);
 }
 
 /**
