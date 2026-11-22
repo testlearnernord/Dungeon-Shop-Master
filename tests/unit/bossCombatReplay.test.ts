@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState, advanceDay, setLevel6Permit } from "../../src/game/gameState.ts";
+import { createGameState, advanceDay, setBossPass } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
 import { BOSS_MAX_HP } from "../../src/game/arenaCombatMotion.ts";
@@ -9,7 +9,7 @@ import { createCombatPreview } from "../../src/game/arenaCombatMotion.ts";
 import {compactReplayFootage} from "../../src/game/replayRetention.ts";
 
 function recordedFight() {
-  let state = setLevel6Permit(createGameState(), "adventurer-1", true);
+  let state = setBossPass(createGameState(), "adventurer-1", true);
   state = advanceDay(state).state;
   return advanceDay(state).state;
 }
@@ -37,7 +37,7 @@ test("the committed boss fight persists the actual spatial hits and positions", 
 });
 
 test("a seeded completed encounter is identical after save/load and cannot reroll when merely viewed", () => {
-  let state = setLevel6Permit(createGameState(), "adventurer-1", true);
+  let state = setBossPass(createGameState(), "adventurer-1", true);
   state = advanceDay(state).state;
   const roundTrip = parseSave(JSON.stringify(createSave(state)));
   const a = advanceDay(state).state;
@@ -84,7 +84,7 @@ test("only the last two completed days retain automatic footage; older recording
   const original = createGameState();
   const party = original.adventurers.slice(0,5).map(h=>({
     ...h, status:"expedition" as const, floor:6 as const,
-    level6Permit:true, health: h.stats.maxHealth,
+    bossPass:true, health: h.stats.maxHealth,
   }));
   const state = {
     ...original, adventurers: [...party,...original.adventurers.slice(5)],

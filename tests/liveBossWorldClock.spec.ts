@@ -15,7 +15,7 @@ test("a real Level-6 Troll battle is witnessed LIVE without replacing its saved 
     const first=initial.adventurers[0];
     const adventurers=initial.adventurers.map(hero=>hero.id===first.id
       ?{...hero,status:"expedition" as const,floor:6 as const,
-        health:hero.stats.maxHealth,level6Permit:true}:hero);
+        health:hero.stats.maxHealth,bossPass:true}:hero);
     const store=new GameStore({...initial,adventurers});
     store.enableLiveDungeon();
     // Seed the first authoritative dungeon event and one real combat event.

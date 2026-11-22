@@ -16,7 +16,7 @@ function dungeonHero(): AdventurerState {
   const original=createGameState().adventurers[0];
   return { ...original, health:original.stats.maxHealth,
     role:"tank", equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
-    status:"expedition",floor:7,level6Permit:true };
+    status:"expedition",floor:7,bossPass:true };
 }
 
 test("level 7 autonomous navigation stays on connected grid edges, never crosses walls", () => {
@@ -97,7 +97,7 @@ test("persistent shared monsters, traps, loot and fights never reroll on camera/
 
 test("cleared level 6 permits lead to Level 7 on later confirmed days only", () => {
   const initial=createGameState(7351);
-  const authorized={...initial.adventurers[0],level6Permit:true};
+  const authorized={...initial.adventurers[0],bossPass:true};
   const state={...initial,dungeonFloors:[{floor:6,cleared:true}],
     adventurers:[authorized,...initial.adventurers.slice(1)]};
   const first=advanceDay(state);
@@ -120,7 +120,7 @@ test("cleared level 6 permits lead to Level 7 on later confirmed days only", () 
 
 test("replay snapshots remain bounded; older replays are compacted without changing outcomes", () => {
   const initial=createGameState(7351);
-  const authorized={...initial.adventurers[0],level6Permit:true};
+  const authorized={...initial.adventurers[0],bossPass:true};
   let state={...initial,dungeonFloors:[{floor:6,cleared:true}],
     adventurers:[authorized,...initial.adventurers.slice(1)]};
   for(let i=0;i<8;i++){

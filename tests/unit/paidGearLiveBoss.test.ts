@@ -58,7 +58,7 @@ test("paid Iron Sword and Leather Vest follow one buyer into the authentic saved
   const enterBoss=(state:typeof paid)=>{
     const roster=state.adventurers.map(hero=>hero.id===first.id?{
       ...hero,status:"expedition" as const,floor:6 as const,
-      level6Permit:true,
+      bossPass:true,
     }:hero);
     const store=new GameStore({...state,adventurers:roster});
     store.enableLiveDungeon();

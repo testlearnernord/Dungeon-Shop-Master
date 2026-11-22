@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGameState, advanceDay, setLevel6Permit, type GameState } from "../../src/game/gameState.ts";
+import { createGameState, advanceDay, setBossPass, type GameState } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
 import type { AdventurerState } from "../../src/game/adventurers.ts";
@@ -9,21 +9,21 @@ test("only authorized living shop visitors enter Level 6, with no combat on depa
   const initial = createGameState(7351);
   const id = initial.adventurers[0].id;
   const second = initial.adventurers[1].id;
-  let s = setLevel6Permit(initial, id, true);
+  let s = setBossPass(initial, id, true);
   s = advanceDay(s).state;
   assert.equal(s.adventurers.find(h=>h.id===id)?.status, "expedition");
   assert.equal(s.adventurers.find(h=>h.id===id)?.floor, 6);
-  assert.equal(s.adventurers.find(h=>h.id===second)?.level6Permit, false);
+  assert.equal(s.adventurers.find(h=>h.id===second)?.bossPass, false);
   assert.equal(s.events.filter(e=>e.adventurerId===id && e.type==="level6-combat").length, 0);
   assert.equal(s.events.filter(e=>e.adventurerId===id && e.type==="level6-departure").length, 1);
   assert.equal(s.day, 2);
-  const before = setLevel6Permit(initial, id, true);
-  assert.equal(setLevel6Permit(before, id, false).adventurers.find(h=>h.id===id)?.level6Permit, false);
-  assert.notEqual(advanceDay(setLevel6Permit(before, id, false)).state.adventurers.find(h=>h.id===id)?.status, "expedition");
+  const before = setBossPass(initial, id, true);
+  assert.equal(setBossPass(before, id, false).adventurers.find(h=>h.id===id)?.bossPass, false);
+  assert.notEqual(advanceDay(setBossPass(before, id, false)).state.adventurers.find(h=>h.id===id)?.status, "expedition");
 });
 
 test("combat resolves once per tick, survives save/reload and preserves economy", () => {
-  let s = setLevel6Permit(createGameState(7351), "adventurer-1", true);
+  let s = setBossPass(createGameState(7351), "adventurer-1", true);
   s = advanceDay(s).state;
   const pending = parseSave(JSON.stringify(createSave(s)));
   const uninterrupted = advanceDay(s).state;
@@ -39,14 +39,14 @@ test("combat resolves once per tick, survives save/reload and preserves economy"
     const arrived = advanceDay(resumed).state.adventurers.find(h=>h.id===hero.id)!;
     assert.equal(arrived.status, "at-shop");
     assert.equal(arrived.floor, 5);
-    assert.equal(arrived.level6Permit, true);
+    assert.equal(arrived.bossPass, true);
   }
 });
 
 test("victories unlock floor 6 once, deaths remain final, no route to floor 7", () => {
   let s = createGameState();
   const id = s.adventurers[0].id;
-  const strong: AdventurerState = { ...s.adventurers[0], health:100, stats:{strength:80,agility:80,intellect:10,maxHealth:100},status:"expedition",floor:6,level6Permit:true };
+  const strong: AdventurerState = { ...s.adventurers[0], health:100, stats:{strength:80,agility:80,intellect:10,maxHealth:100},status:"expedition",floor:6,bossPass:true };
   s = {...s,adventurers:s.adventurers.map(h=>h.id===id?strong:h)};
   const winner = advanceDay(s).state;
   assert.equal(winner.dungeonFloors.filter(f=>f.floor===6 && f.cleared).length,1);

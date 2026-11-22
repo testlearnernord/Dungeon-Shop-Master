@@ -25,7 +25,7 @@ function merchantState(gold: number, stocked: ReadonlyArray<{ itemId: "iron-swor
 
 test("equipment catalog, wholesale and shelf stocking conserve gold and inventory", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 26);
+  assert.equal(SIMULATION_VERSION,27);
   assert(ITEMS.some(x => x.id === "iron-sword" && x.kind === "weapon"));
   assert(ITEMS.some(x => x.id === "leather-vest" && x.kind === "armor"));
   assert.equal(initial.shopEconomy.bag["iron-sword"], 0);
@@ -107,7 +107,7 @@ test("real early-floor traps respect equipped armor and boss damage still respec
 
   // Existing boss replay authority still uses real armor and weapon effects,
   // and must not be replaced by a separate early-floor dice outcome.
-  const novice={...base,status:"expedition" as const,floor:6 as const,level6Permit:true};
+  const novice={...base,status:"expedition" as const,floor:6 as const,bossPass:true};
   const armed={...novice,equipment:{weapon:"Iron Sword",armor:"Leather Vest"}};
   const first=simulateLevel6Combat(novice,2,1234);
   const improved=simulateLevel6Combat(armed,2,1234);
