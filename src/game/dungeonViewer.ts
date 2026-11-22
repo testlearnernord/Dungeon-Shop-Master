@@ -24,7 +24,7 @@ import {
 import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.ts";
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
-import {CRYPT_FLOOR,CRYPT_STONE,CRYPT_WALL} from "./ghoulCryptPlan.ts";
+import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
@@ -771,9 +771,14 @@ export class DungeonViewer {
       if(emissive) mat.emissiveColor=Color3.FromHexString(hex).scale(0.55);
       return mat;
     };
-    const rock=makeMat("dungeon-rock",CRYPT_WALL);
-    const floor=makeMat("dungeon-corridor-floor",CRYPT_FLOOR);
-    const roomStone=makeMat("dungeon-room-floor",CRYPT_STONE);
+    // Spectator geometry uses the SAME authored stone/flagstone textures as
+    // Galvik's main cave, cellar and excavated passages. Room tint preserves
+    // the existing room/corridor readability without an alternate stone art.
+    const cave=getDungeonSurfaces(scene);
+    const rock=cave.stone;
+    const floor=cave.floor;
+    const roomStone=cave.floor.clone("dungeon-room-flagstone") as StandardMaterial;
+    roomStone.diffuseColor=new Color3(1.12,1.04,0.91);
     const featurePaint=createDungeonFeaturePalette(scene);
     const ghoulIcon=createGhoulMapIconMaterial(scene);
     const ghoulMarkerMat=makeMat("dungeon-3d-ghoul-site-hitbox","#442d26");
