@@ -21,7 +21,7 @@ Core systems were reconciled on 22 November 2026 after merged #295–#298. V.004
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Strict version-26 campaigns persist the cellar, shop and separate material reserve. Existing version-25 saves migrate their exact Ore/Coal quantities from bag and shelf into that reserve; older alpha formats remain unsupported |
+| Persistence | Strict current version-26 saves persist the cellar, shop and separate material reserve. An **older v25 conversion remains in today's code**, but is legacy implementation, **not a promise** to support old saves in future Alpha releases. Breaking schema refactors will require a **fresh campaign without migration** |
 
 **V.004 cellar (merged PRs #252 and #254):** Galvik's fixed fiancée portrait opens a secret, physically traversable stairway to the cellar. The widened corridor and ramp support normal first-person descent, ascent and off-centre approaches. Cellar mining uses the same rock cells and U excavation tool; a chest uses the same P furniture blueprint registry and save state.
 
@@ -35,7 +35,7 @@ Core systems were reconciled on 22 November 2026 after merged #295–#298. V.004
 
 **V.004 spectator QoL (merged PRs #265 and #266):** locate actual LIVE heroes and running fights through compact selectors. Focusing a target preserves the player's orbit and zoom; the inspector shows real saved finds. Selecting a fight focuses its committed tile and the existing Watch action opens that exact opt-in 3D encounter.
 
-**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. Still open are migration of legacy internal floor/permit/gate fields, fully authored deep-floor variety, an actual 20/50/100-day post-#298 economy audit, ten-day hands-on pacing and real-device visual/audio acceptance. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
+**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. Still open are the **migration-free breaking replacement** of legacy internal floor/permit/gate fields, fully authored deep-floor variety, an actual 20/50/100-day post-#298 economy audit, ten-day hands-on pacing and real-device visual/audio acceptance. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
 
 ## Start playing
 
@@ -93,9 +93,11 @@ npm test
 - **[Roadmap](docs/ROADMAP.md):** only current open work and release gates, not a chronological list of PRs.
 - **[The Living Dungeon](docs/THE_LIVING_DUNGEON.md):** current consolidated design/acceptance contract; obsolete PR chronology lives in Git history.
 - **[World Clock contract](docs/LIVING_WORLD_CLOCK.md)**, **[LIVE Board/Ledger design](docs/LIVE_BOARD_LEDGER_AUDIT.md)**, **[Floor Spectator contract](docs/FLOOR_SPECTATOR_CONTRACT.md)** and **[Monster asset pipeline](docs/MONSTER_ASSET_PIPELINE.md):** deeper subsystem contracts.
-- **[Legacy and obsolescence audit](docs/LEGACY_OBSOLESCENCE_AUDIT.md):** current code/docs/asset candidate classifications and migration safety.
+- **[Legacy and obsolescence audit](docs/LEGACY_OBSOLESCENCE_AUDIT.md):** current code/docs/asset candidate classifications and planned breaking fresh-save cleanup.
 - **[Great Cleanup audit](docs/CLEANUP_AUDIT.md):** original dated baseline, asset dependencies and historical risks.
 - **[Great Cleanup closeout](docs/GREAT_CLEANUP_CLOSEOUT.md):** verified before/after Git-tree counts, completed PR scopes, CI results and remaining acceptance gates.
+
+**Alpha save policy:** schema-breaking updates may invalidate earlier campaigns. **No migration scripts or compatibility adapters for old formats.** Unsupported files should get an explicit incompatibility message, not silent partial loading. Current-format Save/Load must remain lossless and deterministic.
 
 **Source-of-truth order:** current `main` code/assets and tests → merged PR and CI evidence → these living docs for agreed intent. For old text, Git history is the archive. Never infer that a proposed branch merged just because a past chat or document mentioned it.
 
