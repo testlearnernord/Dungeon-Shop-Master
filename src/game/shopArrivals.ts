@@ -8,13 +8,13 @@ export function arrivalEvent(hero: AdventurerState, day: number): WorldEvent {
     type: "shop-arrival",
     day,
     adventurerId: hero.id,
-    message: `${hero.name} arrived at the Level 5 shop.`,
+    message: `${hero.name} emerged at Galvik\'s cursed shop.`,
   };
 }
 
 /** A confirmed purchase ends the current visit at closing. Do not reroll a
  * paid shopper into another day in the store after the physical NPC has
- * already headed out. An authorized Level 6 departure is handled upstream.
+ * already headed out. A dungeon-bound departure is handled by the same saved shop-exit flow.
  */
 export function scheduleShopVisit(
   hero: AdventurerState, day: number, rngState: number,
@@ -50,7 +50,7 @@ export function scheduleShopVisit(
       type: stay ? "shop-stay" : "shop-departure",
       day,
       adventurerId: hero.id,
-      message: stay ? `${hero.name} remains at the shop.` : `${hero.name} returns to floor 4.`,
+      message: stay ? `${hero.name} remains at the shop.` : `${hero.name} sets out for another dungeon expedition.`,
     }],
   };
 }
