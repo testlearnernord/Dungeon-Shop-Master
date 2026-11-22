@@ -304,7 +304,7 @@ function validateLevel7Replay(
       const a=item+".combat.actors["+j+"]",actor=object(rawActor,a,[
         "id","team","role","style","x","z","hp","maxHp","damage",
         "armor","speed","reach",
-      ],["radius","healCharges","equipment","meleeAbility","specialAbility","agility",
+      ],["radius","healCharges","magicHeals","equipment","meleeAbility","specialAbility","agility",
         "grappleDamage","staggerThreshold"]);
       if(actor.meleeAbility!==undefined)
         choice(actor.meleeAbility,["heavy"],a+".meleeAbility");
