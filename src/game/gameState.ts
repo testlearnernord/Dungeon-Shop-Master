@@ -36,7 +36,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 31;
+export const SIMULATION_VERSION = 32;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";

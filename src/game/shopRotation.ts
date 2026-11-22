@@ -27,7 +27,7 @@ export function completeObservedShopExit(
   };
   return {...state,
     adventurers:state.adventurers.map(h=>h.id===heroId?
-      {...h,status:"off-duty" as const,floor:5 as const,
+      {...h,status:"off-duty" as const,floor:"away" as const,
         shopStayDays:0,offDutyUntilDay:until}:h),
     events:[...state.events,event]};
 }

@@ -195,7 +195,7 @@ function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState
     message:hero.name+" emerged through Galvik's portal into the shop.",
   };
   return {...state,adventurers:state.adventurers.map(h=>h.id===id?
-      {...h,status:"at-shop" as const,floor:5 as const,shopStayDays:0,
+      {...h,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0,
         // The abstract chest counter is a trip-haul threshold, not a
         // sellable item. Unload it upon reaching Galvik; retain the real
         // owned finds and all actual gold/equipment for manual buyback.
