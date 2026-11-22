@@ -1,6 +1,7 @@
 import type {GameState,WorldEvent,EarlyDungeonFloorWorld} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
+import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,
   type HeroDungeonDecision} from "./dungeonDecisions.ts";
@@ -344,13 +345,17 @@ function commitDungeonTick(state:GameState):GameState {
       const rng=new SeededRandom(rngState);
       const tacticsSeed=rng.int(32);
       rngState=rng.state;
+      const progress=heroProgression(hero);
       const motion=createSharedBossPreview({
         role:hero.role,sword:hero.equipment.weapon==="Iron Sword",
         armor:hero.equipment.armor==="Leather Vest",
-        health:hero.health,maxHealth:hero.stats.maxHealth,
+        health:hero.health,maxHealth:progress.maxHealth,
         healingSupplies:hero.inventory.healing,
-        strength:hero.stats.strength,agility:hero.stats.agility,
-        intellect:hero.stats.intellect,tacticsSeed,
+        strength:progress.strength,agility:progress.agility,
+        intellect:progress.intellect,
+        progressionDamageBonus:progress.damageBonus,
+        progressionArmorBonus:progress.armorBonus,
+        progressionMagicHeals:progress.bonusMagicHeals,tacticsSeed,
       });
       bossCombat={
         id:"live-boss:"+day+":"+tick+":"+hero.id,
@@ -668,8 +673,8 @@ function commitLiveCombatTick(state:GameState):GameState{
       if(outcome==="victory")bossCleared=true;
       const hp=outcome==="death"?0:Math.max(0,Math.round(motion.heroHp));
       const nextXp=original.xp+xpGain;
-      const hero:AdventurerState={...original,
-        health:hp,xp:nextXp,level:1+Math.floor(nextXp/100),
+      const hero:AdventurerState={
+        ...settleHeroExperience(original,nextXp,hp),
         gold:original.gold+goldGain,
         status:hp<=0?"dead":"expedition",floor:6,
         inventory:{...original.inventory,
