@@ -49,3 +49,7 @@ A new game starts with a single movable, persisted `cellarTable` against the bac
 ## After v30: retiring Solo-F6 UI replay paths
 
 A saved ordinary Floor-6 exploration must never be classified by `floor===6` as an obsolete solo Cave Troll fight. Expedition Archive routes on `partyBossReplay`, leaving all ordinary 1–9 floors (including Floor 6) on the unified Dungeon Viewer. World Feed, death replay and ledger no longer offer Solo-F6 links. The present v30 Save/WorldEvent type still includes obsolete `level6-*` identifiers and old Solo tape metadata; those are the **next** strict-schema cleanup, not a current boss implementation.
+
+## Strict current-save event cleanup after archive routing
+
+The current strict Alpha-v30 parser rejects retired `level6-departure`, `level6-combat`, `level6-return`, `level7-departure`, `combatOutcome`, and the old one-hero `combatReplay` event payload. Historical names are no longer report, LIVE Board, or archive output categories; a fabricated Solo-F6 event can no longer be loaded to impersonate current gameplay. The old `WorldEvent` interface and isolated boss arena still retain internal tape-facing type/read references pending a separate preview-only refactor; **this is not yet the final removal of all code mentions**. Real `partyBossReplay` and ordinary `dungeonReplay` remain fully supported, with no Alpha save migration.

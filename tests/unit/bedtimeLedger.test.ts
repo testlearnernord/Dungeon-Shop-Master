@@ -28,7 +28,7 @@ test("ledger exactly reconciles one authoritative day without mutating the save"
   assert.equal(summary.soldUnits,summary.receipts.reduce((n,r)=>n+r.quantity,0));
   assert.equal(summary.bookedRevenue,summary.receipts.reduce((n,r)=>n+r.revenue,0));
   assert.equal(summary.relevantEvents.length,after.events.length-before.events.length);
-  assert(summary.safeChronicle.every(e=>!["level6-combat","level7-exploration","dungeon-outcome"]
+  assert(summary.safeChronicle.every(e=>!["dungeon-exploration","level7-exploration","dungeon-outcome"]
     .includes(e.type)));
   assert.equal(JSON.stringify(after),snapshot,"Rendering the book cannot alter GameState");
   assert.throws(()=>summarizeLedger(before,before),RangeError);

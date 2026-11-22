@@ -31,7 +31,6 @@ export interface LiveBoardHero {
 const knownType=new Set<WorldEvent["type"]>([
   "shop-arrival","shop-stay","shop-departure","shop-walkout",
   "sale","shop-credit","tip","influx",
-  "level6-departure","level7-departure",
   "dungeon-live","temporary-party-join","temporary-party-leave",
   "hero-death-signal",
 ]);
@@ -64,9 +63,6 @@ function summary(event:WorldEvent):{text:string;source:LiveBoardSource;location:
     case "sale":case "shop-credit":case "tip":
       return {text:"Observed merchant transaction",source:"shop",
         location:"Galvik's shop · last seen",status:"last-seen"};
-    case "level6-departure":case "level7-departure":
-      return {text:"Observed expedition departure",source:"shop",
-        location:"Dungeon · last seen",status:"last-seen"};
     default:return {text:"Adventurer registered",source:"registry",
       location:"Unreported",status:"last-seen"};
   }
