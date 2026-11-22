@@ -432,7 +432,7 @@ function commitDungeonTick(state:GameState):GameState {
           const partyValid=!!priorParty&&
             crossing.length===priorParty.memberIds.length&&
             canAttemptCaveTroll(crossing.length,
-              crossing.every(member=>member.level6Permit))&&
+              crossing.every(member=>member.bossPass))&&
             crossing.every(member=>member.health>0)&&
             !partyBossCombat&&!clearedLevel10;
           const hasTime=tick+REPLAY_MAX_SECONDS*20+
@@ -593,7 +593,7 @@ function commitDungeonTick(state:GameState):GameState {
         p.heroId===individual.adventurer.id);
       const bossReady=floor===9&&
         canAttemptCaveTroll(readyGroup.length,
-          readyGroup.every(member=>member.level6Permit))&&
+          readyGroup.every(member=>member.bossPass))&&
         readyGroup.every(member=>member.equipment.weapon!==null&&
           member.health/heroProgression(member).maxHealth>=0.60);
       independent.set(individual.adventurer.id,

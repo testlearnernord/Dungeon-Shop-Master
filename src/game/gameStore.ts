@@ -1,7 +1,7 @@
 import { excavateLevel5Cell, isValidLevel5Room, type RoomCell } from "./level5Room.ts";
 import {isValidCellarRoom} from "./cellarRoom.ts";
 import {isCellarPondUncovered,pondExcavationRemaining} from "./cellarPond.ts";
-import { advanceDay, createGameState, setLevel6Permit, type GameState } from "./gameState.ts";
+import { advanceDay, createGameState, setBossPass, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 import {buyHeroDungeonFind} from "./dungeonBuyback.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
@@ -251,8 +251,8 @@ export class GameStore {
     return result.message;
   }
 
-  setLevel6Permit(heroId: string, permitted: boolean): boolean {
-    const result = setLevel6Permit(this.current, heroId, permitted);
+  setBossPass(heroId: string, permitted: boolean): boolean {
+    const result = setBossPass(this.current, heroId, permitted);
     if (result === this.current) return false;
     this.replace(result);
     return true;

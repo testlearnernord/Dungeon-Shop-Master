@@ -3,7 +3,7 @@ import {heroLevel,heroProgression} from "./heroProgression.ts";
 import {livePartyBossCheckpointProblem,partyBossReplayProblem}
   from "./livePartyBossSave.ts";
 import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
-import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,type MaterialItemId } from "./economy.ts";
+import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS } from "./economy.ts";
 import {
   SIMULATION_VERSION, type GameState, type EarlyDungeonFloorWorld,
 } from "./gameState.ts";
@@ -987,7 +987,7 @@ function validateState(value: unknown): asserts value is GameState {
     const path = `payload.adventurers[${index}]`;
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
-      "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilDay", "level6Permit",
+      "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilDay", "bossPass",
     ],["lastDungeonFloor"]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
@@ -1042,8 +1042,8 @@ function validateState(value: unknown): asserts value is GameState {
         fail(`${path}.floor`, "must agree with status");
       }
     }
-    if (typeof hero.level6Permit !== "boolean") fail(`${path}.level6Permit`, "must be boolean");
-    if (hero.status === "expedition" && hero.level6Permit !== true) fail(`${path}.level6Permit`, "is required for Level 6");
+    if (typeof hero.bossPass !== "boolean") fail(`${path}.bossPass`, "must be boolean");
+    if (hero.status === "expedition" && hero.bossPass !== true) fail(`${path}.bossPass`, "is required for boss expedition");
     const until=hero.offDutyUntilDay;
     if(hero.status==="off-duty"){
       if(until===null)fail(path+".offDutyUntilDay","is required off duty");
@@ -1597,44 +1597,6 @@ export function serializeSave(state:GameState):string{
   } satisfies SaveEnvelope);
 }
 
-/** Upgrade only the immediately preceding v25 campaigns. Their Ore/Coal
- * still occupied the bag or shelf, before workshop storage existed. Move
- * those exact saved quantities once, never duplicate, lose or generate goods.
- * Every unrelated field is subsequently checked by the strict v26 validator. */
-function migrateV25Materials(raw:unknown):GameState{
-  const old=object(raw,"payload",[
-    "day","worldClock","shopRequests","shopTraffic","liveDungeon",
-    "simulationVersion","events","savedReplayIds","adventurers","shopEconomy",
-    "dungeonFloors","seed","rngState","populationConfig","nextAdventurerId",
-    "level7World","shopLayout","shopCarts","shopDebts","level5Room",
-    "bedroomFurniture","rosterBoard","cellarRoom","cellarChest",
-    "cellarDoorOpen","cellarFishCaught",
-  ],["wallPortrait","earlyDungeonWorlds","dungeonParties"]);
-  // v25 saves have no workshop reserve: accepting one here could duplicate stock.
-  const economy=object(old.shopEconomy,"payload.shopEconomy",
-    ["balance","bag","slots","dailySales"]);
-  const bag=object(economy.bag,"payload.shopEconomy.bag",itemIds);
-  const store:Record<MaterialItemId,number>={
-    "iron-ore":integer(bag["iron-ore"],"payload.shopEconomy.bag.iron-ore",0,ECONOMY.bagCapacity),
-    coal:integer(bag.coal,"payload.shopEconomy.bag.coal",0,ECONOMY.bagCapacity),
-  };
-  const slots=array(economy.slots,"payload.shopEconomy.slots").map((value,i)=>{
-    const slot=object(value,"payload.shopEconomy.slots["+i+"]",
-      ["id","shelfId","index","itemId","quantity","capacity"]);
-    const id=slot.itemId;
-    if(id!=="coal"&&id!=="iron-ore")return slot;
-    const quantity=integer(slot.quantity,
-      "payload.shopEconomy.slots["+i+"].quantity",1,ECONOMY.slotCapacity);
-    if(store[id]>Number.MAX_SAFE_INTEGER-quantity)
-      fail("payload.shopEconomy.materialStorage","would overflow");
-    store[id]+=quantity;
-    return {...slot,itemId:null,quantity:0};
-  });
-  return {...old,simulationVersion:SIMULATION_VERSION,
-    shopEconomy:{...economy,bag:{...bag,"iron-ore":0,coal:0},
-      materialStorage:store,slots}} as unknown as GameState;
-}
-
 export function parseSave(text: string): GameState {
   let value: unknown;
   try {
@@ -1644,15 +1606,13 @@ export function parseSave(text: string): GameState {
   }
   const envelope = object(value, "envelope", ["schemaVersion", "simulationVersion", "savedAt", "payload"]);
   if (envelope.schemaVersion !== SAVE_SCHEMA_VERSION) fail("schemaVersion", "is incompatible; no migrations are available");
-  if (envelope.simulationVersion !== SIMULATION_VERSION&&
-      envelope.simulationVersion !== 25)
-    fail("simulationVersion", "is incompatible; only the previous v25 campaign can be migrated");
+  if (envelope.simulationVersion !== SIMULATION_VERSION)
+    fail("simulationVersion", "is incompatible with this Alpha build; start a New Game (no migration)");
   if (!textTimestamp(envelope.savedAt)) fail("savedAt", "must be an ISO UTC timestamp");
   if(!envelope.payload||typeof envelope.payload!=="object"||
      (envelope.payload as RecordValue).simulationVersion!==envelope.simulationVersion)
     fail("payload.simulationVersion","is incompatible with the envelope");
-  const state=envelope.simulationVersion===25
-    ?migrateV25Materials(envelope.payload):envelope.payload as GameState;
+  const state=envelope.payload as GameState;
   validateState(state);
   return state;
 }

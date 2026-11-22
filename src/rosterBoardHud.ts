@@ -60,11 +60,11 @@ export function setupRosterBoardHud(
       if(current.status==="at-shop"||current.status==="departing"){
         const permit=document.createElement("button");
         permit.type="button";permit.className="roster-permit";
-        permit.setAttribute("aria-pressed",String(current.level6Permit));
-        permit.textContent=current.level6Permit?
+        permit.setAttribute("aria-pressed",String(current.bossPass));
+        permit.textContent=current.bossPass?
           "Revoke Boss Pass":"Grant Boss Pass";
         permit.addEventListener("click",()=>{
-          store.setLevel6Permit(hero.id,!current.level6Permit);
+          store.setBossPass(hero.id,!current.bossPass);
           list.querySelector<HTMLButtonElement>(
             'details[data-hero-id="'+hero.id+'"] .roster-permit')?.focus();
         });

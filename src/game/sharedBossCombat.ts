@@ -84,7 +84,7 @@ export function caveTrollGroupOptions(
 export function caveTrollPartyOptions(
   party:readonly AdventurerState[],tacticsSeed:number,
 ):GroupCombatOptions{
-  if(!canAttemptCaveTroll(party.length,party.every(h=>h.level6Permit))||
+  if(!canAttemptCaveTroll(party.length,party.every(h=>h.bossPass))||
     party.some(hero=>hero.status==="dead"||hero.health<=0)||
     new Set(party.map(hero=>hero.id)).size!==party.length)
     throw new RangeError("Level "+CAVE_TROLL_FLOOR+" requires a real permitted 2–3 hero party.");
