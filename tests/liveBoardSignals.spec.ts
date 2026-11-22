@@ -4,8 +4,16 @@ test("a real lethal dungeon step raises ONE global world-feed warning and opens 
   test.setTimeout(95000);
   const errors:string[]=[];
   page.on("pageerror",err=>errors.push(err.message));
+  // Seed IndexedDB in a same-origin HTML shell WITHOUT booting the game.
+  // The previous harness saved from a second GameStore while the real shop
+  // was already running and autosaving, racing away the seeded death signal.
+  const fixtureRoute="**/Dungeon-Shop-Master/";
+  await page.route(fixtureRoute,route=>route.fulfill({
+    status:200,contentType:"text/html",
+    body:"<!doctype html><html><head><title>Fixture Host</title></head><body></body></html>",
+  }));
   await page.goto("./");
-  await expect(page.locator("#day")).toHaveText("Day 1");
+  await page.unroute(fixtureRoute);
   const heroId=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {GameStore}=await import("/Dungeon-Shop-Master/src/game/gameStore.ts");
@@ -41,6 +49,7 @@ test("a real lethal dungeon step raises ONE global world-feed warning and opens 
     await new CampaignStorage().saveGame(game.state);
     return hero.id;
   });
+  // Now boot ONE authoritative game process against the saved lethal step.
   await page.reload();
   await expect(page.locator("#day")).toHaveText("Day 1");
   // "Day 1" can be shown before the Babylon scene and asynchronous saved
