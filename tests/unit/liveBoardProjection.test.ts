@@ -51,7 +51,7 @@ function realTrapDeath():{store:GameStore;id:string}{
     heroId:hero.id,...approach,visited,
   }]};
   const store=new GameStore({...initial,adventurers,
-    earlyDungeonWorlds:[{floor:1 as const,world}]});
+    dungeonWorlds:[{floor:1 as const,world}]});
   return {store,id:hero.id};
 }
 

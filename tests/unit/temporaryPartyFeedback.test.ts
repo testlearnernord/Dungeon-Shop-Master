@@ -74,7 +74,7 @@ function preparedDay(){
       return match??{...hero,status:"at-shop" as const,floor:"shop" as const,
         shopStayDays:0};
     }),
-    earlyDungeonWorlds:[{floor:1 as const,world}],
+    dungeonWorlds:[{floor:1 as const,world}],
   };
 }
 

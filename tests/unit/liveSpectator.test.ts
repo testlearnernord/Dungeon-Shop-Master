@@ -42,7 +42,7 @@ test("LIVE combat observation displays only committed frames, never a synthetic 
   const visited=layout.tiles.flatMap((tile,i)=>
     tile!=="wall"&&i!==monsterIndex?[i]:[]);
   const hero=initial.adventurers.find(h=>h.floor===1&&h.status==="exploring")!;
-  const store=new GameStore({...initial,earlyDungeonWorlds:[{
+  const store=new GameStore({...initial,dungeonWorlds:[{
     floor:1 as const,world:{...emptyLevel7World(),heroes:[{
       heroId:hero.id,...approach,visited,
     }]},

@@ -99,7 +99,7 @@ test("single authored Ghoul pack LIVE combat saves and reloads one authoritative
     tile!=="wall"&&index!==targetIndex?[index]:[]);
   const positioned={...initial,
     adventurers:initial.adventurers.map(a=>a.id===active.id?active:a),
-    earlyDungeonWorlds:[{floor:3 as const,world:{
+    dungeonWorlds:[{floor:3 as const,world:{
       ...emptyLevel7World(),heroes:[{
         heroId:active.id,...approach,visited,
       }],
