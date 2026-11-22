@@ -3,14 +3,15 @@ import test from "node:test";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
-import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
-  from "../../src/game/liveDungeonRuntime.ts";
+import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
+import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame}
+  from "../../src/game/groupCombat.ts";
 
 /** A deterministic *boundary* fixture: direct move to Floor 6 only sets
  * up an encounter. No invented portal, player navigation or free inventory.
  * Goods are bought, shelved and paid through the real merchant methods.
  */
-test("paid Iron Sword and Leather Vest follow one buyer into the authentic saved LIVE Troll",()=>{
+test("physically purchased gear carries into the real Floor-10 GroupCombat hero",()=>{
   const initial=createStockedShopState(7351,{dailyInflux:0,maxActive:10});
   const first=initial.adventurers[0];
   const originalHero={
@@ -55,40 +56,32 @@ test("paid Iron Sword and Leather Vest follow one buyer into the authentic saved
   assert.strictEqual(merchant.state,paid,"A paid cart cannot settle twice");
   assert.deepEqual(parseSave(JSON.stringify(createSave(paid))),paid);
 
-  const enterBoss=(state:typeof paid)=>{
-    const roster=state.adventurers.map(hero=>hero.id===first.id?{
-      ...hero,status:"expedition" as const,floor:6 as const,
-      bossPass:true,
-    }:hero);
-    const store=new GameStore({...state,adventurers:roster});
-    store.enableLiveDungeon();
-    store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
-    return store;
-  };
-  const equipped=enterBoss(paid);
-  const control=enterBoss(stocked);
-  const live=equipped.state.liveDungeon.bossCombat;
-  const unarmed=control.state.liveDungeon.bossCombat;
-  assert(live&&unarmed,"Both branches must enter a genuine saved LIVE boss");
-  assert.equal(live.heroId,first.id);
-  assert.equal(live.state.options.sword,true);
-  assert.equal(live.state.options.armor,true);
-  assert.equal(unarmed.state.options.sword,false);
-  assert.equal(unarmed.state.options.armor,false);
-  assert.equal(live.state.options.health,unarmed.state.options.health);
-  assert.equal(live.state.outcome,"fighting");
-  assert.equal(live.state.bossHp,280);
-  assert.equal(live.frames.length,1);
-
-  // Current-version Save/Reload must retain the paid gear and the same
-  // authoritative 60Hz combat state, not synthesize a new fight.
-  const resumed=new GameStore(parseSave(JSON.stringify(createSave(equipped.state))));
-  equipped.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
-  resumed.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
-  assert.deepEqual(resumed.state,equipped.state);
-  assert(Math.abs(equipped.state.liveDungeon.bossCombat!.state.time-0.5)<1e-6);
-  assert.equal(equipped.state.adventurers.find(hero=>hero.id===first.id)!
-    .equipment.weapon,"Iron Sword");
-  assert.equal(equipped.state.adventurers.find(hero=>hero.id===first.id)!
-    .equipment.armor,"Leather Vest");
+  // This is a REAL deterministic party motor, not the removed solo
+  // encounter. Live stair/party ownership is independently tested by
+  // caveTrollPartyLive.test.ts, while this verifies the paid gear boundary.
+  const prepare=(state:typeof paid)=>state.adventurers.slice(0,3).map(h=>({
+    ...h,status:"expedition" as const,floor:10 as const,
+    health:h.stats.maxHealth,bossPass:true,
+  }));
+  const gearedOptions=caveTrollPartyOptions(prepare(paid),42);
+  const bareOptions=caveTrollPartyOptions(prepare(stocked),42);
+  const geared=gearedOptions.actors.find(actor=>actor.id===first.id)!;
+  const bare=bareOptions.actors.find(actor=>actor.id===first.id)!;
+  assert.equal(geared.equipment?.weapon,"Iron Sword");
+  assert.equal(geared.equipment?.armor,"Leather Vest");
+  assert.equal(bare.equipment?.weapon,null);
+  assert.equal(bare.equipment?.armor,null);
+  assert(geared.damage>bare.damage);
+  assert(geared.armor>bare.armor);
+  assert.equal(gearedOptions.actors.filter(a=>a.team==="heroes").length,3);
+  assert.equal(gearedOptions.actors.find(a=>a.id==="cave-troll")?.maxHp,700);
+  const live=createGroupCombat(gearedOptions);
+  const snapshot=captureGroupCombatFrame(live);
+  for(let i=0;i<30;i++)stepGroupCombat(live);
+  assert.equal(live.time,0.5);
+  assert.equal(snapshot.t,0);
+  assert(live.actors.some(a=>a.id===first.id&&a.equipment?.weapon==="Iron Sword"));
+  assert.deepEqual(createGroupCombat(gearedOptions).actors.find(a=>a.id===first.id),
+    snapshot.actors.find(a=>a.id===first.id),
+    "The original paid hero must be the saved fighter, not invented preview gear");
 });
