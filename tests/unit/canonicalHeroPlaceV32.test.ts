@@ -4,9 +4,9 @@ import {createGameState,SIMULATION_VERSION} from "../../src/game/gameState.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {liveHeroCard} from "../../src/game/heroCardView.ts";
 
-test("Alpha v32 has an unnumbered shop, while real numbered Dungeon Floor 5 remains valid",()=>{
+test("Current Alpha v33 has an unnumbered shop, while real numbered Dungeon Floor 5 remains valid",()=>{
   const state=createGameState(7351);
-  assert.equal(SIMULATION_VERSION,32);
+  assert.equal(SIMULATION_VERSION,33);
   const visitors=state.adventurers.filter(h=>h.status==="at-shop");
   assert(visitors.length>0);
   assert(visitors.every(h=>h.floor==="shop"));
@@ -21,7 +21,7 @@ test("Alpha v32 has an unnumbered shop, while real numbered Dungeon Floor 5 rema
   assert.equal(liveHeroCard(exploring,visitor.id)?.floor,5);
 });
 
-test("Alpha v32 rejects old fake shop-floor saves and v31 without migration",()=>{
+test("Current Alpha v33 rejects old fake shop-floor saves and v31 without migration",()=>{
   const state=createGameState(7351),visitor=state.adventurers.find(
     h=>h.status==="at-shop")!;
   const current=structuredClone(createSave(state)) as any;

@@ -41,7 +41,7 @@ test("exact traffic checkpoint survives strict campaign JSON and restores routes
   assert.deepEqual(loaded.worldClock,state.worldClock);
   assert.equal(loaded.events.filter(event=>event.type==="sale").length,
     state.events.filter(event=>event.type==="sale").length);
-  assert.equal(SIMULATION_VERSION,32);
+  assert.equal(SIMULATION_VERSION,33);
   assert.equal(loaded.shopTraffic.actors[0].route[1].z,1.8);
   assert.equal(loaded.shopTraffic.actors[0].routeProgress?.stagnantSeconds,0.15);
 });

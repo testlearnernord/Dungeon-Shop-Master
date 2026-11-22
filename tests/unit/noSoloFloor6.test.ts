@@ -13,7 +13,7 @@ test("Floor 6 remains an ordinary seeded LIVE dungeon, never a solo Cave Troll",
     hero.id===id?{...hero,status:"exploring" as const,
       floor:6 as const,bossPass:true}:hero)});
   store.enableLiveDungeon();
-  assert.equal(SIMULATION_VERSION,32);
+  assert.equal(SIMULATION_VERSION,33);
   assert.equal("bossCombat" in store.state.liveDungeon,false);
   store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   assert.equal("bossCombat" in store.state.liveDungeon,false,
@@ -24,21 +24,21 @@ test("Floor 6 remains an ordinary seeded LIVE dungeon, never a solo Cave Troll",
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
 });
 
-test("v32 strictly rejects a forged LIVE solo-boss checkpoint, no fallback or migration",()=>{
+test("v33 strictly rejects a forged LIVE solo-boss checkpoint, no fallback or migration",()=>{
   const store=new GameStore(createGameState(7351));
   store.enableLiveDungeon();
   const save=structuredClone(createSave(store.state)) as any;
   save.payload.liveDungeon.bossCombat={id:"live-boss:1:200:forged",heroId:"adventurer-1"};
   assert.throws(()=>parseSave(JSON.stringify(save)),/liveDungeon\.bossCombat.*not supported/);
   const old=structuredClone(createSave(store.state)) as any;
-  old.simulationVersion=31;
-  old.payload.simulationVersion=31;
+  old.simulationVersion=32;
+  old.payload.simulationVersion=32;
   assert.throws(()=>parseSave(JSON.stringify(old)),
     /simulationVersion.*incompatible.*New Game/);
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
 });
 
-test("v32 rejects an injected old expedition Floor-6 hero in the LIVE motor",()=>{
+test("v33 rejects an injected old expedition Floor-6 hero in the LIVE motor",()=>{
   const initial=createGameState(7351);
   const id=initial.adventurers[0].id;
   const store=new GameStore({...initial,adventurers:initial.adventurers.map(h=>
