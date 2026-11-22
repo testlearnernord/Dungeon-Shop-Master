@@ -46,7 +46,8 @@ export function setupRosterBoardHud(
       card.open=expanded.has(hero.id);
       const summary=document.createElement("summary");
       summary.append(renderHeroCard(view,"mini"));
-      heroCards?.bindHover(summary,hero.id);
+      // The summary ALREADY renders our Mini card. A second floating
+      // copy on hover was redundant (and obscured by the native dialog).
       const extended=document.createElement("div");
       extended.className="roster-card-extended";
       extended.append(renderHeroCard(view,"expanded"));
