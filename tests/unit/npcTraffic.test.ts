@@ -6,10 +6,10 @@ import { ENTRANCE_STAGING_Z, ENTRANCE_SPAWN_HEADWAY, NPC_CENTER_CLEARANCE, NPC_S
 } from "../../src/game/npcTraffic.ts";
 
 test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=>{
-  for(const gate of ["level4","level6"] as const){
+  for(const gate of ["portal"] as const){
     const entering=gateTravelLane(gate,"entering");
     const leaving=gateTravelLane(gate,"leaving");
-    const center=gate==="level4"?-4:4;
+    const center=-4;
     assert(Math.abs(entering-leaving)>0.54);
     assert(Math.abs(entering-center)<0.8);
     assert(Math.abs(leaving-center)<0.8);
@@ -17,7 +17,7 @@ test("level 4 and level 6 entrances use distinct inbound and outbound lanes",()=
 });
 
 test("burst arrivals get non-overlapping spawns, without crossing the corridor walls",()=>{
-  const x=gateTravelLane("level4","entering");
+  const x=gateTravelLane("portal","entering");
   const occupied:{x:number;z:number}[]=[];
   for(let i=0;i<24;i++){
     const z=nextEntranceSpawnZ(x,occupied);
@@ -34,7 +34,7 @@ test("burst arrivals get non-overlapping spawns, without crossing the corridor w
 });
 
 test("interrupted departures change lanes only outside the corridor walls",()=>{
-  for(const gate of ["level4","level6"] as const){
+  for(const gate of ["portal"] as const){
     const outgoing=gateTravelLane(gate,"leaving");
     const incoming=gateTravelLane(gate,"entering");
     const points=interruptedDepartureRoute(gate,{x:outgoing,z:9},6,13);
@@ -58,7 +58,7 @@ test("up to 100 idle visitors get unique walkable reachable positions",()=>{
     assert(point.z<3,"idle NPCs must not block the doorway");
     assert(!isObstructed(point,layout));
     for(let j=0;j<i;j++)assert(Math.hypot(point.x-spots[j].x,point.z-spots[j].z)>=NPC_CENTER_CLEARANCE-1e-6);
-    const route=pathToShopGoal({x:gateTravelLane("level4","entering"),z:6},point,layout);
+    const route=pathToShopGoal({x:gateTravelLane("portal","entering"),z:6},point,layout);
     assert(route,"idle location should be reachable from the level 4 entrance");
   }
 });
@@ -125,7 +125,7 @@ test("collision checking covers the entire movement segment",()=>{
 });
 
 test("an already-indoor returning shopper must never route back through the entrance",()=>{
-  const gate="level4";
+  const gate="portal";
   const from={x:-0.6,z:1.0};
   assert.deepEqual(entranceApproachRoute(gate,from,false,6,13),[],
     "day tick must preserve the current indoor position rather than block arrivals");
@@ -134,59 +134,57 @@ test("an already-indoor returning shopper must never route back through the entr
 });
 
 test("new and interrupted outside visitors clear the shop entrance before browsing",()=>{
-  const entering=gateTravelLane("level4","entering");
-  const newRoute=entranceApproachRoute("level4",{x:entering,z:13},true,6,13);
+  const entering=gateTravelLane("portal","entering");
+  const newRoute=entranceApproachRoute("portal",{x:entering,z:13},true,6,13);
   assert.deepEqual(newRoute,[
     {x:entering,z:6},
     {x:entering,z:ENTRANCE_STAGING_Z},
   ]);
   assert(ENTRANCE_STAGING_Z<5.0&&ENTRANCE_STAGING_Z>3.5);
-  const interrupted=entranceApproachRoute("level4",{x:-3.43,z:9},false,6,13);
+  const interrupted=entranceApproachRoute("portal",{x:-3.43,z:9},false,6,13);
   assert.deepEqual(interrupted,[
     {x:-3.43,z:14},
     {x:entering,z:14},
     {x:entering,z:6},
     {x:entering,z:ENTRANCE_STAGING_Z},
   ]);
-  const level6=gateTravelLane("level6","entering");
-  assert.deepEqual(entranceApproachRoute("level6",{x:level6,z:13},true,6,13).at(-1),
-    {x:level6,z:ENTRANCE_STAGING_Z});
+
 });
 
-test("an incoming visitor already in the Level 4 corridor holds departing customers inside",()=>{
-  const entering={gate:"level4" as const,phase:"entering" as const,
-    x:gateTravelLane("level4","entering"),z:8};
-  const leaving={gate:"level4" as const,phase:"leaving" as const,
-    x:gateTravelLane("level4","leaving"),z:5.7};
-  const direction=gateFlowDirection("level4",[entering,leaving]);
+test("an incoming visitor already in the cursed portal corridor holds departing customers inside",()=>{
+  const entering={gate:"portal" as const,phase:"entering" as const,
+    x:gateTravelLane("portal","entering"),z:8};
+  const leaving={gate:"portal" as const,phase:"leaving" as const,
+    x:gateTravelLane("portal","leaving"),z:5.7};
+  const direction=gateFlowDirection("portal",[entering,leaving]);
   assert.equal(direction,"entering");
   assert.equal(mustYieldAtGate(leaving,direction),true);
   assert.equal(mustYieldAtGate(entering,direction),false);
   // The first visitor has now cleared the entrance into the shop.
-  assert.equal(gateFlowDirection("level4",[
+  assert.equal(gateFlowDirection("portal",[
     {...entering,z:4.2},leaving,
   ]),"leaving");
 });
 
-test("departing Level 4 heroes in the throat hold new arrivals outside",()=>{
-  const leaving={gate:"level4" as const,phase:"leaving" as const,
-    x:gateTravelLane("level4","leaving"),z:8.2};
-  const entering={gate:"level4" as const,phase:"entering" as const,
-    x:gateTravelLane("level4","entering"),z:13};
-  assert.equal(gateFlowDirection("level4",[leaving,entering]),"leaving");
+test("departing portal heroes in the throat hold new arrivals outside",()=>{
+  const leaving={gate:"portal" as const,phase:"leaving" as const,
+    x:gateTravelLane("portal","leaving"),z:8.2};
+  const entering={gate:"portal" as const,phase:"entering" as const,
+    x:gateTravelLane("portal","entering"),z:13};
+  assert.equal(gateFlowDirection("portal",[leaving,entering]),"leaving");
   assert(mustYieldAtGate(entering,"leaving"));
   assert(!mustYieldAtGate(leaving,"leaving"));
-  assert.equal(gateFlowDirection("level4",[
+  assert.equal(gateFlowDirection("portal",[
     {...leaving,z:13.3},entering,
   ]),"entering","once a departure is past the gate, queued buyers may enter");
 });
 
 test("outbound traffic has priority at a clear gate but cannot stop travellers midway",()=>{
-  const departing={gate:"level4" as const,phase:"leaving" as const,
-    x:gateTravelLane("level4","leaving"),z:5.6};
-  const arriving={gate:"level4" as const,phase:"entering" as const,
-    x:gateTravelLane("level4","entering"),z:13.1};
-  assert.equal(gateFlowDirection("level4",[departing,arriving]),"leaving");
+  const departing={gate:"portal" as const,phase:"leaving" as const,
+    x:gateTravelLane("portal","leaving"),z:5.6};
+  const arriving={gate:"portal" as const,phase:"entering" as const,
+    x:gateTravelLane("portal","entering"),z:13.1};
+  assert.equal(gateFlowDirection("portal",[departing,arriving]),"leaving");
   assert(mustYieldAtGate(arriving,"leaving"));
   assert(!mustYieldAtGate({...arriving,z:GATE_OUTER_HOLD_Z-0.05},"leaving"),
     "an already admitted inbound actor must finish crossing");
@@ -195,12 +193,15 @@ test("outbound traffic has priority at a clear gate but cannot stop travellers m
     "a departing actor past the inner hold line cannot freeze in the doorway");
 });
 
-test("Level 4 and Level 6 traffic reservations do not block each other",()=>{
-  const level4Leaving={gate:"level4" as const,phase:"leaving" as const,x:-3.43,z:8};
-  const level6Entering={gate:"level6" as const,phase:"entering" as const,x:3.43,z:8};
-  assert.equal(gateFlowDirection("level4",[level4Leaving,level6Entering]),"leaving");
-  assert.equal(gateFlowDirection("level6",[level4Leaving,level6Entering]),"entering");
-  assert(!mustYieldAtGate(level6Entering,"entering"));
+test("there is only one portal, so all traffic uses the same right-of-way",()=>{
+  const leaving={gate:"portal" as const,phase:"leaving" as const,
+    x:-3.43,z:8};
+  const entering={gate:"portal" as const,phase:"entering" as const,
+    x:-4.57,z:13};
+  assert.equal(gateFlowDirection("portal",[leaving,entering]),"leaving");
+  assert.equal(mustYieldAtGate(entering,"leaving"),true);
+  assert.equal(gateTravelLane("portal","entering"),-4.57);
+  assert.equal(gateTravelLane("portal","leaving"),-3.43);
 });
 
 test("neighbour collisions are soft after a short wait, preserving furniture",()=>{
@@ -280,11 +281,11 @@ test("gate chokepoints release blocked NPC bodies sooner but never tunnel throug
   assert.equal(solid.softPass,false);
 });
 
-test("checkout-bound shoppers at the Level 4 mouth receive gate soft-pass too",()=>{
+test("checkout-bound shoppers at the portal mouth receive gate soft-pass too",()=>{
   assert.equal(inGateTrafficThroat({x:-4.4,z:6}),true,"incoming");
   assert.equal(inGateTrafficThroat({x:-3.5,z:5.5}),true,
     "customer crossing from gate to register is no longer entering");
-  assert.equal(inGateTrafficThroat({x:4.5,z:5.3}),true,"same for Level 6");
+  assert.equal(inGateTrafficThroat({x:4.5,z:5.3}),false,"old right gate is solid rock");
   assert.equal(inGateTrafficThroat({x:0,z:5.5}),false,
     "the central register area retains ordinary collision timing");
   assert.equal(inGateTrafficThroat({x:-4.5,z:1}),false,
@@ -311,7 +312,7 @@ test("stationary shoppers yield only to approaching paths that actually cross th
 });
 
 test("saturated entrance spawns safely beyond all reserved positions",()=>{
-  const lane=gateTravelLane("level4","entering");
+  const lane=gateTravelLane("portal","entering");
   const occupied=Array.from({length:120},(_,i)=>
     ({x:lane,z:13+i*ENTRANCE_SPAWN_HEADWAY}));
   const z=nextEntranceSpawnZ(lane,occupied);
@@ -371,7 +372,7 @@ test("only visitors in a real gate corridor may finish departing straight outwar
   const innerZ=6;
   assert.equal(isInExitCorridor({x:-4.57,z:9},innerZ),true);
   assert.equal(isInExitCorridor({x:-3.43,z:6.4},innerZ),true);
-  assert.equal(isInExitCorridor({x:4.57,z:13},innerZ),true);
+  assert.equal(isInExitCorridor({x:4.57,z:13},innerZ),false,"sealed second gate");
   assert.equal(isInExitCorridor({x:-6,z:6.5},innerZ),false,
     "rear side of original showroom still needs ordinary pathfinding");
   assert.equal(isInExitCorridor({x:0,z:8},innerZ),false);
@@ -379,10 +380,10 @@ test("only visitors in a real gate corridor may finish departing straight outwar
 });
 
 test("arriving and departing visitors may share physically separated gate lanes",()=>{
-  const outgoing={gate:"level4" as const,phase:"leaving" as const,
-    x:gateTravelLane("level4","leaving"),z:7.9};
-  const incoming={gate:"level4" as const,phase:"entering" as const,
-    x:gateTravelLane("level4","entering"),z:8.1};
+  const outgoing={gate:"portal" as const,phase:"leaving" as const,
+    x:gateTravelLane("portal","leaving"),z:7.9};
+  const incoming={gate:"portal" as const,phase:"entering" as const,
+    x:gateTravelLane("portal","entering"),z:8.1};
   assert(canShareGateLanes(outgoing,[outgoing,incoming]));
   assert(canShareGateLanes(incoming,[outgoing,incoming]));
   assert(Math.abs(outgoing.x-incoming.x)>=NPC_CENTER_CLEARANCE);
