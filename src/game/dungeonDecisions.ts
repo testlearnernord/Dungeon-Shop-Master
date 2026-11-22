@@ -39,7 +39,9 @@ export function chooseHeroDungeonDecision(
   const enoughExperience=known >= (reckless?9:careful?17:13) ||
     replay.outcome==="completed";
   // Their own purpose can change after a real injury or a real looted chest.
-  if(lowHealth || hero.inventory.loot >= 2 ||
+  const physicalFindCount=Object.values(hero.inventory.finds??{})
+    .reduce<number>((sum,count)=>sum+(count??0),0);
+  if(lowHealth || physicalFindCount >= 2 ||
      (hero.floor===9 && hero.gold>=22 && known>=8)) {
     return {goal:"resupply",action:"shop"};
   }

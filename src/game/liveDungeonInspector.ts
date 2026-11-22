@@ -31,8 +31,8 @@ export function floorFightLocatorOptions(
   });
 }
 
-/** The abstract `inventory.loot` counter is not a physical item.
- * Show only goods that a real saved adventurer currently owns. */
+/** Show only physically owned goods from the actual saved adventurer inventory.
+ * No abstract haul token is projected as an item. */
 export function formatHeroDungeonFinds(
   finds:Readonly<Partial<Record<ItemId,number>>>|undefined,
 ):string {

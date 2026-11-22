@@ -192,11 +192,7 @@ function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState
     message:hero.name+" emerged through Galvik's portal into the shop.",
   };
   return {...state,adventurers:state.adventurers.map(h=>h.id===id?
-      {...h,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0,
-        // The abstract chest counter is a trip-haul threshold, not a
-        // sellable item. Unload it upon reaching Galvik; retain the real
-        // owned finds and all actual gold/equipment for manual buyback.
-        inventory:{...h.inventory,loot:0}}:h),
+      {...h,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0}:h),
     liveDungeon:{...state.liveDungeon,
       returns:state.liveDungeon.returns.filter(j=>j.heroId!==id),
       plans:state.liveDungeon.plans.filter(p=>p.heroId!==id)},
@@ -652,7 +648,10 @@ function commitLiveCombatTick(state:GameState):GameState{
           status:hp>0?"expedition":"dead",
           gold:old.gold+gold,
           inventory:{...old.inventory,healing:old.inventory.healing-used,
-            loot:old.inventory.loot+(winner&&hp>0?2:0)},
+            ...(winner&&hp>0?{finds:{
+              ...(old.inventory.finds??{}),
+              "iron-ore":(old.inventory.finds?.["iron-ore"]??0)+2,
+            }}:{})},
         };
         byId.set(id,hero);
         activities.push({

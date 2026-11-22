@@ -656,8 +656,7 @@ export function simulateSpatialDungeonPartyDay(
       ...(returning?{lastDungeonFloor:7 as const}:{}),
       status:dead?"dead":returning?"traveling":
         m.hero.status==="expedition"&&floor===7?"expedition":"exploring",
-      inventory:{...m.hero.inventory,
-        loot:m.hero.inventory.loot+m.loot,healing:m.healing},
+      inventory:{...m.hero.inventory,healing:m.healing},
     };
     if(!dead&&!returning)survivors.push({
       heroId:m.hero.id,...current,visited:m.visitedOrder,
