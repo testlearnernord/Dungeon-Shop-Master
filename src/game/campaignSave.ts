@@ -728,7 +728,8 @@ function validateLivePlans(
     integer(plan.updatedTick,path+".updatedTick",0,clockTick);
     const hero=roster.find(h=>h.id===id);
     if(!enabled||!hero||hero.health===0||hero.floor!==plan.floor||
-      hero.status!==(plan.floor===7?"expedition":"exploring"))
+      !(hero.status==="exploring"||
+        plan.floor===7&&hero.status==="expedition"))
       fail(path+".heroId","must name a living committed explorer on the recorded floor");
     if((plan.action==="ascend"&&(plan.floor as number)<=1)||
       (plan.action==="descend"&&(plan.floor as number)>=10))
