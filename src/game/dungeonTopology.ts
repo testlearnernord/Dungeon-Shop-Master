@@ -1,9 +1,10 @@
 /**
- * Target topology of the living dungeon. Galvik's shop is a separate realm,
- * NOT numeric Floor 5. These pure rules do not grant a portal, spawn a boss,
- * or modify a save by themselves; the live world clock must commit travel.
- *
- * Keep a single source of truth for subsequent depth-migration PRs.
+ * Current conceptual dungeon topology: Galvik's cursed shop is its own
+ * realm, NOT numeric dungeon Floor 5. All Floors 1–9 are ordinary seeded
+ * locations; Floor 10 is the Cave Troll party encounter. These pure
+ * predicates never move heroes or spawn fights: the persisted LIVE motor
+ * commits travel. Legacy save fields may still use numeric 5 for shop
+ * occupancy and level6Permit for gate access; neither redefines this map.
  */
 export const CURSED_SHOP_REALM="cursed-shop" as const;
 export const FIRST_DUNGEON_FLOOR=1;
