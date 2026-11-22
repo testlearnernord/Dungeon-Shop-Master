@@ -266,7 +266,14 @@ export function inspectNpcVisuals() {
     saleTags: scene.meshes.filter(({ name }) => name.startsWith("npc-sale-")).map(({ name }) => name),
     gateY:scene.getMeshByName("cursed-portal-door")?.position.y,
     playerBarrierSolid:scene.getMeshByName("cursed-portal-player-barrier")?.checkCollisions??false,
-    sealedRightPassage:scene.getMeshByName("sealed-right-passage-stone")?.checkCollisions??false,
+    sealedRightPassage:(()=>{
+      const wall=scene.getMeshByName("back-middle-wall");
+      if(!wall?.checkCollisions)return false;
+      wall.computeWorldMatrix(true);
+      const bounds=wall.getBoundingInfo().boundingBox;
+      return bounds.minimumWorld.x<=-2.75&&bounds.maximumWorld.x>=7.5&&
+        bounds.minimumWorld.z<7&&bounds.maximumWorld.z>7;
+    })(),
     hasSecondGate:scene.getMeshByName("level-6-barrier")!==null,
   };
 }
