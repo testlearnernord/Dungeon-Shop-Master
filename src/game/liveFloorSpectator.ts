@@ -4,7 +4,7 @@ import type {SpatialDungeonFloor} from "./level7Exploration.ts";
 import type {CombatantSpec,GroupReplayFrame,GroupCombatCue} from "./groupCombat.ts";
 
 /** The supported *physical* expedition floors, not a fictional set of 100. */
-export const LIVE_SPECTATOR_FLOORS=[1,2,3,4,7] as const satisfies readonly SpatialDungeonFloor[];
+export const LIVE_SPECTATOR_FLOORS=[1,2,3,4,5,6,7,8,9] as const satisfies readonly SpatialDungeonFloor[];
 
 export interface LiveFloorHero {
   readonly id:string;
@@ -67,9 +67,9 @@ export function selectLiveFloorSpectatorFrame(
       frame,frames:f.frames,cues:f.state.events,
     }]:[];
   });
-  const activeStatus=floor===7?"expedition":"exploring";
   const heroes:LiveFloorHero[]=state.adventurers
-    .filter(h=>h.floor===floor&&h.status===activeStatus&&h.health>0)
+    .filter(h=>h.floor===floor&&h.health>0&&
+      (h.status==="exploring"||floor===7&&h.status==="expedition"))
     .flatMap(hero=>{
       const site=progress.get(hero.id);
       const fight=fights.find(f=>f.heroIds.includes(hero.id));
