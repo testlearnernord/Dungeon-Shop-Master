@@ -896,7 +896,7 @@ export function finishLiveDungeonDay(
       returns:state.liveDungeon.returns,
       plans:state.liveDungeon.plans.filter(plan=>
         adventurers.some(h=>h.id===plan.heroId&&h.floor===plan.floor&&
-          h.health>0&&(h.status==="exploring"||h.status==="expedition")))},
+          h.health>0&&h.status==="exploring"))},
     events:[...state.events,...events],
   };
   const finalPlans=new Map(next.liveDungeon.plans.map(p=>[p.heroId,p] as const));
