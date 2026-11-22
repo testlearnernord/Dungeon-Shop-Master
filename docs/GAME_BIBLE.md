@@ -57,7 +57,7 @@ The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper contract.
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers leave for **two complete off-duty days** outside shop and dungeon. **CURRENT:** physical departure, saved cooldown and safe entry already exist; the future portal topology/reentry presentation remains open.
 - Common opponents, traps and chests refresh on saved intervals across ordinary Floors 1–9; unique boss victories and persistent discoveries do not respawn as common loot.
-- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved permitted Temporary Party of two or three heroes. Individual eligibility remains encoded as historical `level6Permit`; replacing that field with a truthful name during a **migration-free breaking cutover** is separate work. Substantive *authored* variety and a full playable progression audit are still open.
+- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved permitted Temporary Party of two or three heroes. Individual eligibility is the canonical `bossPass` field since Alpha v27. Older v25/v26 saves are unsupported and rejected. Substantive *authored* variety and a full playable progression audit are still open.
 - Full 100-floor progression is a long-range fiction/ambition, **not** a claim of implemented, promised or budgeted launch content.
 
 ## 5. Galvik and the story

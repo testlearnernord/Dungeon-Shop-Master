@@ -101,7 +101,7 @@ Committed original Tripo GLBs
 
 `npm run build` executes both asset generators, TypeScript type checking and Vite bundling. D1 #242 runs `npm run verify:pages` immediately after build in PR CI **and** the Pages deploy workflow: it checks final `dist/` JS/CSS URL base, canonical music, all 32 creature SFX and generated/curated GLB copies without changing runtime assets. See [D1 artifact contract](CODE_CLEANUP_D1.md). `npm run test:unit` runs Node tests, `npm run test:smoke` runs the curated browser-flow whitelist; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit and **one core browser-smoke job**; the full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
 
-The shipped HUD still labels the game **V.002 ALPHA**; V.003 remains a release target, not a missing-code claim. The former Floor-6 boss is now a Floor-10 LIVE party gate; `level5Room`, `level6Permit`, `level6-*` history, shop `gateSide/doorY` and `floor=5` at the shop remain **version-26 save/API keys** pending a **breaking fresh-save cleanup with explicit rejection of older formats, no migration**. The shared world clock, partial living dungeon, observed fights, LIVE spectator, updated SFX and post-shop rotation already exist and must **not** be described as merely planned. Remaining content and release gates are tracked only in [Roadmap](ROADMAP.md), not appended as PR-numbered sections here.
+The shipped HUD still labels the game **V.002 ALPHA**; V.003 remains a release target, not a missing-code claim. The former Floor-6 boss is now a Floor-10 LIVE party gate; `level5Room`, `level6-*` history, shop `gateSide/doorY` and `floor=5` at the shop remain **current v27 retained shop/event keys** pending a **breaking fresh-save cleanup with explicit rejection of older formats, no migration**. The shared world clock, partial living dungeon, observed fights, LIVE spectator, updated SFX and post-shop rotation already exist and must **not** be described as merely planned. Remaining content and release gates are tracked only in [Roadmap](ROADMAP.md), not appended as PR-numbered sections here.
 
 **Dungeon transitions:** dungeonStairways.ts projects the actual layout entrance
 and dungeonDownStair(...) cells as view-only stair landmarks. 3D stone steps
@@ -138,3 +138,8 @@ inspector, roster's legacy raw stat paragraphs, and generic hero hover
 text have been replaced. Combat AI, World Clock, RNG, Replay generation,
 shop price/inventory authority and Babylon character construction are
 unaffected. Historical omissions must remain unknown.
+
+
+### Alpha v27 hard save boundary (Issue #300, first code slice)
+
+The parser and writer use only `SIMULATION_VERSION=27`; the v25 material migrator is deleted and v26 old-format campaigns are rejected with an explicit New Game prompt. `bossPass` is the only stored hero permission field used for the Floor-10 Temporary Party gate. The still-existing numeric `floor=5` shop occupancy, `level5Room`, `level4|level6` traffic gates and historical solo combat are **not** solved by this first slice. They require separate gameplay-aware removal, not save migrations.
