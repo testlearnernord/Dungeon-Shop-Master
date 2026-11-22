@@ -68,7 +68,7 @@ export function selectLiveSpectatorFrame(
       p.memberIds.includes(heroId))?.memberIds??[heroId];
   const party=partyIds.map(id=>state.adventurers.find(h=>h.id===id))
     .filter((h):h is AdventurerState=>!!h&&h.floor===floor&&h.health>0&&
-      (h.status==="exploring"||h.status==="expedition"));
+      (h.status==="exploring"||floor===10&&h.status==="expedition"));
   const x=progress?.x??fight?.encounter.x??layout.entrance.x;
   const z=progress?.z??fight?.encounter.z??layout.entrance.z;
   const visited=progress?.visited??[z*layout.width+x];
