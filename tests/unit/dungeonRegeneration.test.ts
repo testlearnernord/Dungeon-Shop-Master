@@ -9,7 +9,7 @@ import {
 } from "../../src/game/dungeonRegeneration.ts";
 import { createGameState } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
-import { emptyLevel7World, simulateLevel7Day } from "../../src/game/level7Exploration.ts";
+import { emptyLevel7World, simulateSpatialDungeonDay } from "../../src/game/level7Exploration.ts";
 
 const map = generateDungeonLayout(7351, 7);
 
@@ -75,10 +75,10 @@ test("Floor 7 uses persistent saved generations and rejects forged save cycles",
   const original = initial.adventurers[0];
   const hero = {...original,role:"tank" as const,
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
-    health:original.stats.maxHealth, status:"expedition" as const,
+    health:original.stats.maxHealth, status:"exploring" as const,
     floor:7 as const, bossPass:true};
-  const result = simulateLevel7Day(hero,emptyLevel7World(),7351,3);
-  const again = simulateLevel7Day(hero,emptyLevel7World(),7351,3);
+  const result = simulateSpatialDungeonDay(hero,emptyLevel7World(),7351,3);
+  const again = simulateSpatialDungeonDay(hero,emptyLevel7World(),7351,3);
   assert.deepEqual(result,again);
   assert(Array.isArray(result.world.siteCycles));
   for (const id of result.world.resolvedFeatureIds) {
@@ -113,7 +113,7 @@ test("renewed monster and chest really re-enter the existing recorded Floor 7 ex
   const initial = createGameState(7351);
   const base=initial.adventurers[0];
   const hero={...base,role:"tank" as const,
-    status:"expedition" as const,floor:7 as const,bossPass:true,
+    status:"exploring" as const,floor:7 as const,bossPass:true,
     health:base.stats.maxHealth,
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"}};
   for(const kind of ["monster","treasure"] as const) {
@@ -129,8 +129,8 @@ test("renewed monster and chest really re-enter the existing recorded Floor 7 ex
       })),
       heroes:[{heroId:hero.id,...approach,visited}],
     };
-    const first=simulateLevel7Day(hero,world,7351,12);
-    const again=simulateLevel7Day(hero,world,7351,12);
+    const first=simulateSpatialDungeonDay(hero,world,7351,12);
+    const again=simulateSpatialDungeonDay(hero,world,7351,12);
     assert.deepEqual(first,again);
     const record=first.world.siteCycles?.find(site=>site.id===target.id);
     assert(record && record.cycle===1,
