@@ -111,12 +111,14 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   }
   box(scene, "corridor-end-left-outer", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(-5.2, 2, 12.2), rock, true, surfaces.stone);
   box(scene, "corridor-end-left-inner", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(-2.8, 2, 12.2), rock, true, surfaces.stone);
-  // Let Level 6 adventurers pass through the end wall without letting the player escape.
+  // The old right-hand tunnel is a sealed stone recess. Only legacy
+  // checkpoints which still have a visitor in this corridor can raise it
+  // long enough to finish that already-saved physical walk.
   box(scene, "corridor-end-right-inner", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(2.8, 2, 12.2), rock, true, surfaces.stone);
   box(scene, "corridor-end-right-outer", { width: 0.2, height: 4, depth: 0.4 }, new Vector3(5.2, 2, 12.2), rock, true, surfaces.stone);
 
-  sign(scene, "level-4-sign", "LEVEL 4 · BLOCKED", new Vector3(-4, 2.8, 6.73));
-  sign(scene, "level-6-sign", "LEVEL 6 · BLOCKED", new Vector3(4, 2.8, 6.73));
+  sign(scene, "cursed-threshold-sign", "THE CURSED THRESHOLD",
+    new Vector3(-4, 2.8, 6.73));
   const level4Door = box(scene, "level-4-barrier", { width: 2.2, height: 1.8, depth: 0.25 },
     new Vector3(-4, 0.9, 11.7), new Color3(0.26, 0.12, 0.1), false);
   level4Door.isPickable = false;
@@ -125,7 +127,7 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   playerBarrier.visibility = 0;
   playerBarrier.isPickable = false;
   const level6Gate = box(scene, "level-6-barrier", { width: 2.2, height: 1.8, depth: 0.25 },
-    new Vector3(4, 0.9, 11.7), new Color3(0.21, 0.24, 0.28), false);
+    new Vector3(4, 0.9, 11.7), rock, false, surfaces.stone);
   level6Gate.isPickable = false;
   const level6PlayerBarrier = box(scene, "level-6-player-barrier", { width: 2.2, height: 2.6, depth: 0.25 },
     new Vector3(4, 1.3, 11.7), new Color3(0.21, 0.24, 0.28));
