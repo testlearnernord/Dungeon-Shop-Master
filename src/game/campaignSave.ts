@@ -764,7 +764,7 @@ function validateLivePortalReturns(
       // A normal-floor portal can only be triggered from the known real
       // entrance tile. The saved last location is intentionally retained
       // until the portal event resolves; a bare fabricated timer is not enough.
-      if(floor!==6&&floor!==10){
+      if(floor!==10){
         const world:Level7World=floor===7?
           state.level7World as Level7World:
           ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
@@ -1016,6 +1016,8 @@ function validateState(value: unknown): asserts value is GameState {
       if(total>1000)fail(path+".inventory.finds","is oversized");
     }
     const floor = integer(hero.floor, `${path}.floor`, 1, 10);
+    if(state.liveDungeon.enabled&&hero.status==="expedition"&&floor===6)
+      fail(`${path}.status`,"Floor 6 is an ordinary dungeon; no solo boss expedition exists");
     if(hero.lastDungeonFloor!==undefined)
       integer(hero.lastDungeonFloor,path+".lastDungeonFloor",1,9);
     choice(hero.status, ["exploring", "traveling", "at-shop",
