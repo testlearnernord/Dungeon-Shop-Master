@@ -15,9 +15,9 @@
 
 ## Priorities still open
 
-### P0 · correctness and save compatibility
+### P0 · correctness and current-save safety
 
-1. **Version-26 shop-state decoupling.** The *design* shop is unnumbered, but persisted `hero.floor === 5`, `level5Room`, `level6Permit`, historic event names and shop `gateSide/doorY` keys still describe an older dungeon. Do **not** rename them casually. Design and test one atomic save migration before making schema changes. Keep both physical arrival and departure, already committed visits, debts, carts, replays and NPC routing intact.
+1. **Breaking Alpha schema cleanup, NO MIGRATION (#300).** The *design* shop is unnumbered, but current v26 still uses `hero.floor === 5`, `level5Room`, `level6Permit`, historical events and `gateSide/doorY`. Replace obsolete fields and old two-gate compatibility *directly* with one canonical fresh-save representation. **Do not** write conversion code for old Alpha saves. Reject incompatible previous versions clearly; test new-game inventory, arrivals/departures, credit/debts, replays, real Floor-10 party combat and current-format Save/Load.
 2. **Long-game audit after #298.** Rerun the real 20-/50-/100-day seeded policy matrix on the **current** code. Report XP on days 20/50/80, deaths, treasure use, gear sales and survival, gold held by living/dead heroes, repeat visits and class-dependent demand. Earlier runs are historical, not results for current balance.
 3. **Browser route truth.** Test normal portal crossings, old right-gate saved visitors, paid carts, existing credit requests, clockwise arrival/departure, reload and cellar ascent on representative actual scenes. Node's optimistic scripted cashier is not a Babylon NPC pathfinding test.
 
@@ -47,5 +47,5 @@
 
 - [Living Game Bible](GAME_BIBLE.md) · [Architecture](ARCHITECTURE.md) · [Living Dungeon design](THE_LIVING_DUNGEON.md)
 - [100-day audit](GAMEPLAY_100DAY_AUDIT.md) and [Hero progression results](HERO_PROGRESSION.md) are **dated measurements**, not current-run proof.
-- [Legacy/obsolescence audit](LEGACY_OBSOLESCENCE_AUDIT.md) classifies what to keep, migrate, or retire.
+- [Legacy/obsolescence audit](LEGACY_OBSOLESCENCE_AUDIT.md) classifies what to keep for current gameplay, retire in the breaking cutover, or protect as source assets.
 - GitHub issue **#294** tracks the unresolved economy/long-game acceptance; close it only with new evidence.
