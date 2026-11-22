@@ -4,21 +4,21 @@ import {
   buildDungeonPlayback, dungeonPlaybackAt, dungeonVisibleTiles,
 } from "../../src/game/dungeonReplayPlayback.ts";
 import { generateDungeonLayout, dungeonNeighbors } from "../../src/game/dungeonLayout.ts";
-import { simulateLevel7Day, emptyLevel7World } from "../../src/game/level7Exploration.ts";
+import { simulateSpatialDungeonDay, emptyLevel7World } from "../../src/game/level7Exploration.ts";
 import {createGameState} from "../../src/game/gameState.ts";
 import {realSpatialTapeFixture} from "./realSpatialTapeFixture.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
 function heroForReplay() {
   const original=createGameState(7351).adventurers[0];
-  return {...original, status:"expedition" as const, floor:7 as const,
+  return {...original, status:"exploring" as const, floor:7 as const,
     bossPass:true, health:original.stats.maxHealth};
 }
 
 test("fog starts from historical knowledge and never leaks future walked tiles",()=>{
   const layout=generateDungeonLayout(7351,7);
   const hero=heroForReplay();
-  const result=simulateLevel7Day(hero,emptyLevel7World(),7351,5);
+  const result=simulateSpatialDungeonDay(hero,emptyLevel7World(),7351,5);
   const replay=result.replay;
   assert.deepEqual(replay.knownAtStart,
     [layout.entrance.z*layout.width+layout.entrance.x]);
@@ -51,7 +51,7 @@ test("a replay uncovers and resolves a chest only at the recorded action",()=>{
   const allVisited=layout.tiles.map((tile,index)=>tile!=="wall"&&index!==idx?index:-1)
     .filter(x=>x>=0);
   const hero=heroForReplay();
-  const result=simulateLevel7Day(hero,{
+  const result=simulateSpatialDungeonDay(hero,{
     resolvedFeatureIds:layout.features.filter(f=>f.id!==chest.id).map(f=>f.id),
     heroes:[{heroId:hero.id,x:approach.x,z:approach.z,visited:allVisited}],
   },7351,12);
@@ -78,7 +78,7 @@ test("combat playback uses real recorded actor HP and frame positions, not a sec
     resolvedFeatureIds:layout.features.filter(f=>f.id!==monster.id).map(f=>f.id),
     heroes:[{heroId:hero.id,x:approach.x,z:approach.z,visited}],
   };
-  const result=simulateLevel7Day(hero,world,7351,9);
+  const result=simulateSpatialDungeonDay(hero,world,7351,9);
   assert.equal(result.replay.encounters.length,1);
   const recorded=result.replay.encounters[0].combat;
   const timeline=buildDungeonPlayback(result.replay);
