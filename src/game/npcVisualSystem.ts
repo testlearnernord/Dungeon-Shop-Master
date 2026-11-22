@@ -1179,7 +1179,8 @@ export class NpcVisualSystem {
   }
 
   private beginLeaving(npc: NpcVisual, replan=false): void {
-    const desiredGate=npc.visitor.status === "expedition" ? "level6" : "level4";
+    // World-floor destination never selects a second physical shop doorway.
+    const desiredGate:GateSide="level4";
     const outside=isInExitCorridor({
       x:npc.root.position.x,z:npc.root.position.z,
     },CORRIDOR_INNER_Z);
