@@ -174,26 +174,25 @@ test("one party day commits all member outcomes into v14 campaign replays",()=>{
     "A forged duplicate actor must never pass strict v13 validation");
 });
 
-test("normal committed day uses a single group encounter for co-located heroes",()=>{
-  const base=createGameState(SEED),heroes=party(1).slice(0,2);
-  const {world}=atUnresolvedSite(heroes,"monster");
-  const state={...base,
-    adventurers:base.adventurers.map(h=>
-      heroes.find(p=>p.id===h.id)??h),
-    dungeonWorlds:[{floor:1 as const,world}],
-  };
-  const result=advanceDay(state);
-  assert.deepEqual(advanceDay(state),result);
-  const records=result.events.filter(e=>e.type==="dungeon-exploration"&&
-    heroes.some(h=>h.id===e.adventurerId));
-  assert.equal(records.length,2);
-  const fights=records.map(e=>e.dungeonReplay?.encounters[0]?.combat);
+test("co-located heroes resolve one real shared monster, not two seeded duels",()=>{
+  const heroes=party(1).slice(0,2);
+  const {world,featureId}=atUnresolvedSite(heroes,"monster");
+  const initial=structuredClone(world);
+  const result=simulateSpatialDungeonPartyDay(heroes,world,SEED,12,
+    new Set(heroes.map(h=>h.id)));
+  assert.deepEqual(world,initial,"A recorded encounter cannot mutate the prior world");
+  assert.deepEqual(result,simulateSpatialDungeonPartyDay(heroes,world,SEED,12,
+    new Set(heroes.map(h=>h.id))));
+  assert.equal(result.ticks.length,2);
+  const fights=result.ticks.map(t=>t.replay.encounters.find(e=>
+    e.featureId===featureId)?.combat);
   assert(fights.every(Boolean));
   assert.strictEqual(fights[0],fights[1],
-    "A co-located party must fight exactly once, not reroll per hero");
-  assert.equal(fights[0]!.actors.length,3);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(result.state))),
-    result.state);
+    "Both participants observe the SAME fixed-step combat recording");
+  assert.equal(fights[0]!.actors.filter(actor=>actor.team==="heroes").length,2);
+  assert.equal(fights[0]!.actors.filter(actor=>actor.team==="monsters").length,1);
+  assert.equal(new Set(result.world.resolvedFeatureIds).size,
+    result.world.resolvedFeatureIds.length,"A resolved site cannot be paid twice");
 });
 
 test("a real triggered trap can kill one party member while companions survive",()=>{
