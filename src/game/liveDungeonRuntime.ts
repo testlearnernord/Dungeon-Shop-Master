@@ -321,6 +321,8 @@ function commitDungeonTick(state:GameState):GameState {
   let earlyDungeonWorlds:EarlyDungeonFloorWorld[]=[...(state.earlyDungeonWorlds??[])];
   let clearedLevel6=state.dungeonFloors.some(f=>f.floor===6&&f.cleared);
   let clearedLevel7=state.dungeonFloors.some(f=>f.floor===7&&f.cleared);
+  const clearedLevel10=state.dungeonFloors.some(f=>
+    f.floor===CAVE_TROLL_FLOOR&&f.cleared);
   let rngState=state.rngState;
   const activities:WorldEvent[]=[];
   // Use roster order for stable, saved simultaneous encounter arbitration.
@@ -402,7 +404,7 @@ function commitDungeonTick(state:GameState):GameState {
     if(!homeward&&priorPlan?.floor===floor&&
       (priorPlan.action==="ascend"||priorPlan.action==="descend")&&
       ((priorPlan.action==="ascend"&&floor>1&&floor<=9)||
-       (priorPlan.action==="descend"&&floor<9))){
+       (priorPlan.action==="descend"&&floor<10))){
       const target=actualStair(state.seed,floor,priorPlan.action);
       const at=getLevel7Progress(world,hero.id,layout);
       if(at.x===target.x&&at.z===target.z){
@@ -422,6 +424,54 @@ function commitDungeonTick(state:GameState):GameState {
             pos.x===target.x&&pos.z===target.z&&
             !returns.some(r=>r.heroId===member.id);
         })?participants:[hero];
+        if(floor===9&&priorPlan.action==="descend"){
+          // A genuine saved temporary party physically reaches Floor 9's
+          // lower stair together. No solo permit can spawn a fake team.
+          const partyValid=!!priorParty&&
+            crossing.length===priorParty.memberIds.length&&
+            canAttemptCaveTroll(crossing.length,
+              crossing.every(member=>member.level6Permit))&&
+            crossing.every(member=>member.health>0)&&
+            !partyBossCombat&&!clearedLevel10;
+          const hasTime=tick+REPLAY_MAX_SECONDS*20+
+            SHOP_PORTAL_TRANSIT_TICKS<=lastWorldTickOfDay(day);
+          if(!partyValid||!hasTime){
+            processed.add(hero.id);
+            stepCounts.set(hero.id,{heroId:hero.id,
+              steps:(stepCounts.get(hero.id)?.steps??0)+1,
+              finished:!hasTime});
+            if(!partyValid)plans.delete(hero.id);
+            continue;
+          }
+          const rng=new SeededRandom(rngState);
+          const tacticsSeed=rng.int(32);
+          rngState=rng.state;
+          const options=caveTrollPartyOptions(crossing,tacticsSeed);
+          const combat=createGroupCombat(options);
+          const members=crossing.map(member=>member.id);
+          partyBossCombat={
+            id:"party-boss:"+day+":"+tick+":"+members.join("+"),
+            startedTick:tick,heroIds:members,options,state:combat,
+            frames:[captureGroupCombatFrame(combat)],
+          };
+          for(const member of crossing){
+            byId.set(member.id,{...member,floor:CAVE_TROLL_FLOOR,
+              status:"expedition" as const});
+            plans.delete(member.id);
+            processed.add(member.id);
+            stepCounts.set(member.id,{heroId:member.id,
+              steps:(stepCounts.get(member.id)?.steps??0)+1,finished:true});
+            activities.push({
+              id:"day-"+day+":"+member.id+":dungeon-live:"+tick,
+              type:"dungeon-live",day,worldTick:tick,
+              adventurerId:member.id,reportedZone:"deep",
+              dungeonGoal:"progress",floorAction:"descend",
+              message:crossing.map(h=>h.name).join(", ")+
+                " entered Floor 10 together to challenge the Cave Troll.",
+            });
+          }
+          continue;
+        }
         const destinationLayout=generateExpeditionLayout(state.seed,nextFloor);
         const arrival=priorPlan.action==="ascend"
           ?dungeonDownStair(destinationLayout):destinationLayout.entrance;
@@ -498,7 +548,7 @@ function commitDungeonTick(state:GameState):GameState {
     const directed=priorPlan?.floor===floor&&
       (priorPlan.action==="ascend"||priorPlan.action==="descend")&&
       ((priorPlan.action==="ascend"&&floor>1&&floor<=9)||
-       (priorPlan.action==="descend"&&floor<9))
+       (priorPlan.action==="descend"&&floor<10))
       ?actualStair(state.seed,floor,priorPlan.action):undefined;
     // A saved autonomous loot/hunt intention may redirect a step only to a
     // personally known, still-active chest/monster site. Never let the
@@ -538,9 +588,14 @@ function commitDungeonTick(state:GameState):GameState {
       if(individual.adventurer.health<=0)continue;
       const progress=result.world.heroes.find(p=>
         p.heroId===individual.adventurer.id);
+      const bossReady=floor===9&&
+        canAttemptCaveTroll(readyGroup.length,
+          readyGroup.every(member=>member.level6Permit))&&
+        readyGroup.every(member=>member.equipment.weapon!==null&&
+          member.health/heroProgression(member).maxHealth>=0.60);
       independent.set(individual.adventurer.id,
         chooseLiveHeroDungeonDecision(individual.adventurer,
-          progress,individual.replay,layout,result.world));
+          progress,individual.replay,layout,result.world,bossReady));
     }
     const agreed=readyGroup.length>1
       ?negotiatePartyFloorDecisions(result.ticks.map(t=>t.adventurer),
