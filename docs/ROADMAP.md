@@ -18,7 +18,7 @@
 ### P0 · correctness and current-save safety
 
 1. **Breaking Alpha schema cleanup, NO MIGRATION (#300).** The *design* shop is unnumbered, but current v36 also uses persisted `shopRoom`, ordinary `dungeonWorlds` and explicit hero `floor="shop"`/`floor="away"`/`floor="transit"` for the unnumbered realm/off-duty interval; both LIVE and non-LIVE Floor-6 solo dispatchers and old event readers have been removed, while `bossPass` and the **single physical portal + one `doorY.portal` checkpoint are already canonical**. The parallel non-LIVE day solver is retired in #319 and the dedicated Floor-7 replay/event and Solo-F6 event reader are removed in #320. PR #321 removes the remaining Floor-7-only solo-status allowance and its test-only adapter. The v36 follow-up removes the abstract loot counter in favor of real `inventory.finds`, without migrations. PR #323 audits and corrects misleading source-level shop/Floor-7 names without modifying saves, and checks remaining dead-code candidates against the actual module graph. The two physical gates and numeric shop-floor save fields were **already** replaced; do not reimplement them. **Do not** write conversion code for old Alpha saves. Reject incompatible previous versions clearly, including v29 after the new required cellar table in v30; test new-game inventory, arrivals/departures, credit/debts, replays, real Floor-10 party combat and current-format Save/Load.
-2. **Long-game audit after #298.** Rerun the real 20-/50-/100-day seeded policy matrix on the **current** code. Report XP on days 20/50/80, deaths, treasure use, gear sales and survival, gold held by living/dead heroes, repeat visits and class-dependent demand. Earlier runs are historical, not results for current balance.
+2. **Long-game audit after #298 (measurement completed; acceptance still OPEN in #294).** The fresh Alpha v36 100-day matrix now has ten real-GameStore scenarios on four seeds ([measured results](GAMEPLAY_100DAY_V36.md)). Empty-stock games stop gaining XP on Days 38–56; full-stock games progress much farther, but **zero of ten scenarios naturally attempted Floor 10 even after 391 real Boss Pass grants**. Next: diagnose depth, Floor-9 group readiness and physical merchant flow, correct genuine issues, then rerun.
 3. **Browser route truth.** Test the one physical portal, permanently sealed old right route, paid carts, existing credit requests, arrival/departure congestion, reload and cellar ascent on representative actual scenes. Node's optimistic scripted cashier is not a Babylon NPC pathfinding test.
 
 ### P1 · gameplay and economic meaning
@@ -46,7 +46,7 @@
 ## Evidence / navigation
 
 - [Living Game Bible](GAME_BIBLE.md) · [Architecture](ARCHITECTURE.md) · [Living Dungeon design](THE_LIVING_DUNGEON.md)
-- [100-day audit](GAMEPLAY_100DAY_AUDIT.md) and [Hero progression results](HERO_PROGRESSION.md) are **dated measurements**, not current-run proof.
+- [Current Alpha v36 100-day audit](GAMEPLAY_100DAY_V36.md) gives new measured evidence with explicit limits. The [historical audit](GAMEPLAY_100DAY_AUDIT.md) and [Hero progression results](HERO_PROGRESSION.md) refer to earlier source revisions.
 - [Legacy/obsolescence audit](LEGACY_OBSOLESCENCE_AUDIT.md) classifies what to keep for current gameplay, retire in the breaking cutover, or protect as source assets.
 - GitHub issue **#294** tracks the unresolved economy/long-game acceptance; close it only with new evidence.
 
