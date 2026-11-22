@@ -1,7 +1,8 @@
 import type {GameState} from "./gameState.ts";
 import type {LivePartyBossCombat} from "./liveDungeonRuntime.ts";
 import {caveTrollPartyOptions} from "./sharedBossCombat.ts";
-import {createGroupCombat,captureGroupCombatFrame} from "./groupCombat.ts";
+import {createGroupCombat,captureGroupCombatFrame,
+  type GroupCombatOptions} from "./groupCombat.ts";
 import {CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
 import {REPLAY_MAX_SECONDS} from "./bossCombatReplay.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
@@ -160,5 +161,123 @@ export function livePartyBossCheckpointProblem(
   }
   if(Math.abs((b.frames.at(-1)?.t??-1)-b.state.time)>.11)
     return fail("is missing the latest saved frame");
+  return null;
+}
+
+/**
+ * Immutable, already committed Floor-10 party result. Validate the archive
+ * independently of today's roster: a deceased or leveled-up hero must not
+ * change the historical fighter stats. The group motor and first frame are
+ * still the sole authority; no combat is recomputed during replay.
+ */
+export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
+  const fail=(message:string)=>"partyBossReplay "+message;
+  if(!exactly(raw,["version","actors","bounds","obstacles","environment",
+    "tacticsSeed","frames","cues","outcome"]))
+    return fail("has missing or unknown fields");
+  const rec=raw as Record<string,unknown>;
+  if(rec.version!==1||rec.environment!=="cave-lava"||
+     !integer(rec.tacticsSeed,0,0xffffffff)||
+     !["heroes","monsters","draw"].includes(String(rec.outcome)))
+    return fail("has incompatible replay identity or outcome");
+  if(!Array.isArray(rec.actors)||rec.actors.length<3||
+     rec.actors.length>4||!rec.actors.every(v=>record(v)))
+    return fail("must preserve a two/three hero team and one real Troll");
+  const specs=rec.actors as Record<string,unknown>[];
+  const heroes=specs.filter(a=>a.team==="heroes");
+  const monsters=specs.filter(a=>a.team==="monsters");
+  const heroIds=new Set(heroes.map(a=>a.id));
+  if(heroes.length<2||heroes.length>3||
+     heroes.some(a=>typeof a.id!=="string"||
+       !/^adventurer-[1-9]\d*$/.test(a.id)||
+       !["tank","DPS","healer"].includes(String(a.role))||
+       !exactly(a.equipment,["weapon","armor"])||
+       ![null,"Iron Sword"].includes(
+         (a.equipment as Record<string,unknown>).weapon as string)||
+       ![null,"Leather Vest"].includes(
+         (a.equipment as Record<string,unknown>).armor as string))||
+     heroIds.size!==heroes.length||!heroIds.has(leaderId)||
+     monsters.length!==1||
+     monsters[0].id!=="cave-troll"||
+     monsters[0].specialAbility!=="grapple-throw"||
+     monsters[0].maxHp!==560||
+     monsters[0].damage!==42||
+     monsters[0].armor!==13||
+     monsters[0].grappleDamage!==55||
+     monsters[0].staggerThreshold!==92)
+    return fail("must match real saved Level-10 party and boss archetype");
+  if(!Array.isArray(rec.obstacles)||rec.obstacles.length!==0||
+     !exactly(rec.bounds,["minX","maxX","minZ","maxZ"])||
+     JSON.stringify(rec.bounds)!==
+       JSON.stringify({minX:-15,maxX:15,minZ:-15,maxZ:15}))
+    return fail("must preserve genuine Level-10 lava arena geometry");
+  let initial;
+  try{initial=createGroupCombat({
+    actors:rec.actors,bounds:rec.bounds,obstacles:rec.obstacles,
+    environment:rec.environment,tacticsSeed:rec.tacticsSeed,
+  } as GroupCombatOptions);}catch{
+    return fail("fighters are invalid to the single authoritative motor");
+  }
+  if(!Array.isArray(rec.frames)||rec.frames.length<2||
+     rec.frames.length>1000||
+     JSON.stringify(rec.frames[0])!==
+       JSON.stringify(captureGroupCombatFrame(initial)))
+    return fail("lacks the one genuine initial combat frame");
+  let previous=-1;
+  const actorLimits=new Map(initial.actors.map(a=>[a.id,a.maxHp]));
+  for(const rawFrame of rec.frames){
+    if(!exactly(rawFrame,["t","actors","projectiles"]))
+      return fail("frame has unexpected fields");
+    const frame=rawFrame as Record<string,unknown>;
+    if(!bounded(frame.t,0,REPLAY_MAX_SECONDS+.1)||
+       frame.t<previous||!Array.isArray(frame.actors)||
+       frame.actors.length!==initial.actors.length||
+       !Array.isArray(frame.projectiles)||frame.projectiles.length>30)
+      return fail("frame timing or fighter count is inconsistent");
+    previous=frame.t;
+    const seen=new Set<string>();
+    for(const rawActor of frame.actors){
+      if(!exactly(rawActor,["id","x","z","hp","stamina","heading","phase"],
+        ["ability"]))return fail("frame actor structure was tampered with");
+      const actor=rawActor as Record<string,unknown>;
+      const max=actorLimits.get(String(actor.id));
+      if(max===undefined||seen.has(String(actor.id))||
+         !bounded(actor.hp,0,max)||
+         !bounded(actor.stamina,0,100)||
+         !["x","z","heading"].every(k=>bounded(actor[k],-10000,10000))||
+         !["move","windup","strike","recover","cast","heal",
+           "roll","parry","hurt","dead","grab","grabMiss",
+           "throw","grabbed","thrown"].includes(String(actor.phase)))
+        return fail("frame actor does not match saved original fighter");
+      seen.add(String(actor.id));
+    }
+    if(seen.size!==actorLimits.size)
+      return fail("frame omits an original actor");
+    for(const rawProjectile of frame.projectiles){
+      if(!exactly(rawProjectile,["ownerId","x","z"])||
+         !actorLimits.has(String(rawProjectile.ownerId))||
+         !bounded(rawProjectile.x,-10000,10000)||
+         !bounded(rawProjectile.z,-10000,10000))
+        return fail("frame projectile is not a real fighter's projectile");
+    }
+  }
+  if(!Array.isArray(rec.cues)||rec.cues.length>5000)
+    return fail("has oversized combat cue log");
+  const ids=new Set(actorLimits.keys());
+  for(const rawCue of rec.cues){
+    if(!exactly(rawCue,["t","actorId","kind"],["targetId","amount"])||
+       !bounded(rawCue.t,0,REPLAY_MAX_SECONDS+.1)||
+       !ids.has(String(rawCue.actorId))||
+       (rawCue.targetId!==undefined&&!ids.has(String(rawCue.targetId)))||
+       (rawCue.amount!==undefined&&!bounded(rawCue.amount,0,100000)))
+      return fail("has forged combat cues");
+  }
+  const final=rec.frames.at(-1) as Record<string,unknown>;
+  const bodies=final.actors as Record<string,unknown>[];
+  const aliveHeroes=bodies.some(a=>heroes.some(h=>h.id===a.id)&&Number(a.hp)>0);
+  const trollHp=Number(bodies.find(a=>a.id==="cave-troll")?.hp??-1);
+  if((rec.outcome==="heroes"&&trollHp>0)||
+     (rec.outcome==="monsters"&&aliveHeroes))
+    return fail("outcome contradicts final saved fighters");
   return null;
 }
