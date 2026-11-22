@@ -5,6 +5,8 @@ import { advanceDay } from "../../src/game/gameState.ts";
 import { quoteBeggingRequest, issueShopCredit } from "../../src/game/shopCredit.ts";
 import { forecastShoppingIntents, shopperVisualAction } from "../../src/game/shopperIntents.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
+import {GameStore} from "../../src/game/gameStore.ts";
+import {completeObservedShopExit} from "../../src/game/shopRotation.ts";
 
 function hungryWithoutGold(){
   const original=createGameState(7351);
@@ -49,7 +51,7 @@ test("credit costs exactly one real item and records debt, never cash or an auto
   assert.equal(hero.inventory.bread,1);
   assert.equal(hero.gold,0);
   assert.equal(hero.status,"returning");
-  assert.equal(hero.floor,4);
+  assert.equal(hero.floor,"transit");
   assert.equal(result.state.shopDebts[0].outstandingGold,quote.price);
   assert.equal(result.state.shopEconomy.balance,state.shopEconomy.balance);
   assert.deepEqual(result.state.shopEconomy.dailySales,state.shopEconomy.dailySales);
@@ -72,7 +74,7 @@ test("no stock, held carts and paid/absent heroes cannot obtain credit",()=>{
   assert.equal(quoteBeggingRequest(empty,heroId)?.available,false);
   assert.equal(issueShopCredit(empty,heroId).state,empty);
   const away={...state,adventurers:state.adventurers.map(hero=>hero.id===heroId
-    ?{...hero,status:"returning" as const,floor:4 as const}:hero)};
+    ?{...hero,status:"returning" as const,floor:"transit" as const}:hero)};
   assert.equal(quoteBeggingRequest(away,heroId),null);
   const cart={...state,shopCarts:[{heroId,day:state.day,lines:[
     {slotId:"shelf-1-slot-2",itemId:"bread" as const,quantity:1,subtotal:4},
@@ -89,4 +91,28 @@ test("forged or inconsistent debt records fail save validation",()=>{
   const fake=JSON.parse(JSON.stringify(createSave(credited)));
   fake.payload.events.find((event:{type:string})=>event.type==="shop-credit").debtGold=1;
   assert.throws(()=>parseSave(JSON.stringify(fake)),/debtGold/);
+});
+
+
+test("LIVE shop credit uses the unnumbered shop until an observed physical exit",()=>{
+  const {state,heroId}=hungryWithoutGold();
+  const store=new GameStore(state);
+  store.enableLiveDungeon();
+  const credited=issueShopCredit(store.state,heroId);
+  const customer=credited.state.adventurers.find(h=>h.id===heroId)!;
+  assert.equal(customer.status,"departing");
+  assert.equal(customer.floor,"shop");
+  assert.equal(credited.state.events.filter(e=>e.type==="sale").length,0);
+  assert.equal(credited.state.shopDebts.length,1);
+  assert.equal(credited.state.shopEconomy.balance,state.shopEconomy.balance);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(credited.state))),credited.state);
+  assert.strictEqual(completeObservedShopExit(credited.state,heroId,11),
+    credited.state,"A pre-threshold credit customer cannot teleport away");
+  const exited=completeObservedShopExit(credited.state,heroId,13);
+  assert.notStrictEqual(exited,credited.state);
+  const departed=exited.adventurers.find(h=>h.id===heroId)!;
+  assert.equal(departed.status,"off-duty");
+  assert.equal(departed.floor,"away");
+  assert.equal(departed.offDutyUntilDay,state.day+3);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(exited))),exited);
 });

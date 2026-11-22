@@ -33,7 +33,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
     const cart = cartsByHero.get(hero.id);
     const paid = paidHeroIds.has(hero.id);
     if (paid) return { ...hero, status: "returning" as const,
-      floor: 4 as const, shopStayDays: 0 };
+      floor: "transit" as const, shopStayDays: 0 };
     if (!cart) return hero;
     let bread = hero.inventory.bread;
     let healing = hero.inventory.healing;

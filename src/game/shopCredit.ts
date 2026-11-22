@@ -95,7 +95,8 @@ export function issueShopCredit(state:GameState,heroId:string):CreditResult {
       adventurers:state.adventurers.map(person=>
         person.id===heroId?{...person,inventory,equipment,
           status:state.liveDungeon.enabled?"departing" as const:"returning" as const,
-          floor:state.liveDungeon.enabled?5 as const:4 as const,shopStayDays:0}:person),
+          floor:state.liveDungeon.enabled?"shop" as const:"transit" as const,
+          shopStayDays:0}:person),
       events:[...state.events,event],
     },
     message:`${hero.name} owes Galvik ${quote.previousDebt+quote.price}g. 1 ${item.name} issued on credit.`,

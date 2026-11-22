@@ -776,7 +776,7 @@ function validateLivePortalReturns(
       const due=integer(journey.dueTick,path+".dueTick",
         clockTick+1,Number.MAX_SAFE_INTEGER);
       if(due!==started+SHOP_PORTAL_TRANSIT_TICKS||
-        hero.status!=="traveling"||hero.floor!==4)
+        hero.status!=="traveling"||hero.floor!=="transit")
         fail(path,"must be an actual timed portal arrival");
       portalSubjects.add(SHOP_PORTAL_RETURN_PREFIX+heroId);
       const scheduled=pending.filter(rawEvent=>{
@@ -1028,7 +1028,8 @@ function validateState(value: unknown): asserts value is GameState {
         total+=integer(quantity,path+".inventory.finds."+id,1,1000);
       if(total>1000)fail(path+".inventory.finds","is oversized");
     }
-    const floor = hero.floor === "shop" || hero.floor === "away"
+    const floor = hero.floor === "shop" || hero.floor === "away" ||
+      hero.floor === "transit"
       ? hero.floor : integer(hero.floor, `${path}.floor`, 1, 10);
     if((state.liveDungeon as GameState["liveDungeon"]).enabled&&
        hero.status==="expedition"&&floor===6)
@@ -1045,7 +1046,7 @@ function validateState(value: unknown): asserts value is GameState {
           (hero.status === "off-duty" && floor !== "away") ||
           (hero.status === "exploring" &&
              (typeof floor !== "number" || floor > 9)) ||
-          ((hero.status === "traveling" || hero.status === "returning") && floor !== 4) ||
+          ((hero.status === "traveling" || hero.status === "returning") && floor !== "transit") ||
           (hero.status === "expedition" && floor !== 6 && floor !== 7 && floor!==10)) {
         fail(`${path}.floor`, "must agree with status");
       }

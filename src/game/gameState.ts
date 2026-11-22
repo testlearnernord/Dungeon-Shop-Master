@@ -36,7 +36,7 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 32;
+export const SIMULATION_VERSION = 33;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
@@ -240,9 +240,9 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   const healed=postTradeHeroes.map(hero=>useHealingSupplies(hero,day));
   const readyRoster=healed.map(result=>{
     const ready=result.adventurer;
-    return ready.status==="returning"&&typeof ready.floor==="number"&&
-      ready.floor>=1&&ready.floor<=9
-      ?{...ready,status:"exploring" as const}:ready;
+    return ready.status==="returning"&&ready.floor==="transit"
+      ?{...ready,status:"exploring" as const,
+          floor:ready.lastDungeonFloor??1}:ready;
   });
   const committedFights=new Map<string,Level7Tick>();
   // Propose and negotiate as a group immediately after the ONE fight,
@@ -307,7 +307,9 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         : decision?.action==="ascend"&&floor>1
         ? {...tick.adventurer,floor:(floor-1) as SpatialDungeonFloor}
         : decision?.action==="shop"
-        ? {...tick.adventurer,status:"traveling" as const,floor:4 as const}
+        ? {...tick.adventurer,status:"traveling" as const,
+             floor:"transit" as const,
+             lastDungeonFloor:floor as AdventurerState["lastDungeonFloor"]}
         : tick.adventurer;
       if(floor===7)events.push({
         id:`day-${day}:${ready.id}:level7-exploration`,

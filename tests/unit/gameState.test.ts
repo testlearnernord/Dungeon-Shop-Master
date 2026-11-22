@@ -109,7 +109,7 @@ test("manual payment closes a shop visit instead of randomly sending the buyer b
   const next=advanceDay(state);
   const updated=next.state.adventurers.find(person=>person.id===buyer.id)!;
   assert.equal(updated.status,"returning");
-  assert.equal(updated.floor,4);
+  assert.equal(updated.floor,"transit");
   assert.equal(updated.shopStayDays,0);
   assert.equal(next.events.filter(e=>e.adventurerId===buyer.id&&e.type==="shop-stay").length,0);
   assert.equal(next.events.filter(e=>e.adventurerId===buyer.id&&e.type==="shop-departure").length,1);

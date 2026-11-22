@@ -178,9 +178,9 @@ test("needs, funds and carried supplies bound sales across multiple shelves", ()
 
 test("day transitions bring visitors but never perform invisible sales", () => {
   const heroes = [
-    customer(1, { status: "traveling", floor: 4 }),
+    customer(1, { status: "traveling", floor: "transit" }),
     customer(2, { status: "exploring", floor: 4 }),
-    customer(3, { status: "returning", floor: 4 }),
+    customer(3, { status: "returning", floor: "transit" }),
     customer(4, { status: "dead", health: 0 }),
   ];
   const state = freeze(stock(market(heroes), "bread", 5));
