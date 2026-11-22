@@ -1016,7 +1016,8 @@ function validateState(value: unknown): asserts value is GameState {
       if(total>1000)fail(path+".inventory.finds","is oversized");
     }
     const floor = integer(hero.floor, `${path}.floor`, 1, 10);
-    if(state.liveDungeon.enabled&&hero.status==="expedition"&&floor===6)
+    if((state.liveDungeon as GameState["liveDungeon"]).enabled&&
+       hero.status==="expedition"&&floor===6)
       fail(`${path}.status`,"Floor 6 is an ordinary dungeon; no solo boss expedition exists");
     if(hero.lastDungeonFloor!==undefined)
       integer(hero.lastDungeonFloor,path+".lastDungeonFloor",1,9);
