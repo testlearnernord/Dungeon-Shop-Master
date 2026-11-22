@@ -1,4 +1,5 @@
 import { GameStore } from "./game/gameStore";
+import {heroProgression} from "./game/heroProgression.ts";
 import { level6ReturnIds, type VisitorSnapshot } from "./game/npcVisitors";
 import { heroDisplayNames } from "./game/heroIdentity.ts";
 import { hasObservedReplay } from "./replayDisclosure.ts";
@@ -63,11 +64,12 @@ export function setupDayHud(
     const state = store.state;
     const fromLevel6 = level6ReturnIds(state.events, state.day);
     const names = heroDisplayNames(state.adventurers);
-    return state.adventurers.filter(({ status }) => status !== "dead").map(({ id, name, role, level, status, equipment, gold, health, stats }) => ({
-      id, name, role, level, status, equipment, gold, health,
-      maxHealth:stats.maxHealth,
-      displayName: names.get(id) ?? name,
-      entranceGate: fromLevel6.has(id) ? "level6" as const : "level4" as const,
+    return state.adventurers.filter(({ status }) => status !== "dead").map(hero => ({
+      id:hero.id, name:hero.name, role:hero.role, level:hero.level,
+      status:hero.status, equipment:hero.equipment, gold:hero.gold, health:hero.health,
+      maxHealth:heroProgression(hero).maxHealth,
+      displayName: names.get(hero.id) ?? hero.name,
+      entranceGate: fromLevel6.has(hero.id) ? "level6" as const : "level4" as const,
     }));
   };
   let previousVisitors: readonly VisitorSnapshot[] = [];
@@ -129,7 +131,7 @@ export function setupDayHud(
       summary.className="hero-summary";
       summary.textContent=(names.get(hero.id)??hero.name)+" · "+
         hero.role+" · "+hero.location+" · "+
-        (hero.visible?"HP "+hero.visible.health+"/"+hero.visible.stats.maxHealth:
+        (hero.visible?"HP "+hero.visible.health+"/"+heroProgression(hero.visible).maxHealth:
           hero.status==="lost"?"MAGIC SIGNAL LOST":"HP unreported");
       entry.append(summary);
       if(hero.visible){
