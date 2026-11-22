@@ -1,7 +1,6 @@
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
-import { VertexBuffer } from "@babylonjs/core/Buffers/buffer";
-import { getDungeonSurfaces } from "./dungeonSurfaces.ts";
+import { getDungeonSurfaces,applyCaveWorldUV } from "./dungeonSurfaces.ts";
 import type { Scene } from "@babylonjs/core/scene";
 import {CELLAR_ORIGIN_Z,CELLAR_FLOOR_Y} from "./cellarRoom.ts";
 import {isPondBasinCell} from "./cellarPond.ts";
@@ -9,38 +8,6 @@ import {Color3} from "@babylonjs/core/Maths/math.color";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import { level5RockFaces } from "./level5WallFaces.ts";
-
-/** One-metre slices on the original side walls must sample the SAME portion
- * of the original 14m wall UVs. Otherwise every slice stretches the entire
- * stone texture across 1m, giving the false "vertical wood panelling" look. */
-function inheritSideWallUV(slice:Mesh,original:Mesh):void {
-  const originalPositions=original.getVerticesData(VertexBuffer.PositionKind);
-  const originalNormals=original.getVerticesData(VertexBuffer.NormalKind);
-  const originalUVs=original.getVerticesData(VertexBuffer.UVKind);
-  const positions=slice.getVerticesData(VertexBuffer.PositionKind);
-  const normals=slice.getVerticesData(VertexBuffer.NormalKind);
-  const uvs=slice.getVerticesData(VertexBuffer.UVKind);
-  if(!originalPositions||!originalNormals||!originalUVs||!positions||!normals||!uvs)return;
-  for(let i=0;i<positions.length/3;i++){
-    const nx=normals[i*3];
-    if(Math.abs(nx)<.9)continue;
-    const ref:number[]=[];
-    for(let j=0;j<originalPositions.length/3;j++){
-      if(Math.sign(originalNormals[j*3])===Math.sign(nx)&&
-        Math.abs(originalNormals[j*3])>.9)ref.push(j);
-    }
-    if(ref.length<2)continue;
-    ref.sort((a,b)=>originalPositions[a*3+2]-originalPositions[b*3+2]);
-    const lo=ref[0],hi=ref[ref.length-1];
-    const z0=originalPositions[lo*3+2],z1=originalPositions[hi*3+2];
-    if(z1===z0)continue;
-    const zWorld=slice.position.z+positions[i*3+2]-original.position.z;
-    const t=(zWorld-z0)/(z1-z0);
-    uvs[i*2]=originalUVs[lo*2]+
-      t*(originalUVs[hi*2]-originalUVs[lo*2]);
-  }
-  slice.setVerticesData(VertexBuffer.UVKind,uvs,false);
-}
 
 /** Apply only topology deltas. Mining one cell must not dispose and rebuild
  * every existing floor, ceiling and wall slice. That generated large Babylon
@@ -87,6 +54,7 @@ export function createLevel5RoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop"
             {width:1,height:.4,depth:1},scene);
           floor.position.set(x,floorY-.2,z+originZ);
           floor.material=surfaces.floor;
+          applyCaveWorldUV(floor);
           floor.checkCollisions=true;
           floor.isPickable=true;
           return floor;
@@ -96,6 +64,7 @@ export function createLevel5RoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop"
             {width:1,height:.35,depth:1},scene);
           ceiling.position.set(x,floorY+4.1,z+originZ);
           ceiling.material=surfaces.stone;
+          applyCaveWorldUV(ceiling);
           ceiling.checkCollisions=true;
           ceiling.isPickable=false;
           return ceiling;
@@ -122,10 +91,8 @@ export function createLevel5RoomVisuals(scene:Scene,scope:"shop"|"cellar"="shop"
           if(untouched){
             wall.scaling.x=.1;
             wall.visibility=damp?.70:0.000001;
-          }else if(originalSide){
-            const original=originalWalls[side];
-            if(original)inheritSideWallUV(wall,original);
           }
+          applyCaveWorldUV(wall);
           if(face.mineCell)wall.metadata=cellar
             ?{cellarMineCell:face.mineCell}:{level5MineCell:face.mineCell};
           return wall;
