@@ -308,7 +308,8 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
         ? {...tick.adventurer,floor:(floor-1) as SpatialDungeonFloor}
         : decision?.action==="shop"
         ? {...tick.adventurer,status:"traveling" as const,
-             floor:"transit" as const,lastDungeonFloor:floor}
+             floor:"transit" as const,
+             lastDungeonFloor:floor as AdventurerState["lastDungeonFloor"]}
         : tick.adventurer;
       if(floor===7)events.push({
         id:`day-${day}:${ready.id}:level7-exploration`,
