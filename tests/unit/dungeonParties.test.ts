@@ -1,3 +1,4 @@
+import {heroProgression} from "../../src/game/heroProgression.ts";
 import {emptyShopTraffic} from "../../src/game/shopTraffic.ts";
 import {WORLD_TICKS_PER_DAY} from "../../src/game/worldClock.ts";
 import assert from "node:assert/strict";
@@ -99,10 +100,15 @@ test("three real heroes fight one regenerated heavy elite with distinct HP/Herbs
     const original=heroes.find(h=>h.id===tick.adventurer.id)!;
     const actor=encounter.combat.frames.at(-1)!.actors.find(a=>a.id===original.id)!;
     assert.equal(tick.adventurer.health,Math.round(actor.hp));
-    const used=encounter.combat.cues.filter(c=>c.kind==="heal"&&
+    const used=original.inventory.healing-tick.adventurer.inventory.healing;
+    assert(used>=0&&used<=Math.min(2,original.inventory.healing),
+      "Magical healer casts cannot be charged as phantom Herb purchases.");
+    const healingCues=encounter.combat.cues.filter(c=>c.kind==="heal"&&
       c.actorId===original.id).length;
-    assert.equal(tick.adventurer.inventory.healing,original.inventory.healing-used);
-    assert(tick.adventurer.health>=0&&tick.adventurer.health<=original.stats.maxHealth);
+    assert(healingCues>=used,
+      "Every consumed Herb must create a genuine healing cue.");
+    assert(tick.adventurer.health>=0&&
+      tick.adventurer.health<=heroProgression(tick.adventurer).maxHealth);
   }
   if(encounter.combat.outcome==="heroes"){
     assert.equal(result.ticks.reduce((sum,t)=>sum+t.gainedGold,0),6,
