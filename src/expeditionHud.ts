@@ -11,7 +11,7 @@ export function setupExpeditionHud(store: GameStore): void {
   function render(): void {
     const stats = level6Progress(store.state);
     const sealed=stats.recent.some(event=>!hasObservedReplay(event.id));
-    summary.textContent = "Level 6 expeditions: " + stats.encounters + " fights" +
+    summary.textContent = "Archived solo Troll fights: " + stats.encounters + " records" +
       (sealed ? " · outcomes sealed" : " · " + stats.victories + " victories");
     counts.textContent = sealed
       ? stats.departures + " departures · " + stats.encounters + " recorded fights · WATCH before revealing results"
@@ -29,7 +29,7 @@ export function setupExpeditionHud(store: GameStore): void {
     }));
     if (!stats.recent.length) {
       const empty = document.createElement("li");
-      empty.textContent = "No Level 6 encounters yet. Authorize a living visitor to start an expedition.";
+      empty.textContent = "No historical solo Troll recordings. New Floor-10 party battles appear in THE LIVING WORLD.";
       list.append(empty);
     }
   }
