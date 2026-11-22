@@ -13,14 +13,15 @@ import {advanceSpatialDungeonPartyStep,emptyLevel7World,settleSpatialDungeonComb
   type SpatialDungeonFloor,type Level7World} from "./level7Exploration.ts";
 import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
   groupCombatReplayFromFrames,type GroupCombatState,
-  type GroupReplayFrame} from "./groupCombat.ts";
+  type GroupReplayFrame,type GroupCombatOptions} from "./groupCombat.ts";
 import {
   type ArenaCue,
 } from "./arenaCombatMotion.ts";
 import {
   createSharedBossPreview,stepSharedBossPreview,
-  type SharedBossPreview,
+  caveTrollPartyOptions,type SharedBossPreview,
 } from "./sharedBossCombat.ts";
+import {canAttemptCaveTroll,CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
 import {
   frameFromCombat,REPLAY_MAX_SECONDS,
   type BossReplayFrame,type BossCombatReplay,
@@ -74,6 +75,18 @@ export interface LiveBossCombat {
   readonly pendingCues:readonly ArenaCue[];
 }
 
+/** A unique Level-10 group encounter; all heroes use the ONE 60Hz GroupCombat
+ * motor and actual Cave Troll signature abilities, not the historical
+ * solo Level-6 replay projection. */
+export interface LivePartyBossCombat {
+  readonly id:string;
+  readonly startedTick:number;
+  readonly heroIds:readonly string[];
+  readonly options:GroupCombatOptions;
+  readonly state:GroupCombatState;
+  readonly frames:readonly GroupReplayFrame[];
+}
+
 export interface LiveDungeonReturn {
   readonly heroId:string;
   readonly fromFloor:SpatialDungeonFloor;
@@ -97,6 +110,8 @@ export interface LiveDungeonState {
   readonly combats:readonly LiveDungeonCombat[];
   /** Optional so existing active saves are not forcibly rewritten. */
   readonly bossCombat?:LiveBossCombat|null;
+  /** Optional to read unchanged pre-Level-10 campaigns. */
+  readonly partyBossCombat?:LivePartyBossCombat|null;
   readonly returns:readonly LiveDungeonReturn[];
   /** Durable individual intentions, never player-issued party orders. */
   readonly plans:readonly LiveDungeonPlan[];
@@ -144,7 +159,8 @@ export function activateLiveDungeon(state:GameState):GameState{
  * separate render or per-actor clock owners.
  */
 function scheduleLiveCombat(state:GameState):GameState{
-  if(!state.liveDungeon.combats.length&&!state.liveDungeon.bossCombat)return state;
+  if(!state.liveDungeon.combats.length&&!state.liveDungeon.bossCombat&&
+     !state.liveDungeon.partyBossCombat)return state;
   if(state.worldClock.pending.some(e=>e.lane==="expedition"&&
     e.subjectId===LIVE_COMBAT_EVENT_SUBJECT))
     throw new RangeError("Duplicate live combat clock event.");
@@ -287,9 +303,11 @@ function commitDungeonTick(state:GameState):GameState {
   const day=state.day;
   const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
   const processed=new Set(state.liveDungeon.combats.flatMap(c=>c.heroIds));
+  for(const id of state.liveDungeon.partyBossCombat?.heroIds??[])processed.add(id);
   if(state.liveDungeon.bossCombat)
     processed.add(state.liveDungeon.bossCombat.heroId);
   let bossCombat=state.liveDungeon.bossCombat??null;
+  let partyBossCombat=state.liveDungeon.partyBossCombat??null;
   const combatSites=new Set(state.liveDungeon.combats.map(c=>
     c.encounter.floor+":"+c.encounter.featureId));
   const combats=[...state.liveDungeon.combats];
@@ -613,14 +631,15 @@ function commitDungeonTick(state:GameState):GameState {
     ],
     liveDungeon:{enabled:true,lastStepTick:tick,
       heroes:[...stepCounts.values()],
-      combatTick:combats.length||bossCombat?state.liveDungeon.combatTick||tick:0,
-      combats,bossCombat,returns,plans:[...plans.values()]},
+      combatTick:combats.length||bossCombat||partyBossCombat?
+        state.liveDungeon.combatTick||tick:0,
+      combats,bossCombat,partyBossCombat,returns,plans:[...plans.values()]},
     events:[...state.events,...activities,...party.events],
   };
   const scheduled=queueNextDungeonWorldTick(next);
   const previouslyActive=state.liveDungeon.combats.length>0||
-    !!state.liveDungeon.bossCombat;
-  return previouslyActive||!(combats.length||bossCombat)?scheduled:
+    !!state.liveDungeon.bossCombat||!!state.liveDungeon.partyBossCombat;
+  return previouslyActive||!(combats.length||bossCombat||partyBossCombat)?scheduled:
     scheduleLiveCombat(scheduled);
 }
 
@@ -629,7 +648,8 @@ function commitDungeonTick(state:GameState):GameState {
  * the fight ends. Read-only replays NEVER call this function.
  */
 function commitLiveCombatTick(state:GameState):GameState{
-  if(!(state.liveDungeon.combats.length||state.liveDungeon.bossCombat)||
+  if(!(state.liveDungeon.combats.length||state.liveDungeon.bossCombat||
+      state.liveDungeon.partyBossCombat)||
      state.worldClock.tick!==state.liveDungeon.combatTick+LIVE_COMBAT_INTERVAL_TICKS)
     throw new RangeError("Unscheduled live battle advance.");
   const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
@@ -843,7 +863,8 @@ export function finishLiveDungeonDay(
 ):{state:GameState;events:readonly WorldEvent[]}{
   if(!state.liveDungeon.enabled)
     throw new RangeError("Cannot close an inactive live dungeon.");
-  if(state.liveDungeon.combats.length||state.liveDungeon.bossCombat)
+  if(state.liveDungeon.combats.length||state.liveDungeon.bossCombat||
+     state.liveDungeon.partyBossCombat)
     throw new RangeError("Cannot close a day while a real fight is unresolved.");
   const day=state.day+1;
   const clock=beginNextWorldDay(state.worldClock,state.day);
@@ -947,7 +968,7 @@ export function finishLiveDungeonDay(
     adventurers,rngState,
     nextAdventurerId:state.nextAdventurerId+influx,
     liveDungeon:{enabled:true,lastStepTick:clock.tick,heroes:[],
-      combatTick:0,combats:[],bossCombat:null,
+      combatTick:0,combats:[],bossCombat:null,partyBossCombat:null,
       returns:state.liveDungeon.returns,
       plans:state.liveDungeon.plans.filter(plan=>
         adventurers.some(h=>h.id===plan.heroId&&h.floor===plan.floor&&
