@@ -51,7 +51,7 @@ function snap(s,dayCompleted) {
     abstractLootTokens:sum(living,h=>h.inventory.loot),
     heroesWithTwoLootTokens:living.filter(h=>h.inventory.loot>=2).length,
     heroPlans:counts(s.liveDungeon.plans.map(p=>p.action)),
-    worldSiteCycles:sum(s.earlyDungeonWorlds??[],w=>w.world.siteCycles?.length??0),
+    worldSiteCycles:sum(s.dungeonWorlds,w=>w.world.siteCycles?.length??0),
     floorsCleared:s.dungeonFloors.filter(f=>f.cleared).map(f=>f.floor),
     activeCombats:s.liveDungeon.combats.length+(s.liveDungeon.partyBossCombat?1:0),
     events:s.events.length,

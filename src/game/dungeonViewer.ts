@@ -107,8 +107,7 @@ export class DungeonViewer {
     readonly floor:SpatialDungeonFloor;
     readonly adventurers:GameState["adventurers"];
     readonly liveDungeon:GameState["liveDungeon"];
-    readonly level7World:GameState["level7World"];
-    readonly earlyDungeonWorlds:GameState["earlyDungeonWorlds"];
+    readonly dungeonWorlds:GameState["dungeonWorlds"];
     readonly dungeonParties:GameState["dungeonParties"];
     readonly view:LiveFloorSpectatorFrame;
   }=null;
@@ -117,8 +116,7 @@ export class DungeonViewer {
     readonly heroId:string;
     readonly adventurers:GameState["adventurers"];
     readonly liveDungeon:GameState["liveDungeon"];
-    readonly level7World:GameState["level7World"];
-    readonly earlyDungeonWorlds:GameState["earlyDungeonWorlds"];
+    readonly dungeonWorlds:GameState["dungeonWorlds"];
     readonly dungeonParties:GameState["dungeonParties"];
     readonly view:LiveSpectatorFrame;
   }=null;
@@ -1626,15 +1624,13 @@ export class DungeonViewer {
       if(!cached||cached.floor!==this.liveFloor||
          cached.adventurers!==state.adventurers||
          cached.liveDungeon!==state.liveDungeon||
-         cached.level7World!==state.level7World||
-         cached.earlyDungeonWorlds!==state.earlyDungeonWorlds||
+         cached.dungeonWorlds!==state.dungeonWorlds||
          cached.dungeonParties!==state.dungeonParties){
         const view=selectLiveFloorSpectatorFrame(state,this.liveFloor);
         if(!view){this.close();return;}
         this.liveFloorProjectionCache={
           floor:this.liveFloor,adventurers:state.adventurers,
-          liveDungeon:state.liveDungeon,level7World:state.level7World,
-          earlyDungeonWorlds:state.earlyDungeonWorlds,
+          liveDungeon:state.liveDungeon,dungeonWorlds:state.dungeonWorlds,
           dungeonParties:state.dungeonParties,view,
         };
         this.paintFloor(view);
@@ -1650,8 +1646,7 @@ export class DungeonViewer {
       if(!cached||cached.heroId!==this.liveHeroId||
          cached.adventurers!==state.adventurers||
          cached.liveDungeon!==state.liveDungeon||
-         cached.level7World!==state.level7World||
-         cached.earlyDungeonWorlds!==state.earlyDungeonWorlds||
+         cached.dungeonWorlds!==state.dungeonWorlds||
          cached.dungeonParties!==state.dungeonParties){
         const view=selectLiveSpectatorFrame(state,this.liveHeroId);
         if(!view){this.close();return;}
@@ -1665,8 +1660,7 @@ export class DungeonViewer {
         this.liveProjectionCache={
           heroId:this.liveHeroId,
           adventurers:state.adventurers,liveDungeon:state.liveDungeon,
-          level7World:state.level7World,
-          earlyDungeonWorlds:state.earlyDungeonWorlds,
+          dungeonWorlds:state.dungeonWorlds,
           dungeonParties:state.dungeonParties,view,
         };
         this.paintLive(view);

@@ -66,8 +66,7 @@ function eventEntry(event:WorldEvent,state:GameState):WorldFeedEntry|null{
 function observedFloorTarget(state:GameState,heroId:string):WorldFeedTarget{
   const hero=findHero(state,heroId);
   if(!hero||typeof hero.floor!=="number")return {kind:"hero",heroId};
-  const world=hero.floor===7?state.level7World:
-    state.earlyDungeonWorlds?.find(entry=>entry.floor===hero.floor)?.world;
+  const world=state.dungeonWorlds.find(entry=>entry.floor===hero.floor)?.world;
   const progress=world?.heroes.find(entry=>entry.heroId===heroId);
   return progress?
     {kind:"floor-site",floor:hero.floor,x:progress.x,z:progress.z,heroId}:
