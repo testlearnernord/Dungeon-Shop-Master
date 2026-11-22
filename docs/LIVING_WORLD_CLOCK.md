@@ -14,7 +14,7 @@
 ## Physical shop, returns and rotation
 
 1. An adventurer finishes a real exploration decision, may choose shop, and backtracks **known connected tiles** toward a seeded entrance. The LIVE clock schedules a real portal crossing, not an invented arrival from a hidden map.
-2. Galvik's shop is a separate **unnumbered cursed realm**. Normal NPC arrivals and departures share one physical shop threshold. The current v28 physical shop checkpoint contains exactly one `portal` door. Former `level4`/`level6` gates are removed and v27 saves are rejected (no migration); the separately named shop `floor=5` occupancy still needs its own cleanup.
+2. Galvik's shop is a separate **unnumbered cursed realm**. Normal NPC arrivals and departures share one physical shop threshold. The current v29 physical shop checkpoint contains exactly one `portal` door. Former `level4`/`level6` gates are removed and v27 saves are rejected (no migration); the separately named shop `floor=5` occupancy still needs its own cleanup.
 3. A paid/credited visitor still needs a **real physical departure** before `off-duty` begins. After leaving on Day D, the hero spends full Days D+1 and D+2 outside shop/dungeon. Earliest renewed expedition begins Day D+3.
 4. Off-duty healing consumes genuinely owned Waybread/Herbs if available. No passive full heal, debt cancellation, free item, gold grant or instant reentry.
 5. Time-bound restock waits and shopping-cart claims are durable saved events/objects. Cancelling/reloading a viewer never renews a deadline or sells a reserved cart. Day closure restores unpaid goods without phantom receipts.
@@ -24,7 +24,7 @@
 - Ordinary **Floors 1–9** are genuine seeded traversable maps. Heroes have independent saved position, HP, intent and treasures; Temporary Parties form naturally from actual positions.
 - A **Floor-9** real party reaches the lower stair together and may enter the **Floor-10 Cave Troll** only when the actual 2–3 members satisfy pass/health/time conditions. A solo flag never creates a fake group.
 - `groupCombat.ts` settles the 60-Hz authoritative fight, retaining real actor poses/cues and one original outcome. Scene interpolation, cinematic intro and the local recording clock may read those frames but cannot replace, rewind or resimulate the fight.
-- Historical solo `liveDungeon.bossCombat`, `level6Combat` and old replay variants may persist in current saves/tests. They are compatibility paths, not the active world location for the Troll.
+- Current v29 saves do **not** admit a Solo Floor-6 `liveDungeon.bossCombat` field, and LIVE world time cannot spawn or settle one. `level6Combat` and old replay variants still exist only in the separately retained non-LIVE day fixtures and isolated historical preview. The real LIVE Troll is exclusively the Floor-10 GroupCombat party.
 
 ## Knowledge and retention
 

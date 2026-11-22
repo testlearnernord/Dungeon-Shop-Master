@@ -28,7 +28,7 @@
 
 The single-gate traffic checkpoint changed from two `level4/level6` door values to one `portal` value, so `SIMULATION_VERSION` is now **28**. Earlier versions are rejected with an explicit New Game message. There are **no save migrations**; current-version Save/Load remains strictly validated.
 
-The unrelated, still-current `hero.floor=5` at-shop occupancy, `level5Room` internal name and historical solo Level-6 engine have **not** been rewritten here. Those remain separate parts of issue #300, not hidden compatibility promises.
+At the time of PR #303, the unrelated `hero.floor=5` at-shop occupancy, `level5Room` name and historical solo Level-6 engine were untouched. **Subsequently in Alpha v29, only the LIVE solo Level-6 execution/Save path was deleted; the non-LIVE day fixtures and shop-state sentinel remain.** Those remain separate parts of issue #300, not hidden compatibility promises.
 
 ## Checks
 
