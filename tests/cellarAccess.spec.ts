@@ -78,10 +78,10 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./?e2e-pause-world=1");
   await expect(page.locator("#day")).toHaveText("Day 1");
-  const helper="/Dungeon-Shop-Master/tests/scene.ts";
-  await page.evaluate(async(path)=>(await import(/* @vite-ignore */ path)).aimAtGalviksTable(),helper);
-  const inspect=()=>page.evaluate(async(path)=>
-    (await import(/* @vite-ignore */ path)).inspectGalviksLiveTable(),helper);
+  await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtGalviksTable());
+  const inspect=()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectGalviksLiveTable());
   await expect.poll(async()=>await inspect(),{timeout:30000,intervals:[400,700,1000]})
     .toMatchObject({
       insetExists:true,insetVisible:true,
