@@ -6,8 +6,7 @@ const SHOP_TYPES=new Set<WorldEvent["type"]>([
   "shop-walkout","shop-credit","hero-buyback"
 ]);
 const DUNGEON_TYPES=new Set<WorldEvent["type"]>([
-  "dungeon-outcome","level6-departure","level6-combat","level6-return",
-  "level7-departure","level7-exploration","dungeon-exploration","healed",
+  "dungeon-outcome","level7-exploration","dungeon-exploration","healed",
   "temporary-party-join","temporary-party-leave","dungeon-live",
   "hero-death-signal"
 ]);

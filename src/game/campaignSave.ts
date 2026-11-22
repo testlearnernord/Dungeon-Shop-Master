@@ -8,7 +8,6 @@ import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS } from "./economy.ts";
 import {
   SIMULATION_VERSION, type GameState, type EarlyDungeonFloorWorld,
 } from "./gameState.ts";
-import { validateBossReplay } from "./bossCombatReplay.ts";
 import {
   LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS, LEVEL7_COMBAT_SECONDS,
   getLevel7Progress, prepareSpatialDungeonCombat, chooseKnownReturnStep,
@@ -91,8 +90,7 @@ const itemIds = ITEMS.map((item) => item.id);
 const eventTypes = [
   "welcome", "day-started", "dungeon-outcome", "shop-arrival", "shop-stay", "shop-departure", "shop-walkout",
   "influx", "sale", "tip", "healed",
-  "level6-departure", "level6-combat", "level6-return",
-  "level7-departure", "level7-exploration", "shop-credit",
+  "level7-exploration", "shop-credit",
   "dungeon-exploration","dungeon-live","hero-death-signal",
   "temporary-party-join","temporary-party-leave","hero-buyback",
 ] as const;
@@ -1321,8 +1319,8 @@ function validateState(value: unknown): asserts value is GameState {
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
-      ["adventurerId", "worldTick", "reportedZone", "dungeonHighlight", "shopReason", "outcome", "itemId", "quantity", "revenue", "cost", "combatOutcome",
-        "combatReplay", "partyBossReplay", "level7Replay", "dungeonReplay",
+      ["adventurerId", "worldTick", "reportedZone", "dungeonHighlight", "shopReason", "outcome", "itemId", "quantity", "revenue", "cost",
+        "partyBossReplay", "level7Replay", "dungeonReplay",
         "dungeonGoal", "floorAction", "saleChannel", "debtGold"]);
     choice(event.type, eventTypes, `${path}.type`);
     const eventDay = integer(event.day, `${path}.day`, lastDay, day);
@@ -1411,16 +1409,6 @@ function validateState(value: unknown): asserts value is GameState {
       allowed.push("outcome");
       choice(event.outcome, ["advance", "stay", "retreat", "death"], `${path}.outcome`);
       suffix = "dungeon";
-    }
-    if (event.type === "level6-combat") {
-      allowed.push("combatOutcome");
-      choice(event.combatOutcome, ["victory", "retreat", "death"], `${path}.combatOutcome`);
-      if (event.combatReplay !== undefined) {
-        allowed.push("combatReplay");
-        validateBossReplay(event.combatReplay, `${path}.combatReplay`,
-          event.adventurerId as string, eventDay,
-          event.combatOutcome as "victory" | "retreat" | "death");
-      }
     }
     if((event.type === "level7-exploration"||event.type==="dungeon-live") &&
       event.level7Replay !== undefined) {

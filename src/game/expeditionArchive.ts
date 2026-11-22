@@ -62,8 +62,6 @@ function classify(event:WorldEvent):{
     return {kind:"party",label:"Temporary Party separated"};
   if(event.type==="hero-death-signal")
     return {kind:"death",label:"Life-signature extinguished"};
-  if(event.type==="level6-departure"||event.type==="level7-departure")
-    return {kind:"departure",label:"Departed into the dungeon"};
   if(event.type==="shop-arrival")
     return {kind:"return",label:"Returned to Galvik's shop"};
   return null;
