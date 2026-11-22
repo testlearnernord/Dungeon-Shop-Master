@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { generateDungeonLayout, dungeonNeighbors, tileAt } from "../../src/game/dungeonLayout.ts";
 import {
-  emptyLevel7World, getLevel7Progress, simulateLevel7Day,
+  emptyLevel7World, getLevel7Progress, simulateSpatialDungeonDay,
   chooseLevel7Step, LEVEL7_STEP_BUDGET,
   type Level7World,
 } from "../../src/game/level7Exploration.ts";
@@ -16,7 +16,7 @@ function dungeonHero(): AdventurerState {
   const original=createGameState().adventurers[0];
   return { ...original, health:original.stats.maxHealth,
     role:"tank", equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
-    status:"expedition",floor:7,bossPass:true };
+    status:"exploring",floor:7,bossPass:true };
 }
 
 test("level 7 autonomous navigation stays on connected grid edges, never crosses walls", () => {
@@ -37,15 +37,15 @@ test("level 7 autonomous navigation stays on connected grid edges, never crosses
 
 test("same hero and world produce identical bounded routes and authoritative combat outcomes", () => {
   const hero=dungeonHero(), start=emptyLevel7World();
-  const first=simulateLevel7Day(hero,start,7351,4);
-  const again=simulateLevel7Day(hero,start,7351,4);
+  const first=simulateSpatialDungeonDay(hero,start,7351,4);
+  const again=simulateSpatialDungeonDay(hero,start,7351,4);
   assert.deepEqual(first,again);
   assert.deepEqual(start,emptyLevel7World(),"Simulator must not mutate inputs");
   assert(first.replay.steps.length<=1+LEVEL7_STEP_BUDGET*3+3);
   assert.equal(first.replay.heroId,hero.id);
   assert.equal(first.replay.appearance.equipment.weapon,"Iron Sword");
   assert.equal(first.adventurer.floor,7);
-  assert.equal(first.adventurer.status,"expedition");
+  assert.equal(first.adventurer.status,"exploring");
   assert(first.world.heroes[0].visited.length>1);
 });
 
@@ -56,7 +56,7 @@ test("persistent shared monsters, traps, loot and fights never reroll on camera/
   let sawCombat=false, sawLoot=false, sawTrap=false;
   const allEncounterFeatures=new Set<string>();
   for(let day=2;day<70;day++){
-    const result=simulateLevel7Day(hero,world,7351,day);
+    const result=simulateSpatialDungeonDay(hero,world,7351,day);
     world=result.world;
     for(const step of result.replay.steps){
       if(step.action==="treasure")sawLoot=true;
@@ -125,7 +125,7 @@ test("dungeon healer pays a real supply for each actual fixed-step healing actio
     resolvedFeatureIds:map.features.filter(f=>f.id!==monster.id).map(f=>f.id),
     heroes:[{heroId:hero.id,x:approach.x,z:approach.z,visited}],
   };
-  const result=simulateLevel7Day(healer,world,7351,12);
+  const result=simulateSpatialDungeonDay(healer,world,7351,12);
   assert.equal(result.replay.encounters.length,1);
   const healingCues=result.replay.encounters[0].combat.cues.filter(
     cue=>cue.actorId===hero.id&&cue.kind==="heal");
@@ -151,8 +151,8 @@ test("a tank really spends purchased Herbs in a committed ordinary encounter",()
       .map(feature=>feature.id),
     heroes:[{heroId:tank.id,x:approach.x,z:approach.z,visited}],
   };
-  const first=simulateLevel7Day(tank,world,7351,12);
-  const same=simulateLevel7Day(tank,world,7351,12);
+  const first=simulateSpatialDungeonDay(tank,world,7351,12);
+  const same=simulateSpatialDungeonDay(tank,world,7351,12);
   assert.deepEqual(first,same);
   assert.equal(first.replay.encounters.length,1);
   const cures=first.replay.encounters[0].combat.cues.filter(cue=>
@@ -179,8 +179,8 @@ test("regenerated Floor 7 room sentry uses heavy strikes but not the unique Trol
     heroes:[{heroId:hero.id,x:approach.x,z:approach.z,visited}],
     siteCycles:[{id:eliteSite.id,cycle:1,resolvedDay:null}],
   };
-  const first=simulateLevel7Day(hero,world,seed,day);
-  assert.deepEqual(first,simulateLevel7Day(hero,world,seed,day));
+  const first=simulateSpatialDungeonDay(hero,world,seed,day);
+  assert.deepEqual(first,simulateSpatialDungeonDay(hero,world,seed,day));
   assert.equal(first.replay.encounters.length,1,"The room elite must be actually encountered");
   const fight=first.replay.encounters[0].combat;
   const enemy=fight.actors.find(actor=>actor.id===eliteSite.id)!;
@@ -225,7 +225,7 @@ test("ordinary first-generation Floor 7 encounters do not silently become bosses
       visited:layout.tiles.map((kind,i)=>kind!=="wall"&&i!==index?i:-1)
         .filter(i=>i>=0)}],
   };
-  const result=simulateLevel7Day(dungeonHero(),world,7351,12);
+  const result=simulateSpatialDungeonDay(dungeonHero(),world,7351,12);
   assert.equal(result.replay.encounters.length,1);
   assert.equal(result.replay.encounters[0].combat.actors.some(actor=>
     actor.specialAbility==="grapple-throw"),false);
