@@ -14,13 +14,25 @@ permissions:
 
 jobs:
   audit:
-    name: Real-world 100-day scenarios
+    name: Real-world 100-day scenarios / ${{ matrix.seed }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - seed: "7351"
+            modes: "absent,consumables,equipment,full"
+          - seed: "9321"
+            modes: "absent,full"
+          - seed: "42"
+            modes: "absent,full"
+          - seed: "2026"
+            modes: "absent,full"
     env:
       AUDIT_DAYS: "100"
-      AUDIT_SEED: "7351"
-      AUDIT_MODES: "absent,consumables,equipment,full"
+      AUDIT_SEED: ${{ matrix.seed }}
+      AUDIT_MODES: ${{ matrix.modes }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,7 +46,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gameplay-100day-report
+          name: gameplay-100day-report-${{ matrix.seed }}
           path: gameplay-100day-audit.json
           if-no-files-found: ignore
           retention-days: 14
