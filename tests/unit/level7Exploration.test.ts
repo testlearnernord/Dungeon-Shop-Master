@@ -95,47 +95,18 @@ test("persistent shared monsters, traps, loot and fights never reroll on camera/
   assert(allEncounterFeatures.size>0);
 });
 
-test("cleared level 6 permits lead to Level 7 on later confirmed days only", () => {
+test("ordinary Floor 6 and a boss pass never create a direct Floor-7 shop departure",()=>{
   const initial=createGameState(7351);
   const authorized={...initial.adventurers[0],bossPass:true};
   const state={...initial,dungeonFloors:[{floor:6,cleared:true}],
     adventurers:[authorized,...initial.adventurers.slice(1)]};
   const first=advanceDay(state);
   const hero=first.state.adventurers.find(h=>h.id===authorized.id)!;
-  assert.equal(hero.status,"expedition");
-  assert.equal(hero.floor,7);
-  assert(first.events.some(e=>e.type==="level7-departure"&&e.adventurerId===hero.id));
-  assert.equal(first.events.filter(e=>e.type==="level7-exploration").length,0);
-  const second=advanceDay(first.state);
-  const records=second.events.filter(e=>e.type==="level7-exploration");
-  assert.equal(records.length,1);
-  assert.equal(records[0].adventurerId,hero.id);
-  assert.equal(records[0].level7Replay?.day,second.state.day);
-  assert(second.state.level7World.heroes.length>0);
-  assert.equal(second.state.rngState,
-    advanceDay(first.state).state.rngState);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(second.state))),second.state);
-  assert.deepEqual(advanceDay(first.state),second,"No watcher is allowed to change results");
-});
-
-test("replay snapshots remain bounded; older replays are compacted without changing outcomes", () => {
-  const initial=createGameState(7351);
-  const authorized={...initial.adventurers[0],bossPass:true};
-  let state={...initial,dungeonFloors:[{floor:6,cleared:true}],
-    adventurers:[authorized,...initial.adventurers.slice(1)]};
-  for(let i=0;i<8;i++){
-    // Single authorized hero; when returning, start a new visit on the next
-    // confirmed tick to exercise replay history retention without increasing RNG.
-    state=advanceDay(state).state;
-    const records=state.events.filter(e=>e.type==="level7-exploration"&&e.level7Replay);
-    assert(records.every(event=>event.day>=state.day-2),
-      "Heavy positional footage must expire after two completed days.");
-    assert(records.length<=3*state.adventurers.length,
-      "Multiple live Floor-7 visitors may each retain their last three days.");
-  }
-  const currentRecords=state.events.filter(e=>e.type==="level7-exploration");
-  assert(currentRecords.length>=1);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
+  assert.notEqual(hero.status,"expedition");
+  assert(!first.events.some(e=>e.type==="level7-departure"||
+    e.type==="level6-departure"||e.type==="level6-combat"));
+  assert.deepEqual(parseSave(JSON.stringify(createSave(first.state))),first.state);
+  assert.deepEqual(advanceDay(state),first);
 });
 
 test("dungeon healer pays a real supply for each actual fixed-step healing action", () => {

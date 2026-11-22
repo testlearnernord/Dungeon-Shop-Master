@@ -17,7 +17,6 @@ import {
   settlePersistentDungeonParties, temporaryPartyChanges,
   type DungeonPartyState,
 } from "./dungeonParties.ts";
-import { simulateLevel6Combat } from "./level6Combat.ts";
 import type { BossCombatReplay } from "./bossCombatReplay.ts";
 import type {GroupCombatReplay} from "./groupCombat.ts";
 import {compactReplayFootage} from "./replayRetention.ts";
@@ -228,8 +227,6 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
     dailySales:{day,units:0,revenue:0},
   };
   const postTradeHeroes=closed.adventurers;
-  let clearedLevel6 = state.dungeonFloors.some((entry) => entry.floor === 6 && entry.cleared);
-  const level7UnlockedAtStart = clearedLevel6;
   let clearedLevel7 = state.dungeonFloors.some((entry) => entry.floor === 7 && entry.cleared);
   let level7World = state.level7World;
   let earlyDungeonWorlds: EarlyDungeonFloorWorld[] =
@@ -352,30 +349,11 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       });
       return tick.adventurer;
     }
-    if (ready.status === "expedition" && ready.floor === 6) {
-      const combat = simulateLevel6Combat(ready, day, rngState);
-      rngState = combat.rngState;
-      events.push(...combat.events);
-      if (combat.victory) clearedLevel6 = true;
-      return combat.adventurer;
-    }
-    if (ready.status === "at-shop" && ready.bossPass && ready.health > 0 &&
-        level7UnlockedAtStart && !clearedLevel7) {
-      events.push({
-        id: `day-${day}:${ready.id}:level7-departure`, type: "level7-departure",
-        day, adventurerId: ready.id,
-        message: `${ready.name} entered the unexplored Level 7 from the shop.`,
-      });
-      return { ...ready, status: "expedition" as const, floor: 7 as const, shopStayDays: 0 };
-    }
-    if (ready.status === "at-shop" && ready.bossPass && ready.health > 0 &&
-        !level7UnlockedAtStart) {
-      events.push({
-        id: `day-${day}:${ready.id}:level6-departure`, type: "level6-departure",
-        day, adventurerId: ready.id, message: `${ready.name} entered Level 6 with the merchant's permission.`,
-      });
-      return { ...ready, status: "expedition" as const, floor: 6 as const, shopStayDays: 0 };
-    }
+    // Old Alpha saves are intentionally unsupported: a solitary Floor-6
+    // "expedition" has no meaning in the current ordinary-floor topology.
+    // In particular, no daily closure may secretly launch a Cave Troll.
+    if (ready.status === "expedition" && ready.floor === 6)
+      throw new RangeError("Floor 6 has no solo boss expedition.");
     // The old Floors 1–4 damage/progress dice were retired; live early
     // explorers were already processed by the spatial engine above.
     const shop=scheduleShopVisit(ready,day,rngState,paidIds.has(hero.id));
@@ -451,8 +429,6 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       dungeonParties,
       dungeonFloors: [
         ...state.dungeonFloors,
-        ...(clearedLevel6 && !state.dungeonFloors.some(f=>f.floor===6&&f.cleared)
-          ? [{floor:6,cleared:true}]:[]),
         ...(clearedLevel7 && !state.dungeonFloors.some(f=>f.floor===7&&f.cleared)
           ? [{floor:7,cleared:true}]:[]),
       ],

@@ -116,7 +116,7 @@ test("manual payment closes a shop visit instead of randomly sending the buyer b
   assert.deepEqual(advanceDay(state),next,"a saved day tick must not reroll customer departures");
 });
 
-test("bed returns unpaid stock without a sale; an L6 pass still takes precedence",()=>{
+test("bed returns unpaid stock without a sale; a boss pass never teleports a solo visitor",()=>{
   const initial=createStockedShopState(9321);
   const buyer=initial.adventurers[0];
   const visiting={...initial,
@@ -139,9 +139,10 @@ test("bed returns unpaid stock without a sale; an L6 pass still takes precedence
       ?{...person,bossPass:true}:person),
   };
   const next=advanceDay(permitted);
-  const expedition=next.state.adventurers.find(person=>person.id===buyer.id)!;
-  assert.equal(expedition.status,"expedition");
-  assert.equal(expedition.floor,6);
-  assert(next.events.some(e=>e.adventurerId===buyer.id&&e.type==="level6-departure"));
-  assert(!next.events.some(e=>e.adventurerId===buyer.id&&e.type==="shop-stay"));
+  const visitor=next.state.adventurers.find(person=>person.id===buyer.id)!;
+  assert.notEqual(visitor.status,"expedition");
+  assert(!next.events.some(e=>e.adventurerId===buyer.id&&
+    ["level6-departure","level7-departure","level6-combat"].includes(e.type)));
+  assert.equal(visitor.bossPass,true,"the actual Floor-10 party credential remains owned");
+  assert.deepEqual(next.state.shopCarts,[]);
 });

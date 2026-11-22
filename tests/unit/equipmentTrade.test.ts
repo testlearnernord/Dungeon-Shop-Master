@@ -5,7 +5,6 @@ import { advanceDay, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { tradeAtStartOfDay, buyWholesale, transferShelf, ITEMS } from "../../src/game/economy.ts";
 import { generateExpeditionLayout, dungeonNeighbors } from "../../src/game/dungeonLayout.ts";
 import { simulateSpatialDungeonDay } from "../../src/game/level7Exploration.ts";
-import { simulateLevel6Combat } from "../../src/game/level6Combat.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
 function merchantState(gold: number, stocked: ReadonlyArray<{ itemId: "iron-sword" | "leather-vest" | "bread" | "healing-herb"; quantity: number }>) {
@@ -84,7 +83,7 @@ test("equipping is permanent, single-purchase, affordable, and exact in receipts
   assert.deepEqual(input.adventurers[0].equipment, { weapon: null, armor: null });
 });
 
-test("real early-floor traps respect equipped armor and boss damage still respects gear", () => {
+test("real early-floor traps respect equipped armor", () => {
   const base=createGameState().adventurers[0];
   const layout=generateExpeditionLayout(7351,2);
   const trap=layout.features.find(site=>site.kind==="trap")!;
@@ -105,15 +104,6 @@ test("real early-floor traps respect equipped armor and boss damage still respec
   assert.equal(protectedRun.adventurer.health-plain.adventurer.health,3);
   assert.equal(plain.adventurer.level,1+Math.floor(plain.adventurer.xp/100));
 
-  // Existing boss replay authority still uses real armor and weapon effects,
-  // and must not be replaced by a separate early-floor dice outcome.
-  const novice={...base,status:"expedition" as const,floor:6 as const,bossPass:true};
-  const armed={...novice,equipment:{weapon:"Iron Sword",armor:"Leather Vest"}};
-  const first=simulateLevel6Combat(novice,2,1234);
-  const improved=simulateLevel6Combat(armed,2,1234);
-  assert(improved.adventurer.health>=first.adventurer.health);
-  assert.equal(improved.adventurer.equipment.weapon,"Iron Sword");
-  assert.equal(simulateLevel6Combat(armed,2,1234).rngState,improved.rngState);
 });
 
 test("long deterministic campaigns remain stable across sale, combat and reload", () => {
