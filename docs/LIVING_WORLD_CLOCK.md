@@ -14,7 +14,7 @@
 ## Physical shop, returns and rotation
 
 1. An adventurer finishes a real exploration decision, may choose shop, and backtracks **known connected tiles** toward a seeded entrance. The LIVE clock schedules a real portal crossing, not an invented arrival from a hidden map.
-2. Galvik's shop is a separate **unnumbered cursed realm**. Normal NPC arrivals and departures share one physical shop threshold. The current v30 physical shop checkpoint contains exactly one `portal` door. Former `level4`/`level6` gates are removed and v27 saves are rejected (no migration); the separately named shop `floor=5` occupancy still needs its own cleanup.
+2. Galvik's shop is a separate **unnumbered cursed realm**. Normal NPC arrivals and departures share one physical shop threshold. The current Alpha v34 physical shop checkpoint contains exactly one `portal` door. Former `level4`/`level6` gates are removed and v27 saves are rejected (no migration); the separately named shop `floor=5` occupancy still needs its own cleanup.
 3. A paid/credited visitor still needs a **real physical departure** before `off-duty` begins. After leaving on Day D, the hero spends full Days D+1 and D+2 outside shop/dungeon. Earliest renewed expedition begins Day D+3.
 4. Off-duty healing consumes genuinely owned Waybread/Herbs if available. No passive full heal, debt cancellation, free item, gold grant or instant reentry.
 5. Time-bound restock waits and shopping-cart claims are durable saved events/objects. Cancelling/reloading a viewer never renews a deadline or sells a reserved cart. Day closure restores unpaid goods without phantom receipts.
@@ -36,6 +36,6 @@
 
 **Implemented and testable:** shared tick owner; 200-tick spatial pacing; 60-Hz combat; physical shop cart/checkout; portal return; two-day rotation; genuine group boss; bounded archive.
 
-**Still open:** full 20-/50-/100-day current-code balancing; actual physical NPC pathfinding under slow checkout/service; re-entry quality and the obsolete Floor-7/non-LIVE contracts (not a physical two-gate migration); representative device frame pacing and audio/visual acceptance. See [Roadmap](ROADMAP.md) and open issue #294.
+**Still open:** full 20-/50-/100-day current-code balancing; actual physical NPC pathfinding under slow checkout/service; re-entry and shop gate migration out of legacy keys; representative device frame pacing and audio/visual acceptance. See [Roadmap](ROADMAP.md) and open issue #294.
 
 Never “fix” stalled XP by fast-forwarding the calendar, inventing loot, granting invisible purchases, or letting an observer HUD simulate extra battles.
