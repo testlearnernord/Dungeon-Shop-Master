@@ -826,6 +826,8 @@ function commitLiveCombatTick(state:GameState):GameState{
       const living=partyBoss.heroIds.filter(id=>
         (combat.actors.find(a=>a.id===id)?.hp??0)>0).sort();
       const rewardPot=winner?60:0;
+      const recording=groupCombatReplayFromFrames(
+        partyBoss.options,combat,frames);
       for(const id of partyBoss.heroIds){
         const old=byId.get(id),actor=combat.actors.find(a=>a.id===id);
         if(!old||!actor)
@@ -850,6 +852,7 @@ function commitLiveCombatTick(state:GameState):GameState{
           id:"day-"+state.day+":"+id+":dungeon-live:"+state.worldClock.tick,
           type:"dungeon-live",day:state.day,worldTick:state.worldClock.tick,
           adventurerId:id,reportedZone:"deep",
+          ...(id===partyBoss.heroIds[0]?{partyBossReplay:recording}:{}),
           message:old.name+(winner?" survived the Level-10 Cave Troll's defeat.":
             hp<=0?" was slain challenging the Level-10 Cave Troll.":
               " escaped the Level-10 Cave Troll with injuries."),
