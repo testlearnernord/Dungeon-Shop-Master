@@ -653,7 +653,7 @@ export function simulateSpatialDungeonPartyDay(
       ...settleHeroExperience(m.hero,xp,m.hp),
       gold:m.hero.gold+m.gold,
       floor:returning?"transit":floor,
-      lastDungeonFloor:returning?7:m.hero.lastDungeonFloor,
+      ...(returning?{lastDungeonFloor:7 as const}:{}),
       status:dead?"dead":returning?"traveling":
         m.hero.status==="expedition"&&floor===7?"expedition":"exploring",
       inventory:{...m.hero.inventory,
