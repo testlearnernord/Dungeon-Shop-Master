@@ -13,7 +13,7 @@ test("Level 7 saved expedition is replayed with personal fog, seeking, camera an
     const start=createGameState(7351);
     const prepared={...start,dungeonFloors:[{floor:6,cleared:true}],
       adventurers:start.adventurers.map((hero,i)=>i===0?{
-        ...hero,status:"expedition" as const,floor:7 as const,bossPass:true,
+        ...hero,status:"exploring" as const,floor:7 as const,bossPass:true,
       }:hero)};
     const resolved=advanceDay(prepared).state;
     await new CampaignStorage().saveGame(resolved);
