@@ -6,7 +6,7 @@ import {isValidCellarRoom,cellarChestProblem,cellarTableProblem,
   type CellarChestPlacement,type CellarTablePlacement} from "./cellarRoom.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS } from "./economy.ts";
 import {
-  SIMULATION_VERSION, type GameState, type EarlyDungeonFloorWorld,
+  SIMULATION_VERSION, type GameState,
 } from "./gameState.ts";
 import {
   LEVEL7_STEP_BUDGET, LEVEL7_MAX_ENCOUNTERS, LEVEL7_COMBAT_SECONDS,
@@ -476,9 +476,8 @@ function validateLiveCombatCheckpoints(
         fail(cp+".heroIds["+i+"]","must identify a living co-located explorer");
       members.push(hero);
     });
-    const world:Level7World=floor===7?
-      state.level7World as Level7World:
-      ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
+    const world:Level7World=
+      ((state.dungeonWorlds as {floor:number;world:Level7World}[]|undefined)
         ?.find(entry=>entry.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
     if(world.resolvedFeatureIds.includes(featureId)||
       (world.siteCycles?.find(x=>x.id===featureId)?.cycle??0)!==cycle)
@@ -764,9 +763,8 @@ function validateLivePortalReturns(
       // entrance tile. The saved last location is intentionally retained
       // until the portal event resolves; a bare fabricated timer is not enough.
       if(floor!==10){
-        const world:Level7World=floor===7?
-          state.level7World as Level7World:
-          ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
+        const world:Level7World=
+          ((state.dungeonWorlds as {floor:number;world:Level7World}[]|undefined)
             ?.find(w=>w.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
         const progress=world.heroes.find(p=>p.heroId===heroId);
         const entrance=generateExpeditionLayout(state.seed as number,floor).entrance;
@@ -792,9 +790,8 @@ function validateLivePortalReturns(
         hero.floor!==floor||
         !(hero.status==="exploring"||floor===7&&hero.status==="expedition"))
         fail(path,"must backtrack on the real hero floor");
-      const world:Level7World=floor===7?
-        state.level7World as Level7World:
-        ((state.earlyDungeonWorlds as {floor:number;world:Level7World}[]|undefined)
+      const world:Level7World=
+        ((state.dungeonWorlds as {floor:number;world:Level7World}[]|undefined)
           ?.find(w=>w.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
       const progress=world.heroes.find(p=>p.heroId===heroId);
       if(!progress)
@@ -826,10 +823,10 @@ function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
     "day", "worldClock", "shopRequests", "shopTraffic", "liveDungeon", "simulationVersion", "events", "savedReplayIds", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
-    "level7World", "shopLayout", "shopCarts", "shopDebts",
+    "dungeonWorlds", "shopLayout", "shopCarts", "shopDebts",
     "shopRoom","bedroomFurniture","rosterBoard",
     "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught",
-  ], ["wallPortrait","earlyDungeonWorlds","dungeonParties"]);
+  ], ["wallPortrait","dungeonParties"]);
   const room=state.shopRoom;
   if (!isValidLevel5Room(room))
     fail("payload.shopRoom", "has invalid excavation geometry");
@@ -1065,20 +1062,16 @@ function validateState(value: unknown): asserts value is GameState {
     }
   });
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
-  validateLevel7World(state.level7World,"payload.level7World",campaignSeed,heroIds,day);
-  if(state.earlyDungeonWorlds!==undefined){
-    const worlds=array(state.earlyDungeonWorlds,"payload.earlyDungeonWorlds");
-    if(worlds.length>8)fail("payload.earlyDungeonWorlds","must cover at most eight ordinary floors");
-    const seenFloors=new Set<string|number>();
-    worlds.forEach((value,i)=>{
-      const path="payload.earlyDungeonWorlds["+i+"]";
-      const entry=object(value,path,["floor","world"]);
-      const floor=integer(entry.floor,path+".floor",1,9);
-      if(floor===7)fail(path+".floor","uses the saved dedicated Floor-7 world");
-      unique(floor,seenFloors,path+".floor");
-      validateLevel7World(entry.world,path+".world",campaignSeed,heroIds,day,floor);
-    });
-  }
+  const worlds=array(state.dungeonWorlds,"payload.dungeonWorlds");
+  if(worlds.length>9)fail("payload.dungeonWorlds","must cover at most nine ordinary floors");
+  const seenFloors=new Set<string|number>();
+  worlds.forEach((value,i)=>{
+    const path="payload.dungeonWorlds["+i+"]";
+    const entry=object(value,path,["floor","world"]);
+    const floor=integer(entry.floor,path+".floor",1,9);
+    unique(floor,seenFloors,path+".floor");
+    validateLevel7World(entry.world,path+".world",campaignSeed,heroIds,day,floor);
+  });
   // Optional v13 party relationships cannot invent explorers, create a
   // leaderless group, overlap membership or assert a shared location that
   // the actual per-floor world never recorded. Old saves may omit this field.
@@ -1110,10 +1103,9 @@ function validateState(value: unknown): asserts value is GameState {
           fail(p,"must be a living explorer on the party floor");
         return hero;
       });
-      const savedWorld=floor===7?state.level7World as Level7World:
-        ((state.earlyDungeonWorlds??[]) as EarlyDungeonFloorWorld[])
-          .find(entry=>entry.floor===floor)?.world ??
-          {resolvedFeatureIds:[],heroes:[]};
+      const savedWorld=((state.dungeonWorlds??[]) as {floor:number;world:Level7World}[])
+        .find(entry=>entry.floor===floor)?.world ??
+        {resolvedFeatureIds:[],heroes:[]};
       const layout=generateExpeditionLayout(campaignSeed,floor);
       const first=getLevel7Progress(savedWorld,
         members[0].id as string,layout);
