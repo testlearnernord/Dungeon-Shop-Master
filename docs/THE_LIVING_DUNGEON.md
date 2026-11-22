@@ -25,7 +25,7 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 | **Galvik's cursed shop** | A separate *unnumbered* realm accessible by the return option. One normal physical portal/threshold for shop traffic; do not label it Dungeon Floor 5 |
 | **Old Level-6 solo Troll** | Historical non-LIVE fixture, training/visual quality reference and compatible recorded data. Not the world dungeon's new boss floor |
 
-**Technical debt, not lore:** the current save still contains `floor: 5` for at-shop occupancy, `level5Room`, a `level6Permit` authorization key, `level6-*` historical events, and `level4/level6` door/gate identifiers. These are version-26 compatibility artifacts. Treat them as internal migration subjects; do not show them as a current map or mass-rename without a schema upgrade.
+**Technical debt, not lore:** the current save still contains `floor: 5` for at-shop occupancy, `level5Room`, a `level6Permit` authorization key, `level6-*` historical events, and `level4/level6` door/gate identifiers. These are legacy v26 fields, **not game lore or long-term compatibility requirements**. During the next breaking Alpha schema cleanup, replace them with the intended single cursed-shop state and Boss Pass. **No migration** of old campaigns: reject incompatible files explicitly and test only current-format saves.
 
 ## Encounter and party expectations
 
