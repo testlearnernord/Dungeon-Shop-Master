@@ -13,7 +13,7 @@ test("LIVE Floor projection reads every actor's own committed location and knowl
   const state={...base,
     adventurers:base.adventurers.map(h=>participants.find(p=>p.id===h.id)??h),
     liveDungeon:{...base.liveDungeon,enabled:true},
-    earlyDungeonWorlds:[{floor:1 as const,world:{
+    dungeonWorlds:[{floor:1 as const,world:{
       resolvedFeatureIds:["already-saved"],
       heroes:[
         {heroId:a.id,x:4,z:6,visited:[9,10]},
@@ -61,7 +61,7 @@ test("hero details expose saved gear, inventory and goals without invented inten
     liveDungeon:{...initial.liveDungeon,enabled:true,
       plans:[{heroId:hero.id,floor:1 as const,goal:"resupply" as const,
         action:"shop" as const,updatedTick:600}]},
-    earlyDungeonWorlds:[{floor:1 as const,world:{
+    dungeonWorlds:[{floor:1 as const,world:{
       resolvedFeatureIds:[],heroes:[{
         heroId:hero.id,x:1,z:1,visited:[1,2],
       }],

@@ -112,7 +112,7 @@ test("new parties persist through a real confirmed floor transition and the foll
     adventurers:base.adventurers.map(h=>h.id===first.id?first:
       h.id===second.id?second:
       {...h,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0}),
-    earlyDungeonWorlds:[{floor:1 as const,world}],
+    dungeonWorlds:[{floor:1 as const,world}],
   };
   const firstDay=advanceDay(initial);
   assert.deepEqual(firstDay,advanceDay(initial),
@@ -174,7 +174,7 @@ test("optional v13 groups round-trip; forged membership, time and position are r
   const layout=generateExpeditionLayout(SEED,1);
   const other=dungeonNeighbors(layout,layout.entrance)[0];
   const apart=structuredClone(createSave(state));
-  apart.payload.earlyDungeonWorlds=[{floor:1,world:{
+  apart.payload.dungeonWorlds=[{floor:1,world:{
     resolvedFeatureIds:[],heroes:[
       {heroId:a.id,...layout.entrance,
         visited:[layout.entrance.z*layout.width+layout.entrance.x]},

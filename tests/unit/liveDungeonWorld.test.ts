@@ -32,12 +32,12 @@ test("real world-clock event advances one dungeon step during shop play, not at 
   assert.equal(store.state.liveDungeon.lastStepTick,DUNGEON_STEP_INTERVAL_TICKS);
   assert(store.state.liveDungeon.heroes.length>0);
   assert(store.state.liveDungeon.heroes.every(h=>h.steps===1));
-  assert(store.state.earlyDungeonWorlds?.some(e=>e.world.heroes.length>0));
+  assert(store.state.dungeonWorlds?.some(e=>e.world.heroes.length>0));
   assert(store.state.adventurers.some((hero,i)=>
     hero!==initial[i]&&hero.status==="exploring")||
-    store.state.earlyDungeonWorlds!.length>0);
+    store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,33);
+  assert.equal(SIMULATION_VERSION,34);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -107,7 +107,7 @@ function activeFightFixture():GameStore {
   const hero=initial.adventurers.find(h=>h.status==="exploring"&&h.floor===1);
   assert(hero,"Fixture needs an existing live explorer.");
   const positioned={...initial,
-    earlyDungeonWorlds:[{floor:1 as const,world:{
+    dungeonWorlds:[{floor:1 as const,world:{
       ...emptyLevel7World(),heroes:[{
         heroId:hero.id,x:approach.x,z:approach.z,visited,
       }],
@@ -208,7 +208,7 @@ function shortRealReturnFixture():{store:GameStore;heroId:string;path:{x:number;
     visited:path.map(p=>p.z*layout.width+p.x),
   }]};
   return {heroId:hero.id,path,store:new GameStore({...initial,adventurers,
-    earlyDungeonWorlds:[{floor:1 as const,world}]})};
+    dungeonWorlds:[{floor:1 as const,world}]})};
 }
 
 test("homeward steps use only saved, connected, previously explored dungeon tiles",()=>{
@@ -291,7 +291,7 @@ test("strict v20 saves reject forged backtracks and duplicated portal events",()
     (e:any)=>!e.subjectId.startsWith(SHOP_PORTAL_RETURN_PREFIX));},/dueTick|returns/);
   tamper(stable,s=>{s.adventurers.find((h:any)=>h.id===heroId).status="at-shop";},/floor|returns/);
   tamper(stable,s=>{
-    const world=s.earlyDungeonWorlds.find((e:any)=>e.floor===1).world;
+    const world=s.dungeonWorlds.find((e:any)=>e.floor===1).world;
     const position=world.heroes.find((h:any)=>h.heroId===heroId);
     const other=position.visited.find((cell:number)=>cell!==1+19);
     position.x=other%19;position.z=Math.floor(other/19);
@@ -342,7 +342,7 @@ function livePartyFixture():{store:GameStore;ids:readonly string[]} {
     heroes:ids.map(heroId=>({heroId,...layout.entrance,visited:[entrance]})),
   };
   return {ids,store:new GameStore({...base,adventurers,
-    earlyDungeonWorlds:[{floor:1 as const,world}]})};
+    dungeonWorlds:[{floor:1 as const,world}]})};
 }
 
 test("LIVE Temporary Party forms on one physical tile, persists and splits on individual resupply",()=>{
@@ -402,7 +402,7 @@ function authoredStairFixture():{store:GameStore;heroId:string;stair:{x:number;z
     resolvedFeatureIds:layout.features.map(f=>f.id),
     heroes:[{heroId:hero.id,...stair,visited:known}]};
   return {heroId:hero.id,stair,store:new GameStore({...base,adventurers,
-    earlyDungeonWorlds:[{floor:1 as const,world}]})};
+    dungeonWorlds:[{floor:1 as const,world}]})};
 }
 
 test("real hero strategy descends ONLY from discovered connected stairs and resumes across saves",()=>{
@@ -420,12 +420,12 @@ test("real hero strategy descends ONLY from discovered connected stairs and resu
   assert.deepEqual(store.state,resumed.state);
   assert.equal(store.state.adventurers.find(h=>h.id===heroId)?.floor,2,
     "Floor depth changes only on a subsequent real movement event at the stair.");
-  const here=store.state.earlyDungeonWorlds?.find(x=>x.floor===1)!.world.heroes
+  const here=store.state.dungeonWorlds?.find(x=>x.floor===1)!.world.heroes
     .find(p=>p.heroId===heroId)!;
   assert.deepEqual({x:here.x,z:here.z},stair,
     "Visited original floor remains saved for future returns.");
   const destination=generateExpeditionLayout(7351,2).entrance;
-  const there=store.state.earlyDungeonWorlds?.find(x=>x.floor===2)!.world.heroes
+  const there=store.state.dungeonWorlds?.find(x=>x.floor===2)!.world.heroes
     .find(p=>p.heroId===heroId)!;
   assert.deepEqual({x:there.x,z:there.z},destination);
   assert.equal(store.state.liveDungeon.plans.some(p=>p.heroId===heroId),false,

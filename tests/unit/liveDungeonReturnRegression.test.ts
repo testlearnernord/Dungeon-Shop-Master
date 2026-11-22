@@ -23,7 +23,7 @@ test("seed 9321: climbing from below can discover a real portal route without fa
   const state={...initial,
     adventurers:initial.adventurers.map(h=>h.id===hero.id?{
       ...h,floor:2 as const,status:"exploring" as const}:h),
-    earlyDungeonWorlds:[{floor:2 as const,world:{
+    dungeonWorlds:[{floor:2 as const,world:{
       ...emptyLevel7World(),heroes:[{heroId:hero.id,...current,visited:[...visited]}],
     }}],
   };
@@ -46,7 +46,7 @@ test("seed 9321: climbing from below can discover a real portal route without fa
   assert.equal(chooseKnownReturnStep(layout,{
     heroId:hero.id,...current,visited}),null);
   const forged=structuredClone(createSave(state));
-  const saved=forged.payload.earlyDungeonWorlds![0].world.heroes[0] as
+  const saved=forged.payload.dungeonWorlds![0].world.heroes[0] as
     {x:number;z:number;visited:number[]};
   const other=dungeonNeighbors(layout,down)[0];
   saved.x=other.x;saved.z=other.z;saved.visited=[index(other)];

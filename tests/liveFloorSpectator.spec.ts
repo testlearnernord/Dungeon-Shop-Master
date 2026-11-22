@@ -34,7 +34,7 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
     const state={
       ...base,adventurers:roster,
       dungeonParties:[{memberIds:[one.id,two.id],floor:1 as const,formedDay:1}],
-      earlyDungeonWorlds:[
+      dungeonWorlds:[
         {floor:1 as const,world:{
           resolvedFeatureIds:[],heroes:[
             {heroId:one.id,...first,visited:[entry(first.x,first.z,layout.width)]},

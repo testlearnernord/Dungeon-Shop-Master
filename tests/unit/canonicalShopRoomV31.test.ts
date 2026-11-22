@@ -6,7 +6,7 @@ import {GameStore} from "../../src/game/gameStore.ts";
 
 test("Alpha v31 stores one physical shopRoom, not a numbered Level-5 room key",()=>{
   const state=createGameState(7351);
-  assert.equal(SIMULATION_VERSION,33);
+  assert.equal(SIMULATION_VERSION,34);
   assert(state.shopRoom);
   assert.equal("level5Room" in state,false);
   const save=structuredClone(createSave(state)) as any;

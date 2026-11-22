@@ -91,21 +91,21 @@ test("Floor 7 uses persistent saved generations and rejects forged save cycles",
     shopEconomy:{...initial.shopEconomy,
       dailySales:{day:3,units:0,revenue:0}},
     adventurers:initial.adventurers.map(h => h.id===hero.id ? result.adventurer : h),
-    level7World:result.world,
+    dungeonWorlds:[{floor:7 as const,world:result.world}],
     // Ignore replay history: this checks the world/save round-trip separately.
     events:initial.events,
   };
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
   const chest=map.features.find(x=>x.kind==="treasure")!;
-  const invalidWorld={...state.level7World,
+  const invalidWorld={...state.dungeonWorlds.find(w=>w.floor===7)!.world,
     resolvedFeatureIds:[chest.id],
     siteCycles:[{id:chest.id,cycle:0,resolvedDay:null}]};
   assert.throws(()=>parseSave(JSON.stringify(createSave({
-    ...state,level7World:invalidWorld,
+    ...state,dungeonWorlds:[{floor:7 as const,world:invalidWorld}],
   }))),/resolvedDay/);
   assert.throws(()=>parseSave(JSON.stringify(createSave({
-    ...state,level7World:{...state.level7World,
-      siteCycles:[{id:"invented-feature",cycle:0,resolvedDay:2}]},
+    ...state,dungeonWorlds:[{floor:7 as const,world:{...state.dungeonWorlds.find(w=>w.floor===7)!.world,
+      siteCycles:[{id:"invented-feature",cycle:0,resolvedDay:2}]}}],
   }))),/ordinary feature/);
 });
 

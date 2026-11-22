@@ -56,8 +56,7 @@ export function selectLiveSpectatorFrame(
        hero.floor>=1&&hero.floor<=9||
        hero.status==="expedition"&&(hero.floor===7||hero.floor===10)))return null;
   const floor=hero.floor as SpatialDungeonFloor;
-  const world=floor===7?state.level7World:
-    state.earlyDungeonWorlds?.find(f=>f.floor===floor)?.world;
+  const world=state.dungeonWorlds.find(f=>f.floor===floor)?.world;
   const layout=spectatorLayout(state.seed,floor);
   const progress=world?.heroes.find(h=>h.heroId===heroId);
   const fight=state.liveDungeon.combats.find(c=>c.heroIds.includes(heroId));

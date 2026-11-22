@@ -35,7 +35,7 @@ function bossEntry(){
     adventurers:base.adventurers.map(h=>selected.find(p=>p.id===h.id)??{
       ...h,floor:"shop" as const,status:"at-shop" as const,
     }),
-    earlyDungeonWorlds:[{floor:9 as const,world:{
+    dungeonWorlds:[{floor:9 as const,world:{
       ...emptyLevel7World(),
       heroes:selected.map(h=>({heroId:h.id,...down,visited})),
     }}],

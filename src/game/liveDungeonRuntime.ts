@@ -1,4 +1,5 @@
-import type {GameState,WorldEvent,EarlyDungeonFloorWorld} from "./gameState.ts";
+import type {GameState,WorldEvent} from "./gameState.ts";
+import {dungeonWorldAt,setDungeonWorld} from "./dungeonWorldState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
@@ -146,9 +147,7 @@ function scheduleLiveCombat(state:GameState):GameState{
 }
 
 function spatialWorld(state:GameState,floor:SpatialDungeonFloor):Level7World{
-  return floor===7?state.level7World:
-    state.earlyDungeonWorlds?.find(entry=>entry.floor===floor)?.world??
-    emptyLevel7World();
+  return dungeonWorldAt(state.dungeonWorlds,floor);
 }
 /** A hero crosses only after physically reaching the floor's entrance.
  * Both entrance and exit share Galvik's cursed portal, independent of
@@ -292,8 +291,7 @@ function commitDungeonTick(state:GameState):GameState {
   const sharedGroups:string[][]=state.liveDungeon.combats
     .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   const stepCounts=new Map(state.liveDungeon.heroes.map(v=>[v.heroId,v]));
-  let level7World=state.level7World;
-  let earlyDungeonWorlds:EarlyDungeonFloorWorld[]=[...(state.earlyDungeonWorlds??[])];
+  let dungeonWorlds=[...state.dungeonWorlds];
   let clearedLevel7=state.dungeonFloors.some(f=>f.floor===7&&f.cleared);
   const clearedLevel10=state.dungeonFloors.some(f=>
     f.floor===CAVE_TROLL_FLOOR&&f.cleared);
@@ -306,9 +304,7 @@ function commitDungeonTick(state:GameState):GameState {
     if(!eligible(hero)||processed.has(hero.id)||
        stepCounts.get(hero.id)?.finished)continue;
     const floor=hero.floor as SpatialDungeonFloor;
-    const world=floor===7?level7World:
-      earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
-      emptyLevel7World();
+    const world=dungeonWorldAt(dungeonWorlds,floor);
     const roster=state.adventurers.map(h=>byId.get(h.id)!);
     const layout=generateExpeditionLayout(state.seed,floor);
     const homeward=returns.find(j=>j.heroId===hero.id&&
@@ -388,9 +384,7 @@ function commitDungeonTick(state:GameState):GameState {
         const destinationLayout=generateExpeditionLayout(state.seed,nextFloor);
         const arrival=priorPlan.action==="ascend"
           ?dungeonDownStair(destinationLayout):destinationLayout.entrance;
-        const previousWorld=nextFloor===7?level7World:
-          earlyDungeonWorlds.find(e=>e.floor===nextFloor)?.world??
-          emptyLevel7World();
+        const previousWorld=dungeonWorldAt(dungeonWorlds,nextFloor);
         const nextHeroes=[...previousWorld.heroes];
         for(const member of crossing){
           const old=nextHeroes.find(p=>p.heroId===member.id);
@@ -414,12 +408,7 @@ function commitDungeonTick(state:GameState):GameState {
             message:member.name+"'s expedition changed depth. Details await a report.",
           });
         }
-        if(nextFloor===7)level7World={...previousWorld,heroes:nextHeroes};
-        else earlyDungeonWorlds=[
-          ...earlyDungeonWorlds.filter(e=>e.floor!==nextFloor),
-          {floor:nextFloor as EarlyDungeonFloorWorld["floor"],
-            world:{...previousWorld,heroes:nextHeroes}},
-        ].sort((a,b)=>a.floor-b.floor);
+        dungeonWorlds=setDungeonWorld(dungeonWorlds,nextFloor,{...previousWorld,heroes:nextHeroes});
         if(crossing.length>=2)sharedGroups.push(crossing.map(h=>h.id));
         continue;
       }
@@ -492,11 +481,7 @@ function commitDungeonTick(state:GameState):GameState {
         arrivals:result.ticks.map(t=>t.replay),state:fight,
         frames:[captureGroupCombatFrame(fight)]});
     }
-    if(floor===7)level7World=result.world;
-    else earlyDungeonWorlds=[
-      ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
-      {floor:floor as EarlyDungeonFloorWorld["floor"],world:result.world},
-    ].sort((a,b)=>a.floor-b.floor);
+    dungeonWorlds=setDungeonWorld(dungeonWorlds,floor,result.world);
     const independent=new Map<string,HeroDungeonDecision>();
     if(!result.pendingCombat)for(const individual of result.ticks){
       if(individual.adventurer.health<=0)continue;
@@ -582,14 +567,12 @@ function commitDungeonTick(state:GameState):GameState {
   }
   const finalRoster=state.adventurers.map(hero=>byId.get(hero.id)!);
   const party=settleLivePartyRelationships(state.dungeonParties??[],
-    sharedGroups,finalRoster,floor=>floor===7?level7World:
-      earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
-      emptyLevel7World(),plans,state.seed,day,tick);
+    sharedGroups,finalRoster,floor=>dungeonWorldAt(dungeonWorlds,floor),plans,state.seed,day,tick);
   const next:GameState={
     ...state,worldClock:clock,
     dungeonParties:party.parties,
     adventurers:finalRoster,
-    earlyDungeonWorlds,level7World,
+    dungeonWorlds,
     rngState,
     dungeonFloors:[
       ...state.dungeonFloors,
@@ -621,8 +604,7 @@ function commitLiveCombatTick(state:GameState):GameState{
     throw new RangeError("Unscheduled live battle advance.");
   const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
   const counts=new Map(state.liveDungeon.heroes.map(h=>[h.heroId,h]));
-  let level7World=state.level7World;
-  let earlyDungeonWorlds=[...(state.earlyDungeonWorlds??[])];
+  let dungeonWorlds=[...state.dungeonWorlds];
   const activities:WorldEvent[]=[];
   const continuing:LiveDungeonCombat[]=[];
   let returns=[...state.liveDungeon.returns];
@@ -739,15 +721,10 @@ function commitLiveCombatTick(state:GameState):GameState{
       return hero;
     });
     const floor=fight.encounter.floor;
-    const world=floor===7?level7World:earlyDungeonWorlds.find(e=>
-      e.floor===floor)?.world??emptyLevel7World();
+    const world=dungeonWorldAt(dungeonWorlds,floor);
     const settled=settleSpatialDungeonCombat(party,world,state.day,
       fight.encounter,combat,replay,fight.arrivals,state.seed);
-    if(floor===7)level7World=settled.world;
-    else earlyDungeonWorlds=[
-      ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
-      {floor:floor as EarlyDungeonFloorWorld["floor"],world:settled.world},
-    ].sort((a,b)=>a.floor-b.floor);
+    dungeonWorlds=setDungeonWorld(dungeonWorlds,floor,settled.world);
     if(fight.heroIds.length>=2) {
       const survivors=settled.ticks.filter(t=>t.adventurer.health>0)
         .map(t=>t.adventurer.id);
@@ -786,14 +763,12 @@ function commitLiveCombatTick(state:GameState):GameState{
   }
   const roster=state.adventurers.map(h=>byId.get(h.id)!);
   const parties=settleLivePartyRelationships(state.dungeonParties??[],
-    sharedGroups,roster,floor=>floor===7?level7World:
-      earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
-      emptyLevel7World(),plans,state.seed,state.day,state.worldClock.tick);
+    sharedGroups,roster,floor=>dungeonWorldAt(dungeonWorlds,floor),plans,state.seed,state.day,state.worldClock.tick);
   const active=continuing.length>0||!!partyBossContinuing;
   const next:GameState={...state,
     worldClock:clock,rngState,
     adventurers:roster,dungeonParties:parties.parties,
-    earlyDungeonWorlds,level7World,
+    dungeonWorlds,
     dungeonFloors:[
       ...state.dungeonFloors,
       ...(partyBossCleared&&!state.dungeonFloors.some(f=>f.floor===10&&f.cleared)
@@ -901,15 +876,13 @@ export function finishLiveDungeonDay(
   }
   // Reenter at a seeded known floor ENTRANCE, never the last fight tile;
   // retain personally visited cells, site generations and other heroes.
-  let morningWorlds=closed.earlyDungeonWorlds??[];
-  let morningLevel7=closed.level7World;
+  let morningWorlds=[...closed.dungeonWorlds];
   for(const floor of [1,2,3,4,5,6,7,8,9] as const){
     const ids=adventurers.filter(h=>reenteringIds.has(h.id)&&h.floor===floor)
       .map(h=>h.id);
     if(!ids.length)continue;
     const layout=generateExpeditionLayout(state.seed,floor);
-    const saved=floor===7?morningLevel7:
-      morningWorlds.find(w=>w.floor===floor)?.world??emptyLevel7World();
+    const saved=dungeonWorldAt(morningWorlds,floor);
     const heroes=[...saved.heroes];
     const spawn=layout.entrance,cell=spawn.z*layout.width+spawn.x;
     for(const id of ids){
@@ -920,13 +893,10 @@ export function finishLiveDungeonDay(
       if(oldIndex>=0)heroes[oldIndex]=landed;
       else heroes.push(landed);
     }
-    if(floor===7)morningLevel7={...saved,heroes};
-    else morningWorlds=[...morningWorlds.filter(w=>w.floor!==floor),
-      {floor,world:{...saved,heroes}}].sort((a,b)=>a.floor-b.floor);
+    morningWorlds=setDungeonWorld(morningWorlds,floor,{...saved,heroes});
   }
   const next:GameState={
-    ...closed,day,worldClock:clock,earlyDungeonWorlds:morningWorlds,
-    level7World:morningLevel7,
+    ...closed,day,worldClock:clock,dungeonWorlds:morningWorlds,
     shopTraffic:{day,tick:clock.tick,initialized:false,actors:[],
       claims:[],shelfOwners:[],doorY:{portal:0}},
     shopEconomy:{...closed.shopEconomy,
@@ -943,9 +913,7 @@ export function finishLiveDungeonDay(
   };
   const finalPlans=new Map(next.liveDungeon.plans.map(p=>[p.heroId,p] as const));
   const party=settleLivePartyRelationships(state.dungeonParties??[],
-    [],adventurers,floor=>floor===7?next.level7World:
-      next.earlyDungeonWorlds?.find(e=>e.floor===floor)?.world??
-      emptyLevel7World(),finalPlans,state.seed,day,clock.tick);
+    [],adventurers,floor=>dungeonWorldAt(next.dungeonWorlds,floor),finalPlans,state.seed,day,clock.tick);
   const committed={...next,dungeonParties:party.parties,
     events:compactReplayFootage([...next.events,...party.events],
       day,state.savedReplayIds)};

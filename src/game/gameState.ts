@@ -22,11 +22,12 @@ import type { BossCombatReplay } from "./bossCombatReplay.ts";
 import type {GroupCombatReplay} from "./groupCombat.ts";
 import {compactReplayFootage} from "./replayRetention.ts";
 import {
-  emptyLevel7World, getLevel7Progress,
+  getLevel7Progress,
   simulateSpatialDungeonPartyDay,
-  type Level7Replay, type Level7World, type Level7Tick,
+  type Level7Replay, type Level7Tick,
   type SpatialDungeonFloor,
 } from "./level7Exploration.ts";
+import { dungeonWorldAt, setDungeonWorld, type DungeonFloorWorld } from "./dungeonWorldState.ts";
 import { DEFAULT_SEED, SeededRandom } from "./random.ts";
 import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
 import { createBedroomFurnitureLayout, type BedroomFurnitureLayout } from "./bedroomFurniture.ts";
@@ -36,14 +37,10 @@ import { returnUnpaidCartsAtClose, type ShopCart } from "./shopCarts.ts";
 import { arrivalEvent, scheduleShopVisit } from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 33;
+export const SIMULATION_VERSION = 34;
 
 /** Kept for read-only historical v13 outcome records. No live roll simulation. */
 export type DungeonOutcome = "advance" | "stay" | "retreat" | "death";
-export interface EarlyDungeonFloorWorld {
-  readonly floor: 1 | 2 | 3 | 4 | 5 | 6 | 8 | 9;
-  readonly world: Level7World;
-}
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -138,9 +135,8 @@ export interface GameState {
   readonly shopCarts: readonly ShopCart[];
   readonly shopDebts: readonly ShopDebt[];
   readonly dungeonFloors: readonly DungeonFloorProgress[];
-  readonly level7World: Level7World;
-  /** v13-compatible optional extension; no independent early-floor RNG engine. */
-  readonly earlyDungeonWorlds?: readonly EarlyDungeonFloorWorld[];
+  /** Canonical spatial state for ordinary Dungeon Floors 1–9. */
+  readonly dungeonWorlds: readonly DungeonFloorWorld[];
   /** Optional v13-compatible, saved voluntary multi-day dungeon groups. */
   readonly dungeonParties?: readonly DungeonPartyState[];
   readonly seed: number;
@@ -189,8 +185,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     shopCarts: [],
     shopDebts: [],
     dungeonFloors: [],
-    level7World: emptyLevel7World(),
-    earlyDungeonWorlds: [],
+    dungeonWorlds: [],
     dungeonParties: [],
     seed,
     rngState: generated.rngState,
@@ -231,9 +226,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   };
   const postTradeHeroes=closed.adventurers;
   let clearedLevel7 = state.dungeonFloors.some((entry) => entry.floor === 7 && entry.cleared);
-  let level7World = state.level7World;
-  let earlyDungeonWorlds: EarlyDungeonFloorWorld[] =
-    [...(state.earlyDungeonWorlds??[])];
+  let dungeonWorlds: DungeonFloorWorld[] = [...state.dungeonWorlds];
   // Compute real pre-expedition healing for everyone before picking a party,
   // including companions whose entries come later in the stable roster.
   // Their healing events still commit once when each roster entry is visited.
@@ -258,9 +251,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
     if(ready.status==="exploring"&&typeof ready.floor==="number"&&
        ready.floor>=1&&ready.floor<=9){
       const floor=ready.floor as SpatialDungeonFloor;
-      const world=floor===7?level7World:
-        earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world ??
-        emptyLevel7World();
+      const world=dungeonWorldAt(dungeonWorlds,floor);
       let tick=committedFights.get(ready.id);
       if(!tick){
         const layout=generateExpeditionLayout(state.seed,floor);
@@ -288,11 +279,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
             .map(t=>t.adventurer),proposals);
         for(const [id,decision] of negotiations)
           coordinatedDecisions.set(id,decision);
-        if(floor===7)level7World=result.world;
-        else earlyDungeonWorlds=[
-          ...earlyDungeonWorlds.filter(entry=>entry.floor!==floor),
-          {floor:floor as EarlyDungeonFloorWorld["floor"],world:result.world},
-        ].sort((a,b)=>a.floor-b.floor);
+        dungeonWorlds=setDungeonWorld(dungeonWorlds,floor,result.world);
         tick=committedFights.get(ready.id)!;
       }
       const progress=getLevel7Progress(tick.world,ready.id,
@@ -333,18 +320,18 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
       let tick=committedFights.get(ready.id);
       if(!tick){
         const layout=generateExpeditionLayout(state.seed,7);
-        const group=choosePersistentDungeonParty(ready,readyRoster,level7World,
+        const group=choosePersistentDungeonParty(ready,readyRoster,dungeonWorldAt(dungeonWorlds,7),
           layout,processed,state.dungeonParties??[]);
         if(group.length>1)sharedEncounters.push(group.map(member=>member.id));
         const activeIds=new Set(readyRoster.filter(person=>
           person.status==="expedition"&&person.floor===7).map(p=>p.id));
-        const result=simulateSpatialDungeonPartyDay(group,level7World,
+        const result=simulateSpatialDungeonPartyDay(group,dungeonWorldAt(dungeonWorlds,7),
           state.seed,day,activeIds);
         for(const individual of result.ticks){
           committedFights.set(individual.adventurer.id,individual);
           processed.add(individual.adventurer.id);
         }
-        level7World=result.world;
+        dungeonWorlds=setDungeonWorld(dungeonWorlds,7,result.world);
         tick=committedFights.get(ready.id)!;
       }
       if(tick.replay.outcome==="completed")clearedLevel7=true;
@@ -388,9 +375,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   // Their committed event/replay history remains untouched.
   const livingIds=new Set(adventurers.filter(hero=>hero.status!=="dead")
     .map(hero=>hero.id));
-  level7World={...level7World,
-    heroes:level7World.heroes.filter(progress=>livingIds.has(progress.heroId))};
-  earlyDungeonWorlds=earlyDungeonWorlds.map(entry=>({
+  dungeonWorlds=dungeonWorlds.map(entry=>({
     ...entry,world:{...entry.world,
       heroes:entry.world.heroes.filter(progress=>livingIds.has(progress.heroId))},
   }));
@@ -399,9 +384,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
   // SAME numbered floor. Individual choices can dissolve a relationship.
   const dungeonParties=settlePersistentDungeonParties(
     state.dungeonParties??[],sharedEncounters,adventurers,
-    (floor:SpatialDungeonFloor)=>floor===7?level7World:
-      earlyDungeonWorlds.find(entry=>entry.floor===floor)?.world??
-      emptyLevel7World(),
+    (floor:SpatialDungeonFloor)=>dungeonWorldAt(dungeonWorlds,floor),
     state.seed,day,floorChoices,
   );
   // Emit one legitimate join/leave per member and kind, only on a
@@ -431,8 +414,7 @@ export function advanceDay(state: GameState): { state: GameState; events: readon
     state: {
       ...closed, day, worldClock,shopTraffic:emptyShopTraffic(day,worldClock.tick),
       adventurers, rngState, shopEconomy: nextEconomy,
-      level7World,
-      earlyDungeonWorlds,
+      dungeonWorlds,
       dungeonParties,
       dungeonFloors: [
         ...state.dungeonFloors,

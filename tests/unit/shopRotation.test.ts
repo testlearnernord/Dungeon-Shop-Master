@@ -79,7 +79,7 @@ test("two FULL days outside preserve gear and gold, consume owned healing, then 
       assert.equal(current.health,rested.health);
       assert.deepEqual(current.inventory,rested.inventory);
       const layout=generateExpeditionLayout(injured.seed,1);
-      const pos=uninterrupted.state.earlyDungeonWorlds?.find(w=>w.floor===1)?.world
+      const pos=uninterrupted.state.dungeonWorlds?.find(w=>w.floor===1)?.world
         .heroes.find(h=>h.heroId===hero.id);
       assert(pos);
       assert.deepEqual({x:pos.x,z:pos.z},layout.entrance);

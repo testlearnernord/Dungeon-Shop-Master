@@ -1,0 +1,32 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createGameState,SIMULATION_VERSION} from "../../src/game/gameState.ts";
+import {createSave,parseSave} from "../../src/game/campaignSave.ts";
+import {dungeonWorldAt,setDungeonWorld} from "../../src/game/dungeonWorldState.ts";
+import {emptyLevel7World} from "../../src/game/level7Exploration.ts";
+
+test("Alpha v34 uses exactly one immutable ordinary-floor checkpoint collection",()=>{
+  assert.equal(SIMULATION_VERSION,34);
+  const initial=createGameState(7351);
+  const floor7=emptyLevel7World();
+  const floor2=emptyLevel7World();
+  const first=setDungeonWorld(initial.dungeonWorlds,7,floor7);
+  const both=setDungeonWorld(first,2,floor2);
+  assert.deepEqual(initial.dungeonWorlds,[],"writing a floor may not mutate an older campaign");
+  assert.deepEqual(both.map(w=>w.floor),[2,7]);
+  assert.equal(dungeonWorldAt(both,7),floor7);
+  assert.equal(dungeonWorldAt(both,2),floor2);
+  const updated=setDungeonWorld(both,7,{...floor7,heroes:[]});
+  assert.deepEqual(updated.map(w=>w.floor),[2,7],"a later Floor-7 tick replaces, never duplicates, its world");
+  const state={...initial,dungeonWorlds:updated};
+  assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
+  const duplicate=structuredClone(createSave(state)) as any;
+  duplicate.payload.dungeonWorlds.push(duplicate.payload.dungeonWorlds[1]);
+  assert.throws(()=>parseSave(JSON.stringify(duplicate)),/dungeonWorlds/);
+  const falseFloor=structuredClone(createSave(state)) as any;
+  falseFloor.payload.dungeonWorlds[0].floor=10;
+  assert.throws(()=>parseSave(JSON.stringify(falseFloor)),/dungeonWorlds/);
+  const obsolete=structuredClone(createSave(state)) as any;
+  obsolete.payload.level7World=emptyLevel7World();
+  assert.throws(()=>parseSave(JSON.stringify(obsolete)),/level7World|payload/);
+});

@@ -178,7 +178,7 @@ test("late-night ordinary encounters defer their start instead of trapping Galvi
     {...h,status:"exploring" as const,floor:1 as const}:{
       ...h,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0,
     }),
-    earlyDungeonWorlds:[{floor:1 as const,world:{
+    dungeonWorlds:[{floor:1 as const,world:{
       ...emptyLevel7World(),resolvedFeatureIds:layout.features.filter(f=>f.id!==site.id)
         .map(f=>f.id),
       heroes:[{heroId:hero.id,...approach,visited:walkable}],

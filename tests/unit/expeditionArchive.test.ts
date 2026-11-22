@@ -71,7 +71,7 @@ test("real saved 60Hz fight can be pinned, bookmarked and reloaded without chang
   const index=monster.z*layout.width+monster.x;
   const visited=layout.tiles.flatMap((cell,i)=>cell!=="wall"&&i!==index?[i]:[]);
   const hero=initial.adventurers.find(h=>h.status==="exploring"&&h.floor===1)!;
-  const store=new GameStore({...initial,earlyDungeonWorlds:[{
+  const store=new GameStore({...initial,dungeonWorlds:[{
     floor:1 as const,world:{...emptyLevel7World(),heroes:[{
       heroId:hero.id,...approach,visited,
     }]},

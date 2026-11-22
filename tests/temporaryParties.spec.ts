@@ -29,7 +29,7 @@ test("Temporary Party appears in day feed, both roster and saved dungeon footage
         pair.find(candidate=>candidate.id===hero.id)??{
           ...hero,status:"at-shop" as const,floor:"shop" as const,shopStayDays:0,
         }),
-      earlyDungeonWorlds:[{floor:1 as const,world}],
+      dungeonWorlds:[{floor:1 as const,world}],
     };
     const confirmed=advanceDay(prepared).state;
     await new CampaignStorage().saveGame(confirmed);

@@ -56,8 +56,7 @@ export function selectLiveFloorSpectatorFrame(
 ):LiveFloorSpectatorFrame|null {
   if(!state.liveDungeon.enabled||!LIVE_SPECTATOR_FLOORS.includes(floor))
     return null;
-  const world=floor===7?state.level7World:
-    state.earlyDungeonWorlds?.find(entry=>entry.floor===floor)?.world;
+  const world=state.dungeonWorlds.find(entry=>entry.floor===floor)?.world;
   const progress=new Map((world?.heroes??[]).map(h=>[h.heroId,h]));
   const running=state.liveDungeon.combats.filter(f=>f.encounter.floor===floor);
   const fights:LiveFloorFight[]=running.flatMap(f=>{
