@@ -8,7 +8,7 @@ import {replaceCounterPlacement,replaceShelfPlacement,
 import {shopServiceReachabilityProblem} from "./shopServiceReachability.ts";
 import {createEmptyShelfSlots} from "./economy.ts";
 import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
-import {cellarChestProblem} from "./cellarRoom.ts";
+import {cellarChestProblem,cellarTableProblem} from "./cellarRoom.ts";
 
 export type FurniturePlacementResult={
   readonly state:GameState;
@@ -32,12 +32,22 @@ export function resolveFurniturePlacement(
   });
   if(draft.id==="galvik-portrait")return unchanged("The portrait is a fixed secret passage.", "The portrait is a fixed secret passage.");
   if(draft.id==="cellar-chest"){
-    const problem=cellarChestProblem(draft,state.cellarRoom);
+    const problem=cellarChestProblem(draft,state.cellarRoom) ??
+      cellarTableProblem(state.cellarTable,state.cellarRoom,draft);
     if(problem)return unchanged(problem,problem);
     const old=state.cellarChest;
     if(old.x===draft.x&&old.z===draft.z&&old.rotation===draft.rotation)
       return {state,problem:null,message:"Cellar chest placed."};
     return {state:{...state,cellarChest:{...draft}},problem:null,message:"Cellar chest placed."};
+  }
+  if(draft.id==="cellar-table"){
+    const problem=cellarTableProblem(draft,state.cellarRoom,state.cellarChest);
+    if(problem)return unchanged(problem,problem);
+    const old=state.cellarTable;
+    if(old.x===draft.x&&old.z===draft.z&&old.rotation===draft.rotation)
+      return {state,problem:null,message:"Galvik's Table placed."};
+    return {state:{...state,cellarTable:{...draft}},
+      problem:null,message:"Galvik's Table placed."};
   }
   if(draft.id==="adventurer-board"){
     const result=replaceRosterBoard(state.rosterBoard,draft,

@@ -24,10 +24,10 @@ export interface ShopFloorBounds {
 }
 
 export type FurnitureKind=`shelf-${number}`|"counter"|
-  "desk"|"chest"|"candle"|"bed"|"adventurer-board"|"galvik-portrait"|"cellar-chest";
+  "desk"|"chest"|"candle"|"bed"|"adventurer-board"|"galvik-portrait"|"cellar-chest"|"cellar-table";
 export type FurnitureMount="shop-floor"|"private-floor"|"shop-wall";
 export type FurniturePurpose="stock"|"checkout"|"sleep"|"debt"|"storage"|
-  "light"|"roster"|"decoration";
+  "light"|"roster"|"decoration"|"observation";
 export type FurniturePoint=ShopFloorPoint;
 export type FurnitureBounds=ShopFloorBounds;
 export interface FurniturePose {
@@ -89,6 +89,8 @@ export const FURNITURE_REGISTRY={
     surfaces:["floor"],width:1.04,depth:.72,height:.9,focusY:.45,collides:true},
   "cellar-chest":{label:"Cellar storage chest",mount:"private-floor",purpose:"storage",
     surfaces:["floor"],width:1.04,depth:.72,height:.9,focusY:.45,collides:true},
+  "cellar-table":{label:"Galvik's Table",mount:"private-floor",purpose:"observation",
+    surfaces:["floor"],width:2.7,depth:1.75,height:1.4,focusY:.7,collides:true},
   candle:{label:"Bedside candle + stool",mount:"private-floor",purpose:"light",
     surfaces:["floor"],width:.66,depth:.66,height:1.2,focusY:.60,collides:true},
   bed:{label:"Galvik's bed",mount:"private-floor",purpose:"sleep",
