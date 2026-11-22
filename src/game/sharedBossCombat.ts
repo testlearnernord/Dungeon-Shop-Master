@@ -1,3 +1,6 @@
+import type {AdventurerState} from "./adventurers.ts";
+import {heroProgression} from "./heroProgression.ts";
+import {canAttemptCaveTroll,CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
 import {
   createCombatPreview,type ArenaCue,type CombatPreviewOptions,
   type CombatPreviewState,type ActorPhase,type BossPhase,
@@ -64,6 +67,57 @@ export function caveTrollGroupOptions(
         grappleDamage:42,staggerThreshold:62,
       },
     ],
+  };
+}
+
+/**
+ * Floor-10 party boss encounter. It uses the SAME GroupCombat 60Hz motor,
+ * Troll grapple/throw signatures, existing hero gear, real owned medicines,
+ * and bounded earned level bonuses as the LIVE dungeon and Combat Lab.
+ *
+ * Calling this factory does NOT invent a party or start a boss fight. The
+ * saved world scheduler must authenticate the actual co-located party and
+ * commit the encounter. Old solo Floor-6 preview fixtures are untouched.
+ */
+export function caveTrollPartyOptions(
+  party:readonly AdventurerState[],tacticsSeed:number,
+):GroupCombatOptions{
+  if(!canAttemptCaveTroll(party.length,party.every(h=>h.level6Permit))||
+    party.some(hero=>hero.status==="dead"||hero.health<=0)||
+    new Set(party.map(hero=>hero.id)).size!==party.length)
+    throw new RangeError("Level "+CAVE_TROLL_FLOOR+" requires a real permitted 2–3 hero party.");
+  if(!Number.isSafeInteger(tacticsSeed)||tacticsSeed<0||tacticsSeed>0xffffffff)
+    throw new RangeError("Invalid saved boss tactics seed");
+  const positions=[{x:-4,z:-9},{x:0,z:-9},{x:4,z:-9}];
+  const heroes=party.map((hero,i)=>{
+    const p=heroProgression(hero);
+    const solo=caveTrollGroupOptions({
+      role:hero.role,sword:hero.equipment.weapon==="Iron Sword",
+      armor:hero.equipment.armor==="Leather Vest",
+      health:hero.health,maxHealth:p.maxHealth,
+      healingSupplies:Math.min(10,hero.inventory.healing),
+      strength:p.strength,agility:p.agility,intellect:p.intellect,
+      progressionDamageBonus:p.damageBonus,
+      progressionArmorBonus:p.armorBonus,
+      progressionMagicHeals:p.bonusMagicHeals,
+      tacticsSeed,
+    }).actors[0];
+    return {...solo,id:hero.id,...positions[i]};
+  });
+  const oldTroll=caveTrollGroupOptions({
+    role:"tank",sword:false,armor:false,
+    health:50,maxHealth:50,healingSupplies:0,tacticsSeed,
+  }).actors[1];
+  return {
+    environment:"cave-lava",tacticsSeed,
+    bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},
+    obstacles:[],actors:[...heroes,{
+      ...oldTroll,
+      // The unique Floor-10 Cave Troll is a party-grade boss, not the
+      // previous single-hero Floor-6 training encounter.
+      hp:560,maxHp:560,damage:42,armor:13,grappleDamage:55,
+      staggerThreshold:92,
+    }],
   };
 }
 
