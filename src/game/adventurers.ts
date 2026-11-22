@@ -5,7 +5,7 @@ import type { WorldEvent } from "./gameState.ts";
 
 export type AdventurerRole = "tank" | "DPS" | "healer";
 export type AdventurerStatus = "exploring" | "traveling" | "at-shop" | "returning" | "expedition" | "departing" | "off-duty" | "dead";
-export type DungeonFloor = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type DungeonFloor = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export interface AdventurerState {
   readonly id: string;
