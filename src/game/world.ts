@@ -106,6 +106,14 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   box(scene, "back-left-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(-6.375, 2, 7), rock, true, surfaces.stone);
   box(scene, "back-middle-wall", { width: 5.5, height: 4, depth: 0.4 }, new Vector3(0, 2, 7), rock, true, surfaces.stone);
   box(scene, "back-right-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(6.375, 2, 7), rock, true, surfaces.stone);
+  // One physical threshold. The obsolete second room opening is sealed
+  // with real collision, not merely a removed sign. During a pre-upgrade
+  // saved right-gate NPC transit the sealed stone temporarily retracts
+  // until that checkpoint's original customer finishes crossing.
+  const obsoleteEntranceSeal=box(scene,"obsolete-shop-entrance-seal",
+    {width:2.45,height:4,depth:0.45},new Vector3(4,2,7),
+    rock,true,surfaces.stone);
+  obsoleteEntranceSeal.isPickable=false;
   for (const x of [-5.3, -2.7, 2.7, 5.3]) {
     box(scene, `corridor-wall-${x}`, { width: 0.25, height: 4, depth: 5.5 }, new Vector3(x, 2, 9.65), rock, true, surfaces.stone);
   }
