@@ -107,10 +107,14 @@ test("strategic choices respond to actual HP, equipment, loot and map knowledge"
   const injured={...hero,health:1};
   assert.deepEqual(chooseHeroDungeonDecision(injured,progress,replay),
     {goal:"resupply",action:"shop"});
-  const loaded={...hero,inventory:{...hero.inventory,finds:{"iron-ore":2}}};
+  const loaded={...hero,inventory:{...hero.inventory,finds:{"iron-ore":4}}};
   const chestReplay={...replay,
     steps:[...replay.steps,{x:1,z:2,t:1,action:"treasure" as const,hp:hero.health}]};
   assert.equal(chooseHeroDungeonDecision(loaded,progress,chestReplay).action,"shop");
+  assert.notEqual(chooseHeroDungeonDecision({...loaded,
+    inventory:{...loaded.inventory,finds:{"iron-ore":2}}},progress,
+    chestReplay).action,"shop",
+    "One chest alone cannot break a well-prepared travelling party");
   assert.notEqual(chooseHeroDungeonDecision(loaded,progress,replay).action,"shop",
     "Unsold old finds must not cause a repeated automatic shop return");
   const floor4={...hero,floor:4 as const};
