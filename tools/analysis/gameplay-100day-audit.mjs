@@ -105,6 +105,11 @@ function actShop(store,mode,metrics){
   if(mode!=="absent")restock(store,mode,metrics);
   const people=store.state.adventurers.filter(h=>h.status==="at-shop");
   for(const hero of people){
+    // The real player can grant this saved permission only while a living
+    // hero visits Galvik. Exercise that actual GameStore action so a
+    // natural Floor-10 attempt is possible, never teleport the party.
+    if(!hero.bossPass&&store.setBossPass(hero.id,true))
+      metrics.bossPassesGranted++;
     const forecast=forecastShoppingIntents(store.state).get(hero.id);
     if(!forecast)continue;
     if(mode!=="absent" && forecast.items.length){
@@ -120,7 +125,7 @@ function actShop(store,mode,metrics){
         const msg=store.payReservedCart(hero.id,false);
         if(store.state.shopEconomy.balance>before) {
           metrics.servedCustomers++;
-          store.completePhysicalShopExit(hero.id,13);
+          if(store.completePhysicalShopExit(hero.id,13))metrics.gateExits++;
           continue;
         }
         add(metrics.failedCheckout,msg,1);
@@ -132,7 +137,7 @@ function actShop(store,mode,metrics){
       store.startShopRequest(hero.id,forecast.wantedItemId,"unavailable");
     }else {
       store.walkOutWithoutPurchase(hero.id,forecast.reason);
-      metrics.unservedCustomers++;
+      // Count actual committed shop-walkout events in the day ledger.
     }
   }
   // Model the observed exit at the real door through its original API.
@@ -142,7 +147,11 @@ function actShop(store,mode,metrics){
   }
 }
 function summarizeEvents(metrics,added,knownDead){
+  const bossEntryTicks=new Set();
   for(const e of added){
+    if(e.type==="dungeon-live"&&
+       e.message?.includes(" entered Floor 10 together to challenge the Cave Troll."))
+      bossEntryTicks.add(e.day+":"+e.worldTick);
     add(metrics.eventTypes,e.type,1);
     if(e.type==="sale"){
       add(metrics.salesUnits,e.itemId??"unknown",e.quantity??0);
@@ -157,6 +166,7 @@ function summarizeEvents(metrics,added,knownDead){
         encounter.combat?.outcome??"unknown",1);
     }
   }
+  metrics.bossAttempts+=bossEntryTicks.size;
 }
 function classifyDeaths(metrics,previous,state,added) {
   const old=new Map(previous.map(h=>[h.id,h]));
@@ -185,13 +195,15 @@ function run(mode){
   const store=setup(mode);
   const initial=snap(store.state,0);
   const metrics={
-    mode,seed:SEED,daysRequested:DAYS,model:"game engine, scripted storefront/observed exit",
+    mode,seed:SEED,daysRequested:DAYS,
+    model:"real GameStore, scripted storefront and manual boss passes",
     starting:initial, milestones:[initial], eventTypes:{}, salesUnits:{},
     salesRevenue:{},healingUsed:{},credits:{},replayStepActions:{},
     encounterOutcomes:{}, deathCauses:{},deathFloors:{},deathRecords:[],
     wholesaleUnits:{},wholesaleSpent:0,influxGold:0,
     lateEventTypes:{}, xpGrowthDays:[], servedCustomers:0,
-    unservedCustomers:0,gateExits:0,failedCheckout:{},nextRequestId:1,
+    unservedCustomers:0,gateExits:0,bossPassesGranted:0,
+    bossAttempts:0,failedCheckout:{},nextRequestId:1,
   };
   for(let completed=1;completed<=DAYS;completed++){
     const before=store.state.adventurers;
@@ -215,7 +227,7 @@ function run(mode){
       metrics.xpGrowthDays.push(completed);
     classifyDeaths(metrics,before,store.state,added);
     const result=snap(store.state,completed);
-    if([1,5,10,20,25,50,75,100,150,200].includes(completed)||
+    if([1,5,10,20,25,50,75,80,100,150,200].includes(completed)||
        completed===DAYS)metrics.milestones.push(result);
     if(completed%10===0||completed===DAYS)
       console.log("AUDIT_PROGRESS "+JSON.stringify({
@@ -227,6 +239,10 @@ function run(mode){
   const final=snap(store.state,DAYS);
   metrics.final=final;
   metrics.newHeroes=sum(store.state.events,e=>e.type==="influx"?1:0);
+  // Request expiries are committed asynchronously by the LIVE clock, not
+  // necessarily by a direct shopper action in actShop().
+  metrics.unservedCustomers=metrics.eventTypes["shop-walkout"]??0;
+  metrics.bossVictory=final.floorsCleared.includes(10);
   metrics.paidUnits=sum(Object.values(metrics.salesUnits),x=>x);
   metrics.paidGold=sum(Object.values(metrics.salesRevenue),x=>x);
   metrics.debtOutstanding=sum(store.state.shopDebts,d=>d.outstandingGold);
