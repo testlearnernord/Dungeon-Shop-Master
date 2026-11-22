@@ -110,15 +110,15 @@ test("saving is bounded and unavailable or invented records cannot be pinned",()
   assert.throws(()=>parseSave(JSON.stringify(save)),/savedReplayIds/);
 });
 
-test("current Expedition Archive never projects hidden fight outcome text or secret resources",()=>{
-  const original=createGameState(7351);
-  const hero=original.adventurers[0];
-  const event:WorldEvent={
-    id:"day-1:"+hero.id+":level6-combat",day:1,type:"level6-combat",
-    adventurerId:hero.id,message:"SECRET: 999 gold, death, hidden rare loot",
-    combatOutcome:"death",combatReplay:{} as NonNullable<WorldEvent["combatReplay"]>,
-  };
-  const baseline={...original,events:[event]};
+test("current Expedition Archive does not disclose unobserved fight outcome or secret resources",()=>{
+  const source=createGameState(7351),hero=source.adventurers[0];
+  const explorer={...hero,status:"exploring" as const,floor:6 as const};
+  const progressed=advanceDay({...source,adventurers:source.adventurers.map(h=>
+    h.id===hero.id?explorer:h)}).state;
+  const event=progressed.events.find(e=>e.type==="dungeon-exploration"&&
+    e.adventurerId===hero.id&&e.dungeonReplay?.floor===6);
+  assert(event?.dungeonReplay);
+  const baseline={...progressed,events:[event]};
   const visible=selectExpeditionArchive(baseline);
   assert.equal(visible.length,1);
   assert.equal(visible[0].kind,"combat");
@@ -126,20 +126,18 @@ test("current Expedition Archive never projects hidden fight outcome text or sec
   assert.equal(visible[0].hasReplay,true);
   assert.equal(visible[0].heroId,hero.id);
   const hiddenChange={...baseline,
-    adventurers:original.adventurers.map(h=>h.id===hero.id?{
+    adventurers:progressed.adventurers.map(h=>h.id===hero.id?{
       ...h,health:0,status:"dead" as const,level:99,xp:99999,gold:999999,
       inventory:{...h.inventory,loot:9999},
     }:h),
-    events:[{...event,message:"VICTORY: 3000 gold, secret chamber",
-      combatOutcome:"victory" as const,
-      combatReplay:{superSecret:"do not reveal"} as unknown as NonNullable<WorldEvent["combatReplay"]>}],
+    events:[{...event,message:"VICTORY: 3000 gold, secret chamber"}],
   };
   assert.deepEqual(selectExpeditionArchive(hiddenChange),visible,
-    "A list entry must not reveal the new combat outcome, loot, HP, XP or gold");
+    "Archive cards cannot expose private outcome, HP, XP, gold or loot");
   assert(!/SECRET|VICTORY|999|death|secret chamber/i.test(JSON.stringify(visible)));
   const unchanged=structuredClone(hiddenChange);
   selectExpeditionArchive(hiddenChange);
-  assert.deepEqual(hiddenChange,unchanged,"Archive projection must not write gameplay");
+  assert.deepEqual(hiddenChange,unchanged,"Archive reads never mutate state");
 });
 
 test("authentic Level-10 party footage is browsable and pinnable in the same archive",()=>{
