@@ -7,6 +7,12 @@ on:
     paths:
       - tools/analysis/gameplay-100day-audit.mjs
       - .github/workflows/gameplay-100day-audit.yml
+      - src/game/liveDungeonRuntime.ts
+      - src/game/level7Exploration.ts
+      - src/game/campaignSave.ts
+      - src/game/shopArrivals.ts
+      - tests/unit/liveDungeonReturnRegression.test.ts
+      - tests/unit/liveDungeonWorld.test.ts
   workflow_dispatch:
 
 permissions:
