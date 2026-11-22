@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createGameState,advanceDay,type WorldEvent} from "../../src/game/gameState.ts";
+import {realSpatialTapeFixture} from "./realSpatialTapeFixture.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {selectExpeditionArchive,archiveAvailableDays,archiveWorldTime,
@@ -111,13 +112,9 @@ test("saving is bounded and unavailable or invented records cannot be pinned",()
 });
 
 test("current Expedition Archive does not disclose unobserved fight outcome or secret resources",()=>{
-  const source=createGameState(7351),hero=source.adventurers[0];
-  const explorer={...hero,status:"exploring" as const,floor:6 as const};
-  const progressed=advanceDay({...source,adventurers:source.adventurers.map(h=>
-    h.id===hero.id?explorer:h)}).state;
-  const event=progressed.events.find(e=>e.type==="dungeon-exploration"&&
-    e.adventurerId===hero.id&&e.dungeonReplay?.floor===6);
-  assert(event?.dungeonReplay);
+  const {state:progressed,event}=realSpatialTapeFixture(6,"monster");
+  const hero=progressed.adventurers.find(h=>h.id===event.adventurerId)!;
+  assert(event.dungeonReplay);
   const baseline={...progressed,events:[event]};
   const visible=selectExpeditionArchive(baseline);
   assert.equal(visible.length,1);
@@ -176,14 +173,8 @@ test("authentic Level-10 party footage is browsable and pinnable in the same arc
 });
 
 test("ordinary Floor-6 recording routes to the same viewer as all normal dungeon floors",()=>{
-  const initial=createGameState(7351),hero=initial.adventurers[0];
-  const floorHero={...hero,status:"exploring" as const,floor:6 as const};
-  const starting={...initial,adventurers:initial.adventurers.map(h=>
-    h.id===hero.id?floorHero:h)};
-  const next=advanceDay(starting).state;
-  const event=next.events.find(e=>e.type==="dungeon-exploration"&&
-    e.adventurerId===hero.id&&e.dungeonReplay?.floor===6);
-  assert(event?.dungeonReplay);
+  const {state:next,event}=realSpatialTapeFixture(6,"monster");
+  assert(event.dungeonReplay);
   const entry=selectExpeditionArchive(next).find(e=>e.id===event.id);
   assert(entry);
   assert.equal(entry.floor,6);

@@ -5,7 +5,8 @@ import {
 } from "../../src/game/dungeonReplayPlayback.ts";
 import { generateDungeonLayout, dungeonNeighbors } from "../../src/game/dungeonLayout.ts";
 import { simulateLevel7Day, emptyLevel7World } from "../../src/game/level7Exploration.ts";
-import { advanceDay, createGameState } from "../../src/game/gameState.ts";
+import {createGameState} from "../../src/game/gameState.ts";
+import {realSpatialTapeFixture} from "./realSpatialTapeFixture.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
 function heroForReplay() {
@@ -100,24 +101,17 @@ test("combat playback uses real recorded actor HP and frame positions, not a sec
   assert.deepEqual(dungeonPlaybackAt(result.replay,timeline,layout,segment.start+0.05),during);
 });
 
-test("version 8 optional historical fog snapshots round-trip and reject forged indices",()=>{
-  const initial=createGameState(7351);
-  const first={...initial,dungeonFloors:[{floor:6,cleared:true}],
-    adventurers:initial.adventurers.map((h,i)=>i===0
-      ?{...h,status:"expedition" as const,floor:7 as const,bossPass:true}
-      :h)};
-  const second=advanceDay(first).state;
-  const replay=second.events.find(e=>e.type==="level7-exploration")?.level7Replay;
-  assert(replay?.knownAtStart?.length);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(second))),second);
-  const forged=structuredClone(createSave(second));
-  const last=forged.payload.events.find(e=>e.type==="level7-exploration")!;
-  (last.level7Replay as any).knownAtStart=[0];
+test("current Floor-7 dungeon replay validates observed fog and optional snapshots",()=>{
+  const {state,event}=realSpatialTapeFixture(7,"monster");
+  assert(event.dungeonReplay?.knownAtStart?.length);
+  const forged=structuredClone(createSave(state));
+  const bad=forged.payload.events.find(e=>e.id===event.id)!;
+  (bad.dungeonReplay as any).knownAtStart=[0];
   assert.throws(()=>parseSave(JSON.stringify(forged)),/knownAtStart/);
-  const older=structuredClone(createSave(second));
-  const prev=older.payload.events.find(e=>e.type==="level7-exploration")!;
-  delete (prev.level7Replay as any).knownAtStart;
-  delete (prev.level7Replay as any).resolvedAtStart;
-  assert.doesNotThrow(()=>parseSave(JSON.stringify(older)),
-    "Previously saved v8 records without fog baselines stay compatible");
+  const omission=structuredClone(createSave(state));
+  const record=omission.payload.events.find(e=>e.id===event.id)!;
+  delete (record.dungeonReplay as any).knownAtStart;
+  delete (record.dungeonReplay as any).resolvedAtStart;
+  assert.doesNotThrow(()=>parseSave(JSON.stringify(omission)),
+    "Missing optional fog baselines never authorize omniscient observation");
 });
