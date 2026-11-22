@@ -1,4 +1,5 @@
 import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
+import {heroLevel,heroProgression} from "./heroProgression.ts";
 import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,type MaterialItemId } from "./economy.ts";
 import {
@@ -969,14 +970,18 @@ function validateState(value: unknown): asserts value is GameState {
     choice(hero.role, ["tank", "DPS", "healer"], `${path}.role`);
     const stats = object(hero.stats, `${path}.stats`, ["strength", "agility", "intellect", "maxHealth"]);
     for (const key of Object.keys(stats)) integer(stats[key], `${path}.stats.${key}`, 1);
-    const health = integer(hero.health, `${path}.health`, 0, stats.maxHealth as number);
+    const xp = integer(hero.xp, `${path}.xp`);
+    const level=integer(hero.level, `${path}.level`, 1);
+    if(level!==heroLevel(xp))
+      fail(`${path}.level`, "must agree with XP");
+    const maxHealth=heroProgression({
+      role:hero.role as "tank"|"DPS"|"healer",level,
+      stats:stats as unknown as {strength:number;agility:number;intellect:number;maxHealth:number},
+    }).maxHealth;
+    const health = integer(hero.health, `${path}.health`, 0, maxHealth);
     const traits = object(hero.traits, `${path}.traits`, ["positive", "neutral", "negative"]);
     for (const key of Object.keys(traits)) text(traits[key], `${path}.traits.${key}`);
-    const xp = integer(hero.xp, `${path}.xp`);
-    if (integer(hero.level, `${path}.level`, 1) !== 1 + Math.floor(xp / 100)) {
-      fail(`${path}.level`, "must agree with XP");
-    }
-    integer(hero.gold, `${path}.gold`);
+     integer(hero.gold, `${path}.gold`);
     const equipment = object(hero.equipment, `${path}.equipment`, ["weapon", "armor"]);
     for (const key of Object.keys(equipment)) {
       if (equipment[key] !== null) text(equipment[key], `${path}.equipment.${key}`);
