@@ -1,6 +1,6 @@
 import {createLevel5Room,isLevel5Air,isValidLevel5Room,
   type Level5Room,type RoomCell} from "./level5Room.ts";
-import {furnitureBounds} from "./furnitureRegistry.ts";
+import {furnitureBounds,furnitureBoundsOverlap} from "./furnitureRegistry.ts";
 /** Render-independent world mapping shared by mining, furniture and visuals. */
 export const CELLAR_ORIGIN_Z=-27;
 export const CELLAR_FLOOR_Y=-4.4;
@@ -54,5 +54,45 @@ export function cellarChestProblem(
   // Keep the stair mouth clear: physical walking, not teleportation.
   if(b.minX<.4&&b.maxX>-2.1&&b.maxZ>-21.0)
     return "Keep the cellar staircase landing clear.";
+  return null;
+}
+
+/** One saved, freely relocatable Tripo furniture item using the existing cellar
+ * floor/support and blueprint placement contracts. No second editor. */
+export const CELLAR_TABLE_ID="cellar-table" as const;
+export interface CellarTablePlacement {
+  readonly id:typeof CELLAR_TABLE_ID;
+  readonly x:number;
+  readonly z:number;
+  readonly rotation:0|1|2|3;
+}
+/** Rear wall, with the control edge facing Galvik in the room. */
+export const DEFAULT_CELLAR_TABLE:CellarTablePlacement={
+  id:CELLAR_TABLE_ID,x:0,z:CELLAR_ORIGIN_Z-6,rotation:0,
+};
+export function cellarTableProblem(
+  table:CellarTablePlacement,room:CellarRoom,chest?:CellarChestPlacement,
+):string|null{
+  if(!table||table.id!==CELLAR_TABLE_ID||
+    !Number.isFinite(table.x)||!Number.isFinite(table.z)||
+    !Number.isInteger(table.rotation)||table.rotation<0||table.rotation>3||
+    Math.abs(table.x*4-Math.round(table.x*4))>1e-8||
+    Math.abs(table.z*4-Math.round(table.z*4))>1e-8)
+    return "Invalid Galvik's Table placement.";
+  const b=furnitureBounds(table);
+  for(let x=b.minX+.02;x<=b.maxX-.02;x+=.25){
+    for(let z=b.minZ+.02;z<=b.maxZ-.02;z+=.25){
+      if(!isCellarFloor(room,x,z))
+        return "Excavate floor beneath the entire Galvik's Table.";
+    }
+  }
+  for(const x of [b.minX+.02,b.maxX-.02])
+    for(const z of [b.minZ+.02,b.maxZ-.02])
+      if(!isCellarFloor(room,x,z))
+        return "Excavate floor beneath the entire Galvik's Table.";
+  if(b.minX<.4&&b.maxX>-2.1&&b.maxZ>-21)
+    return "Keep the cellar staircase landing clear.";
+  if(chest&&furnitureBoundsOverlap(b,furnitureBounds(chest),.12))
+    return "Galvik's Table would overlap the cellar chest.";
   return null;
 }

@@ -13,7 +13,7 @@ import { shopServiceReachabilityProblem } from "../../src/game/shopServiceReacha
 
 test("new game starts with an empty sales floor and no display inventory",()=>{
   const state=createGameState(42);
-  assert.equal(SIMULATION_VERSION,29);
+  assert.equal(SIMULATION_VERSION,30);
   assert.deepEqual(state.shopLayout,createShopLayout());
   assert.equal(shopLayoutProblem(state.shopLayout),null);
   assert.equal(state.shopEconomy.slots.length,0);

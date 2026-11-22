@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {createGameState} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
-import {createCellarRoom,cellarChestProblem,isCellarFloor,
+import {createCellarRoom,cellarChestProblem,cellarTableProblem,isCellarFloor,
   cellarLocalCell} from "../../src/game/cellarRoom.ts";
 import {surfaceFromMesh,blueprintAtSurface} from "../../src/game/furnitureBlueprint.ts";
 
@@ -55,4 +55,33 @@ test("cellar furniture reuses the shared blueprint preview and commit",()=>{
   const saved=parseSave(JSON.stringify(createSave(store.state)));
   assert.deepEqual(saved.cellarChest,p);
   assert.deepEqual(saved.cellarRoom,store.state.cellarRoom);
+});
+
+test("Galvik's Table starts against the rear wall, moves with P and persists",()=>{
+  const initial=createGameState(),store=new GameStore(initial);
+  assert.deepEqual(initial.cellarTable,{id:"cellar-table",x:0,z:-33,rotation:0});
+  assert.equal(cellarTableProblem(initial.cellarTable,initial.cellarRoom,
+    initial.cellarChest),null);
+  const moved=blueprintAtSurface("cellar-table","floor",
+    {x:1.24,z:-32.04},1)!;
+  assert.deepEqual(moved,{id:"cellar-table",x:1.25,z:-32,rotation:1});
+  assert.equal(store.previewFurniturePlacement(moved),null);
+  assert.equal(store.placeFurniture(moved),"Galvik's Table placed.");
+  assert.deepEqual(store.state.cellarTable,moved);
+  const saved=parseSave(JSON.stringify(createSave(store.state)));
+  assert.deepEqual(saved.cellarTable,moved);
+  assert.equal(saved.worldClock.tick,initial.worldClock.tick,
+    "furniture movement does not advance time");
+  const overlapping={id:"cellar-table" as const,x:3,z:-27,rotation:0 as const};
+  assert.match(store.previewFurniturePlacement(overlapping)!,/overlap/);
+  assert.match(store.placeFurniture(overlapping),/overlap/);
+  assert.deepEqual(store.state.cellarTable,moved);
+  const chestOverlap={id:"cellar-chest" as const,x:1.25,z:-32,rotation:0 as const};
+  assert.match(store.placeFurniture(chestOverlap),/overlap/);
+  assert.deepEqual(store.state.cellarChest,initial.cellarChest);
+  const unsupported={id:"cellar-table" as const,x:6.75,z:-33,rotation:0 as const};
+  assert.match(store.previewFurniturePlacement(unsupported)!,/Excavate floor/);
+  const badSave=JSON.parse(JSON.stringify(createSave(store.state)));
+  badSave.payload.cellarTable={id:"cellar-table",x:9,z:-33,rotation:0};
+  assert.throws(()=>parseSave(JSON.stringify(badSave)),/cellarTable/);
 });

@@ -28,6 +28,7 @@ import { Shop } from "./game/shop";
 import { setupBlueprintHud } from "./blueprintHud.ts";
 import { setupBedroomFurnitureVisuals } from "./game/bedroomFurnitureVisuals.ts";
 import {setupCellarFurnitureVisuals} from "./game/cellarFurnitureVisuals.ts";
+import {setupCellarTableVisuals} from "./game/cellarTableVisuals.ts";
 import {setupCellarPondVisuals} from "./game/cellarPondVisuals.ts";
 import {setupFishingHud} from "./fishingHud.ts";
 import {setupHeroBuybackHud} from "./heroBuybackHud.ts";
@@ -140,6 +141,7 @@ document.addEventListener("visibilitychange",()=>{
 });
 setupBedroomFurnitureVisuals(scene,store);
 setupCellarFurnitureVisuals(scene,store);
+setupCellarTableVisuals(scene,store);
 const roomVisuals=createLevel5RoomVisuals(scene);
 const cellarVisuals=createLevel5RoomVisuals(scene,"cellar");
 let lastDrawnRoom:typeof store.state.level5Room|null=null;

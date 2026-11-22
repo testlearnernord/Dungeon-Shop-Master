@@ -2,7 +2,8 @@ import { BASE_ROOM_HALF_EXTENT, isValidLevel5Room } from "./level5Room.ts";
 import {heroLevel,heroProgression} from "./heroProgression.ts";
 import {livePartyBossCheckpointProblem,partyBossReplayProblem}
   from "./livePartyBossSave.ts";
-import {isValidCellarRoom,cellarChestProblem,type CellarChestPlacement} from "./cellarRoom.ts";
+import {isValidCellarRoom,cellarChestProblem,cellarTableProblem,
+  type CellarChestPlacement,type CellarTablePlacement} from "./cellarRoom.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS } from "./economy.ts";
 import {
   SIMULATION_VERSION, type GameState, type EarlyDungeonFloorWorld,
@@ -829,7 +830,7 @@ function validateState(value: unknown): asserts value is GameState {
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "level7World", "shopLayout", "shopCarts", "shopDebts",
     "level5Room","bedroomFurniture","rosterBoard",
-    "cellarRoom","cellarChest","cellarDoorOpen","cellarFishCaught",
+    "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught",
   ], ["wallPortrait","earlyDungeonWorlds","dungeonParties"]);
   const room=state.level5Room;
   if (!isValidLevel5Room(room))
@@ -851,6 +852,20 @@ function validateState(value: unknown): asserts value is GameState {
     };
     const problem=cellarChestProblem(chest,state.cellarRoom);
     if(problem)fail("payload.cellarChest",problem);
+  }
+  {
+    const raw=object(state.cellarTable,"payload.cellarTable",["id","x","z","rotation"]);
+    if(raw.id!=="cellar-table")fail("payload.cellarTable.id","is invalid");
+    const table:CellarTablePlacement={
+      id:"cellar-table",
+      x:validNumber(raw.x,"payload.cellarTable.x",-14,14),
+      z:validNumber(raw.z,"payload.cellarTable.z",-41,-13),
+      rotation:integer(raw.rotation,"payload.cellarTable.rotation",0,3) as 0|1|2|3,
+    };
+    // The cellar chest was strictly parsed and validated immediately above.
+    const problem=cellarTableProblem(table,state.cellarRoom,
+      state.cellarChest as CellarChestPlacement);
+    if(problem)fail("payload.cellarTable",problem);
   }
   const day = integer(state.day, "payload.day", 1, MAX_WORLD_DAY);
   const clock=object(state.worldClock,"payload.worldClock",["tick","nextSequence","pending"]);
