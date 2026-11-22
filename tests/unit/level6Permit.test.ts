@@ -7,7 +7,7 @@ import { GameStore } from "../../src/game/gameStore.ts";
 
 test("Boss Pass is explicit, individual, immutable and does not consume a tick", () => {
   const initial = createGameState();
-  assert.equal(SIMULATION_VERSION, 28);
+  assert.equal(SIMULATION_VERSION, 29);
   assert(initial.adventurers.every((hero) => !hero.bossPass));
   const visitor = initial.adventurers[0];
   const granted = setBossPass(initial, visitor.id, true);
