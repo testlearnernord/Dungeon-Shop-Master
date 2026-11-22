@@ -20,6 +20,7 @@ import { createBedroomFurnitureLayout, type BedroomFurnitureLayout } from "./bed
 import { DEFAULT_ROSTER_BOARD,type RosterBoardPlacement } from "./rosterBoardPlacement.ts";
 import type {WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 import type {ShopCart} from "./shopCarts.ts";
+import {arrivalEvent} from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
 export const SIMULATION_VERSION = 34;
