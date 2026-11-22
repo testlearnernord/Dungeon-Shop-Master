@@ -6,6 +6,9 @@ import {isBedroomFurnitureId} from "./bedroomFurniture.ts";
 import type {CellarChestPlacement} from "./cellarRoom.ts";
 import {rosterBoardAtWall,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 import {wallPortraitAtWall,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
+import {shopFixtureBounds} from "./furnitureRegistry.ts";
+import {isSealedPassageWallHit,overlapsShopPortalClearance}
+  from "./shopPortal.ts";
 
 export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait"|"cellar-chest";
 export type BlueprintSurface=FurnitureSurface;
@@ -43,7 +46,7 @@ export function surfaceFromMesh(name:string):BlueprintSurface|null {
   if(name==="left-wall")return "left-wall";
   if(name==="right-wall")return "right-wall";
   if(name==="front-left-wall"||name==="front-right-wall")return "front-wall";
-  if(name==="back-left-wall"||name==="back-middle-wall"||name==="back-right-wall")
+  if(name==="back-left-wall"||name==="back-middle-wall")
     return "back-wall";
   return null;
 }
@@ -57,6 +60,9 @@ export function blueprintAtSurface(
   if(!Number.isFinite(hit.x)||!Number.isFinite(hit.z))return null;
   const permitted=furnitureDefinition(id).surfaces;
   if(!permitted.includes(surface))return null;
+  // No visual snap at the old right exit, even before the slow reachability
+  // validator runs: the ray hits continuous *non-buildable* rock there.
+  if(surface==="back-wall"&&isSealedPassageWallHit(hit))return null;
   if(id==="adventurer-board"){
     const wall=rosterBoardAtWall(surface,hit,room);
     return wall?{id,...wall}:null;
@@ -78,5 +84,10 @@ export function blueprintAtSurface(
     "back-wall":{x:snapQuarter(hit.x),z:6.75,rotation:1},
   };
   if(surface==="ceiling"||surface==="rock-wall")return null;
-  return {id,...wallAnchor[surface]};
+  const mount={id,...wallAnchor[surface]};
+  // A large shelf can reach the blocked section from a crosshair just
+  // outside its edges. Preview MUST share actual-commit footprint clearance.
+  if(isShelfId(id)&&overlapsShopPortalClearance(
+    shopFixtureBounds("shelf",mount),0.04))return null;
+  return mount;
 }
