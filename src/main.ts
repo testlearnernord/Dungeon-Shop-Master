@@ -141,7 +141,7 @@ document.addEventListener("visibilitychange",()=>{
 });
 setupBedroomFurnitureVisuals(scene,store);
 setupCellarFurnitureVisuals(scene,store);
-setupCellarTableVisuals(scene,store);
+const tableVisuals=setupCellarTableVisuals(scene,store);
 const roomVisuals=createShopRoomVisuals(scene);
 const cellarVisuals=createShopRoomVisuals(scene,"cellar");
 let lastDrawnRoom:typeof store.state.shopRoom|null=null;
@@ -683,9 +683,14 @@ engine.runRenderLoop(() => {
   } else if (arena.isActive) {
     arena.update(engine.getDeltaTime() / 1000);
     arena.currentScene?.render();
-  } else npcVisuals.renderInterpolated(
-    paused||worldClockPacer.isPaused?1:worldClockPacer.presentationAlpha,
-    ()=>profile("scene-render",()=>scene.render()));
+  } else {
+    // The LIVE spectator paints only the table's inset while the original
+    // first-person shop scene stays in charge of movement and rendering.
+    tableVisuals.setDungeonTexture(dungeon.renderTablePreview(frameMs/1000));
+    npcVisuals.renderInterpolated(
+      paused||worldClockPacer.isPaused?1:worldClockPacer.presentationAlpha,
+      ()=>profile("scene-render",()=>scene.render()));
+  }
   const now=performance.now();
   const gapMs=lastResolutionFrame?now-lastResolutionFrame:0;
   lastResolutionFrame=now;
