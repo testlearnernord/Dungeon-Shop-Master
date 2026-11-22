@@ -166,14 +166,14 @@ test("unpaid items are returned at bed and do not block later shop visits",()=>{
     ? {...h,status:"at-shop" as const,floor:5 as const,
       inventory:{...h.inventory,bread:0},shopStayDays:0}
     :h)};
-  const slot=visiting.shopEconomy.slots.find(x=>x.id===first.slotId)!;
+  const breadSlot=visiting.shopEconomy.slots.find(x=>x.itemId==="bread")!;
   const stocked={...visiting,shopEconomy:{...visiting.shopEconomy,
-    slots:visiting.shopEconomy.slots.map(x=>x.id===first.slotId?
-      {...x,itemId:"bread" as const,quantity:Math.max(2,slot.quantity)}:x)}};
+    slots:visiting.shopEconomy.slots.map(x=>x.id===breadSlot.id?
+      {...x,itemId:"bread" as const,quantity:Math.max(2,breadSlot.quantity)}:x)}};
   const next=forecastShoppingIntents(stocked).get(hero.id);
   assert(next?.items.some(line=>line.itemId==="bread"),
     "Day 2 shop forecasts should not exclude the previous checkout at start of Day 2");
-  const pick=pickUpShopItem(stocked,hero.id,first.slotId);
+  const pick=pickUpShopItem(stocked,hero.id,breadSlot.id);
   assert.notStrictEqual(pick.state,stocked);
 });
 test("Copilot regression: imported cart cannot also have a manual same-day receipt",()=>{
