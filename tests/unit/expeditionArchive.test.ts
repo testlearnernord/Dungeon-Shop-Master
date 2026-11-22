@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createGameState,type WorldEvent} from "../../src/game/gameState.ts";
+import {createGameState,advanceDay,type WorldEvent} from "../../src/game/gameState.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {selectExpeditionArchive,archiveAvailableDays,archiveWorldTime,
-  archiveBookmarks} from "../../src/game/expeditionArchive.ts";
+  archiveBookmarks,archiveRecordingDestination} from "../../src/game/expeditionArchive.ts";
 import {compactReplayFootage,MAX_SAVED_REPLAYS}
   from "../../src/game/replayRetention.ts";
 import {generateExpeditionLayout,dungeonNeighbors}
@@ -175,4 +175,22 @@ test("authentic Level-10 party footage is browsable and pinnable in the same arc
     {...state,savedReplayIds:[event.id]},"saved").map(e=>e.id),[event.id]);
   assert.deepEqual(state,before,
     "Listing recorded party fights must never simulate or change the world");
+});
+
+test("ordinary Floor-6 recording routes to the same viewer as all normal dungeon floors",()=>{
+  const initial=createGameState(7351),hero=initial.adventurers[0];
+  const floorHero={...hero,status:"exploring" as const,floor:6 as const};
+  const starting={...initial,adventurers:initial.adventurers.map(h=>
+    h.id===hero.id?floorHero:h)};
+  const next=advanceDay(starting).state;
+  const event=next.events.find(e=>e.type==="dungeon-exploration"&&
+    e.adventurerId===hero.id&&e.dungeonReplay?.floor===6);
+  assert(event?.dungeonReplay);
+  const entry=selectExpeditionArchive(next).find(e=>e.id===event.id);
+  assert(entry);
+  assert.equal(entry.floor,6);
+  assert.equal(entry.partyBoss,false);
+  assert.equal(archiveRecordingDestination(entry),"dungeon");
+  assert(archiveBookmarks(next,event.id).length>0);
+  assert.equal(archiveRecordingDestination({...entry,partyBoss:true}),"party-boss");
 });

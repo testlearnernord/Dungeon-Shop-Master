@@ -49,3 +49,5 @@
 - [100-day audit](GAMEPLAY_100DAY_AUDIT.md) and [Hero progression results](HERO_PROGRESSION.md) are **dated measurements**, not current-run proof.
 - [Legacy/obsolescence audit](LEGACY_OBSOLESCENCE_AUDIT.md) classifies what to keep for current gameplay, retire in the breaking cutover, or protect as source assets.
 - GitHub issue **#294** tracks the unresolved economy/long-game acceptance; close it only with new evidence.
+
+- **Floor-6 recording route cleanup:** A floor number alone no longer selects a boss viewer. Current ordinary Floor-6 tapes use the shared dungeon route, while true Floor-10 group tapes use a distinct party-boss marker. Retire the remaining old `level6-*` event/save aliases separately before declaring #300 complete.

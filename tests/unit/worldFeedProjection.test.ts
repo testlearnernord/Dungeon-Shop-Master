@@ -232,22 +232,17 @@ test("each genuine level-up is a separate hero-profile target, without fake mile
     "XP gain is not automatically a level-up");
 });
 
-test("saved Cave Troll victory reports only real boss settlement and links its tape",()=>{
+test("retired Floor-6 solo tapes cannot impersonate a current boss victory",()=>{
   const before=createGameState(7351),hero=before.adventurers[0];
-  const event={id:"boss-record-1",type:"level6-combat",day:1,
+  const stale={
+    id:"day-1:"+hero.id+":level6-combat",type:"level6-combat",day:1,
     adventurerId:hero.id,combatOutcome:"victory",
-    combatReplay:{frames:[{t:0}]},
-    message:"Real boss concluded"} as unknown as WorldEvent;
-  const after={...before,events:[...before.events,event],
-    adventurers:before.adventurers.map(h=>h.id===hero.id?{
-      ...h,xp:h.xp+43,gold:h.gold+19,
-      inventory:{...h.inventory,loot:h.inventory.loot+2}}:h)};
+    combatReplay:{frames:[{t:0}]},message:"Retired solo boss",
+  } as unknown as WorldEvent;
+  const after={...before,events:[...before.events,stale],
+    adventurers:before.adventurers.map(h=>h.id===hero.id
+      ?{...h,xp:h.xp+43,gold:h.gold+19}:h)};
   const entries=projectWorldFeedChanges(before,after);
-  assert.equal(entries.length,1);
-  assert.equal(entries[0].title,"CAVE TROLL DEFEATED");
-  assert.match(entries[0].detail,/\+43 XP/);
-  assert.match(entries[0].detail,/2 loot tokens/);
-  assert.match(entries[0].detail,/\+19 gold/);
-  assert.deepEqual(entries[0].target,
-    {kind:"boss-recording",eventId:event.id});
+  assert(!entries.some(entry=>entry.category==="boss"),
+    "A retired Solo-F6 event cannot impersonate the live Floor-10 party boss");
 });

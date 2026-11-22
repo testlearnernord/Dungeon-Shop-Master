@@ -5,7 +5,6 @@ import type {GameState,WorldEvent} from "./gameState.ts";
  * footage; no viewer ever manufactures, rerolls or guesses a death. */
 export type DeathFootage=
   |{kind:"active-combat";fightId:string}
-  |{kind:"boss-recording";eventId:string}
   |{kind:"party-boss-recording";eventId:string}
   |{kind:"expedition-recording";eventId:string}
   |{kind:"none"};
@@ -27,9 +26,6 @@ export function findCommittedDeathFootage(
     return {kind:"active-combat",fightId:partyBoss.id};
   const recorded=[...state.events].reverse().filter((event:WorldEvent)=>
     event.day===signal.day&&event.adventurerId===heroId);
-  const boss=recorded.find(event=>event.type==="level6-combat"&&
-    event.combatOutcome==="death"&&event.combatReplay?.frames.length);
-  if(boss)return {kind:"boss-recording",eventId:boss.id};
   const partyBossTape=[...state.events].reverse().find(event=>
     event.day===signal.day&&
     event.partyBossReplay?.actors.some(actor=>actor.id===heroId)&&
