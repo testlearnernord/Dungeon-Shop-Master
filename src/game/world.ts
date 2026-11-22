@@ -106,13 +106,11 @@ export function buildWorld(scene: Scene): WorldInteractable[] {
   // so visitors in the main shop read the text instead of its mirror.
   sign(scene,"bedroom-sign","GALVIK'S REST",new Vector3(0,2.8,-6.58)).rotation.y=Math.PI;
   box(scene, "back-left-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(-6.375, 2, 7), rock, true, surfaces.stone);
-  box(scene, "back-middle-wall", { width: 5.5, height: 4, depth: 0.4 }, new Vector3(0, 2, 7), rock, true, surfaces.stone);
-  box(scene, "back-right-wall", { width: 2.25, height: 4, depth: 0.4 }, new Vector3(6.375, 2, 7), rock, true, surfaces.stone);
-  // The old right-hand passage is now permanent solid rock. There is no
-  // second exit, gate animation or compatibility-only NPC transit.
-  box(scene,"sealed-right-passage-stone",
-    {width:2.45,height:4,depth:0.45},new Vector3(4,2,7),
-    rock,true,surfaces.stone).isPickable=false;
+  // ONE uninterrupted back-wall section from the real left portal's
+  // right jamb (-2.75m) to the right side wall (+7.5m). The old right
+  // exit is NOT a thin cover with gaps and a hollow old corridor.
+  box(scene, "back-middle-wall", { width: 10.25, height: 4, depth: 0.4 },
+    new Vector3(2.375, 2, 7), rock, true, surfaces.stone);
   for (const x of [SHOP_PORTAL_X-1.3,SHOP_PORTAL_X+1.3]) {
     box(scene, `corridor-wall-${x}`, { width: 0.25, height: 4, depth: 5.5 }, new Vector3(x, 2, 9.65), rock, true, surfaces.stone);
   }

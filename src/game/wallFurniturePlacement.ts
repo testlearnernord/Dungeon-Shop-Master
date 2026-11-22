@@ -2,6 +2,7 @@ import {level5RockFaces} from "./level5WallFaces.ts";
 import {isLevel5Air,type Level5Room} from "./level5Room.ts";
 import {level5FloorWalkable} from "./level5Walkability.ts";
 import type {ShopLayout} from "./shopLayout.ts";
+import {isSealedPassageWallHit} from "./shopPortal.ts";
 
 export interface WallFurniturePlacement{
   readonly x:number;
@@ -15,6 +16,7 @@ export function wallFurnitureAtWall(
   room?:Level5Room,allowBack=false,
 ):WallFurniturePlacement|null{
   if(!Number.isFinite(hit.x)||!Number.isFinite(hit.z))return null;
+  if(surface==="back-wall"&&isSealedPassageWallHit(hit))return null;
   if(surface==="front-wall")return {x:snap(hit.x),z:-6.45,rotation:2};
   if(surface==="back-wall"&&allowBack)return {x:snap(hit.x),z:6.45,rotation:0};
   if(surface==="left-wall")return {x:-7.22,z:snap(hit.z),rotation:3};

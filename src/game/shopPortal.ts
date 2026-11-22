@@ -19,6 +19,18 @@ export const SHOP_PORTAL_BUILD_CLEARANCE=Object.freeze({
 export const SEALED_PASSAGE_BUILD_CLEARANCE=Object.freeze({
   minX:2.4,maxX:5.6,minZ:3.15,maxZ:7,
 });
+/** The former right exit is continuous solid rock, NOT a furniture mount.
+ * Wider furniture can overlap it even if the crosshair is outside this zone;
+ * actual footprints are validated separately.
+ */
+export function isSealedPassageWallHit(
+  hit:{readonly x:number;readonly z:number},
+):boolean{
+  return Number.isFinite(hit.x)&&Number.isFinite(hit.z)&&
+    hit.x>=SEALED_PASSAGE_BUILD_CLEARANCE.minX&&
+    hit.x<=SEALED_PASSAGE_BUILD_CLEARANCE.maxX&&
+    hit.z>=6.55&&hit.z<=7.35;
+}
 export interface ShopPortalBounds {
   readonly minX:number;readonly maxX:number;
   readonly minZ:number;readonly maxZ:number;

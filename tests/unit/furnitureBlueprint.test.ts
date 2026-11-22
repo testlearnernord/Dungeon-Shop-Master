@@ -35,8 +35,14 @@ test("wall-surface blueprints face into Galvik's store and preserve shelf IDs",(
     {id:"shelf-2",x:7,z:0,rotation:2});
   assert.deepEqual(blueprintAtSurface("shelf-1","front-wall",{x:-5,z:-7},0),
     {id:"shelf-1",x:-5,z:-6.75,rotation:3});
-  assert.deepEqual(blueprintAtSurface("shelf-2","back-wall",{x:4,z:7},0),
-    {id:"shelf-2",x:4,z:6.75,rotation:1});
+  assert.equal(blueprintAtSurface("shelf-2","back-wall",{x:4,z:7},0),
+    null,"Deleted Level-6 doorway must not generate a wall ghost");
+  assert.equal(blueprintAtSurface("shelf-2","back-wall",{x:2.25,z:7},0),
+    null,"Wide shelves must not bridge into the seal from the left");
+  assert.equal(blueprintAtSurface("shelf-2","back-wall",{x:5.75,z:7},0),
+    null,"Wide shelves must not bridge into the seal from the right");
+  assert.deepEqual(blueprintAtSurface("shelf-2","back-wall",{x:0,z:7},0),
+    {id:"shelf-2",x:0,z:6.75,rotation:1});
   assert.equal(blueprintAtSurface("shelf-1","ceiling",{x:0,z:0},0),null);
   const layout=createShopLayout();
   const left=blueprintAtSurface("shelf-1","left-wall",{x:-7.5,z:0.01},2)!;
