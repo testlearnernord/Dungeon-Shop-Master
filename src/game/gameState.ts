@@ -1,11 +1,11 @@
 import { createLevel5Room, type Level5Room } from "./level5Room.ts";
 import {createCellarRoom,DEFAULT_CELLAR_CHEST,DEFAULT_CELLAR_TABLE,
   type CellarChestPlacement,type CellarTablePlacement,type CellarRoom} from "./cellarRoom.ts";
-import { createWorldClock, type WorldClockState } from "./worldClock.ts";
+import {createWorldClock,advanceWorldUntil,lastWorldTickOfDay,type WorldClockState} from "./worldClock.ts";
 import {emptyShopTraffic,type ShopTrafficCheckpoint} from "./shopTraffic.ts";
 import {activateLiveDungeon,createLiveDungeonState,finishLiveDungeonDay,
-  type LiveDungeonState} from "./liveDungeonRuntime.ts";
-import type {ShopRequest} from "./shopRuntime.ts";
+  commitLiveWorldEvent,type LiveDungeonState} from "./liveDungeonRuntime.ts";
+import {closeShopRequests,type ShopRequest} from "./shopRuntime.ts";
 import { generateStartingPopulation, type AdventurerState } from "./adventurers.ts";
 import { createEconomy, type ItemId, type MaterialItemId, type Slot } from "./economy.ts";
 import {type HeroDungeonGoal,type HeroFloorAction} from "./dungeonDecisions.ts";
@@ -180,13 +180,15 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
   };
 }
 
-/** Only the LIVE, persisted world clock may close a shop day.
- * Inactive fixtures activate that SAME motor instead of executing an old
- * alternate day/battle resolver with fabricated loot, routes and receipts.
+/** One real event scheduler processes every pending tick BEFORE bedtime.
+ * A pure fixture entering without a LIVE flag activates the same production
+ * motor; it does not invoke an alternative seeded day-long loot/combat roll.
  */
 export function advanceDay(state:GameState):{state:GameState;events:readonly WorldEvent[]}{
-  return finishLiveDungeonDay(
-    state.liveDungeon.enabled?state:activateLiveDungeon(state));
+  const live=state.liveDungeon.enabled?state:activateLiveDungeon(state);
+  const settled=advanceWorldUntil(live,lastWorldTickOfDay(live.day),
+    commitLiveWorldEvent);
+  return finishLiveDungeonDay(closeShopRequests(settled));
 }
 
 /** Grant/revoke an explicit Floor-10 Temporary-Party Boss Pass only
