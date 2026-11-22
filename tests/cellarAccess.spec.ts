@@ -70,3 +70,39 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
   }
   expect(errors).toEqual([]);
 });
+
+
+test("Galvik's movable table projects the selected LIVE floor without leaving shop mode @ci-smoke",async({page})=>{
+  test.setTimeout(90000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./?e2e-pause-world=1");
+  await expect(page.locator("#day")).toHaveText("Day 1");
+  const helper="/Dungeon-Shop-Master/tests/scene.ts";
+  await page.evaluate(async(path)=>(await import(/* @vite-ignore */ path)).aimAtGalviksTable(),helper);
+  const inspect=()=>page.evaluate(async(path)=>
+    (await import(/* @vite-ignore */ path)).inspectGalviksLiveTable(),helper);
+  await expect.poll(async()=>await inspect(),{timeout:30000,intervals:[400,700,1000]})
+    .toMatchObject({
+      insetExists:true,insetVisible:true,
+      textureName:"galviks-table-live-floor-1",
+      shopMode:true,inShopScene:true,
+    });
+  const first=await inspect();
+  expect(first.shopCamera).toBeTruthy();
+
+  // The LIVE viewer remains the sole owner of the selected floor. A return
+  // to the shop must update the *same physical* inset, not open a second HUD.
+  await page.locator("#open-dungeon").click();
+  await page.locator("#dungeon-floor-select").selectOption("2");
+  await expect(page.locator("#dungeon-floor-select")).toHaveValue("2");
+  await page.locator("#close-dungeon").click();
+  await expect.poll(async()=>(await inspect()).textureName,{timeout:30000})
+    .toBe("galviks-table-live-floor-2");
+  const second=await inspect();
+  expect(second).toMatchObject({
+    insetVisible:true,shopCamera:first.shopCamera,
+    shopMode:true,inShopScene:true,
+  });
+  expect(errors).toEqual([]);
+});
