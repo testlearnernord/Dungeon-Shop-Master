@@ -120,6 +120,14 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
   expect(clearance).toBeLessThan(.055);
   expect(probe.inset.worldMax![1]-probe.inset.worldMin![1]).toBeLessThan(.002);
 
+  // The last fix produced a perfectly WHITE tabletop despite a healthy
+  // offscreen RTT. Inspect the actual FPS framebuffer, not just the RTT.
+  const displayed=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).sampleGalviksTableOnScreen());
+  console.log("GALVIK_TABLE_VISIBLE_PIXELS "+JSON.stringify(displayed));
+  expect(displayed.white).toBeLessThan(12);
+  expect(displayed.spread).toBeGreaterThan(25);
+
   // The LIVE viewer remains the sole owner of the selected floor. A return
   // to the shop must update the *same physical* inset, not open a second HUD.
   await page.locator("#open-dungeon").click();
