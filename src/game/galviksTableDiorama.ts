@@ -75,7 +75,10 @@ export class GalviksTableDiorama{
   private lastUpdateAt=-Infinity;
   private modelReady=false;
 
-  constructor(private readonly scene:Scene,tableRoot:TransformNode){
+  private readonly scene:Scene;
+
+  constructor(scene:Scene,tableRoot:TransformNode){
+    this.scene=scene;
     this.root=new TransformNode("cellar-table-diorama-root",scene);
     this.root.parent=tableRoot;
     this.root.position.z=TABLE_DIORAMA_WELL.centerZ;
