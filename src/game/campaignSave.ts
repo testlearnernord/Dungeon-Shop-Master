@@ -148,7 +148,8 @@ function validateSpatialDungeonWorld(
       const item=path+".monsters["+i+"]";
       const monster=object(value,item,
         ["id","siteCycle","x","z","homeX","homeZ","mode",
-          "lastMoveTick","nextDecisionTick"],["target"]);
+          "lastMoveTick","nextDecisionTick"],
+        ["target","targetHeroId","lastKnown","lastSeenTick","lostSightChecks"]);
       const id=text(monster.id,item+".id");
       unique(id,ids,item+".id");
       const feature=features.find(f=>f.id===id);
@@ -177,8 +178,29 @@ function validateSpatialDungeonWorld(
         const tz=integer(target.z,item+".target.z",0,map.height-1);
         if(tileAt(map,tx,tz)==="wall")
           fail(item+".target","must be an accessible dungeon tile");
-      }else if(mode==="ROAMING")
-        fail(item+".target","is required while roaming");
+      }else if(["ROAMING","CHASING","SEARCHING","RETURNING"].includes(mode))
+        fail(item+".target","is required for an active monster route");
+      if(monster.targetHeroId!==undefined){
+        const heroId=text(monster.targetHeroId,item+".targetHeroId");
+        if(!heroIds.has(heroId))
+          fail(item+".targetHeroId","must be a real adventurer");
+      }
+      if(monster.lastKnown!==undefined){
+        const known=object(monster.lastKnown,item+".lastKnown",["x","z"]);
+        const kx=integer(known.x,item+".lastKnown.x",0,map.width-1);
+        const kz=integer(known.z,item+".lastKnown.z",0,map.height-1);
+        if(tileAt(map,kx,kz)==="wall")
+          fail(item+".lastKnown","must be a walkable observed tile");
+      }
+      if(monster.lastSeenTick!==undefined)
+        integer(monster.lastSeenTick,item+".lastSeenTick",0,
+          lastWorldTickOfDay(day));
+      if(monster.lostSightChecks!==undefined)
+        integer(monster.lostSightChecks,item+".lostSightChecks",0,3);
+      if(["CHASING","SEARCHING"].includes(mode)&&
+        (monster.targetHeroId===undefined||
+         monster.lastKnown===undefined||monster.lastSeenTick===undefined))
+        fail(item,"must retain the genuine last observed hero and position");
     });
   }
   const progress=array(world.heroes,path+".heroes");
