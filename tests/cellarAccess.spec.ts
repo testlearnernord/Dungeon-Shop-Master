@@ -107,6 +107,8 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
   },{timeout:30000,intervals:[200,400,700]}).toBe(true);
   const inspect=()=>page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectGalviksLiveTable());
+  await page.waitForTimeout(1800);
+  console.log("TABLE_RAW_BRIDGE_DIAGNOSTICS "+JSON.stringify(await inspect()));
   await expect.poll(async()=>await inspect(),{timeout:30000,intervals:[400,700,1000]})
     .toMatchObject({
       insetExists:true,insetVisible:true,
