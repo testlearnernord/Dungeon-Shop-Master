@@ -33,7 +33,9 @@ import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
 import {liveFloorFeatureIdentity} from "./liveFloorFeatureIdentity.ts";
-import {MONSTER_STEP_TICKS} from "./dungeonMonsterWorld.ts";
+import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
+import {isObservedMonsterStep,MONSTER_OBSERVATION_STEP_SECONDS}
+  from "./monsterObservationMotion.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import {TABLE_OBSERVATION_LOCAL_YAW,dungeonTileWorldCenter}
   from "./dungeonObservationOrientation.ts";
@@ -83,7 +85,8 @@ export class GalviksTableDiorama{
   private featureRoot:TransformNode|null=null;
   private readonly monsterAnchors=new Map<string,TransformNode>();
   /** Only presentation endpoints. Gameplay positions remain in the LIVE world. */
-  private readonly priorMonsterTiles=new Map<string,DungeonPoint>();
+  private readonly priorMonsterTiles=new Map<string,Pick<DungeonMonsterState,
+    "x"|"z"|"siteCycle"|"lastMoveTick">>();
   private readonly monsterTravel=new Map<string,{
     from:Vector3;to:Vector3;startedAt:number;
   }>();
@@ -582,12 +585,8 @@ void main(void){
    * projections; table updates never choose a path or advance a monster. */
   private syncMonsters(frame:LiveFloorSpectatorFrame,now:number):void{
     if(!this.layout)return;
-    // Skip interpolation when the merchant slept or the observer missed many
-    // world steps. We must not animate an imaginary route between snapshots.
-    const consecutive=this.monsterObservedDay===frame.day&&
-      this.monsterObservedTick!==null&&
-      frame.worldTick>=this.monsterObservedTick&&
-      frame.worldTick-this.monsterObservedTick<=MONSTER_STEP_TICKS;
+    // Each tile change is checked against the SAME saved-step requirements
+    // as the full LIVE viewer. No route extrapolation while offscreen.
     for(const [id,anchor] of this.monsterAnchors){
       const monster=frame.monsters?.find(m=>m.id===id);
       if(frame.monsters&&!monster){
@@ -600,18 +599,29 @@ void main(void){
           const point=this.worldPoint(monster);
           const destination=new Vector3(point.x,.33,point.z);
           const old=this.priorMonsterTiles.get(id);
-          if(old&&(old.x!==monster.x||old.z!==monster.z)&&consecutive){
+          const changed=!!old&&(old.x!==monster.x||old.z!==monster.z);
+          const allowed=changed&&this.monsterObservedDay!==null&&
+            this.monsterObservedTick!==null&&
+            isObservedMonsterStep({
+              ...old!,day:this.monsterObservedDay,floor:frame.floor,
+              worldTick:this.monsterObservedTick,
+            },{...monster,day:frame.day,floor:frame.floor,
+              worldTick:frame.worldTick});
+          if(allowed){
             this.monsterTravel.set(id,{
               from:anchor.position.clone(),to:destination,startedAt:now,
             });
-          }else if(!old||!consecutive){
+          }else if(changed||!old){
             this.monsterTravel.delete(id);
           }
-          this.priorMonsterTiles.set(id,{x:monster.x,z:monster.z});
+          this.priorMonsterTiles.set(id,{
+            x:monster.x,z:monster.z,siteCycle:monster.siteCycle,
+            lastMoveTick:monster.lastMoveTick,
+          });
           const journey=this.monsterTravel.get(id);
           if(journey){
             const progress=Math.min(1,Math.max(0,
-              (now-journey.startedAt)/(MONSTER_STEP_TICKS*50)));
+              (now-journey.startedAt)/(MONSTER_OBSERVATION_STEP_SECONDS*1000)));
             anchor.position.copyFrom(Vector3.Lerp(
               journey.from,journey.to,progress));
             if(progress>=1)this.monsterTravel.delete(id);
