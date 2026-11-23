@@ -1254,7 +1254,8 @@ export function inspectGhoulObservationMeshes(){
     observer:shop?"table":"live",
     authoredRigCount:scene.skeletons.filter(rig=>rig.bones.length===65).length,
     authoredClips:scene.animationGroups.filter(group=>
-      group.name==="idle_combat"||group.name.endsWith("walk_feral"))
+      group.name==="idle_combat"||
+      group.name.includes("A feral ghoul walks with a hunched back"))
       .map(group=>group.name),
     pins:pins.map(pin=>{
       const id=pin.name.slice(shop?
