@@ -31,3 +31,11 @@ export function isObservedMonsterStep(
  * between real 400-tick decisions, just like heroes wait between steps.
  * This is NOT the gameplay move interval (400 ticks / 20 seconds). */
 export const MONSTER_OBSERVATION_STEP_SECONDS=1.2;
+
+/** Clamped cosmetic traversal, shared by Galvik's Table and the LIVE map.
+ * After 1.2 seconds the mesh stays at the destination until a new real
+ * monster world step is committed. */
+export function monsterObservationStepProgress(seconds:number):number{
+  return Math.max(0,Math.min(1,
+    Number.isFinite(seconds)?seconds/MONSTER_OBSERVATION_STEP_SECONDS:1));
+}
