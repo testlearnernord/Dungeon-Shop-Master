@@ -1,6 +1,7 @@
 import type {GameState,WorldEvent} from "./gameState.ts";
 import {dungeonWorldAt,setDungeonWorld} from "./dungeonWorldState.ts";
 import {advanceDungeonMonsterWorld} from "./dungeonMonsterWorld.ts";
+import {chooseDungeonThreatReaction} from "./dungeonThreatDecisions.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
@@ -459,10 +460,16 @@ function commitDungeonTick(state:GameState):GameState {
     const candidate=resourceKind&&!homeward&&!directed
       ?selectKnownResourceSite(layout,known,world,resourceKind):null;
     const resourceTarget=candidate&&!blocked.has(candidate.id)?candidate:null;
+    // A visible real pursuer may change ONE scheduled map step. This pure
+    // tactical decision uses only the group's own current LOS and known
+    // nearby allies, never spectator selections or hidden monster positions.
+    const threat=!homeward?chooseDungeonThreatReaction(
+      layout,world,readyGroup,roster):null;
     const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
       {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
         ...(directed?{routeToKnownTarget:directed}:{}),
         ...(resourceTarget?{routeToResource:resourceTarget}:{}),
+        ...(threat?{tacticalStep:threat.step}:{}),
         blockedCombatSites:blocked});
     if(readyGroup.length>=2)
       sharedGroups.push(readyGroup.map(member=>member.id));
