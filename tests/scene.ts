@@ -83,6 +83,7 @@ export function inspectGalviksLiveTable(){
       "cellar-table-diorama-live-art-scale")?.scaling.y??null,
     baseExists:!!base,
     floorLabelExists:!!floorLabel,
+    floorLabelMountedOnFurniture:floorLabel?.parent===root,
     floorLabelMaterial:floorLabel?.material?.name??null,
     sceneMeshCount:allMeshes.length,
     flatLegacyInset:!!scene?.getMeshByName("cellar-table-live-inset"),
