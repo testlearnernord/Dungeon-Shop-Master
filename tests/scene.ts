@@ -49,6 +49,8 @@ export function inspectGalviksLiveTable(){
     dioramaExists:!!diorama,
     dioramaEnabled:diorama?.isEnabled()??false,
     physicallyParented:diorama?.parent===root,
+    furnitureYaw:root?.rotation.y??null,
+    dioramaLocalYaw:diorama?.rotation.y??null,
     observedFloor:diorama?.metadata?.floor??null,
     actorCount:diorama?.metadata?.actorCount??null,
     featureCount:diorama?.metadata?.featureCount??null,
