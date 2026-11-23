@@ -127,7 +127,10 @@ export function advanceDungeonMonsterWorld(
       let spawn:DungeonPoint|undefined;
       for(let i=0;i<queue.length;i++){
         const p=queue[i];
-        if(!packOccupied.has(key(p))&&!heroOccupied.has(key(p))){
+        if(!packOccupied.has(key(p))&&
+           (!heroOccupied.has(key(p))||
+            reservedSiteIds.has(feature.id)&&
+              p.x===feature.x&&p.z===feature.z)){
           spawn=p;break;
         }
         for(const next of dungeonNeighbors(layout,p)){
