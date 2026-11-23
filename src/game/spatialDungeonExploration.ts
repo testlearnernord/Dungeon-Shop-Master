@@ -1,4 +1,5 @@
 import type { AdventurerState } from "./adventurers.ts";
+import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
 import {
   dungeonNeighbors, dungeonShortestPath, generateExpeditionLayout, tileAt,
   type DungeonFeature, type DungeonLayout, type DungeonPoint,
@@ -37,6 +38,8 @@ export interface SpatialDungeonHeroProgress {
 export interface SpatialDungeonWorld {
   readonly resolvedFeatureIds: readonly string[];
   readonly heroes: readonly SpatialDungeonHeroProgress[];
+  /** A single persisted spatial actor represents a whole Ghoul-Pack. */
+  readonly monsters?: readonly DungeonMonsterState[];
   /** Version-13 backwards compatible; each ordinary site's current generation. */
   readonly siteCycles?: readonly DungeonSiteCycle[];
 }
@@ -534,7 +537,13 @@ export function simulateSpatialDungeonPartyDay(
       m.visited.add(idx);m.visitedOrder.push(idx);
     }
     step(t,"walk");
-    const feature=layout.features.find(f=>f.x===current.x&&f.z===current.z);
+    const dynamicMonster=world.monsters?.find(m=>
+      m.x===current.x&&m.z===current.z&&!resolved.has(m.id));
+    const originalMonster=dynamicMonster&&layout.features.find(f=>
+      f.id===dynamicMonster.id&&f.kind==="monster");
+    const feature=originalMonster?{...originalMonster,...current}:
+      layout.features.find(f=>f.x===current.x&&f.z===current.z&&
+        (f.kind!=="monster"||world.monsters===undefined));
     if(!feature||resolved.has(feature.id))continue;
     if(feature.kind==="treasure"){
       const rng=new SeededRandom(dungeonGenerationSeed(
@@ -680,6 +689,7 @@ export function simulateSpatialDungeonPartyDay(
   });
   const updatedWorld:SpatialDungeonWorld={
     resolvedFeatureIds:[...resolved],heroes:survivors,siteCycles,
+    ...(world.monsters?{monsters:world.monsters}:{}),
   };
   // Every viewpoint references the SAME settled world, not separate copies
   // that could independently claim the chest or revive the encounter.

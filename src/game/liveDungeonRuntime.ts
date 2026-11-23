@@ -1,5 +1,6 @@
 import type {GameState,WorldEvent} from "./gameState.ts";
 import {dungeonWorldAt,setDungeonWorld} from "./dungeonWorldState.ts";
+import {advanceDungeonMonsterWorld} from "./dungeonMonsterWorld.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
@@ -555,6 +556,19 @@ function commitDungeonTick(state:GameState):GameState {
     }
   }
   const finalRoster=state.adventurers.map(hero=>byId.get(hero.id)!);
+  // Advance every ordinary floor from the SAME scheduled world event.
+  // Offscreen packs never wait for the spectator or Galvik's Table.
+  for(let floor=1;floor<=9;floor++){
+    const ordinary=floor as SpatialDungeonFloor;
+    const layout=generateExpeditionLayout(state.seed,ordinary);
+    const world=dungeonWorldAt(dungeonWorlds,ordinary);
+    const activeHeroes=finalRoster.filter(h=>eligible(h)&&h.floor===ordinary)
+      .map(h=>getSpatialDungeonProgress(world,h.id,layout));
+    const reserved=new Set(combats.filter(c=>c.encounter.floor===ordinary)
+      .map(c=>c.encounter.featureId));
+    dungeonWorlds=setDungeonWorld(dungeonWorlds,ordinary,
+      advanceDungeonMonsterWorld(world,layout,day,tick,activeHeroes,reserved));
+  }
   const party=settleLivePartyRelationships(state.dungeonParties??[],
     sharedGroups,finalRoster,floor=>dungeonWorldAt(dungeonWorlds,floor),plans,state.seed,day,tick);
   const next:GameState={

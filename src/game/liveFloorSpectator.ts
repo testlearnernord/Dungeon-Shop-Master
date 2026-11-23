@@ -1,6 +1,7 @@
 import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
+import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
 import {generateExpeditionLayout} from "./dungeonLayout.ts";
 import type {CombatantSpec,GroupReplayFrame,GroupCombatCue} from "./groupCombat.ts";
 
@@ -45,6 +46,8 @@ export interface LiveFloorSpectatorFrame {
   readonly floor:SpatialDungeonFloor;
   readonly heroes:readonly LiveFloorHero[];
   readonly fights:readonly LiveFloorFight[];
+  /** Exact saved world packs; never recomputed from the static layout. */
+  readonly monsters?:readonly DungeonMonsterState[];
   readonly resolved:readonly string[];
 }
 
@@ -109,5 +112,6 @@ export function selectLiveFloorSpectatorFrame(
       }];
     });
   return {day:state.day,worldTick:state.worldClock.tick,floor,
-    heroes,fights,resolved:world?.resolvedFeatureIds??[]};
+    heroes,fights,monsters:world?.monsters??[],
+    resolved:world?.resolvedFeatureIds??[]};
 }

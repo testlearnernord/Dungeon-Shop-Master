@@ -95,8 +95,12 @@ export function selectKnownResourceSite(
 ):DungeonFeature|null {
   const known=new Set(progress.visited);
   const adjacent=dungeonNeighbors(layout,progress);
-  const sites=layout.features.filter(site=>
-    site.kind===kind&&!world.resolvedFeatureIds.includes(site.id)&&
+  const sites=layout.features.flatMap(site=>{
+    if(site.kind!==kind||world.resolvedFeatureIds.includes(site.id))return [];
+    if(kind!=="monster"||world.monsters===undefined)return [site];
+    const occupant=world.monsters.find(monster=>monster.id===site.id);
+    return occupant?[{...site,x:occupant.x,z:occupant.z}]:[];
+  }).filter(site=>
     (known.has(site.z*layout.width+site.x)||
       adjacent.some(p=>p.x===site.x&&p.z===site.z))&&
     (adjacent.some(p=>p.x===site.x&&p.z===site.z)||
