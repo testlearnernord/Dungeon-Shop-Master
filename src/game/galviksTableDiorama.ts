@@ -586,14 +586,8 @@ void main(void){
             x:monster.x,z:monster.z,siteCycle:monster.siteCycle,
             lastMoveTick:monster.lastMoveTick,
           });
-          const journey=this.monsterTravel.get(id);
-          if(journey){
-            const progress=monsterObservationStepProgress(
-              (now-journey.startedAt)/1000);
-            anchor.position.copyFrom(Vector3.Lerp(
-              journey.from,journey.to,progress));
-            if(progress>=1)this.monsterTravel.delete(id);
-          }else anchor.position.copyFrom(destination);
+          if(!this.monsterTravel.has(id))
+            anchor.position.copyFrom(destination);
         }
       }
       const next=monster?.target&&monster.mode!=="ENGAGED"
@@ -625,6 +619,25 @@ void main(void){
     }
     this.monsterObservedTick=frame.worldTick;
     this.monsterObservedDay=frame.day;
+  }
+
+  /** Full render cadence for a saved 1.2s travel burst, independent of the
+   * 160ms floor projection refresh. No pathfinding, AI or extra time source. */
+  private advanceGhoulPresentation(now:number):void{
+    for(const [id,anchor] of this.monsterAnchors){
+      const journey=this.monsterTravel.get(id);
+      if(journey){
+        const progress=monsterObservationStepProgress(
+          (now-journey.startedAt)/1000);
+        anchor.position.copyFrom(Vector3.Lerp(
+          journey.from,journey.to,progress));
+        const heading=Math.atan2(
+          journey.to.x-journey.from.x,journey.to.z-journey.from.z);
+        this.ghoulMap?.pose(id,progress<1,heading,progress);
+        if(progress>=1)this.monsterTravel.delete(id);
+      }else this.ghoulMap?.pose(id,false,null,1);
+    }
+    this.ghoulMap?.tick(now/1000);
   }
 
   private syncActors(frame:LiveFloorSpectatorFrame):void{
