@@ -13,6 +13,8 @@
 
 - Show actual saved hero positions, health/equipment relevant to that view, party memberships, intentions, resolved sites and running fight beacons. Each hero has an individual saved checkpoint; never project one actor's tile onto all party members.
 - Readable chests, traps, monsters and stairways use **seeded physical coordinates**, not fabricated resource rolls. Stairs on ordinary Floors 1–9 are real landmarks; Floor-9 descent must still pass the saved party/permit gate before a battle starts.
+
+- **Shared observation orientation:** `dungeonObservationOrientation.ts` owns +Z north, unrotating north-up canvas/minimap hit-test projection, default LIVE yaw/pitch/distance, and the table-local front-to-LIVE alignment. The shop player's approach to the table is furniture-local +Z, whereas the LIVE camera faces from -Z. Its diorama child receives a documented 180° local observation rotation while the parent retains arbitrary P/Q/R furniture placement. The same saved x/z tiles and authored props remain intact. No new camera transition, save migration, AI or world state is introduced.
 - The floor camera can pan, orbit, tilt, zoom and restore north. Knowledge-safe short route previews come only from the hero's actual saved plan/route. The map does not autorun combat or warp a hero when viewed.
 - Camera movement, scene props, Babylon caching and diff-based redraw are **presentation**. The 50-ms shop/world clock and 60-Hz actor authority proceed independently while the viewer is open.
 
