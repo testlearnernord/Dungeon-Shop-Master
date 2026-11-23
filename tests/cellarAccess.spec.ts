@@ -117,6 +117,17 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   expect(first!.wallHeight).toBeGreaterThan(.025);
   expect(first!.featureCount).toBeGreaterThan(5);
   expect(first!.sceneMeshCount).toBeGreaterThan(5);
+  // Existing LIVE art assets, not colored geometry-only placeholders.
+  expect(first!.wallMaterial).toContain("live-stone");
+  expect(first!.floorMaterial).toContain("live-flagstones");
+  expect(first!.authoredProps).toBeGreaterThan(3);
+  expect(first!.cryptCount).toBeGreaterThan(1);
+  expect(first!.stairCount).toBeGreaterThan(0);
+  if(first!.actorCount>0)
+    expect(first!.heroModelCount).toBeGreaterThanOrEqual(first!.actorCount);
+  await expect.poll(async()=>(await inspect())?.authoredGhouls,{
+    timeout:25000,intervals:[300,600,900],
+  }).toBeGreaterThan(0);
 
   // Pixel inspection happens on the FINAL physical shop screenshot,
   // not an offscreen texture which might be black/white once sampled.
