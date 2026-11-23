@@ -29,10 +29,10 @@ function carvedWall():ShopRoomGeometry{
 test("all registered furniture types share one geometry and mounting registry",()=>{
   const ids:FurnitureKind[]=[
     "shelf-1","shelf-2","counter","desk","chest","candle","bed",
-    "adventurer-board","galvik-portrait","cellar-chest","cellar-table",
+    "adventurer-board","galvik-portrait","cellar-chest","cellar-table","world-clock",
   ];
   assert.deepEqual(Object.keys(FURNITURE_REGISTRY),
-    ["shelf","counter","desk","chest","cellar-chest","cellar-table","candle","bed","adventurer-board","galvik-portrait"],
+    ["shelf","counter","desk","chest","cellar-chest","cellar-table","candle","bed","adventurer-board","galvik-portrait","world-clock"],
     "registry lists one shelf template plus unique furniture types");
   for(const id of ids){
     const def=furnitureDefinition(id);

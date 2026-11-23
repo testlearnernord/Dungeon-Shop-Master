@@ -26,9 +26,8 @@ test("a single authoritative world tick drives exactly one 24-hour pointer rotat
   assert.equal(stopped.angleRadians,-2*Math.PI);
   assert.equal(worldClockFace(2,firstWorldTickOfDay(2)).label,"00:00");
   assert.throws(()=>worldClockFace(1,firstWorldTickOfDay(2)),/in-day/);
-  assert.equal(worldClockFace(1,WORLD_TICKS_PER_DAY/2),
-    worldClockFace(1,WORLD_TICKS_PER_DAY/2),"pure function returns a deterministic value"
-  );
+  assert.deepEqual(worldClockFace(1,WORLD_TICKS_PER_DAY/2),
+    worldClockFace(1,WORLD_TICKS_PER_DAY/2),"pure deterministic projection");
 });
 
 test("the default clock is pre-mounted on a real clear wall and moves via P",()=>{
