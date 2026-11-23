@@ -1,6 +1,5 @@
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Engine } from "@babylonjs/core/Engines/engine";
-import {RenderTargetTexture} from "@babylonjs/core/Materials/Textures/renderTargetTexture";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
@@ -70,17 +69,6 @@ export class DungeonViewer {
   private camera: UniversalCamera | null = null;
   private layout: DungeonLayout | null = null;
   private active = false;
-  /** The table is an offscreen presentation of this SAME viewer renderer.
-   * No second DungeonViewer, world simulation, save or hero action exists. */
-  private tableTarget:RenderTargetTexture|null=null;
-  private tablePreviewFloor:SpatialDungeonFloor|null=null;
-  private tablePreviewSnapshot:null|{
-    readonly adventurers:GameState["adventurers"];
-    readonly liveDungeon:GameState["liveDungeon"];
-    readonly dungeonWorlds:GameState["dungeonWorlds"];
-    readonly dungeonParties:GameState["dungeonParties"];
-  }=null;
-  private lastTableFrameAt=-Infinity;
   private readonly keys = new Set<string>();
   private orbitPointer:null|{
     button:0|2;lastX:number;lastY:number;startX:number;startY:number;moved:boolean;
@@ -463,65 +451,12 @@ export class DungeonViewer {
   }
   get map(): DungeonLayout | null { return this.layout; }
 
-  /** Stage 1: offscreen render of the selected LIVE floor for the recess in
-   * Galvik's physical table. The ordinary shop camera and controls remain
-   * active. This reuses createScene/DungeonReplayScene/showLiveFloor and reads
-   * the same authoritative GameStore frame as the fullscreen spectator.
-   *
-   * There is no alternate hero logic and no table interaction here. A modest
-   * refresh cap avoids rendering a second GPU scene at the shop's full FPS. */
-  renderTablePreview(deltaSeconds:number):RenderTargetTexture|null{
-    if(this.active||!this.store.state.liveDungeon.enabled)return null;
-    const table=this.store.state.cellarTable;
-    const distance=Math.hypot(this.shopCamera.position.x-table.x,
-      this.shopCamera.position.z-table.z);
-    // Do not allocate/refresh thousands of dungeon meshes while Galvik is
-    // upstairs. Keep the last image until the table is approached again.
-    if(distance>11||this.shopCamera.position.y>-1)return this.tableTarget;
-    const rawFloor=Number(this.floorSelector.value);
-    const floor=LIVE_SPECTATOR_FLOORS.find(f=>f===rawFloor)??1;
-    const state=this.store.state;
-    if(this.tablePreviewFloor!==floor||!this.scene||!this.tableTarget){
-      const layout=generateExpeditionLayout(state.seed,floor);
-      this.layout=layout;
-      this.createScene(layout);
-      this.tablePreviewFloor=floor;
-      this.tablePreviewSnapshot=null;
-      if(!this.scene||!this.camera)return null;
-      const mapSize=Math.max(layout.width,layout.height)*TILE_SIZE;
-      // Frame the square map into the 768x448 recess, without the huge
-      // black border caused by the previous 1.55x distant camera.
-      this.camera.position.set(0,mapSize*1.15,-mapSize*.14);
-      this.camera.setTarget(Vector3.Zero());
-      this.tableTarget=new RenderTargetTexture("galviks-table-live-floor-"+floor,
-        {width:512,height:300},this.scene,false,true);
-      this.tableTarget.renderList=this.scene.meshes;
-      this.tableTarget.activeCamera=this.camera;
-      this.tableTarget.clearColor=new Color4(.025,.033,.030,1);
-      this.lastTableFrameAt=-Infinity;
-    }
-    const cached=this.tablePreviewSnapshot;
-    if(!cached||cached.adventurers!==state.adventurers||
-       cached.liveDungeon!==state.liveDungeon||
-       cached.dungeonWorlds!==state.dungeonWorlds||
-       cached.dungeonParties!==state.dungeonParties){
-      const view=selectLiveFloorSpectatorFrame(state,floor);
-      if(!view)return null;
-      this.replayScene?.showLiveFloor(view);
-      this.replayScene?.setSelectedFloorHero(null);
-      this.tablePreviewSnapshot={
-        adventurers:state.adventurers,liveDungeon:state.liveDungeon,
-        dungeonWorlds:state.dungeonWorlds,dungeonParties:state.dungeonParties,
-      };
-    }
-    this.replayScene?.advanceLiveFloorPresentation(
-      Math.max(0,Math.min(.1,deltaSeconds)));
-    const now=performance.now();
-    if(now-this.lastTableFrameAt>=90){
-      this.tableTarget.render(false);
-      this.lastTableFrameAt=now;
-    }
-    return this.tableTarget;
+  /** Authoritative UI floor selection shared with Galvik's physical
+   * table. The diorama consumes the same LIVE projection contract, but owns
+   * neither spectator cameras nor gameplay state. */
+  get selectedLiveFloor():SpatialDungeonFloor{
+    const selected=Number(this.floorSelector.value);
+    return LIVE_SPECTATOR_FLOORS.find(floor=>floor===selected)??1;
   }
 
   /** Position the read-only floor rail/minimap below the actual toolbar,
@@ -819,12 +754,6 @@ export class DungeonViewer {
   }
 
   private createScene(layout: DungeonLayout): void {
-    // Opening the full LIVE viewer or changing the table's selected floor
-    // replaces only the presentation. Never leave an RTT on a disposed scene.
-    this.tableTarget?.dispose();
-    this.tableTarget=null;
-    this.tablePreviewFloor=null;
-    this.tablePreviewSnapshot=null;
     this.replayScene?.dispose();
     this.replayScene=null;
     this.scene?.dispose();
