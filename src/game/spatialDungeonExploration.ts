@@ -737,7 +737,8 @@ export function advanceSpatialDungeonPartyStep(
   party:readonly AdventurerState[],world:SpatialDungeonWorld,
   campaignSeed:number,day:number,occupiedHeroIds?:ReadonlySet<string>,
   liveOptions:Pick<SpatialDungeonAdvanceOptions,"deferCombat"|"blockedCombatSites"|
-    "returnToEntrance"|"deferReturn"|"routeToKnownTarget"|"routeToResource">={},
+    "returnToEntrance"|"deferReturn"|"routeToKnownTarget"|"routeToResource"|
+    "tacticalStep">={},
 ):SpatialDungeonPartyTick {
   return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
     occupiedHeroIds,{maxSteps:1,maxEncounters:1,...liveOptions});

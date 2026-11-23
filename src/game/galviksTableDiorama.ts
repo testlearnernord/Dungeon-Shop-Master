@@ -32,6 +32,8 @@ import {GHOUL_MODEL} from "./ghoulMotion.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
+import {liveFloorFeatureIdentity} from "./liveFloorFeatureIdentity.ts";
+import {MONSTER_STEP_TICKS} from "./dungeonMonsterWorld.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import {TABLE_OBSERVATION_LOCAL_YAW,dungeonTileWorldCenter}
   from "./dungeonObservationOrientation.ts";
@@ -80,6 +82,13 @@ export class GalviksTableDiorama{
   private actorRoot:TransformNode|null=null;
   private featureRoot:TransformNode|null=null;
   private readonly monsterAnchors=new Map<string,TransformNode>();
+  /** Only presentation endpoints. Gameplay positions remain in the LIVE world. */
+  private readonly priorMonsterTiles=new Map<string,DungeonPoint>();
+  private readonly monsterTravel=new Map<string,{
+    from:Vector3;to:Vector3;startedAt:number;
+  }>();
+  private monsterObservedTick:number|null=null;
+  private monsterObservedDay:number|null=null;
   private readonly monsterHints=new Map<string,{mesh:LinesMesh;signature:string}>();
   private heroes=new Map<string,Figure>();
   private activeFloor:SpatialDungeonFloor|null=null;
@@ -203,12 +212,14 @@ void main(void){
     const frame=selectLiveFloorSpectatorFrame(state,floor);
     if(!frame)return;
     this.syncActors(frame);
-    const resolved=[...frame.resolved].sort().join("|");
-    if(resolved!==this.lastResolved){
-      this.lastResolved=resolved;
+    // Rebuild only when actual feature entities appear/disappear or cycle;
+    // never on an ordinary position update (which moves an existing mesh).
+    const featureIdentity=liveFloorFeatureIdentity(frame);
+    if(featureIdentity!==this.lastResolved){
+      this.lastResolved=featureIdentity;
       this.syncFeatures(frame);
     }
-    this.syncMonsters(frame);
+    this.syncMonsters(frame,now);
   }
 
   private setFloorLabel(floor:number):void{
@@ -359,6 +370,10 @@ void main(void){
     for(const mat of this.floorArtMaterials)mat.dispose();
     this.floorArtMaterials=[];
     this.heroes.clear();
+    this.priorMonsterTiles.clear();
+    this.monsterTravel.clear();
+    this.monsterObservedTick=null;
+    this.monsterObservedDay=null;
     this.layout=layout;
 
     this.floorRoot=new TransformNode("cellar-table-diorama-floor-"+floor,this.scene);
@@ -499,6 +514,9 @@ void main(void){
     this.featureRoot?.dispose();
     this.monsterAnchors.clear();
     this.monsterHints.clear();
+    this.monsterTravel.clear();
+    this.priorMonsterTiles.clear();
+    this.monsterObservedTick=null;
     this.featureRoot=new TransformNode("cellar-table-diorama-features",this.scene);
     this.featureRoot.parent=this.miniatureWorldRoot;
     const resolved=new Set(frame.resolved);
@@ -562,17 +580,42 @@ void main(void){
 
   /** Update existing instances only. The same LIVE world drives both
    * projections; table updates never choose a path or advance a monster. */
-  private syncMonsters(frame:LiveFloorSpectatorFrame):void{
+  private syncMonsters(frame:LiveFloorSpectatorFrame,now:number):void{
     if(!this.layout)return;
+    // Skip interpolation when the merchant slept or the observer missed many
+    // world steps. We must not animate an imaginary route between snapshots.
+    const consecutive=this.monsterObservedDay===frame.day&&
+      this.monsterObservedTick!==null&&
+      frame.worldTick>=this.monsterObservedTick&&
+      frame.worldTick-this.monsterObservedTick<=MONSTER_STEP_TICKS;
     for(const [id,anchor] of this.monsterAnchors){
       const monster=frame.monsters?.find(m=>m.id===id);
       if(frame.monsters&&!monster){
         anchor.setEnabled(false);
+        this.monsterTravel.delete(id);
+        this.priorMonsterTiles.delete(id);
       }else{
         anchor.setEnabled(monster?.mode!=="ENGAGED");
         if(monster){
           const point=this.worldPoint(monster);
-          anchor.position.set(point.x,.33,point.z);
+          const destination=new Vector3(point.x,.33,point.z);
+          const old=this.priorMonsterTiles.get(id);
+          if(old&&(old.x!==monster.x||old.z!==monster.z)&&consecutive){
+            this.monsterTravel.set(id,{
+              from:anchor.position.clone(),to:destination,startedAt:now,
+            });
+          }else if(!old||!consecutive){
+            this.monsterTravel.delete(id);
+          }
+          this.priorMonsterTiles.set(id,{x:monster.x,z:monster.z});
+          const journey=this.monsterTravel.get(id);
+          if(journey){
+            const progress=Math.min(1,Math.max(0,
+              (now-journey.startedAt)/(MONSTER_STEP_TICKS*50)));
+            anchor.position.copyFrom(Vector3.Lerp(
+              journey.from,journey.to,progress));
+            if(progress>=1)this.monsterTravel.delete(id);
+          }else anchor.position.copyFrom(destination);
         }
       }
       const next=monster?.target&&monster.mode!=="ENGAGED"
@@ -602,6 +645,8 @@ void main(void){
       hint.metadata={previewOnly:true,monsterId:id};
       this.monsterHints.set(id,{mesh:hint,signature});
     }
+    this.monsterObservedTick=frame.worldTick;
+    this.monsterObservedDay=frame.day;
   }
 
   private syncActors(frame:LiveFloorSpectatorFrame):void{
