@@ -1,51 +1,31 @@
-# CI Policy (V.004)
+# CI Policy (V.004, lean PR gate)
 
-## Mandatory pull-request checks
+The required PR pipeline is a **fast defect gate**, not a 100-day campaign and not a cosmetic screenshot inspection. A passing PR gate does not certify every gameplay or rendering system.
 
-The PR pipeline is intentionally small and protects correctness rather than replaying an entire campaign on every commit.
+## Required on each pull request
 
-- **Build and unit tests**: `npm ci`, `npm run build`, `npm run verify:pages`, and all deterministic `tests/unit/*.test.ts` tests.
-- **Browser core smoke**: a single Chromium/SwiftShader runner with a fixed whitelist of real game flows:
-  - `cashierReceipt.spec.ts`: atomic checkout and live shop traffic during cashier interaction.
-  - `shopTrafficReload.spec.ts`: saved positions, routes, waits and claims survive reload.
-  - `liveDungeonClock.spec.ts`: committed expedition positions and shared clock survive reload.
-  - `liveCombatArena.spec.ts`: the live battle is abstract on the map; opening the arena is observational, not a second simulation.
-  - `liveFloorSpectator.spec.ts`: the floor selector and party spectator are driven by saved world state.
-  - `heroBuyback.spec.ts`: an actual returning hero sells one owned item for merchant gold, with a strictly saved receipt.
-  - `physicalShopStock.spec.ts`: every real shelf item renders as imported 3D stock in a saved four-slot shelf, with exact quantities; absent raw-material GLBs can never blank every shelf.
-  - `liveBoardSignals.spec.ts`: one actual committed fatal trap produces exactly one global magical-death notice, replaces the legacy alarm and navigates to the fallen hero without revealing hidden cause.
-  - `cellarAccess.spec.ts`: correct cellar access and return to the shop.
-  - `heroCardUx.spec.ts`: unified hero cards and read-only inspection.
-  - `singleShopPortal.spec.ts`: one physical shop entry/exit.
-  - `formerRightWall.spec.ts`: old right exit is permanently sealed, including build clearance.
-  - `ordinaryFloor6.spec.ts`: Floor 6 remains an ordinary connected dungeon instead of the old solo boss.
+**Build and unit tests** (one job, stable check name): `npm ci`, `npm run build`, `npm run verify:pages`, then `npm run test:unit:core`. The core script is an explicit 29-file selection from `tests/unit/`: state/save/time, live dungeon and temporary parties, 60-Hz combat, checkout and shop traffic, one portal and right-wall seal, furniture and cellar traversal, LIVE projection and shared tabletop/minimap camera orientation. No automatic all-unit discovery on PRs.
 
-Run the exact PR browser set with `npm run test:smoke`. The existing `@ci-smoke` labels on other tests are historical metadata and **do not** place them back in the mandatory suite. Only the explicit file whitelist is authoritative.
+**Browser core smoke** (one job, stable check name): `npm run test:smoke`, with exactly these five real Chromium flows:
 
-Keep the core suite deterministic and bounded and practical on the CI runner without skipping physical gameplay coverage. This is a target, not a guaranteed duration. Prefer fixtures that construct the desired encounter from known map and save state, not hard-coded world-clock delays.
+- `cashierReceipt.spec.ts`: physical cashier and real payment authority
+- `shopTrafficReload.spec.ts`: persisted NPC routes, waits and checkout claims
+- `liveDungeonClock.spec.ts`: persisted in-day world/dungeon progression
+- `liveCombatArena.spec.ts`: opt-in combat arena observes the same real fight
+- `singleShopPortal.spec.ts`: only one valid physical entry/exit
 
-## Optional full regression
+The explicit file names in `package.json` are authoritative. An `@ci-smoke` tag on another test does not enroll it in CI. The standalone Galvik table camera-handoff job was removed: its `observationTransition.spec.ts` remains available manually, while pure camera-orientation contracts run in the core unit gate. The advisory module graph audit also does not block every PR; run it when deleting source code or before releases.
 
-Run **Actions > Full browser regression > Run workflow** for changes involving combat cinematics, fishing, performance/render architecture, long campaign progression, multi-Ghoul packs, or before a larger release.
+## Manual regression
 
-That workflow retains **every browser spec** via `npm test`, plus the unit suite and advisory module graph audit. This includes:
+`npm run test:unit` runs **all** remaining deterministic unit tests. `npm test` runs **all** remaining Playwright tests (after installing Chromium). Actions > **Full browser regression** runs both complete suites, the module graph audit and collects failure artifacts. Use targeted tests on changes to fishing, battle visuals, Galvik's Table handoff, HUD interactions, performance, or multi-day campaign progression. The separate 100-day gameplay audit is opt-in and unchanged.
 
-- `fishingPond.spec.ts` (currently timing-sensitive around the randomized flick/reel transition).
-- `liveBossWorldClock.spec.ts`, `liveGhoulPack.spec.ts` and deep arena tests.
-- `developerCombatLab.spec.ts`, `livingWorldCampaign.spec.ts`, `renderAblation.spec.ts`, `liveWorldSpikeProfile.spec.ts`, and `runtimePerformance.spec.ts`.
+The repo intentionally deletes obsolete positive Floor-6 solo-boss/per-hero-permit Playwright checks, rather than preserving assertions that contradict the current single-portal/Floor-10-party design. Former-floor regression *guards* that reject obsolete save shapes remain valid and must not be dropped just because their names mention Floor 6.
 
-A failure in the optional regression is not automatically a flaky test. Diagnose real simulation regressions, update obsolete encounter fixtures and avoid changing gameplay merely to satisfy a hard-coded test time.
+## Change policy
 
-## Updating the smoke suite
-
-When changing the mandatory whitelist:
-
-1. Keep at least one authentic browser check for checkout, save/reload, in-day dungeon progression, and opt-in combat observation.
-2. Keep most behavioral coverage in fast, deterministic unit/integration tests.
-3. Do not silently disable failing core checks. Fix the production code or the stale fixture before merge.
-4. Record the observed CI runtime and test counts in the PR. Promote additional tests only when their bug-detection value justifies running on every commit.
-5. If repository rules require the old shard job names, update the required checks to `Build and unit tests` and `Browser core smoke` when the branch protection allows it.
-
-## Deployment
-
-`deploy.yml` publishes the built and verified `main` tree on successful push. Its deployment concurrency remains unchanged. The manual dispatch trigger in that workflow is retained for operational recovery; it must never be used to deploy unmerged PR code.
+1. If a removed PR smoke check catches a real regression, restore it (or a faster targeted equivalent) and document why.
+2. Do not make production behavior wrong to satisfy an old test. Investigate outdated fixtures and remove tests only when the behavior is genuinely retired or duplicate.
+3. Keep the new-playthrough save contract strict. No old-save migrations.
+4. Keep the deployment workflow untouched. It builds and verifies the actual Pages output on `main`.
+5. Report actual CI results and measured runtime, not estimated speedups. Passing a subset is not passing the full regression.

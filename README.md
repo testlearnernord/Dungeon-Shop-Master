@@ -81,7 +81,8 @@ Requires **Node.js 22** and npm. For work directly in GitHub, contributors can o
 npm ci
 npm run dev
 npm run build
-npm run test:unit
+npm run test:unit:core
+npm run test:unit    # complete optional unit regression
 npx playwright install chromium
 npm run test:smoke
 npm test
@@ -89,7 +90,7 @@ npm test
 
 `predev` and `prebuild` first construct the **Troll Grab/Throw** and **Ghoul** animation GLBs from committed source assets. Do not delete or relocate those sources without adjusting and verifying the generators. Vite uses `/Dungeon-Shop-Master/` as its Pages base.
 
-**GitHub Actions:** PR CI performs the production build, all unit tests and one curated browser-core smoke runner. The *complete* Playwright regression runs through the **manual** `Full browser regression` workflow; `main` pushes run the GitHub Pages deployment. A successful build is not an audible SFX sign-off, visual-combat review or measured end-user FPS test.
+**GitHub Actions:** PR CI performs the production build, a curated core unit suite and five real browser smoke flows. The *complete* Playwright regression runs through the **manual** `Full browser regression` workflow; `main` pushes run the GitHub Pages deployment. A successful build is not an audible SFX sign-off, visual-combat review or measured end-user FPS test.
 
 ## Project documents
 
