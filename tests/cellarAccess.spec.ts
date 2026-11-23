@@ -16,7 +16,11 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
       return await page.evaluate(async()=>(
         await import("/Dungeon-Shop-Master/tests/scene.ts")).shopSceneReady());
     }catch(error){
-      if(!String(error).includes("Execution context was destroyed"))throw error;
+      // Vite may reload/transpile this E2E-only helper while predev assets
+      // are rebuilding. Retry only during the bounded bootstrap poll; a
+      // permanently broken module still fails after the 30-second deadline.
+      if(!/Execution context was destroyed|Failed to fetch dynamically imported module/.test(String(error)))
+        throw error;
       return false;
     }
   },{timeout:30000,intervals:[200,400,700]}).toBe(true);
@@ -115,13 +119,42 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   expect(first).not.toBeNull();
   expect(first!.wallInstances).toBeGreaterThan(50);
   expect(first!.wallHeight).toBeGreaterThan(.025);
+  // The whole physical rectangular well is sculpted, while LIVE cells
+  // remain nearly square. The side borders are real Babylon stone meshes.
+  expect(first!.wellCoverage).toBeCloseTo(1,7);
+  expect(first!.borderX).toBeGreaterThan(.04);
+  expect(first!.borderZ).toBeCloseTo(0,7);
+  expect(first!.bedrockPlates).toBe(2);
+  expect(first!.bedrockSides).toBe(2);
+  expect(first!.bedrockFacetInstances).toBeGreaterThan(40);
+  expect(first!.coreWidth).toBeGreaterThan(1.0);
+  // Real authored figures and crypt props must remain legible above the
+  // masonry when Galvik stands at the table, without a second camera.
+  expect(first!.artHeightScale).toBeGreaterThan(.03);
   expect(first!.featureCount).toBeGreaterThan(5);
   expect(first!.sceneMeshCount).toBeGreaterThan(5);
+  // Existing LIVE art assets, not colored geometry-only placeholders.
+  expect(first!.wallMaterial).toContain("live-stone");
+  expect(first!.floorMaterial).toContain("live-flagstones");
+  expect(first!.authoredProps).toBeGreaterThan(3);
+  expect(first!.cryptCount).toBeGreaterThan(1);
+  expect(first!.stairCount).toBeGreaterThan(0);
+  if(first!.actorCount>0)
+    expect(first!.heroModelCount).toBeGreaterThanOrEqual(first!.actorCount);
+  await expect.poll(async()=>(await inspect())?.authoredGhouls,{
+    timeout:25000,intervals:[300,600,900],
+  }).toBeGreaterThan(0);
 
   // Pixel inspection happens on the FINAL physical shop screenshot,
   // not an offscreen texture which might be black/white once sampled.
   const points=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksDioramaScreenshotPoints());
+  const wallPoints=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksDioramaWallPixels());
+  expect(wallPoints.length).toBeGreaterThan(15);
+  const bankPoints=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksDioramaBedrockPixels());
+  expect(bankPoints.length).toBe(10);
   const screenshot=await page.screenshot();
   await testInfo.attach("galviks-real-3d-table",{
     body:screenshot,contentType:"image/png",
@@ -141,8 +174,24 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
       const data=context.getImageData(p.x,p.y,1,1).data;
       return [data[0]!,data[1]!,data[2]!] as const;
     });
-  },{base64:screenshot.toString("base64"),points});
-  const luminances=colors.map(rgb=>Math.max(...rgb));
+  },{base64:screenshot.toString("base64"),
+    points:[...points,...wallPoints,...bankPoints]});
+  const wallColors=colors.slice(points.length,points.length+wallPoints.length);
+  const wallLuminance=wallColors.map(rgb=>Math.max(...rgb));
+  console.log("GALVIK_WALL_PIXEL_DIAGNOSTIC",JSON.stringify({
+    count:wallLuminance.length,
+    lit:wallLuminance.filter(v=>v>32).length,
+    min:Math.min(...wallLuminance),
+    max:Math.max(...wallLuminance),
+  }));
+  expect(wallLuminance.filter(value=>value>32).length)
+    .toBeGreaterThan(Math.floor(wallLuminance.length*.3));
+  const bankLuminance=colors.slice(points.length+wallPoints.length)
+    .map(rgb=>Math.max(...rgb));
+  // Both banks must be visibly textured and lit, not just counted meshes
+  // hiding below the imported GLB's black recessed undertray.
+  expect(bankLuminance.filter(value=>value>35).length).toBeGreaterThan(5);
+  const luminances=colors.slice(0,points.length).map(rgb=>Math.max(...rgb));
   // The centered white FPS crosshair may cover one or two sampled points.
   // A solid-white surface still fails, without false positives from the HUD.
   expect(luminances.filter(v=>v>240).length).toBeLessThanOrEqual(2);
@@ -165,5 +214,14 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
     shopCamera:first!.shopCamera,
   });
   expect(second!.wallInstances).toBeGreaterThan(first!.wallInstances);
+  expect(second!.wellCoverage).toBeCloseTo(1,7);
+  expect(second!.bedrockSides).toBe(2);
+  expect(second!.bedrockFacetInstances).toBe(first!.bedrockFacetInstances);
+  expect(second!.coreWidth).toBeCloseTo(first!.coreWidth,7);
+  // The deeper 31×31 floor gets a separate real-shop screenshot. It must be
+  // inspected at the same FPS distance, not inferred from Floor 01 pixels.
+  await testInfo.attach("galviks-floor-06-table",{
+    body:await page.screenshot(),contentType:"image/png",
+  });
   expect(errors).toEqual([]);
 });

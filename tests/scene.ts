@@ -55,8 +55,30 @@ export function inspectGalviksLiveTable(){
     layoutWidth:diorama?.metadata?.layoutWidth??null,
     layoutHeight:diorama?.metadata?.layoutHeight??null,
     wallInstances:(wallA?.thinInstanceCount??0)+(wallB?.thinInstanceCount??0),
+    coreWidth:diorama?.metadata?.coreWidth??null,
+    coreDepth:diorama?.metadata?.coreDepth??null,
+    borderX:diorama?.metadata?.borderX??null,
+    borderZ:diorama?.metadata?.borderZ??null,
+    bankTop:diorama?.metadata?.bankTop??null,
+    wellCoverage:diorama?.metadata?.wellCoverage??null,
+    bedrockPlates:diorama?.metadata?.bedrockPlates??null,
+    bedrockFacetInstances:(scene?.getMeshByName(
+      "cellar-table-diorama-bedrock-facets-0")?.thinInstanceCount??0)+
+      (scene?.getMeshByName(
+        "cellar-table-diorama-bedrock-facets-1")?.thinInstanceCount??0),
+    bedrockSides:[-1,1].filter(side=>!!scene?.getMeshByName(
+      "cellar-table-diorama-bedrock-side-"+(side<0?"left":"right"))).length,
+    wallMaterial:wallA?.material?.name??null,
+    floorMaterial:scene?.getMeshByName("cellar-table-diorama-corridors")?.material?.name??null,
+    authoredProps:diorama?.metadata?.authoredProps??null,
+    authoredGhouls:diorama?.metadata?.authoredGhouls??null,
+    cryptCount:scene?.meshes.filter(m=>m.name.startsWith("cellar-table-diorama-crypt-")).length??0,
+    stairCount:scene?.meshes.filter(m=>m.name.startsWith("cellar-table-diorama-stair-")).length??0,
+    heroModelCount:scene?.transformNodes.filter(n=>n.name.startsWith("cellar-table-diorama-hero-")).length??0,
     wallHeight:wallA?.getBoundingInfo().boundingBox.extendSize.y
       ?2*wallA.getBoundingInfo().boundingBox.extendSize.y:0,
+    artHeightScale:scene?.getTransformNodeByName(
+      "cellar-table-diorama-live-art-scale")?.scaling.y??null,
     baseExists:!!base,
     floorLabelExists:!!floorLabel,
     floorLabelMaterial:floorLabel?.material?.name??null,
@@ -1316,6 +1338,38 @@ export function inspectLiveFloorCameraFocus(){
 }
 
 
+/** Real wall-top pixels in the visible shop screenshot: prevents the
+ * material regression where 800+ counted walls render as a blank dark plane.
+ * Thin-instance matrices are presentation geometry, not game-state guesses. */
+export function galviksDioramaWallPixels(){
+  const scene=currentTestScene();
+  const camera=scene?.activeCamera;
+  const canvas=scene?.getEngine().getRenderingCanvas();
+  if(!scene||!camera||!canvas)throw Error("Shop camera required");
+  const vp=camera.viewport.toGlobal(
+    scene.getEngine().getRenderWidth(),scene.getEngine().getRenderHeight());
+  const bbox=canvas.getBoundingClientRect();
+  const points:{x:number;y:number}[]=[];
+  for(const name of ["cellar-table-diorama-walls-a","cellar-table-diorama-walls-b"]){
+    const mesh=scene.getMeshByName(name) as import("@babylonjs/core/Meshes/mesh").Mesh|null;
+    if(!mesh)continue;
+    mesh.computeWorldMatrix(true);
+    const matrices=mesh.thinInstanceGetWorldMatrices();
+    const stride=Math.max(1,Math.floor(matrices.length/40));
+    for(let i=0;i<matrices.length;i+=stride){
+      const h=mesh.getBoundingInfo().boundingBox.maximum.y;
+      const world=Vector3.TransformCoordinates(new Vector3(0,h,0),
+        matrices[i]!.multiply(mesh.getWorldMatrix()));
+      const p=Vector3.Project(world,Matrix.Identity(),scene.getTransformMatrix(),vp);
+      const x=Math.round(bbox.left+p.x*bbox.width/vp.width);
+      const y=Math.round(bbox.top+p.y*bbox.height/vp.height);
+      if(x>=0&&y>=0&&x<bbox.right&&y<bbox.bottom)
+        points.push({x,y});
+    }
+  }
+  return points;
+}
+
 /** Project five-by-five locations on the REAL local masonry surface into
  * screenshot pixels; this detects missing/invisible geometry, not RTT pixels. */
 export function galviksDioramaScreenshotPoints(){
@@ -1342,5 +1396,41 @@ export function galviksDioramaScreenshotPoints(){
         y:Math.round(bbox.top+p.y*bbox.height/height),
       });
     }
+  return points;
+}
+
+/** Sample the ACTUAL side-bank surface in the final shop screenshot.
+ * Counting Babylon nodes alone missed the black/occluded tabletop gap. */
+export function galviksDioramaBedrockPixels(){
+  const scene=currentTestScene();
+  const camera=scene?.activeCamera;
+  const root=scene?.getTransformNodeByName("cellar-table-diorama-root");
+  const canvas=scene?.getEngine().getRenderingCanvas();
+  if(!scene||!camera||!root||!canvas)
+    throw Error("Physical shop diorama and camera required");
+  const {coreWidth,borderX,bankTop}=root.metadata??{};
+  if(typeof coreWidth!=="number"||typeof borderX!=="number"||
+    typeof bankTop!=="number"||borderX<=0)
+    throw Error("Missing visible side-bedrock geometry");
+  const engine=scene.getEngine();
+  const width=engine.getRenderWidth(),height=engine.getRenderHeight();
+  const vp=camera.viewport.toGlobal(width,height);
+  const bbox=canvas.getBoundingClientRect();
+  root.computeWorldMatrix(true);
+  const world=root.getWorldMatrix();
+  const points:{x:number;y:number}[]=[];
+  for(const side of [-1,1]){
+    for(const z of [-.20,-.10,0,.10,.20]){
+      // Center of the solid bank plate between its two terraced rock rows.
+      const local=new Vector3(
+        side*(coreWidth/2+borderX*.50),bankTop,z);
+      const p=Vector3.Project(Vector3.TransformCoordinates(local,world),
+        Matrix.Identity(),scene.getTransformMatrix(),vp);
+      points.push({
+        x:Math.round(bbox.left+p.x*bbox.width/width),
+        y:Math.round(bbox.top+p.y*bbox.height/height),
+      });
+    }
+  }
   return points;
 }
