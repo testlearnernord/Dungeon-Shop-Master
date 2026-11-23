@@ -49,6 +49,8 @@ export function inspectGalviksLiveTable(){
     dioramaExists:!!diorama,
     dioramaEnabled:diorama?.isEnabled()??false,
     physicallyParented:diorama?.parent===root,
+    furnitureYaw:root?.rotation.y??null,
+    dioramaLocalYaw:diorama?.rotation.y??null,
     observedFloor:diorama?.metadata?.floor??null,
     actorCount:diorama?.metadata?.actorCount??null,
     featureCount:diorama?.metadata?.featureCount??null,
@@ -81,6 +83,7 @@ export function inspectGalviksLiveTable(){
       "cellar-table-diorama-live-art-scale")?.scaling.y??null,
     baseExists:!!base,
     floorLabelExists:!!floorLabel,
+    floorLabelMountedOnFurniture:floorLabel?.parent===root,
     floorLabelMaterial:floorLabel?.material?.name??null,
     sceneMeshCount:allMeshes.length,
     flatLegacyInset:!!scene?.getMeshByName("cellar-table-live-inset"),
@@ -89,6 +92,40 @@ export function inspectGalviksLiveTable(){
     inShopScene:!!scene?.getMeshByName("cellar-table-collider"),
   };
 }
+/** Babylon matrix regression: verify the REAL table child/root basis for
+ * every Q/R quarter turn, including mirrored-winding detection. This reads
+ * geometry and restores the original furniture yaw without touching saves. */
+export function inspectTableObservationBasis(){
+  const scene=currentTestScene();
+  const furniture=scene?.getTransformNodeByName("cellar-table-root");
+  const miniature=scene?.getTransformNodeByName("cellar-table-diorama-root");
+  if(!furniture||!miniature)throw Error("Physical observation table missing");
+  const savedYaw=furniture.rotation.y;
+  const result:{turn:number;rightDot:number;northDot:number;handedness:number}[]=[];
+  try{
+    for(let turn=0;turn<4;turn++){
+      furniture.rotation.y=turn*Math.PI/2;
+      furniture.computeWorldMatrix(true);
+      miniature.computeWorldMatrix(true);
+      const front=Vector3.TransformNormal(Vector3.Forward(),
+        furniture.getWorldMatrix()).normalize();
+      const screenRight=new Vector3(-front.z,0,front.x);
+      const mapEast=Vector3.TransformNormal(Vector3.Right(),
+        miniature.getWorldMatrix()).normalize();
+      const mapNorth=Vector3.TransformNormal(Vector3.Forward(),
+        miniature.getWorldMatrix()).normalize();
+      result.push({turn,rightDot:Vector3.Dot(mapEast,screenRight),
+        northDot:Vector3.Dot(mapNorth,front.scale(-1)),
+        handedness:miniature.getWorldMatrix().determinant()});
+    }
+  }finally{
+    furniture.rotation.y=savedYaw;
+    furniture.computeWorldMatrix(true);
+    miniature.computeWorldMatrix(true);
+  }
+  return result;
+}
+
 export function aimAtGalviksTable(){
   const scene=currentTestScene();
   const camera=scene?.activeCamera as UniversalCamera|undefined;

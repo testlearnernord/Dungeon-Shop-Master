@@ -1,4 +1,5 @@
 import type {DungeonPoint} from "./dungeonLayout.ts";
+import {dungeonTileFromMinimapUV} from "./dungeonObservationOrientation.ts";
 
 export interface MinimapBounds{
   readonly left:number;readonly top:number;
@@ -18,10 +19,10 @@ export function minimapPointFromClient(
     !Number.isSafeInteger(tilesWide)||tilesWide<=0||
     !Number.isSafeInteger(tilesHigh)||tilesHigh<=0)return null;
   const nx=(clientX-bounds.left)/bounds.width;
-  const nz=(clientY-bounds.top)/bounds.height;
-  if(nx<0||nx>=1||nz<0||nz>=1)return null;
-  const cell={x:Math.floor(nx*tilesWide),z:Math.floor(nz*tilesHigh)};
-  return isKnownMinimapCell(cell,tilesWide,tilesHigh,explored)?cell:null;
+  const ny=(clientY-bounds.top)/bounds.height;
+  const cell=dungeonTileFromMinimapUV(nx,ny,tilesWide,tilesHigh);
+  return cell&&isKnownMinimapCell(cell,tilesWide,tilesHigh,explored)
+    ?cell:null;
 }
 
 /** A selected hero never gets an omniscient camera jump into black fog.

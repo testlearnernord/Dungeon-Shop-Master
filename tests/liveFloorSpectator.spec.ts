@@ -272,9 +272,26 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   const clickMinimap=async(point:{x:number;z:number})=>{
     const bounds=await minimap.boundingBox();
     if(!bounds)throw Error("Minimap should be visible");
-    await page.mouse.click(
-      bounds.x+(point.x+.5)*bounds.width/minimapTargets.width,
-      bounds.y+(point.z+.5)*bounds.height/minimapTargets.height);
+    const panel=await page.locator(
+      "#dungeon-hud .dungeon-minimap-panel").boundingBox();
+    if(!panel)throw Error("Minimap panel should be visible");
+    // All north/south cells must fit without requiring scrollbar navigation.
+    expect(bounds.y).toBeGreaterThanOrEqual(panel.y-1);
+    expect(bounds.y+bounds.height).toBeLessThanOrEqual(
+      panel.y+panel.height+1);
+    expect(bounds.x).toBeGreaterThanOrEqual(panel.x-1);
+    expect(bounds.x+bounds.width).toBeLessThanOrEqual(
+      panel.x+panel.width+1);
+    const x=bounds.x+(point.x+.5)*bounds.width/minimapTargets.width;
+    const y=bounds.y+(minimapTargets.height-point.z-.5)*
+      bounds.height/minimapTargets.height;
+    // A previously fixed-position soundtrack card used to intercept south-
+    // side minimap clicks. Verify real browser hit testing before focus.
+    const topmost=await page.evaluate(({x,y})=>
+      document.elementFromPoint(x,y)?.id??"",{x,y});
+    expect(topmost,"The requested LIVE minimap cell must receive clicks")
+      .toBe("dungeon-minimap");
+    await page.mouse.click(x,y);
   };
   const beforeMinimap=await mapFocus();
   await clickMinimap(minimapTargets.known);
@@ -294,7 +311,7 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   if(Math.abs(dx)+Math.abs(dz)===1){
     await minimap.focus();
     await page.keyboard.press(dx===1?"ArrowRight":dx===-1?
-      "ArrowLeft":dz===1?"ArrowDown":"ArrowUp");
+      "ArrowLeft":dz===1?"ArrowUp":"ArrowDown");
     const afterArrow=await mapFocus();
     expect(afterArrow.target.x).toBeCloseTo(third.x,2);
     expect(afterArrow.target.z).toBeCloseTo(third.z,2);

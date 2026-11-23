@@ -203,3 +203,50 @@ body.dungeon-active:not(.arena-active) #renderCanvas:active{
 #dungeon-hud .dungeon-minimap-panel{
   top:max(152px,var(--dungeon-panels-top,148px));
 }
+
+/* The LIVE minimap must own every cell, including southern (+Z-down on
+ * older screenshots) rows. The shared fixed music widget previously floated
+ * across its last ~80px and silently stole click-to-focus interactions.
+ * While observing the Dungeon, dock audio in the otherwise unused toolbar's
+ * upper-right area, never on top of the north-up minimap or hero controls.
+ * Normal Shop and opt-in combat audio positions are unchanged. */
+body.dungeon-active:not(.arena-active) #music-panel,
+body.dungeon-active:not(.arena-active) #game #music-panel{
+  top:120px!important;
+  bottom:auto!important;
+  right:15px!important;
+  left:auto!important;
+  transform:none!important;
+}
+@media(max-width:560px){
+  body.dungeon-active:not(.arena-active) #music-panel,
+  body.dungeon-active:not(.arena-active) #game #music-panel{
+    top:152px!important;
+    right:6px!important;
+    width:112px!important;
+  }
+  body.dungeon-active:not(.arena-active) #music-panel .music-heading,
+  body.dungeon-active:not(.arena-active) #music-panel .music-actions label{
+    display:none;
+  }
+}
+
+/* A fixed-height 186px canvas does NOT fit next to a wrapped LIVE toolbar,
+ * 2-line fog title, compass and legend on 600px-high screens. The prior
+ * max-height+overflow:auto cut the map behind vertical/horizontal scrollbars,
+ * leaving southern (low-Z) cells unclickable even after moving the music UI.
+ * Keep the entire north-up canvas visible: scale the presentation only,
+ * not its intrinsic 6px/tile coordinates or the inverse CSS hit test. */
+#dungeon-hud .dungeon-minimap-panel{
+  max-height:none;
+  overflow:visible;
+}
+#dungeon-hud #dungeon-minimap{
+  --dungeon-minimap-side:clamp(
+    92px,calc(100dvh - var(--dungeon-panels-top,148px) - 280px),186px
+  );
+  width:var(--dungeon-minimap-side);
+  height:var(--dungeon-minimap-side);
+  max-width:100%;
+  aspect-ratio:1;
+}

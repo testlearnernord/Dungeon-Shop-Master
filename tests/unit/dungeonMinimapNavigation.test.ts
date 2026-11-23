@@ -6,11 +6,11 @@ import {minimapPointFromClient,isKnownMinimapCell}
 const rect={left:40,top:60,width:372,height:279};
 
 test("minimap navigation honors displayed CSS dimensions, not backing pixels",()=>{
-  assert.deepEqual(minimapPointFromClient(40,60,rect,31,31),{x:0,z:0});
+  assert.deepEqual(minimapPointFromClient(40,60,rect,31,31),{x:0,z:30});
   assert.deepEqual(minimapPointFromClient(40+372*15.5/31,
-    60+279*9.5/31,rect,31,31),{x:15,z:9});
+    60+279*9.5/31,rect,31,31),{x:15,z:21});
   assert.deepEqual(minimapPointFromClient(411.999,338.999,rect,31,31),
-    {x:30,z:30});
+    {x:30,z:0});
   assert.equal(minimapPointFromClient(412,338,rect,31,31),null);
   assert.equal(minimapPointFromClient(39,70,rect,31,31),null);
   assert.equal(minimapPointFromClient(41,59,rect,31,31),null);
@@ -20,7 +20,7 @@ test("minimap navigation honors displayed CSS dimensions, not backing pixels",()
 
 test("personal fog rejects even a correct click in an unknown square",()=>{
   const explored=new Set([0,1,31,32]);
-  assert.deepEqual(minimapPointFromClient(40,60,rect,31,31,explored),
+  assert.deepEqual(minimapPointFromClient(40,60+279*30.5/31,rect,31,31,explored),
     {x:0,z:0});
   assert.equal(minimapPointFromClient(40+372*12/31,
     60+279*12/31,rect,31,31,explored),null);

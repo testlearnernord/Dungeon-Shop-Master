@@ -1,3 +1,4 @@
+import {orientNorthUpMinimap} from "./dungeonObservationOrientation.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import type { Light } from "@babylonjs/core/Lights/light";
@@ -323,6 +324,7 @@ export class DungeonReplayScene {
     const cell=6;
     this.indicator.width=this.layout.width*cell;
     this.indicator.height=this.layout.height*cell;
+    orientNorthUpMinimap(ctx,this.indicator.height);
     for(let z=0;z<this.layout.height;z++)for(let x=0;x<this.layout.width;x++){
       const kind=tileAt(this.layout,x,z);
       ctx.fillStyle=kind==="wall"?"#171b20":kind==="room"?"#81786d":"#565960";
@@ -347,6 +349,7 @@ export class DungeonReplayScene {
     const cell=6;
     this.indicator.width=this.layout.width*cell;
     this.indicator.height=this.layout.height*cell;
+    orientNorthUpMinimap(ctx,this.indicator.height);
     ctx.fillStyle="#06090e";
     ctx.fillRect(0,0,this.indicator.width,this.indicator.height);
     for(const index of visible){
@@ -637,6 +640,7 @@ export class DungeonReplayScene {
     const cell=6;
     this.indicator.width=this.layout.width*cell;
     this.indicator.height=this.layout.height*cell;
+    orientNorthUpMinimap(ctx,this.indicator.height);
     for(let z=0;z<this.layout.height;z++)for(let x=0;x<this.layout.width;x++){
       const key=z*this.layout.width+x;
       const kind=tileAt(this.layout,x,z);

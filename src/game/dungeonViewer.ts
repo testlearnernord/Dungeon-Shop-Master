@@ -39,6 +39,9 @@ import {renderHeroCard} from "../heroCard.ts";
 import {hoverHeroId,hideHeroHover} from "../worldHeroCards.ts";
 import {minimapPointFromClient,isKnownMinimapCell}
   from "./dungeonMinimapNavigation.ts";
+import {DUNGEON_WORLD_TILE_SIZE,DUNGEON_DEFAULT_PITCH,
+  DUNGEON_DEFAULT_DISTANCE,dungeonTileWorldCenter,orientNorthUpMinimap}
+  from "./dungeonObservationOrientation.ts";
 import {floorHeroLocatorOptions,floorFightLocatorOptions}
   from "./liveDungeonInspector.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget,
@@ -50,11 +53,12 @@ import {
   type DungeonFeature, type DungeonPoint,
 } from "./dungeonLayout.ts";
 
-const TILE_SIZE = 2.5;
+const TILE_SIZE = DUNGEON_WORLD_TILE_SIZE;
 const WALL_HEIGHT = 4.5;
-const getWorld = (map: DungeonLayout, p: DungeonPoint) => new Vector3(
-  (p.x-(map.width-1)/2)*TILE_SIZE, 0, (p.z-(map.height-1)/2)*TILE_SIZE,
-);
+const getWorld = (map: DungeonLayout, p: DungeonPoint) => {
+  const at=dungeonTileWorldCenter(map,p);
+  return new Vector3(at.x,0,at.z);
+};
 const isInteractiveTarget=(target:EventTarget|null):boolean=>
   target instanceof Element&&(!!target.closest("#music-panel, #dungeon-hud")||
     target.matches("button,input,select,textarea,a[href],[contenteditable='true']"));
@@ -246,8 +250,8 @@ export class DungeonViewer {
          !this.layout)return;
       const offset=event.code==="ArrowLeft"?{x:-1,z:0}:
         event.code==="ArrowRight"?{x:1,z:0}:
-        event.code==="ArrowUp"?{x:0,z:-1}:
-        event.code==="ArrowDown"?{x:0,z:1}:null;
+        event.code==="ArrowUp"?{x:0,z:1}:
+        event.code==="ArrowDown"?{x:0,z:-1}:null;
       if(!offset)return;
       event.preventDefault();event.stopPropagation();
       const pose=this.mapPose();
@@ -1553,7 +1557,8 @@ export class DungeonViewer {
     if(this.liveArena.isActive){this.liveArena.resetCamera();return;}
     const restore=()=>{
       const pose=this.mapPose();
-      if(pose)this.setMapPose({...pose,yaw:0,pitch:1.2,distance:70});
+      if(pose)this.setMapPose({...pose,yaw:DUNGEON_NORTH_YAW,
+        pitch:DUNGEON_DEFAULT_PITCH,distance:DUNGEON_DEFAULT_DISTANCE});
     };
     if(this.liveFloor!==null){
       if(this.followActor)this.replayScene?.follow(this.followActor);
@@ -1572,10 +1577,10 @@ export class DungeonViewer {
     this.focus=((index%this.landmarks.length)+this.landmarks.length)%this.landmarks.length;
     const landmark=this.landmarks[this.focus];
     const target=getWorld(this.layout,landmark.point);
-    const height= Math.max(20,this.camera.position.y);
-    this.camera.position.set(target.x,height,target.z-18);
-    this.camera.setTarget(new Vector3(target.x,0,target.z));
-    this.updateCompass();
+    const pose=this.mapPose();
+    if(pose)this.setMapPose({...pose,x:target.x,z:target.z,
+      yaw:DUNGEON_NORTH_YAW,pitch:DUNGEON_DEFAULT_PITCH,
+      distance:DUNGEON_DEFAULT_DISTANCE});
     this.focusLabel.textContent="Camera focus: "+landmark.name+
       " ("+landmark.point.x+", "+landmark.point.z+")";
   }
@@ -1585,6 +1590,7 @@ export class DungeonViewer {
     const cell=6;
     this.minimap.width=layout.width*cell;
     this.minimap.height=layout.height*cell;
+    orientNorthUpMinimap(ctx,this.minimap.height);
     for(let z=0;z<layout.height;z++)for(let x=0;x<layout.width;x++) {
       const kind=tileAt(layout,x,z);
       ctx.fillStyle=kind==="wall"?"#171b20":kind==="room"?"#81786d":"#565960";

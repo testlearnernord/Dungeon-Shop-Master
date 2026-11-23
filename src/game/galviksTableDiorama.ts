@@ -32,6 +32,8 @@ import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
+import {TABLE_OBSERVATION_LOCAL_YAW,dungeonTileWorldCenter}
+  from "./dungeonObservationOrientation.ts";
 
 function material(scene:Scene,id:string,color:Color3):StandardMaterial{
   const mat=new StandardMaterial("table-diorama-"+id,scene);
@@ -58,6 +60,7 @@ type Figure={readonly visual:HeroVisual;readonly ring:Mesh};
 export class GalviksTableDiorama{
   readonly root:TransformNode;
   private readonly floorText:DynamicTexture;
+  private readonly floorPlaque:Mesh;
   private readonly tabletopLight:HemisphericLight;
   private readonly floorMat:ShaderMaterial;
   private readonly palette:{
@@ -89,6 +92,9 @@ export class GalviksTableDiorama{
     this.scene=scene;
     this.root=new TransformNode("cellar-table-diorama-root",scene);
     this.root.parent=tableRoot;
+    // The table is approached from local +Z; the LIVE map is seen from -Z.
+    // Align their observer frames independently of the movable table parent.
+    this.root.rotation.y=TABLE_OBSERVATION_LOCAL_YAW;
     this.root.position.z=TABLE_DIORAMA_WELL.centerZ;
     this.root.setEnabled(false); // GLB must be loaded before placing geometry
     // Scoped light affects ONLY the miniaturized floor and wall meshes,
@@ -157,9 +163,11 @@ void main(void){
     const plaque=MeshBuilder.CreatePlane("cellar-table-floor-label",{
       width:.40,height:.085,
     },scene);
-    plaque.parent=this.root;
-    // Vertical, facing Galvik on the rear lip ABOVE the miniature.
-    plaque.position.set(0,1.020,-.355);
+    // Sign belongs to the physical furniture, NOT the 180° rotated
+    // observation root. Otherwise FLOOR 01 reads mirrored from Galvik. 
+    plaque.parent=tableRoot;
+    plaque.position.set(0,1.020,TABLE_DIORAMA_WELL.centerZ-.355);
+    this.floorPlaque=plaque;
     plaque.isPickable=false;plaque.checkCollisions=false;
     plaque.material=this.floorMat;
     this.setFloorLabel(1);
@@ -327,8 +335,8 @@ void main(void){
    * inside the physical furniture. All authored props use this one adapter. */
   private worldPoint(p:DungeonPoint):Vector3{
     const map=this.layout!;
-    return new Vector3((p.x-(map.width-1)/2)*2.5,0,
-      (p.z-(map.height-1)/2)*2.5);
+    const at=dungeonTileWorldCenter(map,p);
+    return new Vector3(at.x,0,at.z);
   }
 
   private disposeFigure(figure:Figure):void{
@@ -401,15 +409,17 @@ void main(void){
       TABLE_DIORAMA_WELL.floorY,.008,this.palette.corridor);
     thin("cellar-table-diorama-rooms",(_,__,tile)=>tile==="room",
       TABLE_DIORAMA_WELL.floorY,.009,this.palette.room);
+    // After the documented 180° table observation alignment, the LOCAL
+    // front (+Z) sees the original grid -Z edge, not its +Z edge.
     thin("cellar-table-diorama-front-cutaway",(_,z,tile)=>
-      tile==="wall"&&z>=layout.height-2,
+      tile==="wall"&&z<=1,
       TABLE_DIORAMA_WELL.floorY+.015,.028,this.palette.stoneB);
     thin("cellar-table-diorama-walls-a",(x,z,tile)=>
-      tile==="wall"&&z<layout.height-2&&(x+z)%2===0,
+      tile==="wall"&&z>1&&(x+z)%2===0,
       TABLE_DIORAMA_WELL.wallY,TABLE_DIORAMA_WELL.wallHeight,
       this.palette.stoneA);
     thin("cellar-table-diorama-walls-b",(x,z,tile)=>
-      tile==="wall"&&z<layout.height-2&&(x+z)%2!==0,
+      tile==="wall"&&z>1&&(x+z)%2!==0,
       TABLE_DIORAMA_WELL.wallY,TABLE_DIORAMA_WELL.wallHeight,
       this.palette.stoneB);
     // Only now is the include-list populated: enable the scoped light.
@@ -591,6 +601,7 @@ void main(void){
     for(const figure of this.heroes.values())this.disposeFigure(figure);
     this.heroes.clear();
     this.root.dispose();
+    this.floorPlaque.dispose();
     this.tabletopLight.dispose();
     this.ghoulAsset?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
