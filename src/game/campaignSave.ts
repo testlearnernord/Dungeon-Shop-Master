@@ -319,7 +319,10 @@ function validateSpatialDungeonReplay(
     }
     if(step.featureId!==undefined){
       const feature=features.get(text(step.featureId,item+".featureId"));
-      if(!feature||feature.x!==x||feature.z!==z)fail(item+".featureId","must match this location");
+      if(!feature||(feature.x!==x||feature.z!==z)&&
+        !(feature.kind==="monster"&&
+          (step.action==="combat"||step.action==="defeat-monster")))
+        fail(item+".featureId","must match its real encounter or authored site");
     }
     previous={x,z};
   });
@@ -333,8 +336,14 @@ function validateSpatialDungeonReplay(
       integer(encounter.siteCycle,item+".siteCycle",0,100000);
     const feature=features.get(text(encounter.featureId,item+".featureId"));
     if(!feature||feature.kind!=="monster")fail(item+".featureId","must refer to a monster");
-    if(encounter.x!==feature.x||encounter.z!==feature.z)
-      fail(item,"must match monster spawn position");
+    const contact=steps.some(rawStep=>{
+      const step=rawStep as {x:number;z:number;featureId?:string;action:string};
+      return step.featureId===feature.id&&step.x===encounter.x&&
+        step.z===encounter.z&&
+        (step.action==="combat"||step.action==="defeat-monster");
+    });
+    if(!contact||tileAt(map,encounter.x as number,encounter.z as number)==="wall")
+      fail(item,"must match the real recorded monster contact");
     const combat=object(encounter.combat,item+".combat",[
       "version","actors","bounds","obstacles","frames","cues","outcome",
     ]);
@@ -501,7 +510,7 @@ function validateLiveCombatCheckpoints(
     const layout=generateExpeditionLayout(state.seed as number,
       floor as SpatialDungeonFloor);
     const feature=layout.features.find(f=>f.id===featureId&&f.kind==="monster");
-    if(!feature||feature.x!==encounter.x||feature.z!==encounter.z)
+    if(!feature||tileAt(layout,encounter.x as number,encounter.z as number)==="wall")
       fail(cp+".encounter","must identify one real reached monster tile");
     const cycle=integer(encounter.siteCycle,cp+".encounter.siteCycle",0,100000);
     if(typeof encounter.elite!=="boolean")
@@ -526,12 +535,19 @@ function validateLiveCombatCheckpoints(
     const world:SpatialDungeonWorld=
       ((state.dungeonWorlds as {floor:number;world:SpatialDungeonWorld}[]|undefined)
         ?.find(entry=>entry.floor===floor)?.world??{heroes:[],resolvedFeatureIds:[]});
+    if(world.monsters&&
+      !world.monsters.some(m=>m.id===featureId&&m.siteCycle===cycle&&
+        m.x===encounter.x&&m.z===encounter.z))
+      fail(cp+".encounter","must match the reserved roaming pack location");
+    if(!world.monsters&&
+      (feature.x!==encounter.x||feature.z!==encounter.z))
+      fail(cp+".encounter","has no matching original monster");
     if(world.resolvedFeatureIds.includes(featureId)||
       (world.siteCycles?.find(x=>x.id===featureId)?.cycle??0)!==cycle)
       fail(cp+".encounter.siteCycle","cannot reserve a resolved or regenerated site");
     for(const member of members){
       const progress=world.heroes.find(h=>h.heroId===member.id);
-      if(!progress||progress.x!==feature.x||progress.z!==feature.z)
+      if(!progress||progress.x!==encounter.x||progress.z!==encounter.z)
         fail(cp+".heroIds","must actually occupy the monster's tile");
     }
     const arrivals=array(battle.arrivals,cp+".arrivals");
@@ -546,7 +562,7 @@ function validateLiveCombatCheckpoints(
       const tail=steps[steps.length-1];
       if(r.outcome!=="exploring"||(r.encounters as unknown[]).length||
         !tail||tail.action!=="combat"||tail.featureId!==featureId||
-        tail.x!==feature.x||tail.z!==feature.z)
+        tail.x!==encounter.x||tail.z!==encounter.z)
         fail(ap,"must be an unresolved real monster approach");
     });
 
@@ -585,9 +601,10 @@ function validateLiveCombatCheckpoints(
         validNumber(obstacle[key],op+"."+key,-10000,10000);
     });
     const initialApproach=(arrivals[0] as {steps:{x:number;z:number}[]}).steps[0];
-    const liveCanonical=prepareSpatialDungeonCombat(members,feature!,
+    const actualMonster={...feature,x:encounter.x as number,z:encounter.z as number};
+    const liveCanonical=prepareSpatialDungeonCombat(members,actualMonster,
       layout.seed,layout,initialApproach,cycle,true);
-    const legacyCanonical=prepareSpatialDungeonCombat(members,feature!,
+    const legacyCanonical=prepareSpatialDungeonCombat(members,actualMonster,
       layout.seed,layout,initialApproach,cycle,false);
     // Pre-progression saves may contain a fight begun at higher XP with
     // seeded BASE stats and no ordinary healer spells. The saved 60Hz
@@ -595,9 +612,9 @@ function validateLiveCombatCheckpoints(
     // rewritten mid-swing by a gameplay update. Match either exact
     // historical footprint, never accept arbitrary forged fighter values.
     const historicalMembers=members.map(member=>({...member,level:1}));
-    const historicalLive=prepareSpatialDungeonCombat(historicalMembers,feature!,
+    const historicalLive=prepareSpatialDungeonCombat(historicalMembers,actualMonster,
       layout.seed,layout,initialApproach,cycle,true);
-    const historicalSolo=prepareSpatialDungeonCombat(historicalMembers,feature!,
+    const historicalSolo=prepareSpatialDungeonCombat(historicalMembers,actualMonster,
       layout.seed,layout,initialApproach,cycle,false);
     const withoutNewSpells=(canonical:typeof historicalLive)=>
       ({...canonical,options:{...canonical.options,
