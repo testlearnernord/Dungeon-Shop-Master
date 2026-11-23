@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {createGameState} from "../../src/game/gameState.ts";
 import {generateExpeditionLayout,dungeonNeighbors}
   from "../../src/game/dungeonLayout.ts";
-import {emptySpatialDungeonWorld,simulateSpatialDungeonPartyDay}
+import {emptySpatialDungeonWorld,advanceSpatialDungeonPartyStep}
   from "../../src/game/spatialDungeonExploration.ts";
 import {advanceDungeonMonsterWorld} from "../../src/game/dungeonMonsterWorld.ts";
 import {chooseDungeonThreatReaction}
@@ -45,9 +45,8 @@ test("injured individual flees on a genuinely adjacent tile and the real walker 
   assert(dungeonNeighbors(layout,position).some(cell=>
     cell.x===reaction.step.x&&cell.z===reaction.step.z));
   assert.notDeepEqual(reaction.step,{x:selected.x,z:selected.z});
-  const stepped=simulateSpatialDungeonPartyDay([wounded],world,seed,1,
-    new Set([wounded.id]),{maxSteps:1,deferCombat:true,
-      tacticalStep:reaction.step});
+  const stepped=advanceSpatialDungeonPartyStep([wounded],world,seed,1,
+    new Set([wounded.id]),{deferCombat:true,tacticalStep:reaction.step});
   const progress=stepped.world.heroes.find(h=>h.heroId===wounded.id);
   assert(progress);
   assert.deepEqual([progress.x,progress.z],[reaction.step.x,reaction.step.z]);
