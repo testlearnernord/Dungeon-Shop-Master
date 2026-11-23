@@ -1236,6 +1236,42 @@ export function inspectLiveDungeonFloor(){
 }
 
 
+/** Real Babylon mesh and arrow positions from whichever LIVE observation is
+ * active. Read-only: comparing the table with the fullscreen map cannot tick
+ * the world, predict a hidden actor, or synthesize a monster path. */
+export function inspectGhoulObservationMeshes(){
+  const scene=currentTestScene();
+  if(!scene)throw new Error("Babylon observation scene missing");
+  const shop=!document.body.classList.contains("dungeon-active");
+  // MeshBuilder.CreateBox creates a Mesh, not an entry in scene.transformNodes.
+  const pins=shop?scene.meshes.filter(node=>
+    node.name.startsWith("cellar-table-diorama-ghoul-anchor-")):
+    scene.meshes.filter(mesh=>mesh.metadata?.spectatorFeatureKind==="monster"&&
+      mesh.name.startsWith("dungeon-monster-"));
+  const prefix=shop?"cellar-table-monster-next-":"dungeon-monster-next-";
+  const hints=scene.meshes.filter(mesh=>mesh.name.startsWith(prefix));
+  return {
+    observer:shop?"table":"live",
+    pins:pins.map(pin=>({
+      id:pin.name.slice(shop?
+        "cellar-table-diorama-ghoul-anchor-".length:
+        "dungeon-monster-".length),
+      x:pin.position.x,z:pin.position.z,
+      enabled:pin.isEnabled(),
+    })).sort((a,b)=>a.id.localeCompare(b.id)),
+    arrows:hints.map(mesh=>{
+      const positions=mesh.getVerticesData("position")??[];
+      return {
+        id:mesh.name.slice(prefix.length),enabled:mesh.isEnabled(),
+        rgb:(mesh as import("@babylonjs/core/Meshes/linesMesh").LinesMesh)
+          .color?.toHexString()??null,
+        length:positions.length>=6?Math.hypot(
+          positions[3]-positions[0],positions[5]-positions[2]):null,
+      };
+    }).sort((a,b)=>a.id.localeCompare(b.id)),
+  };
+}
+
 /** Browser-only physical canvas click location of a real rendered hero token. */
 export function liveFloorHeroClickPoint(heroId:string):{x:number;y:number}{
   const scene=currentTestScene()!;

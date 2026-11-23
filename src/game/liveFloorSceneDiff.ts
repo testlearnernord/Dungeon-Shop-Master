@@ -50,7 +50,8 @@ export function sameLiveFloorMap(a:FloorMapSnapshot,b:FloorMapSnapshot):boolean{
   if(oldMonsters.length!==newMonsters.length)return false;
   for(let i=0;i<oldMonsters.length;i++){
     const x=oldMonsters[i],y=newMonsters[i];
-    if(x.id!==y.id||x.x!==y.x||x.z!==y.z||x.mode!==y.mode||
+    if(x.id!==y.id||x.siteCycle!==y.siteCycle||
+       x.x!==y.x||x.z!==y.z||x.mode!==y.mode||
        x.target?.x!==y.target?.x||x.target?.z!==y.target?.z)return false;
   }
   for(let i=0;i<a.fights.length;i++){

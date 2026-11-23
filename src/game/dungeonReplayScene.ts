@@ -29,7 +29,8 @@ import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import type {LiveFloorSpectatorFrame,LiveFloorHero} from "./liveFloorSpectator.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
 import {sameLiveFloorMap} from "./liveFloorSceneDiff.ts";
-import {MONSTER_STEP_TICKS} from "./dungeonMonsterWorld.ts";
+import {isObservedMonsterStep,MONSTER_OBSERVATION_STEP_SECONDS,
+  monsterObservationStepProgress} from "./monsterObservationMotion.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget}
   from "./dungeonMapCamera.ts";
 import {selectHeroFloorPerception,type HeroFloorPerception}
@@ -433,14 +434,23 @@ export class DungeonReplayScene {
         this.floorTravel.delete(hero.id);
       }
     }
-    // Visual travel uses only consecutive committed endpoints. The
-    // 400-world-tick duration never advances or influences monster AI.
+    // Never interpolate over a skipped world interval, another floor/day,
+    // regenerated site or more than one lawful committed tile. Both LIVE
+    // observers share the same read-only transition eligibility rule.
     for(const monster of view.monsters??[]){
       const before=previous?.monsters?.find(m=>m.id===monster.id);
-      if(before&&(before.x!==monster.x||before.z!==monster.z))
+      const moving=before&&previous&&isObservedMonsterStep({
+        ...before,day:previous.day,floor:previous.floor,
+        worldTick:previous.worldTick,
+      },{...monster,day:view.day,floor:view.floor,worldTick:view.worldTick});
+      if(moving&&before){
         this.floorMonsterTravel.set(monster.id,{
           from:{x:before.x,z:before.z},
           to:{x:monster.x,z:monster.z},seconds:0});
+      }else if(!before||before.siteCycle!==monster.siteCycle||
+               before.x!==monster.x||before.z!==monster.z){
+        this.floorMonsterTravel.delete(monster.id);
+      }
     }
     for(const id of this.floorMonsterTravel.keys())
       if(!view.monsters?.some(m=>m.id===id))this.floorMonsterTravel.delete(id);
@@ -809,9 +819,9 @@ export class DungeonReplayScene {
       const marker=this.markers.find(m=>m.kind==="monster"&&m.id===monster.id);
       if(!marker)continue;
       const transit=this.floorMonsterTravel.get(monster.id);
-      if(transit)transit.seconds=Math.min(MONSTER_STEP_TICKS*.05,
+      if(transit)transit.seconds=Math.min(MONSTER_OBSERVATION_STEP_SECONDS,
         transit.seconds+Math.min(.1,Math.max(0,dt)));
-      const alpha=transit?transit.seconds/(MONSTER_STEP_TICKS*.05):1;
+      const alpha=transit?monsterObservationStepProgress(transit.seconds):1;
       const at=transit?{
         x:transit.from.x+(transit.to.x-transit.from.x)*alpha,
         z:transit.from.z+(transit.to.z-transit.from.z)*alpha,

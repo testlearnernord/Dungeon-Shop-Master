@@ -1,7 +1,9 @@
 /**
  * Cosmetic interpolation of TWO already committed dungeon checkpoints.
  * No AI, prediction, RNG, world-time change or synthetic intermediate save.
- * Deliberately short: the true dungeon travels one tile per 30 real seconds.
+ * Deliberately short: the LIVE dungeon commits one hero tile per
+ * 200 world ticks (10 unpaused real seconds). The rendered walk is 0.85s;
+ * the rest of the interval is a genuine standstill, not slow motion.
  */
 export const LIVE_PARTY_STEP_SECONDS = 0.85;
 
