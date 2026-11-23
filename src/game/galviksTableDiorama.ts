@@ -7,12 +7,8 @@ import type {Material} from "@babylonjs/core/Materials/material";
 import {ShaderMaterial} from "@babylonjs/core/Materials/shaderMaterial";
 import {DynamicTexture} from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
-import {loadAssetContainerAsync} from "@babylonjs/core/Loading/sceneLoader";
-import type {AssetContainer} from "@babylonjs/core/assetContainer";
 import {Mesh} from "@babylonjs/core/Meshes/mesh";
 import type {LinesMesh} from "@babylonjs/core/Meshes/linesMesh";
-import "@babylonjs/core/Meshes/instancedMesh";
-import "@babylonjs/loaders/glTF/2.0";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameState} from "./gameState.ts";
@@ -28,7 +24,8 @@ import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {createHeroVisual,setHeroVisualEquipment,
   type HeroVisual} from "./heroVisual.ts";
-import {GHOUL_MODEL} from "./ghoulMotion.ts";
+import {GhoulMapInstances,type GhoulMapSite}
+  from "./dungeonGhoulMapInstances.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
@@ -77,9 +74,7 @@ export class GalviksTableDiorama{
   private miniatureWorldRoot:TransformNode|null=null;
   private readonly featurePaint:ReturnType<typeof createDungeonFeaturePalette>;
   private readonly ghoulFallback:StandardMaterial;
-  private ghoulSource:Mesh|null=null;
-  private ghoulAsset:AssetContainer|null=null;
-  private ghoulLoading=false;
+  private ghoulMap:GhoulMapInstances|null=null;
   private floorArtMaterials:StandardMaterial[]=[];
   private actorRoot:TransformNode|null=null;
   private featureRoot:TransformNode|null=null;
@@ -209,6 +204,9 @@ void main(void){
       this.lastUpdateAt=-Infinity;
     }
     const now=performance.now();
+    // Smooth authored movement runs at render cadence. Expensive route/fog
+    // projection remains throttled and never advances the world simulation.
+    this.advanceGhoulPresentation(now);
     // Presentation-only throttle. World time and autonomous heroes never pause.
     if(now-this.lastUpdateAt<160)return;
     this.lastUpdateAt=now;
@@ -223,6 +221,7 @@ void main(void){
       this.syncFeatures(frame);
     }
     this.syncMonsters(frame,now);
+    this.advanceGhoulPresentation(now);
   }
 
   private setFloorLabel(floor:number):void{
@@ -482,35 +481,16 @@ void main(void){
   }
 
   private ensureAuthoredGhouls():void{
-    if(this.ghoulSource||this.ghoulLoading)return;
-    this.ghoulLoading=true;
-    // A single static source shared by all table ghoul instances and floors.
-    // The spectator's exact authored 65-bone model/idle pose is reused.
-    void loadAssetContainerAsync(import.meta.env.BASE_URL+GHOUL_MODEL,this.scene)
-      .then(asset=>{
-        if(this.root.isDisposed()){asset.dispose();return;}
-        const meshes=asset.meshes.filter(
-          (mesh):mesh is Mesh=>mesh instanceof Mesh&&mesh.getTotalVertices()>0);
-        if(meshes.length!==1||asset.skeletons[0]?.bones.length!==65||
-          asset.animationGroups.length!==15){
-          asset.dispose();
-          throw Error("Expected the canonical LIVE Dungeon Ghoul asset");
-        }
-        asset.addAllToScene();
-        const source=meshes[0];
-        for(const clip of asset.animationGroups)clip.stop();
-        const idle=asset.animationGroups.find(clip=>clip.name==="idle_combat");
-        if(idle){
-          idle.start(false);idle.pause();
-          idle.goToFrame(idle.from+(idle.to-idle.from)*.18);
-        }
-        source.position.y=-900;
-        source.isPickable=false;source.checkCollisions=false;
-        this.ghoulAsset=asset;
-        this.ghoulSource=source;
-        this.lastResolved="~"; // refresh only visuals, never dungeon state
-      })
-      .catch(error=>console.warn("Table Ghoul artwork unavailable",error));
+    if(this.ghoulMap)return;
+    this.ghoulMap=new GhoulMapInstances(this.scene,[],{
+      visualHeight:2.05,
+      instancePrefix:"cellar-table-diorama-authored-ghoul-",
+      onReady:()=>{
+        // Rebuild the same already selected floor's cosmetic instances once
+        // the single shared two-pose asset is loaded. Never touch GameStore.
+        if(!this.root.isDisposed())this.lastResolved="~";
+      },
+    });
   }
 
   private syncFeatures(frame:LiveFloorSpectatorFrame):void{
@@ -523,7 +503,8 @@ void main(void){
     this.featureRoot=new TransformNode("cellar-table-diorama-features",this.scene);
     this.featureRoot.parent=this.miniatureWorldRoot;
     const resolved=new Set(frame.resolved);
-    let visible=0,authoredProps=0,authoredGhouls=0;
+    let visible=0,authoredProps=0;
+    const ghoulSites:GhoulMapSite[]=[];
     for(const feature of this.layout!.features){
       if(resolved.has(feature.id))continue;
       const pack=feature.kind==="monster"
@@ -549,36 +530,23 @@ void main(void){
         this.monsterAnchors.set(feature.id,anchor);
         anchor.visibility=0;anchor.isPickable=false;
         anchor.checkCollisions=false;
-        if(this.ghoulSource){
-          const source=this.ghoulSource;
-          const bounds=source.getBoundingInfo().boundingBox;
-          const height=bounds.maximum.y-bounds.minimum.y;
-          if(height>0){
-            const scale=Math.min(12,Math.max(.01,2.05/height));
-            const instance=source.createInstance(
-              "cellar-table-diorama-authored-ghoul-"+feature.id);
-            instance.parent=anchor;
-            instance.position.set(0,-bounds.minimum.y*scale+.04,0);
-            instance.scaling.setAll(scale);
-            instance.rotation.y=Math.PI;
-            instance.isPickable=false;instance.checkCollisions=false;
-            authoredGhouls++;
-          }
-        }else{
-          const fallback=MeshBuilder.CreatePlane(
-            "cellar-table-diorama-ghoul-loading-"+feature.id,
-            {width:1.65,height:1.65},this.scene);
-          fallback.parent=anchor;
-          fallback.position.y=.04;
-          fallback.rotation.x=-Math.PI/2;
-          fallback.material=this.ghoulFallback;
-          fallback.isPickable=false;fallback.checkCollisions=false;
-        }
+        // An illustrated fallback stays visible until both authored pose
+        // rigs are ready. The shared owner disables it when instances exist.
+        const fallback=MeshBuilder.CreatePlane(
+          "cellar-table-diorama-ghoul-loading-"+feature.id,
+          {width:1.65,height:1.65},this.scene);
+        fallback.parent=anchor;
+        fallback.position.y=.04;
+        fallback.rotation.x=-Math.PI/2;
+        fallback.material=this.ghoulFallback;
+        fallback.isPickable=false;fallback.checkCollisions=false;
+        ghoulSites.push({id:feature.id,root:anchor,fallback});
       }
     }
+    this.ghoulMap?.setSites(ghoulSites);
     this.root.metadata.featureCount=visible;
     this.root.metadata.authoredProps=authoredProps;
-    this.root.metadata.authoredGhouls=authoredGhouls;
+    this.root.metadata.authoredGhouls=this.ghoulMap?.authoredCount??0;
   }
 
   /** Update existing instances only. The same LIVE world drives both
@@ -712,7 +680,7 @@ void main(void){
     this.root.dispose();
     this.floorPlaque.dispose();
     this.tabletopLight.dispose();
-    this.ghoulAsset?.dispose();
+    this.ghoulMap?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
     this.floorText.dispose();
     this.floorMat.dispose();
