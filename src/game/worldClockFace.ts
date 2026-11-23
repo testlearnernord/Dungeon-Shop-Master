@@ -22,5 +22,8 @@ export function worldClockFace(day:number,tick:number):WorldClockFace {
   const hour=stopped?24:Math.floor(totalMinutes/60);
   const minute=stopped?0:totalMinutes%60;
   const label=String(hour).padStart(2,"0")+":"+String(minute).padStart(2,"0");
-  return {fraction,angleRadians:-2*Math.PI*fraction,hour,minute,stopped,label};
+  // The clock is mounted with a 180° Y rotation on the rear shop wall.
+  // A positive *local* Z rotation is therefore clockwise when observed
+  // from Galvik's side of the wall: 06:00 points right, 18:00 left.
+  return {fraction,angleRadians:2*Math.PI*fraction,hour,minute,stopped,label};
 }
