@@ -429,6 +429,9 @@ export interface SpatialDungeonAdvanceOptions {
   readonly routeToKnownTarget?:DungeonPoint;
   /** Targeted known resource tile, selected by one individual real LIVE goal. */
   readonly routeToResource?:DungeonPoint;
+  /** Exactly one physically adjacent tactical choice from the same LIVE AI.
+   * It never provides a long, undiscovered or teleporting route. */
+  readonly tacticalStep?:DungeonPoint;
   /** A retreat on the live timeline must return via the portal, not teleport. */
   readonly deferReturn?:boolean;
   /** Live mode reserves the site, but does not prematurely calculate its result. */
@@ -525,9 +528,13 @@ export function simulateSpatialDungeonPartyDay(
       :null;
     const resourceStep=options.routeToResource
       ?chooseKnownResourceStep(layout,routeProgress,options.routeToResource):null;
+    const tactical=options.tacticalStep&&t===1?options.tacticalStep:null;
+    if(tactical&&!dungeonNeighbors(layout,current).some(point=>
+      point.x===tactical.x&&point.z===tactical.z))
+      throw new RangeError("Hero tactical AI tried to cross a nonadjacent dungeon tile");
     const next=(options.returnToEntrance
       ?chooseKnownReturnStep(layout,routeProgress)
-      :stairStep??resourceStep??choosePartyDungeonStep(layout,members.map(member=>({
+      :tactical??stairStep??resourceStep??choosePartyDungeonStep(layout,members.map(member=>({
         heroId:member.hero.id,...current,visited:member.visitedOrder,
       }))) ?? chooseRenewedSiteStep(layout,current,
       // Only discovered tiles may steer the renewable-site fallback. A
