@@ -231,7 +231,10 @@ export class ObservationTransitionDirector{
   }
 
   private skip():void{
-    if(this.phase==="shop"){this.handoff();if(this.phase==="live")this.finish();}
+    if(this.phase==="shop"){
+      this.handoff();
+      if(this.dungeon.isActive)this.finish();
+    }
     else if(this.phase==="live"){
       if(this.profile)this.dungeon.setTableObservationPose({
         ...this.profile.live,distance:this.profile.live.distance*.945});
