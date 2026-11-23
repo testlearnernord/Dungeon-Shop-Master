@@ -34,7 +34,7 @@ import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
 import {liveFloorFeatureIdentity} from "./liveFloorFeatureIdentity.ts";
 import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
-import {isObservedMonsterStep,MONSTER_OBSERVATION_STEP_SECONDS}
+import {isObservedMonsterStep,monsterObservationStepProgress}
   from "./monsterObservationMotion.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import {TABLE_OBSERVATION_LOCAL_YAW,dungeonTileWorldCenter}
@@ -620,8 +620,8 @@ void main(void){
           });
           const journey=this.monsterTravel.get(id);
           if(journey){
-            const progress=Math.min(1,Math.max(0,
-              (now-journey.startedAt)/(MONSTER_OBSERVATION_STEP_SECONDS*1000)));
+            const progress=monsterObservationStepProgress(
+              (now-journey.startedAt)/1000);
             anchor.position.copyFrom(Vector3.Lerp(
               journey.from,journey.to,progress));
             if(progress>=1)this.monsterTravel.delete(id);
