@@ -76,8 +76,10 @@ export function aimAtGalviksTable(){
   const root=scene?.getTransformNodeByName("cellar-table-root");
   if(!camera||!root)throw Error("Missing Galvik shop camera or table root");
   const center=root.getAbsolutePosition();
-  camera.position.set(center.x,center.y+1.65,center.z+3.4);
-  camera.setTarget(center.add(new Vector3(0,1.08,0)));
+  // Normal close-up standing view of the physical furniture; the old
+  // long-distance, almost-horizontal QA camera hid the well behind its rim.
+  camera.position.set(center.x,center.y+1.9,center.z+2.2);
+  camera.setTarget(center.add(new Vector3(0,1.04,0)));
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
 }
