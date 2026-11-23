@@ -604,6 +604,15 @@ function commitDungeonTick(state:GameState):GameState {
       const encounterSite=ordinary+":"+feature.id;
       if(combatSites.has(encounterSite))continue;
       const atPoint={x:pack.x,z:pack.z};
+      // A hero may be physically standing at the entrance before their
+      // first individual walking checkpoint. Preserve the true on-floor
+      // entry position before reserving a monster-initiated contact fight.
+      const newlyRecorded=participants.map(hero=>
+        getSpatialDungeonProgress(committed,hero.id,layout)).filter(progress=>
+        !committed.heroes.some(saved=>saved.heroId===progress.heroId));
+      if(newlyRecorded.length)committed={
+        ...committed,heroes:[...committed.heroes,...newlyRecorded],
+      };
       const arrivals:SpatialDungeonReplay[]=participants.map(hero=>{
         const old=arrivalsByHero.get(hero.id);
         const progress=getSpatialDungeonProgress(committed,hero.id,layout);
