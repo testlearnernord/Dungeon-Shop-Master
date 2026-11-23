@@ -92,7 +92,22 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
   expect(first.shopCamera).toBeTruthy();
   const probe=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).probeGalviksTableProjection());
-  console.log("GALVIK_TABLE_PROBE "+JSON.stringify(probe));
+  const center=probe.rows.find(row=>row.x===0&&row.z===-.12)?.y;
+  expect(center).not.toBeNull();
+  const clearance=probe.inset.position![1]-center!;
+  console.log("GALVIK_TABLE_PROJECTION",JSON.stringify({
+    floorTexture:probe.textureName,
+    recessY:center,screenY:probe.inset.position?.[1],clearance,
+    gpu:probe.gpu,
+  }));
+  // A real floor image, not a named black texture.
+  expect(probe.gpu?.colored).toBeGreaterThan(25000);
+  expect(probe.gpu?.average).toBeGreaterThan(20);
+  // The image belongs a few centimetres above the *actual* recessed GLB
+  // surface, NOT 35 cm in the air behind the table.
+  expect(clearance).toBeGreaterThan(.008);
+  expect(clearance).toBeLessThan(.055);
+  expect(probe.inset.worldMax![1]-probe.inset.worldMin![1]).toBeLessThan(.002);
 
   // The LIVE viewer remains the sole owner of the selected floor. A return
   // to the shop must update the *same physical* inset, not open a second HUD.
