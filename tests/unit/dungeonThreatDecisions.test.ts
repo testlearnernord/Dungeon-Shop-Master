@@ -49,7 +49,7 @@ test("injured individual flees on a genuinely adjacent tile and the real walker 
 
 test("armed, experienced healthy warrior may deliberately confront the visible pursuer",()=>{
   const strong=hero({level:5,equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
-    health:heroProgression(original[0]).maxHealth});
+    health:heroProgression({...original[0],level:5}).maxHealth});
   const reaction=chooseDungeonThreatReaction(layout,world,[strong],[strong]);
   assert(reaction);
   assert.equal(reaction.action,"PREPARING_TO_FIGHT");
@@ -76,7 +76,7 @@ test("an unequipped isolated hero may move toward another truly visible helper",
 });
 
 test("a cautious underequipped hero without support chooses an actual one-cell LOS evasion",()=>{
-  const weak=hero({level:1,health:45,
+  const weak=hero({level:1,health:heroProgression(original[0]).maxHealth,
     traits:{...original[0].traits,positive:"generous"},
     equipment:{weapon:null,armor:null}});
   const reaction=chooseDungeonThreatReaction(layout,world,[weak],[weak]);
