@@ -103,9 +103,11 @@ export function selectHeroFloorPerception(
     other.id!==observer.id&&sight.has(at(layout,other));
   const visibleHeroIds=frame.heroes.filter(sees).map(hero=>hero.id);
   const resolved=new Set(frame.resolved);
-  const visibleMonsterIds=layout.features.filter(feature=>
-    feature.kind==="monster"&&!resolved.has(feature.id)&&
-    sight.has(at(layout,feature))).map(feature=>feature.id);
+  const monsterPositions=frame.monsters??layout.features.filter(f=>
+    f.kind==="monster").map(f=>({...f,mode:"IDLE" as const}));
+  const visibleMonsterIds=monsterPositions.filter(monster=>
+    monster.mode!=="ENGAGED"&&!resolved.has(monster.id)&&
+    sight.has(at(layout,monster))).map(monster=>monster.id);
   const partyMembers=frame.heroes.filter(hero=>
     hero.id!==observer.id&&observer.partyMemberIds.includes(hero.id)&&
     hero.x===observer.x&&hero.z===observer.z);
