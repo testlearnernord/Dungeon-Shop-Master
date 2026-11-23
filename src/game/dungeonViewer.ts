@@ -490,7 +490,10 @@ export class DungeonViewer {
     document.body.classList.add("dungeon-active");
     this.panel.hidden = false;
     this.alignHudPanels();
-    this.layout = generateExpeditionLayout(this.store.state.seed,7);
+    // Build the final floor immediately. Creating a throwaway Floor 7
+    // scene here would stall the single cinematic handoff for no reason.
+    this.layout = generateExpeditionLayout(this.store.state.seed,
+      initialReplayId?7:entryFloor);
     this.createScene(this.layout);
     this.refreshReplaySelector(initialReplayId,entryFloor);
     // LIVE floor overview is the default. Archive opens only intentionally.
