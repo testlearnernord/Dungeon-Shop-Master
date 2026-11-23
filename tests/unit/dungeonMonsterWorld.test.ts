@@ -117,3 +117,74 @@ test("full LIVE world saves every offscreen floor and resumes monster clocks det
   pack.x=-1;
   assert.throws(()=>parseSave(JSON.stringify(tampered)),/monsters/);
 });
+
+test("two simultaneously chasing packs cannot share the same hero contact tile",()=>{
+  const initial=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),layout,1,0);
+  const packs=initial.monsters!;
+  assert(packs.length>=2);
+  const others=packs.slice(2);
+  const used=new Set(others.map(p=>p.x+":"+p.z));
+  let center:{x:number;z:number}|null=null;
+  let candidates:readonly {x:number;z:number}[]=[];
+  for(let z=0;z<layout.height&&!center;z++)for(let x=0;x<layout.width;x++){
+    const p={x,z};
+    if(tileAt(layout,x,z)==="wall"||used.has(x+":"+z))continue;
+    const adjacent=dungeonNeighbors(layout,p).filter(n=>
+      !used.has(n.x+":"+n.z));
+    if(adjacent.length<2)continue;
+    center=p;candidates=adjacent;break;
+  }
+  assert(center&&candidates.length>=2);
+  const targetHeroId=createGameState(seed).adventurers[0].id;
+  const relocated=packs.map((pack,index):DungeonMonsterState=>{
+    if(index>1)return pack;
+    const at=candidates[index];
+    return {...pack,...at,mode:"CHASING",target:center!,
+      lastKnown:center!,targetHeroId,lastSeenTick:0,
+      lostSightChecks:0,lastMoveTick:0};
+  });
+  const world={...initial,monsters:relocated};
+  const out=advanceDungeonMonsterWorld(world,layout,1,400,
+    [{...center,heroId:targetHeroId}]);
+  const arrived=out.monsters!.filter(pack=>
+    pack.x===center.x&&pack.z===center.z);
+  assert.equal(arrived.length,1,
+    "exactly one pack may reserve an occupied hero cell this tick");
+  assert([packs[0].id,packs[1].id].includes(arrived[0].id));
+  assert.equal(new Set(out.monsters!.map(pack=>pack.x+":"+pack.z)).size,
+    out.monsters!.length);
+  assert.deepEqual(advanceDungeonMonsterWorld(world,layout,1,400,
+    [{...center,heroId:targetHeroId}]),out,
+    "simultaneous movement order must remain deterministic");
+});
+
+test("two packs crossing each other's occupied edge cannot pass through one another",()=>{
+  const initial=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),layout,1,0);
+  const packs=initial.monsters!;
+  assert(packs.length>=2);
+  const used=new Set(packs.slice(2).map(pack=>pack.x+":"+pack.z));
+  let from:{x:number;z:number}|null=null;
+  let to:{x:number;z:number}|null=null;
+  for(let z=0;z<layout.height&&!from;z++)for(let x=0;x<layout.width;x++){
+    if(tileAt(layout,x,z)==="wall"||used.has(x+":"+z))continue;
+    const neighbor=dungeonNeighbors(layout,{x,z})
+      .find(p=>!used.has(p.x+":"+p.z));
+    if(neighbor){from={x,z};to=neighbor;break;}
+  }
+  assert(from&&to);
+  const world={...initial,monsters:packs.map((pack,index):DungeonMonsterState=>{
+    if(index===0)return {...pack,...from!,mode:"ROAMING",target:to!,
+      lastMoveTick:0};
+    if(index===1)return {...pack,...to!,mode:"ROAMING",target:from!,
+      lastMoveTick:0};
+    return pack;
+  })};
+  const next=advanceDungeonMonsterWorld(world,layout,1,400);
+  for(let i=0;i<2;i++){
+    assert.deepEqual([next.monsters![i].x,next.monsters![i].z],
+      [world.monsters[i].x,world.monsters[i].z],
+      "a simultaneous swap must not pass two solid Ghoul packs through each other");
+  }
+  assert.equal(new Set(next.monsters!.map(pack=>pack.x+":"+pack.z)).size,
+    next.monsters!.length);
+});
