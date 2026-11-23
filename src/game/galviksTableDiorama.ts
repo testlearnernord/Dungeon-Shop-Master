@@ -249,15 +249,20 @@ void main(void){
         width:fit.coreWidth,depth:fit.borderZ,
       });
 
-    // Seamless underlay across every spare millimetre of the well. This
-    // covers the very edge so the black base never looks like an empty bar.
+    // The actual GLB well has a deep black undertray. A thin floor slab was
+    // BELOW its visually occluding lip and left conspicuous black bands.
+    // Raised, solid bedrock escarpments instead reach up beside the masonry,
+    // with real textured vertical cutaway faces all the way to the underlay.
+    const bankBottom=well.baseY+.006;
+    const bankTop=well.wallY+.017;
     for(const plate of plates){
       const mesh=MeshBuilder.CreateBox(
         "cellar-table-diorama-bedrock-"+plate.name,{
-          width:plate.width+.002,depth:plate.depth+.002,height:.018,
+          width:plate.width+.002,depth:plate.depth+.002,
+          height:bankTop-bankBottom,
         },this.scene);
       mesh.parent=this.floorRoot;
-      mesh.position.set(plate.x,well.floorY+.005,plate.z);
+      mesh.position.set(plate.x,(bankTop+bankBottom)/2,plate.z);
       mesh.material=this.palette.stoneB;
       mesh.isPickable=false;mesh.checkCollisions=false;
       this.tabletopLight.includedOnlyMeshes.push(mesh);
@@ -268,7 +273,7 @@ void main(void){
     // batches, never hundreds of independently simulated scene objects.
     const facets:[number[],number[]]=[[],[]];
     const push=(x:number,z:number,w:number,d:number,h:number,shade:number)=>{
-      const y=well.floorY+.014+h/2;
+      const y=bankTop+h/2;
       facets[shade].push(...Matrix.Scaling(w,h,d).multiply(
         Matrix.Translation(x,y,z)).asArray());
     };
@@ -366,6 +371,7 @@ void main(void){
       featureCount:0,actorCount:0,renderKind:"shared-live-dungeon-art",
       coreWidth:fit.coreWidth,coreDepth:fit.coreDepth,
       borderX:fit.borderX,borderZ:fit.borderZ,
+      bankTop:TABLE_DIORAMA_WELL.wallY+.017,
       wellCoverage:(fit.coreWidth+2*fit.borderX)*
         (fit.coreDepth+2*fit.borderZ)/
         (TABLE_DIORAMA_WELL.width*TABLE_DIORAMA_WELL.depth)};
