@@ -321,7 +321,8 @@ function validateSpatialDungeonReplay(
       const feature=features.get(text(step.featureId,item+".featureId"));
       if(!feature||(feature.x!==x||feature.z!==z)&&
         !(feature.kind==="monster"&&
-          (step.action==="combat"||step.action==="defeat-monster")))
+          ["combat","defeat-monster","retreat","death"].includes(
+            step.action as string)))
         fail(item+".featureId","must match its real encounter or authored site");
     }
     previous={x,z};
