@@ -118,6 +118,7 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   const first=await inspect();
   expect(first).not.toBeNull();
   expect(first!.dioramaLocalYaw).toBeCloseTo(Math.PI,9);
+  expect(first!.floorLabelMountedOnFurniture).toBe(true);
   expect(first!.furnitureYaw).toBeCloseTo(0,9);
   const basis=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectTableObservationBasis());
