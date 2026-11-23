@@ -20,7 +20,8 @@ test("adaptive border fit fills the entire GLB recess without warping LIVE floor
       TABLE_DIORAMA_WELL.width)<1e-9);
     assert(Math.abs(fit.coreDepth+2*fit.borderZ-
       TABLE_DIORAMA_WELL.depth)<1e-9);
-    assert(fit.borderX>.15,"Wide recess should gain sculpted side banks");
+    assert(fit.borderX>.04&&fit.borderX<.10,
+      "Near-square layout should fill most of the rectangular well");
     assert(fit.borderZ<1e-9,"No unfilled strips along the short dimension");
     const cx=(layout.width-1)/2,cz=(layout.height-1)/2;
     assert.deepEqual(tableDioramaPosition(layout,{x:cx,z:cz}),{x:0,z:0});
