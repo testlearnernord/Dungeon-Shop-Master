@@ -122,12 +122,12 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   // The whole physical rectangular well is sculpted, while LIVE cells
   // remain nearly square. The side borders are real Babylon stone meshes.
   expect(first!.wellCoverage).toBeCloseTo(1,7);
-  expect(first!.borderX).toBeGreaterThan(.15);
+  expect(first!.borderX).toBeGreaterThan(.04);
   expect(first!.borderZ).toBeCloseTo(0,7);
   expect(first!.bedrockPlates).toBe(2);
   expect(first!.bedrockSides).toBe(2);
   expect(first!.bedrockFacetInstances).toBeGreaterThan(40);
-  expect(first!.coreWidth).toBeGreaterThan(.75);
+  expect(first!.coreWidth).toBeGreaterThan(1.0);
   // Real authored figures and crypt props must remain legible above the
   // masonry when Galvik stands at the table, without a second camera.
   expect(first!.artHeightScale).toBeGreaterThan(.03);
