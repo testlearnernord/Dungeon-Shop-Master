@@ -119,6 +119,14 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   expect(first).not.toBeNull();
   expect(first!.dioramaLocalYaw).toBeCloseTo(Math.PI,9);
   expect(first!.furnitureYaw).toBeCloseTo(0,9);
+  const basis=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectTableObservationBasis());
+  expect(basis).toHaveLength(4);
+  for(const pose of basis){
+    expect(pose.rightDot).toBeGreaterThan(.9999);
+    expect(pose.northDot).toBeGreaterThan(.9999);
+    expect(pose.handedness).toBeGreaterThan(0);
+  }
   expect(first!.wallInstances).toBeGreaterThan(50);
   expect(first!.wallHeight).toBeGreaterThan(.025);
   // The whole physical rectangular well is sculpted, while LIVE cells
