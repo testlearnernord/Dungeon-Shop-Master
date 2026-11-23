@@ -59,6 +59,7 @@ export function inspectGalviksLiveTable(){
     coreDepth:diorama?.metadata?.coreDepth??null,
     borderX:diorama?.metadata?.borderX??null,
     borderZ:diorama?.metadata?.borderZ??null,
+    bankTop:diorama?.metadata?.bankTop??null,
     wellCoverage:diorama?.metadata?.wellCoverage??null,
     bedrockPlates:diorama?.metadata?.bedrockPlates??null,
     bedrockFacetInstances:(scene?.getMeshByName(
@@ -1395,5 +1396,41 @@ export function galviksDioramaScreenshotPoints(){
         y:Math.round(bbox.top+p.y*bbox.height/height),
       });
     }
+  return points;
+}
+
+/** Sample the ACTUAL side-bank surface in the final shop screenshot.
+ * Counting Babylon nodes alone missed the black/occluded tabletop gap. */
+export function galviksDioramaBedrockPixels(){
+  const scene=currentTestScene();
+  const camera=scene?.activeCamera;
+  const root=scene?.getTransformNodeByName("cellar-table-diorama-root");
+  const canvas=scene?.getEngine().getRenderingCanvas();
+  if(!scene||!camera||!root||!canvas)
+    throw Error("Physical shop diorama and camera required");
+  const {coreWidth,borderX,bankTop}=root.metadata??{};
+  if(typeof coreWidth!=="number"||typeof borderX!=="number"||
+    typeof bankTop!=="number"||borderX<=0)
+    throw Error("Missing visible side-bedrock geometry");
+  const engine=scene.getEngine();
+  const width=engine.getRenderWidth(),height=engine.getRenderHeight();
+  const vp=camera.viewport.toGlobal(width,height);
+  const bbox=canvas.getBoundingClientRect();
+  root.computeWorldMatrix(true);
+  const world=root.getWorldMatrix();
+  const points:{x:number;y:number}[]=[];
+  for(const side of [-1,1]){
+    for(const z of [-.20,-.10,0,.10,.20]){
+      // Center of the solid bank plate between its two terraced rock rows.
+      const local=new Vector3(
+        side*(coreWidth/2+borderX*.50),bankTop,z);
+      const p=Vector3.Project(Vector3.TransformCoordinates(local,world),
+        Matrix.Identity(),scene.getTransformMatrix(),vp);
+      points.push({
+        x:Math.round(bbox.left+p.x*bbox.width/width),
+        y:Math.round(bbox.top+p.y*bbox.height/height),
+      });
+    }
+  }
   return points;
 }
