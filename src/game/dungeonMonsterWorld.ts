@@ -109,7 +109,8 @@ function perceive(
 
 function advanceOne(
   monster:DungeonMonsterState,layout:DungeonLayout,tick:number,
-  occupied:ReadonlySet<string>,
+  occupied:ReadonlySet<string>,heroOccupied:ReadonlySet<string>,
+  packOccupied:ReadonlySet<string>,
 ):DungeonMonsterState {
   if(monster.mode==="ENGAGED")return monster;
   if(monster.mode==="RETURNING"&&
@@ -134,7 +135,10 @@ function advanceOne(
   }
   const path=dungeonShortestPath(layout,monster,monster.target);
   const next=path[1];
-  if(!next||occupied.has(key(next)))return monster;
+  if(!next||packOccupied.has(key(next))||
+     occupied.has(key(next))&&
+       !(monster.mode==="CHASING"&&heroOccupied.has(key(next))))
+    return monster;
   const moved={...monster,x:next.x,z:next.z,lastMoveTick:tick};
   return same(moved,monster.target)&&
     (monster.mode==="ROAMING"||monster.mode==="RETURNING")
@@ -213,7 +217,8 @@ export function advanceDungeonMonsterWorld(
     // A roaming pack cannot enter any other pack's current or newly
     // committed tile, nor walk onto a hero as part of random wandering.
     const occupied=new Set([...packOccupied,...heroOccupied]);
-    const moved=engaged?candidate:advanceOne(candidate,layout,tick,occupied);
+    const moved=engaged?candidate:advanceOne(candidate,layout,tick,
+      occupied,heroOccupied,packOccupied);
     if(tileAt(layout,moved.x,moved.z)==="wall"||packOccupied.has(key(moved)))
       throw new RangeError("Monster crossed blocked dungeon geometry or actor");
     monsters.push(moved);

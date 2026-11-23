@@ -165,11 +165,15 @@ export function prepareSpatialDungeonCombat(
   campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint,
   cycle=0,livePacks=false,
 ):{readonly options:GroupCombatOptions;readonly elite:boolean} {
+  // Pack identity, tier and seeded strength remain tied to the original
+  // renewable SITE, not to the corridor where the encounter was intercepted.
+  const source=layout.features.find(feature=>
+    feature.kind==="monster"&&feature.id===monster.id)??monster;
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
-    (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0,cycle));
+    (campaignSeed^Math.imul(source.x+37*source.z,2654435761))>>>0,cycle));
   // Only renewable sentries can become elites. No unique boss is regenerated.
   const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
-    tileAt(layout,monster.x,monster.z)==="room";
+    tileAt(layout,source.x,source.z)==="room";
   // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
   // Toughness is authoritative, not a slowed replay: each extra party member
   // adds some resistance so a three-hero party does not erase one Ghoul
@@ -184,18 +188,24 @@ export function prepareSpatialDungeonCombat(
   // Use distinct physically walkable grid cells inside this same 7x7 arena.
   // In a narrow corridor spawning three bodies at the same point would be
   // technically accepted by the constructor but visually and physically wrong.
-  const available:DungeonPoint[]=[approach];
+  // A Ghoul can advance onto a stationary hero. The contact checkpoint is
+  // genuinely at the shared tile, but arena fighters must not be spawned
+  // interpenetrating at its center. Place their initial arena formation
+  // on an adjacent, truly walkable tile; the recorded map stays unchanged.
+  const start=approach.x===monster.x&&approach.z===monster.z
+    ?dungeonNeighbors(layout,monster)[0]??approach:approach;
+  const available:DungeonPoint[]=[start];
   const candidates:DungeonPoint[]=[];
   for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){
     const p={x:monster.x+dx,z:monster.z+dz};
     if(tileAt(layout,p.x,p.z)==="wall"||
       (p.x===monster.x&&p.z===monster.z)||
-      (p.x===approach.x&&p.z===approach.z))continue;
+      (p.x===start.x&&p.z===start.z))continue;
     candidates.push(p);
   }
   candidates.sort((a,b)=>
-    (Math.abs(a.x-approach.x)+Math.abs(a.z-approach.z))-
-    (Math.abs(b.x-approach.x)+Math.abs(b.z-approach.z))||
+    (Math.abs(a.x-start.x)+Math.abs(a.z-start.z))-
+    (Math.abs(b.x-start.x)+Math.abs(b.z-start.z))||
     a.z-b.z||a.x-b.x);
   available.push(...candidates);
   if(available.length<party.length)
@@ -207,7 +217,7 @@ export function prepareSpatialDungeonCombat(
   // Old atomic day/replay resolver stays single-Ghoul, unchanged.
   // Real multi-Ghoul teams are enabled ONLY for actual deferred LIVE fights.
   const packCount=livePacks&&!elite?ghoulPackCount(campaignSeed,layout.floor,
-    monster.x,monster.z,cycle,party.length,freePackSpawns.length):1;
+    source.x,source.z,cycle,party.length,freePackSpawns.length):1;
   const specs:CombatantSpec[]=party.map((hero,index)=>{
     const spawn=available[index];
     const sword=hero.equipment.weapon==="Iron Sword";
