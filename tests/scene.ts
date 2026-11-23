@@ -1,4 +1,5 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
+import {EngineStore} from "@babylonjs/core/Engines/engineStore";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Vector3,Matrix } from "@babylonjs/core/Maths/math.vector";
 import {Ray} from "@babylonjs/core/Culling/ray";
@@ -9,11 +10,27 @@ import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
  * LastCreatedScene is no longer necessarily the visible shop. A test probe
  * should inspect the active UI mode rather than whichever scene was made last. */
 function currentTestScene(){
-  const latest=Engine.LastCreatedScene;
-  if(!latest||document.body.classList.contains("dungeon-active")||
-      document.body.classList.contains("arena-active"))return latest;
-  return latest.getEngine().scenes.find(scene=>
+  // Babylon sets LastCreatedScene=null when the newest spectator scene is
+  // disposed, although the physically rendered shop Scene remains alive.
+  // Recover from the stable engine's owned scenes instead of dereferencing
+  // this nullable global for every legacy shop visual probe.
+  const engine=EngineStore.LastCreatedEngine as Engine|null;
+  const scenes=engine?.scenes??[];
+  const latest=Engine.LastCreatedScene??scenes.at(-1)??null;
+  if(document.body.classList.contains("dungeon-active")||
+     document.body.classList.contains("arena-active"))return latest;
+  return scenes.find(scene=>
     scene.getMeshByName("cellar-table-collider")!==null)??latest;
+}
+
+/** The static Day 1 label can exist before Babylon has booted.
+ * Wait for an actual ready physical shop scene, not just HTML paint. */
+export function shopSceneReady():boolean{
+  const scene=currentTestScene();
+  return !!(scene?.activeCamera&&
+    scene.getMeshByName("cellar-table-collider")&&
+    scene.getMeshByName("cellar-table-live-inset")&&
+    scene.getTransformNodeByName("cellar-table-root"));
 }
 
 /** Inspect the actual physical inset, texture and unchanged shop controls. */
@@ -21,7 +38,7 @@ export function inspectGalviksLiveTable(){
   const scene=currentTestScene();
   const inset=scene?.getMeshByName("cellar-table-live-inset");
   const material=inset?.material instanceof StandardMaterial?inset.material:null;
-  const texture=material?.diffuseTexture??null;
+  const texture=material?.emissiveTexture??material?.diffuseTexture??null;
   return {
     insetExists:!!inset,
     insetVisible:inset?.isVisible??false,
@@ -1276,4 +1293,51 @@ export function inspectLiveFloorCameraFocus(){
   return {target:{x:target.x,z:target.z},
     offset:{x:position.x-target.x,y:position.y-target.y,
       z:position.z-target.z}};
+}
+
+
+/** Development probe of the physical GLB recess and actual GPU pixels.
+ * A texture being assigned is NOT proof that its render contains a dungeon. */
+export async function probeGalviksTableProjection(){
+  const scene=currentTestScene()!;
+  const inset=scene.getMeshByName("cellar-table-live-inset");
+  const mat=inset?.material instanceof StandardMaterial?inset.material:null;
+  const texture=mat?.emissiveTexture??mat?.diffuseTexture;
+  const root=scene.getTransformNodeByName("cellar-table-root")!;
+  const rows=[] as {x:number;z:number;y:number|null;mesh:string|null}[];
+  for(const z of [-.72,-.52,-.32,-.12,.08,.28,.48,.68])
+    for(const x of [-1.2,-.8,-.4,0,.4,.8,1.2]){
+      const p=root.getAbsolutePosition();
+      const ray=new Ray(new Vector3(p.x+x,p.y+4,p.z+z),
+        new Vector3(0,-1,0),8);
+      const hit=scene.pickWithRay(ray,mesh=>mesh.name.startsWith("cellar-table-model-"));
+      rows.push({x,z,y:hit?.pickedPoint?Number((hit.pickedPoint.y-p.y).toFixed(3)):null,
+        mesh:hit?.pickedMesh?.name??null});
+    }
+  let gpu:null|{length:number;colored:number;average:number;error?:string}=null;
+  if(texture){
+    try{
+      const pixels=await texture.readPixels();
+      if(pixels){
+        const data=new Uint8Array(pixels.buffer,pixels.byteOffset,pixels.byteLength);
+        let nonDark=0,sum=0;
+        for(let i=0;i<data.length;i+=4){
+          const max=Math.max(data[i]??0,data[i+1]??0,data[i+2]??0);
+          sum+=max;
+          if(max>48)nonDark++;
+        }
+        gpu={length:data.length,colored:nonDark,average:Math.round(sum/(data.length/4))};
+      }
+    }catch(error){gpu={length:0,colored:0,average:0,error:String(error)}}
+  }
+  return {
+    inset:{position:inset?.position.asArray(),rotation:inset?.rotation.asArray(),
+      worldMin:inset?.getBoundingInfo().boundingBox.minimumWorld.asArray(),
+      worldMax:inset?.getBoundingInfo().boundingBox.maximumWorld.asArray()},
+    model:scene.meshes.filter(mesh=>mesh.name.startsWith("cellar-table-model-"))
+      .map(mesh=>({name:mesh.name,vertices:mesh.getTotalVertices(),
+        min:mesh.getBoundingInfo().boundingBox.minimumWorld.asArray(),
+        max:mesh.getBoundingInfo().boundingBox.maximumWorld.asArray()})),
+    rows,gpu,sceneCamera:scene.activeCamera?.name,textureName:texture?.name??null,
+  };
 }
