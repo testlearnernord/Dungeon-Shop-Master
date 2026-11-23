@@ -7,10 +7,11 @@ import {wallFurnitureAtWall,supportedExcavatedWall,
   type WallFurniturePlacement} from "./wallFurniturePlacement.ts";
 
 export type WallClockPlacement=WallFurniturePlacement;
-/** Mounted on the near-side stone wall, visible from Galvik's sales floor.
- * Same wall transforms as the Adventurer Board and portrait. */
+/** Mounted on the central rear stone pier between the ONE portal and
+ * the permanently sealed former exit. Visible across the sales floor and
+ * independent of the side-wall excavation / default shelf test fixtures. */
 export const DEFAULT_WALL_CLOCK:WallClockPlacement=
-  Object.freeze({x:-7.22,z:0,rotation:3});
+  Object.freeze({x:0,z:6.45,rotation:0});
 const quarter=(v:number)=>Math.abs(v*4-Math.round(v*4))<1e-8;
 const width=2.52;
 const half=width/2+.10;
