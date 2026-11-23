@@ -272,6 +272,16 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   const clickMinimap=async(point:{x:number;z:number})=>{
     const bounds=await minimap.boundingBox();
     if(!bounds)throw Error("Minimap should be visible");
+    const panel=await page.locator(
+      "#dungeon-hud .dungeon-minimap-panel").boundingBox();
+    if(!panel)throw Error("Minimap panel should be visible");
+    // All north/south cells must fit without requiring scrollbar navigation.
+    expect(bounds.y).toBeGreaterThanOrEqual(panel.y-1);
+    expect(bounds.y+bounds.height).toBeLessThanOrEqual(
+      panel.y+panel.height+1);
+    expect(bounds.x).toBeGreaterThanOrEqual(panel.x-1);
+    expect(bounds.x+bounds.width).toBeLessThanOrEqual(
+      panel.x+panel.width+1);
     const x=bounds.x+(point.x+.5)*bounds.width/minimapTargets.width;
     const y=bounds.y+(minimapTargets.height-point.z-.5)*
       bounds.height/minimapTargets.height;
