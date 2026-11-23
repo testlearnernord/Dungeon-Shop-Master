@@ -103,6 +103,7 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
       if(!localTexture){
         localTexture=RawTexture.CreateRGBATexture(bytes,size.width,size.height,
           scene,false,true,Texture.BILINEAR_SAMPLINGMODE);
+        localTexture.name=requested.name;
         screenMat.diffuseTexture=localTexture;
       }else localTexture.update(bytes);
       inset.isVisible=true;
