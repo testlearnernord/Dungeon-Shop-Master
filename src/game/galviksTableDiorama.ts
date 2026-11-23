@@ -10,6 +10,7 @@ import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import {loadAssetContainerAsync} from "@babylonjs/core/Loading/sceneLoader";
 import type {AssetContainer} from "@babylonjs/core/assetContainer";
 import {Mesh} from "@babylonjs/core/Meshes/mesh";
+import type {LinesMesh} from "@babylonjs/core/Meshes/linesMesh";
 import "@babylonjs/core/Meshes/instancedMesh";
 import "@babylonjs/loaders/glTF/2.0";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
@@ -17,7 +18,7 @@ import type {Scene} from "@babylonjs/core/scene";
 import type {GameState} from "./gameState.ts";
 import {tableDioramaFit,tableDioramaPosition,TABLE_DIORAMA_WELL,
   type TableDioramaFit} from "./tableDioramaGeometry.ts";
-import {generateExpeditionLayout,
+import {generateExpeditionLayout,dungeonShortestPath,
   type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
 import {createDungeonFeaturePalette,createReadableDungeonChest,
@@ -78,6 +79,8 @@ export class GalviksTableDiorama{
   private floorArtMaterials:StandardMaterial[]=[];
   private actorRoot:TransformNode|null=null;
   private featureRoot:TransformNode|null=null;
+  private readonly monsterAnchors=new Map<string,TransformNode>();
+  private readonly monsterHints=new Map<string,{mesh:LinesMesh;signature:string}>();
   private heroes=new Map<string,Figure>();
   private activeFloor:SpatialDungeonFloor|null=null;
   private activeSeed:number|null=null;
@@ -205,6 +208,7 @@ void main(void){
       this.lastResolved=resolved;
       this.syncFeatures(frame);
     }
+    this.syncMonsters(frame);
   }
 
   private setFloorLabel(floor:number):void{
@@ -493,14 +497,19 @@ void main(void){
 
   private syncFeatures(frame:LiveFloorSpectatorFrame):void{
     this.featureRoot?.dispose();
+    this.monsterAnchors.clear();
+    this.monsterHints.clear();
     this.featureRoot=new TransformNode("cellar-table-diorama-features",this.scene);
     this.featureRoot.parent=this.miniatureWorldRoot;
     const resolved=new Set(frame.resolved);
     let visible=0,authoredProps=0,authoredGhouls=0;
     for(const feature of this.layout!.features){
       if(resolved.has(feature.id))continue;
+      const pack=feature.kind==="monster"
+        ?frame.monsters?.find(m=>m.id===feature.id):null;
+      if(feature.kind==="monster"&&frame.monsters&&!pack)continue;
       visible++;
-      const p=this.worldPoint(feature);
+      const p=this.worldPoint(pack??feature);
       if(feature.kind==="treasure"||feature.kind==="trap"){
         const mesh=feature.kind==="treasure"?
           createReadableDungeonChest(this.scene,feature,p,this.featurePaint):
@@ -516,6 +525,7 @@ void main(void){
           },this.scene);
         anchor.parent=this.featureRoot;
         anchor.position.set(p.x,.33,p.z);
+        this.monsterAnchors.set(feature.id,anchor);
         anchor.visibility=0;anchor.isPickable=false;
         anchor.checkCollisions=false;
         if(this.ghoulSource){
@@ -548,6 +558,50 @@ void main(void){
     this.root.metadata.featureCount=visible;
     this.root.metadata.authoredProps=authoredProps;
     this.root.metadata.authoredGhouls=authoredGhouls;
+  }
+
+  /** Update existing instances only. The same LIVE world drives both
+   * projections; table updates never choose a path or advance a monster. */
+  private syncMonsters(frame:LiveFloorSpectatorFrame):void{
+    if(!this.layout)return;
+    for(const [id,anchor] of this.monsterAnchors){
+      const monster=frame.monsters?.find(m=>m.id===id);
+      if(frame.monsters&&!monster){
+        anchor.setEnabled(false);
+      }else{
+        anchor.setEnabled(monster?.mode!=="ENGAGED");
+        if(monster){
+          const point=this.worldPoint(monster);
+          anchor.position.set(point.x,.33,point.z);
+        }
+      }
+      const next=monster?.target&&monster.mode!=="ENGAGED"
+        ?dungeonShortestPath(this.layout,monster,monster.target)[1]:null;
+      const signature=next&&monster
+        ?monster.x+","+monster.z+":"+next.x+","+next.z:"";
+      const old=this.monsterHints.get(id);
+      if(old?.signature===signature)continue;
+      old?.mesh.dispose();this.monsterHints.delete(id);
+      if(!next||!monster||!this.featureRoot)continue;
+      const start=this.worldPoint(monster),end=this.worldPoint(next);
+      start.y=.55;end.y=.55;
+      const vx=end.x-start.x,vz=end.z-start.z;
+      const length=Math.hypot(vx,vz)||1;
+      const ux=vx/length,uz=vz/length;
+      const left=new Vector3(end.x-ux*.47-uz*.28,.55,
+        end.z-uz*.47+ux*.28);
+      const right=new Vector3(end.x-ux*.47+uz*.28,.55,
+        end.z-uz*.47-ux*.28);
+      const hint=MeshBuilder.CreateLines(
+        "cellar-table-monster-next-"+id,{
+          points:[start,end,left,end,right],
+        },this.scene);
+      hint.parent=this.featureRoot;
+      hint.color=Color3.FromHexString("#f44f50");
+      hint.isPickable=false;hint.checkCollisions=false;
+      hint.metadata={previewOnly:true,monsterId:id};
+      this.monsterHints.set(id,{mesh:hint,signature});
+    }
   }
 
   private syncActors(frame:LiveFloorSpectatorFrame):void{
