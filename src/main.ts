@@ -492,9 +492,6 @@ const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
 const observationTransition=new ObservationTransitionDirector(
   scene,camera,canvas,tableVisuals,dungeon,store,()=>isShopActive());
 observeTable=()=>observationTransition.enter();
-dungeon.setShopOpenRequest(()=>{
-  if(!observationTransition.enter())dungeon.open();
-});
 watchLiveHero=id=>dungeon.openLive(id);
 // Exactly one global event layer, shared by the shop, LIVE floors and both
 // combat stages. Its projections never schedule, settle or simulate events.
