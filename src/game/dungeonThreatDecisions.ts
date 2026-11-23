@@ -5,8 +5,7 @@ import {dungeonNeighbors,type DungeonLayout,type DungeonPoint}
 import {getSpatialDungeonProgress,chooseKnownRouteStep,
   type SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 import {hasDungeonLineOfSight} from "./heroPerception.ts";
-import {MONSTER_SIGHT_RADIUS,type DungeonMonsterState}
-  from "./dungeonMonsterWorld.ts";
+import {MONSTER_SIGHT_RADIUS} from "./dungeonMonsterWorld.ts";
 
 export type DungeonThreatAction="ESCAPING"|"BREAKING_LOS"|
   "PREPARING_TO_FIGHT"|"SEEKING_SUPPORT";
