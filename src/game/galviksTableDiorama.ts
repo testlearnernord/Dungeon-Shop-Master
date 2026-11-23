@@ -1,6 +1,7 @@
 import {Color3} from "@babylonjs/core/Maths/math.color";
 import {Matrix,Vector3} from "@babylonjs/core/Maths/math.vector";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
+import {ShaderMaterial} from "@babylonjs/core/Materials/shaderMaterial";
 import {DynamicTexture} from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import type {Mesh} from "@babylonjs/core/Meshes/mesh";
@@ -39,7 +40,7 @@ type Figure={readonly mesh:Mesh;readonly ring:Mesh|null};
 export class GalviksTableDiorama{
   readonly root:TransformNode;
   private readonly floorText:DynamicTexture;
-  private readonly floorMat:StandardMaterial;
+  private readonly floorMat:ShaderMaterial;
   private readonly palette:{
     stoneA:StandardMaterial;stoneB:StandardMaterial;
     corridor:StandardMaterial;room:StandardMaterial;
@@ -88,20 +89,34 @@ export class GalviksTableDiorama{
 
     this.floorText=new DynamicTexture("cellar-table-floor-label-text",
       {width:512,height:128},scene,false);
-    this.floorMat=material(scene,"floor-label",Color3.White());
-    // This label uses a same-scene dynamic image, lit normally to preserve
-    // its dark background and gold text without additive white emission.
-    this.floorMat.emissiveColor=Color3.Black();
-    this.floorMat.diffuseColor=Color3.White();
-    this.floorMat.disableLighting=false;
-    this.floorMat.diffuseTexture=this.floorText;
+    // Gold glyphs on a physically mounted sign. An explicit same-scene
+    // shader makes the dynamic label readable independent of cellar lights.
+    this.floorMat=new ShaderMaterial("table-diorama-floor-sign",scene,{
+      vertexSource:`precision highp float;
+attribute vec3 position;
+attribute vec2 uv;
+uniform mat4 worldViewProjection;
+varying vec2 vUV;
+void main(void){
+  vUV=uv;
+  gl_Position=worldViewProjection*vec4(position,1.0);
+}`,
+      fragmentSource:`precision highp float;
+varying vec2 vUV;
+uniform sampler2D labelSampler;
+void main(void){
+  gl_FragColor=vec4(texture2D(labelSampler,vUV).rgb,1.0);
+}`,
+    },{attributes:["position","uv"],uniforms:["worldViewProjection"],
+      samplers:["labelSampler"]});
+    this.floorMat.backFaceCulling=false;
+    this.floorMat.setTexture("labelSampler",this.floorText);
     const plaque=MeshBuilder.CreatePlane("cellar-table-floor-label",{
-      width:.36,height:.068,
+      width:.40,height:.085,
     },scene);
     plaque.parent=this.root;
-    // The narrow label lies on the REAR metal rim, not over the dungeon map.
-    plaque.position.set(0,.912,-.35);
-    plaque.rotation.x=-Math.PI/2;
+    // Vertical, facing Galvik on the rear lip ABOVE the miniature.
+    plaque.position.set(0,1.020,-.355);
     plaque.isPickable=false;plaque.checkCollisions=false;
     plaque.material=this.floorMat;
     this.setFloorLabel(1);
@@ -207,12 +222,17 @@ export class GalviksTableDiorama{
       TABLE_DIORAMA_WELL.floorY,.008,this.palette.corridor);
     thin("cellar-table-diorama-rooms",(_,__,tile)=>tile==="room",
       TABLE_DIORAMA_WELL.floorY,.008,this.palette.room);
+    // Cutaway front perimeter: tall close walls would hide every corridor
+    // when Galvik stands on the keyboard/control side of the table.
+    thin("cellar-table-diorama-front-cutaway",(_,z,tile)=>
+      tile==="wall"&&z>=layout.height-2,
+      TABLE_DIORAMA_WELL.floorY+.015,.028,this.palette.stoneB);
     thin("cellar-table-diorama-walls-a",(x,z,tile)=>
-      tile==="wall"&&(x+z)%2===0,
+      tile==="wall"&&z<layout.height-2&&(x+z)%2===0,
       TABLE_DIORAMA_WELL.wallY,TABLE_DIORAMA_WELL.wallHeight,
       this.palette.stoneA);
     thin("cellar-table-diorama-walls-b",(x,z,tile)=>
-      tile==="wall"&&(x+z)%2!==0,
+      tile==="wall"&&z<layout.height-2&&(x+z)%2!==0,
       TABLE_DIORAMA_WELL.wallY,TABLE_DIORAMA_WELL.wallHeight,
       this.palette.stoneB);
 
@@ -250,7 +270,7 @@ export class GalviksTableDiorama{
         feature.kind==="treasure"?this.palette.treasure:this.palette.trap;
       visible++;
       this.addMarker("feature-"+feature.id,feature,mat,
-        feature.kind==="monster"?.022:.013,this.featureRoot);
+        feature.kind==="monster"?.035:.022,this.featureRoot);
     }
     this.root.metadata.featureCount=visible;
   }
@@ -268,7 +288,7 @@ export class GalviksTableDiorama{
       if(!figure){
         const roleMat=hero.role==="tank"?this.palette.heroTank:
           hero.role==="healer"?this.palette.heroHeal:this.palette.heroDps;
-        const mesh=this.addMarker("hero-"+hero.id,hero,roleMat,.027,
+        const mesh=this.addMarker("hero-"+hero.id,hero,roleMat,.042,
           this.actorRoot!);
         const ring=MeshBuilder.CreateTorus("cellar-table-diorama-party-"+hero.id,{
           diameter:.026,thickness:.0025,tessellation:12,
