@@ -24,7 +24,9 @@ test("a moving Ghoul reuses its existing mesh rather than rebuilding it per cell
   const changed={...monster,x:monster.x+1,mode:"CHASING" as const,
     target:{x:monster.x+2,z:monster.z},lastMoveTick:400};
   const moved={resolved:[],monsters:[changed,...original.monsters!.slice(1)]};
-  assert.equal(liveFloorFeatureIdentity(original),
+  assert.equal(liveFloorFeatureIdentity({
+      resolved:original.resolvedFeatureIds,monsters:original.monsters,
+    }),
     liveFloorFeatureIdentity(moved));
 });
 
@@ -34,13 +36,19 @@ test("spawn generation, death and renewal rebuild only the correct feature entit
   const monster=original.monsters![0];
   const killed={resolved:[monster.id],
     monsters:original.monsters!.filter(m=>m.id!==monster.id)};
-  assert.notEqual(liveFloorFeatureIdentity(original),
+  assert.notEqual(liveFloorFeatureIdentity({
+      resolved:original.resolvedFeatureIds,monsters:original.monsters,
+    }),
     liveFloorFeatureIdentity(killed));
   const reborn={resolved:[],monsters:original.monsters!.map(m=>
     m.id===monster.id?{...m,siteCycle:m.siteCycle+1}:m)};
-  assert.notEqual(liveFloorFeatureIdentity(original),
+  assert.notEqual(liveFloorFeatureIdentity({
+      resolved:original.resolvedFeatureIds,monsters:original.monsters,
+    }),
     liveFloorFeatureIdentity(reborn));
   const shuffled={resolved:[],monsters:[...original.monsters!].reverse()};
-  assert.equal(liveFloorFeatureIdentity(original),
+  assert.equal(liveFloorFeatureIdentity({
+      resolved:original.resolvedFeatureIds,monsters:original.monsters,
+    }),
     liveFloorFeatureIdentity(shuffled));
 });
