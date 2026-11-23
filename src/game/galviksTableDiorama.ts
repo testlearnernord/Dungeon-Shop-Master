@@ -100,6 +100,7 @@ export class GalviksTableDiorama{
     this.tabletopLight=new HemisphericLight(
       "cellar-table-diorama-stone-light",new Vector3(.45,.86,-.35),scene);
     this.tabletopLight.intensity=.95;
+    this.tabletopLight.setEnabled(false); // never illuminate the whole shop
 
     // Exactly the SAME authored procedural stone and flagstone textures
     // as the full LIVE Dungeon viewer. The shop scene already caches them.
@@ -322,6 +323,8 @@ void main(void){
       tile==="wall"&&z<layout.height-2&&(x+z)%2!==0,
       TABLE_DIORAMA_WELL.wallY,TABLE_DIORAMA_WELL.wallHeight,
       this.palette.stoneB);
+    // Only now is the include-list populated: enable the scoped light.
+    this.tabletopLight.setEnabled(true);
 
     // Actual LIVE Dungeon burial crypt props. Each room gets the same
     // relics and tomb geometry, not the former flat marker. Their full
