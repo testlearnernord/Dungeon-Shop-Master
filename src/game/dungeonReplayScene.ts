@@ -29,8 +29,8 @@ import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import type {LiveFloorSpectatorFrame,LiveFloorHero} from "./liveFloorSpectator.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
 import {sameLiveFloorMap} from "./liveFloorSceneDiff.ts";
-import {isObservedMonsterStep,MONSTER_OBSERVATION_STEP_SECONDS}
-  from "./monsterObservationMotion.ts";
+import {isObservedMonsterStep,MONSTER_OBSERVATION_STEP_SECONDS,
+  monsterObservationStepProgress} from "./monsterObservationMotion.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget}
   from "./dungeonMapCamera.ts";
 import {selectHeroFloorPerception,type HeroFloorPerception}
@@ -821,7 +821,7 @@ export class DungeonReplayScene {
       const transit=this.floorMonsterTravel.get(monster.id);
       if(transit)transit.seconds=Math.min(MONSTER_OBSERVATION_STEP_SECONDS,
         transit.seconds+Math.min(.1,Math.max(0,dt)));
-      const alpha=transit?transit.seconds/MONSTER_OBSERVATION_STEP_SECONDS:1;
+      const alpha=transit?monsterObservationStepProgress(transit.seconds):1;
       const at=transit?{
         x:transit.from.x+(transit.to.x-transit.from.x)*alpha,
         z:transit.from.z+(transit.to.z-transit.from.z)*alpha,
