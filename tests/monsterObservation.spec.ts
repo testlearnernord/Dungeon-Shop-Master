@@ -73,24 +73,20 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
     return probe.inspectGhoulObservationMeshes();
   });
-  await expect.poll(async()=>{
-    return page.evaluate(async()=>{
-      const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
-      if(!probe.shopSceneReady())return {ready:false,reason:"shop boot"};
-      probe.aimAtGalviksTable();
-      const table=probe.inspectGalviksLiveTable();
-      const mesh=probe.inspectGhoulObservationMeshes();
-      return {
-        ready:(table.authoredGhouls??0)>0,
-        authoredGhouls:table.authoredGhouls,
-        rigs:mesh.authoredRigCount,
-        clips:mesh.authoredClips,
-        errors:mesh.pins.map(pin=>pin.assetError).filter(Boolean),
-      };
-    });
-  },{timeout:35000,intervals:[300,500,800]}).toMatchObject({
-    ready:true,
-  });
+  await expect.poll(async()=>JSON.stringify(await page.evaluate(async()=>{
+    const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    if(!probe.shopSceneReady())return {ready:false,reason:"shop boot"};
+    probe.aimAtGalviksTable();
+    const table=probe.inspectGalviksLiveTable();
+    const mesh=probe.inspectGhoulObservationMeshes();
+    return {
+      ready:(table.authoredGhouls??0)>0,
+      authoredGhouls:table.authoredGhouls,
+      rigs:mesh.authoredRigCount,
+      clips:mesh.authoredClips,
+      errors:mesh.pins.map(pin=>pin.assetError).filter(Boolean),
+    };
+  })),{timeout:35000,intervals:[300,500,800]}).toContain('"ready":true');
   await expect.poll(async()=>(await inspect()).pins.length,
     {timeout:15000}).toBe(expected.pins.length);
   const table=await inspect();
