@@ -192,7 +192,12 @@ void main(void){
   update(selected:number,state:GameState,shopCamera:Vector3):void{
     if(!this.modelReady||!state.liveDungeon.enabled)return;
     const table=state.cellarTable;
-    if(shopCamera.y>-1||
+    // A fixed world-Y cutoff blocked real close-up observation from above
+    // the furniture (including the E2E/Step-2 camera match pose). Only
+    // reject cameras far above/below the PHYSICAL table, independently of
+    // cellar depth, mounting height and future room adjustments.
+    const tableY=this.root.getAbsolutePosition().y;
+    if(Math.abs(shopCamera.y-tableY)>3.5||
       Math.hypot(shopCamera.x-table.x,shopCamera.z-table.z)>11)return;
     const floor=LIVE_SPECTATOR_FLOORS.includes(selected as SpatialDungeonFloor)
       ?selected as SpatialDungeonFloor:1;
