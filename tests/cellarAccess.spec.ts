@@ -133,6 +133,9 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   // not an offscreen texture which might be black/white once sampled.
   const points=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksDioramaScreenshotPoints());
+  const wallPoints=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksDioramaWallPixels());
+  expect(wallPoints.length).toBeGreaterThan(15);
   const screenshot=await page.screenshot();
   await testInfo.attach("galviks-real-3d-table",{
     body:screenshot,contentType:"image/png",
@@ -152,8 +155,18 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
       const data=context.getImageData(p.x,p.y,1,1).data;
       return [data[0]!,data[1]!,data[2]!] as const;
     });
-  },{base64:screenshot.toString("base64"),points});
-  const luminances=colors.map(rgb=>Math.max(...rgb));
+  },{base64:screenshot.toString("base64"),points:[...points,...wallPoints]});
+  const wallColors=colors.slice(points.length);
+  const wallLuminance=wallColors.map(rgb=>Math.max(...rgb));
+  console.log("GALVIK_WALL_PIXEL_DIAGNOSTIC",JSON.stringify({
+    count:wallLuminance.length,
+    lit:wallLuminance.filter(v=>v>32).length,
+    min:Math.min(...wallLuminance),
+    max:Math.max(...wallLuminance),
+  }));
+  expect(wallLuminance.filter(value=>value>32).length)
+    .toBeGreaterThan(Math.floor(wallLuminance.length*.3));
+  const luminances=colors.slice(0,points.length).map(rgb=>Math.max(...rgb));
   // The centered white FPS crosshair may cover one or two sampled points.
   // A solid-white surface still fails, without false positives from the HUD.
   expect(luminances.filter(v=>v>240).length).toBeLessThanOrEqual(2);
