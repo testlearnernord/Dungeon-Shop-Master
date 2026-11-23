@@ -37,7 +37,9 @@ The current LIVE floor projection, Tripo Ghoul map instance and Galvik's Table c
 
 **Third staged branch (V0.004 C):** A chasing Ghoul can now step onto a genuinely occupied hero tile at its lawful speed. The one existing LIVE world-event owner arbitrates unreserved physical co-location, reserves exactly one original pack site and launches the existing 60-Hz `GroupCombat`, with authentic participants, canonical pack seed, actual contact coordinates and persisted arrivals. An already reserved or fighting hero cannot start a second contact encounter. A late-night contact defers a new fight until the existing scheduler has enough time. Existing hero-entering-monster behavior remains authoritative.
 
-**Still open for complete V0.004 A:** Additional simultaneous crossing/swap stress cases, autonomous tactical hero/party responses, complete browser visual/contact validation and longer multi-floor combat regressions. Draft, no merge before explicit owner approval.
+**Fourth staged branch (V0.004 D):** `dungeonThreatDecisions.ts` derives visible pursuit threats from the same world entity and line-of-sight algorithm. Injured or cautious groups flee along truly adjacent walkable tiles; other characters may physically bend around walls to break LOS, confront a visible pursuer when armed and healthy, or move toward a genuinely visible nearby helper. A saved Temporary Party makes one group step. The existing spatial walker performs the actual move; no separate navigation motor, teleport or secret map route is created. The LIVE hero status and one-step tactical route are read-only forecasts of this same decision function, not decorative fake orders.
+
+**Still open for full V0.004 A:** explicit simultaneous edge-swap stress coverage, real browser visual/contact approval and a long multi-floor stability soak. All stacked PRs remain Draft with no merge without explicit approval.
 
 ## Encounter and party expectations
 

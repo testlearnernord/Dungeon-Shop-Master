@@ -1145,7 +1145,8 @@ export class DungeonViewer {
       selectHeroFloorPerception(this.layout,view,hero.id):null;
     const ongoing=hero.inCombat?"LIVE combat":
       hero.activity==="backtracking"?"Walking to portal":
-      hero.activity==="portal"?"Portal transit":"Exploring";
+      hero.activity==="portal"?"Portal transit":
+      hero.threatAction?"Pursued · "+hero.threatAction:"Exploring";
     const source=liveHeroCard(this.store.state,hero.id,{
       health:hero.health,activity:ongoing,goal:hero.goal,
       action:hero.plannedAction,
@@ -1153,9 +1154,12 @@ export class DungeonViewer {
     if(!source)return;
     const observations:NonNullable<typeof source.observations>=[
       {icon:"map",text:"Tile ("+hero.x+", "+hero.z+")"},
-      {icon:"map",text:"Next two steps · "+
-        (this.layout?dungeonPreviewExplanation(this.layout,hero,view.resolved):
-          "No dungeon geometry")},
+      {icon:"map",text:hero.threatNextStep
+        ?"Next tactical step · ("+hero.threatNextStep.x+", "+
+          hero.threatNextStep.z+") · "+hero.threatAction
+        :"Next two steps · "+
+          (this.layout?dungeonPreviewExplanation(this.layout,hero,view.resolved):
+            "No dungeon geometry")},
       ...(perception?[{icon:"search" as const,
         text:perception.visible.size+" visible · "+
           perception.explored.size+" explored tiles"},

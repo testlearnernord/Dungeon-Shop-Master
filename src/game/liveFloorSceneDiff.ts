@@ -7,7 +7,8 @@ import type {LiveFloorFight,LiveFloorHero,LiveFloorSpectatorFrame}
  * the inspector and arena consume those values separately. */
 type FloorMapHero=Pick<LiveFloorHero,
   "id"|"x"|"z"|"role"|"equipment"|"partyId"|"partyMemberIds"|
-  "inCombat"|"visited"|"activity"|"plannedAction"|"goal">;
+  "inCombat"|"visited"|"activity"|"plannedAction"|"goal"|
+  "threatAction"|"threatNextStep"|"pursuingMonsterId">;
 type FloorMapFight=Pick<LiveFloorFight,"id"|"x"|"z">;
 export type FloorMapSnapshot={
   readonly floor:LiveFloorSpectatorFrame["floor"];
@@ -38,6 +39,10 @@ export function sameLiveFloorMap(a:FloorMapSnapshot,b:FloorMapSnapshot):boolean{
        x.partyId!==y.partyId||!sameList(x.partyMemberIds,y.partyMemberIds)||
        x.inCombat!==y.inCombat||x.activity!==y.activity||
        x.goal!==y.goal||x.plannedAction!==y.plannedAction||
+       x.threatAction!==y.threatAction||
+       x.threatNextStep?.x!==y.threatNextStep?.x||
+       x.threatNextStep?.z!==y.threatNextStep?.z||
+       x.pursuingMonsterId!==y.pursuingMonsterId||
        !sameList(x.visited,y.visited))
       return false;
   }

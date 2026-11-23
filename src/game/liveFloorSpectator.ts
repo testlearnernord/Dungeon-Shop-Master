@@ -2,7 +2,9 @@ import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
-import {generateExpeditionLayout} from "./dungeonLayout.ts";
+import {chooseDungeonThreatReaction,type DungeonThreatAction}
+  from "./dungeonThreatDecisions.ts";
+import {generateExpeditionLayout,type DungeonPoint} from "./dungeonLayout.ts";
 import type {CombatantSpec,GroupReplayFrame,GroupCombatCue} from "./groupCombat.ts";
 
 /** The supported *physical* expedition floors, not a fictional set of 100. */
@@ -28,6 +30,10 @@ export interface LiveFloorHero {
   readonly partyId:string|null;
   readonly partyMemberIds:readonly string[];
   readonly inCombat:boolean;
+  /** Same pure response that actually drives the next world-tick step. */
+  readonly threatAction?:DungeonThreatAction;
+  readonly threatNextStep?:DungeonPoint;
+  readonly pursuingMonsterId?:string;
 }
 export interface LiveFloorFight {
   readonly id:string;
@@ -61,6 +67,7 @@ export function selectLiveFloorSpectatorFrame(
     return null;
   const world=state.dungeonWorlds.find(entry=>entry.floor===floor)?.world;
   const progress=new Map((world?.heroes??[]).map(h=>[h.heroId,h]));
+  const tacticalLayout=floor<=9?generateExpeditionLayout(state.seed,floor):null;
   const running=state.liveDungeon.combats.filter(f=>f.encounter.floor===floor);
   const fights:LiveFloorFight[]=running.flatMap(f=>{
     const frame=f.frames.at(-1);
@@ -98,6 +105,15 @@ export function selectLiveFloorSpectatorFrame(
       const returning=state.liveDungeon.returns.find(r=>r.heroId===hero.id);
       const activity=fight?"combat":returning?.phase==="portal"?"portal":
         returning?.phase==="backtrack"?"backtracking":"exploring";
+      const gathered=party&&site?party.memberIds.map(id=>
+        state.adventurers.find(member=>member.id===id)).filter(
+        (member):member is AdventurerState=>!!member&&
+          member.floor===floor&&member.status==="exploring"&&
+          (progress.get(member.id)?.x??NaN)===site.x&&
+          (progress.get(member.id)?.z??NaN)===site.z):[hero];
+      const threat=world&&site&&!fight&&!returning&&tacticalLayout
+        ?chooseDungeonThreatReaction(tacticalLayout,world,
+          gathered,state.adventurers):null;
       return [{
         id:hero.id,name:hero.name,role:hero.role,equipment:hero.equipment,
         level:hero.level,stats:hero.stats,traits:hero.traits,
@@ -109,6 +125,10 @@ export function selectLiveFloorSpectatorFrame(
         partyId:partyIds.length>1?floor+":"+partyIds.join("+"):null,
         partyMemberIds:partyIds,
         inCombat:!!fight,
+        ...(threat?{
+          threatAction:threat.action,threatNextStep:threat.step,
+          pursuingMonsterId:threat.monsterId,
+        }:{}),
       }];
     });
   return {day:state.day,worldTick:state.worldClock.tick,floor,
