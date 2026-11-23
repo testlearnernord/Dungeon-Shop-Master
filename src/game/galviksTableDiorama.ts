@@ -98,7 +98,9 @@ attribute vec2 uv;
 uniform mat4 worldViewProjection;
 varying vec2 vUV;
 void main(void){
-  vUV=uv;
+  // The vertical physical placard faces the player from its reverse side;
+  // flip both UV axes to keep FLOOR 01 readable from Galvik's position.
+  vUV=vec2(1.0-uv.x,1.0-uv.y);
   gl_Position=worldViewProjection*vec4(position,1.0);
 }`,
       fragmentSource:`precision highp float;
