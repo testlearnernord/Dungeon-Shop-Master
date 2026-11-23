@@ -32,6 +32,7 @@ import {GHOUL_MODEL} from "./ghoulMotion.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
+import {liveFloorFeatureIdentity} from "./liveFloorFeatureIdentity.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import {TABLE_OBSERVATION_LOCAL_YAW,dungeonTileWorldCenter}
   from "./dungeonObservationOrientation.ts";
@@ -203,9 +204,11 @@ void main(void){
     const frame=selectLiveFloorSpectatorFrame(state,floor);
     if(!frame)return;
     this.syncActors(frame);
-    const resolved=[...frame.resolved].sort().join("|");
-    if(resolved!==this.lastResolved){
-      this.lastResolved=resolved;
+    // Rebuild only when actual feature entities appear/disappear or cycle;
+    // never on an ordinary position update (which moves an existing mesh).
+    const featureIdentity=liveFloorFeatureIdentity(frame);
+    if(featureIdentity!==this.lastResolved){
+      this.lastResolved=featureIdentity;
       this.syncFeatures(frame);
     }
     this.syncMonsters(frame);
