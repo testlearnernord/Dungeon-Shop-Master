@@ -1296,6 +1296,44 @@ export function inspectLiveFloorCameraFocus(){
 }
 
 
+/** Actual shop framebuffer probe. Reading the spectator RTT alone will
+ * never catch a white/black material rendered ON the physical table. */
+export function sampleGalviksTableOnScreen(){
+  const scene=currentTestScene();
+  const inset=scene?.getMeshByName("cellar-table-live-inset");
+  const camera=scene?.activeCamera;
+  if(!scene||!camera||!inset?.isVisible)
+    throw Error("Physical table scene / camera / visible projection not ready");
+  const engine=scene.getEngine();
+  const canvas=engine.getRenderingCanvas();
+  const gl=canvas?.getContext("webgl2")??canvas?.getContext("webgl");
+  if(!gl)throw Error("Cannot read the actual Babylon shop framebuffer");
+
+  // A real scene render is essential: the first-person framebuffer, not
+  // the offscreen dungeon RTT nor a fake canvas texture.
+  scene.render();
+  const vp=camera.viewport.toGlobal(gl.drawingBufferWidth,gl.drawingBufferHeight);
+  inset.computeWorldMatrix(true);
+  const world=inset.getWorldMatrix();
+  const samples:{x:number;y:number;rgb:[number,number,number]}[]=[];
+  for(const y of [-.25,-.125,0,.125,.25])
+    for(const x of [-.45,-.225,0,.225,.45]){
+      const point=Vector3.TransformCoordinates(new Vector3(x,y,0),world);
+      const p=Vector3.Project(point,Matrix.Identity(),scene.getTransformMatrix(),vp);
+      const px=Math.round(p.x),py=gl.drawingBufferHeight-1-Math.round(p.y);
+      if(px<0||px>=gl.drawingBufferWidth||py<0||py>=gl.drawingBufferHeight)
+        throw Error("Projected table point outside FPS canvas: "+px+","+py);
+      const rgba=new Uint8Array(4);
+      gl.readPixels(px,py,1,1,gl.RGBA,gl.UNSIGNED_BYTE,rgba);
+      samples.push({x,y,rgb:[rgba[0]!,rgba[1]!,rgba[2]!]});
+    }
+  return {samples,
+    white:samples.filter(p=>p.rgb.every(c=>c>=240)).length,
+    dark:samples.filter(p=>Math.max(...p.rgb)<60).length,
+    spread:Math.max(...samples.map(p=>Math.max(...p.rgb)))-
+      Math.min(...samples.map(p=>Math.max(...p.rgb)))};
+}
+
 /** Development probe of the physical GLB recess and actual GPU pixels.
  * A texture being assigned is NOT proof that its render contains a dungeon. */
 export async function probeGalviksTableProjection(){
