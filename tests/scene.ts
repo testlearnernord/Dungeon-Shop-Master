@@ -23,6 +23,16 @@ function currentTestScene(){
     scene.getMeshByName("cellar-table-collider")!==null)??latest;
 }
 
+/** The static Day 1 label can exist before Babylon has booted.
+ * Wait for an actual ready physical shop scene, not just HTML paint. */
+export function shopSceneReady():boolean{
+  const scene=currentTestScene();
+  return !!(scene?.activeCamera&&
+    scene.getMeshByName("cellar-table-collider")&&
+    scene.getMeshByName("cellar-table-live-inset")&&
+    scene.getTransformNodeByName("cellar-table-root"));
+}
+
 /** Inspect the actual physical inset, texture and unchanged shop controls. */
 export function inspectGalviksLiveTable(){
   const scene=currentTestScene();
