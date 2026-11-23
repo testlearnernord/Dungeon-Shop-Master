@@ -2,6 +2,7 @@ import {Color3} from "@babylonjs/core/Maths/math.color";
 import {Matrix,Vector3} from "@babylonjs/core/Maths/math.vector";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {PBRMaterial} from "@babylonjs/core/Materials/PBR/pbrMaterial";
+import {HemisphericLight} from "@babylonjs/core/Lights/hemisphericLight";
 import type {Material} from "@babylonjs/core/Materials/material";
 import {ShaderMaterial} from "@babylonjs/core/Materials/shaderMaterial";
 import {DynamicTexture} from "@babylonjs/core/Materials/Textures/dynamicTexture";
@@ -56,6 +57,7 @@ type Figure={readonly visual:HeroVisual;readonly ring:Mesh};
 export class GalviksTableDiorama{
   readonly root:TransformNode;
   private readonly floorText:DynamicTexture;
+  private readonly tabletopLight:HemisphericLight;
   private readonly floorMat:ShaderMaterial;
   private readonly palette:{
     stoneA:PBRMaterial;stoneB:PBRMaterial;
@@ -93,6 +95,11 @@ export class GalviksTableDiorama{
     this.root.parent=tableRoot;
     this.root.position.z=TABLE_DIORAMA_WELL.centerZ;
     this.root.setEnabled(false); // GLB must be loaded before placing geometry
+    // Scoped light affects ONLY the miniaturized floor and wall meshes,
+    // never the shopkeeper, customers, furniture or camera.
+    this.tabletopLight=new HemisphericLight(
+      "cellar-table-diorama-stone-light",new Vector3(.45,.86,-.35),scene);
+    this.tabletopLight.intensity=.95;
 
     // Exactly the SAME authored procedural stone and flagstone textures
     // as the full LIVE Dungeon viewer. The shop scene already caches them.
@@ -107,15 +114,15 @@ export class GalviksTableDiorama{
       mat.albedoColor=new Color3(tint,tint,tint);
       mat.metallic=0;
       mat.roughness=1;
-      mat.unlit=true;
+      mat.unlit=false;
       mat.backFaceCulling=false;
       return mat;
     };
     this.palette={
-      stoneA:scaledSurface("stone",live.stone,.95),
-      stoneB:scaledSurface("stone-accent",live.stoneAccent,.91),
-      corridor:scaledSurface("flagstones",live.floor,.96),
-      room:scaledSurface("room-flagstones",live.floor,1.08),
+      stoneA:scaledSurface("stone",live.stone,1.22),
+      stoneB:scaledSurface("stone-accent",live.stoneAccent,1.15),
+      corridor:scaledSurface("flagstones",live.floor,.49),
+      room:scaledSurface("room-flagstones",live.floor,.63),
       platform:material(scene,"platform",new Color3(.11,.14,.15)),
       heroTank:material(scene,"hero-tank",new Color3(.28,.72,.96)),
       heroDps:material(scene,"hero-dps",new Color3(.97,.75,.34)),
@@ -230,6 +237,7 @@ void main(void){
     mesh.material=mat;
     mesh.isPickable=false;mesh.checkCollisions=false;
     mesh.thinInstanceSetBuffer("matrix",new Float32Array(transforms),16,true);
+    this.tabletopLight.includedOnlyMeshes.push(mesh);
   }
 
   /** Same 2.5 m tile coordinate space as DungeonViewer, displayed at scale
@@ -250,6 +258,7 @@ void main(void){
 
   private buildFloor(layout:DungeonLayout,floor:SpatialDungeonFloor):void{
     for(const figure of this.heroes.values())this.disposeFigure(figure);
+    this.tabletopLight.includedOnlyMeshes.length=0;
     this.floorRoot?.dispose();
     this.miniatureWorldRoot?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
@@ -487,6 +496,7 @@ void main(void){
     for(const figure of this.heroes.values())this.disposeFigure(figure);
     this.heroes.clear();
     this.root.dispose();
+    this.tabletopLight.dispose();
     this.ghoulAsset?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
     this.floorText.dispose();
