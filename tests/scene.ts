@@ -1252,13 +1252,29 @@ export function inspectGhoulObservationMeshes(){
   const hints=scene.meshes.filter(mesh=>mesh.name.startsWith(prefix));
   return {
     observer:shop?"table":"live",
-    pins:pins.map(pin=>({
-      id:pin.name.slice(shop?
+    authoredRigCount:scene.skeletons.filter(rig=>rig.bones.length===65).length,
+    authoredClips:scene.animationGroups.filter(group=>
+      group.name==="idle_combat"||group.name.endsWith("walk_feral"))
+      .map(group=>group.name),
+    pins:pins.map(pin=>{
+      const id=pin.name.slice(shop?
         "cellar-table-diorama-ghoul-anchor-".length:
-        "dungeon-monster-".length),
-      x:pin.position.x,z:pin.position.z,
-      enabled:pin.isEnabled(),
-    })).sort((a,b)=>a.id.localeCompare(b.id)),
+        "dungeon-monster-".length);
+      const idle=scene.getMeshByName((shop?
+        "cellar-table-diorama-authored-ghoul-":"overview-ghoul-3d-")+id);
+      const walk=scene.getMeshByName("overview-ghoul-walk-"+id);
+      return {
+        id,x:pin.position.x,z:pin.position.z,
+        enabled:pin.isEnabled(),
+        clip:pin.metadata?.animationClip as string|null|undefined,
+        phase:pin.metadata?.animationPhase as string|null|undefined,
+        heading:pin.metadata?.heading as number|null|undefined,
+        idleModel:!!idle&&idle.isEnabled(),
+        walkModel:!!walk&&walk.isEnabled(),
+        sourceId:idle?.sourceMesh?.id??null,
+        walkSourceId:walk?.sourceMesh?.id??null,
+      };
+    }).sort((a,b)=>a.id.localeCompare(b.id)),
     arrows:hints.map(mesh=>{
       const positions=mesh.getVerticesData("position")??[];
       return {
