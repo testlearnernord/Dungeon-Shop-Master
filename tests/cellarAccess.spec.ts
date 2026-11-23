@@ -105,8 +105,14 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
       return false;
     }
   },{timeout:30000,intervals:[200,400,700]}).toBe(true);
-  const inspect=()=>page.evaluate(async()=>
-    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectGalviksLiveTable());
+  const inspect=()=>page.evaluate(async()=>{
+    const helper=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    if(!helper.shopSceneReady())return null;
+    // Dev startup/HMR may reset the player camera to the upstairs spawn.
+    // Re-aim inside the SAME probe so the table remains within render range.
+    helper.aimAtGalviksTable();
+    return helper.inspectGalviksLiveTable();
+  });
   await page.waitForTimeout(1800);
   console.log("TABLE_RAW_BRIDGE_DIAGNOSTICS "+JSON.stringify(await inspect()));
   await expect.poll(async()=>await inspect(),{timeout:30000,intervals:[400,700,1000]})
