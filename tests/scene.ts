@@ -55,6 +55,18 @@ export function inspectGalviksLiveTable(){
     layoutWidth:diorama?.metadata?.layoutWidth??null,
     layoutHeight:diorama?.metadata?.layoutHeight??null,
     wallInstances:(wallA?.thinInstanceCount??0)+(wallB?.thinInstanceCount??0),
+    coreWidth:diorama?.metadata?.coreWidth??null,
+    coreDepth:diorama?.metadata?.coreDepth??null,
+    borderX:diorama?.metadata?.borderX??null,
+    borderZ:diorama?.metadata?.borderZ??null,
+    wellCoverage:diorama?.metadata?.wellCoverage??null,
+    bedrockPlates:diorama?.metadata?.bedrockPlates??null,
+    bedrockFacetInstances:(scene?.getMeshByName(
+      "cellar-table-diorama-bedrock-facets-0")?.thinInstanceCount??0)+
+      (scene?.getMeshByName(
+        "cellar-table-diorama-bedrock-facets-1")?.thinInstanceCount??0),
+    bedrockSides:[-1,1].filter(side=>!!scene?.getMeshByName(
+      "cellar-table-diorama-bedrock-side-"+(side<0?"left":"right"))).length,
     wallMaterial:wallA?.material?.name??null,
     floorMaterial:scene?.getMeshByName("cellar-table-diorama-corridors")?.material?.name??null,
     authoredProps:diorama?.metadata?.authoredProps??null,
