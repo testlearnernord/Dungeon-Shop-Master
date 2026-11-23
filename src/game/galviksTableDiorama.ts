@@ -4,13 +4,27 @@ import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {ShaderMaterial} from "@babylonjs/core/Materials/shaderMaterial";
 import {DynamicTexture} from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
-import type {Mesh} from "@babylonjs/core/Meshes/mesh";
+import {loadAssetContainerAsync} from "@babylonjs/core/Loading/sceneLoader";
+import type {AssetContainer} from "@babylonjs/core/assetContainer";
+import {Mesh} from "@babylonjs/core/Meshes/mesh";
+import "@babylonjs/core/Meshes/instancedMesh";
+import "@babylonjs/loaders/glTF/2.0";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameState} from "./gameState.ts";
 import {tableDioramaPosition,TABLE_DIORAMA_WELL} from "./tableDioramaGeometry.ts";
-import {generateExpeditionLayout,dungeonDownStair,
+import {generateExpeditionLayout,
   type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
+import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
+import {createDungeonFeaturePalette,createReadableDungeonChest,
+  createReadableDungeonTrap} from "./dungeonFeatureProps.ts";
+import {dungeonFloorStairways} from "./dungeonStairways.ts";
+import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
+import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
+import {createHeroVisual,setHeroVisualEquipment,
+  type HeroVisual} from "./heroVisual.ts";
+import {GHOUL_MODEL} from "./ghoulMotion.ts";
+import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
@@ -27,7 +41,7 @@ function material(scene:Scene,id:string,color:Color3):StandardMaterial{
   return mat;
 }
 
-type Figure={readonly mesh:Mesh;readonly ring:Mesh|null};
+type Figure={readonly visual:HeroVisual;readonly ring:Mesh};
 
 /**
  * Visual-only miniature of the SAME LIVE floor. Meshes belong to the shop's
@@ -51,6 +65,14 @@ export class GalviksTableDiorama{
     combat:StandardMaterial;
   };
   private floorRoot:TransformNode|null=null;
+  private miniatureWorldRoot:TransformNode|null=null;
+  private readonly featurePaint:ReturnType<typeof createDungeonFeaturePalette>;
+  private readonly ghoulFallback:StandardMaterial;
+  private ghoulSource:Mesh|null=null;
+  private ghoulAsset:AssetContainer|null=null;
+  private ghoulLoading=false;
+  private lastFrame:LiveFloorSpectatorFrame|null=null;
+  private floorArtMaterials:StandardMaterial[]=[];
   private actorRoot:TransformNode|null=null;
   private featureRoot:TransformNode|null=null;
   private heroes=new Map<string,Figure>();
@@ -70,11 +92,23 @@ export class GalviksTableDiorama{
     this.root.position.z=TABLE_DIORAMA_WELL.centerZ;
     this.root.setEnabled(false); // GLB must be loaded before placing geometry
 
+    // Exactly the SAME authored procedural stone and flagstone textures
+    // as the full LIVE Dungeon viewer. The shop scene already caches them.
+    // Weak ambient emission retains those texture details under cellar light.
+    const live=getDungeonSurfaces(scene);
+    const scaledSurface=(name:string,source:StandardMaterial,tint:number)=>{
+      const mat=source.clone("table-diorama-live-"+name) as StandardMaterial;
+      mat.diffuseColor=new Color3(tint,tint,tint);
+      mat.emissiveTexture=source.diffuseTexture;
+      mat.emissiveColor=new Color3(.28,.28,.28);
+      mat.specularColor=new Color3(.04,.04,.04);
+      return mat;
+    };
     this.palette={
-      stoneA:material(scene,"stone-a",new Color3(.34,.32,.29)),
-      stoneB:material(scene,"stone-b",new Color3(.28,.27,.25)),
-      corridor:material(scene,"corridor",new Color3(.25,.27,.28)),
-      room:material(scene,"room",new Color3(.38,.35,.29)),
+      stoneA:scaledSurface("stone",live.stone,.95),
+      stoneB:scaledSurface("stone-accent",live.stoneAccent,.91),
+      corridor:scaledSurface("flagstones",live.floor,.96),
+      room:scaledSurface("room-flagstones",live.floor,1.08),
       platform:material(scene,"platform",new Color3(.11,.14,.15)),
       heroTank:material(scene,"hero-tank",new Color3(.28,.72,.96)),
       heroDps:material(scene,"hero-dps",new Color3(.97,.75,.34)),
@@ -86,6 +120,10 @@ export class GalviksTableDiorama{
       stair:material(scene,"stair",new Color3(.91,.72,.38)),
       combat:material(scene,"combat",new Color3(1,.28,.21)),
     };
+    this.featurePaint=createDungeonFeaturePalette(scene);
+    for(const mat of Object.values(this.featurePaint))
+      mat.emissiveColor=mat.diffuseColor.scale(.26);
+    this.ghoulFallback=createGhoulMapIconMaterial(scene);
 
     this.floorText=new DynamicTexture("cellar-table-floor-label-text",
       {width:512,height:128},scene,false);
@@ -150,6 +188,7 @@ void main(void){
     this.lastUpdateAt=now;
     const frame=selectLiveFloorSpectatorFrame(state,floor);
     if(!frame)return;
+    this.lastFrame=frame;
     this.syncActors(frame);
     const resolved=[...frame.resolved].sort().join("|");
     if(resolved!==this.lastResolved){
