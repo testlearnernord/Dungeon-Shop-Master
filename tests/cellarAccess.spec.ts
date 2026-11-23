@@ -113,8 +113,6 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
     helper.aimAtGalviksTable();
     return helper.inspectGalviksLiveTable();
   });
-  await page.waitForTimeout(1800);
-  console.log("TABLE_RAW_BRIDGE_DIAGNOSTICS "+JSON.stringify(await inspect()));
   await expect.poll(async()=>await inspect(),{timeout:30000,intervals:[400,700,1000]})
     .toMatchObject({
       insetExists:true,insetVisible:true,
