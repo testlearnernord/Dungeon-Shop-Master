@@ -40,17 +40,24 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
   // movable GLB, never a fullscreen HUD or a second copy of the tabletop.
   // Coordinates are local to the shared furniture root, so P repositioning
   // and Q/R rotation carry the image along with the entire table.
+  // Raycast sampling of the loaded GLB measured the recessed surface at
+  // y=.795-.815m above the cellar floor (center x=±.4m,z=-.32..+.28m).
+  // Previous hard-coded .83*1.4m was ~35cm ABOVE the well! Keep the plane
+  // above its inset floor but BELOW the raised metal/wood rim at ~.9m.
   const inset=MeshBuilder.CreatePlane("cellar-table-live-inset",{
-    width:def.width*.61,height:def.depth*.56,
+    width:1.215,height:.70,
   },scene);
   inset.parent=root;
-  inset.position.set(0,def.height*.83,-def.depth*.10);
+  inset.position.set(0,.827,-.095);
   inset.rotation.x=-Math.PI/2; // face the ceiling, parallel to the recess
   inset.isPickable=false;
   inset.checkCollisions=false;
   inset.isVisible=false;
   const screenMat=new StandardMaterial("cellar-table-live-inset-mat",scene);
-  screenMat.diffuseColor=new Color3(1,1,1);
+  // The very dark RTT should remain readable in the unlit cellar, rather
+  // than receiving another diffuse/light attenuation on the GLB.
+  screenMat.diffuseColor=Color3.Black();
+  screenMat.emissiveColor=Color3.White();
   screenMat.specularColor=Color3.Black();
   screenMat.disableLighting=true;
   screenMat.backFaceCulling=false;
@@ -60,7 +67,7 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
   const setDungeonTexture=(texture:BaseTexture|null)=>{
     if(dungeonTexture===texture)return;
     dungeonTexture=texture;
-    screenMat.diffuseTexture=texture;
+    screenMat.emissiveTexture=texture;
     inset.isVisible=modelReady&&texture!==null;
   };
 
