@@ -61,6 +61,9 @@ export function inspectGalviksLiveTable(){
     floorLabelExists:!!floorLabel,
     floorLabelMaterial:floorLabel?.material?.name??null,
     sceneMeshCount:allMeshes.length,
+    baseWorldPosition:base?.getAbsolutePosition().asArray()??null,
+    wallMeshWorldPosition:wallA?.getAbsolutePosition().asArray()??null,
+    tableWorldPosition:root?.getAbsolutePosition().asArray()??null,
     flatLegacyInset:!!scene?.getMeshByName("cellar-table-live-inset"),
     shopCamera:scene?.activeCamera?.name??null,
     shopMode:!document.body.classList.contains("dungeon-active"),
@@ -1333,7 +1336,7 @@ export function galviksDioramaScreenshotPoints(){
   const points:{x:number;y:number}[]=[];
   for(const z of [-.22,-.11,0,.11,.22])
     for(const x of [-.46,-.23,0,.23,.46]){
-      const point=Vector3.TransformCoordinates(new Vector3(x,.84,z),world);
+      const point=Vector3.TransformCoordinates(new Vector3(x,.927,z),world);
       const p=Vector3.Project(point,Matrix.Identity(),scene.getTransformMatrix(),vp);
       points.push({
         x:Math.round(bbox.left+p.x*bbox.width/width),
