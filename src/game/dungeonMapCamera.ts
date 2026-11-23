@@ -7,7 +7,7 @@ export interface DungeonMapPose {
 }
 export interface DungeonMapPoint {readonly x:number;readonly y:number;readonly z:number}
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
-export const DUNGEON_NORTH_YAW=0;
+export {DUNGEON_NORTH_YAW} from "./dungeonObservationOrientation.ts";
 /** CSS compass needle angle: north stays fixed in world space while the
  * actual camera can freely orbit through any number of revolutions. */
 export function dungeonNorthNeedleDegrees(yaw:number):number {
