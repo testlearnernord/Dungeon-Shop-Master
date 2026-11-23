@@ -54,7 +54,8 @@ function roamDestinations(layout:DungeonLayout,from:DungeonPoint):DungeonPoint[]
 }
 
 function beginIdle(monster:DungeonMonsterState,tick:number,rng:SeededRandom):DungeonMonsterState{
-  return {...monster,mode:"IDLE",target:undefined,
+  const {target:_priorTarget,...rest}=monster;
+  return {...rest,mode:"IDLE",
     nextDecisionTick:tick+MONSTER_STEP_TICKS*(2+rng.int(7))};
 }
 
@@ -97,32 +98,67 @@ export function advanceDungeonMonsterWorld(
   const refreshed=refreshDungeonSites(world,layout,day);
   const resolved=new Set(refreshed.resolvedFeatureIds);
   const previous=new Map((world.monsters??[]).map(monster=>[monster.id,monster]));
-  const occupied=new Set(occupiedHeroes.map(key));
-  const monsters:DungeonMonsterState[]=[];
-  for(const feature of layout.features){
-    if(feature.kind!=="monster"||resolved.has(feature.id))continue;
-    const siteCycle=dungeonSiteGeneration(refreshed.siteCycles,feature.id);
+  const active=layout.features.filter(feature=>
+    feature.kind==="monster"&&!resolved.has(feature.id));
+  const activeWithCycle=active.map(feature=>({
+    feature,siteCycle:dungeonSiteGeneration(refreshed.siteCycles,feature.id),
+  }));
+  const preserved=activeWithCycle.flatMap(({feature,siteCycle})=>{
     const saved=previous.get(feature.id);
-    const base:DungeonMonsterState=saved&&saved.siteCycle===siteCycle
-      ?saved:{
-        id:feature.id,siteCycle,x:feature.x,z:feature.z,
+    return saved&&saved.siteCycle===siteCycle?[saved]:[];
+  });
+  // Reserve ALL still-living positions before advancing any pack. Without
+  // this first pass, an early pack can step onto a later pack's tile, or
+  // a regenerated site can respawn on top of an unrelated roaming Ghoul.
+  const packOccupied=new Set(preserved.map(key));
+  const heroOccupied=new Set(occupiedHeroes.map(key));
+  const monsters:DungeonMonsterState[]=[];
+  for(const {feature,siteCycle} of activeWithCycle){
+    const saved=previous.get(feature.id);
+    let base:DungeonMonsterState;
+    if(saved&&saved.siteCycle===siteCycle){
+      base=saved;
+      packOccupied.delete(key(saved));
+    }else{
+      // A just-regenerated pack must find the nearest actually free tile.
+      // Connected BFS keeps tie-breaking stable; home remains immutable.
+      const queue:DungeonPoint[]=[feature];
+      const searched=new Set([key(feature)]);
+      let spawn:DungeonPoint|undefined;
+      for(let i=0;i<queue.length;i++){
+        const p=queue[i];
+        if(!packOccupied.has(key(p))&&!heroOccupied.has(key(p))){
+          spawn=p;break;
+        }
+        for(const next of dungeonNeighbors(layout,p)){
+          if(searched.has(key(next)))continue;
+          searched.add(key(next));queue.push(next);
+        }
+      }
+      if(!spawn)throw new RangeError("No free dungeon tile for renewed monster");
+      base={
+        id:feature.id,siteCycle,x:spawn.x,z:spawn.z,
         homeX:feature.x,homeZ:feature.z,mode:"IDLE",
         lastMoveTick:tick,
         nextDecisionTick:tick+MONSTER_STEP_TICKS*(2+
           roll(layout,feature.id,siteCycle,tick).int(7)),
       };
+    }
     const engaged=reservedSiteIds.has(feature.id);
-    const candidate=engaged?{...base,mode:"ENGAGED" as const,
-      target:undefined}:base.mode==="ENGAGED"
-      ?beginIdle(base,tick,roll(layout,base.id,siteCycle,tick))
-      :base;
-    // Earlier packs have priority on a contested tile. No pack teleports
-    // through another pack or living hero to complete its roaming.
+    const candidate:DungeonMonsterState=engaged
+      ?(()=>{const {target:_prior,...rest}=base;
+          return {...rest,mode:"ENGAGED" as const};})()
+      :base.mode==="ENGAGED"
+        ?beginIdle(base,tick,roll(layout,base.id,siteCycle,tick))
+        :base;
+    // A roaming pack cannot enter any other pack's current or newly
+    // committed tile, nor walk onto a hero as part of random wandering.
+    const occupied=new Set([...packOccupied,...heroOccupied]);
     const moved=engaged?candidate:advanceOne(candidate,layout,tick,occupied);
-    if(tileAt(layout,moved.x,moved.z)==="wall")
-      throw new RangeError("Monster crossed a blocked dungeon tile");
+    if(tileAt(layout,moved.x,moved.z)==="wall"||packOccupied.has(key(moved)))
+      throw new RangeError("Monster crossed blocked dungeon geometry or actor");
     monsters.push(moved);
-    occupied.add(key(moved));
+    packOccupied.add(key(moved));
   }
   return {...world,...refreshed,monsters};
 }
