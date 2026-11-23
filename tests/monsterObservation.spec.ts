@@ -104,9 +104,9 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   expect(table.arrows[0].rgb?.toUpperCase()).toBe("#F44F50");
   expect(table.arrows[0].length).toBeCloseTo(2.5,3);
   expect(table.authoredRigCount).toBe(2);
-  expect(table.authoredClips).toEqual(expect.arrayContaining([
-    "idle_combat","overview-walking-walk_feral",
-  ]));
+  expect(table.authoredClips).toContain("idle_combat");
+  expect(table.authoredClips.some(name=>name.includes(
+    "A feral ghoul walks with a hunched back"))).toBe(true);
   for(const pin of table.pins){
     expect(pin.clip).toBe("idle_combat");
     expect(pin.idleModel).toBe(true);
