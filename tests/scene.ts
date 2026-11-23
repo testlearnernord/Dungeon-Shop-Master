@@ -46,6 +46,7 @@ export function inspectGalviksLiveTable(){
     fallbackStillPresent:!!scene?.getMeshByName("cellar-table-fallback"),
     textureName:texture?.name??null,
     shopCamera:scene?.activeCamera?.name??null,
+    cameraPosition:scene?.activeCamera?.position.asArray()??null,
     shopMode:!document.body.classList.contains("dungeon-active"),
     inShopScene:!!scene?.getMeshByName("cellar-table-collider"),
   };
