@@ -1,6 +1,7 @@
 import {loadAssetContainerAsync} from "@babylonjs/core/Loading/sceneLoader";
 import {Color3} from "@babylonjs/core/Maths/math.color";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
+import {ShaderMaterial} from "@babylonjs/core/Materials/shaderMaterial";
 import {RenderTargetTexture} from "@babylonjs/core/Materials/Textures/renderTargetTexture";
 import {RawTexture} from "@babylonjs/core/Materials/Textures/rawTexture";
 import {Texture} from "@babylonjs/core/Materials/Textures/texture";
@@ -55,16 +56,28 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
   inset.isPickable=false;
   inset.checkCollisions=false;
   inset.isVisible=false;
-  const screenMat=new StandardMaterial("cellar-table-live-inset-mat",scene);
-  // The very dark RTT should remain readable in the unlit cellar, rather
-  // than receiving another diffuse/light attenuation on the GLB.
-  // StandardMaterial adds a constant emissiveColor to its shader output:
-  // White() made the entire inset pure white regardless of the valid RTT.
-  // An unlit diffuse texture displays the already-lit spectator pixels as-is.
-  screenMat.diffuseColor=Color3.White();
-  screenMat.emissiveColor=Color3.Black();
-  screenMat.specularColor=Color3.Black();
-  screenMat.disableLighting=true;
+  // The Babylon StandardMaterial path produced first a white emissive slab,
+  // then a black diffuse slab, although texture.readPixels() contained real
+  // dungeon imagery. An explicit unlit shader samples those RGBA bytes
+  // directly, without StandardMaterial lighting/alpha/tint heuristics.
+  const screenMat=new ShaderMaterial("cellar-table-live-inset-mat",scene,{
+    vertexSource:`precision highp float;
+attribute vec3 position;
+attribute vec2 uv;
+uniform mat4 worldViewProjection;
+varying vec2 vUV;
+void main(void) {
+  vUV=uv;
+  gl_Position=worldViewProjection*vec4(position,1.0);
+}`,
+    fragmentSource:`precision highp float;
+varying vec2 vUV;
+uniform sampler2D frameSampler;
+void main(void) {
+  gl_FragColor=vec4(texture2D(frameSampler,vUV).rgb,1.0);
+}`,
+  },{attributes:["position","uv"],uniforms:["worldViewProjection"],
+    samplers:["frameSampler"]});
   screenMat.backFaceCulling=false;
   inset.material=screenMat;
   let modelReady=false;
@@ -87,7 +100,6 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
       generation++;
       localTexture?.dispose();
       localTexture=null;
-      screenMat.diffuseTexture=null;
       inset.isVisible=false;
       lastReadAt=-Infinity;
     }
@@ -113,7 +125,11 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
           scene,false,true,Texture.BILINEAR_SAMPLINGMODE);
         localTexture.name=requested.name;
         debug.created=true;
-        screenMat.diffuseTexture=localTexture;
+        screenMat.setTexture("frameSampler",localTexture);
+        if(import.meta.env.VITE_E2E==="1"){
+          inset.metadata??={};
+          inset.metadata.projectionTexture=localTexture;
+        }
       }else localTexture.update(bytes);
       inset.isVisible=true;
     }).catch(error=>{
