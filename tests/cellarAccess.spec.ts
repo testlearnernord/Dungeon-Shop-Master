@@ -143,7 +143,6 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
     });
   },{base64:screenshot.toString("base64"),points});
   const luminances=colors.map(rgb=>Math.max(...rgb));
-  console.log("GALVIK_DIORAMA_SCREENSHOT",{colors});
   // The centered white FPS crosshair may cover one or two sampled points.
   // A solid-white surface still fails, without false positives from the HUD.
   expect(luminances.filter(v=>v>240).length).toBeLessThanOrEqual(2);
