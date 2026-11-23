@@ -29,26 +29,44 @@ export function shopSceneReady():boolean{
   const scene=currentTestScene();
   return !!(scene?.activeCamera&&
     scene.getMeshByName("cellar-table-collider")&&
-    scene.getMeshByName("cellar-table-live-inset")&&
+    scene.getTransformNodeByName("cellar-table-diorama-root")&&
     scene.getTransformNodeByName("cellar-table-root"));
 }
 
-/** Inspect the actual physical inset, texture and unchanged shop controls. */
+/** Verify the table now contains actual 3D masonry in the SHOP Scene,
+ * never a full-screen texture or a second playable dungeon. */
 export function inspectGalviksLiveTable(){
   const scene=currentTestScene();
-  const inset=scene?.getMeshByName("cellar-table-live-inset");
-  const material=inset?.material instanceof StandardMaterial?inset.material:null;
-  const texture=inset?.metadata?.projectionTexture??material?.emissiveTexture??material?.diffuseTexture??null;
+  const root=scene?.getTransformNodeByName("cellar-table-root");
+  const diorama=scene?.getTransformNodeByName("cellar-table-diorama-root");
+  const wallA=scene?.getMeshByName("cellar-table-diorama-walls-a");
+  const wallB=scene?.getMeshByName("cellar-table-diorama-walls-b");
+  const base=scene?.getMeshByName("cellar-table-diorama-base");
+  const floorLabel=scene?.getMeshByName("cellar-table-floor-label");
+  const allMeshes=scene?.meshes.filter(mesh=>
+    mesh.name.startsWith("cellar-table-diorama-"))??[];
   return {
-    insetExists:!!inset,
-    insetVisible:inset?.isVisible??false,
-    textureName:texture?.name??null,
+    dioramaExists:!!diorama,
+    dioramaEnabled:diorama?.isEnabled()??false,
+    physicallyParented:diorama?.parent===root,
+    observedFloor:diorama?.metadata?.floor??null,
+    actorCount:diorama?.metadata?.actorCount??null,
+    featureCount:diorama?.metadata?.featureCount??null,
+    layoutWidth:diorama?.metadata?.layoutWidth??null,
+    layoutHeight:diorama?.metadata?.layoutHeight??null,
+    wallInstances:(wallA?.thinInstanceCount??0)+(wallB?.thinInstanceCount??0),
+    wallHeight:wallA?.getBoundingInfo().boundingBox.extendSize.y
+      ?2*wallA.getBoundingInfo().boundingBox.extendSize.y:0,
+    baseExists:!!base,
+    floorLabelExists:!!floorLabel,
+    floorLabelMaterial:floorLabel?.material?.name??null,
+    sceneMeshCount:allMeshes.length,
+    flatLegacyInset:!!scene?.getMeshByName("cellar-table-live-inset"),
     shopCamera:scene?.activeCamera?.name??null,
     shopMode:!document.body.classList.contains("dungeon-active"),
     inShopScene:!!scene?.getMeshByName("cellar-table-collider"),
   };
 }
-
 export function aimAtGalviksTable(){
   const scene=currentTestScene();
   const camera=scene?.activeCamera as UniversalCamera|undefined;
@@ -1296,26 +1314,26 @@ export function inspectLiveFloorCameraFocus(){
 }
 
 
-/** Screen coordinates of the physical inset. A Playwright screenshot
- * is used to sample the REAL image; framebuffer readPixels is unreliable with
- * preserveDrawingBuffer:false and returned 1,1,1 on SwiftShader. */
-export function galviksTableScreenshotPoints(){
+/** Project five-by-five locations on the REAL local masonry surface into
+ * screenshot pixels; this detects missing/invisible geometry, not RTT pixels. */
+export function galviksDioramaScreenshotPoints(){
   const scene=currentTestScene();
-  const inset=scene?.getMeshByName("cellar-table-live-inset");
+  const diorama=scene?.getTransformNodeByName("cellar-table-diorama-root");
   const camera=scene?.activeCamera;
-  if(!scene||!camera||!inset?.isVisible)
-    throw Error("Shop camera and loaded table projection required");
+  if(!scene||!camera||!diorama?.isEnabled()||
+    !scene.getMeshByName("cellar-table-diorama-base"))
+    throw Error("Shop camera and loaded physical diorama required");
   const engine=scene.getEngine(),canvas=engine.getRenderingCanvas();
   if(!canvas)throw Error("Missing shop render canvas");
   const bbox=canvas.getBoundingClientRect();
   const width=engine.getRenderWidth(),height=engine.getRenderHeight();
   const vp=camera.viewport.toGlobal(width,height);
-  inset.computeWorldMatrix(true);
-  const world=inset.getWorldMatrix();
+  diorama.computeWorldMatrix(true);
+  const world=diorama.getWorldMatrix();
   const points:{x:number;y:number}[]=[];
-  for(const y of [-.25,-.125,0,.125,.25])
-    for(const x of [-.45,-.225,0,.225,.45]){
-      const point=Vector3.TransformCoordinates(new Vector3(x,y,0),world);
+  for(const z of [-.22,-.11,0,.11,.22])
+    for(const x of [-.46,-.23,0,.23,.46]){
+      const point=Vector3.TransformCoordinates(new Vector3(x,.84,z),world);
       const p=Vector3.Project(point,Matrix.Identity(),scene.getTransformMatrix(),vp);
       points.push({
         x:Math.round(bbox.left+p.x*bbox.width/width),
@@ -1323,50 +1341,4 @@ export function galviksTableScreenshotPoints(){
       });
     }
   return points;
-}
-
-/** Development probe of the physical GLB recess and actual GPU pixels.
- * A texture being assigned is NOT proof that its render contains a dungeon. */
-export async function probeGalviksTableProjection(){
-  const scene=currentTestScene()!;
-  const inset=scene.getMeshByName("cellar-table-live-inset");
-  const mat=inset?.material instanceof StandardMaterial?inset.material:null;
-  const texture=inset?.metadata?.projectionTexture??mat?.emissiveTexture??mat?.diffuseTexture;
-  const root=scene.getTransformNodeByName("cellar-table-root")!;
-  const rows=[] as {x:number;z:number;y:number|null;mesh:string|null}[];
-  for(const z of [-.72,-.52,-.32,-.12,.08,.28,.48,.68])
-    for(const x of [-1.2,-.8,-.4,0,.4,.8,1.2]){
-      const p=root.getAbsolutePosition();
-      const ray=new Ray(new Vector3(p.x+x,p.y+4,p.z+z),
-        new Vector3(0,-1,0),8);
-      const hit=scene.pickWithRay(ray,mesh=>mesh.name.startsWith("cellar-table-model-"));
-      rows.push({x,z,y:hit?.pickedPoint?Number((hit.pickedPoint.y-p.y).toFixed(3)):null,
-        mesh:hit?.pickedMesh?.name??null});
-    }
-  let gpu:null|{length:number;colored:number;average:number;error?:string}=null;
-  if(texture){
-    try{
-      const pixels=await texture.readPixels();
-      if(pixels){
-        const data=new Uint8Array(pixels.buffer,pixels.byteOffset,pixels.byteLength);
-        let nonDark=0,sum=0;
-        for(let i=0;i<data.length;i+=4){
-          const max=Math.max(data[i]??0,data[i+1]??0,data[i+2]??0);
-          sum+=max;
-          if(max>48)nonDark++;
-        }
-        gpu={length:data.length,colored:nonDark,average:Math.round(sum/(data.length/4))};
-      }
-    }catch(error){gpu={length:0,colored:0,average:0,error:String(error)}}
-  }
-  return {
-    inset:{position:inset?.position.asArray(),rotation:inset?.rotation.asArray(),
-      worldMin:inset?.getBoundingInfo().boundingBox.minimumWorld.asArray(),
-      worldMax:inset?.getBoundingInfo().boundingBox.maximumWorld.asArray()},
-    model:scene.meshes.filter(mesh=>mesh.name.startsWith("cellar-table-model-"))
-      .map(mesh=>({name:mesh.name,vertices:mesh.getTotalVertices(),
-        min:mesh.getBoundingInfo().boundingBox.minimumWorld.asArray(),
-        max:mesh.getBoundingInfo().boundingBox.maximumWorld.asArray()})),
-    rows,gpu,sceneCamera:scene.activeCamera?.name,textureName:texture?.name??null,
-  };
 }
