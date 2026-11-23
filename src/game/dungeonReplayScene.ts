@@ -508,7 +508,8 @@ export class DungeonReplayScene {
       }
     }
     for(const hero of view.heroes){
-      const points=predictDungeonHeroSteps(this.layout,hero,view.resolved);
+      const points=hero.threatNextStep?[hero.threatNextStep]:
+        predictDungeonHeroSteps(this.layout,hero,view.resolved);
       const signature=[hero.x,hero.z,...points.flatMap(p=>[p.x,p.z])]
         .join(",")+"|"+hero.activity+"|"+hero.plannedAction;
       const old=this.floorRouteHints.get(hero.id);
@@ -538,7 +539,9 @@ export class DungeonReplayScene {
       line.renderingGroupId=2; // Above floor geometry, not a hidden AI path.
       line.isPickable=false;line.checkCollisions=false;
       line.metadata={previewOnly:true,floorHeroId:hero.id,
-        label:"Two-step route forecast, not an actual saved route"};
+        label:hero.threatAction?
+          "Visible pursuer: "+hero.threatAction+" · one-step tactical forecast":
+          "Two-step route forecast, not an actual saved route"};
       const pips=points.map((point,index)=>{
         const pip=MeshBuilder.CreateCylinder(
           "dungeon-floor-intent-pip-"+hero.id+"-"+(index+1),
