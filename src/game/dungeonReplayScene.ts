@@ -501,12 +501,6 @@ export class DungeonReplayScene {
     // Two short PREVIEW segments follow the existing autonomous navigator.
     // These arrows are visual forecasts, not persisted plans or invented
     // movement checkpoints. They stop at any unresolved site interaction.
-    for(const [id,hint] of this.floorMonsterHints){
-      const monster=frame.monsters?.find(m=>m.id===id);
-      const cell=monster?monster.z*this.layout.width+monster.x:-1;
-      hint.mesh.setEnabled(!!monster&&monster.mode!=="ENGAGED"&&
-        (!visible||visible.has(cell)));
-    }
     for(const [id,hint] of this.floorRouteHints){
       if(!present.has(id)){
         hint.mesh.dispose();hint.pips.forEach(pip=>pip.dispose());
@@ -690,6 +684,12 @@ export class DungeonReplayScene {
       const fight=frame.fights.find(entry=>entry.id===id);
       marker.setEnabled(!!fight&&(!visible||
         visible.has(fight.z*this.layout.width+fight.x)));
+    }
+    for(const [id,hint] of this.floorMonsterHints){
+      const monster=frame.monsters?.find(m=>m.id===id);
+      const cell=monster?monster.z*this.layout.width+monster.x:-1;
+      hint.mesh.setEnabled(!!monster&&monster.mode!=="ENGAGED"&&
+        (!visible||visible.has(cell)));
     }
     for(const [id,hint] of this.floorRouteHints){
       const hero=frame.heroes.find(entry=>entry.id===id);
