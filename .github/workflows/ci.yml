@@ -42,9 +42,9 @@ jobs:
       - run: npx playwright install chromium
       # Only the curated core flows run on each PR. Every other browser spec
       # remains available through the manually dispatched full regression.
-      - run: xvfb-run -a npx playwright test tests/cellarAccess.spec.ts --grep "Galvik's movable table"
+      - run: xvfb-run -a npm run test:smoke
       - name: Upload browser failure diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: browser-core-failure-${{ github.run_id }}
