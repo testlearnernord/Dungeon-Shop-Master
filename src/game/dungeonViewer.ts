@@ -489,7 +489,9 @@ export class DungeonViewer {
       this.tablePreviewSnapshot=null;
       if(!this.scene||!this.camera)return null;
       const mapSize=Math.max(layout.width,layout.height)*TILE_SIZE;
-      this.camera.position.set(0,mapSize*1.55,-mapSize*.40);
+      // Frame the square map into the 768x448 recess, without the huge
+      // black border caused by the previous 1.55x distant camera.
+      this.camera.position.set(0,mapSize*1.15,-mapSize*.14);
       this.camera.setTarget(Vector3.Zero());
       this.tableTarget=new RenderTargetTexture("galviks-table-live-floor-"+floor,
         {width:768,height:448},this.scene,false,true);
