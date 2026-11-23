@@ -176,7 +176,7 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
     });
   },{base64:screenshot.toString("base64"),
     points:[...points,...wallPoints,...bankPoints]});
-  const wallColors=colors.slice(points.length);
+  const wallColors=colors.slice(points.length,points.length+wallPoints.length);
   const wallLuminance=wallColors.map(rgb=>Math.max(...rgb));
   console.log("GALVIK_WALL_PIXEL_DIAGNOSTIC",JSON.stringify({
     count:wallLuminance.length,
