@@ -119,6 +119,9 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   expect(first).not.toBeNull();
   expect(first!.wallInstances).toBeGreaterThan(50);
   expect(first!.wallHeight).toBeGreaterThan(.025);
+  // Real authored figures and crypt props must remain legible above the
+  // masonry when Galvik stands at the table, without a second camera.
+  expect(first!.artHeightScale).toBeGreaterThan(.03);
   expect(first!.featureCount).toBeGreaterThan(5);
   expect(first!.sceneMeshCount).toBeGreaterThan(5);
   // Existing LIVE art assets, not colored geometry-only placeholders.
