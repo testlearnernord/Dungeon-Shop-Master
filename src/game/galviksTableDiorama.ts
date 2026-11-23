@@ -98,9 +98,9 @@ attribute vec2 uv;
 uniform mat4 worldViewProjection;
 varying vec2 vUV;
 void main(void){
-  // The vertical physical placard faces the player from its reverse side;
-  // flip both UV axes to keep FLOOR 01 readable from Galvik's position.
-  vUV=vec2(1.0-uv.x,1.0-uv.y);
+  // Correct the placard's mirrored U mapping while respecting the
+  // DynamicTexture's already inverted V upload orientation.
+  vUV=vec2(1.0-uv.x,uv.y);
   gl_Position=worldViewProjection*vec4(position,1.0);
 }`,
       fragmentSource:`precision highp float;
