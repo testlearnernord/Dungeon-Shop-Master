@@ -120,7 +120,7 @@ export class ObservationTransitionDirector{
         TABLE_DIORAMA_WELL.depth/2+.12;
   }
 
-  /** E at the table, or G / Dungeon button while looking at it. */
+  /** Only E at the real physical table starts the cinematic. */
   enter():boolean{
     if(this.phase!=="idle"||!this.tableInSight())return false;
     const floor=this.dungeon.selectedLiveFloor;
