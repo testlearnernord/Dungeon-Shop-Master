@@ -27,6 +27,14 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 
 **Current Alpha v35 reality:** the cursed shop is persisted once as `shopRoom`, and a hero's shop, outside-world or portal-transit location uses `"shop"`, `"away"` or `"transit"`, never a fake numbered floor. One real `portal` doorway replaces both historic `level4/level6` gates; regular Floors 1–9 share a saved `dungeonWorlds` collection. `bossPass` is the **current**, intentional Floor-10 party credential. The standalone non-LIVE day motor and old numbered-floor event/recording contracts were retired in #319–#320. **Remaining technical debt:** Floor-7 status-only exceptions, abstract loot tokens and misleading source naming, not a second shop or physical gate. No old Alpha saves are migrated. Refer to issue #300 before touching the live combat, mining or furniture systems.
 
+## V0.004 A monster-world implementation status (PARTIAL)
+
+The first implementation slice stores one real Ghoul-Pack entity per active ordinary monster site generation, with a saved x/z location, movement state, decision timing and 400-world-tick per-cell speed. `dungeonMonsterWorld.ts` is called only by the existing LIVE world event. It reconciles regenerated sites and pursues rare, deterministic connected-path roaming, without consuming the campaign RNG stream or adding another clock. Resolved packs disappear from the persisted world and a renewed generation starts at its own site.
+
+The current LIVE floor projection, Tripo Ghoul map instance and Galvik's Table consume saved coordinates; each actively moving pack may show at most one red next-tile preview. These visuals cannot create a creature or a reward. Site-specific combat keeps `groupCombat.ts` and can begin when a hero enters an occupied monster tile.
+
+**Still not implemented in this slice:** Monster LOS/aggro, chasing/searching, monster-initiated contacts and simultaneous field-swap arbitration; pursuit-informed autonomous hero/party tactics. Their absence is a **release blocker** for complete V0.004 A. Do not treat this draft branch as release-complete or merge it before owner approval.
+
 ## Encounter and party expectations
 
 - Temporary Parties are **situational and voluntary**. A co-located group must not collect one treasure, reward or enemy kill separately for each member.
