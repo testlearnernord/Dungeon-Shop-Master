@@ -4,7 +4,7 @@ import type {DungeonLayout,DungeonPoint} from "./dungeonLayout.ts";
  * metres: the rectangle fills the recess without leaking onto the controls. */
 export const TABLE_DIORAMA_WELL={
   width:1.16,depth:.61,centerZ:-.095,baseY:.866,
-  floorY:.876,wallY:.910,wallHeight:.066,
+  floorY:.876,wallY:.919,wallHeight:.078,
 } as const;
 
 /** Pure presentation transform. Independent X and Z scales fit square
