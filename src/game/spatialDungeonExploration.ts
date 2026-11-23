@@ -184,18 +184,24 @@ export function prepareSpatialDungeonCombat(
   // Use distinct physically walkable grid cells inside this same 7x7 arena.
   // In a narrow corridor spawning three bodies at the same point would be
   // technically accepted by the constructor but visually and physically wrong.
-  const available:DungeonPoint[]=[approach];
+  // A Ghoul can advance onto a stationary hero. The contact checkpoint is
+  // genuinely at the shared tile, but arena fighters must not be spawned
+  // interpenetrating at its center. Place their initial arena formation
+  // on an adjacent, truly walkable tile; the recorded map stays unchanged.
+  const start=approach.x===monster.x&&approach.z===monster.z
+    ?dungeonNeighbors(layout,monster)[0]??approach:approach;
+  const available:DungeonPoint[]=[start];
   const candidates:DungeonPoint[]=[];
   for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){
     const p={x:monster.x+dx,z:monster.z+dz};
     if(tileAt(layout,p.x,p.z)==="wall"||
       (p.x===monster.x&&p.z===monster.z)||
-      (p.x===approach.x&&p.z===approach.z))continue;
+      (p.x===start.x&&p.z===start.z))continue;
     candidates.push(p);
   }
   candidates.sort((a,b)=>
-    (Math.abs(a.x-approach.x)+Math.abs(a.z-approach.z))-
-    (Math.abs(b.x-approach.x)+Math.abs(b.z-approach.z))||
+    (Math.abs(a.x-start.x)+Math.abs(a.z-start.z))-
+    (Math.abs(b.x-start.x)+Math.abs(b.z-start.z))||
     a.z-b.z||a.x-b.x);
   available.push(...candidates);
   if(available.length<party.length)
