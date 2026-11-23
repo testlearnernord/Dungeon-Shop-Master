@@ -90,6 +90,9 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
     });
   const first=await inspect();
   expect(first.shopCamera).toBeTruthy();
+  const probe=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).probeGalviksTableProjection());
+  console.log("GALVIK_TABLE_PROBE "+JSON.stringify(probe));
 
   // The LIVE viewer remains the sole owner of the selected floor. A return
   // to the shop must update the *same physical* inset, not open a second HUD.
