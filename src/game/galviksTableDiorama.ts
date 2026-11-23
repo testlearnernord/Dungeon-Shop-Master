@@ -101,9 +101,12 @@ export class GalviksTableDiorama{
       // material. The cellar's light budget is different from the full
       // spectator scene, so sample the image into an unlit emissive channel.
       const mat=new StandardMaterial("table-diorama-live-"+name,scene);
-      mat.diffuseColor=Color3.Black();
-      mat.emissiveTexture=source.diffuseTexture;
-      mat.emissiveColor=new Color3(.88*tint,.88*tint,.88*tint);
+      // Same shop Scene as the source DynamicTexture: sample it through
+      // the ordinary diffuse path. EmissiveTexture here turned the entire
+      // wall surface white on SwiftShader, despite healthy source pixels.
+      mat.diffuseTexture=source.diffuseTexture;
+      mat.diffuseColor=new Color3(tint,tint,tint);
+      mat.emissiveColor=new Color3(.08,.08,.08);
       mat.specularColor=Color3.Black();
       mat.disableLighting=true;
       mat.backFaceCulling=false;
