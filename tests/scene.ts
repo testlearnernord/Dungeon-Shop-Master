@@ -1323,6 +1323,38 @@ export function inspectLiveFloorCameraFocus(){
 }
 
 
+/** Real wall-top pixels in the visible shop screenshot: prevents the
+ * material regression where 800+ counted walls render as a blank dark plane.
+ * Thin-instance matrices are presentation geometry, not game-state guesses. */
+export function galviksDioramaWallPixels(){
+  const scene=currentTestScene();
+  const camera=scene?.activeCamera;
+  const canvas=scene?.getEngine().getRenderingCanvas();
+  if(!scene||!camera||!canvas)throw Error("Shop camera required");
+  const vp=camera.viewport.toGlobal(
+    scene.getEngine().getRenderWidth(),scene.getEngine().getRenderHeight());
+  const bbox=canvas.getBoundingClientRect();
+  const points:{x:number;y:number}[]=[];
+  for(const name of ["cellar-table-diorama-walls-a","cellar-table-diorama-walls-b"]){
+    const mesh=scene.getMeshByName(name) as import("@babylonjs/core/Meshes/mesh").Mesh|null;
+    if(!mesh)continue;
+    mesh.computeWorldMatrix(true);
+    const matrices=mesh.thinInstanceGetWorldMatrices();
+    const stride=Math.max(1,Math.floor(matrices.length/40));
+    for(let i=0;i<matrices.length;i+=stride){
+      const h=mesh.getBoundingInfo().boundingBox.maximum.y;
+      const world=Vector3.TransformCoordinates(new Vector3(0,h,0),
+        matrices[i]!.multiply(mesh.getWorldMatrix()));
+      const p=Vector3.Project(world,Matrix.Identity(),scene.getTransformMatrix(),vp);
+      const x=Math.round(bbox.left+p.x*bbox.width/vp.width);
+      const y=Math.round(bbox.top+p.y*bbox.height/vp.height);
+      if(x>=0&&y>=0&&x<bbox.right&&y<bbox.bottom)
+        points.push({x,y});
+    }
+  }
+  return points;
+}
+
 /** Project five-by-five locations on the REAL local masonry surface into
  * screenshot pixels; this detects missing/invisible geometry, not RTT pixels. */
 export function galviksDioramaScreenshotPoints(){
