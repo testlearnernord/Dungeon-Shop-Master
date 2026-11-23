@@ -14,8 +14,15 @@ import type {AdventurerState} from "../../src/game/adventurers.ts";
 const seed=7351,layout=generateExpeditionLayout(seed,1);
 const original=createGameState(seed).adventurers;
 const base=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),layout,1,0);
-const selected=base.monsters!.find(pack=>dungeonNeighbors(layout,pack).length>1)!;
-const position=dungeonNeighbors(layout,selected)[0];
+const canEvade=(pack:{x:number;z:number})=>
+  dungeonNeighbors(layout,pack).some(point=>
+    dungeonNeighbors(layout,point).some(next=>
+      next.x!==pack.x||next.z!==pack.z));
+const selected=base.monsters!.find(canEvade)!;
+assert(selected);
+const position=dungeonNeighbors(layout,selected).find(point=>
+  dungeonNeighbors(layout,point).some(next=>
+    next.x!==selected.x||next.z!==selected.z))!;
 const monster={...selected,mode:"CHASING" as const,
   targetHeroId:original[0].id,lastKnown:position,lastSeenTick:200,
   lostSightChecks:0,target:position};
