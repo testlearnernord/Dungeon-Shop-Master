@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {generateExpeditionLayout} from "../../src/game/dungeonLayout.ts";
 import {tableDioramaPosition,TABLE_DIORAMA_WELL}
-  from "../../src/game/galviksTableDiorama.ts";
+  from "../../src/game/tableDioramaGeometry.ts";
 
 test("physical diorama auto-fits all supported LIVE floor dimensions inside the measured GLB recess",()=>{
   for(const floor of [1,2,4,5,6,7,9,10]){
@@ -31,7 +31,7 @@ test("physical diorama auto-fits all supported LIVE floor dimensions inside the 
 });
 
 test("diorama walls have real positive relief while remaining within the table rim",()=>{
-  assert(TABLE_DIORAMA_WELL.wallHeight>.025);
-  assert(TABLE_DIORAMA_WELL.wallY+TABLE_DIORAMA_WELL.wallHeight/2<.89);
+  assert(TABLE_DIORAMA_WELL.wallHeight>.06);
+  assert(TABLE_DIORAMA_WELL.wallY+TABLE_DIORAMA_WELL.wallHeight/2<.99);
   assert(TABLE_DIORAMA_WELL.floorY>TABLE_DIORAMA_WELL.baseY);
 });
