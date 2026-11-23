@@ -117,6 +117,8 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   });
   const first=await inspect();
   expect(first).not.toBeNull();
+  expect(first!.dioramaLocalYaw).toBeCloseTo(Math.PI,9);
+  expect(first!.furnitureYaw).toBeCloseTo(0,9);
   expect(first!.wallInstances).toBeGreaterThan(50);
   expect(first!.wallHeight).toBeGreaterThan(.025);
   // The whole physical rectangular well is sculpted, while LIVE cells
@@ -203,6 +205,10 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   await page.locator("#open-dungeon").click();
   await page.locator("#dungeon-floor-select").selectOption("6");
   await expect(page.locator("#dungeon-floor-select")).toHaveValue("6");
+  await page.locator("#dungeon-reset-camera").click();
+  await testInfo.attach("live-floor-6-north-up",{
+    body:await page.screenshot(),contentType:"image/png",
+  });
   await page.locator("#close-dungeon").click();
   await expect.poll(async()=>(await inspect())?.observedFloor,{timeout:30000})
     .toBe(6);
