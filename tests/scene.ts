@@ -38,7 +38,7 @@ export function inspectGalviksLiveTable(){
   const scene=currentTestScene();
   const inset=scene?.getMeshByName("cellar-table-live-inset");
   const material=inset?.material instanceof StandardMaterial?inset.material:null;
-  const texture=material?.emissiveTexture??material?.diffuseTexture??null;
+  const texture=inset?.metadata?.projectionTexture??material?.emissiveTexture??material?.diffuseTexture??null;
   return {
     insetExists:!!inset,
     insetVisible:inset?.isVisible??false,
@@ -1333,7 +1333,7 @@ export async function probeGalviksTableProjection(){
   const scene=currentTestScene()!;
   const inset=scene.getMeshByName("cellar-table-live-inset");
   const mat=inset?.material instanceof StandardMaterial?inset.material:null;
-  const texture=mat?.emissiveTexture??mat?.diffuseTexture;
+  const texture=inset?.metadata?.projectionTexture??mat?.emissiveTexture??mat?.diffuseTexture;
   const root=scene.getTransformNodeByName("cellar-table-root")!;
   const rows=[] as {x:number;z:number;y:number|null;mesh:string|null}[];
   for(const z of [-.72,-.52,-.32,-.12,.08,.28,.48,.68])
