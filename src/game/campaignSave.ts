@@ -106,7 +106,7 @@ function validateSpatialDungeonWorld(
   raw: unknown, path: string, campaignSeed: number,
   heroIds: Set<string | number>, day: number, floor=7,
 ): void {
-  const world=object(raw,path,["resolvedFeatureIds","heroes"],["siteCycles"]);
+  const world=object(raw,path,["resolvedFeatureIds","heroes"],["siteCycles","monsters"]);
   const map=generateExpeditionLayout(campaignSeed,floor);
   const knownFeatures=new Set(map.features.map(f=>f.id));
   const resolved=new Set<string | number>();
@@ -132,6 +132,53 @@ function validateSpatialDungeonWorld(
       if(site.resolvedDay!==null)integer(site.resolvedDay,item+".resolvedDay",1,day);
       if((site.resolvedDay!==null)!==resolved.has(id))
         fail(item,"resolvedDay must agree with current generation resolution");
+    });
+  }
+  // Monster actors are site-generation-bound and can never be conjured by
+  // opening a spectator. Reject forged positions, clocks and extra packs.
+  if(world.monsters!==undefined){
+    const monsters=array(world.monsters,path+".monsters");
+    const features=map.features.filter(f=>f.kind==="monster");
+    if(monsters.length>features.length)fail(path+".monsters","exceeds monster site count");
+    const ids=new Set<string|number>();
+    const positions=new Set<string>();
+    const modes=new Set(["IDLE","ROAMING","ALERT","CHASING",
+      "SEARCHING","RETURNING","ENGAGED"]);
+    monsters.forEach((value,i)=>{
+      const item=path+".monsters["+i+"]";
+      const monster=object(value,item,
+        ["id","siteCycle","x","z","homeX","homeZ","mode",
+          "lastMoveTick","nextDecisionTick"],["target"]);
+      const id=text(monster.id,item+".id");
+      unique(id,ids,item+".id");
+      const feature=features.find(f=>f.id===id);
+      if(!feature||resolved.has(id))
+        fail(item+".id","must refer to an active ordinary monster generation");
+      const cycle=integer(monster.siteCycle,item+".siteCycle",0,100000);
+      const savedCycle=(world.siteCycles as unknown[]|undefined)?.find(raw=>
+        typeof raw==="object"&&raw!==null&&
+        (raw as RecordValue).id===id) as RecordValue|undefined;
+      if(cycle!==(savedCycle?.cycle??0))
+        fail(item+".siteCycle","must match the canonical site generation");
+      const x=integer(monster.x,item+".x",0,map.width-1);
+      const z=integer(monster.z,item+".z",0,map.height-1);
+      if(tileAt(map,x,z)==="wall")fail(item,"must occupy a walkable tile");
+      unique(x+":"+z,positions,item+".position");
+      if(integer(monster.homeX,item+".homeX",0,map.width-1)!==feature.x||
+         integer(monster.homeZ,item+".homeZ",0,map.height-1)!==feature.z)
+        fail(item,"must retain the true original site coordinates");
+      const mode=text(monster.mode,item+".mode");
+      if(!modes.has(mode))fail(item+".mode","is not a known monster state");
+      integer(monster.lastMoveTick,item+".lastMoveTick");
+      integer(monster.nextDecisionTick,item+".nextDecisionTick");
+      if(monster.target!==undefined){
+        const target=object(monster.target,item+".target",["x","z"]);
+        const tx=integer(target.x,item+".target.x",0,map.width-1);
+        const tz=integer(target.z,item+".target.z",0,map.height-1);
+        if(tileAt(map,tx,tz)==="wall")
+          fail(item+".target","must be an accessible dungeon tile");
+      }else if(mode==="ROAMING")
+        fail(item+".target","is required while roaming");
     });
   }
   const progress=array(world.heroes,path+".heroes");
