@@ -118,7 +118,6 @@ export function advanceDungeonMonsterWorld(
       :base;
     // Earlier packs have priority on a contested tile. No pack teleports
     // through another pack or living hero to complete its roaming.
-    occupied.delete(key(candidate));
     const moved=engaged?candidate:advanceOne(candidate,layout,tick,occupied);
     if(tileAt(layout,moved.x,moved.z)==="wall")
       throw new RangeError("Monster crossed a blocked dungeon tile");
