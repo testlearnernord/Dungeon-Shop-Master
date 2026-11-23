@@ -7,6 +7,7 @@ import {MONSTER_STEP_TICKS}
   from "../../src/game/dungeonMonsterWorld.ts";
 import {LIVE_PARTY_STEP_SECONDS}
   from "../../src/game/livePartyPresentation.ts";
+import {GHOUL_CLIP_INDICES} from "../../src/game/ghoulMotion.ts";
 
 const before={x:5,z:6,siteCycle:2,lastMoveTick:1000,
   day:1,floor:1,worldTick:1200};
@@ -62,4 +63,10 @@ test("Ghoul visual movement finishes promptly and stays idle until the next true
   assert.equal(monsterObservationStepProgress(NaN),1);
   assert.equal(monsterObservationStepProgress(10),1,
     "A stationary Ghoul must not creep for the entire 20-second AI interval");
+});
+
+test("the overview uses the same authored walk source index as the combat rig",()=>{
+  assert.equal(GHOUL_CLIP_INDICES.walk_feral,13,
+    "Tripo's archived clip 13 retains a long prompt name; walk_feral is an alias");
+  assert.equal(GHOUL_CLIP_INDICES.idle_combat,14);
 });
