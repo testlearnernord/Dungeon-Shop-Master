@@ -494,7 +494,7 @@ export class DungeonViewer {
       this.camera.position.set(0,mapSize*1.15,-mapSize*.14);
       this.camera.setTarget(Vector3.Zero());
       this.tableTarget=new RenderTargetTexture("galviks-table-live-floor-"+floor,
-        {width:768,height:448},this.scene,false,true);
+        {width:512,height:300},this.scene,false,true);
       this.tableTarget.renderList=this.scene.meshes;
       this.tableTarget.activeCamera=this.camera;
       this.tableTarget.clearColor=new Color4(.025,.033,.030,1);

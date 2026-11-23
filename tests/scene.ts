@@ -38,7 +38,7 @@ export function inspectGalviksLiveTable(){
   const scene=currentTestScene();
   const inset=scene?.getMeshByName("cellar-table-live-inset");
   const material=inset?.material instanceof StandardMaterial?inset.material:null;
-  const texture=material?.emissiveTexture??material?.diffuseTexture??null;
+  const texture=inset?.metadata?.projectionTexture??material?.emissiveTexture??material?.diffuseTexture??null;
   return {
     insetExists:!!inset,
     insetVisible:inset?.isVisible??false,
@@ -1296,13 +1296,42 @@ export function inspectLiveFloorCameraFocus(){
 }
 
 
+/** Screen coordinates of the physical inset. A Playwright screenshot
+ * is used to sample the REAL image; framebuffer readPixels is unreliable with
+ * preserveDrawingBuffer:false and returned 1,1,1 on SwiftShader. */
+export function galviksTableScreenshotPoints(){
+  const scene=currentTestScene();
+  const inset=scene?.getMeshByName("cellar-table-live-inset");
+  const camera=scene?.activeCamera;
+  if(!scene||!camera||!inset?.isVisible)
+    throw Error("Shop camera and loaded table projection required");
+  const engine=scene.getEngine(),canvas=engine.getRenderingCanvas();
+  if(!canvas)throw Error("Missing shop render canvas");
+  const bbox=canvas.getBoundingClientRect();
+  const width=engine.getRenderWidth(),height=engine.getRenderHeight();
+  const vp=camera.viewport.toGlobal(width,height);
+  inset.computeWorldMatrix(true);
+  const world=inset.getWorldMatrix();
+  const points:{x:number;y:number}[]=[];
+  for(const y of [-.25,-.125,0,.125,.25])
+    for(const x of [-.45,-.225,0,.225,.45]){
+      const point=Vector3.TransformCoordinates(new Vector3(x,y,0),world);
+      const p=Vector3.Project(point,Matrix.Identity(),scene.getTransformMatrix(),vp);
+      points.push({
+        x:Math.round(bbox.left+p.x*bbox.width/width),
+        y:Math.round(bbox.top+p.y*bbox.height/height),
+      });
+    }
+  return points;
+}
+
 /** Development probe of the physical GLB recess and actual GPU pixels.
  * A texture being assigned is NOT proof that its render contains a dungeon. */
 export async function probeGalviksTableProjection(){
   const scene=currentTestScene()!;
   const inset=scene.getMeshByName("cellar-table-live-inset");
   const mat=inset?.material instanceof StandardMaterial?inset.material:null;
-  const texture=mat?.emissiveTexture??mat?.diffuseTexture;
+  const texture=inset?.metadata?.projectionTexture??mat?.emissiveTexture??mat?.diffuseTexture;
   const root=scene.getTransformNodeByName("cellar-table-root")!;
   const rows=[] as {x:number;z:number;y:number|null;mesh:string|null}[];
   for(const z of [-.72,-.52,-.32,-.12,.08,.28,.48,.68])
