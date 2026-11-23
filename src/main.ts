@@ -29,6 +29,7 @@ import { setupBlueprintHud } from "./blueprintHud.ts";
 import { setupBedroomFurnitureVisuals } from "./game/bedroomFurnitureVisuals.ts";
 import {setupCellarFurnitureVisuals} from "./game/cellarFurnitureVisuals.ts";
 import {setupCellarTableVisuals} from "./game/cellarTableVisuals.ts";
+import {setupWorldClockVisuals} from "./game/worldClockVisuals.ts";
 import {setupCellarPondVisuals} from "./game/cellarPondVisuals.ts";
 import {setupFishingHud} from "./fishingHud.ts";
 import {setupHeroBuybackHud} from "./heroBuybackHud.ts";
@@ -142,6 +143,7 @@ document.addEventListener("visibilitychange",()=>{
 setupBedroomFurnitureVisuals(scene,store);
 setupCellarFurnitureVisuals(scene,store);
 const tableVisuals=setupCellarTableVisuals(scene,store);
+setupWorldClockVisuals(scene,store);
 const roomVisuals=createShopRoomVisuals(scene);
 const cellarVisuals=createShopRoomVisuals(scene,"cellar");
 let lastDrawnRoom:typeof store.state.shopRoom|null=null;

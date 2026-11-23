@@ -13,6 +13,7 @@ import type { ShoppingReason } from "./shopperIntents.ts";
 import {validateShopTraffic,type ShopTrafficCheckpoint} from "./shopTraffic.ts";
 import {rosterBoardProblem} from "./rosterBoardPlacement.ts";
 import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
+import {wallClockProblem} from "./wallClockPlacement.ts";
 import { advanceWorldUntil, lastWorldTickOfDay,
   WORLD_TICKS_PER_GAME_MINUTE } from "./worldClock.ts";
 import {activateLiveDungeon,commitLiveWorldEvent} from "./liveDungeonRuntime.ts";
@@ -140,6 +141,9 @@ export class GameStore {
     if(this.current.wallPortrait&&wallPortraitProblem(this.current.wallPortrait,
       this.current.shopLayout,result.room,board))
       return "Move Galvik's portrait before mining its supporting rock.";
+    if(wallClockProblem(this.current.wallClock,this.current.shopLayout,
+      result.room,board,this.current.wallPortrait))
+      return "Move the World Clock before mining its supporting rock.";
     this.replace({...this.current,shopRoom:result.room});
     return "Rock excavated.";
   }

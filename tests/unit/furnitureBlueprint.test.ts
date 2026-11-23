@@ -16,7 +16,7 @@ test("raycast mount surfaces identify structural room pieces only",()=>{
   assert.equal(surfaceFromMesh("corridor-wall--5.3"),null);
   assert.equal(surfaceFromMesh("shelf-1-plank"),null);
   assert.deepEqual(FURNITURE_CATALOG.map(item=>item.id),
-    ["counter","desk","chest","cellar-chest","cellar-table","candle","bed","adventurer-board"]);
+    ["counter","desk","chest","cellar-chest","cellar-table","candle","bed","adventurer-board","world-clock"]);
 });
 
 test("mouse floor projection snaps to quarter-metre grid with retained rotation",()=>{

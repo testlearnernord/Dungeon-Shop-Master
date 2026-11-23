@@ -6,7 +6,7 @@ import {dungeonWorldAt,setDungeonWorld} from "../../src/game/dungeonWorldState.t
 import {emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 
 test("Alpha v34 uses exactly one immutable ordinary-floor checkpoint collection",()=>{
-  assert.equal(SIMULATION_VERSION,36);
+  assert.equal(SIMULATION_VERSION,37);
   const initial=createGameState(7351);
   const floor7=emptySpatialDungeonWorld();
   const floor2=emptySpatialDungeonWorld();

@@ -179,7 +179,7 @@ test("multi-day play and save/reload are deterministic with real shared encounte
     b=advanceDay(parseSave(JSON.stringify(createSave(b)))).state;
     assert.deepEqual(a,b);
     assert.equal(new Set(a.events.map(e=>e.id)).size,a.events.length);
-    assert.equal(a.simulationVersion,36);
+    assert.equal(a.simulationVersion,37);
     assert(a.adventurers.filter(hero=>hero.status!=="dead").length<=20);
   }
   assert(a.events.some(e=>e.type==="dungeon-live"));

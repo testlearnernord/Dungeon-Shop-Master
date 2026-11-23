@@ -19,6 +19,7 @@ import {isShelfId,MAX_SHOP_SHELVES,shopLayoutProblem,
   type ShelfPlacement,type ShopLayout} from "./shopLayout.ts";
 import {rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 import {wallPortraitProblem,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
+import {wallClockProblem,type WallClockPlacement} from "./wallClockPlacement.ts";
 import {bedroomFurnitureProblem,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
 import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
   MAX_PENDING_WORLD_EVENTS,compareScheduledWorldEvents,
@@ -822,7 +823,7 @@ function validateState(value: unknown): asserts value is GameState {
     "day", "worldClock", "shopRequests", "shopTraffic", "liveDungeon", "simulationVersion", "events", "savedReplayIds", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "dungeonWorlds", "shopLayout", "shopCarts", "shopDebts",
-    "shopRoom","bedroomFurniture","rosterBoard",
+    "shopRoom","bedroomFurniture","rosterBoard","wallClock",
     "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught",
   ], ["wallPortrait","dungeonParties"]);
   const room=state.shopRoom;
@@ -1169,6 +1170,19 @@ function validateState(value: unknown): asserts value is GameState {
     if(problem)fail("payload.rosterBoard",problem);
   }
 
+  {
+    const raw=object(state.wallClock,"payload.wallClock",["x","z","rotation"]);
+    const sideLimit=7+room.expansionTier*2+.5;
+    const clock:WallClockPlacement={
+      x:validNumber(raw.x,"payload.wallClock.x",-sideLimit,sideLimit),
+      z:validNumber(raw.z,"payload.wallClock.z",-8,8),
+      rotation:integer(raw.rotation,"payload.wallClock.rotation",0,3) as 0|1|2|3,
+    };
+    const problem=wallClockProblem(clock,parsedShopLayout,room,
+      state.rosterBoard as RosterBoardPlacement,
+      state.wallPortrait as WallPortraitPlacement|undefined);
+    if(problem)fail("payload.wallClock",problem);
+  }
   if(state.wallPortrait!==undefined){
     const raw=object(state.wallPortrait,"payload.wallPortrait",["x","z","rotation"]);
     const sideLimit=7+(room.expansionTier)*2+1;

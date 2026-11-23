@@ -25,6 +25,7 @@ const chest=looked("chest","chest");
 const candle=looked("candle","candle");
 const cellarChest=looked("cellar-chest","cellar-chest");
 const cellarTable=looked("cellar-table","cellar-table");
+const wallClock=looked("world-clock","world-clock");
 
 export function classifyFurnitureMesh(name:string):LookedAtFurniture|null {
   const shelfMatch=/^(shelf-[1-9][0-9]*)-(?:slot-|back|plank|root|placement-preview)/.exec(name);
@@ -44,5 +45,6 @@ export function classifyFurnitureMesh(name:string):LookedAtFurniture|null {
      name==="bed-side-stool"||name==="bed-side-stool-top")return candle;
   if(name.startsWith("cellar-chest-"))return cellarChest;
   if(name.startsWith("cellar-table-"))return cellarTable;
+  if(name.startsWith("world-clock-"))return wallClock;
   return null;
 }

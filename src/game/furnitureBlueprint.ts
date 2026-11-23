@@ -6,15 +6,17 @@ import {isBedroomFurnitureId} from "./bedroomFurniture.ts";
 import type {CellarChestPlacement,CellarTablePlacement} from "./cellarRoom.ts";
 import {rosterBoardAtWall,type RosterBoardPlacement} from "./rosterBoardPlacement.ts";
 import {wallPortraitAtWall,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
+import {wallClockAtWall,type WallClockPlacement} from "./wallClockPlacement.ts";
 import {shopFixtureBounds} from "./furnitureRegistry.ts";
 import {isSealedPassageWallHit,overlapsShopPortalClearance}
   from "./shopPortal.ts";
 
-export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait"|"cellar-chest"|"cellar-table";
+export type FurnitureId=ShelfId|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait"|"cellar-chest"|"cellar-table"|"world-clock";
 export type BlueprintSurface=FurnitureSurface;
 export type FurnitureDraft=ShelfPlacement|(CounterPlacement&{readonly id:"counter"})|BedroomFurniturePlacement|
   (RosterBoardPlacement&{readonly id:"adventurer-board"})|
-  (WallPortraitPlacement&{readonly id:"galvik-portrait"})|CellarChestPlacement|CellarTablePlacement;
+  (WallPortraitPlacement&{readonly id:"galvik-portrait"})|
+  (WallClockPlacement&{readonly id:"world-clock"})|CellarChestPlacement|CellarTablePlacement;
 
 export interface FurnitureDefinition {
   readonly id:FurnitureId;
@@ -26,7 +28,7 @@ export interface FurnitureDefinition {
 }
 
 const CATALOG_IDS:readonly Exclude<FurnitureId,ShelfId>[]=[
-  "counter","desk","chest","cellar-chest","cellar-table","candle","bed","adventurer-board",
+  "counter","desk","chest","cellar-chest","cellar-table","candle","bed","adventurer-board","world-clock",
 ];
 export const FURNITURE_CATALOG:readonly FurnitureDefinition[]=CATALOG_IDS.map(id=>{
   const definition=furnitureDefinition(id);
@@ -69,6 +71,10 @@ export function blueprintAtSurface(
   }
   if(id==="galvik-portrait"){
     const wall=wallPortraitAtWall(surface,hit,room);
+    return wall?{id,...wall}:null;
+  }
+  if(id==="world-clock"){
+    const wall=wallClockAtWall(surface,hit,room);
     return wall?{id,...wall}:null;
   }
   if(surface==="floor"){

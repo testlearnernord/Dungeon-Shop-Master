@@ -24,7 +24,7 @@ export interface ShopFloorBounds {
 }
 
 export type FurnitureKind=`shelf-${number}`|"counter"|
-  "desk"|"chest"|"candle"|"bed"|"adventurer-board"|"galvik-portrait"|"cellar-chest"|"cellar-table";
+  "desk"|"chest"|"candle"|"bed"|"adventurer-board"|"galvik-portrait"|"cellar-chest"|"cellar-table"|"world-clock";
 export type FurnitureMount="shop-floor"|"private-floor"|"shop-wall";
 export type FurniturePurpose="stock"|"checkout"|"sleep"|"debt"|"storage"|
   "light"|"roster"|"decoration"|"observation";
@@ -96,6 +96,9 @@ export const FURNITURE_REGISTRY={
   bed:{label:"Galvik's bed",mount:"private-floor",purpose:"sleep",
     surfaces:["floor"],width:1.74,depth:2.70,height:1.55,focusY:.78,collides:true,
     interaction:{reach:2,label:"Sleep"}},
+  "world-clock":{label:"Galvik's World Clock",mount:"shop-wall",purpose:"observation",
+    surfaces:["front-wall","left-wall","right-wall","back-wall","rock-wall"],
+    width:2.52,depth:.46,height:2.35,focusY:1.91,collides:false},
   "adventurer-board":{label:"Adventurer board",mount:"shop-wall",purpose:"roster",
     surfaces:["front-wall","left-wall","right-wall","rock-wall"],
     width:3.45,depth:.22,height:2.25,focusY:2.17,collides:false,

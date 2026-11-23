@@ -8,6 +8,7 @@ import {replaceCounterPlacement,replaceShelfPlacement,
 import {shopServiceReachabilityProblem} from "./shopServiceReachability.ts";
 import {createEmptyShelfSlots} from "./economy.ts";
 import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
+import {wallClockProblem} from "./wallClockPlacement.ts";
 import {cellarChestProblem,cellarTableProblem} from "./cellarRoom.ts";
 
 export type FurniturePlacementResult={
@@ -49,11 +50,24 @@ export function resolveFurniturePlacement(
     return {state:{...state,cellarTable:{...draft}},
       problem:null,message:"Galvik's Table placed."};
   }
+  if(draft.id==="world-clock"){
+    const problem=wallClockProblem(draft,state.shopLayout,state.shopRoom,
+      state.rosterBoard,state.wallPortrait);
+    if(problem)return unchanged(problem,problem);
+    const old=state.wallClock;
+    if(old.x===draft.x&&old.z===draft.z&&old.rotation===draft.rotation)
+      return {state,problem:null,message:"World clock mounted."};
+    return {state:{...state,wallClock:{x:draft.x,z:draft.z,rotation:draft.rotation}},
+      problem:null,message:"World clock mounted."};
+  }
   if(draft.id==="adventurer-board"){
     const result=replaceRosterBoard(state.rosterBoard,draft,
       state.shopLayout,state.shopRoom);
     if(result.message!=="Adventurer board placed.")
       return unchanged(result.message,result.message);
+    const clockProblem=wallClockProblem(state.wallClock,state.shopLayout,
+      state.shopRoom,result.placement!,state.wallPortrait);
+    if(clockProblem)return unchanged(clockProblem,clockProblem);
     if(state.wallPortrait){
       const blocked=wallPortraitProblem(state.wallPortrait,state.shopLayout,
         state.shopRoom,result.placement!);
@@ -77,7 +91,9 @@ export function resolveFurniturePlacement(
       state.shopRoom);
     if(result.message!=="Counter placement saved.")
       return unchanged(result.message,result.message);
-    const problem=shopServiceReachabilityProblem(result.layout,state.shopRoom);
+    const problem=shopServiceReachabilityProblem(result.layout,state.shopRoom) ??
+      wallClockProblem(state.wallClock,result.layout,state.shopRoom,
+        state.rosterBoard,state.wallPortrait);
     if(problem)return unchanged(problem,problem);
     return {state:result.layout===state.shopLayout?state:
       {...state,shopLayout:result.layout},problem:null,
@@ -96,7 +112,9 @@ export function resolveFurniturePlacement(
       state.shopRoom,state.rosterBoard);
     if(blocked)return unchanged(blocked,blocked);
   }
-  const problem=shopServiceReachabilityProblem(result.layout,state.shopRoom);
+  const problem=shopServiceReachabilityProblem(result.layout,state.shopRoom) ??
+    wallClockProblem(state.wallClock,result.layout,state.shopRoom,
+      state.rosterBoard,state.wallPortrait);
   if(problem)return unchanged(problem,problem);
   const isNew=!state.shopLayout.shelves.some(shelf=>shelf.id===draft.id);
   const economy=isNew?{...state.shopEconomy,

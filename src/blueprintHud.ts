@@ -84,7 +84,7 @@ export function setupBlueprintHud(
   // The golden arrow ALWAYS indicates the customer-facing side. All pieces
   // are visual-only; the saved footprint remains the authoritative geometry.
   const ghost=new TransformNode("blueprint-preview-root",scene);
-  type GhostType="shelf"|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait"|"cellar-table";
+  type GhostType="shelf"|"counter"|BedroomFurnitureId|"adventurer-board"|"galvik-portrait"|"cellar-table"|"world-clock";
   const parts:{mesh:import("@babylonjs/core/Meshes/mesh").Mesh;
     type:GhostType;direction?:boolean}[]=[];
   const previewBox=(
@@ -142,6 +142,10 @@ export function setupBlueprintHud(
   for(const side of [-1,1])
     previewBox("blueprint-roster-board-frame-side",0.12,2.09,0.15,
       side*1.69,2.17,0,"adventurer-board");
+  // Wall clock uses the same wall-aligned blueprint contract as the Board.
+  previewBox("blueprint-world-clock-face",2.36,2.3,.16,0,1.91,0,"world-clock");
+  previewBox("blueprint-world-clock-center",.23,.23,.08,0,1.91,.15,"world-clock");
+  previewBox("blueprint-world-clock-hand",.10,.86,.08,0,2.36,.19,"world-clock");
   // The same 1.08m framed portrait silhouette appears while wall targeting.
   previewBox("blueprint-portrait-canvas",.98,1.16,.045,
     0,2.15,0,"galvik-portrait");
@@ -220,6 +224,7 @@ export function setupBlueprintHud(
     if(id==="galvik-portrait")return {id,...store.state.wallPortrait!};
     if(id==="cellar-chest")return store.state.cellarChest;
     if(id==="cellar-table")return store.state.cellarTable;
+    if(id==="world-clock")return {id,...store.state.wallClock};
     if(isBedroomFurnitureId(id))return getBedroomFurniture(store.state.bedroomFurniture,id);
     return store.state.shopLayout.shelves.find(item=>item.id===id)!;
   };
@@ -230,7 +235,7 @@ export function setupBlueprintHud(
       (isShelfId(id)?`Shelf ${id.slice(6)}`:
         FURNITURE_CATALOG.find(def=>def.id===id)?.label??"Furniture");
     draft=null;
-    updateStatus(id==="adventurer-board"||id==="galvik-portrait"?"Aim at a free shop wall.":
+    updateStatus(id==="adventurer-board"||id==="galvik-portrait"||id==="world-clock"?"Aim at a free shop wall.":
       "Aim at a "+(id==="counter"||isBedroomFurnitureId(id)?"floor":"floor or wall")+".",false);
   };
   /** Only raycast-pick existing furniture. The nearest ordinary hit must
@@ -311,7 +316,7 @@ export function setupBlueprintHud(
     if(!surface||!hit?.pickedPoint){
       draft=null;placeable=false;ghost.setEnabled(false);
       facingReadout.textContent=facingLabel+" · aim at a surface";
-      updateStatus(activeId==="adventurer-board"||activeId==="galvik-portrait"?"Aim at a shop wall.":
+      updateStatus(activeId==="adventurer-board"||activeId==="galvik-portrait"||activeId==="world-clock"?"Aim at a shop wall.":
         "Aim at the "+(activeId==="counter"||isBedroomFurnitureId(activeId)?"floor":"floor or a wall")+".",false);
       return;
     }
@@ -329,6 +334,7 @@ export function setupBlueprintHud(
     const type:GhostType=p.id==="counter"?"counter":
       p.id==="adventurer-board"?"adventurer-board":
       p.id==="galvik-portrait"?"galvik-portrait":
+      p.id==="world-clock"?"world-clock":
       p.id==="cellar-chest"?"chest":
        p.id==="cellar-table"?"cellar-table":
        isBedroomFurnitureId(p.id)?p.id:"shelf";
@@ -337,8 +343,8 @@ export function setupBlueprintHud(
     const staticCheck=validator.evaluate(p,state.shopLayout,
       inCellar?state.cellarRoom:state.shopRoom,
       performance.now(),immediate,
-      p.id==="adventurer-board"||p.id==="galvik-portrait"?
-        state.rosterBoard:p.id==="cellar-chest"?state.cellarTable:
+      p.id==="adventurer-board"||p.id==="galvik-portrait"||p.id==="world-clock"?
+        state.wallClock:p.id==="cellar-chest"?state.cellarTable:
         p.id==="cellar-table"?state.cellarChest:state.bedroomFurniture);
     const occupied=occupiedBy(p);
     const isChecking=!staticCheck.ready&&!occupied;
@@ -426,6 +432,7 @@ export function setupBlueprintHud(
     if(result==="Counter placement saved."||result==="Shelf placement saved."||
        result==="Cellar chest placed."||result==="Galvik's Table placed."||
        result==="Bedroom furniture placed."||result==="Adventurer board placed."||
+       result==="World clock mounted."||
        result==="Portrait hung."){
       close();
     }else updateStatus(result,false);
@@ -461,7 +468,8 @@ export function setupBlueprintHud(
     if(!enabled)return;
     if(event.code==="KeyR"||event.code==="KeyQ"){
       event.preventDefault();event.stopImmediatePropagation();
-      if(activeId==="adventurer-board"||activeId==="galvik-portrait")return; // Wall attachment determines facing.
+      if(activeId==="adventurer-board"||activeId==="galvik-portrait"||
+        activeId==="world-clock")return; // Wall attachment determines facing.
       rotation=((rotation+(event.code==="KeyR"?1:3))%4) as 0|1|2|3;
       updateGhost();return;
     }

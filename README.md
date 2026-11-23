@@ -1,3 +1,7 @@
+### Galvik's World Clock (Alpha v37)
+
+A Tripo wall-clock prop is installed on the central rear stone wall at New Game. Aim at it and press **P** to relocate it to any supported shop wall via the existing Blueprints, collision and persistence system. Its gold-and-amethyst spear is a **separate 3D mesh** and only reads `GameState.worldClock.tick`. One 24-hour turn = 28,800 committed ticks (24 unpaused real minutes). At the last tick of the day it stops at the top rune and glows red, until Galvik ends the day via the bed. No separate timer, game simulation or automatic sleep rule. Asset: `public/assets/models/galviks-world-clock.glb`.
+
 # Dungeon Shop Master
 
 A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant whose customers are autonomous adventurers. Stock a physical shop, serve actual customers, follow their expeditions and witness the consequences of what they bought. The shop is not a menu and the adventurers are not player-controlled units.
