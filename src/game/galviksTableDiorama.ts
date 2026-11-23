@@ -7,29 +7,12 @@ import type {Mesh} from "@babylonjs/core/Meshes/mesh";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameState} from "./gameState.ts";
+import {tableDioramaPosition,TABLE_DIORAMA_WELL} from "./tableDioramaGeometry.ts";
 import {generateExpeditionLayout,dungeonDownStair,
   type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
-
-/** The measured usable well inside the GLB. Local coordinates follow the
- * existing physical table's root, including P placement and Q/R rotation. */
-export const TABLE_DIORAMA_WELL={
-  width:1.16,depth:.61,centerZ:-.095,baseY:.824,
-  floorY:.833,wallY:.858,wallHeight:.047,
-} as const;
-
-/** Pure presentation transform: no hero movement or gameplay logic. The
- * independent X/Z scales intentionally fill the wide rectangular recess. */
-export function tableDioramaPosition(
-  layout:Pick<DungeonLayout,"width"|"height">,point:DungeonPoint,
-):{x:number;z:number}{
-  return {
-    x:(point.x-(layout.width-1)/2)*TABLE_DIORAMA_WELL.width/layout.width,
-    z:(point.z-(layout.height-1)/2)*TABLE_DIORAMA_WELL.depth/layout.height,
-  };
-}
 
 function material(scene:Scene,id:string,color:Color3):StandardMaterial{
   const mat=new StandardMaterial("table-diorama-"+id,scene);
