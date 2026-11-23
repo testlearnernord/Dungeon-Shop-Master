@@ -97,11 +97,16 @@ export class GalviksTableDiorama{
     // Weak ambient emission retains those texture details under cellar light.
     const live=getDungeonSurfaces(scene);
     const scaledSurface=(name:string,source:StandardMaterial,tint:number)=>{
-      const mat=source.clone("table-diorama-live-"+name) as StandardMaterial;
-      mat.diffuseColor=new Color3(tint,tint,tint);
+      // Use the exact LIVE Dungeon texture, not a clone of its lighting
+      // material. The cellar's light budget is different from the full
+      // spectator scene, so sample the image into an unlit emissive channel.
+      const mat=new StandardMaterial("table-diorama-live-"+name,scene);
+      mat.diffuseColor=Color3.Black();
       mat.emissiveTexture=source.diffuseTexture;
-      mat.emissiveColor=new Color3(.28,.28,.28);
-      mat.specularColor=new Color3(.04,.04,.04);
+      mat.emissiveColor=new Color3(.88*tint,.88*tint,.88*tint);
+      mat.specularColor=Color3.Black();
+      mat.disableLighting=true;
+      mat.backFaceCulling=false;
       return mat;
     };
     this.palette={
