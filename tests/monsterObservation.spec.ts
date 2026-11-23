@@ -134,15 +134,28 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     return hooks.__shopTestGhoulSnapshot?.(1,id)??null;
   },expected.selected);
   await nextMonsterStep();
-  await expect.poll(async()=>JSON.stringify({
-    view:await selected(),world:await realWorld(),
-    table:await page.evaluate(async()=>{
-      const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
-      const info=probe.inspectGalviksLiveTable();
-      return {tick:info.lastObservedTick,eyeY:info.shopEyeY,
-        tableY:info.tableY,distance:info.tableDistance};
-    }),
-  }),{timeout:5000,intervals:[100,150,200]}).toContain('"phase":"walk"');
+  let lastTableSample="";
+  try{
+    await expect.poll(async()=>{
+      try{
+        lastTableSample=JSON.stringify({
+          view:await selected(),world:await realWorld(),
+          table:await page.evaluate(async()=>{
+            const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+            const info=probe.inspectGalviksLiveTable();
+            return {tick:info.lastObservedTick,eyeY:info.shopEyeY,
+              tableY:info.tableY,distance:info.tableDistance};
+          }),
+        });
+      }catch(error){
+        lastTableSample="observation probe threw: "+String(error);
+      }
+      return lastTableSample.includes('"phase":"walk"');
+    },{timeout:5000,intervals:[100,150,200]}).toBe(true);
+  }catch(error){
+    throw Error("Ghoul table animation did not start. Last observation: "+
+      lastTableSample+"; "+String(error));
+  }
   const tableWalking=await selected();
   expect(tableWalking?.clip).toBe("walk_feral");
   expect(tableWalking?.walkModel).toBe(true);
