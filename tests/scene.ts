@@ -1,4 +1,5 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
+import {EngineStore} from "@babylonjs/core/Engines/engineStore";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Vector3,Matrix } from "@babylonjs/core/Maths/math.vector";
 import {Ray} from "@babylonjs/core/Culling/ray";
@@ -9,10 +10,16 @@ import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
  * LastCreatedScene is no longer necessarily the visible shop. A test probe
  * should inspect the active UI mode rather than whichever scene was made last. */
 function currentTestScene(){
-  const latest=Engine.LastCreatedScene;
-  if(!latest||document.body.classList.contains("dungeon-active")||
-      document.body.classList.contains("arena-active"))return latest;
-  return latest.getEngine().scenes.find(scene=>
+  // Babylon sets LastCreatedScene=null when the newest spectator scene is
+  // disposed, although the physically rendered shop Scene remains alive.
+  // Recover from the stable engine's owned scenes instead of dereferencing
+  // this nullable global for every legacy shop visual probe.
+  const engine=EngineStore.LastCreatedEngine as Engine|null;
+  const scenes=engine?.scenes??[];
+  const latest=Engine.LastCreatedScene??scenes.at(-1)??null;
+  if(document.body.classList.contains("dungeon-active")||
+     document.body.classList.contains("arena-active"))return latest;
+  return scenes.find(scene=>
     scene.getMeshByName("cellar-table-collider")!==null)??latest;
 }
 
@@ -21,7 +28,7 @@ export function inspectGalviksLiveTable(){
   const scene=currentTestScene();
   const inset=scene?.getMeshByName("cellar-table-live-inset");
   const material=inset?.material instanceof StandardMaterial?inset.material:null;
-  const texture=material?.diffuseTexture??null;
+  const texture=material?.emissiveTexture??material?.diffuseTexture??null;
   return {
     insetExists:!!inset,
     insetVisible:inset?.isVisible??false,
@@ -1285,7 +1292,7 @@ export async function probeGalviksTableProjection(){
   const scene=currentTestScene()!;
   const inset=scene.getMeshByName("cellar-table-live-inset");
   const mat=inset?.material instanceof StandardMaterial?inset.material:null;
-  const texture=mat?.diffuseTexture;
+  const texture=mat?.emissiveTexture??mat?.diffuseTexture;
   const root=scene.getTransformNodeByName("cellar-table-root")!;
   const rows=[] as {x:number;z:number;y:number|null;mesh:string|null}[];
   for(const z of [-.72,-.52,-.32,-.12,.08,.28,.48,.68])
