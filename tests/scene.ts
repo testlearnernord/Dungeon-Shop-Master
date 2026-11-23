@@ -1243,7 +1243,8 @@ export function inspectGhoulObservationMeshes(){
   const scene=currentTestScene();
   if(!scene)throw new Error("Babylon observation scene missing");
   const shop=!document.body.classList.contains("dungeon-active");
-  const pins=shop?scene.transformNodes.filter(node=>
+  // MeshBuilder.CreateBox creates a Mesh, not an entry in scene.transformNodes.
+  const pins=shop?scene.meshes.filter(node=>
     node.name.startsWith("cellar-table-diorama-ghoul-anchor-")):
     scene.meshes.filter(mesh=>mesh.metadata?.spectatorFeatureKind==="monster"&&
       mesh.name.startsWith("dungeon-monster-"));
