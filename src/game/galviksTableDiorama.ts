@@ -233,7 +233,16 @@ void main(void){
       (p.z-(map.height-1)/2)*2.5);
   }
 
+  private disposeFigure(figure:Figure):void{
+    const ownedMaterials=new Set(figure.visual.root.getChildMeshes(false)
+      .map(mesh=>mesh.material).filter(mat=>mat!==null));
+    figure.visual.root.dispose();
+    figure.ring.dispose();
+    for(const mat of ownedMaterials)mat?.dispose();
+  }
+
   private buildFloor(layout:DungeonLayout,floor:SpatialDungeonFloor):void{
+    for(const figure of this.heroes.values())this.disposeFigure(figure);
     this.floorRoot?.dispose();
     this.miniatureWorldRoot?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
@@ -427,8 +436,7 @@ void main(void){
     const alive=new Set(frame.heroes.map(h=>h.id));
     for(const [id,figure] of this.heroes){
       if(alive.has(id))continue;
-      figure.visual.root.dispose(false,true);
-      figure.ring.dispose();
+      this.disposeFigure(figure);
       this.heroes.delete(id);
     }
     for(const hero of frame.heroes){
@@ -469,6 +477,8 @@ void main(void){
   get observedFloor():number|null{return this.activeFloor;}
   get miniatureActorCount():number{return this.heroes.size;}
   dispose():void{
+    for(const figure of this.heroes.values())this.disposeFigure(figure);
+    this.heroes.clear();
     this.root.dispose();
     this.ghoulAsset?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
