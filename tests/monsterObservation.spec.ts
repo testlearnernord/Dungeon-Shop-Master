@@ -76,11 +76,21 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   await expect.poll(async()=>{
     return page.evaluate(async()=>{
       const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
-      if(!probe.shopSceneReady())return 0;
+      if(!probe.shopSceneReady())return {ready:false,reason:"shop boot"};
       probe.aimAtGalviksTable();
-      return probe.inspectGalviksLiveTable().authoredGhouls??0;
+      const table=probe.inspectGalviksLiveTable();
+      const mesh=probe.inspectGhoulObservationMeshes();
+      return {
+        ready:(table.authoredGhouls??0)>0,
+        authoredGhouls:table.authoredGhouls,
+        rigs:mesh.authoredRigCount,
+        clips:mesh.authoredClips,
+        errors:mesh.pins.map(pin=>pin.assetError).filter(Boolean),
+      };
     });
-  },{timeout:35000,intervals:[300,500,800]}).toBeGreaterThan(0);
+  },{timeout:35000,intervals:[300,500,800]}).toMatchObject({
+    ready:true,
+  });
   await expect.poll(async()=>(await inspect()).pins.length,
     {timeout:15000}).toBe(expected.pins.length);
   const table=await inspect();
