@@ -272,10 +272,16 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   const clickMinimap=async(point:{x:number;z:number})=>{
     const bounds=await minimap.boundingBox();
     if(!bounds)throw Error("Minimap should be visible");
-    await page.mouse.click(
-      bounds.x+(point.x+.5)*bounds.width/minimapTargets.width,
-      bounds.y+(minimapTargets.height-point.z-.5)*
-         bounds.height/minimapTargets.height);
+    const x=bounds.x+(point.x+.5)*bounds.width/minimapTargets.width;
+    const y=bounds.y+(minimapTargets.height-point.z-.5)*
+      bounds.height/minimapTargets.height;
+    // A previously fixed-position soundtrack card used to intercept south-
+    // side minimap clicks. Verify real browser hit testing before focus.
+    const topmost=await page.evaluate(({x,y})=>
+      document.elementFromPoint(x,y)?.id??"",{x,y});
+    expect(topmost,"The requested LIVE minimap cell must receive clicks")
+      .toBe("dungeon-minimap");
+    await page.mouse.click(x,y);
   };
   const beforeMinimap=await mapFocus();
   await clickMinimap(minimapTargets.known);
