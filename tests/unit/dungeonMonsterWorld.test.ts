@@ -77,6 +77,29 @@ test("monster identity follows site generation; death removes the pack and regen
   assert.equal(current.mode,"IDLE");
 });
 
+test("a regenerated pack never spawns on another pack already roaming across its home",()=>{
+  const features=layout.features.filter(site=>site.kind==="monster");
+  assert(features.length>=2);
+  const first=features[0],second=features[1];
+  const source=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),layout,1,0);
+  const occupant=source.monsters!.find(m=>m.id===first.id)!;
+  const existing={...occupant,x:second.x,z:second.z,
+    lastMoveTick:0,nextDecisionTick:100000};
+  const world={...emptySpatialDungeonWorld(),
+    monsters:[existing],resolvedFeatureIds:[second.id],
+    siteCycles:resolveDungeonSite([],second.id,1)};
+  const refreshed=advanceDungeonMonsterWorld(world,layout,10,2000);
+  const revived=refreshed.monsters!.find(m=>m.id===second.id);
+  assert(revived);
+  assert.equal(revived.siteCycle,1);
+  assert.equal(revived.homeX,second.x);
+  assert.equal(revived.homeZ,second.z);
+  assert.notDeepEqual([revived.x,revived.z],[existing.x,existing.z]);
+  assert.equal(new Set(refreshed.monsters!.map(m=>m.x+":"+m.z)).size,
+    refreshed.monsters!.length);
+  assert.deepEqual(advanceDungeonMonsterWorld(world,layout,10,2000),refreshed);
+});
+
 test("full LIVE world saves every offscreen floor and resumes monster clocks deterministically",()=>{
   const first=new GameStore(createGameState(seed));
   first.enableLiveDungeon();
