@@ -119,6 +119,15 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   expect(first).not.toBeNull();
   expect(first!.wallInstances).toBeGreaterThan(50);
   expect(first!.wallHeight).toBeGreaterThan(.025);
+  // The whole physical rectangular well is sculpted, while LIVE cells
+  // remain nearly square. The side borders are real Babylon stone meshes.
+  expect(first!.wellCoverage).toBeCloseTo(1,7);
+  expect(first!.borderX).toBeGreaterThan(.15);
+  expect(first!.borderZ).toBeCloseTo(0,7);
+  expect(first!.bedrockPlates).toBe(2);
+  expect(first!.bedrockSides).toBe(2);
+  expect(first!.bedrockFacetInstances).toBeGreaterThan(40);
+  expect(first!.coreWidth).toBeGreaterThan(.75);
   // Real authored figures and crypt props must remain legible above the
   // masonry when Galvik stands at the table, without a second camera.
   expect(first!.artHeightScale).toBeGreaterThan(.03);
@@ -196,6 +205,10 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
     shopCamera:first!.shopCamera,
   });
   expect(second!.wallInstances).toBeGreaterThan(first!.wallInstances);
+  expect(second!.wellCoverage).toBeCloseTo(1,7);
+  expect(second!.bedrockSides).toBe(2);
+  expect(second!.bedrockFacetInstances).toBe(first!.bedrockFacetInstances);
+  expect(second!.coreWidth).toBeCloseTo(first!.coreWidth,7);
   // The deeper 31×31 floor gets a separate real-shop screenshot. It must be
   // inspected at the same FPS distance, not inferred from Floor 01 pixels.
   await testInfo.attach("galviks-floor-06-table",{
