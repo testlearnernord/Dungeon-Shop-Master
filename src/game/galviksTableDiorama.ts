@@ -104,12 +104,12 @@ export class GalviksTableDiorama{
 
     // Exactly the SAME authored procedural stone and flagstone textures
     // as the full LIVE Dungeon viewer. The shop scene already caches them.
-    // Weak ambient emission retains those texture details under cellar light.
+    // A scoped angled light preserves their detail and miniature wall relief.
     const live=getDungeonSurfaces(scene);
     const scaledSurface=(name:string,source:StandardMaterial,tint:number)=>{
-      // Babylon PBR's unlit path samples ALBEDO directly and preserves the
-      // procedural stone image, unlike StandardMaterial's cross-channel
-      // emissive/diffuse paths (previously rendered black or solid white).
+      // Babylon's PBR albedo path samples the same procedural stone image
+      // used in the LIVE viewer. The table-only light reveals face relief
+      // without a second authored art pipeline or illuminating the shop.
       const mat=new PBRMaterial("table-diorama-live-"+name,scene);
       mat.albedoTexture=source.diffuseTexture;
       mat.albedoColor=new Color3(tint,tint,tint);
