@@ -10,7 +10,7 @@ import type {GameState} from "./gameState.ts";
 import {generateExpeditionLayout,dungeonDownStair,
   type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
-  type LiveFloorHero,type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
+  type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 
 /** The measured usable well inside the GLB. Local coordinates follow the
@@ -71,8 +71,7 @@ export class GalviksTableDiorama{
   private activeFloor:SpatialDungeonFloor|null=null;
   private activeSeed:number|null=null;
   private layout:DungeonLayout|null=null;
-  private lastTick=-1;
-  private lastResolved="";
+  private lastResolved="~";
   private lastUpdateAt=-Infinity;
   private modelReady=false;
 
@@ -132,8 +131,7 @@ export class GalviksTableDiorama{
       this.buildFloor(generateExpeditionLayout(state.seed,floor),floor);
       this.activeSeed=state.seed;
       this.activeFloor=floor;
-      this.lastTick=-1;
-      this.lastResolved="";
+      this.lastResolved="~";
       this.lastUpdateAt=-Infinity;
     }
     const now=performance.now();
@@ -148,7 +146,6 @@ export class GalviksTableDiorama{
       this.lastResolved=resolved;
       this.syncFeatures(frame);
     }
-    this.lastTick=frame.worldTick;
   }
 
   private setFloorLabel(floor:number):void{
@@ -192,6 +189,8 @@ export class GalviksTableDiorama{
     this.featureRoot=new TransformNode("cellar-table-diorama-features",this.scene);
     this.featureRoot.parent=this.root;
     this.setFloorLabel(floor);
+    this.root.metadata={floor,layoutWidth:layout.width,layoutHeight:layout.height,
+      featureCount:0,actorCount:0};
     const xStep=TABLE_DIORAMA_WELL.width/layout.width;
     const zStep=TABLE_DIORAMA_WELL.depth/layout.height;
 
@@ -251,13 +250,16 @@ export class GalviksTableDiorama{
     this.featureRoot=new TransformNode("cellar-table-diorama-features",this.scene);
     this.featureRoot.parent=this.root;
     const resolved=new Set(frame.resolved);
+    let visible=0;
     for(const feature of this.layout!.features){
       if(resolved.has(feature.id))continue;
       const mat=feature.kind==="monster"?this.palette.ghoul:
         feature.kind==="treasure"?this.palette.treasure:this.palette.trap;
+      visible++;
       this.addMarker("feature-"+feature.id,feature,mat,
         feature.kind==="monster"?.022:.013,this.featureRoot);
     }
+    this.root.metadata.featureCount=visible;
   }
 
   private syncActors(frame:LiveFloorSpectatorFrame):void{
@@ -279,7 +281,6 @@ export class GalviksTableDiorama{
           diameter:.026,thickness:.0025,tessellation:12,
         },this.scene);
         ring.parent=this.actorRoot;
-        ring.rotation.x=Math.PI/2;
         ring.material=this.palette.entrance;
         ring.isPickable=false;ring.checkCollisions=false;
         figure={mesh,ring};
@@ -294,6 +295,7 @@ export class GalviksTableDiorama{
       figure.ring!.position.set(at.x,TABLE_DIORAMA_WELL.floorY+.006,at.z);
       figure.ring!.isVisible=!!hero.partyId;
     }
+    this.root.metadata.actorCount=this.heroes.size;
   }
 
   get observedFloor():number|null{return this.activeFloor;}
