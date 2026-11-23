@@ -165,11 +165,15 @@ export function prepareSpatialDungeonCombat(
   campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint,
   cycle=0,livePacks=false,
 ):{readonly options:GroupCombatOptions;readonly elite:boolean} {
+  // Pack identity, tier and seeded strength remain tied to the original
+  // renewable SITE, not to the corridor where the encounter was intercepted.
+  const source=layout.features.find(feature=>
+    feature.kind==="monster"&&feature.id===monster.id)??monster;
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
-    (campaignSeed^Math.imul(monster.x+37*monster.z,2654435761))>>>0,cycle));
+    (campaignSeed^Math.imul(source.x+37*source.z,2654435761))>>>0,cycle));
   // Only renewable sentries can become elites. No unique boss is regenerated.
   const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
-    tileAt(layout,monster.x,monster.z)==="room";
+    tileAt(layout,source.x,source.z)==="room";
   // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
   // Toughness is authoritative, not a slowed replay: each extra party member
   // adds some resistance so a three-hero party does not erase one Ghoul
@@ -213,7 +217,7 @@ export function prepareSpatialDungeonCombat(
   // Old atomic day/replay resolver stays single-Ghoul, unchanged.
   // Real multi-Ghoul teams are enabled ONLY for actual deferred LIVE fights.
   const packCount=livePacks&&!elite?ghoulPackCount(campaignSeed,layout.floor,
-    monster.x,monster.z,cycle,party.length,freePackSpawns.length):1;
+    source.x,source.z,cycle,party.length,freePackSpawns.length):1;
   const specs:CombatantSpec[]=party.map((hero,index)=>{
     const spawn=available[index];
     const sword=hero.equipment.weapon==="Iron Sword";
