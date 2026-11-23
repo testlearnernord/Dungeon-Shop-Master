@@ -307,6 +307,9 @@ export class DungeonViewer {
       this.paintPlayback();
     });
     window.addEventListener("keydown", event => {
+      // Cinematic input belongs to ObservationTransitionDirector. This
+      // listener was installed first, so it must not act on G / Escape.
+      if(document.body.classList.contains("observation-transitioning"))return;
       // Give the shared hero inspector first refusal on Escape; do not
       // accidentally close the entire spectator arena behind its card.
       if(!document.querySelector<HTMLElement>("#world-hero-card")?.hidden)
