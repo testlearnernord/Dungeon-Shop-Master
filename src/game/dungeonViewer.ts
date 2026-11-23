@@ -73,6 +73,9 @@ export class DungeonViewer {
   private camera: UniversalCamera | null = null;
   private layout: DungeonLayout | null = null;
   private active = false;
+  // Only ordinary shop G / toolbar entry delegates to the physical table.
+  // Worldwide hero inspection, recordings and event jumps stay immediate.
+  private onShopOpenRequest:()=>void=()=>this.open();
   private readonly keys = new Set<string>();
   private orbitPointer:null|{
     button:0|2;lastX:number;lastY:number;startX:number;startY:number;moved:boolean;
@@ -216,7 +219,7 @@ export class DungeonViewer {
           ?heroPick.pickedMesh?.metadata?.floorHeroId as string:null);
       }
     });
-    document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
+    document.querySelector("#open-dungeon")!.addEventListener("click", () => this.onShopOpenRequest());
     document.querySelector("#close-dungeon")!.addEventListener("click", () => this.close());
     document.querySelector("#dungeon-reset-camera")!.addEventListener("click", () => this.resetCamera());
     this.compassButton.addEventListener("click",()=>{
@@ -314,7 +317,7 @@ export class DungeonViewer {
           !document.body.classList.contains("arena-active")) {
           event.preventDefault();
           event.stopImmediatePropagation();
-          this.open();
+          this.onShopOpenRequest();
         }
         return;
       }
@@ -448,6 +451,10 @@ export class DungeonViewer {
     }, {capture:true,passive:false});
   }
 
+  setShopOpenRequest(request:()=>void):void{
+    this.onShopOpenRequest=request;
+  }
+
   get isActive() { return this.active; }
   get isWatchingLive() { return this.active&&(this.liveFloor!==null||this.liveHeroId!==null); }
   get currentScene(): Scene | null {
@@ -473,7 +480,7 @@ export class DungeonViewer {
       "--dungeon-panels-top",Math.ceil(bottom+12)+"px");
   }
 
-  open(initialReplayId?:string): void {
+  open(initialReplayId?:string,entryFloor:SpatialDungeonFloor=1): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("arena-active")) return;
     this.shopCamera.detachControl();
@@ -485,11 +492,32 @@ export class DungeonViewer {
     this.alignHudPanels();
     this.layout = generateExpeditionLayout(this.store.state.seed,7);
     this.createScene(this.layout);
-    this.refreshReplaySelector(initialReplayId);
+    this.refreshReplaySelector(initialReplayId,entryFloor);
     // LIVE floor overview is the default. Archive opens only intentionally.
     if (this.replayScene?.currentReplay) this.replaySelector.focus();
     else this.floorSelector.focus();
     this.sceneChanged(true);
+  }
+
+  /** Exact match-frame entry: no default-floor frame is ever rendered.
+   * Keep this distinct from replay, hero and world-event navigation. */
+  openTableObservation(
+    floor:SpatialDungeonFloor,pose:DungeonMapPose,
+  ):boolean{
+    if(this.active||!LIVE_SPECTATOR_FLOORS.includes(floor))return false;
+    this.open(undefined,floor);
+    if(!this.active||this.liveFloor!==floor)return false;
+    this.followActor=null;
+    this.setMapPose(pose);
+    this.focusLabel.textContent="GALVIK'S TABLE · LIVE Floor "+floor;
+    return true;
+  }
+
+  /** During the short scene handoff only the read-only map camera moves.
+   * All world actor positions, floor selections and game state stay fixed. */
+  setTableObservationPose(pose:DungeonMapPose):void{
+    if(this.active&&this.liveFloor!==null&&!this.liveArena.isActive)
+      this.setMapPose(pose);
   }
 
   /** Enter through an explicit Board choice. Do not make remote hero
@@ -945,7 +973,9 @@ export class DungeonViewer {
           e.adventurerId ?? "Unknown hero",
       }));
   }
-  private refreshReplaySelector(initialReplayId?:string):void {
+  private refreshReplaySelector(
+    initialReplayId?:string,entryFloor:SpatialDungeonFloor=1,
+  ):void {
     const replays=this.availableReplays();
     this.replaySelector.replaceChildren();
     const preview=new Option("Layout preview (full development map)","preview");
@@ -961,7 +991,7 @@ export class DungeonViewer {
     // Opening the dungeon never silently opens yesterday's tapes.
     if(initialReplayId&&replays.some(entry=>entry.id===initialReplayId))
       this.selectReplay(initialReplayId);
-    else this.startFloor(1);
+    else this.startFloor(entryFloor);
   }
   private selectReplay(id:string):void {
     this.leaveLiveCombat();
