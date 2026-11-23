@@ -83,70 +83,48 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
 });
 
 
-test("Galvik's movable table projects the selected LIVE floor without leaving shop mode @ci-smoke",async({page},testInfo)=>{
+test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-smoke",async({page},testInfo)=>{
   test.setTimeout(90000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./?e2e-pause-world=1");
   await expect(page.locator("#day")).toHaveText("Day 1");
-  // Vite may reload the entire page while predev-generated GLBs are
-  // rescanned. Readiness + aiming must be one retriable evaluation, not
-  // two actions with a navigation race between them.
-  await expect.poll(async()=>{
-    try{
-      return await page.evaluate(async()=>{
-        const helper=await import("/Dungeon-Shop-Master/tests/scene.ts");
-        if(!helper.shopSceneReady())return false;
-        helper.aimAtGalviksTable();
-        return true;
-      });
-    }catch(error){
-      if(!String(error).includes("Execution context was destroyed"))throw error;
-      return false;
-    }
-  },{timeout:30000,intervals:[200,400,700]}).toBe(true);
+
+  // Page HMR may replace the whole initial document while Vite processes
+  // assets. Move Galvik only after the same real Babylon shop is initialized.
   const inspect=()=>page.evaluate(async()=>{
     const helper=await import("/Dungeon-Shop-Master/tests/scene.ts");
     if(!helper.shopSceneReady())return null;
-    // Dev startup/HMR may reset the player camera to the upstairs spawn.
-    // Re-aim inside the SAME probe so the table remains within render range.
     helper.aimAtGalviksTable();
     return helper.inspectGalviksLiveTable();
   });
-  await expect.poll(async()=>await inspect(),{timeout:30000,intervals:[400,700,1000]})
-    .toMatchObject({
-      insetExists:true,insetVisible:true,
-      textureName:"galviks-table-live-floor-1",
-      shopMode:true,inShopScene:true,
-    });
+  await expect.poll(async()=>{
+    try{return await inspect();}
+    catch(error){
+      if(String(error).includes("Execution context was destroyed"))return null;
+      throw error;
+    }
+  },{timeout:30000,intervals:[300,700,1000]}).toMatchObject({
+    dioramaExists:true,dioramaEnabled:true,
+    physicallyParented:true,observedFloor:1,
+    layoutWidth:19,layoutHeight:19,
+    baseExists:true,floorLabelExists:true,
+    flatLegacyInset:false,shopMode:true,inShopScene:true,
+  });
   const first=await inspect();
-  expect(first.shopCamera).toBeTruthy();
-  const probe=await page.evaluate(async()=>(
-    await import("/Dungeon-Shop-Master/tests/scene.ts")).probeGalviksTableProjection());
-  const center=probe.rows.find(row=>row.x===0&&row.z===-.12)?.y;
-  expect(center).not.toBeNull();
-  const clearance=probe.inset.position![1]-center!;
-  console.log("GALVIK_TABLE_PROJECTION",JSON.stringify({
-    floorTexture:probe.textureName,
-    recessY:center,screenY:probe.inset.position?.[1],clearance,
-    gpu:probe.gpu,
-  }));
-  // A real floor image, not a named black texture.
-  expect(probe.gpu?.colored).toBeGreaterThan(25000);
-  expect(probe.gpu?.average).toBeGreaterThan(20);
-  // The image belongs a few centimetres above the *actual* recessed GLB
-  // surface, NOT 35 cm in the air behind the table.
-  expect(clearance).toBeGreaterThan(.008);
-  expect(clearance).toBeLessThan(.055);
-  expect(probe.inset.worldMax![1]-probe.inset.worldMin![1]).toBeLessThan(.002);
+  expect(first).not.toBeNull();
+  expect(first!.wallInstances).toBeGreaterThan(50);
+  expect(first!.wallHeight).toBeGreaterThan(.025);
+  expect(first!.featureCount).toBeGreaterThan(5);
+  expect(first!.sceneMeshCount).toBeGreaterThan(5);
 
-  // Inspect actual pixels in the screenshot a player sees. Raw WebGL
-  // readPixels returned stale 1,1,1 when preserveDrawingBuffer=false.
+  // Pixel inspection happens on the FINAL physical shop screenshot,
+  // not an offscreen texture which might be black/white once sampled.
   const points=await page.evaluate(async()=>(
-    await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksTableScreenshotPoints());
-  const png=await page.screenshot();
-  await testInfo.attach("galviks-table-live-visual",{
-    body:png,contentType:"image/png",
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksDioramaScreenshotPoints());
+  const screenshot=await page.screenshot();
+  await testInfo.attach("galviks-real-3d-table",{
+    body:screenshot,contentType:"image/png",
   });
   const colors=await page.evaluate(async({base64,points})=>{
     const image=new Image();
@@ -154,38 +132,38 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
     await image.decode();
     const canvas=document.createElement("canvas");
     canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
-    const ctx=canvas.getContext("2d",{willReadFrequently:true});
-    if(!ctx)throw Error("PNG decoder canvas unavailable");
-    ctx.drawImage(image,0,0);
-    return points.map(point=>{
-      if(point.x<0||point.y<0||point.x>=canvas.width||
-         point.y>=canvas.height)throw Error("Inset outside screenshot");
-      const c=ctx.getImageData(point.x,point.y,1,1).data;
-      return [c[0]!,c[1]!,c[2]!] as [number,number,number];
+    const context=canvas.getContext("2d",{willReadFrequently:true});
+    if(!context)throw new Error("Screenshot decoder unavailable");
+    context.drawImage(image,0,0);
+    return points.map(p=>{
+      if(p.x<0||p.y<0||p.x>=canvas.width||p.y>=canvas.height)
+        throw Error("Miniature outside shop canvas");
+      const data=context.getImageData(p.x,p.y,1,1).data;
+      return [data[0]!,data[1]!,data[2]!] as const;
     });
-  },{base64:png.toString("base64"),points});
-  const values=colors.map(color=>Math.max(...color));
-  const spread=Math.max(...values)-Math.min(...values);
-  const white=values.filter(value=>value>=240).length;
-  console.log("GALVIK_TABLE_SCREENSHOT_PIXELS "+JSON.stringify({
-    points,colors,spread,white,
-  }));
-  expect(white).toBeLessThan(12);
-  expect(spread).toBeGreaterThan(25);
-  expect(values.some(value=>value>48)).toBe(true);
+  },{base64:screenshot.toString("base64"),points});
+  const luminances=colors.map(rgb=>Math.max(...rgb));
+  // The centered white FPS crosshair may cover one or two sampled points.
+  // A solid-white surface still fails, without false positives from the HUD.
+  expect(luminances.filter(v=>v>240).length).toBeLessThanOrEqual(2);
+  expect(Math.max(...luminances)-Math.min(...luminances))
+    .toBeGreaterThan(20);
 
-  // The LIVE viewer remains the sole owner of the selected floor. A return
-  // to the shop must update the *same physical* inset, not open a second HUD.
+  // The selector in the FULL LIVE viewer is the only floor selection.
+  // Selecting a deeper level must rebuild the miniature and its floor label.
   await page.locator("#open-dungeon").click();
-  await page.locator("#dungeon-floor-select").selectOption("2");
-  await expect(page.locator("#dungeon-floor-select")).toHaveValue("2");
+  await page.locator("#dungeon-floor-select").selectOption("6");
+  await expect(page.locator("#dungeon-floor-select")).toHaveValue("6");
   await page.locator("#close-dungeon").click();
-  await expect.poll(async()=>(await inspect()).textureName,{timeout:30000})
-    .toBe("galviks-table-live-floor-2");
+  await expect.poll(async()=>(await inspect())?.observedFloor,{timeout:30000})
+    .toBe(6);
   const second=await inspect();
   expect(second).toMatchObject({
-    insetVisible:true,shopCamera:first.shopCamera,
-    shopMode:true,inShopScene:true,
+    layoutWidth:31,layoutHeight:31,
+    physicallyParented:true,shopMode:true,
+    dioramaEnabled:true,flatLegacyInset:false,
+    shopCamera:first!.shopCamera,
   });
+  expect(second!.wallInstances).toBeGreaterThan(first!.wallInstances);
   expect(errors).toEqual([]);
 });

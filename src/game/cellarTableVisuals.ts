@@ -1,10 +1,7 @@
 import {loadAssetContainerAsync} from "@babylonjs/core/Loading/sceneLoader";
 import {Color3} from "@babylonjs/core/Maths/math.color";
+import type {Vector3} from "@babylonjs/core/Maths/math.vector";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
-import {ShaderMaterial} from "@babylonjs/core/Materials/shaderMaterial";
-import {RenderTargetTexture} from "@babylonjs/core/Materials/Textures/renderTargetTexture";
-import {RawTexture} from "@babylonjs/core/Materials/Textures/rawTexture";
-import {Texture} from "@babylonjs/core/Materials/Textures/texture";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import {Mesh} from "@babylonjs/core/Meshes/mesh";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
@@ -12,13 +9,13 @@ import type {Scene} from "@babylonjs/core/scene";
 import type {GameStore} from "./gameStore.ts";
 import {CELLAR_FLOOR_Y} from "./cellarRoom.ts";
 import {furnitureDefinition} from "./furnitureRegistry.ts";
+import {GalviksTableDiorama} from "./galviksTableDiorama.ts";
 import "@babylonjs/loaders/glTF/2.0";
 
-/** Presentation only: movement and save identity come from the shared GameStore.
- * The imported Tripo prop has one predictable physical collision hull. */
+/** The physical furniture and its child mini-world share the same transform.
+ * The shop is still the only rendered Scene and the only FPS control owner. */
 export interface CellarTableVisuals {
-  /** A read-only texture from the existing spectator renderer, not a UI. */
-  setDungeonTexture(texture:RenderTargetTexture|null):void;
+  updateLiveFloor(selectedFloor:number,cameraPosition:Vector3):void;
 }
 export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTableVisuals{
   const def=furnitureDefinition("cellar-table");
@@ -29,7 +26,7 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
   hull.parent=root;hull.position.y=def.height/2;
   hull.visibility=0;hull.isPickable=false;hull.checkCollisions=true;
 
-  // A pickable silhouette remains available if the GLB takes time to load.
+  // Preserve the original fallback and entire imported furniture silhouette.
   const backup=MeshBuilder.CreateBox("cellar-table-fallback",{
     width:def.width,height:.18,depth:def.depth,
   },scene);
@@ -39,100 +36,9 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
   material.diffuseColor=new Color3(.19,.12,.07);
   backup.material=material;
 
-  // The inset is a real 3D plane INSIDE the dark recessed panel of the
-  // movable GLB, never a fullscreen HUD or a second copy of the tabletop.
-  // Coordinates are local to the shared furniture root, so P repositioning
-  // and Q/R rotation carry the image along with the entire table.
-  // Raycast sampling of the loaded GLB measured the recessed surface at
-  // y=.795-.815m above the cellar floor (center x=±.4m,z=-.32..+.28m).
-  // Previous hard-coded .83*1.4m was ~35cm ABOVE the well! Keep the plane
-  // above its inset floor but BELOW the raised metal/wood rim at ~.9m.
-  const inset=MeshBuilder.CreatePlane("cellar-table-live-inset",{
-    width:1.215,height:.70,
-  },scene);
-  inset.parent=root;
-  inset.position.set(0,.827,-.095);
-  inset.rotation.x=-Math.PI/2; // face the ceiling, parallel to the recess
-  inset.isPickable=false;
-  inset.checkCollisions=false;
-  inset.isVisible=false;
-  // The Babylon StandardMaterial path produced first a white emissive slab,
-  // then a black diffuse slab, although texture.readPixels() contained real
-  // dungeon imagery. An explicit unlit shader samples those RGBA bytes
-  // directly, without StandardMaterial lighting/alpha/tint heuristics.
-  const screenMat=new ShaderMaterial("cellar-table-live-inset-mat",scene,{
-    vertexSource:`precision highp float;
-attribute vec3 position;
-attribute vec2 uv;
-uniform mat4 worldViewProjection;
-varying vec2 vUV;
-void main(void) {
-  vUV=uv;
-  gl_Position=worldViewProjection*vec4(position,1.0);
-}`,
-    fragmentSource:`precision highp float;
-varying vec2 vUV;
-uniform sampler2D frameSampler;
-void main(void) {
-  gl_FragColor=vec4(texture2D(frameSampler,vUV).rgb,1.0);
-}`,
-  },{attributes:["position","uv"],uniforms:["worldViewProjection"],
-    samplers:["frameSampler"]});
-  screenMat.backFaceCulling=false;
-  inset.material=screenMat;
-  let modelReady=false;
-  // A Babylon RTT owned by the spectator Scene is not directly reliable as
-  // a texture sampled from the separate physical shop Scene. The screenshot
-  // revealed black/white panes despite healthy RTT readback. Bridge only its
-  // already-rendered RGBA pixels into a small texture owned by this shop.
-  // This copies presentation pixels, NEVER a simulation or dungeon state.
-  let source:RenderTargetTexture|null=null;
-  let localTexture:RawTexture|null=null;
-  let generation=0;
-  let reading=false;
-  let lastReadAt=-Infinity;
-  const setDungeonTexture=(texture:RenderTargetTexture|null)=>{
-    if(texture!==source){
-      source=texture;
-      generation++;
-      localTexture?.dispose();
-      localTexture=null;
-      inset.isVisible=false;
-      lastReadAt=-Infinity;
-    }
-    if(!source||!modelReady||reading)return;
-    const now=performance.now();
-    if(now-lastReadAt<220)return; // near-table cap ~4.5 presentation FPS
-    lastReadAt=now;
-    reading=true;
-    const requested=source!;
-    const token=generation;
-    void Promise.resolve(requested.readPixels()).then(pixels=>{
-      if(!pixels)return;
-      if(source!==requested||token!==generation)return;
-      const size=requested.getSize();
-      const bytes=new Uint8Array(pixels.buffer,pixels.byteOffset,
-        pixels.byteLength);
-      if(bytes.length!==size.width*size.height*4)return;
-      if(!localTexture){
-        localTexture=RawTexture.CreateRGBATexture(bytes,size.width,size.height,
-          scene,false,true,Texture.BILINEAR_SAMPLINGMODE);
-        localTexture.name=requested.name;
-        screenMat.setTexture("frameSampler",localTexture);
-        if(import.meta.env.VITE_E2E==="1"){
-          inset.metadata??={};
-          inset.metadata.projectionTexture=localTexture;
-        }
-      }else localTexture.update(bytes);
-      inset.isVisible=true;
-    }).catch(error=>{
-      // A floor change may dispose a pending RTT; never crash the shop.
-      if(source===requested){
-        console.warn("Galvik table frame unavailable",error);
-      }
-    }).finally(()=>{reading=false;});
-  };
-
+  // Unlike the legacy 2D RTT, this is actual local-space 3D geometry. It
+  // follows existing P movement and Q/R rotation, without another renderer.
+  const diorama=new GalviksTableDiorama(scene,root);
   let previous:typeof store.state.cellarTable|null=null;
   const sync=()=>{
     const placement=store.state.cellarTable;
@@ -154,8 +60,7 @@ void main(void) {
     }
     const modelRoot=new TransformNode("cellar-table-model-root",scene);
     modelRoot.parent=root;
-    // Tripo's original: 0.980255m wide, 0.508789m tall, 0.633514m deep.
-    // Uniform scale matches the one authoritative furniture footprint.
+    // Original Tripo model: 0.980255m wide, 0.508789m tall, 0.633514m deep.
     modelRoot.scaling.setAll(def.width/0.9802550673484802);
     container.addAllToScene();
     for(const node of [...container.meshes,...container.transformNodes])
@@ -166,10 +71,14 @@ void main(void) {
       mesh.checkCollisions=false;
     }
     backup.dispose();
-    modelReady=true;
-    inset.isVisible=localTexture!==null;
+    diorama.setModelReady();
   }).catch(error=>{
     console.warn("Galvik's Table GLB unavailable; keeping pickable fallback.",error);
   });
-  return {setDungeonTexture};
+
+  return {
+    updateLiveFloor:(selectedFloor,cameraPosition)=>{
+      diorama.update(selectedFloor,store.state,cameraPosition);
+    },
+  };
 }
