@@ -196,5 +196,10 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
     shopCamera:first!.shopCamera,
   });
   expect(second!.wallInstances).toBeGreaterThan(first!.wallInstances);
+  // The deeper 31×31 floor gets a separate real-shop screenshot. It must be
+  // inspected at the same FPS distance, not inferred from Floor 01 pixels.
+  await testInfo.attach("galviks-floor-06-table",{
+    body:await page.screenshot(),contentType:"image/png",
+  });
   expect(errors).toEqual([]);
 });
