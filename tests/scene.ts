@@ -1277,3 +1277,50 @@ export function inspectLiveFloorCameraFocus(){
     offset:{x:position.x-target.x,y:position.y-target.y,
       z:position.z-target.z}};
 }
+
+
+/** Development probe of the physical GLB recess and actual GPU pixels.
+ * A texture being assigned is NOT proof that its render contains a dungeon. */
+export async function probeGalviksTableProjection(){
+  const scene=currentTestScene()!;
+  const inset=scene.getMeshByName("cellar-table-live-inset");
+  const mat=inset?.material instanceof StandardMaterial?inset.material:null;
+  const texture=mat?.diffuseTexture;
+  const root=scene.getTransformNodeByName("cellar-table-root")!;
+  const rows=[] as {x:number;z:number;y:number|null;mesh:string|null}[];
+  for(const z of [-.72,-.52,-.32,-.12,.08,.28,.48,.68])
+    for(const x of [-1.2,-.8,-.4,0,.4,.8,1.2]){
+      const p=root.getAbsolutePosition();
+      const ray=new Ray(new Vector3(p.x+x,p.y+4,p.z+z),
+        new Vector3(0,-1,0),8);
+      const hit=scene.pickWithRay(ray,mesh=>mesh.name.startsWith("cellar-table-model-"));
+      rows.push({x,z,y:hit?.pickedPoint?Number((hit.pickedPoint.y-p.y).toFixed(3)):null,
+        mesh:hit?.pickedMesh?.name??null});
+    }
+  let gpu:null|{length:number;colored:number;average:number;error?:string}=null;
+  if(texture){
+    try{
+      const pixels=await texture.readPixels();
+      if(pixels){
+        const data=new Uint8Array(pixels.buffer,pixels.byteOffset,pixels.byteLength);
+        let nonDark=0,sum=0;
+        for(let i=0;i<data.length;i+=4){
+          const max=Math.max(data[i]??0,data[i+1]??0,data[i+2]??0);
+          sum+=max;
+          if(max>48)nonDark++;
+        }
+        gpu={length:data.length,colored:nonDark,average:Math.round(sum/(data.length/4))};
+      }
+    }catch(error){gpu={length:0,colored:0,average:0,error:String(error)}}
+  }
+  return {
+    inset:{position:inset?.position.asArray(),rotation:inset?.rotation.asArray(),
+      worldMin:inset?.getBoundingInfo().boundingBox.minimumWorld.asArray(),
+      worldMax:inset?.getBoundingInfo().boundingBox.maximumWorld.asArray()},
+    model:scene.meshes.filter(mesh=>mesh.name.startsWith("cellar-table-model-"))
+      .map(mesh=>({name:mesh.name,vertices:mesh.getTotalVertices(),
+        min:mesh.getBoundingInfo().boundingBox.minimumWorld.asArray(),
+        max:mesh.getBoundingInfo().boundingBox.maximumWorld.asArray()})),
+    rows,gpu,sceneCamera:scene.activeCamera?.name,textureName:texture?.name??null,
+  };
+}
