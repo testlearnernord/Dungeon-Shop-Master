@@ -62,3 +62,14 @@ test("pure comparison does not mutate the authoritative frame",()=>{
   assert(sameLiveFloorMap(floor,structuredClone(floor)));
   assert.equal(JSON.stringify(floor),before);
 });
+
+test("a renewed Ghoul generation changes the LIVE map even on the same tile",()=>{
+  const pack={id:"floor1-monster-1",siteCycle:0,
+    x:5,z:6,mode:"IDLE" as const,lastMoveTick:0};
+  const from={...floor,monsters:[pack]};
+  const same={...floor,monsters:[{...pack}]};
+  assert.equal(sameLiveFloorMap(from,same),true);
+  const renewed={...floor,monsters:[{...pack,siteCycle:1}]};
+  assert.equal(sameLiveFloorMap(from,renewed),false,
+    "a new site generation is a new physical Ghoul instance");
+});
