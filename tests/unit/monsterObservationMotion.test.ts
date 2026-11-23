@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {isObservedMonsterStep,MONSTER_OBSERVATION_STEP_SECONDS}
+import {isObservedMonsterStep,MONSTER_OBSERVATION_STEP_SECONDS,
+  monsterObservationStepProgress}
   from "../../src/game/monsterObservationMotion.ts";
 import {MONSTER_STEP_TICKS}
   from "../../src/game/dungeonMonsterWorld.ts";
@@ -49,4 +50,16 @@ test("long gaps cannot resume stale interpolation even if the old and new tiles 
   assert.equal(isObservedMonsterStep({...before,day:1,worldTick:28000,
     lastMoveTick:28000},{...after,day:2,worldTick:29000,
       lastMoveTick:29000}),false);
+});
+
+test("Ghoul visual movement finishes promptly and stays idle until the next true step",()=>{
+  const duration=MONSTER_OBSERVATION_STEP_SECONDS;
+  const values=[-1,0,duration/4,duration/2,duration,
+    duration+1,MONSTER_STEP_TICKS*.05];
+  assert.deepEqual(values.map(monsterObservationStepProgress),
+    [0,0,.25,.5,1,1,1]);
+  assert.equal(monsterObservationStepProgress(Infinity),1);
+  assert.equal(monsterObservationStepProgress(NaN),1);
+  assert.equal(monsterObservationStepProgress(10),1,
+    "A stationary Ghoul must not creep for the entire 20-second AI interval");
 });
