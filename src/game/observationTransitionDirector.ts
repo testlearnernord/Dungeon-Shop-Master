@@ -5,6 +5,7 @@ import type {GameStore} from "./gameStore.ts";
 import type {DungeonViewer} from "./dungeonViewer.ts";
 import type {CellarTableVisuals} from "./cellarTableVisuals.ts";
 import {generateExpeditionLayout} from "./dungeonLayout.ts";
+import {TABLE_DIORAMA_WELL} from "./tableDioramaGeometry.ts";
 import {observationMatchPose,observationEase,observationVeil,
   OBSERVATION_SHOP_FLIGHT_SECONDS,OBSERVATION_LIVE_SETTLE_SECONDS,
   type ObservationMatchPose} from "./observationMatchPose.ts";
@@ -97,10 +98,26 @@ export class ObservationTransitionDirector{
     if(Math.hypot(this.camera.position.x-tablePos.x,
       this.camera.position.z-tablePos.z)>4||
       Math.abs(this.camera.position.y-tablePos.y)>4)return false;
-    const hit=this.scene.pickWithRay(this.camera.getForwardRay(4),
+    const ray=this.camera.getForwardRay(4);
+    const hit=this.scene.pickWithRay(ray,
       mesh=>mesh.name==="cellar-table-fallback"||
         mesh.name.startsWith("cellar-table-model-"));
-    return !!hit?.hit&&hit.distance<=4;
+    if(hit?.hit&&hit.distance<=4)return true;
+    // The real table is a recessed frame. A ray through its OPEN central
+    // well won't intersect the furniture GLB, although the player's gaze
+    // is correctly fixed on the dungeon. Test the tabletop observation
+    // plane in parent-local coordinates instead of making it a solid mesh.
+    const dy=ray.direction.y;
+    if(Math.abs(dy)<.04)return false;
+    const distance=(tablePos.y+TABLE_DIORAMA_WELL.floorY-ray.origin.y)/dy;
+    if(distance<=0||distance>4)return false;
+    root.computeWorldMatrix(true);
+    const point=ray.origin.add(ray.direction.scale(distance));
+    const local=Vector3.TransformCoordinates(point,
+      root.getWorldMatrix().clone().invert());
+    return Math.abs(local.x)<=TABLE_DIORAMA_WELL.width/2+.12&&
+      Math.abs(local.z-TABLE_DIORAMA_WELL.centerZ)<=
+        TABLE_DIORAMA_WELL.depth/2+.12;
   }
 
   /** E at the table, or G / Dungeon button while looking at it. */
