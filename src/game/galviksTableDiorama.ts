@@ -15,7 +15,8 @@ import "@babylonjs/loaders/glTF/2.0";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameState} from "./gameState.ts";
-import {tableDioramaPosition,TABLE_DIORAMA_WELL} from "./tableDioramaGeometry.ts";
+import {tableDioramaFit,tableDioramaPosition,TABLE_DIORAMA_WELL,
+  type TableDioramaFit} from "./tableDioramaGeometry.ts";
 import {generateExpeditionLayout,
   type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
@@ -227,6 +228,96 @@ void main(void){
     this.tabletopLight.includedOnlyMeshes.push(mesh);
   }
 
+  /** The LIVE map itself keeps near-square tiles. The extra width of the
+   * real rectangular well becomes sculpted, fully textured bedrock at both
+   * sides, not stretched corridors, black strips or a false dungeon level.
+   * All meshes are presentation-only children disposed on floor rebuild.
+   */
+  private createBedrockBanks(fit:TableDioramaFit):number{
+    const well=TABLE_DIORAMA_WELL;
+    const plates:{name:string;x:number;z:number;width:number;depth:number}[]=[];
+    if(fit.borderX>.001)for(const side of [-1,1])
+      plates.push({
+        name:"side-"+(side<0?"left":"right"),
+        x:side*(fit.coreWidth/2+fit.borderX/2),z:0,
+        width:fit.borderX,depth:well.depth,
+      });
+    if(fit.borderZ>.001)for(const side of [-1,1])
+      plates.push({
+        name:"end-"+(side<0?"rear":"front"),
+        x:0,z:side*(fit.coreDepth/2+fit.borderZ/2),
+        width:fit.coreWidth,depth:fit.borderZ,
+      });
+
+    // Seamless underlay across every spare millimetre of the well. This
+    // covers the very edge so the black base never looks like an empty bar.
+    for(const plate of plates){
+      const mesh=MeshBuilder.CreateBox(
+        "cellar-table-diorama-bedrock-"+plate.name,{
+          width:plate.width+.002,depth:plate.depth+.002,height:.018,
+        },this.scene);
+      mesh.parent=this.floorRoot;
+      mesh.position.set(plate.x,well.floorY+.005,plate.z);
+      mesh.material=this.palette.stoneB;
+      mesh.isPickable=false;mesh.checkCollisions=false;
+      this.tabletopLight.includedOnlyMeshes.push(mesh);
+    }
+
+    // Art-directed terraces along the cutaway: two staggered stone courses
+    // with bounded heights. Repeated facets are drawn with TWO thin-instance
+    // batches, never hundreds of independently simulated scene objects.
+    const facets:[number[],number[]]=[[],[]];
+    const push=(x:number,z:number,w:number,d:number,h:number,shade:number)=>{
+      const y=well.floorY+.014+h/2;
+      facets[shade].push(...Matrix.Scaling(w,h,d).multiply(
+        Matrix.Translation(x,y,z)).asArray());
+    };
+    if(fit.borderX>.001){
+      const segments=Math.max(10,Math.ceil(well.depth/.035));
+      const step=well.depth/segments;
+      for(const side of [-1,1])for(let i=0;i<segments;i++){
+        const z=-well.depth/2+(i+.5)*step;
+        const wave=.5+.5*Math.sin(i*2.17+side*1.31);
+        for(let lane=0;lane<2;lane++){
+          const t=lane===0?.26:.73;
+          const w=fit.borderX*(lane===0?.42:.38);
+          const x=side*(fit.coreWidth/2+fit.borderX*t);
+          const h=.012+wave*.024+(lane===1?.009:0);
+          push(x,z,w,step*.90,h,(i+lane+(side===1?1:0))%2);
+        }
+      }
+    }
+    if(fit.borderZ>.001){
+      const segments=Math.max(10,Math.ceil(well.width/.035));
+      const step=fit.coreWidth/segments;
+      for(const side of [-1,1])for(let i=0;i<segments;i++){
+        const x=-fit.coreWidth/2+(i+.5)*step;
+        const wave=.5+.5*Math.sin(i*2.17+side*1.31);
+        for(let lane=0;lane<2;lane++){
+          const t=lane===0?.26:.73;
+          const d=fit.borderZ*(lane===0?.42:.38);
+          const z=side*(fit.coreDepth/2+fit.borderZ*t);
+          const h=.012+wave*.024+(lane===1?.009:0);
+          push(x,z,step*.90,d,h,(i+lane+(side===1?1:0))%2);
+        }
+      }
+    }
+    for(let shade=0;shade<2;shade++){
+      if(!facets[shade].length)continue;
+      const mesh=MeshBuilder.CreateBox(
+        "cellar-table-diorama-bedrock-facets-"+shade,{
+          width:1,height:1,depth:1,
+        },this.scene);
+      mesh.parent=this.floorRoot;
+      mesh.material=shade===0?this.palette.stoneA:this.palette.stoneB;
+      mesh.isPickable=false;mesh.checkCollisions=false;
+      mesh.thinInstanceSetBuffer("matrix",
+        new Float32Array(facets[shade]),16,true);
+      this.tabletopLight.includedOnlyMeshes.push(mesh);
+    }
+    return plates.length;
+  }
+
   /** Same 2.5 m tile coordinate space as DungeonViewer, displayed at scale
    * inside the physical furniture. All authored props use this one adapter. */
   private worldPoint(p:DungeonPoint):Vector3{
@@ -259,12 +350,12 @@ void main(void){
       "cellar-table-diorama-live-art-scale",this.scene);
     this.miniatureWorldRoot.parent=this.root;
     this.miniatureWorldRoot.position.y=TABLE_DIORAMA_WELL.floorY;
-    // LIVE x/z coordinates fit the physical well. Vertical relief is deliberately
-    // magnified so real characters and crypts stand clear of the miniature walls
-    // from Galvik's normal standing position, without another camera.
+    // Same tile coordinates as the LIVE viewer; fit controls only the
+    // physical art adapter, not saved topology or hero movement.
+    const fit=tableDioramaFit(layout);
     this.miniatureWorldRoot.scaling.set(
-      TABLE_DIORAMA_WELL.width/(layout.width*2.5),.034,
-      TABLE_DIORAMA_WELL.depth/(layout.height*2.5));
+      fit.coreWidth/(layout.width*2.5),.034,
+      fit.coreDepth/(layout.height*2.5));
 
     this.actorRoot=new TransformNode("cellar-table-diorama-actors",this.scene);
     this.actorRoot.parent=this.miniatureWorldRoot;
@@ -272,9 +363,14 @@ void main(void){
     this.featureRoot.parent=this.miniatureWorldRoot;
     this.setFloorLabel(floor);
     this.root.metadata={floor,layoutWidth:layout.width,layoutHeight:layout.height,
-      featureCount:0,actorCount:0,renderKind:"shared-live-dungeon-art"};
-    const xStep=TABLE_DIORAMA_WELL.width/layout.width;
-    const zStep=TABLE_DIORAMA_WELL.depth/layout.height;
+      featureCount:0,actorCount:0,renderKind:"shared-live-dungeon-art",
+      coreWidth:fit.coreWidth,coreDepth:fit.coreDepth,
+      borderX:fit.borderX,borderZ:fit.borderZ,
+      wellCoverage:(fit.coreWidth+2*fit.borderX)*
+        (fit.coreDepth+2*fit.borderZ)/
+        (TABLE_DIORAMA_WELL.width*TABLE_DIORAMA_WELL.depth)};
+    const xStep=fit.tileWidth;
+    const zStep=fit.tileDepth;
 
     const base=MeshBuilder.CreateBox("cellar-table-diorama-base",{
       width:TABLE_DIORAMA_WELL.width+.012,
@@ -284,6 +380,7 @@ void main(void){
     base.position.y=TABLE_DIORAMA_WELL.baseY;
     base.material=this.palette.platform;
     base.isPickable=false;base.checkCollisions=false;
+    this.root.metadata.bedrockPlates=this.createBedrockBanks(fit);
 
     const thin=(name:string,
       predicate:(x:number,z:number,tile:string)=>boolean,
