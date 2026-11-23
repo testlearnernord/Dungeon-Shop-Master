@@ -579,6 +579,11 @@ function commitDungeonTick(state:GameState):GameState {
     const fighting=new Set(combats.flatMap(combat=>combat.heroIds));
     for(const pack of advanced.monsters??[]){
       if(reserved.has(pack.id))continue;
+      // A genuine late-night collision remains physically on the map;
+      // starting a 25s fight past midnight would deadlock the day closer.
+      // The same unchanged co-location is checked at the next world tick.
+      if(tick+SPATIAL_DUNGEON_COMBAT_SECONDS*20+
+         LIVE_COMBAT_INTERVAL_TICKS>lastWorldTickOfDay(day))continue;
       const at=finalRoster.filter(hero=>eligible(hero)&&hero.floor===ordinary&&
         !fighting.has(hero.id)&&
         activeHeroes.some(progress=>progress.heroId===hero.id&&
