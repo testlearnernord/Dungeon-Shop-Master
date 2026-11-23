@@ -35,7 +35,9 @@ The current LIVE floor projection, Tripo Ghoul map instance and Galvik's Table c
 
 **Second staged branch (V0.004 B):** `dungeonMonsterWorld.ts` now uses the existing `hasDungeonLineOfSight` geometry to discover only genuinely visible heroes within five tiles. A pack persists its observed target ID and last-known position, chases at its original 400-tick speed, searches after losing sight and returns to its home after three blind checkpoints. Re-sighting can restart pursuit. The targeting logic never reads hidden camera or spectator selections.
 
-**Still not implemented on this stacked branch:** Monster-initiated combat on contact, simultaneous field-swap arbitration, autonomous hero/party reactions, visual/browser behavior acceptance. Those are blockers for complete V0.004 A. No merge before explicit owner approval.
+**Third staged branch (V0.004 C):** A chasing Ghoul can now step onto a genuinely occupied hero tile at its lawful speed. The one existing LIVE world-event owner arbitrates unreserved physical co-location, reserves exactly one original pack site and launches the existing 60-Hz `GroupCombat`, with authentic participants, canonical pack seed, actual contact coordinates and persisted arrivals. An already reserved or fighting hero cannot start a second contact encounter. A late-night contact defers a new fight until the existing scheduler has enough time. Existing hero-entering-monster behavior remains authoritative.
+
+**Still open for complete V0.004 A:** Additional simultaneous crossing/swap stress cases, autonomous tactical hero/party responses, complete browser visual/contact validation and longer multi-floor combat regressions. Draft, no merge before explicit owner approval.
 
 ## Encounter and party expectations
 
