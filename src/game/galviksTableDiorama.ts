@@ -225,21 +225,42 @@ void main(void){
     mesh.thinInstanceSetBuffer("matrix",new Float32Array(transforms),16,true);
   }
 
+  /** Same 2.5 m tile coordinate space as DungeonViewer, displayed at scale
+   * inside the physical furniture. All authored props use this one adapter. */
+  private worldPoint(p:DungeonPoint):Vector3{
+    const map=this.layout!;
+    return new Vector3((p.x-(map.width-1)/2)*2.5,0,
+      (p.z-(map.height-1)/2)*2.5);
+  }
+
   private buildFloor(layout:DungeonLayout,floor:SpatialDungeonFloor):void{
-    this.floorRoot?.dispose();
-    this.actorRoot?.dispose();
-    this.featureRoot?.dispose();
+    this.floorRoot?.dispose(false,true);
+    this.miniatureWorldRoot?.dispose(false,true);
+    for(const mat of this.floorArtMaterials)mat.dispose();
+    this.floorArtMaterials=[];
     this.heroes.clear();
+    this.lastFrame=null;
     this.layout=layout;
+
     this.floorRoot=new TransformNode("cellar-table-diorama-floor-"+floor,this.scene);
     this.floorRoot.parent=this.root;
+    this.miniatureWorldRoot=new TransformNode(
+      "cellar-table-diorama-live-art-scale",this.scene);
+    this.miniatureWorldRoot.parent=this.root;
+    this.miniatureWorldRoot.position.y=TABLE_DIORAMA_WELL.floorY;
+    // Real LIVE 2.5m world units shrink uniformly within each axis; mildly
+    // exaggerated height makes miniatures readable without a second camera.
+    this.miniatureWorldRoot.scaling.set(
+      TABLE_DIORAMA_WELL.width/(layout.width*2.5),.024,
+      TABLE_DIORAMA_WELL.depth/(layout.height*2.5));
+
     this.actorRoot=new TransformNode("cellar-table-diorama-actors",this.scene);
-    this.actorRoot.parent=this.root;
+    this.actorRoot.parent=this.miniatureWorldRoot;
     this.featureRoot=new TransformNode("cellar-table-diorama-features",this.scene);
-    this.featureRoot.parent=this.root;
+    this.featureRoot.parent=this.miniatureWorldRoot;
     this.setFloorLabel(floor);
     this.root.metadata={floor,layoutWidth:layout.width,layoutHeight:layout.height,
-      featureCount:0,actorCount:0};
+      featureCount:0,actorCount:0,renderKind:"shared-live-dungeon-art"};
     const xStep=TABLE_DIORAMA_WELL.width/layout.width;
     const zStep=TABLE_DIORAMA_WELL.depth/layout.height;
 
@@ -259,12 +280,12 @@ void main(void){
         width:xStep*.988,height:h,depth:zStep*.988,y,
       },mat);
 
+    // The very same stone and flagstone procedural textures used in the
+    // fullscreen LIVE viewer; only the geometry transform is miniature.
     thin("cellar-table-diorama-corridors",(_,__,tile)=>tile==="corridor",
       TABLE_DIORAMA_WELL.floorY,.008,this.palette.corridor);
     thin("cellar-table-diorama-rooms",(_,__,tile)=>tile==="room",
-      TABLE_DIORAMA_WELL.floorY,.008,this.palette.room);
-    // Cutaway front perimeter: tall close walls would hide every corridor
-    // when Galvik stands on the keyboard/control side of the table.
+      TABLE_DIORAMA_WELL.floorY,.009,this.palette.room);
     thin("cellar-table-diorama-front-cutaway",(_,z,tile)=>
       tile==="wall"&&z>=layout.height-2,
       TABLE_DIORAMA_WELL.floorY+.015,.028,this.palette.stoneB);
@@ -277,77 +298,170 @@ void main(void){
       TABLE_DIORAMA_WELL.wallY,TABLE_DIORAMA_WELL.wallHeight,
       this.palette.stoneB);
 
-    this.addMarker("entrance",layout.entrance,this.palette.entrance,.018,
-      this.floorRoot);
-    if(floor<10)this.addMarker("downstairs",dungeonDownStair(layout),
-      this.palette.stair,.018,this.floorRoot);
-    // Monuments, heroes and features NEVER own a physical collision shape.
+    // Actual LIVE Dungeon burial crypt props. Each room gets the same
+    // relics and tomb geometry, not the former flat marker. Their full
+    // floor-scale lights would illuminate the entire shop: dispose those.
+    for(const [index,room] of layout.rooms.entries()){
+      const materialStart=this.scene.materials.length;
+      const crypt=createGhoulCryptRoom(this.scene,room,this.worldPoint(room),index);
+      crypt.light.dispose();
+      crypt.mesh.parent=this.miniatureWorldRoot;
+      crypt.mesh.name="cellar-table-diorama-crypt-"+index;
+      this.floorArtMaterials.push(...this.scene.materials.slice(materialStart)
+        .filter((mat):mat is StandardMaterial=>mat instanceof StandardMaterial));
+      // Small ambient support for the same materials in the dark cellar.
+      for(const mat of this.floorArtMaterials)
+        if(mat.name.startsWith("crypt-"))
+          mat.emissiveColor=mat.emissiveColor.add(mat.diffuseColor.scale(.19));
+    }
+
+    // Reuse the FULL viewer's authored staircase props and route semantics.
+    for(const stair of dungeonFloorStairways(layout)){
+      const materialStart=this.scene.materials.length;
+      const mesh=createDungeonStairwayProp(
+        this.scene,stair,this.worldPoint(stair));
+      mesh.parent=this.miniatureWorldRoot;
+      mesh.name="cellar-table-diorama-stair-"+stair.id;
+      mesh.isPickable=false;
+      this.floorArtMaterials.push(...this.scene.materials.slice(materialStart)
+        .filter((mat):mat is StandardMaterial=>mat instanceof StandardMaterial));
+      for(const mat of this.scene.materials.slice(materialStart))
+        if(mat instanceof StandardMaterial)
+          mat.emissiveColor=mat.emissiveColor.add(mat.diffuseColor.scale(.23));
+    }
+    this.ensureAuthoredGhouls();
   }
 
-  private addMarker(name:string,p:DungeonPoint,mat:StandardMaterial,
-    height:number,parent:TransformNode):Mesh{
-    const layout=this.layout!;
-    const pos=tableDioramaPosition(layout,p);
-    const mesh=MeshBuilder.CreateCylinder("cellar-table-diorama-"+name,{
-      height,diameter:Math.min(TABLE_DIORAMA_WELL.width/layout.width,
-        TABLE_DIORAMA_WELL.depth/layout.height)*.72,tessellation:6,
-    },this.scene);
-    mesh.parent=parent;
-    mesh.position.set(pos.x,TABLE_DIORAMA_WELL.floorY+.01+height/2,pos.z);
-    mesh.material=mat;
-    mesh.isPickable=false;mesh.checkCollisions=false;
-    return mesh;
+  private ensureAuthoredGhouls():void{
+    if(this.ghoulSource||this.ghoulLoading)return;
+    this.ghoulLoading=true;
+    // A single static source shared by all table ghoul instances and floors.
+    // The spectator's exact authored 65-bone model/idle pose is reused.
+    void loadAssetContainerAsync(import.meta.env.BASE_URL+GHOUL_MODEL,this.scene)
+      .then(asset=>{
+        if(this.root.isDisposed()){asset.dispose();return;}
+        const meshes=asset.meshes.filter(
+          (mesh):mesh is Mesh=>mesh instanceof Mesh&&mesh.getTotalVertices()>0);
+        if(meshes.length!==1||asset.skeletons[0]?.bones.length!==65||
+          asset.animationGroups.length!==15){
+          asset.dispose();
+          throw Error("Expected the canonical LIVE Dungeon Ghoul asset");
+        }
+        asset.addAllToScene();
+        const source=meshes[0];
+        for(const clip of asset.animationGroups)clip.stop();
+        const idle=asset.animationGroups.find(clip=>clip.name==="idle_combat");
+        if(idle){
+          idle.start(false);idle.pause();
+          idle.goToFrame(idle.from+(idle.to-idle.from)*.18);
+        }
+        source.position.y=-900;
+        source.isPickable=false;source.checkCollisions=false;
+        this.ghoulAsset=asset;
+        this.ghoulSource=source;
+        this.lastResolved="~"; // refresh only visuals, never dungeon state
+      })
+      .catch(error=>console.warn("Table Ghoul artwork unavailable",error));
   }
 
   private syncFeatures(frame:LiveFloorSpectatorFrame):void{
-    this.featureRoot?.dispose();
+    this.featureRoot?.dispose(false,true);
     this.featureRoot=new TransformNode("cellar-table-diorama-features",this.scene);
-    this.featureRoot.parent=this.root;
+    this.featureRoot.parent=this.miniatureWorldRoot;
     const resolved=new Set(frame.resolved);
-    let visible=0;
+    let visible=0,authoredProps=0,authoredGhouls=0;
     for(const feature of this.layout!.features){
       if(resolved.has(feature.id))continue;
-      const mat=feature.kind==="monster"?this.palette.ghoul:
-        feature.kind==="treasure"?this.palette.treasure:this.palette.trap;
       visible++;
-      this.addMarker("feature-"+feature.id,feature,mat,
-        feature.kind==="monster"?.035:.022,this.featureRoot);
+      const p=this.worldPoint(feature);
+      if(feature.kind==="treasure"||feature.kind==="trap"){
+        const mesh=feature.kind==="treasure"?
+          createReadableDungeonChest(this.scene,feature,p,this.featurePaint):
+          createReadableDungeonTrap(this.scene,feature,p,this.featurePaint);
+        mesh.parent=this.featureRoot;
+        mesh.name="cellar-table-diorama-"+feature.kind+"-"+feature.id;
+        mesh.isPickable=false;mesh.checkCollisions=false;
+        authoredProps++;
+      }else{
+        const anchor=MeshBuilder.CreateBox(
+          "cellar-table-diorama-ghoul-anchor-"+feature.id,{
+            width:1.65,height:.07,depth:1.65,
+          },this.scene);
+        anchor.parent=this.featureRoot;
+        anchor.position.set(p.x,.33,p.z);
+        anchor.visibility=0;anchor.isPickable=false;
+        anchor.checkCollisions=false;
+        if(this.ghoulSource){
+          const source=this.ghoulSource;
+          const bounds=source.getBoundingInfo().boundingBox;
+          const height=bounds.maximum.y-bounds.minimum.y;
+          if(height>0){
+            const scale=Math.min(12,Math.max(.01,1.75/height));
+            const instance=source.createInstance(
+              "cellar-table-diorama-authored-ghoul-"+feature.id);
+            instance.parent=anchor;
+            instance.position.set(0,-bounds.minimum.y*scale+.04,0);
+            instance.scaling.setAll(scale);
+            instance.rotation.y=Math.PI;
+            instance.isPickable=false;instance.checkCollisions=false;
+            authoredGhouls++;
+          }
+        }else{
+          const fallback=MeshBuilder.CreatePlane(
+            "cellar-table-diorama-ghoul-loading-"+feature.id,
+            {width:1.65,height:1.65},this.scene);
+          fallback.parent=anchor;
+          fallback.position.y=.04;
+          fallback.rotation.x=-Math.PI/2;
+          fallback.material=this.ghoulFallback;
+          fallback.isPickable=false;fallback.checkCollisions=false;
+        }
+      }
     }
     this.root.metadata.featureCount=visible;
+    this.root.metadata.authoredProps=authoredProps;
+    this.root.metadata.authoredGhouls=authoredGhouls;
   }
 
   private syncActors(frame:LiveFloorSpectatorFrame):void{
     const alive=new Set(frame.heroes.map(h=>h.id));
     for(const [id,figure] of this.heroes){
       if(alive.has(id))continue;
-      figure.mesh.dispose();
-      figure.ring?.dispose();
+      figure.visual.root.dispose(false,true);
+      figure.ring.dispose();
       this.heroes.delete(id);
     }
     for(const hero of frame.heroes){
       let figure=this.heroes.get(hero.id);
       if(!figure){
-        const roleMat=hero.role==="tank"?this.palette.heroTank:
-          hero.role==="healer"?this.palette.heroHeal:this.palette.heroDps;
-        const mesh=this.addMarker("hero-"+hero.id,hero,roleMat,.042,
-          this.actorRoot!);
-        const ring=MeshBuilder.CreateTorus("cellar-table-diorama-party-"+hero.id,{
-          diameter:.026,thickness:.0025,tessellation:12,
-        },this.scene);
+        // Exactly the same role/equipment/appearance factory as the fullscreen
+        // LIVE Dungeon and Galvik's physical shop visitors.
+        const visual=createHeroVisual(this.scene,{
+          id:hero.id,role:hero.role,equipment:hero.equipment,
+        },"cellar-table-diorama-hero-"+hero.id);
+        visual.root.parent=this.actorRoot;
+        // Slight ambient glow at miniature size, never a flat class cylinder.
+        for(const mesh of visual.root.getChildMeshes(false)){
+          mesh.isPickable=false;mesh.checkCollisions=false;
+          const mat=mesh.material;
+          if(mat instanceof StandardMaterial)
+            mat.emissiveColor=mat.diffuseColor.scale(.24);
+        }
+        const ring=MeshBuilder.CreateTorus(
+          "cellar-table-diorama-party-"+hero.id,{
+            diameter:1.85,thickness:.12,tessellation:12,
+          },this.scene);
         ring.parent=this.actorRoot;
         ring.material=this.palette.entrance;
         ring.isPickable=false;ring.checkCollisions=false;
-        figure={mesh,ring};
+        figure={visual,ring};
         this.heroes.set(hero.id,figure);
       }
-      const at=tableDioramaPosition(this.layout!,hero);
-      figure.mesh.position.x=at.x;
-      figure.mesh.position.z=at.z;
-      figure.mesh.material=hero.inCombat?this.palette.combat:
-        hero.role==="tank"?this.palette.heroTank:
-          hero.role==="healer"?this.palette.heroHeal:this.palette.heroDps;
-      figure.ring!.position.set(at.x,TABLE_DIORAMA_WELL.floorY+.006,at.z);
-      figure.ring!.isVisible=!!hero.partyId;
+      const at=this.worldPoint(hero);
+      figure.visual.root.position.copyFrom(at);
+      setHeroVisualEquipment(figure.visual,hero.equipment);
+      figure.ring.position.set(at.x,.10,at.z);
+      figure.ring.isVisible=!!hero.partyId;
     }
     this.root.metadata.actorCount=this.heroes.size;
   }
@@ -355,9 +469,13 @@ void main(void){
   get observedFloor():number|null{return this.activeFloor;}
   get miniatureActorCount():number{return this.heroes.size;}
   dispose():void{
-    this.root.dispose();
+    this.root.dispose(false,true);
+    this.ghoulAsset?.dispose();
+    for(const mat of this.floorArtMaterials)mat.dispose();
     this.floorText.dispose();
     this.floorMat.dispose();
+    this.ghoulFallback.dispose();
+    for(const mat of Object.values(this.featurePaint))mat.dispose();
     for(const mat of Object.values(this.palette))mat.dispose();
   }
 }
