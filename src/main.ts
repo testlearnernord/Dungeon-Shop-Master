@@ -686,9 +686,9 @@ engine.runRenderLoop(() => {
     arena.update(engine.getDeltaTime() / 1000);
     arena.currentScene?.render();
   } else {
-    // The LIVE spectator paints only the table's inset while the original
-    // first-person shop scene stays in charge of movement and rendering.
-    tableVisuals.setDungeonTexture(dungeon.renderTablePreview(frameMs/1000));
+    // The tabletop contains an actual 3D diorama inside THIS shop Scene.
+    // It reads the selected LIVE floor, never running a second world engine.
+    tableVisuals.updateLiveFloor(dungeon.selectedLiveFloor,camera.position);
     npcVisuals.renderInterpolated(
       paused||worldClockPacer.isPaused?1:worldClockPacer.presentationAlpha,
       ()=>profile("scene-render",()=>scene.render()));
