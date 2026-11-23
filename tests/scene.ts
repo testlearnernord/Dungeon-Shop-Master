@@ -42,6 +42,8 @@ export function inspectGalviksLiveTable(){
   return {
     insetExists:!!inset,
     insetVisible:inset?.isVisible??false,
+    projectionDebug:inset?.metadata?.projectionDebug??null,
+    fallbackStillPresent:!!scene?.getMeshByName("cellar-table-fallback"),
     textureName:texture?.name??null,
     shopCamera:scene?.activeCamera?.name??null,
     shopMode:!document.body.classList.contains("dungeon-active"),
