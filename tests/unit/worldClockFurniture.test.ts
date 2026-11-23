@@ -12,7 +12,7 @@ import {blueprintAtSurface} from "../../src/game/furnitureBlueprint.ts";
 test("a single authoritative world tick drives exactly one 24-hour pointer rotation",()=>{
   const first=worldClockFace(1,0);
   assert.deepEqual([first.hour,first.minute,first.angleRadians,first.stopped],
-    [0,0,0,false]);
+    [0,0,-0,false]);
   const six=worldClockFace(1,WORLD_TICKS_PER_DAY/4);
   assert.deepEqual([six.hour,six.minute,six.angleRadians,six.stopped],
     [6,0,-Math.PI/2,false]);
