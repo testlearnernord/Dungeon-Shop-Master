@@ -18,11 +18,12 @@ import { createShopLayout, type ShopLayout } from "./shopLayout.ts";
 import { createBedroomFurnitureLayout, type BedroomFurnitureLayout } from "./bedroomFurniture.ts";
 import { DEFAULT_ROSTER_BOARD,type RosterBoardPlacement } from "./rosterBoardPlacement.ts";
 import type {WallPortraitPlacement} from "./wallPortraitPlacement.ts";
+import {DEFAULT_WALL_CLOCK,type WallClockPlacement} from "./wallClockPlacement.ts";
 import type {ShopCart} from "./shopCarts.ts";
 import {arrivalEvent} from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 36;
+export const SIMULATION_VERSION = 37;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -97,6 +98,8 @@ export interface GameState {
   readonly shopLayout: ShopLayout;
   readonly bedroomFurniture: BedroomFurnitureLayout;
   readonly rosterBoard: RosterBoardPlacement;
+  /** One physical clock prop; every instance only reads worldClock.tick. */
+  readonly wallClock: WallClockPlacement;
   /** Optional one-of-a-kind wall decoration, absent until the player hangs it. */
   readonly wallPortrait?: WallPortraitPlacement;
   readonly shopRoom: ShopRoomGeometry;
@@ -150,6 +153,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     shopLayout: createShopLayout(),
     bedroomFurniture: createBedroomFurnitureLayout(),
     rosterBoard: DEFAULT_ROSTER_BOARD,
+    wallClock: {...DEFAULT_WALL_CLOCK},
     shopRoom: createShopRoomGeometry(),
     cellarRoom: createCellarRoom(),
     cellarChest: {...DEFAULT_CELLAR_CHEST},
