@@ -648,7 +648,7 @@ function commitDungeonTick(state:GameState):GameState {
       });
       const start=arrivals[0].steps[0];
       const prepared=prepareSpatialDungeonCombat(participants,
-        {...feature,...atPoint},state.seed,layout,start,
+        {...feature,...atPoint},layout.seed,layout,start,
         dungeonSiteGeneration(committed.siteCycles,feature.id),true);
       const encounter:PreparedSpatialEncounter={
         featureId:feature.id,floor:ordinary,...atPoint,
