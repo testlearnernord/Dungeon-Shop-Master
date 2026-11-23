@@ -33,7 +33,9 @@ The first implementation slice stores one real Ghoul-Pack entity per active ordi
 
 The current LIVE floor projection, Tripo Ghoul map instance and Galvik's Table consume saved coordinates; each actively moving pack may show at most one red next-tile preview. These visuals cannot create a creature or a reward. Site-specific combat keeps `groupCombat.ts` and can begin when a hero enters an occupied monster tile.
 
-**Still not implemented in this slice:** Monster LOS/aggro, chasing/searching, monster-initiated contacts and simultaneous field-swap arbitration; pursuit-informed autonomous hero/party tactics. Their absence is a **release blocker** for complete V0.004 A. Do not treat this draft branch as release-complete or merge it before owner approval.
+**Second staged branch (V0.004 B):** `dungeonMonsterWorld.ts` now uses the existing `hasDungeonLineOfSight` geometry to discover only genuinely visible heroes within five tiles. A pack persists its observed target ID and last-known position, chases at its original 400-tick speed, searches after losing sight and returns to its home after three blind checkpoints. Re-sighting can restart pursuit. The targeting logic never reads hidden camera or spectator selections.
+
+**Still not implemented on this stacked branch:** Monster-initiated combat on contact, simultaneous field-swap arbitration, autonomous hero/party reactions, visual/browser behavior acceptance. Those are blockers for complete V0.004 A. No merge before explicit owner approval.
 
 ## Encounter and party expectations
 
