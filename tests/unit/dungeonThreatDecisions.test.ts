@@ -1,0 +1,87 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createGameState} from "../../src/game/gameState.ts";
+import {generateExpeditionLayout,dungeonNeighbors}
+  from "../../src/game/dungeonLayout.ts";
+import {emptySpatialDungeonWorld,simulateSpatialDungeonPartyDay}
+  from "../../src/game/spatialDungeonExploration.ts";
+import {advanceDungeonMonsterWorld} from "../../src/game/dungeonMonsterWorld.ts";
+import {chooseDungeonThreatReaction}
+  from "../../src/game/dungeonThreatDecisions.ts";
+import {heroProgression} from "../../src/game/heroProgression.ts";
+import type {AdventurerState} from "../../src/game/adventurers.ts";
+
+const seed=7351,layout=generateExpeditionLayout(seed,1);
+const original=createGameState(seed).adventurers;
+const base=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),layout,1,0);
+const selected=base.monsters!.find(pack=>dungeonNeighbors(layout,pack).length>1)!;
+const position=dungeonNeighbors(layout,selected)[0];
+const monster={...selected,mode:"CHASING" as const,
+  targetHeroId:original[0].id,lastKnown:position,lastSeenTick:200,
+  lostSightChecks:0,target:position};
+const world={...base,
+  monsters:base.monsters!.map(m=>m.id===selected.id?monster:m),
+  heroes:[{heroId:original[0].id,...position,visited:[
+    layout.entrance.z*layout.width+layout.entrance.x,
+    position.z*layout.width+position.x,
+  ]}]};
+const hero=(overrides:Partial<AdventurerState>={})=>({
+  ...original[0],floor:1 as const,status:"exploring" as const,...overrides,
+});
+
+test("injured individual flees on a genuinely adjacent tile and the real walker commits it",()=>{
+  const wounded=hero({health:Math.floor(heroProgression(original[0]).maxHealth*.3),
+    traits:{...original[0].traits,positive:"careful"}});
+  const reaction=chooseDungeonThreatReaction(layout,world,[wounded],[wounded]);
+  assert(reaction);
+  assert.equal(reaction.action,"ESCAPING");
+  assert(dungeonNeighbors(layout,position).some(cell=>
+    cell.x===reaction.step.x&&cell.z===reaction.step.z));
+  assert.notDeepEqual(reaction.step,{x:selected.x,z:selected.z});
+  const stepped=simulateSpatialDungeonPartyDay([wounded],world,seed,1,
+    new Set([wounded.id]),{maxSteps:1,deferCombat:true,
+      tacticalStep:reaction.step});
+  const progress=stepped.world.heroes.find(h=>h.heroId===wounded.id);
+  assert(progress);
+  assert.deepEqual([progress.x,progress.z],[reaction.step.x,reaction.step.z]);
+  assert.equal(stepped.ticks[0].replay.steps[1].action,"walk");
+});
+
+test("armed, experienced healthy warrior may deliberately confront the visible pursuer",()=>{
+  const strong=hero({level:5,equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+    health:heroProgression(original[0]).maxHealth});
+  const reaction=chooseDungeonThreatReaction(layout,world,[strong],[strong]);
+  assert(reaction);
+  assert.equal(reaction.action,"PREPARING_TO_FIGHT");
+  assert.deepEqual(reaction.step,{x:selected.x,z:selected.z});
+});
+
+test("an unequipped isolated hero may move toward another truly visible helper",()=>{
+  const weak=hero({level:1,equipment:{weapon:null,armor:null},
+    traits:{...original[0].traits,positive:"generous"},health:40});
+  const support=dungeonNeighbors(layout,position).find(p=>
+    p.x!==selected.x||p.z!==selected.z);
+  assert(support);
+  const friend={...original[1],floor:1 as const,status:"exploring" as const};
+  const known={...world,heroes:[...world.heroes,{
+    heroId:friend.id,...support,visited:[
+      layout.entrance.z*layout.width+layout.entrance.x,
+      support.z*layout.width+support.x,
+    ],
+  }]};
+  const reaction=chooseDungeonThreatReaction(layout,known,[weak],[weak,friend]);
+  assert(reaction);
+  assert.equal(reaction.action,"SEEKING_SUPPORT");
+  assert.deepEqual(reaction.step,support);
+});
+
+test("a cautious underequipped hero without support chooses an actual one-cell LOS evasion",()=>{
+  const weak=hero({level:1,health:45,
+    traits:{...original[0].traits,positive:"generous"},
+    equipment:{weapon:null,armor:null}});
+  const reaction=chooseDungeonThreatReaction(layout,world,[weak],[weak]);
+  assert(reaction);
+  assert.equal(reaction.action,"BREAKING_LOS");
+  assert(dungeonNeighbors(layout,position).some(cell=>
+    cell.x===reaction.step.x&&cell.z===reaction.step.z));
+});
