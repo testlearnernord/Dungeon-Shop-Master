@@ -89,6 +89,14 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./?e2e-pause-world=1");
   await expect(page.locator("#day")).toHaveText("Day 1");
+  await expect.poll(async()=>{
+    try{return await page.evaluate(async()=>(
+      await import("/Dungeon-Shop-Master/tests/scene.ts")).shopSceneReady());}
+    catch(error){
+      if(!String(error).includes("Execution context was destroyed"))throw error;
+      return false;
+    }
+  },{timeout:30000,intervals:[200,400,700]}).toBe(true);
   await page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtGalviksTable());
   const inspect=()=>page.evaluate(async()=>
