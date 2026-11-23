@@ -23,7 +23,7 @@ test("never draw a fake crossing from an observation gap or another floor",()=>{
     {...after,floor:2},
     {...after,siteCycle:3},
     {...after,x:7},
-    {...after,x:5,z:7},
+    {...after,x:5,z:8},
     {...after,x:5,z:6},
     {...after,lastMoveTick:1000},
     {...after,lastMoveTick:1800},
