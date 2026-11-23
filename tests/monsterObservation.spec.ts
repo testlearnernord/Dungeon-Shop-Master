@@ -136,6 +136,12 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   await nextMonsterStep();
   await expect.poll(async()=>JSON.stringify({
     view:await selected(),world:await realWorld(),
+    table:await page.evaluate(async()=>{
+      const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+      const info=probe.inspectGalviksLiveTable();
+      return {tick:info.lastObservedTick,eyeY:info.shopEyeY,
+        tableY:info.tableY,distance:info.tableDistance};
+    }),
   }),{timeout:5000,intervals:[100,150,200]}).toContain('"phase":"walk"');
   const tableWalking=await selected();
   expect(tableWalking?.clip).toBe("walk_feral");
