@@ -16,8 +16,10 @@ import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 
 function material(scene:Scene,id:string,color:Color3):StandardMaterial{
   const mat=new StandardMaterial("table-diorama-"+id,scene);
-  mat.diffuseColor=color;
-  mat.emissiveColor=Color3.Black();
+  // Unlit Babylon StandardMaterial requires actual emissive colour.
+  // Diffuse-only with disableLighting made every 3D miniature mesh black.
+  mat.diffuseColor=Color3.Black();
+  mat.emissiveColor=color;
   mat.specularColor=Color3.Black();
   mat.disableLighting=true;
   mat.backFaceCulling=false;
@@ -87,6 +89,11 @@ export class GalviksTableDiorama{
     this.floorText=new DynamicTexture("cellar-table-floor-label-text",
       {width:512,height:128},scene,false);
     this.floorMat=material(scene,"floor-label",Color3.White());
+    // This label uses a same-scene dynamic image, lit normally to preserve
+    // its dark background and gold text without additive white emission.
+    this.floorMat.emissiveColor=Color3.Black();
+    this.floorMat.diffuseColor=Color3.White();
+    this.floorMat.disableLighting=false;
     this.floorMat.diffuseTexture=this.floorText;
     const plaque=MeshBuilder.CreatePlane("cellar-table-floor-label",{
       width:.36,height:.068,
