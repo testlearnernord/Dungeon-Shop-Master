@@ -26,14 +26,6 @@ jobs:
       - run: npm run audit:modules -- --json
       - run: npx playwright install chromium
       - run: xvfb-run -a npm test
-      - name: Upload Level 6 boss preview screenshots
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ashen-troll-preview-${{ github.run_id }}
-          path: test-results/**/ashen-mauler-*.png
-          if-no-files-found: ignore
-          retention-days: 7
       - name: Upload browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

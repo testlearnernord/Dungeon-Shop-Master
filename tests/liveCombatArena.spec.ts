@@ -11,6 +11,27 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   // Never let the initial startup autosave overwrite an explicit seeded
   // browser fixture written by a separate CampaignStorage instance.
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  // Vite may replace its boot document the first time this browser-only
+  // scene inspector is transformed. Warm it before seeding the committed fight,
+  // so a late module compile cannot navigate away mid-assertion.
+  await expect.poll(async()=>{
+    try {
+      return await page.evaluate(async()=>{
+        await import("/Dungeon-Shop-Master/tests/scene.ts");
+        return true;
+      });
+    } catch(error) {
+      // Retry only actual Vite startup/navigation races; other import errors
+      // still fail the test instead of hiding a broken production module.
+      if(/Execution context was destroyed|Failed to fetch dynamically imported module/.test(
+        String(error)))return false;
+      throw error;
+    }
+  },{timeout:30000,intervals:[200,400,800]}).toBe(true);
+  // Vite's initial inspector compile may reload the page, which correctly
+  // changes the UI copy from "Saved" to "Continued saved".
+  await expect(page.locator("#save-status")).toHaveText(
+    /^(?:Saved|Continued saved) Day 1\.$/);
   // Use the existing genuine saved world-clock fight fixture, not fabricated
   // poses or a second engine. An already discovered neighboring monster is
   // the only unknown adjacent location for this actual explorer.
