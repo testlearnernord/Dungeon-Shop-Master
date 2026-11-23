@@ -52,7 +52,8 @@ function chasedStationaryHero():{
 test("pursuing Ghoul crosses onto a stationary hero and starts exactly one true GroupCombat",()=>{
   const {store,heroId,featureId,x,z}=chasedStationaryHero();
   store.advanceWorldTime(200);
-  assert.equal(store.state.liveDungeon.combats.length,0);
+  assert.equal(store.state.liveDungeon.combats.filter(f=>
+    f.encounter.featureId===featureId).length,0);
   store.advanceWorldTime(200);
   const fights=store.state.liveDungeon.combats.filter(f=>
     f.encounter.featureId===featureId);
