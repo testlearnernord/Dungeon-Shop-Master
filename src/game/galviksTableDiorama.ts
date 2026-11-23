@@ -60,6 +60,7 @@ type Figure={readonly visual:HeroVisual;readonly ring:Mesh};
 export class GalviksTableDiorama{
   readonly root:TransformNode;
   private readonly floorText:DynamicTexture;
+  private readonly floorPlaque:Mesh;
   private readonly tabletopLight:HemisphericLight;
   private readonly floorMat:ShaderMaterial;
   private readonly palette:{
@@ -162,9 +163,11 @@ void main(void){
     const plaque=MeshBuilder.CreatePlane("cellar-table-floor-label",{
       width:.40,height:.085,
     },scene);
-    plaque.parent=this.root;
-    // Vertical, facing Galvik on the rear lip ABOVE the miniature.
-    plaque.position.set(0,1.020,-.355);
+    // Sign belongs to the physical furniture, NOT the 180° rotated
+    // observation root. Otherwise FLOOR 01 reads mirrored from Galvik. 
+    plaque.parent=tableRoot;
+    plaque.position.set(0,1.020,TABLE_DIORAMA_WELL.centerZ-.355);
+    this.floorPlaque=plaque;
     plaque.isPickable=false;plaque.checkCollisions=false;
     plaque.material=this.floorMat;
     this.setFloorLabel(1);
@@ -598,6 +601,7 @@ void main(void){
     for(const figure of this.heroes.values())this.disposeFigure(figure);
     this.heroes.clear();
     this.root.dispose();
+    this.floorPlaque.dispose();
     this.tabletopLight.dispose();
     this.ghoulAsset?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
