@@ -83,7 +83,7 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
 });
 
 
-test("Galvik's movable table projects the selected LIVE floor without leaving shop mode @ci-smoke",async({page})=>{
+test("Galvik's movable table projects the selected LIVE floor without leaving shop mode @ci-smoke",async({page},testInfo)=>{
   test.setTimeout(90000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
@@ -147,6 +147,9 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
   const points=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksTableScreenshotPoints());
   const png=await page.screenshot();
+  await testInfo.attach("galviks-table-live-visual",{
+    body:png,contentType:"image/png",
+  });
   const colors=await page.evaluate(async({base64,points})=>{
     const image=new Image();
     image.src="data:image/png;base64,"+base64;
