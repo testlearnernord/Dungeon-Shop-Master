@@ -40,6 +40,7 @@ export class InteractionSystem {
     private readonly store?: GameStore,
     private readonly onMerchantAction: (action:MerchantAction)=>void = () => {},
     private readonly openFishing:()=>boolean=()=>false,
+    private readonly observeTable:()=>boolean=()=>false,
   ) {
     this.shop.select(SHELF_GOODS[0].id);
     this.registerEvents();
@@ -297,6 +298,11 @@ export class InteractionSystem {
 
   private interact(): void {
     if(!this.isShopActive())return;
+    if(this.observeTable()){
+      this.message="Observing the LIVE Dungeon through Galvik's Table.";
+      this.publish();
+      return;
+    }
     const pick = this.scene.pickWithRay(this.camera.getForwardRay(this.maxInteractionDistance));
     const target = this.worldItems.find(({ mesh }) => mesh === pick?.pickedMesh);
     if (target?.kind === "register") {

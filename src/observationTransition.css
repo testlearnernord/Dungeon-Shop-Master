@@ -1,0 +1,53 @@
+/* The SAME overlay stays mounted while Babylon switches shop -> LIVE.
+ * No second canvas, screenshot texture or CSS crossfade of stale world data. */
+#observation-transition-veil{
+  position:fixed;
+  inset:0;
+  z-index:120;
+  pointer-events:none;
+  opacity:0;
+  background:
+    radial-gradient(ellipse 58% 54% at 50% 48%,
+      rgb(5 8 9 / 20%) 0%,
+      rgb(3 6 8 / 43%) 37%,
+      rgb(2 4 6 / 94%) 100%);
+  will-change:opacity;
+}
+body.observation-transitioning #observation-transition-veil{
+  pointer-events:auto;
+}
+#observation-table-hint{
+  position:fixed;
+  left:50%;
+  bottom:22%;
+  transform:translateX(-50%);
+  z-index:19;
+  pointer-events:none;
+  padding:7px 14px;
+  border:1px solid rgb(217 179 113 / 68%);
+  border-radius:6px;
+  background:rgb(12 17 17 / 91%);
+  box-shadow:0 4px 20px rgb(0 0 0 / 35%);
+  color:#f1cf8e;
+  font:700 12px Georgia,serif;
+  letter-spacing:.08em;
+  white-space:nowrap;
+}
+#observation-table-hint[hidden]{display:none!important}
+
+/* UI is never the visual cut cue. Shop fades out at the beginning and
+ * LIVE fades in after the match-frame camera settles. Existing [hidden]
+ * flags and scene ownership remain authoritative. */
+#hud,#dungeon-hud,#music-panel{
+  transition:opacity .24s ease;
+}
+body.observation-transitioning #hud,
+body.observation-transitioning #dungeon-hud,
+body.observation-transitioning #music-panel,
+body.observation-transitioning #observation-table-hint{
+  opacity:0;
+  pointer-events:none;
+}
+@media (prefers-reduced-motion:reduce){
+  #hud,#dungeon-hud,#music-panel{transition:none}
+}

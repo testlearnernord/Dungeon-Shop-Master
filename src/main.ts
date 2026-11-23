@@ -21,6 +21,7 @@ import { forecastShoppingIntents } from "./game/shopperIntents.ts";
 import { setupNpcTrafficDebug } from "./game/npcTrafficDebug.ts";
 import { Level6Arena } from "./game/level6Arena";
 import { DungeonViewer } from "./game/dungeonViewer";
+import {ObservationTransitionDirector} from "./game/observationTransitionDirector.ts";
 import { createRosterBoard } from "./game/rosterBoard";
 import {setupWallPortraitVisuals} from "./game/wallPortraitVisuals.ts";
 import { setupRosterBoardHud } from "./rosterBoardHud";
@@ -67,6 +68,7 @@ import "./immersiveUi.css";
 import "./cashierLive.css";
 import "./expeditionArchive.css";
 import "./dungeonMapHud.css";
+import "./observationTransition.css";
 import "./worldEventFeed.css";
 import "./heroCard.css";
 
@@ -444,6 +446,7 @@ function renderInventory(selectedItem: ItemId): void {
 }
 
 let isShopActive = () => true;
+let observeTable:()=>boolean=()=>false;
 let fishing:ReturnType<typeof setupFishingHud>|null=null;
 let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
@@ -457,7 +460,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
   debtBook.open,store,action=>merchantActions.play(action),
-  ()=>fishing?.open()??false);
+  ()=>fishing?.open()??false,()=>observeTable());
 setupControlsHotbarClearance();
 setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),
   itemId=>interactions.selectItem(itemId));
@@ -486,6 +489,9 @@ const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(observingFight
     ?bossFight?"boss":"combat":"dungeon");
 }, seconds=>soundtrack.skipCombatIntro(seconds),sfx);
+const observationTransition=new ObservationTransitionDirector(
+  scene,camera,canvas,tableVisuals,dungeon,store,()=>isShopActive());
+observeTable=()=>observationTransition.enter();
 watchLiveHero=id=>dungeon.openLive(id);
 // Exactly one global event layer, shared by the shop, LIVE floors and both
 // combat stages. Its projections never schedule, settle or simulate events.
@@ -538,6 +544,7 @@ setupExpeditionArchiveHud(canvas,camera,store,
   (eventId,seconds)=>dungeon.openReplayAt(eventId,seconds),
   eventId=>dungeon.openRecordedPartyBoss(eventId));
 isShopActive=()=>!arena.isActive&&!dungeon.isActive&&
+  !observationTransition.isTransitioning&&
   !(bedtime?.isBlocking??false)&&!(fishing?.isActive??false);
 /** Shop floor uses the same worldwide Hero Card as LIVE Dungeon.
  * The visual pick is throttled and never enables Babylon NPC mesh picking,
@@ -628,6 +635,9 @@ cashier=setupCashierHud(canvas,camera,store,()=>npcVisuals.readyCheckoutHeroId()
 
 let lastResolutionFrame=0;
 engine.runRenderLoop(() => {
+  // One cinematic director advances BEFORE deciding which scene renders.
+  // Both scenes continue to observe the single authoritative world clock.
+  observationTransition.update(engine.getDeltaTime()/1000);
   const frameMs=ignoreNextClockFrame?0:engine.getDeltaTime();
   ignoreNextClockFrame=false;
   // Read-only crosshair affordance. Avoid costly pointer projections at 144Hz.
@@ -646,7 +656,7 @@ engine.runRenderLoop(() => {
   // customers must continue on the one authoritative 50ms clock.
   const paused=document.hidden||
     (!isShopActive()&&!(fishing?.isActive??false)&&
-       !dungeon.isWatchingLive)||
+       !dungeon.isWatchingLive&&!observationTransition.isTransitioning)||
     !!document.querySelector("dialog[open]:not(#cashier-overlay)")||
     document.body.classList.contains("blueprint-active");
   npcVisuals.setWorldPaused(paused);

@@ -304,6 +304,9 @@ export class DungeonViewer {
       this.paintPlayback();
     });
     window.addEventListener("keydown", event => {
+      // Cinematic input belongs to ObservationTransitionDirector. This
+      // listener was installed first, so it must not act on G / Escape.
+      if(document.body.classList.contains("observation-transitioning"))return;
       // Give the shared hero inspector first refusal on Escape; do not
       // accidentally close the entire spectator arena behind its card.
       if(!document.querySelector<HTMLElement>("#world-hero-card")?.hidden)
@@ -473,7 +476,7 @@ export class DungeonViewer {
       "--dungeon-panels-top",Math.ceil(bottom+12)+"px");
   }
 
-  open(initialReplayId?:string): void {
+  open(initialReplayId?:string,entryFloor:SpatialDungeonFloor=1): void {
     if (this.active || document.querySelector("dialog[open]") ||
       document.body.classList.contains("arena-active")) return;
     this.shopCamera.detachControl();
@@ -483,13 +486,37 @@ export class DungeonViewer {
     document.body.classList.add("dungeon-active");
     this.panel.hidden = false;
     this.alignHudPanels();
-    this.layout = generateExpeditionLayout(this.store.state.seed,7);
+    // Build the final floor immediately. Creating a throwaway Floor 7
+    // scene here would stall the single cinematic handoff for no reason.
+    this.layout = generateExpeditionLayout(this.store.state.seed,
+      initialReplayId?7:entryFloor);
     this.createScene(this.layout);
-    this.refreshReplaySelector(initialReplayId);
+    this.refreshReplaySelector(initialReplayId,entryFloor);
     // LIVE floor overview is the default. Archive opens only intentionally.
     if (this.replayScene?.currentReplay) this.replaySelector.focus();
     else this.floorSelector.focus();
     this.sceneChanged(true);
+  }
+
+  /** Exact match-frame entry: no default-floor frame is ever rendered.
+   * Keep this distinct from replay, hero and world-event navigation. */
+  openTableObservation(
+    floor:SpatialDungeonFloor,pose:DungeonMapPose,
+  ):boolean{
+    if(this.active||!LIVE_SPECTATOR_FLOORS.includes(floor))return false;
+    this.open(undefined,floor);
+    if(!this.active||this.liveFloor!==floor)return false;
+    this.followActor=null;
+    this.setMapPose(pose);
+    this.focusLabel.textContent="GALVIK'S TABLE · LIVE Floor "+floor;
+    return true;
+  }
+
+  /** During the short scene handoff only the read-only map camera moves.
+   * All world actor positions, floor selections and game state stay fixed. */
+  setTableObservationPose(pose:DungeonMapPose):void{
+    if(this.active&&this.liveFloor!==null&&!this.liveArena.isActive)
+      this.setMapPose(pose);
   }
 
   /** Enter through an explicit Board choice. Do not make remote hero
@@ -945,7 +972,9 @@ export class DungeonViewer {
           e.adventurerId ?? "Unknown hero",
       }));
   }
-  private refreshReplaySelector(initialReplayId?:string):void {
+  private refreshReplaySelector(
+    initialReplayId?:string,entryFloor:SpatialDungeonFloor=1,
+  ):void {
     const replays=this.availableReplays();
     this.replaySelector.replaceChildren();
     const preview=new Option("Layout preview (full development map)","preview");
@@ -961,7 +990,7 @@ export class DungeonViewer {
     // Opening the dungeon never silently opens yesterday's tapes.
     if(initialReplayId&&replays.some(entry=>entry.id===initialReplayId))
       this.selectReplay(initialReplayId);
-    else this.startFloor(1);
+    else this.startFloor(entryFloor);
   }
   private selectReplay(id:string):void {
     this.leaveLiveCombat();

@@ -31,7 +31,7 @@ jobs:
   smoke:
     name: Browser core smoke
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,6 +48,32 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: browser-core-failure-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  observation:
+    name: Table camera handoff smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      # Separate from the established 16-flow smoke suite: a slow GLB
+      # startup or visual failure must have its OWN actionable diagnostics.
+      - run: xvfb-run -a npx playwright test tests/observationTransition.spec.ts --grep @ci-smoke
+      - name: Upload camera-handoff failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: table-handoff-failure-${{ github.run_id }}
           path: |
             playwright-report/
             test-results/
