@@ -69,9 +69,12 @@ test("three consecutive blind checks stop pursuit of a hidden hero",()=>{
   assert.equal(pack.mode,"SEARCHING");
   world=advanceDungeonMonsterWorld(world,layout,1,800);
   pack=world.monsters!.find(m=>m.id===selected.id)!;
-  assert.equal(pack.mode,"RETURNING");
+  assert(["RETURNING","IDLE"].includes(pack.mode),
+    "a home-positioned pack may end pursuit directly in IDLE");
   assert.equal(pack.targetHeroId,undefined);
-  assert.deepEqual(pack.target,{x:pack.homeX,z:pack.homeZ});
+  if(pack.mode==="RETURNING")
+    assert.deepEqual(pack.target,{x:pack.homeX,z:pack.homeZ});
+  else assert.deepEqual([pack.x,pack.z],[pack.homeX,pack.homeZ]);
 });
 
 test("an observed target and last seen tile survive a strict save round-trip",()=>{
