@@ -62,11 +62,7 @@ export class GalviksTableDiorama{
   private readonly palette:{
     stoneA:PBRMaterial;stoneB:PBRMaterial;
     corridor:PBRMaterial;room:PBRMaterial;
-    platform:StandardMaterial;heroTank:StandardMaterial;
-    heroDps:StandardMaterial;heroHeal:StandardMaterial;
-    ghoul:StandardMaterial;treasure:StandardMaterial;
-    trap:StandardMaterial;entrance:StandardMaterial;stair:StandardMaterial;
-    combat:StandardMaterial;
+    platform:StandardMaterial;entrance:StandardMaterial;
   };
   private floorRoot:TransformNode|null=null;
   private miniatureWorldRoot:TransformNode|null=null;
@@ -75,7 +71,6 @@ export class GalviksTableDiorama{
   private ghoulSource:Mesh|null=null;
   private ghoulAsset:AssetContainer|null=null;
   private ghoulLoading=false;
-  private lastFrame:LiveFloorSpectatorFrame|null=null;
   private floorArtMaterials:StandardMaterial[]=[];
   private actorRoot:TransformNode|null=null;
   private featureRoot:TransformNode|null=null;
@@ -125,15 +120,7 @@ export class GalviksTableDiorama{
       corridor:scaledSurface("flagstones",live.floor,.49),
       room:scaledSurface("room-flagstones",live.floor,.63),
       platform:material(scene,"platform",new Color3(.11,.14,.15)),
-      heroTank:material(scene,"hero-tank",new Color3(.28,.72,.96)),
-      heroDps:material(scene,"hero-dps",new Color3(.97,.75,.34)),
-      heroHeal:material(scene,"hero-heal",new Color3(.42,.94,.57)),
-      ghoul:material(scene,"ghoul",new Color3(.91,.33,.37)),
-      treasure:material(scene,"treasure",new Color3(1,.78,.26)),
-      trap:material(scene,"trap",new Color3(.82,.32,.66)),
       entrance:material(scene,"entrance",new Color3(.24,.96,.74)),
-      stair:material(scene,"stair",new Color3(.91,.72,.38)),
-      combat:material(scene,"combat",new Color3(1,.28,.21)),
     };
     this.featurePaint=createDungeonFeaturePalette(scene);
     for(const mat of Object.values(this.featurePaint))
@@ -203,7 +190,6 @@ void main(void){
     this.lastUpdateAt=now;
     const frame=selectLiveFloorSpectatorFrame(state,floor);
     if(!frame)return;
-    this.lastFrame=frame;
     this.syncActors(frame);
     const resolved=[...frame.resolved].sort().join("|");
     if(resolved!==this.lastResolved){
@@ -265,7 +251,6 @@ void main(void){
     for(const mat of this.floorArtMaterials)mat.dispose();
     this.floorArtMaterials=[];
     this.heroes.clear();
-    this.lastFrame=null;
     this.layout=layout;
 
     this.floorRoot=new TransformNode("cellar-table-diorama-floor-"+floor,this.scene);
