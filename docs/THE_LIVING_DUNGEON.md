@@ -39,6 +39,8 @@ Autonomous heroes and co-located Temporary Parties may flee on actual adjacent t
 
 **V0.004 F step presentation (#341):** A monster's **400-world-tick movement interval** is a gameplay rule, **not** a mesh interpolation duration. The Ghoul visually traverses its one committed tile in a short **1.2-second walk burst** (heroes: **0.85 seconds**) and then idles until its next actually committed move. Both Galvik's Table and full LIVE Viewer use the same clamped visual phase. No continuous 20-second crawl, additional AI clock, or cosmetic prediction of future movement.
 
+**V0.004 G authored observation animation (#342 candidate):** Ordinary LIVE Ghoul markers reuse a per-scene two-pose skinned GLB representation: actual `idle_combat` when standing and `walk_feral` only during the same saved 1.2-second single-cell movement. The shared skeletal rigs serve the full LIVE Viewer and Galvik's Table; each pack keeps only two lightweight mesh instances, and no additional movement authority, spawn or combat simulation is permitted. Rig animation is deliberately distinct from the dedicated full combat actor.
+
 **Still requiring human acceptance:** visually inspect actual moving models and red arrow readability in both viewer modes, longer multi-floor balance/performance runs, and focused exploration of uncommon contact/visibility edge cases. The merged feature and its green core smoke CI are not equivalent to complete human visual acceptance.
 
 ## Encounter and party expectations
