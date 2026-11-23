@@ -27,5 +27,7 @@ export function isObservedMonsterStep(
     to.lastMoveTick>=from.worldTick;
 }
 
-/** 20 world ticks per real-time second, matching the existing LIVE clock. */
-export const MONSTER_OBSERVATION_STEP_SECONDS=MONSTER_STEP_TICKS*.05;
+/** Visual traversal takes only a brief, weighty burst: monsters WAIT
+ * between real 400-tick decisions, just like heroes wait between steps.
+ * This is NOT the gameplay move interval (400 ticks / 20 seconds). */
+export const MONSTER_OBSERVATION_STEP_SECONDS=1.2;
