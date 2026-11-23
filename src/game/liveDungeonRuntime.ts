@@ -5,12 +5,14 @@ import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
+import {dungeonSiteGeneration} from "./dungeonRegeneration.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,
   type HeroDungeonDecision} from "./dungeonDecisions.ts";
 import {choosePersistentDungeonParty,negotiatePartyFloorDecisions,
   settlePersistentDungeonParties,temporaryPartyChanges,
   type DungeonPartyState} from "./dungeonParties.ts";
-import {advanceSpatialDungeonPartyStep,emptySpatialDungeonWorld,settleSpatialDungeonCombat,
+import {advanceSpatialDungeonPartyStep,emptySpatialDungeonWorld,
+  prepareSpatialDungeonCombat,settleSpatialDungeonCombat,
   SPATIAL_DUNGEON_COMBAT_SECONDS,getSpatialDungeonProgress,type PreparedSpatialEncounter,type SpatialDungeonReplay,
   type SpatialDungeonFloor,type SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
@@ -290,6 +292,7 @@ function commitDungeonTick(state:GameState):GameState {
     f.floor===CAVE_TROLL_FLOOR&&f.cleared);
   let rngState=state.rngState;
   const activities:WorldEvent[]=[];
+  const arrivalsByHero=new Map<string,SpatialDungeonReplay>();
   // Use roster order for stable, saved simultaneous encounter arbitration.
   // Shared sites are updated before the next party can inspect that tile.
   for(const original of state.adventurers){
@@ -494,6 +497,7 @@ function commitDungeonTick(state:GameState):GameState {
         independent):independent;
     for(const individual of result.ticks){
       const id=individual.adventurer.id;
+      arrivalsByHero.set(id,individual.replay);
       const count=(stepCounts.get(id)?.steps??0)+1;
       processed.add(id);
       byId.set(id,individual.adventurer);
@@ -566,8 +570,89 @@ function commitDungeonTick(state:GameState):GameState {
       .map(h=>getSpatialDungeonProgress(world,h.id,layout));
     const reserved=new Set(combats.filter(c=>c.encounter.floor===ordinary)
       .map(c=>c.encounter.featureId));
-    dungeonWorlds=setDungeonWorld(dungeonWorlds,ordinary,
-      advanceDungeonMonsterWorld(world,layout,day,tick,activeHeroes,reserved));
+    const advanced=advanceDungeonMonsterWorld(world,layout,day,tick,
+      activeHeroes,reserved);
+    let committed=advanced;
+    // Contact arbitration runs AFTER every scheduled hero and pack movement,
+    // on the same clock tick. Existing hero-arrival combats already own their
+    // sites; only unreserved packs can initiate another real GroupCombat.
+    const fighting=new Set(combats.flatMap(combat=>combat.heroIds));
+    for(const pack of advanced.monsters??[]){
+      if(reserved.has(pack.id))continue;
+      const at=finalRoster.filter(hero=>eligible(hero)&&hero.floor===ordinary&&
+        !fighting.has(hero.id)&&
+        activeHeroes.some(progress=>progress.heroId===hero.id&&
+          progress.x===pack.x&&progress.z===pack.z))
+        .sort((a,b)=>a.id.localeCompare(b.id));
+      if(!at.length)continue;
+      const leader=at[0];
+      const savedParty=(state.dungeonParties??[]).find(group=>
+        group.floor===ordinary&&group.memberIds.includes(leader.id));
+      const participants=savedParty
+        ?savedParty.memberIds.map(id=>at.find(hero=>hero.id===id))
+          .filter((hero):hero is AdventurerState=>!!hero)
+        :[leader];
+      if(!participants.length)continue;
+      const feature=layout.features.find(site=>
+        site.kind==="monster"&&site.id===pack.id);
+      if(!feature)throw new RangeError("Roaming pack has no source feature");
+      const encounterSite=ordinary+":"+feature.id;
+      if(combatSites.has(encounterSite))continue;
+      const atPoint={x:pack.x,z:pack.z};
+      const arrivals:SpatialDungeonReplay[]=participants.map(hero=>{
+        const old=arrivalsByHero.get(hero.id);
+        const progress=getSpatialDungeonProgress(committed,hero.id,layout);
+        const saved=old?.floor===ordinary&&old.outcome==="exploring"&&
+          old.steps.at(-1)?.x===pack.x&&old.steps.at(-1)?.z===pack.z
+          ?old:null;
+        const base:SpatialDungeonReplay=saved??{
+          version:1,day,heroId:hero.id,floor:ordinary,
+          appearance:{role:hero.role,equipment:{...hero.equipment}},
+          knownAtStart:[...progress.visited],
+          resolvedAtStart:[...committed.resolvedFeatureIds],
+          steps:[{...atPoint,t:0,action:"enter",hp:hero.health}],
+          encounters:[],outcome:"exploring",
+          ...(participants.length>1?{
+            partyMemberIds:participants.map(member=>member.id),
+            partyAppearances:participants.map(member=>({
+              id:member.id,role:member.role,equipment:{...member.equipment},
+            })),
+          }:{}),
+        };
+        const last=base.steps.at(-1)!;
+        return {...base,steps:[...base.steps,{
+          ...atPoint,t:last.t+0.1,action:"combat" as const,
+          hp:hero.health,featureId:pack.id,
+        }]};
+      });
+      const start=arrivals[0].steps[0];
+      const prepared=prepareSpatialDungeonCombat(participants,
+        {...feature,...atPoint},state.seed,layout,start,
+        dungeonSiteGeneration(committed.siteCycles,feature.id),true);
+      const encounter:PreparedSpatialEncounter={
+        featureId:feature.id,floor:ordinary,...atPoint,
+        siteCycle:pack.siteCycle,...prepared,
+      };
+      const fight=createGroupCombat(encounter.options);
+      combatSites.add(encounterSite);reserved.add(feature.id);
+      participants.forEach(hero=>fighting.add(hero.id));
+      if(participants.length>1)
+        sharedGroups.push(participants.map(hero=>hero.id));
+      combats.push({
+        id:"battle:"+day+":"+tick+":"+ordinary+":"+feature.id,
+        startedTick:tick,encounter,
+        heroIds:participants.map(hero=>hero.id),arrivals,
+        state:fight,frames:[captureGroupCombatFrame(fight)],
+      });
+      committed={...committed,monsters:committed.monsters?.map(monster=>{
+        if(monster.id!==pack.id)return monster;
+        const {target:_target,targetHeroId:_targetHeroId,
+          lastKnown:_lastKnown,lastSeenTick:_lastSeenTick,
+          lostSightChecks:_lostSightChecks,...rest}=monster;
+        return {...rest,mode:"ENGAGED" as const};
+      })};
+    }
+    dungeonWorlds=setDungeonWorld(dungeonWorlds,ordinary,committed);
   }
   const party=settleLivePartyRelationships(state.dungeonParties??[],
     sharedGroups,finalRoster,floor=>dungeonWorldAt(dungeonWorlds,floor),plans,state.seed,day,tick);
