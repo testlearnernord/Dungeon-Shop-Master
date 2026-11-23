@@ -2,6 +2,7 @@ import {dungeonNeighbors,dungeonShortestPath,tileAt,
   type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonSiteGeneration,refreshDungeonSites} from "./dungeonRegeneration.ts";
 import {SeededRandom} from "./random.ts";
+import {hasDungeonLineOfSight} from "./heroPerception.ts";
 import type {SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 
 /** A pack occupies ONE persisted world tile; its individual fighters are
@@ -17,6 +18,11 @@ export interface DungeonMonsterState extends DungeonPoint {
   readonly lastMoveTick:number;
   readonly nextDecisionTick:number;
   readonly target?:DungeonPoint;
+  /** An individual observed party representative, never a remote omniscient group. */
+  readonly targetHeroId?:string;
+  readonly lastKnown?:DungeonPoint;
+  readonly lastSeenTick?:number;
+  readonly lostSightChecks?:number;
 }
 
 /** Game rules, not renderer delays. A hero moves every 200 world ticks. */
@@ -24,6 +30,12 @@ export const MONSTER_STEP_TICKS=400;
 export const MONSTER_ROAM_CHANCE=0.12;
 export const MONSTER_ROAM_MIN_DISTANCE=3;
 export const MONSTER_ROAM_MAX_DISTANCE=6;
+export const MONSTER_SIGHT_RADIUS=5;
+export const MONSTER_LOST_SIGHT_CHECKS=3;
+
+export interface MonsterObservedHero extends DungeonPoint{
+  readonly heroId?:string;
+}
 
 const key=(p:DungeonPoint)=>p.x+":"+p.z;
 const same=(a:DungeonPoint,b:DungeonPoint)=>a.x===b.x&&a.z===b.z;
@@ -54,17 +66,56 @@ function roamDestinations(layout:DungeonLayout,from:DungeonPoint):DungeonPoint[]
 }
 
 function beginIdle(monster:DungeonMonsterState,tick:number,rng:SeededRandom):DungeonMonsterState{
-  const {target:_priorTarget,...rest}=monster;
+  const {
+    target:_target,targetHeroId:_targetHeroId,lastKnown:_lastKnown,
+    lastSeenTick:_lastSeenTick,lostSightChecks:_lostSightChecks,...rest
+  }=monster;
   return {...rest,mode:"IDLE",
     nextDecisionTick:tick+MONSTER_STEP_TICKS*(2+rng.int(7))};
+}
+
+/** Only the current, geometric LOS can grant a new target position.
+ * Past sightings are one committed point, never a hidden hero locator. */
+function perceive(
+  monster:DungeonMonsterState,layout:DungeonLayout,tick:number,
+  heroes:readonly MonsterObservedHero[],
+):DungeonMonsterState {
+  if(monster.mode==="ENGAGED")return monster;
+  const visible=heroes.filter(hero=>hero.heroId&&
+    hasDungeonLineOfSight(layout,monster,hero,MONSTER_SIGHT_RADIUS));
+  const known=visible.find(hero=>hero.heroId===monster.targetHeroId);
+  const chosen=known??visible.sort((a,b)=>{
+    const da=dungeonShortestPath(layout,monster,a).length;
+    const db=dungeonShortestPath(layout,monster,b).length;
+    return da-db||(a.heroId??"").localeCompare(b.heroId??"");
+  })[0];
+  if(chosen?.heroId){
+    const point={x:chosen.x,z:chosen.z};
+    return {...monster,mode:"CHASING",targetHeroId:chosen.heroId,
+      target:point,lastKnown:point,lastSeenTick:tick,lostSightChecks:0};
+  }
+  if(monster.mode==="CHASING"||monster.mode==="SEARCHING"){
+    const misses=(monster.lostSightChecks??0)+1;
+    if(misses>=MONSTER_LOST_SIGHT_CHECKS){
+      const {targetHeroId:_former,...rest}=monster;
+      return {...rest,mode:"RETURNING",target:{
+        x:monster.homeX,z:monster.homeZ},lostSightChecks:misses};
+    }
+    return {...monster,mode:"SEARCHING",
+      target:monster.lastKnown,lostSightChecks:misses};
+  }
+  return monster;
 }
 
 function advanceOne(
   monster:DungeonMonsterState,layout:DungeonLayout,tick:number,
   occupied:ReadonlySet<string>,
 ):DungeonMonsterState {
-  if(monster.mode==="ENGAGED"||monster.mode!=="IDLE"&&monster.mode!=="ROAMING")
-    return monster;
+  if(monster.mode==="ENGAGED")return monster;
+  if(monster.mode==="RETURNING"&&
+     monster.x===monster.homeX&&monster.z===monster.homeZ)
+    return beginIdle(monster,tick,
+      roll(layout,monster.id,monster.siteCycle,tick));
   if(monster.mode==="IDLE"&&tick>=monster.nextDecisionTick){
     const rng=roll(layout,monster.id,monster.siteCycle,tick);
     const sites=rng.next()<MONSTER_ROAM_CHANCE
@@ -74,15 +125,19 @@ function advanceOne(
     monster={...monster,mode:"ROAMING",
       target:sites[rng.int(sites.length)]};
   }
-  if(monster.mode!=="ROAMING"||!monster.target||
+  if(!monster.target||monster.mode==="IDLE"||
      tick-monster.lastMoveTick<MONSTER_STEP_TICKS)return monster;
   const rng=roll(layout,monster.id,monster.siteCycle,tick);
-  if(same(monster,monster.target))return beginIdle(monster,tick,rng);
+  if(same(monster,monster.target)){
+    return monster.mode==="ROAMING"||monster.mode==="RETURNING"
+      ?beginIdle(monster,tick,rng):monster;
+  }
   const path=dungeonShortestPath(layout,monster,monster.target);
   const next=path[1];
   if(!next||occupied.has(key(next)))return monster;
   const moved={...monster,x:next.x,z:next.z,lastMoveTick:tick};
-  return same(moved,monster.target)
+  return same(moved,monster.target)&&
+    (monster.mode==="ROAMING"||monster.mode==="RETURNING")
     ?beginIdle(moved,tick,rng):moved;
 }
 
@@ -91,7 +146,7 @@ function advanceOne(
  * The caller supplies only genuinely present heroes and combat reservations. */
 export function advanceDungeonMonsterWorld(
   world:SpatialDungeonWorld,layout:DungeonLayout,day:number,tick:number,
-  occupiedHeroes:readonly DungeonPoint[]=[],
+  occupiedHeroes:readonly MonsterObservedHero[]=[],
   reservedSiteIds:ReadonlySet<string>=new Set(),
 ):SpatialDungeonWorld {
   if(layout.floor<1||layout.floor>9)return world;
@@ -149,11 +204,12 @@ export function advanceDungeonMonsterWorld(
     }
     const engaged=reservedSiteIds.has(feature.id);
     const candidate:DungeonMonsterState=engaged
-      ?(()=>{const {target:_prior,...rest}=base;
+      ?(()=>{const {target:_prior,targetHeroId:_id,lastKnown:_known,
+        lastSeenTick:_seen,lostSightChecks:_misses,...rest}=base;
           return {...rest,mode:"ENGAGED" as const};})()
-      :base.mode==="ENGAGED"
+      :perceive(base.mode==="ENGAGED"
         ?beginIdle(base,tick,roll(layout,base.id,siteCycle,tick))
-        :base;
+        :base,layout,tick,occupiedHeroes);
     // A roaming pack cannot enter any other pack's current or newly
     // committed tile, nor walk onto a hero as part of random wandering.
     const occupied=new Set([...packOccupied,...heroOccupied]);
