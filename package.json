@@ -9,7 +9,7 @@
     "prebuild": "node tools/asset_generation/merge_tripo_grab_throw.mjs && node tools/asset_generation/consolidate_tripo_ghoul.mjs public/assets/models/dungeon-ghoul-tripo.glb",
     "build": "tsc -b && vite build",
     "test": "playwright test",
-    "test:smoke": "playwright test tests/cashierReceipt.spec.ts tests/shopTrafficReload.spec.ts tests/liveDungeonClock.spec.ts tests/liveCombatArena.spec.ts tests/liveFloorSpectator.spec.ts tests/heroBuyback.spec.ts tests/physicalShopStock.spec.ts tests/liveBoardSignals.spec.ts tests/cellarAccess.spec.ts tests/heroCardUx.spec.ts tests/singleShopPortal.spec.ts tests/formerRightWall.spec.ts tests/ordinaryFloor6.spec.ts --grep @ci-smoke",
+    "test:smoke": "playwright test tests/cashierReceipt.spec.ts tests/shopTrafficReload.spec.ts tests/liveDungeonClock.spec.ts tests/liveCombatArena.spec.ts tests/liveFloorSpectator.spec.ts tests/heroBuyback.spec.ts tests/physicalShopStock.spec.ts tests/liveBoardSignals.spec.ts tests/cellarAccess.spec.ts tests/observationTransition.spec.ts tests/heroCardUx.spec.ts tests/singleShopPortal.spec.ts tests/formerRightWall.spec.ts tests/ordinaryFloor6.spec.ts --grep @ci-smoke",
     "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts",
     "preview": "vite preview",
     "audit:modules": "node tools/maintenance/module_graph.mjs",
