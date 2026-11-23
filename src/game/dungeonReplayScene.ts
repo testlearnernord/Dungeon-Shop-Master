@@ -11,7 +11,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Scene } from "@babylonjs/core/scene";
 import { createHeroVisual, type HeroVisual } from "./heroVisual.ts";
 import type { DungeonLayout, DungeonPoint } from "./dungeonLayout.ts";
-import { tileAt } from "./dungeonLayout.ts";
+import { dungeonShortestPath,tileAt } from "./dungeonLayout.ts";
 import type { SpatialDungeonReplay } from "./spatialDungeonExploration.ts";
 import {
   dungeonVisibleTiles, dungeonPlaybackAt, buildDungeonPlayback,
@@ -29,6 +29,7 @@ import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import type {LiveFloorSpectatorFrame,LiveFloorHero} from "./liveFloorSpectator.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
 import {sameLiveFloorMap} from "./liveFloorSceneDiff.ts";
+import {MONSTER_STEP_TICKS} from "./dungeonMonsterWorld.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget}
   from "./dungeonMapCamera.ts";
 import {selectHeroFloorPerception,type HeroFloorPerception}
@@ -66,6 +67,9 @@ export class DungeonReplayScene {
   private readonly floorModels=new Map<string,HeroVisual>();
   private readonly floorMarkers=new Map<string,Mesh>();
   private readonly floorRouteHints=new Map<string,{mesh:LinesMesh;pips:Mesh[];signature:string}>();
+  private readonly floorMonsterHints=new Map<string,{mesh:LinesMesh;signature:string}>();
+  private readonly floorMonsterTravel=new Map<string,{
+    from:DungeonPoint;to:DungeonPoint;seconds:number}>();
   private readonly floorTravel=new Map<string,{step:CommittedPartyStep;seconds:number;gait:number}>();
   private readonly floorHeadings=new Map<string,number>();
   private selectedFloorHero:string|null=null;
@@ -124,6 +128,9 @@ export class DungeonReplayScene {
       hint.pips.forEach(pip=>pip.dispose());
     }
     this.floorRouteHints.clear();
+    for(const hint of this.floorMonsterHints.values())hint.mesh.dispose();
+    this.floorMonsterHints.clear();
+    this.floorMonsterTravel.clear();
     this.floorTravel.clear();this.floorHeadings.clear();
     this.selectedFloorHero=null;
     this.floorPerspectiveDirty=true;
@@ -137,6 +144,12 @@ export class DungeonReplayScene {
 
   setReplay(record:SpatialDungeonReplay|null):void {
     this.floorFrame=null;
+    // Historical tapes own their own recorded positions. Restore authored
+    // site geometry instead of inheriting a live pack's last roaming tile.
+    for(const marker of this.markers)if(marker.kind==="monster"){
+      const world=toWorld(this.layout,marker);
+      marker.mesh.position.x=world.x;marker.mesh.position.z=world.z;
+    }
     this.liveTransit=null;
     this.liveTransitSeconds=0;
     this.liveGaitSeconds=0;
@@ -331,12 +344,14 @@ export class DungeonReplayScene {
       ctx.fillRect(x*cell,z*cell,cell,cell);
     }
     for(const marker of this.markers){
+      const point=this.liveMarkerPoint(marker);
+      if(!point)continue;
       ctx.fillStyle=marker.kind==="treasure"?"#e6b845":
         marker.kind==="trap"?"#c94c42":
         marker.kind==="stair-descend"?"#e7bf75":
         marker.kind==="stair-sealed"?"#a35e5e":
         marker.kind.startsWith("stair-")?"#70d2b4":"#e27c62";
-      ctx.fillRect(marker.x*cell+1,marker.z*cell+1,cell-2,cell-2);
+      ctx.fillRect(point.x*cell+1,point.z*cell+1,cell-2,cell-2);
     }
     ctx.fillStyle="#83d4ad";
     ctx.fillRect(this.layout.entrance.x*cell,this.layout.entrance.z*cell,cell,cell);
@@ -418,6 +433,17 @@ export class DungeonReplayScene {
         this.floorTravel.delete(hero.id);
       }
     }
+    // Visual travel uses only consecutive committed endpoints. The
+    // 400-world-tick duration never advances or influences monster AI.
+    for(const monster of view.monsters??[]){
+      const before=previous?.monsters?.find(m=>m.id===monster.id);
+      if(before&&(before.x!==monster.x||before.z!==monster.z))
+        this.floorMonsterTravel.set(monster.id,{
+          from:{x:before.x,z:before.z},
+          to:{x:monster.x,z:monster.z},seconds:0});
+    }
+    for(const id of this.floorMonsterTravel.keys())
+      if(!view.monsters?.some(m=>m.id===id))this.floorMonsterTravel.delete(id);
     this.floorFrame=view;
     const present=new Set(view.heroes.map(hero=>hero.id));
     for(const [id,model] of this.floorModels){
@@ -475,6 +501,12 @@ export class DungeonReplayScene {
     // Two short PREVIEW segments follow the existing autonomous navigator.
     // These arrows are visual forecasts, not persisted plans or invented
     // movement checkpoints. They stop at any unresolved site interaction.
+    for(const [id,hint] of this.floorMonsterHints){
+      const monster=frame.monsters?.find(m=>m.id===id);
+      const cell=monster?monster.z*this.layout.width+monster.x:-1;
+      hint.mesh.setEnabled(!!monster&&monster.mode!=="ENGAGED"&&
+        (!visible||visible.has(cell)));
+    }
     for(const [id,hint] of this.floorRouteHints){
       if(!present.has(id)){
         hint.mesh.dispose();hint.pips.forEach(pip=>pip.dispose());
@@ -534,6 +566,39 @@ export class DungeonReplayScene {
       });
       this.floorRouteHints.set(hero.id,{mesh:line,pips,signature});
     }
+    for(const [id,hint] of this.floorMonsterHints){
+      if(view.monsters?.some(m=>m.id===id&&!view.resolved.includes(id)))continue;
+      hint.mesh.dispose();this.floorMonsterHints.delete(id);
+    }
+    for(const monster of view.monsters??[]){
+      const next=monster.target&&monster.mode!=="ENGAGED"
+        ?dungeonShortestPath(this.layout,monster,monster.target)[1]:null;
+      const old=this.floorMonsterHints.get(monster.id);
+      const signature=next?
+        monster.x+","+monster.z+":"+next.x+","+next.z:"";
+      if(old?.signature===signature)continue;
+      old?.mesh.dispose();this.floorMonsterHints.delete(monster.id);
+      if(!next)continue;
+      const start=toWorld(this.layout,monster);
+      const end=toWorld(this.layout,next);
+      start.y=.54;end.y=.54;
+      const dx=end.x-start.x,dz=end.z-start.z;
+      const magnitude=Math.hypot(dx,dz)||1;
+      const ux=dx/magnitude,uz=dz/magnitude;
+      const left=new Vector3(end.x-ux*.44-uz*.30,.54,
+        end.z-uz*.44+ux*.30);
+      const right=new Vector3(end.x-ux*.44+uz*.30,.54,
+        end.z-uz*.44-ux*.30);
+      const line=MeshBuilder.CreateLines("dungeon-monster-next-"+monster.id,{
+        points:[start,end,left,end,right],
+      },this.scene);
+      line.color=Color3.FromHexString("#f44f50");
+      line.alpha=1;line.renderingGroupId=2;
+      line.isPickable=false;line.checkCollisions=false;
+      line.metadata={previewOnly:true,monsterId:monster.id,
+        label:"One tile of the committed monster route"};
+      this.floorMonsterHints.set(monster.id,{mesh:line,signature});
+    }
     for(const [id,marker] of this.floorMarkers){
       if(!view.fights.some(f=>f.id===id)){
         marker.dispose(false,true);this.floorMarkers.delete(id);
@@ -561,14 +626,30 @@ export class DungeonReplayScene {
     // NOT any hero's subjective discovered map.
     for(const tile of this.tiles)tile.mesh.isVisible=true;
     const resolved=new Set(view.resolved);
-    for(const marker of this.markers)
-      marker.mesh.setEnabled(!resolved.has(marker.id));
+    for(const marker of this.markers){
+      const monster=marker.kind==="monster"
+        ?view.monsters?.find(m=>m.id===marker.id):null;
+      if(monster){
+        const position=toWorld(this.layout,monster);
+        marker.mesh.position.x=position.x;
+        marker.mesh.position.z=position.z;
+      }
+      marker.mesh.setEnabled(!resolved.has(marker.id)&&
+        (marker.kind!=="monster"||view.monsters===undefined||
+          !!monster&&monster.mode!=="ENGAGED"));
+    }
     for(const deco of this.decorations){
       deco.light.setEnabled(true);deco.mesh.setEnabled(true);
     }
     this.poseLiveFloor(0);
+    this.poseLiveMonsters(0);
     // The DungeonViewer applies current selection exactly once after
     // this geometry update, including a hero who has just left the floor.
+  }
+
+  private liveMarkerPoint(marker:DungeonMarkerMesh):DungeonPoint|null{
+    if(marker.kind!=="monster"||this.floorFrame?.monsters===undefined)return marker;
+    return this.floorFrame.monsters.find(m=>m.id===marker.id)??null;
   }
 
   /** Only view-layer fog. The player's neutral overview retains all tiles,
@@ -588,11 +669,11 @@ export class DungeonReplayScene {
       tile.mesh.visibility=!visible||visible.has(cell)?1:.33;
     }
     for(const marker of this.markers){
-      const cell=marker.z*this.layout.width+marker.x;
-      // Dynamic encounters, treasure and traps may change without this
-      // hero witnessing it. Never announce a distant resolution.
-      marker.mesh.setEnabled((!visible||visible.has(cell))&&
-        !resolved.has(marker.id));
+      const point=this.liveMarkerPoint(marker);
+      const cell=point?point.z*this.layout.width+point.x:-1;
+      const monster=this.floorFrame?.monsters?.find(m=>m.id===marker.id);
+      marker.mesh.setEnabled(!!point&&(!visible||visible.has(cell))&&
+        !resolved.has(marker.id)&&monster?.mode!=="ENGAGED");
     }
     for(const decoration of this.decorations){
       const cell=decoration.z*this.layout.width+decoration.x;
@@ -653,14 +734,15 @@ export class DungeonReplayScene {
     }
     const resolved=new Set(frame.resolved);
     for(const marker of this.markers){
-      if(!perception.visible.has(marker.z*this.layout.width+marker.x)||
+      const point=this.liveMarkerPoint(marker);
+      if(!point||!perception.visible.has(point.z*this.layout.width+point.x)||
          resolved.has(marker.id))continue;
       ctx.fillStyle=marker.kind==="treasure"?"#e6b845":
         marker.kind==="trap"?"#c94c42":
         marker.kind==="stair-descend"?"#e7bf75":
         marker.kind==="stair-sealed"?"#a35e5e":
         marker.kind.startsWith("stair-")?"#70d2b4":"#e27c62";
-      ctx.fillRect(marker.x*cell+1,marker.z*cell+1,cell-2,cell-2);
+      ctx.fillRect(point.x*cell+1,point.z*cell+1,cell-2,cell-2);
     }
     for(const hero of frame.heroes){
       if(hero.inCombat||hero.id!==perception.heroId&&
@@ -718,8 +800,28 @@ export class DungeonReplayScene {
     }
   }
 
+  private poseLiveMonsters(dt:number):void{
+    if(!this.floorFrame)return;
+    for(const monster of this.floorFrame.monsters??[]){
+      const marker=this.markers.find(m=>m.kind==="monster"&&m.id===monster.id);
+      if(!marker)continue;
+      const transit=this.floorMonsterTravel.get(monster.id);
+      if(transit)transit.seconds=Math.min(MONSTER_STEP_TICKS*.05,
+        transit.seconds+Math.min(.1,Math.max(0,dt)));
+      const alpha=transit?transit.seconds/(MONSTER_STEP_TICKS*.05):1;
+      const at=transit?{
+        x:transit.from.x+(transit.to.x-transit.from.x)*alpha,
+        z:transit.from.z+(transit.to.z-transit.from.z)*alpha,
+      }:monster;
+      const world=toWorld(this.layout,at);
+      marker.mesh.position.x=world.x;marker.mesh.position.z=world.z;
+      if(transit&&alpha>=1)this.floorMonsterTravel.delete(monster.id);
+    }
+  }
+
   advanceLiveFloorPresentation(dt:number):void {
     if(this.floorTravel.size)this.poseLiveFloor(dt);
+    if(this.floorMonsterTravel.size)this.poseLiveMonsters(dt);
   }
 
   /**
