@@ -55,6 +55,13 @@ export function inspectGalviksLiveTable(){
     layoutWidth:diorama?.metadata?.layoutWidth??null,
     layoutHeight:diorama?.metadata?.layoutHeight??null,
     wallInstances:(wallA?.thinInstanceCount??0)+(wallB?.thinInstanceCount??0),
+    wallMaterial:wallA?.material?.name??null,
+    floorMaterial:scene?.getMeshByName("cellar-table-diorama-corridors")?.material?.name??null,
+    authoredProps:diorama?.metadata?.authoredProps??null,
+    authoredGhouls:diorama?.metadata?.authoredGhouls??null,
+    cryptCount:scene?.meshes.filter(m=>m.name.startsWith("cellar-table-diorama-crypt-")).length??0,
+    stairCount:scene?.meshes.filter(m=>m.name.startsWith("cellar-table-diorama-stair-")).length??0,
+    heroModelCount:scene?.transformNodes.filter(n=>n.name.startsWith("cellar-table-diorama-hero-")).length??0,
     wallHeight:wallA?.getBoundingInfo().boundingBox.extendSize.y
       ?2*wallA.getBoundingInfo().boundingBox.extendSize.y:0,
     baseExists:!!base,
