@@ -52,6 +52,12 @@ export function inspectGalviksLiveTable(){
     furnitureYaw:root?.rotation.y??null,
     dioramaLocalYaw:diorama?.rotation.y??null,
     observedFloor:diorama?.metadata?.floor??null,
+    lastObservedTick:diorama?.metadata?.lastObservedTick??null,
+    shopEyeY:scene?.activeCamera?.position.y??null,
+    tableY:root?.getAbsolutePosition().y??null,
+    tableDistance:root&&scene?.activeCamera?Math.hypot(
+      scene.activeCamera.position.x-root.getAbsolutePosition().x,
+      scene.activeCamera.position.z-root.getAbsolutePosition().z):null,
     actorCount:diorama?.metadata?.actorCount??null,
     featureCount:diorama?.metadata?.featureCount??null,
     layoutWidth:diorama?.metadata?.layoutWidth??null,
