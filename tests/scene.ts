@@ -1266,6 +1266,8 @@ export function inspectGhoulObservationMeshes(){
       return {
         id,x:pin.position.x,z:pin.position.z,
         enabled:pin.isEnabled(),
+        assetError:pin.metadata?.assetError as string|undefined,
+        visualKind:pin.metadata?.visualKind as string|undefined,
         clip:pin.metadata?.animationClip as string|null|undefined,
         phase:pin.metadata?.animationPhase as string|null|undefined,
         heading:pin.metadata?.heading as number|null|undefined,
