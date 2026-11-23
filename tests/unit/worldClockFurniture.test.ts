@@ -6,24 +6,34 @@ import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {WORLD_TICKS_PER_DAY,firstWorldTickOfDay,lastWorldTickOfDay}
   from "../../src/game/worldClock.ts";
 import {worldClockFace} from "../../src/game/worldClockFace.ts";
+import {worldClockHandMount,CLOCK_HAND_GAP_METRES}
+  from "../../src/game/worldClockHandDesign.ts";
+import {furnitureDefinition} from "../../src/game/furnitureRegistry.ts";
 import {DEFAULT_WALL_CLOCK,wallClockProblem} from "../../src/game/wallClockPlacement.ts";
 import {blueprintAtSurface} from "../../src/game/furnitureBlueprint.ts";
 
 test("a single authoritative world tick drives exactly one 24-hour pointer rotation",()=>{
   const first=worldClockFace(1,0);
   assert.deepEqual([first.hour,first.minute,first.angleRadians,first.stopped],
-    [0,0,-0,false]);
+    [0,0,0,false]);
   const six=worldClockFace(1,WORLD_TICKS_PER_DAY/4);
   assert.deepEqual([six.hour,six.minute,six.angleRadians,six.stopped],
-    [6,0,-Math.PI/2,false]);
+    [6,0,Math.PI/2,false]);
   const twelve=worldClockFace(1,WORLD_TICKS_PER_DAY/2);
   assert.equal(twelve.label,"12:00");
-  assert.equal(twelve.angleRadians,-Math.PI);
-  assert.equal(worldClockFace(1,3*WORLD_TICKS_PER_DAY/4).label,"18:00");
+  assert.equal(twelve.angleRadians,Math.PI);
+  const eighteen=worldClockFace(1,3*WORLD_TICKS_PER_DAY/4);
+  assert.equal(eighteen.label,"18:00");
+  assert.equal(eighteen.angleRadians,3*Math.PI/2);
+  // The standard rear-wall mounting rotates the front through 180°.
+  // In world screen coordinates, positive local Z sends 06 right and 18 left.
+  const worldScreenX=(angle:number)=>-(-Math.sin(angle));
+  assert(worldScreenX(six.angleRadians)>0,"06:00 must point screen-right");
+  assert(worldScreenX(eighteen.angleRadians)<0,"18:00 must point screen-left");
   const stopped=worldClockFace(1,lastWorldTickOfDay(1));
   assert.equal(stopped.stopped,true);
   assert.equal(stopped.label,"24:00");
-  assert.equal(stopped.angleRadians,-2*Math.PI);
+  assert.equal(stopped.angleRadians,2*Math.PI);
   assert.equal(worldClockFace(2,firstWorldTickOfDay(2)).label,"00:00");
   assert.throws(()=>worldClockFace(1,firstWorldTickOfDay(2)),/in-day/);
   assert.deepEqual(worldClockFace(1,WORLD_TICKS_PER_DAY/2),
@@ -62,4 +72,14 @@ test("strict save rejects a fictional clock attachment or missing wall clock",()
   const invalid=JSON.parse(JSON.stringify(createSave(initial)));
   invalid.payload.wallClock={x:0,z:0,rotation:0};
   assert.throws(()=>parseSave(JSON.stringify(invalid)),/wallClock/);
+});
+
+test("the hand is calibrated to the real recessed dial, not the overall GLB depth",()=>{
+  const height=furnitureDefinition("world-clock").height;
+  const pose=worldClockHandMount(height);
+  assert(pose.y>1.9&&pose.y<2.1,"dial hub stays within the ornamented face");
+  assert(Math.abs(pose.z-pose.dialSurfaceZ-CLOCK_HAND_GAP_METRES)<1e-10);
+  assert(pose.z<.20,"the hand must hug the dial, not float at the old z=.353");
+  assert(pose.z>pose.dialSurfaceZ,"the hand remains in front of the face");
+  assert.throws(()=>worldClockHandMount(0),/positive/);
 });
