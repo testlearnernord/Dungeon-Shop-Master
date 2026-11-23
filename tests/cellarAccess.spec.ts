@@ -120,13 +120,36 @@ test("Galvik's movable table projects the selected LIVE floor without leaving sh
   expect(clearance).toBeLessThan(.055);
   expect(probe.inset.worldMax![1]-probe.inset.worldMin![1]).toBeLessThan(.002);
 
-  // The last fix produced a perfectly WHITE tabletop despite a healthy
-  // offscreen RTT. Inspect the actual FPS framebuffer, not just the RTT.
-  const displayed=await page.evaluate(async()=>(
-    await import("/Dungeon-Shop-Master/tests/scene.ts")).sampleGalviksTableOnScreen());
-  console.log("GALVIK_TABLE_VISIBLE_PIXELS "+JSON.stringify(displayed));
-  expect(displayed.white).toBeLessThan(12);
-  expect(displayed.spread).toBeGreaterThan(25);
+  // Inspect actual pixels in the screenshot a player sees. Raw WebGL
+  // readPixels returned stale 1,1,1 when preserveDrawingBuffer=false.
+  const points=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksTableScreenshotPoints());
+  const png=await page.screenshot();
+  const colors=await page.evaluate(async({base64,points})=>{
+    const image=new Image();
+    image.src="data:image/png;base64,"+base64;
+    await image.decode();
+    const canvas=document.createElement("canvas");
+    canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+    const ctx=canvas.getContext("2d",{willReadFrequently:true});
+    if(!ctx)throw Error("PNG decoder canvas unavailable");
+    ctx.drawImage(image,0,0);
+    return points.map(point=>{
+      if(point.x<0||point.y<0||point.x>=canvas.width||
+         point.y>=canvas.height)throw Error("Inset outside screenshot");
+      const c=ctx.getImageData(point.x,point.y,1,1).data;
+      return [c[0]!,c[1]!,c[2]!] as [number,number,number];
+    });
+  },{base64:png.toString("base64"),points});
+  const values=colors.map(color=>Math.max(...color));
+  const spread=Math.max(...values)-Math.min(...values);
+  const white=values.filter(value=>value>=240).length;
+  console.log("GALVIK_TABLE_SCREENSHOT_PIXELS "+JSON.stringify({
+    points,colors,spread,white,
+  }));
+  expect(white).toBeLessThan(12);
+  expect(spread).toBeGreaterThan(25);
+  expect(values.some(value=>value>48)).toBe(true);
 
   // The LIVE viewer remains the sole owner of the selected floor. A return
   // to the shop must update the *same physical* inset, not open a second HUD.
