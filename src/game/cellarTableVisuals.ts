@@ -95,7 +95,7 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
     reading=true;
     const requested=source!;
     const token=generation;
-    void requested.readPixels().then(pixels=>{
+    void Promise.resolve(requested.readPixels()).then(pixels=>{
       if(!pixels||source!==requested||token!==generation)return;
       const size=requested.getSize();
       const bytes=new Uint8Array(pixels.buffer,pixels.byteOffset,
