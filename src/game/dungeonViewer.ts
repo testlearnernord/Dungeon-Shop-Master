@@ -73,9 +73,6 @@ export class DungeonViewer {
   private camera: UniversalCamera | null = null;
   private layout: DungeonLayout | null = null;
   private active = false;
-  // Only ordinary shop G / toolbar entry delegates to the physical table.
-  // Worldwide hero inspection, recordings and event jumps stay immediate.
-  private onShopOpenRequest:()=>void=()=>this.open();
   private readonly keys = new Set<string>();
   private orbitPointer:null|{
     button:0|2;lastX:number;lastY:number;startX:number;startY:number;moved:boolean;
@@ -219,7 +216,7 @@ export class DungeonViewer {
           ?heroPick.pickedMesh?.metadata?.floorHeroId as string:null);
       }
     });
-    document.querySelector("#open-dungeon")!.addEventListener("click", () => this.onShopOpenRequest());
+    document.querySelector("#open-dungeon")!.addEventListener("click", () => this.open());
     document.querySelector("#close-dungeon")!.addEventListener("click", () => this.close());
     document.querySelector("#dungeon-reset-camera")!.addEventListener("click", () => this.resetCamera());
     this.compassButton.addEventListener("click",()=>{
@@ -320,7 +317,7 @@ export class DungeonViewer {
           !document.body.classList.contains("arena-active")) {
           event.preventDefault();
           event.stopImmediatePropagation();
-          this.onShopOpenRequest();
+          this.open();
         }
         return;
       }
@@ -452,10 +449,6 @@ export class DungeonViewer {
       if(pose)this.setMapPose(zoomDungeonMap(pose,event.deltaY));
       this.followActor=null;
     }, {capture:true,passive:false});
-  }
-
-  setShopOpenRequest(request:()=>void):void{
-    this.onShopOpenRequest=request;
   }
 
   get isActive() { return this.active; }
