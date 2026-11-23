@@ -77,9 +77,11 @@ export class GhoulMapInstances {
       // while avoiding a 65-bone skeleton per visible monster site.
       duplicate=staged.instantiateModelsToScene(
         name=>"overview-walking-"+name,false,{doNotInstantiate:true});
-      const walkGeometry=duplicate.rootNodes.flatMap(root=>
-        root.getChildMeshes(false)).find(
-          (mesh):mesh is Mesh=>mesh instanceof Mesh&&mesh.getTotalVertices()>0);
+      const walkGeometry=duplicate.rootNodes.flatMap(root=>[
+        ...(root instanceof Mesh?[root]:[]),
+        ...root.getDescendants(false).filter(
+          (node):node is Mesh=>node instanceof Mesh),
+      ]).find(mesh=>mesh.getTotalVertices()>0);
       if(!walkGeometry||duplicate.skeletons[0]?.bones.length!==65)
         throw Error("Missing separate authored walking skeleton");
       const idle=staged.animationGroups.find(c=>c.name==="idle_combat");
