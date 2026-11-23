@@ -259,10 +259,11 @@ void main(void){
       "cellar-table-diorama-live-art-scale",this.scene);
     this.miniatureWorldRoot.parent=this.root;
     this.miniatureWorldRoot.position.y=TABLE_DIORAMA_WELL.floorY;
-    // Real LIVE 2.5m world units shrink uniformly within each axis; mildly
-    // exaggerated height makes miniatures readable without a second camera.
+    // LIVE x/z coordinates fit the physical well. Vertical relief is deliberately
+    // magnified so real characters and crypts stand clear of the miniature walls
+    // from Galvik's normal standing position, without another camera.
     this.miniatureWorldRoot.scaling.set(
-      TABLE_DIORAMA_WELL.width/(layout.width*2.5),.024,
+      TABLE_DIORAMA_WELL.width/(layout.width*2.5),.034,
       TABLE_DIORAMA_WELL.depth/(layout.height*2.5));
 
     this.actorRoot=new TransformNode("cellar-table-diorama-actors",this.scene);
@@ -409,7 +410,7 @@ void main(void){
           const bounds=source.getBoundingInfo().boundingBox;
           const height=bounds.maximum.y-bounds.minimum.y;
           if(height>0){
-            const scale=Math.min(12,Math.max(.01,1.75/height));
+            const scale=Math.min(12,Math.max(.01,2.05/height));
             const instance=source.createInstance(
               "cellar-table-diorama-authored-ghoul-"+feature.id);
             instance.parent=anchor;
@@ -451,6 +452,9 @@ void main(void){
         const visual=createHeroVisual(this.scene,{
           id:hero.id,role:hero.role,equipment:hero.equipment,
         },"cellar-table-diorama-hero-"+hero.id);
+        // Readable 3D miniatures, not flat HUD markers. Silhouettes need to
+        // clear the small masonry relief at the normal shop view distance.
+        visual.root.scaling.setAll(1.3);
         visual.root.parent=this.actorRoot;
         // Slight ambient glow at miniature size, never a flat class cylinder.
         for(const mesh of visual.root.getChildMeshes(false)){
