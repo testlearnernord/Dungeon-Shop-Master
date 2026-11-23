@@ -73,6 +73,9 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
   // revealed black/white panes despite healthy RTT readback. Bridge only its
   // already-rendered RGBA pixels into a small texture owned by this shop.
   // This copies presentation pixels, NEVER a simulation or dungeon state.
+  const debug={attempts:0,nullReads:0,lastPixelBytes:0,expectedBytes:0,
+    created:false,errors:[] as string[],modelReady:false};
+  if(import.meta.env.VITE_E2E==="1")inset.metadata={projectionDebug:debug};
   let source:RenderTargetTexture|null=null;
   let localTexture:RawTexture|null=null;
   let generation=0;
@@ -93,24 +96,32 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
     if(now-lastReadAt<220)return; // near-table cap ~4.5 presentation FPS
     lastReadAt=now;
     reading=true;
+    debug.attempts++;
     const requested=source!;
     const token=generation;
     void Promise.resolve(requested.readPixels()).then(pixels=>{
-      if(!pixels||source!==requested||token!==generation)return;
+      if(!pixels){debug.nullReads++;return;}
+      if(source!==requested||token!==generation)return;
       const size=requested.getSize();
       const bytes=new Uint8Array(pixels.buffer,pixels.byteOffset,
         pixels.byteLength);
-      if(bytes.length!==size.width*size.height*4)return;
+      debug.lastPixelBytes=bytes.length;
+      debug.expectedBytes=size.width*size.height*4;
+      if(bytes.length!==debug.expectedBytes)return;
       if(!localTexture){
         localTexture=RawTexture.CreateRGBATexture(bytes,size.width,size.height,
           scene,false,true,Texture.BILINEAR_SAMPLINGMODE);
         localTexture.name=requested.name;
+        debug.created=true;
         screenMat.diffuseTexture=localTexture;
       }else localTexture.update(bytes);
       inset.isVisible=true;
     }).catch(error=>{
       // A floor change may dispose a pending RTT; never crash the shop.
-      if(source===requested)console.warn("Galvik table frame unavailable",error);
+      if(source===requested){
+        debug.errors.push(String(error));
+        console.warn("Galvik table frame unavailable",error);
+      }
     }).finally(()=>{reading=false;});
   };
 
@@ -147,7 +158,7 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
       mesh.checkCollisions=false;
     }
     backup.dispose();
-    modelReady=true;
+    modelReady=true;debug.modelReady=true;
     inset.isVisible=localTexture!==null;
   }).catch(error=>{
     console.warn("Galvik's Table GLB unavailable; keeping pickable fallback.",error);
