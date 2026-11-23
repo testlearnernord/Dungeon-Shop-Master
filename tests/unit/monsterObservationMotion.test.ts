@@ -4,6 +4,8 @@ import {isObservedMonsterStep,MONSTER_OBSERVATION_STEP_SECONDS}
   from "../../src/game/monsterObservationMotion.ts";
 import {MONSTER_STEP_TICKS}
   from "../../src/game/dungeonMonsterWorld.ts";
+import {LIVE_PARTY_STEP_SECONDS}
+  from "../../src/game/livePartyPresentation.ts";
 
 const before={x:5,z:6,siteCycle:2,lastMoveTick:1000,
   day:1,floor:1,worldTick:1200};
@@ -11,9 +13,13 @@ const after={...before,x:6,lastMoveTick:1400,worldTick:1400};
 
 test("both observers interpolate one actually committed tile at the lawful Ghoul speed",()=>{
   assert.equal(isObservedMonsterStep(before,after),true);
-  assert.equal(MONSTER_OBSERVATION_STEP_SECONDS,
-    MONSTER_STEP_TICKS*.05);
-  assert.equal(MONSTER_OBSERVATION_STEP_SECONDS,20);
+  assert.equal(MONSTER_STEP_TICKS,400,
+    "monster AI still advances only half as often as heroes");
+  assert.equal(MONSTER_OBSERVATION_STEP_SECONDS,1.2);
+  assert(MONSTER_OBSERVATION_STEP_SECONDS>LIVE_PARTY_STEP_SECONDS,
+    "Ghouls should look heavier than heroes, but still finish each step");
+  assert(MONSTER_OBSERVATION_STEP_SECONDS<MONSTER_STEP_TICKS*.05,
+    "the mesh must visibly stop rather than continuously crawl until the next AI tick");
 });
 
 test("never draw a fake crossing from an observation gap or another floor",()=>{
