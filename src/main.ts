@@ -211,6 +211,7 @@ if(import.meta.env.VITE_E2E==="1"){
     __shopTestHydratedTraffic?:unknown;
     __shopTestAdvanceDungeonTick?:()=>void;
     __shopTestAdvanceWorldTicks?:(ticks:number)=>void;
+    __shopTestGhoulSnapshot?:(floor:number,id:string)=>unknown;
     __shopTestTimedWorldAdvance?:(ticks:number)=>{
       durationMs:number;advanced:number;eventsAdded:number;
       pendingBefore:number;pendingAfter:number;activeCombats:number;
@@ -234,6 +235,13 @@ if(import.meta.env.VITE_E2E==="1"){
   // This only instruments the fast/slow render-path guard; production has
   // no hook and no alternate movement or economic resolver.
   hooks.__shopTestAdvanceWorldTicks=ticks=>store.advanceWorldTime(ticks);
+  // Read the real clock-owned monster position; browser tests must
+  // distinguish an AI non-move from a broken Babylon animation.
+  hooks.__shopTestGhoulSnapshot=(floor,id)=>({
+    tick:store.state.worldClock.tick,day:store.state.day,
+    pack:store.state.dungeonWorlds.find(f=>f.floor===floor)
+      ?.world.monsters?.find(monster=>monster.id===id)??null,
+  });
   // Measure the real scheduled event executor + synchronous subscribers,
   // with no synthetic hero/combat decisions. This is deliberately NOT a
   // physically interleaved shop step; only the regular render loop owns
