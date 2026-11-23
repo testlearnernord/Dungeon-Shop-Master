@@ -10,12 +10,23 @@ test("E at Galvik's Table enters the matching LIVE floor and restores FPS @ci-sm
   await page.goto("./?e2e-pause-world=1");
   await expect(page.locator("#day")).toHaveText("Day 1");
 
-  const table=()=>page.evaluate(async()=>{
-    const helper=await import("/Dungeon-Shop-Master/tests/scene.ts");
-    if(!helper.shopSceneReady())return null;
-    helper.aimAtGalviksTable();
-    return helper.inspectGalviksLiveTable();
-  });
+  const table=async()=>{
+    try{
+      return await page.evaluate(async()=>{
+        const helper=await import("/Dungeon-Shop-Master/tests/scene.ts");
+        if(!helper.shopSceneReady())return null;
+        helper.aimAtGalviksTable();
+        return helper.inspectGalviksLiveTable();
+      });
+    }catch(error){
+      // Vite can replace its boot document and transpile this E2E-only
+      // module during the first GLB generation. Retry bounded startup
+      // failures, but keep genuine scene errors and failed assertions.
+      if(/Execution context was destroyed|Failed to fetch dynamically imported module/.test(
+        String(error)))return null;
+      throw error;
+    }
+  };
   await expect.poll(async()=>table(),{timeout:35000,
     intervals:[200,400,700]}).toMatchObject({
     dioramaEnabled:true,observedFloor:1,
