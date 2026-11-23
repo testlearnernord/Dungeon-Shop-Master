@@ -1,14 +1,15 @@
 import type {DungeonLayout,DungeonPoint} from "./dungeonLayout.ts";
 
-/** Measured usable well inside Galvik's table GLB, in furniture-local metres. */
+/** Visually calibrated usable recess in Galvik's table GLB, in local metres.
+ * The former .61m depth stopped short of the front edge: a black moat. */
 export const TABLE_DIORAMA_WELL={
-  width:1.16,depth:.61,centerZ:-.095,baseY:.866,
+  width:1.16,depth:.84,centerZ:.020,baseY:.866,
   floorY:.876,wallY:.919,wallHeight:.078,
 } as const;
 
 /** Maximum harmless X/Z stretch of a dungeon tile, independent of floor size.
  * All additional recess area becomes real stone cutaway, never black bars. */
-export const MAX_DIORAMA_TILE_STRETCH=1.30;
+export const MAX_DIORAMA_TILE_STRETCH=1.24;
 
 export interface TableDioramaFit {
   readonly coreWidth:number;
