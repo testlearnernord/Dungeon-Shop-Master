@@ -64,6 +64,8 @@ export function inspectGalviksLiveTable(){
     heroModelCount:scene?.transformNodes.filter(n=>n.name.startsWith("cellar-table-diorama-hero-")).length??0,
     wallHeight:wallA?.getBoundingInfo().boundingBox.extendSize.y
       ?2*wallA.getBoundingInfo().boundingBox.extendSize.y:0,
+    artHeightScale:scene?.getTransformNodeByName(
+      "cellar-table-diorama-live-art-scale")?.scaling.y??null,
     baseExists:!!base,
     floorLabelExists:!!floorLabel,
     floorLabelMaterial:floorLabel?.material?.name??null,
