@@ -1,7 +1,9 @@
 import {loadAssetContainerAsync} from "@babylonjs/core/Loading/sceneLoader";
 import {Color3} from "@babylonjs/core/Maths/math.color";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
-import type {BaseTexture} from "@babylonjs/core/Materials/Textures/baseTexture";
+import {RenderTargetTexture} from "@babylonjs/core/Materials/Textures/renderTargetTexture";
+import {RawTexture} from "@babylonjs/core/Materials/Textures/rawTexture";
+import {Texture} from "@babylonjs/core/Materials/Textures/texture";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import {Mesh} from "@babylonjs/core/Meshes/mesh";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
@@ -15,7 +17,7 @@ import "@babylonjs/loaders/glTF/2.0";
  * The imported Tripo prop has one predictable physical collision hull. */
 export interface CellarTableVisuals {
   /** A read-only texture from the existing spectator renderer, not a UI. */
-  setDungeonTexture(texture:BaseTexture|null):void;
+  setDungeonTexture(texture:RenderTargetTexture|null):void;
 }
 export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTableVisuals{
   const def=furnitureDefinition("cellar-table");
@@ -66,12 +68,48 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
   screenMat.backFaceCulling=false;
   inset.material=screenMat;
   let modelReady=false;
-  let dungeonTexture:BaseTexture|null=null;
-  const setDungeonTexture=(texture:BaseTexture|null)=>{
-    if(dungeonTexture===texture)return;
-    dungeonTexture=texture;
-    screenMat.diffuseTexture=texture;
-    inset.isVisible=modelReady&&texture!==null;
+  // A Babylon RTT owned by the spectator Scene is not directly reliable as
+  // a texture sampled from the separate physical shop Scene. The screenshot
+  // revealed black/white panes despite healthy RTT readback. Bridge only its
+  // already-rendered RGBA pixels into a small texture owned by this shop.
+  // This copies presentation pixels, NEVER a simulation or dungeon state.
+  let source:RenderTargetTexture|null=null;
+  let localTexture:RawTexture|null=null;
+  let generation=0;
+  let reading=false;
+  let lastReadAt=-Infinity;
+  const setDungeonTexture=(texture:RenderTargetTexture|null)=>{
+    if(texture!==source){
+      source=texture;
+      generation++;
+      localTexture?.dispose();
+      localTexture=null;
+      screenMat.diffuseTexture=null;
+      inset.isVisible=false;
+      lastReadAt=-Infinity;
+    }
+    if(!source||!modelReady||reading)return;
+    const now=performance.now();
+    if(now-lastReadAt<220)return; // near-table cap ~4.5 presentation FPS
+    lastReadAt=now;
+    reading=true;
+    const requested=source,token=generation;
+    void requested.readPixels().then(pixels=>{
+      if(!pixels||source!==requested||token!==generation)return;
+      const size=requested.getSize();
+      const bytes=new Uint8Array(pixels.buffer,pixels.byteOffset,
+        pixels.byteLength);
+      if(bytes.length!==size.width*size.height*4)return;
+      if(!localTexture){
+        localTexture=RawTexture.CreateRGBATexture(bytes,size.width,size.height,
+          scene,false,true,Texture.BILINEAR_SAMPLINGMODE);
+        screenMat.diffuseTexture=localTexture;
+      }else localTexture.update(bytes);
+      inset.isVisible=true;
+    }).catch(error=>{
+      // A floor change may dispose a pending RTT; never crash the shop.
+      if(source===requested)console.warn("Galvik table frame unavailable",error);
+    }).finally(()=>{reading=false;});
   };
 
   let previous:typeof store.state.cellarTable|null=null;
@@ -108,7 +146,7 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
     }
     backup.dispose();
     modelReady=true;
-    inset.isVisible=dungeonTexture!==null;
+    inset.isVisible=localTexture!==null;
   }).catch(error=>{
     console.warn("Galvik's Table GLB unavailable; keeping pickable fallback.",error);
   });
