@@ -234,8 +234,8 @@ void main(void){
   }
 
   private buildFloor(layout:DungeonLayout,floor:SpatialDungeonFloor):void{
-    this.floorRoot?.dispose(false,true);
-    this.miniatureWorldRoot?.dispose(false,true);
+    this.floorRoot?.dispose();
+    this.miniatureWorldRoot?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
     this.floorArtMaterials=[];
     this.heroes.clear();
@@ -310,8 +310,8 @@ void main(void){
       this.floorArtMaterials.push(...this.scene.materials.slice(materialStart)
         .filter((mat):mat is StandardMaterial=>mat instanceof StandardMaterial));
       // Small ambient support for the same materials in the dark cellar.
-      for(const mat of this.floorArtMaterials)
-        if(mat.name.startsWith("crypt-"))
+      for(const mat of this.scene.materials.slice(materialStart))
+        if(mat instanceof StandardMaterial)
           mat.emissiveColor=mat.emissiveColor.add(mat.diffuseColor.scale(.19));
     }
 
@@ -365,7 +365,7 @@ void main(void){
   }
 
   private syncFeatures(frame:LiveFloorSpectatorFrame):void{
-    this.featureRoot?.dispose(false,true);
+    this.featureRoot?.dispose();
     this.featureRoot=new TransformNode("cellar-table-diorama-features",this.scene);
     this.featureRoot.parent=this.miniatureWorldRoot;
     const resolved=new Set(frame.resolved);
@@ -469,7 +469,7 @@ void main(void){
   get observedFloor():number|null{return this.activeFloor;}
   get miniatureActorCount():number{return this.heroes.size;}
   dispose():void{
-    this.root.dispose(false,true);
+    this.root.dispose();
     this.ghoulAsset?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
     this.floorText.dispose();
