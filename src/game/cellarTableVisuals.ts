@@ -56,8 +56,11 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
   const screenMat=new StandardMaterial("cellar-table-live-inset-mat",scene);
   // The very dark RTT should remain readable in the unlit cellar, rather
   // than receiving another diffuse/light attenuation on the GLB.
-  screenMat.diffuseColor=Color3.Black();
-  screenMat.emissiveColor=Color3.White();
+  // StandardMaterial adds a constant emissiveColor to its shader output:
+  // White() made the entire inset pure white regardless of the valid RTT.
+  // An unlit diffuse texture displays the already-lit spectator pixels as-is.
+  screenMat.diffuseColor=Color3.White();
+  screenMat.emissiveColor=Color3.Black();
   screenMat.specularColor=Color3.Black();
   screenMat.disableLighting=true;
   screenMat.backFaceCulling=false;
@@ -67,7 +70,7 @@ export function setupCellarTableVisuals(scene:Scene,store:GameStore):CellarTable
   const setDungeonTexture=(texture:BaseTexture|null)=>{
     if(dungeonTexture===texture)return;
     dungeonTexture=texture;
-    screenMat.emissiveTexture=texture;
+    screenMat.diffuseTexture=texture;
     inset.isVisible=modelReady&&texture!==null;
   };
 
