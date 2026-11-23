@@ -38,6 +38,10 @@ export function sameLiveFloorMap(a:FloorMapSnapshot,b:FloorMapSnapshot):boolean{
        x.partyId!==y.partyId||!sameList(x.partyMemberIds,y.partyMemberIds)||
        x.inCombat!==y.inCombat||x.activity!==y.activity||
        x.goal!==y.goal||x.plannedAction!==y.plannedAction||
+       x.threatAction!==y.threatAction||
+       x.threatNextStep?.x!==y.threatNextStep?.x||
+       x.threatNextStep?.z!==y.threatNextStep?.z||
+       x.pursuingMonsterId!==y.pursuingMonsterId||
        !sameList(x.visited,y.visited))
       return false;
   }
