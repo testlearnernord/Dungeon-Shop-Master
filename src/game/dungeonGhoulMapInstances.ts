@@ -6,7 +6,7 @@ import type {AssetContainer,InstantiatedEntries} from "@babylonjs/core/assetCont
 import type {InstancedMesh} from "@babylonjs/core/Meshes/instancedMesh";
 import "@babylonjs/core/Meshes/instancedMesh";
 import "@babylonjs/loaders/glTF/2.0";
-import {GHOUL_MODEL} from "./ghoulMotion.ts";
+import {GHOUL_MODEL,GHOUL_CLIP_INDICES} from "./ghoulMotion.ts";
 
 export interface GhoulMapSite {
   readonly id:string;
@@ -85,9 +85,12 @@ export class GhoulMapInstances {
       if(!walkGeometry||duplicate.skeletons[0]?.bones.length!==65)
         throw Error("Missing separate authored walking skeleton");
       const idle=staged.animationGroups.find(c=>c.name==="idle_combat");
-      const walk=duplicate.animationGroups.find(c=>
-        c.name==="walk_feral"||c.name.endsWith("walk_feral"));
-      if(!idle||!walk)throw Error("Ghoul walk/idle animation clips absent");
+      // The archived Tripo walk clip still has its original long prompt as
+      // its glTF name. "walk_feral" is our semantic alias, NOT the source
+      // animationGroup.name. Use the same verified index as GroupCombat.
+      const walk=duplicate.animationGroups[GHOUL_CLIP_INDICES.walk_feral];
+      if(!idle||!walk||walk.targetedAnimations.length===0)
+        throw Error("Ghoul walk/idle animation clips absent");
       const source=geometry[0];
       const bounds=source.getBoundingInfo().boundingBox;
       const height=bounds.maximum.y-bounds.minimum.y;
