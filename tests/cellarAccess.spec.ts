@@ -16,7 +16,11 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
       return await page.evaluate(async()=>(
         await import("/Dungeon-Shop-Master/tests/scene.ts")).shopSceneReady());
     }catch(error){
-      if(!String(error).includes("Execution context was destroyed"))throw error;
+      // Vite may reload/transpile this E2E-only helper while predev assets
+      // are rebuilding. Retry only during the bounded bootstrap poll; a
+      // permanently broken module still fails after the 30-second deadline.
+      if(!/Execution context was destroyed|Failed to fetch dynamically imported module/.test(String(error)))
+        throw error;
       return false;
     }
   },{timeout:30000,intervals:[200,400,700]}).toBe(true);
