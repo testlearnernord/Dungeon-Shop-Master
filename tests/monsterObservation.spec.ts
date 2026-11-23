@@ -15,24 +15,37 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {GameStore}=await import("/Dungeon-Shop-Master/src/game/gameStore.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const {generateExpeditionLayout,dungeonNeighbors}
+    const {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath}
       =await import("/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
     const {emptySpatialDungeonWorld}
       =await import("/Dungeon-Shop-Master/src/game/spatialDungeonExploration.ts");
     const {advanceDungeonMonsterWorld}
       =await import("/Dungeon-Shop-Master/src/game/dungeonMonsterWorld.ts");
-    const store=new GameStore(createGameState(7351));
+    const start=createGameState(7351);
+    // No roaming party changes the deterministic two-step demonstration.
+    // The monster still moves through the real LIVE world event scheduler.
+    const store=new GameStore({...start,adventurers:
+      start.adventurers.map(hero=>({...hero,status:"at-shop" as const,
+        floor:"shop" as const,shopStayDays:0}))});
     store.enableLiveDungeon();
     const layout=generateExpeditionLayout(7351,1);
     const floorWorld=advanceDungeonMonsterWorld(
       emptySpatialDungeonWorld(),layout,1,0);
     const packs=floorWorld.monsters??[];
-    const chosen=packs.map(pack=>({
-      pack,target:dungeonNeighbors(layout,pack).find(tile=>
-        !packs.some(other=>other.id!==pack.id&&
-          other.x===tile.x&&other.z===tile.z)),
-    })).find(pair=>!!pair.target);
-    if(!chosen?.target)throw new Error("Seeded map has no free Ghoul step");
+    // Pick a real connected TWO-tile route. Each tile must be unoccupied so
+    // we can observe one committed step at the table and the next in LIVE.
+    const busy=(point:{x:number;z:number},id:string)=>packs.some(
+      other=>other.id!==id&&other.x===point.x&&other.z===point.z);
+    const routes=packs.flatMap(pack=>dungeonNeighbors(layout,pack)
+      .flatMap(first=>dungeonNeighbors(layout,first).flatMap(target=>{
+        const route=dungeonShortestPath(layout,pack,target);
+        return route.length===3&&
+          route[1].x===first.x&&route[1].z===first.z&&
+          !busy(first,pack.id)&&!busy(target,pack.id)
+          ?[{pack,target,first}]:[];
+      })));
+    const chosen=routes[0];
+    if(!chosen)throw new Error("Seeded map has no clear two-tile Ghoul route");
     const world={...floorWorld,monsters:packs.map(pack=>
       pack.id===chosen.pack.id?{
         ...pack,mode:"ROAMING" as const,target:chosen.target,
@@ -44,6 +57,10 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     await new CampaignStorage().saveGame(seeded);
     return {
       selected:chosen.pack.id,
+      first:{x:(chosen.first.x-(layout.width-1)/2)*2.5,
+        z:(chosen.first.z-(layout.height-1)/2)*2.5},
+      second:{x:(chosen.target.x-(layout.width-1)/2)*2.5,
+        z:(chosen.target.z-(layout.height-1)/2)*2.5},
       pins:packs.map(pack=>({
         id:pack.id,x:(pack.x-(layout.width-1)/2)*2.5,
         z:(pack.z-(layout.height-1)/2)*2.5,
