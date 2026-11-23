@@ -32,7 +32,7 @@ test("all registered furniture types share one geometry and mounting registry",(
     "adventurer-board","galvik-portrait","cellar-chest","cellar-table","world-clock",
   ];
   assert.deepEqual(Object.keys(FURNITURE_REGISTRY),
-    ["shelf","counter","desk","chest","cellar-chest","cellar-table","candle","bed","adventurer-board","galvik-portrait","world-clock"],
+    ["shelf","counter","desk","chest","cellar-chest","cellar-table","candle","bed","world-clock","adventurer-board","galvik-portrait"],
     "registry lists one shelf template plus unique furniture types");
   for(const id of ids){
     const def=furnitureDefinition(id);
