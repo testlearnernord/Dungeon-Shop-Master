@@ -152,6 +152,9 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   const wallPoints=await page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksDioramaWallPixels());
   expect(wallPoints.length).toBeGreaterThan(15);
+  const bankPoints=await page.evaluate(async()=>(
+    await import("/Dungeon-Shop-Master/tests/scene.ts")).galviksDioramaBedrockPixels());
+  expect(bankPoints.length).toBe(10);
   const screenshot=await page.screenshot();
   await testInfo.attach("galviks-real-3d-table",{
     body:screenshot,contentType:"image/png",
@@ -171,7 +174,8 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
       const data=context.getImageData(p.x,p.y,1,1).data;
       return [data[0]!,data[1]!,data[2]!] as const;
     });
-  },{base64:screenshot.toString("base64"),points:[...points,...wallPoints]});
+  },{base64:screenshot.toString("base64"),
+    points:[...points,...wallPoints,...bankPoints]});
   const wallColors=colors.slice(points.length);
   const wallLuminance=wallColors.map(rgb=>Math.max(...rgb));
   console.log("GALVIK_WALL_PIXEL_DIAGNOSTIC",JSON.stringify({
@@ -182,6 +186,11 @@ test("Galvik's Table shows a live physical 3D dungeon with selected floor @ci-sm
   }));
   expect(wallLuminance.filter(value=>value>32).length)
     .toBeGreaterThan(Math.floor(wallLuminance.length*.3));
+  const bankLuminance=colors.slice(points.length+wallPoints.length)
+    .map(rgb=>Math.max(...rgb));
+  // Both banks must be visibly textured and lit, not just counted meshes
+  // hiding below the imported GLB's black recessed undertray.
+  expect(bankLuminance.filter(value=>value>35).length).toBeGreaterThan(5);
   const luminances=colors.slice(0,points.length).map(rgb=>Math.max(...rgb));
   // The centered white FPS crosshair may cover one or two sampled points.
   // A solid-white surface still fails, without false positives from the HUD.
