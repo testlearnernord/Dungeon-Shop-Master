@@ -274,7 +274,8 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
     if(!bounds)throw Error("Minimap should be visible");
     await page.mouse.click(
       bounds.x+(point.x+.5)*bounds.width/minimapTargets.width,
-      bounds.y+(point.z+.5)*bounds.height/minimapTargets.height);
+      bounds.y+(minimapTargets.height-point.z-.5)*
+         bounds.height/minimapTargets.height);
   };
   const beforeMinimap=await mapFocus();
   await clickMinimap(minimapTargets.known);
@@ -294,7 +295,7 @@ test("Floor selector watches multiple saved heroes/parties and separates the arc
   if(Math.abs(dx)+Math.abs(dz)===1){
     await minimap.focus();
     await page.keyboard.press(dx===1?"ArrowRight":dx===-1?
-      "ArrowLeft":dz===1?"ArrowDown":"ArrowUp");
+      "ArrowLeft":dz===1?"ArrowUp":"ArrowDown");
     const afterArrow=await mapFocus();
     expect(afterArrow.target.x).toBeCloseTo(third.x,2);
     expect(afterArrow.target.z).toBeCloseTo(third.z,2);
