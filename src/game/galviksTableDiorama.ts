@@ -1,6 +1,8 @@
 import {Color3} from "@babylonjs/core/Maths/math.color";
 import {Matrix,Vector3} from "@babylonjs/core/Maths/math.vector";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
+import {PBRMaterial} from "@babylonjs/core/Materials/PBR/pbrMaterial";
+import type {Material} from "@babylonjs/core/Materials/material";
 import {ShaderMaterial} from "@babylonjs/core/Materials/shaderMaterial";
 import {DynamicTexture} from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
@@ -56,8 +58,8 @@ export class GalviksTableDiorama{
   private readonly floorText:DynamicTexture;
   private readonly floorMat:ShaderMaterial;
   private readonly palette:{
-    stoneA:StandardMaterial;stoneB:StandardMaterial;
-    corridor:StandardMaterial;room:StandardMaterial;
+    stoneA:PBRMaterial;stoneB:PBRMaterial;
+    corridor:PBRMaterial;room:PBRMaterial;
     platform:StandardMaterial;heroTank:StandardMaterial;
     heroDps:StandardMaterial;heroHeal:StandardMaterial;
     ghoul:StandardMaterial;treasure:StandardMaterial;
@@ -97,18 +99,15 @@ export class GalviksTableDiorama{
     // Weak ambient emission retains those texture details under cellar light.
     const live=getDungeonSurfaces(scene);
     const scaledSurface=(name:string,source:StandardMaterial,tint:number)=>{
-      // Use the exact LIVE Dungeon texture, not a clone of its lighting
-      // material. The cellar's light budget is different from the full
-      // spectator scene, so sample the image into an unlit emissive channel.
-      const mat=new StandardMaterial("table-diorama-live-"+name,scene);
-      // Same shop Scene as the source DynamicTexture: sample it through
-      // the ordinary diffuse path. EmissiveTexture here turned the entire
-      // wall surface white on SwiftShader, despite healthy source pixels.
-      mat.diffuseTexture=source.diffuseTexture;
-      mat.diffuseColor=new Color3(tint,tint,tint);
-      mat.emissiveColor=new Color3(.08,.08,.08);
-      mat.specularColor=Color3.Black();
-      mat.disableLighting=true;
+      // Babylon PBR's unlit path samples ALBEDO directly and preserves the
+      // procedural stone image, unlike StandardMaterial's cross-channel
+      // emissive/diffuse paths (previously rendered black or solid white).
+      const mat=new PBRMaterial("table-diorama-live-"+name,scene);
+      mat.albedoTexture=source.diffuseTexture;
+      mat.albedoColor=new Color3(tint,tint,tint);
+      mat.metallic=0;
+      mat.roughness=1;
+      mat.unlit=true;
       mat.backFaceCulling=false;
       return mat;
     };
@@ -213,7 +212,7 @@ void main(void){
   private tileInstances(
     name:string,layout:DungeonLayout,kind:(x:number,z:number,tile:string)=>boolean,
     size:{width:number;height:number;depth:number;y:number},
-    mat:StandardMaterial,
+    mat:Material,
   ):void{
     const transforms:number[]=[];
     for(let z=0;z<layout.height;z++){
@@ -292,7 +291,7 @@ void main(void){
 
     const thin=(name:string,
       predicate:(x:number,z:number,tile:string)=>boolean,
-      y:number,h:number,mat:StandardMaterial)=>
+      y:number,h:number,mat:Material)=>
       this.tileInstances(name,layout,predicate,{
         width:xStep*.988,height:h,depth:zStep*.988,y,
       },mat);
