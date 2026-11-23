@@ -127,9 +127,16 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   });
   const selected=async()=>(
     await inspect()).pins.find(pin=>pin.id===expected.selected);
+  const realWorld=()=>page.evaluate(id=>{
+    const hooks=window as Window&{
+      __shopTestGhoulSnapshot?:(floor:number,id:string)=>unknown;
+    };
+    return hooks.__shopTestGhoulSnapshot?.(1,id)??null;
+  },expected.selected);
   await nextMonsterStep();
-  await expect.poll(async()=> (await selected())?.phase,
-    {timeout:5000,intervals:[100,150,200]}).toBe("walk");
+  await expect.poll(async()=>JSON.stringify({
+    view:await selected(),world:await realWorld(),
+  }),{timeout:5000,intervals:[100,150,200]}).toContain('"phase":"walk"');
   const tableWalking=await selected();
   expect(tableWalking?.clip).toBe("walk_feral");
   expect(tableWalking?.walkModel).toBe(true);
@@ -173,8 +180,9 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   }
 
   await nextMonsterStep();
-  await expect.poll(async()=> (await selected())?.phase,
-    {timeout:5000,intervals:[100,150,200]}).toBe("walk");
+  await expect.poll(async()=>JSON.stringify({
+    view:await selected(),world:await realWorld(),
+  }),{timeout:5000,intervals:[100,150,200]}).toContain('"phase":"walk"');
   const liveWalking=await selected();
   expect(liveWalking?.clip).toBe("walk_feral");
   expect(liveWalking?.walkModel).toBe(true);
