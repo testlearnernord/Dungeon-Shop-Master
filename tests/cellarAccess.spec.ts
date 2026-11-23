@@ -9,8 +9,19 @@ test("portrait reveals a physical staircase to the mineable cellar @ci-smoke",as
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
-  await page.evaluate(async()=>
-    (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtCellarPortrait());
+  // Dev Vite can replace the document immediately after first paint if
+  // startup asset generation triggers HMR. Re-aim after that rare navigation,
+  // without swallowing genuine missing-scene or camera errors.
+  await expect.poll(async()=>{
+    try{
+      await page.evaluate(async()=>
+        (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtCellarPortrait());
+      return true;
+    }catch(error){
+      if(!String(error).includes("Execution context was destroyed"))throw error;
+      return false;
+    }
+  },{timeout:15000,intervals:[200,400,700]}).toBe(true);
   await page.keyboard.press("e");
   await expect.poll(async()=>page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
