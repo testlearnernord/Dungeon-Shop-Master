@@ -7,7 +7,8 @@ import type {LiveFloorFight,LiveFloorHero,LiveFloorSpectatorFrame}
  * the inspector and arena consume those values separately. */
 type FloorMapHero=Pick<LiveFloorHero,
   "id"|"x"|"z"|"role"|"equipment"|"partyId"|"partyMemberIds"|
-  "inCombat"|"visited"|"activity"|"plannedAction"|"goal">;
+  "inCombat"|"visited"|"activity"|"plannedAction"|"goal"|
+  "threatAction"|"threatNextStep"|"pursuingMonsterId">;
 type FloorMapFight=Pick<LiveFloorFight,"id"|"x"|"z">;
 export type FloorMapSnapshot={
   readonly floor:LiveFloorSpectatorFrame["floor"];
