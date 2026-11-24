@@ -85,8 +85,8 @@ test("three real heroes fight one regenerated heavy elite with distinct HP/Herbs
   for(const hero of heroes){
     const recorded=encounter.combat.actors.find(actor=>actor.id===hero.id)!;
     assert.deepEqual(recorded.equipment,{
-      weapon:"Iron Sword",armor:"Leather Vest",
-    },"Companion purchases must be historical, not queried from today's roster");
+      weapon:hero.role==="tank"?"Iron Sword":null,armor:"Leather Vest",
+    },"Recorded gear must be historical and role-legal, not today's roster");
   }
   assert.equal(encounter.combat.actors.find(a=>a.id===featureId)?.equipment,
     undefined,"Monsters must never get fabricated shop inventory");
