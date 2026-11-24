@@ -10,6 +10,22 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./?e2e-pause-world");
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  // Scene diagnostics bring extra Babylon modules into Vite's dev dependency
+  // graph. Preload them BEFORE buying any hero goods: the one-time optimize
+  // dependency scan can legitimately trigger a dev-only full-page reload.
+  // Never let that reload interrupt the real buyback/crafting transaction.
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      await page.evaluate(async()=>{
+        const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+        return probe.shopSceneReady();
+      });
+      break;
+    }catch(error){
+      if(attempt===2)throw error;
+      await page.waitForLoadState("domcontentloaded");
+    }
+  }
   const fixture=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
