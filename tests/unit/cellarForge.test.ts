@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createGameState} from "../../src/game/gameState.ts";
+import type {AdventurerState} from "../../src/game/adventurers.ts";
 import {buyWholesale,ECONOMY,ITEMS}
   from "../../src/game/economy.ts";
 import {craftAtCellarForge} from "../../src/game/cellarForge.ts";
@@ -123,19 +124,19 @@ for(const [role,t1,t2,t2Name] of [
       equipment:{weapon:t1,armor:"Leather Vest"},
       inventory:{...buyer.inventory,bread:ECONOMY.breadTarget,
         healing:ECONOMY.healingTarget,finds:{}}};
-    let owner:typeof hero=hero;
+    let owner:AdventurerState=hero;
     const required={"iron-ore":1,coal:1,"ghoul-leather":2} as const;
     // Collect only actual generated drops; never inject finished T2 into stock.
     const loot=Array.from({length:150},(_,cycle)=>
       rollDungeonSiteLoot(7351,4,"monster-0",cycle,"monster",3).itemIds);
     for(let cycle=0;cycle<loot.length;cycle++){
       const next=distributeDungeonFinds([owner],loot[cycle],"monster-0",cycle)[0];
-      owner={...owner,inventory:{...next.inventory,finds:next.inventory.finds??{}}};
+      owner=next;
       if(Object.entries(required).every(([id,n])=>
-        (owner.inventory.finds[id as keyof typeof required]??0)>=n))break;
+        (owner.inventory.finds?.[id as keyof typeof required]??0)>=n))break;
     }
     for(const id of Object.keys(required) as (keyof typeof required)[])
-      assert((owner.inventory.finds[id]??0)>=required[id]);
+      assert((owner.inventory.finds?.[id]??0)>=required[id]);
     const initial={...original,adventurers:original.adventurers.map(h=>
       h.id===hero.id?owner:{...h,gold:0}),
       shopEconomy:{...original.shopEconomy,slots:original.shopEconomy.slots.map(slot=>
