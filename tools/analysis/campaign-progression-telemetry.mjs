@@ -3,6 +3,7 @@
 // positions and floor dwell are sampled at the existing 200-tick cadence.
 import {generateExpeditionLayout,dungeonDownStair} from "../../src/game/dungeonLayout.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
+import {equipmentEffects,gearFromName} from "../../src/game/gearCatalog.ts";
 const add=(record,key,n=1)=>record[key]=(record[key]??0)+n;
 export function createCampaignTelemetry(seed){
   const allHeroes=new Map(),daily=[],milestones=[],gateCounts={},floor9Examples={},depthDecisions={},depthChecks={},depthExamples={};
@@ -129,4 +130,89 @@ export function createCampaignTelemetry(seed){
       interpretation:"Failed checks overlap; counts are not unique heroes or proof of causality. Route checks describe known routes, not proof of unreachable geometry."};
   }
   return {observe,sample,finishDay,report,deepestFloor:()=>deepest};
+}
+
+// The world feed archives one copy of the same ordinary fight per hero.
+// Deduplicate physical encounters, then count each participant exactly once.
+// This is an offline reader of committed footage, never another simulation.
+export function createCombatExposureTelemetry(){
+  const byRole={},byLoadout={},byFloor={},byParty={},byContext={};
+  const encounterOutcomes={};
+  let encounters=0,participants=0;
+  const row=(table,key)=>table[key]??={entries:0,deaths:0,wins:0,draws:0,
+    damageReceived:0,damageDealt:0,healingReceived:0,parries:0,dodges:0,
+    attackStarts:0,entryHpRatioSum:0,exitHpRatioSum:0,seconds:0};
+  function observe(events){
+    // The scheduler settles all party copies in the same world-tick batch;
+    // the audit passes complete day batches, never partial party events.
+    const seen=new Set();
+    for(const event of events){
+      const replay=event.dungeonReplay;
+      if(event.type!=="dungeon-live"||!replay||replay.floor>=10)continue;
+      for(const site of replay.encounters??[]){
+        const fight=site.combat;
+        const key=JSON.stringify([event.day,event.worldTick,replay.floor,site.featureId,site.siteCycle??0]);
+        if(seen.has(key))continue;
+        seen.add(key);
+        const heroes=fight.actors.filter(actor=>actor.team==="heroes");
+        const monsters=fight.actors.filter(actor=>actor.team==="monsters");
+        const end=fight.frames.at(-1);
+        if(!end||!heroes.length||!monsters.length)throw Error("Incomplete combat exposure footage: "+key);
+        encounters++;
+        add(encounterOutcomes,fight.outcome);
+        for(const hero of heroes){
+          const final=end.actors.find(actor=>actor.id===hero.id);
+          if(!final)throw Error("Combat exposure missing final participant: "+hero.id);
+          const gear=equipmentEffects(hero.role,hero.equipment??{weapon:null,armor:null});
+          const weapon=gearFromName(gear.weapon)?.tier??0;
+          const armor=gearFromName(gear.vest)?.tier??0;
+          const loadout="W"+weapon+"/A"+armor;
+          const party=heroes.length===1?"solo":"party-"+heroes.length;
+          const band=replay.floor<=3?"1-3":replay.floor<=7?"4-7":"8-9";
+          const keys=[
+            row(byRole,hero.role),row(byLoadout,hero.role+":"+loadout),
+            row(byFloor,hero.role+":"+replay.floor),
+            row(byParty,hero.role+":"+party),
+            row(byContext,hero.role+":"+band+":"+party+":"+loadout),
+          ];
+          participants++;
+          const stats={entries:1,deaths:Number(final.hp<=0),
+            wins:Number(fight.outcome==="heroes"&&final.hp>0),
+            draws:Number(fight.outcome==="draw"&&final.hp>0),
+            damageReceived:0,damageDealt:0,healingReceived:0,parries:0,dodges:0,
+            attackStarts:0,entryHpRatioSum:hero.hp/hero.maxHp,
+            exitHpRatioSum:final.hp/hero.maxHp,seconds:end.t};
+          for(const cue of fight.cues){
+            if(cue.kind==="hit"){
+              if(cue.targetId===hero.id)stats.damageReceived+=cue.amount??0;
+              if(cue.actorId===hero.id)stats.damageDealt+=cue.amount??0;
+            }
+            if(cue.kind==="heal"&&cue.targetId===hero.id)stats.healingReceived+=cue.amount??0;
+            if(cue.actorId===hero.id){
+              if(cue.kind==="parry")stats.parries++;
+              if(cue.kind==="dodge")stats.dodges++;
+              if(cue.kind==="attack"||cue.kind==="cast")stats.attackStarts++;
+            }
+          }
+          for(const r of keys)for(const [field,value] of Object.entries(stats))add(r,field,value);
+        }
+      }
+    }
+  }
+  function summarize(table){
+    return Object.fromEntries(Object.entries(table).map(([key,r])=>[key,{
+      ...r,deathShare:r.deaths/r.entries,meanEntryHpRatio:r.entryHpRatioSum/r.entries,
+      meanExitHpRatio:r.exitHpRatioSum/r.entries,
+    }]));
+  }
+  function report(){
+    if(Object.values(byRole).reduce((n,r)=>n+r.entries,0)!==participants||
+       Object.values(encounterOutcomes).reduce((n,v)=>n+v,0)!==encounters)
+      throw Error("Combat exposure ledger mismatch");
+    return {encounters,participants,encounterOutcomes,
+      byRole:summarize(byRole),byLoadout:summarize(byLoadout),
+      byFloor:summarize(byFloor),byParty:summarize(byParty),byContext:summarize(byContext),
+      interpretation:"Ordinary completed fights only; one entry per participant, not per unique hero. Damage is recorded hit cues; healing is recorded heal cues. Repeated encounters and self-selection by floor/gear/party confound causal comparisons. Bosses and traps excluded."};
+  }
+  return {observe,report};
 }
