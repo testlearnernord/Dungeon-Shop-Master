@@ -1,32 +1,28 @@
 name: Long-run Gameplay Simulation Audit
 
 on:
-  push:
-    branches:
-      - 'audit/gameplay-loop-*'
+  pull_request:
+    branches: [main]
     paths:
-      - tools/analysis/gameplay-100day-audit.mjs
-      - tools/analysis/campaign-progression-telemetry.mjs
-      - .github/workflows/gameplay-100day-audit.yml
-      - src/game/heroProgression.ts
-      - src/game/liveDungeonRuntime.ts
-      - src/game/dungeonDecisions.ts
-      - src/game/dungeonParties.ts
-      - src/game/dungeonThreatDecisions.ts
-      - src/game/spatialDungeonExploration.ts
-      - src/game/ghoulPack.ts
-      - src/game/dungeonLoot.ts
-      - src/game/campaignSave.ts
-      - src/game/shopArrivals.ts
-      - tests/unit/liveDungeonReturnRegression.test.ts
-      - tests/unit/liveDungeonWorld.test.ts
+      - 'tools/analysis/**'
+      - '.github/workflows/gameplay-100day-audit.yml'
+      - 'src/game/**'
+      - 'tests/unit/**'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Superseded candidates must not consume the full simulation matrix.
+concurrency:
+  group: gameplay-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   audit:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'audit/gameplay-loop-'))
     name: Real GameStore / scripted-storefront ${{ matrix.days }}-day scenarios / ${{ matrix.seed }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
