@@ -103,7 +103,6 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
       bag:{spear:state.shopEconomy.bag["forged-spear"],
         armor:state.shopEconomy.bag["ghoul-leather-vest"]},
       materials:state.shopEconomy.materialStorage,
-      seller:state.adventurers.find(h=>h.id===fixture.heroId)?.gold,
       buybacks:state.events.filter(e=>e.type==="hero-buyback").length,
     };
   });
