@@ -6,7 +6,7 @@ import { generateExpeditionLayout } from "./dungeonLayout.ts";
 import {
   getSpatialDungeonProgress,chooseKnownRouteStep,type SpatialDungeonWorld, type SpatialDungeonFloor,
 } from "./spatialDungeonExploration.ts";
-import {isBossExpeditionCandidate,type HeroDungeonDecision,
+import {isBossExpeditionCandidate,canRiskOrdinaryDescent,type HeroDungeonDecision,
   type HeroFloorAction} from "./dungeonDecisions.ts";
 import {dungeonCurrentSight} from "./heroPerception.ts";
 
@@ -295,11 +295,9 @@ export function negotiatePartyFloorDecisions(
   const canFollow=stayers.every(member=>{
     const goal=decisions.get(member.id)!.goal;
     const health=member.health/heroProgression(member).maxHealth;
-    const gear=equipmentEffects(member.role,member.equipment);
-    const equipped=!!gear.weapon||member.floor===1&&!!gear.vest;
     const threshold=member.traits.positive==="careful"?0.92:0.78;
     return goal!=="caution"&&goal!=="resupply"&&
-      goal!=="farm"&&equipped&&health>=threshold;
+      goal!=="farm"&&canRiskOrdinaryDescent(member)&&health>=threshold;
   });
   if(canFollow)return change("descend");
 

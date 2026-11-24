@@ -1,4 +1,4 @@
-import {chooseLiveHeroDungeonDecision,salvageReturnThreshold,isBossExpeditionCandidate} from "../../src/game/dungeonDecisions.ts";
+import {chooseLiveHeroDungeonDecision,salvageReturnThreshold,isBossExpeditionCandidate,canRiskOrdinaryDescent,selectKnownResourceSite} from "../../src/game/dungeonDecisions.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -14,6 +14,8 @@ import {WORLD_TICKS_PER_DAY,lastWorldTickOfDay}
 import {generateExpeditionLayout,dungeonDownStair,dungeonNeighbors,dungeonShortestPath,tileAt}
   from "../../src/game/dungeonLayout.ts";
 import {emptySpatialDungeonWorld,chooseKnownReturnStep} from "../../src/game/spatialDungeonExploration.ts";
+import {advanceDungeonMonsterWorld} from "../../src/game/dungeonMonsterWorld.ts";
+import {hasDungeonLineOfSight} from "../../src/game/heroPerception.ts";
 
 test("real world-clock event advances one dungeon step during shop play, not at bedtime",()=>{
   const store=new GameStore(createGameState(7351));
@@ -511,7 +513,7 @@ test("diagnostic captures the actual rejected Floor-9 solo stair crossing",()=>{
 
 test("healthy committed descent survives an ordinary empty movement decision but never overrides resupply",()=>{
   const original=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
-  const hero={...original,floor:3 as const,status:"exploring" as const,
+  const hero={...original,level:3,xp:200,floor:3 as const,status:"exploring" as const,
     equipment:{weapon:"Iron Sword" as const,armor:"Leather Vest" as const}};
   const ready={...hero,health:heroProgression(hero).maxHealth};
   const layout=generateExpeditionLayout(7351,3);
@@ -532,9 +534,9 @@ test("healthy committed descent survives an ordinary empty movement decision but
 
 test("deep prepared expeditions carry more salvage but real resupply still wins",()=>{
   const source=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
-  const hero={...source,floor:5 as const,status:"exploring" as const,
+  const hero={...source,level:5,xp:400,floor:5 as const,status:"exploring" as const,
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
-    health:heroProgression(source).maxHealth,
+    health:heroProgression({...source,level:5}).maxHealth,
     traits:{...source.traits,positive:"brave",negative:"stubborn"},
     inventory:{bread:2,healing:1,finds:{"iron-ore":4}}};
   const layout=generateExpeditionLayout(7351,5);
@@ -629,14 +631,16 @@ test("full health without a real class weapon is not a permit to risk deep floor
   assert.equal(chooseLiveHeroDungeonDecision({...hero,gold:9},progress,replay).action,"ascend",
     "Stale gold alone must not cause an endless failed shopping loop");
   assert.equal(chooseLiveHeroDungeonDecision({...hero,equipment:{weapon:"Iron Sword",armor:null}},
-    progress,replay).action,"descend");
+    progress,replay).action,"ascend","A novice with only a weapon is still overextended on Floor 3");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,level:3,xp:200,
+    equipment:{weapon:"Iron Sword",armor:null}},progress,replay).action,"descend");
 });
 
 test("old unsold salvage does not cause a new return after every additional drop",()=>{
   const source=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
-  const hero={...source,floor:5 as const,status:"exploring" as const,
+  const hero={...source,level:5,xp:400,floor:5 as const,status:"exploring" as const,
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
-    health:heroProgression(source).maxHealth,
+    health:heroProgression({...source,level:5}).maxHealth,
     traits:{...source.traits,positive:"brave",negative:"stubborn"},
     inventory:{bread:2,healing:1,finds:{"iron-ore":9}}};
   const layout=generateExpeditionLayout(7351,5);
@@ -651,4 +655,46 @@ test("old unsold salvage does not cause a new return after every additional drop
     progress,replay,undefined,undefined,false,15).action,"shop");
   assert.equal(chooseLiveHeroDungeonDecision({...hero,health:1},progress,replay,
     undefined,undefined,false,8).action,"shop");
+});
+
+test("ordinary depth risk reflects experience and merchant supplies without altering the boss gate",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  const novice={...source,level:1,xp:0,floor:3 as const,status:"exploring" as const,
+    health:heroProgression({...source,level:1}).maxHealth,
+    equipment:{weapon:"Spear",armor:null},
+    traits:{...source.traits,positive:"brave",negative:"stubborn"},
+    inventory:{...source.inventory,bread:0,healing:0}};
+  assert(!canRiskOrdinaryDescent(novice));
+  const supplied={...novice,equipment:{weapon:"Spear",armor:"Leather Vest"},
+    inventory:{...novice.inventory,healing:1}};
+  assert(canRiskOrdinaryDescent(supplied));
+  assert(!canRiskOrdinaryDescent({...supplied,health:1}));
+  assert(canRiskOrdinaryDescent({...novice,level:3,xp:200}));
+  assert(!canRiskOrdinaryDescent({...novice,equipment:{weapon:"Staff",armor:"Leather Vest"}}));
+  assert(canRiskOrdinaryDescent({...novice,equipment:{weapon:"Forged Spear",armor:"Leather Vest"}}));
+  assert(!canRiskOrdinaryDescent({...supplied,floor:9}));
+  const layout=generateExpeditionLayout(7351,3);
+  const progress={heroId:novice.id,...layout.entrance,visited:[layout.entrance.z*layout.width+layout.entrance.x]};
+  const replay={version:1 as const,day:1,heroId:novice.id,floor:3 as const,
+    appearance:{role:novice.role,equipment:novice.equipment},steps:[],encounters:[],
+    outcome:"exploring" as const};
+  assert.notEqual(chooseLiveHeroDungeonDecision(novice,progress,replay,
+    undefined,undefined,false,0,undefined,{goal:"progress",action:"descend"}).action,"descend");
+});
+
+test("remembering a tile does not reveal a roaming monster behind a wall",()=>{
+  const layout=generateExpeditionLayout(7351,3);
+  const world=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),layout,1,0);
+  const monster=world.monsters!.find(m=>!hasDungeonLineOfSight(layout,layout.entrance,m));
+  assert(monster);
+  const visited=layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i]);
+  const known={heroId:"observer",...layout.entrance,visited};
+  const isolated={...world,monsters:[monster]};
+  assert.equal(selectKnownResourceSite(layout,known,isolated,"monster"),null);
+  const adjacent=dungeonNeighbors(layout,monster)[0];
+  assert(adjacent);
+  const near={...known,...adjacent};
+  assert.equal(selectKnownResourceSite(layout,near,isolated,"monster")?.id,monster.id);
+  assert.equal(selectKnownResourceSite(layout,near,{...isolated,
+    monsters:[{...monster,mode:"ENGAGED"}]},"monster"),null);
 });

@@ -2,7 +2,8 @@ import type { AdventurerState } from "./adventurers.ts";
 import type {SpatialDungeonHeroProgress,SpatialDungeonReplay,SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 import {chooseKnownRouteStep} from "./spatialDungeonExploration.ts";
 import {heroProgression} from "./heroProgression.ts";
-import {equipmentEffects,gearForItem} from "./gearCatalog.ts";
+import {equipmentEffects,gearForItem,gearFromName} from "./gearCatalog.ts";
+import {hasDungeonLineOfSight} from "./heroPerception.ts";
 import {WHOLESALE_GOODS} from "./economy.ts";
 import {dungeonNeighbors,type DungeonLayout,type DungeonFeature} from "./dungeonLayout.ts";
 
@@ -45,9 +46,33 @@ export function isBossExpeditionParty(members:readonly AdventurerState[]):boolea
   return members.length>=2&&members.length<=3&&members.every(isBossExpeditionCandidate);
 }
 
+/** An autonomous risk estimate, not a staircase lock or a stat bonus.
+ * Experience, actual armor, forged weapons and carried supplies each make
+ * a deeper expedition more credible; reckless heroes accept extra risk.
+ * Floor 1 remains approachable so newcomers can earn their first gear. */
+export function ordinaryExpeditionReadiness(hero:AdventurerState):number {
+  const gear=equipmentEffects(hero.role,hero.equipment);
+  return hero.level+Number(!!gear.vest)+
+    Number(gearFromName(gear.weapon)?.tier===2)+
+    Number(hero.inventory.bread+hero.inventory.healing>0)+
+    Number(hero.traits.negative==="reckless");
+}
+export function canRiskOrdinaryDescent(hero:AdventurerState):boolean {
+  const floor=hero.floor;
+  if(typeof floor!=="number"||floor<1||floor>=9)return false;
+  const health=hero.health/heroProgression(hero).maxHealth;
+  const careful=hero.traits.positive==="careful";
+  const reckless=hero.traits.negative==="reckless";
+  const armed=!!equipmentEffects(hero.role,hero.equipment).weapon;
+  if(!armed)return floor===1&&reckless&&health>.85;
+  if(health<(careful?.76:reckless?.55:.65))return false;
+  return floor===1||ordinaryExpeditionReadiness(hero)>=
+    (floor<=3?floor:floor-1);
+}
+
 export type DungeonDecisionReason="low-health"|"new-salvage-haul"|"floor9-gold-resupply"|
   "unprepared-retreat"|"floor9-solo-resupply"|"depth-progress"|"damaged-stay"|
-  "test-gear"|"explore"|"combat-retreat"|"boss-ready"|"committed-descent"|"seek-boss-party"|"gear-purchase-resupply";
+  "test-gear"|"explore"|"combat-retreat"|"boss-ready"|"committed-descent"|"seek-boss-party"|"gear-purchase-resupply"|"depth-risk";
 export interface HeroDungeonDecision {
   readonly goal: HeroDungeonGoal;
   readonly action: HeroFloorAction;
@@ -67,14 +92,17 @@ export function chooseHeroDungeonDecision(
   const gear=equipmentEffects(hero.role,hero.equipment);
   const armed=!!gear.weapon;
   const armored=!!gear.vest;
-  const lowHealth=healthRatio < (careful ? 0.64 : reckless ? 0.33 : 0.48);
+  // A wounded melee fighter must cross the attack lane again to do damage.
+  // Bring forward ordinary resupply, not healing or invulnerability.
+  const melee=hero.role!=="healer";
+  const lowHealth=healthRatio < (careful ? 0.64 : reckless ? (melee?.40:.33) :
+    hero.role==="DPS"?.55:hero.role==="tank"?.52:.48);
   const damaged=healthRatio < (careful ? 0.76 : 0.55);
   const known=progress?.visited.length??1;
   // Full HP alone is not preparation for increasingly dangerous floors.
   // Reckless novices may risk the first descent; deeper progress requires
   // an actual class weapon and adequate vitality. No artificial stat gain.
-  const prepared=armed&&healthRatio>=(careful?.76:reckless?.55:.65)||
-    hero.floor===1&&reckless&&healthRatio>.85;
+  const prepared=canRiskOrdinaryDescent(hero);
   const enoughExperience=known >= (reckless?9:careful?17:13) ||
     replay.outcome==="completed";
   // Both chests and Ghoul victories can create a real haul. LIVE callers
@@ -102,13 +130,16 @@ export function chooseHeroDungeonDecision(
   // gear. Do not reroll a failed shop visit just because old gold persists.
   if((newLootSite||replay.outcome==="completed")&&
     (!armed&&starterWeapon&&hero.gold>=starterWeapon.salePrice||
-      armed&&!armored&&hero.floor>=3&&healthRatio<.90&&
+      armed&&!armored&&hero.floor>=2&&(!prepared||healthRatio<.90)&&
       starterArmor&&hero.gold>=starterArmor.salePrice)){
     onReason?.("gear-purchase-resupply");
     return {goal:"resupply",action:"shop"};
   }
   if(hero.floor>1&&!armed&&enoughExperience&&hero.floor<9){
     onReason?.("unprepared-retreat");return {goal:"caution",action:"ascend"};
+  }
+  if(hero.floor>=3&&hero.floor<9&&ordinaryExpeditionReadiness(hero)<hero.floor-1){
+    onReason?.("depth-risk");return {goal:"caution",action:"ascend"};
   }
   if(damaged && hero.floor>1 && !prepared){
     onReason?.("unprepared-retreat");return {goal:"caution",action:"ascend"};
@@ -123,6 +154,9 @@ export function chooseHeroDungeonDecision(
     onReason?.("depth-progress");return {goal:"progress",action:"descend"};
   }
   if(damaged){onReason?.("damaged-stay");return {goal:"caution",action:"stay"};}
+  if(hero.floor<9&&armed&&!prepared&&enoughExperience){
+    onReason?.("depth-risk");return {goal:"test-gear",action:"stay"};
+  }
   if(armed && hero.level<=3){onReason?.("test-gear");return {goal:"test-gear",action:"stay"};}
   onReason?.("explore");
   return {goal:!armed?"farm":"progress",action:"stay"};
@@ -164,7 +198,7 @@ export function chooseLiveHeroDungeonDecision(
   // resupply, caution, retreat and Floor-9 permission rules still win.
   if(hero.floor<9&&priorDecision?.action==="descend"&&base.action==="stay"&&
       base.goal!=="caution"&&base.goal!=="farm"&&
-      hero.health/heroProgression(hero).maxHealth>=.70){
+      canRiskOrdinaryDescent(hero)&&hero.health/heroProgression(hero).maxHealth>=.70){
     onReason?.("committed-descent");
     return {goal:"progress",action:"descend"};
   }
@@ -172,8 +206,8 @@ export function chooseLiveHeroDungeonDecision(
   return preferKnownDungeonResourceGoal(base,hero,progress,layout,world);
 }
 
-/** The full-floor spectator is omniscient; the AI is not. Only personally
- * visited or directly adjacent unresolved site coordinates are eligible. */
+/** The full-floor spectator is omniscient; the AI is not. Remember static
+ * sites, but a moving monster must be currently visible and unengaged. */
 export function selectKnownResourceSite(
   layout:DungeonLayout,progress:SpatialDungeonHeroProgress,world:SpatialDungeonWorld,
   kind:"treasure"|"monster",
@@ -184,7 +218,9 @@ export function selectKnownResourceSite(
     if(site.kind!==kind||world.resolvedFeatureIds.includes(site.id))return [];
     if(kind!=="monster"||world.monsters===undefined)return [site];
     const occupant=world.monsters.find(monster=>monster.id===site.id);
-    return occupant?[{...site,x:occupant.x,z:occupant.z}]:[];
+    return occupant&&occupant.mode!=="ENGAGED"&&
+      hasDungeonLineOfSight(layout,progress,occupant)
+      ?[{...site,x:occupant.x,z:occupant.z}]:[];
   }).filter(site=>
     (known.has(site.z*layout.width+site.x)||
       adjacent.some(p=>p.x===site.x&&p.z===site.z))&&
