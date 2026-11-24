@@ -78,6 +78,8 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
     const forge=probe.inspectCellarForge();
     if(!forge.exists||!forge.pickable||!forge.collision||!forge.sameScene)
       throw Error("The real cellar anvil must exist and be physical");
+    if(!forge.hasHearth||!forge.hasTools||forge.flames!==3||forge.cosmeticPickables!==0)
+      throw Error("Forge art must be present without competing interaction surfaces");
     probe.aimAtCellarForge();
   });
   await page.keyboard.press("e");
@@ -92,6 +94,7 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   await expect(forge.locator(".forge-reserve")).toContainText("Iron Ore 0");
   await expect(forge.locator(".forge-reserve")).toContainText("Coal 0");
   await expect(spear.getByRole("button",{name:"Forge 1"})).toBeDisabled();
+  await expect(spear).toHaveAttribute("data-ready","false");
   const armor=forge.locator(".forge-recipe").filter({hasText:"T2 Ghoul Leather Vest"});
   await armor.getByRole("button",{name:"Forge 1"}).click();
   await expect(forge.locator(".forge-result"))
@@ -150,6 +153,20 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
     await probe.waitForShelfSlotMesh();
     probe.aimAtShelfSlot();
   });
+  const models=await page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectPhysicalStockMeshes());
+  expect(models).toHaveLength(11);
+  expect(new Set(models.map(m=>m.sourceUrl)).size).toBe(models.length);
+  for(const model of models){
+    expect(model.sourceUrl).toContain("/assets/models/"+model.itemId+".glb");
+    expect(model.vertices).toBeGreaterThan(20);
+    expect(model.hasVertexPaint).toBe(true);
+    expect(model.pickable||model.collisions).toBe(false);
+  }
+  const swordModel=models.find(m=>m.itemId==="forged-sword-shield")!;
+  const spearModel=models.find(m=>m.itemId==="forged-spear")!;
+  expect(swordModel.size[2]).toBeGreaterThan(spearModel.size[2]);
+  expect(swordModel.vertices).not.toBe(spearModel.vertices);
   await page.locator('#inventory [data-item-id="forged-spear"]').click();
   await expect(page.locator("#shop-shelf-focus")).toBeVisible();
   await expect(page.locator("#shelf-focus-action")).toContainText("T2 Spear");
@@ -167,6 +184,9 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   const stocked=await save();
   expect(stocked.shopEconomy.slots[0].itemId).toBe("forged-spear");
   expect(stocked.shopEconomy.slots[0].quantity).toBe(1);
+  await expect.poll(async()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectRenderedShopStock()[0].sourceUrls))
+    .toEqual(["/Dungeon-Shop-Master/assets/models/forged-spear.glb"]);
   await page.evaluate(()=>{
     const hooks=window as Window&{__shopTestPauseWorld?:(paused:boolean)=>void};
     hooks.__shopTestPauseWorld!(false);
@@ -184,6 +204,14 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   expect(held.shopCarts.find(cart=>cart.heroId===fixture.heroId)?.lines)
     .toEqual([{itemId:"forged-spear",slotId:stocked.shopEconomy.slots[0].id,quantity:1,subtotal:25}]);
   expect(held.shopEconomy.slots[0].quantity).toBe(0);
+  const carried=await page.evaluate(async(id)=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals()
+      .visitors.find(v=>v.id===id)?.carriedStock??[],fixture.heroId);
+  expect(carried).toContainEqual(expect.objectContaining({
+    itemId:"forged-spear",source:"shared-shop-stock-glb",
+    sourceUrl:"/Dungeon-Shop-Master/assets/models/forged-spear.glb",
+    geometry:spearModel.vertices,
+  }));
   await page.evaluate(async()=>{
     const {aimAtRegister}=await import("/Dungeon-Shop-Master/tests/scene.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");

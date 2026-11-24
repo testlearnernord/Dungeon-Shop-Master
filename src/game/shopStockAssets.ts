@@ -27,17 +27,6 @@ function vertexPaintMaterial(scene: Scene): StandardMaterial {
   return material;
 }
 
-/** Initial forge art reuses original checked-in source GLBs, rather than
- * silently requesting eight nonexistent new asset files and blanking EVERY
- * shelf. New tier silhouettes will get their own GLBs in a separate art pass.
- * One source is loaded just once per scene, regardless of how many tiers
- * or shop items currently reuse it. */
-function stockSourceId(id:ItemId):ItemId {
-  if(id==="spear"||id==="staff"||id.startsWith("forged-"))
-    return "iron-sword";
-  if(id==="ghoul-leather-vest")return "leather-vest";
-  return id;
-}
 async function loadTemplate(scene: Scene, itemId: ItemId): Promise<Mesh> {
   // Vite's base path is required for GitHub Pages: /Dungeon-Shop-Master/.
   const sourceUrl = `${import.meta.env.BASE_URL}assets/models/${itemId}.glb`;
@@ -76,13 +65,9 @@ export function getShopStockTemplates(
 ): Promise<ReadonlyMap<ItemId, Mesh>> {
   let cached = templatesByScene.get(scene);
   if (!cached) {
-    const sources=[...new Set(SHELF_GOODS.map(item=>stockSourceId(item.id)))];
-    cached=Promise.all(sources.map(async id=>[id,await loadTemplate(scene,id)] as const))
-      .then(entries=>{
-        const unique=new Map<ItemId,Mesh>(entries);
-        return new Map<ItemId,Mesh>(SHELF_GOODS.map(item=>
-          [item.id,unique.get(stockSourceId(item.id))!]));
-      });
+    cached=Promise.all(SHELF_GOODS.map(async item=>
+      [item.id,await loadTemplate(scene,item.id)] as const))
+      .then(entries=>new Map<ItemId,Mesh>(entries));
     templatesByScene.set(scene, cached);
   }
   return cached;
@@ -92,6 +77,7 @@ export function getShopStockTemplates(
 export function cloneShopStockModel(template: Mesh, name: string): Mesh {
   const copy = template.clone(name, null, true);
   if (!copy) throw new Error("Cannot clone GLB stock mesh: " + template.name);
+  copy.metadata = { ...template.metadata };
   copy.isVisible = true;
   copy.isPickable = false;
   copy.checkCollisions = false;

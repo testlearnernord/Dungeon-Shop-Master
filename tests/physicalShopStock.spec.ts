@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-test("the five displayable goods use real GLBs, not pickable shelf blockers", async ({ page }) => {
+test("every displayable good has its own real GLB, not pickable shelf blockers", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("./");
@@ -12,7 +12,8 @@ test("the five displayable goods use real GLBs, not pickable shelf blockers", as
   });
   expect(models.map(model => model.itemId)).toEqual([
     "healing-herb", "mana-potion",
-    "bread", "iron-sword", "leather-vest",
+    "bread", "iron-sword", "spear", "staff", "leather-vest",
+    "forged-sword-shield", "forged-spear", "forged-staff", "ghoul-leather-vest",
   ]);
   for (const model of models) {
     expect(model.sourceUrl, model.itemId).toBe("/Dungeon-Shop-Master/assets/models/"+model.itemId+".glb");

@@ -392,6 +392,7 @@ export function inspectNpcVisuals() {
           mesh.name.startsWith("npc-carried-")).map(mesh=>({
           itemId:mesh.metadata?.carriedItemId as string|undefined,
           source:mesh.metadata?.carriedItemSource as string|undefined,
+          sourceUrl:mesh.metadata?.sourceUrl as string|undefined,
           geometry:mesh.getTotalVertices(),material:mesh.material?.name??null,
         })),
         uniqueId: node.uniqueId,
@@ -1137,7 +1138,7 @@ export async function inspectPhysicalStockMeshes() {
   });
 }
 
-/** Wait for the five displayable stock GLBs and Shop's pending refresh. */
+/** Wait for every displayable stock GLB and Shop's pending refresh. */
 export async function waitForShopStockAssets(){
   const scene=currentTestScene()!;
   const {getShopStockTemplates}=await import("../src/game/shopStockAssets.ts");
@@ -1161,6 +1162,7 @@ export function inspectRenderedShopStock(shelfId="shelf-1"){
       padCollision:pad?.checkCollisions??false,
       units:units.length,
       modelVertices:units.map(mesh=>mesh.getTotalVertices()),
+      sourceUrls:units.map(mesh=>mesh.metadata?.sourceUrl as string|undefined),
       modelsPickable:units.some(mesh=>mesh.isPickable),
       modelsCollision:units.some(mesh=>mesh.checkCollisions),
       modelsColor:units.every(mesh=>!!mesh.getVerticesData("color")?.length)};
@@ -1406,7 +1408,12 @@ export function inspectCellarForge(){
   return {exists:!!anvil,pickable:anvil?.isPickable??false,
     collision:anvil?.checkCollisions??false,
     position:anvil?{x:anvil.position.x,y:anvil.position.y,z:anvil.position.z}:null,
-    sameScene:anvil?.getScene()===scene};
+    sameScene:anvil?.getScene()===scene,
+    hasHearth:!!scene?.getMeshByName("cellar-forge-coal-bed"),
+    hasTools:!!scene?.getMeshByName("cellar-forge-hammer-head"),
+    flames:scene?.meshes.filter(m=>m.name.startsWith("cellar-forge-flame-")).length??0,
+    cosmeticPickables:scene?.meshes.filter(m=>m.name.startsWith("cellar-forge-")&&
+      m!==anvil&&m.isPickable).length??0};
 }
 
 export function aimUpCellarStairs():void{
