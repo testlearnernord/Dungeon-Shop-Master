@@ -38,7 +38,9 @@ export interface HeroVisual {
   readonly spearMesh: Mesh;
   readonly staffMesh: Mesh;
   readonly vestMesh: Mesh;
+  readonly vestT1Material:StandardMaterial;
   readonly vestT2Material:StandardMaterial;
+  readonly weaponT1Material:StandardMaterial;
   readonly weaponT2Material:StandardMaterial;
   readonly appearanceKey: string;
 }
@@ -179,7 +181,8 @@ export function createHeroVisual(
   const model: HeroVisual = {
     root, torso, headPivot, arms, legs, weaponPivot, swordMesh,
     shieldMesh,spearMesh,staffMesh,vestMesh,
-    vestT2Material:ghoulLeather,weaponT2Material:gildedSteel,
+    vestT1Material:leather,vestT2Material:ghoulLeather,
+    weaponT1Material:steel,weaponT2Material:gildedSteel,
     appearanceKey: look.key,
     signature: look.key,
   };
@@ -205,11 +208,16 @@ export function setHeroVisualEquipment(model: HeroVisual, equipment: HeroEquipme
   model.spearMesh.setEnabled(spear);
   model.staffMesh.setEnabled(staff);
   model.vestMesh.setEnabled(vest);
-  if(weapon?.tier===2){
-    if(sword)model.swordMesh.material=model.weaponT2Material;
-    if(spear)model.spearMesh.material=model.weaponT2Material;
-  }
-  if(vest&&armor.tier===2)model.vestMesh.material=model.vestT2Material;
+  // Replays seek backwards as well as forward. Never leave a T2 material on
+  // a restored T1 mesh after a past/alternate recording is inspected.
+  model.swordMesh.material=weapon?.tier===2?
+    model.weaponT2Material:model.weaponT1Material;
+  model.shieldMesh.material=weapon?.tier===2?
+    model.weaponT2Material:model.weaponT1Material;
+  model.spearMesh.material=weapon?.tier===2?
+    model.weaponT2Material:model.weaponT1Material;
+  model.vestMesh.material=armor?.tier===2?
+    model.vestT2Material:model.vestT1Material;
   model.root.metadata.weapon = equipment.weapon;
   model.root.metadata.armor = equipment.armor;
   model.root.metadata.swordVisible = sword;
