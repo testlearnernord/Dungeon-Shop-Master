@@ -1,3 +1,5 @@
+import {chooseLiveHeroDungeonDecision,salvageReturnThreshold,isBossExpeditionCandidate} from "../../src/game/dungeonDecisions.ts";
+import {heroProgression} from "../../src/game/heroProgression.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createGameState,SIMULATION_VERSION} from "../../src/game/gameState.ts";
@@ -393,7 +395,7 @@ function authoredStairFixture():{store:GameStore;heroId:string;stair:{x:number;z
   assert(hero);
   const adventurers=base.adventurers.map(h=>h.id===hero.id?{
     ...h,floor:1 as const,status:"exploring" as const,
-    health:h.stats.maxHealth,equipment:{...h.equipment,weapon:"Iron Sword" as const},
+    health:h.stats.maxHealth,equipment:{...h.equipment,weapon:h.role==="tank"?"Iron Sword":h.role==="DPS"?"Spear":"Staff"},
     inventory:{...h.inventory},
   }:h.status==="exploring"?{...h,floor:4 as const}:h);
   const known=layout.tiles.flatMap((cell,i)=>cell==="wall"?[]:[i]);
@@ -505,4 +507,127 @@ test("diagnostic captures the actual rejected Floor-9 solo stair crossing",()=>{
   assert.equal(gate.checks.partySize,false);assert.equal(gate.checks.accepted,false);
   assert.equal(store.state.liveDungeon.partyBossCombat,null);
   assert.equal(store.state.adventurers.find(h=>h.id===hero.id)?.floor,9);
+});
+
+test("healthy committed descent survives an ordinary empty movement decision but never overrides resupply",()=>{
+  const original=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
+  const hero={...original,floor:3 as const,status:"exploring" as const,
+    equipment:{weapon:"Iron Sword" as const,armor:"Leather Vest" as const}};
+  const ready={...hero,health:heroProgression(hero).maxHealth};
+  const layout=generateExpeditionLayout(7351,3);
+  const progress={heroId:hero.id,...layout.entrance,
+    visited:[layout.entrance.z*layout.width+layout.entrance.x]};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:3 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},steps:[],encounters:[],
+    outcome:"exploring" as const};
+  const committed={goal:"progress" as const,action:"descend" as const};
+  assert.equal(chooseLiveHeroDungeonDecision(ready,progress,replay).action,"stay");
+  assert.deepEqual(chooseLiveHeroDungeonDecision(ready,progress,replay,
+    undefined,undefined,false,0,undefined,committed),committed);
+  assert.equal(chooseLiveHeroDungeonDecision({...ready,health:1},progress,replay,
+    undefined,undefined,false,0,undefined,committed).action,"shop");
+  assert.equal(chooseLiveHeroDungeonDecision(ready,progress,{...replay,outcome:"retreat"},
+    undefined,undefined,false,0,undefined,committed).action,"shop");
+});
+
+test("deep prepared expeditions carry more salvage but real resupply still wins",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
+  const hero={...source,floor:5 as const,status:"exploring" as const,
+    equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+    health:heroProgression(source).maxHealth,
+    traits:{...source.traits,positive:"brave",negative:"stubborn"},
+    inventory:{bread:2,healing:1,finds:{"iron-ore":4}}};
+  const layout=generateExpeditionLayout(7351,5);
+  const progress={heroId:hero.id,...layout.entrance,
+    visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:5 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},
+    steps:[{...layout.entrance,t:0,action:"treasure" as const,hp:hero.health}],
+    encounters:[],outcome:"exploring" as const};
+  assert.equal(salvageReturnThreshold(hero),8);
+  assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay,
+    undefined,undefined,false,3).action,"descend");
+  const full={...hero,inventory:{...hero.inventory,finds:{"iron-ore":8}}};
+  assert.equal(chooseLiveHeroDungeonDecision(full,progress,replay,
+    undefined,undefined,false,7).action,"shop");
+  assert.equal(chooseLiveHeroDungeonDecision(full,progress,replay,
+    undefined,undefined,false,8).action,"descend");
+  for(const tired of [{...hero,health:1},{...hero,inventory:{...hero.inventory,bread:0,healing:0}},
+    {...hero,equipment:{weapon:null,armor:"Leather Vest"}}]){
+    assert.equal(salvageReturnThreshold(tired),4);
+    assert.equal(chooseLiveHeroDungeonDecision(tired,progress,replay,
+      undefined,undefined,false,3).action,"shop");
+  }
+  assert.equal(salvageReturnThreshold({...hero,floor:1}),4);
+  assert.equal(salvageReturnThreshold({...hero,traits:{...hero.traits,positive:"careful"}}),6);
+  assert.equal(salvageReturnThreshold({...hero,traits:{...hero.traits,negative:"reckless"}}),10);
+});
+
+test("two real eligible Floor-9 explorers rendezvous, form a party and commit a physical descent",()=>{
+  const seed=7351,base=createGameState(seed);
+  const layout=generateExpeditionLayout(seed,9);
+  const stair=dungeonDownStair(layout);
+  const approach=dungeonNeighbors(layout,stair)[0];
+  const known=layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i]);
+  const ready=base.adventurers.slice(0,2).map(h=>({...h,
+    floor:9 as const,status:"exploring" as const,bossPass:true,
+    traits:{...h.traits,positive:"brave",negative:"reckless"},
+    equipment:{weapon:h.role==="tank"?"Iron Sword":h.role==="DPS"?"Spear":"Staff",armor:"Leather Vest"},
+    health:heroProgression(h).maxHealth,gold:30}));
+  ready.sort((a,b)=>a.id.localeCompare(b.id));
+  assert(ready.every(isBossExpeditionCandidate));
+  const ids=ready.map(h=>h.id);
+  const active=activateLiveDungeon({...base,
+    adventurers:base.adventurers.map(h=>ready.find(m=>m.id===h.id)??{
+      ...h,floor:"away" as const,status:"off-duty" as const,offDutyUntilDay:4}),
+    dungeonWorlds:[{floor:9 as const,world:{...emptySpatialDungeonWorld(),
+      resolvedFeatureIds:layout.features.map(f=>f.id),
+      heroes:[{heroId:ids[0],...stair,visited:known},
+        {heroId:ids[1],...approach,visited:known}]}}],
+  });
+  const traces:DungeonDiagnostic[]=[];
+  const store=new GameStore(active,entry=>traces.push(entry));
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.equal(store.state.liveDungeon.partyBossCombat,null);
+  assert(traces.some(t=>t.stage==="boss-rendezvous"&&t.checks.visiblePeer));
+  for(const id of ids){
+    const pos=store.state.dungeonWorlds.find(w=>w.floor===9)!.world.heroes.find(h=>h.heroId===id)!;
+    assert.deepEqual({x:pos.x,z:pos.z},stair);
+  }
+  const resumed=new GameStore(parseSave(JSON.stringify(createSave(store.state))));
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  resumed.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.deepEqual(store.state,resumed.state);
+  assert(store.state.dungeonParties.some(p=>ids.every(id=>p.memberIds.includes(id))));
+  assert(ids.every(id=>store.state.liveDungeon.plans.some(p=>p.heroId===id&&p.action==="descend")));
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  resumed.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.deepEqual(store.state,resumed.state);
+  assert.deepEqual(store.state.liveDungeon.partyBossCombat?.heroIds,ids);
+  assert(traces.some(t=>t.stage==="boss-crossing"&&t.checks.accepted));
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+});
+
+test("full health without a real class weapon is not a permit to risk deep floors",()=>{
+  const original=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
+  const layout=generateExpeditionLayout(7351,3);
+  const known=layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i]);
+  const hero={...original,floor:3 as const,status:"exploring" as const,
+    equipment:{weapon:null,armor:null},health:heroProgression(original).maxHealth,
+    traits:{...original.traits,positive:"brave",negative:"stubborn"},
+    gold:2};
+  const progress={heroId:hero.id,...layout.entrance,visited:known};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:3 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},steps:[],encounters:[],
+    outcome:"exploring" as const};
+  assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay).action,"ascend");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,equipment:{weapon:"Staff",armor:"Leather Vest"}},
+    progress,replay).action,"ascend");
+  const reward={...replay,steps:[{...layout.entrance,t:1,
+    action:"treasure" as const,hp:hero.health}]};
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,gold:9},progress,reward).action,"shop");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,gold:9},progress,replay).action,"ascend",
+    "Stale gold alone must not cause an endless failed shopping loop");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,equipment:{weapon:"Iron Sword",armor:null}},
+    progress,replay).action,"descend");
 });

@@ -1,5 +1,6 @@
 import type { AdventurerState } from "./adventurers.ts";
 import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
+import {dungeonCurrentSight,hasDungeonLineOfSight,HERO_SIGHT_RADIUS} from "./heroPerception.ts";
 import {
   dungeonNeighbors, dungeonShortestPath, generateExpeditionLayout, tileAt,
   type DungeonFeature, type DungeonLayout, type DungeonPoint,
@@ -391,6 +392,55 @@ export function chooseKnownRouteStep(
   return {x:next%layout.width,z:Math.floor(next/layout.width)};
 }
 
+export interface DungeonTransitionRoute {
+  readonly kind:"at-stair"|"walked-route"|"observed-route"|"frontier"|"blocked";
+  readonly step:DungeonPoint|null;
+}
+
+/** One co-located group can exchange route knowledge for this step. Neither
+ * the union nor sight-derived cells are written into personal visited history.
+ * A stair can be recognized from real line of sight on a previously walked
+ * tile; hidden stair coordinates NEVER bias the frontier search. */
+export function chooseDungeonTransitionRoute(
+  layout:DungeonLayout,progress:readonly SpatialDungeonHeroProgress[],
+  target:DungeonPoint,
+):DungeonTransitionRoute {
+  if(!progress.length)return {kind:"blocked",step:null};
+  const current=progress[0];
+  if(progress.some(p=>p.x!==current.x||p.z!==current.z))
+    throw new RangeError("Transition route requires co-located explorers");
+  if(current.x===target.x&&current.z===target.z)return {kind:"at-stair",step:null};
+  const known=new Set(progress.flatMap(p=>p.visited));
+  const shared={...current,visited:[...known]};
+  const walked=chooseKnownRouteStep(layout,shared,target);
+  if(walked)return {kind:"walked-route",step:walked};
+
+  // Only inspect sight from actual walked viewpoints near the stair. This
+  // avoids rebuilding an entire fog-of-war graph on every scheduled step.
+  // The target must have been genuinely visible before any routing can use it.
+  const observed=new Set(known);
+  let seen=false;
+  for(const cell of known){
+    const view={x:cell%layout.width,z:Math.floor(cell/layout.width)};
+    const dx=view.x-target.x,dz=view.z-target.z;
+    if(dx*dx+dz*dz>HERO_SIGHT_RADIUS*HERO_SIGHT_RADIUS||
+      !hasDungeonLineOfSight(layout,view,target))continue;
+    seen=true;
+    for(const visible of dungeonCurrentSight(layout,view)){
+      if(layout.tiles[visible]!=="wall")observed.add(visible);
+    }
+  }
+  if(seen){
+    const route=chooseKnownRouteStep(layout,{...current,visited:[...observed]},target);
+    if(route)return {kind:"observed-route",step:route};
+  }
+  // Until a route is observed, every step pursues the nearest reachable
+  // unexplored frontier in the group's actual walked graph. Unlike voting
+  // on independent maps, its distance decreases on each known transit edge.
+  const frontier=chooseSpatialDungeonStep(layout,shared);
+  return frontier?{kind:"frontier",step:frontier}:{kind:"blocked",step:null};
+}
+
 /** Directly adjacent resource sites are known even if still unvisited.
  * Other resource routes must remain on the hero's own explored tiles. */
 export function chooseKnownResourceStep(
@@ -433,6 +483,8 @@ export interface SpatialDungeonAdvanceOptions {
   /** Exactly one physically adjacent tactical choice from the same LIVE AI.
    * It never provides a long, undiscovered or teleporting route. */
   readonly tacticalStep?:DungeonPoint;
+  /** A voluntary rendezvous wait consumes this map tick, never a teleport. */
+  readonly waitForCompanion?:boolean;
   /** A retreat on the live timeline must return via the portal, not teleport. */
   readonly deferReturn?:boolean;
   /** Live mode reserves the site, but does not prematurely calculate its result. */
@@ -524,8 +576,11 @@ export function simulateSpatialDungeonPartyDay(
   for(let t=1;t<=maxSteps;t++){
     const routeProgress={...progress[0],...current,
       visited:members[0].visitedOrder};
-    const stairStep=options.routeToKnownTarget
-      ?chooseKnownRouteStep(layout,routeProgress,options.routeToKnownTarget)
+    const sharedProgress=members.map(member=>({
+      heroId:member.hero.id,...current,visited:member.visitedOrder,
+    }));
+    const transition=options.routeToKnownTarget
+      ?chooseDungeonTransitionRoute(layout,sharedProgress,options.routeToKnownTarget)
       :null;
     const resourceStep=options.routeToResource
       ?chooseKnownResourceStep(layout,routeProgress,options.routeToResource):null;
@@ -537,14 +592,15 @@ export function simulateSpatialDungeonPartyDay(
     // hero has already committed to return to Galvik's shop. The ordinary
     // known backtrack resumes on the next step after the threat is lost.
     // Tactical AI still supplies ONLY a validated adjacent dungeon tile.
+    if(options.waitForCompanion&&!tactical)break;
     const next=tactical??(options.returnToEntrance
       ?chooseKnownReturnStep(layout,routeProgress)
-      :stairStep??resourceStep??choosePartyDungeonStep(layout,members.map(member=>({
-        heroId:member.hero.id,...current,visited:member.visitedOrder,
-      }))) ?? chooseRenewedSiteStep(layout,current,
-      // Only discovered tiles may steer the renewable-site fallback. A
-      // companion's actual knowledge is usable, never global fog of war.
-      new Set(members.flatMap(member=>member.visitedOrder)),resolved));
+      :transition?transition.step:
+        resourceStep??choosePartyDungeonStep(layout,sharedProgress) ??
+        chooseRenewedSiteStep(layout,current,
+          // Renewable farming belongs to exploration, not an active
+          // staircase commitment. Never leave a reached stair to farm.
+          new Set(members.flatMap(member=>member.visitedOrder)),resolved));
     if(!next){
       outcome="completed";
       step(t,"complete");
@@ -743,7 +799,7 @@ export function advanceSpatialDungeonPartyStep(
   campaignSeed:number,day:number,occupiedHeroIds?:ReadonlySet<string>,
   liveOptions:Pick<SpatialDungeonAdvanceOptions,"deferCombat"|"blockedCombatSites"|
     "returnToEntrance"|"deferReturn"|"routeToKnownTarget"|"routeToResource"|
-    "tacticalStep">={},
+    "tacticalStep"|"waitForCompanion">={},
 ):SpatialDungeonPartyTick {
   return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
     occupiedHeroIds,{maxSteps:1,maxEncounters:1,...liveOptions});

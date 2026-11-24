@@ -9,6 +9,7 @@ import { ITEMS,ECONOMY,isMaterial } from "../../src/game/economy.ts";
 import {availableDungeonOffers} from "../../src/game/dungeonBuyback.ts";
 import {FORGE_OUTPUTS,FORGE_RECIPES,isForgeOutput} from "../../src/game/cellarForge.ts";
 import {createCampaignTelemetry} from "./campaign-progression-telemetry.mjs";
+import {equipmentEffects} from "../../src/game/gearCatalog.ts";
 
 const DAYS = Number(process.env.AUDIT_DAYS ?? 100);
 const SEED = Number(process.env.AUDIT_SEED ?? 7351);
@@ -240,8 +241,10 @@ function classifyDeaths(metrics,previous,state,added) {
       steps.some(step=>step.action==="trap")?"trap":"unclassified";
     add(metrics.deathCauses,cause,1);
     add(metrics.deathFloors,String(hero.floor),1);
+    const equipment=equipmentEffects(hero.role,hero.equipment);
     metrics.deathRecords.push({day:state.day,id:hero.id,level:hero.level,
-      floor:hero.floor,cause,weapon:!!hero.equipment.weapon,armor:!!hero.equipment.armor});
+      floor:hero.floor,cause,weapon:!!equipment.weapon,armor:!!equipment.vest,
+      role:hero.role,startingHero:metrics.startingIds.has(hero.id)});
   }
 }
 function run(mode){
@@ -253,7 +256,8 @@ function run(mode){
     mode,seed:SEED,daysRequested:DAYS,
     model:"real GameStore, scripted storefront and manual boss passes",
     stockPolicy:eligibleSkus(mode),
-    starting:initial, milestones:[initial], eventTypes:{}, salesUnits:{},
+    starting:initial, startingIds:new Set(store.state.adventurers.map(h=>h.id)),
+    milestones:[initial], eventTypes:{}, salesUnits:{},
     salesRevenue:{},healingUsed:{},credits:{},replayStepActions:{},
     encounterOutcomes:{}, deathCauses:{},deathFloors:{},deathRecords:[],
     wholesaleUnits:{},wholesaleSpent:0,influxGold:0,
@@ -299,6 +303,22 @@ function run(mode){
   }
   const final=snap(store.state,DAYS);
   metrics.final=final;
+  // Final cohort turnover and death equipment are not exposure-adjusted
+  // hazard estimates. Keep them explicit instead of treating a full
+  // replacement roster as proof of successful survival.
+  const deaths=metrics.deathRecords;
+  metrics.survival={
+    entrants:final.populationTotal,dead:final.dead,
+    deadShare:final.populationTotal?final.dead/final.populationTotal:0,
+    initialEntrants:metrics.startingIds.size,initialSurvivors:final.originalLiving,
+    initialSurvivalShare:metrics.startingIds.size?final.originalLiving/metrics.startingIds.size:0,
+    recordedDeaths:deaths.length,
+    unarmedDeaths:deaths.filter(d=>!d.weapon).length,
+    fullyEquippedDeaths:deaths.filter(d=>d.weapon&&d.armor).length,
+    earlyDeaths:deaths.filter(d=>d.level<=3).length,
+    upperFloorDeaths:deaths.filter(d=>typeof d.floor==="number"&&d.floor<=3).length,
+  };
+  delete metrics.startingIds;
   metrics.progression=telemetry.report();
   metrics.newHeroes=sum(store.state.events,e=>e.type==="influx"?1:0);
   // Request expiries are committed asynchronously by the LIVE clock, not

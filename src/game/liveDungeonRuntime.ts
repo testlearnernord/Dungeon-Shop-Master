@@ -8,13 +8,14 @@ import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonSiteGeneration} from "./dungeonRegeneration.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,carriedDungeonFindCount,
+  salvageReturnThreshold,isBossExpeditionCandidate,isBossExpeditionParty,
   type HeroDungeonDecision,type DungeonDecisionReason} from "./dungeonDecisions.ts";
-import {choosePersistentDungeonParty,negotiatePartyFloorDecisions,
+import {choosePersistentDungeonParty,chooseBossRendezvous,negotiatePartyFloorDecisions,
   settlePersistentDungeonParties,temporaryPartyChanges,
   type DungeonPartyState} from "./dungeonParties.ts";
 import {advanceSpatialDungeonPartyStep,emptySpatialDungeonWorld,
   prepareSpatialDungeonCombat,settleSpatialDungeonCombat,
-  SPATIAL_DUNGEON_COMBAT_SECONDS,getSpatialDungeonProgress,chooseKnownRouteStep,type PreparedSpatialEncounter,type SpatialDungeonReplay,
+  SPATIAL_DUNGEON_COMBAT_SECONDS,getSpatialDungeonProgress,chooseKnownRouteStep,chooseDungeonTransitionRoute,type PreparedSpatialEncounter,type SpatialDungeonReplay,
   type SpatialDungeonFloor,type SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
   groupCombatReplayFromFrames,type GroupCombatState,
@@ -47,7 +48,7 @@ export const SHOP_PORTAL_TRANSIT_TICKS=20;
 /** Optional, unsaved diagnostic observations. Only detached primitives and
  * fresh arrays/objects leave the real scheduler. Never feeds back into AI. */
 export interface DungeonDiagnostic {
-  readonly stage:"decision"|"combat-decision"|"boss-crossing"|"boss-route"|"depth-crossing"|"depth-route";
+  readonly stage:"decision"|"combat-decision"|"boss-crossing"|"boss-route"|"depth-crossing"|"depth-route"|"boss-rendezvous";
   readonly day:number;
   readonly tick:number;
   readonly floor:number;
@@ -465,9 +466,15 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
       continue;
     }
     const returningIds=new Set(returns.map(j=>j.heroId));
-    const group=homeward?[hero]:choosePersistentDungeonParty(hero,roster,world,layout,
-      processed,state.dungeonParties??[]).filter(member=>
-        !returningIds.has(member.id));
+    // Returners never get recruited and then silently removed from a party.
+    // On Floor 9, ready boss seekers and ordinary explorers voluntarily
+    // form compatible groups instead of dragging one another into the gate.
+    const availableRoster=roster.filter(member=>member.id===hero.id||
+      !returningIds.has(member.id)&&!stepCounts.get(member.id)?.finished&&
+      (floor!==9||clearedLevel10||
+        isBossExpeditionCandidate(member)===isBossExpeditionCandidate(hero)));
+    const group=homeward?[hero]:choosePersistentDungeonParty(hero,availableRoster,world,layout,
+      processed,state.dungeonParties??[]);
     const readyGroup=group.filter(member=>!stepCounts.get(member.id)?.finished);
     if(!readyGroup.length)continue;
     const occupied=new Set(roster.filter(member=>
@@ -483,16 +490,6 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     // personally known, still-active chest/monster site. Never let the
     // omniscient spectator map plan hero movement.
     const known=getSpatialDungeonProgress(world,hero.id,layout);
-    if(diagnostic&&directed&&priorPlan?.action==="descend"){
-      const atStair=known.x===directed.x&&known.z===directed.z;
-      diagnostic({stage:floor===9?"boss-route":"depth-route",day,tick,floor,heroId:hero.id,
-        action:"descend",
-        memberIds:readyGroup.map(member=>member.id),checks:{
-          stairVisited:known.visited.includes(directed.z*layout.width+directed.x),
-          knownRoute:atStair||!!chooseKnownRouteStep(layout,known,directed),
-          atStair,
-        }});
-    }
     const resourceKind=priorPlan?.floor===floor?
       priorPlan.goal==="loot-chest"?"treasure":
       priorPlan.goal==="hunt-ghouls"?"monster":null:null;
@@ -507,12 +504,66 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     // interrupt one step without cancelling the shop-bound journey.
     const threat=chooseDungeonThreatReaction(
       layout,world,readyGroup,roster);
+    const route=diagnostic&&directed&&priorPlan?.action==="descend"
+      ?chooseDungeonTransitionRoute(layout,readyGroup.map(member=>
+        getSpatialDungeonProgress(world,member.id,layout)),directed):null;
+    // Seek a visible eligible peer, or the real lower stair as a common
+    // landmark. A solo search does not acquire a descend plan or cross.
+    const seeking=!homeward&&!clearedLevel10&&readyGroup.length===1&&
+      isBossExpeditionCandidate(hero)&&priorPlan?.action!=="ascend"&&priorPlan?.action!=="shop";
+    const busy=seeking?new Set([...returns.map(j=>j.heroId),
+      ...combats.flatMap(c=>c.heroIds),...(partyBossCombat?.heroIds??[]),
+      ...[...stepCounts.values()].filter(c=>c.finished).map(c=>c.heroId),
+      ...(state.dungeonParties??[]).filter(p=>p.memberIds.length>=2&&
+        !p.memberIds.includes(hero.id)&&isBossExpeditionParty(p.memberIds.map(id=>byId.get(id)!).filter(Boolean)))
+        .flatMap(p=>p.memberIds)]):null;
+    const rendezvous=busy?chooseBossRendezvous(hero,roster,world,layout,busy):null;
+    const rally=seeking?dungeonDownStair(layout):undefined;
+    const atRally=!!rally&&known.x===rally.x&&known.z===rally.z;
+    // Wait for other actual explorers at the lower stair, but eventually
+    // abandon a fruitless day of waiting and allow normal resupply.
+    const waiting=!!rendezvous&&!rendezvous.step||
+      atRally&&!rendezvous&&tick<lastWorldTickOfDay(day)-12*DUNGEON_STEP_INTERVAL_TICKS;
+    const target=directed??rally;
+    const tactical=threat?.step??rendezvous?.step;
     const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
       {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
-        ...(directed?{routeToKnownTarget:directed}:{}),
-        ...(resourceTarget?{routeToResource:resourceTarget}:{}),
-        ...(threat?{tacticalStep:threat.step}:{}),
+        ...(target?{routeToKnownTarget:target}:{}),
+        ...(resourceTarget&&!seeking?{routeToResource:resourceTarget}:{}),
+        ...(tactical?{tacticalStep:tactical}:{}),
+        ...(waiting&&!tactical?{waitForCompanion:true}:{}),
         blockedCombatSites:blocked});
+    if(diagnostic&&seeking){
+      const next=result.world.heroes.find(p=>p.heroId===hero.id);
+      diagnostic({stage:"boss-rendezvous",day,tick,floor,heroId:hero.id,
+        memberIds:rendezvous?[hero.id,rendezvous.peerId]:[hero.id],
+        action:"stay",goal:"progress",reason:"seek-boss-party",checks:{
+          visiblePeer:!!rendezvous,waiting:waiting&&!tactical,atRally,
+          tacticalOverride:!!threat,
+          moved:!!next&&(next.x!==known.x||next.z!==known.z),
+        }});
+    }
+    if(diagnostic&&route&&directed){
+      const next=result.world.heroes.find(p=>p.heroId===hero.id);
+      const moved=!!next&&(next.x!==known.x||next.z!==known.z);
+      diagnostic({stage:floor===9?"boss-route":"depth-route",day,tick,floor,heroId:hero.id,
+        action:"descend",memberIds:readyGroup.map(member=>member.id),checks:{
+          stairVisited:known.visited.includes(directed.z*layout.width+directed.x),
+          // Preserve the baseline's individual walked-route metric below;
+          // separately identify the new party and perception-aware route.
+          knownRoute:known.x===directed.x&&known.z===directed.z||
+            !!chooseKnownRouteStep(layout,known,directed),
+          usableRoute:route.kind==="at-stair"||route.kind==="walked-route"||route.kind==="observed-route",
+          walkedRoute:route.kind==="walked-route",
+          observedRoute:route.kind==="observed-route",
+          frontier:route.kind==="frontier",blocked:route.kind==="blocked",
+          atStair:route.kind==="at-stair",
+          tacticalOverride:!!threat&&(!route.step||
+            threat.step.x!==route.step.x||threat.step.z!==route.step.z),
+          moved,newPersonalTile:!!next&&next.visited.length>known.visited.length,
+          reachedStair:!!next&&next.x===directed.x&&next.z===directed.z,
+        }});
+    }
     if(readyGroup.length>=2)
       sharedGroups.push(readyGroup.map(member=>member.id));
     if(result.pendingCombat){
@@ -530,15 +581,12 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     const independent=new Map<string,HeroDungeonDecision>();
     const decisionDetails=diagnostic?new Map<string,{
       checks:Record<string,boolean>;reason?:DungeonDecisionReason}>():undefined;
+    const bossReady=!clearedLevel10&&isBossExpeditionParty(
+      result.ticks.map(t=>t.adventurer).filter(h=>h.health>0));
     if(!result.pendingCombat)for(const individual of result.ticks){
       if(individual.adventurer.health<=0)continue;
       const progress=result.world.heroes.find(p=>
         p.heroId===individual.adventurer.id);
-      const bossReady=floor===9&&
-        canAttemptCaveTroll(readyGroup.length,
-          readyGroup.every(member=>member.bossPass))&&
-        readyGroup.every(member=>member.equipment.weapon!==null&&
-          member.health/heroProgression(member).maxHealth>=0.60);
       const detail=decisionDetails?{checks:{
         partySize:readyGroup.length>=2&&readyGroup.length<=3,
         passes:readyGroup.every(member=>member.bossPass),
@@ -546,13 +594,19 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
         partyHealth:readyGroup.every(member=>member.health/heroProgression(member).maxHealth>=.60),
         visitedEnough:(progress?.visited.length??0)>=13,
         heroHealth:individual.adventurer.health/heroProgression(individual.adventurer).maxHealth>=.60,
+        bossCandidate:isBossExpeditionCandidate(individual.adventurer),
+        largerHaul:salvageReturnThreshold(individual.adventurer)>4,
+        deferredFreshHaul:carriedDungeonFindCount(individual.adventurer)>=4&&
+          carriedDungeonFindCount(individual.adventurer)<salvageReturnThreshold(individual.adventurer)&&
+          carriedDungeonFindCount(individual.adventurer)>carriedDungeonFindCount(byId.get(individual.adventurer.id)!),
         bossReady,
       }} as {checks:Record<string,boolean>;reason?:DungeonDecisionReason}:undefined;
       independent.set(individual.adventurer.id,
         chooseLiveHeroDungeonDecision(individual.adventurer,
           progress,individual.replay,layout,result.world,bossReady,
           carriedDungeonFindCount(byId.get(individual.adventurer.id)!),
-          detail?(reason)=>{detail.reason=reason;}:undefined));
+          detail?(reason)=>{detail.reason=reason;}:undefined,
+          plans.get(individual.adventurer.id),!clearedLevel10));
       if(detail)decisionDetails!.set(individual.adventurer.id,detail);
     }
     const agreed=readyGroup.length>1
@@ -897,6 +951,26 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
         .map(t=>t.adventurer.id);
       if(survivors.length>=2)sharedGroups.push(survivors);
     }
+    // Fight settlement is another genuine strategic decision boundary.
+    // Use the SAME party negotiation and post-fight readiness as map steps.
+    const surviving=settled.ticks.filter(t=>t.adventurer.health>0&&
+      t.adventurer.status==="exploring");
+    const survivors=surviving.map(t=>t.adventurer);
+    const bossAvailable=!state.dungeonFloors.some(f=>f.floor===10&&f.cleared);
+    const bossReady=bossAvailable&&isBossExpeditionParty(survivors);
+    const reasons=new Map<string,DungeonDecisionReason>();
+    const independent=new Map(surviving.map(t=>{
+      const h=t.adventurer;
+      const progress=settled.world.heroes.find(p=>p.heroId===h.id);
+      // A committed backtrack cannot be cancelled by winning a fight.
+      const returning=returns.some(j=>j.heroId===h.id&&j.phase==="backtrack");
+      const decision:HeroDungeonDecision=returning?{goal:"resupply",action:"shop"}:
+        chooseLiveHeroDungeonDecision(h,progress,t.replay,
+          undefined,undefined,bossReady,carriedDungeonFindCount(party.find(m=>m.id===h.id)!),
+          diagnostic?reason=>{reasons.set(h.id,reason);}:undefined,plans.get(h.id),bossAvailable);
+      return [h.id,decision] as const;
+    }));
+    const agreed=negotiatePartyFloorDecisions(survivors,independent);
     for(const tick of settled.ticks){
       const id=tick.adventurer.id;
       byId.set(id,tick.adventurer);
@@ -905,20 +979,22 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
         plans.delete(id);
       }else {
         const progress=settled.world.heroes.find(p=>p.heroId===id);
-        let reason:DungeonDecisionReason|undefined;
-        const decision=chooseLiveHeroDungeonDecision(
-          tick.adventurer,progress,tick.replay,undefined,undefined,false,
-          carriedDungeonFindCount(party.find(member=>member.id===id)!),
-          diagnostic?(value)=>{reason=value;}:undefined);
+        const decision=agreed.get(id)!;
         diagnostic?.({stage:"combat-decision",day:state.day,tick:state.worldClock.tick,
-          floor,heroId:id,memberIds:party.map(member=>member.id),
-          checks:{bossReady:false,partySize:party.length>=2&&party.length<=3,
-            passes:party.every(member=>member.bossPass),
-            armed:party.every(member=>member.equipment.weapon!==null),
-            partyHealth:party.every(member=>member.health/heroProgression(member).maxHealth>=.60),
+          floor,heroId:id,memberIds:survivors.map(member=>member.id),
+          checks:{bossReady,partySize:survivors.length>=2&&survivors.length<=3,
+            passes:survivors.every(member=>member.bossPass),
+            armed:survivors.every(member=>member.equipment.weapon!==null),
+            partyHealth:survivors.every(member=>member.health/heroProgression(member).maxHealth>=.60),
             visitedEnough:(progress?.visited.length??0)>=13,
-            heroHealth:tick.adventurer.health/heroProgression(tick.adventurer).maxHealth>=.60},
-          action:decision.action,goal:decision.goal,reason});
+            heroHealth:tick.adventurer.health/heroProgression(tick.adventurer).maxHealth>=.60,
+            bossCandidate:isBossExpeditionCandidate(tick.adventurer),
+            largerHaul:salvageReturnThreshold(tick.adventurer)>4,
+            deferredFreshHaul:carriedDungeonFindCount(tick.adventurer)>=4&&
+              carriedDungeonFindCount(tick.adventurer)<salvageReturnThreshold(tick.adventurer)&&
+              carriedDungeonFindCount(tick.adventurer)>carriedDungeonFindCount(party.find(m=>m.id===id)!),
+            partyChangedAction:decision.action!==independent.get(id)?.action},
+          action:decision.action,goal:decision.goal,reason:reasons.get(id)});
         recordLivePlan(plans,tick.adventurer,decision,state.worldClock.tick);
         if(!returns.some(j=>j.heroId===id)&&decision.action==="shop")
           returns.push({heroId:id,fromFloor:floor,

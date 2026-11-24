@@ -2,10 +2,10 @@ import {emptyShopTraffic} from "../../src/game/shopTraffic.ts";
 import {WORLD_TICKS_PER_DAY} from "../../src/game/worldClock.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateDungeonLayout, dungeonNeighbors, tileAt } from "../../src/game/dungeonLayout.ts";
+import { generateDungeonLayout, generateExpeditionLayout,dungeonDownStair,dungeonShortestPath,dungeonNeighbors, tileAt } from "../../src/game/dungeonLayout.ts";
 import {
   emptySpatialDungeonWorld, getSpatialDungeonProgress, simulateSpatialDungeonDay,
-  chooseSpatialDungeonStep, SPATIAL_DUNGEON_STEP_BUDGET,
+  chooseSpatialDungeonStep,chooseDungeonTransitionRoute,chooseKnownRouteStep, SPATIAL_DUNGEON_STEP_BUDGET,
   type SpatialDungeonWorld,
 } from "../../src/game/spatialDungeonExploration.ts";
 import { advanceDay, createGameState } from "../../src/game/gameState.ts";
@@ -229,4 +229,51 @@ test("ordinary first-generation Floor 7 encounters do not silently become bosses
   assert.equal(result.replay.encounters.length,1);
   assert.equal(result.replay.encounters[0].combat.actors.some(actor=>
     actor.specialAbility==="grapple-throw"),false);
+});
+
+test("stair search uses genuine sight and co-located knowledge without inventing walked cells",()=>{
+  const map=generateExpeditionLayout(7351,5),target=dungeonDownStair(map);
+  const path=dungeonShortestPath(map,map.entrance,target);
+  assert(path.length>3);
+  const index=(p:{x:number;z:number})=>p.z*map.width+p.x;
+  const approach=path.at(-2)!;
+  const walked=path.slice(0,-1).map(index);
+  const a={heroId:"a",...approach,visited:[index(approach)]};
+  const b={heroId:"b",...approach,visited:walked};
+  assert.equal(chooseKnownRouteStep(map,a,target),null);
+  const before=structuredClone([a,b]);
+  assert.deepEqual(chooseDungeonTransitionRoute(map,[a,b],target),
+    {kind:"observed-route",step:target});
+  assert.deepEqual([a,b],before);
+  const current=path[1],lead={heroId:"a",...current,visited:path.slice(0,2).map(index)};
+  const guide={heroId:"b",...current,visited:path.map(index)};
+  assert.deepEqual(chooseDungeonTransitionRoute(map,[lead,guide],target),
+    {kind:"walked-route",step:path[2]});
+  assert.deepEqual(chooseDungeonTransitionRoute(map,[guide,lead],target),
+    {kind:"walked-route",step:path[2]});
+  assert.deepEqual(chooseDungeonTransitionRoute(map,[{...lead,...target}],target),
+    {kind:"at-stair",step:null});
+});
+
+test("uninterrupted physical stair search terminates on all audit maps without hidden shortcuts",()=>{
+  for(const seed of [7351,42,2026,9321])for(let floor=1;floor<=9;floor++){
+    const map=generateExpeditionLayout(seed,floor),target=dungeonDownStair(map);
+    const index=(p:{x:number;z:number})=>p.z*map.width+p.x;
+    let progress={heroId:"walker",...map.entrance,visited:[index(map.entrance)]};
+    // No combat or tactical diversion in this narrow navigation regression.
+    // The real integrated audit still exercises both on its normal clock.
+    let reached=false;
+    for(let step=0;step<map.tiles.length*4;step++){
+      const route=chooseDungeonTransitionRoute(map,[progress],target);
+      if(route.kind==="at-stair"){reached=true;break;}
+      assert(route.step,seed+":"+floor+" blocked before reaching the stair");
+      assert(dungeonNeighbors(map,progress).some(p=>p.x===route.step!.x&&p.z===route.step!.z));
+      if(route.kind==="frontier")assert.deepEqual(route.step,chooseSpatialDungeonStep(map,progress),
+        "A hidden stair must not guide frontier selection");
+      const cell=index(route.step);
+      progress={...progress,...route.step,visited:progress.visited.includes(cell)?
+        progress.visited:[...progress.visited,cell]};
+    }
+    assert(reached,seed+":"+floor+" failed bounded physical stair search");
+  }
 });
