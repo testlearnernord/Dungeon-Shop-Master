@@ -2,6 +2,7 @@ import type { AdventurerState } from "./adventurers.ts";
 import { HEALING_HERB_HP, WAYBREAD_HP } from "./combatVitality.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
+import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
 import type { GameState, ShopEconomyState, WorldEvent } from "./gameState.ts";
 
 export const ITEMS = [
@@ -9,15 +10,26 @@ export const ITEMS = [
   { id: "mana-potion", name: "Mana Potion", color: "#548bd2", wholesaleCost: 4, salePrice: 7, kind: "supply", healing: 0 },
   { id: "iron-ore", name: "Iron Ore", color: "#9a9289", wholesaleCost: 2, salePrice: 3, kind: "material", healing: 0 },
   { id: "coal", name: "Coal", color: "#444950", wholesaleCost: 2, salePrice: 3, kind: "material", healing: 0 },
+  { id: "ghoul-leather", name: "Ghoul Leather", color: "#6c7453", wholesaleCost: 4, salePrice: 6, kind: "material", healing: 0 },
   { id: "bread", name: "Waybread", color: "#c79246", wholesaleCost: 2, salePrice: 4, kind: "healing", healing: WAYBREAD_HP },
-  { id: "iron-sword", name: "Iron Sword", color: "#a4b4c3", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0 },
-  { id: "leather-vest", name: "Leather Vest", color: "#805338", wholesaleCost: 5, salePrice: 8, kind: "armor", healing: 0 },
+  { id: "iron-sword", name: "T1 Sword & Shield", color: "#a4b4c3", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0 },
+  { id: "spear", name: "T1 Spear", color: "#b9afa4", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0 },
+  { id: "staff", name: "T1 Staff", color: "#8374bc", wholesaleCost: 5, salePrice: 9, kind: "weapon", healing: 0 },
+  { id: "leather-vest", name: "T1 Leather Vest", color: "#805338", wholesaleCost: 5, salePrice: 8, kind: "armor", healing: 0 },
+  { id: "forged-sword-shield", name: "T2 Sword & Shield", color: "#d0b36c", wholesaleCost: 0, salePrice: 26, kind: "weapon", healing: 0 },
+  { id: "forged-spear", name: "T2 Spear", color: "#d0b36c", wholesaleCost: 0, salePrice: 25, kind: "weapon", healing: 0 },
+  { id: "forged-staff", name: "T2 Staff", color: "#a98fe0", wholesaleCost: 0, salePrice: 25, kind: "weapon", healing: 0 },
+  { id: "ghoul-leather-vest", name: "T2 Ghoul Leather Vest", color: "#647d61", wholesaleCost: 0, salePrice: 23, kind: "armor", healing: 0 },
 ] as const;
 
 export type ItemId = (typeof ITEMS)[number]["id"];
 /** Only real shop merchandise requires physical GLB models. Raw materials
  * are bought directly from adventurers and are never shelf displays. */
 export const SHELF_GOODS = ITEMS.filter(item=>item.kind!=="material");
+export const WHOLESALE_GOODS = ITEMS.filter(item=>
+  item.kind!=="material"&&item.wholesaleCost>0);
+export const isWholesaleGood=(id:ItemId):boolean=>
+  WHOLESALE_GOODS.some(item=>item.id===id);
 export const isShelfGood=(id:ItemId):boolean=>SHELF_GOODS.some(item=>item.id===id);
 export type ItemDefinition = (typeof ITEMS)[number];
 export type MaterialItemId=Extract<ItemDefinition,{kind:"material"}>["id"];
@@ -50,11 +62,14 @@ export const ECONOMY = {
  * A preference does NOT grant an item, reserve a shelf or make a sale.
  * Mana Potions intentionally remain excluded until they have a real use. */
 export function preferredShopItemOrder(
-  hero:Pick<AdventurerState,"role"|"level"|"stats"|"health"|"inventory">,
+  hero:Pick<AdventurerState,"role"|"level"|"stats"|"health"|"inventory"|"equipment">,
 ):readonly ItemId[]{
-  const equipment:readonly ItemId[]=hero.role==="DPS"
-    ?["iron-sword","leather-vest"]
-    :["leather-vest","iron-sword"];
+  const weapon:readonly ItemId[]=hero.role==="tank"
+    ?["forged-sword-shield","iron-sword"]:
+    hero.role==="DPS" ?["forged-spear","spear"]:
+    ["forged-staff","staff"];
+  const equipment:readonly ItemId[]=[
+    ...weapon,"ghoul-leather-vest","leather-vest"];
   const supply:readonly ItemId[]=["healing-herb","bread"];
   const healthRatio=hero.health/heroProgression(hero).maxHealth;
   const urgent=healthRatio<0.60||
@@ -76,9 +91,10 @@ export function createEmptyShelfSlots(shelfId:string):Slot[]{
 export function createEconomy(): ShopEconomyState {
   return {
     balance: ECONOMY.startingGold,
-    bag: { "healing-herb": 5, "mana-potion": 3, "iron-ore": 0, bread: 2,
-      "iron-sword": 0, "leather-vest": 0, coal:0 },
-    materialStorage:{"iron-ore":0,coal:0},
+    bag:Object.fromEntries(ITEMS.map(item=>
+      [item.id,item.id==="healing-herb"?5:
+        item.id==="mana-potion"?3:item.id==="bread"?2:0])) as Record<ItemId,number>,
+    materialStorage:{"iron-ore":0,coal:0,"ghoul-leather":0},
     // Merchandising begins only after the player builds a real shelf.
     slots:[],
     dailySales: { day: 1, units: 0, revenue: 0 },
@@ -94,8 +110,8 @@ export function buyWholesale(state: GameState, itemId: ItemId, quantity: number)
   if (!item || !Number.isSafeInteger(quantity) || quantity <= 0) {
     return { state, message: "Choose a valid item and a positive whole quantity." };
   }
-  if (!isShelfGood(itemId))
-    return {state,message:"Raw materials are only purchased from returning adventurers."};
+  if (!isWholesaleGood(itemId))
+    return {state,message:"Only T1 merchandise and supplies can be ordered wholesale. T2 must be forged."};
   const economy = state.shopEconomy;
   const cost = item.wholesaleCost * quantity;
   if (!Number.isSafeInteger(cost) || cost > economy.balance) return { state, message: "Not enough gold." };
@@ -207,16 +223,16 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
       const need = item.id === "bread" ? Math.max(0, ECONOMY.breadTarget - bread)
         : item.id === "healing-herb"
           ? Math.max(0, ECONOMY.healingTarget - healing)
-          : item.kind === "weapon" && weapon === null ? 1
-          : item.kind === "armor" && armor === null ? 1 : 0;
+          : (item.kind==="weapon"||item.kind==="armor")&&
+            needsGearUpgrade(hero.role,{weapon,armor},item.id)?1:0;
       const quantity = Math.min(need, slot.quantity, Math.floor(gold / item.salePrice));
       if (quantity <= 0) continue;
       const revenue = quantity * item.salePrice;
       gold -= revenue;
       if (item.id === "bread") bread += quantity;
       if (item.id === "healing-herb") healing += quantity;
-      if (item.kind === "weapon") weapon = item.name;
-      if (item.kind === "armor") armor = item.name;
+      if (item.kind === "weapon") weapon = gearForItem(item.id)?.name??weapon;
+      if (item.kind === "armor") armor = gearForItem(item.id)?.name??armor;
       slot.quantity -= quantity;
       if (slot.quantity === 0) slot.itemId = null;
       economy = {
