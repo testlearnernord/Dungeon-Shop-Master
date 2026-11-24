@@ -9,6 +9,8 @@ export function createCampaignTelemetry(seed){
   const allHeroes=new Map(),daily=[],milestones=[],gateCounts={},floor9Examples={},depthDecisions={},depthChecks={},depthExamples={};
   const layouts=new Map(Array.from({length:9},(_,i)=>[i+1,generateExpeditionLayout(seed,i+1)]));
   const partyCompositionSamples={};
+  const lastCrossing=new Map(),rapidReversals={};
+  let participantCrossings=0;
   let lastTick=null,deepest=0,dayDecisions={},dayGates={},dayParties={},dayHero=new Map();
   let previousFloors=new Map(),previousParties=new Set(),dayPartyChanges={};
   function heroDay(id){
@@ -18,6 +20,21 @@ export function createCampaignTelemetry(seed){
   }
   function observe(entry){
     const {stage,floor,heroId,checks,action,goal,reason}=entry;
+    // Actual committed stair crossings, never route previews or decisions.
+    // Count short-window reversals per participant, including party members.
+    if(stage==="depth-crossing"&&checks.accepted&&
+       (action==="ascend"||action==="descend")){
+      const destination=floor+(action==="ascend"?-1:1);
+      for(const id of new Set(entry.memberIds??[heroId])){
+        const previous=lastCrossing.get(id);
+        const elapsed=previous?entry.tick-previous.tick:Infinity;
+        if(previous&&previous.from===destination&&previous.to===floor&&
+           elapsed>0&&elapsed<=600)
+          add(rapidReversals,Math.min(floor,destination)+"-"+Math.max(floor,destination));
+        lastCrossing.set(id,{from:floor,to:destination,tick:entry.tick});
+        participantCrossings++;
+      }
+    }
     if(action){
       const row=heroDay(heroId);
       add(row.decisions,floor+":"+action+":"+goal);
@@ -125,6 +142,8 @@ export function createCampaignTelemetry(seed){
     return {sampleIntervalTicks:200,partyCountsAreSampled:true,partyCompositionSamples,deepestFloor:deepest,heroesByDeepest:histogram(),
       floor9Checks:gateCounts,firstFailedCheckExamples:floor9Examples,
       depthDecisions,depthChecks,depthExamples,milestones,daily,
+      crossingStability:{participantCrossings,rapidReversals,windowTicks:600,
+        interpretation:"Consecutive opposite crossings of the same boundary by one hero within three ordinary movement intervals. A reversal can be legitimate; counts are observations, not unique heroes or proof of unchanged risk."},
       lifetimeHeroes:Object.fromEntries(allHeroes),
       reachability:deepest<9?"floor9-not-observed":deepest===9?"floor9-observed-no-floor10":"floor10-observed",
       interpretation:"Failed checks overlap; counts are not unique heroes or proof of causality. Route checks describe known routes, not proof of unreachable geometry."};

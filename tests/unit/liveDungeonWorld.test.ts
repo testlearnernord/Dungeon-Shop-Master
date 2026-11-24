@@ -724,3 +724,54 @@ test("remembering a tile does not reveal a roaming monster behind a wall",()=>{
   assert.equal(selectKnownResourceSite(layout,near,{...isolated,
     monsters:[{...monster,mode:"ENGAGED"}]},"monster"),null);
 });
+
+test("ordinary descent and destination risk agree at every intermediate floor boundary",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  for(const floor of [4,5,6,7] as const){
+    // Exactly the previous off-by-one readiness: legal to depart under
+    // the old rule but immediately too weak to stay at the destination.
+    const novice={...source,level:floor-1,xp:(floor-2)*100,
+      floor,status:"exploring" as const,equipment:{weapon:"Spear",armor:null},
+      inventory:{bread:0,healing:0,finds:{}},gold:0,
+      traits:{...source.traits,positive:"brave",negative:"stubborn"}};
+    const decide=(hero:typeof novice|Omit<typeof novice,"floor">&{floor:5|6|7|8})=>{
+      const ready={...hero,health:heroProgression(hero).maxHealth};
+      const layout=generateExpeditionLayout(7351,ready.floor);
+      return chooseLiveHeroDungeonDecision(ready,{heroId:ready.id,...layout.entrance,
+        visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])},
+        {version:1,day:1,heroId:ready.id,floor:ready.floor,
+          appearance:{role:ready.role,equipment:ready.equipment},steps:[],
+          encounters:[],outcome:"exploring"});
+    };
+    const destination=(floor+1) as 5|6|7|8;
+    assert.equal(decide(novice).action,"stay","Underprepared hero farms the current floor");
+    assert.equal(decide({...novice,floor:destination}).action,"ascend");
+    const equipped={...novice,equipment:{weapon:"Spear",armor:"Leather Vest"}};
+    assert.equal(decide(equipped).action,"descend","Actual purchased armor changes the decision");
+    assert.notEqual(decide({...equipped,floor:destination}).action,"ascend",
+      "Unchanged readiness must not immediately reject the destination");
+    const experienced={...novice,level:floor,xp:(floor-1)*100};
+    assert.equal(decide(experienced).action,"descend");
+    assert.notEqual(decide({...experienced,floor:destination}).action,"ascend");
+  }
+});
+
+test("a reckless unarmed novice can risk Floor 2 without immediately rejecting the same risk",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  const novice={...source,level:1,xp:0,floor:1 as const,status:"exploring" as const,
+    equipment:{weapon:null,armor:null},inventory:{bread:0,healing:0,finds:{}},gold:0,
+    health:heroProgression({...source,level:1}).maxHealth,
+    traits:{...source.traits,positive:"brave",negative:"reckless"}};
+  assert(canRiskOrdinaryDescent(novice));
+  const arrived={...novice,floor:2 as const};
+  const layout=generateExpeditionLayout(7351,2);
+  const known={heroId:arrived.id,...layout.entrance,
+    visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};
+  const replay={version:1 as const,day:1,heroId:arrived.id,floor:2 as const,
+    appearance:{role:arrived.role,equipment:arrived.equipment},steps:[],encounters:[],
+    outcome:"exploring" as const};
+  assert.equal(chooseLiveHeroDungeonDecision(arrived,known,replay).action,"stay");
+  assert(!canRiskOrdinaryDescent(arrived),"An unarmed hero cannot deliberately risk Floor 3");
+  assert.equal(chooseLiveHeroDungeonDecision({...arrived,health:Math.floor(arrived.health*.8)},
+    known,replay).action,"ascend","A real change in health can justify turning back");
+});
