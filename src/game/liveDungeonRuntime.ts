@@ -463,8 +463,11 @@ function commitDungeonTick(state:GameState):GameState {
     // A visible real pursuer may change ONE scheduled map step. This pure
     // tactical decision uses only the group's own current LOS and known
     // nearby allies, never spectator selections or hidden monster positions.
-    const threat=!homeward?chooseDungeonThreatReaction(
-      layout,world,readyGroup,roster):null;
+    // A returning hero still sees genuine pursuers. Their previously
+    // committed backtrack remains saved; a single safe tactical dodge can
+    // interrupt one step without cancelling the shop-bound journey.
+    const threat=chooseDungeonThreatReaction(
+      layout,world,readyGroup,roster);
     const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
       {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
         ...(directed?{routeToKnownTarget:directed}:{}),
