@@ -463,7 +463,16 @@ test("diagnostics observe actual decisions without changing the campaign or save
   assert(log.length>0);
   assert(log.some(entry=>entry.stage==="decision"&&entry.reason!==undefined));
   assert.deepEqual(observed.state,plain.state);
-  assert.deepEqual(createSave(observed.state),createSave(plain.state));
+  const crossing=observed.state.liveDungeon.combats.find(c=>
+    c.startedTick<observed.state.liveDungeon.lastStepTick);
+  assert(crossing,"This genuine campaign includes a fight lasting across a later map tick");
+  const save=createSave(observed.state);
+  assert.deepEqual(save,createSave(plain.state));
+  assert.deepEqual(parseSave(JSON.stringify(save)),observed.state);
+  const tampered=structuredClone(save);
+  const forged=tampered.payload.liveDungeon.combats.find(c=>c.id===crossing.id)!;
+  (forged as {startedTick:number}).startedTick+=1;
+  assert.throws(()=>parseSave(JSON.stringify(tampered)),/startedTick/);
   // A repeat observer has exactly the same detached records, and no saved
   // telemetry fields or extra scheduled events.
   const repeat:DungeonDiagnostic[]=[];

@@ -9,3 +9,7 @@ This is Phase A of the parked progression roadmap (#294), reactivated after the 
 - The normal runtime has no collector, stored diagnostic data, new clock, UI exposure or RNG calls. The existing core LIVE suite compares observed and unobserved state and tests the actual rejected solo stair gate.
 
 The CI audit workflow runs the original four seeds with the additional Tier 1 policy. Reports are diagnostic evidence, not visual or physical NPC acceptance.
+
+## Initial evidence (audit run 45393826162)
+
+All 14 scenarios completed (four seeds, 100 days each). No scenario reached Floor 9. Maximum sampled depth was Floor 4 or 5, including the class-complete T1 policy; peak hero levels with the T1 policy ranged from 13 to 16. Therefore the initial bottleneck precedes Floor 9, and the absence of boss attempts does not prove a boss-gate defect. No balance change is justified yet. See the attached workflow artifacts for daily hero and party observations. A separate core test revealed the strict save parser rejected genuine fights spanning a later map tick; the cadence validation now permits those real historical start ticks while still checking exact combat age and frame count.
