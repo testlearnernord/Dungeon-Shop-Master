@@ -95,11 +95,11 @@ export function caveTrollPartyOptions(
   const heroes=party.map((hero,i)=>{
     const p=heroProgression(hero);
     const gear=equipmentEffects(hero.role,hero.equipment);
-    const oldSword=hero.equipment.weapon==="Iron Sword";
-    const oldVest=hero.equipment.armor==="Leather Vest";
+    const equippedWeapon=gear.weapon!==null;
+    const equippedVest=gear.vest!==null;
     const solo=caveTrollGroupOptions({
-      role:hero.role,sword:oldSword,
-      armor:oldVest,
+      role:hero.role,sword:equippedWeapon,
+      armor:equippedVest,
       health:hero.health,maxHealth:p.maxHealth,
       healingSupplies:Math.min(10,hero.inventory.healing),
       strength:p.strength,agility:p.agility,intellect:p.intellect,
@@ -114,8 +114,8 @@ export function caveTrollPartyOptions(
     return {...solo,id:hero.id,...positions[i],
       style:hero.role==="healer"?"ranged":
         (gear.weapon!==null?"melee":solo.style),
-      damage:solo.damage+gear.damage-(oldSword?5:0),
-      armor:Math.max(0,solo.armor+gear.armor-(oldVest?7:0)),
+      damage:solo.damage+gear.damage-(equippedWeapon?5:0),
+      armor:Math.max(0,solo.armor+gear.armor-(equippedVest?7:0)),
       reach:Math.max(solo.reach,gear.reach),
       ...(hero.role==="healer"?{
         magicHeals:(solo.magicHeals??0)+gear.magicHeals}:{}),
