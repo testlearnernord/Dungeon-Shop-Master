@@ -626,7 +626,6 @@ void main(void){
     }
     this.monsterObservedTick=frame.worldTick;
     this.monsterObservedDay=frame.day;
-    this.root.metadata.lastObservedTick=frame.worldTick;
   }
 
   /** Full render cadence for a saved 1.2s travel burst, independent of the
