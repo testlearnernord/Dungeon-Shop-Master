@@ -1,8 +1,7 @@
-# Keller-Schmiede V0.1 — material-to-gear contract
+# Cellar Forge V0.1 / V0.2 — material-to-gear contract
 
-> Owner priority 24 November 2026. Implemented in draft PR #345; only a green
-> merged PR changes `main`. This replaces the old one-sword-for-all-class
-> assumptions without importing an Alpha save migration.
+> V0.1 shipped in PR #345; V0.2 A integration and catalog costs shipped in
+> PR #346. The class-specific equipment model requires no additional migration.
 
 ## One physical chain, one source of authority
 
@@ -62,3 +61,21 @@ Initial, deliberately small recipes:
   fights without/with T2, plus FPS/audio inspection.
 - **Do not start the long-game economy audit #294 or conceptual PR #350+ until
   after this first forge cycle is accepted and the owner requests it.**
+
+## V0.2 B — autonomous supply chain
+
+- A real chest or Ghoul victory can trigger a haul return at four carried
+  finds, only when LIVE settlement actually increases ownership. Dry fights
+  and stale unsold stock alone do not restart a shop journey.
+- Existing backtracking, the entrance tile and portal transit own arrival.
+  Material ownership stays with the hero until Galvik explicitly pays.
+- Credit uses canonical gear names and class/tier checks, consumes real stock
+  and records debt without creating merchant revenue.
+- Bounded integration fixtures use generated sites and the real 60Hz motor,
+  with controlled prior inventory, position and budget; physical browser
+  checkout also checks departure. The existing two off-duty days remain.
+  No economic soak or balance adjustment is part of this acceptance step.
+
+- A won Ghoul encounter atomically resolves the site and removes the live map
+  occupant in the same combat tick. Saving before the next movement step is
+  valid; the strict validator is not relaxed to accept a defeated pack.

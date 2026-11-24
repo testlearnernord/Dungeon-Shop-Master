@@ -5,7 +5,7 @@ import {expect,test} from "@playwright/test";
  * 60Hz gear effects have separate pure-runtime regressions. */
 test("player buys real adventurer salvage then forges and persists T2 at physical cellar anvil @ci-smoke",
   async({page})=>{
-  test.setTimeout(180000);
+  test.setTimeout(240000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./?e2e-pause-world");
@@ -233,5 +233,15 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   expect(collected).toBeLessThanOrEqual(27);
   expect(buyer.gold-paid.adventurers.find(h=>h.id===fixture.heroId)!.gold).toBe(collected);
   await page.keyboard.press("Escape");
+  // Observe the actual paid customer cross the one physical exit.
+  await expect.poll(async()=>{
+    const saved=await save();
+    return saved.adventurers.find(h=>h.id===fixture.heroId)?.status;
+  },{timeout:45000,intervals:[500,1000,1500]}).toBe("off-duty");
+  const departed=await save();
+  const customer=departed.adventurers.find(h=>h.id===fixture.heroId)!;
+  expect(customer.equipment.weapon).toBe("Forged Spear");
+  expect(customer.offDutyUntilDay).toBe(departed.day+3);
+  expect(departed.events.filter(e=>e.type==="shop-departure"&&e.adventurerId===fixture.heroId)).toHaveLength(1);
   expect(errors).toEqual([]);
 });

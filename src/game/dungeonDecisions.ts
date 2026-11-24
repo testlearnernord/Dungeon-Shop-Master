@@ -14,6 +14,11 @@ export type HeroDungeonGoal = "farm"|"progress"|"test-gear"|
   "caution"|"resupply"|"loot-chest"|"hunt-ghouls";
 export type HeroFloorAction = "stay" | "ascend" | "descend" | "shop";
 
+/** Only spare goods actually owned by the individual count toward a haul. */
+export const carriedDungeonFindCount=(hero:AdventurerState):number=>
+  Object.values(hero.inventory.finds??{}).reduce((total,count)=>total+(count??0),0);
+export const SALVAGE_RETURN_THRESHOLD=4;
+
 export interface HeroDungeonDecision {
   readonly goal: HeroDungeonGoal;
   readonly action: HeroFloorAction;
@@ -22,6 +27,7 @@ export interface HeroDungeonDecision {
 export function chooseHeroDungeonDecision(
   hero: AdventurerState, progress: SpatialDungeonHeroProgress | undefined,
   replay: SpatialDungeonReplay,
+  previousFindCount?:number,
 ): HeroDungeonDecision {
   if(hero.status!=="exploring"||
       hero.health<=0||typeof hero.floor!=="number"||hero.floor<1||hero.floor>9)
@@ -38,15 +44,15 @@ export function chooseHeroDungeonDecision(
   const prepared=hasGear||healthRatio>0.70||reckless;
   const enoughExperience=known >= (reckless?9:careful?17:13) ||
     replay.outcome==="completed";
-  // Only physically carried, individually owned goods can motivate a
-  // treasure haul return. A chest yields at most three real goods, so a
-  // four-item threshold preserves multi-chest expedition pacing and stops
-  // one lucky chest from instantly splitting prepared travelling parties.
-  // Trigger on a NEW chest, never on stale unsold stock after reentry.
-  const carriedFinds=Object.values(hero.inventory.finds??{})
-    .reduce((total,count)=>total+(count??0),0);
-  const newChest=replay.steps.some(step=>step.action==="treasure");
-  if(lowHealth || (newChest&&carriedFinds>=4) ||
+  // Both chests and Ghoul victories can create a real haul. LIVE callers
+  // supply the pre-settlement count so a dry fight or stale stock cannot
+  // independently send the hero straight back to the shop.
+  const carriedFinds=carriedDungeonFindCount(hero);
+  const newLootSite=replay.steps.some(step=>
+    step.action==="treasure"||step.action==="defeat-monster");
+  const newHaul=newLootSite&&carriedFinds>=SALVAGE_RETURN_THRESHOLD&&
+    (previousFindCount===undefined||carriedFinds>previousFindCount);
+  if(lowHealth || newHaul ||
      (hero.floor===9 && hero.gold>=22 && known>=8)) {
     return {goal:"resupply",action:"shop"};
   }
@@ -72,7 +78,7 @@ export function chooseHeroDungeonDecision(
 export function chooseLiveHeroDungeonDecision(
   hero:AdventurerState,progress:SpatialDungeonHeroProgress|undefined,
   replay:SpatialDungeonReplay,layout?:DungeonLayout,world?:SpatialDungeonWorld,
-  bossPartyReady=false,
+  bossPartyReady=false,previousFindCount?:number,
 ):HeroDungeonDecision {
   if(typeof hero.floor!=="number"||hero.floor<1||hero.floor>9||hero.health<=0||
     hero.status!=="exploring")
@@ -84,7 +90,7 @@ export function chooseLiveHeroDungeonDecision(
      hero.health/heroProgression(hero).maxHealth>=0.60)
     return {goal:"progress",action:"descend"};
   return preferKnownDungeonResourceGoal(
-    chooseHeroDungeonDecision(hero,progress,replay),hero,progress,layout,world);
+    chooseHeroDungeonDecision(hero,progress,replay,previousFindCount),hero,progress,layout,world);
 }
 
 /** The full-floor spectator is omniscient; the AI is not. Only personally
