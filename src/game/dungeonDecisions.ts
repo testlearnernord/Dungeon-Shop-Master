@@ -21,7 +21,7 @@ export const SALVAGE_RETURN_THRESHOLD=4;
 
 export type DungeonDecisionReason="low-health"|"new-salvage-haul"|"floor9-gold-resupply"|
   "unprepared-retreat"|"floor9-solo-resupply"|"depth-progress"|"damaged-stay"|
-  "test-gear"|"explore"|"combat-retreat"|"boss-ready";
+  "test-gear"|"explore"|"combat-retreat"|"boss-ready"|"committed-descent";
 export interface HeroDungeonDecision {
   readonly goal: HeroDungeonGoal;
   readonly action: HeroFloorAction;
@@ -85,6 +85,7 @@ export function chooseLiveHeroDungeonDecision(
   hero:AdventurerState,progress:SpatialDungeonHeroProgress|undefined,
   replay:SpatialDungeonReplay,layout?:DungeonLayout,world?:SpatialDungeonWorld,
   bossPartyReady=false,previousFindCount?:number,onReason?:(reason:DungeonDecisionReason)=>void,
+  priorDecision?:HeroDungeonDecision,
 ):HeroDungeonDecision {
   if(typeof hero.floor!=="number"||hero.floor<1||hero.floor>9||hero.health<=0||
     hero.status!=="exploring")
@@ -97,8 +98,21 @@ export function chooseLiveHeroDungeonDecision(
      hero.health/heroProgression(hero).maxHealth>=0.60){
     onReason?.("boss-ready");return {goal:"progress",action:"descend"};
   }
-  return preferKnownDungeonResourceGoal(
-    chooseHeroDungeonDecision(hero,progress,replay,previousFindCount,onReason),hero,progress,layout,world);
+  let reason:DungeonDecisionReason|undefined;
+  const base=chooseHeroDungeonDecision(hero,progress,replay,previousFindCount,
+    value=>{reason=value;});
+  // A healthy ordinary-floor explorer who already committed to a stair
+  // does not abandon it just because the next single movement tick lacks
+  // an encounter or because a fresh resource goal is available. Real
+  // resupply, caution, retreat and Floor-9 permission rules still win.
+  if(hero.floor<9&&priorDecision?.action==="descend"&&base.action==="stay"&&
+      base.goal!=="caution"&&base.goal!=="farm"&&
+      hero.health/heroProgression(hero).maxHealth>=.70){
+    onReason?.("committed-descent");
+    return {goal:"progress",action:"descend"};
+  }
+  if(reason)onReason?.(reason);
+  return preferKnownDungeonResourceGoal(base,hero,progress,layout,world);
 }
 
 /** The full-floor spectator is omniscient; the AI is not. Only personally

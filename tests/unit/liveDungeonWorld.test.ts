@@ -1,3 +1,5 @@
+import {chooseLiveHeroDungeonDecision} from "../../src/game/dungeonDecisions.ts";
+import {heroProgression} from "../../src/game/heroProgression.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createGameState,SIMULATION_VERSION} from "../../src/game/gameState.ts";
@@ -505,4 +507,25 @@ test("diagnostic captures the actual rejected Floor-9 solo stair crossing",()=>{
   assert.equal(gate.checks.partySize,false);assert.equal(gate.checks.accepted,false);
   assert.equal(store.state.liveDungeon.partyBossCombat,null);
   assert.equal(store.state.adventurers.find(h=>h.id===hero.id)?.floor,9);
+});
+
+test("healthy committed descent survives an ordinary empty movement decision but never overrides resupply",()=>{
+  const original=createGameState(7351).adventurers[0];
+  const hero={...original,floor:3 as const,status:"exploring" as const,
+    equipment:{weapon:"Iron Sword" as const,armor:"Leather Vest" as const}};
+  const ready={...hero,health:heroProgression(hero).maxHealth};
+  const layout=generateExpeditionLayout(7351,3);
+  const progress={heroId:hero.id,...layout.entrance,
+    visited:[layout.entrance.z*layout.width+layout.entrance.x]};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:3 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},steps:[],encounters:[],
+    outcome:"exploring" as const};
+  const committed={goal:"progress" as const,action:"descend" as const};
+  assert.equal(chooseLiveHeroDungeonDecision(ready,progress,replay).action,"stay");
+  assert.deepEqual(chooseLiveHeroDungeonDecision(ready,progress,replay,
+    undefined,undefined,false,0,undefined,committed),committed);
+  assert.equal(chooseLiveHeroDungeonDecision({...ready,health:1},progress,replay,
+    undefined,undefined,false,0,undefined,committed).action,"shop");
+  assert.equal(chooseLiveHeroDungeonDecision(ready,progress,{...replay,outcome:"retreat"},
+    undefined,undefined,false,0,undefined,committed).action,"shop");
 });
