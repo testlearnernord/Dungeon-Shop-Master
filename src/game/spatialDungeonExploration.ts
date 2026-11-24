@@ -532,9 +532,13 @@ export function simulateSpatialDungeonPartyDay(
     if(tactical&&!dungeonNeighbors(layout,current).some(point=>
       point.x===tactical.x&&point.z===tactical.z))
       throw new RangeError("Hero tactical AI tried to cross a nonadjacent dungeon tile");
-    const next=(options.returnToEntrance
+    // A real, visible pursuer is an immediate tactical hazard even when a
+    // hero has already committed to return to Galvik's shop. The ordinary
+    // known backtrack resumes on the next step after the threat is lost.
+    // Tactical AI still supplies ONLY a validated adjacent dungeon tile.
+    const next=tactical??(options.returnToEntrance
       ?chooseKnownReturnStep(layout,routeProgress)
-      :tactical??stairStep??resourceStep??choosePartyDungeonStep(layout,members.map(member=>({
+      :stairStep??resourceStep??choosePartyDungeonStep(layout,members.map(member=>({
         heroId:member.hero.id,...current,visited:member.visitedOrder,
       }))) ?? chooseRenewedSiteStep(layout,current,
       // Only discovered tiles may steer the renewable-site fallback. A

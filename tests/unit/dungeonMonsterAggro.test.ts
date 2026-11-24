@@ -91,3 +91,64 @@ test("an observed target and last seen tile survive a strict save round-trip",()
   monster.targetHeroId="unknown-ghost";
   assert.throws(()=>parseSave(JSON.stringify(forged)),/targetHeroId/);
 });
+
+test("occluded pursuer never learns a hidden tile and loses pursuit deterministically after save/reload",()=>{
+  // Choose a physically occluded corridor belonging to the same real
+  // monster's five-tile range, rather than handwaving LOS using off-map
+  // coordinates. The hero was actually visible in the preceding checkpoint.
+  const candidate=(initial.monsters??[]).flatMap(monster=>
+    dungeonNeighbors(layout,monster).flatMap(visible=>{
+      for(let z=0;z<layout.height;z++)for(let x=0;x<layout.width;x++){
+        const hidden={x,z};
+        if(tileAt(layout,x,z)==="wall"||
+          (x-monster.x)**2+(z-monster.z)**2>MONSTER_SIGHT_RADIUS**2||
+          hasDungeonLineOfSight(layout,monster,hidden,MONSTER_SIGHT_RADIUS))
+          continue;
+        return [{monster,visible,hidden}];
+      }
+      return [];
+    }))[0];
+  assert(candidate,"fixture needs a true nearby corner blocking a real corridor");
+  const {monster,visible,hidden}=candidate;
+  const seen=advanceDungeonMonsterWorld(initial,layout,1,200,
+    [{...visible,heroId}]);
+  const pursuer=seen.monsters!.find(m=>m.id===monster.id)!;
+  assert.equal(pursuer.mode,"CHASING");
+  assert.deepEqual(pursuer.lastKnown,visible);
+  const missing=advanceDungeonMonsterWorld(seen,layout,1,400,
+    [{...hidden,heroId}]);
+  const search=missing.monsters!.find(m=>m.id===monster.id)!;
+  assert.equal(search.mode,"SEARCHING");
+  assert.deepEqual(search.target,visible);
+  assert.deepEqual(search.lastKnown,visible);
+  assert.equal(search.lostSightChecks,1);
+  // This is a REAL strict campaign Save/Load, not a JSON clone of the pack.
+  const state=createGameState(seed);
+  const checkpoint={...state,dungeonWorlds:[
+    {floor:1 as const,world:missing}]};
+  const restored=parseSave(JSON.stringify(createSave(checkpoint)));
+  let unbroken=missing;
+  let resumed=restored.dungeonWorlds[0].world;
+  for(const tick of [600,800]){
+    unbroken=advanceDungeonMonsterWorld(unbroken,layout,1,tick,
+      [{...hidden,heroId}]);
+    resumed=advanceDungeonMonsterWorld(resumed,layout,1,tick,
+      [{...hidden,heroId}]);
+    assert.deepEqual(resumed,unbroken);
+    const pack=unbroken.monsters!.find(m=>m.id===monster.id)!;
+    assert.notDeepEqual(pack.target,hidden,
+      "the monster cannot obtain a secret hero route behind a solid wall");
+    if(tick===600)assert.equal(pack.mode,"SEARCHING");
+    else {
+      assert(["RETURNING","IDLE"].includes(pack.mode));
+      assert.equal(pack.targetHeroId,undefined);
+    }
+  }
+  const reacquired=advanceDungeonMonsterWorld(missing,layout,1,600,
+    [{...visible,heroId}]);
+  const again=reacquired.monsters!.find(m=>m.id===monster.id)!;
+  assert.equal(again.mode,"CHASING",
+    "only the hero's genuinely visible return can resume pursuit");
+  assert.equal(again.lostSightChecks,0);
+  assert.deepEqual(again.lastKnown,visible);
+});
