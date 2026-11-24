@@ -10,6 +10,8 @@ import {emptySpatialDungeonWorld}
   from "../../src/game/spatialDungeonExploration.ts";
 import {advanceDungeonMonsterWorld}
   from "../../src/game/dungeonMonsterWorld.ts";
+import {chooseDungeonThreatReaction}
+  from "../../src/game/dungeonThreatDecisions.ts";
 
 const seed=7351,layout=generateExpeditionLayout(seed,1);
 
@@ -88,4 +90,33 @@ test("stationary contact resumes deterministically and never creates duplicate f
     store.state.liveDungeon.combats.length);
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),
     store.state);
+});
+
+test("LIVE shop-bound hero reacts to a true visible pursuer without losing its committed return",()=>{
+  const {store:seeded,heroId}=chasedStationaryHero();
+  const state=seeded.state;
+  const current=state.adventurers.find(h=>h.id===heroId)!;
+  const hero={...current,health:Math.max(1,Math.floor(current.stats.maxHealth*.4))};
+  const ready={...state,adventurers:state.adventurers.map(h=>
+    h.id===heroId?hero:h),
+    liveDungeon:{...state.liveDungeon,heroes:[],
+      returns:[{heroId,fromFloor:1 as const,startedTick:0,
+        phase:"backtrack" as const}]}};
+  const before=ready.dungeonWorlds.find(w=>w.floor===1)!.world;
+  const expected=chooseDungeonThreatReaction(layout,before,[hero],
+    ready.adventurers);
+  assert(expected&&expected.action==="ESCAPING");
+  const old=before.heroes.find(h=>h.heroId===heroId)!;
+  const store=new GameStore(ready);
+  store.advanceWorldTime(200);
+  const after=store.state;
+  const journey=after.liveDungeon.returns.find(r=>r.heroId===heroId);
+  assert(journey,"a tactical dodge must not cancel the actual shop-bound journey");
+  const progress=after.dungeonWorlds.find(w=>w.floor===1)!.world.heroes
+    .find(h=>h.heroId===heroId);
+  assert(progress);
+  assert.deepEqual({x:progress.x,z:progress.z},expected.step);
+  assert(dungeonNeighbors(layout,old).some(p=>
+    p.x===progress.x&&p.z===progress.z),"the evasive step is one real tile");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(after))),after);
 });
