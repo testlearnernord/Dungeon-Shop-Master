@@ -79,3 +79,5 @@ Initial, deliberately small recipes:
 - A won Ghoul encounter atomically resolves the site and removes the live map
   occupant in the same combat tick. Saving before the next movement step is
   valid; the strict validator is not relaxed to accept a defeated pack.
+
+- The fixed workshop and its positive-Z working approach are reserved by the shared cellar furniture placement rules. Preview, commit and strict save validation reject chest/table overlap; the renderer shares the same workshop position. Other supported cellar placements remain movable.

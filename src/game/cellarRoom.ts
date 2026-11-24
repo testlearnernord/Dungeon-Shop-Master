@@ -1,10 +1,23 @@
 import {createShopRoomGeometry,isShopRoomAir,isValidShopRoomGeometry,
   type ShopRoomGeometry,type RoomCell} from "./shopRoomGeometry.ts";
-import {furnitureBounds,furnitureBoundsOverlap} from "./furnitureRegistry.ts";
+import {furnitureBounds,furnitureBoundsOverlap,type FurnitureBounds} from "./furnitureRegistry.ts";
 /** Render-independent world mapping shared by mining, furniture and visuals. */
 export const CELLAR_ORIGIN_Z=-27;
 export const CELLAR_FLOOR_Y=-4.4;
 export const CELLAR_ENTRY_X=-.85;
+
+// Fixed workshop position is shared by rendering and the existing P editor.
+// The reserved area contains the anvil horn, base, hearth and a standing
+// approach on the positive-Z service side. It is not a movable furniture SKU.
+export const CELLAR_FORGE_POSITION={x:-4,z:-28.5} as const;
+export const CELLAR_FORGE_CLEARANCE:Readonly<FurnitureBounds>={
+  minX:CELLAR_FORGE_POSITION.x-.90,maxX:CELLAR_FORGE_POSITION.x+.70,
+  minZ:CELLAR_FORGE_POSITION.z-.75,maxZ:CELLAR_FORGE_POSITION.z+1.70,
+};
+function forgePlacementProblem(bounds:FurnitureBounds):string|null{
+  return furnitureBoundsOverlap(bounds,CELLAR_FORGE_CLEARANCE,.12)
+    ?"Keep the cellar forge and its working approach clear.":null;
+}
 
 /** A second physical room, but the SAME authoritative excavation rules,
  * cell coordinates, wall-face generator, blueprint validator and world clock.
@@ -54,7 +67,7 @@ export function cellarChestProblem(
   // Keep the stair mouth clear: physical walking, not teleportation.
   if(b.minX<.4&&b.maxX>-2.1&&b.maxZ>-21.0)
     return "Keep the cellar staircase landing clear.";
-  return null;
+  return forgePlacementProblem(b);
 }
 
 /** One saved, freely relocatable Tripo furniture item using the existing cellar
@@ -94,5 +107,5 @@ export function cellarTableProblem(
     return "Keep the cellar staircase landing clear.";
   if(chest&&furnitureBoundsOverlap(b,furnitureBounds(chest),.12))
     return "Galvik's Table would overlap the cellar chest.";
-  return null;
+  return forgePlacementProblem(b);
 }

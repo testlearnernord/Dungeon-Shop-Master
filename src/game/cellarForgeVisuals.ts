@@ -3,12 +3,12 @@ import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import type {Mesh} from "@babylonjs/core/Meshes/mesh";
 import type {Scene} from "@babylonjs/core/scene";
-import {CELLAR_FLOOR_Y} from "./cellarRoom.ts";
+import {CELLAR_FLOOR_Y,CELLAR_FORGE_POSITION} from "./cellarRoom.ts";
 
 /** V0.1: physically present, colliding and ray-pickable cellar forge. The
  * single anvil is a visible player interaction, not a remote menu shortcut.
  * Art is intentionally inexpensive until the functional loop is accepted. */
-export const CELLAR_FORGE_POSITION={x:-4,z:-28.5} as const;
+export {CELLAR_FORGE_POSITION} from "./cellarRoom.ts";
 export function setupCellarForgeVisuals(scene:Scene):Mesh {
   const steel=new StandardMaterial("cellar-forge-steel",scene);
   steel.diffuseColor=new Color3(.29,.32,.35);
