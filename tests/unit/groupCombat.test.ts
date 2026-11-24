@@ -270,3 +270,59 @@ test("healer magic is distinct from purchased herbs and runs in the common motor
   assert.equal(spells.length,2);
   assert(spells.every(e=>e.amount===25));
 });
+
+test("real melee equipment prevents light-hit interruption but never negates damage",()=>{
+  for(const [role,weapon] of [["tank","Iron Sword"],["DPS","Spear"]] as const){
+    for(const armed of [false,true]){
+      for(const raw of [8,18]){
+        const state=createGroupCombat({bounds,actors:[
+          fighter("hero","heroes",0,0,{role,hp:100,maxHp:100,armor:6,
+            equipment:{weapon:armed?weapon:null,armor:"Leather Vest"}}),
+          fighter("monster","monsters",0,1.7,{damage:raw,armor:0}),
+        ]});
+        const hero=state.actors.find(a=>a.id==="hero")!;
+        const monster=state.actors.find(a=>a.id==="monster")!;
+        hero.phase="windup";hero.phaseAge=.1;
+        monster.phase="strike";monster.phaseAge=.16;monster.lockedHeading=Math.PI;
+        monster.targetId=hero.id;monster.applied=false;
+        stepGroupCombat(state);
+        assert.equal(hero.hp,100-(raw-6));
+        assert.equal(hero.phase,armed&&raw===8?"windup":"hurt");
+      }
+    }
+  }
+});
+
+test("ordinary melee defense can forfeit a pending swing and costs stamina",()=>{
+  for(const role of ["tank","DPS"] as const){
+    const {s,hero,monster}=imminentMonsterStrike();
+    const state=createGroupCombat({bounds,actors:[
+      fighter("hero","heroes",hero.x,hero.z,{role,hp:100,maxHp:100}),
+      fighter("monster","monsters",monster.x,monster.z),
+    ]});
+    const h=state.actors.find(a=>a.id==="hero")!;
+    const m=state.actors.find(a=>a.id==="monster")!;
+    h.phase="windup";h.phaseAge=.1;h.stamina=50;
+    m.phase="windup";m.phaseAge=.54;m.targetId=h.id;m.lockedHeading=Math.PI;
+    stepGroupCombat(state);
+    assert(["roll","parry"].includes(h.phase));
+    assert(h.stamina<50);
+    assert(!state.events.some(e=>e.kind==="hit"&&e.actorId===h.id));
+    assert.equal(s.time,0);
+  }
+});
+
+test("ordinary tank reaction remains active at actual contact",()=>{
+  let parries=0;
+  for(let ordinal=1;ordinal<=24;ordinal++){
+    const {s,hero,monster}=imminentMonsterStrike();
+    monster.phase="windup";monster.phaseAge=.54;monster.attacksStarted=ordinal;
+    stepGroupCombat(s);
+    if(hero.phase!=="parry")continue;
+    for(let i=0;i<18;i++)stepGroupCombat(s);
+    assert.equal(hero.hp,100,"the telegraphed strike must meet the active parry window");
+    assert(s.events.some(e=>e.kind==="parry"&&e.actorId===hero.id));
+    parries++;
+  }
+  assert(parries>0);
+});
