@@ -1,0 +1,46 @@
+#hud #inventory .inventory-row{font:inherit;color:inherit;cursor:pointer}
+#hud #inventory .empty-slot-mark{font-size:22px;color:#b5a48a;opacity:.65}
+#hud #inventory .capacity{cursor:pointer;min-width:40px}
+#hud #inventory .capacity kbd{font-size:9px;color:#ddc69c}
+#inventory-dialog{width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;
+  border:1px solid #92764c;border-radius:12px;background:#181d1e;color:#f1e3ce;
+  padding:20px;box-shadow:0 20px 80px #000b;font:14px system-ui,sans-serif}
+#inventory-dialog::backdrop{background:#070a0ab8;backdrop-filter:blur(3px)}
+#inventory-dialog button{font:inherit;color:inherit;background:#252a29;border:1px solid #67583e;border-radius:7px;cursor:pointer}
+#inventory-dialog button:hover,#inventory-dialog button:focus-visible{border-color:#e3bc7b;outline:1px solid #e3bc7b}
+.bag-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.bag-header h2{margin:0;color:#f3ce90}
+.bag-close{padding:8px 12px}
+.bag-capacity{color:#e3bc7b;font-weight:650}
+.bag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:10px;min-height:120px;
+  border:1px solid #4a4437;border-radius:8px;padding:10px;background:#111616}
+.bag-item{display:flex;flex-direction:column;gap:6px;min-width:0}
+.bag-item-pick{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:5px;min-height:64px;padding:8px;text-align:left}
+.bag-item-pick[aria-pressed=true]{outline:2px solid #d3a55d;background:#493c27!important}
+.bag-item-pick svg,.bag-bind-slot svg{width:42px;height:42px}
+.bag-item-pick span{font-size:12px;overflow-wrap:anywhere}
+.bag-item-pick strong{color:#ffdfab}
+#inventory-dialog .bag-discard{font-size:11px;padding:4px;color:#e1a69b;background:#2b2020}
+.bag-reserve{display:flex;flex-wrap:wrap;gap:7px 16px;align-items:center;padding:12px 0;color:#cfbea4}
+.bag-reserve h3{width:100%;margin:0 0 2px;font-size:14px;color:#e3bc7b}
+.bag-quickbar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+#inventory-dialog .bag-bind-slot{position:relative;min-height:66px;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:8px 3px}
+.bag-bind-slot .hotbar-key{position:absolute;left:5px;top:3px;font-size:10px}
+.bag-bind-slot .item-name{font-size:10px;text-align:center;overflow-wrap:anywhere}
+.bag-bind-slot strong{position:absolute;right:5px;bottom:4px;font-size:11px}
+#inventory-dialog .bag-bind-slot.selected{border-color:#efc580}
+#inventory-dialog .bag-bind-slot.drop-target{border-color:#f9d69b;background:#51432b}
+.bag-bind-slot .empty-slot-mark{font-size:24px;color:#a79a83}
+.bag-help,.bag-message{font-size:12px;color:#cbbba3}
+.bag-message{color:#f1cc8e;min-height:1.2em}
+.forge-recipe-value{font-size:11px;color:#dfc28d}
+@media(max-width:480px){
+ #hud #inventory.inventory{gap:3px}
+ #hud #inventory .inventory-row{flex-basis:clamp(32px,11vw,46px);width:clamp(32px,11vw,46px);height:47px;min-height:47px}
+ #hud #inventory .inventory-row .item-pictogram{width:29px;height:29px}
+ #hud #inventory .capacity{min-width:32px}
+ #inventory-dialog{padding:12px}
+ .bag-quickbar{gap:4px}
+ .bag-bind-slot .item-name{display:none}
+ .bag-bind-slot svg{width:30px;height:30px}
+}

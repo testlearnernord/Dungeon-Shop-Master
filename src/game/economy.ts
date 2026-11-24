@@ -26,16 +26,6 @@ export type ItemId = (typeof ITEMS)[number]["id"];
 /** Only real shop merchandise requires physical GLB models. Raw materials
  * are bought directly from adventurers and are never shelf displays. */
 export const SHELF_GOODS = ITEMS.filter(item=>item.kind!=="material");
-/** First ten shelf goods use the physical number row; additional goods
- * remain available by the existing wheel and unlocked inventory controls. */
-export function shelfHotkey(index:number):string|null{
-  return Number.isInteger(index)&&index>=0&&index<10&&index<SHELF_GOODS.length
-    ?String((index+1)%10):null;
-}
-export function shelfItemForHotkey(code:string):ItemId|null{
-  if(!/^Digit[0-9]$/.test(code))return null;
-  return SHELF_GOODS[(Number(code.slice(-1))+9)%10]?.id??null;
-}
 export const WHOLESALE_GOODS = ITEMS.filter(item=>
   item.kind!=="material"&&item.wholesaleCost>0);
 export const isWholesaleGood=(id:ItemId):boolean=>

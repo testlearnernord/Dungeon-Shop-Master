@@ -8,8 +8,10 @@ import type {RenderQualityMode} from "./game/adaptiveResolution.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { createFirstPersonCamera } from "./game/firstPersonController";
-import {SHELF_GOODS,shelfHotkey,type ItemId} from "./game/economy.ts";
-import { ECONOMY } from "./game/economy";
+import {type ItemId} from "./game/economy.ts";
+import {Quickbar} from "./game/quickbar.ts";
+import {loadQuickbar,setupInventoryHud} from "./inventoryHud.ts";
+
 import { GameStore } from "./game/gameStore";
 import { WorldClockPacer } from "./game/worldClockPacer.ts";
 import {WORLD_TICKS_PER_GAME_MINUTE} from "./game/worldClock.ts";
@@ -57,7 +59,7 @@ import { setupShopStatusToggle,setupControlsHotbarClearance,
   setupTransientStatus,setupShopServiceBrief } from "./shopHudLayout";
 import { setupAdventurerOverview } from "./adventurerOverview";
 import { setupHudMouseMode } from "./hudMouseMode";
-import { setupInterfaceIcons,watchInterfaceDialogs,uiIcon } from "./uiIcons.ts";
+import { setupInterfaceIcons,watchInterfaceDialogs } from "./uiIcons.ts";
 import "./styles.css";
 import "./uiTheme.css";
 import "./merchantLedger.css";
@@ -74,6 +76,7 @@ import "./observationTransition.css";
 import "./worldEventFeed.css";
 import "./forgeHud.css";
 import "./heroCard.css";
+import "./inventoryHud.css";
 
 async function startGame(): Promise<void> {
 setupInterfaceIcons();
@@ -89,7 +92,7 @@ if (!canvas || !inventoryElement || !statusElement) {
 }
 
 setupHudMouseMode(canvas);
-const inventoryHud = inventoryElement;
+
 const statusHud = statusElement;
 setupTransientStatus(statusHud);
 const campaign = await loadCampaign();
@@ -373,7 +376,8 @@ store.subscribe(()=>{
     syncTrafficCheckpoint();
 });
 setupSalesHud(store);
-let selectedItemId: ItemId = SHELF_GOODS[0].id;
+const quickbar=new Quickbar(loadQuickbar());
+let inventoryView:ReturnType<typeof setupInventoryHud>|null=null;
 setupCampaignHud(store, campaign, () => {
   replacingCampaign=true;
   npcVisuals.reconcile([], []);
@@ -385,6 +389,7 @@ setupCampaignHud(store, campaign, () => {
   resetReplayDisclosure();
   cashier?.close();
   forgeHud.close();
+  inventoryView?.close();
   beggarHud?.close();
   blueprint.close();
   debtBook.close();
@@ -398,64 +403,6 @@ setupCampaignHud(store, campaign, () => {
   statusHud.textContent = "Campaign ready. Click to enter the shop.";
 },restoreTrafficCheckpoint,ms=>runtimePerf.recordSave(ms));
 
-function renderInventory(selectedItem: ItemId): void {
-  const focusedItemId = document.activeElement instanceof HTMLElement &&
-    inventoryHud.contains(document.activeElement) ? document.activeElement.dataset.itemId : undefined;
-  inventoryHud.replaceChildren();
-  const rows = new Map<string, HTMLDivElement>();
-  for (const [index,item] of SHELF_GOODS.entries()) {
-    const row = document.createElement("div");
-    row.className = `inventory-row${item.id === selectedItem ? " selected" : ""}${store.state.shopEconomy.bag[item.id]===0?" empty":""}`;
-    row.setAttribute("role","button");
-    row.setAttribute("tabindex","0");
-    row.dataset.itemId = item.id;
-    row.setAttribute("aria-label",`Select ${item.name}, ${store.state.shopEconomy.bag[item.id]} available`);
-    row.setAttribute("aria-pressed",String(item.id===selectedItem));
-    const hotkey=shelfHotkey(index);
-    row.title=hotkey?`${hotkey}: ${item.name}`:`Wheel: ${item.name}`;
-    row.addEventListener("click",()=>interactions.selectItem(item.id));
-    row.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();interactions.selectItem(item.id);}});
-    const key=document.createElement("kbd");
-    key.className="hotbar-key";key.textContent=hotkey??"↕";
-    const dot = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    dot.classList.add("item-pictogram");
-    dot.setAttribute("viewBox", "0 0 48 48");
-    dot.setAttribute("aria-hidden", "true");
-    const symbol = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    symbol.setAttribute("href", import.meta.env.BASE_URL + "assets/ui-item-icons.svg#" + item.id);
-    dot.append(symbol);
-    const name = document.createElement("span");
-    name.textContent = item.name;
-    name.className="item-name";
-    const quantity = document.createElement("strong");
-    quantity.textContent = String(store.state.shopEconomy.bag[item.id]);
-    row.append(key,dot, name, quantity);
-    inventoryHud.append(row);
-    rows.set(item.id, row);
-  }
-  const capacity = document.createElement("div");
-  capacity.className = "capacity";
-  const bagCount=Object.values(store.state.shopEconomy.bag)
-    .reduce((sum,quantity)=>sum+quantity,0);
-  capacity.setAttribute("aria-label",`Bag ${bagCount} of ${ECONOMY.bagCapacity}`);
-  const amount=document.createElement("span");
-  amount.textContent=`${bagCount}/${ECONOMY.bagCapacity}`;
-  capacity.append(uiIcon("bag"),amount);
-  inventoryHud.append(capacity);
-  const selectedStock=SHELF_GOODS.find(item=>item.id===selectedItem)!;
-  const selectedStatus=document.createElement("div");
-  selectedStatus.className="hotbar-selected";
-  selectedStatus.setAttribute("role","status");
-  selectedStatus.dataset.empty=String(store.state.shopEconomy.bag[selectedStock.id]===0);
-  selectedStatus.textContent="READY TO STOCK · "+selectedStock.name+" · "+
-    store.state.shopEconomy.bag[selectedStock.id]+" in bag";
-  inventoryHud.append(selectedStatus);
-  const hint=document.createElement("span");hint.className="hotbar-hint";
-  hint.textContent="Wheel / 1–0 select · Click one · Shift+click fill / clear";
-  inventoryHud.append(hint);
-  if (focusedItemId) rows.get(focusedItemId)?.focus({ preventScroll: true });
-}
-
 let isShopActive = () => true;
 let observeTable:()=>boolean=()=>false;
 let fishing:ReturnType<typeof setupFishingHud>|null=null;
@@ -463,26 +410,27 @@ let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
   ()=>isShopActive(),message=>{statusHud.textContent=message;});
 const merchantActions=createMerchantActions(scene,camera,()=>sfx.soundEnabled,()=>sfx.soundVolume,()=>isShopActive());
-const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
-  selectedItemId = selected;
+const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message) => {
   statusHud.textContent = message;
-  renderInventory(selected);
+  inventoryView?.refreshSelection();
 }, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.",
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
   debtBook.open,store,(action,itemId)=>merchantActions.play(action,itemId),
-  ()=>fishing?.open()??false,()=>observeTable(),()=>forgeHud.open());
-setupControlsHotbarClearance();
-setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),
-  itemId=>interactions.selectItem(itemId));
-let lastRenderedBag=store.state.shopEconomy.bag;
-store.subscribe(()=>{
-  const bag=store.state.shopEconomy.bag;
-  if(bag===lastRenderedBag)return;
-  lastRenderedBag=bag;
-  renderInventory(selectedItemId);
+  ()=>fishing?.open()??false,()=>observeTable(),()=>forgeHud.open(),quickbar);
+inventoryView=setupInventoryHud(inventoryElement,canvas,store,quickbar,{
+  isShopActive:()=>isShopActive(),
+  onMenuChanged:open=>{
+    if(open)camera.detachControl();
+    else if(isShopActive()&&!document.querySelector("dialog[open]"))camera.attachControl(canvas,true);
+  },
+  onSelection:index=>interactions.selectSlot(index),
+  onBindingsChanged:()=>interactions.refreshQuickbarSelection(),
 });
-renderInventory(selectedItemId);
+setupControlsHotbarClearance();
+setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),itemId=>{
+  if(!interactions.selectItem(itemId))inventoryView?.open(itemId);
+});
 const soundtrack = setupSoundtrack();
 const sfx = setupGameSfx();
 fishing=setupFishingHud(canvas,camera,scene,store,sfx);

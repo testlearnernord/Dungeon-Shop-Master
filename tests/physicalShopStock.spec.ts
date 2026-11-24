@@ -151,6 +151,10 @@ test("Shift-click stocks and clears the aimed physical shelf using real GLBs",as
     await scene.waitForShelfSlotMesh();
     scene.aimAtShelfSlot();
   });
+  await page.keyboard.press("Tab");
+  await page.locator('#inventory-dialog [data-bag-item="healing-herb"] .bag-item-pick').dragTo(page.locator('#inventory-dialog [data-bind-slot="1"]'));
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("1");
   await expect(page.locator("#shop-shelf-focus")).toBeVisible();
   await expect(page.locator("#shelf-focus-action")).toContainText("Shift+left-click: fill slot");
   await page.keyboard.down("Shift");

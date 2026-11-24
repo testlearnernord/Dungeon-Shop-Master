@@ -22,8 +22,8 @@ test("empty shelf tells the player exactly which stock and quantity can be used"
 });
 
 test("existing shelf tells which key to press, what is full, and why a cart locks it",()=>{
-  const wrong=describeShelfFocus(shelf("healing-herb",3),"bread",economy.bag,false);
-  assert.match(wrong.instruction,/Press 1 to select Healing Herb/);
+  const wrong=describeShelfFocus(shelf("healing-herb",3),"bread",economy.bag,false,["bread","healing-herb"]);
+  assert.match(wrong.instruction,/Press 2 to select Healing Herb/);
   assert.equal(wrong.tone,"warning");
   const correct=describeShelfFocus(shelf("healing-herb",3),"healing-herb",
     economy.bag,false);
@@ -66,4 +66,10 @@ test("equal deadlines preserve stable choice and reject non-finite timing",()=>{
   ];
   assert.equal(prioritizeShopService(tie).restock?.heroId,"visitor-a");
   assert.equal(prioritizeShopService(tie).restockCount,2);
+});
+
+test("empty and unbound slots do not advertise a phantom product or fixed key",()=>{
+  assert.match(describeShelfFocus(shelf(null,0),null,economy.bag,false).instruction,/TAB/);
+  assert.match(describeShelfFocus(shelf("forged-spear",1),null,economy.bag,false).instruction,/Right-click: remove/);
+  assert.match(describeShelfFocus(shelf(null,0),"forged-spear",economy.bag,false).instruction,/Forge in cellar/);
 });
