@@ -127,39 +127,25 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   });
   const selected=async()=>(
     await inspect()).pins.find(pin=>pin.id===expected.selected);
-  const realWorld=()=>page.evaluate(id=>{
-    const hooks=window as Window&{
-      __shopTestGhoulSnapshot?:(floor:number,id:string)=>unknown;
-    };
-    return hooks.__shopTestGhoulSnapshot?.(1,id)??null;
+  const phases=()=>page.evaluate(async()=>{
+    const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    return probe.observedGhoulAnimationPhases();
+  });
+  const arm=()=>page.evaluate(async id=>{
+    const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    probe.armGhoulObservationAnimationProbe(id);
   },expected.selected);
+  await arm();
   await nextMonsterStep();
-  let lastTableSample="";
-  try{
-    await expect.poll(async()=>{
-      try{
-        lastTableSample=JSON.stringify({
-          view:await selected(),world:await realWorld(),
-          table:await page.evaluate(async()=>{
-            const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
-            const info=probe.inspectGalviksLiveTable();
-            return {tick:info.lastObservedTick,eyeY:info.shopEyeY,
-              tableY:info.tableY,distance:info.tableDistance};
-          }),
-        });
-      }catch(error){
-        lastTableSample="observation probe threw: "+String(error);
-      }
-      return lastTableSample.includes('"phase":"walk"');
-    },{timeout:5000,intervals:[100,150,200]}).toBe(true);
-  }catch(error){
-    throw Error("Ghoul table animation did not start. Last observation: "+
-      lastTableSample+"; "+String(error));
-  }
-  const tableWalking=await selected();
+  // Use ACTUAL browser render frames, not a late Playwright snapshot after
+  // a short 1.2-second animation, which under slow CI can miss the walk.
+  await expect.poll(async()=> (await phases()).some(p=>
+    p.phase==="walk"&&p.walk&&!p.idle),
+    {timeout:15000,intervals:[125,175,250]}).toBe(true);
+  const tableWalking=(await phases()).find(p=>p.phase==="walk");
   expect(tableWalking?.clip).toBe("walk_feral");
-  expect(tableWalking?.walkModel).toBe(true);
-  expect(tableWalking?.idleModel).toBe(false);
+  expect(tableWalking?.walk).toBe(true);
+  expect(tableWalking?.idle).toBe(false);
   await expect.poll(async()=> (await selected())?.phase,
     {timeout:4500,intervals:[150,200]}).toBe("idle");
   const tableArrived=await selected();
@@ -198,14 +184,15 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     expect(pin.walkModel).toBe(false);
   }
 
+  await arm();
   await nextMonsterStep();
-  await expect.poll(async()=>JSON.stringify({
-    view:await selected(),world:await realWorld(),
-  }),{timeout:5000,intervals:[100,150,200]}).toContain('"phase":"walk"');
-  const liveWalking=await selected();
+  await expect.poll(async()=> (await phases()).some(p=>
+    p.phase==="walk"&&p.walk&&!p.idle),
+    {timeout:15000,intervals:[125,175,250]}).toBe(true);
+  const liveWalking=(await phases()).find(p=>p.phase==="walk");
   expect(liveWalking?.clip).toBe("walk_feral");
-  expect(liveWalking?.walkModel).toBe(true);
-  expect(liveWalking?.idleModel).toBe(false);
+  expect(liveWalking?.walk).toBe(true);
+  expect(liveWalking?.idle).toBe(false);
   await expect.poll(async()=> (await selected())?.phase,
     {timeout:4500,intervals:[150,200]}).toBe("idle");
   const liveArrived=await selected();
