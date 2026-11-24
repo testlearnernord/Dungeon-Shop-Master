@@ -1,4 +1,5 @@
 import { ITEMS, type ItemId } from "./economy.ts";
+import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
 import type { GameState, WorldEvent } from "./gameState.ts";
 import { forecastShoppingIntents, type ShoppingInterest } from "./shopperIntents.ts";
 
@@ -146,8 +147,15 @@ export function settleHeldShopCarts(
       units += line.quantity;
       if (item.id === "bread") bread += line.quantity;
       else if (item.id === "healing-herb") healing += line.quantity;
-      else if (item.kind === "weapon") weapon = item.name;
-      else if (item.kind === "armor") armor = item.name;
+      else if (item.kind === "weapon" || item.kind === "armor") {
+        if(line.quantity!==1 ||
+           !needsGearUpgrade(hero.role,{weapon,armor},item.id))
+          throw new Error("Reserved equipment does not suit the hero's class or tier.");
+        const gear=gearForItem(item.id);
+        if(!gear)throw new Error("Unknown reserved equipment.");
+        if(item.kind==="weapon")weapon=gear.name;
+        else armor=gear.name;
+      }
       else throw new Error("Unsupported reserved item type.");
       events.push({
         id: "day-" + nextDay + ":" + hero.id + ":sale:" + line.slotId,
