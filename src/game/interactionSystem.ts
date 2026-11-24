@@ -41,6 +41,7 @@ export class InteractionSystem {
     private readonly onMerchantAction: (action:MerchantAction)=>void = () => {},
     private readonly openFishing:()=>boolean=()=>false,
     private readonly observeTable:()=>boolean=()=>false,
+    private readonly openForge:()=>boolean=()=>false,
   ) {
     this.shop.select(SHELF_GOODS[0].id);
     this.registerEvents();
@@ -285,6 +286,9 @@ export class InteractionSystem {
       } else if(target?.kind==="cellar-pond"&&button===0){
         this.message=hit.distance<=this.maxInteractionDistance&&this.openFishing()
           ?"Fishing at the underground pond.":"Move closer to the water.";
+      } else if(target?.kind==="cellar-forge"&&button===0){
+        this.message=hit.distance<=this.maxInteractionDistance&&this.openForge()
+          ?"The cellar forge is ready.":"Move closer to the anvil.";
       } else if(target?.kind==="cellar-door"&&button===0&&this.store){
         this.message=hit.distance<=this.maxInteractionDistance
           ?this.store.toggleCellarDoor():"Move closer to the portrait.";
@@ -313,6 +317,9 @@ export class InteractionSystem {
     } else if(target?.kind==="cellar-pond"){
       this.message=this.openFishing()
         ?"Fishing at the underground pond.":"The water cannot be reached.";
+    } else if(target?.kind==="cellar-forge"){
+      this.message=this.openForge()
+        ?"The cellar forge is ready.":"The anvil cannot be reached.";
     } else if(target?.kind==="cellar-door"&&this.store){
       this.message=this.store.toggleCellarDoor();
     } else if(target?.kind==="debt-book"){
