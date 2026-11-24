@@ -47,7 +47,7 @@ export const SHOP_PORTAL_TRANSIT_TICKS=20;
 /** Optional, unsaved diagnostic observations. Only detached primitives and
  * fresh arrays/objects leave the real scheduler. Never feeds back into AI. */
 export interface DungeonDiagnostic {
-  readonly stage:"decision"|"combat-decision"|"boss-crossing"|"boss-route";
+  readonly stage:"decision"|"combat-decision"|"boss-crossing"|"boss-route"|"depth-crossing"|"depth-route";
   readonly day:number;
   readonly tick:number;
   readonly floor:number;
@@ -403,6 +403,10 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
           }
           continue;
         }
+        diagnostic?.({stage:"depth-crossing",day,tick,floor,heroId:hero.id,
+          memberIds:crossing.map(member=>member.id),action:priorPlan.action,
+          checks:{accepted:true,partyTogether:crossing.length>1,
+            fullParty:!priorParty||crossing.length===participants.length}});
         const destinationLayout=generateExpeditionLayout(state.seed,nextFloor);
         const arrival=priorPlan.action==="ascend"
           ?dungeonDownStair(destinationLayout):destinationLayout.entrance;
@@ -479,9 +483,10 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     // personally known, still-active chest/monster site. Never let the
     // omniscient spectator map plan hero movement.
     const known=getSpatialDungeonProgress(world,hero.id,layout);
-    if(diagnostic&&floor===9&&directed&&priorPlan?.action==="descend"){
+    if(diagnostic&&directed&&priorPlan?.action==="descend"){
       const atStair=known.x===directed.x&&known.z===directed.z;
-      diagnostic({stage:"boss-route",day,tick,floor,heroId:hero.id,
+      diagnostic({stage:floor===9?"boss-route":"depth-route",day,tick,floor,heroId:hero.id,
+        action:"descend",
         memberIds:readyGroup.map(member=>member.id),checks:{
           stairVisited:known.visited.includes(directed.z*layout.width+directed.x),
           knownRoute:atStair||!!chooseKnownRouteStep(layout,known,directed),

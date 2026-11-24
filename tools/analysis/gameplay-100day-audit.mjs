@@ -5,7 +5,9 @@ import { writeFileSync } from "node:fs";
 import { GameStore } from "../../src/game/gameStore.ts";
 import { createGameState } from "../../src/game/gameState.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
-import { ITEMS } from "../../src/game/economy.ts";
+import { ITEMS,ECONOMY,isMaterial } from "../../src/game/economy.ts";
+import {availableDungeonOffers} from "../../src/game/dungeonBuyback.ts";
+import {FORGE_OUTPUTS,FORGE_RECIPES,isForgeOutput} from "../../src/game/cellarForge.ts";
 import {createCampaignTelemetry} from "./campaign-progression-telemetry.mjs";
 
 const DAYS = Number(process.env.AUDIT_DAYS ?? 100);
@@ -18,11 +20,15 @@ const placements = [
   {id:"shelf-1",x:-7,z:0,rotation:0},
   {id:"shelf-2",x:7,z:0,rotation:2},
 ];
-const targets = {bread:3,"healing-herb":3,"iron-sword":2,"leather-vest":2,spear:2,staff:2};
+const targets = {bread:3,"healing-herb":3,"iron-sword":2,"leather-vest":2,spear:2,staff:2,
+  ...Object.fromEntries(FORGE_OUTPUTS.map(id=>[id,1]))};
 const slotIds = {bread:"shelf-1-slot-1","healing-herb":"shelf-1-slot-2",
   "iron-sword":"shelf-1-slot-3","leather-vest":"shelf-1-slot-4",
-  spear:"shelf-2-slot-1",staff:"shelf-2-slot-2"};
-const eligibleSkus = mode => mode==="tier1" ? [...catalog,"spear","staff"] :
+  spear:"shelf-2-slot-1",staff:"shelf-2-slot-2",
+  ...Object.fromEntries(FORGE_OUTPUTS.map((id,i)=>[id,"shelf-3-slot-"+(i+1)]))};
+const buysSalvage=mode=>mode==="buyback"||mode==="forge";
+const eligibleSkus = mode => mode==="forge" ? [...catalog,"spear","staff",...FORGE_OUTPUTS] :
+  mode==="tier1"||mode==="buyback" ? [...catalog,"spear","staff"] :
   mode==="full" ? catalog :
   mode==="consumables" ? catalog.slice(0,2) :
   mode==="equipment" ? catalog.slice(2) : [];
@@ -68,6 +74,15 @@ function setup(mode,diagnostic) {
     const response=store.placeFurniture(draft);
     if(response!=="Shelf placement saved.")throw Error("Shelf setup rejected: "+response);
   }
+  // Identical extra physical shelf in both salvage treatments. Use the real
+  // placement validator; never invent inaccessible stock or extra bag space.
+  if(buysSalvage(mode)){
+    const third=[{x:-7,z:-4},{x:7,z:-4},{x:-7,z:4},{x:7,z:4}]
+      .map(p=>({id:"shelf-3",...p,rotation:p.x<0?0:2}))
+      .find(p=>store.previewFurniturePlacement(p)===null);
+    if(!third||store.placeFurniture(third)!=="Shelf placement saved.")
+      throw Error("No valid third shelf for the matched salvage comparison");
+  }
   store.enableLiveDungeon();
   return store;
 }
@@ -78,7 +93,20 @@ function restock(store,mode,metrics){
       const slot=store.state.shopEconomy.slots.find(s=>s.id===slotId);
       if(!slot || slot.quantity>=targets[itemId])break;
       let available=store.state.shopEconomy.bag[itemId];
+      if(!available&&isForgeOutput(itemId)){
+        const reserve=store.state.shopEconomy.materialStorage;
+        const recipe=FORGE_RECIPES[itemId];
+        const used=Object.values(store.state.shopEconomy.bag).reduce((n,q)=>n+q,0);
+        if(used>=ECONOMY.bagCapacity||Object.entries(recipe).some(([id,n])=>reserve[id]<n))break;
+        const before=store.state;
+        const msg=store.craftAtForge(itemId);
+        if(store.state===before)throw Error("Real forge rejected available recipe: "+msg);
+        add(metrics.craftedUnits,itemId,1);
+        for(const [id,n] of Object.entries(recipe))if(n)add(metrics.materialsConsumed,id,n);
+        available=store.state.shopEconomy.bag[itemId];
+      }
       if(!available){
+        if(isForgeOutput(itemId))break; // Never buy T2 from the supplier.
         const before=store.state.shopEconomy.balance;
         const msg=store.purchase(itemId,Math.min(2,targets[itemId]-slot.quantity),
           metrics.nextRequestId++);
@@ -101,10 +129,32 @@ function restock(store,mode,metrics){
     }
   }
 }
+// Bounded, explicit shopkeeper policy rather than free materials. Both
+// treatments use identical price, purse reserve, and workshop stock caps.
+// Buyback-only retains materials; forge replenishes them as recipes consume
+// the reserve, so realized spending is reported rather than assumed equal.
+function purchaseSalvage(store,metrics){
+  const caps={"iron-ore":8,coal:8,"ghoul-leather":16};
+  for(const offer of availableDungeonOffers(store.state)){
+    if(!isMaterial(offer.itemId))continue;
+    const id=offer.itemId;
+    const n=Math.min(offer.count,caps[id]-store.state.shopEconomy.materialStorage[id],
+      Math.floor((store.state.shopEconomy.balance-10)/offer.price));
+    for(let i=0;i<n;i++){
+      const before=store.state;
+      const msg=store.buyDungeonFind(offer.heroId,id);
+      if(store.state===before)throw Error("Real buyback rejected eligible offer: "+msg);
+      const paid=before.shopEconomy.balance-store.state.shopEconomy.balance;
+      if(paid!==offer.price)throw Error("Buyback payment mismatch");
+      metrics.buybackGold+=paid;add(metrics.materialsBought,id,1);
+    }
+  }
+}
 function actShop(store,mode,metrics){
   // All shop service and door completion below are externally scripted
   // idealized player/NPC actions. They use actual game mutations, not direct
   // balance/HP/stat edits, but do not model a human's movement or timing.
+  if(buysSalvage(mode))purchaseSalvage(store,metrics);
   if(mode!=="absent")restock(store,mode,metrics);
   const people=store.state.adventurers.filter(h=>h.status==="at-shop");
   for(const hero of people){
@@ -207,6 +257,7 @@ function run(mode){
     salesRevenue:{},healingUsed:{},credits:{},replayStepActions:{},
     encounterOutcomes:{}, deathCauses:{},deathFloors:{},deathRecords:[],
     wholesaleUnits:{},wholesaleSpent:0,influxGold:0,
+    buybackGold:0,materialsBought:{},materialsConsumed:{},craftedUnits:{},
     lateEventTypes:{}, xpGrowthDays:[], servedCustomers:0,
     unservedCustomers:0,gateExits:0,bossPassesGranted:0,
     bossAttempts:0,failedCheckout:{},nextRequestId:1,
@@ -261,6 +312,7 @@ function run(mode){
     initial.totalRecordedGold+metrics.wholesaleSpent-metrics.influxGold;
   metrics.lastXpGrowthDay=metrics.xpGrowthDays.at(-1)??null;
   metrics.remainingGoods={bag:store.state.shopEconomy.bag,
+    materialReserve:store.state.shopEconomy.materialStorage,
     shelves:store.state.shopEconomy.slots.map(s=>({itemId:s.itemId,quantity:s.quantity}))};
   metrics.topSurvivors=store.state.adventurers.filter(h=>h.status!=="dead")
     .sort((a,b)=>b.xp-a.xp).slice(0,12).map(h=>({
@@ -270,6 +322,19 @@ function run(mode){
       weapon:h.equipment.weapon,armor:h.equipment.armor,status:h.status,
       floor:h.floor
     }));
+  // Conservation checks are independent of the report and use genuine
+  // final store state. Starting reserve is zero. No external material source.
+  for(const id of ["iron-ore","coal","ghoul-leather"]){
+    if((metrics.materialsBought[id]??0)-(metrics.materialsConsumed[id]??0)!==
+       store.state.shopEconomy.materialStorage[id])throw Error("Material ledger imbalance: "+id);
+  }
+  for(const id of FORGE_OUTPUTS){
+    const onShelves=store.state.shopEconomy.slots.filter(s=>s.itemId===id)
+      .reduce((sum,s)=>sum+s.quantity,0);
+    if((metrics.craftedUnits[id]??0)!==(metrics.salesUnits[id]??0)+
+       store.state.shopEconomy.bag[id]+onShelves)
+      throw Error("Forged merchandise ledger imbalance: "+id);
+  }
   delete metrics.nextRequestId;
   // Daily per-hero telemetry is intentionally retained in the JSON artifact,
   // not dumped as a huge single line into GitHub's job log.

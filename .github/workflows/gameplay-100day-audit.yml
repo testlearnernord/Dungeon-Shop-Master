@@ -30,13 +30,13 @@ jobs:
       matrix:
         include:
           - seed: "7351"
-            modes: "absent,consumables,equipment,full,tier1"
+            modes: "absent,consumables,equipment,full,tier1,buyback,forge"
           - seed: "9321"
-            modes: "absent,full,tier1"
+            modes: "absent,full,tier1,buyback,forge"
           - seed: "42"
-            modes: "absent,full,tier1"
+            modes: "absent,full,tier1,buyback,forge"
           - seed: "2026"
-            modes: "absent,full,tier1"
+            modes: "absent,full,tier1,buyback,forge"
     env:
       AUDIT_DAYS: "100"
       AUDIT_SEED: ${{ matrix.seed }}

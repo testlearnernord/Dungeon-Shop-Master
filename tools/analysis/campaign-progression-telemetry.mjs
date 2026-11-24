@@ -5,7 +5,7 @@ import {generateExpeditionLayout,dungeonDownStair} from "../../src/game/dungeonL
 import {heroProgression} from "../../src/game/heroProgression.ts";
 const add=(record,key,n=1)=>record[key]=(record[key]??0)+n;
 export function createCampaignTelemetry(seed){
-  const allHeroes=new Map(),daily=[],milestones=[],gateCounts={},floor9Examples={};
+  const allHeroes=new Map(),daily=[],milestones=[],gateCounts={},floor9Examples={},depthDecisions={},depthChecks={},depthExamples={};
   const layouts=new Map(Array.from({length:9},(_,i)=>[i+1,generateExpeditionLayout(seed,i+1)]));
   let lastTick=null,deepest=0,dayDecisions={},dayGates={},dayParties={},dayHero=new Map();
   let previousFloors=new Map(),previousParties=new Set(),dayPartyChanges={};
@@ -21,6 +21,19 @@ export function createCampaignTelemetry(seed){
       add(row.decisions,floor+":"+action+":"+goal);
       if(action==="shop")add(row.returnReasons,reason??"unclassified");
       add(dayDecisions,floor+":"+stage+":"+action+":"+(reason??"unknown"));
+    }
+    // The first audit established that the blockage is before Floor 9.
+    // Aggregate real decisions and route/crossing samples on EVERY floor.
+    const depth=String(floor);
+    const tally=depthDecisions[depth]??={};
+    if(action)add(tally,stage+":"+action+":"+(reason??"unknown"));
+    const checkTally=depthChecks[depth]??={};
+    add(checkTally,stage+":observations");
+    for(const [name,passed] of Object.entries(checks)){
+      const key=stage+":"+name+":"+String(passed);
+      add(checkTally,key);
+      if(!passed&&(stage==="depth-route"||stage==="depth-crossing")&&!depthExamples[depth+":"+key])
+        depthExamples[depth+":"+key]=entry;
     }
     if(floor!==9)return;
     add(dayGates,stage+":observations");add(gateCounts,stage+":observations");
@@ -107,7 +120,8 @@ export function createCampaignTelemetry(seed){
   }
   function report(){
     return {sampleIntervalTicks:200,partyCountsAreSampled:true,deepestFloor:deepest,heroesByDeepest:histogram(),
-      floor9Checks:gateCounts,firstFailedCheckExamples:floor9Examples,milestones,daily,
+      floor9Checks:gateCounts,firstFailedCheckExamples:floor9Examples,
+      depthDecisions,depthChecks,depthExamples,milestones,daily,
       lifetimeHeroes:Object.fromEntries(allHeroes),
       reachability:deepest<9?"floor9-not-observed":deepest===9?"floor9-observed-no-floor10":"floor10-observed",
       interpretation:"Failed checks overlap; counts are not unique heroes or proof of causality. Combat settlement currently supplies bossReady=false. Route checks describe known routes, not proof of unreachable geometry."};
