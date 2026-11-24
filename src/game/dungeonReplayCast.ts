@@ -1,4 +1,5 @@
 import type { CombatantSpec, GroupPhase } from "./groupCombat.ts";
+import {gearFromName,type GearName} from "./gearCatalog.ts";
 import type { SpatialDungeonReplay } from "./spatialDungeonExploration.ts";
 import type { DungeonPlaybackSnapshot } from "./dungeonReplayPlayback.ts";
 
@@ -38,7 +39,7 @@ export function recordedTemporaryPartyVisuals(
   replay:SpatialDungeonReplay,
 ):readonly {
   id:string;role:"tank"|"DPS"|"healer";
-  equipment:{weapon:"Iron Sword"|null;armor:"Leather Vest"|null};
+  equipment:{weapon:GearName|null;armor:GearName|null};
 }[] {
   const ids=replay.partyMemberIds??[];
   if(ids.length<2||!ids.includes(replay.heroId))return [];
@@ -47,22 +48,22 @@ export function recordedTemporaryPartyVisuals(
     actor.team==="heroes"&&actor.role!=="monster").map(actor=>[actor.id,actor]));
   const projected: {
     id:string;role:"tank"|"DPS"|"healer";
-    equipment:{weapon:"Iron Sword"|null;armor:"Leather Vest"|null};
+    equipment:{weapon:GearName|null;armor:GearName|null};
   }[]=[];
   for(const id of ids){
     if(id===replay.heroId){
       projected.push({id,role:replay.appearance.role,
         equipment:{
-          weapon:replay.appearance.equipment.weapon==="Iron Sword"?"Iron Sword":null,
-          armor:replay.appearance.equipment.armor==="Leather Vest"?"Leather Vest":null,
+          weapon:gearFromName(replay.appearance.equipment.weapon)?.name??null,
+          armor:gearFromName(replay.appearance.equipment.armor)?.name??null,
         }});
       continue;
     }
     const snap=fromStart.get(id);
     if(snap){
       projected.push({id,role:snap.role,equipment:{
-        weapon:snap.equipment.weapon==="Iron Sword"?"Iron Sword":null,
-        armor:snap.equipment.armor==="Leather Vest"?"Leather Vest":null,
+        weapon:gearFromName(snap.equipment.weapon)?.name??null,
+        armor:gearFromName(snap.equipment.armor)?.name??null,
       }});
       continue;
     }
