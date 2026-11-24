@@ -1,6 +1,7 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import {EngineStore} from "@babylonjs/core/Engines/engineStore";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
+import type {Scene} from "@babylonjs/core/scene";
 import { Vector3,Matrix } from "@babylonjs/core/Maths/math.vector";
 import {Ray} from "@babylonjs/core/Culling/ray";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
