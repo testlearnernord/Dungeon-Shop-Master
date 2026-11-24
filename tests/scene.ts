@@ -6,6 +6,7 @@ import { Vector3,Matrix } from "@babylonjs/core/Maths/math.vector";
 import {Ray} from "@babylonjs/core/Culling/ray";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
+import {counterDockPoint,type ShopLayout} from "../src/game/shopLayout.ts";
 
 /** Once the table creates a passive offscreen spectator scene, Babylon's
  * LastCreatedScene is no longer necessarily the visible shop. A test probe
@@ -322,6 +323,18 @@ export async function waitForShelfSlotMesh(
     await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
   }
   throw Error("Physical shelf slot never appeared: "+name);
+}
+
+/** Aim from the production staff dock at the actual pickable register.
+ * Only moves the test camera; the NPC queue and payment remain autonomous. */
+export function aimAtRegister(layout:ShopLayout):void {
+  const dock=counterDockPoint(layout,"staff");
+  inspectPlayer({x:dock.x,y:1.7,z:dock.z});
+  const scene=currentTestScene()!;
+  const camera=scene.activeCamera as UniversalCamera;
+  const register=scene.getMeshByName("cash-register");
+  if(!register)throw Error("Physical register not found");
+  camera.setTarget(register.getAbsolutePosition());
 }
 
 export function aimAtShelfSlot() {

@@ -5,7 +5,7 @@ import {expect,test} from "@playwright/test";
  * 60Hz gear effects have separate pure-runtime regressions. */
 test("player buys real adventurer salvage then forges and persists T2 at physical cellar anvil @ci-smoke",
   async({page})=>{
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./?e2e-pause-world");
@@ -29,11 +29,19 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   const fixture=await page.evaluate(async()=>{
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
-    const state=createGameState(7351),seller=state.adventurers[0];
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const {ECONOMY}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
+    const state=withStockedSmallShelf(createGameState(7351));
+    const seller=state.adventurers.find(h=>h.role==="DPS")!;
+    if(!seller)throw Error("Fixture needs a DD");
     const seeded={...state,adventurers:state.adventurers.map(hero=>
-      hero.id===seller.id?{...hero,status:"at-shop" as const,
-        floor:"shop" as const,inventory:{...hero.inventory,
-          finds:{"iron-ore":1,coal:1,"ghoul-leather":2}}}:hero)};
+      hero.id===seller.id?{...hero,status:"at-shop" as const,floor:"shop" as const,
+        gold:100,health:hero.stats.maxHealth,equipment:{weapon:"Spear",armor:"Leather Vest"},
+        inventory:{...hero.inventory,bread:ECONOMY.breadTarget,healing:ECONOMY.healingTarget,
+          finds:{"iron-ore":1,coal:1,"ghoul-leather":2}}}:
+        {...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
+      shopEconomy:{...state.shopEconomy,slots:state.shopEconomy.slots.map(slot=>
+        ({...slot,itemId:null,quantity:0}))}};
     await new CampaignStorage().saveGame(seeded);
     return {heroId:seller.id,shopGold:seeded.shopEconomy.balance,
       heroGold:seller.gold};
@@ -100,6 +108,12 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   const catalog=page.locator("#wholesale-catalog");
   const forged=catalog.locator('.catalog-row[data-item-id="forged-spear"]');
   await expect(forged).toContainText("FORGE IN CELLAR");
+  // Zero wholesale cost is a sentinel, not zero actual production cost.
+  await expect(forged.locator(".catalog-price-buy")).toHaveText("4g materials");
+  await expect(forged.locator(".catalog-price-margin")).toHaveText("+21g margin");
+  const forgedArmor=catalog.locator('.catalog-row[data-item-id="ghoul-leather-vest"]');
+  await expect(forgedArmor.locator(".catalog-price-buy")).toHaveText("8g materials");
+  await expect(forgedArmor.locator(".catalog-price-margin")).toHaveText("+15g margin");
   await expect(forged.getByRole("button",{name:/Buy 1/})).toBeDisabled();
   await page.locator("#close-wholesale").click();
   await page.evaluate(async()=>{
@@ -127,5 +141,97 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
     "iron-ore":0,coal:0,"ghoul-leather":0});
   expect(persisted.buybacks).toBe(4);
   expect(persisted.gold).toBeLessThan(fixture.shopGold);
+  // Continue the very same persisted campaign, never a standalone cashier
+  // harness. Stock the crafted spear in the real shelf via the player ray.
+  await expect(page.locator("#save-status")).toContainText("Continued saved Day 1");
+  await page.evaluate(async()=>{
+    const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    await probe.waitForShopStockAssets();
+    await probe.waitForShelfSlotMesh();
+    probe.aimAtShelfSlot();
+  });
+  await page.locator('#inventory [data-item-id="forged-spear"]').click();
+  await expect(page.locator("#shop-shelf-focus")).toBeVisible();
+  await expect(page.locator("#shelf-focus-action")).toContainText("T2 Spear");
+  await page.mouse.click(400,300);
+  await expect(page.locator("#status")).toContainText("Placed T2 Spear");
+  await expect(page.locator('#inventory [data-item-id="forged-spear"] strong')).toHaveText("0");
+  const save=()=>page.evaluate(async()=>{
+    const hooks=window as Window&{__shopTestSaveTrafficNow?:()=>Promise<unknown>};
+    await hooks.__shopTestSaveTrafficNow!();
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    if(!state)throw Error("Missing campaign");
+    return state;
+  });
+  const stocked=await save();
+  expect(stocked.shopEconomy.slots[0].itemId).toBe("forged-spear");
+  expect(stocked.shopEconomy.slots[0].quantity).toBe(1);
+  await page.evaluate(()=>{
+    const hooks=window as Window&{__shopTestPauseWorld?:(paused:boolean)=>void};
+    hooks.__shopTestPauseWorld!(false);
+  });
+  // Autonomous NPC movement must reserve the actual shelf item and reach
+  // the real register. Do not fabricate a cart or force the checkout queue.
+  await expect.poll(()=>page.evaluate(()=>{
+    const hooks=window as Window&{__shopTestReadyCheckout?:()=>string|null};
+    return hooks.__shopTestReadyCheckout?.()??null;
+  }),{timeout:85000,intervals:[300,700,1200]}).toBe(fixture.heroId);
+  const held=await save();
+  const buyer=held.adventurers.find(h=>h.id===fixture.heroId)!;
+  expect(buyer.equipment.weapon).toBe("Spear");
+  expect(held.shopEconomy.balance).toBe(stocked.shopEconomy.balance);
+  expect(held.shopCarts.find(cart=>cart.heroId===fixture.heroId)?.lines)
+    .toEqual([{itemId:"forged-spear",slotId:stocked.shopEconomy.slots[0].id,quantity:1,subtotal:25}]);
+  expect(held.shopEconomy.slots[0].quantity).toBe(0);
+  await page.evaluate(async()=>{
+    const {aimAtRegister}=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const state=await new CampaignStorage().loadGame();
+    if(!state)throw Error("Missing saved counter layout");
+    aimAtRegister(state.shopLayout);
+  });
+  await page.keyboard.press("e");
+  const cashier=page.locator("#cashier-overlay");
+  await expect(cashier).toBeVisible();
+  await expect(cashier.locator(".cashier-line")).toContainText("T2 Spear");
+  // Stamp both actual on-screen success zones using the production register.
+  for(const stage of ["Verify the goods","Seal the receipt"]){
+    await expect(cashier.locator(".cashier-stage-name")).toHaveText(stage);
+    const stamped=await page.evaluate(()=>new Promise<boolean>(resolve=>{
+      const deadline=performance.now()+10000;
+      const frame=()=>{
+        const needle=document.querySelector<HTMLElement>("#cashier-overlay .cashier-needle");
+        const target=document.querySelector<HTMLElement>("#cashier-overlay .cashier-target");
+        const button=document.querySelector<HTMLButtonElement>("#cashier-overlay .cashier-stamp");
+        if(!needle||!target||!button||performance.now()>deadline)return resolve(false);
+        if(Math.abs(parseFloat(needle.style.left)-
+          (parseFloat(target.style.left)+parseFloat(target.style.width)/2))<4){
+          button.click();return resolve(true);
+        }
+        requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    }));
+    expect(stamped).toBe(true);
+    if(stage==="Verify the goods"){
+      const halfway=await save();
+      expect(halfway.adventurers.find(h=>h.id===fixture.heroId)?.equipment.weapon).toBe("Spear");
+      expect(halfway.shopEconomy.balance).toBe(held.shopEconomy.balance);
+    }
+  }
+  await expect(cashier.locator(".cashier-settlement")).toBeVisible();
+  const paid=await save();
+  expect(paid.adventurers.find(h=>h.id===fixture.heroId)?.equipment.weapon).toBe("Forged Spear");
+  expect(paid.shopCarts.some(cart=>cart.heroId===fixture.heroId)).toBe(false);
+  const receipts=paid.events.filter(e=>e.type==="sale"&&e.saleChannel==="manual"&&
+    e.adventurerId===fixture.heroId&&e.itemId==="forged-spear");
+  expect(receipts).toHaveLength(1);
+  expect(receipts[0].revenue).toBe(25);
+  const collected=paid.shopEconomy.balance-held.shopEconomy.balance;
+  expect(collected).toBeGreaterThanOrEqual(25);
+  expect(collected).toBeLessThanOrEqual(27);
+  expect(buyer.gold-paid.adventurers.find(h=>h.id===fixture.heroId)!.gold).toBe(collected);
+  await page.keyboard.press("Escape");
   expect(errors).toEqual([]);
 });

@@ -1,14 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createGameState} from "../../src/game/gameState.ts";
-import {buyWholesale,createEmptyShelfSlots,tradeAtStartOfDay}
+import type {AdventurerState} from "../../src/game/adventurers.ts";
+import {buyWholesale,ECONOMY,ITEMS}
   from "../../src/game/economy.ts";
 import {craftAtCellarForge} from "../../src/game/cellarForge.ts";
 import {buyHeroDungeonFind} from "../../src/game/dungeonBuyback.ts";
 import {equipmentEffects,needsGearUpgrade} from "../../src/game/gearCatalog.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
-import {rollDungeonSiteLoot} from "../../src/game/dungeonLoot.ts";
+import {rollDungeonSiteLoot,distributeDungeonFinds} from "../../src/game/dungeonLoot.ts";
 import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
+import {GameStore} from "../../src/game/gameStore.ts";
+import {createStockedShopState} from "./shopFixtures.ts";
+import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
+import {cartTotal} from "../../src/game/shopCarts.ts";
+import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
+import {prepareSpatialDungeonCombat} from "../../src/game/spatialDungeonExploration.ts";
 
 test("T2 can never be bought wholesale; real recipes consume exactly their materials",()=>{
   const initial=createGameState(7351);
@@ -100,27 +107,136 @@ test("Tank, DD and Healer each own one T1/T2 weapon family, shared leather armor
   }
 });
 
-test("a crafted T2 weapon sells via genuine stocked slot, not phantom gear",()=>{
-  const original=createGameState(7351);
-  const dps=original.adventurers.find(h=>h.role==="DPS")!;
-  assert(dps);
-  const hero={...dps,gold:200,status:"at-shop" as const,floor:"shop" as const,
-    equipment:{weapon:"Spear",armor:"Leather Vest"}};
-  const slots=createEmptyShelfSlots("shelf-1");
-  const [first,...rest]=slots;
-  const selling={...original,adventurers:original.adventurers.map(h=>
-    h.id===hero.id?hero:h),
-    shopEconomy:{...original.shopEconomy,slots:[
-      {...first,itemId:"forged-spear" as const,quantity:1},...rest],
-    }};
-  const result=tradeAtStartOfDay(selling,1);
-  const next=result.adventurers.find(h=>h.id===hero.id)!;
-  assert.equal(next.equipment.weapon,"Forged Spear");
-  assert.equal(result.economy.balance,
-    selling.shopEconomy.balance+25);
-  assert.equal(result.economy.slots[0].quantity,0);
-  assert(result.events.some(e=>e.type==="sale"&&
-    e.itemId==="forged-spear"&&e.adventurerId===hero.id));
+// A bounded integration fixture, not an economy soak: the real deterministic
+// loot table and ownership allocator supply materials. Shop arrival and budget
+// are controlled so we can isolate every class's real checkout transaction.
+for(const [role,t1,t2,t2Name] of [
+  ["tank","Iron Sword","forged-sword-shield","Forged Sword & Shield"],
+  ["DPS","Spear","forged-spear","Forged Spear"],
+  ["healer","Staff","forged-staff","Forged Staff"],
+] as const){
+  test("forge loop: "+role+" loot ownership, paid buyback, crafting, reserved till and next combat",()=>{
+    const original=createStockedShopState(7351);
+    const buyer=original.adventurers.find(hero=>hero.role===role);
+    assert(buyer);
+    const hero={...buyer,status:"at-shop" as const,floor:"shop" as const,
+      gold:100,health:buyer.stats.maxHealth,
+      equipment:{weapon:t1,armor:"Leather Vest"},
+      inventory:{...buyer.inventory,bread:ECONOMY.breadTarget,
+        healing:ECONOMY.healingTarget,finds:{}}};
+    let owner:AdventurerState=hero;
+    const required={"iron-ore":1,coal:1,"ghoul-leather":2} as const;
+    // Collect only actual generated drops; never inject finished T2 into stock.
+    const loot=Array.from({length:150},(_,cycle)=>
+      rollDungeonSiteLoot(7351,4,"monster-0",cycle,"monster",3).itemIds);
+    for(let cycle=0;cycle<loot.length;cycle++){
+      const next=distributeDungeonFinds([owner],loot[cycle],"monster-0",cycle)[0];
+      owner=next;
+      if(Object.entries(required).every(([id,n])=>
+        (owner.inventory.finds?.[id as keyof typeof required]??0)>=n))break;
+    }
+    for(const id of Object.keys(required) as (keyof typeof required)[])
+      assert((owner.inventory.finds?.[id]??0)>=required[id]);
+    const initial={...original,adventurers:original.adventurers.map(h=>
+      h.id===hero.id?owner:{...h,gold:0}),
+      shopEconomy:{...original.shopEconomy,slots:original.shopEconomy.slots.map(slot=>
+        ({...slot,itemId:null,quantity:0}))}};
+    const store=new GameStore(initial);
+    const goldBefore=initial.shopEconomy.balance+owner.gold;
+    const currentHero=()=>store.state.adventurers.find(h=>h.id===hero.id)!;
+    const reload=()=>store.restore(parseSave(JSON.stringify(createSave(store.state))));
+    for(const id of Object.keys(required) as (keyof typeof required)[])
+      for(let i=0;i<required[id];i++)assert.match(store.buyDungeonFind(hero.id,id),/bought/);
+    const costs=initial.shopEconomy.balance-store.state.shopEconomy.balance;
+    assert(costs>0);
+    assert.equal(currentHero().gold,owner.gold+costs);
+    assert.deepEqual(store.state.shopEconomy.materialStorage,required);
+    const tradeGold=store.state.shopEconomy.balance;
+    assert.match(store.craftAtForge(t2),/Forged 1/);
+    assert.match(store.craftAtForge("ghoul-leather-vest"),/Forged 1/);
+    assert.equal(store.state.shopEconomy.balance,tradeGold);
+    assert.deepEqual(store.state.shopEconomy.materialStorage,
+      {"iron-ore":0,coal:0,"ghoul-leather":0});
+    assert.equal(store.state.shopEconomy.bag[t2],1);
+    assert.equal(store.state.shopEconomy.bag["ghoul-leather-vest"],1);
+    const exhausted=store.state;
+    store.craftAtForge(t2);
+    assert.equal(store.state,exhausted);
+    reload();
+    const slots=store.state.shopEconomy.slots;
+    assert.match(store.transfer(slots[0].id,t2,"stock"),/Placed/);
+    assert.match(store.transfer(slots[1].id,"ghoul-leather-vest","stock"),/Placed/);
+    assert.equal(store.state.shopEconomy.bag[t2],0);
+    assert.equal(store.state.shopEconomy.bag["ghoul-leather-vest"],0);
+    const intent=forecastShoppingIntents(store.state).get(hero.id);
+    assert(intent);
+    assert.deepEqual(intent.items.map(line=>line.itemId),[t2,"ghoul-leather-vest"]);
+    const unpaidGold=currentHero().gold;
+    for(const line of intent.items)
+      assert.match(store.pickUpShopItem(hero.id,line.slotId),/picked up/);
+    assert.equal(store.state.shopEconomy.balance,tradeGold);
+    assert.equal(currentHero().gold,unpaidGold);
+    assert.deepEqual(currentHero().equipment,hero.equipment);
+    assert.equal(store.state.events.filter(e=>e.type==="sale").length,0);
+    const cart=store.state.shopCarts.find(c=>c.heroId===hero.id)!;
+    const due=cartTotal(cart);
+    assert.equal(due,ITEMS.find(i=>i.id===t2)!.salePrice+
+      ITEMS.find(i=>i.id==="ghoul-leather-vest")!.salePrice);
+    assert.equal(store.state.shopEconomy.slots[0].quantity,0);
+    assert.equal(store.state.shopEconomy.slots[1].quantity,0);
+    reload();
+    assert.match(store.payReservedCart(hero.id),/paid/);
+    const paid=store.state;
+    assert.equal(paid.shopEconomy.balance,tradeGold+due);
+    assert.equal(currentHero().gold,unpaidGold-due);
+    assert.equal(paid.shopEconomy.balance+currentHero().gold,goldBefore);
+    assert.deepEqual(currentHero().equipment,{weapon:t2Name,armor:"Ghoul Leather Vest"});
+    assert.equal(paid.shopCarts.length,0);
+    assert.equal(paid.events.filter(e=>e.type==="sale"&&e.saleChannel==="manual").length,2);
+    assert.equal(paid.shopEconomy.dailySales.revenue,due);
+    store.payReservedCart(hero.id);
+    assert.equal(store.state,paid);
+    reload();
+    assert.deepEqual(store.state,paid);
+    // A normal generated Ghoul encounter consumes the purchased gear, not a
+    // separate combat lab or a manually assigned T2 combatant.
+    const layout=generateExpeditionLayout(7351,3);
+    const site=layout.features.find(f=>f.kind==="monster"&&dungeonNeighbors(layout,f).length);
+    assert(site);
+    const approach=dungeonNeighbors(layout,site)[0];
+    const actor=(equipment:ReturnType<typeof currentHero>["equipment"])=>{
+      const entrant={...currentHero(),equipment,status:"exploring" as const,floor:3 as const};
+      const encounter=prepareSpatialDungeonCombat([entrant],site,layout.seed,layout,approach,0,true);
+      return encounter.options.actors.find(a=>a.id===hero.id)!;
+    };
+    const before=actor(hero.equipment),after=actor(currentHero().equipment);
+    assert(after.damage>before.damage);
+    assert(after.armor>before.armor);
+    if(role==="healer")assert((after.magicHeals??0)>(before.magicHeals??0));
+  });
+}
+
+test("full bag rejects forging without consuming paid materials; stocking frees exactly one slot",()=>{
+  const original=createStockedShopState(7351);
+  const initial={...original,shopEconomy:{...original.shopEconomy,
+    materialStorage:{"iron-ore":1,coal:1,"ghoul-leather":2},
+    bag:{...Object.fromEntries(ITEMS.map(i=>[i.id,0])) as typeof original.shopEconomy.bag,
+      bread:ECONOMY.bagCapacity}}};
+  const store=new GameStore(initial);
+  assert.match(store.craftAtForge("forged-spear"),/bag is full/i);
+  assert.equal(store.state,initial);
+  const empty=store.state.shopEconomy.slots.find(slot=>slot.quantity===0)!;
+  assert.match(store.transfer(empty.id,"bread","stock"),/Placed/);
+  assert.match(store.craftAtForge("forged-spear"),/Forged 1/);
+  assert.equal(store.state.shopEconomy.bag["forged-spear"],1);
+  assert.equal(Object.values(store.state.shopEconomy.bag).reduce((sum,n)=>sum+n,0),
+    ECONOMY.bagCapacity);
+  assert.deepEqual(store.state.shopEconomy.materialStorage,
+    {"iron-ore":0,coal:0,"ghoul-leather":2});
+  const full=store.state;
+  assert.match(store.craftAtForge("ghoul-leather-vest"),/bag is full/i);
+  assert.equal(store.state,full);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(full))),full);
 });
 
 test("Ghoul Leather originates in deterministic monster rewards, never in chests",()=>{

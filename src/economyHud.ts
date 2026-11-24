@@ -1,4 +1,6 @@
-import {ECONOMY,SHELF_GOODS,isWholesaleGood} from "./game/economy";
+import {ECONOMY,SHELF_GOODS,MATERIAL_ITEMS,isWholesaleGood} from "./game/economy";
+import {FORGE_RECIPES,isForgeOutput,type ForgeOutput} from "./game/cellarForge.ts";
+import {dungeonBuybackPrice} from "./game/dungeonBuyback.ts";
 import {gearForItem} from "./game/gearCatalog.ts";
 import { GameStore } from "./game/gameStore";
 import {goldIcon} from "./uiIcons.ts";
@@ -104,10 +106,17 @@ export function setupEconomyHud(
     header.append(iconFrame,identity);
     const prices=document.createElement("div");
     prices.className="catalog-prices";
+    // A forge-only item's zero wholesale price is an availability marker,
+    // not its production cost. Materials enter the reserve via paid buyback.
+    const materialCost=isForgeOutput(item.id)
+      ?MATERIAL_ITEMS.reduce((sum,material)=>sum+
+        FORGE_RECIPES[item.id as ForgeOutput][material.id]*dungeonBuybackPrice(material.id),0)
+      :null;
+    const unitCost=materialCost??item.wholesaleCost;
     for(const [label,kind] of [
-      [item.wholesaleCost+"g buy","buy"],
+      [unitCost+(materialCost===null?"g buy":"g materials"),"buy"],
       [item.salePrice+"g sell","sell"],
-      ["+"+(item.salePrice-item.wholesaleCost)+"g margin","margin"],
+      ["+"+(item.salePrice-unitCost)+"g margin","margin"],
     ] as const){
       const pill=document.createElement("span");
       pill.className="catalog-price-"+kind;
