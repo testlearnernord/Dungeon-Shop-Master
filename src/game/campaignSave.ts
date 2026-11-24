@@ -5,6 +5,7 @@ import {livePartyBossCheckpointProblem,partyBossReplayProblem}
 import {isValidCellarRoom,cellarChestProblem,cellarTableProblem,
   type CellarChestPlacement,type CellarTablePlacement} from "./cellarRoom.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS } from "./economy.ts";
+import {WEAPON_NAMES,ARMOR_NAMES} from "./gearCatalog.ts";
 import {
   SIMULATION_VERSION, type GameState,
 } from "./gameState.ts";
@@ -250,8 +251,10 @@ function validateSpatialDungeonReplay(
   const appearance=object(record.appearance,path+".appearance",["role","equipment"]);
   choice(appearance.role,["tank","DPS","healer"],path+".appearance.role");
   const gear=object(appearance.equipment,path+".appearance.equipment",["weapon","armor"]);
-  if(gear.weapon!==null && gear.weapon!=="Iron Sword")fail(path+".appearance.equipment.weapon","is not recognized");
-  if(gear.armor!==null && gear.armor!=="Leather Vest")fail(path+".appearance.equipment.armor","is not recognized");
+  if(![null,...WEAPON_NAMES].includes(gear.weapon as null|string))
+    fail(path+".appearance.equipment.weapon","is not recognized");
+  if(![null,...ARMOR_NAMES].includes(gear.armor as null|string))
+    fail(path+".appearance.equipment.armor","is not recognized");
   if(record.partyMemberIds!==undefined){
     const ids=array(record.partyMemberIds,path+".partyMemberIds");
     if(ids.length<2||ids.length>3)
@@ -288,8 +291,8 @@ function validateSpatialDungeonReplay(
       choice(member.role,["tank","DPS","healer"],memberPath+".role");
       const worn=object(member.equipment,memberPath+".equipment",
         ["weapon","armor"]);
-      choice(worn.weapon,[null,"Iron Sword"],memberPath+".equipment.weapon");
-      choice(worn.armor,[null,"Leather Vest"],memberPath+".equipment.armor");
+      choice(worn.weapon,[null,...WEAPON_NAMES],memberPath+".equipment.weapon");
+      choice(worn.armor,[null,...ARMOR_NAMES],memberPath+".equipment.armor");
       if(id===heroId&&(
         member.role!==appearance.role||
         worn.weapon!==gear.weapon||worn.armor!==gear.armor))
@@ -402,8 +405,8 @@ function validateSpatialDungeonReplay(
         if(actor.team!=="heroes"||actor.role==="monster")
           fail(a+".equipment","is valid only for real hero combatants");
         const gear=object(actor.equipment,a+".equipment",["weapon","armor"]);
-        choice(gear.weapon,[null,"Iron Sword"],a+".equipment.weapon");
-        choice(gear.armor,[null,"Leather Vest"],a+".equipment.armor");
+        choice(gear.weapon,[null,...WEAPON_NAMES],a+".equipment.weapon");
+        choice(gear.armor,[null,...ARMOR_NAMES],a+".equipment.armor");
       }
       if(actor.team==="monsters"){
         monsterCount++;
@@ -1288,8 +1291,8 @@ function validateState(value: unknown): asserts value is GameState {
     "balance", "bag", "materialStorage", "slots", "dailySales",
   ]);
   const reserve=object(economy.materialStorage,"payload.shopEconomy.materialStorage",
-    ["iron-ore","coal"]);
-  for(const id of ["iron-ore","coal"] as const)
+    ["iron-ore","coal","ghoul-leather"]);
+  for(const id of ["iron-ore","coal","ghoul-leather"] as const)
     integer(reserve[id],"payload.shopEconomy.materialStorage."+id,0);
   integer(economy.balance, "payload.shopEconomy.balance");
   const permittedItems = itemIds;
@@ -1297,7 +1300,7 @@ function validateState(value: unknown): asserts value is GameState {
   let bagTotal = 0;
   for (const id of permittedItems) bagTotal += integer(bag[id], `payload.shopEconomy.bag.${id}`, 0, ECONOMY.bagCapacity);
   if (bagTotal > ECONOMY.bagCapacity) fail("payload.shopEconomy.bag", "exceeds bag capacity");
-  if(bag["iron-ore"]!==0||bag.coal!==0)
+  if(bag["iron-ore"]!==0||bag.coal!==0||bag["ghoul-leather"]!==0)
     fail("payload.shopEconomy.bag","raw materials belong in materialStorage");
   const slots = array(economy.slots, "payload.shopEconomy.slots");
   if (slots.length !== slotDefinitions.length)
