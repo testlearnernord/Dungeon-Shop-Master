@@ -14,9 +14,10 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {cartTotal} from "../../src/game/shopCarts.ts";
-import {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath} from "../../src/game/dungeonLayout.ts";
+import {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath,dungeonDownStair} from "../../src/game/dungeonLayout.ts";
 import {prepareSpatialDungeonCombat,emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
-import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS} from "../../src/game/liveDungeonRuntime.ts";
+import {activateLiveDungeon,DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS} from "../../src/game/liveDungeonRuntime.ts";
+import {heroProgression} from "../../src/game/heroProgression.ts";
 import {availableDungeonOffers} from "../../src/game/dungeonBuyback.ts";
 import {chooseLiveHeroDungeonDecision} from "../../src/game/dungeonDecisions.ts";
 
@@ -417,4 +418,59 @@ test("LIVE Ghoul victory initiates a physical salvage return and funds the next 
     result.dungeonReplay,undefined,undefined,false,4).action,"shop");
   assert.equal(chooseLiveHeroDungeonDecision(stale,undefined,
     result.dungeonReplay,undefined,undefined,false,3).action,"shop");
+});
+
+test("real Level-10 T2 party survives active and archived save validation",()=>{
+  const seed=7351,base=createGameState(seed);
+  const layout=generateExpeditionLayout(seed,9);
+  const down=dungeonDownStair(layout);
+  const visited=dungeonShortestPath(layout,layout.entrance,down)
+    .map(p=>p.z*layout.width+p.x);
+  assert(visited.length>=2);
+  const members=(["tank","DPS","healer"] as const).map(role=>{
+    const hero=base.adventurers.find(h=>h.role===role);
+    assert(hero);
+    const veteran:AdventurerState={...hero,level:12,xp:1100,bossPass:true,
+      floor:9,status:"exploring",equipment:{
+        weapon:role==="tank"?"Forged Sword & Shield":
+          role==="DPS"?"Forged Spear":"Forged Staff",
+        armor:"Ghoul Leather Vest",
+      },inventory:{...hero.inventory,healing:3,bread:2}};
+    return {...veteran,health:heroProgression(veteran).maxHealth};
+  });
+  const ids=members.map(h=>h.id);
+  const active=activateLiveDungeon({...base,
+    adventurers:base.adventurers.map(h=>members.find(m=>m.id===h.id)??{
+      ...h,floor:"shop" as const,status:"at-shop" as const}),
+    dungeonWorlds:[{floor:9 as const,world:{...emptySpatialDungeonWorld(),
+      heroes:members.map(h=>({heroId:h.id,...down,visited}))}}],
+    dungeonParties:[{floor:9 as const,memberIds:ids,formedDay:1}],
+  });
+  const store=new GameStore({...active,liveDungeon:{...active.liveDungeon,
+    plans:ids.map(heroId=>({heroId,floor:9 as const,goal:"progress" as const,
+      action:"descend" as const,updatedTick:0}))}});
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert(store.state.liveDungeon.partyBossCombat);
+  store.advanceWorldTime(40);
+  const checkpoint=parseSave(JSON.stringify(createSave(store.state)));
+  const resumed=new GameStore(checkpoint);
+  store.advanceWorldTime(2200);
+  resumed.advanceWorldTime(2200);
+  assert.deepEqual(resumed.state,store.state);
+  assert.equal(store.state.liveDungeon.partyBossCombat,null);
+  const archives=store.state.events.filter(e=>e.partyBossReplay);
+  assert.equal(archives.length,1);
+  const tape=archives[0].partyBossReplay!;
+  for(const member of members)
+    assert.deepEqual(tape.actors.find(a=>a.id===member.id)?.equipment,member.equipment);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+  // Tamper only with the historical equipment identity. The gear validator
+  // must reject foreign roles and slot swaps, not just accept every string.
+  for(const [slot,name] of [["weapon","Forged Staff"],["armor","Forged Spear"]] as const){
+    const forged=structuredClone(createSave(store.state));
+    const replay=forged.payload.events.find(e=>e.partyBossReplay)!.partyBossReplay!;
+    const tank=replay.actors.find(a=>a.id===members[0].id)!;
+    (tank.equipment as {weapon:string|null;armor:string|null})[slot]=name;
+    assert.throws(()=>parseSave(JSON.stringify(forged)),/partyBossReplay/);
+  }
 });

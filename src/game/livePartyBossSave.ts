@@ -1,6 +1,7 @@
 import type {GameState} from "./gameState.ts";
 import type {LivePartyBossCombat} from "./liveDungeonRuntime.ts";
 import {caveTrollPartyOptions} from "./sharedBossCombat.ts";
+import {gearFromName} from "./gearCatalog.ts";
 import {createGroupCombat,captureGroupCombatFrame,
   type GroupCombatOptions} from "./groupCombat.ts";
 import {CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
@@ -164,6 +165,16 @@ export function livePartyBossCheckpointProblem(
   return null;
 }
 
+/** Historical gear uses the same catalog as actual combat, not today's roster.
+ * Null slots are legal, but foreign-class weapons and wrong-slot items are not. */
+function validRecordedGear(role:unknown,raw:unknown):boolean{
+  if(!record(raw))return false;
+  const weapon=typeof raw.weapon==="string"?gearFromName(raw.weapon):null;
+  const armor=typeof raw.armor==="string"?gearFromName(raw.armor):null;
+  return (raw.weapon===null||(weapon?.slot==="weapon"&&weapon.role===role))&&
+    (raw.armor===null||armor?.slot==="armor");
+}
+
 /**
  * Immutable, already committed Floor-10 party result. Validate the archive
  * independently of today's roster: a deceased or leveled-up hero must not
@@ -192,10 +203,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
        !/^adventurer-[1-9]\d*$/.test(a.id)||
        !["tank","DPS","healer"].includes(String(a.role))||
        !exactly(a.equipment,["weapon","armor"])||
-       ![null,"Iron Sword"].includes(
-         (a.equipment as Record<string,unknown>).weapon as string)||
-       ![null,"Leather Vest"].includes(
-         (a.equipment as Record<string,unknown>).armor as string))||
+       !validRecordedGear(a.role,a.equipment))||
      heroIds.size!==heroes.length||!heroIds.has(leaderId)||
      monsters.length!==1||
      monsters[0].id!=="cave-troll"||
