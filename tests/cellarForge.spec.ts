@@ -98,7 +98,7 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   // T2 is an actual finished shelf-good but must never be wholesale stock.
   await page.locator("#open-wholesale").click();
   const catalog=page.locator("#wholesale-catalog");
-  const forged=catalog.locator('[data-item-id="forged-spear"]');
+  const forged=catalog.locator('.catalog-row[data-item-id="forged-spear"]');
   await expect(forged).toContainText("FORGE IN CELLAR");
   await expect(forged.getByRole("button",{name:/Buy 1/})).toBeDisabled();
   await page.locator("#close-wholesale").click();
