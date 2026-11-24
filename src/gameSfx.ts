@@ -34,6 +34,7 @@ const SPACING: Partial<Record<GameSfxCue, number>> = {
   "troll-grunt": 0.65, "boss-hurt": 0.48, "lava-burn": 0.45, "rock-crumble": 0.15,
   "fishing-cast": .30,"fishing-bite": .30,"fishing-flick": .12,
   "fishing-miss": .20,"fishing-catch": .4,
+  "forge-hammer": .16,"forge-leather": .16,
 };
 
 /** The same live or saved motor cue means the same sound; no guessed damage. */
@@ -508,6 +509,18 @@ export class GameSfx {
       case "fishing-miss":
         this.tone(output,now,.34,190*pitch,85*pitch,.15,"triangle");
         this.noise(output,now+.08,.22,600,.08,"lowpass");
+        break;
+      case "forge-hammer":
+        this.noise(output,now,.065,2500,.19,"bandpass",1.8);
+        this.tone(output,now,.34,980*pitch,920*pitch,.17,"triangle");
+        this.tone(output,now,.48,1740*pitch,1690*pitch,.08,"sine");
+        this.noise(output,now+.18,.055,2200,.11,"bandpass",1.3);
+        this.tone(output,now+.18,.27,890*pitch,850*pitch,.13,"triangle");
+        break;
+      case "forge-leather":
+        this.noise(output,now,.16,720,.13,"bandpass",.9);
+        this.noise(output,now+.12,.14,1350,.09,"bandpass",1.2);
+        this.tone(output,now+.19,.09,210*pitch,130*pitch,.055,"triangle");
         break;
       case "fishing-catch":
         this.tone(output,now,.22,460*pitch,650*pitch,.19,"sine");

@@ -43,11 +43,11 @@ Initial, deliberately small recipes:
   The two historical internal equipment labels `Iron Sword` and `Leather Vest`
   remain valid for real recorded T1 objects; the displayed names clearly show
   the tier. Other T1/T2 gear has distinct stable item IDs.
-- Shop stock initially reuses the two checked-in sword and vest GLBs as
-  **temporary** stock geometry for new tiers/weapon families. Tier icons,
-  distinct class weapon silhouettes on heroes and the functional anvil are
-  already new. Premium models for shelves and hand-carried products are a
-  separate art acceptance step, not fake claims of finalized geometry.
+- The V0.2 equipment presentation pass replaces the initial stock fallback
+  with separate authored GLBs for every weapon family and tier. Shelves
+  and carried products share these canonical models; equipped heroes
+  retain their role-specific meshes with tier details. See
+  [Equipment presentation V0.2](EQUIPMENT_PRESENTATION_V02.md).
 - A **fresh Alpha v38** is required because material reserve and bag schemas
   changed. Unsupported old saves fail clearly without a conversion layer.
 

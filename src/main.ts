@@ -147,9 +147,12 @@ document.addEventListener("visibilitychange",()=>{
 });
 setupBedroomFurnitureVisuals(scene,store);
 setupCellarFurnitureVisuals(scene,store);
-const forgeAnvil=setupCellarForgeVisuals(scene);
-worldItems.push({id:"cellar-forge-anvil",mesh:forgeAnvil,kind:"cellar-forge"});
-const forgeHud=setupCellarForgeHud(store);
+const forgeVisuals=setupCellarForgeVisuals(scene);
+worldItems.push({id:"cellar-forge-anvil",mesh:forgeVisuals.anvil,kind:"cellar-forge"});
+const forgeHud=setupCellarForgeHud(store,output=>{
+  if(output==="ghoul-leather-vest")sfx.play("forge-leather");
+  else {forgeVisuals.flash();sfx.play("forge-hammer");}
+});
 const tableVisuals=setupCellarTableVisuals(scene,store);
 setupWorldClockVisuals(scene,store);
 const roomVisuals=createShopRoomVisuals(scene);

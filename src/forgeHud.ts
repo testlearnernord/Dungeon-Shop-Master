@@ -1,10 +1,10 @@
 import type {GameStore} from "./game/gameStore.ts";
 import {ECONOMY,ITEMS} from "./game/economy.ts";
-import {FORGE_OUTPUTS,FORGE_RECIPES} from "./game/cellarForge.ts";
+import {FORGE_OUTPUTS,FORGE_RECIPES,type ForgeOutput} from "./game/cellarForge.ts";
 
 /** Physical interaction opens the forge; all decisions/consumption happen
  * in one existing GameStore. A visual DOM panel cannot grant inventory. */
-export function setupCellarForgeHud(store:GameStore){
+export function setupCellarForgeHud(store:GameStore,onCrafted:(id:ForgeOutput)=>void=()=>{}){
   const dialog=document.createElement("dialog");
   dialog.id="cellar-forge-dialog";
   dialog.className="cellar-forge-dialog";
@@ -27,8 +27,14 @@ export function setupCellarForgeHud(store:GameStore){
   const buttons=FORGE_OUTPUTS.map(id=>{
     const row=document.createElement("div");
     row.className="forge-recipe";
+    row.dataset.itemId=id;
     const title=document.createElement("strong");
-    title.textContent=ITEMS.find(item=>item.id===id)!.name;
+    const icon=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    icon.classList.add("forge-item-icon");icon.setAttribute("viewBox","0 0 48 48");
+    icon.setAttribute("aria-hidden","true");
+    const use=document.createElementNS("http://www.w3.org/2000/svg","use");
+    use.setAttribute("href",import.meta.env.BASE_URL+"assets/ui-item-icons.svg#"+id);
+    icon.append(use);title.append(icon,ITEMS.find(item=>item.id===id)!.name);
     const materials=document.createElement("span");
     materials.textContent=Object.entries(FORGE_RECIPES[id])
       .filter(([,count])=>count>0)
@@ -38,12 +44,14 @@ export function setupCellarForgeHud(store:GameStore){
     button.type="button";
     button.textContent="Forge 1";
     button.addEventListener("click",()=>{
+      const before=store.state;
       message.textContent=store.craftAtForge(id);
+      if(store.state!==before)onCrafted(id);
       render();
     });
     row.append(title,materials,button);
     rows.append(row);
-    return {id,button};
+    return {id,button,row,materials};
   });
   dialog.append(heading,desc,stock,rows,message,close);
   document.body.append(dialog);
@@ -54,11 +62,17 @@ export function setupCellarForgeHud(store:GameStore){
     stock.textContent="Workshop: Iron Ore "+r["iron-ore"]+
       " · Coal "+r.coal+" · Ghoul Leather "+r["ghoul-leather"]+
       "    |    Bag "+used+"/"+ECONOMY.bagCapacity;
-    for(const {id,button} of buttons){
+    for(const {id,button,row,materials} of buttons){
       const recipe=FORGE_RECIPES[id];
-      button.disabled=used>=ECONOMY.bagCapacity||
-        Object.entries(recipe).some(([mat,n])=>
-          r[mat as keyof typeof r]<n);
+      const enough=Object.entries(recipe).every(([mat,n])=>
+        r[mat as keyof typeof r]>=n);
+      button.disabled=used>=ECONOMY.bagCapacity||!enough;
+      row.dataset.ready=String(!button.disabled);
+      materials.textContent=Object.entries(recipe).filter(([,n])=>n>0)
+        .map(([mat,n])=>ITEMS.find(item=>item.id===mat)!.name+
+          " "+r[mat as keyof typeof r]+"/"+n).join(" · ");
+      button.title=used>=ECONOMY.bagCapacity?"Clear one bag slot first":
+        enough?"Consume materials and forge one item":"Acquire the required materials";
     }
   }
   store.subscribe(()=>{if(dialog.open)render();});
