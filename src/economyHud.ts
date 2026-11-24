@@ -81,12 +81,7 @@ export function setupEconomyHud(
     const description = document.createElement("span");
     description.className = "catalog-item-description";
     const gear=gearForItem(item.id);
-    description.textContent=gear
-      ?item.name+" · "+(gear.role==="all"?"All classes":gear.role.toUpperCase())+
-        " · T"+gear.tier+" · "+
-        (item.wholesaleCost>0?"Buy "+item.wholesaleCost+"g":"FORGE IN CELLAR")+
-        " / sell "+item.salePrice+"g"
-      :item.name+" · buy "+item.wholesaleCost+"g / sell "+item.salePrice+"g";
+
     const identity=document.createElement("div");
     identity.className="catalog-item-identity";
     const name=document.createElement("strong");
@@ -95,7 +90,13 @@ export function setupEconomyHud(
     const type=document.createElement("small");
     type.className="catalog-product-type";
     type.textContent=groupFor(item.kind).toUpperCase();
-    description.textContent=purposeFor(item.kind,item.id);
+    description.textContent=gear
+      ?purposeFor(item.kind,item.id)+" · "+
+        (gear.role==="all"?"ALL CLASSES":gear.role.toUpperCase())+
+        " · T"+gear.tier+" · "+
+        (item.wholesaleCost>0?"Wholesale "+item.wholesaleCost+"g":"FORGE IN CELLAR")+
+        " / sell "+item.salePrice+"g"
+      :purposeFor(item.kind,item.id);
     identity.append(name,type);
     const iconFrame=document.createElement("div");
     iconFrame.className="catalog-icon-frame";
