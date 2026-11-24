@@ -2,6 +2,7 @@ import {uiIcon,itemIcon,goldIcon,type InterfaceIcon} from "./uiIcons.ts";
 import {portraitCssFrame} from "./game/portraitAtlas.ts";
 import {heroPortraitIndex} from "./game/heroIdentity.ts";
 import {ITEMS} from "./game/economy.ts";
+import {GEAR_BY_ITEM,displayEquipment} from "./game/gearCatalog.ts";
 import {heroXpProgress,type HeroCardView} from "./game/heroCardView.ts";
 
 export type HeroCardVariant="mini"|"expanded"|"combat";
@@ -117,13 +118,15 @@ function equipment(hero:HeroCardView,compact=false):HTMLElement{
     ["weapon","iron-sword","Unarmed"],["armor","leather-vest","No armor"],
   ] as const){
     const value=hero.equipment[key];
+    const display=displayEquipment(value)??empty;
+    const itemIcon=Object.entries(GEAR_BY_ITEM).find(([,gear])=>
+      gear.name===value)?.[0]??icon;
     const slot=make("div","hero-card-slot");
     slot.dataset.empty=String(!value);
-    slot.title=value??empty;
-    slot.setAttribute("aria-label",(key==="weapon"?"Weapon: ":"Armor: ")+(value??empty));
-    slot.append(item(icon,"",value??empty));
-    if(!compact)slot.append(make("small","hero-card-slot-label",
-      value??empty));
+    slot.title=display;
+    slot.setAttribute("aria-label",(key==="weapon"?"Weapon: ":"Armor: ")+display);
+    slot.append(item(itemIcon,"",display));
+    if(!compact)slot.append(make("small","hero-card-slot-label",display));
     zone.append(slot);
   }
   return zone;

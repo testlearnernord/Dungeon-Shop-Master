@@ -1,4 +1,5 @@
 import { inAttackArc, type Point2 } from "./combatGeometry.ts";
+import {WEAPON_NAMES,ARMOR_NAMES,type GearName} from "./gearCatalog.ts";
 import { combatDirection, combatHeading, moveCombatant } from "./combatMovement.ts";
 import type { CombatActionWindow } from "./combatActionClock.ts";
 import {
@@ -63,8 +64,8 @@ export interface CombatantSpec {
   readonly magicHeals?:number;
   /** Historical purchased equipment in new replays; absent in old v1 footage. */
   readonly equipment?: {
-    readonly weapon:"Iron Sword"|null;
-    readonly armor:"Leather Vest"|null;
+    readonly weapon:GearName|null;
+    readonly armor:GearName|null;
   };
   /** Optional telegraphed heavy strike; absent preserves historical ordinary attacks. */
   readonly meleeAbility?: "heavy";
@@ -250,8 +251,8 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       throw new RangeError("Grapple ability requires a melee monster");
     if(spec.equipment!==undefined && (spec.team!=="heroes"||
       spec.role==="monster"||
-      ![null,"Iron Sword"].includes(spec.equipment.weapon)||
-      ![null,"Leather Vest"].includes(spec.equipment.armor)))
+      ![null,...WEAPON_NAMES].some(name=>name===spec.equipment?.weapon)||
+      ![null,...ARMOR_NAMES].some(name=>name===spec.equipment?.armor)))
       throw new RangeError("Historical combat gear must be owned hero equipment");
     const agility=spec.agility??10;
     validNumber(agility,0,1000,spec.id+".agility");

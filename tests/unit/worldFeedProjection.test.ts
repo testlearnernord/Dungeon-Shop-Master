@@ -114,7 +114,7 @@ test("one real party chest creates one notice with exact items, equipment and go
   assert.equal(feed[0].title,"PARTY CHEST LOOTED");
   assert.match(feed[0].detail,/2 Iron Ore/);
   assert.match(feed[0].detail,/1 Coal/);
-  assert.match(feed[0].detail,/1 Iron Sword/);
+  assert.match(feed[0].detail,/1 T1 Sword & Shield/);
   assert.match(feed[0].detail,/\+13 gold/);
   assert.match(feed[0].detail,/Floor 1/);
   assert.deepEqual(projectWorldFeedChanges(after,after),[]);

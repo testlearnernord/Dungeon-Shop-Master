@@ -490,7 +490,7 @@ test("old Alpha versions are rejected before any material conversion",()=>{
 test("current Alpha campaigns enforce strict workshop stock schema and prohibit materials on shelves",()=>{
   const state=createGameState();
   assert.throws(()=>serializeSave({...state,shopEconomy:{
-    ...state.shopEconomy,materialStorage:{"iron-ore":-1,coal:0},
+    ...state.shopEconomy,materialStorage:{"iron-ore":-1,coal:0,"ghoul-leather":0},
   }}),/materialStorage.iron-ore/);
   assert.throws(()=>serializeSave({...state,shopEconomy:{
     ...state.shopEconomy,slots:state.shopEconomy.slots.map((slot,i)=>

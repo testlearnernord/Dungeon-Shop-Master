@@ -1,4 +1,5 @@
-import { ECONOMY, ITEMS, tradeAtStartOfDay, type ItemId } from "./economy.ts";
+import { ECONOMY, ITEMS, preferredShopItemOrder, tradeAtStartOfDay, type ItemId } from "./economy.ts";
+import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
 import type { GameState } from "./gameState.ts";
 
 /** Read-only shopping intent planning based on the deterministic inventory
@@ -46,8 +47,8 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
       reservedGold += line.subtotal;
       if (item.id === "bread") bread += line.quantity;
       if (item.id === "healing-herb") healing += line.quantity;
-      if (item.kind === "weapon") weapon = item.name;
-      if (item.kind === "armor") armor = item.name;
+      if (item.kind === "weapon") weapon = gearForItem(item.id)?.name??weapon;
+      if (item.kind === "armor") armor = gearForItem(item.id)?.name??armor;
     }
     return { ...hero, gold: hero.gold - reservedGold,
       inventory: {...hero.inventory, bread, healing},
@@ -82,8 +83,9 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
       const needs=ITEMS.filter(item=>{
         if(item.id==="bread")return projectedHero.inventory.bread<ECONOMY.breadTarget;
         if(item.id==="healing-herb")return projectedHero.inventory.healing<ECONOMY.healingTarget;
-        if(item.kind==="weapon")return projectedHero.equipment.weapon===null;
-        if(item.kind==="armor")return projectedHero.equipment.armor===null;
+        if(item.kind==="weapon"||item.kind==="armor")
+          return needsGearUpgrade(projectedHero.role,projectedHero.equipment,item.id);
+        return false;
         return false;
       });
       if(!needs.length)reason="no-need";
@@ -101,15 +103,16 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
     // so a penniless hero asks Galvik for food instead of an 8g vest.
     // When supplies are stocked, paid gear follows the role-aware forecast.
     const priorities:readonly ItemId[]=["bread","healing-herb",
-      "iron-sword","leather-vest"];
+      ...preferredShopItemOrder(projectedHero).filter(id=>
+        id!=="bread"&&id!=="healing-herb")];
     const wantedItemId=(reason==="unavailable"||reason==="cannot-afford")?
       priorities.find(id=>{
         const item=ITEMS.find(entry=>entry.id===id)!;
         if(reason==="unavailable"&&projectedHero.gold<item.salePrice)return false;
         if(id==="bread")return projectedHero.inventory.bread<ECONOMY.breadTarget;
         if(id==="healing-herb")return projectedHero.inventory.healing<ECONOMY.healingTarget;
-        if(id==="iron-sword")return projectedHero.equipment.weapon===null;
-        return projectedHero.equipment.armor===null;
+        return needsGearUpgrade(projectedHero.role,
+          projectedHero.equipment,id);
       }):undefined;
     results.set(hero.id,{heroId:hero.id,items,total:items.reduce(
       (sum,item)=>sum+item.subtotal,0),reason,wantedItemId});

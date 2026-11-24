@@ -7,6 +7,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
 import type { AdventurerRole } from "./adventurers.ts";
 import { appearanceForHero } from "./heroIdentity.ts";
+import {gearFromName} from "./gearCatalog.ts";
 
 /** All scenes use the same equipment names as the actual merchant economy. */
 export interface HeroEquipmentVisual {
@@ -33,7 +34,14 @@ export interface HeroVisual {
   readonly weaponPivot: TransformNode;
   readonly signature: string;
   readonly swordMesh: Mesh;
+  readonly shieldMesh: Mesh;
+  readonly spearMesh: Mesh;
+  readonly staffMesh: Mesh;
   readonly vestMesh: Mesh;
+  readonly vestT1Material:StandardMaterial;
+  readonly vestT2Material:StandardMaterial;
+  readonly weaponT1Material:StandardMaterial;
+  readonly weaponT2Material:StandardMaterial;
   readonly appearanceKey: string;
 }
 
@@ -63,6 +71,8 @@ export function createHeroVisual(
   const dark = mat("dark", "#272728");
   const leather = mat("leather", "#674633");
   const steel = mat("steel", "#a7b8c6");
+  const gildedSteel=mat("gilded-steel","#d3bf81");
+  const ghoulLeather=mat("ghoul-leather","#567563");
 
   const attach = (name: string, mesh: Mesh, parent: TransformNode,
     xyz: [number, number, number], material: StandardMaterial): Mesh => {
@@ -142,6 +152,26 @@ export function createHeroVisual(
     MeshBuilder.CreateBox(prefix + "-sword-part",
       { width: 0.09, height: 0.72, depth: 0.12 }, scene),
     weaponPivot, [0.02, -0.24, -0.13], steel);
+  const shieldMesh=attach("equipped-shield",
+    MeshBuilder.CreateBox(prefix+"-shield-part",{
+      width:.36,height:.49,depth:.12},scene),
+    arms[0],[0,-.24,-.30],steel);
+  const spearMesh=attach("equipped-spear",
+    MeshBuilder.CreateCylinder(prefix+"-spear-shaft",{
+      height:1.45,diameter:.048,tessellation:7},scene),
+    weaponPivot,[0,-.23,-.09],steel);
+  const spearTip=MeshBuilder.CreateCylinder(prefix+"-spear-tip",{
+    height:.26,diameterTop:0,diameterBottom:.10,tessellation:6},scene);
+  spearTip.parent=spearMesh;spearTip.position.y=.83;
+  spearTip.material=steel;spearTip.isPickable=false;
+  const staffMesh=attach("equipped-staff",
+    MeshBuilder.CreateCylinder(prefix+"-staff-shaft",{
+      height:1.25,diameter:.09,tessellation:7},scene),
+    weaponPivot,[0,-.27,-.09],leather);
+  const staffOrb=MeshBuilder.CreateSphere(prefix+"-staff-orb",{
+    diameter:.18,segments:8},scene);
+  staffOrb.parent=staffMesh;staffOrb.position.y=.70;
+  staffOrb.material=trim;staffOrb.isPickable=false;
   const vestMesh = attach("equipped-leather-vest",
     MeshBuilder.CreateBox(prefix + "-vest-part",
       { width: shoulder + 0.06, height: 0.48, depth: 0.50 }, scene),
@@ -149,7 +179,10 @@ export function createHeroVisual(
   // A tiny stable stature variance retains a different silhouette for each ID.
   root.scaling.setAll(look.stature);
   const model: HeroVisual = {
-    root, torso, headPivot, arms, legs, weaponPivot, swordMesh, vestMesh,
+    root, torso, headPivot, arms, legs, weaponPivot, swordMesh,
+    shieldMesh,spearMesh,staffMesh,vestMesh,
+    vestT1Material:leather,vestT2Material:ghoulLeather,
+    weaponT1Material:steel,weaponT2Material:gildedSteel,
     appearanceKey: look.key,
     signature: look.key,
   };
@@ -164,10 +197,27 @@ export function createHeroVisual(
 
 /** A purchase updates the existing model; replays pass historical equipment. */
 export function setHeroVisualEquipment(model: HeroVisual, equipment: HeroEquipmentVisual): void {
-  const sword = equipment.weapon === "Iron Sword";
-  const vest = equipment.armor === "Leather Vest";
+  const weapon=gearFromName(equipment.weapon);
+  const armor=gearFromName(equipment.armor);
+  const sword=weapon?.slot==="weapon"&&weapon.role==="tank";
+  const spear=weapon?.slot==="weapon"&&weapon.role==="DPS";
+  const staff=weapon?.slot==="weapon"&&weapon.role==="healer";
+  const vest=armor?.slot==="armor";
   model.swordMesh.setEnabled(sword);
+  model.shieldMesh.setEnabled(sword);
+  model.spearMesh.setEnabled(spear);
+  model.staffMesh.setEnabled(staff);
   model.vestMesh.setEnabled(vest);
+  // Replays seek backwards as well as forward. Never leave a T2 material on
+  // a restored T1 mesh after a past/alternate recording is inspected.
+  model.swordMesh.material=weapon?.tier===2?
+    model.weaponT2Material:model.weaponT1Material;
+  model.shieldMesh.material=weapon?.tier===2?
+    model.weaponT2Material:model.weaponT1Material;
+  model.spearMesh.material=weapon?.tier===2?
+    model.weaponT2Material:model.weaponT1Material;
+  model.vestMesh.material=armor?.tier===2?
+    model.vestT2Material:model.vestT1Material;
   model.root.metadata.weapon = equipment.weapon;
   model.root.metadata.armor = equipment.armor;
   model.root.metadata.swordVisible = sword;

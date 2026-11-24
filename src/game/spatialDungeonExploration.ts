@@ -9,6 +9,7 @@ import { resolveGroupCombat, type CombatantSpec, type GroupCombatOptions,
 import { SeededRandom } from "./random.ts";
 import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
 import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
+import {equipmentEffects} from "./gearCatalog.ts";
 import type {ItemId} from "./economy.ts";
 import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK}
   from "./ghoulPack.ts";
@@ -220,23 +221,23 @@ export function prepareSpatialDungeonCombat(
     source.x,source.z,cycle,party.length,freePackSpawns.length):1;
   const specs:CombatantSpec[]=party.map((hero,index)=>{
     const spawn=available[index];
-    const sword=hero.equipment.weapon==="Iron Sword";
+    const gear=equipmentEffects(hero.role,hero.equipment);
     const progression=heroProgression(hero);
     return {
       id:hero.id,team:"heroes",role:hero.role,
-      style:hero.role==="healer"||hero.role==="DPS"&&!sword?"ranged":"melee",
+      style:hero.role==="healer"?"ranged":"melee",
       x:(spawn.x-monster.x)*2.5,z:(spawn.z-monster.z)*2.5,
       hp:hero.health,maxHp:progression.maxHealth,
       damage:6+Math.floor((hero.role==="healer"?progression.intellect:
         hero.role==="DPS"?progression.agility:progression.strength)/2)+
-        (sword?5:0)+progression.damageBonus,
-      armor:(hero.equipment.armor==="Leather Vest"?5:1)+progression.armorBonus,
-      equipment:{weapon:sword?"Iron Sword":null,
-        armor:hero.equipment.armor==="Leather Vest"?"Leather Vest":null},
+        gear.damage+progression.damageBonus,
+      armor:1+gear.armor+progression.armorBonus,
+      equipment:{weapon:gear.weapon,armor:gear.vest},
       agility:progression.agility,
-      speed:hero.role==="tank"?2.5:3.1,reach:1.75,
+      speed:hero.role==="tank"?2.5:3.1,reach:gear.reach,
       healCharges:Math.min(2,hero.inventory.healing),
-      ...(hero.role==="healer"?{magicHeals:progression.dungeonMagicHeals}:{}),
+      ...(hero.role==="healer"?{
+        magicHeals:progression.dungeonMagicHeals+gear.magicHeals}:{}),
     };
   });
   // One *real* source feature can spawn a bounded physical Ghoul pack.
@@ -593,7 +594,7 @@ export function simulateSpatialDungeonPartyDay(
       // Everybody physically walking across this tile suffers the same
       // trap activation, reduced by their OWN purchased Leather Vest.
       for(const m of members)m.hp=Math.max(0,m.hp-Math.max(1,raw-
-        (m.hero.equipment.armor==="Leather Vest"?3:0)));
+        equipmentEffects(m.hero.role,m.hero.equipment).trapProtection));
       resolved.add(feature.id);
       siteCycles=resolveDungeonSite(siteCycles,feature.id,day);
       step(t+0.1,"trap",feature.id);

@@ -29,6 +29,8 @@ import { Shop } from "./game/shop";
 import { setupBlueprintHud } from "./blueprintHud.ts";
 import { setupBedroomFurnitureVisuals } from "./game/bedroomFurnitureVisuals.ts";
 import {setupCellarFurnitureVisuals} from "./game/cellarFurnitureVisuals.ts";
+import {setupCellarForgeVisuals} from "./game/cellarForgeVisuals.ts";
+import {setupCellarForgeHud} from "./forgeHud.ts";
 import {setupCellarTableVisuals} from "./game/cellarTableVisuals.ts";
 import {setupWorldClockVisuals} from "./game/worldClockVisuals.ts";
 import {setupCellarPondVisuals} from "./game/cellarPondVisuals.ts";
@@ -70,6 +72,7 @@ import "./expeditionArchive.css";
 import "./dungeonMapHud.css";
 import "./observationTransition.css";
 import "./worldEventFeed.css";
+import "./forgeHud.css";
 import "./heroCard.css";
 
 async function startGame(): Promise<void> {
@@ -144,6 +147,9 @@ document.addEventListener("visibilitychange",()=>{
 });
 setupBedroomFurnitureVisuals(scene,store);
 setupCellarFurnitureVisuals(scene,store);
+const forgeAnvil=setupCellarForgeVisuals(scene);
+worldItems.push({id:"cellar-forge-anvil",mesh:forgeAnvil,kind:"cellar-forge"});
+const forgeHud=setupCellarForgeHud(store);
 const tableVisuals=setupCellarTableVisuals(scene,store);
 setupWorldClockVisuals(scene,store);
 const roomVisuals=createShopRoomVisuals(scene);
@@ -375,6 +381,7 @@ setupCampaignHud(store, campaign, () => {
   ledger?.close();
   resetReplayDisclosure();
   cashier?.close();
+  forgeHud.close();
   beggarHud?.close();
   blueprint.close();
   debtBook.close();
@@ -460,7 +467,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
   debtBook.open,store,action=>merchantActions.play(action),
-  ()=>fishing?.open()??false,()=>observeTable());
+  ()=>fishing?.open()??false,()=>observeTable(),()=>forgeHud.open());
 setupControlsHotbarClearance();
 setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),
   itemId=>interactions.selectItem(itemId));

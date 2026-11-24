@@ -1,5 +1,6 @@
 import type {AdventurerState} from "./adventurers.ts";
 import {heroProgression} from "./heroProgression.ts";
+import {equipmentEffects} from "./gearCatalog.ts";
 import type {GroupCombatOptions,CombatantSpec,GroupRole} from "./groupCombat.ts";
 import type {CombatStageTheme} from "./combatSpectatorStage.ts";
 
@@ -100,16 +101,18 @@ export function randomDeveloperHeroes(seed:number,count:number):DeveloperHero[]{
 }
 export function developerHeroFromRoster(hero:AdventurerState):DeveloperHero{
   const progress=heroProgression(hero);
+  const gear=equipmentEffects(hero.role,hero.equipment);
   return {
     role:hero.role,label:hero.name,maxHp:progress.maxHealth,
     damage:6+Math.floor((hero.role==="healer"?progress.intellect:
       hero.role==="DPS"?progress.agility:progress.strength)/2)+
-      (hero.equipment.weapon==="Iron Sword"?5:0)+progress.damageBonus,
-    armor:(hero.equipment.armor==="Leather Vest"?5:1)+progress.armorBonus,
+      gear.damage+progress.damageBonus,
+    armor:1+gear.armor+progress.armorBonus,
     agility:progress.agility,healCharges:Math.min(2,hero.inventory.healing),
-    ...(hero.role==="healer"?{magicHeals:progress.dungeonMagicHeals}:{}),
-    sword:hero.equipment.weapon==="Iron Sword",
-    vest:hero.equipment.armor==="Leather Vest",
+    ...(hero.role==="healer"?{
+      magicHeals:progress.dungeonMagicHeals+gear.magicHeals}:{}),
+    sword:gear.weapon!==null,
+    vest:gear.vest!==null,
   };
 }
 /** Test balancing changes real combat specs only, not scene animations.
