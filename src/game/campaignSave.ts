@@ -251,9 +251,9 @@ function validateSpatialDungeonReplay(
   const appearance=object(record.appearance,path+".appearance",["role","equipment"]);
   choice(appearance.role,["tank","DPS","healer"],path+".appearance.role");
   const gear=object(appearance.equipment,path+".appearance.equipment",["weapon","armor"]);
-  if(![null,...WEAPON_NAMES].includes(gear.weapon as null|string))
+  if(![null,...WEAPON_NAMES].some(name=>name===gear.weapon))
     fail(path+".appearance.equipment.weapon","is not recognized");
-  if(![null,...ARMOR_NAMES].includes(gear.armor as null|string))
+  if(![null,...ARMOR_NAMES].some(name=>name===gear.armor))
     fail(path+".appearance.equipment.armor","is not recognized");
   if(record.partyMemberIds!==undefined){
     const ids=array(record.partyMemberIds,path+".partyMemberIds");
