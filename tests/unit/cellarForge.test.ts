@@ -8,6 +8,7 @@ import {buyHeroDungeonFind} from "../../src/game/dungeonBuyback.ts";
 import {equipmentEffects,needsGearUpgrade} from "../../src/game/gearCatalog.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {rollDungeonSiteLoot} from "../../src/game/dungeonLoot.ts";
+import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 
 test("T2 can never be bought wholesale; real recipes consume exactly their materials",()=>{
   const initial=createGameState(7351);
@@ -133,4 +134,35 @@ test("Ghoul Leather originates in deterministic monster rewards, never in chests
     assert(!chest.itemIds.includes("ghoul-leather"));
   }
   assert(sampled);
+});
+
+test("true Floor-10 60Hz party options gain real class-specific T2 bonuses",()=>{
+  const population=createGameState(7351).adventurers;
+  const roles=["tank","DPS","healer"] as const;
+  const base=roles.map(role=>{
+    const hero=population.find(h=>h.role===role);
+    assert(hero,"seed must provide real character role "+role);
+    return {...hero,bossPass:true};
+  });
+  const t1=base.map(hero=>({...hero,equipment:{
+    weapon:hero.role==="tank"?"Iron Sword":
+      hero.role==="DPS"?"Spear":"Staff",armor:"Leather Vest",
+  }}));
+  const t2=base.map(hero=>({...hero,equipment:{
+    weapon:hero.role==="tank"?"Forged Sword & Shield":
+      hero.role==="DPS"?"Forged Spear":"Forged Staff",
+    armor:"Ghoul Leather Vest",
+  }}));
+  const before=caveTrollPartyOptions(t1,918);
+  const after=caveTrollPartyOptions(t2,918);
+  for(const hero of base){
+    const first=before.actors.find(actor=>actor.id===hero.id)!;
+    const upgraded=after.actors.find(actor=>actor.id===hero.id)!;
+    assert(upgraded.damage>first.damage,
+      "the boss shares genuine T2 gear damage, not merely item names");
+    assert(upgraded.armor>first.armor);
+    if(hero.role==="healer")
+      assert((upgraded.magicHeals??0)>(first.magicHeals??0));
+  }
+  assert.deepEqual(after,caveTrollPartyOptions(t2,918));
 });
