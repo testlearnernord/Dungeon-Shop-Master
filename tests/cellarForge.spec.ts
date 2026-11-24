@@ -109,15 +109,9 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   // T2 is an actual finished shelf-good but must never be wholesale stock.
   await page.locator("#open-wholesale").click();
   const catalog=page.locator("#wholesale-catalog");
-  const forged=catalog.locator('.catalog-row[data-item-id="forged-spear"]');
-  await expect(forged).toContainText("FORGE IN CELLAR");
-  // Zero wholesale cost is a sentinel, not zero actual production cost.
-  await expect(forged.locator(".catalog-price-buy")).toHaveText("4g materials");
-  await expect(forged.locator(".catalog-price-margin")).toHaveText("+21g margin");
-  const forgedArmor=catalog.locator('.catalog-row[data-item-id="ghoul-leather-vest"]');
-  await expect(forgedArmor.locator(".catalog-price-buy")).toHaveText("8g materials");
-  await expect(forgedArmor.locator(".catalog-price-margin")).toHaveText("+15g margin");
-  await expect(forged.getByRole("button",{name:/Buy 1/})).toBeDisabled();
+  await expect(catalog.locator(".catalog-row")).toHaveCount(7);
+  for(const id of ["forged-sword-shield","forged-spear","forged-staff","ghoul-leather-vest","iron-ore","coal","ghoul-leather"])
+    await expect(catalog.locator('[data-item-id="'+id+'"]')).toHaveCount(0);
   await page.locator("#close-wholesale").click();
   await page.evaluate(async()=>{
     const hooks=window as Window&{
