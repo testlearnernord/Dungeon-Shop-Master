@@ -115,6 +115,13 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   await bag.locator('[data-bind-slot="1"]').dragTo(bag.locator('[data-bind-slot="2"]'));
   await expect(bag.locator('[data-bind-slot="2"]')).toHaveAttribute("data-item-id","forged-spear");
   await expect(bag.locator('[data-bind-slot="1"]')).toHaveAttribute("data-item-id","ghoul-leather-vest");
+  // Unbinding does not discard merchandise. Restore the explicit assignment.
+  await bag.locator('[data-bind-slot="1"]').click({button:"right"});
+  await expect(bag.locator('[data-bind-slot="1"]')).not.toHaveAttribute("data-item-id");
+  await expect(bag.locator('[data-bag-item="ghoul-leather-vest"] strong')).toHaveText("1");
+  await bag.locator('[data-bag-item="ghoul-leather-vest"] .bag-item-pick').click();
+  await bag.locator('[data-bind-slot="1"]').click();
+  await expect(bag.locator('[data-bind-slot="1"]')).toHaveAttribute("data-item-id","ghoul-leather-vest");
   await page.keyboard.press("Tab");
   await expect(bag).toBeHidden();
   await page.locator("#open-wholesale").click();

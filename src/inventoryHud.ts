@@ -54,7 +54,7 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
   let picked:ItemId|null=null,drag:Drag|null=null,discardSequence=0;
   let previousEconomy=store.state.shopEconomy;
   const changed=()=>{
-    persist(bar);picked=null;render();options.onBindingsChanged();
+    persist(bar);picked=null;options.onBindingsChanged();
   };
   const bind=(index:number,id:ItemId)=>{
     if(store.state.shopEconomy.bag[id]<=0&&bar.indexOf(id)<0){
