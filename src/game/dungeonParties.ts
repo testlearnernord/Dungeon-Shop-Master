@@ -6,7 +6,7 @@ import { generateExpeditionLayout } from "./dungeonLayout.ts";
 import {
   getSpatialDungeonProgress,chooseKnownRouteStep,type SpatialDungeonWorld, type SpatialDungeonFloor,
 } from "./spatialDungeonExploration.ts";
-import {isBossExpeditionCandidate,isBossExpeditionParty,type HeroDungeonDecision,
+import {isBossExpeditionCandidate,type HeroDungeonDecision,
   type HeroFloorAction} from "./dungeonDecisions.ts";
 import {dungeonCurrentSight} from "./heroPerception.ts";
 
