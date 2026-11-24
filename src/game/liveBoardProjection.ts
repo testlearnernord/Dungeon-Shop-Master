@@ -55,7 +55,7 @@ function summary(event:WorldEvent):{text:string;source:LiveBoardSource;location:
       return {text:"Seen at Galvik's shop",source:"shop",
         location:"Galvik's shop",status:"at-shop"};
     case "shop-departure":
-      return {text:"Observed leaving the shop for two days away",source:"shop",
+      return {text:"Observed leaving the shop to recover",source:"shop",
         location:"Outside · shop exit confirmed",status:"off-duty"};
     case "shop-walkout":
       return {text:"Seen heading toward the shop exit",source:"shop",

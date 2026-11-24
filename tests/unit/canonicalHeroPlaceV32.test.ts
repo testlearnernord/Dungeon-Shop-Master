@@ -6,7 +6,7 @@ import {liveHeroCard} from "../../src/game/heroCardView.ts";
 
 test("Current Alpha v33 has an unnumbered shop, while real numbered Dungeon Floor 5 remains valid",()=>{
   const state=createGameState(7351);
-  assert.equal(SIMULATION_VERSION,37);
+  assert.equal(SIMULATION_VERSION,39);
   const visitors=state.adventurers.filter(h=>h.status==="at-shop");
   assert(visitors.length>0);
   assert(visitors.every(h=>h.floor==="shop"));
@@ -44,7 +44,7 @@ test("off-duty heroes occupy neither Galvik's shop nor any real numbered floor",
     h=>h.status==="at-shop")!;
   const away={...state,adventurers:state.adventurers.map(h=>h.id===visitor.id
     ?{...h,status:"off-duty" as const,floor:"away" as const,
-      shopStayDays:0,offDutyUntilDay:state.day+2}
+      shopStayDays:0,offDutyUntilTick:400}
     :h)};
   assert.deepEqual(parseSave(JSON.stringify(createSave(away))),away);
   assert.equal(liveHeroCard(away,visitor.id)?.floor,null);

@@ -1,3 +1,4 @@
+import {manuallyPaidVisitors} from "./npcVisitors.ts";
 import type {GameState,WorldEvent} from "./gameState.ts";
 import {dungeonWorldAt,setDungeonWorld} from "./dungeonWorldState.ts";
 import {advanceDungeonMonsterWorld} from "./dungeonMonsterWorld.ts";
@@ -205,7 +206,7 @@ function commitPortalReturn(state:GameState,event:ScheduledWorldEvent):GameState
     throw new RangeError("Portal arrival lacks a committed physical return.");
   // Multiple genuine visits in a day are legal. The identity is tied
   // to the ONE consumed portal crossing, not to a lossy per-day hero flag.
-  // Paid goods remain protected by the existing once-per-day sale ledger.
+  // Paid goods remain protected by the current physical visit ledger.
   const arrival:WorldEvent={
     id:"day-"+state.day+":"+id+":shop-arrival:"+state.worldClock.tick,
     type:"shop-arrival",day:state.day,worldTick:state.worldClock.tick,
@@ -311,6 +312,35 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
   let rngState=state.rngState;
   const activities:WorldEvent[]=[];
   const arrivalsByHero=new Map<string,SpatialDungeonReplay>();
+  // Recover on the existing movement clock, never on a render timer or
+  // a second daily simulation. A hero arrives at the real remembered
+  // entrance and may first walk on the following ordinary movement tick.
+  for(const hero of state.adventurers){
+    if(hero.status!=="off-duty"||hero.offDutyUntilTick===null||
+       hero.offDutyUntilTick>tick)continue;
+    const healed=useHealingSupplies(hero,day,tick);
+    const floor=hero.lastDungeonFloor??1;
+    const ready:AdventurerState={...healed.adventurer,
+      floor,status:"exploring",offDutyUntilTick:null};
+    const layout=generateExpeditionLayout(state.seed,floor);
+    const world=dungeonWorldAt(dungeonWorlds,floor);
+    const spawn=layout.entrance,cell=spawn.z*layout.width+spawn.x;
+    const old=world.heroes.find(h=>h.heroId===hero.id);
+    const landed={heroId:hero.id,...spawn,visited:old?
+      old.visited.includes(cell)?old.visited:[...old.visited,cell]:[cell]};
+    dungeonWorlds=setDungeonWorld(dungeonWorlds,floor,{...world,
+      heroes:[...world.heroes.filter(h=>h.heroId!==hero.id),landed]});
+    byId.set(hero.id,ready);
+    plans.delete(hero.id);
+    stepCounts.delete(hero.id);
+    processed.add(hero.id);
+    activities.push(...healed.events,{
+      id:`day-${day}:${hero.id}:dungeon-live:${tick}`,
+      type:"dungeon-live",day,worldTick:tick,adventurerId:hero.id,
+      reportedZone:zone(floor),
+      message:hero.name+" began a new expedition after recovering outside the shop.",
+    });
+  }
   // Use roster order for stable, saved simultaneous encounter arbitration.
   // Shared sites are updated before the next party can inspect that tile.
   for(const original of state.adventurers){
@@ -1068,39 +1098,19 @@ export function finishLiveDungeonDay(
   const day=state.day+1;
   const clock=beginNextWorldDay(state.worldClock,state.day);
   const closed=returnUnpaidCartsAtClose(state);
-  const priorPaid=new Set(state.events.filter(e=>e.day===state.day&&
-    e.type==="sale"&&e.saleChannel==="manual")
-    .map(e=>e.adventurerId));
+  const priorPaid=manuallyPaidVisitors(state.events,state.day);
   let rngState=new SeededRandom(state.rngState).state;
   const events:WorldEvent[]=[{
     id:`day-${day}:started`,type:"day-started",day,
     message:`Day ${day} begins.`,
   }];
-   const reenteringIds=new Set(closed.adventurers.filter(hero=>
-    hero.status==="off-duty"&&hero.offDutyUntilDay!==null&&
-    day>=hero.offDutyUntilDay).map(hero=>hero.id));
   const adventurers=closed.adventurers.map(hero=>{
-    // Consuming a genuinely owned supply is not free regeneration. Off-duty
-    // heroes can use their bread/herbs while resting, rather than return to
-    // combat wounded with untouched supplies in their pack.
+    // Resting heroes consume medicine at their scheduled return, not
+    // again at midnight. Other heroes retain the existing daily first aid.
+    if(hero.status==="off-duty")return hero;
     const healed=useHealingSupplies(hero,day);
     events.push(...healed.events);
     const ready=healed.adventurer;
-    // Two complete off-duty days remain protected from dungeon/shop events.
-    if(ready.status==="off-duty"){
-      if(!reenteringIds.has(ready.id))return ready;
-      // The cursed threshold can connect to the hero's remembered depth.
-      // It never teleports a solo customer into the Level-10 boss arena.
-      const target=ready.lastDungeonFloor??1;
-      events.push({
-        id:`day-${day}:${hero.id}:dungeon-live:${clock.tick}`,type:"dungeon-live",day,
-        worldTick:clock.tick,adventurerId:hero.id,
-        reportedZone:target>=6?"deep" as const:"upper" as const,
-        message:`${hero.name} began a new expedition after two full days away.`,
-      });
-      return {...ready,status:"exploring" as const,
-        floor:target,offDutyUntilDay:null};
-    }
     if(ready.status==="returning"&&typeof ready.floor==="number"&&
        ready.floor>=1&&ready.floor<=9)
       return {...ready,status:"exploring" as const};
@@ -1129,29 +1139,8 @@ export function finishLiveDungeonDay(
       message:`${adventurer.name} entered Floor 1.`,
     });
   }
-  // Reenter at a seeded known floor ENTRANCE, never the last fight tile;
-  // retain personally visited cells, site generations and other heroes.
-  let morningWorlds=[...closed.dungeonWorlds];
-  for(const floor of [1,2,3,4,5,6,7,8,9] as const){
-    const ids=adventurers.filter(h=>reenteringIds.has(h.id)&&h.floor===floor)
-      .map(h=>h.id);
-    if(!ids.length)continue;
-    const layout=generateExpeditionLayout(state.seed,floor);
-    const saved=dungeonWorldAt(morningWorlds,floor);
-    const heroes=[...saved.heroes];
-    const spawn=layout.entrance,cell=spawn.z*layout.width+spawn.x;
-    for(const id of ids){
-      const oldIndex=heroes.findIndex(h=>h.heroId===id);
-      const old=oldIndex>=0?heroes[oldIndex]:null;
-      const landed={heroId:id,...spawn,visited:old?
-        old.visited.includes(cell)?old.visited:[...old.visited,cell]:[cell]};
-      if(oldIndex>=0)heroes[oldIndex]=landed;
-      else heroes.push(landed);
-    }
-    morningWorlds=setDungeonWorld(morningWorlds,floor,{...saved,heroes});
-  }
   const next:GameState={
-    ...closed,day,worldClock:clock,dungeonWorlds:morningWorlds,
+    ...closed,day,worldClock:clock,
     shopTraffic:{day,tick:clock.tick,initialized:false,actors:[],
       claims:[],shelfOwners:[],doorY:{portal:0}},
     shopEconomy:{...closed.shopEconomy,

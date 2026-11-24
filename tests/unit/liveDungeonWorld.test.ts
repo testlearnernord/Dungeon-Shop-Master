@@ -41,7 +41,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,38);
+  assert.equal(SIMULATION_VERSION,39);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -607,7 +607,7 @@ test("two real eligible Floor-9 explorers rendezvous, form a party and commit a 
   const ids=ready.map(h=>h.id);
   const active=activateLiveDungeon({...base,
     adventurers:base.adventurers.map(h=>ready.find(m=>m.id===h.id)??{
-      ...h,floor:"away" as const,status:"off-duty" as const,offDutyUntilDay:4}),
+      ...h,floor:"away" as const,status:"off-duty" as const,offDutyUntilTick:4800}),
     dungeonWorlds:[{floor:9 as const,world:{...emptySpatialDungeonWorld(),
       resolvedFeatureIds:layout.features.map(f=>f.id),
       heroes:[{heroId:ids[0],...stair,visited:known},

@@ -21,7 +21,7 @@ function slotQuantity(state:GameState,slotId:string) {
 }
 test("pickup is durable, removes only physical shelf stock and never charges before checkout",()=>{
   const state=customers();
-  assert.equal(SIMULATION_VERSION,38);
+  assert.equal(SIMULATION_VERSION,39);
   const hero=state.adventurers[0];
   const plan=forecastShoppingIntents(state).get(hero.id)!;
   const needed=plan.items[0];
@@ -290,4 +290,34 @@ test("cashier rejects tip totals that exceed safe economy limits atomically",()=
     const result=payReservedShopCart(state,hero.id,true);
     assert.strictEqual(result.state,state);
   }
+});
+
+test("the same shelf can be paid on a second same-day visit but never twice per visit",()=>{
+  const initial=customers(),hero=initial.adventurers[0];
+  const line=forecastShoppingIntents(initial).get(hero.id)!.items[0];
+  const paid=payReservedShopCart(pickUpShopItem(initial,hero.id,line.slotId).state,hero.id).state;
+  const arrivalTick=1000;
+  // Isolated receipt fixture: the genuine physical portal is covered by LIVE tests.
+  const second:GameState={...paid,worldClock:{...paid.worldClock,tick:arrivalTick},
+    shopTraffic:{...paid.shopTraffic,tick:arrivalTick},
+    adventurers:paid.adventurers.map(h=>h.id===hero.id?{
+      ...h,inventory:hero.inventory,equipment:hero.equipment}:h),
+    shopEconomy:{...paid.shopEconomy,slots:paid.shopEconomy.slots.map(s=>
+      s.id===line.slotId?initial.shopEconomy.slots.find(o=>o.id===s.id)!:s)},
+    events:[...paid.events,{
+      id:`day-1:${hero.id}:shop-departure:100`,type:"shop-departure",day:1,
+      worldTick:100,adventurerId:hero.id,message:"Observed departure."
+    },{
+      id:`day-1:${hero.id}:shop-arrival:${arrivalTick}`,type:"shop-arrival",day:1,
+      worldTick:arrivalTick,adventurerId:hero.id,message:"Observed return."
+    }]};
+  const reserved=pickUpShopItem(second,hero.id,line.slotId).state;
+  assert.notStrictEqual(reserved,second);
+  const result=payReservedShopCart(reserved,hero.id,true).state;
+  assert.notStrictEqual(result,reserved);
+  assert.equal(result.events.filter(e=>e.type==="sale"&&e.adventurerId===hero.id).length,2);
+  assert(result.events.some(e=>e.id.endsWith(":manual:visit:1000")));
+  assert.strictEqual(payReservedShopCart(result,hero.id).state,result);
+  assert.strictEqual(pickUpShopItem(result,hero.id,line.slotId).state,result);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(result))),result);
 });

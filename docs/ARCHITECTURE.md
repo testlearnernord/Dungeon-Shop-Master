@@ -52,7 +52,7 @@ Browser input / shop interactions
 - A fresh campaign has no shelves; the player builds four-slot shelves. `furnitureRegistry.ts` and one placement validator govern mount, collisions, reachability and legal commit. An editor preview is **not** a persistent placement.
 - The physical customer motor owns enter/browse/consider/queue/leave positions and claims; its authoritative checkpoint is `shopTraffic.ts`. Babylon actors represent, never re-decide, those positions.
 - Picking up goods reserves an **unpaid** cart. A successful staff-side cashier interaction makes a **real paid sale**, while explicit approval of credit writes a debt. Unpaid stock returns without false revenue when the day closes.
-- A shop visitor is not off-duty merely because checkout finished: the saved real **outer-gate crossing** starts two complete subsequent days outside both shop and dungeon. Existing return/reentry policy retains prior stats and explored paths without phantom healing.
+- A shop visitor is not off-duty merely because checkout finished: the saved real **outer-gate crossing** starts a bounded health-dependent recovery on the saved world clock. Existing return/reentry policy retains prior stats and explored paths without phantom healing.
 - The old quote-based direct checkout has been removed. The staffed register settles ONLY physically reserved `shopCarts` through `payReservedShopCart` (GameStore `payReservedCart`); customer preference forecasts remain read-only.
 
 ## 4. Dungeon, combat, LIVE and replay
@@ -162,7 +162,7 @@ The physical shop's mined geometry is stored once as `GameState.shopRoom` / `pay
 
 ### Alpha v32: Hero places are not fake numeric floors (#313)
 
-The canonical hero floor value distinguishes actual dungeon depths 1–10 from unnumbered `"shop"` (at-shop/departing) and `"away"` (the two off-duty days). Strict Save validation rejects numeric Floor 5 for shop occupancy and refuses the old v31 save format; **no migration, no dual-compatible aliases**. The real dungeon's playable numeric Floor 5 remains unchanged. Portal-arrival/observed-shop-exit transitions and buyback now require authentic shop presence; LIVE hero cards and world-feed floor targets expose numeric floors only for genuine dungeon occupants. In the subsequent v33 cut, both LIVE portal returns and isolated daily travel instead use `"transit"`, never a fake numeric Floor 4. The Floor-7 state split and legacy day motor also remain open in issue #300.
+The canonical hero floor value distinguishes actual dungeon depths 1–10 from unnumbered `"shop"` (at-shop/departing) and `"away"` (post-shop recovery). Strict Save validation rejects numeric Floor 5 for shop occupancy and refuses the old v31 save format; **no migration, no dual-compatible aliases**. The real dungeon's playable numeric Floor 5 remains unchanged. Portal-arrival/observed-shop-exit transitions and buyback now require authentic shop presence; LIVE hero cards and world-feed floor targets expose numeric floors only for genuine dungeon occupants. In the subsequent v33 cut, both LIVE portal returns and isolated daily travel instead use `"transit"`, never a fake numeric Floor 4. The Floor-7 state split and legacy day motor also remain open in issue #300.
 
 ### Alpha v33: Portal transit is not numeric Dungeon Floor 4 (#314)
 

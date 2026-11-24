@@ -1,3 +1,4 @@
+import {currentShopVisitEvents,shopVisitSuffix} from "./npcVisitors.ts";
 import { ITEMS, type ItemId } from "./economy.ts";
 import type { GameState } from "./gameState.ts";
 import { forecastShoppingIntents } from "./shopperIntents.ts";
@@ -21,10 +22,9 @@ export function quoteBeggingRequest(state:GameState,heroId:string):BeggingQuote|
   const hero=state.adventurers.find(entry=>entry.id===heroId);
   if(!hero||hero.status!=="at-shop"||hero.health<=0||
       state.shopCarts.some(cart=>cart.heroId===heroId&&cart.lines.length>0)||
-      state.events.some(event=>event.day===state.day&&
-        event.adventurerId===heroId&&(event.type==="shop-credit"||
-          event.type==="shop-walkout"||
-          (event.type==="sale"&&event.saleChannel==="manual"))))
+      currentShopVisitEvents(state.events,state.day,heroId).some(event=>
+        event.type==="shop-credit"||event.type==="shop-walkout"||
+          (event.type==="sale"&&event.saleChannel==="manual")))
     return null;
   const request=forecastShoppingIntents(state).get(heroId);
   if(request?.reason!=="cannot-afford"||!request.wantedItemId||
@@ -46,7 +46,7 @@ export interface CreditResult {
   readonly message:string;
 }
 
-/** One unpaid need per visitor per day. The player must approve the request.
+/** One unpaid need per actual shop visit. The player must approve the request.
  * Stock and item ownership change immediately; merchant revenue stays at zero.
  */
 export function issueShopCredit(state:GameState,heroId:string):CreditResult {
@@ -87,7 +87,7 @@ export function issueShopCredit(state:GameState,heroId:string):CreditResult {
       ?{...entry,outstandingGold:entry.outstandingGold+quote.price}:entry)
     :[...state.shopDebts,{heroId,outstandingGold:quote.price}];
   const event={
-    id:`day-${state.day}:${heroId}:shop-credit`,
+    id:`day-${state.day}:${heroId}:shop-credit`+shopVisitSuffix(state.events,state.day,heroId),
     type:"shop-credit" as const,day:state.day,
     adventurerId:heroId,itemId:item.id,quantity:1,debtGold:quote.price,
     message:`${hero.name} received 1 ${item.name} on credit and now owes ${quote.previousDebt+quote.price} gold.`,

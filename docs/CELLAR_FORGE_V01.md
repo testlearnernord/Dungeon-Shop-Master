@@ -73,7 +73,7 @@ Initial, deliberately small recipes:
   and records debt without creating merchant revenue.
 - Bounded integration fixtures use generated sites and the real 60Hz motor,
   with controlled prior inventory, position and budget; physical browser
-  checkout also checks departure. The existing two off-duty days remain.
+  checkout also checks departure. Reentry now uses the shared health-dependent world-clock recovery.
   No economic soak or balance adjustment is part of this acceptance step.
 
 - A won Ghoul encounter atomically resolves the site and removes the live map

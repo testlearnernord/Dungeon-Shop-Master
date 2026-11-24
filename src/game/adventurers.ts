@@ -40,8 +40,8 @@ export interface AdventurerState {
   readonly lastDungeonFloor?:1|2|3|4|5|6|7|8|9;
   readonly status: AdventurerStatus;
   readonly shopStayDays: number;
-  /** First eligible new expedition day following an observed shop exit. */
-  readonly offDutyUntilDay: number | null;
+  /** Earliest world tick for reentry after an observed shop exit. */
+  readonly offDutyUntilTick: number | null;
   /** Eligibility for a real Floor-10 Temporary-Party boss attempt. */
   readonly bossPass: boolean;
 }
@@ -79,7 +79,7 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
     floor: 1,
     status: "exploring",
     shopStayDays: 0,
-    offDutyUntilDay: null,
+    offDutyUntilTick: null,
     bossPass: false,
   };
   return { adventurer, rngState: random.state };
@@ -87,8 +87,9 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
 
 /** Adventurers heal injuries, never consume provisions just because a day passed.
  * Waybread is inexpensive +8 HP first aid; herbs heal +18 HP. One dose a day,
- * with bread reserved for smaller wounds when both supplies are available. */
-export function useHealingSupplies(hero: AdventurerState, day: number): {
+ * with bread reserved for smaller wounds when both supplies are available.
+ * Post-shop recovery may consume a dose at its actual world tick. */
+export function useHealingSupplies(hero: AdventurerState, day: number, worldTick?:number): {
   adventurer: AdventurerState; events: WorldEvent[];
 } {
   const maxHealth=heroProgression(hero).maxHealth;
@@ -109,7 +110,8 @@ export function useHealingSupplies(hero: AdventurerState, day: number): {
   return {
     adventurer: { ...hero, health: hero.health + restored, inventory },
     events: [{
-      id: `day-${day}:${hero.id}:healed`, type: "healed", day,
+      id: `day-${day}:${hero.id}:healed`+(worldTick===undefined?"":":"+worldTick), type: "healed", day,
+      ...(worldTick===undefined?{}:{worldTick}),
       adventurerId: hero.id, itemId: used.id, quantity: 1,
       message: `${hero.name} used ${used.name} and recovered ${restored} HP.`,
     }],

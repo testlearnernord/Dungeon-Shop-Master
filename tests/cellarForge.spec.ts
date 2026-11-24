@@ -301,7 +301,7 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   const departed=await save();
   const customer=departed.adventurers.find(h=>h.id===fixture.heroId)!;
   expect(customer.equipment.weapon).toBe("Forged Spear");
-  expect(customer.offDutyUntilDay).toBe(departed.day+3);
+  expect(customer.offDutyUntilTick).toBeGreaterThan(departed.worldClock.tick);
   expect(departed.events.filter(e=>e.type==="shop-departure"&&e.adventurerId===fixture.heroId)).toHaveLength(1);
   expect(errors).toEqual([]);
 });

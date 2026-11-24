@@ -6,7 +6,7 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {walkOutWithoutPurchase} from "../../src/game/shopWalkout.ts";
 import {scheduleShopVisit} from "../../src/game/shopArrivals.ts";
-import {completeObservedShopExit,POST_SHOP_OFF_DUTY_DAYS}
+import {completeObservedShopExit,postShopRecoveryTicks}
   from "../../src/game/shopRotation.ts";
 import {generateExpeditionLayout} from "../../src/game/dungeonLayout.ts";
 import {selectLiveBoardHeroes} from "../../src/game/liveBoardProjection.ts";
@@ -22,7 +22,7 @@ function exitFixture(){
 
 test("shop departure is a committed outer-gate crossing, not an intent or a cashier click",()=>{
   const {state,hero}=exitFixture();
-  assert.equal(POST_SHOP_OFF_DUTY_DAYS,2);
+  assert.equal(postShopRecoveryTicks(hero),400);
   assert.strictEqual(completeObservedShopExit(state,hero.id,12.4),state);
   assert.strictEqual(completeObservedShopExit(state,"adventurer-999",13),state);
   assert.strictEqual(completeObservedShopExit(state,hero.id,NaN),state);
@@ -30,7 +30,7 @@ test("shop departure is a committed outer-gate crossing, not an intent or a cash
   const after=completeObservedShopExit(state,hero.id,13);
   const departed=after.adventurers.find(h=>h.id===hero.id)!;
   assert.equal(departed.status,"off-duty");
-  assert.equal(departed.offDutyUntilDay,4,"exit on Day 1 means whole Days 2 and 3 away");
+  assert.equal(departed.offDutyUntilTick,state.worldClock.tick+400);
   assert.deepEqual(departed.inventory,hero.inventory,"a free trip grants no goods");
   assert.equal(departed.gold,hero.gold);
   assert.equal(departed.health,hero.health);
@@ -47,53 +47,62 @@ test("shop departure is a committed outer-gate crossing, not an intent or a cash
   assert.equal(board.report?.eventId,exits[0].id);
 });
 
-test("two FULL days outside preserve gear and gold, consume owned healing, then safely reenter",()=>{
+test("recovery duration uses real injury and owned supplies",()=>{
+  const {hero}=exitFixture(),max=hero.stats.maxHealth;
+  assert.equal(postShopRecoveryTicks(hero),400);
+  assert.equal(postShopRecoveryTicks({...hero,health:Math.floor(max*.8)}),1200);
+  assert.equal(postShopRecoveryTicks({...hero,health:Math.floor(max*.5)}),4800);
+  assert.equal(postShopRecoveryTicks({...hero,health:Math.floor(max*.5),
+    inventory:{bread:0,healing:1}}),2400);
+});
+test("injured hero consumes one owned dose and resumes on the saved world clock",()=>{
   const {state,hero}=exitFixture();
-  const exiting=completeObservedShopExit(state,hero.id,13);
-  const injured={...exiting,adventurers:exiting.adventurers.map(h=>h.id===hero.id
-    ?{...h,health:Math.max(1,h.health-12),inventory:{...h.inventory,healing:2}}
-    :h)};
-  const startHero=injured.adventurers.find(h=>h.id===hero.id)!;
-  const rested=useHealingSupplies(startHero,2).adventurer;
-  assert.equal(rested.health,startHero.stats.maxHealth);
-  assert.equal(rested.inventory.healing,1);
-  const uninterrupted=new GameStore(injured);
-  const loaded=new GameStore(parseSave(JSON.stringify(createSave(injured))));
-  for(const day of [2,3,4]){
-    uninterrupted.endDay();
-    loaded.endDay();
-    assert.deepEqual(uninterrupted.state,loaded.state,"day "+day+" must reload deterministically");
-    assert.equal(uninterrupted.state.day,day);
-    const current=uninterrupted.state.adventurers.find(h=>h.id===hero.id)!;
-    if(day<=3){
-      assert.equal(current.status,"off-duty");
-      assert.equal(current.health,rested.health);
-      assert.deepEqual(current.inventory,rested.inventory,
-        "actual off-duty healing spends one owned herb, never mints supplies");
-      assert.equal(current.gold,startHero.gold);
-      assert(!uninterrupted.state.liveDungeon.combats.some(f=>f.heroIds.includes(hero.id)));
-    }else{
-      assert.equal(current.status,"exploring");
-      assert.equal(current.floor,1);
-      assert.equal(current.offDutyUntilDay,null);
-      assert.equal(current.health,rested.health);
-      assert.deepEqual(current.inventory,rested.inventory);
-      const layout=generateExpeditionLayout(injured.seed,1);
-      const pos=uninterrupted.state.dungeonWorlds?.find(w=>w.floor===1)?.world
-        .heroes.find(h=>h.heroId===hero.id);
-      assert(pos);
-      assert.deepEqual({x:pos.x,z:pos.z},layout.entrance);
-      assert(uninterrupted.state.events.some(e=>e.day===4&&e.type==="dungeon-live"&&
-        e.adventurerId===hero.id&&e.message.includes("new expedition")));
-    }
-    assert.deepEqual(parseSave(JSON.stringify(createSave(uninterrupted.state))),
-      uninterrupted.state,"save must stay strict on Day "+day);
+  const injured={...state,adventurers:state.adventurers.map(h=>h.id===hero.id
+    ?{...h,health:h.health-12,inventory:{...h.inventory,healing:2}}:h)};
+  const exiting=completeObservedShopExit(injured,hero.id,13);
+  const original=exiting.adventurers.find(h=>h.id===hero.id)!;
+  const due=original.offDutyUntilTick!;
+  const rested=useHealingSupplies(original,1,due).adventurer;
+  const live=new GameStore(exiting);
+  live.advanceWorldTime(due-1);
+  assert.deepEqual(live.state.adventurers.find(h=>h.id===hero.id),original);
+  const loaded=new GameStore(parseSave(JSON.stringify(createSave(live.state))));
+  live.advanceWorldTime(1);loaded.advanceWorldTime(1);
+  assert.deepEqual(live.state,loaded.state);
+  const current=live.state.adventurers.find(h=>h.id===hero.id)!;
+  assert.equal(current.status,"exploring");
+  assert.equal(current.floor,1);
+  assert.equal(current.offDutyUntilTick,null);
+  assert.equal(current.health,rested.health);
+  assert.deepEqual(current.inventory,rested.inventory);
+  assert.equal(current.gold,original.gold);
+  assert.equal(live.state.events.filter(e=>e.type==="healed"&&e.adventurerId===hero.id).length,1);
+  const pos=live.state.dungeonWorlds.find(w=>w.floor===1)?.world.heroes.find(h=>h.heroId===hero.id);
+  assert(pos);
+  assert.deepEqual({x:pos.x,z:pos.z},generateExpeditionLayout(injured.seed,1).entrance);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(live.state))),live.state);
+});
+test("recovery across midnight neither heals early nor restarts the saved deadline",()=>{
+  const {state,hero}=exitFixture();
+  const live=new GameStore(state);
+  live.advanceWorldTime(28790);
+  assert(live.completePhysicalShopExit(hero.id,13));
+  const before=live.state.adventurers.find(h=>h.id===hero.id)!;
+  assert(before.offDutyUntilTick!>28800);
+  const resumed=new GameStore(parseSave(JSON.stringify(createSave(live.state))));
+  live.endDay();resumed.endDay();
+  assert.deepEqual(live.state,resumed.state);
+  assert.deepEqual(live.state.adventurers.find(h=>h.id===hero.id),before);
+  while(live.state.worldClock.tick<before.offDutyUntilTick!){
+    live.advanceWorldTime(200);resumed.advanceWorldTime(200);
   }
-  assert.equal(uninterrupted.state.events.filter(e=>e.type==="shop-departure"&&
-    e.adventurerId===hero.id).length,1);
-  assert.equal(uninterrupted.state.events.filter(e=>e.type==="healed"&&
-    e.adventurerId===hero.id).length,1,
-    "one real herb use, no duplicated healing on the second off-duty day");
+  assert.deepEqual(live.state,resumed.state);
+  const current=live.state.adventurers.find(h=>h.id===hero.id)!;
+  assert.equal(current.status,"exploring");
+  assert.equal(current.offDutyUntilTick,null);
+  assert.equal(current.health,before.health);
+  assert.deepEqual(current.inventory,before.inventory);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(live.state))),live.state);
 });
 
 test("live night schedule does not invent a physical departure for a paid or unresolved shopper",()=>{

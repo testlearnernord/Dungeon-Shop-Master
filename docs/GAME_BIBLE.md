@@ -37,7 +37,7 @@
 - Furniture and excavation follow a **single** physical placement and reachability contract. Moving fixtures cannot trap customers, bypass queue access or destroy required bed/staff-side access.
 - Customers reserve merchandise in **unpaid carts**. Only completed staffed checkout creates sales income; approved credit is a debt, not a cash sale. Unserved goods return, not vanish or become fabricated purchases.
 - Restock requests and queue traffic follow genuine simulation and saved world time. The player must physically deliver service; **F** is only a hotbar shortcut.
-- Real **outside-gate departure** starts the existing two complete off-duty game days before a hero may reenter the dungeon. No automatic free healing or instant post-shop reentry.
+- Real **outside-gate departure** starts bounded recovery on the existing world clock. Injury and owned supplies determine its duration. A hero consumes at most one owned healing dose on reentry; no free HP or instant teleport.
 
 ### Heroes, combat and records
 
@@ -55,7 +55,7 @@ The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper contract.
 - **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v36. Historic room names are source-module labels, not extra saved doors or a numbered shop.
 - Heroes choose **stay / deeper / higher** based on individual medium-term goals such as farming, testing gear, survival or progress. **CURRENT:** plans and parts of same-day movement already persist; deeper/full-floor progression remains incomplete.
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
-- Returning customers leave for **two complete off-duty days** outside shop and dungeon. **CURRENT:** physical departure, saved cooldown and safe entry already exist; the future portal topology/reentry presentation remains open.
+- Returning customers recover outside both shop and dungeon for **20–240 unpaused seconds** (initial tuning), then resume at their remembered floor entrance. Checkout, credit and walkout eligibility follow the current actual shop visit.
 - Common opponents, traps and chests refresh on saved intervals across ordinary Floors 1–9; unique boss victories and persistent discoveries do not respawn as common loot.
 - **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved permitted Temporary Party of two or three heroes. Individual eligibility is the canonical `bossPass` field since Alpha v27. V34 and older Alpha saves are unsupported and rejected without migration. Substantive *authored* variety and a full playable progression audit are still open.
 - Full 100-floor progression is a long-range fiction/ambition, **not** a claim of implemented, promised or budgeted launch content.

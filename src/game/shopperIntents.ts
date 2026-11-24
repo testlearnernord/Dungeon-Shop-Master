@@ -1,3 +1,4 @@
+import {manuallyPaidVisitors} from "./npcVisitors.ts";
 import { ECONOMY, ITEMS, preferredShopItemOrder, tradeAtStartOfDay, type ItemId } from "./economy.ts";
 import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
 import type { GameState } from "./gameState.ts";
@@ -25,10 +26,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
   // Treat unpaid carried items as a virtual part of their buyer's inventory
   // and budget, so the next forecast cannot sell the same need or gold twice.
   // This projection NEVER changes the authoritative hero or shop inventory.
-  const paidHeroIds=new Set(state.events.filter(event=>
-    event.type==="sale" && event.saleChannel==="manual" &&
-    event.day===state.day && event.adventurerId)
-    .map(event=>event.adventurerId!));
+  const paidHeroIds=manuallyPaidVisitors(state.events,state.day);
   const cartsByHero=new Map(state.shopCarts.map(cart=>[cart.heroId,cart]));
   const virtualHeroes = state.adventurers.map(hero => {
     const cart = cartsByHero.get(hero.id);

@@ -279,6 +279,7 @@ function run(mode){
     wholesaleUnits:{},wholesaleSpent:0,influxGold:0,
     buybackGold:0,materialsBought:{},materialsConsumed:{},craftedUnits:{},
     lateEventTypes:{}, xpGrowthDays:[], servedCustomers:0,
+    activitySamples:{living:0,offDuty:0,exploring:0,count:0},
     unservedCustomers:0,gateExits:0,bossPassesGranted:0,
     bossAttempts:0,failedCheckout:{},nextRequestId:1,
   };
@@ -290,6 +291,11 @@ function run(mode){
       actShop(store,mode,metrics);
       store.advanceWorldTime(200);
       telemetry.sample(store.state);
+      const active=store.state.adventurers.filter(h=>h.status!=="dead");
+      metrics.activitySamples.living+=active.length;
+      metrics.activitySamples.offDuty+=active.filter(h=>h.status==="off-duty").length;
+      metrics.activitySamples.exploring+=active.filter(h=>h.status==="exploring").length;
+      metrics.activitySamples.count++;
     }
     actShop(store,mode,metrics);
     telemetry.finishDay(store.state);
@@ -320,6 +326,8 @@ function run(mode){
   }
   const final=snap(store.state,DAYS);
   metrics.final=final;
+  metrics.activitySamples.offDutyShare=metrics.activitySamples.offDuty/Math.max(1,metrics.activitySamples.living);
+  metrics.activitySamples.exploringShare=metrics.activitySamples.exploring/Math.max(1,metrics.activitySamples.living);
   // Final cohort turnover and death equipment are not exposure-adjusted
   // hazard estimates. Keep them explicit instead of treating a full
   // replacement roster as proof of successful survival.

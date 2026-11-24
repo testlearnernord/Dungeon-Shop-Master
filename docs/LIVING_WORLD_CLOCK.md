@@ -15,7 +15,7 @@
 
 1. An adventurer finishes a real exploration decision, may choose shop, and backtracks **known connected tiles** toward a seeded entrance. The LIVE clock schedules a real portal crossing, not an invented arrival from a hidden map.
 2. Galvik's shop is a separate **unnumbered cursed realm**. Normal NPC arrivals and departures share one physical shop threshold. The current Alpha v35 physical shop checkpoint contains exactly one `portal` door. Former `level4`/`level6` gates are removed and v27 saves are rejected (no migration); the separately named shop `floor=5` occupancy still needs its own cleanup.
-3. A paid/credited visitor still needs a **real physical departure** before `off-duty` begins. After leaving on Day D, the hero spends full Days D+1 and D+2 outside shop/dungeon. Earliest renewed expedition begins Day D+3.
+3. A paid/credited visitor still needs a **real physical departure** before `off-duty` begins. After leaving, a saved offDutyUntilTick deadline controls recovery on the existing movement lane, even across midnight. Healthy heroes return after 400 ticks plus at most one movement interval. No second clock or daily reset.
 4. Off-duty healing consumes genuinely owned Waybread/Herbs if available. No passive full heal, debt cancellation, free item, gold grant or instant reentry.
 5. Time-bound restock waits and shopping-cart claims are durable saved events/objects. Cancelling/reloading a viewer never renews a deadline or sells a reserved cart. Day closure restores unpaid goods without phantom receipts.
 
@@ -34,7 +34,7 @@
 
 ## Verification and remaining risks
 
-**Implemented and testable:** shared tick owner; 200-tick spatial pacing; 60-Hz combat; physical shop cart/checkout; portal return; two-day rotation; genuine group boss; bounded archive.
+**Implemented and testable:** shared tick owner; 200-tick spatial pacing; 60-Hz combat; physical shop cart/checkout; portal return; health-dependent recovery; genuine group boss; bounded archive.
 
 **Still open:** full 20-/50-/100-day current-code balancing; actual physical NPC pathfinding under slow checkout/service; re-entry and shop gate migration out of legacy keys; representative device frame pacing and audio/visual acceptance. See [Roadmap](ROADMAP.md) and open issue #294.
 

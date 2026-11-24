@@ -6,7 +6,7 @@
 > **C1 maintenance update (review pending):** The old standalone `src/ledgerHeroChronicle.ts` and `src/ledgerSealedExpeditions.ts` were verified to have no production imports and are retired in Phase C1, with their obsolete module-only tests replaced by a current Expedition Archive no-spoiler regression. The historical migration table below remains historical evidence, not current live code.
 
 
-> **Current implementation summary (21 November 2026):** the knowledge-safe LIVE Board, bounded replay timeline, two-page night book, death signals and physical two-day rotation are implemented. Earlier “existing code / replace in future” tables below are **historical migration records**, not ongoing tasks. See [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) for present ownership and remaining release work.
+> **Current implementation summary (21 November 2026):** the knowledge-safe LIVE Board, bounded replay timeline, two-page night book, death signals and physical two-day rotation were implemented at that historical checkpoint (superseded by v39 world-tick recovery). Earlier “existing code / replace in future” tables below are **historical migration records**, not ongoing tasks. See [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) for present ownership and remaining release work.
 
 
 ### Implemented PR #213 lifecycle (20 November 2026, integration CI pending)

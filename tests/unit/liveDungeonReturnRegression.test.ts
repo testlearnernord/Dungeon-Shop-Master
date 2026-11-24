@@ -54,35 +54,24 @@ test("seed 9321: climbing from below can discover a real portal route without fa
     "A random tile without any valid entry anchor remains an invalid save.");
 });
 
-test("off-duty heroes consume only their owned medicine, not phantom daily healing",()=>{
+test("off-duty heroes consume only their owned medicine, not phantom healing",()=>{
   const first=createGameState(7351,{dailyInflux:0,maxActive:10});
   const hero=first.adventurers[0];
-  const wounded={...hero,
-    status:"off-duty" as const,floor:"away" as const,offDutyUntilDay:4,
-    health:hero.stats.maxHealth-20,
-    inventory:{...hero.inventory,healing:1,bread:1},
-  };
-  const store=new GameStore({...first,adventurers:first.adventurers.map(h=>
-    h.id===hero.id?wounded:h)});
-  store.enableLiveDungeon();
-  store.endDay(); // second day of campaign; first full day away
-  const day2=store.state.adventurers.find(h=>h.id===hero.id)!;
-  assert.equal(day2.status,"off-duty");
-  assert.equal(day2.health,hero.stats.maxHealth-2);
-  assert.equal(day2.inventory.healing,0);
-  assert.equal(day2.inventory.bread,1);
-  assert.equal(store.state.events.filter(e=>e.type==="healed"&&
-    e.adventurerId===hero.id).length,1);
-  store.endDay(); // one more away day, last two HP cost the bread
-  const day3=store.state.adventurers.find(h=>h.id===hero.id)!;
-  assert.equal(day3.status,"off-duty");
-  assert.equal(day3.health,hero.stats.maxHealth);
-  assert.equal(day3.inventory.bread,0);
-  store.endDay(); // returns only at day 4
-  const day4=store.state.adventurers.find(h=>h.id===hero.id)!;
-  assert.equal(day4.status,"exploring");
-  assert.equal(day4.health,hero.stats.maxHealth);
-  assert.equal(day4.inventory.healing,0);
-  assert.equal(day4.inventory.bread,0);
-  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+  for(const medicine of [0,1]){
+    const wounded={...hero,status:"off-duty" as const,floor:"away" as const,
+      offDutyUntilTick:2400,health:hero.stats.maxHealth-20,
+      inventory:{...hero.inventory,healing:medicine,bread:0}};
+    const store=new GameStore({...first,adventurers:first.adventurers.map(h=>
+      h.id===hero.id?wounded:h)});
+    store.enableLiveDungeon();
+    store.advanceWorldTime(2399);
+    assert.deepEqual(store.state.adventurers.find(h=>h.id===hero.id),wounded);
+    store.advanceWorldTime(1);
+    const returned=store.state.adventurers.find(h=>h.id===hero.id)!;
+    assert.equal(returned.status,"exploring");
+    assert.equal(returned.health,wounded.health+medicine*18);
+    assert.equal(returned.inventory.healing,0);
+    assert.equal(store.state.events.filter(e=>e.type==="healed"&&e.adventurerId===hero.id).length,medicine);
+    assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+  }
 });

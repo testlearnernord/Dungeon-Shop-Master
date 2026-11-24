@@ -187,19 +187,12 @@ test("ten live days: real credit, paid cart, death, parties, observed exits, ree
       p.memberIds.every(id=>store.state.adventurers.some(h=>h.id===id&&
         h.health>0&&h.floor===p.floor))),
       "No dead/off-duty hero can remain in a live party");
-    const debtor=store.state.adventurers.find(h=>h.id===fixture.debtorId)!;
-    const buyer=store.state.adventurers.find(h=>h.id===fixture.buyerId)!;
-    if(day===2||day===3){
-      assert.equal(debtor.status,"off-duty");
-      assert.equal(buyer.status,"off-duty");
-      assert(!store.state.liveDungeon.combats.some(f=>
-        f.heroIds.includes(debtor.id)||f.heroIds.includes(buyer.id)));
-    }
-    if(day===4){
-      assert.equal(debtor.status,"exploring");
-      assert.equal(buyer.status,"exploring");
-      assert.equal(debtor.offDutyUntilDay,null);
-      assert.equal(buyer.offDutyUntilDay,null);
+    for(const id of [fixture.debtorId,fixture.buyerId]){
+      assert(store.state.events.some(e=>e.adventurerId===id&&e.day===1&&
+        e.type==="dungeon-live"&&e.message.includes("began a new expedition")),
+        "Initial physical exit must lead to a genuine same-day reentry");
+      const hero=store.state.adventurers.find(h=>h.id===id)!;
+      assert.equal(hero.offDutyUntilTick!==null,hero.status==="off-duty");
     }
     assert.deepEqual(archiveAvailableDays(day),
       Array.from({length:Math.min(day,3)},(_,i)=>day-i));
