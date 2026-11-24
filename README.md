@@ -57,7 +57,7 @@ Core systems were reconciled on 22 November 2026 through merged #322 (Alpha v36)
 | Input | Purpose |
 | --- | --- |
 | WASD / mouse / Shift | Move, look, sprint |
-| 1–5 / mouse wheel | Choose an actual shelf-stock item |
+| 1–0 / mouse wheel | Choose an actual shelf-stock item |
 | Left / right click on shelf | Add / remove one item |
 | Shift + left / right click | Fill / empty reachable slot, respecting stock rules |
 | B / F | Open wholesale / select urgent restock item |

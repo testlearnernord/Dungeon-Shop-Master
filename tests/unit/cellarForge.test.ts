@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {createGameState} from "../../src/game/gameState.ts";
 import type {AdventurerState} from "../../src/game/adventurers.ts";
-import {buyWholesale,ECONOMY,ITEMS}
+import {buyWholesale,ECONOMY,ITEMS,SHELF_GOODS,shelfHotkey,shelfItemForHotkey}
   from "../../src/game/economy.ts";
 import {craftAtCellarForge} from "../../src/game/cellarForge.ts";
 import {buyHeroDungeonFind} from "../../src/game/dungeonBuyback.ts";
@@ -473,4 +473,14 @@ test("real Level-10 T2 party survives active and archived save validation",()=>{
     (tank.equipment as {weapon:string|null;armor:string|null})[slot]=name;
     assert.throws(()=>parseSave(JSON.stringify(forged)),/partyBossReplay/);
   }
+});
+
+test("expanded stock hotbar labels match physical number keys and leave overflow to the wheel",()=>{
+  for(let i=0;i<SHELF_GOODS.length;i++){
+    const key=shelfHotkey(i);
+    if(i<10)assert.equal(shelfItemForHotkey("Digit"+key),SHELF_GOODS[i].id);
+    else assert.equal(key,null);
+  }
+  assert.equal(shelfItemForHotkey("Digit0"),"forged-spear");
+  assert.equal(shelfItemForHotkey("KeyE"),null);
 });

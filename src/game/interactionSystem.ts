@@ -5,7 +5,7 @@ import "@babylonjs/core/Culling/ray";
 import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Scene } from "@babylonjs/core/scene";
-import {SHELF_GOODS,type ItemId} from "./economy.ts";
+import {SHELF_GOODS,shelfItemForHotkey,type ItemId} from "./economy.ts";
 import { Shop } from "./shop";
 import {describeShelfFocus} from "./shopServiceFocus.ts";
 import type { WorldInteractable } from "./world";
@@ -119,12 +119,13 @@ export class InteractionSystem {
       if (document.pointerLockElement !== this.canvas) this.heldButton = null;
     });
     window.addEventListener("keydown", (event) => {
+      const hotkeyItem=shelfItemForHotkey(event.code);
       if(!event.repeat && !event.defaultPrevented && !event.altKey && !event.ctrlKey &&
           !event.metaKey && !event.shiftKey && this.isShopActive() && !document.querySelector("dialog[open]") &&
           !(event.target instanceof HTMLElement &&
             (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT","BUTTON"].includes(event.target.tagName))) &&
-          /^Digit[1-5]$/.test(event.code)){
-        this.selectItem(SHELF_GOODS[Number(event.code.slice(-1))-1].id);
+          hotkeyItem!==null){
+        this.selectItem(hotkeyItem);
         event.preventDefault();
         return;
       }
