@@ -135,6 +135,16 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
     probe.armGhoulObservationAnimationProbe(id);
   },expected.selected);
+  // A real 1.2-second animation advances by bounded RENDER deltas. Slow
+  // CI software GL can need many seconds to draw twelve frames; requiring
+  // a wall-clock 4.5s Idle deadline is not a gameplay correctness test.
+  const renderedWalkThenIdle=async()=>{
+    const frames=await phases();
+    const firstWalk=frames.findIndex(p=>
+      p.phase==="walk"&&p.walk&&!p.idle);
+    return firstWalk>=0&&frames.slice(firstWalk+1).some(p=>
+      p.phase==="idle"&&p.idle&&!p.walk);
+  };
   await arm();
   await nextMonsterStep();
   // Use ACTUAL browser render frames, not a late Playwright snapshot after
@@ -146,8 +156,8 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   expect(tableWalking?.clip).toBe("walk_feral");
   expect(tableWalking?.walk).toBe(true);
   expect(tableWalking?.idle).toBe(false);
-  await expect.poll(async()=> (await selected())?.phase,
-    {timeout:4500,intervals:[150,200]}).toBe("idle");
+  await expect.poll(renderedWalkThenIdle,
+    {timeout:15000,intervals:[150,250,350]}).toBe(true);
   const tableArrived=await selected();
   expect(tableArrived?.idleModel).toBe(true);
   expect(tableArrived?.walkModel).toBe(false);
@@ -193,8 +203,8 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   expect(liveWalking?.clip).toBe("walk_feral");
   expect(liveWalking?.walk).toBe(true);
   expect(liveWalking?.idle).toBe(false);
-  await expect.poll(async()=> (await selected())?.phase,
-    {timeout:4500,intervals:[150,200]}).toBe("idle");
+  await expect.poll(renderedWalkThenIdle,
+    {timeout:15000,intervals:[150,250,350]}).toBe(true);
   const liveArrived=await selected();
   expect(liveArrived?.idleModel).toBe(true);
   expect(liveArrived?.walkModel).toBe(false);
