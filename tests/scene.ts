@@ -1373,6 +1373,29 @@ export function aimAtFishingPond():void{
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-8.4,-4.31,-27));
 }
 
+/** Stand by the actual cellar anvil, aimed through the REAL shop camera.
+ * This does not open a menu or call GameStore. The production E ray must
+ * hit the pickable physical forge mesh within three metres. */
+export function aimAtCellarForge():void{
+  const scene=currentTestScene();
+  const anvil=scene?.getMeshByName("cellar-forge-anvil");
+  const camera=scene?.activeCamera as UniversalCamera|undefined;
+  if(!anvil||!camera)throw Error("Cellar forge or shop camera missing");
+  const center=anvil.getAbsolutePosition();
+  camera.position.set(center.x,center.y+.65,center.z+1.5);
+  camera.setTarget(center);
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+export function inspectCellarForge(){
+  const scene=currentTestScene();
+  const anvil=scene?.getMeshByName("cellar-forge-anvil");
+  return {exists:!!anvil,pickable:anvil?.isPickable??false,
+    collision:anvil?.checkCollisions??false,
+    position:anvil?{x:anvil.position.x,y:anvil.position.y,z:anvil.position.z}:null,
+    sameScene:anvil?.getScene()===scene};
+}
+
 export function aimUpCellarStairs():void{
   const scene=currentTestScene()!;
   (scene.activeCamera as UniversalCamera).setTarget(new Vector3(-.85,1.4,-10.2));
