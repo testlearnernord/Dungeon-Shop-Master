@@ -183,13 +183,15 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   // The first-person transfer must still use the real shelf product.
   // The canvas now owns pointer lock. Use actual in-game wheel selection
   // instead of clicking an unlocked HUD through the captured mouse.
+  await page.keyboard.press("0");
+  await expect(page.locator('#inventory [data-item-id="forged-staff"]')).toHaveAttribute("aria-pressed","true");
   await page.mouse.wheel(0,120);
   await expect(page.locator('#inventory [data-item-id="ghoul-leather-vest"]')).toHaveAttribute("aria-pressed","true");
   await page.mouse.click(400,300,{button:"right"});
   await expect(page.locator("#status")).toContainText("Returned T2 Spear");
   await expect(page.locator('#inventory [data-item-id="forged-spear"] strong')).toHaveText("1");
   await expect.poll(heldStock).toMatchObject(physicalSpear);
-  await page.keyboard.press("0");
+  await page.keyboard.press("9");
   await expect(page.locator('#inventory [data-item-id="forged-spear"]')).toHaveAttribute("aria-pressed","true");
   await page.mouse.click(400,300);
   await expect(page.locator("#status")).toContainText("Placed T2 Spear");

@@ -481,6 +481,7 @@ test("expanded stock hotbar labels match physical number keys and leave overflow
     if(i<10)assert.equal(shelfItemForHotkey("Digit"+key),SHELF_GOODS[i].id);
     else assert.equal(key,null);
   }
-  assert.equal(shelfItemForHotkey("Digit0"),"forged-spear");
+  assert.equal(shelfItemForHotkey("Digit9"),"forged-spear");
+  assert.equal(shelfItemForHotkey("Digit0"),"forged-staff");
   assert.equal(shelfItemForHotkey("KeyE"),null);
 });
