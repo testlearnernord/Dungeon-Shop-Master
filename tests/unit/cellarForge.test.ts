@@ -216,6 +216,29 @@ for(const [role,t1,t2,t2Name] of [
   });
 }
 
+test("full bag rejects forging without consuming paid materials; stocking frees exactly one slot",()=>{
+  const original=createStockedShopState(7351);
+  const initial={...original,shopEconomy:{...original.shopEconomy,
+    materialStorage:{"iron-ore":1,coal:1,"ghoul-leather":2},
+    bag:{...Object.fromEntries(ITEMS.map(i=>[i.id,0])) as typeof original.shopEconomy.bag,
+      bread:ECONOMY.bagCapacity}}};
+  const store=new GameStore(initial);
+  assert.match(store.craftAtForge("forged-spear"),/bag is full/i);
+  assert.equal(store.state,initial);
+  const empty=store.state.shopEconomy.slots.find(slot=>slot.quantity===0)!;
+  assert.match(store.transfer(empty.id,"bread","stock"),/Placed/);
+  assert.match(store.craftAtForge("forged-spear"),/Forged 1/);
+  assert.equal(store.state.shopEconomy.bag["forged-spear"],1);
+  assert.equal(Object.values(store.state.shopEconomy.bag).reduce((sum,n)=>sum+n,0),
+    ECONOMY.bagCapacity);
+  assert.deepEqual(store.state.shopEconomy.materialStorage,
+    {"iron-ore":0,coal:0,"ghoul-leather":2});
+  const full=store.state;
+  assert.match(store.craftAtForge("ghoul-leather-vest"),/bag is full/i);
+  assert.equal(store.state,full);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(full))),full);
+});
+
 test("Ghoul Leather originates in deterministic monster rewards, never in chests",()=>{
   let sampled=false;
   for(let cycle=0;cycle<150;cycle++){
