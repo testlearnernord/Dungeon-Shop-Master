@@ -17,7 +17,7 @@ import {wallPortraitProblem} from "./wallPortraitPlacement.ts";
 import {wallClockProblem} from "./wallClockPlacement.ts";
 import { advanceWorldUntil, lastWorldTickOfDay,
   WORLD_TICKS_PER_GAME_MINUTE } from "./worldClock.ts";
-import {activateLiveDungeon,commitLiveWorldEvent} from "./liveDungeonRuntime.ts";
+import {activateLiveDungeon,commitLiveWorldEvent,type DungeonDiagnosticSink} from "./liveDungeonRuntime.ts";
 import {containsReplay,MAX_SAVED_REPLAYS} from "./replayRetention.ts";
 import {completeObservedShopExit} from "./shopRotation.ts";
 import {clearResolvedShopRequests,commitShopRequestEvent,closeShopRequests,
@@ -29,7 +29,7 @@ export class GameStore {
   private readonly purchases = new Set<number>();
   private liveDungeonRequested=false;
 
-  constructor(state = createGameState()) {
+  constructor(state = createGameState(),private readonly dungeonDiagnostic?:DungeonDiagnosticSink) {
     this.current = state;
   }
 
@@ -285,7 +285,8 @@ export class GameStore {
     const target=Math.min(lastWorldTickOfDay(this.current.day),oldTick+ticks);
     if(target===oldTick)return;
     const advanced=advanceWorldUntil(this.current,target,
-      this.current.liveDungeon.enabled?commitLiveWorldEvent:commitShopRequestEvent);
+      this.current.liveDungeon.enabled?
+        (state,event)=>commitLiveWorldEvent(state,event,this.dungeonDiagnostic):commitShopRequestEvent);
     // Keep saveable clock/checkpoint identities aligned while the committed
     // shop step finishes. The caller replaces the position checkpoint after
     // actually moving the customers.
@@ -299,7 +300,8 @@ export class GameStore {
     // No late-night unserved customer can buy stock on the following morning.
     const atClose=advanceWorldUntil(this.current,
       lastWorldTickOfDay(this.current.day),
-      this.current.liveDungeon.enabled?commitLiveWorldEvent:commitShopRequestEvent);
+      this.current.liveDungeon.enabled?
+        (state,event)=>commitLiveWorldEvent(state,event,this.dungeonDiagnostic):commitShopRequestEvent);
     this.replace(advanceDay(closeShopRequests(atClose)).state);
   }
 }
