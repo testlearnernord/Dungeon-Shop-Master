@@ -8,7 +8,7 @@ import type {RenderQualityMode} from "./game/adaptiveResolution.ts";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { createFirstPersonCamera } from "./game/firstPersonController";
-import {SHELF_GOODS,type ItemId} from "./game/economy.ts";
+import {SHELF_GOODS,shelfHotkey,type ItemId} from "./game/economy.ts";
 import { ECONOMY } from "./game/economy";
 import { GameStore } from "./game/gameStore";
 import { WorldClockPacer } from "./game/worldClockPacer.ts";
@@ -411,11 +411,12 @@ function renderInventory(selectedItem: ItemId): void {
     row.dataset.itemId = item.id;
     row.setAttribute("aria-label",`Select ${item.name}, ${store.state.shopEconomy.bag[item.id]} available`);
     row.setAttribute("aria-pressed",String(item.id===selectedItem));
-    row.title=`${index+1}: ${item.name}`;
+    const hotkey=shelfHotkey(index);
+    row.title=hotkey?`${hotkey}: ${item.name}`:`Wheel: ${item.name}`;
     row.addEventListener("click",()=>interactions.selectItem(item.id));
     row.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();interactions.selectItem(item.id);}});
     const key=document.createElement("kbd");
-    key.className="hotbar-key";key.textContent=String(index+1);
+    key.className="hotbar-key";key.textContent=hotkey??"↕";
     const dot = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     dot.classList.add("item-pictogram");
     dot.setAttribute("viewBox", "0 0 48 48");
@@ -450,7 +451,7 @@ function renderInventory(selectedItem: ItemId): void {
     store.state.shopEconomy.bag[selectedStock.id]+" in bag";
   inventoryHud.append(selectedStatus);
   const hint=document.createElement("span");hint.className="hotbar-hint";
-  hint.textContent="Wheel / 1–5 select · Click one · Shift+click fill / clear";
+  hint.textContent="Wheel / 1–0 select · Click one · Shift+click fill / clear";
   inventoryHud.append(hint);
   if (focusedItemId) rows.get(focusedItemId)?.focus({ preventScroll: true });
 }
@@ -461,7 +462,7 @@ let fishing:ReturnType<typeof setupFishingHud>|null=null;
 let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
   ()=>isShopActive(),message=>{statusHud.textContent=message;});
-const merchantActions=createMerchantActions(scene,camera,()=>sfx.soundEnabled,()=>sfx.soundVolume,()=>isShopActive(),()=>selectedItemId);
+const merchantActions=createMerchantActions(scene,camera,()=>sfx.soundEnabled,()=>sfx.soundVolume,()=>isShopActive());
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;
@@ -469,7 +470,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
 }, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.",
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
-  debtBook.open,store,action=>merchantActions.play(action),
+  debtBook.open,store,(action,itemId)=>merchantActions.play(action,itemId),
   ()=>fishing?.open()??false,()=>observeTable(),()=>forgeHud.open());
 setupControlsHotbarClearance();
 setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),

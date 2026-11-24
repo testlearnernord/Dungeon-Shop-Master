@@ -5,7 +5,7 @@ import "@babylonjs/core/Culling/ray";
 import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Scene } from "@babylonjs/core/scene";
-import {SHELF_GOODS,type ItemId} from "./economy.ts";
+import {SHELF_GOODS,shelfItemForHotkey,type ItemId} from "./economy.ts";
 import { Shop } from "./shop";
 import {describeShelfFocus} from "./shopServiceFocus.ts";
 import type { WorldInteractable } from "./world";
@@ -38,7 +38,7 @@ export class InteractionSystem {
     private readonly openBeggarRequest: () => boolean = () => false,
     private readonly openDebtBook: () => void = () => {},
     private readonly store?: GameStore,
-    private readonly onMerchantAction: (action:MerchantAction)=>void = () => {},
+    private readonly onMerchantAction: (action:MerchantAction,itemId?:ItemId)=>void = () => {},
     private readonly openFishing:()=>boolean=()=>false,
     private readonly observeTable:()=>boolean=()=>false,
     private readonly openForge:()=>boolean=()=>false,
@@ -119,12 +119,13 @@ export class InteractionSystem {
       if (document.pointerLockElement !== this.canvas) this.heldButton = null;
     });
     window.addEventListener("keydown", (event) => {
+      const hotkeyItem=shelfItemForHotkey(event.code);
       if(!event.repeat && !event.defaultPrevented && !event.altKey && !event.ctrlKey &&
           !event.metaKey && !event.shiftKey && this.isShopActive() && !document.querySelector("dialog[open]") &&
           !(event.target instanceof HTMLElement &&
             (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT","BUTTON"].includes(event.target.tagName))) &&
-          /^Digit[1-5]$/.test(event.code)){
-        this.selectItem(SHELF_GOODS[Number(event.code.slice(-1))-1].id);
+          hotkeyItem!==null){
+        this.selectItem(hotkeyItem);
         event.preventDefault();
         return;
       }
@@ -269,10 +270,14 @@ export class InteractionSystem {
         return;
       }
       const before=this.store?.state;
+      // Destocking transfers the actual slot product, regardless of which
+      // bag item happens to be selected. Capture it before the store refresh.
+      const transferredItem=button===0?SHELF_GOODS[this.selectedIndex].id:slot.itemId;
       this.message = button === 0
         ? this.shop.stock(slot,bulk ? slot.capacity : 1)
         : this.shop.remove(slot,bulk ? slot.capacity : 1);
-      if(this.store && this.store.state!==before)this.onMerchantAction(button===0?"stock":"destock");
+      if(this.store&&this.store.state!==before&&transferredItem)
+        this.onMerchantAction(button===0?"stock":"destock",transferredItem);
     } else {
       const target = this.worldItems.find(({ mesh }) => mesh === hit.pickedMesh);
       if (target?.kind === "register" && button === 0) {
