@@ -1159,7 +1159,7 @@ export class DungeonViewer {
         ?"Next tactical step · ("+hero.threatNextStep.x+", "+
           hero.threatNextStep.z+") · "+hero.threatAction
         :"Next two steps · "+
-          (this.layout?dungeonPreviewExplanation(this.layout,hero,view.resolved):
+          (this.layout?dungeonPreviewExplanation(this.layout,hero,view.resolved,view):
             "No dungeon geometry")},
       ...(perception?[{icon:"search" as const,
         text:perception.visible.size+" visible · "+

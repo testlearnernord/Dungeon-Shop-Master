@@ -1,6 +1,6 @@
 import type {AdventurerState} from "./adventurers.ts";
-import {heroProgression} from "./heroProgression.ts";
-import {equipmentEffects} from "./gearCatalog.ts";
+import {ordinaryHeroCombatAttributes} from "./heroProgression.ts";
+import {equipmentEffects,GEAR_BY_ITEM} from "./gearCatalog.ts";
 import type {GroupCombatOptions,CombatantSpec,GroupRole} from "./groupCombat.ts";
 import type {CombatStageTheme} from "./combatSpectatorStage.ts";
 
@@ -18,6 +18,7 @@ export interface DeveloperHero {
   readonly agility:number;
   readonly healCharges:number;
   readonly magicHeals?:number;
+  readonly equipment?:AdventurerState["equipment"];
   readonly sword:boolean;
   readonly vest:boolean;
   readonly label:string;
@@ -100,19 +101,12 @@ export function randomDeveloperHeroes(seed:number,count:number):DeveloperHero[]{
   });
 }
 export function developerHeroFromRoster(hero:AdventurerState):DeveloperHero{
-  const progress=heroProgression(hero);
-  const gear=equipmentEffects(hero.role,hero.equipment);
+  const stats=ordinaryHeroCombatAttributes(hero);
   return {
-    role:hero.role,label:hero.name,maxHp:progress.maxHealth,
-    damage:6+Math.floor((hero.role==="healer"?progress.intellect:
-      hero.role==="DPS"?progress.agility:progress.strength)/2)+
-      gear.damage+progress.damageBonus,
-    armor:1+gear.armor+progress.armorBonus,
-    agility:progress.agility,healCharges:Math.min(2,hero.inventory.healing),
-    ...(hero.role==="healer"?{
-      magicHeals:progress.dungeonMagicHeals+gear.magicHeals}:{}),
-    sword:gear.weapon!==null,
-    vest:gear.vest!==null,
+    role:hero.role,label:hero.name,maxHp:stats.maxHp,damage:stats.damage,
+    armor:stats.armor,agility:stats.agility,healCharges:stats.healCharges,
+    ...(stats.magicHeals!==undefined?{magicHeals:stats.magicHeals}:{}),
+    equipment:stats.equipment,sword:stats.equipment.weapon!==null,vest:stats.equipment.armor!==null,
   };
 }
 /** Test balancing changes real combat specs only, not scene animations.
@@ -124,16 +118,21 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
   const actors:CombatantSpec[]=[];
   config.heroes.forEach((hero,index)=>{
     const pos=heroPositions[index];
+    const original=equipmentEffects(hero.role,hero.equipment??{weapon:null,armor:null});
+    const starter=Object.values(GEAR_BY_ITEM).find(item=>
+      item.slot==="weapon"&&item.role===hero.role&&item.tier===1);
+    const gear=equipmentEffects(hero.role,{
+      weapon:hero.sword?original.weapon??starter?.name??null:null,
+      armor:hero.vest?original.vest??GEAR_BY_ITEM["leather-vest"].name:null,
+    });
     actors.push({
       id:"lab-hero-"+(index+1),team:"heroes",role:hero.role,
-      style:hero.role==="healer"||hero.role==="DPS"&&!hero.sword?
-        "ranged":"melee",
+      style:hero.role==="healer"?"ranged":"melee",
       ...pos,hp:hero.maxHp,maxHp:hero.maxHp,damage:hero.damage,
       armor:hero.armor,agility:hero.agility,speed:hero.role==="tank"?2.5:3.1,
       ...(hero.role==="healer"?{magicHeals:hero.magicHeals??2}:{}),
-      reach:1.75,healCharges:hero.healCharges,
-      equipment:{weapon:hero.sword?"Iron Sword":null,
-        armor:hero.vest?"Leather Vest":null},
+      reach:gear.reach,healCharges:hero.healCharges,
+      equipment:{weapon:gear.weapon,armor:gear.vest},
     });
   });
   for(let i=0;i<config.enemyCount;i++){

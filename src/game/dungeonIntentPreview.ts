@@ -1,91 +1,89 @@
 import type {DungeonLayout,DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonDownStair,dungeonNeighbors} from "./dungeonLayout.ts";
-import {chooseKnownRouteStep,chooseSpatialDungeonStep,chooseKnownResourceStep,
-  chooseRenewedSiteStep,
-  type SpatialDungeonHeroProgress} from "./spatialDungeonExploration.ts";
+import {isOrdinaryDungeonFloor,FIRST_DUNGEON_FLOOR} from "./dungeonTopology.ts";
+import {chooseDungeonTravelStep,type SpatialDungeonHeroProgress,type SpatialDungeonWorld}
+  from "./spatialDungeonExploration.ts";
 import {selectKnownResourceSite} from "./dungeonDecisions.ts";
-import type {LiveFloorHero} from "./liveFloorSpectator.ts";
+import type {LiveFloorHero,LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
 
-/** Pure, speculative TWO-STEP floor annotation. Never writes an intention or
- * makes a game decision. The actual scheduler may change its mind when it
- * discovers an encounter, an ally, a newly revealed room, or an injury.
- * The tooltip must always say PREVIEW, never "committed route". */
+type PreviewHero=Pick<LiveFloorHero,
+  "id"|"x"|"z"|"visited"|"activity"|"inCombat"|"plannedAction"> &
+  Partial<Pick<LiveFloorHero,"goal"|"partyMemberIds"|"threatNextStep">>;
+type PreviewContext=Pick<LiveFloorSpectatorFrame,"heroes"|"monsters">;
+
+function stairTarget(layout:DungeonLayout,hero:PreviewHero):DungeonPoint|null{
+  if(!isOrdinaryDungeonFloor(layout.floor))return null;
+  if(hero.activity==="backtracking"||hero.plannedAction==="shop"||
+    hero.plannedAction==="ascend"&&layout.floor>FIRST_DUNGEON_FLOOR)return layout.entrance;
+  return hero.plannedAction==="descend"?dungeonDownStair(layout):null;
+}
+
+/** Read-only forecast from the existing pure walker, never another owner. */
 export function predictDungeonHeroSteps(
-  layout:DungeonLayout,hero:Pick<LiveFloorHero,
-    "id"|"x"|"z"|"visited"|"activity"|"inCombat"|"plannedAction"> &
-  {readonly goal?:LiveFloorHero["goal"]},
-  resolved:readonly string[]=[],
+  layout:DungeonLayout,hero:PreviewHero,resolved:readonly string[]=[],
+  context?:PreviewContext,
 ):readonly DungeonPoint[]{
-  if(hero.inCombat||hero.activity==="portal")return [];
-  let current:SpatialDungeonHeroProgress={
-    heroId:hero.id,x:hero.x,z:hero.z,visited:[...hero.visited],
-  };
+  if(!isOrdinaryDungeonFloor(layout.floor)||hero.inCombat||hero.activity==="portal")return [];
+  if(hero.threatNextStep)return dungeonNeighbors(layout,hero).some(p=>
+    p.x===hero.threatNextStep!.x&&p.z===hero.threatNextStep!.z)?[hero.threatNextStep]:[];
+  const peers=context?.heroes.filter(h=>h.id!==hero.id&&
+    hero.partyMemberIds?.includes(h.id)&&h.x===hero.x&&h.z===hero.z&&
+    !h.inCombat&&h.activity==="exploring")??[];
+  const homeward=hero.activity==="backtracking"||hero.plannedAction==="shop";
+  let progress:SpatialDungeonHeroProgress[]=[hero,...(homeward?[]:peers)].map(h=>({
+    heroId:h.id,x:h.x,z:h.z,visited:[...h.visited],
+  }));
   const result:DungeonPoint[]=[];
-  const homeward=hero.activity==="backtracking"||
-    hero.plannedAction==="shop";
-  const validAscend=hero.plannedAction==="ascend"&&
-    layout.floor>1&&layout.floor<=4;
-  const validDescend=hero.plannedAction==="descend"&&layout.floor<4;
-  const target=homeward||validAscend?layout.entrance:
-    validDescend?dungeonDownStair(layout):null;
-  const resource=hero.goal==="loot-chest"?"treasure":
-    hero.goal==="hunt-ghouls"?"monster":null;
-  const resourceTarget=resource&&!target?selectKnownResourceSite(layout,current,
-    {resolvedFeatureIds:resolved,heroes:[]},resource):null;
+  const target=stairTarget(layout,hero);
+  const resource=hero.goal==="loot-chest"?"treasure":hero.goal==="hunt-ghouls"?"monster":null;
+  const world:SpatialDungeonWorld={resolvedFeatureIds:resolved,heroes:progress,
+    ...(context?.monsters!==undefined?{monsters:context.monsters}:{})};
+  const resourceTarget=resource&&!target?selectKnownResourceSite(layout,progress[0],world,resource):null;
+  const resolvedSet=new Set(resolved);
   for(let i=0;i<2;i++){
-    // Mirror the authoritative advanceSpatialDungeonPartyStep order:
-    // known stair / resource route, ordinary frontier, then renewed site.
-    // A blocked or not-yet-known optional stair route does NOT halt movement.
-    // Return-to-shop remains strict, and arriving at the stair is a floor
-    // transition (not another invented in-floor movement arrow).
+    const current=progress[0];
     if(target&&current.x===target.x&&current.z===target.z)break;
-    let next:DungeonPoint|null=target
-      ?chooseKnownRouteStep(layout,current,target):null;
-    if(!next&&homeward)break;
-    if(!next&&resourceTarget)
-      next=chooseKnownResourceStep(layout,current,resourceTarget);
-    next??=chooseSpatialDungeonStep(layout,current);
-    next??=chooseRenewedSiteStep(layout,current,
-      new Set(current.visited),new Set(resolved));
-    if(!next||!dungeonNeighbors(layout,current).some(point=>
-      point.x===next!.x&&point.z===next!.z))break;
+    let next:DungeonPoint|null;
+    try{
+      next=chooseDungeonTravelStep(layout,progress,resolvedSet,{
+        ...(homeward?{returnToEntrance:true}:target?{routeToKnownTarget:target}:{}),
+        ...(resourceTarget?{routeToResource:resourceTarget}:{}),
+      });
+    }catch(error){
+      if(!(error instanceof RangeError)||!homeward)throw error;
+      break;
+    }
+    if(!next||!dungeonNeighbors(layout,current).some(p=>p.x===next!.x&&p.z===next!.z))break;
     result.push(next);
     const index=next.z*layout.width+next.x;
-    current={...current,x:next.x,z:next.z,
-      visited:current.visited.includes(index)?current.visited:
-        [...current.visited,index]};
-    if(layout.features.some(feature=>feature.x===next.x&&
-       feature.z===next.z))break; // The actual AI must resolve that feature first.
+    progress=progress.map(h=>({...h,x:next!.x,z:next!.z,
+      visited:h.visited.includes(index)?h.visited:[...h.visited,index]}));
+    if(layout.features.some(f=>f.x===next!.x&&f.z===next!.z&&!resolvedSet.has(f.id)&&
+      (f.kind!=="monster"||world.monsters===undefined))||
+      world.monsters?.some(m=>m.x===next!.x&&m.z===next!.z))break;
   }
   return result;
 }
 
-/** Explain WHY only one or zero arrow segments are visible. A route is an
- * observation-time forecast, not a queued AI order or a second navigator. */
 export function dungeonPreviewExplanation(
-  layout:DungeonLayout,
-  hero:Parameters<typeof predictDungeonHeroSteps>[1],
-  resolved:readonly string[]=[],
+  layout:DungeonLayout,hero:PreviewHero,resolved:readonly string[]=[],
+  context?:PreviewContext,
 ):string{
   if(hero.inCombat)return "In LIVE combat · route forecast paused";
   if(hero.activity==="portal")return "Crossing the portal · no floor route";
-  const next=predictDungeonHeroSteps(layout,hero,resolved);
+  const next=predictDungeonHeroSteps(layout,hero,resolved,context);
   if(next.length===2)return next.map((p,i)=>
     (i+1)+": ("+p.x+", "+p.z+")").join(" → ")+" · PREVIEW";
   if(next.length===1){
     const cell=next[0],feature=layout.features.find(f=>
-      f.x===cell.x&&f.z===cell.z&&!resolved.includes(f.id));
+      f.x===cell.x&&f.z===cell.z&&!resolved.includes(f.id)&&
+      (f.kind!=="monster"||context?.monsters===undefined));
+    const monster=context?.monsters?.some(m=>m.x===cell.x&&m.z===cell.z);
     return "1: ("+cell.x+", "+cell.z+") · "+
-      (feature?"Site interaction next; step 2 depends on outcome":
-        "Second step not predictable");
+      (feature||monster?"Site interaction next; step 2 depends on outcome":"Second step not predictable");
   }
-  const hasDownStair=hero.plannedAction==="descend"&&layout.floor<4;
-  const hasUpStair=hero.plannedAction==="ascend"&&
-    layout.floor>1&&layout.floor<=4;
-  const atStair=hasDownStair?dungeonDownStair(layout):
-    layout.entrance;
-  if((hasDownStair||hasUpStair||hero.plannedAction==="shop")&&
-    hero.x===atStair.x&&hero.z===atStair.z)
+  const target=stairTarget(layout,hero);
+  if(target&&hero.x===target.x&&hero.z===target.z)
     return "At staircase / exit · awaiting committed transition";
   return "No connected next tile or eligible renewed site · awaiting world decision";
 }

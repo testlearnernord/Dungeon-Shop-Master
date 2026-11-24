@@ -503,7 +503,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     // committed backtrack remains saved; a single safe tactical dodge can
     // interrupt one step without cancelling the shop-bound journey.
     const threat=chooseDungeonThreatReaction(
-      layout,world,readyGroup,roster);
+      layout,world,readyGroup,roster,!!homeward);
     const route=diagnostic&&directed&&priorPlan?.action==="descend"
       ?chooseDungeonTransitionRoute(layout,readyGroup.map(member=>
         getSpatialDungeonProgress(world,member.id,layout)),directed):null;

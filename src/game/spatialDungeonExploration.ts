@@ -9,7 +9,7 @@ import { resolveGroupCombat, type CombatantSpec, type GroupCombatOptions,
   type GroupCombatState, type GroupCombatReplay } from "./groupCombat.ts";
 import { SeededRandom } from "./random.ts";
 import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
-import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
+import {heroProgression,settleHeroExperience,ordinaryHeroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects} from "./gearCatalog.ts";
 import type {ItemId} from "./economy.ts";
 import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK}
@@ -235,23 +235,17 @@ export function prepareSpatialDungeonCombat(
   }
   const specs:CombatantSpec[]=party.map((hero,index)=>{
     const spawn=formation.get(hero.id)??available[index];
-    const gear=equipmentEffects(hero.role,hero.equipment);
-    const progression=heroProgression(hero);
+    const attributes=ordinaryHeroCombatAttributes(hero);
     return {
       id:hero.id,team:"heroes",role:hero.role,
-      style:hero.role==="healer"?"ranged":"melee",
+      style:attributes.style,
       x:(spawn.x-monster.x)*2.5,z:(spawn.z-monster.z)*2.5,
-      hp:hero.health,maxHp:progression.maxHealth,
-      damage:6+Math.floor((hero.role==="healer"?progression.intellect:
-        hero.role==="DPS"?progression.agility:progression.strength)/2)+
-        gear.damage+progression.damageBonus,
-      armor:1+gear.armor+progression.armorBonus,
-      equipment:{weapon:gear.weapon,armor:gear.vest},
-      agility:progression.agility,
-      speed:hero.role==="tank"?2.5:3.1,reach:gear.reach,
-      healCharges:Math.min(2,hero.inventory.healing),
-      ...(hero.role==="healer"?{
-        magicHeals:progression.dungeonMagicHeals+gear.magicHeals}:{}),
+      hp:hero.health,maxHp:attributes.maxHp,
+      damage:attributes.damage,armor:attributes.armor,
+      equipment:attributes.equipment,agility:attributes.agility,
+      speed:attributes.speed,reach:attributes.reach,
+      healCharges:attributes.healCharges,
+      ...(attributes.magicHeals!==undefined?{magicHeals:attributes.magicHeals}:{}),
     };
   });
   // One *real* source feature can spawn a bounded physical Ghoul pack.
@@ -505,6 +499,29 @@ export interface SpatialDungeonAdvanceOptions {
   readonly blockedCombatSites?:ReadonlySet<string>;
 }
 
+/** One pure ordinary-floor step policy for the walker and the read-only
+ * forecast. Only the scheduler commits its result. */
+export function chooseDungeonTravelStep(
+  layout:DungeonLayout,progress:readonly SpatialDungeonHeroProgress[],
+  resolved:ReadonlySet<string>,options:Pick<SpatialDungeonAdvanceOptions,
+    "returnToEntrance"|"routeToKnownTarget"|"routeToResource"|"tacticalStep"|"waitForCompanion">={},
+):DungeonPoint|null{
+  if(!progress.length)return null;
+  const current=progress[0];
+  if(options.tacticalStep){
+    if(!dungeonNeighbors(layout,current).some(p=>p.x===options.tacticalStep!.x&&p.z===options.tacticalStep!.z))
+      throw new RangeError("Hero tactical AI tried to cross a nonadjacent dungeon tile");
+    return options.tacticalStep;
+  }
+  if(options.waitForCompanion)return null;
+  if(options.returnToEntrance)return chooseKnownReturnStep(layout,current);
+  if(options.routeToKnownTarget)
+    return chooseDungeonTransitionRoute(layout,progress,options.routeToKnownTarget).step;
+  const resource=options.routeToResource?chooseKnownResourceStep(layout,current,options.routeToResource):null;
+  return resource??choosePartyDungeonStep(layout,progress)??
+    chooseRenewedSiteStep(layout,current,new Set(progress.flatMap(p=>p.visited)),resolved);
+}
+
 /**
  * Shared spatial navigation and combat authority for solo and co-located
  * parties. Each member walks the same actual edges; all inventory, HP and
@@ -587,33 +604,13 @@ export function simulateSpatialDungeonPartyDay(
   };
 
   for(let t=1;t<=maxSteps;t++){
-    const routeProgress={...progress[0],...current,
-      visited:members[0].visitedOrder};
     const sharedProgress=members.map(member=>({
       heroId:member.hero.id,...current,visited:member.visitedOrder,
     }));
-    const transition=options.routeToKnownTarget
-      ?chooseDungeonTransitionRoute(layout,sharedProgress,options.routeToKnownTarget)
-      :null;
-    const resourceStep=options.routeToResource
-      ?chooseKnownResourceStep(layout,routeProgress,options.routeToResource):null;
-    const tactical=options.tacticalStep&&t===1?options.tacticalStep:null;
-    if(tactical&&!dungeonNeighbors(layout,current).some(point=>
-      point.x===tactical.x&&point.z===tactical.z))
-      throw new RangeError("Hero tactical AI tried to cross a nonadjacent dungeon tile");
-    // A real, visible pursuer is an immediate tactical hazard even when a
-    // hero has already committed to return to Galvik's shop. The ordinary
-    // known backtrack resumes on the next step after the threat is lost.
-    // Tactical AI still supplies ONLY a validated adjacent dungeon tile.
+    const tactical=options.tacticalStep&&t===1?options.tacticalStep:undefined;
     if(options.waitForCompanion&&!tactical)break;
-    const next=tactical??(options.returnToEntrance
-      ?chooseKnownReturnStep(layout,routeProgress)
-      :transition?transition.step:
-        resourceStep??choosePartyDungeonStep(layout,sharedProgress) ??
-        chooseRenewedSiteStep(layout,current,
-          // Renewable farming belongs to exploration, not an active
-          // staircase commitment. Never leave a reached stair to farm.
-          new Set(members.flatMap(member=>member.visitedOrder)),resolved));
+    const next=chooseDungeonTravelStep(layout,sharedProgress,resolved,
+      {...options,tacticalStep:tactical});
     if(!next){
       outcome="completed";
       step(t,"complete");
@@ -803,9 +800,8 @@ export function simulateSpatialDungeonDay(
  * current saved location. The FULL spatial path/combat/loot engine above
  * remains authoritative: this adapter only chooses the step budget.
  *
- * A fight is still resolved atomically by the existing deterministic group
- * combat resolver. Binding its 60 Hz frames to elapsed shared world time is
- * a separate, explicit live-combat integration step; don't claim otherwise.
+ * Production always defers combat to the shared world clock's 60 Hz
+ * checkpoints. Atomic execution remains only for isolated test fixtures.
  */
 export function advanceSpatialDungeonPartyStep(
   party:readonly AdventurerState[],world:SpatialDungeonWorld,

@@ -8,6 +8,9 @@ test("one cursed shop portal routes NPCs and keeps the old right entrance sealed
   await page.goto("./");
   const inspect=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectNpcVisuals());
+  await expect.poll(()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).shopSceneReady()),
+    {timeout:30000}).toBe(true);
   const first=await inspect();
   expect(first.visitors).toHaveLength(3);
   expect(first.visitors.every(v=>v.gateSide==="portal")).toBe(true);

@@ -1,3 +1,4 @@
+import {developerHeroFromRoster,buildDeveloperCombat,DEFAULT_DEVELOPER_CONFIG} from "../../src/game/developerCombatScenario.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createGameState} from "../../src/game/gameState.ts";
@@ -31,13 +32,13 @@ test("pack IDs are real stable combat participants, never extra map features",()
 test("seeded party faces the same site pack at distinct walkable positions with role formation",()=>{
   const seed=7351;
   const initial=createGameState(seed);
-  const layout=generateExpeditionLayout(seed,5);
+  const layout=generateExpeditionLayout(seed,8);
   const site=layout.features.find(f=>f.kind==="monster"&&
     dungeonNeighbors(layout,f).length>0);
   assert(site);
   const approach=dungeonNeighbors(layout,site)[0];
   const heroes=initial.adventurers.slice(0,3).map(hero=>({
-    ...hero,status:"exploring" as const,floor:5 as const,
+    ...hero,status:"exploring" as const,floor:8 as const,
     role:(["healer","DPS","tank"] as const)[initial.adventurers.indexOf(hero)],
     health:hero.stats.maxHealth,
   }));
@@ -134,4 +135,22 @@ test("single authored Ghoul pack LIVE combat saves and reloads one authoritative
   const ids=a.state.events.map(e=>e.id);
   assert.equal(ids.length,new Set(ids).size,
     "One authored site must settle once despite multiple Ghoul bodies");
+});
+
+test("Combat Lab imports the same ordinary fighter, including legal T2 identity and reach",()=>{
+  const seed=7351,initial=createGameState(seed);
+  const layout=generateExpeditionLayout(seed,1);
+  const monster=layout.features.find(f=>f.kind==="monster"&&dungeonNeighbors(layout,f).length>0)!;
+  const approach=dungeonNeighbors(layout,monster)[0];
+  for(const [role,weapon] of [["tank","Forged Sword & Shield"],["DPS","Forged Spear"],["healer","Forged Staff"]] as const){
+    const hero={...initial.adventurers[0],role,floor:1 as const,status:"exploring" as const,
+      equipment:{weapon,armor:"Ghoul Leather Vest"}};
+    const actual=prepareSpatialDungeonCombat([hero],monster,seed,layout,approach,0,true)
+      .options.actors.find(a=>a.id===hero.id)!;
+    const lab=buildDeveloperCombat({...DEFAULT_DEVELOPER_CONFIG,enemy:"ghoul",arena:"crypt",
+      heroes:[developerHeroFromRoster(hero)]}).actors[0];
+    for(const key of ["maxHp","damage","armor","agility","speed","reach","style","healCharges","magicHeals"] as const)
+      assert.equal(lab[key],actual[key],role+" "+key);
+    assert.deepEqual(lab.equipment,actual.equipment);
+  }
 });

@@ -215,9 +215,13 @@ export class DeveloperCombatLab {
     const index=Number(this.heroSlot.value);
     const previous=this.heroes[index];
     if(!previous)return;
+    const role=this.heroRole.value as DeveloperHero["role"];
+    const {magicHeals,equipment,...editable}=previous;
     this.heroes[index]={
-      ...previous,
-      role:this.heroRole.value as DeveloperHero["role"],
+      ...editable,
+      role,
+      ...(role===previous.role&&magicHeals!==undefined?{magicHeals}:{}),
+      ...(role===previous.role&&equipment?{equipment}:{}),
       maxHp:number(this.heroHp,1,10000),
       damage:number(this.heroDamage,1,1000),
       armor:number(this.heroArmor,0,1000),

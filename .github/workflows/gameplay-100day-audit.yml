@@ -12,6 +12,7 @@ on:
       - src/game/liveDungeonRuntime.ts
       - src/game/dungeonDecisions.ts
       - src/game/dungeonParties.ts
+      - src/game/dungeonThreatDecisions.ts
       - src/game/spatialDungeonExploration.ts
       - src/game/ghoulPack.ts
       - src/game/dungeonLoot.ts

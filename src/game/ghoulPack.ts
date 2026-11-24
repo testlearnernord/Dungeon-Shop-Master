@@ -20,7 +20,7 @@ export function isGhoulPackActorId(
 
 /** The pack belongs to its site generation, not the approaching party.
  * Only actual available arena positions can reduce the authored count.
- * Floor 1 is a single Ghoul; upper floors allow 1–2, deep floors 2–3.
+ * Floor 1 is a single Ghoul; Floors 2–7 allow 1–2, Floors 8–9 allow 2–3.
  */
 export function ghoulPackCount(
   campaignSeed:number,floor:number,x:number,z:number,
@@ -35,6 +35,6 @@ export function ghoulPackCount(
   const seed=dungeonGenerationSeed(
     (campaignSeed^Math.imul(x+37*z,2654435761)^0x6a93b4d1)>>>0,
     floor+cycle*17);
-  const authored=floor<5?1+((seed>>>8)%2):2+((seed>>>8)%2);
+  const authored=floor<8?1+((seed>>>8)%2):2+((seed>>>8)%2);
   return Math.min(MAX_GHOUL_PACK,authored,1+freeMonsterTiles);
 }
