@@ -1137,7 +1137,7 @@ export async function inspectPhysicalStockMeshes() {
   });
 }
 
-/** Wait for the five displayable stock GLBs and Shop's pending refresh. */
+/** Wait for every displayable stock GLB and Shop's pending refresh. */
 export async function waitForShopStockAssets(){
   const scene=currentTestScene()!;
   const {getShopStockTemplates}=await import("../src/game/shopStockAssets.ts");

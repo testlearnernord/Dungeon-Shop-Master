@@ -42,6 +42,10 @@ export interface HeroVisual {
   readonly vestT2Material:StandardMaterial;
   readonly weaponT1Material:StandardMaterial;
   readonly weaponT2Material:StandardMaterial;
+  readonly staffOrb:Mesh;
+  readonly staffT1OrbMaterial:StandardMaterial;
+  readonly staffT2OrbMaterial:StandardMaterial;
+  readonly spearTip:Mesh;
   readonly appearanceKey: string;
 }
 
@@ -183,6 +187,7 @@ export function createHeroVisual(
     shieldMesh,spearMesh,staffMesh,vestMesh,
     vestT1Material:leather,vestT2Material:ghoulLeather,
     weaponT1Material:steel,weaponT2Material:gildedSteel,
+    staffOrb,staffT1OrbMaterial:trim,staffT2OrbMaterial:gildedSteel,spearTip,
     appearanceKey: look.key,
     signature: look.key,
   };
@@ -216,6 +221,11 @@ export function setHeroVisualEquipment(model: HeroVisual, equipment: HeroEquipme
     model.weaponT2Material:model.weaponT1Material;
   model.spearMesh.material=weapon?.tier===2?
     model.weaponT2Material:model.weaponT1Material;
+  model.spearTip.material=weapon?.tier===2?
+    model.weaponT2Material:model.weaponT1Material;
+  model.staffOrb.material=weapon?.tier===2?
+    model.staffT2OrbMaterial:model.staffT1OrbMaterial;
+  model.staffOrb.scaling.setAll(weapon?.tier===2?1.22:1);
   model.vestMesh.material=armor?.tier===2?
     model.vestT2Material:model.vestT1Material;
   model.root.metadata.weapon = equipment.weapon;

@@ -1,4 +1,5 @@
-"""Generate six original low-poly, shelf-scale Dungeon Shop Master GLB stock props.
+"""Generate original low-poly, shelf-scale Dungeon Shop Master supplies and T1 vest.
+Weapon families and T2 gear are owned by build_gear_models.mjs.
 Coordinate convention: glTF Y-up, +X faces the customer; model origin sits on the shelf surface.
 Run: python build_models.py
 """
@@ -98,16 +99,6 @@ ell(n,(.166,.085,.125),[169,100,50],(0,.09,0),sub=2)
 ell(n,(.145,.046,.102),[205,133,66],(0,.147,0),sub=1)
 for z in [-.065,0,.065]:
     box(n,(.020,.006,.17),[112,68,40],(.017,.186,z),None)
-save(n)
-
-n='iron-sword';S[n]=[]
-box(n,(.228,.024,.066),[158,161,155],(.025,.042,0))
-m=trimesh.creation.cone(radius=.044,height=.092,sections=4)
-T=trimesh.geometry.align_vectors([0,0,1],[1,0,0]);m.apply_transform(T)
-add(n,m,[191,185,171],(.185,.042,0))
-box(n,(.022,.032,.165),[116,110,101],(-.102,.045,0))
-box(n,(.113,.040,.036),[106,70,46],(-.171,.045,0))
-ell(n,(.021,.023,.027),[138,127,110],(-.236,.045,0),sub=1)
 save(n)
 
 n='leather-vest';S[n]=[]

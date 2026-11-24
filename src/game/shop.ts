@@ -215,11 +215,16 @@ export class Shop {
         if(!template)throw new Error("Missing stock GLB: "+slot.itemId);
         const visual=cloneShopStockModel(template,slot.id+"-item-"+count);
         visual.parent=root;
-        if(slot.itemId==="iron-sword"){
-          // Real blades lie in a short, tidy stack; never poke through the
-          // neighboring slot or obstruct the service side of the shelf.
-          visual.position.set(.43,.735+count*.016,
-            shelfSlotLocalZ(slot.index)+(count-2)*.09);
+        if(slot.itemId==="iron-sword"||slot.itemId==="forged-sword-shield"){
+          // Stack each bundled sword and shield by its real thickness.
+          visual.position.set(.43,.735+count*.115,
+            shelfSlotLocalZ(slot.index)+(count-2)*.032);
+          visual.scaling.setAll(.87);
+        }else if(slot.itemId==="spear"||slot.itemId==="forged-spear"||
+                 slot.itemId==="staff"||slot.itemId==="forged-staff"){
+          // Five narrow weapons remain inside the pad, not the aisle.
+          visual.position.set(.43,.735,
+            shelfSlotLocalZ(slot.index)+(count-2)*.112);
           visual.scaling.setAll(.87);
         }else{
           const pose=positions[count]!;

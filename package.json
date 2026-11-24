@@ -14,6 +14,7 @@
     "test:unit": "node --experimental-strip-types --test tests/unit/*.test.ts",
     "preview": "vite preview",
     "audit:modules": "node tools/maintenance/module_graph.mjs",
+    "assets:gear": "node tools/asset_generation/build_gear_models.mjs",
     "verify:pages": "node tools/maintenance/verify_pages_dist.mjs"
   },
   "dependencies": {

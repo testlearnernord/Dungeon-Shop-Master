@@ -882,10 +882,9 @@ export class NpcVisualSystem {
       mesh.parent=npc.arms[1];
       mesh.position.set(0.08+0.07*(position%2),-0.50-0.15*Math.floor(position/2),
         -0.22-0.16*(position%2));
-      mesh.scaling.setAll(item.id==="iron-sword"?.58:
-        item.id==="leather-vest"?.55:.72);
-      mesh.rotation.set(item.id==="iron-sword"?-.28:0,0,
-        item.id==="iron-sword"?.8:0);
+      const weapon=item.kind==="weapon",armor=item.kind==="armor";
+      mesh.scaling.setAll(weapon?.58:armor?.55:.72);
+      mesh.rotation.set(weapon?-.28:0,0,weapon?.8:0);
       mesh.metadata={...mesh.metadata,carriedItemId:item.id,
         carriedItemSource:"shared-shop-stock-glb"};
       mesh.isPickable=false;
