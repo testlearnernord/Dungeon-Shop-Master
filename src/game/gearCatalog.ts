@@ -19,6 +19,10 @@ export type GearItemId=keyof typeof GEAR_BY_ITEM;
 export type GearName=typeof GEAR_BY_ITEM[GearItemId]["name"];
 export type GearSlot="weapon"|"armor";
 export const GEAR_NAMES=Object.values(GEAR_BY_ITEM).map(gear=>gear.name);
+export const WEAPON_NAMES=Object.values(GEAR_BY_ITEM)
+  .filter(gear=>gear.slot==="weapon").map(gear=>gear.name);
+export const ARMOR_NAMES=Object.values(GEAR_BY_ITEM)
+  .filter(gear=>gear.slot==="armor").map(gear=>gear.name);
 export const isGearItemId=(id:string):id is GearItemId=>
   Object.hasOwn(GEAR_BY_ITEM,id);
 export const gearFromName=(name:string|null|undefined)=>
