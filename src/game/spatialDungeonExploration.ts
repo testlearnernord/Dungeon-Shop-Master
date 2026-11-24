@@ -594,7 +594,7 @@ export function simulateSpatialDungeonPartyDay(
       // Everybody physically walking across this tile suffers the same
       // trap activation, reduced by their OWN purchased Leather Vest.
       for(const m of members)m.hp=Math.max(0,m.hp-Math.max(1,raw-
-        equipmentEffects(m.hero.role,m.hero.equipment).trapProtection)));
+        equipmentEffects(m.hero.role,m.hero.equipment).trapProtection));
       resolved.add(feature.id);
       siteCycles=resolveDungeonSite(siteCycles,feature.id,day);
       step(t+0.1,"trap",feature.id);
