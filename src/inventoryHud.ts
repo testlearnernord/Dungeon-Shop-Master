@@ -171,7 +171,7 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
   close.addEventListener("click",()=>dialog.close());
   dialog.addEventListener("close",()=>{picked=null;drag=null;options.onMenuChanged(false);canvas.focus();});
   window.addEventListener("keydown",event=>{
-    if(event.code!=="Tab"||event.repeat||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
+    if(event.code!=="Tab"||event.defaultPrevented||event.repeat||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
     if(dialog.open){event.preventDefault();dialog.close();}
     else if(open())event.preventDefault();
   });

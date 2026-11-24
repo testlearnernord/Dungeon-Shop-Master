@@ -22,7 +22,7 @@ test("returning adventurer sells one real find to Galvik, saved with a paid expe
   });
   await page.reload();
   await expect(page.locator("#save-status")).toHaveText(/Continued saved Day 1\./);
-  await expect(page.locator("#inventory .inventory-row")).toHaveCount(5);
+  await expect(page.locator("#inventory .inventory-row")).toHaveCount(6);
   await expect(page.locator('#inventory [data-item-id="iron-ore"]')).toHaveCount(0);
   await expect(page.locator('#inventory [data-item-id="coal"]')).toHaveCount(0);
   const trigger=page.locator("#open-hero-offers");

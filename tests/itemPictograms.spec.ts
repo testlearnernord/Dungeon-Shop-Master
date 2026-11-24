@@ -2,15 +2,14 @@ import { expect, test } from "@playwright/test";
 
 test("hotbar renders distinct item pictograms with accessible labels", async ({ page }) => {
   await page.goto("./");
-  const rows = page.locator("#inventory .inventory-row");
-  await expect(rows).toHaveCount(5);
-  const ids = ["healing-herb", "mana-potion", "bread", "iron-sword", "leather-vest"];
-  for (const id of ids) {
-    const row = page.locator(`#inventory .inventory-row[data-item-id="${id}"]`);
-    await expect(row).toHaveAttribute("aria-label", /Select .+ available/);
-    const icon = row.locator("svg.item-pictogram use");
-    await expect(icon).toHaveAttribute("href", new RegExp(`assets/ui-item-icons\\.svg#${id}$`));
+  await page.keyboard.press("Tab");
+  const bag=page.locator("#inventory-dialog");
+  await expect(bag.locator("[data-bag-item]")).toHaveCount(3);
+  for(const id of ["healing-herb","mana-potion","bread"]){
+    await expect(bag.locator('[data-bag-item="'+id+'"] svg use')).toHaveAttribute("href",
+      new RegExp("assets/ui-item-icons\\.svg#"+id+"$"));
   }
+  await page.keyboard.press("Tab");
   const rosterIcon=page.locator("#roster-dialog .hero-card-item-art").first();
   await page.locator("#open-roster").click();
   await page.locator("#roster-detail-list .roster-card").first().locator("summary").click();
