@@ -14,8 +14,11 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {cartTotal} from "../../src/game/shopCarts.ts";
-import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
-import {prepareSpatialDungeonCombat} from "../../src/game/spatialDungeonExploration.ts";
+import {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath} from "../../src/game/dungeonLayout.ts";
+import {prepareSpatialDungeonCombat,emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
+import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS} from "../../src/game/liveDungeonRuntime.ts";
+import {availableDungeonOffers} from "../../src/game/dungeonBuyback.ts";
+import {chooseLiveHeroDungeonDecision} from "../../src/game/dungeonDecisions.ts";
 
 test("T2 can never be bought wholesale; real recipes consume exactly their materials",()=>{
   const initial=createGameState(7351);
@@ -281,4 +284,132 @@ test("true Floor-10 60Hz party options gain real class-specific T2 bonuses",()=>
       assert((upgraded.magicHeals??0)>(first.magicHeals??0));
   }
   assert.deepEqual(after,caveTrollPartyOptions(t2,918));
+});
+
+/** A controlled veteran and previously cleared sites, with one genuine
+ * seeded unresolved reward site. The scheduler, fights and loot are real. */
+function supplySiteFixture(kind:"monster"|"treasure"){
+  for(let seed=7351;seed<7400;seed++){
+    const layout=generateExpeditionLayout(seed,1);
+    const site=layout.features.find(f=>f.kind===kind&&
+      dungeonNeighbors(layout,f).length>0&&
+      dungeonShortestPath(layout,layout.entrance,f).length<24&&
+      rollDungeonSiteLoot(seed,1,f.id,0,kind).itemIds.some(id=>
+        kind==="monster"?id==="ghoul-leather":id==="iron-ore"||id==="coal"));
+    if(!site)continue;
+    const base=createStockedShopState(seed,{dailyInflux:0,maxActive:10});
+    const source=base.adventurers[3];
+    const hero:AdventurerState={...source,role:"DPS",status:"exploring",
+      floor:1,health:200,gold:100,
+      stats:{...source.stats,maxHealth:200,agility:160,strength:160},
+      equipment:{weapon:"Spear",armor:"Leather Vest"},
+      inventory:{bread:ECONOMY.breadTarget,healing:ECONOMY.healingTarget,
+        finds:kind==="monster"?{"iron-ore":1,coal:1,"ghoul-leather":1}:{}}};
+    const approach=dungeonNeighbors(layout,site)[0];
+    const visited=layout.tiles.flatMap((tile,index)=>
+      tile!=="wall"&&index!==site.z*layout.width+site.x?[index]:[]);
+    const store=new GameStore({...base,adventurers:base.adventurers.map(h=>
+      h.id===hero.id?hero:{...h,status:"off-duty",floor:"away",
+        shopStayDays:0,offDutyUntilDay:4}),
+      dungeonWorlds:[{floor:1,world:{...emptySpatialDungeonWorld(),
+        resolvedFeatureIds:layout.features.filter(f=>f.id!==site.id).map(f=>f.id),
+        heroes:[{heroId:hero.id,...approach,visited}]}}],
+      shopEconomy:{...base.shopEconomy,slots:base.shopEconomy.slots.map(slot=>
+        ({...slot,itemId:null,quantity:0}))}});
+    return {store,hero,site,layout,seed};
+  }
+  throw Error("No suitable deterministic physical salvage site");
+}
+
+test("LIVE chest settlement creates individually owned goods, not shop stock",()=>{
+  const {store,hero,site,seed}=supplySiteFixture("treasure");
+  const expected=rollDungeonSiteLoot(seed,1,site.id,0,"treasure").itemIds;
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const after=store.state.adventurers.find(h=>h.id===hero.id)!;
+  const counts=Object.fromEntries([...new Set(expected)].map(id=>
+    [id,expected.filter(item=>item===id).length]));
+  assert.deepEqual(after.inventory.finds,counts);
+  assert(store.state.dungeonWorlds.find(w=>w.floor===1)!.world.resolvedFeatureIds.includes(site.id));
+  assert.deepEqual(store.state.shopEconomy.materialStorage,{"iron-ore":0,coal:0,"ghoul-leather":0});
+  assert.equal(availableDungeonOffers(store.state).length,0);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+});
+
+test("LIVE Ghoul victory initiates a physical salvage return and funds the next expedition",()=>{
+  const {store,hero,site,layout}=supplySiteFixture("monster");
+  const current=()=>store.state.adventurers.find(h=>h.id===hero.id)!;
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const fight=store.state.liveDungeon.combats.find(c=>c.heroIds.includes(hero.id));
+  assert(fight,"The generated site must start the actual 60Hz fight");
+  assert.equal(fight.encounter.featureId,site.id);
+  assert.equal(availableDungeonOffers(store.state).length,0);
+  assert.equal(store.state.liveDungeon.returns.length,0);
+  for(let i=0;i<60&&store.state.liveDungeon.combats.some(c=>c.heroIds.includes(hero.id));i++)
+    store.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
+  const result=store.state.events.find(e=>e.adventurerId===hero.id&&
+    e.dungeonReplay?.encounters.some(encounter=>encounter.featureId===site.id));
+  assert(result?.dungeonReplay);
+  assert.equal(result.dungeonReplay.encounters[0].combat.outcome,"heroes");
+  assert.equal(current().inventory.finds?.["ghoul-leather"],2);
+  assert(store.state.liveDungeon.returns.some(j=>j.heroId===hero.id&&j.phase==="backtrack"));
+  assert.equal(current().status,"exploring");
+  assert.equal(availableDungeonOffers(store.state).length,0);
+  const restored=new GameStore(parseSave(JSON.stringify(createSave(store.state))));
+  const position=()=>store.state.dungeonWorlds.find(w=>w.floor===1)!.world.heroes.find(h=>h.heroId===hero.id)!;
+  let portalObserved=false;
+  for(let i=0;i<600&&current().status!=="at-shop";i++){
+    const before=position();
+    store.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
+    restored.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
+    const after=position();
+    if(before.x!==after.x||before.z!==after.z)
+      assert(dungeonNeighbors(layout,before).some(p=>p.x===after.x&&p.z===after.z));
+    if(current().status==="traveling"){
+      portalObserved=true;
+      assert.equal(after.x,layout.entrance.x);
+      assert.equal(after.z,layout.entrance.z);
+      assert.equal(availableDungeonOffers(store.state).length,0);
+    }
+  }
+  assert(portalObserved);
+  assert.equal(current().status,"at-shop");
+  assert.deepEqual(store.state,restored.state);
+  assert.equal(store.state.events.filter(e=>e.type==="shop-arrival"&&e.adventurerId===hero.id).length,1);
+  const gold=store.state.shopEconomy.balance+current().gold;
+  for(const [id,n] of [["iron-ore",1],["coal",1],["ghoul-leather",2]] as const)
+    for(let i=0;i<n;i++)assert.match(store.buyDungeonFind(hero.id,id),/bought/);
+  assert.equal(availableDungeonOffers(store.state).filter(o=>o.heroId===hero.id).length,0);
+  assert.match(store.craftAtForge("forged-spear"),/Forged 1/);
+  assert.match(store.craftAtForge("ghoul-leather-vest"),/Forged 1/);
+  const slots=store.state.shopEconomy.slots;
+  assert.match(store.transfer(slots[0].id,"forged-spear","stock"),/Placed/);
+  assert.match(store.transfer(slots[1].id,"ghoul-leather-vest","stock"),/Placed/);
+  const wanted=forecastShoppingIntents(store.state).get(hero.id)!;
+  for(const line of wanted.items)assert.match(store.pickUpShopItem(hero.id,line.slotId),/picked up/);
+  assert.equal(current().equipment.weapon,"Spear");
+  assert.match(store.payReservedCart(hero.id),/paid/);
+  assert.deepEqual(current().equipment,{weapon:"Forged Spear",armor:"Ghoul Leather Vest"});
+  assert.equal(store.state.shopEconomy.balance+current().gold,gold);
+  assert.equal(store.completePhysicalShopExit(hero.id,11),false);
+  assert.equal(store.completePhysicalShopExit(hero.id,13),true);
+  assert.equal(current().status,"off-duty");
+  assert.equal(current().offDutyUntilDay,4);
+  for(let day=2;day<=4;day++){
+    store.endDay();
+    assert.equal(store.state.day,day);
+    assert.deepEqual(current().equipment,{weapon:"Forged Spear",armor:"Ghoul Leather Vest"});
+    assert.equal(current().status,day<4?"off-duty":"exploring");
+  }
+  assert.equal(current().floor,1);
+  assert.equal(position().x,layout.entrance.x);
+  assert.equal(position().z,layout.entrance.z);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+  // Same successful replay, but no new owned loot: no fresh haul.
+  const stale={...hero,inventory:{...hero.inventory,finds:{"iron-ore":4}}};
+  assert.notEqual(chooseLiveHeroDungeonDecision(stale,undefined,
+    result.dungeonReplay,undefined,undefined,false,4).action,"shop");
+  assert.equal(chooseLiveHeroDungeonDecision(stale,undefined,
+    result.dungeonReplay,undefined,undefined,false,3).action,"shop");
 });

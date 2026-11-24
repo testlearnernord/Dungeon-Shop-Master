@@ -7,7 +7,7 @@ import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonSiteGeneration} from "./dungeonRegeneration.ts";
-import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,
+import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,carriedDungeonFindCount,
   type HeroDungeonDecision} from "./dungeonDecisions.ts";
 import {choosePersistentDungeonParty,negotiatePartyFloorDecisions,
   settlePersistentDungeonParties,temporaryPartyChanges,
@@ -500,7 +500,8 @@ function commitDungeonTick(state:GameState):GameState {
           member.health/heroProgression(member).maxHealth>=0.60);
       independent.set(individual.adventurer.id,
         chooseLiveHeroDungeonDecision(individual.adventurer,
-          progress,individual.replay,layout,result.world,bossReady));
+          progress,individual.replay,layout,result.world,bossReady,
+          carriedDungeonFindCount(byId.get(individual.adventurer.id)!)));
     }
     const agreed=readyGroup.length>1
       ?negotiatePartyFloorDecisions(result.ticks.map(t=>t.adventurer),
@@ -847,7 +848,8 @@ function commitLiveCombatTick(state:GameState):GameState{
       }else {
         const progress=settled.world.heroes.find(p=>p.heroId===id);
         const decision=chooseLiveHeroDungeonDecision(
-          tick.adventurer,progress,tick.replay);
+          tick.adventurer,progress,tick.replay,undefined,undefined,false,
+          carriedDungeonFindCount(party.find(member=>member.id===id)!));
         recordLivePlan(plans,tick.adventurer,decision,state.worldClock.tick);
         if(!returns.some(j=>j.heroId===id)&&decision.action==="shop")
           returns.push({heroId:id,fromFloor:floor,

@@ -7,6 +7,9 @@ import { forecastShoppingIntents, shopperVisualAction } from "../../src/game/sho
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {completeObservedShopExit} from "../../src/game/shopRotation.ts";
+import {equipmentEffects,gearForItem} from "../../src/game/gearCatalog.ts";
+import {ECONOMY,ITEMS} from "../../src/game/economy.ts";
+import {craftAtCellarForge} from "../../src/game/cellarForge.ts";
 
 function hungryWithoutGold(){
   const original=createGameState(7351);
@@ -115,4 +118,30 @@ test("LIVE shop credit uses the unnumbered shop until an observed physical exit"
   assert.equal(departed.floor,"away");
   assert.equal(departed.offDutyUntilDay,state.day+3);
   assert.deepEqual(parseSave(JSON.stringify(createSave(exited))),exited);
+});
+test("crafted gear credit uses canonical equipment for all roles without phantom revenue",()=>{
+  for(const [role,weapon,output] of [
+    ["tank","Iron Sword","forged-sword-shield"],
+    ["DPS","Spear","forged-spear"],
+    ["healer","Staff","forged-staff"],
+  ] as const){
+    const original=createGameState(7351);
+    const hero={...original.adventurers[0],role,gold:0,
+      inventory:{...original.adventurers[0].inventory,
+        bread:ECONOMY.breadTarget,healing:ECONOMY.healingTarget},
+      equipment:{weapon,armor:"Ghoul Leather Vest"}};
+    const stocked={...original,adventurers:original.adventurers.map(h=>h.id===hero.id?hero:h),
+      shopEconomy:{...original.shopEconomy,materialStorage:{"iron-ore":1,coal:1,"ghoul-leather":0}}};
+    const crafted=craftAtCellarForge(stocked,output).state;
+    assert.equal(quoteBeggingRequest(crafted,hero.id)?.itemId,output);
+    const credited=issueShopCredit(crafted,hero.id).state;
+    const upgraded=credited.adventurers.find(h=>h.id===hero.id)!;
+    assert.equal(upgraded.equipment.weapon,gearForItem(output)!.name);
+    assert(equipmentEffects(role,upgraded.equipment).damage>
+      equipmentEffects(role,hero.equipment).damage);
+    assert.equal(credited.shopEconomy.bag[output],0);
+    assert.equal(credited.shopEconomy.balance,crafted.shopEconomy.balance);
+    assert.equal(credited.shopDebts[0].outstandingGold,ITEMS.find(i=>i.id===output)!.salePrice);
+    assert.deepEqual(parseSave(JSON.stringify(createSave(credited))),credited);
+  }
 });
