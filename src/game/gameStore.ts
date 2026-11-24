@@ -29,8 +29,11 @@ export class GameStore {
   private readonly purchases = new Set<number>();
   private liveDungeonRequested=false;
 
-  constructor(state = createGameState(),private readonly dungeonDiagnostic?:DungeonDiagnosticSink) {
+  private readonly dungeonDiagnostic?:DungeonDiagnosticSink;
+
+  constructor(state = createGameState(),dungeonDiagnostic?:DungeonDiagnosticSink) {
     this.current = state;
+    this.dungeonDiagnostic=dungeonDiagnostic;
   }
 
   get state(): GameState {

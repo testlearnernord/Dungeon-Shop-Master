@@ -106,7 +106,7 @@ export function createCampaignTelemetry(seed){
     return result;
   }
   function report(){
-    return {sampleIntervalTicks:200,deepestFloor:deepest,heroesByDeepest:histogram(),
+    return {sampleIntervalTicks:200,partyCountsAreSampled:true,deepestFloor:deepest,heroesByDeepest:histogram(),
       floor9Checks:gateCounts,firstFailedCheckExamples:floor9Examples,milestones,daily,
       lifetimeHeroes:Object.fromEntries(allHeroes),
       reachability:deepest<9?"floor9-not-observed":deepest===9?"floor9-observed-no-floor10":"floor10-observed",

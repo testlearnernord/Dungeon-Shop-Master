@@ -5,7 +5,7 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
   LIVE_COMBAT_INTERVAL_TICKS,LIVE_COMBAT_EVENT_SUBJECT,
-  SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS,type DungeonDiagnostic}
+  SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS,activateLiveDungeon,type DungeonDiagnostic}
   from "../../src/game/liveDungeonRuntime.ts";
 import {WORLD_TICKS_PER_DAY,lastWorldTickOfDay}
   from "../../src/game/worldClock.ts";
@@ -478,15 +478,17 @@ test("diagnostic captures the actual rejected Floor-9 solo stair crossing",()=>{
   const down=dungeonDownStair(layout),visited=dungeonShortestPath(layout,layout.entrance,down)
     .map(p=>p.z*layout.width+p.x);
   const traces:DungeonDiagnostic[]=[];
-  const store=new GameStore({...base,
+  const active=activateLiveDungeon({...base,
     adventurers:base.adventurers.map(h=>h.id===hero.id?
       {...h,floor:9 as const,status:"exploring" as const,bossPass:true}:
       {...h,floor:"shop" as const,status:"at-shop" as const}),
     dungeonWorlds:[{floor:9 as const,world:{...emptySpatialDungeonWorld(),
       heroes:[{heroId:hero.id,...down,visited}]}}],
-    liveDungeon:{...base.liveDungeon,plans:[{heroId:hero.id,floor:9 as const,
-      goal:"progress" as const,action:"descend" as const,updatedTick:0}]},
-  },entry=>traces.push(entry));
+  });
+  const store=new GameStore({...active,liveDungeon:{...active.liveDungeon,
+    plans:[{heroId:hero.id,floor:9 as const,
+      goal:"progress" as const,action:"descend" as const,updatedTick:0}]}},
+    entry=>traces.push(entry));
   store.enableLiveDungeon();store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   const gate=traces.find(entry=>entry.stage==="boss-crossing");
   assert(gate);assert.equal(gate.checks.savedParty,false);
