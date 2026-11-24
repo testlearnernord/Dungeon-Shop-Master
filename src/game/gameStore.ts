@@ -4,6 +4,7 @@ import {isCellarPondUncovered,pondExcavationRemaining} from "./cellarPond.ts";
 import { advanceDay, createGameState, setBossPass, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 import {buyHeroDungeonFind} from "./dungeonBuyback.ts";
+import {craftAtCellarForge,type ForgeOutput} from "./cellarForge.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
 import {resolveFurniturePlacement} from "./furniturePlacement.ts";
 import { pickUpShopItem, returnShopCart, payReservedShopCart } from "./shopCarts.ts";
@@ -111,6 +112,13 @@ export class GameStore {
 
   buyDungeonFind(heroId:string,itemId:ItemId):string {
     const result=buyHeroDungeonFind(this.current,heroId,itemId);
+    if(result.state!==this.current)this.replace(result.state);
+    return result.message;
+  }
+
+  /** Real cellar UI calls this once per deliberate recipe selection. */
+  craftAtForge(output:ForgeOutput):string {
+    const result=craftAtCellarForge(this.current,output);
     if(result.state!==this.current)this.replace(result.state);
     return result.message;
   }
