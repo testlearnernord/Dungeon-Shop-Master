@@ -251,8 +251,8 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       throw new RangeError("Grapple ability requires a melee monster");
     if(spec.equipment!==undefined && (spec.team!=="heroes"||
       spec.role==="monster"||
-      ![null,...WEAPON_NAMES].includes(spec.equipment.weapon)||
-      ![null,...ARMOR_NAMES].includes(spec.equipment.armor)))
+      ![null,...WEAPON_NAMES].some(name=>name===spec.equipment.weapon)||
+      ![null,...ARMOR_NAMES].some(name=>name===spec.equipment.armor)))
       throw new RangeError("Historical combat gear must be owned hero equipment");
     const agility=spec.agility??10;
     validNumber(agility,0,1000,spec.id+".agility");
