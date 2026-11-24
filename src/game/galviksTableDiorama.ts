@@ -226,7 +226,7 @@ void main(void){
       this.lastResolved=featureIdentity;
       this.syncFeatures(frame);
     }
-    this.syncMonsters(frame,now);
+    this.syncMonsters(frame);
     this.advanceGhoulPresentation(now);
   }
 
@@ -558,7 +558,7 @@ void main(void){
 
   /** Update existing instances only. The same LIVE world drives both
    * projections; table updates never choose a path or advance a monster. */
-  private syncMonsters(frame:LiveFloorSpectatorFrame,now:number):void{
+  private syncMonsters(frame:LiveFloorSpectatorFrame):void{
     if(!this.layout)return;
     // Each tile change is checked against the SAME saved-step requirements
     // as the full LIVE viewer. No route extrapolation while offscreen.
