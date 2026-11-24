@@ -101,10 +101,9 @@ test("Tank, DD and Healer each own one T1/T2 weapon family, shared leather armor
 
 test("a crafted T2 weapon sells via genuine stocked slot, not phantom gear",()=>{
   const original=createGameState(7351);
-  const dps=original.adventurers.find(h=>h.role==="DPS"&&
-    h.status==="at-shop")!;
+  const dps=original.adventurers.find(h=>h.role==="DPS")!;
   assert(dps);
-  const hero={...dps,gold:200,
+  const hero={...dps,gold:200,status:"at-shop" as const,floor:"shop" as const,
     equipment:{weapon:"Spear",armor:"Leather Vest"}};
   const slots=createEmptyShelfSlots("shelf-1");
   const [first,...rest]=slots;
