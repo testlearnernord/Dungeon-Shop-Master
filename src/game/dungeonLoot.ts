@@ -61,7 +61,8 @@ export function distributeDungeonFinds(
   items.forEach((item,index)=>{
     const member=alive[(start+index)%alive.length];
     const current=assigned.get(member.id)!;
-    if(item==="iron-sword"&&!current.equipment.weapon){
+    if(item==="iron-sword"&&current.role==="tank"&&
+       !current.equipment.weapon){
       assigned.set(member.id,{...current,equipment:{
         ...current.equipment,weapon:"Iron Sword"}});
     }else if(item==="leather-vest"&&!current.equipment.armor){
