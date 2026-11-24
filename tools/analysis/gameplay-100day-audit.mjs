@@ -8,7 +8,7 @@ import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
 import { ITEMS,ECONOMY,isMaterial } from "../../src/game/economy.ts";
 import {availableDungeonOffers} from "../../src/game/dungeonBuyback.ts";
 import {FORGE_OUTPUTS,FORGE_RECIPES,isForgeOutput} from "../../src/game/cellarForge.ts";
-import {createCampaignTelemetry} from "./campaign-progression-telemetry.mjs";
+import {createCampaignTelemetry,createCombatExposureTelemetry} from "./campaign-progression-telemetry.mjs";
 import {equipmentEffects} from "../../src/game/gearCatalog.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 
@@ -28,8 +28,9 @@ const slotIds = {bread:"shelf-1-slot-1","healing-herb":"shelf-1-slot-2",
   "iron-sword":"shelf-1-slot-3","leather-vest":"shelf-1-slot-4",
   spear:"shelf-2-slot-1",staff:"shelf-2-slot-2",
   ...Object.fromEntries(FORGE_OUTPUTS.map((id,i)=>[id,"shelf-3-slot-"+(i+1)]))};
-const buysSalvage=mode=>mode==="buyback"||mode==="forge";
-const eligibleSkus = mode => mode==="forge" ? [...catalog,"spear","staff",...FORGE_OUTPUTS] :
+const forges=mode=>mode==="forge"||mode==="forge-ready";
+const buysSalvage=mode=>mode==="buyback"||forges(mode);
+const eligibleSkus = mode => forges(mode) ? [...catalog,"spear","staff",...FORGE_OUTPUTS] :
   mode==="tier1"||mode==="buyback" ? [...catalog,"spear","staff"] :
   mode==="full" ? catalog :
   mode==="consumables" ? catalog.slice(0,2) :
@@ -163,8 +164,19 @@ function actShop(store,mode,metrics){
     // The real player can grant this saved permission only while a living
     // hero visits Galvik. Exercise that actual GameStore action so a
     // natural Floor-10 attempt is possible, never teleport the party.
-    if(!hero.bossPass&&store.setBossPass(hero.id,true))
-      metrics.bossPassesGranted++;
+    // Keep the old permissive comparison. A second Forge treatment
+    // models a player who approves only veterans with gear and sufficient HP.
+    // No direct state edits, no artificial revocation and no gate changes.
+    if(!hero.bossPass){
+      const gear=equipmentEffects(hero.role,hero.equipment);
+      const ready=hero.level>=5&&!!gear.weapon&&!!gear.vest&&
+        hero.health/heroProgression(hero).maxHealth>=.75;
+      add(metrics.passConsiderations,ready?"ready":"not-ready",1);
+      if((mode!=="forge-ready"||ready)&&store.setBossPass(hero.id,true)){
+        metrics.bossPassesGranted++;
+        add(metrics.passGrants,ready?"ready":"not-ready",1);
+      }
+    }
     const forecast=forecastShoppingIntents(store.state).get(hero.id);
     if(!forecast)continue;
     if(mode!=="absent" && forecast.items.length){
@@ -250,6 +262,7 @@ function classifyDeaths(metrics,previous,state,added) {
 }
 function run(mode){
   const telemetry=createCampaignTelemetry(SEED);
+  const combatExposure=createCombatExposureTelemetry();
   const store=setup(mode,telemetry.observe);
   telemetry.sample(store.state);
   const initial=snap(store.state,0);
@@ -257,6 +270,8 @@ function run(mode){
     mode,seed:SEED,daysRequested:DAYS,
     model:"real GameStore, scripted storefront and manual boss passes",
     stockPolicy:eligibleSkus(mode),
+    passPolicy:mode==="forge-ready"?"veteran-equipped-healthy-at-shop":"all-living-visitors",
+    passConsiderations:{},passGrants:{},
     starting:initial, startingIds:new Set(store.state.adventurers.map(h=>h.id)),
     milestones:[initial], eventTypes:{}, salesUnits:{},
     salesRevenue:{},healingUsed:{},credits:{},replayStepActions:{},
@@ -283,6 +298,7 @@ function run(mode){
     if(store.state.day!==startDay+1)throw Error("World day did not advance");
     const added=store.state.events.slice(firstEvent);
     summarizeEvents(metrics,added);
+    combatExposure.observe(added);
     if(completed>20)for(const e of added)add(metrics.lateEventTypes,e.type,1);
     for(const e of added.filter(e=>e.type==="influx")){
       const newcomer=store.state.adventurers.find(h=>h.id===e.adventurerId);
@@ -331,6 +347,8 @@ function run(mode){
   }));
   delete metrics.startingIds;
   metrics.progression=telemetry.report();
+  const {byContext,...exposureSummary}=combatExposure.report();
+  metrics.combatExposure={...exposureSummary,byContext};
   metrics.newHeroes=sum(store.state.events,e=>e.type==="influx"?1:0);
   // Request expiries are committed asynchronously by the LIVE clock, not
   // necessarily by a direct shopper action in actShop().
@@ -370,7 +388,8 @@ function run(mode){
   // Daily per-hero telemetry is intentionally retained in the JSON artifact,
   // not dumped as a huge single line into GitHub's job log.
   const {daily,lifetimeHeroes,...progressionSummary}=metrics.progression;
-  console.log("AUDIT_REPORT "+JSON.stringify({...metrics,progression:progressionSummary}));
+  // Detailed context strata stay in the artifact to bound the job-log line.
+  console.log("AUDIT_REPORT "+JSON.stringify({...metrics,progression:progressionSummary,combatExposure:exposureSummary}));
   return metrics;
 }
 const reports=[],failures=[];
