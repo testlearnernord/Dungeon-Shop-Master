@@ -10,6 +10,7 @@ import {availableDungeonOffers} from "../../src/game/dungeonBuyback.ts";
 import {FORGE_OUTPUTS,FORGE_RECIPES,isForgeOutput} from "../../src/game/cellarForge.ts";
 import {createCampaignTelemetry} from "./campaign-progression-telemetry.mjs";
 import {equipmentEffects} from "../../src/game/gearCatalog.ts";
+import {heroProgression} from "../../src/game/heroProgression.ts";
 
 const DAYS = Number(process.env.AUDIT_DAYS ?? 100);
 const SEED = Number(process.env.AUDIT_SEED ?? 7351);
@@ -318,6 +319,16 @@ function run(mode){
     earlyDeaths:deaths.filter(d=>d.level<=3).length,
     upperFloorDeaths:deaths.filter(d=>typeof d.floor==="number"&&d.floor<=3).length,
   };
+  metrics.roleSurvival=Object.fromEntries(["tank","DPS","healer"].map(role=>{
+    const entrants=store.state.adventurers.filter(h=>h.role===role);
+    const living=entrants.filter(h=>h.status!=="dead");
+    return [role,{entrants:entrants.length,living:living.length,
+      dead:entrants.length-living.length,deadShare:entrants.length?(entrants.length-living.length)/entrants.length:0,
+      veterans:living.filter(h=>h.level>=5).length,
+      peakLivingLevel:Math.max(0,...living.map(h=>h.level)),
+      permittedVeterans:living.filter(h=>h.level>=5&&h.bossPass).length,
+      deepestLiving:Math.max(0,...living.map(h=>typeof h.floor==="number"?h.floor:h.lastDungeonFloor??0))}];
+  }));
   delete metrics.startingIds;
   metrics.progression=telemetry.report();
   metrics.newHeroes=sum(store.state.events,e=>e.type==="influx"?1:0);
@@ -338,7 +349,7 @@ function run(mode){
     .sort((a,b)=>b.xp-a.xp).slice(0,12).map(h=>({
       id:h.id,level:h.level,xp:h.xp,physicalFinds:
         sum(Object.values(h.inventory.finds??{}),v=>v??0),role:h.role,
-      hp:h.health,maxHp:h.stats.maxHealth,gold:h.gold,
+      hp:h.health,maxHp:heroProgression(h).maxHealth,gold:h.gold,
       weapon:h.equipment.weapon,armor:h.equipment.armor,status:h.status,
       floor:h.floor
     }));

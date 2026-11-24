@@ -13,6 +13,8 @@ on:
       - src/game/dungeonDecisions.ts
       - src/game/dungeonParties.ts
       - src/game/spatialDungeonExploration.ts
+      - src/game/ghoulPack.ts
+      - src/game/dungeonLoot.ts
       - src/game/campaignSave.ts
       - src/game/shopArrivals.ts
       - tests/unit/liveDungeonReturnRegression.test.ts
@@ -24,7 +26,7 @@ permissions:
 
 jobs:
   audit:
-    name: Real GameStore / scripted-storefront 100-day scenarios / ${{ matrix.seed }}
+    name: Real GameStore / scripted-storefront ${{ matrix.days }}-day scenarios / ${{ matrix.seed }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -32,15 +34,25 @@ jobs:
       matrix:
         include:
           - seed: "7351"
+            days: "100"
             modes: "absent,consumables,equipment,full,tier1,buyback,forge"
           - seed: "9321"
+            days: "100"
             modes: "absent,full,tier1,buyback,forge"
           - seed: "42"
+            days: "100"
             modes: "absent,full,tier1,buyback,forge"
           - seed: "2026"
+            days: "100"
             modes: "absent,full,tier1,buyback,forge"
+          - seed: "42"
+            days: "200"
+            modes: "forge"
+          - seed: "7351"
+            days: "200"
+            modes: "forge"
     env:
-      AUDIT_DAYS: "100"
+      AUDIT_DAYS: ${{ matrix.days }}
       AUDIT_SEED: ${{ matrix.seed }}
       AUDIT_MODES: ${{ matrix.modes }}
     steps:
@@ -56,7 +68,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gameplay-100day-report-${{ matrix.seed }}
+          name: gameplay-report-${{ matrix.days }}day-${{ matrix.seed }}
           path: gameplay-100day-audit.json
           if-no-files-found: ignore
           retention-days: 14

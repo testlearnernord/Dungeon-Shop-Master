@@ -631,3 +631,24 @@ test("full health without a real class weapon is not a permit to risk deep floor
   assert.equal(chooseLiveHeroDungeonDecision({...hero,equipment:{weapon:"Iron Sword",armor:null}},
     progress,replay).action,"descend");
 });
+
+test("old unsold salvage does not cause a new return after every additional drop",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
+  const hero={...source,floor:5 as const,status:"exploring" as const,
+    equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+    health:heroProgression(source).maxHealth,
+    traits:{...source.traits,positive:"brave",negative:"stubborn"},
+    inventory:{bread:2,healing:1,finds:{"iron-ore":9}}};
+  const layout=generateExpeditionLayout(7351,5);
+  const progress={heroId:hero.id,...layout.entrance,
+    visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:5 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},encounters:[],
+    steps:[{...layout.entrance,t:1,action:"treasure" as const,hp:hero.health}],
+    outcome:"exploring" as const};
+  assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay,undefined,undefined,false,8).action,"descend");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,inventory:{...hero.inventory,finds:{"iron-ore":16}}},
+    progress,replay,undefined,undefined,false,15).action,"shop");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,health:1},progress,replay,
+    undefined,undefined,false,8).action,"shop");
+});

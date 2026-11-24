@@ -103,7 +103,7 @@ test("site loot and multi-hero ownership are deterministic and never duplicate i
   assert.deepEqual(first,distributeDungeonFinds(heroes,items,"crypt:site",0));
   const count=first.reduce((total,hero)=>total+
     Object.values(hero.inventory.finds??{}).reduce((n,q)=>n+(q??0),0),0);
-  assert.equal(count,items.length);
+  assert.equal(count+first.reduce((n,h)=>n+h.inventory.healing,0),items.length);
   assert.equal(heroes.every(hero=>hero.inventory.finds===undefined),true,
     "The supplied adventurer snapshot must remain untouched");
 });
@@ -125,4 +125,16 @@ test("shop bag full blocks recovered consumables but not forge materials",()=>{
   assert.equal(coal.state.shopEconomy.balance,
     full.shopEconomy.balance-dungeonBuybackPrice("coal"));
   assert.deepEqual(parseSave(serializeSave(coal.state)),coal.state);
+});
+
+test("needed loot is used by a compatible living hero before spare goods are offered",()=>{
+  const base=createGameState(7351).adventurers.slice(0,3);
+  const heroes=base.map((h,i)=>({...h,role:(["tank","DPS","healer"] as const)[i],
+    equipment:{weapon:null,armor:null},health:i===1?10:h.health}));
+  const result=distributeDungeonFinds(heroes,["iron-sword","spear","staff","healing-herb","healing-herb","healing-herb","healing-herb","coal"],"site",0);
+  assert.deepEqual(result.map(h=>h.equipment.weapon),["Iron Sword","Spear","Staff"]);
+  assert(result.every(h=>h.inventory.healing===1));
+  assert.equal(result.reduce((n,h)=>n+(h.inventory.finds?.["healing-herb"]??0),0),1);
+  assert.equal(result.reduce((n,h)=>n+(h.inventory.finds?.coal??0),0),1);
+  assert(heroes.every(h=>h.equipment.weapon===null&&h.inventory.healing===0));
 });

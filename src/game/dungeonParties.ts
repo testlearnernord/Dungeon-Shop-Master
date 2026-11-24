@@ -83,9 +83,17 @@ export function chooseCoLocatedDungeonParty(
     willingToTravelTogether(hero)&&
     (()=>{const p=getSpatialDungeonProgress(world,hero.id,layout);
       return p.x===start.x&&p.z===start.z;})());
-  companions.sort((a,b)=>Number(a.role===leader.role)-
-    Number(b.role===leader.role)||a.id.localeCompare(b.id));
-  return [leader,...companions.slice(0,2)];
+  // Score against ALL already chosen members, not just the leader.
+  // A Tank + DPS + Healer is preferred when those willing explorers are
+  // genuinely co-located. Same-class parties remain legal.
+  const selected=[leader];
+  while(selected.length<3&&companions.length){
+    const roles=new Set(selected.map(h=>h.role));
+    companions.sort((a,b)=>Number(roles.has(a.role))-Number(roles.has(b.role))||
+      a.id.localeCompare(b.id));
+    selected.push(companions.shift()!);
+  }
+  return selected;
 }
 
 function availableOldMembers(

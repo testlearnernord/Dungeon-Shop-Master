@@ -1,4 +1,6 @@
-import type {ItemId} from "./economy.ts";
+import {ECONOMY,type ItemId} from "./economy.ts";
+import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
+import {heroProgression} from "./heroProgression.ts";
 import {SeededRandom} from "./random.ts";
 import type {AdventurerState} from "./adventurers.ts";
 
@@ -47,8 +49,9 @@ export function rollDungeonSiteLoot(
 
 /** A unique item is assigned to ONE living member, not duplicated.
  * Across multiple drops the recipient rotates in stable hero-ID order.
- * A new sword/vest is personally kept if the recipient needs the slot;
- * spare items remain physical offers for later merchant buyback. */
+ * A real usable upgrade or needed healing supply goes to a living member
+ * who can use it. Unneeded goods retain deterministic rotating ownership.
+ * No item is duplicated, exchanged for free gold, or conjured by the AI. */
 export function distributeDungeonFinds(
   party:readonly AdventurerState[],items:readonly ItemId[],
   siteId:string,cycle:number,
@@ -59,20 +62,31 @@ export function distributeDungeonFinds(
   const assigned=new Map(alive.map(h=>[h.id,h]));
   const start=(hash(siteId)+cycle)%alive.length;
   items.forEach((item,index)=>{
-    const member=alive[(start+index)%alive.length];
-    const current=assigned.get(member.id)!;
-    if(item==="iron-sword"&&current.role==="tank"&&
-       !current.equipment.weapon){
-      assigned.set(member.id,{...current,equipment:{
-        ...current.equipment,weapon:"Iron Sword"}});
-    }else if(item==="leather-vest"&&!current.equipment.armor){
-      assigned.set(member.id,{...current,equipment:{
-        ...current.equipment,armor:"Leather Vest"}});
-    }else{
-      const finds=current.inventory.finds??{};
-      assigned.set(member.id,{...current,inventory:{...current.inventory,
-        finds:{...finds,[item]:(finds[item]??0)+1}}});
+    const offset=(start+index)%alive.length;
+    const rotation=Array.from({length:alive.length},(_,i)=>
+      assigned.get(alive[(offset+i)%alive.length].id)!);
+    const gear=gearForItem(item);
+    const upgrade=gear?rotation.find(h=>needsGearUpgrade(h.role,h.equipment,item)):undefined;
+    if(upgrade&&gear){
+      assigned.set(upgrade.id,{...upgrade,equipment:{
+        ...upgrade.equipment,[gear.slot]:gear.name}});
+      return;
     }
+    if(item==="healing-herb"||item==="bread"){
+      const slot=item==="healing-herb"?"healing":"bread";
+      // Match the real shop supply target, not an unbounded free stockpile.
+      const target=item==="healing-herb"?ECONOMY.healingTarget:ECONOMY.breadTarget;
+      const candidate=rotation.filter(h=>h.inventory[slot]<target)
+        .sort((a,b)=>a.health/heroProgression(a).maxHealth-b.health/heroProgression(b).maxHealth)[0];
+      if(candidate){
+        assigned.set(candidate.id,{...candidate,inventory:{
+          ...candidate.inventory,[slot]:candidate.inventory[slot]+1}});
+        return;
+      }
+    }
+    const current=rotation[0],finds=current.inventory.finds??{};
+    assigned.set(current.id,{...current,inventory:{...current.inventory,
+      finds:{...finds,[item]:(finds[item]??0)+1}}});
   });
   return party.map(hero=>assigned.get(hero.id)??hero);
 }

@@ -83,8 +83,13 @@ export function chooseHeroDungeonDecision(
   const carriedFinds=carriedDungeonFindCount(hero);
   const newLootSite=replay.steps.some(step=>
     step.action==="treasure"||step.action==="defeat-monster");
-  const newHaul=newLootSite&&carriedFinds>=salvageReturnThreshold(hero)&&
-    (previousFindCount===undefined||carriedFinds>previousFindCount);
+  const threshold=salvageReturnThreshold(hero);
+  // Carrying old unsold salvage is not a fresh reason to turn around after
+  // every additional single drop. Trigger at a newly crossed haul band.
+  // A real sale lowers the carried count and makes the next band available.
+  const newHaul=newLootSite&&carriedFinds>=threshold&&
+    (previousFindCount===undefined||
+      Math.floor(carriedFinds/threshold)>Math.floor(previousFindCount/threshold));
   if(lowHealth || newHaul ||
      (hero.floor===9 && hero.gold>=22 && known>=8)) {
     onReason?.(lowHealth?"low-health":newHaul?"new-salvage-haul":"floor9-gold-resupply");

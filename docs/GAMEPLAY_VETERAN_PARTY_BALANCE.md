@@ -1,0 +1,13 @@
+# Veteran progression and party balance
+
+Baseline #356: 170 deaths in the four 100-day Forge runs; 164 were Level 1–3. All twelve top-three survivors were healers. Maximum depths were 6/8/7/7 (seeds 7351/42/2026/9321), zero natural boss attempts. The old report accidentally printed generation-time base HP instead of effective HP for top survivors; this is corrected. It was a reporting error, not proof of over-healing.
+
+## Corrections
+
+- The real LIVE Ghoul pack now belongs to its authored site and generation. It no longer grows in number AND HP merely because a hero brings a companion. Floor 1 remains one; Floors 2–4 have one or two; Floors 5–9 have two or three, bounded by actual free spawn positions. Per-Ghoul solo HP, damage, loot probabilities and 60 Hz clock remain unchanged. The historical atomic test/replay simulator retains its original single-Ghoul pacing. A new encounter uses the new canonical options; no migration of in-progress pre-change encounters is provided.
+- The voluntary co-located formation fills distinct class roles when possible. LIVE battle entry allocates the closer actual walkable slots to tanks and farther ones to healers, preserving the party's saved identity/order. No new collision space, forced roles or recruitment across unknown space. The existing unique boss geometry and gate are untouched.
+- Needed gear and healing loot are retained by a compatible living member first; excess goods still go to the ordinary rotating sellable-finds inventory. Found herbs fill the existing supply target, not an unlimited stockpile. LIVE combat settlement deducts truly spent herbs before allocating new drops; chest settlement shares the same current supply count. No free healing or phantom sale.
+- A fresh haul return requires crossing a new multiple of the existing needs-based threshold, rather than any new item while already above threshold. Health, combat retreat, and legitimate gear-purchase resupply retain priority. Unsold items are not deleted or magically sold. This changes return frequency, not loot capacity.
+- Class survival by entrants, veterans, pass holders, sampled party composition and effective HP are reported. 22 existing 100-day cases remain, plus two 200-day Forge runs with the same scripted merchant rules. The merchant still caps materials; no real-world visual/physical acceptance is implied.
+
+The larger role imbalance remains a hypothesis to measure: healers attack at range and get renewable innate spells each battle, whereas tanks and DPS must close distance. Do not nerf healer abilities or change class stats until the corrected party incentives and supply handling have been tested. Compare survival and depth jointly, not just boss attempts.

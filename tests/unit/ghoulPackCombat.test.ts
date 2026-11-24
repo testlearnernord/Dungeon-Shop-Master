@@ -19,21 +19,26 @@ test("pack IDs are real stable combat participants, never extra map features",()
     ["ghoul:7","ghoul:7:pack:1","ghoul:7:pack:2"]);
   assert.throws(()=>ghoulPackActorId("site",3),RangeError);
   assert.equal(ghoulPackCount(7351,1,4,4,0,3,12),1);
-  assert(ghoulPackCount(7351,3,4,4,0,3,12)>=2);
-  assert(ghoulPackCount(7351,3,4,4,0,1,12)<=2);
+  for(let floor=1;floor<=9;floor++)for(let cycle=0;cycle<6;cycle++){
+    const one=ghoulPackCount(7351,floor,4,4,cycle,1,12);
+    assert.equal(ghoulPackCount(7351,floor,4,4,cycle,2,12),one);
+    assert.equal(ghoulPackCount(7351,floor,4,4,cycle,3,12),one);
+    assert(one>=1&&one<=3);
+  }
   assert.equal(ghoulPackCount(7351,3,4,4,0,3,0),1);
 });
 
-test("deeper seeded 3-hero party faces 2-3 actual Ghouls at distinct walkable positions",()=>{
+test("seeded party faces the same site pack at distinct walkable positions with role formation",()=>{
   const seed=7351;
   const initial=createGameState(seed);
-  const layout=generateExpeditionLayout(seed,3);
+  const layout=generateExpeditionLayout(seed,5);
   const site=layout.features.find(f=>f.kind==="monster"&&
     dungeonNeighbors(layout,f).length>0);
   assert(site);
   const approach=dungeonNeighbors(layout,site)[0];
   const heroes=initial.adventurers.slice(0,3).map(hero=>({
-    ...hero,status:"exploring" as const,floor:3 as const,
+    ...hero,status:"exploring" as const,floor:5 as const,
+    role:(["healer","DPS","tank"] as const)[initial.adventurers.indexOf(hero)],
     health:hero.stats.maxHealth,
   }));
   const a=prepareSpatialDungeonCombat(heroes,site,layout.seed,layout,approach,0,true);
@@ -42,6 +47,13 @@ test("deeper seeded 3-hero party faces 2-3 actual Ghouls at distinct walkable po
   const actors=a.options.actors;
   const monsters=actors.filter(spec=>spec.team==="monsters");
   assert(monsters.length>=2&&monsters.length<=3);
+  const solo=prepareSpatialDungeonCombat([heroes[0]],site,layout.seed,layout,approach,0,true);
+  const loneMonsters=solo.options.actors.filter(a=>a.team==="monsters");
+  assert.equal(loneMonsters.length,monsters.length);
+  assert.deepEqual(monsters.map(m=>({hp:m.hp,damage:m.damage,armor:m.armor})),
+    loneMonsters.map(m=>({hp:m.hp,damage:m.damage,armor:m.armor})));
+  const tank=actors.find(a=>a.role==="tank")!,healer=actors.find(a=>a.role==="healer")!;
+  assert(Math.abs(tank.x)+Math.abs(tank.z)<=Math.abs(healer.x)+Math.abs(healer.z));
   assert.equal(actors.length,heroes.length+monsters.length);
   assert.deepEqual(monsters.map(m=>m.id),monsters.map((_,i)=>
     ghoulPackActorId(site.id,i)));

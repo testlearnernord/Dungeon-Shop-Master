@@ -184,7 +184,10 @@ export function prepareSpatialDungeonCombat(
   const baseGhoulHp=(layout.floor===7
     ?22+monsterRand.int(13):12+layout.floor*3+monsterRand.int(7))+
     (elite?24:0);
-  const partyToughness=1+Math.max(0,party.length-1)*0.65;
+  // LIVE enemies are persistent site occupants. A companion joining must
+  // not multiply each Ghoul's HP as well as the pack count. Keep the
+  // historical atomic replay-only simulator's existing pacing contract.
+  const partyToughness=livePacks?1:1+Math.max(0,party.length-1)*0.65;
   const monsterHp=Math.round(baseGhoulHp*2.4*partyToughness);
 
   // Use distinct physically walkable grid cells inside this same 7x7 arena.
@@ -220,8 +223,20 @@ export function prepareSpatialDungeonCombat(
   // Real multi-Ghoul teams are enabled ONLY for actual deferred LIVE fights.
   const packCount=livePacks&&!elite?ghoulPackCount(campaignSeed,layout.floor,
     source.x,source.z,cycle,party.length,freePackSpawns.length):1;
+  // Maintain recorded party order, but place the actual tank towards the
+  // enemies and the ranged healer behind the melee line where geometry
+  // permits. Do not create positions or modify combat movement.
+  const slots=available.slice(0,party.length);
+  const rank={tank:0,DPS:1,healer:2};
+  const formation=new Map<string,DungeonPoint>();
+  if(livePacks){
+    slots.sort((a,b)=>Math.abs(a.x-monster.x)+Math.abs(a.z-monster.z)-
+      Math.abs(b.x-monster.x)-Math.abs(b.z-monster.z)||a.z-b.z||a.x-b.x);
+    [...party].sort((a,b)=>rank[a.role]-rank[b.role]||a.id.localeCompare(b.id))
+      .forEach((hero,i)=>formation.set(hero.id,slots[i]));
+  }
   const specs:CombatantSpec[]=party.map((hero,index)=>{
-    const spawn=available[index];
+    const spawn=formation.get(hero.id)??available[index];
     const gear=equipmentEffects(hero.role,hero.equipment);
     const progression=heroProgression(hero);
     return {
@@ -558,11 +573,11 @@ export function simulateSpatialDungeonPartyDay(
   };
   const distributeFound=(items:readonly ItemId[],siteId:string,cycle:number):void=>{
     const living=members.filter(m=>m.hp>0);
-    const updated=distributeDungeonFinds(living.map(m=>({...m.hero,health:m.hp})),
-      items,siteId,cycle);
+    const updated=distributeDungeonFinds(living.map(m=>({...m.hero,health:m.hp,
+      inventory:{...m.hero.inventory,healing:m.healing}})),items,siteId,cycle);
     for(const awarded of updated){
       const member=members.find(m=>m.hero.id===awarded.id);
-      if(member)member.hero=awarded;
+      if(member){member.hero=awarded;member.healing=awarded.inventory.healing;}
     }
   };
   const shareGold=(amount:number):void=>{
@@ -848,7 +863,9 @@ export function settleSpatialDungeonCombat(
     encounter.floor,encounter.featureId,encounter.siteCycle,
     "monster",monsterKills).itemIds:[];
   const foundOwners=new Map(distributeDungeonFinds(alive.map(({hero,actor})=>
-    ({...hero,health:Math.max(1,Math.round(actor.hp))})),
+    ({...hero,health:Math.max(1,Math.round(actor.hp)),
+      inventory:{...hero.inventory,
+        healing:hero.inventory.healing-(Math.min(2,hero.inventory.healing)-actor.healCharges)}})),
     physicalItems,encounter.featureId,encounter.siteCycle)
     .map(hero=>[hero.id,hero] as const));
   const pot=winner?(encounter.elite?6:2)*monsterKills:0;
@@ -873,13 +890,16 @@ export function settleSpatialDungeonCombat(
     const xp=hero.xp+(winner&&!dead?
       (encounter.elite?28:12)*monsterKills:0);
     const gold=shares.get(hero.id)??0;
-    const owner=foundOwners.get(hero.id)??hero;
+    // Distribute after actual consumed supplies are deducted. A found herb
+    // is a new owned supply, not a second charge or a discarded loot award.
+    const owner=foundOwners.get(hero.id)??{...hero,
+      inventory:{...hero.inventory,healing:hero.inventory.healing-used}};
     const adventurer:AdventurerState={
       ...settleHeroExperience(owner,xp,hp),
       gold:hero.gold+gold,
       floor:hero.floor,
       status:dead?"dead":hero.status,
-      inventory:{...owner.inventory,healing:hero.inventory.healing-used},
+      inventory:owner.inventory,
     };
     const oldProgress=world.heroes.find(p=>p.heroId===hero.id);
     if(!dead&&oldProgress)survivors.push(oldProgress);
