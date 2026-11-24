@@ -54,6 +54,8 @@ export const SFX_CATALOG = [
   {id:"fishing-flick",label:"Fishing · counter flick",owner:"world",family:"movement"},
   {id:"fishing-miss",label:"Fishing · lost tension",owner:"world",family:"environment"},
   {id:"fishing-catch",label:"Fishing · landed fish",owner:"world",family:"environment"},
+  {id:"forge-hammer",label:"Forge · hammer and anvil",owner:"world",family:"environment"},
+  {id:"forge-leather",label:"Forge · leather stitching",owner:"world",family:"environment"},
 ] as const satisfies readonly {
   id:string; label:string; owner:SfxOwner; family:SfxFamily
 }[];

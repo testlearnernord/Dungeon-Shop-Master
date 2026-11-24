@@ -10,3 +10,9 @@ Each gear product has distinct physical stock geometry. The existing T1 Leather 
 - Long weapons have a bounded shelf arrangement; sword-and-shield sets stack by thickness. Equipped spear tips and staff orbs follow tier and reset during historical replay.
 
 This is an authored low-poly art pass, not a claim of premium sculpting or human visual sign-off. Inspect the actual shelf, carried products and equipped heroes before closing art acceptance.
+
+## Cellar forge presentation
+
+The original physical anvil stays at the same interaction coordinates. The workbench now shares the dungeon stone and wood surfaces, adds a recessed firepot, embers, tools and a narrowly scoped hearth light. Three low-poly flames animate only near the cellar. A successful weapon recipe triggers a bounded spark burst and the shared synthesized hammer cue; leather crafting has its own quieter cue. Rejected recipes produce neither. The HUD shows item pictograms, exact reserve/recipe counts and availability. No new gameplay state, collision expansion, timers or economy rules are introduced.
+
+The existing material-to-equipment browser smoke checks every served stock GLB, actual shelf and carried asset identity, forge interaction surfaces, and physical checkout/departure. Final human visual/audio sign-off remains separate.

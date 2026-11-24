@@ -1,6 +1,7 @@
 import { ITEMS, type ItemId } from "./economy.ts";
 import type { GameState } from "./gameState.ts";
 import { forecastShoppingIntents } from "./shopperIntents.ts";
+import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
 
 export interface BeggingQuote {
   readonly heroId:string;
@@ -57,6 +58,10 @@ export function issueShopCredit(state:GameState,heroId:string):CreditResult {
 
   const item=ITEMS.find(entry=>entry.id===quote.itemId)!;
   const hero=state.adventurers.find(entry=>entry.id===heroId)!;
+  const gear=gearForItem(item.id);
+  if((item.kind==="weapon"||item.kind==="armor")&&
+     (!gear||!needsGearUpgrade(hero.role,hero.equipment,item.id)))
+    return {state,message:"This equipment is not a valid class or tier upgrade."};
   const stockSlot=state.shopEconomy.slots.find(slot=>
     slot.itemId===item.id&&slot.quantity>0);
   const economy=stockSlot
@@ -74,8 +79,8 @@ export function issueShopCredit(state:GameState,heroId:string):CreditResult {
     bread:hero.inventory.bread+(item.id==="bread"?1:0),
     healing:hero.inventory.healing+(item.id==="healing-herb"?1:0)};
   const equipment={...hero.equipment,
-    weapon:item.kind==="weapon"?item.name:hero.equipment.weapon,
-    armor:item.kind==="armor"?item.name:hero.equipment.armor};
+    weapon:gear?.slot==="weapon"?gear.name:hero.equipment.weapon,
+    armor:gear?.slot==="armor"?gear.name:hero.equipment.armor};
   const previous=state.shopDebts.find(entry=>entry.heroId===heroId);
   const shopDebts=previous
     ?state.shopDebts.map(entry=>entry.heroId===heroId

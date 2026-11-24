@@ -77,6 +77,7 @@ export function getShopStockTemplates(
 export function cloneShopStockModel(template: Mesh, name: string): Mesh {
   const copy = template.clone(name, null, true);
   if (!copy) throw new Error("Cannot clone GLB stock mesh: " + template.name);
+  copy.metadata = { ...template.metadata };
   copy.isVisible = true;
   copy.isPickable = false;
   copy.checkCollisions = false;

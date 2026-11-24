@@ -854,6 +854,11 @@ export function settleSpatialDungeonCombat(
       resolvedFeatureIds:[...world.resolvedFeatureIds,encounter.featureId],
       siteCycles:resolveDungeonSite(world.siteCycles??[],
         encounter.featureId,day),
+      // The same settlement owns the site and its live map occupant. A
+      // save between this combat tick and the next movement tick must
+      // never contain a resolved generation that is still ENGAGED.
+      ...(world.monsters!==undefined?{monsters:world.monsters.filter(monster=>
+        monster.id!==encounter.featureId)}:{}),
     }:{}),
   };
   return {world:nextWorld,ticks:result.map(tick=>({...tick,world:nextWorld}))};
