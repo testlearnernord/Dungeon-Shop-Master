@@ -40,8 +40,11 @@ export function needsGearUpgrade(
 ):boolean{
   const item=gearForItem(itemId);
   if(!item||(item.role!=="all"&&item.role!==role))return false;
-  const current=gearFromName(equipment[item.slot]);
-  return !current||current.slot===item.slot&&item.tier>current.tier;
+  const saved=gearFromName(equipment[item.slot]);
+  const current=saved?.slot===item.slot&&
+    (saved.role==="all"||saved.role===role)?saved:null;
+  // An invalid inherited off-class weapon is NOT a usable T1/T2 upgrade.
+  return !current||item.tier>current.tier;
 }
 
 /** Data is also consumed by dungeon combat, traps and rendered equipment. */
