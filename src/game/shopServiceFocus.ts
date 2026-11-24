@@ -1,4 +1,4 @@
-import {ITEMS,SHELF_GOODS,type ItemId,type Slot} from "./economy.ts";
+import {ITEMS,isWholesaleGood,type ItemId,type Slot} from "./economy.ts";
 
 /** Live visual customer requests. Never inferred from long-term forecast:
  * a real visitor must still be present with a live 60-second petition timer.
@@ -38,11 +38,11 @@ export interface ShelfFocusHint {
  */
 export function describeShelfFocus(
   slot:Pick<Slot,"itemId"|"quantity"|"capacity">,
-  selected:ItemId,
+  selected:ItemId|null,
   bag:Readonly<Record<ItemId,number>>,
-  heldByCustomer:boolean,
+  heldByCustomer:boolean,bindings:readonly (ItemId|null)[]=[],
 ):ShelfFocusHint {
-  const selectedItem=ITEMS.find(item=>item.id===selected)!;
+  const selectedItem=ITEMS.find(item=>item.id===selected);
   const item=ITEMS.find(entry=>entry.id===slot.itemId);
   const title=item
     ?item.name+" · "+slot.quantity+"/"+slot.capacity
@@ -51,16 +51,19 @@ export function describeShelfFocus(
     return {title,instruction:"Reserved stock · wait for checkout before changing this slot",
       tone:"blocked"};
   if(item&&item.id!==selected){
-    const key=SHELF_GOODS.findIndex(entry=>entry.id===item.id)+1;
-    return {title,instruction:"Press "+key+" to select "+item.name+
+    const index=bindings.indexOf(item.id);
+    const select=index>=0?"Press "+(index+1)+" to select "+item.name:
+      "TAB: assign "+item.name+" to your quickbar";
+    return {title,instruction:select+
       " · Right-click: remove one · Shift+right-click: clear slot",tone:"warning"};
   }
+  if(!selectedItem||!selected)return {title,instruction:"TAB: assign a quickbar item",tone:"warning"};
   if(slot.quantity>=slot.capacity)
     return {title,instruction:"Shelf full · Right-click: remove one · Shift+right-click: clear slot",
       tone:"blocked"};
   const inBag=bag[selected]??0;
   if(inBag<=0)
-    return {title,instruction:"No "+selectedItem.name+" in bag · B: Wholesale"+
+    return {title,instruction:"No "+selectedItem.name+" in bag · "+(isWholesaleGood(selected)?"B: Wholesale":"Forge in cellar")+
       (item?" · Right-click: remove one · Shift+right-click: clear slot":""),tone:"warning"};
   return {title,instruction:"Left-click: stock "+selectedItem.name+
     " ("+inBag+" in bag) · Shift+left-click: fill slot"+

@@ -51,6 +51,14 @@ test("a single buyer can reach and request service at a rotated register @ci-smo
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).aimAtShelfSlot());
   await expect(page.locator("#shop-shelf-focus")).toBeVisible();
   await expect(page.locator("#shelf-focus-title")).toContainText("Empty shelf slot");
+  await page.keyboard.press("Tab");
+  const bag=page.locator("#inventory-dialog");
+  await bag.locator('[data-bag-item="healing-herb"] .bag-item-pick').click();
+  await bag.locator('[data-bind-slot="1"]').click();
+  await bag.locator('[data-bag-item="bread"] .bag-item-pick').click();
+  await bag.locator('[data-bind-slot="4"]').click();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("1");
   await expect(page.locator("#shelf-focus-action"))
     .toContainText("Left-click: stock Healing Herb");
   await page.keyboard.press("4");
@@ -162,8 +170,19 @@ test("eight incoming customers return unpaid carts at bed-close without phantom 
     return {bag:state?.shopEconomy.bag,slots:state?.shopEconomy.slots};
   });
   await page.keyboard.press("f");
-  await expect(page.locator("#inventory .inventory-row.selected"))
-    .toHaveAttribute("data-item-id",urgent!);
+  const bagDialog=page.locator("#inventory-dialog");
+  await expect(bagDialog).toBeVisible();
+  const requested=bagDialog.locator('[data-bag-item="'+urgent+'"] .bag-item-pick');
+  if(await requested.count()){
+    await expect(requested).toHaveAttribute("aria-pressed","true");
+    await bagDialog.locator('[data-bind-slot="1"]').click();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("1");
+    await expect(page.locator("#inventory .inventory-row.selected")).toHaveAttribute("data-item-id",urgent!);
+  }else{
+    await expect(bagDialog.locator(".bag-message")).toContainText("not in your bag");
+    await page.keyboard.press("Tab");
+  }
   const afterPick=await page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const state=await new CampaignStorage().loadGame();

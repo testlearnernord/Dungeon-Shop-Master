@@ -6,7 +6,8 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
-import { ITEMS, type ItemId } from "./inventory.ts";
+import { SHELF_GOODS, type ItemId } from "./economy.ts";
+import {getShopStockTemplates,cloneShopStockModel} from "./shopStockAssets.ts";
 import { merchantActionPose, merchantGaitPose, type MerchantAction } from "./merchantMotion.ts";
 
 export type {MerchantAction} from "./merchantMotion.ts";
@@ -17,7 +18,6 @@ export type {MerchantAction} from "./merchantMotion.ts";
 export function createMerchantActions(
   scene:Scene,camera:UniversalCamera,enabled:()=>boolean,volume:()=>number,
   isShopView:()=>boolean=()=>true,
-  selectedItem:()=>ItemId=()=>ITEMS[0].id,
 ){
   const skin=new StandardMaterial("galvik-skin",scene);
   skin.diffuseColor=new Color3(.65,.49,.39);
@@ -33,12 +33,10 @@ export function createMerchantActions(
   wood.diffuseColor=new Color3(.30,.19,.12);
   const iron=new StandardMaterial("galvik-pickaxe-iron",scene);
   iron.diffuseColor=new Color3(.48,.48,.46);
-  const goods=new StandardMaterial("galvik-carried-goods",scene);
-  goods.diffuseColor=new Color3(.65,.42,.20);
   const coins=new StandardMaterial("galvik-coins",scene);
   coins.diffuseColor=new Color3(.86,.65,.20);
   coins.specularColor=new Color3(.5,.4,.2);
-  const materials=[skin,sleeve,cuff,trousers,boots,wood,iron,goods,coins];
+  const materials=[skin,sleeve,cuff,trousers,boots,wood,iron,coins];
   const meshes:Mesh[]=[];
   const viewRoot=new TransformNode("galvik-viewmodel",scene);
   viewRoot.parent=camera;
@@ -112,12 +110,14 @@ export function createMerchantActions(
     meshes.push(tooth);
   }
   const pickParts=meshes.filter(m=>m.name.startsWith("galvik-pick-"));
-  const itemBox=box("galvik-held-package",{width:.22,height:.27,depth:.25},
-    arms[1],[0,-.8,.17],goods);
-  const itemBottle=cylinder("galvik-held-bottle",.31,.16,arms[1],
-    [0,-.78,.16],goods);
-  const itemHerb=sphere("galvik-held-herb",.23,arms[1],
-    [0,-.78,.16],goods);
+  // Use the same item-specific GLB templates as the shelf and the customers.
+  // Hold only one cosmetic instance, and latch the successfully transferred
+  // item at the action boundary, not the next inventory selection.
+  let held:Mesh|null=null,heldId:ItemId|null=null;
+  let templates:ReadonlyMap<ItemId,Mesh>|null=null,disposed=false;
+  void getShopStockTemplates(scene).then(stock=>{
+    if(!disposed&&!scene.isDisposed)templates=stock;
+  }).catch(error=>console.error("Galvik stock GLB loading failed",error));
   const coin=sphere("galvik-held-coin",.14,arms[0],
     [0,-.79,.12],coins);
   coin.scaling.set(1,.25,1);
@@ -134,10 +134,25 @@ export function createMerchantActions(
       hip,[0,-.72,.095],boots);
     return hip;
   });
-  const setItems=(visible:boolean,itemId:ItemId)=>{
-    itemBox.setEnabled(visible&&itemId!=="mana-potion"&&itemId!=="healing-herb");
-    itemBottle.setEnabled(visible&&itemId==="mana-potion");
-    itemHerb.setEnabled(visible&&itemId==="healing-herb");
+  const setItems=(visible:boolean)=>{
+    if(!held&&heldId&&templates){
+      const item=SHELF_GOODS.find(entry=>entry.id===heldId);
+      const template=templates.get(heldId);
+      if(item&&template){
+        held=cloneShopStockModel(template,"galvik-held-stock");
+        held.parent=arms[1];
+        const weapon=item.kind==="weapon",armor=item.kind==="armor";
+        const scale=weapon?.72:armor?.68:.78;
+        held.scaling.setAll(scale);
+        // Assets sit on their local shelf origin; bring their centre towards
+        // the palm instead of anchoring the bottom of a tall vest to it.
+        const center=template.getBoundingInfo().boundingBox.center;
+        held.position.set(.04-center.x*scale,-.70-center.y*scale,.16-center.z*scale);
+        held.rotation.set(weapon?-.12:0,0,weapon?.32:0);
+        held.metadata={...held.metadata,heldItemId:heldId};
+      }
+    }
+    if(held)held.setEnabled(visible);
   };
 
   let context:AudioContext|null=null;
@@ -219,22 +234,26 @@ export function createMerchantActions(
     arms[1].rotation.x=pose.rightPitch-breathing;
     arms[1].rotation.z=pose.rightRoll;
     pickParts.forEach(mesh=>mesh.setEnabled(pose.toolVisible));
-    setItems(pose.itemVisible,selectedItem());
+    setItems(pose.itemVisible);
     coin.setEnabled(pose.coinVisible);
   });
   // No pickable/collidable body meshes: looking down, moving furniture and
   // mining cannot accidentally raycast Galvik's own limbs.
   pickParts.forEach(mesh=>mesh.setEnabled(false));
-  setItems(false,selectedItem());coin.setEnabled(false);
+  setItems(false);coin.setEnabled(false);
   return {
-    play(next:MerchantAction){
+    play(next:MerchantAction,itemId?:ItemId){
       if(!isShopView())return;
+      const product=next==="stock"||next==="destock"?itemId??null:null;
+      if(product!==heldId){
+        held?.dispose();held=null;heldId=product;
+      }
       action=next;started=performance.now();
-      const entry=ITEMS.find(item=>item.id===selectedItem());
-      if(entry)goods.diffuseColor=Color3.FromHexString(entry.color);
+      setItems(false);
       sound(next);
     },
     dispose(){
+      disposed=true;held?.dispose();held=null;
       scene.onBeforeRenderObservable.remove(observer);
       meshes.forEach(mesh=>mesh.dispose());
       pickGrip.dispose();

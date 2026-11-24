@@ -1,3 +1,4 @@
+import {Quickbar,quickbarIndexForKey} from "../../src/game/quickbar.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createGameState} from "../../src/game/gameState.ts";
@@ -473,4 +474,18 @@ test("real Level-10 T2 party survives active and archived save validation",()=>{
     (tank.equipment as {weapon:string|null;armor:string|null})[slot]=name;
     assert.throws(()=>parseSave(JSON.stringify(forged)),/partyBossReplay/);
   }
+});
+
+test("quickbar references support move, swap, clear and empty selection",()=>{
+  const bar=new Quickbar(["bread","bread","iron-ore","forged-staff","unknown"]);
+  assert.deepEqual(bar.slots,["bread",null,null,"forged-staff",null,null]);
+  assert.deepEqual(new Quickbar().slots,Array(6).fill(null));
+  assert(bar.bind(1,"forged-spear"));assert(bar.swap(1,3));
+  assert.equal(bar.slots[1],"forged-staff");assert.equal(bar.slots[3],"forged-spear");
+  assert(bar.bind(5,"bread"));assert.equal(bar.slots[0],null);
+  assert(bar.select(5));assert.equal(bar.selected,"bread");
+  bar.cycle(1);assert.equal(bar.selected,null);
+  assert(bar.clear(3));assert.equal(bar.slots[3],null);
+  assert.equal(bar.bind(7,"bread"),false);assert.equal(bar.bind(2,"iron-ore"),false);
+  assert.equal(quickbarIndexForKey("Digit6"),5);assert.equal(quickbarIndexForKey("Digit0"),null);
 });

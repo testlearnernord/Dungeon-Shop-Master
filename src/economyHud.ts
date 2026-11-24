@@ -1,6 +1,4 @@
-import {ECONOMY,SHELF_GOODS,MATERIAL_ITEMS,isWholesaleGood} from "./game/economy";
-import {FORGE_RECIPES,isForgeOutput,type ForgeOutput} from "./game/cellarForge.ts";
-import {dungeonBuybackPrice} from "./game/dungeonBuyback.ts";
+import {ECONOMY,SHELF_GOODS,WHOLESALE_GOODS} from "./game/economy";
 import {gearForItem} from "./game/gearCatalog.ts";
 import { GameStore } from "./game/gameStore";
 import {goldIcon} from "./uiIcons.ts";
@@ -16,7 +14,6 @@ export function setupEconomyHud(
   const sales = document.querySelector<HTMLElement>("#daily-sales")!;
   const dialog = document.querySelector<HTMLDialogElement>("#wholesale")!;
   const catalog = document.querySelector<HTMLElement>("#wholesale-catalog")!;
-  const discards = document.querySelector<HTMLElement>("#discard-catalog")!;
   const message = document.querySelector<HTMLElement>("#wholesale-message")!;
   let orderId = 0;
   const search=document.querySelector<HTMLInputElement>("#wholesale-search")!;
@@ -27,7 +24,7 @@ export function setupEconomyHud(
   const cards:{row:HTMLElement;id:(typeof SHELF_GOODS)[number]["id"];
     bag:HTMLElement;shelf:HTMLElement;
     buyOne:HTMLButtonElement;buyFive:HTMLButtonElement;
-    max:HTMLButtonElement;discard:HTMLButtonElement}[]=[];
+    max:HTMLButtonElement}[]=[];
   const groupFor=(kind:string)=>kind==="weapon"||kind==="armor"?"equipment":
     kind==="material"?"materials":"supplies";
   const purposeFor=(kind:string,id:string)=>id==="bread"?"Restores 8 HP. Budget first aid for adventurers.":
@@ -66,7 +63,7 @@ export function setupEconomyHud(
     toggle();
   });
 
-  for (const item of SHELF_GOODS) {
+  for (const item of WHOLESALE_GOODS) {
     const row = document.createElement("div");
     row.className = "catalog-row";
     row.dataset.itemId=item.id;
@@ -96,7 +93,7 @@ export function setupEconomyHud(
       ?purposeFor(item.kind,item.id)+" · "+
         (gear.role==="all"?"ALL CLASSES":gear.role.toUpperCase())+
         " · T"+gear.tier+" · "+
-        (item.wholesaleCost>0?"Wholesale "+item.wholesaleCost+"g":"FORGE IN CELLAR")+
+        ("Wholesale "+item.wholesaleCost+"g")+
         " / sell "+item.salePrice+"g"
       :purposeFor(item.kind,item.id);
     identity.append(name,type);
@@ -106,15 +103,9 @@ export function setupEconomyHud(
     header.append(iconFrame,identity);
     const prices=document.createElement("div");
     prices.className="catalog-prices";
-    // A forge-only item's zero wholesale price is an availability marker,
-    // not its production cost. Materials enter the reserve via paid buyback.
-    const materialCost=isForgeOutput(item.id)
-      ?MATERIAL_ITEMS.reduce((sum,material)=>sum+
-        FORGE_RECIPES[item.id as ForgeOutput][material.id]*dungeonBuybackPrice(material.id),0)
-      :null;
-    const unitCost=materialCost??item.wholesaleCost;
+    const unitCost=item.wholesaleCost;
     for(const [label,kind] of [
-      [unitCost+(materialCost===null?"g buy":"g materials"),"buy"],
+      [unitCost+"g buy","buy"],
       [item.salePrice+"g sell","sell"],
       ["+"+(item.salePrice-unitCost)+"g margin","margin"],
     ] as const){
@@ -160,8 +151,7 @@ export function setupEconomyHud(
       const economy = store.state.shopEconomy;
       const used = Object.values(economy.bag).reduce((sum, n) => sum + n, 0);
       const free = ECONOMY.bagCapacity - used;
-      const affordable = isWholesaleGood(item.id)
-        ?Math.floor(economy.balance / item.wholesaleCost):0;
+      const affordable = Math.floor(economy.balance / item.wholesaleCost);
       const quantity = Math.min(free, affordable);
       if (quantity < 1) {
         message.textContent = free < 1 ? "Your inventory is full." : "Not enough gold.";
@@ -172,15 +162,7 @@ export function setupEconomyHud(
     actions.append(button, five, max);
     row.append(header,description,prices,stocks,actions);
     catalog.append(row);
-    const discard = document.createElement("button");
-    discard.type = "button";
-    discard.textContent = `Discard 1 ${item.name}`;
-    discard.addEventListener("click", (event) => {
-      if (event.detail > 1) return;
-      message.textContent = store.discard(item.id, ++orderId);
-    });
-    discards.append(discard);
-    cards.push({row,id:item.id,bag,shelf,buyOne:button,buyFive:five,max,discard});
+    cards.push({row,id:item.id,bag,shelf,buyOne:button,buyFive:five,max});
   }
 
   const updateFilter=():void=>{
@@ -193,7 +175,7 @@ export function setupEconomyHud(
       card.row.hidden=!visible;
       if(visible)shown++;
     }
-    resultCount.textContent=shown+" / "+SHELF_GOODS.length+" items";
+    resultCount.textContent=shown+" / "+WHOLESALE_GOODS.length+" items";
   };
   search.addEventListener("input",updateFilter);
   filter.addEventListener("change",updateFilter);
@@ -209,18 +191,14 @@ export function setupEconomyHud(
       const item=SHELF_GOODS.find(entry=>entry.id===card.id)!;
       const count=economy.slots.filter(slot=>slot.itemId===item.id)
         .reduce((sum,slot)=>sum+slot.quantity,0);
-      const possible=isWholesaleGood(item.id)
-        ?Math.min(free,Math.floor(economy.balance/item.wholesaleCost)):0;
+      const possible=Math.min(free,Math.floor(economy.balance/item.wholesaleCost));
       card.bag.textContent="Bag: "+economy.bag[item.id];
       card.shelf.textContent="On shelves: "+count;
       card.buyOne.disabled=possible<1;
       card.buyFive.disabled=possible<5;
-      card.discard.disabled=economy.bag[item.id]===0;
       // Keep Buy max active at zero so the original explicit error feedback
       // distinguishes no funds from no storage.
-      card.max.disabled=!isWholesaleGood(item.id);
-      card.max.title=!isWholesaleGood(item.id)?"Craft in the cellar forge":
-        possible>0?"Buy "+possible+" for "+(possible*item.wholesaleCost)+"g"
+      card.max.title=possible>0?"Buy "+possible+" for "+(possible*item.wholesaleCost)+"g"
         :(free===0?"Bag full":"Insufficient gold");
     }
     gold.textContent = `Merchant gold: ${economy.balance}g`;

@@ -26,8 +26,7 @@ export type ItemId = (typeof ITEMS)[number]["id"];
 /** Only real shop merchandise requires physical GLB models. Raw materials
  * are bought directly from adventurers and are never shelf displays. */
 export const SHELF_GOODS = ITEMS.filter(item=>item.kind!=="material");
-export const WHOLESALE_GOODS = ITEMS.filter(item=>
-  item.kind!=="material"&&item.wholesaleCost>0);
+export const WHOLESALE_GOODS = SHELF_GOODS.filter(item=>item.wholesaleCost>0);
 export const isWholesaleGood=(id:ItemId):boolean=>
   WHOLESALE_GOODS.some(item=>item.id===id);
 export const isShelfGood=(id:ItemId):boolean=>SHELF_GOODS.some(item=>item.id===id);

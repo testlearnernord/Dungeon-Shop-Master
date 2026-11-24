@@ -1,5 +1,5 @@
 import {setIconButtonLabel} from "./uiIcons.ts";
-import {ITEMS,type ItemId} from "./game/economy.ts";
+import {ITEMS,isWholesaleGood,type ItemId} from "./game/economy.ts";
 import {prioritizeShopService} from "./game/shopServiceFocus.ts";
 import type {GameStore} from "./game/gameStore.ts";
 import type {NpcVisualSystem} from "./game/npcVisualSystem.ts";
@@ -116,8 +116,8 @@ export function setupShopServiceBrief(
       restock.dataset.itemId=wanted.id;
       restock.dataset.urgent=String(seconds<=15);
       restock.title=count>0
-        ?"F (when not aiming at a hero) or click: select "+wanted.name+" in the hotbar; then stock a shelf"
-        :"No "+wanted.name+" in bag. B opens wholesale.";
+        ?"F (when not aiming at a hero) or click: select "+wanted.name+" or open inventory to assign it"
+        :"No "+wanted.name+" in bag. "+(isWholesaleGood(wanted.id)?"B opens wholesale.":"Craft it in the cellar forge.");
       icon.setAttribute("href",import.meta.env.BASE_URL+
         "assets/ui-item-icons.svg#"+wanted.id);
     }

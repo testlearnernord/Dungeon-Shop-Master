@@ -28,3 +28,5 @@
 .forge-item-icon{width:34px;height:34px;flex:0 0 34px;color:#e5c88a}
 .forge-recipe[data-ready="true"]{border-color:#ad8954;background:#47331d55}
 .forge-recipe[data-ready="false"] .forge-item-icon{opacity:.58}
+
+.forge-recipe-value{grid-column:1 / -1;font-size:11px;color:#dfc28d;line-height:1.25}

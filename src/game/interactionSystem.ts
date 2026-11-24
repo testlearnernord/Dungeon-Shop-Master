@@ -6,6 +6,7 @@ import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Scene } from "@babylonjs/core/scene";
 import {SHELF_GOODS,type ItemId} from "./economy.ts";
+import {Quickbar,quickbarIndexForKey} from "./quickbar.ts";
 import { Shop } from "./shop";
 import {describeShelfFocus} from "./shopServiceFocus.ts";
 import type { WorldInteractable } from "./world";
@@ -17,7 +18,7 @@ export class InteractionSystem {
   private nextFocusAt = 0;
   private readonly repeatDelay = 320;
   private readonly clickDelay = 220;
-  private selectedIndex = 0;
+
   /** Excavation is an explicit player mode, never an ordinary shop click. */
   private miningMode = false;
   private message = "Click to enter the shop";
@@ -28,7 +29,7 @@ export class InteractionSystem {
     private readonly camera: Camera,
     private readonly shop: Shop,
     private readonly worldItems: WorldInteractable[],
-    private readonly onUpdate: (message: string, selected: ItemId) => void,
+    private readonly onUpdate: (message: string, selected: ItemId|null) => void,
     private readonly openCatalog: () => void = () => {},
     private readonly maxInteractionDistance = 3,
     private readonly openRoster: () => void = () => {},
@@ -38,31 +39,40 @@ export class InteractionSystem {
     private readonly openBeggarRequest: () => boolean = () => false,
     private readonly openDebtBook: () => void = () => {},
     private readonly store?: GameStore,
-    private readonly onMerchantAction: (action:MerchantAction)=>void = () => {},
+    private readonly onMerchantAction: (action:MerchantAction,itemId?:ItemId)=>void = () => {},
     private readonly openFishing:()=>boolean=()=>false,
     private readonly observeTable:()=>boolean=()=>false,
     private readonly openForge:()=>boolean=()=>false,
+    private readonly quickbar:Quickbar=new Quickbar(),
   ) {
-    this.shop.select(SHELF_GOODS[0].id);
+    this.shop.select(this.quickbar.selected);
     this.registerEvents();
     this.publish();
   }
 
-  selectItem(itemId:ItemId):void {
-    const index=SHELF_GOODS.findIndex(item=>item.id===itemId);
-    if(index<0)return;
-    this.selectedIndex=index;
-    this.shop.select(itemId);
-    this.message=`Selected ${SHELF_GOODS[index].name}.`;
+  selectSlot(index:number):void {
+    if(!this.quickbar.select(index))return;
+    this.refreshQuickbarSelection();
+  }
+  refreshQuickbarSelection():void {
+    this.heldButton=null;this.heldSlotId=null;
+    const item=SHELF_GOODS.find(entry=>entry.id===this.quickbar.selected);
+    this.shop.select(this.quickbar.selected);
+    this.message=item?`Selected ${item.name}.`:"Empty quickbar slot. TAB opens inventory.";
     this.publish();
+  }
+  selectItem(itemId:ItemId):boolean {
+    const index=this.quickbar.indexOf(itemId);
+    if(index<0)return false;
+    this.selectSlot(index);return true;
   }
 
   reset(): void {
     this.setMiningMode(false);
     this.heldButton = null;
     this.heldSlotId = null;
-    this.selectedIndex = 0;
-    this.shop.select(SHELF_GOODS[0].id);
+    this.quickbar.select(0);
+    this.shop.select(this.quickbar.selected);
     this.message = "Campaign ready. Click to enter the shop.";
     this.publish();
   }
@@ -81,13 +91,11 @@ export class InteractionSystem {
   private registerEvents(): void {
     this.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
     this.canvas.addEventListener("wheel", (event) => {
-      if (document.querySelector("dialog[open]")) return;
+      if (!this.isShopActive()||document.querySelector("dialog[open]")||
+          document.body.classList.contains("blueprint-active")) return;
       event.preventDefault();
-      const direction = Math.sign(event.deltaY);
-      this.selectedIndex = (this.selectedIndex + direction + SHELF_GOODS.length) % SHELF_GOODS.length;
-      this.shop.select(SHELF_GOODS[this.selectedIndex].id);
-      this.message = `Selected ${SHELF_GOODS[this.selectedIndex].name}.`;
-      this.publish();
+      this.quickbar.cycle(event.deltaY);
+      this.refreshQuickbarSelection();
     }, { passive: false });
     this.canvas.addEventListener("pointerdown", (event) => {
       if (document.querySelector("dialog[open]")||!this.isShopActive()) return;
@@ -119,12 +127,13 @@ export class InteractionSystem {
       if (document.pointerLockElement !== this.canvas) this.heldButton = null;
     });
     window.addEventListener("keydown", (event) => {
+      const hotkeyIndex=quickbarIndexForKey(event.code);
       if(!event.repeat && !event.defaultPrevented && !event.altKey && !event.ctrlKey &&
           !event.metaKey && !event.shiftKey && this.isShopActive() && !document.querySelector("dialog[open]") &&
           !(event.target instanceof HTMLElement &&
             (event.target.isContentEditable || ["INPUT","TEXTAREA","SELECT","BUTTON"].includes(event.target.tagName))) &&
-          /^Digit[1-5]$/.test(event.code)){
-        this.selectItem(SHELF_GOODS[Number(event.code.slice(-1))-1].id);
+          !document.body.classList.contains("blueprint-active")&&hotkeyIndex!==null){
+        this.selectSlot(hotkeyIndex);
         event.preventDefault();
         return;
       }
@@ -220,8 +229,8 @@ export class InteractionSystem {
     }
     const locked=this.store.state.shopCarts.some(cart=>
       cart.lines.some(line=>line.slotId===current.id));
-    const hint=describeShelfFocus(current,SHELF_GOODS[this.selectedIndex].id,
-      this.store.state.shopEconomy.bag,locked);
+    const hint=describeShelfFocus(current,this.quickbar.selected,
+      this.store.state.shopEconomy.bag,locked,this.quickbar.slots);
     if(heading.textContent!==hint.title)heading.textContent=hint.title;
     if(action.textContent!==hint.instruction)
       action.textContent=hint.instruction;
@@ -269,10 +278,14 @@ export class InteractionSystem {
         return;
       }
       const before=this.store?.state;
+      // Destocking transfers the actual slot product, regardless of which
+      // bag item happens to be selected. Capture it before the store refresh.
+      const transferredItem=button===0?this.quickbar.selected:slot.itemId;
       this.message = button === 0
         ? this.shop.stock(slot,bulk ? slot.capacity : 1)
         : this.shop.remove(slot,bulk ? slot.capacity : 1);
-      if(this.store && this.store.state!==before)this.onMerchantAction(button===0?"stock":"destock");
+      if(this.store&&this.store.state!==before&&transferredItem)
+        this.onMerchantAction(button===0?"stock":"destock",transferredItem);
     } else {
       const target = this.worldItems.find(({ mesh }) => mesh === hit.pickedMesh);
       if (target?.kind === "register" && button === 0) {
@@ -334,6 +347,6 @@ export class InteractionSystem {
   }
 
   private publish(): void {
-    this.onUpdate(this.message, SHELF_GOODS[this.selectedIndex].id);
+    this.onUpdate(this.message, this.quickbar.selected);
   }
 }

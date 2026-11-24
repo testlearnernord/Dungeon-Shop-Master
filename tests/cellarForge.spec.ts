@@ -102,22 +102,33 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   await expect(forge.locator(".forge-reserve")).toContainText("Ghoul Leather 0");
   await expect(armor.getByRole("button",{name:"Forge 1"})).toBeDisabled();
   await forge.getByRole("button",{name:/Close/}).click();
-  await expect(page.locator('#inventory [data-item-id="forged-spear"]'))
-    .toContainText("1");
-  await expect(page.locator('#inventory [data-item-id="ghoul-leather-vest"]'))
-    .toContainText("1");
-  // T2 is an actual finished shelf-good but must never be wholesale stock.
+  await page.keyboard.press("Tab");
+  const bag=page.locator("#inventory-dialog");
+  await expect(bag).toBeVisible();
+  await expect(bag.locator('[data-bag-item="forged-spear"] strong')).toHaveText("1");
+  await expect(bag.locator('[data-bag-item="ghoul-leather-vest"] strong')).toHaveText("1");
+  await expect(bag.locator("[data-bind-slot][data-item-id]")).toHaveCount(0);
+  await bag.locator('[data-bag-item="forged-spear"] .bag-item-pick').dragTo(bag.locator('[data-bind-slot="1"]'));
+  await bag.locator('[data-bag-item="ghoul-leather-vest"] .bag-item-pick').dragTo(bag.locator('[data-bind-slot="2"]'));
+  await expect(bag.locator('[data-bind-slot="1"]')).toHaveAttribute("data-item-id","forged-spear");
+  await expect(bag.locator('[data-bind-slot="2"]')).toHaveAttribute("data-item-id","ghoul-leather-vest");
+  await bag.locator('[data-bind-slot="1"]').dragTo(bag.locator('[data-bind-slot="2"]'));
+  await expect(bag.locator('[data-bind-slot="2"]')).toHaveAttribute("data-item-id","forged-spear");
+  await expect(bag.locator('[data-bind-slot="1"]')).toHaveAttribute("data-item-id","ghoul-leather-vest");
+  // Unbinding does not discard merchandise. Restore the explicit assignment.
+  await bag.locator('[data-bind-slot="1"]').click({button:"right"});
+  await expect(bag.locator('[data-bind-slot="1"]')).not.toHaveAttribute("data-item-id");
+  await expect(bag.locator('[data-bag-item="ghoul-leather-vest"] strong')).toHaveText("1");
+  await bag.locator('[data-bag-item="ghoul-leather-vest"] .bag-item-pick').click();
+  await bag.locator('[data-bind-slot="1"]').click();
+  await expect(bag.locator('[data-bind-slot="1"]')).toHaveAttribute("data-item-id","ghoul-leather-vest");
+  await page.keyboard.press("Tab");
+  await expect(bag).toBeHidden();
   await page.locator("#open-wholesale").click();
   const catalog=page.locator("#wholesale-catalog");
-  const forged=catalog.locator('.catalog-row[data-item-id="forged-spear"]');
-  await expect(forged).toContainText("FORGE IN CELLAR");
-  // Zero wholesale cost is a sentinel, not zero actual production cost.
-  await expect(forged.locator(".catalog-price-buy")).toHaveText("4g materials");
-  await expect(forged.locator(".catalog-price-margin")).toHaveText("+21g margin");
-  const forgedArmor=catalog.locator('.catalog-row[data-item-id="ghoul-leather-vest"]');
-  await expect(forgedArmor.locator(".catalog-price-buy")).toHaveText("8g materials");
-  await expect(forgedArmor.locator(".catalog-price-margin")).toHaveText("+15g margin");
-  await expect(forged.getByRole("button",{name:/Buy 1/})).toBeDisabled();
+  await expect(catalog.locator(".catalog-row")).toHaveCount(7);
+  for(const id of ["forged-sword-shield","forged-spear","forged-staff","ghoul-leather-vest","iron-ore","coal","ghoul-leather"])
+    await expect(catalog.locator('[data-item-id="'+id+'"]')).toHaveCount(0);
   await page.locator("#close-wholesale").click();
   await page.evaluate(async()=>{
     const hooks=window as Window&{
@@ -167,9 +178,30 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   const spearModel=models.find(m=>m.itemId==="forged-spear")!;
   expect(swordModel.size[2]).toBeGreaterThan(spearModel.size[2]);
   expect(swordModel.vertices).not.toBe(spearModel.vertices);
-  await page.locator('#inventory [data-item-id="forged-spear"]').click();
+  await expect(page.locator('#inventory [data-quickbar-slot="2"]')).toHaveAttribute("data-item-id","forged-spear");
+  await page.keyboard.press("2");
   await expect(page.locator("#shop-shelf-focus")).toBeVisible();
   await expect(page.locator("#shelf-focus-action")).toContainText("T2 Spear");
+  await page.mouse.click(400,300);
+  await expect(page.locator("#status")).toContainText("Placed T2 Spear");
+  await expect(page.locator('#inventory [data-item-id="forged-spear"] strong')).toHaveText("0");
+  const heldStock=()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectMerchantHeldStock());
+  const physicalSpear={itemId:"forged-spear",
+    sourceUrl:"/Dungeon-Shop-Master/assets/models/forged-spear.glb",
+    vertices:spearModel.vertices,pickable:false,collision:false};
+  await expect.poll(heldStock).toMatchObject(physicalSpear);
+  // With a completely different selected bag item, take the spear back.
+  // The first-person transfer must still use the real shelf product.
+  // Actual bound keys remain usable in pointer lock.
+  await page.keyboard.press("1");
+  await expect(page.locator('#inventory [data-item-id="ghoul-leather-vest"]')).toHaveAttribute("aria-pressed","true");
+  await page.mouse.click(400,300,{button:"right"});
+  await expect(page.locator("#status")).toContainText("Returned T2 Spear");
+  await expect(page.locator('#inventory [data-item-id="forged-spear"] strong')).toHaveText("1");
+  await expect.poll(heldStock).toMatchObject(physicalSpear);
+  await page.keyboard.press("2");
+  await expect(page.locator('#inventory [data-item-id="forged-spear"]')).toHaveAttribute("aria-pressed","true");
   await page.mouse.click(400,300);
   await expect(page.locator("#status")).toContainText("Placed T2 Spear");
   await expect(page.locator('#inventory [data-item-id="forged-spear"] strong')).toHaveText("0");

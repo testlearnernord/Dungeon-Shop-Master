@@ -467,7 +467,8 @@ test("diagnostics observe actual decisions without changing the campaign or save
     c.startedTick<observed.state.liveDungeon.lastStepTick);
   assert(crossing,"This genuine campaign includes a fight lasting across a later map tick");
   const save=createSave(observed.state);
-  assert.deepEqual(save,createSave(plain.state));
+  const plainSave=createSave(plain.state);
+  assert.deepEqual({...save,savedAt:plainSave.savedAt},plainSave);
   assert.deepEqual(parseSave(JSON.stringify(save)),observed.state);
   const tampered=structuredClone(save);
   const forged=tampered.payload.liveDungeon.combats.find(c=>c.id===crossing.id)!;
