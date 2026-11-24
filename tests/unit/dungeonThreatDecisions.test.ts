@@ -91,3 +91,31 @@ test("a cautious underequipped hero without support chooses an actual one-cell L
   assert(dungeonNeighbors(layout,position).some(cell=>
     cell.x===reaction.step.x&&cell.z===reaction.step.z));
 });
+
+test("a hunted shop-bound returner can make one real tactical dodge without cancelling backtracking",()=>{
+  const wounded=hero({health:Math.floor(heroProgression(original[0]).maxHealth*.3),
+    traits:{...original[0].traits,positive:"careful"}});
+  const reaction=chooseDungeonThreatReaction(layout,world,[wounded],[wounded]);
+  assert(reaction&&reaction.action==="ESCAPING");
+  const result=advanceSpatialDungeonPartyStep([wounded],world,seed,1,
+    new Set([wounded.id]),{
+      deferCombat:true,returnToEntrance:true,tacticalStep:reaction.step,
+    });
+  const positionAfter=result.world.heroes.find(p=>p.heroId===wounded.id);
+  assert(positionAfter);
+  assert.deepEqual({x:positionAfter.x,z:positionAfter.z},reaction.step,
+    "tactical escape must override this ONE known portal-backtrack step");
+  assert(dungeonNeighbors(layout,position).some(p=>
+    p.x===positionAfter.x&&p.z===positionAfter.z));
+  assert.equal(result.ticks[0].replay.steps[1].action,"walk");
+  // Without a visible hunter on the next tick, the normal return navigator
+  // still owns the saved route and does not receive any invented teleport.
+  const after=advanceSpatialDungeonPartyStep([result.ticks[0].adventurer],
+    {...result.world,monsters:[]},seed,1,new Set([wounded.id]),{
+      deferCombat:true,returnToEntrance:true,
+    });
+  const next=after.world.heroes.find(p=>p.heroId===wounded.id);
+  assert(next);
+  assert(dungeonNeighbors(layout,positionAfter).some(p=>
+    p.x===next.x&&p.z===next.z)||after.ticks[0].replay.steps[1]?.action==="complete");
+});
