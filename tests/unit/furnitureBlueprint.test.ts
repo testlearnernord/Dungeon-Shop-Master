@@ -1,3 +1,7 @@
+import {createGameState} from "../../src/game/gameState.ts";
+import {GameStore} from "../../src/game/gameStore.ts";
+import {createSave,parseSave} from "../../src/game/campaignSave.ts";
+import {CELLAR_FORGE_POSITION} from "../../src/game/cellarRoom.ts";
 import {createStockedShopLayout as createShopLayout} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -71,4 +75,32 @@ test("movable bed snaps to the room floor; roster board only mounts to real shop
     {x:7.5,z:4.46},2),{id:"adventurer-board",x:7.22,z:4.5,rotation:1});
   assert.equal(blueprintAtSurface("adventurer-board","back-wall",
     {x:0,z:7},0),null);
+});
+
+// The existing preview, commit and strict save parser must all use the same
+// fixed-workshop exclusion. No second cellar placement controller.
+test("cellar forge and approach cannot be covered by the chest or observation table",()=>{
+  const initial=createGameState(),store=new GameStore(initial);
+  for(const id of ["cellar-chest","cellar-table"] as const){
+    for(const rotation of [0,1,2,3] as const){
+      for(const z of [CELLAR_FORGE_POSITION.z,CELLAR_FORGE_POSITION.z+1.5]){
+        const draft={id,x:CELLAR_FORGE_POSITION.x,z,rotation};
+        const problem=store.previewFurniturePlacement(draft);
+        assert.match(problem??"",/forge and its working approach/);
+        assert.equal(store.placeFurniture(draft),problem);
+        assert.equal(store.state,initial);
+        const bad=JSON.parse(JSON.stringify(createSave(initial)));
+        bad.payload[id==="cellar-chest"?"cellarChest":"cellarTable"]=draft;
+        assert.throws(()=>parseSave(JSON.stringify(bad)),/forge and its working approach/);
+      }
+    }
+  }
+  const chest={id:"cellar-chest" as const,x:-2,z:-27,rotation:0 as const};
+  const table={id:"cellar-table" as const,x:-1,z:-29,rotation:0 as const};
+  assert.equal(store.previewFurniturePlacement(chest),null);
+  assert.equal(store.placeFurniture(chest),"Cellar chest placed.");
+  assert.equal(store.previewFurniturePlacement(table),null);
+  assert.equal(store.placeFurniture(table),"Galvik's Table placed.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+  assert.equal(store.state.worldClock,initial.worldClock);
 });

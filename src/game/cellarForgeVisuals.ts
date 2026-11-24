@@ -5,10 +5,10 @@ import {PointLight} from "@babylonjs/core/Lights/pointLight";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import type {Mesh} from "@babylonjs/core/Meshes/mesh";
 import type {Scene} from "@babylonjs/core/scene";
-import {CELLAR_FLOOR_Y} from "./cellarRoom.ts";
+import {CELLAR_FLOOR_Y,CELLAR_FORGE_POSITION} from "./cellarRoom.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
 
-export const CELLAR_FORGE_POSITION={x:-4,z:-28.5} as const;
+export {CELLAR_FORGE_POSITION} from "./cellarRoom.ts";
 
 /** One fixed physical workbench. Detailed stone, hot coals and tools sit
  * inside the original collider footprint; only the anvil accepts E/click.
