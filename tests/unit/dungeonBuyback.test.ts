@@ -103,7 +103,7 @@ test("site loot and multi-hero ownership are deterministic and never duplicate i
   assert.deepEqual(first,distributeDungeonFinds(heroes,items,"crypt:site",0));
   const count=first.reduce((total,hero)=>total+
     Object.values(hero.inventory.finds??{}).reduce((n,q)=>n+(q??0),0),0);
-  assert.equal(count,items.length);
+  assert.equal(count+first.reduce((n,h)=>n+h.inventory.healing,0),items.length);
   assert.equal(heroes.every(hero=>hero.inventory.finds===undefined),true,
     "The supplied adventurer snapshot must remain untouched");
 });

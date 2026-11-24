@@ -111,9 +111,9 @@ export function selectLiveFloorSpectatorFrame(
           member.floor===floor&&member.status==="exploring"&&
           (progress.get(member.id)?.x??NaN)===site.x&&
           (progress.get(member.id)?.z??NaN)===site.z):[hero];
-      const threat=world&&site&&!fight&&!returning&&tacticalLayout
+      const threat=world&&site&&!fight&&returning?.phase!=="portal"&&tacticalLayout
         ?chooseDungeonThreatReaction(tacticalLayout,world,
-          gathered,state.adventurers):null;
+          returning?[hero]:gathered,state.adventurers,returning?.phase==="backtrack"):null;
       return [{
         id:hero.id,name:hero.name,role:hero.role,equipment:hero.equipment,
         level:hero.level,stats:hero.stats,traits:hero.traits,

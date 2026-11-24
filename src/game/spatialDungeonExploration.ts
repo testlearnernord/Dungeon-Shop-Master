@@ -9,7 +9,7 @@ import { resolveGroupCombat, type CombatantSpec, type GroupCombatOptions,
   type GroupCombatState, type GroupCombatReplay } from "./groupCombat.ts";
 import { SeededRandom } from "./random.ts";
 import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
-import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
+import {heroProgression,settleHeroExperience,ordinaryHeroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects} from "./gearCatalog.ts";
 import type {ItemId} from "./economy.ts";
 import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK}
@@ -177,14 +177,15 @@ export function prepareSpatialDungeonCombat(
   const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
     tileAt(layout,source.x,source.z)==="room";
   // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
-  // Toughness is authoritative, not a slowed replay: each extra party member
-  // adds some resistance so a three-hero party does not erase one Ghoul
-  // before its authored attacks can play out. All choices stay seed-stable.
-  // The 25-second encounter bound and actual hero/monster damage remain real.
+  // Retain the authored individual toughness and real 25-second combat
+  // bound. The persistent LIVE site must not react to party composition.
   const baseGhoulHp=(layout.floor===7
     ?22+monsterRand.int(13):12+layout.floor*3+monsterRand.int(7))+
     (elite?24:0);
-  const partyToughness=1+Math.max(0,party.length-1)*0.65;
+  // LIVE enemies are persistent site occupants. A companion joining must
+  // not multiply each Ghoul's HP as well as the pack count. Keep the
+  // historical atomic replay-only simulator's existing pacing contract.
+  const partyToughness=livePacks?1:1+Math.max(0,party.length-1)*0.65;
   const monsterHp=Math.round(baseGhoulHp*2.4*partyToughness);
 
   // Use distinct physically walkable grid cells inside this same 7x7 arena.
@@ -220,25 +221,31 @@ export function prepareSpatialDungeonCombat(
   // Real multi-Ghoul teams are enabled ONLY for actual deferred LIVE fights.
   const packCount=livePacks&&!elite?ghoulPackCount(campaignSeed,layout.floor,
     source.x,source.z,cycle,party.length,freePackSpawns.length):1;
+  // Maintain recorded party order, but place the actual tank towards the
+  // enemies and the ranged healer behind the melee line where geometry
+  // permits. Do not create positions or modify combat movement.
+  const slots=available.slice(0,party.length);
+  const rank={tank:0,DPS:1,healer:2};
+  const formation=new Map<string,DungeonPoint>();
+  if(livePacks){
+    slots.sort((a,b)=>Math.abs(a.x-monster.x)+Math.abs(a.z-monster.z)-
+      Math.abs(b.x-monster.x)-Math.abs(b.z-monster.z)||a.z-b.z||a.x-b.x);
+    [...party].sort((a,b)=>rank[a.role]-rank[b.role]||a.id.localeCompare(b.id))
+      .forEach((hero,i)=>formation.set(hero.id,slots[i]));
+  }
   const specs:CombatantSpec[]=party.map((hero,index)=>{
-    const spawn=available[index];
-    const gear=equipmentEffects(hero.role,hero.equipment);
-    const progression=heroProgression(hero);
+    const spawn=formation.get(hero.id)??available[index];
+    const attributes=ordinaryHeroCombatAttributes(hero);
     return {
       id:hero.id,team:"heroes",role:hero.role,
-      style:hero.role==="healer"?"ranged":"melee",
+      style:attributes.style,
       x:(spawn.x-monster.x)*2.5,z:(spawn.z-monster.z)*2.5,
-      hp:hero.health,maxHp:progression.maxHealth,
-      damage:6+Math.floor((hero.role==="healer"?progression.intellect:
-        hero.role==="DPS"?progression.agility:progression.strength)/2)+
-        gear.damage+progression.damageBonus,
-      armor:1+gear.armor+progression.armorBonus,
-      equipment:{weapon:gear.weapon,armor:gear.vest},
-      agility:progression.agility,
-      speed:hero.role==="tank"?2.5:3.1,reach:gear.reach,
-      healCharges:Math.min(2,hero.inventory.healing),
-      ...(hero.role==="healer"?{
-        magicHeals:progression.dungeonMagicHeals+gear.magicHeals}:{}),
+      hp:hero.health,maxHp:attributes.maxHp,
+      damage:attributes.damage,armor:attributes.armor,
+      equipment:attributes.equipment,agility:attributes.agility,
+      speed:attributes.speed,reach:attributes.reach,
+      healCharges:attributes.healCharges,
+      ...(attributes.magicHeals!==undefined?{magicHeals:attributes.magicHeals}:{}),
     };
   });
   // One *real* source feature can spawn a bounded physical Ghoul pack.
@@ -492,6 +499,29 @@ export interface SpatialDungeonAdvanceOptions {
   readonly blockedCombatSites?:ReadonlySet<string>;
 }
 
+/** One pure ordinary-floor step policy for the walker and the read-only
+ * forecast. Only the scheduler commits its result. */
+export function chooseDungeonTravelStep(
+  layout:DungeonLayout,progress:readonly SpatialDungeonHeroProgress[],
+  resolved:ReadonlySet<string>,options:Pick<SpatialDungeonAdvanceOptions,
+    "returnToEntrance"|"routeToKnownTarget"|"routeToResource"|"tacticalStep"|"waitForCompanion">={},
+):DungeonPoint|null{
+  if(!progress.length)return null;
+  const current=progress[0];
+  if(options.tacticalStep){
+    if(!dungeonNeighbors(layout,current).some(p=>p.x===options.tacticalStep!.x&&p.z===options.tacticalStep!.z))
+      throw new RangeError("Hero tactical AI tried to cross a nonadjacent dungeon tile");
+    return options.tacticalStep;
+  }
+  if(options.waitForCompanion)return null;
+  if(options.returnToEntrance)return chooseKnownReturnStep(layout,current);
+  if(options.routeToKnownTarget)
+    return chooseDungeonTransitionRoute(layout,progress,options.routeToKnownTarget).step;
+  const resource=options.routeToResource?chooseKnownResourceStep(layout,current,options.routeToResource):null;
+  return resource??choosePartyDungeonStep(layout,progress)??
+    chooseRenewedSiteStep(layout,current,new Set(progress.flatMap(p=>p.visited)),resolved);
+}
+
 /**
  * Shared spatial navigation and combat authority for solo and co-located
  * parties. Each member walks the same actual edges; all inventory, HP and
@@ -558,11 +588,11 @@ export function simulateSpatialDungeonPartyDay(
   };
   const distributeFound=(items:readonly ItemId[],siteId:string,cycle:number):void=>{
     const living=members.filter(m=>m.hp>0);
-    const updated=distributeDungeonFinds(living.map(m=>({...m.hero,health:m.hp})),
-      items,siteId,cycle);
+    const updated=distributeDungeonFinds(living.map(m=>({...m.hero,health:m.hp,
+      inventory:{...m.hero.inventory,healing:m.healing}})),items,siteId,cycle);
     for(const awarded of updated){
       const member=members.find(m=>m.hero.id===awarded.id);
-      if(member)member.hero=awarded;
+      if(member){member.hero=awarded;member.healing=awarded.inventory.healing;}
     }
   };
   const shareGold=(amount:number):void=>{
@@ -574,33 +604,13 @@ export function simulateSpatialDungeonPartyDay(
   };
 
   for(let t=1;t<=maxSteps;t++){
-    const routeProgress={...progress[0],...current,
-      visited:members[0].visitedOrder};
     const sharedProgress=members.map(member=>({
       heroId:member.hero.id,...current,visited:member.visitedOrder,
     }));
-    const transition=options.routeToKnownTarget
-      ?chooseDungeonTransitionRoute(layout,sharedProgress,options.routeToKnownTarget)
-      :null;
-    const resourceStep=options.routeToResource
-      ?chooseKnownResourceStep(layout,routeProgress,options.routeToResource):null;
-    const tactical=options.tacticalStep&&t===1?options.tacticalStep:null;
-    if(tactical&&!dungeonNeighbors(layout,current).some(point=>
-      point.x===tactical.x&&point.z===tactical.z))
-      throw new RangeError("Hero tactical AI tried to cross a nonadjacent dungeon tile");
-    // A real, visible pursuer is an immediate tactical hazard even when a
-    // hero has already committed to return to Galvik's shop. The ordinary
-    // known backtrack resumes on the next step after the threat is lost.
-    // Tactical AI still supplies ONLY a validated adjacent dungeon tile.
+    const tactical=options.tacticalStep&&t===1?options.tacticalStep:undefined;
     if(options.waitForCompanion&&!tactical)break;
-    const next=tactical??(options.returnToEntrance
-      ?chooseKnownReturnStep(layout,routeProgress)
-      :transition?transition.step:
-        resourceStep??choosePartyDungeonStep(layout,sharedProgress) ??
-        chooseRenewedSiteStep(layout,current,
-          // Renewable farming belongs to exploration, not an active
-          // staircase commitment. Never leave a reached stair to farm.
-          new Set(members.flatMap(member=>member.visitedOrder)),resolved));
+    const next=chooseDungeonTravelStep(layout,sharedProgress,resolved,
+      {...options,tacticalStep:tactical});
     if(!next){
       outcome="completed";
       step(t,"complete");
@@ -790,9 +800,8 @@ export function simulateSpatialDungeonDay(
  * current saved location. The FULL spatial path/combat/loot engine above
  * remains authoritative: this adapter only chooses the step budget.
  *
- * A fight is still resolved atomically by the existing deterministic group
- * combat resolver. Binding its 60 Hz frames to elapsed shared world time is
- * a separate, explicit live-combat integration step; don't claim otherwise.
+ * Production always defers combat to the shared world clock's 60 Hz
+ * checkpoints. Atomic execution remains only for isolated test fixtures.
  */
 export function advanceSpatialDungeonPartyStep(
   party:readonly AdventurerState[],world:SpatialDungeonWorld,
@@ -848,7 +857,9 @@ export function settleSpatialDungeonCombat(
     encounter.floor,encounter.featureId,encounter.siteCycle,
     "monster",monsterKills).itemIds:[];
   const foundOwners=new Map(distributeDungeonFinds(alive.map(({hero,actor})=>
-    ({...hero,health:Math.max(1,Math.round(actor.hp))})),
+    ({...hero,health:Math.max(1,Math.round(actor.hp)),
+      inventory:{...hero.inventory,
+        healing:hero.inventory.healing-(Math.min(2,hero.inventory.healing)-actor.healCharges)}})),
     physicalItems,encounter.featureId,encounter.siteCycle)
     .map(hero=>[hero.id,hero] as const));
   const pot=winner?(encounter.elite?6:2)*monsterKills:0;
@@ -873,13 +884,16 @@ export function settleSpatialDungeonCombat(
     const xp=hero.xp+(winner&&!dead?
       (encounter.elite?28:12)*monsterKills:0);
     const gold=shares.get(hero.id)??0;
-    const owner=foundOwners.get(hero.id)??hero;
+    // Distribute after actual consumed supplies are deducted. A found herb
+    // is a new owned supply, not a second charge or a discarded loot award.
+    const owner=foundOwners.get(hero.id)??{...hero,
+      inventory:{...hero.inventory,healing:hero.inventory.healing-used}};
     const adventurer:AdventurerState={
       ...settleHeroExperience(owner,xp,hp),
       gold:hero.gold+gold,
       floor:hero.floor,
       status:dead?"dead":hero.status,
-      inventory:{...owner.inventory,healing:hero.inventory.healing-used},
+      inventory:owner.inventory,
     };
     const oldProgress=world.heroes.find(p=>p.heroId===hero.id);
     if(!dead&&oldProgress)survivors.push(oldProgress);

@@ -7,6 +7,7 @@ const add=(record,key,n=1)=>record[key]=(record[key]??0)+n;
 export function createCampaignTelemetry(seed){
   const allHeroes=new Map(),daily=[],milestones=[],gateCounts={},floor9Examples={},depthDecisions={},depthChecks={},depthExamples={};
   const layouts=new Map(Array.from({length:9},(_,i)=>[i+1,generateExpeditionLayout(seed,i+1)]));
+  const partyCompositionSamples={};
   let lastTick=null,deepest=0,dayDecisions={},dayGates={},dayParties={},dayHero=new Map();
   let previousFloors=new Map(),previousParties=new Set(),dayPartyChanges={};
   function heroDay(id){
@@ -60,6 +61,7 @@ export function createCampaignTelemetry(seed){
       currentParties.add(key);
       if(!previousParties.has(key))add(dayPartyChanges,"formed");
       const members=group.memberIds.map(id=>byId.get(id)).filter(Boolean);
+      add(partyCompositionSamples,members.map(h=>h.role).sort().join("+"));
       const world=state.dungeonWorlds.find(w=>w.floor===group.floor)?.world;
       const positions=members.map(h=>world?.heroes.find(p=>p.heroId===h.id));
       const colocated=positions.length>1&&positions.every(p=>p&&p.x===positions[0]?.x&&p.z===positions[0]?.z);
@@ -109,7 +111,7 @@ export function createCampaignTelemetry(seed){
     const entry={day:state.day,deepestEver:deepest,heroes,parties:Object.values(dayParties),
       partyChanges:dayPartyChanges,decisions:dayDecisions,floor9Checks:dayGates};
     daily.push(entry);
-    if([20,50,80,100].includes(state.day))milestones.push({day:state.day,deepestEver:deepest,
+    if([20,50,80,100,150,200].includes(state.day))milestones.push({day:state.day,deepestEver:deepest,
       heroesByDeepest:histogram(),floor9Checks:{...gateCounts}});
     dayHero=new Map();dayDecisions={};dayGates={};dayParties={};dayPartyChanges={};
     previousFloors=new Map();
@@ -119,12 +121,12 @@ export function createCampaignTelemetry(seed){
     return result;
   }
   function report(){
-    return {sampleIntervalTicks:200,partyCountsAreSampled:true,deepestFloor:deepest,heroesByDeepest:histogram(),
+    return {sampleIntervalTicks:200,partyCountsAreSampled:true,partyCompositionSamples,deepestFloor:deepest,heroesByDeepest:histogram(),
       floor9Checks:gateCounts,firstFailedCheckExamples:floor9Examples,
       depthDecisions,depthChecks,depthExamples,milestones,daily,
       lifetimeHeroes:Object.fromEntries(allHeroes),
       reachability:deepest<9?"floor9-not-observed":deepest===9?"floor9-observed-no-floor10":"floor10-observed",
-      interpretation:"Failed checks overlap; counts are not unique heroes or proof of causality. Combat settlement currently supplies bossReady=false. Route checks describe known routes, not proof of unreachable geometry."};
+      interpretation:"Failed checks overlap; counts are not unique heroes or proof of causality. Route checks describe known routes, not proof of unreachable geometry."};
   }
   return {observe,sample,finishDay,report,deepestFloor:()=>deepest};
 }

@@ -521,8 +521,7 @@ export class DungeonReplayScene {
       }
     }
     for(const hero of view.heroes){
-      const points=hero.threatNextStep?[hero.threatNextStep]:
-        predictDungeonHeroSteps(this.layout,hero,view.resolved);
+      const points=predictDungeonHeroSteps(this.layout,hero,view.resolved,view);
       const signature=[hero.x,hero.z,...points.flatMap(p=>[p.x,p.z])]
         .join(",")+"|"+hero.activity+"|"+hero.plannedAction;
       const old=this.floorRouteHints.get(hero.id);

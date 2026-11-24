@@ -1,5 +1,6 @@
 import type {AdventurerState} from "./adventurers.ts";
 import {heroProgression} from "./heroProgression.ts";
+import {equipmentEffects} from "./gearCatalog.ts";
 import {dungeonNeighbors,type DungeonLayout,type DungeonPoint}
   from "./dungeonLayout.ts";
 import {getSpatialDungeonProgress,chooseKnownRouteStep,
@@ -25,7 +26,7 @@ const compare=(a:DungeonPoint,b:DungeonPoint)=>a.z-b.z||a.x-b.x;
  * the global spectator nor a future undiscovered route supplies facts. */
 export function chooseDungeonThreatReaction(
   layout:DungeonLayout,world:SpatialDungeonWorld,
-  group:readonly AdventurerState[],roster:readonly AdventurerState[],
+  group:readonly AdventurerState[],roster:readonly AdventurerState[],returning=false,
 ):DungeonThreatReaction|null{
   if(!group.length||!world.monsters?.length)return null;
   const leader=group[0];
@@ -43,12 +44,12 @@ export function chooseDungeonThreatReaction(
 
   const health=Math.min(...group.map(hero=>
     hero.health/heroProgression(hero).maxHealth));
-  const equipped=group.filter(hero=>hero.equipment.weapon!==null).length;
+  const equipped=group.filter(hero=>equipmentEffects(hero.role,hero.equipment).weapon!==null).length;
   const experienced=group.some(hero=>hero.level>=3);
   const careful=group.some(hero=>hero.traits.positive==="careful");
   const brave=group.some(hero=>hero.traits.positive==="brave"||
     hero.traits.negative==="reckless");
-  const strong=health>.70&&(
+  const strong=!returning&&health>.70&&(
     group.length>=2&&equipped>0||
     equipped>0&&(experienced||brave));
 
@@ -64,7 +65,7 @@ export function chooseDungeonThreatReaction(
 
   // If a grievously hurt member requests retreat, the whole Temporary
   // Party follows: no split party, teleport, or free rescue.
-  if(health<.45||careful&&health<.7){
+  if(returning||health<.45||careful&&health<.7){
     const saved=getSpatialDungeonProgress(world,leader.id,layout);
     const home=chooseKnownRouteStep(layout,saved,layout.entrance);
     const choices=neighbors.filter(point=>

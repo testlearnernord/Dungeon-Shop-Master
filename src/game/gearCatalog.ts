@@ -6,7 +6,7 @@ import type {AdventurerRole} from "./adventurers.ts";
  * player-facing labels correctly say T1 Sword & Shield / T1 Leather Vest.
  * An obsolete universal sword is NEVER a class-neutral weapon. */
 export const GEAR_BY_ITEM={
-  "iron-sword":{name:"Iron Sword",label:"T1 Sword & Shield",slot:"weapon",role:"tank",tier:1,damage:5,armor:0,reach:1.75,magicHeals:0,trapProtection:0},
+  "iron-sword":{name:"Iron Sword",label:"T1 Sword & Shield",slot:"weapon",role:"tank",tier:1,damage:5,armor:2,reach:1.75,magicHeals:0,trapProtection:0},
   "spear":{name:"Spear",label:"T1 Spear",slot:"weapon",role:"DPS",tier:1,damage:5,armor:0,reach:2.1,magicHeals:0,trapProtection:0},
   "staff":{name:"Staff",label:"T1 Staff",slot:"weapon",role:"healer",tier:1,damage:2,armor:0,reach:2.5,magicHeals:1,trapProtection:0},
   "forged-sword-shield":{name:"Forged Sword & Shield",label:"T2 Sword & Shield",slot:"weapon",role:"tank",tier:2,damage:7,armor:4,reach:1.75,magicHeals:0,trapProtection:0},

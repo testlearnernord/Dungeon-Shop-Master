@@ -54,8 +54,8 @@ test("injured individual flees on a genuinely adjacent tile and the real walker 
 });
 
 test("armed, experienced healthy warrior may deliberately confront the visible pursuer",()=>{
-  const strong=hero({level:5,equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
-    health:heroProgression({...original[0],level:5}).maxHealth});
+  const strong=hero({role:"tank",level:5,equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+    health:heroProgression({...original[0],role:"tank",level:5}).maxHealth});
   const reaction=chooseDungeonThreatReaction(layout,world,[strong],[strong]);
   assert(reaction);
   assert.equal(reaction.action,"PREPARING_TO_FIGHT");
@@ -118,4 +118,12 @@ test("a hunted shop-bound returner can make one real tactical dodge without canc
   assert(next);
   assert(dungeonNeighbors(layout,positionAfter).some(p=>
     p.x===next.x&&p.z===next.z)||after.ticks[0].replay.steps[1]?.action==="complete");
+});
+
+test("a healthy armed returner does not charge a pursuer instead of going home",()=>{
+  const ready=hero({role:"tank",level:5,equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+    health:heroProgression({...original[0],role:"tank",level:5}).maxHealth});
+  const result=chooseDungeonThreatReaction(layout,world,[ready],[ready],true);
+  assert(result&&result.action==="ESCAPING");
+  assert.notDeepEqual(result.step,{x:monster.x,z:monster.z});
 });

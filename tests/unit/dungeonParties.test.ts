@@ -259,3 +259,14 @@ test("healthy novice cannot be dragged deeper by a prepared companion",()=>{
   assert.equal(agreed.get(leader.id)?.action,"descend");
   assert.equal(agreed.get(novice.id)?.action,"stay");
 });
+
+test("co-located formation fills distinct roles rather than choosing two copies of the same class",()=>{
+  const layout=generateExpeditionLayout(SEED,7);
+  const [tank,healer,dps]=party();
+  const duplicate={...healer,id:"adventurer-0"};
+  const group=chooseCoLocatedDungeonParty(tank,[duplicate,healer,dps,tank],
+    {resolvedFeatureIds:[],heroes:[]},layout,new Set());
+  assert.equal(group.length,3);
+  assert.deepEqual(new Set(group.map(h=>h.role)),new Set(["tank","healer","DPS"]));
+  assert(group.some(h=>h.id===dps.id));
+});

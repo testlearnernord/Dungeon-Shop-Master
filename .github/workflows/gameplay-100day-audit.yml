@@ -1,30 +1,29 @@
 name: Long-run Gameplay Simulation Audit
 
 on:
-  push:
-    branches:
-      - 'audit/gameplay-loop-*'
+  pull_request:
+    branches: [main]
     paths:
-      - tools/analysis/gameplay-100day-audit.mjs
-      - tools/analysis/campaign-progression-telemetry.mjs
-      - .github/workflows/gameplay-100day-audit.yml
-      - src/game/heroProgression.ts
-      - src/game/liveDungeonRuntime.ts
-      - src/game/dungeonDecisions.ts
-      - src/game/dungeonParties.ts
-      - src/game/spatialDungeonExploration.ts
-      - src/game/campaignSave.ts
-      - src/game/shopArrivals.ts
-      - tests/unit/liveDungeonReturnRegression.test.ts
-      - tests/unit/liveDungeonWorld.test.ts
+      - 'tools/analysis/**'
+      - '.github/workflows/gameplay-100day-audit.yml'
+      - 'src/game/**'
+      - 'tests/unit/**'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Superseded candidates must not consume the full simulation matrix.
+concurrency:
+  group: gameplay-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   audit:
-    name: Real GameStore / scripted-storefront 100-day scenarios / ${{ matrix.seed }}
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'audit/gameplay-loop-'))
+    name: Real GameStore / scripted-storefront ${{ matrix.days }}-day scenarios / ${{ matrix.seed }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -32,15 +31,25 @@ jobs:
       matrix:
         include:
           - seed: "7351"
+            days: "100"
             modes: "absent,consumables,equipment,full,tier1,buyback,forge"
           - seed: "9321"
+            days: "100"
             modes: "absent,full,tier1,buyback,forge"
           - seed: "42"
+            days: "100"
             modes: "absent,full,tier1,buyback,forge"
           - seed: "2026"
+            days: "100"
             modes: "absent,full,tier1,buyback,forge"
+          - seed: "42"
+            days: "200"
+            modes: "forge"
+          - seed: "7351"
+            days: "200"
+            modes: "forge"
     env:
-      AUDIT_DAYS: "100"
+      AUDIT_DAYS: ${{ matrix.days }}
       AUDIT_SEED: ${{ matrix.seed }}
       AUDIT_MODES: ${{ matrix.modes }}
     steps:
@@ -50,13 +59,13 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - name: Run real GameStore / world clock 100-day comparison
+      - name: Run real GameStore / world clock comparison
         run: node --max-old-space-size=6144 --experimental-strip-types tools/analysis/gameplay-100day-audit.mjs
       - name: Upload detailed balance and survivor telemetry
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gameplay-100day-report-${{ matrix.seed }}
+          name: gameplay-report-${{ matrix.days }}day-${{ matrix.seed }}
           path: gameplay-100day-audit.json
           if-no-files-found: ignore
           retention-days: 14

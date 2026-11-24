@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {generateExpeditionLayout,dungeonNeighbors,tileAt}
+import {generateExpeditionLayout,dungeonNeighbors,dungeonDownStair,dungeonShortestPath,tileAt}
   from "../../src/game/dungeonLayout.ts";
-import {chooseSpatialDungeonStep,chooseRenewedSiteStep} from "../../src/game/spatialDungeonExploration.ts";
+import {chooseSpatialDungeonStep,chooseRenewedSiteStep,chooseDungeonTravelStep} from "../../src/game/spatialDungeonExploration.ts";
 import {predictDungeonHeroSteps,dungeonPreviewExplanation}
   from "../../src/game/dungeonIntentPreview.ts";
 
@@ -94,4 +94,18 @@ test("fully explored hero previews authoritative renewed-site fallback",()=>{
     "With no frontier or renewed site, do not invent motion");
   assert.match(dungeonPreviewExplanation(layout,hero,resolved),
     /No connected next tile/);
+});
+
+test("deep-floor forecasts use the shared stair navigator and stop at the gate",()=>{
+  for(let floor=5;floor<=9;floor++){
+    const layout=generateExpeditionLayout(7351,floor),stair=dungeonDownStair(layout);
+    const route=dungeonShortestPath(layout,layout.entrance,stair);
+    const hero={id:"veteran",...route[0],visited:route.map(p=>p.z*layout.width+p.x),
+      activity:"exploring" as const,inCombat:false,plannedAction:"descend" as const};
+    const direct=chooseDungeonTravelStep(layout,[{heroId:hero.id,...hero}],new Set(),
+      {routeToKnownTarget:stair});
+    assert.deepEqual(predictDungeonHeroSteps(layout,hero)[0],direct);
+    assert.deepEqual(predictDungeonHeroSteps(layout,{...hero,...stair}),[]);
+    assert.match(dungeonPreviewExplanation(layout,{...hero,...stair}),/At staircase/);
+  }
 });

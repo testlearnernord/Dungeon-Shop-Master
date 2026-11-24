@@ -1,4 +1,4 @@
-import {chooseLiveHeroDungeonDecision,salvageReturnThreshold,isBossExpeditionCandidate} from "../../src/game/dungeonDecisions.ts";
+import {chooseLiveHeroDungeonDecision,salvageReturnThreshold,isBossExpeditionCandidate,canRiskOrdinaryDescent,selectKnownResourceSite} from "../../src/game/dungeonDecisions.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -14,6 +14,8 @@ import {WORLD_TICKS_PER_DAY,lastWorldTickOfDay}
 import {generateExpeditionLayout,dungeonDownStair,dungeonNeighbors,dungeonShortestPath,tileAt}
   from "../../src/game/dungeonLayout.ts";
 import {emptySpatialDungeonWorld,chooseKnownReturnStep} from "../../src/game/spatialDungeonExploration.ts";
+import {advanceDungeonMonsterWorld} from "../../src/game/dungeonMonsterWorld.ts";
+import {hasDungeonLineOfSight} from "../../src/game/heroPerception.ts";
 
 test("real world-clock event advances one dungeon step during shop play, not at bedtime",()=>{
   const store=new GameStore(createGameState(7351));
@@ -54,7 +56,13 @@ test("pending expedition event, true positions, HP and rewards resume determinis
   assert.deepEqual(a.state,b.state);
   const ids=a.state.events.map(e=>e.id);
   assert.equal(ids.length,new Set(ids).size,"Each live event must be unique.");
-  assert.equal(a.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
+  const expedition=a.state.worldClock.pending.filter(e=>e.lane==="expedition");
+  assert.equal(expedition.filter(e=>e.subjectId===DUNGEON_WORLD_EVENT_SUBJECT).length,1,
+    "There is exactly one world movement clock.");
+  const hasFight=a.state.liveDungeon.combats.length>0||!!a.state.liveDungeon.partyBossCombat;
+  assert.equal(expedition.filter(e=>e.subjectId===LIVE_COMBAT_EVENT_SUBJECT).length,
+    hasFight?1:0,"All active fights share exactly one combat clock.");
+  assert.equal(expedition.length,hasFight?2:1,"No additional expedition clock owner.");
 });
 
 test("sleep fast-forwards the SAME live scheduler and NEVER rolls a second dungeon day",()=>{
@@ -152,9 +160,13 @@ test("mid-combat JSON save resumes identical 60Hz actors, Herb debit and single 
   a.advanceWorldTime(520);
   b.advanceWorldTime(520);
   assert.deepEqual(b.state,a.state,"Future fighter state and settlement must be byte-identical");
-  assert.equal(a.state.liveDungeon.combats.length,0);
+  assert(!a.state.liveDungeon.combats.some(c=>c.id===fight.id),
+    "The original fight must settle within its bounded combat duration, even if another fight begins.");
   const actual=a.state.events.filter(e=>e.type==="dungeon-live"&&
-    e.dungeonReplay?.encounters.length);
+    fight.heroIds.includes(e.adventurerId??"")&&
+    e.dungeonReplay?.encounters.some(encounter=>
+      encounter.featureId===fight.encounter.featureId&&
+      encounter.siteCycle===fight.encounter.siteCycle));
   assert(actual.length>0,"Battle results are committed to immutable footage.");
   assert(actual.every(e=>e.dungeonReplay?.encounters[0].combat.frames.length!>1));
   const ids=a.state.events.map(e=>e.id);
@@ -273,22 +285,27 @@ test("strict v20 saves reject forged backtracks and duplicated portal events",()
     fn(modified.payload);
     assert.throws(()=>parseSave(JSON.stringify(modified)),re);
   };
+  const targetJourney=(s:any)=>{
+    const journey=s.liveDungeon.returns.find((j:any)=>j.heroId===heroId);
+    assert(journey,"Tamper the actual fixture hero, not another concurrent traveler.");
+    return journey;
+  };
   const walking=createSave(store.state);
-  tamper(walking,s=>{s.liveDungeon.returns[0].heroId="adventurer-99999";},/returns/);
-  tamper(walking,s=>{s.liveDungeon.returns[0].phase="portal";},/dueTick|returns/);
-  tamper(walking,s=>{s.liveDungeon.returns.push(s.liveDungeon.returns[0]);},/returns/);
-  for(let i=0;i<10&&store.state.liveDungeon.returns[0]?.phase!=="portal";i++)
+  tamper(walking,s=>{targetJourney(s).heroId="adventurer-99999";},/returns/);
+  tamper(walking,s=>{targetJourney(s).phase="portal";},/dueTick|returns/);
+  tamper(walking,s=>{s.liveDungeon.returns.push(targetJourney(s));},/returns/);
+  for(let i=0;i<10&&store.state.liveDungeon.returns.find(j=>j.heroId===heroId)?.phase!=="portal";i++)
     store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   const portal=store.state.liveDungeon.returns.find(j=>j.heroId===heroId);
   assert.equal(portal?.phase,"portal");
   assert.equal(store.state.adventurers.find(h=>h.id===heroId)?.floor,"transit",
     "A real LIVE portal traveler is not on playable Dungeon Floor 4.");
   const stable=createSave(store.state);
-  tamper(stable,s=>{s.liveDungeon.returns[0].dueTick+=1;},/dueTick|returns/);
+  tamper(stable,s=>{targetJourney(s).dueTick+=1;},/dueTick|returns/);
   tamper(stable,s=>{s.adventurers.find((h:any)=>h.id===heroId).floor=4;},
     /floor|returns/);
   tamper(stable,s=>{s.worldClock.pending=s.worldClock.pending.filter(
-    (e:any)=>!e.subjectId.startsWith(SHOP_PORTAL_RETURN_PREFIX));},/dueTick|returns/);
+    (e:any)=>e.subjectId!==SHOP_PORTAL_RETURN_PREFIX+heroId);},/dueTick|returns/);
   tamper(stable,s=>{s.adventurers.find((h:any)=>h.id===heroId).status="at-shop";},/floor|returns/);
   tamper(stable,s=>{
     const world=s.dungeonWorlds.find((e:any)=>e.floor===1).world;
@@ -461,13 +478,22 @@ test("diagnostics observe actual decisions without changing the campaign or save
   const observed=new GameStore(createGameState(7351),entry=>log.push(entry));
   const plain=new GameStore(createGameState(7351));
   observed.enableLiveDungeon();plain.enableLiveDungeon();
-  observed.advanceWorldTime(2000);plain.advanceWorldTime(2000);
+  // Observe real scheduler boundaries instead of assuming a particular
+  // fight is still active at one arbitrary tick after a balance change.
+  let elapsed=0;
+  const crossingFight=()=>observed.state.liveDungeon.combats.find(c=>
+    c.startedTick<observed.state.liveDungeon.lastStepTick);
+  while(elapsed<10000&&!crossingFight()){
+    observed.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+    plain.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+    elapsed+=DUNGEON_STEP_INTERVAL_TICKS;
+    assert.deepEqual(observed.state,plain.state);
+  }
   assert(log.length>0);
   assert(log.some(entry=>entry.stage==="decision"&&entry.reason!==undefined));
   assert.deepEqual(observed.state,plain.state);
-  const crossing=observed.state.liveDungeon.combats.find(c=>
-    c.startedTick<observed.state.liveDungeon.lastStepTick);
-  assert(crossing,"This genuine campaign includes a fight lasting across a later map tick");
+  const crossing=crossingFight();
+  assert(crossing,"Within the bounded observation window a genuine fight crosses a later map tick");
   const save=createSave(observed.state);
   const plainSave=createSave(plain.state);
   assert.deepEqual({...save,savedAt:plainSave.savedAt},plainSave);
@@ -480,7 +506,9 @@ test("diagnostics observe actual decisions without changing the campaign or save
   // telemetry fields or extra scheduled events.
   const repeat:DungeonDiagnostic[]=[];
   const again=new GameStore(createGameState(7351),entry=>repeat.push(entry));
-  again.enableLiveDungeon();again.advanceWorldTime(2000);
+  again.enableLiveDungeon();
+  for(let tick=0;tick<elapsed;tick+=DUNGEON_STEP_INTERVAL_TICKS)
+    again.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   assert.deepEqual(log,repeat);
 });
 
@@ -511,7 +539,7 @@ test("diagnostic captures the actual rejected Floor-9 solo stair crossing",()=>{
 
 test("healthy committed descent survives an ordinary empty movement decision but never overrides resupply",()=>{
   const original=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
-  const hero={...original,floor:3 as const,status:"exploring" as const,
+  const hero={...original,level:3,xp:200,floor:3 as const,status:"exploring" as const,
     equipment:{weapon:"Iron Sword" as const,armor:"Leather Vest" as const}};
   const ready={...hero,health:heroProgression(hero).maxHealth};
   const layout=generateExpeditionLayout(7351,3);
@@ -532,9 +560,9 @@ test("healthy committed descent survives an ordinary empty movement decision but
 
 test("deep prepared expeditions carry more salvage but real resupply still wins",()=>{
   const source=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
-  const hero={...source,floor:5 as const,status:"exploring" as const,
+  const hero={...source,level:5,xp:400,floor:5 as const,status:"exploring" as const,
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
-    health:heroProgression(source).maxHealth,
+    health:heroProgression({...source,level:5}).maxHealth,
     traits:{...source.traits,positive:"brave",negative:"stubborn"},
     inventory:{bread:2,healing:1,finds:{"iron-ore":4}}};
   const layout=generateExpeditionLayout(7351,5);
@@ -629,5 +657,70 @@ test("full health without a real class weapon is not a permit to risk deep floor
   assert.equal(chooseLiveHeroDungeonDecision({...hero,gold:9},progress,replay).action,"ascend",
     "Stale gold alone must not cause an endless failed shopping loop");
   assert.equal(chooseLiveHeroDungeonDecision({...hero,equipment:{weapon:"Iron Sword",armor:null}},
-    progress,replay).action,"descend");
+    progress,replay).action,"ascend","A novice with only a weapon is still overextended on Floor 3");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,level:3,xp:200,
+    equipment:{weapon:"Iron Sword",armor:null}},progress,replay).action,"descend");
+});
+
+test("old unsold salvage does not cause a new return after every additional drop",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
+  const hero={...source,level:5,xp:400,floor:5 as const,status:"exploring" as const,
+    equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+    health:heroProgression({...source,level:5}).maxHealth,
+    traits:{...source.traits,positive:"brave",negative:"stubborn"},
+    inventory:{bread:2,healing:1,finds:{"iron-ore":9}}};
+  const layout=generateExpeditionLayout(7351,5);
+  const progress={heroId:hero.id,...layout.entrance,
+    visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:5 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},encounters:[],
+    steps:[{...layout.entrance,t:1,action:"treasure" as const,hp:hero.health}],
+    outcome:"exploring" as const};
+  assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay,undefined,undefined,false,8).action,"descend");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,inventory:{...hero.inventory,finds:{"iron-ore":16}}},
+    progress,replay,undefined,undefined,false,15).action,"shop");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,health:1},progress,replay,
+    undefined,undefined,false,8).action,"shop");
+});
+
+test("ordinary depth risk reflects experience and merchant supplies without altering the boss gate",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  const novice={...source,level:1,xp:0,floor:3 as const,status:"exploring" as const,
+    health:heroProgression({...source,level:1}).maxHealth,
+    equipment:{weapon:"Spear",armor:null},
+    traits:{...source.traits,positive:"brave",negative:"stubborn"},
+    inventory:{...source.inventory,bread:0,healing:0}};
+  assert(!canRiskOrdinaryDescent(novice));
+  const supplied={...novice,equipment:{weapon:"Spear",armor:"Leather Vest"},
+    inventory:{...novice.inventory,healing:1}};
+  assert(canRiskOrdinaryDescent(supplied));
+  assert(!canRiskOrdinaryDescent({...supplied,health:1}));
+  assert(canRiskOrdinaryDescent({...novice,level:3,xp:200}));
+  assert(!canRiskOrdinaryDescent({...novice,equipment:{weapon:"Staff",armor:"Leather Vest"}}));
+  assert(canRiskOrdinaryDescent({...novice,equipment:{weapon:"Forged Spear",armor:"Leather Vest"}}));
+  assert(!canRiskOrdinaryDescent({...supplied,floor:9}));
+  const layout=generateExpeditionLayout(7351,3);
+  const progress={heroId:novice.id,...layout.entrance,visited:[layout.entrance.z*layout.width+layout.entrance.x]};
+  const replay={version:1 as const,day:1,heroId:novice.id,floor:3 as const,
+    appearance:{role:novice.role,equipment:novice.equipment},steps:[],encounters:[],
+    outcome:"exploring" as const};
+  assert.notEqual(chooseLiveHeroDungeonDecision(novice,progress,replay,
+    undefined,undefined,false,0,undefined,{goal:"progress",action:"descend"}).action,"descend");
+});
+
+test("remembering a tile does not reveal a roaming monster behind a wall",()=>{
+  const layout=generateExpeditionLayout(7351,3);
+  const world=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),layout,1,0);
+  const monster=world.monsters!.find(m=>!hasDungeonLineOfSight(layout,layout.entrance,m));
+  assert(monster);
+  const visited=layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i]);
+  const known={heroId:"observer",...layout.entrance,visited};
+  const isolated={...world,monsters:[monster]};
+  assert.equal(selectKnownResourceSite(layout,known,isolated,"monster"),null);
+  const adjacent=dungeonNeighbors(layout,monster)[0];
+  assert(adjacent);
+  const near={...known,...adjacent};
+  assert.equal(selectKnownResourceSite(layout,near,isolated,"monster")?.id,monster.id);
+  assert.equal(selectKnownResourceSite(layout,near,{...isolated,
+    monsters:[{...monster,mode:"ENGAGED"}]},"monster"),null);
 });

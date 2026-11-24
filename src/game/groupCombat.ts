@@ -1,5 +1,5 @@
 import { inAttackArc, type Point2 } from "./combatGeometry.ts";
-import {WEAPON_NAMES,ARMOR_NAMES,type GearName} from "./gearCatalog.ts";
+import {WEAPON_NAMES,ARMOR_NAMES,equipmentEffects,type GearName} from "./gearCatalog.ts";
 import { combatDirection, combatHeading, moveCombatant } from "./combatMovement.ts";
 import type { CombatActionWindow } from "./combatActionClock.ts";
 import {
@@ -260,9 +260,19 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       throw new RangeError("Throw damage requires a grapple ability");
     const grappleDamage=spec.grappleDamage??Math.round(spec.damage*1.5);
     validNumber(grappleDamage,1,10000,spec.id+".grappleDamage");
+    // Ordinary melee adventurers can finish an action through a small hit
+    // when their actual shield/armor supports it. Damage still lands; a
+    // strong hit can interrupt. The signature boss's own balance is unchanged.
+    const gear=equipmentEffects(spec.role==="monster"?"tank":spec.role,
+      spec.equipment??{weapon:null,armor:null});
+    const ordinaryEncounter=!options.actors.some(actor=>actor.specialAbility==="grapple-throw");
+    const meleePoise=ordinaryEncounter&&spec.team==="heroes"&&spec.style==="melee"&&gear.weapon
+      ? spec.role==="tank" ? Math.min(6,3+Math.floor(gear.armor/3))
+        : spec.role==="DPS"&&gear.vest ? Math.min(4,2+Math.floor(gear.armor/4)):0
+      : 0;
     const staggerThreshold=spec.staggerThreshold??
       (spec.specialAbility==="grapple-throw"
-        ? Math.max(62,Math.round(spec.maxHp*.22)):0);
+        ? Math.max(62,Math.round(spec.maxHp*.22)):meleePoise);
     validNumber(staggerThreshold,0,10000,spec.id+".staggerThreshold");
     const radius = spec.radius ?? 0.5;
     validNumber(radius, 0.1, 3, spec.id + ".radius");
@@ -411,13 +421,15 @@ function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor |
     // for roll. Reacting a quarter-second before windup ends means the
     // parry has EXPIRED by the 0.14s smash impact (or 0.30s grab impact).
     // This is the same late committed warning used in the authored duel.
+    // A regular attack only contacts its committed target. Do not burn
+    // stamina reacting to someone else's strike or through a wall.
+    if(!isSignature&&(other.targetId!==defender.id||!lineClear(s,other,defender)))
+      return false;
+    const profile=meleeAbilityProfile(other.meleeAbility);
     const lead=signature
       ?Math.max(.20,signature.windupSeconds-
         (signature.attack==="grab"?.04:.15))
-      :other.meleeAbility==="heavy"
-        ?meleeAbilityProfile("heavy").windupSeconds+
-          meleeAbilityProfile("heavy").strikeDelaySeconds-.28
-        :.38;
+      :profile.windupSeconds+profile.strikeDelaySeconds-.24;
     const range=signature?signature.reach:
       other.reach+(other.meleeAbility==="heavy"?.35:0);
     return other.phaseAge>=lead&&
@@ -612,6 +624,14 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
      (a.phase==="windup"||a.phase==="recover")&&
      a.stamina>=20&&attackerThreat(s,a)){
     phase(a,"move");
+  }
+  // Ordinary melee fighters can give up an unlanded swing or recovery
+  // to defend against a committed threat. No contact refund, no free
+  // stamina and no cancel of an already active strike or healing action.
+  if(a.team==="heroes"&&a.style==="melee"&&
+    (a.phase==="windup"||a.phase==="recover")&&a.stamina>=28){
+    const threat=attackerThreat(s,a);
+    if(threat&&!threat.specialAbility)phase(a,"move");
   }
   if (a.phase === "move") {
     a.heading = combatHeading(a,enemy);
