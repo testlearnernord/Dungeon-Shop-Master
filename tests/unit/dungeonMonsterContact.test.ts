@@ -12,6 +12,7 @@ import {advanceDungeonMonsterWorld}
   from "../../src/game/dungeonMonsterWorld.ts";
 import {chooseDungeonThreatReaction}
   from "../../src/game/dungeonThreatDecisions.ts";
+import {willingToTravelTogether} from "../../src/game/dungeonParties.ts";
 
 const seed=7351,layout=generateExpeditionLayout(seed,1);
 
@@ -119,4 +120,61 @@ test("LIVE shop-bound hero reacts to a true visible pursuer without losing its c
   assert(dungeonNeighbors(layout,old).some(p=>
     p.x===progress.x&&p.z===progress.z),"the evasive step is one real tile");
   assert.deepEqual(parseSave(JSON.stringify(createSave(after))),after);
+});
+
+test("co-located voluntary Temporary Party shares ONE physical Ghoul contact fight",()=>{
+  const initial=createGameState(seed);
+  const party=initial.adventurers.filter(h=>
+    h.status==="exploring"&&h.floor===1&&willingToTravelTogether(h))
+    .slice(0,2);
+  assert.equal(party.length,2,"fixture requires two genuinely willing explorers");
+  const initialWorld=advanceDungeonMonsterWorld(
+    emptySpatialDungeonWorld(),layout,1,0);
+  const packs=initialWorld.monsters??[];
+  const pack=packs.find(m=>dungeonNeighbors(layout,m).some(at=>
+    !packs.some(other=>other.id!==m.id&&other.x===at.x&&other.z===at.z)&&
+    (at.x!==layout.entrance.x||at.z!==layout.entrance.z)));
+  assert(pack);
+  const at=dungeonNeighbors(layout,pack).find(point=>
+    !packs.some(m=>m.id!==pack.id&&m.x===point.x&&m.z===point.z)&&
+    (point.x!==layout.entrance.x||point.z!==layout.entrance.z));
+  assert(at);
+  const visits=[layout.entrance.z*layout.width+layout.entrance.x,
+    at.z*layout.width+at.x];
+  const world={...initialWorld,
+    heroes:party.map(h=>({heroId:h.id,...at,visited:[...visits]})),
+    monsters:packs.map(m=>m.id===pack.id?{
+      ...m,mode:"CHASING" as const,target:at,targetHeroId:party[0].id,
+      lastKnown:at,lastSeenTick:0,lostSightChecks:0,
+    }:m)};
+  const seeded=activateLiveDungeon({...initial,
+    dungeonWorlds:[{floor:1 as const,world}],
+    dungeonParties:[{memberIds:party.map(h=>h.id),floor:1 as const,
+      formedDay:1}],
+  });
+  const paused={...seeded,liveDungeon:{...seeded.liveDungeon,
+    heroes:party.map(h=>({heroId:h.id,steps:1,finished:true}))}};
+  const store=new GameStore(paused);
+  store.advanceWorldTime(200);
+  assert(store.state.dungeonParties.some(p=>
+    p.memberIds.length===2&&party.every(h=>p.memberIds.includes(h.id))),
+    "a stationary eligible Temporary Party remains saved until collision");
+  store.advanceWorldTime(200);
+  const fights=store.state.liveDungeon.combats.filter(c=>
+    c.encounter.featureId===pack.id);
+  assert.equal(fights.length,1,
+    "one Ghoul pack must never spawn separate battles per co-located hero");
+  assert.deepEqual(fights[0].heroIds,party.map(h=>h.id));
+  assert.equal(fights[0].encounter.x,at.x);
+  assert.equal(fights[0].encounter.z,at.z);
+  assert.equal(fights[0].arrivals.length,2);
+  assert.equal(fights[0].frames.length,1);
+  assert.equal(store.state.dungeonWorlds.find(w=>w.floor===1)!.world.monsters
+    ?.find(m=>m.id===pack.id)?.mode,"ENGAGED");
+  const save=parseSave(JSON.stringify(createSave(store.state)));
+  const resumed=new GameStore(save);
+  store.advanceWorldTime(600);
+  resumed.advanceWorldTime(600);
+  assert.deepEqual(resumed.state,store.state,
+    "the single shared combat result must resume deterministically");
 });
