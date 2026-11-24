@@ -1610,3 +1610,12 @@ export function armGhoulObservationAnimationProbe(id:string):void{
 export function observedGhoulAnimationPhases(){
   return ghoulPhaseObserver?.phases??[];
 }
+
+/** Inspect the actual first-person mesh from a committed transfer, even once
+ * its short motion has ended. The probe does not create or animate a model. */
+export function inspectMerchantHeldStock(){
+  const mesh=currentTestScene()?.getMeshByName("galvik-held-stock");
+  return mesh?{itemId:mesh.metadata?.heldItemId,sourceUrl:mesh.metadata?.sourceUrl,
+    vertices:mesh.getTotalVertices(),pickable:mesh.isPickable,
+    collision:mesh.checkCollisions,enabled:mesh.isEnabled()}:null;
+}

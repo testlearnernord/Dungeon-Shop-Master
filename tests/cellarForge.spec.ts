@@ -173,6 +173,23 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   await page.mouse.click(400,300);
   await expect(page.locator("#status")).toContainText("Placed T2 Spear");
   await expect(page.locator('#inventory [data-item-id="forged-spear"] strong')).toHaveText("0");
+  const heldStock=()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectMerchantHeldStock());
+  const physicalSpear={itemId:"forged-spear",
+    sourceUrl:"/Dungeon-Shop-Master/assets/models/forged-spear.glb",
+    vertices:spearModel.vertices,pickable:false,collision:false};
+  await expect.poll(heldStock).toMatchObject(physicalSpear);
+  // With a completely different selected bag item, take the spear back.
+  // The first-person transfer must still use the real shelf product.
+  await page.locator('#inventory [data-item-id="ghoul-leather-vest"]').click();
+  await page.mouse.click(400,300,{button:"right"});
+  await expect(page.locator("#status")).toContainText("Returned T2 Spear");
+  await expect(page.locator('#inventory [data-item-id="forged-spear"] strong')).toHaveText("1");
+  await expect.poll(heldStock).toMatchObject(physicalSpear);
+  await page.locator('#inventory [data-item-id="forged-spear"]').click();
+  await page.mouse.click(400,300);
+  await expect(page.locator("#status")).toContainText("Placed T2 Spear");
+  await expect(page.locator('#inventory [data-item-id="forged-spear"] strong')).toHaveText("0");
   const save=()=>page.evaluate(async()=>{
     const hooks=window as Window&{__shopTestSaveTrafficNow?:()=>Promise<unknown>};
     await hooks.__shopTestSaveTrafficNow!();

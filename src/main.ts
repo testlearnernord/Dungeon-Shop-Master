@@ -461,7 +461,7 @@ let fishing:ReturnType<typeof setupFishingHud>|null=null;
 let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
   ()=>isShopActive(),message=>{statusHud.textContent=message;});
-const merchantActions=createMerchantActions(scene,camera,()=>sfx.soundEnabled,()=>sfx.soundVolume,()=>isShopActive(),()=>selectedItemId);
+const merchantActions=createMerchantActions(scene,camera,()=>sfx.soundEnabled,()=>sfx.soundVolume,()=>isShopActive());
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message, selected) => {
   selectedItemId = selected;
   statusHud.textContent = message;
@@ -469,7 +469,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
 }, toggleCatalog, 3, openRoster, () => cashier?.open()??"Register unavailable.",
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
-  debtBook.open,store,action=>merchantActions.play(action),
+  debtBook.open,store,(action,itemId)=>merchantActions.play(action,itemId),
   ()=>fishing?.open()??false,()=>observeTable(),()=>forgeHud.open());
 setupControlsHotbarClearance();
 setupShopServiceBrief(scene,store,npcVisuals,()=>isShopActive(),
