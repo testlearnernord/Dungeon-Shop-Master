@@ -29,6 +29,7 @@ import type {LiveSpectatorFrame} from "./liveSpectator.ts";
 import type {LiveFloorSpectatorFrame,LiveFloorHero} from "./liveFloorSpectator.ts";
 import {predictDungeonHeroSteps} from "./dungeonIntentPreview.ts";
 import {sameLiveFloorMap} from "./liveFloorSceneDiff.ts";
+import type {GhoulMapInstances} from "./dungeonGhoulMapInstances.ts";
 import {isObservedMonsterStep,MONSTER_OBSERVATION_STEP_SECONDS,
   monsterObservationStepProgress} from "./monsterObservationMotion.ts";
 import {mapPoseFromCamera,mapCameraPosition,mapCameraTarget}
@@ -101,6 +102,7 @@ export class DungeonReplayScene {
     private readonly decorations:readonly DungeonRoomDecoration[],
     heroPreview:HeroVisual|null,
     minimap:HTMLCanvasElement,
+    private readonly ghoulMap?:GhoulMapInstances,
   ){
     this.heroPreview=heroPreview;
     this.indicator=minimap;
@@ -145,6 +147,7 @@ export class DungeonReplayScene {
 
   setReplay(record:SpatialDungeonReplay|null):void {
     this.floorFrame=null;
+    this.ghoulMap?.reset();
     // Historical tapes own their own recorded positions. Restore authored
     // site geometry instead of inheriting a live pack's last roaming tile.
     for(const marker of this.markers)if(marker.kind==="monster"){
@@ -828,6 +831,10 @@ export class DungeonReplayScene {
       }:monster;
       const world=toWorld(this.layout,at);
       marker.mesh.position.x=world.x;marker.mesh.position.z=world.z;
+      const walking=!!transit&&alpha<1;
+      const heading=transit?Math.atan2(
+        transit.to.x-transit.from.x,transit.to.z-transit.from.z):null;
+      this.ghoulMap?.pose(monster.id,walking,heading,alpha);
       if(transit&&alpha>=1)this.floorMonsterTravel.delete(monster.id);
     }
   }
@@ -835,6 +842,7 @@ export class DungeonReplayScene {
   advanceLiveFloorPresentation(dt:number):void {
     if(this.floorTravel.size)this.poseLiveFloor(dt);
     if(this.floorMonsterTravel.size)this.poseLiveMonsters(dt);
+    this.ghoulMap?.tick(performance.now()/1000);
   }
 
   /**
@@ -1001,6 +1009,7 @@ export class DungeonReplayScene {
     this.camera.setTarget(new Vector3(p.x,0,p.z));
   }
   dispose():void {
+    this.ghoulMap?.dispose();
     this.clearCombatModels();
     this.replay=null;this.timeline=null;this.lastSnapshot=null;
     this.liveFrame=null;this.liveHeroId=null;this.liveFightId=null;

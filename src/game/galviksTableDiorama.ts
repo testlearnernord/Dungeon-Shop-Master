@@ -7,12 +7,8 @@ import type {Material} from "@babylonjs/core/Materials/material";
 import {ShaderMaterial} from "@babylonjs/core/Materials/shaderMaterial";
 import {DynamicTexture} from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
-import {loadAssetContainerAsync} from "@babylonjs/core/Loading/sceneLoader";
-import type {AssetContainer} from "@babylonjs/core/assetContainer";
 import {Mesh} from "@babylonjs/core/Meshes/mesh";
 import type {LinesMesh} from "@babylonjs/core/Meshes/linesMesh";
-import "@babylonjs/core/Meshes/instancedMesh";
-import "@babylonjs/loaders/glTF/2.0";
 import {TransformNode} from "@babylonjs/core/Meshes/transformNode";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameState} from "./gameState.ts";
@@ -28,7 +24,8 @@ import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
 import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
 import {createHeroVisual,setHeroVisualEquipment,
   type HeroVisual} from "./heroVisual.ts";
-import {GHOUL_MODEL} from "./ghoulMotion.ts";
+import {GhoulMapInstances,type GhoulMapSite}
+  from "./dungeonGhoulMapInstances.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
@@ -77,9 +74,7 @@ export class GalviksTableDiorama{
   private miniatureWorldRoot:TransformNode|null=null;
   private readonly featurePaint:ReturnType<typeof createDungeonFeaturePalette>;
   private readonly ghoulFallback:StandardMaterial;
-  private ghoulSource:Mesh|null=null;
-  private ghoulAsset:AssetContainer|null=null;
-  private ghoulLoading=false;
+  private ghoulMap:GhoulMapInstances|null=null;
   private floorArtMaterials:StandardMaterial[]=[];
   private actorRoot:TransformNode|null=null;
   private featureRoot:TransformNode|null=null;
@@ -88,8 +83,9 @@ export class GalviksTableDiorama{
   private readonly priorMonsterTiles=new Map<string,Pick<DungeonMonsterState,
     "x"|"z"|"siteCycle"|"lastMoveTick">>();
   private readonly monsterTravel=new Map<string,{
-    from:Vector3;to:Vector3;startedAt:number;
+    from:Vector3;to:Vector3;seconds:number;
   }>();
+  private lastGhoulPresentationAt:number|null=null;
   private monsterObservedTick:number|null=null;
   private monsterObservedDay:number|null=null;
   private readonly monsterHints=new Map<string,{mesh:LinesMesh;signature:string}>();
@@ -197,7 +193,12 @@ void main(void){
   update(selected:number,state:GameState,shopCamera:Vector3):void{
     if(!this.modelReady||!state.liveDungeon.enabled)return;
     const table=state.cellarTable;
-    if(shopCamera.y>-1||
+    // A fixed world-Y cutoff blocked real close-up observation from above
+    // the furniture (including the E2E/Step-2 camera match pose). Only
+    // reject cameras far above/below the PHYSICAL table, independently of
+    // cellar depth, mounting height and future room adjustments.
+    const tableY=this.root.getAbsolutePosition().y;
+    if(Math.abs(shopCamera.y-tableY)>3.5||
       Math.hypot(shopCamera.x-table.x,shopCamera.z-table.z)>11)return;
     const floor=LIVE_SPECTATOR_FLOORS.includes(selected as SpatialDungeonFloor)
       ?selected as SpatialDungeonFloor:1;
@@ -209,6 +210,9 @@ void main(void){
       this.lastUpdateAt=-Infinity;
     }
     const now=performance.now();
+    // Smooth authored movement runs at render cadence. Expensive route/fog
+    // projection remains throttled and never advances the world simulation.
+    this.advanceGhoulPresentation(now);
     // Presentation-only throttle. World time and autonomous heroes never pause.
     if(now-this.lastUpdateAt<160)return;
     this.lastUpdateAt=now;
@@ -222,7 +226,8 @@ void main(void){
       this.lastResolved=featureIdentity;
       this.syncFeatures(frame);
     }
-    this.syncMonsters(frame,now);
+    this.syncMonsters(frame);
+    this.advanceGhoulPresentation(now);
   }
 
   private setFloorLabel(floor:number):void{
@@ -375,6 +380,7 @@ void main(void){
     this.heroes.clear();
     this.priorMonsterTiles.clear();
     this.monsterTravel.clear();
+    this.lastGhoulPresentationAt=null;
     this.monsterObservedTick=null;
     this.monsterObservedDay=null;
     this.layout=layout;
@@ -482,35 +488,16 @@ void main(void){
   }
 
   private ensureAuthoredGhouls():void{
-    if(this.ghoulSource||this.ghoulLoading)return;
-    this.ghoulLoading=true;
-    // A single static source shared by all table ghoul instances and floors.
-    // The spectator's exact authored 65-bone model/idle pose is reused.
-    void loadAssetContainerAsync(import.meta.env.BASE_URL+GHOUL_MODEL,this.scene)
-      .then(asset=>{
-        if(this.root.isDisposed()){asset.dispose();return;}
-        const meshes=asset.meshes.filter(
-          (mesh):mesh is Mesh=>mesh instanceof Mesh&&mesh.getTotalVertices()>0);
-        if(meshes.length!==1||asset.skeletons[0]?.bones.length!==65||
-          asset.animationGroups.length!==15){
-          asset.dispose();
-          throw Error("Expected the canonical LIVE Dungeon Ghoul asset");
-        }
-        asset.addAllToScene();
-        const source=meshes[0];
-        for(const clip of asset.animationGroups)clip.stop();
-        const idle=asset.animationGroups.find(clip=>clip.name==="idle_combat");
-        if(idle){
-          idle.start(false);idle.pause();
-          idle.goToFrame(idle.from+(idle.to-idle.from)*.18);
-        }
-        source.position.y=-900;
-        source.isPickable=false;source.checkCollisions=false;
-        this.ghoulAsset=asset;
-        this.ghoulSource=source;
-        this.lastResolved="~"; // refresh only visuals, never dungeon state
-      })
-      .catch(error=>console.warn("Table Ghoul artwork unavailable",error));
+    if(this.ghoulMap)return;
+    this.ghoulMap=new GhoulMapInstances(this.scene,[],{
+      visualHeight:2.05,
+      instancePrefix:"cellar-table-diorama-authored-ghoul-",
+      onReady:()=>{
+        // Rebuild the same already selected floor's cosmetic instances once
+        // the single shared two-pose asset is loaded. Never touch GameStore.
+        if(!this.root.isDisposed())this.lastResolved="~";
+      },
+    });
   }
 
   private syncFeatures(frame:LiveFloorSpectatorFrame):void{
@@ -523,7 +510,8 @@ void main(void){
     this.featureRoot=new TransformNode("cellar-table-diorama-features",this.scene);
     this.featureRoot.parent=this.miniatureWorldRoot;
     const resolved=new Set(frame.resolved);
-    let visible=0,authoredProps=0,authoredGhouls=0;
+    let visible=0,authoredProps=0;
+    const ghoulSites:GhoulMapSite[]=[];
     for(const feature of this.layout!.features){
       if(resolved.has(feature.id))continue;
       const pack=feature.kind==="monster"
@@ -549,41 +537,28 @@ void main(void){
         this.monsterAnchors.set(feature.id,anchor);
         anchor.visibility=0;anchor.isPickable=false;
         anchor.checkCollisions=false;
-        if(this.ghoulSource){
-          const source=this.ghoulSource;
-          const bounds=source.getBoundingInfo().boundingBox;
-          const height=bounds.maximum.y-bounds.minimum.y;
-          if(height>0){
-            const scale=Math.min(12,Math.max(.01,2.05/height));
-            const instance=source.createInstance(
-              "cellar-table-diorama-authored-ghoul-"+feature.id);
-            instance.parent=anchor;
-            instance.position.set(0,-bounds.minimum.y*scale+.04,0);
-            instance.scaling.setAll(scale);
-            instance.rotation.y=Math.PI;
-            instance.isPickable=false;instance.checkCollisions=false;
-            authoredGhouls++;
-          }
-        }else{
-          const fallback=MeshBuilder.CreatePlane(
-            "cellar-table-diorama-ghoul-loading-"+feature.id,
-            {width:1.65,height:1.65},this.scene);
-          fallback.parent=anchor;
-          fallback.position.y=.04;
-          fallback.rotation.x=-Math.PI/2;
-          fallback.material=this.ghoulFallback;
-          fallback.isPickable=false;fallback.checkCollisions=false;
-        }
+        // An illustrated fallback stays visible until both authored pose
+        // rigs are ready. The shared owner disables it when instances exist.
+        const fallback=MeshBuilder.CreatePlane(
+          "cellar-table-diorama-ghoul-loading-"+feature.id,
+          {width:1.65,height:1.65},this.scene);
+        fallback.parent=anchor;
+        fallback.position.y=.04;
+        fallback.rotation.x=-Math.PI/2;
+        fallback.material=this.ghoulFallback;
+        fallback.isPickable=false;fallback.checkCollisions=false;
+        ghoulSites.push({id:feature.id,root:anchor,fallback});
       }
     }
+    this.ghoulMap?.setSites(ghoulSites);
     this.root.metadata.featureCount=visible;
     this.root.metadata.authoredProps=authoredProps;
-    this.root.metadata.authoredGhouls=authoredGhouls;
+    this.root.metadata.authoredGhouls=this.ghoulMap?.authoredCount??0;
   }
 
   /** Update existing instances only. The same LIVE world drives both
    * projections; table updates never choose a path or advance a monster. */
-  private syncMonsters(frame:LiveFloorSpectatorFrame,now:number):void{
+  private syncMonsters(frame:LiveFloorSpectatorFrame):void{
     if(!this.layout)return;
     // Each tile change is checked against the SAME saved-step requirements
     // as the full LIVE viewer. No route extrapolation while offscreen.
@@ -609,7 +584,7 @@ void main(void){
               worldTick:frame.worldTick});
           if(allowed){
             this.monsterTravel.set(id,{
-              from:anchor.position.clone(),to:destination,startedAt:now,
+              from:anchor.position.clone(),to:destination,seconds:0,
             });
           }else if(changed||!old){
             this.monsterTravel.delete(id);
@@ -618,14 +593,8 @@ void main(void){
             x:monster.x,z:monster.z,siteCycle:monster.siteCycle,
             lastMoveTick:monster.lastMoveTick,
           });
-          const journey=this.monsterTravel.get(id);
-          if(journey){
-            const progress=monsterObservationStepProgress(
-              (now-journey.startedAt)/1000);
-            anchor.position.copyFrom(Vector3.Lerp(
-              journey.from,journey.to,progress));
-            if(progress>=1)this.monsterTravel.delete(id);
-          }else anchor.position.copyFrom(destination);
+          if(!this.monsterTravel.has(id))
+            anchor.position.copyFrom(destination);
         }
       }
       const next=monster?.target&&monster.mode!=="ENGAGED"
@@ -657,6 +626,32 @@ void main(void){
     }
     this.monsterObservedTick=frame.worldTick;
     this.monsterObservedDay=frame.day;
+  }
+
+  /** Full render cadence for a saved 1.2s travel burst, independent of the
+   * 160ms floor projection refresh. No pathfinding, AI or extra time source. */
+  private advanceGhoulPresentation(now:number):void{
+    // Match the full LIVE viewer: rendering advances in bounded delta steps,
+    // not raw elapsed wall time. A costly world tick/asset upload may block
+    // frames longer than a 1.2s walk; the first visible frame must still
+    // display the movement instead of silently skipping it.
+    const dt=this.lastGhoulPresentationAt===null?0:Math.min(.1,
+      Math.max(0,(now-this.lastGhoulPresentationAt)/1000));
+    this.lastGhoulPresentationAt=now;
+    for(const [id,anchor] of this.monsterAnchors){
+      const journey=this.monsterTravel.get(id);
+      if(journey){
+        journey.seconds+=dt;
+        const progress=monsterObservationStepProgress(journey.seconds);
+        anchor.position.copyFrom(Vector3.Lerp(
+          journey.from,journey.to,progress));
+        const heading=Math.atan2(
+          journey.to.x-journey.from.x,journey.to.z-journey.from.z);
+        this.ghoulMap?.pose(id,progress<1,heading,progress);
+        if(progress>=1)this.monsterTravel.delete(id);
+      }else this.ghoulMap?.pose(id,false,null,1);
+    }
+    this.ghoulMap?.tick(now/1000);
   }
 
   private syncActors(frame:LiveFloorSpectatorFrame):void{
@@ -712,7 +707,7 @@ void main(void){
     this.root.dispose();
     this.floorPlaque.dispose();
     this.tabletopLight.dispose();
-    this.ghoulAsset?.dispose();
+    this.ghoulMap?.dispose();
     for(const mat of this.floorArtMaterials)mat.dispose();
     this.floorText.dispose();
     this.floorMat.dispose();

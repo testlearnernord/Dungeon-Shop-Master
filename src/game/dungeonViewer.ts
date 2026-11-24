@@ -31,7 +31,7 @@ import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
 import {createDungeonFeaturePalette,createReadableDungeonChest,
   createReadableDungeonTrap} from "./dungeonFeatureProps.ts";
-import {installGhoulMapInstances,type GhoulMapSite}
+import {GhoulMapInstances,type GhoulMapSite}
   from "./dungeonGhoulMapInstances.ts";
 import {dungeonPreviewExplanation} from "./dungeonIntentPreview.ts";
 import {liveHeroCard,recordedHeroCard} from "./heroCardView.ts";
@@ -928,9 +928,9 @@ export class DungeonViewer {
     // This is purely presentation. No GLB load advances world time or
     // instantiates a second combat AI; the existing marker roots still own
     // LIVE visibility, saved site resolution and player tooltips.
-    void installGhoulMapInstances(scene,ghoulSites);
+    const ghoulMap=new GhoulMapInstances(scene,ghoulSites);
     // A recognizable hero at the entrance is strictly a static reference model.
-    // No AI walking or fake combat is started before the exploration milestone.
+    // Only authored map poses move; dungeon steps remain saved and authoritative.
     const hero=this.store.state.adventurers.find(h=>h.status==="at-shop"&&h.health>0)
       ?? this.store.state.adventurers.find(h=>h.health>0);
     let reference:HeroVisual|null=null;
@@ -956,7 +956,8 @@ export class DungeonViewer {
       layout.features.filter(f=>f.kind==="treasure").length+" treasures · "+
       layout.features.filter(f=>f.kind==="trap").length+" traps";
     this.replayScene=new DungeonReplayScene(scene,camera,layout,
-      replayTiles,replayMarkers,replayDecorations,reference,this.minimap);
+      replayTiles,replayMarkers,replayDecorations,reference,this.minimap,
+      ghoulMap);
     this.drawMinimap(layout);
     this.centerOn(0);
   }

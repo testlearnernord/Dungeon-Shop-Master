@@ -1,6 +1,7 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import {EngineStore} from "@babylonjs/core/Engines/engineStore";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
+import type {Scene} from "@babylonjs/core/scene";
 import { Vector3,Matrix } from "@babylonjs/core/Maths/math.vector";
 import {Ray} from "@babylonjs/core/Culling/ray";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
@@ -1252,13 +1253,32 @@ export function inspectGhoulObservationMeshes(){
   const hints=scene.meshes.filter(mesh=>mesh.name.startsWith(prefix));
   return {
     observer:shop?"table":"live",
-    pins:pins.map(pin=>({
-      id:pin.name.slice(shop?
+    authoredRigCount:scene.skeletons.filter(rig=>rig.bones.length===65).length,
+    authoredClips:scene.animationGroups.filter(group=>
+      group.name==="idle_combat"||
+      group.name.includes("A feral ghoul walks with a hunched back"))
+      .map(group=>group.name),
+    pins:pins.map(pin=>{
+      const id=pin.name.slice(shop?
         "cellar-table-diorama-ghoul-anchor-".length:
-        "dungeon-monster-".length),
-      x:pin.position.x,z:pin.position.z,
-      enabled:pin.isEnabled(),
-    })).sort((a,b)=>a.id.localeCompare(b.id)),
+        "dungeon-monster-".length);
+      const idle=scene.getMeshByName((shop?
+        "cellar-table-diorama-authored-ghoul-":"overview-ghoul-3d-")+id);
+      const walk=scene.getMeshByName("overview-ghoul-walk-"+id);
+      return {
+        id,x:pin.position.x,z:pin.position.z,
+        enabled:pin.isEnabled(),
+        assetError:pin.metadata?.assetError as string|undefined,
+        visualKind:pin.metadata?.visualKind as string|undefined,
+        clip:pin.metadata?.animationClip as string|null|undefined,
+        phase:pin.metadata?.animationPhase as string|null|undefined,
+        heading:pin.metadata?.heading as number|null|undefined,
+        idleModel:!!idle&&idle.isEnabled(),
+        walkModel:!!walk&&walk.isEnabled(),
+        sourceId:idle?.sourceMesh?.id??null,
+        walkSourceId:walk?.sourceMesh?.id??null,
+      };
+    }).sort((a,b)=>a.id.localeCompare(b.id)),
     arrows:hints.map(mesh=>{
       const positions=mesh.getVerticesData("position")??[];
       return {
@@ -1506,4 +1526,44 @@ export function galviksDioramaBedrockPixels(){
     }
   }
   return points;
+}
+
+/** E2E-only history of ACTUALLY RENDERED Ghoul phases, not snapshots taken
+ * after the 1.2-second walk has already completed. The browser can be busy
+ * with asset loading or CI scheduling and miss a transient poll entirely. */
+let ghoulPhaseObserver:{
+  scene:Scene;
+  observer:import("@babylonjs/core/Misc/observable").Observer<Scene>;
+  phases:{phase:string;clip:string;idle:boolean;walk:boolean;x:number;z:number}[];
+}|null=null;
+
+export function armGhoulObservationAnimationProbe(id:string):void{
+  if(ghoulPhaseObserver){
+    ghoulPhaseObserver.scene.onAfterRenderObservable.remove(
+      ghoulPhaseObserver.observer);
+    ghoulPhaseObserver=null;
+  }
+  const scene=currentTestScene();
+  if(!scene)throw Error("Cannot sample a missing Babylon scene");
+  const phases:{phase:string;clip:string;idle:boolean;walk:boolean;x:number;z:number}[]=[];
+  const observer=scene.onAfterRenderObservable.add(()=>{
+    const shop=!document.body.classList.contains("dungeon-active");
+    const pin=scene.getMeshByName((shop?
+      "cellar-table-diorama-ghoul-anchor-":"dungeon-monster-")+id);
+    if(!pin)return;
+    const idle=scene.getMeshByName((shop?
+      "cellar-table-diorama-authored-ghoul-":"overview-ghoul-3d-")+id);
+    const walk=scene.getMeshByName("overview-ghoul-walk-"+id);
+    const pose={phase:String(pin.metadata?.animationPhase??"none"),
+      clip:String(pin.metadata?.animationClip??"none"),
+      idle:!!idle&&idle.isEnabled(),walk:!!walk&&walk.isEnabled(),
+      x:pin.position.x,z:pin.position.z};
+    const last=phases.at(-1);
+    if(!last||last.phase!==pose.phase||last.walk!==pose.walk||
+      last.idle!==pose.idle)phases.push(pose);
+  });
+  ghoulPhaseObserver={scene,observer,phases};
+}
+export function observedGhoulAnimationPhases(){
+  return ghoulPhaseObserver?.phases??[];
 }
