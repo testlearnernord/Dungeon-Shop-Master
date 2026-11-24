@@ -1,8 +1,9 @@
+import {Quickbar,quickbarIndexForKey} from "../../src/game/quickbar.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createGameState} from "../../src/game/gameState.ts";
 import type {AdventurerState} from "../../src/game/adventurers.ts";
-import {buyWholesale,ECONOMY,ITEMS,SHELF_GOODS,shelfHotkey,shelfItemForHotkey}
+import {buyWholesale,ECONOMY,ITEMS}
   from "../../src/game/economy.ts";
 import {craftAtCellarForge} from "../../src/game/cellarForge.ts";
 import {buyHeroDungeonFind} from "../../src/game/dungeonBuyback.ts";
@@ -475,13 +476,16 @@ test("real Level-10 T2 party survives active and archived save validation",()=>{
   }
 });
 
-test("expanded stock hotbar labels match physical number keys and leave overflow to the wheel",()=>{
-  for(let i=0;i<SHELF_GOODS.length;i++){
-    const key=shelfHotkey(i);
-    if(i<10)assert.equal(shelfItemForHotkey("Digit"+key),SHELF_GOODS[i].id);
-    else assert.equal(key,null);
-  }
-  assert.equal(shelfItemForHotkey("Digit9"),"forged-spear");
-  assert.equal(shelfItemForHotkey("Digit0"),"forged-staff");
-  assert.equal(shelfItemForHotkey("KeyE"),null);
+test("quickbar references support move, swap, clear and empty selection",()=>{
+  const bar=new Quickbar(["bread","bread","iron-ore","forged-staff","unknown"]);
+  assert.deepEqual(bar.slots,["bread",null,null,"forged-staff",null,null]);
+  assert.deepEqual(new Quickbar().slots,Array(6).fill(null));
+  assert(bar.bind(1,"forged-spear"));assert(bar.swap(1,3));
+  assert.equal(bar.slots[1],"forged-staff");assert.equal(bar.slots[3],"forged-spear");
+  assert(bar.bind(5,"bread"));assert.equal(bar.slots[0],null);
+  assert(bar.select(5));assert.equal(bar.selected,"bread");
+  bar.cycle(1);assert.equal(bar.selected,null);
+  assert(bar.clear(3));assert.equal(bar.slots[3],null);
+  assert.equal(bar.bind(7,"bread"),false);assert.equal(bar.bind(2,"iron-ore"),false);
+  assert.equal(quickbarIndexForKey("Digit6"),5);assert.equal(quickbarIndexForKey("Digit0"),null);
 });

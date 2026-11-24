@@ -1,5 +1,6 @@
 import type {GameStore} from "./game/gameStore.ts";
-import {ECONOMY,ITEMS} from "./game/economy.ts";
+import {ECONOMY,ITEMS,MATERIAL_ITEMS} from "./game/economy.ts";
+import {dungeonBuybackPrice} from "./game/dungeonBuyback.ts";
 import {FORGE_OUTPUTS,FORGE_RECIPES,type ForgeOutput} from "./game/cellarForge.ts";
 
 /** Physical interaction opens the forge; all decisions/consumption happen
@@ -49,7 +50,13 @@ export function setupCellarForgeHud(store:GameStore,onCrafted:(id:ForgeOutput)=>
       if(store.state!==before)onCrafted(id);
       render();
     });
-    row.append(title,materials,button);
+    const item=ITEMS.find(item=>item.id===id)!;
+    const cost=MATERIAL_ITEMS.reduce((sum,mat)=>sum+
+      FORGE_RECIPES[id][mat.id]*dungeonBuybackPrice(mat.id),0);
+    const value=document.createElement("small");
+    value.className="forge-recipe-value";
+    value.textContent=cost+"g materials · "+item.salePrice+"g sell · +"+(item.salePrice-cost)+"g margin";
+    row.append(title,materials,value,button);
     rows.append(row);
     return {id,button,row,materials};
   });

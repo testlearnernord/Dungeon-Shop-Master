@@ -1,0 +1,5 @@
+# Inventory and custom quickbar
+
+TAB opens the inventory in the shop and cellar only. Six initially empty slots can be assigned from owned stacks by drag and drop or by selecting an item then a slot. Drag between slots swaps bindings. Right-click/Delete or dragging back to the bag unbinds. Bindings are unique item references and remain when quantity reaches zero. They persist as local browser UI preferences, not campaign save data. The actual bag, 24-unit capacity, material reserve and stock transactions are unchanged. Discarding moves into inventory; it never refunds gold. Raw materials are shown separately and cannot be assigned. F selects a bound urgent item or opens the inventory for explicit assignment. Number keys 1–6 and the wheel select slots, not catalog indices. An empty selected slot cannot stock a shelf, but right-click removal still works. TAB retains its existing camera-focus meaning in Dungeon and Combat views.
+
+The supplier renders WHOLESALE_GOODS only. T2 and salvage are absent, not merely disabled. Recipe costs and gross margins move to the forge UI. The underlying wholesale authorization remains in GameStore.

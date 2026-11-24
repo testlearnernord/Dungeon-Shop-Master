@@ -70,7 +70,7 @@ test("hotbar shortcuts respect modifiers and keyboard activation keeps focus", a
   await page.goto("./");
   await expect(page.locator("#day")).toHaveText("Day 1");
   const selected = page.locator(".inventory-row[aria-pressed=true]");
-  const initialItemId = await selected.getAttribute("data-item-id");
+  const initialItemId = await selected.getAttribute("data-quickbar-slot");
   await page.evaluate(() => {
     document.dispatchEvent(new KeyboardEvent("keydown", {
       code: "Digit2", ctrlKey: true, bubbles: true, cancelable: true,
@@ -80,15 +80,15 @@ test("hotbar shortcuts respect modifiers and keyboard activation keeps focus", a
       code: "Digit3", bubbles: true, cancelable: true,
     }));
   });
-  await expect(selected).toHaveAttribute("data-item-id", initialItemId!);
+  await expect(selected).toHaveAttribute("data-quickbar-slot", initialItemId!);
 
   const slot = page.locator(".inventory-row").nth(1);
-  const itemId = await slot.getAttribute("data-item-id");
+  const itemId = await slot.getAttribute("data-quickbar-slot");
   await slot.focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator(".inventory-row[aria-pressed=true]")).toHaveAttribute("data-item-id", itemId!);
+  await expect(page.locator(".inventory-row[aria-pressed=true]")).toHaveAttribute("data-quickbar-slot", itemId!);
   await expect.poll(() => page.evaluate(() =>
-    (document.activeElement as HTMLElement | null)?.dataset.itemId,
+    (document.activeElement as HTMLElement | null)?.dataset.quickbarSlot,
   )).toBe(itemId);
 });
 

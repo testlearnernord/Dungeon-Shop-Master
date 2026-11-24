@@ -17,7 +17,7 @@ test("wholesale, stocking and confirmed sales share stock and gold without modal
   const bread = ITEMS.find((item) => item.id === "bread")!;
   await expect(page.locator("#merchant-gold")).toHaveText(`Merchant gold: ${20 - bread.wholesaleCost}g`);
   await expect(page.locator("#wholesale-message")).toContainText("Bought 1 Waybread");
-  await expect(page.locator(".inventory-row").filter({ hasText: "Waybread" }).locator("strong")).toHaveText("3");
+  await expect(page.locator('#wholesale-catalog [data-item-id="bread"] .catalog-bag-amount')).toHaveText("Bag: 3");
   // Holding a native activation key must not place repeat orders.
   await buy.focus();
   await page.keyboard.down("Enter");
@@ -39,11 +39,11 @@ test("wholesale, stocking and confirmed sales share stock and gold without modal
     const modulePath = "/Dungeon-Shop-Master/tests/scene.ts";
     return (await import(modulePath)).inspectPlayer().frame;
   })).toBeGreaterThan(frame + 2);
-  // Select bread without moving the camera or stocking a different item.
-  // The catalog now has six entries; Waybread remains item index 3.
-  for (let index = 0; index < ITEMS.findIndex((item) => item.id === "bread"); index++) {
-    await page.locator("#renderCanvas").dispatchEvent("wheel", { deltaY: 1 });
-  }
+  await page.keyboard.press("Tab");
+  await page.locator('#inventory-dialog [data-bag-item="bread"] .bag-item-pick')
+    .dragTo(page.locator('#inventory-dialog [data-bind-slot="1"]'));
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("1");
   await page.locator("#renderCanvas").click();
   await expect(page.locator("#status")).toContainText("Placed Waybread");
   await expect(page.locator("#shelf-supplies")).toContainText("Waybread 4");
@@ -66,10 +66,10 @@ test("wholesale, stocking and confirmed sales share stock and gold without modal
   await buy.click();
   await expect(page.locator("#wholesale-message")).toContainText("Bought 1 Waybread");
   await expect(page.locator("#wholesale")).toBeInViewport();
-  await page.getByText("Free bag space (discard, no refund)", { exact: true }).click();
-  await page.getByRole("button", { name: "Discard 1 Iron Ore", exact: true }).dblclick();
-  await expect(page.locator("#wholesale-message")).toContainText("Discarded");
-  await expect(page.locator(".inventory-row").filter({ hasText: "Iron Ore" }).locator("strong")).toHaveText("3");
-  await page.getByRole("button", { name: "Close catalog (Esc / B)", exact: true }).click();
+  await page.locator("#close-wholesale").click();
+  await page.keyboard.press("Tab");
+  await page.getByRole("button",{name:"Discard 1 Waybread",exact:true}).click();
+  await expect(page.locator("#inventory-dialog .bag-message")).toContainText("Discarded");
+  await page.keyboard.press("Tab");
   expect(errors).toEqual([]);
 });
