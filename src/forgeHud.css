@@ -1,0 +1,25 @@
+.cellar-forge-dialog{
+  color:#f0e0ba;background:linear-gradient(145deg,#271e17,#151617);
+  border:1px solid #927044;border-radius:9px;
+  box-shadow:0 16px 90px #000b;padding:24px;
+  width:min(92vw,670px);max-height:85vh;overflow:auto;
+  font-family:inherit;
+}
+.cellar-forge-dialog::backdrop{background:rgba(5,4,3,.76)}
+.cellar-forge-dialog h2{font-size:1.35rem;letter-spacing:.12em;margin:0 0 12px}
+.cellar-forge-dialog p{line-height:1.5}
+.forge-reserve{background:#392b20;padding:12px;border-radius:4px}
+.forge-recipes{display:grid;gap:8px;margin:15px 0}
+.forge-recipe{display:grid;grid-template-columns:1fr 1.3fr auto;
+  gap:12px;align-items:center;border:1px solid #5d4b37;
+  border-radius:4px;padding:12px}
+.forge-recipe span{font-size:.85rem;opacity:.88}
+.cellar-forge-dialog button{cursor:pointer;background:#705133;
+  color:#fff3de;border:1px solid #a27d4a;border-radius:4px;
+  padding:9px 13px;font:inherit}
+.cellar-forge-dialog button:disabled{opacity:.35;cursor:not-allowed}
+.cellar-forge-dialog button:focus-visible{outline:2px solid #e3bd76}
+.forge-result{min-height:1.5em}
+@media(max-width:560px){.forge-recipe{grid-template-columns:1fr auto}
+  .forge-recipe span{grid-column:1;grid-row:2}
+  .forge-recipe button{grid-column:2;grid-row:1 / span 2}}
