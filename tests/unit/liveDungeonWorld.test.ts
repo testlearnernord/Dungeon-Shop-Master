@@ -395,7 +395,7 @@ function authoredStairFixture():{store:GameStore;heroId:string;stair:{x:number;z
   assert(hero);
   const adventurers=base.adventurers.map(h=>h.id===hero.id?{
     ...h,floor:1 as const,status:"exploring" as const,
-    health:h.stats.maxHealth,equipment:{...h.equipment,weapon:"Iron Sword" as const},
+    health:h.stats.maxHealth,equipment:{...h.equipment,weapon:h.role==="tank"?"Iron Sword":h.role==="DPS"?"Spear":"Staff"},
     inventory:{...h.inventory},
   }:h.status==="exploring"?{...h,floor:4 as const}:h);
   const known=layout.tiles.flatMap((cell,i)=>cell==="wall"?[]:[i]);
@@ -510,7 +510,7 @@ test("diagnostic captures the actual rejected Floor-9 solo stair crossing",()=>{
 });
 
 test("healthy committed descent survives an ordinary empty movement decision but never overrides resupply",()=>{
-  const original=createGameState(7351).adventurers[0];
+  const original=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
   const hero={...original,floor:3 as const,status:"exploring" as const,
     equipment:{weapon:"Iron Sword" as const,armor:"Leather Vest" as const}};
   const ready={...hero,health:heroProgression(hero).maxHealth};
@@ -606,4 +606,28 @@ test("two real eligible Floor-9 explorers rendezvous, form a party and commit a 
   assert.deepEqual(store.state.liveDungeon.partyBossCombat?.heroIds,ids);
   assert(traces.some(t=>t.stage==="boss-crossing"&&t.checks.accepted));
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+});
+
+test("full health without a real class weapon is not a permit to risk deep floors",()=>{
+  const original=createGameState(7351).adventurers.find(h=>h.role==="tank")!;
+  const layout=generateExpeditionLayout(7351,3);
+  const known=layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i]);
+  const hero={...original,floor:3 as const,status:"exploring" as const,
+    equipment:{weapon:null,armor:null},health:heroProgression(original).maxHealth,
+    traits:{...original.traits,positive:"brave",negative:"stubborn"},
+    gold:2};
+  const progress={heroId:hero.id,...layout.entrance,visited:known};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:3 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},steps:[],encounters:[],
+    outcome:"exploring" as const};
+  assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay).action,"ascend");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,equipment:{weapon:"Staff",armor:"Leather Vest"}},
+    progress,replay).action,"ascend");
+  const reward={...replay,steps:[{...layout.entrance,t:1,
+    action:"treasure" as const,hp:hero.health}]};
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,gold:9},progress,reward).action,"shop");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,gold:9},progress,replay).action,"ascend",
+    "Stale gold alone must not cause an endless failed shopping loop");
+  assert.equal(chooseLiveHeroDungeonDecision({...hero,equipment:{weapon:"Iron Sword",armor:null}},
+    progress,replay).action,"descend");
 });

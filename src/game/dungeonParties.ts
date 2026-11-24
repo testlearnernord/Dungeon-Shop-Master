@@ -1,4 +1,5 @@
 import {heroProgression} from "./heroProgression.ts";
+import {equipmentEffects} from "./gearCatalog.ts";
 import type { AdventurerState } from "./adventurers.ts";
 import type { DungeonLayout,DungeonPoint } from "./dungeonLayout.ts";
 import { generateExpeditionLayout } from "./dungeonLayout.ts";
@@ -286,8 +287,8 @@ export function negotiatePartyFloorDecisions(
   const canFollow=stayers.every(member=>{
     const goal=decisions.get(member.id)!.goal;
     const health=member.health/heroProgression(member).maxHealth;
-    const equipped=member.equipment.weapon!==null||
-      member.equipment.armor!==null;
+    const gear=equipmentEffects(member.role,member.equipment);
+    const equipped=!!gear.weapon||member.floor===1&&!!gear.vest;
     const threshold=member.traits.positive==="careful"?0.92:0.78;
     return goal!=="caution"&&goal!=="resupply"&&
       goal!=="farm"&&equipped&&health>=threshold;
@@ -296,6 +297,10 @@ export function negotiatePartyFloorDecisions(
 
   // Patient companions can put off a desired descent for one more
   // real expedition day. Waiting does not heal anyone or create loot.
+  // Do not trap a prepared party in perpetual waiting for a member who
+  // still needs a weapon. Such an explorer can genuinely split and resupply.
+  if(stayers.some(member=>!equipmentEffects(member.role,member.equipment).weapon&&
+    member.floor!==1))return decisions;
   const willingToWait=descenders.every(member=>
     member.traits.negative!=="reckless"&&
     (member.traits.positive==="generous"||

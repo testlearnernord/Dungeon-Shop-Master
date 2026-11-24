@@ -245,3 +245,17 @@ test("boss rendezvous uses visible eligible peers only and never recruits an unp
   assert.notEqual(negotiatePartyFloorDecisions([ready[0],{...ready[1],bossPass:false}],
     decisions).get(ready[1].id)?.action,"descend");
 });
+
+test("healthy novice cannot be dragged deeper by a prepared companion",()=>{
+  const base=createGameState(SEED).adventurers;
+  const leader={...base[0],floor:3 as const,status:"exploring" as const,
+    traits:{...base[0].traits,positive:"brave",negative:"stubborn"},
+    equipment:{weapon:base[0].role==="tank"?"Iron Sword":base[0].role==="DPS"?"Spear":"Staff",armor:"Leather Vest"}};
+  const novice={...base[1],floor:3 as const,status:"exploring" as const,
+    equipment:{weapon:null,armor:"Leather Vest"}};
+  const decisions=new Map<string,{goal:"progress"|"farm";action:"stay"|"descend"}>([
+    [leader.id,{goal:"progress",action:"descend"}],[novice.id,{goal:"farm",action:"stay"}]]);
+  const agreed=negotiatePartyFloorDecisions([leader,novice],decisions);
+  assert.equal(agreed.get(leader.id)?.action,"descend");
+  assert.equal(agreed.get(novice.id)?.action,"stay");
+});

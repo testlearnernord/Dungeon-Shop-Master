@@ -512,7 +512,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     const seeking=!homeward&&!clearedLevel10&&readyGroup.length===1&&
       isBossExpeditionCandidate(hero)&&priorPlan?.action!=="ascend"&&priorPlan?.action!=="shop";
     const busy=seeking?new Set([...returns.map(j=>j.heroId),
-      ...combats.flatMap(c=>c.heroIds),...partyBossCombat?.heroIds??[],
+      ...combats.flatMap(c=>c.heroIds),...(partyBossCombat?.heroIds??[]),
       ...[...stepCounts.values()].filter(c=>c.finished).map(c=>c.heroId),
       ...(state.dungeonParties??[]).filter(p=>p.memberIds.length>=2&&
         !p.memberIds.includes(hero.id)&&isBossExpeditionParty(p.memberIds.map(id=>byId.get(id)!).filter(Boolean)))
