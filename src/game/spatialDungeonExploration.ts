@@ -177,10 +177,8 @@ export function prepareSpatialDungeonCombat(
   const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
     tileAt(layout,source.x,source.z)==="room";
   // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
-  // Toughness is authoritative, not a slowed replay: each extra party member
-  // adds some resistance so a three-hero party does not erase one Ghoul
-  // before its authored attacks can play out. All choices stay seed-stable.
-  // The 25-second encounter bound and actual hero/monster damage remain real.
+  // Retain the authored individual toughness and real 25-second combat
+  // bound. The persistent LIVE site must not react to party composition.
   const baseGhoulHp=(layout.floor===7
     ?22+monsterRand.int(13):12+layout.floor*3+monsterRand.int(7))+
     (elite?24:0);

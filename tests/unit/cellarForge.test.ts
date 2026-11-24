@@ -290,14 +290,14 @@ test("true Floor-10 60Hz party options gain real class-specific T2 bonuses",()=>
 
 /** A controlled veteran and previously cleared sites, with one genuine
  * seeded unresolved reward site. The scheduler, fights and loot are real. */
-function supplySiteFixture(kind:"monster"|"treasure"){
+function supplySiteFixture(kind:"monster"|"treasure",reward?:"healing-herb"){
   for(let seed=7351;seed<7400;seed++){
     const layout=generateExpeditionLayout(seed,1);
     const site=layout.features.find(f=>f.kind===kind&&
       dungeonNeighbors(layout,f).length>0&&
       dungeonShortestPath(layout,layout.entrance,f).length<24&&
       rollDungeonSiteLoot(seed,1,f.id,0,kind).itemIds.some(id=>
-        kind==="monster"?id==="ghoul-leather":id==="iron-ore"||id==="coal"));
+        reward?id===reward:kind==="monster"?id==="ghoul-leather":id==="iron-ore"||id==="coal"));
     if(!site)continue;
     const base=createStockedShopState(seed,{dailyInflux:0,maxActive:10});
     const source=base.adventurers[3];
@@ -305,8 +305,8 @@ function supplySiteFixture(kind:"monster"|"treasure"){
       floor:1,health:200,gold:100,
       stats:{...source.stats,maxHealth:200,agility:160,strength:160},
       equipment:{weapon:"Spear",armor:"Leather Vest"},
-      inventory:{bread:ECONOMY.breadTarget,healing:ECONOMY.healingTarget,
-        finds:kind==="monster"?{"iron-ore":1,coal:1,"ghoul-leather":1}:{}}};
+      inventory:{bread:ECONOMY.breadTarget,healing:reward?0:ECONOMY.healingTarget,
+        finds:kind==="monster"&&!reward?{"iron-ore":1,coal:1,"ghoul-leather":1}:{}}};
     const approach=dungeonNeighbors(layout,site)[0];
     const visited=layout.tiles.flatMap((tile,index)=>
       tile!=="wall"&&index!==site.z*layout.width+site.x?[index]:[]);
@@ -488,4 +488,41 @@ test("quickbar references support move, swap, clear and empty selection",()=>{
   assert(bar.clear(3));assert.equal(bar.slots[3],null);
   assert.equal(bar.bind(7,"bread"),false);assert.equal(bar.bind(2,"iron-ore"),false);
   assert.equal(quickbarIndexForKey("Digit6"),5);assert.equal(quickbarIndexForKey("Digit0"),null);
+});
+
+test("needed loot is used by a compatible living hero before spare goods are offered",()=>{
+  const base=createGameState(7351).adventurers.slice(0,3);
+  const heroes=base.map((h,i)=>({...h,role:(["tank","DPS","healer"] as const)[i],
+    equipment:{weapon:null,armor:null},health:i===1?10:h.health}));
+  const result=distributeDungeonFinds(heroes,["iron-sword","spear","staff","healing-herb","healing-herb","healing-herb","healing-herb","coal"],"site",0);
+  assert.deepEqual(result.map(h=>h.equipment.weapon),["Iron Sword","Spear","Staff"]);
+  assert(result.every(h=>h.inventory.healing===1));
+  assert.equal(result.reduce((n,h)=>n+(h.inventory.finds?.["healing-herb"]??0),0),1);
+  assert.equal(result.reduce((n,h)=>n+(h.inventory.finds?.coal??0),0),1);
+  assert(heroes.every(h=>h.equipment.weapon===null&&h.inventory.healing===0));
+});
+
+test("actual LIVE chest and combat settlement retain a genuinely found needed herb",()=>{
+  for(const kind of ["treasure","monster"] as const){
+    const {store,hero,site,seed}=supplySiteFixture(kind,"healing-herb");
+    const expected=rollDungeonSiteLoot(seed,1,site.id,0,kind).itemIds.filter(id=>id==="healing-herb").length;
+    assert(expected>0);
+    store.enableLiveDungeon();
+    store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+    if(kind==="monster"){
+      assert(store.state.liveDungeon.combats.some(c=>c.heroIds.includes(hero.id)));
+      for(let i=0;i<60&&store.state.liveDungeon.combats.some(c=>c.heroIds.includes(hero.id));i++)
+        store.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
+      const fight=store.state.events.find(e=>e.adventurerId===hero.id&&
+        e.dungeonReplay?.encounters.some(c=>c.featureId===site.id));
+      assert.equal(fight?.dungeonReplay?.encounters[0].combat.outcome,"heroes");
+    }
+    const after=store.state.adventurers.find(h=>h.id===hero.id)!;
+    assert.equal(after.inventory.healing,ECONOMY.healingTarget);
+    assert.equal(after.inventory.healing+(after.inventory.finds?.["healing-herb"]??0),expected);
+    assert(store.state.dungeonWorlds.find(w=>w.floor===1)!.world.resolvedFeatureIds.includes(site.id));
+    assert.equal(store.state.shopEconomy.bag["healing-herb"],0);
+    assert.equal(availableDungeonOffers(store.state).length,0);
+    assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+  }
 });

@@ -62,7 +62,7 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - name: Run real GameStore / world clock 100-day comparison
+      - name: Run real GameStore / world clock comparison
         run: node --max-old-space-size=6144 --experimental-strip-types tools/analysis/gameplay-100day-audit.mjs
       - name: Upload detailed balance and survivor telemetry
         if: always()
