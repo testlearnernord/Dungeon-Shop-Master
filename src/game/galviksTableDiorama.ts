@@ -83,8 +83,9 @@ export class GalviksTableDiorama{
   private readonly priorMonsterTiles=new Map<string,Pick<DungeonMonsterState,
     "x"|"z"|"siteCycle"|"lastMoveTick">>();
   private readonly monsterTravel=new Map<string,{
-    from:Vector3;to:Vector3;startedAt:number;
+    from:Vector3;to:Vector3;seconds:number;
   }>();
+  private lastGhoulPresentationAt:number|null=null;
   private monsterObservedTick:number|null=null;
   private monsterObservedDay:number|null=null;
   private readonly monsterHints=new Map<string,{mesh:LinesMesh;signature:string}>();
@@ -379,6 +380,7 @@ void main(void){
     this.heroes.clear();
     this.priorMonsterTiles.clear();
     this.monsterTravel.clear();
+    this.lastGhoulPresentationAt=null;
     this.monsterObservedTick=null;
     this.monsterObservedDay=null;
     this.layout=layout;
@@ -582,7 +584,7 @@ void main(void){
               worldTick:frame.worldTick});
           if(allowed){
             this.monsterTravel.set(id,{
-              from:anchor.position.clone(),to:destination,startedAt:now,
+              from:anchor.position.clone(),to:destination,seconds:0,
             });
           }else if(changed||!old){
             this.monsterTravel.delete(id);
@@ -630,11 +632,18 @@ void main(void){
   /** Full render cadence for a saved 1.2s travel burst, independent of the
    * 160ms floor projection refresh. No pathfinding, AI or extra time source. */
   private advanceGhoulPresentation(now:number):void{
+    // Match the full LIVE viewer: rendering advances in bounded delta steps,
+    // not raw elapsed wall time. A costly world tick/asset upload may block
+    // frames longer than a 1.2s walk; the first visible frame must still
+    // display the movement instead of silently skipping it.
+    const dt=this.lastGhoulPresentationAt===null?0:Math.min(.1,
+      Math.max(0,(now-this.lastGhoulPresentationAt)/1000));
+    this.lastGhoulPresentationAt=now;
     for(const [id,anchor] of this.monsterAnchors){
       const journey=this.monsterTravel.get(id);
       if(journey){
-        const progress=monsterObservationStepProgress(
-          (now-journey.startedAt)/1000);
+        journey.seconds+=dt;
+        const progress=monsterObservationStepProgress(journey.seconds);
         anchor.position.copyFrom(Vector3.Lerp(
           journey.from,journey.to,progress));
         const heading=Math.atan2(
