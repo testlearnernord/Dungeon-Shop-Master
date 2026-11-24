@@ -35,7 +35,10 @@ export function rollDungeonSiteLoot(
   const itemIds:ItemId[]=[];
   for(let i=0;i<n;i++){
     if(kind==="monster"){
-      const salvage:readonly ItemId[]=["iron-ore","iron-ore","coal","healing-herb"];
+      // Only a TRUE resolved Ghoul combat roll can produce Ghoul Leather.
+      // The existing per-site/per-generation award is still exactly once.
+      const salvage:readonly ItemId[]=[
+        "iron-ore","iron-ore","coal","ghoul-leather","ghoul-leather","healing-herb"];
       itemIds.push(salvage[rng.int(salvage.length)]);
     }else itemIds.push(table[rng.int(table.length)]);
   }
