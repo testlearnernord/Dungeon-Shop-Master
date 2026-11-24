@@ -6,6 +6,7 @@ import { GameStore } from "../../src/game/gameStore.ts";
 import { createGameState } from "../../src/game/gameState.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
 import { ITEMS } from "../../src/game/economy.ts";
+import {createCampaignTelemetry} from "./campaign-progression-telemetry.mjs";
 
 const DAYS = Number(process.env.AUDIT_DAYS ?? 100);
 const SEED = Number(process.env.AUDIT_SEED ?? 7351);
@@ -17,10 +18,12 @@ const placements = [
   {id:"shelf-1",x:-7,z:0,rotation:0},
   {id:"shelf-2",x:7,z:0,rotation:2},
 ];
-const targets = {bread:3,"healing-herb":3,"iron-sword":2,"leather-vest":2};
+const targets = {bread:3,"healing-herb":3,"iron-sword":2,"leather-vest":2,spear:2,staff:2};
 const slotIds = {bread:"shelf-1-slot-1","healing-herb":"shelf-1-slot-2",
-  "iron-sword":"shelf-1-slot-3","leather-vest":"shelf-1-slot-4"};
-const eligibleSkus = mode => mode==="full" ? catalog :
+  "iron-sword":"shelf-1-slot-3","leather-vest":"shelf-1-slot-4",
+  spear:"shelf-2-slot-1",staff:"shelf-2-slot-2"};
+const eligibleSkus = mode => mode==="tier1" ? [...catalog,"spear","staff"] :
+  mode==="full" ? catalog :
   mode==="consumables" ? catalog.slice(0,2) :
   mode==="equipment" ? catalog.slice(2) : [];
 const counts = values => Object.fromEntries([...new Set(values)].sort().map(v=>[v,values.filter(x=>x===v).length]));
@@ -59,8 +62,8 @@ function snap(s,dayCompleted) {
     unrecoveredFinds:sum(living,h=>sum(Object.values(h.inventory.finds??{}),v=>v??0)),
   };
 }
-function setup(mode) {
-  const store=new GameStore(createGameState(SEED));
+function setup(mode,diagnostic) {
+  const store=new GameStore(createGameState(SEED),diagnostic);
   if(mode!=="absent")for(const draft of placements){
     const response=store.placeFurniture(draft);
     if(response!=="Shelf placement saved.")throw Error("Shelf setup rejected: "+response);
@@ -192,11 +195,14 @@ function classifyDeaths(metrics,previous,state,added) {
   }
 }
 function run(mode){
-  const store=setup(mode);
+  const telemetry=createCampaignTelemetry(SEED);
+  const store=setup(mode,telemetry.observe);
+  telemetry.sample(store.state);
   const initial=snap(store.state,0);
   const metrics={
     mode,seed:SEED,daysRequested:DAYS,
     model:"real GameStore, scripted storefront and manual boss passes",
+    stockPolicy:eligibleSkus(mode),
     starting:initial, milestones:[initial], eventTypes:{}, salesUnits:{},
     salesRevenue:{},healingUsed:{},credits:{},replayStepActions:{},
     encounterOutcomes:{}, deathCauses:{},deathFloors:{},deathRecords:[],
@@ -212,9 +218,12 @@ function run(mode){
     for(let step=0;step<144;step++){
       actShop(store,mode,metrics);
       store.advanceWorldTime(200);
+      telemetry.sample(store.state);
     }
     actShop(store,mode,metrics);
+    telemetry.finishDay(store.state);
     store.endDay();
+    telemetry.sample(store.state);
     if(store.state.day!==startDay+1)throw Error("World day did not advance");
     const added=store.state.events.slice(firstEvent);
     summarizeEvents(metrics,added);
@@ -233,11 +242,13 @@ function run(mode){
       console.log("AUDIT_PROGRESS "+JSON.stringify({
         mode,completed,living:result.living,dead:result.dead,
         shopGold:result.shopGold,heroesGold:result.heroGoldLiving,
-        peakLevel:result.peakLevel,events:result.events
+        peakLevel:result.peakLevel,events:result.events,
+        deepestFloor:telemetry.deepestFloor()
       }));
   }
   const final=snap(store.state,DAYS);
   metrics.final=final;
+  metrics.progression=telemetry.report();
   metrics.newHeroes=sum(store.state.events,e=>e.type==="influx"?1:0);
   // Request expiries are committed asynchronously by the LIVE clock, not
   // necessarily by a direct shopper action in actShop().
@@ -260,7 +271,10 @@ function run(mode){
       floor:h.floor
     }));
   delete metrics.nextRequestId;
-  console.log("AUDIT_REPORT "+JSON.stringify(metrics));
+  // Daily per-hero telemetry is intentionally retained in the JSON artifact,
+  // not dumped as a huge single line into GitHub's job log.
+  const {daily,lifetimeHeroes,...progressionSummary}=metrics.progression;
+  console.log("AUDIT_REPORT "+JSON.stringify({...metrics,progression:progressionSummary}));
   return metrics;
 }
 const reports=[],failures=[];

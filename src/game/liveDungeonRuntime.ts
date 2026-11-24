@@ -8,13 +8,13 @@ import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonSiteGeneration} from "./dungeonRegeneration.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,carriedDungeonFindCount,
-  type HeroDungeonDecision} from "./dungeonDecisions.ts";
+  type HeroDungeonDecision,type DungeonDecisionReason} from "./dungeonDecisions.ts";
 import {choosePersistentDungeonParty,negotiatePartyFloorDecisions,
   settlePersistentDungeonParties,temporaryPartyChanges,
   type DungeonPartyState} from "./dungeonParties.ts";
 import {advanceSpatialDungeonPartyStep,emptySpatialDungeonWorld,
   prepareSpatialDungeonCombat,settleSpatialDungeonCombat,
-  SPATIAL_DUNGEON_COMBAT_SECONDS,getSpatialDungeonProgress,type PreparedSpatialEncounter,type SpatialDungeonReplay,
+  SPATIAL_DUNGEON_COMBAT_SECONDS,getSpatialDungeonProgress,chooseKnownRouteStep,type PreparedSpatialEncounter,type SpatialDungeonReplay,
   type SpatialDungeonFloor,type SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
   groupCombatReplayFromFrames,type GroupCombatState,
@@ -43,6 +43,22 @@ export const LIVE_COMBAT_INTERVAL_TICKS=10;
 export const SHOP_PORTAL_RETURN_PREFIX="shop-return:";
 /** The actual portal crossing takes one more game minute after backtracking. */
 export const SHOP_PORTAL_TRANSIT_TICKS=20;
+
+/** Optional, unsaved diagnostic observations. Only detached primitives and
+ * fresh arrays/objects leave the real scheduler. Never feeds back into AI. */
+export interface DungeonDiagnostic {
+  readonly stage:"decision"|"combat-decision"|"boss-crossing"|"boss-route";
+  readonly day:number;
+  readonly tick:number;
+  readonly floor:number;
+  readonly heroId:string;
+  readonly memberIds:readonly string[];
+  readonly checks:Readonly<Record<string,boolean>>;
+  readonly action?:HeroDungeonDecision["action"];
+  readonly goal?:HeroDungeonDecision["goal"];
+  readonly reason?:DungeonDecisionReason;
+}
+export type DungeonDiagnosticSink=(sample:DungeonDiagnostic)=>void;
 
 export interface LiveDungeonHeroStep {
   readonly heroId:string;
@@ -272,7 +288,7 @@ function deathSignal(hero:AdventurerState,day:number,tick:number):WorldEvent {
 }
 const zone=(floor:number):"upper"|"deep"=>floor>=5?"deep":"upper";
 
-function commitDungeonTick(state:GameState):GameState {
+function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):GameState {
   const tick=state.worldClock.tick;
   const day=state.day;
   const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
@@ -333,14 +349,23 @@ function commitDungeonTick(state:GameState):GameState {
         if(floor===9&&priorPlan.action==="descend"){
           // A genuine saved temporary party physically reaches Floor 9's
           // lower stair together. No solo permit can spawn a fake team.
-          const partyValid=!!priorParty&&
-            crossing.length===priorParty.memberIds.length&&
-            canAttemptCaveTroll(crossing.length,
-              crossing.every(member=>member.bossPass))&&
-            crossing.every(member=>member.health>0)&&
+          const hasSavedParty=!!priorParty;
+          const fullCrossing=!!priorParty&&crossing.length===priorParty.memberIds.length;
+          const allowedParty=canAttemptCaveTroll(crossing.length,
+            crossing.every(member=>member.bossPass));
+          const living=crossing.every(member=>member.health>0);
+          const partyValid=hasSavedParty&&fullCrossing&&allowedParty&&living&&
             !partyBossCombat&&!clearedLevel10;
           const hasTime=tick+REPLAY_MAX_SECONDS*20+
             SHOP_PORTAL_TRANSIT_TICKS<=lastWorldTickOfDay(day);
+          diagnostic?.({stage:"boss-crossing",day,tick,floor,heroId:hero.id,
+            memberIds:participants.map(member=>member.id),checks:{
+              savedParty:hasSavedParty,fullCrossing,
+              partySize:crossing.length>=2&&crossing.length<=3,
+              passes:crossing.every(member=>member.bossPass),living,
+              bossIdle:!partyBossCombat,bossUncleared:!clearedLevel10,
+              hasTime,accepted:partyValid&&hasTime,
+            }});
           if(!partyValid||!hasTime){
             processed.add(hero.id);
             stepCounts.set(hero.id,{heroId:hero.id,
@@ -454,6 +479,15 @@ function commitDungeonTick(state:GameState):GameState {
     // personally known, still-active chest/monster site. Never let the
     // omniscient spectator map plan hero movement.
     const known=getSpatialDungeonProgress(world,hero.id,layout);
+    if(diagnostic&&floor===9&&directed&&priorPlan?.action==="descend"){
+      const atStair=known.x===directed.x&&known.z===directed.z;
+      diagnostic({stage:"boss-route",day,tick,floor,heroId:hero.id,
+        memberIds:readyGroup.map(member=>member.id),checks:{
+          stairVisited:known.visited.includes(directed.z*layout.width+directed.x),
+          knownRoute:atStair||!!chooseKnownRouteStep(layout,known,directed),
+          atStair,
+        }});
+    }
     const resourceKind=priorPlan?.floor===floor?
       priorPlan.goal==="loot-chest"?"treasure":
       priorPlan.goal==="hunt-ghouls"?"monster":null:null;
@@ -489,6 +523,8 @@ function commitDungeonTick(state:GameState):GameState {
     }
     dungeonWorlds=setDungeonWorld(dungeonWorlds,floor,result.world);
     const independent=new Map<string,HeroDungeonDecision>();
+    const decisionDetails=diagnostic?new Map<string,{
+      checks:Record<string,boolean>;reason?:DungeonDecisionReason}>():undefined;
     if(!result.pendingCombat)for(const individual of result.ticks){
       if(individual.adventurer.health<=0)continue;
       const progress=result.world.heroes.find(p=>
@@ -498,10 +534,21 @@ function commitDungeonTick(state:GameState):GameState {
           readyGroup.every(member=>member.bossPass))&&
         readyGroup.every(member=>member.equipment.weapon!==null&&
           member.health/heroProgression(member).maxHealth>=0.60);
+      const detail=decisionDetails?{checks:{
+        partySize:readyGroup.length>=2&&readyGroup.length<=3,
+        passes:readyGroup.every(member=>member.bossPass),
+        armed:readyGroup.every(member=>member.equipment.weapon!==null),
+        partyHealth:readyGroup.every(member=>member.health/heroProgression(member).maxHealth>=.60),
+        visitedEnough:(progress?.visited.length??0)>=13,
+        heroHealth:individual.adventurer.health/heroProgression(individual.adventurer).maxHealth>=.60,
+        bossReady,
+      }} as {checks:Record<string,boolean>;reason?:DungeonDecisionReason}:undefined;
       independent.set(individual.adventurer.id,
         chooseLiveHeroDungeonDecision(individual.adventurer,
           progress,individual.replay,layout,result.world,bossReady,
-          carriedDungeonFindCount(byId.get(individual.adventurer.id)!)));
+          carriedDungeonFindCount(byId.get(individual.adventurer.id)!),
+          detail?(reason)=>{detail.reason=reason;}:undefined));
+      if(detail)decisionDetails!.set(individual.adventurer.id,detail);
     }
     const agreed=readyGroup.length>1
       ?negotiatePartyFloorDecisions(result.ticks.map(t=>t.adventurer),
@@ -513,6 +560,12 @@ function commitDungeonTick(state:GameState):GameState {
       processed.add(id);
       byId.set(id,individual.adventurer);
       const decision=agreed.get(id);
+      const detail=decisionDetails?.get(id);
+      if(diagnostic&&decision&&detail&&!homeward)
+        diagnostic({stage:"decision",day,tick,floor,heroId:id,
+          memberIds:readyGroup.map(member=>member.id),
+          checks:{...detail.checks,partyChangedAction:decision.action!==independent.get(id)?.action},
+          action:decision.action,goal:decision.goal,reason:detail.reason});
       const planChanged=decision&&!homeward
         ?recordLivePlan(plans,individual.adventurer,decision,tick):false;
       if(individual.adventurer.status==="dead"){
@@ -705,7 +758,7 @@ function commitDungeonTick(state:GameState):GameState {
  * Every scheduled 0.5s event advances exactly 30 ticks, or fewer if
  * the fight ends. Read-only replays NEVER call this function.
  */
-function commitLiveCombatTick(state:GameState):GameState{
+function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink):GameState{
   if(!(state.liveDungeon.combats.length||
       state.liveDungeon.partyBossCombat)||
      state.worldClock.tick!==state.liveDungeon.combatTick+LIVE_COMBAT_INTERVAL_TICKS)
@@ -847,9 +900,20 @@ function commitLiveCombatTick(state:GameState):GameState{
         plans.delete(id);
       }else {
         const progress=settled.world.heroes.find(p=>p.heroId===id);
+        let reason:DungeonDecisionReason|undefined;
         const decision=chooseLiveHeroDungeonDecision(
           tick.adventurer,progress,tick.replay,undefined,undefined,false,
-          carriedDungeonFindCount(party.find(member=>member.id===id)!));
+          carriedDungeonFindCount(party.find(member=>member.id===id)!),
+          diagnostic?(value)=>{reason=value;}:undefined);
+        diagnostic?.({stage:"combat-decision",day:state.day,tick:state.worldClock.tick,
+          floor,heroId:id,memberIds:party.map(member=>member.id),
+          checks:{bossReady:false,partySize:party.length>=2&&party.length<=3,
+            passes:party.every(member=>member.bossPass),
+            armed:party.every(member=>member.equipment.weapon!==null),
+            partyHealth:party.every(member=>member.health/heroProgression(member).maxHealth>=.60),
+            visitedEnough:(progress?.visited.length??0)>=13,
+            heroHealth:tick.adventurer.health/heroProgression(tick.adventurer).maxHealth>=.60},
+          action:decision.action,goal:decision.goal,reason});
         recordLivePlan(plans,tick.adventurer,decision,state.worldClock.tick);
         if(!returns.some(j=>j.heroId===id)&&decision.action==="shop")
           returns.push({heroId:id,fromFloor:floor,
@@ -898,14 +962,14 @@ function commitLiveCombatTick(state:GameState):GameState{
  * Unknown events throw. No player/render/replay code invokes a second roll.
  */
 export function commitLiveWorldEvent(
-  state:GameState,event:ScheduledWorldEvent,
+  state:GameState,event:ScheduledWorldEvent,diagnostic?:DungeonDiagnosticSink,
 ):GameState {
   if(event.lane==="visitor")return commitShopRequestEvent(state,event);
   if(event.lane==="report")return commitPortalReturn(state,event);
   if(event.lane!=="expedition"||!state.liveDungeon.enabled)
     throw new RangeError("Unexpected world event without an authoritative owner.");
-  if(event.subjectId===LIVE_COMBAT_EVENT_SUBJECT)return commitLiveCombatTick(state);
-  if(event.subjectId===DUNGEON_WORLD_EVENT_SUBJECT)return commitDungeonTick(state);
+  if(event.subjectId===LIVE_COMBAT_EVENT_SUBJECT)return commitLiveCombatTick(state,diagnostic);
+  if(event.subjectId===DUNGEON_WORLD_EVENT_SUBJECT)return commitDungeonTick(state,diagnostic);
   throw new RangeError("Unknown expedition world event owner.");
 }
 

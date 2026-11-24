@@ -6,6 +6,7 @@ on:
       - 'audit/gameplay-loop-*'
     paths:
       - tools/analysis/gameplay-100day-audit.mjs
+      - tools/analysis/campaign-progression-telemetry.mjs
       - .github/workflows/gameplay-100day-audit.yml
       - src/game/heroProgression.ts
       - src/game/liveDungeonRuntime.ts
@@ -29,13 +30,13 @@ jobs:
       matrix:
         include:
           - seed: "7351"
-            modes: "absent,consumables,equipment,full"
+            modes: "absent,consumables,equipment,full,tier1"
           - seed: "9321"
-            modes: "absent,full"
+            modes: "absent,full,tier1"
           - seed: "42"
-            modes: "absent,full"
+            modes: "absent,full,tier1"
           - seed: "2026"
-            modes: "absent,full"
+            modes: "absent,full,tier1"
     env:
       AUDIT_DAYS: "100"
       AUDIT_SEED: ${{ matrix.seed }}

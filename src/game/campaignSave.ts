@@ -524,9 +524,14 @@ function validateLiveCombatCheckpoints(
     ]);
     const started=integer(battle.startedTick,cp+".startedTick",
       firstWorldTickOfDay(day),lastStepTick);
-    if(started!==lastStepTick||
+    // A real 25-second encounter can survive more than one 10-second
+    // movement event while other heroes continue exploring. Require an
+    // actual historical movement cadence, not the latest movement tick.
+    // The exact combat age, identity, frames and actors are checked below.
+    if(started<firstWorldTickOfDay(day)+DUNGEON_STEP_INTERVAL_TICKS||
+      (lastStepTick-started)%DUNGEON_STEP_INTERVAL_TICKS!==0||
       (combatTick-started)%LIVE_COMBAT_INTERVAL_TICKS!==0)
-      fail(cp+".startedTick","must equal this movement's last committed tick");
+      fail(cp+".startedTick","must identify a committed movement tick on the active combat clock");
     const encounter=object(battle.encounter,cp+".encounter",[
       "featureId","floor","x","z","siteCycle","elite","options",
     ]);

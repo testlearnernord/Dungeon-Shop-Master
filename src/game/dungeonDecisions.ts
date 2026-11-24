@@ -19,6 +19,9 @@ export const carriedDungeonFindCount=(hero:AdventurerState):number=>
   Object.values(hero.inventory.finds??{}).reduce((total,count)=>total+(count??0),0);
 export const SALVAGE_RETURN_THRESHOLD=4;
 
+export type DungeonDecisionReason="low-health"|"new-salvage-haul"|"floor9-gold-resupply"|
+  "unprepared-retreat"|"floor9-solo-resupply"|"depth-progress"|"damaged-stay"|
+  "test-gear"|"explore"|"combat-retreat"|"boss-ready";
 export interface HeroDungeonDecision {
   readonly goal: HeroDungeonGoal;
   readonly action: HeroFloorAction;
@@ -27,7 +30,7 @@ export interface HeroDungeonDecision {
 export function chooseHeroDungeonDecision(
   hero: AdventurerState, progress: SpatialDungeonHeroProgress | undefined,
   replay: SpatialDungeonReplay,
-  previousFindCount?:number,
+  previousFindCount?:number,onReason?:(reason:DungeonDecisionReason)=>void,
 ): HeroDungeonDecision {
   if(hero.status!=="exploring"||
       hero.health<=0||typeof hero.floor!=="number"||hero.floor<1||hero.floor>9)
@@ -54,21 +57,24 @@ export function chooseHeroDungeonDecision(
     (previousFindCount===undefined||carriedFinds>previousFindCount);
   if(lowHealth || newHaul ||
      (hero.floor===9 && hero.gold>=22 && known>=8)) {
+    onReason?.(lowHealth?"low-health":newHaul?"new-salvage-haul":"floor9-gold-resupply");
     return {goal:"resupply",action:"shop"};
   }
-  if(damaged && hero.floor>1 && !prepared)
-    return {goal:"caution",action:"ascend"};
+  if(damaged && hero.floor>1 && !prepared){
+    onReason?.("unprepared-retreat");return {goal:"caution",action:"ascend"};
+  }
   // Normal solo Floor-9 logic cannot initiate a group fight. The LIVE
   // override below may descend only with an actual saved, permitted party;
   // otherwise returning to Galvik is a valid recovery choice.
-  if(hero.floor===9 && enoughExperience)
-    return {goal:"resupply",action:"shop"};
-  if(hero.floor<9 && prepared && enoughExperience)
-    return {goal:"progress",action:"descend"};
-  if(damaged)
-    return {goal:"caution",action:"stay"};
-  if(armed && hero.level<=3)
-    return {goal:"test-gear",action:"stay"};
+  if(hero.floor===9 && enoughExperience){
+    onReason?.("floor9-solo-resupply");return {goal:"resupply",action:"shop"};
+  }
+  if(hero.floor<9 && prepared && enoughExperience){
+    onReason?.("depth-progress");return {goal:"progress",action:"descend"};
+  }
+  if(damaged){onReason?.("damaged-stay");return {goal:"caution",action:"stay"};}
+  if(armed && hero.level<=3){onReason?.("test-gear");return {goal:"test-gear",action:"stay"};}
+  onReason?.("explore");
   return {goal:!armed && hero.gold<18?"farm":"progress",action:"stay"};
 }
 
@@ -78,19 +84,21 @@ export function chooseHeroDungeonDecision(
 export function chooseLiveHeroDungeonDecision(
   hero:AdventurerState,progress:SpatialDungeonHeroProgress|undefined,
   replay:SpatialDungeonReplay,layout?:DungeonLayout,world?:SpatialDungeonWorld,
-  bossPartyReady=false,previousFindCount?:number,
+  bossPartyReady=false,previousFindCount?:number,onReason?:(reason:DungeonDecisionReason)=>void,
 ):HeroDungeonDecision {
   if(typeof hero.floor!=="number"||hero.floor<1||hero.floor>9||hero.health<=0||
     hero.status!=="exploring")
     throw new RangeError("Only a living ordinary-floor explorer can make a LIVE choice.");
-  if(replay.outcome==="retreat")
-    return {goal:"resupply",action:"shop"};
+  if(replay.outcome==="retreat"){
+    onReason?.("combat-retreat");return {goal:"resupply",action:"shop"};
+  }
   if(hero.floor===9&&bossPartyReady&&
      (progress?.visited.length??0)>=13&&
-     hero.health/heroProgression(hero).maxHealth>=0.60)
-    return {goal:"progress",action:"descend"};
+     hero.health/heroProgression(hero).maxHealth>=0.60){
+    onReason?.("boss-ready");return {goal:"progress",action:"descend"};
+  }
   return preferKnownDungeonResourceGoal(
-    chooseHeroDungeonDecision(hero,progress,replay,previousFindCount),hero,progress,layout,world);
+    chooseHeroDungeonDecision(hero,progress,replay,previousFindCount,onReason),hero,progress,layout,world);
 }
 
 /** The full-floor spectator is omniscient; the AI is not. Only personally

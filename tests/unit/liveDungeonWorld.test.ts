@@ -5,7 +5,7 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
   LIVE_COMBAT_INTERVAL_TICKS,LIVE_COMBAT_EVENT_SUBJECT,
-  SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS}
+  SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS,activateLiveDungeon,type DungeonDiagnostic}
   from "../../src/game/liveDungeonRuntime.ts";
 import {WORLD_TICKS_PER_DAY,lastWorldTickOfDay}
   from "../../src/game/worldClock.ts";
@@ -452,4 +452,57 @@ test("v21 rejects fabricated AI intentions and invalid plan-tick ownership",()=>
 
 test("LIVE dungeon commits one physical tile every ten real seconds",()=>{
   assert.equal(DUNGEON_STEP_INTERVAL_TICKS,200);
+});
+
+test("diagnostics observe actual decisions without changing the campaign or save",()=>{
+  const log:DungeonDiagnostic[]=[];
+  const observed=new GameStore(createGameState(7351),entry=>log.push(entry));
+  const plain=new GameStore(createGameState(7351));
+  observed.enableLiveDungeon();plain.enableLiveDungeon();
+  observed.advanceWorldTime(2000);plain.advanceWorldTime(2000);
+  assert(log.length>0);
+  assert(log.some(entry=>entry.stage==="decision"&&entry.reason!==undefined));
+  assert.deepEqual(observed.state,plain.state);
+  const crossing=observed.state.liveDungeon.combats.find(c=>
+    c.startedTick<observed.state.liveDungeon.lastStepTick);
+  assert(crossing,"This genuine campaign includes a fight lasting across a later map tick");
+  const save=createSave(observed.state);
+  const plainSave=createSave(plain.state);
+  assert.deepEqual({...save,savedAt:plainSave.savedAt},plainSave);
+  assert.deepEqual(parseSave(JSON.stringify(save)),observed.state);
+  const tampered=structuredClone(save);
+  const forged=tampered.payload.liveDungeon.combats.find(c=>c.id===crossing.id)!;
+  (forged as {startedTick:number}).startedTick+=1;
+  assert.throws(()=>parseSave(JSON.stringify(tampered)),/startedTick/);
+  // A repeat observer has exactly the same detached records, and no saved
+  // telemetry fields or extra scheduled events.
+  const repeat:DungeonDiagnostic[]=[];
+  const again=new GameStore(createGameState(7351),entry=>repeat.push(entry));
+  again.enableLiveDungeon();again.advanceWorldTime(2000);
+  assert.deepEqual(log,repeat);
+});
+
+test("diagnostic captures the actual rejected Floor-9 solo stair crossing",()=>{
+  const seed=7351,base=createGameState(seed);
+  const hero=base.adventurers[0],layout=generateExpeditionLayout(seed,9);
+  const down=dungeonDownStair(layout),visited=dungeonShortestPath(layout,layout.entrance,down)
+    .map(p=>p.z*layout.width+p.x);
+  const traces:DungeonDiagnostic[]=[];
+  const active=activateLiveDungeon({...base,
+    adventurers:base.adventurers.map(h=>h.id===hero.id?
+      {...h,floor:9 as const,status:"exploring" as const,bossPass:true}:
+      {...h,floor:"shop" as const,status:"at-shop" as const}),
+    dungeonWorlds:[{floor:9 as const,world:{...emptySpatialDungeonWorld(),
+      heroes:[{heroId:hero.id,...down,visited}]}}],
+  });
+  const store=new GameStore({...active,liveDungeon:{...active.liveDungeon,
+    plans:[{heroId:hero.id,floor:9 as const,
+      goal:"progress" as const,action:"descend" as const,updatedTick:0}]}},
+    entry=>traces.push(entry));
+  store.enableLiveDungeon();store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const gate=traces.find(entry=>entry.stage==="boss-crossing");
+  assert(gate);assert.equal(gate.checks.savedParty,false);
+  assert.equal(gate.checks.partySize,false);assert.equal(gate.checks.accepted,false);
+  assert.equal(store.state.liveDungeon.partyBossCombat,null);
+  assert.equal(store.state.adventurers.find(h=>h.id===hero.id)?.floor,9);
 });
