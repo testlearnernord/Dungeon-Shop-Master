@@ -356,6 +356,11 @@ test("LIVE Ghoul victory initiates a physical salvage return and funds the next 
   assert(store.state.liveDungeon.returns.some(j=>j.heroId===hero.id&&j.phase==="backtrack"));
   assert.equal(current().status,"exploring");
   assert.equal(availableDungeonOffers(store.state).length,0);
+  const settledWorld=store.state.dungeonWorlds.find(w=>w.floor===1)!.world;
+  assert(settledWorld.resolvedFeatureIds.includes(site.id));
+  assert(!settledWorld.monsters?.some(monster=>monster.id===site.id),
+    "Victory retires the map occupant in the same authoritative tick");
+  assert.equal(store.state.liveDungeon.combats.some(c=>c.encounter.featureId===site.id),false);
   const restored=new GameStore(parseSave(JSON.stringify(createSave(store.state))));
   const position=()=>store.state.dungeonWorlds.find(w=>w.floor===1)!.world.heroes.find(h=>h.heroId===hero.id)!;
   let portalObserved=false;

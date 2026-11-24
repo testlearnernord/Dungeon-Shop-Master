@@ -75,3 +75,7 @@ Initial, deliberately small recipes:
   with controlled prior inventory, position and budget; physical browser
   checkout also checks departure. The existing two off-duty days remain.
   No economic soak or balance adjustment is part of this acceptance step.
+
+- A won Ghoul encounter atomically resolves the site and removes the live map
+  occupant in the same combat tick. Saving before the next movement step is
+  valid; the strict validator is not relaxed to accept a defeated pack.
