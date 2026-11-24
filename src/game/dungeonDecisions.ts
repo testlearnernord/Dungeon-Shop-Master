@@ -2,6 +2,7 @@ import type { AdventurerState } from "./adventurers.ts";
 import type {SpatialDungeonHeroProgress,SpatialDungeonReplay,SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 import {chooseKnownRouteStep} from "./spatialDungeonExploration.ts";
 import {heroProgression} from "./heroProgression.ts";
+import {equipmentEffects} from "./gearCatalog.ts";
 import {dungeonNeighbors,type DungeonLayout,type DungeonFeature} from "./dungeonLayout.ts";
 
 /**
@@ -19,9 +20,33 @@ export const carriedDungeonFindCount=(hero:AdventurerState):number=>
   Object.values(hero.inventory.finds??{}).reduce((total,count)=>total+(count??0),0);
 export const SALVAGE_RETURN_THRESHOLD=4;
 
+/** Keep the early-game salvage supply chain. A genuinely prepared deep
+ * explorer can carry a larger haul instead of resetting a long expedition
+ * after every handful of drops. No capacity limit or new inventory state. */
+export function salvageReturnThreshold(hero:AdventurerState):number{
+  const gear=equipmentEffects(hero.role,hero.equipment);
+  if(typeof hero.floor!=="number"||hero.floor<3||!gear.weapon||!gear.vest||
+    hero.health/heroProgression(hero).maxHealth<.72||
+    hero.inventory.bread+hero.inventory.healing===0)return SALVAGE_RETURN_THRESHOLD;
+  if(hero.traits.positive==="careful"||hero.traits.negative==="greedy")return 6;
+  return hero.traits.negative==="reckless"?10:8;
+}
+
+/** A pass is not a teleport. Prepared, living explorers can seek willing
+ * companions on Floor 9; the actual physical saved-party gate remains intact. */
+export function isBossExpeditionCandidate(hero:AdventurerState):boolean{
+  return hero.floor===9&&hero.status==="exploring"&&hero.bossPass&&
+    !!equipmentEffects(hero.role,hero.equipment).weapon&&
+    hero.health/heroProgression(hero).maxHealth>=
+      (hero.traits.positive==="careful"?.70:.60);
+}
+export function isBossExpeditionParty(members:readonly AdventurerState[]):boolean{
+  return members.length>=2&&members.length<=3&&members.every(isBossExpeditionCandidate);
+}
+
 export type DungeonDecisionReason="low-health"|"new-salvage-haul"|"floor9-gold-resupply"|
   "unprepared-retreat"|"floor9-solo-resupply"|"depth-progress"|"damaged-stay"|
-  "test-gear"|"explore"|"combat-retreat"|"boss-ready"|"committed-descent";
+  "test-gear"|"explore"|"combat-retreat"|"boss-ready"|"committed-descent"|"seek-boss-party";
 export interface HeroDungeonDecision {
   readonly goal: HeroDungeonGoal;
   readonly action: HeroFloorAction;
@@ -53,7 +78,7 @@ export function chooseHeroDungeonDecision(
   const carriedFinds=carriedDungeonFindCount(hero);
   const newLootSite=replay.steps.some(step=>
     step.action==="treasure"||step.action==="defeat-monster");
-  const newHaul=newLootSite&&carriedFinds>=SALVAGE_RETURN_THRESHOLD&&
+  const newHaul=newLootSite&&carriedFinds>=salvageReturnThreshold(hero)&&
     (previousFindCount===undefined||carriedFinds>previousFindCount);
   if(lowHealth || newHaul ||
      (hero.floor===9 && hero.gold>=22 && known>=8)) {
@@ -85,7 +110,7 @@ export function chooseLiveHeroDungeonDecision(
   hero:AdventurerState,progress:SpatialDungeonHeroProgress|undefined,
   replay:SpatialDungeonReplay,layout?:DungeonLayout,world?:SpatialDungeonWorld,
   bossPartyReady=false,previousFindCount?:number,onReason?:(reason:DungeonDecisionReason)=>void,
-  priorDecision?:HeroDungeonDecision,
+  priorDecision?:HeroDungeonDecision,bossAvailable=true,
 ):HeroDungeonDecision {
   if(typeof hero.floor!=="number"||hero.floor<1||hero.floor>9||hero.health<=0||
     hero.status!=="exploring")
@@ -93,14 +118,21 @@ export function chooseLiveHeroDungeonDecision(
   if(replay.outcome==="retreat"){
     onReason?.("combat-retreat");return {goal:"resupply",action:"shop"};
   }
-  if(hero.floor===9&&bossPartyReady&&
-     (progress?.visited.length??0)>=13&&
-     hero.health/heroProgression(hero).maxHealth>=0.60){
+  if(bossAvailable&&bossPartyReady&&isBossExpeditionCandidate(hero)){
     onReason?.("boss-ready");return {goal:"progress",action:"descend"};
   }
   let reason:DungeonDecisionReason|undefined;
   const base=chooseHeroDungeonDecision(hero,progress,replay,previousFindCount,
     value=>{reason=value;});
+  // Do not send a healthy permitted solo explorer home solely because it
+  // has gold or has walked 13 tiles. Seek companions and the actual lower
+  // stair; a completed search, real haul or retreat may still end the outing.
+  if(bossAvailable&&isBossExpeditionCandidate(hero)&&replay.outcome!=="completed"&&
+    (base.action==="stay"||reason==="floor9-gold-resupply"||
+      reason==="floor9-solo-resupply")){
+    onReason?.("seek-boss-party");
+    return {goal:"progress",action:"stay"};
+  }
   // A healthy ordinary-floor explorer who already committed to a stair
   // does not abandon it just because the next single movement tick lacks
   // an encounter or because a fresh resource goal is available. Real

@@ -483,6 +483,8 @@ export interface SpatialDungeonAdvanceOptions {
   /** Exactly one physically adjacent tactical choice from the same LIVE AI.
    * It never provides a long, undiscovered or teleporting route. */
   readonly tacticalStep?:DungeonPoint;
+  /** A voluntary rendezvous wait consumes this map tick, never a teleport. */
+  readonly waitForCompanion?:boolean;
   /** A retreat on the live timeline must return via the portal, not teleport. */
   readonly deferReturn?:boolean;
   /** Live mode reserves the site, but does not prematurely calculate its result. */
@@ -590,6 +592,7 @@ export function simulateSpatialDungeonPartyDay(
     // hero has already committed to return to Galvik's shop. The ordinary
     // known backtrack resumes on the next step after the threat is lost.
     // Tactical AI still supplies ONLY a validated adjacent dungeon tile.
+    if(options.waitForCompanion&&!tactical)break;
     const next=tactical??(options.returnToEntrance
       ?chooseKnownReturnStep(layout,routeProgress)
       :transition?transition.step:
@@ -796,7 +799,7 @@ export function advanceSpatialDungeonPartyStep(
   campaignSeed:number,day:number,occupiedHeroIds?:ReadonlySet<string>,
   liveOptions:Pick<SpatialDungeonAdvanceOptions,"deferCombat"|"blockedCombatSites"|
     "returnToEntrance"|"deferReturn"|"routeToKnownTarget"|"routeToResource"|
-    "tacticalStep">={},
+    "tacticalStep"|"waitForCompanion">={},
 ):SpatialDungeonPartyTick {
   return simulateSpatialDungeonPartyDay(party,world,campaignSeed,day,
     occupiedHeroIds,{maxSteps:1,maxEncounters:1,...liveOptions});

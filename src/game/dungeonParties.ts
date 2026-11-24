@@ -1,13 +1,13 @@
 import {heroProgression} from "./heroProgression.ts";
 import type { AdventurerState } from "./adventurers.ts";
-import type { DungeonLayout } from "./dungeonLayout.ts";
+import type { DungeonLayout,DungeonPoint } from "./dungeonLayout.ts";
 import { generateExpeditionLayout } from "./dungeonLayout.ts";
 import {
-  getSpatialDungeonProgress, type SpatialDungeonWorld, type SpatialDungeonFloor,
+  getSpatialDungeonProgress,chooseKnownRouteStep,type SpatialDungeonWorld, type SpatialDungeonFloor,
 } from "./spatialDungeonExploration.ts";
-import type {
-  HeroDungeonDecision, HeroFloorAction,
-} from "./dungeonDecisions.ts";
+import {isBossExpeditionCandidate,isBossExpeditionParty,type HeroDungeonDecision,
+  type HeroFloorAction} from "./dungeonDecisions.ts";
+import {dungeonCurrentSight} from "./heroPerception.ts";
 
 /**
  * Persistent but voluntary companionship. This is a campaign relationship,
@@ -22,7 +22,7 @@ export interface DungeonPartyState {
 
 export function willingToTravelTogether(hero:AdventurerState):boolean {
   return hero.health>0 &&
-    (hero.role==="healer" || hero.traits.negative!=="reckless" ||
+    (isBossExpeditionCandidate(hero)||hero.role==="healer" || hero.traits.negative!=="reckless" ||
       hero.health/heroProgression(hero).maxHealth<0.6);
 }
 
@@ -30,6 +30,42 @@ export function willingToTravelTogether(hero:AdventurerState):boolean {
  * Opportunistic formation handles new explorers and parties which have
  * naturally broken up. It is not a compatibility path for old Alpha saves.
  */
+export interface BossRendezvous {
+  readonly peerId:string;
+  /** null means wait on the actual tile for the visible approaching peer. */
+  readonly step:DungeonPoint|null;
+}
+
+/** Only currently visible, available, individually prepared explorers can
+ * rendezvous. The actual party still forms on a later co-located map tick.
+ * Deterministic ID priority prevents two peers trading places every tick. */
+export function chooseBossRendezvous(
+  leader:AdventurerState,roster:readonly AdventurerState[],
+  world:SpatialDungeonWorld,layout:DungeonLayout,unavailable:ReadonlySet<string>,
+):BossRendezvous|null{
+  if(!isBossExpeditionCandidate(leader)||layout.floor!==9||
+    unavailable.has(leader.id))return null;
+  const at=getSpatialDungeonProgress(world,leader.id,layout);
+  const sight=dungeonCurrentSight(layout,at);
+  const known=new Set([...at.visited,...[...sight].filter(cell=>layout.tiles[cell]!=="wall")]);
+  const candidates=roster.flatMap(peer=>{
+    if(peer.id===leader.id||unavailable.has(peer.id)||!isBossExpeditionCandidate(peer))return [];
+    const point=getSpatialDungeonProgress(world,peer.id,layout);
+    if(!sight.has(point.z*layout.width+point.x))return [];
+    const together=point.x===at.x&&point.z===at.z;
+    const step=together?null:chooseKnownRouteStep(layout,{...at,visited:[...known]},point);
+    if(!together&&!step)return [];
+    return [{peer,point,step}];
+  }).sort((a,b)=>Math.abs(a.point.x-at.x)+Math.abs(a.point.z-at.z)-
+    Math.abs(b.point.x-at.x)-Math.abs(b.point.z-at.z)||
+    Number(a.peer.role===leader.role)-Number(b.peer.role===leader.role)||
+    a.peer.id.localeCompare(b.peer.id));
+  const target=candidates[0];
+  if(!target)return null;
+  return {peerId:target.peer.id,
+    step:leader.id.localeCompare(target.peer.id)<0?null:target.step};
+}
+
 export function chooseCoLocatedDungeonParty(
   leader:AdventurerState, roster:readonly AdventurerState[],
   world:SpatialDungeonWorld, layout:DungeonLayout,
@@ -236,6 +272,9 @@ export function negotiatePartyFloorDecisions(
     return decisions;
   }
   if(!distinct.has("descend"))return decisions;
+  // The boss is never a normal negotiated depth change. Every participant
+  // needs the pass, usable gear, health and an independent boss commitment.
+  if(members[0].floor===9)return decisions;
 
   const stayers=members.filter(member=>
     decisions.get(member.id)!.action==="stay");

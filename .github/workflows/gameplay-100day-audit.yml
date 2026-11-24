@@ -11,6 +11,7 @@ on:
       - src/game/heroProgression.ts
       - src/game/liveDungeonRuntime.ts
       - src/game/dungeonDecisions.ts
+      - src/game/dungeonParties.ts
       - src/game/spatialDungeonExploration.ts
       - src/game/campaignSave.ts
       - src/game/shopArrivals.ts
