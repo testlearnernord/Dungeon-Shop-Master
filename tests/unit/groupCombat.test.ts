@@ -326,3 +326,63 @@ test("ordinary tank reaction remains active at actual contact",()=>{
   }
   assert(parries>0);
 });
+
+test("ordinary DPS uses a compact physical sidestep while boss and ranged rolls retain full travel",()=>{
+  for(const [role,style,boss,expected] of [
+    ["DPS","melee",false,4.2],["DPS","melee",true,7.8],
+    ["healer","ranged",false,7.8],["tank","melee",false,7.8],
+  ] as const){
+    const s=createGroupCombat({bounds,actors:[
+      fighter("hero","heroes",0,0,{role,style,hp:100,maxHp:100}),
+      fighter("monster","monsters",0,8,{speed:0,
+        ...(boss?{specialAbility:"grapple-throw" as const}:{}),
+      }),
+    ]});
+    const hero=s.actors.find(a=>a.id==="hero")!;
+    hero.phase="roll";hero.phaseAge=0;hero.rollX=1;hero.rollZ=0;
+    for(let i=0;i<24;i++)stepGroupCombat(s);
+    assert(Math.abs(hero.x-expected*.4)<1e-6,role+" "+boss);
+    assert.equal(hero.hp,100);
+    assert.equal(hero.phase,"roll");
+  }
+});
+
+test("ordinary DPS selects an open flank instead of rolling into a nearby wall",()=>{
+  const make=(blocked:boolean)=>createGroupCombat({bounds,obstacles:blocked?[
+    {id:"blocked-east",minX:.65,maxX:2.5,minZ:-2,maxZ:2},
+  ]:[],actors:[
+    fighter("hero","heroes",0,0,{role:"DPS",style:"melee",hp:100,maxHp:100}),
+    fighter("monster","monsters",0,1.7,{speed:0}),
+  ]});
+  for(const blocked of [false,true]){
+    const s=make(blocked);
+    const hero=s.actors.find(a=>a.id==="hero")!;
+    const monster=s.actors.find(a=>a.id==="monster")!;
+    hero.stamina=50;
+    monster.phase="windup";monster.phaseAge=.54;
+    monster.targetId=hero.id;monster.lockedHeading=Math.PI;
+    stepGroupCombat(s);
+    assert.equal(hero.phase,"roll");
+    assert(hero.stamina<50);
+    assert(blocked?hero.rollX<0:hero.rollX>0,
+      "Use the normal east flank unless the wall blocks it.");
+    for(let i=0;i<24;i++)stepGroupCombat(s);
+    assert(blocked?hero.x< -1.5:hero.x>1.5);
+    assert.equal(hero.hp,100);
+  }
+});
+
+test("a compact sidestep is not free invulnerability after the existing roll window",()=>{
+  const {s,hero,monster}=imminentMonsterStrike();
+  const dps=createGroupCombat({bounds,actors:[
+    fighter("hero","heroes",hero.x,hero.z,{role:"DPS",hp:100,maxHp:100,armor:0}),
+    fighter("monster","monsters",monster.x,monster.z,{damage:18,armor:0}),
+  ]});
+  const h=dps.actors.find(a=>a.id==="hero")!,m=dps.actors.find(a=>a.id==="monster")!;
+  h.phase="roll";h.phaseAge=.46;h.rollX=0;h.rollZ=0;
+  m.phase="strike";m.phaseAge=.16;m.lockedHeading=Math.PI;
+  m.targetId=h.id;m.applied=false;
+  stepGroupCombat(dps);
+  assert.equal(h.hp,82);
+  assert.equal(s.time,0);
+});

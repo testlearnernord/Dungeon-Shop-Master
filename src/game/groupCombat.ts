@@ -668,7 +668,21 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     }else if(threat&&canReact&&reaction==="roll"){
       a.stamina-=28;
       const escape=combatDirection(threat,a);
-      const sign=a.id.localeCompare(threat.id)<0?1:-1;
+      let sign=a.id.localeCompare(threat.id)<0?1:-1;
+      // An ordinary melee DPS wants a short sidestep, not a long retreat.
+      // Prefer the open flank when the usual side is blocked. Both choices
+      // still pass through the same collision integrator on every tick.
+      if(a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
+        !s.actors.some(actor=>actor.specialAbility==="grapple-throw")){
+        const clear=(side:number)=>{
+          for(const offset of [.5,1,1.5,2]){
+            if(!movementAllowed(s,a,a.x-escape.z*side*offset,
+              a.z+escape.x*side*offset))return false;
+          }
+          return true;
+        };
+        if(!clear(sign)&&clear(-sign))sign=-sign;
+      }
       a.rollX=-escape.z*sign;a.rollZ=escape.x*sign;
       phase(a,"roll");
     }
@@ -806,7 +820,12 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       phase(a,"recover");
     }
   } else if (a.phase === "roll") {
-    move(s,a,a.rollX*7.8*dt,a.rollZ*7.8*dt);
+    // Keep the actual 0.53s action, stamina cost and invulnerability
+    // window. A shorter ordinary DPS sidestep preserves attack proximity.
+    // Do not change ranged kiting or the authored boss evasions.
+    const speed=a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
+      !s.actors.some(actor=>actor.specialAbility==="grapple-throw")?4.2:7.8;
+    move(s,a,a.rollX*speed*dt,a.rollZ*speed*dt);
     if (tick.complete) phase(a,"move");
   } else if (a.phase === "parry") {
     if (a.phaseAge >= 0.53) phase(a,"move");

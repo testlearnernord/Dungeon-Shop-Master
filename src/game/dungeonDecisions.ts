@@ -57,6 +57,17 @@ export function ordinaryExpeditionReadiness(hero:AdventurerState):number {
     Number(hero.inventory.bread+hero.inventory.healing>0)+
     Number(hero.traits.negative==="reckless");
 }
+/** Assess the DESTINATION with the same readiness floor used by its
+ * residents. A hero must not approve a descent and immediately reject the
+ * unchanged conditions on arrival. Floor 9 retains its existing approach
+ * threshold; the separate Floor-10 party/pass gate is untouched. */
+function minimumOrdinaryFloorReadiness(floor:number):number {
+  return Math.min(7,Math.max(1,floor-1));
+}
+function recklessUnarmedSecondFloorRisk(hero:AdventurerState):boolean {
+  return hero.traits.negative==="reckless"&&
+    hero.health/heroProgression(hero).maxHealth>.85;
+}
 export function canRiskOrdinaryDescent(hero:AdventurerState):boolean {
   const floor=hero.floor;
   if(typeof floor!=="number"||floor<1||floor>=9)return false;
@@ -64,10 +75,9 @@ export function canRiskOrdinaryDescent(hero:AdventurerState):boolean {
   const careful=hero.traits.positive==="careful";
   const reckless=hero.traits.negative==="reckless";
   const armed=!!equipmentEffects(hero.role,hero.equipment).weapon;
-  if(!armed)return floor===1&&reckless&&health>.85;
+  if(!armed)return floor===1&&recklessUnarmedSecondFloorRisk(hero);
   if(health<(careful?.76:reckless?.55:.65))return false;
-  return floor===1||ordinaryExpeditionReadiness(hero)>=
-    (floor<=3?floor:floor-1);
+  return ordinaryExpeditionReadiness(hero)>=minimumOrdinaryFloorReadiness(floor+1);
 }
 
 export type DungeonDecisionReason="low-health"|"new-salvage-haul"|"floor9-gold-resupply"|
@@ -135,10 +145,12 @@ export function chooseHeroDungeonDecision(
     onReason?.("gear-purchase-resupply");
     return {goal:"resupply",action:"shop"};
   }
-  if(hero.floor>1&&!armed&&enoughExperience&&hero.floor<9){
+  if(hero.floor>1&&!armed&&enoughExperience&&hero.floor<9&&
+    !(hero.floor===2&&recklessUnarmedSecondFloorRisk(hero))){
     onReason?.("unprepared-retreat");return {goal:"caution",action:"ascend"};
   }
-  if(hero.floor>=3&&hero.floor<9&&ordinaryExpeditionReadiness(hero)<hero.floor-1){
+  if(hero.floor>=3&&hero.floor<9&&
+    ordinaryExpeditionReadiness(hero)<minimumOrdinaryFloorReadiness(hero.floor)){
     onReason?.("depth-risk");return {goal:"caution",action:"ascend"};
   }
   if(damaged && hero.floor>1 && !prepared){

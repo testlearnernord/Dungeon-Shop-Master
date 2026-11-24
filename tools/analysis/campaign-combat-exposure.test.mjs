@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createCombatExposureTelemetry} from "./campaign-progression-telemetry.mjs";
+import {createCombatExposureTelemetry,createCampaignTelemetry} from "./campaign-progression-telemetry.mjs";
 
 test("shared party footage counts one physical encounter and one entry per actual hero",()=>{
   const actors=[
@@ -49,4 +49,21 @@ test("invalid or off-class gear never counts as a real upgrade and bosses are ex
   assert.equal(report.encounters,1);
   assert.equal(report.byLoadout["DPS:W0/A0"].draws,1);
   assert.equal(report.byRole.DPS.deaths,0);
+});
+
+test("stair reversal telemetry counts actual participants and excludes slow or unrelated crossings",()=>{
+  const telemetry=createCampaignTelemetry(7351);
+  const crossing=(floor,action,tick,memberIds=["a","b"])=>telemetry.observe({
+    stage:"depth-crossing",floor,action,tick,day:1,heroId:memberIds[0],
+    memberIds,checks:{accepted:true}});
+  crossing(5,"descend",200);
+  crossing(6,"ascend",600);
+  crossing(5,"descend",1000,["a"]);
+  crossing(6,"ascend",1800,["a"]);
+  crossing(4,"descend",2000,["a"]);
+  telemetry.observe({stage:"depth-route",floor:5,action:"ascend",tick:2200,
+    heroId:"a",memberIds:["a"],checks:{accepted:true}});
+  const result=telemetry.report().crossingStability;
+  assert.equal(result.participantCrossings,7);
+  assert.deepEqual(result.rapidReversals,{"5-6":3});
 });
