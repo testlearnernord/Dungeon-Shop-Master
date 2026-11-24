@@ -1532,3 +1532,43 @@ export function galviksDioramaBedrockPixels(){
   }
   return points;
 }
+
+/** E2E-only history of ACTUALLY RENDERED Ghoul phases, not snapshots taken
+ * after the 1.2-second walk has already completed. The browser can be busy
+ * with asset loading or CI scheduling and miss a transient poll entirely. */
+let ghoulPhaseObserver:{
+  scene:Scene;
+  observer:import("@babylonjs/core/Misc/observable").Observer<Scene>;
+  phases:{phase:string;clip:string;idle:boolean;walk:boolean;x:number;z:number}[];
+}|null=null;
+
+export function armGhoulObservationAnimationProbe(id:string):void{
+  if(ghoulPhaseObserver){
+    ghoulPhaseObserver.scene.onAfterRenderObservable.remove(
+      ghoulPhaseObserver.observer);
+    ghoulPhaseObserver=null;
+  }
+  const scene=currentTestScene();
+  if(!scene)throw Error("Cannot sample a missing Babylon scene");
+  const phases:{phase:string;clip:string;idle:boolean;walk:boolean;x:number;z:number}[]=[];
+  const observer=scene.onAfterRenderObservable.add(()=>{
+    const shop=!document.body.classList.contains("dungeon-active");
+    const pin=scene.getMeshByName((shop?
+      "cellar-table-diorama-ghoul-anchor-":"dungeon-monster-")+id);
+    if(!pin)return;
+    const idle=scene.getMeshByName((shop?
+      "cellar-table-diorama-authored-ghoul-":"overview-ghoul-3d-")+id);
+    const walk=scene.getMeshByName("overview-ghoul-walk-"+id);
+    const pose={phase:String(pin.metadata?.animationPhase??"none"),
+      clip:String(pin.metadata?.animationClip??"none"),
+      idle:!!idle&&idle.isEnabled(),walk:!!walk&&walk.isEnabled(),
+      x:pin.position.x,z:pin.position.z};
+    const last=phases.at(-1);
+    if(!last||last.phase!==pose.phase||last.walk!==pose.walk||
+      last.idle!==pose.idle)phases.push(pose);
+  });
+  ghoulPhaseObserver={scene,observer,phases};
+}
+export function observedGhoulAnimationPhases(){
+  return ghoulPhaseObserver?.phases??[];
+}
