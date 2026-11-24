@@ -505,6 +505,7 @@ test("needed loot is used by a compatible living hero before spare goods are off
 test("actual LIVE chest and combat settlement retain a genuinely found needed herb",()=>{
   for(const kind of ["treasure","monster"] as const){
     const {store,hero,site,seed}=supplySiteFixture(kind,"healing-herb");
+    const shopHerbs=store.state.shopEconomy.bag["healing-herb"];
     const expected=rollDungeonSiteLoot(seed,1,site.id,0,kind).itemIds.filter(id=>id==="healing-herb").length;
     assert(expected>0);
     store.enableLiveDungeon();
@@ -521,7 +522,7 @@ test("actual LIVE chest and combat settlement retain a genuinely found needed he
     assert.equal(after.inventory.healing,ECONOMY.healingTarget);
     assert.equal(after.inventory.healing+(after.inventory.finds?.["healing-herb"]??0),expected);
     assert(store.state.dungeonWorlds.find(w=>w.floor===1)!.world.resolvedFeatureIds.includes(site.id));
-    assert.equal(store.state.shopEconomy.bag["healing-herb"],0);
+    assert.equal(store.state.shopEconomy.bag["healing-herb"],shopHerbs);
     assert.equal(availableDungeonOffers(store.state).length,0);
     assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
   }
