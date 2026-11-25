@@ -76,3 +76,22 @@ test("signature attack uses its real reach instead of a fixed boss approach gate
   assert.equal(m.activeMeleeAbility,"troll-smash");
   assert.equal(m.targetId,h.id);
 });
+
+
+test("tracking a grapple follows the committed target, not a nearer bystander",()=>{
+  const common={hp:100,maxHp:100,damage:10,armor:0,reach:1.6,speed:0};
+  const actors:CombatantSpec[]=[
+    {...common,id:"target",team:"heroes",role:"tank",style:"melee",x:0,z:-4},
+    {...common,id:"bystander",team:"heroes",role:"DPS",style:"melee",x:2,z:0},
+    {...common,id:"enemy",team:"monsters",role:"monster",style:"melee",x:0,z:0,
+      specialAbility:"grapple-throw"},
+  ];
+  const s=createGroupCombat({bounds:{minX:-12,maxX:12,minZ:-12,maxZ:12},actors});
+  const m=s.actors.find(a=>a.id==="enemy")!;
+  for(const a of s.actors)a.cooldown=100;
+  m.phase="windup";m.phaseAge=.1;m.activeMeleeAbility="grapple";
+  m.targetId="target";m.attacksStarted=1;
+  stepGroupCombat(s);
+  assert.equal(m.targetId,"target");
+  assert(Math.abs(Math.abs(m.lockedHeading)-Math.PI)<1e-8);
+});
