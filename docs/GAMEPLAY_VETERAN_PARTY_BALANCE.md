@@ -54,3 +54,12 @@ The accepted policy increases boss opportunities but reduces conversion into win
 - Next targeted diagnosis: boss party conversion, class/equipment composition and real preparation; avoid broad combat nerfs or duplicate systems. Full release acceptance is not claimed.
 
 Earlier audit revisions and detailed candidate history remain recoverable from Git; this file is the current contract and evidence, not an accumulating PR diary.
+
+
+### Boss-readiness diagnosis (next audit)
+
+The accepted #363 baseline reaches Floor 10 reliably in Forge scenarios, but the 200-day seed 7351 lost eight heroes to the boss: six DPS, one healer and one tank, all equipped with weapon and armor, levels 7–12. Existing aggregate reports do not establish the party composition, exact gear tiers, injury state or damage source at entry. The current `isBossExpeditionCandidate` predicate checks a real pass, weapon and health (60%, or 70% for careful heroes); it does not require armor, a level threshold or a particular class mix. This is a plausible readiness gap, not proof that the predicate alone causes losses.
+
+The next diagnostic PR adds no gameplay changes. The existing campaign audit reads settled Floor-10 recordings once per attempt, recording composition, exact entry HP, gear tiers, supplies, recorded attack/defense/heal cues, direct hit/landing/lava damage, outcome and remaining boss HP. A controlled matrix uses the same `caveTrollPartyOptions` and `resolveGroupCombat` production motor across all 16 two-/three-member role compositions, levels 6/9/12, complete T1/T2 gear, 65%/100% entry HP, zero/two herbs and four tactics seeds, with four independently seeded hero rosters (6,144 fights). Homogeneous controlled parties are experiments, not claimed natural party frequencies. Formation-slot rotation varies with tactics seed. Tests cover replay deduplication and damage-source accounting. No new state, clock, combat system or artificial rewards are introduced.
+
+Use results to distinguish preparation, composition, survival and damage-output bottlenecks before proposing any change to voluntary recruitment, boss readiness or boss combat. Do not infer that more boss attempts alone are success. The existing manual animation and gameplay acceptance remains open.
