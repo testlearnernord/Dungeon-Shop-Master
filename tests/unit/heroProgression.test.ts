@@ -193,3 +193,19 @@ test("late-night ordinary encounters defer their start instead of trapping Galvi
   assert.equal(store.state.day,2);
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
 });
+
+
+test("intrinsic healer offense is distinct from real staff and healing progression",()=>{
+  const hero=atLevel("healer",9);
+  const progress=heroProgression(hero);
+  const bare=heroCombatAttributes({...hero,equipment:{weapon:null,armor:null}});
+  const t1=heroCombatAttributes({...hero,equipment:{weapon:"Staff",armor:null}});
+  const t2=heroCombatAttributes({...hero,equipment:{weapon:"Forged Staff",armor:null}});
+  assert.equal(bare.damage,3+Math.floor(progress.intellect/2)+progress.damageBonus);
+  assert.equal(t1.damage-bare.damage,2);
+  assert.equal(t2.damage-t1.damage,3);
+  assert.equal(bare.magicHeals,progress.dungeonMagicHeals);
+  assert.equal(t1.magicHeals,progress.dungeonMagicHeals+1);
+  assert.equal(t2.magicHeals,progress.dungeonMagicHeals+3);
+  assert.equal(t1.healCharges,t2.healCharges);
+});
