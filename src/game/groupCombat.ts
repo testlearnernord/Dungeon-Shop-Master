@@ -602,7 +602,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   }else if(a.phase==="heal"){
     window={contactAt:0.62,completeAt:0.92};
   }else if(a.phase==="recover")window={completeAt:
-    signature?.recoverySeconds??(s.actors.some(actor=>actor.specialAbility==="grapple-throw")?.38:a.team==="monsters"?.72:.48)};
+    signature?.recoverySeconds??(s.actors.some(actor=>actor.specialAbility==="grapple-throw")?.38:a.team==="monsters"?.72:.38)};
   else if(a.phase==="grab")window={
     contactAt:GRAPPLE_TIMING.grabContact,completeAt:GRAPPLE_TIMING.grab,
   };
@@ -613,7 +613,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   else if(a.phase==="thrown")window={completeAt:GRAPPLE_FLIGHT_SECONDS};
   else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
   else if(a.phase==="hurt")window={completeAt:
-    a.specialAbility==="grapple-throw"?1.6:a.team==="monsters"?.52:0.34};
+    a.specialAbility==="grapple-throw"?1.6:a.team==="monsters"?.42:0.34};
   const tick=advanceCombatActorPhase(a,dt,window);
   if(a.phase==="grabbed"||a.phase==="thrown"){
     progressGroupGrappleVictim(s,a,dt,batch,tick.complete);
@@ -837,8 +837,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   } else if (a.phase === "hurt") {
     // A real interrupted Ghoul recoils along its recorded facing, through
     // the existing collision integrator. No invulnerability or extra damage.
-    if(a.team==="monsters"&&!a.specialAbility&&a.phaseAge<=.22)
-      move(s,a,-Math.sin(a.heading)*1.8*dt,-Math.cos(a.heading)*1.8*dt);
+    if(a.team==="monsters"&&!a.specialAbility&&a.phaseAge<=.18)
+      move(s,a,-Math.sin(a.heading)*1.0*dt,-Math.cos(a.heading)*1.0*dt);
     if(tick.complete){
       if(a.specialAbility==="grapple-throw")
         a.cooldown=Math.max(a.cooldown,1.4);
