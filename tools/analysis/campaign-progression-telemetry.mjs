@@ -155,7 +155,7 @@ export function createCampaignTelemetry(seed){
 // Deduplicate physical encounters, then count each participant exactly once.
 // This is an offline reader of committed footage, never another simulation.
 export function createCombatExposureTelemetry(){
-  const byRole={},byLoadout={},byFloor={},byParty={},byContext={};
+  const byRole={},byLoadout={},byFloor={},byParty={},byContext={},byPack={},byEntryHealth={},bySoloRisk={};
   const encounterOutcomes={};
   let encounters=0,participants=0;
   const row=(table,key)=>table[key]??={entries:0,deaths:0,wins:0,draws:0,
@@ -188,11 +188,16 @@ export function createCombatExposureTelemetry(){
           const loadout="W"+weapon+"/A"+armor;
           const party=heroes.length===1?"solo":"party-"+heroes.length;
           const band=replay.floor<=3?"1-3":replay.floor<=7?"4-7":"8-9";
+          const ratio=hero.hp/hero.maxHp;
+          const healthBand=ratio<.50?"under50":ratio<.75?"50to75":ratio<.90?"75to90":"90to100";
           const keys=[
             row(byRole,hero.role),row(byLoadout,hero.role+":"+loadout),
             row(byFloor,hero.role+":"+replay.floor),
             row(byParty,hero.role+":"+party),
             row(byContext,hero.role+":"+band+":"+party+":"+loadout),
+            row(byPack,replay.floor+":"+hero.role+":"+party+":"+monsters.length),
+            row(byEntryHealth,hero.role+":"+party+":"+healthBand),
+            ...(heroes.length===1?[row(bySoloRisk,replay.floor+":"+hero.role+":"+monsters.length+":"+loadout+":"+healthBand)]:[]),
           ];
           participants++;
           const stats={entries:1,deaths:Number(final.hp<=0),
@@ -231,6 +236,7 @@ export function createCombatExposureTelemetry(){
     return {encounters,participants,encounterOutcomes,
       byRole:summarize(byRole),byLoadout:summarize(byLoadout),
       byFloor:summarize(byFloor),byParty:summarize(byParty),byContext:summarize(byContext),
+      byPack:summarize(byPack),byEntryHealth:summarize(byEntryHealth),bySoloRisk:summarize(bySoloRisk),
       interpretation:"Ordinary completed fights only; one entry per participant, not per unique hero. Damage is recorded hit cues; healing is recorded heal cues. Repeated encounters and self-selection by floor/gear/party confound causal comparisons. Bosses and traps excluded."};
   }
   return {observe,report};
