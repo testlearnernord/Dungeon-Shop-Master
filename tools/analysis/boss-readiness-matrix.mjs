@@ -5,6 +5,7 @@ import {heroProgression} from "../../src/game/heroProgression.ts";
 import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 import {REPLAY_MAX_SECONDS} from "../../src/game/bossCombatReplay.ts";
+import {measureCombatHorizons,addHorizonSummary} from "./combat-horizon-audit.mjs";
 import {summarizeBossFight} from "./campaign-progression-telemetry.mjs";
 const seed=Number(process.argv[2]??7351);
 const roles=["tank","DPS","healer"];
@@ -23,6 +24,9 @@ for(let a=0;a<roles.length;a++)for(let b=a;b<roles.length;b++){
 const weapons={tank:["Iron Sword","Forged Sword & Shield"],DPS:["Spear","Forged Spear"],healer:["Staff","Forged Staff"]};
 // Offline enemy-profile experiment only. The live composer is untouched.
 const sweep=process.argv[3]==="sweep";
+const horizonMode=process.argv[3]==="horizon";
+const horizonSummary={},horizonCutoff={};
+let horizonCases=0;
 const profiles=sweep?[
   {id:"anchor",hp:360,armor:8,damage:27,grappleDamage:34},
   {id:"lighter-armor",hp:360,armor:4,damage:27,grappleDamage:34},
@@ -54,6 +58,14 @@ for(const profile of profiles)for(const composition of compositions)for(const le
     const options=sweep?{...canonical,actors:canonical.actors.map(actor=>
       actor.team==="monsters"?{...actor,hp:profile.hp,maxHp:profile.hp,
         armor:profile.armor,damage:profile.damage,grappleDamage:profile.grappleDamage}:actor)}:canonical;
+    if(horizonMode){
+      const snapshots=measureCombatHorizons(options,[90,120,180,240]);
+      const key=[composition.slice().sort().join("+"),tier].join(":");
+      addHorizonSummary(horizonSummary,key,snapshots);
+      if(snapshots[0].outcome==="fighting")addHorizonSummary(horizonCutoff,key,snapshots);
+      horizonCases++;
+      continue;
+    }
     const fight=resolveGroupCombat(options,REPLAY_MAX_SECONDS);
     const row={seed,profile:profile.id,level,tier,hpRatio,herbs,...summarizeBossFight(fight.replay)};
     rows.push(row);
@@ -68,6 +80,14 @@ for(const profile of profiles)for(const composition of compositions)for(const le
       v.received+=h.meleeDamageReceived+h.landingDamage+h.lavaDamage;v.healing+=h.healingReceived;
     }
   }
+if(horizonMode){
+  if(horizonCases!==1536)throw Error("Incomplete boss horizon audit: "+horizonCases);
+  const report={seed,cases:horizonCases,summary:horizonSummary,cutoffActive:horizonCutoff};
+  console.error("BOSS_HORIZON_SUMMARY "+JSON.stringify({seed,cases:horizonCases,summary:horizonSummary}));
+  console.error("BOSS_HORIZON_CUTOFF "+JSON.stringify(horizonCutoff));
+  console.log(JSON.stringify(report));
+  process.exit(0);
+}
 if(rows.length!==1536*profiles.length)throw Error("Incomplete controlled boss matrix: "+rows.length);
 if(sweep){
   console.error("BOSS_PROFILE_SUMMARY "+JSON.stringify({seed,cases:rows.length,profiles,byProfile}));
