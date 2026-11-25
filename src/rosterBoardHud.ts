@@ -1,10 +1,8 @@
 import type {UniversalCamera} from "@babylonjs/core/Cameras/universalCamera";
 import type {GameStore} from "./game/gameStore.ts";
-import {selectLiveBoardHeroes} from "./game/liveBoardProjection.ts";
-import {liveHeroCard} from "./game/heroCardView.ts";
+import {liveRosterCards,rosterActivityLabel} from "./game/heroCardView.ts";
 import {renderHeroCard} from "./heroCard.ts";
 import type {WorldHeroCards} from "./worldHeroCards.ts";
-import {WORLD_TICKS_PER_DAY,WORLD_TICKS_PER_GAME_MINUTE} from "./game/worldClock.ts";
 
 /** World Wide Hero Cards replace the former handwritten roster data
  * rows. Existing Board filters, permit authority, actions and keyboard
@@ -20,32 +18,27 @@ export function setupRosterBoardHud(
   const close=document.querySelector<HTMLButtonElement>("#close-roster")!;
   const openButton=document.querySelector<HTMLButtonElement>("#open-roster")!;
   let filterValue:"active"|"fallen"="active";
-  const timeLabel=(tick:number)=>{
-    const day=Math.floor(tick/WORLD_TICKS_PER_DAY)+1;
-    const minute=Math.floor(tick%WORLD_TICKS_PER_DAY/WORLD_TICKS_PER_GAME_MINUTE);
-    return "Day "+day+" · "+String(Math.floor(minute/60)).padStart(2,"0")+
-      ":"+String(minute%60).padStart(2,"0");
-  };
   function render():void {
-    const state=store.state,known=selectLiveBoardHeroes(state);
+    const state=store.state;
     const fallen=state.adventurers.filter(h=>h.status==="dead").length;
-    totals.textContent=(known.length-fallen)+" active · "+fallen+
+    totals.textContent=(state.adventurers.length-fallen)+" active · "+fallen+
       " fallen · Day "+state.day;
     const expanded=new Set([...list.querySelectorAll<HTMLDetailsElement>(
       "details[open][data-hero-id]")].map(n=>n.dataset.heroId));
     const all=new Map(state.adventurers.map(hero=>[hero.id,hero]));
-    const heroes=known.filter(hero=>filterValue==="fallen"?
-      all.get(hero.id)?.status==="dead":all.get(hero.id)?.status!=="dead");
-    list.replaceChildren(...heroes.map(hero=>{
+    const heroes=liveRosterCards(state,filterValue,true);
+    list.replaceChildren(...heroes.map(view=>{
+      const hero=view;
       const current=all.get(hero.id);
-      const view=liveHeroCard(state,hero.id);
       if(!current||!view)throw new Error("Roster projection lost a saved hero");
       const card=document.createElement("details");
       card.className="roster-card";card.dataset.heroId=hero.id;
-      card.dataset.status=current.status==="dead"?"lost":current.status;
+      card.dataset.status=view.status;
       card.open=expanded.has(hero.id);
       const summary=document.createElement("summary");
       summary.append(renderHeroCard(view,"mini"));
+      const collapse=document.createElement("span");collapse.className="roster-collapse-label";
+      collapse.textContent="Hide details · "+view.name;summary.append(collapse);
       // The summary ALREADY renders our Mini card. A second floating
       // copy on hover was redundant (and obscured by the native dialog).
       const extended=document.createElement("div");
@@ -53,11 +46,9 @@ export function setupRosterBoardHud(
       extended.append(renderHeroCard(view,"expanded"));
       const report=document.createElement("p");
       report.className="roster-known-report";
-      report.textContent=hero.report?
-        "Last contact · "+hero.report.text+" · "+timeLabel(hero.report.reportedAtTick):
-        "No previous contact report.";
+      report.textContent="LIVE · "+rosterActivityLabel(view)+(view.floor===null?"":" · Floor "+view.floor);
       extended.append(report);
-      if(current.status==="at-shop"||current.status==="departing"){
+      if(current.status==="at-shop"){
         const permit=document.createElement("button");
         permit.type="button";permit.className="roster-permit";
         permit.setAttribute("aria-pressed",String(current.bossPass));
@@ -70,7 +61,7 @@ export function setupRosterBoardHud(
         });
         extended.append(permit);
       }
-      if(current.status!=="dead"&&current.status!=="at-shop"){
+      if(current.status==="exploring"||current.status==="expedition"){
         const watch=document.createElement("button");
         watch.type="button";watch.className="roster-watch-live";
         watch.textContent="Watch LIVE (opt in)";
@@ -139,13 +130,13 @@ export function setupRosterBoardHud(
     else if(!document.querySelector("dialog[open]"))openRoster();
   });
   let priorDay=0,priorHeroes:typeof store.state.adventurers|null=null,
-    priorEvents:typeof store.state.events|null=null;
+    priorEvents:typeof store.state.events|null=null,priorTick=-1;
   store.subscribe(()=>{
     const state=store.state;
     if(state.day===priorDay&&state.adventurers===priorHeroes&&
-       state.events===priorEvents)return;
+       state.events===priorEvents&&state.worldClock.tick>=priorTick&&state.worldClock.tick-priorTick<20)return;
     priorDay=state.day;priorHeroes=state.adventurers;
-    priorEvents=state.events;
+    priorEvents=state.events;priorTick=state.worldClock.tick;
     if(dialog.open)render();
   });
   render();return openRoster;

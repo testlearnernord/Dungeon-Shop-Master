@@ -1,4 +1,3 @@
-import {heroProgression} from "./heroProgression.ts";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
@@ -10,10 +9,9 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { DEFAULT_ROSTER_BOARD } from "./rosterBoardPlacement.ts";
 import type { GameStore } from "./gameStore.ts";
 import {portraitIndex} from "./rosterView.ts";
-import {liveBoardHeroesForFilter} from "./liveBoardProjection.ts";
-import { heroDisplayNames } from "./heroIdentity.ts";
+import {liveRosterCards,rosterActivityLabel} from "./heroCardView.ts";
+import {gearFromName} from "./gearCatalog.ts";
 import {portraitSourceRect} from "./portraitAtlas.ts";
-import {goldIconUrl} from "../uiIcons.ts";
 
 /** Read-only projection of the authoritative heroes onto the shop's front wall. */
 export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh } {
@@ -29,7 +27,7 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
   board.checkCollisions = false;
   board.isPickable = true;
   board.metadata = { kind: "roster-board" };
-  const texture = new DynamicTexture("roster-board-texture", { width: 1024, height: 640 }, scene, false);
+  const texture = new DynamicTexture("roster-board-texture", { width: 1536, height: 960 }, scene, false);
   const paint = new StandardMaterial("roster-board-paint", scene);
   paint.diffuseTexture = texture;
   paint.emissiveColor = new Color3(0.85, 0.76, 0.65);
@@ -39,9 +37,6 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
   const portraits = new Image();
   portraits.src = import.meta.env.BASE_URL + "assets/hero-portraits.webp";
   portraits.addEventListener("load", () => draw());
-  const goldSymbol=new Image();
-  goldSymbol.src=goldIconUrl();
-  goldSymbol.addEventListener("load",()=>draw());
   const wood = new StandardMaterial("roster-board-wood", scene);
   wood.diffuseColor = new Color3(0.38, 0.23, 0.11);
   const frames:Mesh[]=[];
@@ -74,101 +69,73 @@ export function createRosterBoard(scene: Scene, store: GameStore): { mesh: Mesh 
   store.subscribe(syncPlacement);
   syncPlacement();
   function draw(): void {
-    const state = store.state;
-    const ctx = texture.getContext();
-    ctx.fillStyle = "#15221c";
-    ctx.fillRect(0, 0, 1024, 640);
-    ctx.fillStyle = "#dec38a";
-    ctx.font = "bold 47px sans-serif";
-    ctx.fillText("ADVENTURERS", 45, 66);
-    ctx.font = "26px sans-serif";
-    ctx.fillText("DAY " + state.day, 780, 66);
-    ctx.fillStyle = "#7e5e35";
-    ctx.fillRect(44, 83, 930, 4);
-    const fallen=liveBoardHeroesForFilter(state,"fallen");
-    const heroes=[
-      ...fallen.slice(0,2),
-      ...liveBoardHeroesForFilter(state,"active"),
+    const state=store.state,ctx=texture.getContext();
+    const active=[...liveRosterCards(state,"active")];
+    const fallen=state.adventurers.filter(h=>h.status==="dead").length;
+    const critical=(h:typeof active[number])=>h.health!==null&&h.maxHealth!==null&&h.health/h.maxHealth<=.3;
+    const priority=(h:typeof active[number])=>h.status==="at-shop"?0:critical(h)?1:h.status==="combat"?2:3;
+    active.sort((a,b)=>priority(a)-priority(b)||(b.floor??0)-(a.floor??0)||a.id.localeCompare(b.id,undefined,{numeric:true}));
+    const background=ctx.createLinearGradient(0,0,1536,960);
+    background.addColorStop(0,"#182b2a");background.addColorStop(1,"#101c1e");
+    ctx.fillStyle=background;ctx.fillRect(0,0,1536,960);
+    const text=(value:string,x:number,y:number,size:number,color="#e9e1cc",bold=false,max?:number)=>{
+      ctx.fillStyle=color;ctx.font=(bold?"bold ":"")+size+"px sans-serif";
+      if(max===undefined)ctx.fillText(value,x,y);else ctx.fillText(value,x,y,max);
+    };
+    text("ADVENTURERS",44,66,54,"#f5d6a0",true);
+    text("LIVE  ·  DAY "+state.day,1115,62,30,"#9dc9b6",true);
+    const stats=[
+      [active.length+" ACTIVE","#dfd7bc"],
+      [active.filter(h=>h.status==="at-shop").length+" IN SHOP","#a8d9ad"],
+      [active.filter(h=>h.status==="combat").length+" FIGHTING","#ebbb81"],
+      [fallen+" FALLEN","#e8a496"],
     ];
-    const labels = heroDisplayNames(state.adventurers);
-    ctx.font = "23px sans-serif";
-    heroes.slice(0, 9).forEach((hero, i) => {
-      const y = 122 + i * 47;
-      ctx.fillStyle = i % 2 ? "#223027" : "#29372c";
-      ctx.fillRect(38, y - 26, 947, 40);
-      ctx.fillStyle = "#f0e4c9";
-      const portrait = portraitIndex(hero.id);
-      if (portraits.complete && portraits.naturalWidth > 0) {
-        const rect=portraitSourceRect(portraits,portrait);
-        ctx.save();
-        ctx.beginPath();ctx.arc(63,y-7,18,0,Math.PI*2);ctx.clip();
-        ctx.drawImage(portraits,rect.sx,rect.sy,rect.sw,rect.sh,45,y-25,36,36);
-        ctx.restore();
-      }
-      ctx.font = "bold 21px sans-serif";
-      ctx.fillText((labels.get(hero.id) ?? hero.name) +
-        (hero.visible?" · Lv"+hero.visible.level:" · Lv?")+
-        " "+hero.role, 93, y + 1, 238);
-      ctx.font = "23px sans-serif";
-      ctx.fillStyle=hero.status==="lost"?"#ff9c8c":
-        hero.status==="at-shop"?"#a8e1b8":"#c0bcae";
-      ctx.fillText(hero.location+
-        (hero.temporaryPartySignal?" · TP signal":""),345,y+1,253);
-      // Actual empty/present weapon and armor sockets. Never treat a
-      // higher character level as proof of bought equipment.
-      for(const [socket,present,x] of [
-        ["W",hero.visible?.equipment.weapon!==null&&!!hero.visible,610],
-        ["A",hero.visible?.equipment.armor!==null&&!!hero.visible,645],
-      ] as const){
-        ctx.fillStyle=present?"#a2cbb4":"#343b3a";
-        ctx.fillRect(x,y-23,29,29);
-        ctx.strokeStyle=present?"#c6e5bc":"#7b806f";
-        ctx.lineWidth=1.5;
-        ctx.strokeRect(x+0.75,y-22.25,27.5,27.5);
-        ctx.fillStyle=present?"#1b2d28":"#b2ac9a";
-        ctx.font="bold 19px sans-serif";
-        ctx.fillText(hero.visible?socket:"?",x+6,y-2);
-      }
-      if(goldSymbol.complete&&goldSymbol.naturalWidth>0)
-        ctx.drawImage(goldSymbol,689,y-20,23,23);
-      ctx.fillStyle="#f5d59e";
-      ctx.font="bold 18px sans-serif";
-      ctx.fillText(hero.visible?hero.visible.gold+"g":"?",714,y+1,55);
-      const hpRatio=hero.visible
-        ?Math.max(0,Math.min(1,hero.visible.health/heroProgression(hero.visible).maxHealth))
-        :null;
-      ctx.fillStyle = "#352a20";
-      ctx.fillRect(780, y - 20, 175, 12);
-      if(hpRatio!==null){
-        ctx.fillStyle=hpRatio<0.3?"#d16b55":"#8ab668";
-        ctx.fillRect(780,y-20,175*hpRatio,12);
-      }
-      ctx.fillStyle=hero.status==="lost"?"#ff9c8c":"#f0e4c9";
-      ctx.font="bold 15px sans-serif";
-      ctx.fillText(hero.visible
-        ?hero.visible.health+"/"+heroProgression(hero.visible).maxHealth+" HP"
-        :hero.status==="lost"?"SIGNAL LOST":"HP unknown",783,y+9,171);
+    stats.forEach(([label,color],i)=>{
+      ctx.fillStyle="#233737";ctx.fillRect(44+i*365,91,343,55);
+      text(label,62+i*365,128,27,color,true,305);
     });
-    ctx.fillStyle = "#c8ae7d";
-    ctx.font = "22px sans-serif";
-    ctx.fillText(heroes.length > 9 ? "+" + (heroes.length - 9) + " more" :
-      fallen.length+" lost signals · "+liveBoardHeroesForFilter(state,"active").length+
-      " registered", 46, 574);
-    ctx.font="17px sans-serif";
-    ctx.fillText("MAGIC SIGNALS · ? = NOT OBSERVED · TP = PARTY",46,605);
-    ctx.fillText("PRESS E / R FOR MEMBERS", 686,605);
+    ctx.fillStyle="#a48758";ctx.fillRect(44,164,1448,3);
+    const cardW=714,cardH=133;
+    active.slice(0,10).forEach((hero,i)=>{
+      const x=44+(i%2)*734,y=186+Math.floor(i/2)*141;
+      const hp=hero.health??0,max=hero.maxHealth??1,ratio=Math.max(0,Math.min(1,hp/max));
+      const accent=hero.role==="tank"?"#a8c6e8":hero.role==="healer"?"#9bd4b2":"#ecc98e";
+      ctx.fillStyle="#253535";ctx.fillRect(x,y,cardW,cardH);
+      ctx.fillStyle=critical(hero)?"#de7762":accent;ctx.fillRect(x,y,5,cardH);
+      if(portraits.complete&&portraits.naturalWidth>0){
+        const rect=portraitSourceRect(portraits,portraitIndex(hero.id));
+        ctx.save();ctx.beginPath();ctx.rect(x+14,y+14,84,84);ctx.clip();
+        ctx.drawImage(portraits,rect.sx,rect.sy,rect.sw,rect.sh,x+14,y+14,84,84);ctx.restore();
+        ctx.strokeStyle=accent;ctx.lineWidth=2;ctx.strokeRect(x+14,y+14,84,84);
+      }
+      text(hero.name,x+112,y+31,29,"#f4e7ca",true,375);
+      text("Lv "+hero.level+" · "+hero.role.toUpperCase(),x+112,y+60,23,accent,true,310);
+      text((hero.floor===null?"":("F"+hero.floor+" · "))+rosterActivityLabel(hero),x+424,y+30,22,
+        hero.status==="combat"?"#eac089":"#d5e0d4",true,274);
+      if(hero.party.length>1)text("PARTY · "+hero.party.length,x+424,y+59,21,"#c4bb9a",false,260);
+      const weapon=gearFromName(hero.equipment.weapon),armor=gearFromName(hero.equipment.armor);
+      const weaponLabel=weapon?.label??"Unarmed";
+      const armorLabel=armor?"T"+armor.tier+" vest":"No armor";
+      text(weaponLabel+"  /  "+armorLabel,x+112,y+90,22,
+        weapon?.tier===2||armor?.tier===2?"#d2b27d":"#b8c7bf",false,428);
+      text(Math.round(hp)+"/"+max+" HP",x+543,y+90,22,critical(hero)?"#ffad99":"#e0e8d6",true,155);
+      ctx.fillStyle="#111b1b";ctx.fillRect(x+112,y+109,580,11);
+      ctx.fillStyle=ratio<=.3?"#df7562":ratio<=.6?"#d0af64":"#83c6a2";
+      ctx.fillRect(x+112,y+109,580*ratio,11);
+    });
+    text(active.length>10?"+"+(active.length-10)+" more in roster":"All active heroes shown",44,926,24,"#bac9be");
+    text("E / R  ·  OPEN ROSTER",1050,926,24,"#f0d4a1",true);
     texture.update();
   }
-  let previousDay=0;
+  // No full texture repaint per combat tick. Checkpoint revisions are
+  // sampled at most once per game second, with immediate roster changes.
+  let previousDay=-1,previousTick=-1;
   let previousHeroes:typeof store.state.adventurers|null=null;
-  let previousEvents:typeof store.state.events|null=null;
   const redrawOnContentChange=()=>{
     const state=store.state;
     if(state.day===previousDay&&state.adventurers===previousHeroes&&
-      state.events===previousEvents)return;
-    previousDay=state.day;
-    previousHeroes=state.adventurers;
-    previousEvents=state.events;
+      state.worldClock.tick>=previousTick&&state.worldClock.tick-previousTick<20)return;
+    previousDay=state.day;previousTick=state.worldClock.tick;previousHeroes=state.adventurers;
     draw();
   };
   store.subscribe(redrawOnContentChange);

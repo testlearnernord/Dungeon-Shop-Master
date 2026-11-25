@@ -486,3 +486,15 @@
     bottom:calc(100% + var(--hotbar-clearance,170px));
   }
 }
+
+/* One expanded card occupies a full row, without stretching its neighbor. */
+#roster-detail-list{align-items:start}
+#roster-dialog .roster-card[data-status]{opacity:1}
+#roster-dialog .roster-card[data-status="dead"]{opacity:.68}
+#roster-dialog .roster-card[open]{grid-column:1/-1}
+#roster-dialog .roster-collapse-label{display:none}
+#roster-dialog .roster-card[open]>summary>.hero-card{display:none}
+#roster-dialog .roster-card[open]>summary>.roster-collapse-label{display:block;color:var(--ui-gold);font-size:12px;padding:4px}
+#roster-dialog .roster-card .hero-card-slot{max-width:none;min-width:0}
+#roster-dialog .hero-card-slot-label{overflow-wrap:anywhere}
+#roster-dialog .roster-card[open] .roster-card-extended{padding:6px 0 0}

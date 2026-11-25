@@ -14,7 +14,7 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 - Each hero may **stay, descend, ascend or return to the cursed shop** according to personal needs, discovered paths, surviving resources and any real Temporary Party. No direct player-issued party, attack or waypoint commands.
 - A shop return uses legitimate visited path/backtracking and a saved timed portal step; a hero cannot conjure a shortcut or full map knowledge. A physical shop departure begins **health-dependent world-tick recovery** before reentry on the existing dungeon movement clock.
 - Treasure, monster sites, traps, site generations, one-time boss victories, equipment and gold must remain actual saved consequences. Renewable common sites are not infinite per-person loot duplicators.
-- The compact Event Feed/Archive shows genuine outcomes. Live Board knowledge is bounded by what Galvik could know; intentionally opening the spectator may reveal committed world facts. Recordings never re-simulate, reroll, invent a win or play hit sounds again on seek.
+- The compact Event Feed/Archive shows genuine outcomes. The magical wall Board, roster and compact HUD share committed hero facts; detailed navigation and combat observation use explicit viewers. This does not change autonomous hero perception. Recordings never re-simulate, reroll, invent a win or play hit sounds again on seek.
 
 ## Implemented dungeon shape
 

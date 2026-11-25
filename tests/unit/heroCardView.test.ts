@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {createGameState} from "../../src/game/gameState.ts";
-import {liveHeroCard,combatHeroCard,heroXpProgress}
+import {liveHeroCard,combatHeroCard,heroXpProgress,liveRosterCards}
   from "../../src/game/heroCardView.ts";
 import type {CombatantSpec,GroupReplayFrame}
   from "../../src/game/groupCombat.ts";
@@ -57,4 +57,17 @@ test("experience progress remains cosmetic and bounded",()=>{
   assert.equal(heroXpProgress(0),0);
   assert.equal(heroXpProgress(235),35);
   assert.equal(heroXpProgress(1000),0);
+});
+
+test("shared LIVE roster shows current remote facts and excludes actual fallen heroes",()=>{
+  const state=createGameState(7351);
+  const remote=state.adventurers.find(h=>h.status==="exploring")!;
+  const updated={...state,adventurers:state.adventurers.map(h=>h.id===remote.id?{...h,health:17}:h)};
+  const view=liveRosterCards(updated,"active").find(h=>h.id===remote.id)!;
+  assert.equal(view.health,17);
+  assert.equal(view.floor,remote.floor);
+  assert.deepEqual(view.equipment,remote.equipment);
+  const fallen={...updated,adventurers:updated.adventurers.map(h=>h.id===remote.id?{...h,health:0,status:"dead" as const}:h)};
+  assert(!liveRosterCards(fallen,"active").some(h=>h.id===remote.id));
+  assert.equal(liveRosterCards(fallen,"fallen")[0].id,remote.id);
 });
