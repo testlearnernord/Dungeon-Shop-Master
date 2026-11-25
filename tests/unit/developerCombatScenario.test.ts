@@ -60,3 +60,19 @@ test("roster import takes a value snapshot, and editable test values are validat
     ...DEFAULT_DEVELOPER_CONFIG,seed:-1,
   }),/seed/);
 });
+
+
+test("Lab Ghoul profiles match LIVE seeded site strength on every ordinary floor",()=>{
+  const campaign=createGameState(7351);
+  for(const floor of [1,2,3,4,5,6,7,8,9] as const){
+    const layout=generateExpeditionLayout(campaign.seed,floor);
+    const site=layout.features.find(f=>f.kind==="monster"&&dungeonNeighbors(layout,f).length>0)!;
+    assert(site);
+    const seed=dungeonGenerationSeed((campaign.seed^Math.imul(site.x+37*site.z,2654435761))>>>0,0);
+    const live=prepareSpatialDungeonCombat([campaign.adventurers[0]],site,campaign.seed,layout,dungeonNeighbors(layout,site)[0],0,true);
+    const lab=buildDeveloperCombat({...DEFAULT_DEVELOPER_CONFIG,enemy:"ghoul",arena:"crypt",ghoulFloor:floor,seed});
+    const {id,x,z,...labProfile}=lab.actors.find(a=>a.team==="monsters")!;
+    const {id:liveId,x:liveX,z:liveZ,...liveProfile}=live.options.actors.find(a=>a.team==="monsters")!;
+    assert.deepEqual(labProfile,liveProfile,"Floor "+floor);
+  }
+});
