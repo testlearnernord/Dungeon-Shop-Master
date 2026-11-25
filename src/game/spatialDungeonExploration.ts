@@ -27,7 +27,7 @@ export const SPATIAL_DUNGEON_STEP_BUDGET = 36;
 export const SPATIAL_DUNGEON_REPLAY_KEEP = 3;
 /** Bound battle frequency within a longer day without inventing encounters. */
 export const SPATIAL_DUNGEON_MAX_ENCOUNTERS = 2;
-export const SPATIAL_DUNGEON_COMBAT_SECONDS = 25;
+export const SPATIAL_DUNGEON_COMBAT_SECONDS = 35;
 
 /** A durable, global shared dungeon world plus per-hero independent exploration. */
 export interface SpatialDungeonHeroProgress {
@@ -177,7 +177,7 @@ export function prepareSpatialDungeonCombat(
   const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
     tileAt(layout,source.x,source.z)==="room";
   // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
-  // Retain the authored individual toughness and real 25-second combat
+  // Retain the authored individual toughness and real 35-second combat
   // bound. The persistent LIVE site must not react to party composition.
   const baseGhoulHp=(layout.floor===7
     ?22+monsterRand.int(13):12+layout.floor*3+monsterRand.int(7))+
