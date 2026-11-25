@@ -1619,3 +1619,36 @@ export function inspectMerchantHeldStock(){
     vertices:mesh.getTotalVertices(),pickable:mesh.isPickable,
     collision:mesh.checkCollisions,enabled:mesh.isEnabled()}:null;
 }
+
+/** Visual QA only: derive a straight-on camera from the actual mounted
+ * board. Assert the rendered scene's center ray hits it before capture. */
+export function frameRosterBoardForScreenshot(){
+  const scene=currentTestScene();
+  const camera=scene?.activeCamera as UniversalCamera|undefined;
+  const board=scene?.getMeshByName("adventurer-roster-board");
+  if(!scene||!camera||!board||!shopSceneReady())return null;
+  board.computeWorldMatrix(true);
+  const center=board.getAbsolutePosition().clone();
+  const normal=Vector3.TransformNormal(new Vector3(0,0,-1),board.getWorldMatrix()).normalize();
+  camera.detachControl();
+  camera.applyGravity=false;camera.checkCollisions=false;
+  camera.position.copyFrom(center.add(normal.scale(3.8)));
+  camera.setTarget(center);
+  camera.cameraDirection.setAll(0);camera.cameraRotation.setAll(0);
+  camera.getViewMatrix(true);
+  return rosterScreenshotProbe();
+}
+export function rosterScreenshotProbe(){
+  const scene=currentTestScene();
+  const camera=scene?.activeCamera as UniversalCamera|undefined;
+  const board=scene?.getMeshByName("adventurer-roster-board");
+  if(!scene||!camera||!board)return null;
+  const ray=camera.getForwardRay(8);
+  const hit=scene.pickWithRay(ray,mesh=>mesh.isEnabled()&&mesh.isVisible&&mesh.isPickable);
+  const material=board.material as StandardMaterial;
+  const texture=material.diffuseTexture as unknown as {getContext():CanvasRenderingContext2D};
+  return {hit:hit?.pickedMesh?.name??null,
+    frame:scene.getFrameId(),camera:camera.position.asArray(),
+    board:board.getAbsolutePosition().asArray(),
+    texture: texture.getContext().canvas.toDataURL("image/png")};
+}
