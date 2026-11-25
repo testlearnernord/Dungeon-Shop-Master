@@ -8,9 +8,10 @@ import {
 } from "./combatActor.ts";
 import { meleeAbilityProfile, resolveMeleeContact } from "./combatMelee.ts";
 import {
-  chooseTrollSignatureAttack,fromTrollGroupAbility,trollSignatureProfile,
-  type TrollGroupMelee,
+  signatureProfileForAbility,type TrollGroupMelee,
 } from "./combatSignatureAbilities.ts";
+import {combatBehaviorProfile,chooseActorMeleeAbility,offensiveCooldown,
+  postRecoveryCooldown} from "./combatBehavior.ts";
 import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
   selectCombatTarget, combatDefenseReadiness,
@@ -268,9 +269,9 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       ? spec.role==="tank" ? Math.min(6,3+Math.floor(gear.armor/3))
         : spec.role==="DPS"&&gear.vest ? Math.min(4,2+Math.floor(gear.armor/4)):0
       : 0;
-    const staggerThreshold=spec.staggerThreshold??
-      (spec.specialAbility==="grapple-throw"
-        ? Math.max(62,Math.round(spec.maxHp*.22)):meleePoise);
+    const behavior=combatBehaviorProfile(spec);
+    const staggerThreshold=spec.staggerThreshold??Math.max(
+      meleePoise,behavior.minimumPoise,Math.round(spec.maxHp*behavior.healthPoiseRatio));
     validNumber(staggerThreshold,0,10000,spec.id+".staggerThreshold");
     const radius = spec.radius ?? 0.5;
     validNumber(radius, 0.1, 3, spec.id + ".radius");
@@ -300,10 +301,8 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
       throwVelocity:{x:0,z:0},
       x: spec.x, z: spec.z,
       hp: spec.hp, stamina: 100, heading: 0, lockedHeading: 0,
-      // The authored Troll did not open with an instant attack the moment
-      // a hero entered range. Give the same readable reaction window here.
       phase: "move" as GroupPhase, phaseAge: 0,
-      cooldown: spec.specialAbility==="grapple-throw"?1.1:0,applied:false,
+      cooldown: behavior.initialCooldown,applied:false,
       targetId: null, rollX: 0, rollZ: 0, healCharges,
       ...(spec.magicHeals!==undefined?{magicHeals:spec.magicHeals}:{}),
       distanceTraveled: 0,
@@ -418,8 +417,7 @@ function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor |
     if(other.team===defender.team||other.hp<=0||other.phase!=="windup"||
       other.targetId!==defender.id||!lineClear(s,other,defender))return false;
     const action=other.activeMeleeAbility;
-    const signature=action==="grapple"||action==="troll-smash"||action==="troll-slam"
-      ?trollSignatureProfile(fromTrollGroupAbility(action)):null;
+    const signature=signatureProfileForAbility(action);
     const timing=groupMeleeTiming(other);
     const contact=meleeAbilityProfile(action,other.reach+defender.radius);
     const windup=signature?.windupSeconds??timing.windupSeconds;
@@ -456,7 +454,7 @@ function tryStrike(s: GroupCombatState, attacker: GroupActor,
   if(contact==="parry"){
     cue(batch,s,target,"parry",attacker.id);
     phase(attacker,"hurt");
-    if(attacker.team==="monsters"&&!attacker.specialAbility)
+    if(combatBehaviorProfile(attacker).recoilSpeed>0)
       attacker.heading=combatHeading(attacker,target);
     attacker.cooldown=Math.max(attacker.cooldown,0.45);
     return;
@@ -569,7 +567,7 @@ function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupAct
     // requires sufficient impact, otherwise three cheap arrows can keep a
     // giant in "hurt" forever and no boss special ever finishes winding up.
     phase(target,"hurt");
-    if(target.team==="monsters"&&!target.specialAbility){
+    if(combatBehaviorProfile(target).recoilSpeed>0){
       target.heading=combatHeading(target,attacker);
     }
   }
@@ -578,11 +576,8 @@ function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupAct
 function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: GroupCombatCue[]): void {
   if (a.hp <= 0) return;
   refreshCombatActorResources(a,dt,17);
-  // Shared signature profiles make the group Troll's windups, contact and
-  // recover timings match the historical solo boss. Non-boss profiles stay.
-  const signature=a.specialAbility==="grapple-throw"
-    ?trollSignatureProfile(fromTrollGroupAbility(
-      a.activeMeleeAbility as TrollGroupMelee)):null;
+  const behavior=combatBehaviorProfile(a);
+  const signature=signatureProfileForAbility(a.activeMeleeAbility);
   let window:CombatActionWindow={};
   if(a.phase==="windup"){
     window={completeAt:signature?.windupSeconds??
@@ -607,7 +602,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   else if(a.phase==="thrown")window={completeAt:GRAPPLE_FLIGHT_SECONDS};
   else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
   else if(a.phase==="hurt")window={completeAt:
-    a.specialAbility==="grapple-throw"?1.6:a.team==="monsters"?.42:0.34};
+    behavior.hurtSeconds};
   const tick=advanceCombatActorPhase(a,dt,window);
   if(a.phase==="grabbed"||a.phase==="thrown"){
     progressGroupGrappleVictim(s,a,dt,batch,tick.complete);
@@ -676,19 +671,9 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     if (a.phase === "move") {
       const gap=distance(a,enemy);
       const ranged=a.style==="ranged";
-      // Exactly the same signature move chooser as the solo Boss, but
-      // an ID-stable per-contact sample for multi-actor reproducibility.
-      // Retain the existing group grapple cadence (#2/#5/...) for saved
-      // live encounters; add physically authored smash/slam between catches.
       const nextAttack=a.attacksStarted+1;
-      const grabTurn=nextAttack>1&&nextAttack%3===2;
-      const special=a.specialAbility==="grapple-throw"
-        ?chooseTrollSignatureAttack(nextAttack,gap,
-            grabTurn?0:combatSample(s,
-              a.id,enemy.id,nextAttack))
-        :null;
-      const chosen=special?trollSignatureProfile(special):null;
-      const action=chosen?.groupAbility??a.meleeAbility;
+      const action=chooseActorMeleeAbility(behavior,a.meleeAbility,nextAttack,gap,
+        ()=>combatSample(s,a.id,enemy.id,nextAttack));
       const posture=chooseCombatPosture({
         distance:gap,ready:a.cooldown===0&&a.stamina>=13,
         clearShot:lineClear(s,a,enemy),
@@ -705,9 +690,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         // Healing specialists retain the same cast contact and spell
         // budget but invest more recovery time in offensive casting.
         // This is a class rule, never an opponent-specific modifier.
-        a.cooldown=ranged?(a.role==="healer"?2.0:1.3):
-          action==="grapple"?3.5:chosen?1.5:
-          a.meleeAbility==="heavy"?1.62:(a.role==="DPS"?0.92:1.16);
+        a.cooldown=offensiveCooldown(a,action);
         phase(a,ranged?"cast":"windup");
         cue(batch,s,a,ranged?"cast":"attack",enemy.id);
       }else{
@@ -716,10 +699,12 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     }
   } else if (a.phase === "windup") {
     // Keep the early grab readable and reactive, then lock the final lane.
-    if(a.activeMeleeAbility==="grapple"&&a.specialAbility==="grapple-throw"&&
-       a.phaseAge<GRAPPLE_TIMING.trackUntil){
-      a.lockedHeading=combatHeading(a,enemy);
-      a.heading=a.lockedHeading;
+    if(a.activeMeleeAbility==="grapple"&&a.phaseAge<GRAPPLE_TIMING.trackUntil){
+      const target=s.actors.find(other=>other.id===a.targetId&&other.hp>0);
+      if(target){
+        a.lockedHeading=combatHeading(a,target);
+        a.heading=a.lockedHeading;
+      }
     }
     if (tick.complete)
       phase(a,a.activeMeleeAbility==="grapple"?"grab":"strike");
@@ -746,8 +731,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     if (tick.complete) phase(a,"move");
   } else if (a.phase === "recover") {
     if(tick.complete){
-      if(a.specialAbility==="grapple-throw")
-        a.cooldown=Math.max(a.cooldown,1.5);
+      a.cooldown=Math.max(a.cooldown,postRecoveryCooldown(a.activeMeleeAbility));
       phase(a,"move");
     }
   } else if (a.phase === "grab") {
@@ -793,11 +777,11 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   } else if (a.phase === "hurt") {
     // A real interrupted Ghoul recoils along its recorded facing, through
     // the existing collision integrator. No invulnerability or extra damage.
-    if(a.team==="monsters"&&!a.specialAbility&&a.phaseAge<=.18)
-      move(s,a,-Math.sin(a.heading)*1.0*dt,-Math.cos(a.heading)*1.0*dt);
+    if(behavior.recoilSpeed>0&&a.phaseAge<=behavior.recoilSeconds)
+      move(s,a,-Math.sin(a.heading)*behavior.recoilSpeed*dt,
+        -Math.cos(a.heading)*behavior.recoilSpeed*dt);
     if(tick.complete){
-      if(a.specialAbility==="grapple-throw")
-        a.cooldown=Math.max(a.cooldown,1.4);
+      a.cooldown=Math.max(a.cooldown,behavior.hurtCooldown);
       phase(a,"move");
     }
   } else if (a.phase === "heal") {
