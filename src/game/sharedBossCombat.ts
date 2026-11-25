@@ -35,7 +35,7 @@ const CAVE_TROLL_BASE=Object.freeze({
 const CAVE_TROLL_TRAINING_STATS=Object.freeze({
   hp:280,maxHp:280,damage:33,armor:10,grappleDamage:42,staggerThreshold:62,
 });
-function caveTrollActor(stats:typeof CAVE_TROLL_TRAINING_STATS):CombatantSpec{
+function caveTrollActor(stats:Pick<CombatantSpec,"hp"|"maxHp"|"damage"|"armor"|"grappleDamage"|"staggerThreshold">):CombatantSpec{
   return {...CAVE_TROLL_BASE,...stats};
 }
 
@@ -106,7 +106,7 @@ export function caveTrollPartyOptions(
     id:hero.id,team:"heroes" as const,role:hero.role,...positions[i],
     hp:hero.health,...heroCombatAttributes(hero),
   }));
-   return {
+  return {
     environment:"cave-lava",tacticsSeed,
     bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},
     obstacles:[],actors:[...heroes,caveTrollActor(CAVE_TROLL_LIVE_PROFILE)],
