@@ -8,7 +8,7 @@ import {
 import {
   createGroupCombat,stepGroupCombat,
   type GroupCombatOptions,type GroupCombatState,type GroupCombatCue,
-  type GroupActor,
+  type GroupActor,type CombatantSpec,
 } from "./groupCombat.ts";
 
 /**
@@ -24,6 +24,20 @@ import {
 export type SharedBossPreview=CombatPreviewState & {
   group:GroupCombatState;
 };
+
+/** Canonical monster geometry and capabilities. Historical training and
+ * the LIVE encounter supply their own explicit stats, never a dummy hero. */
+const CAVE_TROLL_BASE=Object.freeze({
+  id:"cave-troll",team:"monsters",role:"monster",style:"melee",
+  x:0,z:2,speed:3.25,reach:1.8,radius:1.8,agility:7,
+  specialAbility:"grapple-throw",
+} as const);
+const CAVE_TROLL_TRAINING_STATS=Object.freeze({
+  hp:280,maxHp:280,damage:33,armor:10,grappleDamage:42,staggerThreshold:62,
+});
+function caveTrollActor(stats:typeof CAVE_TROLL_TRAINING_STATS):CombatantSpec{
+  return {...CAVE_TROLL_BASE,...stats};
+}
 
 export function caveTrollGroupOptions(
   options:CombatPreviewOptions,
@@ -61,13 +75,7 @@ export function caveTrollGroupOptions(
         equipment:{weapon:options.sword?"Iron Sword":null,
           armor:options.armor?"Leather Vest":null},
       },
-      {
-        id:"cave-troll",team:"monsters",role:"monster",
-        style:"melee",x:0,z:2,hp:280,maxHp:280,
-        damage:33,armor:10,speed:3.25,reach:1.8,
-        radius:1.8,agility:7,specialAbility:"grapple-throw",
-        grappleDamage:42,staggerThreshold:62,
-      },
+      caveTrollActor(CAVE_TROLL_TRAINING_STATS),
     ],
   };
 }
@@ -98,19 +106,10 @@ export function caveTrollPartyOptions(
     id:hero.id,team:"heroes" as const,role:hero.role,...positions[i],
     hp:hero.health,...heroCombatAttributes(hero),
   }));
-  const oldTroll=caveTrollGroupOptions({
-    role:"tank",sword:false,armor:false,
-    health:50,maxHealth:50,healingSupplies:0,tacticsSeed,
-  }).actors[1];
-  return {
+   return {
     environment:"cave-lava",tacticsSeed,
     bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},
-    obstacles:[],actors:[...heroes,{
-      ...oldTroll,
-      // The unique Floor-10 Cave Troll is a party-grade boss, not the
-      // previous single-hero Floor-6 training encounter.
-      ...CAVE_TROLL_LIVE_PROFILE,
-    }],
+    obstacles:[],actors:[...heroes,caveTrollActor(CAVE_TROLL_LIVE_PROFILE)],
   };
 }
 
