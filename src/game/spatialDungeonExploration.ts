@@ -12,7 +12,7 @@ import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
 import {heroProgression,settleHeroExperience,heroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects} from "./gearCatalog.ts";
 import type {ItemId} from "./economy.ts";
-import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK,isEliteGhoulSite}
+import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK,isEliteGhoulSite,ghoulCombatProfile}
   from "./ghoulPack.ts";
 import {
   dungeonGenerationSeed, dungeonSiteGeneration, refreshDungeonSites,
@@ -171,21 +171,11 @@ export function prepareSpatialDungeonCombat(
   // renewable SITE, not to the corridor where the encounter was intercepted.
   const source=layout.features.find(feature=>
     feature.kind==="monster"&&feature.id===monster.id)??monster;
-  const monsterRand=new SeededRandom(dungeonGenerationSeed(
-    (campaignSeed^Math.imul(source.x+37*source.z,2654435761))>>>0,cycle));
-  // Only renewable sentries can become elites. No unique boss is regenerated.
+  const strengthSeed=dungeonGenerationSeed(
+    (campaignSeed^Math.imul(source.x+37*source.z,2654435761))>>>0,cycle);
   const elite=isEliteGhoulSite(layout,source,cycle);
-  // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
-  // Retain the authored individual toughness and real 35-second combat
-  // bound. The persistent LIVE site must not react to party composition.
-  const baseGhoulHp=(layout.floor===7
-    ?22+monsterRand.int(13):12+layout.floor*3+monsterRand.int(7))+
-    (elite?24:0);
-  // LIVE enemies are persistent site occupants. A companion joining must
-  // not multiply each Ghoul's HP as well as the pack count. Keep the
-  // historical atomic replay-only simulator's existing pacing contract.
   const partyToughness=livePacks?1:1+Math.max(0,party.length-1)*0.65;
-  const monsterHp=Math.round(baseGhoulHp*2.4*partyToughness);
+  const profile=ghoulCombatProfile(layout.floor,strengthSeed,elite,partyToughness);
 
   // Use distinct physically walkable grid cells inside this same 7x7 arena.
   // In a narrow corridor spawning three bodies at the same point would be
@@ -251,20 +241,11 @@ export function prepareSpatialDungeonCombat(
   // Every extra monster gets its own stable ID, actual collision position,
   // HP, AI decisions and saved 60Hz frames. Never duplicate the primary
   // feature or create more world sites/reward settlements for companions.
-  const baseDamage=(layout.floor===7?8+monsterRand.int(4):
-    2+layout.floor+monsterRand.int(3))+(elite?4:0);
   for(let index=0;index<packCount;index++){
     const spawn=index===0?monster:freePackSpawns[index-1]!;
     specs.push({
-      id:ghoulPackActorId(monster.id,index),team:"monsters",
-      role:"monster",style:"melee",
+      ...profile,id:ghoulPackActorId(monster.id,index),
       x:(spawn.x-monster.x)*2.5,z:(spawn.z-monster.z)*2.5,
-      hp:monsterHp,maxHp:monsterHp,
-      damage:baseDamage,armor:1+(elite?4:0),
-      speed:elite?2.7:3.0,reach:elite?2:1.6,
-      // Only unique bosses own grab/throw. Renewable pack Ghouls do not.
-      ...(elite?{radius:1.05,agility:8,staggerThreshold:12}:{}),
-      ...(elite?{meleeAbility:"heavy" as const}:{}),
     });
   }
   // Encounters use the open Crypt stage, not the dungeon's navigation grid.
