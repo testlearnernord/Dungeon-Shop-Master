@@ -263,7 +263,7 @@ function fightAgainst(
   campaignSeed: number, layout: DungeonLayout, approach: DungeonPoint, cycle = 0,
 ): {
   survivors: readonly {id:string;hp:number;healsUsed:number}[];
-  outcome:"heroes"|"monsters"|"draw";combat:GroupCombatReplay;elite:boolean;
+  outcome:"heroes"|"monsters"|"retreat"|"draw";combat:GroupCombatReplay;elite:boolean;
 } {
   const prepared=prepareSpatialDungeonCombat(party,monster,campaignSeed,layout,approach,cycle);
   const encounter=resolveGroupCombat(prepared.options,SPATIAL_DUNGEON_COMBAT_SECONDS);
