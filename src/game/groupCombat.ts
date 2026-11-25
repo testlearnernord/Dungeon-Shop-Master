@@ -727,7 +727,10 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         a.attacksStarted++;
         a.activeMeleeAbility=action;
         a.lockedHeading=a.heading;
-        a.cooldown=ranged?1.3:
+        // Healing specialists retain the same cast contact and spell
+        // budget but invest more recovery time in offensive casting.
+        // This is a class rule, never an opponent-specific modifier.
+        a.cooldown=ranged?(a.role==="healer"?2.0:1.3):
           action==="grapple"?3.5:chosen?1.5:
           a.meleeAbility==="heavy"?1.62:(a.role==="DPS"?0.92:1.16);
         phase(a,ranged?"cast":"windup");
