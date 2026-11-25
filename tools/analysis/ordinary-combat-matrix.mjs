@@ -4,7 +4,6 @@ import {createGameState} from "../../src/game/gameState.ts";
 import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
 import {prepareSpatialDungeonCombat,SPATIAL_DUNGEON_COMBAT_SECONDS} from "../../src/game/spatialDungeonExploration.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
-import {measureCombatHorizons,addHorizonSummary} from "./combat-horizon-audit.mjs";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 const seeds=process.argv[2]?[Number(process.argv[2])]:[7351,42,2026,9321];
 const floors=process.argv[3]?process.argv[3].split(',').map(Number):[1,2,3,4,5,6,7,8,9];
@@ -12,6 +11,7 @@ const roles=["tank","DPS","healer"];
 const weapons={tank:["Iron Sword","Forged Sword & Shield"],DPS:["Spear","Forged Spear"],healer:["Staff","Forged Staff"]};
 const rows=[];
 const horizonMode=process.argv[4]==="horizon";
+const {measureCombatHorizons,addHorizonSummary}=horizonMode?await import("./combat-horizon-audit.mjs"):{};
 const horizonSummary={},horizonCutoff={};
 let horizonCases=0;
 for(const seed of seeds){
