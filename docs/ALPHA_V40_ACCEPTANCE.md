@@ -1,4 +1,6 @@
-# Alpha v40 — evidence and remaining acceptance
+# Alpha v40 — historical evidence
+
+> Historical pre-chest baseline. These results do not validate Alpha v41. See [current acceptance](ALPHA_V41_ACCEPTANCE.md).
 
 Baseline: merged [#374](https://github.com/testlearnernord/Dungeon-Shop-Master/pull/374), `a4c5730678af99bb57dce25414e9e5e0c753e3b2`. The last audited gameplay head was `fe3542565d4f0a720ca03da7327513c5c0242cb2`; subsequent camera/audio changes are presentation-only but their final CI and manual listening were not confirmed at merge.
 
@@ -21,7 +23,7 @@ Each campaign settled one genuine boss attempt, a fully T2-equipped DPS/healer d
 
 Controlled production boss matrix (four seeds): 6,144 encounters; 4,199 wins, 1,060 losses, 883 retreats, two draws. T1 1,548/3,072 wins; T2 2,651/3,072 wins. Mixed and triple-healer T2 parties each won 192/192 controlled cases. Prepared matrix is separate. Equipment influence is demonstrated; overall composition and economy balance are not proven. The owner approved merging without waiting for four remaining 100-day jobs. Do not claim they passed.
 
-## Current acceptance
+## Acceptance at the v40 baseline
 
 [Issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294) tracks ten hands-on days, physical economy and forge, Save/Load, camera/music, animation and FPS. No additional blanket campaign audit or balance changes are required without a concrete reason or owner instruction. [#334](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/334) is a deferred cosmetic issue. Fresh v40 campaign required.
 

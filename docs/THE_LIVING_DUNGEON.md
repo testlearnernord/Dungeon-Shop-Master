@@ -1,10 +1,10 @@
 # The Living Dungeon — design contract
 
-> Reviewed against Alpha v40, main after #374 (25 November 2026). Current design contract. See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v41 (Recovered Goods Chest). Current design contract. See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
 
 ## The experience
 
-The player is **Galvik, the cursed merchant**, not the commander of the adventurers. He arranges physical goods, chooses whom to serve, negotiates buyback and loans, and witnesses consequences. Different named heroes have independent lives, goals, inventory, health, class traits, paths and relationships. The dungeon moves while the shop is open; nobody waits for Galvik to hit “next day.”
+The player is **Galvik, the cursed merchant**, not the commander of the adventurers. He arranges physical goods, chooses whom to serve, controls automatic material intake and negotiates loans, and witnesses consequences. Different named heroes have independent lives, goals, inventory, health, class traits, paths and relationships. The dungeon moves while the shop is open; nobody waits for Galvik to hit “next day.”
 
 A strong playable day offers competing stock/service decisions and a few *recognizable* developments in customers' expeditions. Time advancing alone is not gameplay.
 
@@ -24,7 +24,7 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 | **Floor 10** | One Cave Troll encounter entered only by an actual saved, authorized 2–3-hero Temporary Party at the lower stair of Floor 9. Shared group combat at 60 Hz, bounded recordings, boss event and actual outcome |
 | **Galvik's cursed shop** | A separate *unnumbered* realm accessible by the return option. One normal physical portal/threshold for shop traffic; do not label it Dungeon Floor 5 |
 
-Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. `bossPass` is the Floor-10 credential. The solo boss, old day motor and abstract loot counter are retired.
+Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. `bossPass` is the Floor-10 credential. The solo boss, old day motor and abstract loot counter are retired.
 
 ## V0.004 A–D monster-world (merged in #336–339)
 
@@ -54,7 +54,7 @@ Autonomous heroes and co-located Temporary Parties may flee on actual adjacent t
 
 ## Shop and long-game decisions
 
-- A physical picked item is an **unpaid cart** until the staffed register settles. Credit produces debt, not revenue. Buyback moves genuine found items and pays gold from Galvik's wallet. Stock never silently appears on a shelf.
+- A physical picked item is an **unpaid cart** until the staffed register settles. Credit produces debt, not revenue. The open physical chest buys genuine forge materials before shopping and pays from Galvik's wallet; closed or unaffordable intake does not block the normal shop visit. Stock never silently appears on a shelf.
 - A well-equipped healthy DPS should value a spear, a Tank sword/shield and a Healer a staff; a badly injured customer should value survival. A penniless customer can still petition for food before expensive equipment. These are implemented *initial* preferences, **not yet proven balanced**.
 - Shop stock choices must affect the real expedition and combat chain. “You saved them” is only credible when a recording or controlled counterfactual supports the effect.
 - Recovery lasts 400/1200/2400/4800 world ticks according to health and supplies. The next existing movement tick consumes an owned dose if needed, extends treatment if another dose is needed and available, or commits reentry at the remembered entrance. Untreated heroes keep a cautious plan instead of returning for unchanged injuries. Real same-day returns permit another checkout, never another payment for the same visit.
@@ -77,7 +77,7 @@ Autonomous heroes and co-located Temporary Parties may flee on actual adjacent t
 ## Remaining Alpha acceptance
 
 1. 10-day hands-on campaign: shops, customers, hero identities, combat and return cycles remain intelligible and fun.
-2. Review the completed campaign and controlled matrix evidence in [Alpha acceptance](ALPHA_V40_ACCEPTANCE.md). No new general audit unless justified.
+2. Review the completed campaign and controlled matrix evidence in [Alpha acceptance](ALPHA_V41_ACCEPTANCE.md). No new general audit unless justified.
 3. Legitimate *in-world* Floor-9-to-10 party attempt, recovered/replayed after strict Save/Load, with no second combat simulation.
 4. Actual browser NPC walking, one-portal access, cashier traffic, credit/request deadlines and cellar traversal through real obstacles.
 5. Real-device combat animation, sounds, camera/focus, HUD and frame pacing evaluated independently from green CI.

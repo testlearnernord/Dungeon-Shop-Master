@@ -83,7 +83,7 @@ The magical wall board is an operational LIVE glance, not a second archive or an
 
 The E/R roster keeps the shared Hero Card renderer. Expanded entries span the full row rather than stretching the adjacent card; the summary becomes a collapse control instead of duplicating the expanded identity. Empty slots use role-appropriate muted art and explicit names. All current heroes share the same information policy. A living hero in the shop can still receive the existing Boss Pass; this gate is reviewed separately under #376. Current facts do not grant hero AI omniscience; historical footage and event signals remain authentic and separate. No campaign writes from presentation except existing explicit merchant actions.
 
-The nightly book contains merchant accounts, not a second hero roster. Alpha v40 only, no save migration. See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
+The nightly book contains merchant accounts, not a second hero roster. Alpha v41 only, no save migration. See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 
 - **One portal visual and service contract:** current normal customer arrivals
   and exits share one cursed doorway in the physical shop. Retained
@@ -215,3 +215,7 @@ plates or hit feedback when cleaning obsolete HTML inspectors.
 ## Combat Lab configuration
 
 Production rules expose role, level, starting HP and role-specific T1/T2 weapon/armor, with derived damage/armor/max HP read-only. Custom experiments expose manual final values. A captured LIVE encounter locks configuration while its exact initial options are replayed locally. Keep the configuration panel above actor plates; party cards belong on the opposite side on desktop. No hover overlay may block settings. Compact party cards are hidden in the narrow Lab layout rather than covering its controls. Both modes share the combat motor and renderer.
+
+## Recovered Goods Chest
+
+One procedural wooden/iron chest with hinged lid, sign SELL LOOT HERE and open/closed state. E or click toggles intake. A customer reaches its protected service dock using existing physical navigation before shelves or requests. Floating text reports paid material counts and gold expense from actual committed receipts. The Buyback Log is read-only, not an item-purchase menu. No second merchant inventory or service motor. Art and audio acceptance are separate from automated transaction checks.

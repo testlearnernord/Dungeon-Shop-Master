@@ -26,7 +26,7 @@ Browser input / shop interactions
               (read-only presentation)
 ```
 
-- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 40`.
+- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 41`.
 - `worldClock.ts` persists a monotonic tick and ordered future events, with 50-ms ticks, 20 ticks per game minute and 28,800 ticks per game day. Stable lane/sequence ordering is part of determinism. Gameplay events, not Babylon frames, advance customers, timed dungeon steps and combat.
 - `liveDungeonRuntime.ts` schedules one connected spatial movement every **200 world ticks** and commits groups of **30 actual 60-Hz combat steps** every **10 world ticks**. The **Floor-10 2–3-member Temporary Party Cave Troll** uses the same `groupCombat.ts` authority as ordinary fights, with saved 10-Hz pose checkpoints, combat cues and replay validation through `livePartyBossSave.ts`.
 - `gameStore.ts` records actual player and shop actions, physical shop-exit events, accepted credit, paid cart settlement, save operations and bed closure. Day closure does not reroll live expeditions.
@@ -40,7 +40,7 @@ Browser input / shop interactions
 | Domain | Responsibility | Current modules |
 | --- | --- | --- |
 | World and saves | State contract, deterministic time/events, strict persisted validation | `gameState.ts`, `gameStore.ts`, `worldClock.ts`, `liveDungeonRuntime.ts`, `campaignSave.ts` |
-| Physical commerce | Inventory, independent saved Ore/Coal workshop reserve, carts, genuine register transactions, debt, arriving/departing shoppers, paid adventurer loot buyback | `economy.ts`, `shopCarts.ts`, `shopCredit.ts`, `dungeonBuyback.ts`, `dungeonLoot.ts`, `shopArrivals.ts`, `shopTraffic.ts` |
+| Physical commerce | Inventory, independent saved Iron Ore/Coal/Ghoul Leather workshop reserve, carts, genuine register transactions, debt, arriving/departing shoppers, automatic physical material buyback | `economy.ts`, `shopCarts.ts`, `shopCredit.ts`, `dungeonBuyback.ts`, `dungeonLoot.ts`, `shopArrivals.ts`, `shopTraffic.ts` |
 | NPC travel and service | Saved visitor locations/waypoints and exclusive shelf/queue reservations, visuals follow simulation | `npcVisualSystem.ts`, `shopperNavigation.ts`, `shopServiceSpots.ts`, `checkoutQueue.ts` |
 | Shop layout | One furniture registry, placement validation, mined room, service reachability | `furnitureRegistry.ts`, `furniturePlacement.ts`, `furnitureBlueprint.ts`, `shopRoomGeometry.ts`, `shopServiceReachability.ts` |
 | Individual heroes | Persistent stats, equipment, medium-term intentions, voluntary parties | `adventurers.ts`, `dungeonDecisions.ts`, `dungeonParties.ts` |
@@ -108,7 +108,7 @@ Committed original Tripo GLBs
 
 `npm run build` executes both asset generators, TypeScript type checking and Vite bundling. D1 #242 runs `npm run verify:pages` immediately after build in PR CI **and** the Pages deploy workflow: it checks final `dist/` JS/CSS URL base, canonical music, all 32 creature SFX and generated/curated GLB copies without changing runtime assets. See [D1 artifact contract](CODE_CLEANUP_D1.md). `npm run test:unit` runs Node tests, `npm run test:smoke` runs the curated browser-flow whitelist; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit and **one core browser-smoke job**; the full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
 
-Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Current Alpha evidence](ALPHA_V40_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
+Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Current Alpha evidence](ALPHA_V41_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 **Dungeon transitions:** dungeonStairways.ts projects the actual layout entrance
 and dungeonDownStair(...) cells as view-only stair landmarks. 3D stone steps
@@ -152,4 +152,4 @@ V defaults to Production rules: `productionLabHero` derives hero power from the 
 
 ## Physical recovered-goods service
 
-`buybackChestPlacement.ts` defines the fixed footprint and service dock. `shopFloorFixtures`, placement and the existing service reachability checks protect it. `NpcVisualSystem` schedules buyback before normal cart/resupply behavior using the existing service claims and routes. Only `GameStore.buybackAtChest` invokes the existing paid material exchange at the dock; one unit retains one valid receipt. Visual feedback reads committed receipts. The saved `buybackChestOpen` flag requires schema v41; no v40 migration. Other goods are not automatically sold, and no negative treasury is permitted.
+`buybackChestPlacement.ts` defines the fixed footprint and service dock. `shopFloorFixtures`, placement and the existing service reachability checks protect it. `NpcVisualSystem` schedules buyback before normal cart/resupply behavior using the existing service claims and routes. `GameStore.buybackAtChest` delegates to the sole paid material exchange at the dock; one atomic drop-off retains one valid receipt per unit. Visual feedback reads committed receipts. The saved `buybackChestOpen` flag requires schema v41; no v40 migration. Other goods are not sold by this system, and no negative treasury is permitted. `availableChestMaterials` is read-only; the retired per-item purchase API is deleted. The headless campaign uses the same mutation with an explicitly idealized service arrival, not a second pricing/stock-cap policy. Dungeon salvage return counts only accepted material IDs.

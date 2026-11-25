@@ -76,7 +76,7 @@ The asset generators run before dev/build. Preserve original source GLBs, approv
 - [Contributor contract](AGENTS.md)
 - [Documentation index](docs/README.md): current contracts and explicitly historical evidence
 - [Architecture](docs/ARCHITECTURE.md) · [Game Bible](docs/GAME_BIBLE.md) · [Roadmap](docs/ROADMAP.md)
-- [Alpha v40 acceptance and evidence](docs/ALPHA_V40_ACCEPTANCE.md)
+- [Alpha v41 acceptance and prior evidence](docs/ALPHA_V41_ACCEPTANCE.md)
 
 Current source and tests outrank old prose. Historical reports are not implementation instructions. No extra simulation, fake rewards, hunger or old-save migrations.
 

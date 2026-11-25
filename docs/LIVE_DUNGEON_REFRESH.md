@@ -1,6 +1,6 @@
 # LIVE Dungeon — current map, exploration and observer contract
 
-> Reviewed against Alpha v40, main after #374 (25 November 2026). Current LIVE map contract; see [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v41 (Recovered Goods Chest). Current LIVE map contract; see [Architecture](ARCHITECTURE.md).
 
 ## Gameplay state and map
 
@@ -19,8 +19,8 @@
 
 ## Shop and equipment economy
 
-- Physically owned ore, coal, herbs, gear and other `inventory.finds` belong to one real adventurer. Only an explicit **paid buyback** changes that owner and Galvik's gold/workshop storage.
-- Current saves neither persist nor display the obsolete abstract `inventory.loot` counter. Shop-return decisions can use real injury or newly collected physical `inventory.finds`; unsold items persist with their owner until an authentic paid buyback.
+- Physically owned ore, coal, herbs, gear and other `inventory.finds` belong to one real adventurer. Only an actual **paid chest drop-off** transfers Iron Ore, Coal and Ghoul Leather into Galvik's workshop reserve and changes both gold balances. Other finds remain owned.
+- Current saves neither persist nor display the obsolete abstract `inventory.loot` counter. Shop-return decisions can use real injury or newly collected chest-accepted materials in `inventory.finds`; unsold items persist with their owner until an authentic paid buyback.
 - Customers with a paid budget now prioritize useful class gear if healthy and owned supplies if injured. Penniless customers' begging/restock requests remain survival-first; a desire is not a free transfer.
 - The physical forge uses paid Iron Ore, Coal and Ghoul Leather reserves to craft class-compatible T2 gear; further recipes, repair and persistent mana are unapproved design topics.
 
