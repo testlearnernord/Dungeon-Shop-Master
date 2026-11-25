@@ -46,6 +46,10 @@ test("seeded party faces the same site pack at distinct walkable positions with 
   const a=prepareSpatialDungeonCombat(heroes,site,layout.seed,layout,approach,0,true);
   const b=prepareSpatialDungeonCombat([...heroes],site,layout.seed,layout,approach,0,true);
   assert.deepEqual(a,b);
+  assert.deepEqual(a.options.obstacles,[],
+    "The open Crypt stage must not inherit invisible dungeon tile walls");
+  assert.deepEqual(prepareSpatialDungeonCombat(heroes,site,layout.seed,layout,approach).options.obstacles,[],
+    "Legacy atomic encounters also use the open stage");
   const actors=a.options.actors;
   const monsters=actors.filter(spec=>spec.team==="monsters");
   assert(monsters.length>=2&&monsters.length<=3);
