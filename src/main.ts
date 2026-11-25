@@ -1,3 +1,4 @@
+import {DUNGEON_STEP_INTERVAL_TICKS} from "./game/dungeonPacing.ts";
 import {createBuybackChest} from "./game/buybackChestVisual.ts";
 import {wantsChestBuyback} from "./game/dungeonBuyback.ts";
 import { createMerchantActions } from "./game/merchantActions.ts";
@@ -245,8 +246,8 @@ if(import.meta.env.VITE_E2E==="1"){
     npcVisuals.setRestockTimeForE2E(heroId,seconds);
   hooks.__shopTestReadyCheckout=()=>npcVisuals.readyCheckoutHeroId();
   // This invokes the real scheduled world event owner, not a second
-  // explorer/combat engine. Test-only fast-forward avoids a 10s wall delay.
-  hooks.__shopTestAdvanceDungeonTick=()=>store.advanceWorldTime(200);
+  // explorer/combat engine. Test-only fast-forward avoids a real movement delay.
+  hooks.__shopTestAdvanceDungeonTick=()=>store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   // Single genuine scheduler, with a small test-controlled tick count.
   // This only instruments the fast/slow render-path guard; production has
   // no hook and no alternate movement or economic resolver.

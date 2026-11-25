@@ -531,7 +531,7 @@ function validateLiveCombatCheckpoints(
     const started=integer(battle.startedTick,cp+".startedTick",
       0,lastStepTick);
     const startedDay=Math.floor(started/WORLD_TICKS_PER_DAY)+1;
-    // A bounded ordinary encounter can survive more than one 10-second
+    // A bounded ordinary encounter can survive more than one 2.5-second
     // movement event while other heroes continue exploring. Require an
     // actual historical movement cadence, not the latest movement tick.
     // The exact combat age, identity, frames and actors are checked below.

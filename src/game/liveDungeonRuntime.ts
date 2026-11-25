@@ -1,3 +1,5 @@
+import {DUNGEON_STEP_INTERVAL_TICKS} from "./dungeonPacing.ts";
+export {DUNGEON_STEP_INTERVAL_TICKS} from "./dungeonPacing.ts";
 import {manuallyPaidVisitors} from "./npcVisitors.ts";
 import type {GameState,WorldEvent} from "./gameState.ts";
 import {dungeonWorldAt,setDungeonWorld} from "./dungeonWorldState.ts";
@@ -35,10 +37,9 @@ import {advanceWorldUntil,beginNextWorldDay,firstWorldTickOfDay,lastWorldTickOfD
 
 /** Gameplay tuning; this is not the legacy 36-steps-per-day solver.
  * One event = at most ONE spatial tile for each live party. At the current
- * pacing the cadence is now 10 unpaused real seconds; bed fast-forwards
+ * pacing the cadence is now 2.5 unpaused real seconds; bed fast-forwards
  * remaining actual event ticks exactly once.
  */
-export const DUNGEON_STEP_INTERVAL_TICKS=200;
 export const DUNGEON_WORLD_EVENT_SUBJECT="dungeon-world";
 export const LIVE_COMBAT_EVENT_SUBJECT="dungeon-combat";
 /** Each clock event executes thirty genuine 60Hz fighter ticks in 0.5s. */
