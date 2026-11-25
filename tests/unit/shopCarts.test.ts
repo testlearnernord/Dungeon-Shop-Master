@@ -176,7 +176,7 @@ test("unpaid items are returned at bed and do not block later shop visits",()=>{
   const pick=pickUpShopItem(stocked,hero.id,breadSlot.id);
   assert.notStrictEqual(pick.state,stocked);
 });
-test("Copilot regression: imported cart cannot also have a manual same-day receipt",()=>{
+test("imported cart cannot also have a manual receipt for the same visit",()=>{
   const state=customers();
   const hero=state.adventurers[0];
   const interest=forecastShoppingIntents(state).get(hero.id)!.items[0];
@@ -184,7 +184,7 @@ test("Copilot regression: imported cart cannot also have a manual same-day recei
   const forged={
     ...picked,
     events:[...picked.events,{
-      id:"day-"+state.day+":"+hero.id+":sale:"+interest.slotId,
+      id:"day-"+state.day+":"+hero.id+":sale:"+interest.slotId+":manual",
       day:state.day,
       adventurerId:hero.id,
       type:"sale" as const,

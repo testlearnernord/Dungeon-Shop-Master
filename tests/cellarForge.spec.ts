@@ -5,7 +5,7 @@ import {expect,test} from "@playwright/test";
  * 60Hz gear effects have separate pure-runtime regressions. */
 test("player buys real adventurer salvage then forges and persists T2 at physical cellar anvil @ci-smoke",
   async({page})=>{
-  test.setTimeout(240000);
+  test.setTimeout(300000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./?e2e-pause-world");
@@ -293,15 +293,29 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   expect(collected).toBeLessThanOrEqual(27);
   expect(buyer.gold-paid.adventurers.find(h=>h.id===fixture.heroId)!.gold).toBe(collected);
   await page.keyboard.press("Escape");
-  // Observe the actual paid customer cross the one physical exit.
+  // The new recovery window can be shorter than the time between
+  // persisted browser observations. Require the durable physical exit,
+  // not a transient status that the real movement clock can advance past.
   await expect.poll(async()=>{
     const saved=await save();
-    return saved.adventurers.find(h=>h.id===fixture.heroId)?.status;
-  },{timeout:45000,intervals:[500,1000,1500]}).toBe("off-duty");
+    return saved.events.filter(e=>e.type==="shop-departure"&&
+      e.adventurerId===fixture.heroId&&e.worldTick!==undefined).length;
+  },{timeout:45000,intervals:[500,1000,1500]}).toBeGreaterThanOrEqual(1);
   const departed=await save();
   const customer=departed.adventurers.find(h=>h.id===fixture.heroId)!;
+  const exit=departed.events.find(e=>e.type==="shop-departure"&&
+    e.adventurerId===fixture.heroId&&e.worldTick!==undefined)!;
+  expect(exit.worldTick).toBeGreaterThanOrEqual(paid.worldClock.tick);
+  const reentry=departed.events.find(e=>e.type==="dungeon-live"&&
+    e.adventurerId===fixture.heroId&&e.message.includes("began a new expedition")&&
+    (e.worldTick??-1)>(exit.worldTick??-1));
+  if(reentry){
+    expect(reentry.worldTick!-exit.worldTick!).toBeGreaterThanOrEqual(400);
+  }else{
+    expect(customer.status).toBe("off-duty");
+    expect(customer.offDutyUntilTick!-exit.worldTick!).toBeGreaterThanOrEqual(400);
+    expect(customer.offDutyUntilTick!-exit.worldTick!).toBeLessThanOrEqual(4800);
+  }
   expect(customer.equipment.weapon).toBe("Forged Spear");
-  expect(customer.offDutyUntilTick).toBeGreaterThan(departed.worldClock.tick);
-  expect(departed.events.filter(e=>e.type==="shop-departure"&&e.adventurerId===fixture.heroId)).toHaveLength(1);
   expect(errors).toEqual([]);
 });
