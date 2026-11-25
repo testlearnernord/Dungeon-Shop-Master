@@ -41,7 +41,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,43);
+  assert.equal(SIMULATION_VERSION,44);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -521,7 +521,7 @@ test("diagnostic captures the actual rejected Floor-9 solo stair crossing",()=>{
   const traces:DungeonDiagnostic[]=[];
   const active=activateLiveDungeon({...base,
     adventurers:base.adventurers.map(h=>h.id===hero.id?
-      {...h,floor:9 as const,status:"exploring" as const,bossPass:true}:
+      {...h,floor:9 as const,status:"exploring" as const}:
       {...h,floor:"shop" as const,status:"at-shop" as const}),
     dungeonWorlds:[{floor:9 as const,world:{...emptySpatialDungeonWorld(),
       heroes:[{heroId:hero.id,...down,visited}]}}],
@@ -599,10 +599,10 @@ test("two real eligible Floor-9 explorers rendezvous, form a party and commit a 
   const approach=dungeonNeighbors(layout,stair)[0];
   const known=layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i]);
   const ready=base.adventurers.slice(0,2).map(h=>({...h,
-    floor:9 as const,status:"exploring" as const,bossPass:true,
+    floor:9 as const,status:"exploring" as const,level:7,xp:600,
     traits:{...h.traits,positive:"brave",negative:"reckless"},
     equipment:{weapon:h.role==="tank"?"Iron Sword":h.role==="DPS"?"Spear":"Staff",armor:"Leather Vest"},
-    health:heroProgression(h).maxHealth,gold:30}));
+    health:heroProgression({...h,level:7}).maxHealth,gold:30}));
   ready.sort((a,b)=>a.id.localeCompare(b.id));
   assert(ready.every(isBossExpeditionCandidate));
   const ids=ready.map(h=>h.id);
@@ -838,10 +838,10 @@ test("real gear helps depth readiness without substituting for all deep-floor ex
     "The resident uses the same deep risk threshold as the prospective descender");
   assert.notEqual(chooseLiveHeroDungeonDecision({...veteran,floor:8},undefined,replay).action,"ascend");
 });
-test("a Floor-9 hero without a pass does not endlessly revisit for unchanged gold or knowledge",()=>{
+test("an unprepared Floor-9 hero does not endlessly revisit for unchanged gold or knowledge",()=>{
   const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
-  const hero={...source,floor:9 as const,status:"exploring" as const,bossPass:false,
-    level:7,xp:600,gold:100,equipment:{weapon:"Forged Spear",armor:"Ghoul Leather Vest"}};
+  const hero={...source,floor:9 as const,status:"exploring" as const,
+    level:7,xp:600,gold:100,traits:{...source.traits,positive:"careful"},equipment:{weapon:"Forged Spear",armor:null}};
   const layout=generateExpeditionLayout(7351,9);
   const progress={heroId:hero.id,...layout.entrance,
     visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};

@@ -11,9 +11,9 @@ test("Floor 6 remains an ordinary seeded LIVE dungeon, never a solo Cave Troll",
   const id=base.adventurers[0].id;
   const store=new GameStore({...base,adventurers:base.adventurers.map(hero=>
     hero.id===id?{...hero,status:"exploring" as const,
-      floor:6 as const,bossPass:true}:hero)});
+      floor:6 as const}:hero)});
   store.enableLiveDungeon();
-  assert.equal(SIMULATION_VERSION,43);
+  assert.equal(SIMULATION_VERSION,44);
   assert.equal("bossCombat" in store.state.liveDungeon,false);
   store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   assert.equal("bossCombat" in store.state.liveDungeon,false,
@@ -42,8 +42,7 @@ test("v35 rejects an injected old expedition Floor-6 hero in the LIVE motor",()=
   const initial=createGameState(7351);
   const id=initial.adventurers[0].id;
   const store=new GameStore({...initial,adventurers:initial.adventurers.map(h=>
-    h.id===id?{...h,floor:6 as const,status:"expedition" as const,
-      bossPass:true}:h)});
+    h.id===id?{...h,floor:6 as const,status:"expedition" as const}:h)});
   store.enableLiveDungeon();
   store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   assert.equal("bossCombat" in store.state.liveDungeon,false);

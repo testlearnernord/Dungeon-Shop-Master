@@ -23,9 +23,9 @@ function bossEntry(){
   assert(path.length>=2);
   const visited=path.map(p=>p.z*layout.width+p.x);
   const selected=base.adventurers.slice(0,3).map(h=>{
-    const veteran={...h,level:12,xp:1100,bossPass:true,
+    const veteran={...h,level:12,xp:1100,
       floor:9 as const,status:"exploring" as const,
-      equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
+      equipment:{weapon:h.role==="tank"?"Iron Sword":h.role==="DPS"?"Spear":"Staff",armor:"Leather Vest"},
       inventory:{...h.inventory,healing:3,bread:2}};
     return {...veteran,health:heroProgression(veteran).maxHealth};
   });
@@ -130,7 +130,7 @@ test("party boss outcome is deterministic through mid-fight reload with exactly 
     original.state);
 });
 
-test("party gateway rejects solo or unauthorized attempts, and gear determines motor stats",()=>{
+test("party gateway rejects solo or duplicate attempts, and gear determines motor stats",()=>{
   const {state,ids}=bossEntry();
   const heroes=state.adventurers.filter(h=>ids.includes(h.id));
   const equipped=caveTrollPartyOptions(heroes,42);
@@ -143,7 +143,7 @@ test("party gateway rejects solo or unauthorized attempts, and gear determines m
   assert.deepEqual(caveTrollPartyOptions(heroes,42),equipped);
   assert.throws(()=>caveTrollPartyOptions([heroes[0]],42),/party/);
   assert.throws(()=>caveTrollPartyOptions([
-    {...heroes[0],bossPass:false},heroes[1]],42),/party/);
+    heroes[0],heroes[0]],42),/party/);
   assert.equal(createGroupCombat(equipped).actors.length,4);
   const fight=resolveGroupCombat(equipped,90);
   const naked=resolveGroupCombat(unarmed,90);

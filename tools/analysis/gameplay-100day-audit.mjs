@@ -29,7 +29,7 @@ const slotIds = {bread:"shelf-1-slot-1","healing-herb":"shelf-1-slot-2",
   "iron-sword":"shelf-1-slot-3","leather-vest":"shelf-1-slot-4",
   spear:"shelf-2-slot-1",staff:"shelf-2-slot-2",
   ...Object.fromEntries(FORGE_OUTPUTS.map((id,i)=>[id,"shelf-3-slot-"+(i+1)]))};
-const forges=mode=>mode==="forge"||mode==="forge-ready";
+const forges=mode=>mode==="forge";
 const buysSalvage=mode=>mode==="buyback"||forges(mode);
 const eligibleSkus = mode => forges(mode) ? [...catalog,"spear","staff",...FORGE_OUTPUTS] :
   mode==="tier1"||mode==="buyback" ? [...catalog,"spear","staff"] :
@@ -156,22 +156,6 @@ function actShop(store,mode,metrics){
   if(mode!=="absent")restock(store,mode,metrics);
   const people=store.state.adventurers.filter(h=>h.status==="at-shop");
   for(const hero of people){
-    // The real player can grant this saved permission only while a living
-    // hero visits Galvik. Exercise that actual GameStore action so a
-    // natural Floor-10 attempt is possible, never teleport the party.
-    // Keep the old permissive comparison. A second Forge treatment
-    // models a player who approves only veterans with gear and sufficient HP.
-    // No direct state edits, no artificial revocation and no gate changes.
-    if(!hero.bossPass){
-      const gear=equipmentEffects(hero.role,hero.equipment);
-      const ready=hero.level>=5&&!!gear.weapon&&!!gear.vest&&
-        hero.health/heroProgression(hero).maxHealth>=.75;
-      add(metrics.passConsiderations,ready?"ready":"not-ready",1);
-      if((mode!=="forge-ready"||ready)&&store.setBossPass(hero.id,true)){
-        metrics.bossPassesGranted++;
-        add(metrics.passGrants,ready?"ready":"not-ready",1);
-      }
-    }
     const forecast=forecastShoppingIntents(store.state).get(hero.id);
     if(!forecast)continue;
     if(mode!=="absent" && forecast.items.length){
@@ -264,10 +248,8 @@ function run(mode){
   const initial=snap(store.state,0);
   const metrics={
     mode,seed:SEED,daysRequested:DAYS,
-    model:"real GameStore, scripted storefront and manual boss passes",
+    model:"real GameStore, scripted storefront and autonomous boss readiness",
     stockPolicy:eligibleSkus(mode),
-    passPolicy:mode==="forge-ready"?"veteran-equipped-healthy-at-shop":"all-living-visitors",
-    passConsiderations:{},passGrants:{},
     starting:initial, startingIds:new Set(store.state.adventurers.map(h=>h.id)),
     milestones:[initial], eventTypes:{}, salesUnits:{},
     salesRevenue:{},healingUsed:{},credits:{},replayStepActions:{},
@@ -277,7 +259,7 @@ function run(mode){
     lateEventTypes:{}, xpGrowthDays:[], servedCustomers:0,
     activitySamples:{living:0,offDuty:0,exploring:0,count:0},
     shortExpeditions:{completed:0,within600Ticks:0,withoutRecordedRewardOrFight:0},
-    unservedCustomers:0,gateExits:0,bossPassesGranted:0,
+    unservedCustomers:0,gateExits:0,
     bossAttempts:0,failedCheckout:{},nextRequestId:1,
   };
   const renewed=new Map();
@@ -370,7 +352,6 @@ function run(mode){
       dead:entrants.length-living.length,deadShare:entrants.length?(entrants.length-living.length)/entrants.length:0,
       veterans:living.filter(h=>h.level>=5).length,
       peakLivingLevel:Math.max(0,...living.map(h=>h.level)),
-      permittedVeterans:living.filter(h=>h.level>=5&&h.bossPass).length,
       deepestLiving:Math.max(0,...living.map(h=>typeof h.floor==="number"?h.floor:h.lastDungeonFloor??0))}];
   }));
   delete metrics.startingIds;

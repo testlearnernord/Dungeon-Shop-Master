@@ -87,7 +87,7 @@ export function createCampaignTelemetry(seed){
       add(record.floorSamples,String(group.floor));
       record.last={floor:group.floor,colocated,positions:positions.map(p=>p?{x:p.x,z:p.z,visited:p.visited.length}:null),
         members:members.map(h=>({id:h.id,hp:h.health,maxHp:heroProgression(h).maxHealth,
-          equipment:{...h.equipment},pass:h.bossPass,action:plans.get(h.id)?.action??null}))};
+          equipment:{...h.equipment},action:plans.get(h.id)?.action??null}))};
     }
     for(const key of previousParties)if(!currentParties.has(key))add(dayPartyChanges,"separated");
     previousParties=currentParties;
@@ -109,7 +109,7 @@ export function createCampaignTelemetry(seed){
       const resources=layout?.features.filter(site=>site.kind!=="trap")??[];
       const stair=layout?dungeonDownStair(layout):null;
       row.last={floor:h.floor,status:h.status,role:h.role,level:h.level,xp:h.xp,
-        hp:h.health,maxHp:heroProgression(h).maxHealth,gold:h.gold,pass:h.bossPass,
+        hp:h.health,maxHp:heroProgression(h).maxHealth,gold:h.gold,
         equipment:{...h.equipment},finds:{...h.inventory.finds},
         plan:plans.get(h.id)??null,returnPhase:returns.get(h.id)?.phase??null,
         position:pos?{x:pos.x,z:pos.z,visited:pos.visited.length}:null,

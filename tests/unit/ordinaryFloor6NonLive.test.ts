@@ -1,19 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {advanceDay,createGameState,setBossPass} from "../../src/game/gameState.ts";
+import {advanceDay,createGameState} from "../../src/game/gameState.ts";
 
-test("legacy day closure never creates a solo Floor-6 Troll or a pass-driven shortcut",()=>{
+test("legacy day closure never creates a solo Floor-6 Troll or a direct shortcut",()=>{
   const start=createGameState(7351);
   const shopper=start.adventurers[0];
-  const permitted=setBossPass(start,shopper.id,true);
-  const next=advanceDay(permitted);
+  const next=advanceDay(start);
   const hero=next.state.adventurers.find(h=>h.id===shopper.id)!;
-  assert.equal(hero.bossPass,true);
   assert.notEqual(hero.status,"expedition");
   assert(!next.events.some(e=>e.type==="level6-combat"||
     e.type==="level6-departure"||e.type==="level7-departure"));
   assert(!next.state.dungeonFloors.some(e=>e.floor===6&&e.cleared));
-  assert.deepEqual(advanceDay(permitted),next);
+  assert.deepEqual(advanceDay(start),next);
 });
 
 test("Floor 6 uses the real LIVE scheduler, never a parallel daily solver",()=>{

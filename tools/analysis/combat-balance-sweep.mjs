@@ -22,7 +22,7 @@ for(let i=1;i<=100&&roles.some(role=>pool[role].length<3);i++){
 }
 if(roles.some(role=>pool[role].length<3))throw Error("Incomplete roster");
 function prepareHero(base,level,tier,floor,herbs){
-  const h={...base,level,xp:(level-1)*100,floor,status:"exploring",bossPass:true,
+  const h={...base,level,xp:(level-1)*100,floor,status:"exploring",
     equipment:{weapon:tier?weapons[base.role][tier-1]:null,
       armor:tier===2?"Ghoul Leather Vest":tier===1?"Leather Vest":null},
     inventory:{...base.inventory,healing:herbs}};

@@ -41,10 +41,9 @@ test("every upward choice has the optional cursed threshold without hijacking re
   assert.deepEqual(downwardDestination(9),{kind:"floor",floor:10});
 });
 
-test("Cave Troll party entry must be a real saved group, not a solo permit loophole",()=>{
-  assert.equal(canAttemptCaveTroll(1,true),false);
-  assert.equal(canAttemptCaveTroll(2,false),false);
-  assert.equal(canAttemptCaveTroll(2,true),true);
-  assert.equal(canAttemptCaveTroll(3,true),true);
-  assert.equal(canAttemptCaveTroll(4,true),false);
+test("Cave Troll party entry must be a real saved group, not a solo shortcut",()=>{
+  assert.equal(canAttemptCaveTroll(1),false);
+  assert.equal(canAttemptCaveTroll(2),true);
+  assert.equal(canAttemptCaveTroll(3),true);
+  assert.equal(canAttemptCaveTroll(4),false);
 });
