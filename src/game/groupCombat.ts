@@ -408,6 +408,32 @@ function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | nul
     a.hp/a.maxHp - b.hp/b.maxHp || a.id.localeCompare(b.id));
   return candidates[0] ?? null;
 }
+/** Keep ordinary pack impacts readable for the same defender. A Ghoul
+ * waits before committing a new attack, never after the windup starts.
+ * The reservation is derived from actual saved phases: interruption or
+ * death releases it immediately. No new clock, RNG or saved queue.
+ */
+const PACK_IMPACT_GAP_SECONDS=.70;
+function ordinaryPackCanStart(s:GroupCombatState,actor:GroupActor,target:GroupActor):boolean{
+  if(actor.team!=="monsters"||actor.style!=="melee"||actor.specialAbility)
+    return true;
+  const own=meleeAbilityProfile(actor.meleeAbility,actor.reach);
+  const ownContact=own.windupSeconds+own.strikeDelaySeconds;
+  return !s.actors.some(other=>{
+    if(other===actor||other.team!==actor.team||other.hp<=0||
+      other.style!=="melee"||other.specialAbility||other.targetId!==target.id)
+      return false;
+    const profile=meleeAbilityProfile(other.activeMeleeAbility,other.reach);
+    const pending=other.phase==="windup"
+      ?Math.max(0,profile.windupSeconds-other.phaseAge)+profile.strikeDelaySeconds
+      :other.phase==="strike"&&!other.applied
+        ?Math.max(0,profile.strikeDelaySeconds-other.phaseAge):null;
+    // Include one fixed-step margin because canonical actor updates are
+    // sequential within a tick. Other targets remain independent.
+    return pending!==null&&ownContact-pending<PACK_IMPACT_GAP_SECONDS+COMBAT_STEP_SECONDS;
+  });
+}
+
 /** A shared boss telegraph threatens at the same authored lead-in as its
  * solo duel. Standard ordinary/heavy threats keep their v1 timing. */
 function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor | null {
@@ -714,6 +740,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       const action=chosen?.groupAbility??a.meleeAbility;
       const posture=chooseCombatPosture({
         distance:gap,ready:a.cooldown===0&&a.stamina>=13&&
+          ordinaryPackCanStart(s,a,enemy)&&
           // Troll chooses to close the physical gap before beginning a
           // signature move, so a real 5.1m grab can occur instead of
           // eternally opening at the 5.78m smash maximum.
