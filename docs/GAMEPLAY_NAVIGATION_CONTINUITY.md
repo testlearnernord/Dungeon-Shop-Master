@@ -1,5 +1,7 @@
 # Navigation and expedition continuity
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 Phase C of #294. Baseline #354: the four forge treatments reached Floors 6–7. Across Floors 3+, 63,399 of 64,505 sampled descent-route decisions lacked a personally walked route to the stair. This is an observation, not proof that all those moves were wasteful: discovering a hidden stair is legitimate.
 
 This pass changes the existing walker, not its cadence or the dungeon layout:

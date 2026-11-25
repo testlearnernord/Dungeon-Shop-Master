@@ -1,5 +1,7 @@
 # PR #214 — Ten-day acceptance and browser performance baseline
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 > **Historical subsystem audit / implementation evidence.** This document records earlier PR stages, not current unfinished work. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Legacy audit](LEGACY_OBSOLESCENCE_AUDIT.md) for the present world. In particular, the obsolete `src/expeditionHud.ts` widget and `level6Progress.ts` projection have now been retired in favor of one World Feed / Expedition Archive; saved solo v26 recordings remain readable.
 
 

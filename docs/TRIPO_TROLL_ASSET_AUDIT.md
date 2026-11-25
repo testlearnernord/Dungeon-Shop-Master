@@ -1,5 +1,7 @@
 # Ashen Tunnel Mauler · Tripo 3D asset audit
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 **Source:** The twelve-clip binary was curated from the earlier 33-clip export `tripo_convert_8abe2288-7e4b-485c-abf8-a983c3533dd9.glb`. The owner subsequently uploaded the **55-clip** `tripo_convert_ccb6e0dc-612d-460c-9bed-804e863d9706.glb`, archived at `assets/tripo/source/`. This is a technical curation, not a visual quality sign-off or runtime boss replacement.
 
 ## Inventory
