@@ -71,7 +71,7 @@ export function heroCombatAttributes(hero:AdventurerState){
   return {
     style:hero.role==="healer"?"ranged" as const:"melee" as const,
     maxHp:progress.maxHealth,
-    damage:6+Math.floor((hero.role==="healer"?progress.intellect:
+    damage:(hero.role==="healer"?3:6)+Math.floor((hero.role==="healer"?progress.intellect:
       hero.role==="DPS"?progress.agility:progress.strength)/2)+gear.damage+progress.damageBonus,
     armor:1+gear.armor+progress.armorBonus,
     equipment:{weapon:gear.weapon,armor:gear.vest},
