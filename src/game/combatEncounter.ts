@@ -7,6 +7,8 @@
  * happen in one deterministic pipeline, independent of Babylon/UI.
  */
 export const COMBAT_STEP_SECONDS = 1 / 60;
+/** Temporary live encounter limit; shared by the boss scheduler and save boundary. */
+export const PARTY_BOSS_MAX_SECONDS = 90;
 
 export interface EncounterFrame<Cue> {
   readonly cues: Cue[];
