@@ -24,7 +24,7 @@ import {rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlaceme
 import {wallPortraitProblem,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 import {wallClockProblem,type WallClockPlacement} from "./wallClockPlacement.ts";
 import {bedroomFurnitureProblem,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
-import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
+import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,WORLD_TICKS_PER_DAY,
   MAX_PENDING_WORLD_EVENTS,compareScheduledWorldEvents,
   type ScheduledWorldEvent } from "./worldClock.ts";
 import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
@@ -516,7 +516,7 @@ function validateLiveCombatCheckpoints(
       fail(path+".combatTick","must be zero without active combat");
     return;
   }
-  if(combatTick<lastStepTick||combatTick>clockTick)
+  if(combatTick<lastStepTick-LIVE_COMBAT_INTERVAL_TICKS||combatTick>clockTick)
     fail(path+".combatTick","does not follow the active expedition step");
   const known=new Set<string|number>();
   const sites=new Set<string|number>();
@@ -526,13 +526,14 @@ function validateLiveCombatCheckpoints(
       "id","startedTick","encounter","heroIds","arrivals","state","frames",
     ]);
     const started=integer(battle.startedTick,cp+".startedTick",
-      firstWorldTickOfDay(day),lastStepTick);
+      0,lastStepTick);
+    const startedDay=Math.floor(started/WORLD_TICKS_PER_DAY)+1;
     // A bounded ordinary encounter can survive more than one 10-second
     // movement event while other heroes continue exploring. Require an
     // actual historical movement cadence, not the latest movement tick.
     // The exact combat age, identity, frames and actors are checked below.
-    if(started<firstWorldTickOfDay(day)+DUNGEON_STEP_INTERVAL_TICKS||
-      (lastStepTick-started)%DUNGEON_STEP_INTERVAL_TICKS!==0||
+    if(started<firstWorldTickOfDay(startedDay)+DUNGEON_STEP_INTERVAL_TICKS||
+      (startedDay===day&&(lastStepTick-started)%DUNGEON_STEP_INTERVAL_TICKS!==0)||
       (combatTick-started)%LIVE_COMBAT_INTERVAL_TICKS!==0)
       fail(cp+".startedTick","must identify a committed movement tick on the active combat clock");
     const encounter=object(battle.encounter,cp+".encounter",[
@@ -550,7 +551,7 @@ function validateLiveCombatCheckpoints(
     if(typeof encounter.elite!=="boolean")
       fail(cp+".encounter.elite","must be boolean");
     unique(floor+":"+featureId,sites,cp+".encounter.featureId");
-    if(battle.id!=="battle:"+day+":"+started+":"+floor+":"+featureId)
+    if(battle.id!=="battle:"+startedDay+":"+started+":"+floor+":"+featureId)
       fail(cp+".id","must be the canonical live battle identity");
 
     const roster=array(state.adventurers,cp+".adventurers") as RecordValue[];
@@ -589,7 +590,7 @@ function validateLiveCombatCheckpoints(
       fail(cp+".arrivals","must retain each real party member's approach");
     arrivals.forEach((rawArrival,i)=>{
       const ap=cp+".arrivals["+i+"]";
-      validateSpatialDungeonReplay(rawArrival,ap,members[i].id,day,
+      validateSpatialDungeonReplay(rawArrival,ap,members[i].id,startedDay,
         state.seed as number,floor,new Set(roster.map(x=>x.id as string)));
       const r=rawArrival as RecordValue;
       const steps=r.steps as {x:number;z:number;action:string;featureId?:string}[];
