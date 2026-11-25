@@ -267,15 +267,11 @@ export function prepareSpatialDungeonCombat(
       ...(elite?{meleeAbility:"heavy" as const}:{}),
     });
   }
-  const obstacles=[];
-  for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){
-    if(tileAt(layout,monster.x+dx,monster.z+dz)!=="wall")continue;
-    const x=dx*2.5,z=dz*2.5;
-    obstacles.push({id:"wall:"+dx+":"+dz,
-      minX:x-1.2,maxX:x+1.2,minZ:z-1.2,maxZ:z+1.2});
-  }
+  // Encounters use the open Crypt stage, not the dungeon's navigation grid.
+  // The grid still controls approach, encounter identity, pack and spawn
+  // selection; invisible tile walls must never block arena combat.
   return {elite,options:{
-    actors:specs,obstacles,
+    actors:specs,obstacles:[],
     bounds:{minX:-8.75,maxX:8.75,minZ:-8.75,maxZ:8.75},
   }};
 }
