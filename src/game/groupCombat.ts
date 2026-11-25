@@ -33,8 +33,7 @@ import {
  * MVP 1.2b: a deterministic, render-independent multi-actor encounter motor.
  * Future dungeon exploration supplies positions and an arena. Neither this
  * module nor its replay ever mutates the merchant GameState or browser scene.
- * The Level-6 visual boss ability driver remains specialized while its
- * damage and healing now share the exact same HP rules as these encounters.
+ * Ability timing and arena terrain are inputs to this single motor.
  */
 export type CombatTeam = "heroes" | "monsters";
 export type GroupRole = "tank" | "DPS" | "healer" | "monster";
@@ -336,32 +335,24 @@ function move(s: GroupCombatState, a: GroupActor, dx: number, dz: number): void 
   a.x=result.x;a.z=result.z;
   a.distanceTraveled+=result.distance;
 }
-/** Skillful heroes keep a real lane around a unique boss instead of
- * standing still within a 6-metre smash arc. Move through the same collision
- * authority as every dungeon fighter; the camera invents no coordinates. */
-function circleSignatureBoss(
-  s:GroupCombatState,a:GroupActor,boss:GroupActor,dt:number,
+/** Shared approach/withdrawal. Arena hazards are properties of terrain,
+ * not of the enemy. A hero never receives an opponent-specific orbit. */
+function moveForPosture(
+  s:GroupCombatState,a:GroupActor,enemy:GroupActor,
+  posture:{approach:boolean;withdraw:boolean},dt:number,
 ):void{
-  const dx=boss.x-a.x,dz=boss.z-a.z;
-  const gap=Math.hypot(dx,dz);
-  if(gap<.001)return;
-  const towardX=dx/gap,towardZ=dz/gap;
-  const wanted=a.style==="ranged"?8:Math.max(a.radius+boss.radius+.1,a.reach+boss.radius-.4);
-  const radial=gap>wanted+.4?1:gap<wanted-.35?-1:0;
-  const orbit=((a.id.charCodeAt(a.id.length-1)||0)&1)?1:-1;
-  const tangentX=-towardZ*orbit,tangentZ=towardX*orbit;
-  // Keep enough of the approach vector to close and to attack the boss.
-  let vx=tangentX*.54+towardX*radial;
-  let vz=tangentZ*.54+towardZ*radial;
+  const heading=combatDirection(a,enemy);
+  const sign=posture.approach?1:posture.withdraw?-1:0;
+  if(!sign)return;
+  let vx=heading.x*sign,vz=heading.z*sign;
   const fromCenter=Math.hypot(a.x,a.z);
-  if(s.environment==="cave-lava"&&fromCenter>12.5){
+  if(a.team==="heroes"&&s.environment==="cave-lava"&&fromCenter>12.5){
     const w=Math.min(1,(fromCenter-12.5)/2.4);
     vx=vx*(1-w)-a.x/fromCenter*w*1.6;
     vz=vz*(1-w)-a.z/fromCenter*w*1.6;
   }
   const length=Math.hypot(vx,vz);
-  if(length<.00001)return;
-  move(s,a,vx/length*a.speed*dt,vz/length*a.speed*dt);
+  if(length>1e-8)move(s,a,vx/length*a.speed*dt,vz/length*a.speed*dt);
 }
 function phase(a: GroupActor, next: GroupPhase): void {
   enterCombatActorPhase(a,next);
@@ -418,34 +409,27 @@ function groupMeleeTiming(a:GroupActor){
     ?{...profile,windupSeconds:.46}:profile;
 }
 
-/** A shared boss telegraph threatens at the same authored lead-in as its
- * solo duel. Standard ordinary/heavy threats keep their v1 timing. */
+/** Threats follow the actual committed contact target and ability geometry.
+ * All currently authored attacks are single-target, including the Troll
+ * slam. A future area attack must use the same target set for warning and
+ * contact, rather than infer area damage from the identity of its owner. */
 function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor | null {
   return s.actors.find(other => {
-    if(other.team===defender.team||other.hp<=0||
-       other.phase!=="windup")return false;
-    const isSignature=other.specialAbility==="grapple-throw";
-    const signature=isSignature?trollSignatureProfile(
-      fromTrollGroupAbility(other.activeMeleeAbility as TrollGroupMelee)):null;
-    // Defense contact windows are 0.10–0.36s for parry and 0.09–0.43s
-    // for roll. Reacting a quarter-second before windup ends means the
-    // parry has EXPIRED by the 0.14s smash impact (or 0.30s grab impact).
-    // This is the same late committed warning used in the authored duel.
-    // A regular attack only contacts its committed target. Do not burn
-    // stamina reacting to someone else's strike or through a wall.
-    if(!isSignature&&(other.targetId!==defender.id||!lineClear(s,other,defender)))
-      return false;
-    const profile=groupMeleeTiming(other);
-    const lead=signature
-      ?Math.max(.20,signature.windupSeconds-
-        (signature.attack==="grab"?.04:.15))
-      :profile.windupSeconds+profile.strikeDelaySeconds-.24;
-    const range=signature?signature.reach:
-      other.reach+(other.meleeAbility==="heavy"?.35:0);
+    if(other.team===defender.team||other.hp<=0||other.phase!=="windup"||
+      other.targetId!==defender.id||!lineClear(s,other,defender))return false;
+    const action=other.activeMeleeAbility;
+    const signature=action==="grapple"||action==="troll-smash"||action==="troll-slam"
+      ?trollSignatureProfile(fromTrollGroupAbility(action)):null;
+    const timing=groupMeleeTiming(other);
+    const contact=meleeAbilityProfile(action,other.reach+defender.radius);
+    const windup=signature?.windupSeconds??timing.windupSeconds;
+    const delay=signature?.contactSeconds??timing.strikeDelaySeconds;
+    // Keep the response close enough to actual contact for both active
+    // defense windows, but still allow reaction before the windup ends.
+    const lead=Math.max(.20,Math.min(windup-.04,windup+delay-.24));
     return other.phaseAge>=lead&&
-      distance(other,defender)<range+defender.radius+.8&&
       inAttackArc(other,other.lockedHeading,defender,
-        range+defender.radius+1,signature?1.3:1.1);
+        contact.reach+.8,contact.halfAngleRadians+.2);
   })??null;
 }
 function tryStrike(s: GroupCombatState, attacker: GroupActor,
@@ -706,16 +690,11 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       const chosen=special?trollSignatureProfile(special):null;
       const action=chosen?.groupAbility??a.meleeAbility;
       const posture=chooseCombatPosture({
-        distance:gap,ready:a.cooldown===0&&a.stamina>=13&&
-          // Troll chooses to close the physical gap before beginning a
-          // signature move, so a real 5.1m grab can occur instead of
-          // eternally opening at the 5.78m smash maximum.
-          !(a.specialAbility==="grapple-throw"&&gap>4.8),
+        distance:gap,ready:a.cooldown===0&&a.stamina>=13,
         clearShot:lineClear(s,a,enemy),
-        attackRange:ranged?11:chosen?.reach??a.reach+enemy.radius,
-        approachBeyond:ranged?7:chosen?
-          Math.max(3.15,chosen.reach-1.7):
-          a.reach+enemy.radius-.20,
+        attackRange:ranged?11:meleeAbilityProfile(action,a.reach+enemy.radius).reach,
+        approachBeyond:ranged?7:Math.max(a.radius+enemy.radius+.02,
+          meleeAbilityProfile(action,a.reach+enemy.radius).reach-.20),
         ...(ranged?{withdrawWithin:4.5}:{}),
       });
       if(posture.attack){
@@ -732,22 +711,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         phase(a,ranged?"cast":"windup");
         cue(batch,s,a,ranged?"cast":"attack",enemy.id);
       }else{
-        if(a.team==="heroes"&&a.style==="melee"&&enemy.specialAbility==="grapple-throw"){
-          circleSignatureBoss(s,a,enemy,dt);
-        }else{
-          const heading=combatDirection(a,enemy);
-          if(posture.approach){
-            if(a.specialAbility==="grapple-throw"){
-              // Same slow turning pressure as the authored solo boss.
-              const tangentX=-heading.z,tangentZ=heading.x;
-              const length=Math.hypot(heading.x*3.25+tangentX*.45,
-                heading.z*3.25+tangentZ*.45);
-              move(s,a,(heading.x*3.25+tangentX*.45)/length*a.speed*dt,
-                (heading.z*3.25+tangentZ*.45)/length*a.speed*dt);
-            }else move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
-          }else if(posture.withdraw)
-            move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
-        }
+        moveForPosture(s,a,enemy,posture,dt);
       }
     }
   } else if (a.phase === "windup") {
