@@ -1,7 +1,7 @@
 import {sampleCinematicTrack,type CinematicFrame,
   type CinematicKeyframe,type CinematicVec3} from "./combatCinematic.ts";
 import type {CombatantSpec,GroupReplayFrame} from "./groupCombat.ts";
-import {BOSS_INTRO_SECONDS} from "./bossCinematic.ts";
+export const BOSS_INTRO_SECONDS=13.5;
 
 /** Two genuinely different, presentation-only film treatments.
  * Normal fights enter quickly; authored bosses are revealed deliberately.
