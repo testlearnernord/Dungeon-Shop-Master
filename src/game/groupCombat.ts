@@ -688,7 +688,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         };
         if(!clear(sign)&&clear(-sign))sign=-sign;
       }
-      a.rollX=-escape.z*sign;a.rollZ=escape.x*sign;
+      // JSON has only one zero; canonicalize signed zero at the source.
+      a.rollX=(-escape.z*sign)||0;a.rollZ=(escape.x*sign)||0;
       phase(a,"roll");
     }
     const friend = healingTarget(s,a);
