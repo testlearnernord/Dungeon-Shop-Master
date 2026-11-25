@@ -41,6 +41,7 @@ import {setupHeroBuybackHud} from "./heroBuybackHud.ts";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import {setupWorldEventFeed} from "./worldEventFeedHud.ts";
+import {BOSS_INTRO_SECONDS,GROUP_COMBAT_INTRO_SECONDS} from "./game/groupCombatIntro.ts";
 import {WorldHeroCards} from "./worldHeroCards.ts";
 import {findCommittedDeathFootage} from "./game/deathFootage.ts";
 import { setupMerchantLedger, type MerchantLedger } from "./merchantLedger.ts";
@@ -442,9 +443,11 @@ const arena = new CombatLabController(engine, canvas, camera, store, (active) =>
 },sfx);
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
-}, (observingFight,bossFight)=>{
+}, (observingFight,bossFight,live)=>{
   soundtrack.setScene(observingFight
-    ?bossFight?"boss":"combat":"dungeon");
+    ?bossFight?"boss":"combat":"dungeon",observingFight
+      ?live?(bossFight?BOSS_INTRO_SECONDS:GROUP_COMBAT_INTRO_SECONDS):0
+      :undefined);
 }, seconds=>soundtrack.skipCombatIntro(seconds),sfx);
 const observationTransition=new ObservationTransitionDirector(
   scene,camera,canvas,tableVisuals,dungeon,store,()=>isShopActive());
