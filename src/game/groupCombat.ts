@@ -408,30 +408,17 @@ function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | nul
     a.hp/a.maxHp - b.hp/b.maxHp || a.id.localeCompare(b.id));
   return candidates[0] ?? null;
 }
-/** Keep ordinary pack impacts readable for the same defender. A Ghoul
- * waits before committing a new attack, never after the windup starts.
- * The reservation is derived from actual saved phases: interruption or
- * death releases it immediately. No new clock, RNG or saved queue.
- */
-const PACK_IMPACT_GAP_SECONDS=.70;
-function ordinaryPackCanStart(s:GroupCombatState,actor:GroupActor,target:GroupActor):boolean{
-  if(actor.team!=="monsters"||actor.style!=="melee"||actor.specialAbility)
-    return true;
-  const own=meleeAbilityProfile(actor.meleeAbility,actor.reach);
-  const ownContact=own.windupSeconds+own.strikeDelaySeconds;
-  return !s.actors.some(other=>{
-    if(other===actor||other.team!==actor.team||other.hp<=0||
-      other.style!=="melee"||other.specialAbility||other.targetId!==target.id)
-      return false;
-    const profile=meleeAbilityProfile(other.activeMeleeAbility,other.reach);
-    const pending=other.phase==="windup"
-      ?Math.max(0,profile.windupSeconds-other.phaseAge)+profile.strikeDelaySeconds
-      :other.phase==="strike"&&!other.applied
-        ?Math.max(0,profile.strikeDelaySeconds-other.phaseAge):null;
-    // Include one fixed-step margin because canonical actor updates are
-    // sequential within a tick. Other targets remain independent.
-    return pending!==null&&ownContact-pending<PACK_IMPACT_GAP_SECONDS+COMBAT_STEP_SECONDS;
-  });
+/** An ordinary spear fighter's thrust has a shorter preparation than a
+ * generic swing. Derive eligibility from existing combatant attributes;
+ * the unique boss retains its authored combat timing. */
+function ordinarySpearFighter(s:GroupCombatState,a:GroupActor):boolean{
+  return a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
+    a.reach>=2.1&&!s.actors.some(actor=>actor.specialAbility==="grapple-throw");
+}
+function groupMeleeTiming(s:GroupCombatState,a:GroupActor){
+  const profile=meleeAbilityProfile(a.meleeAbility,a.reach);
+  return ordinarySpearFighter(s,a)&&a.meleeAbility==="ordinary"
+    ?{...profile,windupSeconds:.46}:profile;
 }
 
 /** A shared boss telegraph threatens at the same authored lead-in as its
@@ -451,7 +438,7 @@ function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor |
     // stamina reacting to someone else's strike or through a wall.
     if(!isSignature&&(other.targetId!==defender.id||!lineClear(s,other,defender)))
       return false;
-    const profile=meleeAbilityProfile(other.meleeAbility);
+    const profile=groupMeleeTiming(s,other);
     const lead=signature
       ?Math.max(.20,signature.windupSeconds-
         (signature.attack==="grab"?.04:.15))
@@ -618,7 +605,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   let window:CombatActionWindow={};
   if(a.phase==="windup"){
     window={completeAt:signature?.windupSeconds??
-      meleeAbilityProfile(a.meleeAbility,a.reach).windupSeconds};
+      groupMeleeTiming(s,a).windupSeconds};
   }else if(a.phase==="strike"){
     const skill=meleeAbilityProfile(a.activeMeleeAbility,a.reach);
     window={contactAt:signature?.contactSeconds??skill.strikeDelaySeconds,
@@ -706,7 +693,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       if(a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
         !s.actors.some(actor=>actor.specialAbility==="grapple-throw")){
         const clear=(side:number)=>{
-          for(const offset of [.5,1,1.5,2]){
+          for(const offset of (ordinarySpearFighter(s,a)?[.5,1,1.4]:[.5,1,1.5,2])){
             if(!movementAllowed(s,a,a.x-escape.z*side*offset,
               a.z+escape.x*side*offset))return false;
           }
@@ -740,7 +727,6 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       const action=chosen?.groupAbility??a.meleeAbility;
       const posture=chooseCombatPosture({
         distance:gap,ready:a.cooldown===0&&a.stamina>=13&&
-          ordinaryPackCanStart(s,a,enemy)&&
           // Troll chooses to close the physical gap before beginning a
           // signature move, so a real 5.1m grab can occur instead of
           // eternally opening at the 5.78m smash maximum.
@@ -857,7 +843,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     // window. A shorter ordinary DPS sidestep preserves attack proximity.
     // Do not change ranged kiting or the authored boss evasions.
     const speed=a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
-      !s.actors.some(actor=>actor.specialAbility==="grapple-throw")?4.2:7.8;
+      !s.actors.some(actor=>actor.specialAbility==="grapple-throw")?(ordinarySpearFighter(s,a)?2.8:4.2):7.8;
     move(s,a,a.rollX*speed*dt,a.rollZ*speed*dt);
     if (tick.complete) phase(a,"move");
   } else if (a.phase === "parry") {
