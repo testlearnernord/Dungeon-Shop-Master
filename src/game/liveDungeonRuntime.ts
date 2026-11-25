@@ -24,7 +24,7 @@ import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
   type GroupReplayFrame,type GroupCombatOptions} from "./groupCombat.ts";
 import {caveTrollPartyOptions} from "./sharedBossCombat.ts";
 import {canAttemptCaveTroll,CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
-import {REPLAY_MAX_SECONDS} from "./bossCombatReplay.ts";
+import {PARTY_BOSS_MAX_SECONDS} from "./combatEncounter.ts";
 import {returnUnpaidCartsAtClose} from "./shopCarts.ts";
 import {scheduleShopVisit} from "./shopArrivals.ts";
 import {commitShopRequestEvent} from "./shopRuntime.ts";
@@ -409,7 +409,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
           const living=crossing.every(member=>member.health>0);
           const partyValid=hasSavedParty&&fullCrossing&&allowedParty&&living&&
             !partyBossCombat&&!clearedLevel10;
-          const hasTime=tick+REPLAY_MAX_SECONDS*20+
+          const hasTime=tick+PARTY_BOSS_MAX_SECONDS*20+
             SHOP_PORTAL_TRANSIT_TICKS<=lastWorldTickOfDay(day);
           diagnostic?.({stage:"boss-crossing",day,tick,floor,heroId:hero.id,
             memberIds:participants.map(member=>member.id),checks:{
@@ -921,7 +921,7 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
   let partyBossContinuing:LivePartyBossCombat|null=null;
   const partyBoss=state.liveDungeon.partyBossCombat;
   if(partyBoss){
-    const {combat,frames,newDeaths}=advanceLiveEncounter(partyBoss,REPLAY_MAX_SECONDS);
+    const {combat,frames,newDeaths}=advanceLiveEncounter(partyBoss,PARTY_BOSS_MAX_SECONDS);
     for(const id of newDeaths){
       const hero=byId.get(id);
       if(!hero)throw new RangeError("Boss fighter has no original hero.");
