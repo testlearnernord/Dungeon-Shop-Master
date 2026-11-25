@@ -21,7 +21,7 @@ import { NpcVisualSystem } from "./game/npcVisualSystem";
 import { manuallyPaidVisitors,type VisitorSnapshot } from "./game/npcVisitors.ts";
 import { forecastShoppingIntents } from "./game/shopperIntents.ts";
 import { setupNpcTrafficDebug } from "./game/npcTrafficDebug.ts";
-import { Level6Arena } from "./game/level6Arena";
+import { CombatLabController } from "./game/combatLabController.ts";
 import { DungeonViewer } from "./game/dungeonViewer";
 import {ObservationTransitionDirector} from "./game/observationTransitionDirector.ts";
 import { createRosterBoard } from "./game/rosterBoard";
@@ -435,13 +435,11 @@ const soundtrack = setupSoundtrack();
 const sfx = setupGameSfx();
 fishing=setupFishingHud(canvas,camera,scene,store,sfx);
 const cashierSfx=createCashierSfx(()=>sfx.soundEnabled,()=>sfx.soundVolume);
-const arena = new Level6Arena(engine, canvas, camera, store, (active) => {
+const arena = new CombatLabController(engine, canvas, camera, store, (active) => {
   soundtrack.setArenaMix(active);
   sfx.setArenaMix(active);
   soundtrack.setScene(active ? "boss" : "shop");
-},()=>soundtrack.bossPlaybackSeconds,
-  ()=>soundtrack.restartBossTheme(),
-  seconds=>soundtrack.skipBossIntro(seconds),sfx);
+},sfx);
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
 }, (observingFight,bossFight)=>{
