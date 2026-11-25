@@ -1,6 +1,6 @@
 # Floor LIVE Spectator — current contract
 
-> Current contract: Alpha v44 (Autonomous Boss Progression). Current read-only projection contract.
+> Current contract: Alpha v45 (Elective Resupply). Current read-only projection contract.
 
 ## One source of truth
 

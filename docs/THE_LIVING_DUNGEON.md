@@ -1,6 +1,6 @@
 # The Living Dungeon — design contract
 
-> Current contract: Alpha v44 (Autonomous Boss Progression). Current design contract. See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v45 (Elective Resupply). Current design contract. See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
 
 ## The experience
 
@@ -24,7 +24,7 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 | **Floor 10** | One Cave Troll encounter entered only by an actual saved, authorized 2–3-hero Temporary Party at the lower stair of Floor 9. Shared group combat at 60 Hz, bounded recordings, boss event and actual outcome |
 | **Galvik's cursed shop** | A separate *unnumbered* realm accessible by the return option. One normal physical portal/threshold for shop traffic; do not label it Dungeon Floor 5 |
 
-Alpha v44 is the only supported campaign schema. Reject v43 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. Floor-10 willingness is evaluated from current preparation, not a saved permission field. The solo boss, old day motor and abstract loot counter are retired.
+Alpha v45 is the only supported campaign schema. Reject v44 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. Floor-10 willingness is evaluated from current preparation, not a saved permission field. The solo boss, old day motor and abstract loot counter are retired.
 
 ## V0.004 A–D monster-world (merged in #336–339)
 
@@ -77,7 +77,7 @@ Autonomous heroes and co-located Temporary Parties may flee on actual adjacent t
 ## Remaining Alpha acceptance
 
 1. 10-day hands-on campaign: shops, customers, hero identities, combat and return cycles remain intelligible and fun.
-2. Review the completed campaign and controlled matrix evidence in [Alpha acceptance](ALPHA_V44_ACCEPTANCE.md). No new general audit unless justified.
+2. Review the completed campaign and controlled matrix evidence in [Alpha acceptance](ALPHA_V45_ACCEPTANCE.md). No new general audit unless justified.
 3. Legitimate *in-world* Floor-9-to-10 party attempt, recovered/replayed after strict Save/Load, with no second combat simulation.
 4. Actual browser NPC walking, one-portal access, cashier traffic, credit/request deadlines and cellar traversal through real obstacles.
 5. Real-device combat animation, sounds, camera/focus, HUD and frame pacing evaluated independently from green CI.
@@ -91,3 +91,7 @@ A visible evasive response records the last seen pack tile and observation tick 
 ### Autonomous boss progression (v44)
 
 The existing Floor-9 rendezvous, physical staircase, saved party and shared 60 Hz boss motor are retained. The willingness policy requires actual class weapon and (except reckless heroes) armor; minimum levels 7/6/5, HP ratios .85/.75/.65, and readiness scores 9/8/7 for careful/ordinary/reckless respectively. Score is the existing ordinary readiness (level + armor + forged weapon + owned bread/herb + reckless trait), plus forged armor. Careful takes priority over reckless for thresholds. A group may seek the real stair only when all members independently qualify; crossing rechecks current preparation. These are starting tuning values, not final balance or combat bonuses. Galvik influences preparation via real purchases, not permission.
+
+### Elective resupply (v45)
+
+A level-4+ hero with at least 65% HP can consider replacing owned, compatible T1 equipment with T2 using the canonical purchasing order and catalog price. Reserve the price of a loaf when no healing supplies are owned. Only a real loot reward or a completed route can trigger this deliberate trip. The saved `lastShopExitTick` is written exclusively at an observed outer-gate crossing; the minimum elective revisit interval is 7200 world ticks (six unpaused minutes). Genuine emergency resupply and new-haul decisions are independent. Existing ready boss parties retain priority. After the boss is cleared, an exhausted Floor-9 route plus the existing material-haul threshold also motivates a return. Actual travel, buyback and purchases use existing systems; no hidden stock knowledge or guaranteed availability.

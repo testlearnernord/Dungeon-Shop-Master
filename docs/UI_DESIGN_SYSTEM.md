@@ -83,7 +83,7 @@ The magical wall board is an operational LIVE glance, not a second archive or an
 
 The E/R roster keeps the shared Hero Card renderer. Expanded entries span the full row rather than stretching the adjacent card; the summary becomes a collapse control instead of duplicating the expanded identity. Empty slots use role-appropriate muted art and explicit names. All current heroes share the same information policy. The roster is read-only with respect to expedition willingness; the former merchant permission controls are removed. Current facts do not grant hero AI omniscience; historical footage and event signals remain authentic and separate. No campaign writes from presentation except existing explicit merchant actions.
 
-The nightly book contains merchant accounts, not a second hero roster. Alpha v44 only, no save migration. See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
+The nightly book contains merchant accounts, not a second hero roster. Alpha v45 only, no save migration. See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 
 - **One portal visual and service contract:** current normal customer arrivals
   and exits share one cursed doorway in the physical shop. Retained
