@@ -12,7 +12,6 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
   const save="Saved Day 1.";
   await page.locator("#open-arena").click();
-  await page.locator("#arena-lab-toggle").click();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-dev-lab","true");
   await expect(page.locator("#arena-lab-panel")).toBeVisible();
   await page.locator("#lab-enemy").selectOption("ghoul");
@@ -91,9 +90,8 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   await expect(page.locator("#arena-model-clip option")).toHaveCount(15);
   await page.locator("#arena-model-toggle").click();
   await expect(page.locator("#arena-lab-panel")).toBeVisible();
-  await page.locator("#arena-lab-toggle").click();
-  await expect(page.locator("#arena-hud")).toHaveAttribute("data-dev-lab","false");
-  await expect(page.locator("#arena-cinematic")).toBeVisible();
+  await expect(page.locator("#arena-hud")).toHaveAttribute("data-dev-lab","true");
+  await expect(page.locator("#arena-cinematic")).toHaveCount(0);
   await page.locator("#close-arena").click();
   await expect(page.locator("#merchant-gold")).toHaveText(gold!);
   await expect(page.locator("#save-status")).toHaveText(save!);
