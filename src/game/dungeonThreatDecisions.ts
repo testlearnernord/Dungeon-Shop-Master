@@ -1,16 +1,18 @@
 import type {AdventurerState} from "./adventurers.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {equipmentEffects,gearFromName} from "./gearCatalog.ts";
-import {dungeonNeighbors,type DungeonLayout,type DungeonPoint}
+import {dungeonNeighbors,dungeonDownStair,type DungeonLayout,type DungeonPoint}
   from "./dungeonLayout.ts";
-import {getSpatialDungeonProgress,chooseKnownRouteStep,
+import {getSpatialDungeonProgress,chooseKnownRouteStep,chooseSpatialDungeonStep,chooseDungeonTransitionRoute,
   type SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
-import {hasDungeonLineOfSight} from "./heroPerception.ts";
+import {hasDungeonLineOfSight,dungeonCurrentSight} from "./heroPerception.ts";
 import {MONSTER_SIGHT_RADIUS,type DungeonMonsterState} from "./dungeonMonsterWorld.ts";
 import {observedGhoulPackSize,isEliteGhoulSite} from "./ghoulPack.ts";
 
+import {DUNGEON_STEP_INTERVAL_TICKS} from "./dungeonPacing.ts";
+
 export type DungeonThreatAction="ESCAPING"|"BREAKING_LOS"|
-  "PREPARING_TO_FIGHT"|"SEEKING_SUPPORT";
+  "PREPARING_TO_FIGHT"|"SEEKING_SUPPORT"|"AVOIDING_THREAT"|"WAITING_FOR_SAFETY";
 export interface DungeonThreatReaction {
   readonly action:DungeonThreatAction;
   readonly monsterId:string;
@@ -153,4 +155,67 @@ export function chooseDungeonThreatReaction(
       return score(b)-score(a)||compare(a,b);
     })[0];
   return safer?{action:"BREAKING_LOS",monsterId:monster.id,step:safer}:null;
+}
+
+/** Only a personally seen location, never a live hidden pack locator. */
+export interface DungeonThreatMemory extends DungeonPoint {
+  readonly monsterId:string;
+  readonly seenTick:number;
+}
+export const THREAT_MEMORY_TICKS=20*DUNGEON_STEP_INTERVAL_TICKS;
+export interface RememberedThreatReaction {
+  readonly action:"AVOIDING_THREAT"|"WAITING_FOR_SAFETY";
+  readonly monsterId:string;
+  readonly step:DungeonPoint|null;
+  readonly retreatUp:boolean;
+}
+export function recentDungeonThreat(
+  memories:readonly (DungeonThreatMemory|undefined)[],tick:number,
+):DungeonThreatMemory|undefined{
+  return memories.filter((m):m is DungeonThreatMemory=>!!m&&
+    m.seenTick<=tick&&tick-m.seenTick<THREAT_MEMORY_TICKS)
+    .sort((a,b)=>b.seenTick-a.seenTick||a.monsterId.localeCompare(b.monsterId))[0];
+}
+
+/** Share only memories of co-located companions. Use the existing known
+ * route and frontier search with the last observed danger zone excluded.
+ * If the goal is blocked, explore safely, retreat upstairs or wait to
+ * reassess. No new movement authority, hidden location or forced combat. */
+export function chooseRememberedThreatReaction(
+  layout:DungeonLayout,world:SpatialDungeonWorld,group:readonly AdventurerState[],
+  memory:DungeonThreatMemory|undefined,target:DungeonPoint|undefined,returning=false,
+):RememberedThreatReaction|null{
+  if(!memory||!group.length)return null;
+  // A sufficiently healthy armed group can reconsider a former solo threat.
+  if(!returning&&group.length>1&&group.every(h=>h.health/heroProgression(h).maxHealth>.70)&&
+    group.some(h=>!!equipmentEffects(h.role,h.equipment).weapon))return null;
+  const progress=group.map(h=>getSpatialDungeonProgress(world,h.id,layout));
+  const current=progress[0];
+  const avoided=dungeonCurrentSight(layout,memory,MONSTER_SIGHT_RADIUS);
+  const shared={...current,visited:[...new Set(progress.flatMap(p=>p.visited))]};
+  const result=(step:DungeonPoint|null,retreatUp=false):RememberedThreatReaction=>({
+    action:step?"AVOIDING_THREAT":"WAITING_FOR_SAFETY",monsterId:memory.monsterId,step,retreatUp,
+  });
+  const desired=returning?layout.entrance:target;
+  if(desired){
+    const route=chooseDungeonTransitionRoute(layout,progress,desired,avoided);
+    if(route.step)return result(route.step);
+  }else{
+    const frontier=chooseSpatialDungeonStep(layout,shared,avoided);
+    if(frontier)return result(frontier);
+  }
+  // Prefer a physically known safe upper exit rather than trying the same
+  // blocked descent again. A shop-bound explorer retains its original trip.
+  if(!returning&&layout.floor>1){
+    const up=chooseKnownRouteStep(layout,shared,layout.entrance,avoided);
+    if(up)return result(up,true);
+  }
+  // If still inside the remembered exposure zone, step farther away rather
+  // than returning toward the last observed danger. Never fabricate a path.
+  const away=dungeonNeighbors(layout,current).filter(p=>
+    distance(p,memory)>distance(current,memory))
+    .sort((a,b)=>Number(avoided.has(a.z*layout.width+a.x))-
+      Number(avoided.has(b.z*layout.width+b.x))||distance(b,memory)-distance(a,memory)||compare(a,b))[0];
+  if(avoided.has(current.z*layout.width+current.x)&&away)return result(away);
+  return result(null);
 }

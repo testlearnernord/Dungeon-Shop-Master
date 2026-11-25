@@ -113,10 +113,11 @@ const byPoint = (a: DungeonPoint,b: DungeonPoint) => a.z-b.z||a.x-b.x;
  */
 export function chooseSpatialDungeonStep(
   layout: DungeonLayout, progress: SpatialDungeonHeroProgress,
+  avoided:ReadonlySet<number>=new Set(),
 ): DungeonPoint | null {
   const current = {x:progress.x,z:progress.z};
   const known = new Set(progress.visited);
-  const adjacent = dungeonNeighbors(layout,current).sort(byPoint);
+  const adjacent = dungeonNeighbors(layout,current).filter(p=>!avoided.has(tileIndex(layout,p))).sort(byPoint);
   const newNeighbor = adjacent.find(p=>!known.has(tileIndex(layout,p)));
   if(newNeighbor)return newNeighbor;
   // One BFS over visited tiles, not a shortest-path search for each frontier.
@@ -126,7 +127,7 @@ export function chooseSpatialDungeonStep(
   const parent=new Map<number,number>([[start,start]]);
   for(let i=0;i<queue.length;i++){
     const idx=queue[i],here={x:idx%layout.width,z:Math.floor(idx/layout.width)};
-    const neighbors=dungeonNeighbors(layout,here).sort(byPoint);
+    const neighbors=dungeonNeighbors(layout,here).filter(p=>!avoided.has(tileIndex(layout,p))).sort(byPoint);
     if(idx!==start && neighbors.some(n=>!known.has(tileIndex(layout,n)))){
       let toward=idx;
       while(parent.get(toward)!==start)toward=parent.get(toward)!;
@@ -350,6 +351,7 @@ export interface PreparedSpatialEncounter {
  */
 export function chooseKnownRouteStep(
   layout:DungeonLayout,progress:SpatialDungeonHeroProgress,target:DungeonPoint,
+  avoided:ReadonlySet<number>=new Set(),
 ):DungeonPoint|null {
   const start=tileIndex(layout,progress);
   const goal=tileIndex(layout,target);
@@ -362,7 +364,7 @@ export function chooseKnownRouteStep(
       z:Math.floor(here/layout.width)};
     for(const next of dungeonNeighbors(layout,location).sort(byPoint)){
       const cell=tileIndex(layout,next);
-      if(!known.has(cell)||parents.has(cell))continue;
+      if(!known.has(cell)||parents.has(cell)||avoided.has(cell))continue;
       parents.set(cell,here);queue.push(cell);
     }
   }
@@ -387,7 +389,7 @@ export interface DungeonTransitionRoute {
  * tile; hidden stair coordinates NEVER bias the frontier search. */
 export function chooseDungeonTransitionRoute(
   layout:DungeonLayout,progress:readonly SpatialDungeonHeroProgress[],
-  target:DungeonPoint,
+  target:DungeonPoint,avoided:ReadonlySet<number>=new Set(),
 ):DungeonTransitionRoute {
   if(!progress.length)return {kind:"blocked",step:null};
   const current=progress[0];
@@ -396,7 +398,7 @@ export function chooseDungeonTransitionRoute(
   if(current.x===target.x&&current.z===target.z)return {kind:"at-stair",step:null};
   const known=new Set(progress.flatMap(p=>p.visited));
   const shared={...current,visited:[...known]};
-  const walked=chooseKnownRouteStep(layout,shared,target);
+  const walked=chooseKnownRouteStep(layout,shared,target,avoided);
   if(walked)return {kind:"walked-route",step:walked};
 
   // Only inspect sight from actual walked viewpoints near the stair. This
@@ -415,13 +417,13 @@ export function chooseDungeonTransitionRoute(
     }
   }
   if(seen){
-    const route=chooseKnownRouteStep(layout,{...current,visited:[...observed]},target);
+    const route=chooseKnownRouteStep(layout,{...current,visited:[...observed]},target,avoided);
     if(route)return {kind:"observed-route",step:route};
   }
   // Until a route is observed, every step pursues the nearest reachable
   // unexplored frontier in the group's actual walked graph. Unlike voting
   // on independent maps, its distance decreases on each known transit edge.
-  const frontier=chooseSpatialDungeonStep(layout,shared);
+  const frontier=chooseSpatialDungeonStep(layout,shared,avoided);
   return frontier?{kind:"frontier",step:frontier}:{kind:"blocked",step:null};
 }
 

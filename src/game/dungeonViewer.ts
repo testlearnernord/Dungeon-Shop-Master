@@ -816,8 +816,14 @@ export class DungeonViewer {
     const cave=getDungeonSurfaces(scene);
     const rock=cave.stone;
     const floor=cave.floor;
-    const roomStone=cave.floor.clone("dungeon-room-flagstone") as StandardMaterial;
+    // DynamicTexture.clone does not guarantee copying its painted canvas.
+    // Use the same baked texture as corridors and Galvik's Table.
+    const roomStone=new StandardMaterial("dungeon-room-flagstone",scene);
+    roomStone.diffuseTexture=floor.diffuseTexture;
     roomStone.diffuseColor=new Color3(1.12,1.04,0.91);
+    roomStone.specularColor=floor.specularColor.clone();
+    roomStone.specularPower=floor.specularPower;
+    roomStone.ambientColor=floor.ambientColor.clone();
     const featurePaint=createDungeonFeaturePalette(scene);
     const ghoulIcon=createGhoulMapIconMaterial(scene);
     const ghoulMarkerMat=makeMat("dungeon-3d-ghoul-site-hitbox","#442d26");

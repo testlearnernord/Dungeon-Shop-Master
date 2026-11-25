@@ -819,7 +819,7 @@ function validateLivePlans(
   const roster=array(state.adventurers,"payload.adventurers") as RecordValue[];
   for(const [index,raw] of rawPlans.entries()){
     const path="payload.liveDungeon.plans["+index+"]";
-    const plan=object(raw,path,["heroId","floor","goal","action","updatedTick"]);
+    const plan=object(raw,path,["heroId","floor","goal","action","updatedTick"],["threatMemory"]);
     const id=text(plan.heroId,path+".heroId");
     unique(id,ids,path+".heroId");
     choice(plan.floor,[1,2,3,4,5,6,7,8,9],path+".floor");
@@ -828,6 +828,15 @@ function validateLivePlans(
       path+".goal");
     choice(plan.action,["stay","ascend","descend","shop"],path+".action");
     integer(plan.updatedTick,path+".updatedTick",0,clockTick);
+    if(plan.threatMemory!==undefined){
+      const m=object(plan.threatMemory,path+".threatMemory",["monsterId","x","z","seenTick"]);
+      const map=generateExpeditionLayout(state.seed as number,plan.floor as number);
+      const x=integer(m.x,path+".threatMemory.x",0,map.width-1);
+      const z=integer(m.z,path+".threatMemory.z",0,map.height-1);
+      if(map.tiles[z*map.width+x]==="wall"||!map.features.some(f=>f.kind==="monster"&&f.id===m.monsterId))
+        fail(path+".threatMemory","must identify a real pack site and a walkable observed tile");
+      integer(m.seenTick,path+".threatMemory.seenTick",0,clockTick);
+    }
     const hero=roster.find(h=>h.id===id);
     if(!enabled||!hero||hero.health===0||hero.floor!==plan.floor||
       hero.status!=="exploring")
