@@ -1,0 +1,54 @@
+name: Unified defense balance audit
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/game/combatTactics.ts'
+      - 'src/game/groupCombat.ts'
+      - 'tools/analysis/ordinary-balance-targets.mjs'
+      - '.github/workflows/unified-defense-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: unified-defense-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  compare:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'experiment/unified-defense-balance'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [7351, 42, 2026, 9321]
+        revision: [baseline, finite-defense]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          ref: '4410468e24655c5f4b21fdf656b8628a3c24ac58'
+          path: diagnostic
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision == 'baseline' && '8612adf8c470777485853f5b3bbe2986282cbf7d' || github.event.pull_request.head.sha || github.sha }}
+          path: subject
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run identical ordinary encounter fixtures against both motors
+        run: |
+          cp diagnostic/tools/analysis/{combat-horizon-audit,boss-readiness-matrix}.mjs subject/tools/analysis/
+          cp candidate/tools/analysis/ordinary-balance-targets.mjs subject/tools/analysis/
+          cd subject
+          npm ci --ignore-scripts
+          node --experimental-strip-types --test tests/unit/groupCombat.test.ts tests/unit/ghoulPackCombat.test.ts
+          node --experimental-strip-types tools/analysis/ordinary-balance-targets.mjs ${{ matrix.seed }} 1,3,5,7,8 horizon > ordinary-horizon.json
+          node --experimental-strip-types tools/analysis/boss-readiness-matrix.mjs ${{ matrix.seed }} horizon > boss-horizon.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: finite-defense-${{ matrix.revision }}-${{ matrix.seed }}
+          path: subject/*-horizon.json
+          retention-days: 14
