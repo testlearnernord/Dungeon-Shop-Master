@@ -1,12 +1,13 @@
 import type {AdventurerState} from "./adventurers.ts";
 import {heroProgression} from "./heroProgression.ts";
-import {equipmentEffects} from "./gearCatalog.ts";
+import {equipmentEffects,gearFromName} from "./gearCatalog.ts";
 import {dungeonNeighbors,type DungeonLayout,type DungeonPoint}
   from "./dungeonLayout.ts";
 import {getSpatialDungeonProgress,chooseKnownRouteStep,
   type SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 import {hasDungeonLineOfSight} from "./heroPerception.ts";
-import {MONSTER_SIGHT_RADIUS} from "./dungeonMonsterWorld.ts";
+import {MONSTER_SIGHT_RADIUS,type DungeonMonsterState} from "./dungeonMonsterWorld.ts";
+import {observedGhoulPackSize,isEliteGhoulSite} from "./ghoulPack.ts";
 
 export type DungeonThreatAction="ESCAPING"|"BREAKING_LOS"|
   "PREPARING_TO_FIGHT"|"SEEKING_SUPPORT";
@@ -19,6 +20,46 @@ export interface DungeonThreatReaction {
 const distance=(a:DungeonPoint,b:DungeonPoint)=>
   Math.abs(a.x-b.x)+Math.abs(a.z-b.z);
 const compare=(a:DungeonPoint,b:DungeonPoint)=>a.z-b.z||a.x-b.x;
+
+/** A risk preference for a currently visible pack, not a combat forecast
+ * or an immunity rule. Only the observer's actual owned equipment, health,
+ * experience, supplies and personality affect willingness to engage.
+ * A real collision still enters the normal fight regardless of this choice.
+ */
+export function canSoloChallengeVisiblePack(
+  hero:AdventurerState,layout:DungeonLayout,monster:DungeonMonsterState,
+):boolean{
+  const gear=equipmentEffects(hero.role,hero.equipment);
+  const hp=hero.health/heroProgression(hero).maxHealth;
+  const careful=hero.traits.positive==="careful";
+  const reckless=hero.traits.negative==="reckless";
+  const brave=hero.traits.positive==="brave";
+  if(!gear.weapon)return false;
+  const source={x:monster.homeX,z:monster.homeZ};
+  const pack=observedGhoulPackSize(layout,source,monster.siteCycle);
+  const elite=isEliteGhoulSite(layout,source,monster.siteCycle);
+  const weaponTier=gearFromName(gear.weapon)?.tier??0;
+  const armorTier=gearFromName(gear.vest)?.tier??0;
+  const supplies=hero.inventory.healing>0;
+  if(pack===1&&!elite)
+    return hp>.70&&(hero.level>=3||brave||reckless);
+  // Deep packs are a different risk class, even if the hero previously
+  // defeated lone opponents on that floor. Recklessness relaxes but
+  // never erases preparation requirements.
+  if(pack===3){
+    return reckless&&!careful&&weaponTier===2&&armorTier===2&&
+      hero.level>=7&&hp>=.90;
+  }
+  const minimumLevel=Math.max(2,layout.floor-3);
+  const healthThreshold=careful?.90:reckless?.70:brave?.77:.82;
+  if(hp<healthThreshold||hero.level<minimumLevel)return false;
+  if(!armorTier)return false;
+  if(layout.floor>=5||elite){
+    if(weaponTier<2&&armorTier<2)return false;
+    if(!supplies&&armorTier<2&&hero.role!=="healer")return false;
+  }
+  return true;
+}
 
 /** The existing walker executes this ONE actual adjacent tile.
  * The decision uses only monsters this party can really see right now,
@@ -47,13 +88,10 @@ export function chooseDungeonThreatReaction(
   const health=Math.min(...group.map(hero=>
     hero.health/heroProgression(hero).maxHealth));
   const equipped=group.filter(hero=>equipmentEffects(hero.role,hero.equipment).weapon!==null).length;
-  const experienced=group.some(hero=>hero.level>=3);
   const careful=group.some(hero=>hero.traits.positive==="careful");
-  const brave=group.some(hero=>hero.traits.positive==="brave"||
-    hero.traits.negative==="reckless");
-  const strong=!returning&&health>.70&&(
-    group.length>=2&&equipped>0||
-    equipped>0&&(experienced||brave));
+  const strong=!returning&&(group.length===1
+    ?visible.every(pack=>canSoloChallengeVisiblePack(leader,layout,pack))&&visible.length===1
+    :health>.70&&equipped>0);
 
   const visibleAllies=roster.filter(hero=>
     !partyIds.has(hero.id)&&hero.status==="exploring"&&
