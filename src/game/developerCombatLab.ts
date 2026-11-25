@@ -2,6 +2,7 @@ import type {Engine} from "@babylonjs/core/Engines/engine";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameStore} from "./gameStore.ts";
 import type {GameSfx} from "../gameSfx.ts";
+import {appendCombatFrame} from "./combatRecording.ts";
 import {
   developerPresentationTime,LAB_CAPTURE_STRIDE,
 } from "./developerCombatPresentation.ts";
@@ -294,7 +295,7 @@ export class DeveloperCombatLab {
     const state=this.state;
     if(!state)return;
     if(state.time>this.frames[this.frames.length-1].t+0.0001)
-      this.frames.push(captureGroupCombatFrame(state));
+      appendCombatFrame(this.frames,captureGroupCombatFrame(state));
   }
   private simulateTicks(count:number,forceCapture=false):void{
     const s=this.state;
@@ -302,7 +303,6 @@ export class DeveloperCombatLab {
     for(let i=0;i<count&&s.outcome==="fighting";i++){
       stepGroupCombat(s,1/60);
       this.ticks++;
-      if(this.ticks>=5400&&s.outcome==="fighting")s.outcome="draw";
       if(this.ticks%LAB_CAPTURE_STRIDE===0||
          s.outcome!=="fighting"||forceCapture)
         this.capturePendingFrame();
