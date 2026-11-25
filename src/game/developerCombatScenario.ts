@@ -2,6 +2,7 @@ import type {AdventurerState} from "./adventurers.ts";
 import {heroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects,GEAR_BY_ITEM} from "./gearCatalog.ts";
 import type {GroupCombatOptions,CombatantSpec,GroupRole} from "./groupCombat.ts";
+import {ghoulCombatProfile} from "./ghoulPack.ts";
 import {caveTrollActor} from "./sharedBossCombat.ts";
 import type {CombatStageTheme} from "./combatSpectatorStage.ts";
 
@@ -28,6 +29,8 @@ export interface DeveloperCombatConfig {
   readonly arena:CombatStageTheme;
   readonly enemy:DeveloperEnemy;
   readonly enemyCount:number;
+  /** Floor strength, independent of the chosen stage and test pack count. */
+  readonly ghoulFloor?:number;
   readonly heroes:readonly DeveloperHero[];
   /** Replayable local test seed, independent from campaign RNG. */
   readonly seed:number;
@@ -49,6 +52,8 @@ export function validateDeveloperCombat(config:DeveloperCombatConfig):void {
     throw new RangeError("Unknown developer arena");
   if(config.enemy!=="ghoul"&&config.enemy!=="cave-troll")
     throw new RangeError("Unknown developer opponent");
+  if(config.ghoulFloor!==undefined&&(!Number.isSafeInteger(config.ghoulFloor)||config.ghoulFloor<1||config.ghoulFloor>9))
+    throw new RangeError("Select Ghoul floor 1–9");
   if(!Number.isSafeInteger(config.seed)||config.seed<0||
      config.seed>0xffffffff)
     throw new RangeError("Invalid developer seed");
@@ -141,9 +146,8 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
       actors.push(caveTrollActor(enemyPositions[i],"lab-cave-troll"));
     }else{
       actors.push({
-        id:"lab-ghoul-"+(i+1),team:"monsters",role:"monster",style:"melee",
-        ...enemyPositions[i],hp:65,maxHp:65,damage:11,armor:2,
-        speed:3,reach:1.6,radius:.5,agility:9,
+        ...ghoulCombatProfile(config.ghoulFloor??5,config.seed),
+        id:"lab-ghoul-"+(i+1),...enemyPositions[i],
       });
     }
   }
