@@ -7,7 +7,8 @@ import {createGroupCombat,captureGroupCombatFrame,
 import {WORLD_TICKS_PER_DAY} from "./worldClock.ts";
 import {CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
 import {validRetreatExit} from "./combatRetreat.ts";
-import {PARTY_BOSS_MAX_SECONDS} from "./combatEncounter.ts";
+import {combatFrameTimelineValid,MAX_COMBAT_FRAMES} from "./combatRecording.ts";
+import {validCombatProgress} from "./combatProgress.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
   from "./liveDungeonRuntime.ts";
 
@@ -68,7 +69,7 @@ export function livePartyBossCheckpointProblem(
     return fail("could not reconstruct the 60Hz actor motor");
   }
   if(!exactly(b.state,["actors","bounds","obstacles","projectiles",
-    "events","time","outcome"],["environment","tacticsSeed","retreat"]))
+    "events","time","outcome"],["environment","tacticsSeed","retreat","progress"]))
     return fail("has invalid current GroupCombat shape");
   if(b.state.retreat!==undefined&&!validRetreatExit(b.state.retreat,initial.bounds,initial.environment))
     return fail("has an invalid committed retreat exit");
@@ -79,10 +80,11 @@ export function livePartyBossCheckpointProblem(
      JSON.stringify(b.state.obstacles)!==JSON.stringify(initial.obstacles))
     return fail("environment or motor rules have diverged");
   const completed=(combatTick-b.startedTick)*3;
-  if(!bounded(b.state.time,0,PARTY_BOSS_MAX_SECONDS)||
-     Math.abs(b.state.time*60-completed)>.001||
-     completed>=PARTY_BOSS_MAX_SECONDS*60)
+  if(!bounded(b.state.time,0,Number.MAX_SAFE_INTEGER/60)||
+     Math.abs(b.state.time*60-completed)>.001)
     return fail("must match the single world-clock 60Hz simulation time");
+  if(b.state.progress!==undefined&&!validCombatProgress(b.state.progress,b.state.time))
+    return fail("has invalid combat progress checkpoint");
   if(!Array.isArray(b.state.actors)||
      b.state.actors.length!==initial.actors.length)
     return fail("must preserve the original participant roster");
@@ -133,7 +135,7 @@ export function livePartyBossCheckpointProblem(
       return fail("has invalid throw velocity");
   }
   if(!Array.isArray(b.state.projectiles)||b.state.projectiles.length>30||
-     !Array.isArray(b.state.events)||b.state.events.length>3500)
+     !Array.isArray(b.state.events)||b.state.events.length>50000)
     return fail("has oversized combat history");
   for(const projectile of b.state.projectiles){
     if(!exactly(projectile,["ownerId","team","x","z","vx","vz","damage","ttl"])||
@@ -143,8 +145,7 @@ export function livePartyBossCheckpointProblem(
            -10000,10000)))
       return fail("has invalid physical projectile");
   }
-  if(!Array.isArray(b.frames)||b.frames.length!==1+completed/6||
-     b.frames.length>901||
+  if(!Array.isArray(b.frames)||!combatFrameTimelineValid(b.frames,completed)||
      JSON.stringify(b.frames[0])!==
        JSON.stringify(captureGroupCombatFrame(initial)))
     return fail("has missing or forged group combat snapshots");
@@ -228,7 +229,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
     return fail("fighters are invalid to the single authoritative motor");
   }
   if(!Array.isArray(rec.frames)||rec.frames.length<2||
-     rec.frames.length>1000||
+     rec.frames.length>MAX_COMBAT_FRAMES||
      JSON.stringify(rec.frames[0])!==
        JSON.stringify(captureGroupCombatFrame(initial)))
     return fail("lacks the one genuine initial combat frame");
@@ -238,7 +239,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
     if(!exactly(rawFrame,["t","actors","projectiles"]))
       return fail("frame has unexpected fields");
     const frame=rawFrame as Record<string,unknown>;
-    if(!bounded(frame.t,0,PARTY_BOSS_MAX_SECONDS+.1)||
+    if(!bounded(frame.t,0,Number.MAX_SAFE_INTEGER/60)||
        frame.t<previous||!Array.isArray(frame.actors)||
        frame.actors.length!==initial.actors.length||
        !Array.isArray(frame.projectiles)||frame.projectiles.length>30)
@@ -270,12 +271,12 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
         return fail("frame projectile is not a real fighter's projectile");
     }
   }
-  if(!Array.isArray(rec.cues)||rec.cues.length>5000)
+  if(!Array.isArray(rec.cues)||rec.cues.length>50000)
     return fail("has oversized combat cue log");
   const ids=new Set(actorLimits.keys());
   for(const rawCue of rec.cues){
     if(!exactly(rawCue,["t","actorId","kind"],["targetId","amount"])||
-       !bounded(rawCue.t,0,PARTY_BOSS_MAX_SECONDS+.1)||
+       !bounded(rawCue.t,0,Number.MAX_SAFE_INTEGER/60)||
        !ids.has(String(rawCue.actorId))||
        (rawCue.targetId!==undefined&&!ids.has(String(rawCue.targetId)))||
        (rawCue.amount!==undefined&&!bounded(rawCue.amount,0,100000)))
