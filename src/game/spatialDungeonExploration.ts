@@ -12,7 +12,7 @@ import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
 import {heroProgression,settleHeroExperience,ordinaryHeroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects} from "./gearCatalog.ts";
 import type {ItemId} from "./economy.ts";
-import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK}
+import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK,isEliteGhoulSite}
   from "./ghoulPack.ts";
 import {
   dungeonGenerationSeed, dungeonSiteGeneration, refreshDungeonSites,
@@ -174,8 +174,7 @@ export function prepareSpatialDungeonCombat(
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
     (campaignSeed^Math.imul(source.x+37*source.z,2654435761))>>>0,cycle));
   // Only renewable sentries can become elites. No unique boss is regenerated.
-  const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
-    tileAt(layout,source.x,source.z)==="room";
+  const elite=isEliteGhoulSite(layout,source,cycle);
   // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
   // Retain the authored individual toughness and real 35-second combat
   // bound. The persistent LIVE site must not react to party composition.
