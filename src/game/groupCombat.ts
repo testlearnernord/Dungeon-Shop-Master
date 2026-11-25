@@ -16,6 +16,7 @@ import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
   selectCombatTarget, combatDefenseReadiness,
 } from "./combatTactics.ts";
+import {shouldRetreat,chooseRetreatExit,atRetreatExit,retreatComplete} from "./combatRetreat.ts";
 import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
 import {
   grappleEscapes, grappleHoldPosition,
@@ -42,7 +43,7 @@ export type AttackStyle = "melee" | "ranged";
 export type GroupPhase = "move" | "windup" | "strike" | "recover" |
   "cast" | "heal" | "roll" | "parry" | "hurt" | "dead" |
   "grab" | "grabMiss" | "throw" | "grabbed" | "thrown";
-export type GroupOutcome = "fighting" | "heroes" | "monsters" | "draw";
+export type GroupOutcome = "fighting" | "heroes" | "monsters" | "retreat" | "draw";
 
 export interface CombatantSpec {
   readonly id: string;
@@ -123,7 +124,7 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
 
 export type GroupCueKind = "attack" | "cast" | "projectile" | "hit" |
   "miss" | "dodge" | "parry" | "heal" | "death" | "blocked" |
-  "grab" | "throw" | "landing" | "escape" | "lava";
+  "grab" | "throw" | "landing" | "escape" | "lava" | "retreat-start" | "retreat";
 export interface GroupCombatCue {
   readonly t: number;
   readonly actorId: string;
@@ -148,6 +149,8 @@ export interface GroupCombatState {
   readonly tacticsSeed?:number;
   readonly projectiles: GroupProjectile[];
   readonly events: GroupCombatCue[];
+  /** Committed team exit; a checkpoint retains the same intent on reload. */
+  retreat?:Point2;
   time: number;
   outcome: GroupOutcome;
 }
@@ -664,6 +667,22 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       a.rollX=(-escape.z*sign)||0;a.rollZ=(escape.x*sign)||0;
       phase(a,"roll");
     }
+    if(a.phase==="move"&&a.team==="heroes"&&s.retreat){
+      if(!atRetreatExit(a,s.retreat)){
+        const direction=combatDirection(a,s.retreat);
+        a.heading=combatHeading(a,s.retreat);
+        // Same physical collision integrator, with alternate headings if
+        // a body blocks the direct line. No free movement or invulnerability.
+        for(const angle of [0,Math.PI/4,-Math.PI/4,Math.PI/2,-Math.PI/2]){
+          const before=a.distanceTraveled;
+          const dx=direction.x*Math.cos(angle)-direction.z*Math.sin(angle);
+          const dz=direction.x*Math.sin(angle)+direction.z*Math.cos(angle);
+          move(s,a,dx*a.speed*dt,dz*a.speed*dt);
+          if(a.distanceTraveled>before)break;
+        }
+      }
+      return;
+    }
     const friend = healingTarget(s,a);
     if (a.phase === "move" && friend && a.stamina >= 18) {
       a.stamina -= 18; a.targetId = friend.id; phase(a,"heal");
@@ -865,6 +884,16 @@ function resolveArenaHazards(s:GroupCombatState,batch:GroupCombatCue[]):void{
   }
 }
 const GROUP_PIPELINE: EncounterPipeline<GroupCombatState,GroupActor,GroupCombatCue>={
+  beforeActors:(state,dt,frame)=>{
+    if(!state.retreat&&shouldRetreat(state)){
+      const exit=chooseRetreatExit(state);
+      const leader=state.actors.find(a=>a.team==="heroes"&&a.hp>0);
+      if(exit&&leader){
+        state.retreat=exit;
+        cue(frame.cues,state,leader,"retreat-start");
+      }
+    }
+  },
   actors:state=>state.actors,
   updateActor:(state,actor,dt,frame)=>updateActor(state,actor,dt,frame.cues),
   projectiles:(state,dt,frame)=>updateProjectiles(state,dt,frame.cues),
@@ -884,6 +913,11 @@ const GROUP_PIPELINE: EncounterPipeline<GroupCombatState,GroupActor,GroupCombatC
     const winner=encounterTeamOutcome(state.actors);
     state.outcome=winner==="heroes"&&state.actors.some(a=>
       a.hp>0&&a.phase==="thrown")?"fighting":winner;
+    if(state.outcome==="fighting"&&winner==="fighting"&&retreatComplete(state)){
+      for(const hero of state.actors.filter(a=>a.team==="heroes"&&a.hp>0))
+        cue(frame.cues,state,hero,"retreat");
+      state.outcome="retreat";
+    }
   },
   commit:(state,frame)=>{
     state.events.push(...frame.cues);
