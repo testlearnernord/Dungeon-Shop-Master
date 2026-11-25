@@ -80,7 +80,22 @@ export function canRiskOrdinaryDescent(hero:AdventurerState):boolean {
   return ordinaryExpeditionReadiness(hero)>=minimumOrdinaryFloorReadiness(floor+1);
 }
 
-export type DungeonDecisionReason="low-health"|"new-salvage-haul"|"floor9-gold-resupply"|
+export function needsHealthResupply(hero:AdventurerState):boolean {
+  const careful=hero.traits.positive==="careful";
+  const reckless=hero.traits.negative==="reckless";
+  const melee=hero.role!=="healer";
+  return hero.health/heroProgression(hero).maxHealth < (careful?.64:
+    reckless?(melee?.40:.33):hero.role==="DPS"?.55:hero.role==="tank"?.52:.48);
+}
+
+/** The shop could not resolve the current injury. Stay cautious, or use
+ * real stairs to retreat to easier terrain. This is a normal saved plan. */
+export function unresolvedRecoveryPlan(hero:AdventurerState):HeroDungeonDecision|null {
+  if(typeof hero.floor!=="number"||!needsHealthResupply(hero))return null;
+  return {goal:"caution",action:hero.floor>1?"ascend":"stay"};
+}
+
+export type DungeonDecisionReason="unserved-recovery"|"low-health"|"new-salvage-haul"|"floor9-gold-resupply"|
   "unprepared-retreat"|"floor9-solo-resupply"|"depth-progress"|"damaged-stay"|
   "test-gear"|"explore"|"combat-retreat"|"boss-ready"|"committed-descent"|"seek-boss-party"|"gear-purchase-resupply"|"depth-risk";
 export interface HeroDungeonDecision {
@@ -104,9 +119,7 @@ export function chooseHeroDungeonDecision(
   const armored=!!gear.vest;
   // A wounded melee fighter must cross the attack lane again to do damage.
   // Bring forward ordinary resupply, not healing or invulnerability.
-  const melee=hero.role!=="healer";
-  const lowHealth=healthRatio < (careful ? 0.64 : reckless ? (melee?.40:.33) :
-    hero.role==="DPS"?.55:hero.role==="tank"?.52:.48);
+  const lowHealth=needsHealthResupply(hero);
   const damaged=healthRatio < (careful ? 0.76 : 0.55);
   const known=progress?.visited.length??1;
   // Full HP alone is not preparation for increasingly dangerous floors.
@@ -181,7 +194,7 @@ export function chooseLiveHeroDungeonDecision(
   hero:AdventurerState,progress:SpatialDungeonHeroProgress|undefined,
   replay:SpatialDungeonReplay,layout?:DungeonLayout,world?:SpatialDungeonWorld,
   bossPartyReady=false,previousFindCount?:number,onReason?:(reason:DungeonDecisionReason)=>void,
-  priorDecision?:HeroDungeonDecision,bossAvailable=true,
+  priorDecision?:HeroDungeonDecision,bossAvailable=true,previousHealth?:number,
 ):HeroDungeonDecision {
   if(typeof hero.floor!=="number"||hero.floor<1||hero.floor>9||hero.health<=0||
     hero.status!=="exploring")
@@ -195,6 +208,19 @@ export function chooseLiveHeroDungeonDecision(
   let reason:DungeonDecisionReason|undefined;
   const base=chooseHeroDungeonDecision(hero,progress,replay,previousFindCount,
     value=>{reason=value;});
+  // An unchanged injury after a failed recovery is not a new shopping
+  // need. Real new wounds, a new resource reward or an actual combat
+  // retreat still allow another supply visit. Never make a hero immune
+  // or force it to descend while hurt.
+  if(reason==="low-health"&&priorDecision?.goal==="caution"&&
+    previousHealth!==undefined&&hero.health>=previousHealth&&
+    !replay.steps.some(s=>s.action==="treasure"||s.action==="defeat-monster")){
+    const cautious=unresolvedRecoveryPlan(hero);
+    if(cautious){
+      onReason?.("unserved-recovery");
+      return cautious;
+    }
+  }
   // Do not send a healthy permitted solo explorer home solely because it
   // has gold or has walked 13 tiles. Seek companions and the actual lower
   // stair; a completed search, real haul or retreat may still end the outing.

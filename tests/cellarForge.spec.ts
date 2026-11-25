@@ -39,7 +39,11 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
         gold:100,health:hero.stats.maxHealth,equipment:{weapon:"Spear",armor:"Leather Vest"},
         inventory:{...hero.inventory,bread:ECONOMY.breadTarget,healing:ECONOMY.healingTarget,
           finds:{"iron-ore":1,coal:1,"ghoul-leather":2}}}:
-        {...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
+        // This smoke isolates the forge/customer route. Unrelated heroes
+        // start in genuine bounded recovery, not in a large wave of
+        // underprepared Floor-4 retreaters competing for the same door.
+        {...hero,status:"off-duty" as const,floor:"away" as const,
+          offDutyUntilTick:4800,shopStayDays:0}),
       shopEconomy:{...state.shopEconomy,slots:state.shopEconomy.slots.map(slot=>
         ({...slot,itemId:null,quantity:0}))}};
     await new CampaignStorage().saveGame(seeded);
@@ -296,11 +300,22 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   // The new recovery window can be shorter than the time between
   // persisted browser observations. Require the durable physical exit,
   // not a transient status that the real movement clock can advance past.
-  await expect.poll(async()=>{
+  try{
+    await expect.poll(async()=>{
+      const saved=await save();
+      return saved.events.filter(e=>e.type==="shop-departure"&&
+        e.adventurerId===fixture.heroId&&e.worldTick!==undefined).length;
+    },{timeout:45000,intervals:[500,1000,1500]}).toBeGreaterThanOrEqual(1);
+  }catch(error){
     const saved=await save();
-    return saved.events.filter(e=>e.type==="shop-departure"&&
-      e.adventurerId===fixture.heroId&&e.worldTick!==undefined).length;
-  },{timeout:45000,intervals:[500,1000,1500]}).toBeGreaterThanOrEqual(1);
+    console.log("FORGE_EXIT_DIAGNOSTIC",JSON.stringify({
+      tick:saved.worldClock.tick,
+      hero:saved.adventurers.find(h=>h.id===fixture.heroId),
+      actors:saved.shopTraffic.actors,
+      recent:saved.events.filter(e=>e.adventurerId===fixture.heroId).slice(-8),
+    }));
+    throw error;
+  }
   const departed=await save();
   const customer=departed.adventurers.find(h=>h.id===fixture.heroId)!;
   const exit=departed.events.find(e=>e.type==="shop-departure"&&

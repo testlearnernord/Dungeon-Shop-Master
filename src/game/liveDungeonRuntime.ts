@@ -10,6 +10,7 @@ import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dun
 import {dungeonSiteGeneration} from "./dungeonRegeneration.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,carriedDungeonFindCount,
   salvageReturnThreshold,isBossExpeditionCandidate,isBossExpeditionParty,
+  needsHealthResupply,unresolvedRecoveryPlan,
   type HeroDungeonDecision,type DungeonDecisionReason} from "./dungeonDecisions.ts";
 import {choosePersistentDungeonParty,chooseBossRendezvous,negotiatePartyFloorDecisions,
   settlePersistentDungeonParties,temporaryPartyChanges,
@@ -319,6 +320,15 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     if(hero.status!=="off-duty"||hero.offDutyUntilTick===null||
        hero.offDutyUntilTick>tick)continue;
     const healed=useHealingSupplies(hero,day,tick);
+    // Only actual doses can improve vitality. If one dose was insufficient
+    // and another is owned, finish treatment on a later existing world tick.
+    // No indefinite wait, free recovery, or extra daily healing.
+    if(healed.events.length&&needsHealthResupply(healed.adventurer)&&
+      healed.adventurer.inventory.bread+healed.adventurer.inventory.healing>0){
+      byId.set(hero.id,{...healed.adventurer,offDutyUntilTick:tick+1200});
+      activities.push(...healed.events);
+      continue;
+    }
     const floor=hero.lastDungeonFloor??1;
     const ready:AdventurerState={...healed.adventurer,
       floor,status:"exploring",offDutyUntilTick:null};
@@ -332,6 +342,8 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
       heroes:[...world.heroes.filter(h=>h.heroId!==hero.id),landed]});
     byId.set(hero.id,ready);
     plans.delete(hero.id);
+    const caution=unresolvedRecoveryPlan(ready);
+    if(caution)recordLivePlan(plans,ready,caution,tick);
     stepCounts.delete(hero.id);
     processed.add(hero.id);
     activities.push(...healed.events,{
@@ -452,8 +464,12 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
           const oldIndex=nextHeroes.findIndex(p=>p.heroId===member.id);
           if(oldIndex<0)nextHeroes.push(arrived);
           else nextHeroes[oldIndex]=arrived;
-          byId.set(member.id,{...member,floor:nextFloor});
+          const arrivedHero={...member,floor:nextFloor};
+          byId.set(member.id,arrivedHero);
+          const wasCautious=plans.get(member.id)?.goal==="caution";
           plans.delete(member.id);
+          const caution=wasCautious?unresolvedRecoveryPlan(arrivedHero):null;
+          if(caution)recordLivePlan(plans,arrivedHero,caution,tick);
           processed.add(member.id);
           stepCounts.set(member.id,{heroId:member.id,
             steps:(stepCounts.get(member.id)?.steps??0)+1,finished:false});
@@ -533,7 +549,8 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     // committed backtrack remains saved; a single safe tactical dodge can
     // interrupt one step without cancelling the shop-bound journey.
     const threat=chooseDungeonThreatReaction(
-      layout,world,readyGroup,roster,!!homeward);
+      layout,world,readyGroup,roster,!!homeward,
+      readyGroup.some(member=>plans.get(member.id)?.goal==="caution"&&needsHealthResupply(member)));
     const route=diagnostic&&directed&&priorPlan?.action==="descend"
       ?chooseDungeonTransitionRoute(layout,readyGroup.map(member=>
         getSpatialDungeonProgress(world,member.id,layout)),directed):null;
@@ -636,7 +653,8 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
           progress,individual.replay,layout,result.world,bossReady,
           carriedDungeonFindCount(byId.get(individual.adventurer.id)!),
           detail?(reason)=>{detail.reason=reason;}:undefined,
-          plans.get(individual.adventurer.id),!clearedLevel10));
+          plans.get(individual.adventurer.id),!clearedLevel10,
+          byId.get(individual.adventurer.id)!.health));
       if(detail)decisionDetails!.set(individual.adventurer.id,detail);
     }
     const agreed=readyGroup.length>1
@@ -997,7 +1015,8 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
       const decision:HeroDungeonDecision=returning?{goal:"resupply",action:"shop"}:
         chooseLiveHeroDungeonDecision(h,progress,t.replay,
           undefined,undefined,bossReady,carriedDungeonFindCount(party.find(m=>m.id===h.id)!),
-          diagnostic?reason=>{reasons.set(h.id,reason);}:undefined,plans.get(h.id),bossAvailable);
+          diagnostic?reason=>{reasons.set(h.id,reason);}:undefined,plans.get(h.id),bossAvailable,
+          party.find(m=>m.id===h.id)!.health);
       return [h.id,decision] as const;
     }));
     const agreed=negotiatePartyFloorDecisions(survivors,independent);

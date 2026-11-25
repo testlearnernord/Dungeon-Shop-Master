@@ -280,9 +280,11 @@ function run(mode){
     buybackGold:0,materialsBought:{},materialsConsumed:{},craftedUnits:{},
     lateEventTypes:{}, xpGrowthDays:[], servedCustomers:0,
     activitySamples:{living:0,offDuty:0,exploring:0,count:0},
+    shortExpeditions:{completed:0,within600Ticks:0,withoutRecordedRewardOrFight:0},
     unservedCustomers:0,gateExits:0,bossPassesGranted:0,
     bossAttempts:0,failedCheckout:{},nextRequestId:1,
   };
+  const renewed=new Map();
   for(let completed=1;completed<=DAYS;completed++){
     const before=store.state.adventurers;
     const firstEvent=store.state.events.length;
@@ -304,6 +306,27 @@ function run(mode){
     if(store.state.day!==startDay+1)throw Error("World day did not advance");
     const added=store.state.events.slice(firstEvent);
     summarizeEvents(metrics,added);
+    for(const event of added){
+      const id=event.adventurerId;
+      if(!id)continue;
+      if(event.type==="dungeon-live"&&event.message.includes("began a new expedition")&&
+        event.worldTick!==undefined)
+        renewed.set(id,{tick:event.worldTick,activity:false});
+      const previous=renewed.get(id);
+      if(!previous)continue;
+      if(event.type==="dungeon-live"&&
+        (event.dungeonHighlight==="treasure"||event.dungeonReplay?.encounters?.length))
+        previous.activity=true;
+      if(event.type==="shop-arrival"&&event.worldTick!==undefined){
+        metrics.shortExpeditions.completed++;
+        if(event.worldTick-previous.tick<=600){
+          metrics.shortExpeditions.within600Ticks++;
+          if(!previous.activity)metrics.shortExpeditions.withoutRecordedRewardOrFight++;
+        }
+        renewed.delete(id);
+      }
+      if(event.type==="hero-death-signal")renewed.delete(id);
+    }
     combatExposure.observe(added);
     if(completed>20)for(const e of added)add(metrics.lateEventTypes,e.type,1);
     for(const e of added.filter(e=>e.type==="influx")){

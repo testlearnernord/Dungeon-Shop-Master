@@ -775,3 +775,29 @@ test("a reckless unarmed novice can risk Floor 2 without immediately rejecting t
   assert.equal(chooseLiveHeroDungeonDecision({...arrived,health:Math.floor(arrived.health*.8)},
     known,replay).action,"ascend","A real change in health can justify turning back");
 });
+
+
+test("unresolved recovery does not turn an unchanged injury into another immediate shop visit",()=>{
+  const source=createGameState(7351).adventurers[0];
+  for(const floor of [1,3] as const){
+    const hero={...source,floor,status:"exploring" as const,
+      health:Math.floor(heroProgression(source).maxHealth*.2),
+      inventory:{bread:0,healing:0,finds:{}}};
+    const layout=generateExpeditionLayout(7351,floor);
+    const progress={heroId:hero.id,...layout.entrance,visited:[layout.entrance.z*layout.width+layout.entrance.x]};
+    const replay={version:1 as const,day:1,heroId:hero.id,floor,
+      appearance:{role:hero.role,equipment:hero.equipment},steps:[],encounters:[],
+      outcome:"exploring" as const};
+    const prior={goal:"caution" as const,action:floor===1?"stay" as const:"ascend" as const};
+    const decide=(previousHealth:number,plan=prior)=>chooseLiveHeroDungeonDecision(
+      hero,progress,replay,undefined,undefined,false,0,undefined,plan,true,previousHealth);
+    assert.equal(decide(hero.health).action,prior.action);
+    assert.equal(decide(hero.health+1).action,"shop","A genuinely new injury can justify treatment");
+    assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay).action,"shop",
+      "A first unserved injury still motivates a genuine shop visit");
+    const loot={...replay,steps:[{...layout.entrance,t:1,action:"treasure" as const,hp:hero.health}]};
+    assert.equal(chooseLiveHeroDungeonDecision(hero,progress,loot,undefined,undefined,
+      false,0,undefined,prior,true,hero.health).action,"shop",
+      "New resources can justify renewed shopping");
+  }
+});
