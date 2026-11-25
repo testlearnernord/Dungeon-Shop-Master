@@ -1,4 +1,5 @@
-import {chooseLiveHeroDungeonDecision,salvageReturnThreshold,isBossExpeditionCandidate,canRiskOrdinaryDescent,selectKnownResourceSite} from "../../src/game/dungeonDecisions.ts";
+import {affordableForgedUpgrade} from "../../src/game/economy.ts";
+import {chooseLiveHeroDungeonDecision,salvageReturnThreshold,ELECTIVE_SHOP_REVISIT_TICKS,isBossExpeditionCandidate,canRiskOrdinaryDescent,selectKnownResourceSite} from "../../src/game/dungeonDecisions.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -41,7 +42,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,44);
+  assert.equal(SIMULATION_VERSION,45);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -971,4 +972,58 @@ test("physical boss staircase rejects a stale descent after a member loses readi
   const forged=structuredClone(createSave(store.state)) as any;
   forged.payload.adventurers[0].bossPass=true;
   assert.throws(()=>parseSave(JSON.stringify(forged)),/bossPass|unknown|unexpected/i);
+});
+
+test("veterans deliberately seek affordable class upgrades after real expedition progress, not every walk",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  const veteran={...source,level:5,xp:400,floor:5 as const,status:"exploring" as const,
+    equipment:{weapon:"Spear",armor:"Leather Vest"},gold:25,
+    inventory:{...source.inventory,bread:1,healing:1,finds:{}},
+    traits:{...source.traits,positive:"generous" as const,negative:"stubborn" as const},
+    lastShopExitTick:100};
+  const hero={...veteran,health:heroProgression(veteran).maxHealth};
+  const layout=generateExpeditionLayout(7351,5);
+  const progress={heroId:hero.id,...layout.entrance,
+    visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:5 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},steps:[],encounters:[],
+    outcome:"exploring" as const};
+  const reward={...replay,steps:[{...layout.entrance,t:1,action:"treasure" as const,hp:hero.health}]};
+  const reasons:string[]=[];
+  const tick=100+ELECTIVE_SHOP_REVISIT_TICKS;
+  const decide=(h:typeof hero,r:typeof reward|typeof replay,t:number)=>
+    chooseLiveHeroDungeonDecision(h,progress,r,undefined,undefined,false,0,
+      reason=>reasons.push(reason),undefined,true,h.health,t);
+  assert.equal(affordableForgedUpgrade(hero),"forged-spear");
+  assert.equal(affordableForgedUpgrade({...hero,gold:22}),null);
+  assert.equal(affordableForgedUpgrade({...hero,inventory:{...hero.inventory,bread:0,healing:0}}),null);
+  assert.equal(affordableForgedUpgrade({...hero,equipment:{weapon:"Forged Spear",armor:"Ghoul Leather Vest"}}),null);
+  assert.notEqual(decide(hero,replay,tick).action,"shop");
+  assert.notEqual(decide(hero,reward,tick-1).action,"shop");
+  assert.equal(decide(hero,reward,tick).action,"shop");
+  assert.equal(reasons.at(-1),"forged-upgrade-resupply");
+  assert.notEqual(decide({...hero,lastShopExitTick:tick},reward,tick+50).action,"shop",
+    "A failed visit cannot immediately provoke another elective trip.");
+});
+test("a fully equipped hero on the exhausted final ordinary floor returns with a genuine haul after boss victory",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  const veteran={...source,level:8,xp:700,floor:9 as const,status:"exploring" as const,
+    equipment:{weapon:"Forged Spear",armor:"Ghoul Leather Vest"},gold:80,
+    inventory:{...source.inventory,bread:2,healing:1,finds:{"iron-ore":10}},
+    lastShopExitTick:0};
+  const hero={...veteran,health:heroProgression(veteran).maxHealth};
+  const layout=generateExpeditionLayout(7351,9);
+  const progress={heroId:hero.id,...layout.entrance,
+    visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:9 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},steps:[],encounters:[],
+    outcome:"completed" as const};
+  const reasons:string[]=[];
+  const decide=(bossAvailable:boolean,tick:number)=>
+    chooseLiveHeroDungeonDecision(hero,progress,replay,undefined,undefined,false,10,
+      reason=>reasons.push(reason),undefined,bossAvailable,hero.health,tick);
+  assert.notEqual(decide(true,ELECTIVE_SHOP_REVISIT_TICKS).action,"shop");
+  assert.notEqual(decide(false,ELECTIVE_SHOP_REVISIT_TICKS-1).action,"shop");
+  assert.equal(decide(false,ELECTIVE_SHOP_REVISIT_TICKS).action,"shop");
+  assert.equal(reasons.at(-1),"expedition-haul-resupply");
 });

@@ -31,6 +31,8 @@ test("shop departure is a committed outer-gate crossing, not an intent or a cash
   const departed=after.adventurers.find(h=>h.id===hero.id)!;
   assert.equal(departed.status,"off-duty");
   assert.equal(departed.offDutyUntilTick,state.worldClock.tick+400);
+  assert.equal(hero.lastShopExitTick,undefined);
+  assert.equal(departed.lastShopExitTick,state.worldClock.tick);
   assert.deepEqual(departed.inventory,hero.inventory,"a free trip grants no goods");
   assert.equal(departed.gold,hero.gold);
   assert.equal(departed.health,hero.health);
@@ -41,6 +43,9 @@ test("shop departure is a committed outer-gate crossing, not an intent or a cash
   assert.equal(exits[0].worldTick,state.worldClock.tick);
   assert.strictEqual(completeObservedShopExit(after,hero.id,13),after,"cannot book twice");
   assert.deepEqual(parseSave(JSON.stringify(createSave(after))),after);
+  const forged=structuredClone(createSave(after)) as any;
+  forged.payload.adventurers.find((h:any)=>h.id===hero.id).lastShopExitTick=state.worldClock.tick+1;
+  assert.throws(()=>parseSave(JSON.stringify(forged)),/lastShopExitTick/);
   const board=selectLiveBoardHeroes(after).find(h=>h.id===hero.id)!;
   assert.equal(board.status,"off-duty");
   assert.equal(board.visible,null,"remote hero health and inventory stay private");
