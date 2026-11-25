@@ -43,8 +43,8 @@ export function livePartyBossCheckpointProblem(
     return fail("requires two or three unique saved heroes");
   const members=b.heroIds.map(id=>state.adventurers.find(h=>h.id===id));
   if(members.some(h=>!h||h.floor!==CAVE_TROLL_FLOOR||
-    h.status!=="expedition"||h.health<=0||!h.bossPass))
-    return fail("must be a real permitted co-located Level-10 party");
+    h.status!=="expedition"||h.health<=0))
+    return fail("must be a real co-located Level-10 party");
   const startedDay=Math.floor(b.startedTick/WORLD_TICKS_PER_DAY)+1;
   if(!integer(b.startedTick,0,lastStepTick)||
      (startedDay===state.day&&(lastStepTick-b.startedTick)%DUNGEON_STEP_INTERVAL_TICKS!==0)||

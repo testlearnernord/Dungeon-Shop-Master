@@ -18,10 +18,10 @@ export function caveTrollActor(position:{x:number;z:number}={x:0,z:2},id="cave-t
 export function caveTrollPartyOptions(
   party:readonly AdventurerState[],tacticsSeed:number,
 ):GroupCombatOptions{
-  if(!canAttemptCaveTroll(party.length,party.every(h=>h.bossPass))||
+  if(!canAttemptCaveTroll(party.length)||
     party.some(hero=>hero.status==="dead"||hero.health<=0)||
     new Set(party.map(hero=>hero.id)).size!==party.length)
-    throw new RangeError("Level "+CAVE_TROLL_FLOOR+" requires a real permitted 2–3 hero party.");
+    throw new RangeError("Level "+CAVE_TROLL_FLOOR+" requires a real living 2–3 hero party.");
   if(!Number.isSafeInteger(tacticsSeed)||tacticsSeed<0||tacticsSeed>0xffffffff)
     throw new RangeError("Invalid saved boss tactics seed");
   const positions=[{x:-4,z:-9},{x:0,z:-9},{x:4,z:-9}];

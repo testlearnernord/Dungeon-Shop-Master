@@ -133,13 +133,6 @@ export function setupDayHud(
         const cash=document.createElement("span");cash.className="hero-gold";
         cash.setAttribute("aria-label",current.gold+" gold");
         cash.append(goldIcon(),document.createTextNode(" "+current.gold+"g"));entry.append(cash);
-        const permit=document.createElement("button");
-        permit.type="button";permit.className="boss-pass";permit.dataset.adventurerId=hero.id;
-        permit.setAttribute("aria-pressed",String(current.bossPass));
-        permit.textContent=current.bossPass?"Revoke Boss Pass":"Grant Boss Pass";
-        permit.title="Allow this visitor to join a real Floor-10 party.";
-        permit.addEventListener("click",()=>store.setBossPass(hero.id,!current.bossPass));
-        entry.append(" ",permit);
       }
       return entry;
     }));

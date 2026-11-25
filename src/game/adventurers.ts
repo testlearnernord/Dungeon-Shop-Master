@@ -42,8 +42,6 @@ export interface AdventurerState {
   readonly shopStayDays: number;
   /** Earliest world tick for reentry after an observed shop exit. */
   readonly offDutyUntilTick: number | null;
-  /** Eligibility for a real Floor-10 Temporary-Party boss attempt. */
-  readonly bossPass: boolean;
 }
 
 const names = ["Ada", "Bram", "Cora", "Dain", "Eira", "Finn", "Gwen", "Hale", "Iris", "Joss"];
@@ -80,7 +78,6 @@ export function generateAdventurer(serial: number, rngState: number): { adventur
     status: "exploring",
     shopStayDays: 0,
     offDutyUntilTick: null,
-    bossPass: false,
   };
   return { adventurer, rngState: random.state };
 }

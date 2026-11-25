@@ -35,13 +35,21 @@ export function salvageReturnThreshold(hero:AdventurerState):number{
   return hero.traits.negative==="reckless"?10:8;
 }
 
-/** A pass is not a teleport. Prepared, living explorers can seek willing
- * companions on Floor 9; the actual physical saved-party gate remains intact. */
+/** Floor-10 willingness, not a combat modifier or guaranteed victory.
+ * Same readiness policy for seeking companions and crossing the real stair.
+ * Experience and actual owned class gear matter; personality changes risk.
+ * The shop influences this through equipment and supplies, not permission. */
 export function isBossExpeditionCandidate(hero:AdventurerState):boolean{
-  return hero.floor===9&&hero.status==="exploring"&&hero.bossPass&&
-    !!equipmentEffects(hero.role,hero.equipment).weapon&&
-    hero.health/heroProgression(hero).maxHealth>=
-      (hero.traits.positive==="careful"?.70:.60);
+  if(hero.floor!==9||hero.status!=="exploring"||hero.health<=0)return false;
+  const gear=equipmentEffects(hero.role,hero.equipment);
+  const careful=hero.traits.positive==="careful";
+  const reckless=!careful&&hero.traits.negative==="reckless";
+  const health=hero.health/heroProgression(hero).maxHealth;
+  if(!gear.weapon||(!gear.vest&&!reckless)||
+    hero.level<(careful?7:reckless?5:6)||
+    health<(careful?.85:reckless?.65:.75))return false;
+  return ordinaryExpeditionReadiness(hero)+Number(gearFromName(gear.vest)?.tier===2)
+    >=(careful?9:reckless?7:8);
 }
 export function isBossExpeditionParty(members:readonly AdventurerState[]):boolean{
   return members.length>=2&&members.length<=3&&members.every(isBossExpeditionCandidate);
@@ -61,7 +69,7 @@ export function ordinaryExpeditionReadiness(hero:AdventurerState):number {
 /** Assess the DESTINATION with the same readiness floor used by its
  * residents. A hero must not approve a descent and immediately reject the
  * unchanged conditions on arrival. Floor 9 retains its existing approach
- * threshold; the separate Floor-10 party/pass gate is untouched. */
+ * threshold; Floor-10 readiness is evaluated separately. */
 function minimumOrdinaryFloorReadiness(floor:number):number {
   return Math.min(7,Math.max(1,floor-1));
 }
@@ -180,8 +188,8 @@ export function chooseHeroDungeonDecision(
     onReason?.("unprepared-retreat");return {goal:"caution",action:"ascend"};
   }
   // A solo explorer cannot start the boss. A genuinely new reward may
-  // motivate resupply/permission; old gold and unchanged map knowledge
-  // must not send an unpermitted hero round the portal indefinitely.
+  // motivate resupply; old gold and unchanged map knowledge
+  // must not send an unprepared hero round the portal indefinitely.
   if(hero.floor===9 && enoughExperience && newLootSite){
     onReason?.("floor9-solo-resupply");return {goal:"resupply",action:"shop"};
   }
@@ -231,7 +239,7 @@ export function chooseLiveHeroDungeonDecision(
       return cautious;
     }
   }
-  // Do not send a healthy permitted solo explorer home solely because it
+  // Do not send a healthy prepared solo explorer home solely because it
   // has gold or has walked 13 tiles. Seek companions and the actual lower
   // stair; a completed search, real haul or retreat may still end the outing.
   if(bossAvailable&&isBossExpeditionCandidate(hero)&&replay.outcome!=="completed"&&
@@ -243,7 +251,7 @@ export function chooseLiveHeroDungeonDecision(
   // A healthy ordinary-floor explorer who already committed to a stair
   // does not abandon it just because the next single movement tick lacks
   // an encounter or because a fresh resource goal is available. Real
-  // resupply, caution, retreat and Floor-9 permission rules still win.
+  // resupply, caution, retreat and Floor-9 readiness rules still win.
   if(hero.floor<9&&priorDecision?.action==="descend"&&base.action==="stay"&&
       base.goal!=="caution"&&base.goal!=="farm"&&
       canRiskOrdinaryDescent(hero)&&hero.health/heroProgression(hero).maxHealth>=.70){

@@ -5,7 +5,7 @@ import {renderHeroCard} from "./heroCard.ts";
 import type {WorldHeroCards} from "./worldHeroCards.ts";
 
 /** World Wide Hero Cards replace the former handwritten roster data
- * rows. Existing Board filters, permit authority, actions and keyboard
+ * rows. Existing Board filters, actions and keyboard
  * navigation are retained. The World Feed opens the same expanded card. */
 export function setupRosterBoardHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
@@ -48,19 +48,6 @@ export function setupRosterBoardHud(
       report.className="roster-known-report";
       report.textContent="LIVE · "+rosterActivityLabel(view)+(view.floor===null?"":" · Floor "+view.floor);
       extended.append(report);
-      if(current.status==="at-shop"){
-        const permit=document.createElement("button");
-        permit.type="button";permit.className="roster-permit";
-        permit.setAttribute("aria-pressed",String(current.bossPass));
-        permit.textContent=current.bossPass?
-          "Revoke Boss Pass":"Grant Boss Pass";
-        permit.addEventListener("click",()=>{
-          store.setBossPass(hero.id,!current.bossPass);
-          list.querySelector<HTMLButtonElement>(
-            'details[data-hero-id="'+hero.id+'"] .roster-permit')?.focus();
-        });
-        extended.append(permit);
-      }
       if(current.status==="exploring"||current.status==="expedition"){
         const watch=document.createElement("button");
         watch.type="button";watch.className="roster-watch-live";

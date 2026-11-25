@@ -144,7 +144,6 @@
   scrollbar-color:#8e714c transparent;padding-top:9px
 }
 #hud #adventurer-details li{padding:5px 0;border-bottom:1px solid rgba(205,166,108,.15)}
-#hud #adventurer-details .boss-pass{padding:5px 6px;min-height:26px;font-size:10px}
 #hud #adventurer-details .hero-summary{font-size:11px;line-height:1.45}
 #hud #adventurer-details[hidden]{display:none!important}
 
