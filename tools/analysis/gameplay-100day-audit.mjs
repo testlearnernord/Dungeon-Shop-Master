@@ -378,8 +378,8 @@ function run(mode){
   }));
   delete metrics.startingIds;
   metrics.progression=telemetry.report();
-  const {byContext,...exposureSummary}=combatExposure.report();
-  metrics.combatExposure={...exposureSummary,byContext};
+  const {byContext,bySoloRisk,...exposureSummary}=combatExposure.report();
+  metrics.combatExposure={...exposureSummary,byContext,bySoloRisk};
   metrics.newHeroes=sum(store.state.events,e=>e.type==="influx"?1:0);
   // Request expiries are committed asynchronously by the LIVE clock, not
   // necessarily by a direct shopper action in actShop().
