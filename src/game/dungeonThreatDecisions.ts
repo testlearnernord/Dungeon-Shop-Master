@@ -1,7 +1,7 @@
 import type {AdventurerState} from "./adventurers.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {equipmentEffects,gearFromName} from "./gearCatalog.ts";
-import {dungeonNeighbors,dungeonDownStair,type DungeonLayout,type DungeonPoint}
+import {dungeonNeighbors,type DungeonLayout,type DungeonPoint}
   from "./dungeonLayout.ts";
 import {getSpatialDungeonProgress,chooseKnownRouteStep,chooseSpatialDungeonStep,chooseDungeonTransitionRoute,
   type SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
@@ -207,6 +207,8 @@ export function chooseRememberedThreatReaction(
   // Prefer a physically known safe upper exit rather than trying the same
   // blocked descent again. A shop-bound explorer retains its original trip.
   if(!returning&&layout.floor>1){
+    if(current.x===layout.entrance.x&&current.z===layout.entrance.z)
+      return result(null,true);
     const up=chooseKnownRouteStep(layout,shared,layout.entrance,avoided);
     if(up)return result(up,true);
   }

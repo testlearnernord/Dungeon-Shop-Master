@@ -674,7 +674,9 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
       processed.add(id);
       byId.set(id,individual.adventurer);
       const chosen=agreed.get(id);
-      const decision=chosen&&remembered?.retreatUp&&!homeward&&chosen.action!=="shop"
+      const withdrawing=!!remembered&&(remembered.retreatUp||
+        priorPlan?.action==="ascend"&&priorPlan.goal==="caution");
+      const decision=chosen&&withdrawing&&!homeward&&chosen.action!=="shop"
         ?{goal:"caution" as const,action:"ascend" as const}:chosen;
       const detail=decisionDetails?.get(id);
       if(diagnostic&&decision&&detail&&!homeward)

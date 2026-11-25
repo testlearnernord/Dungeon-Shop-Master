@@ -6,7 +6,7 @@ import {generateExpeditionLayout,dungeonNeighbors}
 import {emptySpatialDungeonWorld,advanceSpatialDungeonPartyStep}
   from "../../src/game/spatialDungeonExploration.ts";
 import {advanceDungeonMonsterWorld} from "../../src/game/dungeonMonsterWorld.ts";
-import {chooseDungeonThreatReaction,canSoloChallengeVisiblePack}
+import {chooseDungeonThreatReaction,canSoloChallengeVisiblePack,chooseRememberedThreatReaction,recentDungeonThreat,THREAT_MEMORY_TICKS}
   from "../../src/game/dungeonThreatDecisions.ts";
 import {observedGhoulPackSize} from "../../src/game/ghoulPack.ts";
 import {selectKnownResourceSite} from "../../src/game/dungeonDecisions.ts";
@@ -175,4 +175,35 @@ test("a visible three-Ghoul site is not an intentional solo hunting target but r
   const visible={...seeded,heroes:[progress],monsters:[{...pack,mode:"IDLE" as const}]};
   assert.equal(selectKnownResourceSite(deep,progress,visible,"monster",[ready]),null);
   assert.equal(selectKnownResourceSite(deep,progress,visible,"monster",[ready,{...ready,id:"support"}])?.id,pack.id);
+});
+
+test("remembered LOS threat blocks the return to an exposed corridor, even when the actual pack is hidden",()=>{
+  // Two connected branches: the old progress route runs through danger;
+  // the safe vertical branch offers a genuine unexplored frontier.
+  const width=9,height=9;
+  const cells=[{x:1,z:1},{x:2,z:1},{x:3,z:1},{x:4,z:1},{x:5,z:1},
+    {x:1,z:2},{x:1,z:3},{x:1,z:4},{x:1,z:5}];
+  const tiles=Array.from({length:width*height},(_,i)=>cells.some(p=>p.z*width+p.x===i)
+    ?"corridor" as const:"wall" as const);
+  const map={...layout,width,height,tiles,entrance:cells[8],rooms:[],features:[]};
+  const weak=hero({equipment:{weapon:null,armor:null},health:heroProgression(original[0]).maxHealth});
+  const memory={monsterId:selected.id,x:5,z:1,seenTick:50};
+  const at={x:1,z:2};
+  const progress={heroId:weak.id,...at,visited:cells.slice(0,6).map(p=>p.z*width+p.x)};
+  const hidden={...emptySpatialDungeonWorld(),heroes:[progress],monsters:[]};
+  const reaction=chooseRememberedThreatReaction(map,hidden,[weak],memory,cells[4]);
+  assert.deepEqual(reaction?.step,{x:1,z:3},"Do not immediately return to the threatened branch");
+  const elsewhere={...hidden,monsters:[{...monster,x:1,z:5}]};
+  assert.deepEqual(chooseRememberedThreatReaction(map,elsewhere,[weak],memory,cells[4]),reaction,
+    "A hidden pack's current location must not change remembered routing");
+  assert.equal(recentDungeonThreat([memory],50+THREAT_MEMORY_TICKS),undefined);
+  const safe={...progress,x:1,z:5,visited:cells.map(p=>p.z*width+p.x)};
+  assert.equal(chooseRememberedThreatReaction(map,{...hidden,heroes:[safe]},[weak],memory,cells[4])?.action,
+    "WAITING_FOR_SAFETY");
+  const armed=hero({role:"tank",level:5,equipment:{weapon:"Iron Sword",armor:"Leather Vest"}});
+  const leader={...armed,health:heroProgression(armed).maxHealth};
+  const ally={...leader,id:"companion"};
+  assert.equal(chooseRememberedThreatReaction(map,{...hidden,heroes:[{...progress,heroId:leader.id},
+    {...progress,heroId:ally.id}]},[leader,ally],memory,cells[4]),null,
+    "A capable new party may reassess a threat remembered from solo travel");
 });

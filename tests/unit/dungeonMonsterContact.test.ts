@@ -178,3 +178,22 @@ test("co-located voluntary Temporary Party shares ONE physical Ghoul contact fig
   assert.deepEqual(resumed.state,store.state,
     "the single shared combat result must resume deterministically");
 });
+
+test("a real evasive movement saves its observed threat and resumes deterministically",()=>{
+  const {store:seeded,heroId,featureId}=chasedStationaryHero();
+  const state=seeded.state;
+  const current=state.adventurers.find(h=>h.id===heroId)!;
+  const weak={...current,equipment:{weapon:null,armor:null}};
+  const active={...state,adventurers:state.adventurers.map(h=>h.id===heroId?weak:h),
+    liveDungeon:{...state.liveDungeon,heroes:[]}};
+  const store=new GameStore(active);
+  store.advanceWorldTime(50);
+  const memory=store.state.liveDungeon.plans.find(p=>p.heroId===heroId)?.threatMemory;
+  assert(memory,"A real evasion must record the last seen threat");
+  assert.equal(memory.monsterId,featureId);
+  assert.equal(memory.seenTick,50);
+  const resumed=new GameStore(parseSave(JSON.stringify(createSave(store.state))));
+  store.advanceWorldTime(100);
+  resumed.advanceWorldTime(100);
+  assert.deepEqual(resumed.state,store.state);
+});

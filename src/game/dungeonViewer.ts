@@ -1153,7 +1153,7 @@ export class DungeonViewer {
     const ongoing=hero.inCombat?"LIVE combat":
       hero.activity==="backtracking"?"Walking to portal":
       hero.activity==="portal"?"Portal transit":
-      hero.threatAction?"Pursued · "+hero.threatAction:"Exploring";
+      hero.threatAction?hero.threatAction.replaceAll("_"," "):"Exploring";
     const source=liveHeroCard(this.store.state,hero.id,{
       health:hero.health,activity:ongoing,goal:hero.goal,
       action:hero.plannedAction,
