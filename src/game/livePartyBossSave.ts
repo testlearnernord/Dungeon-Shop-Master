@@ -1,6 +1,6 @@
 import type {GameState} from "./gameState.ts";
 import type {LivePartyBossCombat} from "./liveDungeonRuntime.ts";
-import {caveTrollPartyOptions} from "./sharedBossCombat.ts";
+import {caveTrollPartyOptions,CAVE_TROLL_LIVE_PROFILE} from "./sharedBossCombat.ts";
 import {gearFromName} from "./gearCatalog.ts";
 import {createGroupCombat,captureGroupCombatFrame,
   type GroupCombatOptions} from "./groupCombat.ts";
@@ -208,11 +208,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
      monsters.length!==1||
      monsters[0].id!=="cave-troll"||
      monsters[0].specialAbility!=="grapple-throw"||
-     monsters[0].maxHp!==700||
-     monsters[0].damage!==46||
-     monsters[0].armor!==16||
-     monsters[0].grappleDamage!==55||
-     monsters[0].staggerThreshold!==92)
+     Object.entries(CAVE_TROLL_LIVE_PROFILE).some(([key,value])=>monsters[0][key]!==value))
     return fail("must match real saved Level-10 party and boss archetype");
   if(!Array.isArray(rec.obstacles)||rec.obstacles.length!==0||
      !exactly(rec.bounds,["minX","maxX","minZ","maxZ"])||

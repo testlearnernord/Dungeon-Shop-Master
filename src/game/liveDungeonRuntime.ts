@@ -930,7 +930,9 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
         if(!old||!actor)
           throw new RangeError("Boss settlement lost a real party actor.");
         const hp=Math.max(0,Math.round(actor.hp));
-        const used=Math.min(10,old.inventory.healing)-actor.healCharges;
+        const initial=partyBoss.options.actors.find(a=>a.id===id);
+        if(!initial)throw new RangeError("Boss settlement lost initial resources.");
+        const used=(initial.healCharges??0)-actor.healCharges;
         if(used<0||used>old.inventory.healing)
           throw new RangeError("Boss fight invented a healing supply.");
         const gold=winner&&hp>0?

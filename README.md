@@ -10,9 +10,12 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 **Current in-game label:** V.002 ALPHA (see `index.html`). **V.003 ALPHA / The Living Dungeon** is the next *release target*, not a claim that the work described below is missing. Many foundational V.003 systems are already implemented on `main`. The independent npm version is `0.1.0`.
 
+
+**Unified live hero combat contract:** Every monster and boss uses the same `heroCombatAttributes` projection, weapon preparation, hero poise, defense eligibility, collision and roll movement. Enemy abilities, telegraphs, geometry and environment may influence tactical choices, never silently replace a hero's stats or gear. Historical solo training remains isolated from live rules. The new checkpoint contract requires a fresh Alpha v40 campaign; v39 and older are incompatible. The 35/90-second encounter limits and signature-specific tactical movement remain separate follow-up work; no claim of final balance or visual acceptance.
+
 ## Implemented on the audited main baseline
 
-Current baseline: 25 November 2026, merged #363 (Alpha v39). V.004 cellar, fishing, LIVE cashier, dungeon autonomy and spectators already exist, together with real class progression and the Floor-10 group boss. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
+Current baseline: 25 November 2026, merged #363 (Alpha v40). V.004 cellar, fishing, LIVE cashier, dungeon autonomy and spectators already exist, together with real class progression and the Floor-10 group boss. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
 
 | Area | Currently implemented |
 | --- | --- |
@@ -25,9 +28,9 @@ Current baseline: 25 November 2026, merged #363 (Alpha v39). V.004 cellar, fishi
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Strict current **Alpha v39** saves persist the independently mined cursed `shopRoom`, one `portal` traffic checkpoint, explicit `"shop"`/`"away"`/`"transit"` hero places, ordinary Floor 1–9 `dungeonWorlds`, real Floor-10 group combat and immutable recordings. **V38 and older Alpha files are incompatible**, not migrated; breaking changes require a fresh campaign |
+| Persistence | Strict current **Alpha v40** saves persist the independently mined cursed `shopRoom`, one `portal` traffic checkpoint, explicit `"shop"`/`"away"`/`"transit"` hero places, ordinary Floor 1–9 `dungeonWorlds`, real Floor-10 group combat and immutable recordings. **V39 and older Alpha files are incompatible**, not migrated; breaking changes require a fresh campaign |
 
-**Combat and risk:** Ordinary fights use a 35-second limit, 0.72-second Ghoul recovery, collision-checked stagger recoil and equipped DPS spear timing. Visible authored pack composition, health, gear, experience and traits guide solo hunting and pursuit reactions; actual collisions still enter combat. No new save fields or alternate simulation. The cellar forge consumes Iron Ore, Coal and Ghoul Leather to craft class-specific T2 weapons and T2 armor; standard T1 weapons and armor remain wholesale goods.
+**Combat and risk:** Ordinary fights use a 35-second limit, 0.72-second Ghoul recovery, collision-checked stagger recoil and universal equipped DPS spear timing. Visible authored pack composition, health, gear, experience and traits guide solo hunting and pursuit reactions; actual collisions still enter combat. No new save fields or alternate simulation. The cellar forge consumes Iron Ore, Coal and Ghoul Leather to craft class-specific T2 weapons and T2 armor; standard T1 weapons and armor remain wholesale goods.
 
 **V.004 cellar (merged PRs #252 and #254):** Galvik's fixed fiancée portrait opens a secret, physically traversable stairway to the cellar. The widened corridor and ramp support normal first-person descent, ascent and off-centre approaches. Cellar mining uses the same rock cells and U excavation tool; a chest uses the same P furniture blueprint registry and save state.
 

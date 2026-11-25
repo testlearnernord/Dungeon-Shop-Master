@@ -8,7 +8,7 @@ import {generateExpeditionLayout,dungeonShortestPath,dungeonDownStair}
   from "../../src/game/dungeonLayout.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
-import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
+import {caveTrollPartyOptions,CAVE_TROLL_LIVE_PROFILE} from "../../src/game/sharedBossCombat.ts";
 import {createGroupCombat,resolveGroupCombat} from "../../src/game/groupCombat.ts";
 import {selectLiveFloorSpectatorFrame} from "../../src/game/liveFloorSpectator.ts";
 import {projectWorldFeedChanges} from "../../src/game/worldFeedProjection.ts";
@@ -60,7 +60,7 @@ test("real Floor-9 stair commits exactly one party boss, with 60Hz saved fighter
   assert.deepEqual(battle.heroIds,ids);
   assert.equal(battle.options.actors.length,4);
   assert.equal(battle.options.actors.filter(a=>a.specialAbility==="grapple-throw").length,1);
-  assert.equal(battle.options.actors.at(-1)?.maxHp,700);
+  assert.equal(battle.options.actors.at(-1)?.maxHp,CAVE_TROLL_LIVE_PROFILE.maxHp);
   assert(store.state.adventurers.filter(h=>
     ids.includes(h.id)&&h.floor===10&&h.status==="expedition").length===3);
   const view=selectLiveFloorSpectatorFrame(store.state,10)!;
