@@ -1,5 +1,5 @@
 import type {AdventurerState} from "./adventurers.ts";
-import {ordinaryHeroCombatAttributes} from "./heroProgression.ts";
+import {heroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects,GEAR_BY_ITEM} from "./gearCatalog.ts";
 import type {GroupCombatOptions,CombatantSpec,GroupRole} from "./groupCombat.ts";
 import type {CombatStageTheme} from "./combatSpectatorStage.ts";
@@ -101,7 +101,7 @@ export function randomDeveloperHeroes(seed:number,count:number):DeveloperHero[]{
   });
 }
 export function developerHeroFromRoster(hero:AdventurerState):DeveloperHero{
-  const stats=ordinaryHeroCombatAttributes(hero);
+  const stats=heroCombatAttributes(hero);
   return {
     role:hero.role,label:hero.name,maxHp:stats.maxHp,damage:stats.damage,
     armor:stats.armor,agility:stats.agility,healCharges:stats.healCharges,
