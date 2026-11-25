@@ -4,12 +4,16 @@ import {createGameState} from "../../src/game/gameState.ts";
 import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
 import {prepareSpatialDungeonCombat,SPATIAL_DUNGEON_COMBAT_SECONDS} from "../../src/game/spatialDungeonExploration.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
+import {measureCombatHorizons,addHorizonSummary} from "./combat-horizon-audit.mjs";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 const seeds=process.argv[2]?[Number(process.argv[2])]:[7351,42,2026,9321];
 const floors=process.argv[3]?process.argv[3].split(',').map(Number):[1,2,3,4,5,6,7,8,9];
 const roles=["tank","DPS","healer"];
 const weapons={tank:["Iron Sword","Forged Sword & Shield"],DPS:["Spear","Forged Spear"],healer:["Staff","Forged Staff"]};
 const rows=[];
+const horizonMode=process.argv[4]==="horizon";
+const horizonSummary={},horizonCutoff={};
+let horizonCases=0;
 for(const seed of seeds){
   const initial=createGameState(seed);
   for(const floor of floors){
@@ -41,7 +45,16 @@ for(const seed of seeds){
         const options=prepareSpatialDungeonCombat([hero],selected.site,seed,layout,selected.approach,0,true).options;
         const monsters=options.actors.filter(a=>a.team==="monsters");
         for(let pack=1;pack<=monsters.length;pack++){
-          const fight=resolveGroupCombat({...options,actors:[options.actors.find(a=>a.team==="heroes"),...monsters.slice(0,pack)]},SPATIAL_DUNGEON_COMBAT_SECONDS);
+          const encounter={...options,actors:[options.actors.find(a=>a.team==="heroes"),...monsters.slice(0,pack)]};
+          if(horizonMode){
+            const snapshots=measureCombatHorizons(encounter,[35,60,90,180,240]);
+            const key=[role,tier,pack].join(":");
+            addHorizonSummary(horizonSummary,key,snapshots);
+            if(snapshots[0].outcome==="fighting")addHorizonSummary(horizonCutoff,key,snapshots);
+            horizonCases++;
+            continue;
+          }
+          const fight=resolveGroupCombat(encounter,SPATIAL_DUNGEON_COMBAT_SECONDS);
           const actor=fight.state.actors.find(a=>a.id===hero.id);
           const cues=fight.replay.cues;
           const sum=(kind,field)=>cues.filter(c=>c.kind===kind&&c[field]===hero.id).reduce((n,c)=>n+(c.amount??0),0);
@@ -55,6 +68,14 @@ for(const seed of seeds){
         }
       }
   }
+}
+if(horizonMode){
+  if(horizonCases===0)throw Error("Empty ordinary horizon audit");
+  const report={seeds,floors,cases:horizonCases,summary:horizonSummary,cutoffActive:horizonCutoff};
+  console.error("ORDINARY_HORIZON_SUMMARY "+JSON.stringify({seeds,floors,cases:horizonCases,summary:horizonSummary}));
+  console.error("ORDINARY_HORIZON_CUTOFF "+JSON.stringify(horizonCutoff));
+  console.log(JSON.stringify(report));
+  process.exit(0);
 }
 const groups=new Map();
 for(const row of rows){
