@@ -17,14 +17,14 @@ import {choosePersistentDungeonParty,chooseBossRendezvous,negotiatePartyFloorDec
   type DungeonPartyState} from "./dungeonParties.ts";
 import {advanceSpatialDungeonPartyStep,emptySpatialDungeonWorld,
   prepareSpatialDungeonCombat,settleSpatialDungeonCombat,
-  SPATIAL_DUNGEON_COMBAT_SECONDS,getSpatialDungeonProgress,chooseKnownRouteStep,chooseDungeonTransitionRoute,type PreparedSpatialEncounter,type SpatialDungeonReplay,
+  getSpatialDungeonProgress,chooseKnownRouteStep,chooseDungeonTransitionRoute,type PreparedSpatialEncounter,type SpatialDungeonReplay,
   type SpatialDungeonFloor,type SpatialDungeonWorld} from "./spatialDungeonExploration.ts";
 import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame,
   groupCombatReplayFromFrames,type GroupCombatState,
   type GroupReplayFrame,type GroupCombatOptions} from "./groupCombat.ts";
 import {caveTrollPartyOptions} from "./sharedBossCombat.ts";
 import {canAttemptCaveTroll,CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
-import {PARTY_BOSS_MAX_SECONDS} from "./combatEncounter.ts";
+import {appendCombatFrame} from "./combatRecording.ts";
 import {returnUnpaidCartsAtClose} from "./shopCarts.ts";
 import {scheduleShopVisit} from "./shopArrivals.ts";
 import {commitShopRequestEvent} from "./shopRuntime.ts";
@@ -855,22 +855,17 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
 }
 
 /** Shared immutable checkpoint advance and replay capture for every LIVE
- * encounter. The temporary archival limit remains a caller-supplied policy
- * until retreat and unbounded live recording are implemented together. */
+ * encounter. Only the combat motor determines the outcome. */
 function advanceLiveEncounter(
   encounter:Pick<LiveDungeonCombat,"state"|"frames"|"heroIds">,
-  maxSeconds:number,
 ):{combat:GroupCombatState;frames:GroupReplayFrame[];newDeaths:string[]}{
   const combat:GroupCombatState=structuredClone(encounter.state);
   const frames=[...encounter.frames];
   for(let i=0;i<LIVE_COMBAT_INTERVAL_TICKS*3&&combat.outcome==="fighting";i++){
     const step=Math.round(combat.time*60)+1;
-    if(step>maxSeconds*60){combat.outcome="draw";break;}
     stepGroupCombat(combat);
-    if(combat.outcome==="fighting"&&step===maxSeconds*60)
-      combat.outcome="draw";
     if(step%6===0||combat.outcome!=="fighting")
-      frames.push(captureGroupCombatFrame(combat));
+      appendCombatFrame(frames,captureGroupCombatFrame(combat));
   }
   const newDeaths=encounter.heroIds.filter(id=>{
     const before=encounter.state.actors.find(a=>a.id===id);
@@ -904,7 +899,7 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
   let partyBossContinuing:LivePartyBossCombat|null=null;
   const partyBoss=state.liveDungeon.partyBossCombat;
   if(partyBoss){
-    const {combat,frames,newDeaths}=advanceLiveEncounter(partyBoss,PARTY_BOSS_MAX_SECONDS);
+    const {combat,frames,newDeaths}=advanceLiveEncounter(partyBoss);
     for(const id of newDeaths){
       const hero=byId.get(id);
       if(!hero)throw new RangeError("Boss fighter has no original hero.");
@@ -962,7 +957,7 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
     }
   }
   for(const fight of state.liveDungeon.combats){
-    const {combat,frames,newDeaths}=advanceLiveEncounter(fight,SPATIAL_DUNGEON_COMBAT_SECONDS);
+    const {combat,frames,newDeaths}=advanceLiveEncounter(fight);
     for(const id of newDeaths){
       const hero=byId.get(id);
       if(!hero)throw new RangeError("Dead combat actor has no adventurer.");
