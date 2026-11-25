@@ -12,7 +12,7 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Implemented on the audited main baseline
 
-Core systems were reconciled on 22 November 2026 through merged #322 (Alpha v36). V.004 cellar, fishing, LIVE cashier, dungeon autonomy and spectators already exist, together with real class progression and the Floor-10 group boss. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
+Current baseline: 25 November 2026, merged #363 (Alpha v39). V.004 cellar, fishing, LIVE cashier, dungeon autonomy and spectators already exist, together with real class progression and the Floor-10 group boss. This is not a claim of full V.003 release readiness. See the [Great Cleanup closeout ledger](docs/GREAT_CLEANUP_CLOSEOUT.md) for measured before/after inventory and outstanding acceptance.
 
 | Area | Currently implemented |
 | --- | --- |
@@ -25,7 +25,9 @@ Core systems were reconciled on 22 November 2026 through merged #322 (Alpha v36)
 | Replays | Read-only immutable committed fights; rolling timeline (today + two earlier days), up to 12 deliberately saved recordings, separate historical playback |
 | Developer tools | **V Developer Combat Lab** with hero, monster, arena and balancing controls; same production group motor; smooth display interpolation independent of saved 10-Hz pose checkpoints |
 | Audio | Shop: **The Lean Season**; abstract dungeon: **Beneath the Surface**; ordinary fights: **No Safe Passage**; boss: **Desperate Measures**. 21 recorded Ghoul WAVs and 11 Cave Troll MP3 cues share the existing presentation-only sound system |
-| Persistence | Strict current **Alpha v36** saves persist the independently mined cursed `shopRoom`, one `portal` traffic checkpoint, explicit `"shop"`/`"away"`/`"transit"` hero places, ordinary Floor 1–9 `dungeonWorlds`, real Floor-10 group combat and immutable recordings. **V35 and older Alpha files are incompatible**, not migrated; breaking changes require a fresh campaign |
+| Persistence | Strict current **Alpha v39** saves persist the independently mined cursed `shopRoom`, one `portal` traffic checkpoint, explicit `"shop"`/`"away"`/`"transit"` hero places, ordinary Floor 1–9 `dungeonWorlds`, real Floor-10 group combat and immutable recordings. **V38 and older Alpha files are incompatible**, not migrated; breaking changes require a fresh campaign |
+
+**Combat and risk:** Ordinary fights use a 35-second limit, 0.72-second Ghoul recovery, collision-checked stagger recoil and equipped DPS spear timing. Visible authored pack composition, health, gear, experience and traits guide solo hunting and pursuit reactions; actual collisions still enter combat. No new save fields or alternate simulation. The cellar forge consumes Iron Ore, Coal and Ghoul Leather to craft class-specific T2 weapons and T2 armor; standard T1 weapons and armor remain wholesale goods.
 
 **V.004 cellar (merged PRs #252 and #254):** Galvik's fixed fiancée portrait opens a secret, physically traversable stairway to the cellar. The widened corridor and ramp support normal first-person descent, ascent and off-centre approaches. Cellar mining uses the same rock cells and U excavation tool; a chest uses the same P furniture blueprint registry and save state.
 
@@ -41,7 +43,7 @@ Core systems were reconciled on 22 November 2026 through merged #322 (Alpha v36)
 
 **V.004 spectator QoL (merged PRs #265 and #266):** locate actual LIVE heroes and running fights through compact selectors. Focusing a target preserves the player's orbit and zoom; the inspector shows real saved finds. Selecting a fight focuses its committed tile and the existing Watch action opens that exact opt-in 3D encounter.
 
-**Partially implemented / not yet released:** ordinary Floors 1–9 and the Floor-10 party gate are functional, and Galvik's cursed shop is conceptually unnumbered with one normal physical threshold. The current v36 canonical source/module cleanup is completed in merged #323, while **#294 remains open** after a [fresh 100-day measured audit](docs/GAMEPLAY_100DAY_V36.md): an empty shop stalls late XP and the real Floor-10 group boss receives no natural attempts across ten 100-day scenarios, even when the scripted merchant grants authentic passes. Still needed: root-cause investigation, real physical customer/cashier/portal acceptance, authored deep-floor variety, ten-day hands-on pacing and real-device visual/audio verification. Do not use old PR-labelled roadmap paragraphs to infer these states. See [Roadmap](docs/ROADMAP.md).
+**Partially implemented / not yet released:** all six 100/200-day Forge scenarios reached Floor 10 in the #363 scripted GameStore audit. Ordinary mortality improved relative to #362, but boss conversion declined; actual physical play, visual animation and real-device acceptance remain open. See [current balance evidence](docs/GAMEPLAY_VETERAN_PARTY_BALANCE.md) and [Roadmap](docs/ROADMAP.md).
 
 ## Start playing
 
