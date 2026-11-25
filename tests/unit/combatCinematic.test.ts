@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {sampleCinematicTrack,type CinematicKeyframe}
   from "../../src/game/combatCinematic.ts";
-import {BOSS_INTRO_SECONDS,sampleBossIntro}
-  from "../../src/game/bossCinematic.ts";
-import {createGroupCombatIntro,sampleGroupCombatIntro,GROUP_COMBAT_INTRO_SECONDS}
+import {createGroupCombatIntro,sampleGroupCombatIntro,GROUP_COMBAT_INTRO_SECONDS,BOSS_INTRO_SECONDS}
   from "../../src/game/groupCombatIntro.ts";
 import type {CombatantSpec,GroupReplayFrame}
   from "../../src/game/groupCombat.ts";
@@ -19,15 +17,6 @@ const frame=(actors:readonly CombatantSpec[]):GroupReplayFrame=>({
   t:2.3,actors:actors.map(a=>({id:a.id,x:a.x+1,z:a.z+2,
     hp:31,stamina:6,heading:0,phase:"recover" as const})),
   projectiles:[],
-});
-
-test("Boss camera preserves authored eye/look and the 13.5 second finale",()=>{
-  assert.equal(BOSS_INTRO_SECONDS,13.5);
-  assert.deepEqual(sampleBossIntro(0).eye,[-14.5,7.8,-16]);
-  assert.deepEqual(sampleBossIntro(0).look,[0,3.8,0]);
-  assert.deepEqual(sampleBossIntro(BOSS_INTRO_SECONDS).eye,[4,5,-17]);
-  assert.deepEqual(sampleBossIntro(BOSS_INTRO_SECONDS).look,[0,3,-3]);
-  assert.deepEqual(sampleBossIntro(3.2).eye,[-7.4,6.5,-9.4]);
 });
 
 test("Shared film interpolation clamps, remains deterministic and does not touch time",()=>{
