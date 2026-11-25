@@ -9,7 +9,7 @@ import {lastWorldTickOfDay} from "../../src/game/worldClock.ts";
 import {developerHeroFromRoster,buildDeveloperCombat,DEFAULT_DEVELOPER_CONFIG}
   from "../../src/game/developerCombatScenario.ts";
 import {heroCombatAttributes} from "../../src/game/heroProgression.ts";
-import {caveTrollGroupOptions,caveTrollPartyOptions,CAVE_TROLL_LIVE_PROFILE} from "../../src/game/sharedBossCombat.ts";
+import {caveTrollPartyOptions,CAVE_TROLL_LIVE_PROFILE} from "../../src/game/sharedBossCombat.ts";
 import {useHealingSupplies} from "../../src/game/adventurers.ts";
 import {
   heroLevel,heroProgression,settleHeroExperience,HERO_POWER_CAP_LEVEL,
@@ -103,26 +103,14 @@ test("one authoritative spatial GroupCombat and Combat Lab use the exact same sc
   }
 });
 
-test("boss group authority applies role bonuses without altering training fixtures",()=>{
+test("live boss uses the same progression projection as ordinary combat",()=>{
   for(const role of ["tank","DPS","healer"] as const){
-    const old=first(role),veteran=atLevel(role,12);
-    const normal=heroProgression(old),grown=heroProgression(veteran);
-    const options=(h:typeof veteran,progress:typeof grown)=>({
-      role:h.role,sword:true,armor:true,health:h.health,
-      maxHealth:progress.maxHealth,healingSupplies:0,
-      strength:progress.strength,agility:progress.agility,
-      intellect:progress.intellect,
-      progressionDamageBonus:progress.damageBonus,
-      progressionArmorBonus:progress.armorBonus,
-      progressionMagicHeals:progress.bonusMagicHeals,
-    });
-    const before=caveTrollGroupOptions(options(old,normal)).actors[0];
-    const after=caveTrollGroupOptions(options(veteran,grown)).actors[0];
-    assert(after.maxHp>before.maxHp);
-    assert(after.damage>=before.damage);
-    assert(after.armor>=before.armor);
-    if(role==="tank")assert(after.armor>before.armor);
-    if(role==="healer")assert((after.magicHeals??0)>(before.magicHeals??0));
+    const hero={...atLevel(role,12),bossPass:true};
+    const companion={...initial.adventurers[1],bossPass:true};
+    const spec=caveTrollPartyOptions([hero,companion],42).actors.find(a=>a.id===hero.id)!;
+    const expected=heroCombatAttributes(hero);
+    for(const key of ["maxHp","damage","armor","agility","healCharges","magicHeals","reach","speed","style"] as const)
+      assert.equal(spec[key],expected[key],role+" "+key);
   }
 });
 
