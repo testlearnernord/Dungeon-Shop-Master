@@ -5,7 +5,6 @@ import {heroProgression} from "../../src/game/heroProgression.ts";
 import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 import {REPLAY_MAX_SECONDS} from "../../src/game/bossCombatReplay.ts";
-import {measureCombatHorizons,addHorizonSummary} from "./combat-horizon-audit.mjs";
 import {summarizeBossFight} from "./campaign-progression-telemetry.mjs";
 const seed=Number(process.argv[2]??7351);
 const roles=["tank","DPS","healer"];
@@ -25,6 +24,7 @@ const weapons={tank:["Iron Sword","Forged Sword & Shield"],DPS:["Spear","Forged 
 // Offline enemy-profile experiment only. The live composer is untouched.
 const sweep=process.argv[3]==="sweep";
 const horizonMode=process.argv[3]==="horizon";
+const {measureCombatHorizons,addHorizonSummary}=horizonMode?await import("./combat-horizon-audit.mjs"):{};
 const horizonSummary={},horizonCutoff={};
 let horizonCases=0;
 const profiles=sweep?[
