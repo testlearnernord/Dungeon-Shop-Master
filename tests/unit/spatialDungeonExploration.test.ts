@@ -16,7 +16,7 @@ function dungeonHero(): AdventurerState {
   const original=createGameState().adventurers[0];
   return { ...original, health:original.stats.maxHealth,
     role:"tank", equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
-    status:"exploring",floor:7,bossPass:true };
+    status:"exploring",floor:7 };
 }
 
 test("level 7 autonomous navigation stays on connected grid edges, never crosses walls", () => {
@@ -113,9 +113,9 @@ test("persistent shared monsters, traps, loot and fights never reroll on camera/
   assert(allEncounterFeatures.size>0);
 });
 
-test("ordinary Floor 6 and a boss pass never create a direct Floor-7 shop departure",()=>{
+test("ordinary Floor 6 never creates a direct Floor-7 shop departure",()=>{
   const initial=createGameState(7351);
-  const authorized={...initial.adventurers[0],bossPass:true};
+  const authorized={...initial.adventurers[0]};
   const state={...initial,dungeonFloors:[{floor:6,cleared:true}],
     adventurers:[authorized,...initial.adventurers.slice(1)]};
   const first=advanceDay(state);

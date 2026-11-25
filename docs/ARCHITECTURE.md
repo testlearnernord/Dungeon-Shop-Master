@@ -1,9 +1,9 @@
 # Dungeon Shop Master — current technical architecture
 
-> Current contract: Alpha v43, including physical automatic buyback. Current runtime responsibilities, not a PR diary. See [Game Bible](GAME_BIBLE.md) and [Roadmap](ROADMAP.md).
+> Current contract: Alpha v44, including physical automatic buyback. Current runtime responsibilities, not a PR diary. See [Game Bible](GAME_BIBLE.md) and [Roadmap](ROADMAP.md).
 
 
-**Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Alpha v43 is the only supported campaign schema. Reject v42 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+**Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Alpha v44 is the only supported campaign schema. Reject v43 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 ## 1. Execution model and ownership
 
@@ -26,7 +26,7 @@ Browser input / shop interactions
               (read-only presentation)
 ```
 
-- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 43`.
+- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 44`.
 - `worldClock.ts` persists a monotonic tick and ordered future events, with 50-ms ticks, 20 ticks per game minute and 28,800 ticks per game day. Stable lane/sequence ordering is part of determinism. Gameplay events, not Babylon frames, advance customers, timed dungeon steps and combat.
 - `liveDungeonRuntime.ts` schedules one connected spatial movement every **50 world ticks** and commits groups of **30 actual 60-Hz combat steps** every **10 world ticks**. The **Floor-10 2–3-member Temporary Party Cave Troll** uses the same `groupCombat.ts` authority as ordinary fights, with saved 10-Hz pose checkpoints, combat cues and replay validation through `livePartyBossSave.ts`.
 - `gameStore.ts` records actual player and shop actions, physical shop-exit events, accepted credit, paid cart settlement, save operations and bed closure. Day closure does not reroll live expeditions.
@@ -46,7 +46,7 @@ Browser input / shop interactions
 | Individual heroes | Persistent stats, equipment, medium-term intentions, voluntary parties | `adventurers.ts`, `dungeonDecisions.ts`, `dungeonParties.ts` |
 | Spatial dungeon | Seeded **Floors 1–9**, connected rooms/stairs, site generations, distinct cursed-shop threshold and saved returns | `dungeonTopology.ts`, `dungeonLayout.ts`, `spatialDungeonExploration.ts`, `dungeonRegeneration.ts`, `liveDungeonRuntime.ts` |
 | Ordinary fights | 60-Hz actor mechanics, group encounters, combat cues, real multi-Ghoul packs | `combatEncounter.ts`, `groupCombat.ts`, `combatMelee.ts`, `combatMovement.ts`, `combatActionClock.ts`, `combatTactics.ts` |
-| Unique boss | Real permitted **Floor-10 Temporary Party** Cave Troll, signature attacks, lava/grapple/throw, immutable replay/save | `sharedBossCombat.ts`, `groupCombat.ts`, `livePartyBossSave.ts`, `liveDungeonRuntime.ts`, `dungeonTopology.ts` |
+| Unique boss | Real prepared **Floor-10 Temporary Party** Cave Troll, signature attacks, lava/grapple/throw, immutable replay/save | `sharedBossCombat.ts`, `groupCombat.ts`, `livePartyBossSave.ts`, `liveDungeonRuntime.ts`, `dungeonTopology.ts` |
 | Observation | One committed hero roster and read-only spectator | `heroCardView.ts`, `liveFloorSpectator.ts`, `rosterView.ts` |
 | Recorded history | Bounded real highlights, separately sampled read-only dungeon/boss footage | `expeditionArchive.ts`, `replayRetention.ts`, `dungeonReplayPlayback.ts`, `dungeonViewer.ts` |
 
@@ -62,7 +62,7 @@ Browser input / shop interactions
 
 ## 4. Dungeon, combat, LIVE and replay
 
-**Current topology:** `dungeonTopology.ts` defines ordinary **Floors 1–9** and the single **Floor-10** Cave Troll party gate. `CURSED_SHOP_REALM` is an unnumbered realm; normal NPC access uses one physical threshold. The real Floor-9-to-10 gate checks an actual saved Temporary Party, pass eligibility, health, available world time and the real stair position. Authored deep-floor diversity and manual physical acceptance remain open.
+**Current topology:** `dungeonTopology.ts` defines ordinary **Floors 1–9** and the single **Floor-10** Cave Troll party gate. `CURSED_SHOP_REALM` is an unnumbered realm; normal NPC access uses one physical threshold. The real Floor-9-to-10 gate checks an actual saved Temporary Party, unanimous current readiness, health, unique uncleared encounter and the real stair position. Authored deep-floor diversity and manual physical acceptance remain open.
 
 - **Monster AI (V0.004 A–D merged in #336–339):** `dungeonMonsterWorld.ts` persists ordinary Ghoul-Pack x/z, site cycle, 100-tick stepping and IDLE/ROAMING/CHASING/SEARCHING/RETURNING/ENGAGED state. Real LOS is bounded at five tiles, without spectator-derived omniscience. The same 50-tick LIVE world event is the only dungeon movement scheduler. True hero/party field contacts reserve the source pack generation and launch `groupCombat.ts`, with canonical stat seeds and replay coordinates. `dungeonThreatDecisions.ts` supplies one actual adjacent flee, support, sight-breaking or confrontation step to the existing `advanceSpatialDungeonPartyStep` adapter.
 - **Monster observation (V0.004 E, #340):** `liveFloorSpectator.ts` supplies one saved view to the full LIVE map and Galvik's Table. `liveFloorFeatureIdentity.ts` includes active pack identity and site generation in the table's mesh lifecycle, but excludes ordinary x/z changes to avoid remeshing. Visual movement samples committed endpoints; skipped days never invent paths. The existing 60-Hz combat engine and shop clock remain independent of any active camera. Uncommon contact edge cases and full human browser visual acceptance remain explicit QA tasks.
@@ -108,12 +108,12 @@ Committed original Tripo GLBs
 
 `npm run build` executes both asset generators, TypeScript type checking and Vite bundling. D1 #242 runs `npm run verify:pages` immediately after build in PR CI **and** the Pages deploy workflow: it checks final `dist/` JS/CSS URL base, canonical music, all 32 creature SFX and generated/curated GLB copies without changing runtime assets. See [D1 artifact contract](CODE_CLEANUP_D1.md). `npm run test:unit` runs Node tests, `npm run test:smoke` runs the curated browser-flow whitelist; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit and **one core browser-smoke job**; the full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
 
-Alpha v43 is the only supported campaign schema. Reject v42 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Current Alpha evidence](ALPHA_V43_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
+Alpha v44 is the only supported campaign schema. Reject v43 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Current Alpha evidence](ALPHA_V44_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 **Dungeon transitions:** dungeonStairways.ts projects the actual layout entrance
 and dungeonDownStair(...) cells as view-only stair landmarks. 3D stone steps
 and lit arch meshes belong to the existing replayScene marker visibility
-pipeline. Current ordinary Floors 1–9 show down-stairs and the real Level-9 party gate. A visible stair is **not** permission to bypass the saved world-clock group/health/access checks.
+pipeline. Current ordinary Floors 1–9 show down-stairs and the real Level-9 party gate. A visible stair does not bypass the saved world-clock party and readiness checks.
 No new floor crossing is synthesized by the renderer.
 
 **Global World Echoes:** worldFeedProjection.ts reads committed WorldEvent
@@ -157,3 +157,5 @@ V defaults to Production rules: `productionLabHero` derives hero power from the 
 `dungeonPacing.ts` is the single owner of map cadence: 50 ticks per hero/party step, twice that interval per monster step. Three failed perception checks still terminate pursuit. Roaming delay multipliers preserve movement-relative idle behavior. Combat cadence, portal transit and shop/recovery durations remain in absolute world ticks. The observer interpolates committed positions, never advances time.
 
 `LiveDungeonPlan.threatMemory` is an individual, bounded observation `{monsterId,x,z,seenTick}`, not a hidden monster locator. The existing tactical decision module excludes the remembered exposure zone from the existing known-path and frontier searches, shares observations within co-located parties, and permits a known upper-floor retreat or bounded wait if blocked. It does not advance movement itself. The observer uses the same pure response and does not predict steps while waiting. Room and corridor materials in `dungeonViewer.ts` share the original painted flagstone DynamicTexture; never clone the texture canvas for room tint.
+
+`dungeonDecisions.ts` owns autonomous boss willingness (`isBossExpeditionCandidate`/`isBossExpeditionParty`). `dungeonTopology.ts` only checks legal group size, while `sharedBossCombat.ts` constructs real actors independently of campaign willingness for both production and Lab. `liveDungeonRuntime.ts` owns physical entry and revalidates readiness. No merchant permission mutation or save flag survives. Audit scripts use normal shop commerce only.

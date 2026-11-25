@@ -11,7 +11,7 @@ export interface DungeonStairway extends DungeonPoint{
 
 /** Uses seeded entrance/down-stair coordinates from the authoritative LIVE
  * map. Ordinary Floors 1–9 are traversable; the Floor-9 descent is subject
- * to the separate saved party/pass check in liveDungeonRuntime.ts. The
+ * to the separate saved party/readiness check in liveDungeonRuntime.ts. The
  * visual descriptor never grants access, awards a boss or changes state. */
 export function dungeonFloorStairways(layout:DungeonLayout):readonly DungeonStairway[]{
   const floor=layout.floor;

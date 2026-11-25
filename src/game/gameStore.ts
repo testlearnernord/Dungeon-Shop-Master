@@ -1,7 +1,7 @@
 import { excavateShopRoomCell, isValidShopRoomGeometry, type RoomCell } from "./shopRoomGeometry.ts";
 import {isValidCellarRoom} from "./cellarRoom.ts";
 import {isCellarPondUncovered,pondExcavationRemaining} from "./cellarPond.ts";
-import { advanceDay, createGameState, setBossPass, type GameState } from "./gameState.ts";
+import { advanceDay, createGameState, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
 import {buybackAtChest} from "./dungeonBuyback.ts";
 import {craftAtCellarForge,type ForgeOutput} from "./cellarForge.ts";
@@ -259,12 +259,6 @@ export class GameStore {
     return result.message;
   }
 
-  setBossPass(heroId: string, permitted: boolean): boolean {
-    const result = setBossPass(this.current, heroId, permitted);
-    if (result === this.current) return false;
-    this.replace(result);
-    return true;
-  }
 
   /** Register a real physical visitor's restock/credit petition. */
   startShopRequest(heroId:string,itemId:ItemId,reason:ShoppingReason):number|null{

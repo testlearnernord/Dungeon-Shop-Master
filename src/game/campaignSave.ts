@@ -1100,7 +1100,7 @@ function validateState(value: unknown): asserts value is GameState {
     const path = `payload.adventurers[${index}]`;
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
-      "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilTick", "bossPass",
+      "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilTick",
     ],["lastDungeonFloor"]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
@@ -1161,8 +1161,6 @@ function validateState(value: unknown): asserts value is GameState {
         fail(`${path}.floor`, "must agree with status");
       }
     }
-    if (typeof hero.bossPass !== "boolean") fail(`${path}.bossPass`, "must be boolean");
-    if (hero.status === "expedition" && hero.bossPass !== true) fail(`${path}.bossPass`, "is required for boss expedition");
     const until=hero.offDutyUntilTick;
     if(hero.status==="off-duty"){
       if(until===null)fail(path+".offDutyUntilTick","is required off duty");

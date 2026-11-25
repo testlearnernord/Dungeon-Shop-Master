@@ -20,7 +20,7 @@ function party(floor:1|7=7):AdventurerState[]{
     traits:{...hero.traits,negative:"stubborn"},
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
     inventory:{...hero.inventory,healing:2},
-    health:hero.stats.maxHealth,bossPass:floor===7,
+    health:hero.stats.maxHealth,
   }));
 }
 function atUnresolvedSite(
@@ -219,13 +219,14 @@ test("a real triggered trap can kill one party member while companions survive",
     new Set(heroes.map(h=>h.id))));
 });
 
-test("boss rendezvous uses visible eligible peers only and never recruits an unpermitted companion",()=>{
+test("boss rendezvous uses visible eligible peers only and never recruits an unprepared companion",()=>{
   const base=createGameState(SEED).adventurers;
   const layout=generateExpeditionLayout(SEED,9);
   const at=layout.entrance;
   const neighbor=dungeonNeighbors(layout,at)[0];
   const ready=base.slice(0,2).map(h=>({...h,floor:9 as const,status:"exploring" as const,
-    bossPass:true,health:heroProgression(h).maxHealth,
+    level:7,xp:600,health:heroProgression({...h,level:7}).maxHealth,
+    inventory:{...h.inventory,bread:1},
     equipment:{weapon:h.role==="tank"?"Iron Sword":h.role==="DPS"?"Spear":"Staff",armor:"Leather Vest"}}))
     .sort((a,b)=>a.id.localeCompare(b.id));
   const index=(p:{x:number;z:number})=>p.z*layout.width+p.x;
@@ -237,12 +238,12 @@ test("boss rendezvous uses visible eligible peers only and never recruits an unp
     {peerId:ready[1].id,step:null});
   assert.deepEqual(chooseBossRendezvous(ready[1],ready,world,layout,new Set()),
     {peerId:ready[0].id,step:at});
-  assert.equal(chooseBossRendezvous(ready[0],[ready[0],{...ready[1],bossPass:false}],
+  assert.equal(chooseBossRendezvous(ready[0],[ready[0],{...ready[1],equipment:{weapon:null,armor:null}}],
     world,layout,new Set()),null);
   assert.equal(chooseBossRendezvous(ready[0],ready,world,layout,new Set([ready[1].id])),null);
   const decisions=new Map([[ready[0].id,{goal:"progress" as const,action:"descend" as const}],
     [ready[1].id,{goal:"progress" as const,action:"stay" as const}]]);
-  assert.notEqual(negotiatePartyFloorDecisions([ready[0],{...ready[1],bossPass:false}],
+  assert.notEqual(negotiatePartyFloorDecisions([ready[0],{...ready[1],equipment:{weapon:null,armor:null}}],
     decisions).get(ready[1].id)?.action,"descend");
 });
 

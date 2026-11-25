@@ -102,7 +102,7 @@ test("manual payment closes a shop visit instead of randomly sending the buyer b
   const state={...initial,
     adventurers:initial.adventurers.map(person=>person.id===buyer.id
       ?{...person,status:"at-shop" as const,floor:"shop" as const,
-        shopStayDays:0,bossPass:false,gold:100}:person),
+        shopStayDays:0,gold:100}:person),
     events:[...initial.events,{
       id:`day-1:${buyer.id}:sale:shelf-1-slot-2:manual`,
       type:"sale" as const,saleChannel:"manual" as const,day:1,
@@ -122,13 +122,13 @@ test("manual payment closes a shop visit instead of randomly sending the buyer b
   assert.deepEqual(advanceDay(state),next,"a saved day tick must not reroll customer departures");
 });
 
-test("bed returns unpaid stock without a sale; a boss pass never teleports a solo visitor",()=>{
+test("bed returns unpaid stock without a sale; a solo visitor never teleports to a boss",()=>{
   const initial=createStockedShopState(9321);
   const buyer=initial.adventurers[0];
   const visiting={...initial,
     adventurers:initial.adventurers.map(person=>person.id===buyer.id
       ?{...person,status:"at-shop" as const,floor:"shop" as const,
-        shopStayDays:0,gold:100,bossPass:false}:person),
+        shopStayDays:0,gold:100}:person),
     shopCarts:[{heroId:buyer.id,day:1,
       lines:[{itemId:"bread" as const,slotId:"shelf-1-slot-2",
         quantity:1,subtotal:4}]}],
@@ -140,15 +140,10 @@ test("bed returns unpaid stock without a sale; a boss pass never teleports a sol
   assert.equal(settled.state.shopEconomy.slots.find(s=>s.id==="shelf-1-slot-2")!.quantity,3);
   assert(!settled.events.some(e=>e.type==="sale"),
     "An unprocessed cart cannot pay itself while Galvik sleeps");
-  const permitted={...visiting,
-    adventurers:visiting.adventurers.map(person=>person.id===buyer.id
-      ?{...person,bossPass:true}:person),
-  };
-  const next=advanceDay(permitted);
+  const next=advanceDay(visiting);
   const visitor=next.state.adventurers.find(person=>person.id===buyer.id)!;
   assert.notEqual(visitor.status,"expedition");
   assert(!next.events.some(e=>e.adventurerId===buyer.id&&
     ["level6-departure","level7-departure","level6-combat"].includes(e.type)));
-  assert.equal(visitor.bossPass,true,"the actual Floor-10 party credential remains owned");
   assert.deepEqual(next.state.shopCarts,[]);
 });

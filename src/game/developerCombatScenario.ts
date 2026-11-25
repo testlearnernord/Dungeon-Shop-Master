@@ -186,7 +186,7 @@ export function productionLabHero(hero:DeveloperHero,index:number):AdventurerSta
     traits:{positive:"brave",neutral:"quiet",negative:"stubborn"},
     level,xp:(level-1)*100,health:1,gold:0,equipment,
     inventory:{bread:0,healing:Math.min(2,hero.healCharges)},
-    floor:9,status:"exploring",shopStayDays:0,offDutyUntilTick:null,bossPass:true,
+    floor:9,status:"exploring",shopStayDays:0,offDutyUntilTick:null,
   };
   const max=heroProgression(draft).maxHealth;
   return {...draft,health:Math.max(1,Math.min(max,hero.hp??max))};

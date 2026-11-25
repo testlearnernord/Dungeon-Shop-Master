@@ -23,7 +23,7 @@ import type {ShopCart} from "./shopCarts.ts";
 import {arrivalEvent} from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 43;
+export const SIMULATION_VERSION = 44;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -192,20 +192,6 @@ export function advanceDay(state:GameState):{state:GameState;events:readonly Wor
   const priorIds=new Set(state.events.map(event=>event.id));
   return {state:finished.state,events:finished.state.events.filter(event=>
     !priorIds.has(event.id))};
-}
-
-/** Grant/revoke an explicit Floor-10 Temporary-Party Boss Pass only
- * for a living hero visiting Galvik's shop. No old-format save migrations.
- */
-export function setBossPass(state: GameState, heroId: string, permitted: boolean): GameState {
-  if (typeof permitted !== "boolean") throw new TypeError("Boss pass must be boolean.");
-  const hero = state.adventurers.find((entry) => entry.id === heroId);
-  if (!hero || hero.status !== "at-shop" || hero.health <= 0 || hero.bossPass === permitted) return state;
-  return {
-    ...state,
-    adventurers: state.adventurers.map((entry) =>
-      entry.id === heroId ? { ...entry, bossPass: permitted } : entry),
-  };
 }
 
 export type DayAction = "request" | "confirm" | "cancel";

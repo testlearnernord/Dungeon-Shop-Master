@@ -171,7 +171,7 @@ test("every live hero has identical fighter attributes in Ghoul and Troll encoun
     ["healer",[null,"Staff","Forged Staff"]],
   ] as const)for(const level of [1,9,20])for(let tier=0;tier<3;tier++){
     const hero={...initial.adventurers[0],role,level,xp:(level-1)*100,
-      floor:1 as const,status:"exploring" as const,bossPass:true,
+      floor:1 as const,status:"exploring" as const,
       equipment:{weapon:weapons[tier],armor:tier===2?"Ghoul Leather Vest":tier===1?"Leather Vest":null},
       inventory:{...initial.adventurers[0].inventory,healing:5}};
     const ordinary=prepareSpatialDungeonCombat([hero],monster,seed,layout,approach,0,true).options;

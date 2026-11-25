@@ -404,11 +404,10 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
         }
         if(floor===9&&priorPlan.action==="descend"){
           // A genuine saved temporary party physically reaches Floor 9's
-          // lower stair together. No solo permit can spawn a fake team.
+          // lower stair together. No solo explorer can spawn a fake team.
           const hasSavedParty=!!priorParty;
           const fullCrossing=!!priorParty&&crossing.length===priorParty.memberIds.length;
-          const allowedParty=canAttemptCaveTroll(crossing.length,
-            crossing.every(member=>member.bossPass));
+          const allowedParty=canAttemptCaveTroll(crossing.length)&&isBossExpeditionParty(crossing);
           const living=crossing.every(member=>member.health>0);
           const partyValid=hasSavedParty&&fullCrossing&&allowedParty&&living&&
             !partyBossCombat&&!clearedLevel10;
@@ -418,7 +417,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
             memberIds:participants.map(member=>member.id),checks:{
               savedParty:hasSavedParty,fullCrossing,
               partySize:crossing.length>=2&&crossing.length<=3,
-              passes:crossing.every(member=>member.bossPass),living,
+              ready:crossing.every(isBossExpeditionCandidate),living,
               bossIdle:!partyBossCombat,bossUncleared:!clearedLevel10,
               hasTime,accepted:partyValid&&hasTime,
             }});
@@ -643,7 +642,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
         p.heroId===individual.adventurer.id);
       const detail=decisionDetails?{checks:{
         partySize:readyGroup.length>=2&&readyGroup.length<=3,
-        passes:readyGroup.every(member=>member.bossPass),
+        ready:readyGroup.every(isBossExpeditionCandidate),
         armed:readyGroup.every(member=>member.equipment.weapon!==null),
         partyHealth:readyGroup.every(member=>member.health/heroProgression(member).maxHealth>=.60),
         visitedEnough:(progress?.visited.length??0)>=13,
@@ -1044,7 +1043,7 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
         diagnostic?.({stage:"combat-decision",day:state.day,tick:state.worldClock.tick,
           floor,heroId:id,memberIds:survivors.map(member=>member.id),
           checks:{bossReady,partySize:survivors.length>=2&&survivors.length<=3,
-            passes:survivors.every(member=>member.bossPass),
+            ready:survivors.every(isBossExpeditionCandidate),
             armed:survivors.every(member=>member.equipment.weapon!==null),
             partyHealth:survivors.every(member=>member.health/heroProgression(member).maxHealth>=.60),
             visitedEnough:(progress?.visited.length??0)>=13,
@@ -1148,7 +1147,7 @@ export function finishLiveDungeonDay(
     // Sleeping cannot complete a portal journey which is still scheduled
     // for a subsequent live world tick.
     if(ready.status==="traveling")return ready;
-    // Permit ownership cannot silently teleport a visitor to a boss at dawn.
+    // Readiness cannot silently teleport a visitor to a boss at dawn.
     // Every new journey begins only after the real door crossing + downtime.
     const shop=scheduleShopVisit(ready,day,rngState,
       priorPaid.has(hero.id),true);

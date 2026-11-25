@@ -19,9 +19,7 @@ test("one cursed shop portal routes NPCs and keeps the old right entrance sealed
   expect(first.hasSecondGate).toBe(false);
   expect(first.gateY).toBeDefined();
   await page.locator("#toggle-adventurer-details").click();
-  const pass=page.locator("#adventurer-roster button.boss-pass").first();
-  await expect(pass).toBeVisible();
-  await pass.click();
+  await expect(page.locator("#adventurer-roster button")).toHaveCount(0);
   await advanceTestDay(page);
   await expect(page.locator("#day")).toHaveText("Day 2");
   const departing=await inspect();

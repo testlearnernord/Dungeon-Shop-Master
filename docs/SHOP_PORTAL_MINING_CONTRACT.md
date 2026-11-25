@@ -1,6 +1,6 @@
 # One cursed shop portal and consistent mined surfaces
 
-> Current contract: Alpha v43 (Observed Threat Memory).
+> Current contract: Alpha v44 (Autonomous Boss Progression).
 
 ## One physical entrance/exit
 
@@ -26,7 +26,7 @@
 
 ## Alpha save policy
 
-Alpha v43 is the only supported campaign schema. Reject v42 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The room, one portal and hero place keys are canonical; the old numerical shop/transit aliases are removed.
+Alpha v44 is the only supported campaign schema. Reject v43 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The room, one portal and hero place keys are canonical; the old numerical shop/transit aliases are removed.
 
 ## Checks
 

@@ -282,7 +282,7 @@ export function negotiatePartyFloorDecisions(
   }
   if(!distinct.has("descend"))return decisions;
   // The boss is never a normal negotiated depth change. Every participant
-  // needs the pass, usable gear, health and an independent boss commitment.
+  // needs actual readiness and an independent boss commitment.
   if(members[0].floor===9)return decisions;
 
   const stayers=members.filter(member=>

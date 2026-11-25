@@ -7,7 +7,7 @@ import {createGroupCombat,stepGroupCombat,resolveGroupCombat} from "../../src/ga
 
 test("Lab and LIVE party encounters use the same canonical Troll profile",()=>{
   const live=caveTrollPartyOptions(createGameState(7351).adventurers.slice(0,2)
-    .map(h=>({...h,bossPass:true})),17);
+    .map(h=>({...h})),17);
   const lab=buildDeveloperCombat(DEFAULT_DEVELOPER_CONFIG);
   const {id,x,z,...labStats}=lab.actors.find(a=>a.team==="monsters")!;
   const {id:liveId,x:liveX,z:liveZ,...liveStats}=live.actors.find(a=>a.team==="monsters")!;

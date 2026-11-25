@@ -41,7 +41,7 @@ for(const profile of profiles)for(const composition of compositions)for(const le
     const counts={tank:0,DPS:0,healer:0};
     const members=composition.map(role=>{
       const base=pools[role][counts[role]++];
-      const hero={...base,level,xp:(level-1)*100,floor:9,status:"exploring",bossPass:true,
+      const hero={...base,level,xp:(level-1)*100,floor:9,status:"exploring",
         equipment:{weapon:weapons[role][tier-1],armor:tier===2?"Ghoul Leather Vest":"Leather Vest"},
         inventory:{...base.inventory,healing:herbs}};
       return {...hero,health:Math.floor(heroProgression(hero).maxHealth*hpRatio)};

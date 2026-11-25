@@ -265,7 +265,7 @@ test("true Floor-10 60Hz party options gain real class-specific T2 bonuses",()=>
   const base=roles.map(role=>{
     const hero=population.find(h=>h.role===role);
     assert(hero,"seed must provide real character role "+role);
-    return {...hero,bossPass:true};
+    return {...hero};
   });
   const t1=base.map(hero=>({...hero,equipment:{
     weapon:hero.role==="tank"?"Iron Sword":
@@ -433,7 +433,7 @@ test("real Level-10 T2 party survives active and archived save validation",()=>{
   const members=(["tank","DPS","healer"] as const).map(role=>{
     const hero=base.adventurers.find(h=>h.role===role);
     assert(hero);
-    const veteran:AdventurerState={...hero,level:12,xp:1100,bossPass:true,
+    const veteran:AdventurerState={...hero,level:12,xp:1100,
       floor:9,status:"exploring",equipment:{
         weapon:role==="tank"?"Forged Sword & Shield":
           role==="DPS"?"Forged Spear":"Forged Staff",

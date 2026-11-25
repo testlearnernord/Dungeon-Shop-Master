@@ -3,8 +3,8 @@
  * realm, NOT numeric dungeon Floor 5. All Floors 1–9 are ordinary seeded
  * locations; Floor 10 is the Cave Troll party encounter. These pure
  * predicates never move heroes or spawn fights: the persisted LIVE motor
- * commits travel. The Alpha v35 save uses explicit `"shop"`/`"away"`/`"transit"` places;
- * `bossPass` is the current Floor-10 party gate credential.
+ * commits travel. The save uses explicit `"shop"`/`"away"`/`"transit"` places;
+ * Floor 10 requires real companions and autonomous readiness.
  */
 export const CURSED_SHOP_REALM="cursed-shop" as const;
 export const FIRST_DUNGEON_FLOOR=1;
@@ -49,5 +49,5 @@ export function downwardDestination(
 
 /** A genuine fight attempt requires at least two saved companions.
  * Equipment is evaluated by the real combat motor, not faked by this rule. */
-export const canAttemptCaveTroll=(memberCount:number,hasPass:boolean):boolean=>
-  Number.isSafeInteger(memberCount)&&memberCount>=2&&memberCount<=3&&hasPass;
+export const canAttemptCaveTroll=(memberCount:number):boolean=>
+  Number.isSafeInteger(memberCount)&&memberCount>=2&&memberCount<=3;
