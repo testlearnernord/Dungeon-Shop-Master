@@ -1,6 +1,6 @@
 # Documentation index
 
-> Current contract: Alpha v41 (Recovered Goods Chest). Read current contracts before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
+> Current contract: Alpha v42 (Living Dungeon Pacing). Read current contracts before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
 
 ## Current contracts
 
@@ -22,9 +22,11 @@
 - [SHOP PORTAL MINING CONTRACT](SHOP_PORTAL_MINING_CONTRACT.md)
 - [THE LIVING DUNGEON](THE_LIVING_DUNGEON.md)
 - [UI DESIGN SYSTEM](UI_DESIGN_SYSTEM.md)
-- [Alpha v41 evidence and remaining acceptance](ALPHA_V41_ACCEPTANCE.md)
+- [Alpha v42 evidence and remaining acceptance](ALPHA_V42_ACCEPTANCE.md)
 
 ## Historical reports and provenance
+
+- [Alpha v41 intake acceptance scope](ALPHA_V41_ACCEPTANCE.md)
 
 - [Alpha v40 evidence (pre-chest baseline)](ALPHA_V40_ACCEPTANCE.md)
 

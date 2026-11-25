@@ -1,4 +1,6 @@
-# Alpha v41 — current acceptance
+# Alpha v41 — previous intake acceptance scope
+
+> Superseded by [Alpha v42 pacing acceptance](ALPHA_V42_ACCEPTANCE.md). This file preserves the prior contract, not a verified v42 result.
 
 The Recovered Goods Chest changes the merchant intake policy and adds a saved open/closed flag. Start a fresh v41 campaign; no migration from v40. Prior combat and campaign evidence is retained in [Alpha v40 evidence](ALPHA_V40_ACCEPTANCE.md), not relabeled as a v41 playtest.
 
