@@ -33,9 +33,10 @@ jobs:
           node-version: 22
       - name: Reuse the same diagnostic fixtures on both frozen production candidates
         run: |
-          cp diagnostic/tools/analysis/{combat-horizon-audit,boss-readiness-matrix,ordinary-combat-matrix}.mjs subject/tools/analysis/
+          cp diagnostic/tools/analysis/{combat-horizon-audit,combat-horizon-audit.test,boss-readiness-matrix,ordinary-combat-matrix}.mjs subject/tools/analysis/
           cd subject
           npm ci --ignore-scripts
+          node --experimental-strip-types --test tools/analysis/combat-horizon-audit.test.mjs
           node --experimental-strip-types tools/analysis/boss-readiness-matrix.mjs ${{ matrix.seed }} horizon > boss-horizon.json
           node --experimental-strip-types tools/analysis/ordinary-combat-matrix.mjs ${{ matrix.seed }} 1,5,8 horizon > ordinary-horizon.json
       - uses: actions/upload-artifact@v4
