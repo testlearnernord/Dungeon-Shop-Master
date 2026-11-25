@@ -899,7 +899,12 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
     .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   let partyBossContinuing:LivePartyBossCombat|null=null;
   const partyBoss=state.liveDungeon.partyBossCombat;
-  if(partyBoss){
+  // A map event and an already scheduled combat burst can share a tick.
+  // The burst closes the PRECEDING half-second, so a newly arrived party
+  // must retain its initial frame and begin advancing at the next burst.
+  if(partyBoss?.startedTick===state.worldClock.tick){
+    partyBossContinuing=partyBoss;
+  }else if(partyBoss){
     const {combat,frames,newDeaths}=advanceLiveEncounter(partyBoss);
     for(const id of newDeaths){
       const hero=byId.get(id);
@@ -958,6 +963,10 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
     }
   }
   for(const fight of state.liveDungeon.combats){
+    if(fight.startedTick===state.worldClock.tick){
+      continuing.push(fight);
+      continue;
+    }
     const {combat,frames,newDeaths}=advanceLiveEncounter(fight);
     for(const id of newDeaths){
       const hero=byId.get(id);

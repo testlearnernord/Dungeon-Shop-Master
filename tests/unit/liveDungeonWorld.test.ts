@@ -905,3 +905,26 @@ test("map pacing preserves world day and combat clock while allowing four times 
   resumed.advanceWorldTime(50);
   assert.deepEqual(resumed.state,store.state);
 });
+
+test("a new encounter sharing an existing combat burst begins at age zero",()=>{
+  const store=activeFightFixture();
+  store.enableLiveDungeon();
+  let overlappingArrival=false;
+  for(let i=0;i<200;i++){
+    const prior=new Set(store.state.liveDungeon.combats.map(f=>f.id));
+    store.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
+    const live=store.state.liveDungeon;
+    for(const fight of live.combats){
+      const elapsed=(live.combatTick-fight.startedTick)*3;
+      assert.equal(Math.round(fight.state.time*60),elapsed,
+        "No encounter may consume combat time before its physical arrival.");
+      if(fight.startedTick===live.combatTick){
+        assert.equal(fight.state.time,0);
+        assert.equal(fight.frames.length,1);
+        if(prior.size>0&&!prior.has(fight.id))overlappingArrival=true;
+      }
+    }
+  }
+  assert(overlappingArrival,"The fixture exercises a new encounter arriving while another was active.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+});

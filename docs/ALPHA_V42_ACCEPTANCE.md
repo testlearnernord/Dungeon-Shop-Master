@@ -12,3 +12,5 @@ Fresh v42 campaigns only: the exact saved next movement and encounter alignment 
 - Check real shop traffic and physical intake, forged equipment purchases, audio, visual readability and device FPS as in [#294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 Prior evidence: [v41 intake scope](ALPHA_V41_ACCEPTANCE.md), [v40 combat and campaign evidence](ALPHA_V40_ACCEPTANCE.md). Neither proves v42 balance. Verify the actual CI result for the candidate; no blanket 100-day matrix is required.
+
+Concurrent encounter regression: a newly created ordinary or boss fight must not consume the preceding half-second when its arrival shares an already scheduled combat burst. Its age and initial frame remain zero until the next burst. The strict checkpoint validator remains unchanged.
