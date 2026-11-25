@@ -5,6 +5,7 @@ import {gearFromName} from "./gearCatalog.ts";
 import {createGroupCombat,captureGroupCombatFrame,
   type GroupCombatOptions} from "./groupCombat.ts";
 import {CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
+import {validRetreatExit} from "./combatRetreat.ts";
 import {PARTY_BOSS_MAX_SECONDS} from "./combatEncounter.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
   from "./liveDungeonRuntime.ts";
@@ -65,8 +66,10 @@ export function livePartyBossCheckpointProblem(
     return fail("could not reconstruct the 60Hz actor motor");
   }
   if(!exactly(b.state,["actors","bounds","obstacles","projectiles",
-    "events","time","outcome"],["environment","tacticsSeed"]))
+    "events","time","outcome"],["environment","tacticsSeed","retreat"]))
     return fail("has invalid current GroupCombat shape");
+  if(b.state.retreat!==undefined&&!validRetreatExit(b.state.retreat,initial.bounds,initial.environment))
+    return fail("has an invalid committed retreat exit");
   if(b.state.outcome!=="fighting"||
      b.state.environment!==initial.environment||
      b.state.tacticsSeed!==initial.tacticsSeed||
@@ -189,7 +192,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
   const rec=raw as Record<string,unknown>;
   if(rec.version!==1||rec.environment!=="cave-lava"||
      !integer(rec.tacticsSeed,0,0xffffffff)||
-     !["heroes","monsters","draw"].includes(String(rec.outcome)))
+     !["heroes","monsters","retreat","draw"].includes(String(rec.outcome)))
     return fail("has incompatible replay identity or outcome");
   if(!Array.isArray(rec.actors)||rec.actors.length<3||
      rec.actors.length>4||!rec.actors.every(v=>record(v)))
@@ -281,7 +284,8 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
   const aliveHeroes=bodies.some(a=>heroes.some(h=>h.id===a.id)&&Number(a.hp)>0);
   const trollHp=Number(bodies.find(a=>a.id==="cave-troll")?.hp??-1);
   if((rec.outcome==="heroes"&&trollHp>0)||
-     (rec.outcome==="monsters"&&aliveHeroes))
+     (rec.outcome==="monsters"&&aliveHeroes)||
+     (rec.outcome==="retreat"&&(!aliveHeroes||trollHp<=0)))
     return fail("outcome contradicts final saved fighters");
   return null;
 }
