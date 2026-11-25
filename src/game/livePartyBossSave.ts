@@ -5,7 +5,7 @@ import {gearFromName} from "./gearCatalog.ts";
 import {createGroupCombat,captureGroupCombatFrame,
   type GroupCombatOptions} from "./groupCombat.ts";
 import {CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
-import {REPLAY_MAX_SECONDS} from "./bossCombatReplay.ts";
+import {PARTY_BOSS_MAX_SECONDS} from "./combatEncounter.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
   from "./liveDungeonRuntime.ts";
 
@@ -74,9 +74,9 @@ export function livePartyBossCheckpointProblem(
      JSON.stringify(b.state.obstacles)!==JSON.stringify(initial.obstacles))
     return fail("environment or motor rules have diverged");
   const completed=(combatTick-b.startedTick)*3;
-  if(!bounded(b.state.time,0,REPLAY_MAX_SECONDS)||
+  if(!bounded(b.state.time,0,PARTY_BOSS_MAX_SECONDS)||
      Math.abs(b.state.time*60-completed)>.001||
-     completed>=REPLAY_MAX_SECONDS*60)
+     completed>=PARTY_BOSS_MAX_SECONDS*60)
     return fail("must match the single world-clock 60Hz simulation time");
   if(!Array.isArray(b.state.actors)||
      b.state.actors.length!==initial.actors.length)
@@ -233,7 +233,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
     if(!exactly(rawFrame,["t","actors","projectiles"]))
       return fail("frame has unexpected fields");
     const frame=rawFrame as Record<string,unknown>;
-    if(!bounded(frame.t,0,REPLAY_MAX_SECONDS+.1)||
+    if(!bounded(frame.t,0,PARTY_BOSS_MAX_SECONDS+.1)||
        frame.t<previous||!Array.isArray(frame.actors)||
        frame.actors.length!==initial.actors.length||
        !Array.isArray(frame.projectiles)||frame.projectiles.length>30)
@@ -270,7 +270,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
   const ids=new Set(actorLimits.keys());
   for(const rawCue of rec.cues){
     if(!exactly(rawCue,["t","actorId","kind"],["targetId","amount"])||
-       !bounded(rawCue.t,0,REPLAY_MAX_SECONDS+.1)||
+       !bounded(rawCue.t,0,PARTY_BOSS_MAX_SECONDS+.1)||
        !ids.has(String(rawCue.actorId))||
        (rawCue.targetId!==undefined&&!ids.has(String(rawCue.targetId)))||
        (rawCue.amount!==undefined&&!bounded(rawCue.amount,0,100000)))
