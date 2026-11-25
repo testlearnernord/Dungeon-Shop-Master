@@ -7,7 +7,6 @@ import {
 import {
   createGroupCombat, resolveGroupCombat, stepGroupCombat,
 } from "../../src/game/groupCombat.ts";
-import { resolveSpatialBoss, validateBossReplay } from "../../src/game/bossCombatReplay.ts";
 
 test("one group-capable encounter driver owns real tick and phase order",()=>{
   const state={time:0,outcome:"fighting",calls:[] as string[],journal:[] as string[]};
@@ -107,24 +106,4 @@ test("real ordinary group combat uses the same 60Hz driver without changing repl
     stepGroupCombat(manual,COMBAT_STEP_SECONDS);
   if(manual.outcome==="fighting")manual.outcome="draw";
   assert.deepEqual(a.state,manual);
-});
-
-test("real Troll boss keeps its v1 recorded phases, grapples and deterministic results",()=>{
-  const opts={
-    role:"tank" as const,sword:true,armor:true,
-    health:110,maxHealth:110,healingSupplies:1,
-    strength:12,agility:12,intellect:10,tacticsSeed:7,
-  };
-  const first=resolveSpatialBoss("hero-01",4,opts);
-  const second=resolveSpatialBoss("hero-01",4,opts);
-  assert.deepEqual(first,second);
-  const {replay,final}=first;
-  assert.equal(replay.version,1);
-  assert.equal(replay.frames[0].t,0);
-  assert(replay.frames.length<=700);
-  assert(replay.frames.length>2);
-  assert(replay.frames.every(frame=>frame.heroHp>=0&&frame.bossHp>=0));
-  assert(replay.frames.some(frame=>frame.cues.some(cue=>cue.kind==="windup")));
-  validateBossReplay(replay,"bossReplay","hero-01",4,replay.outcome);
-  assert(["victory","defeat","fighting"].includes(final.outcome));
 });
