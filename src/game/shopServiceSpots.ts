@@ -134,7 +134,7 @@ export class ShopServiceSpots{
       .filter(claim=>claim.heroId!==heroId).map(claim=>claim.point);
     // Only *claimed* future destinations are exclusive. Unoccupied queue and
     // credit pockets are not permanent no-go zones for valid shelf layouts.
-    const unavailable=[...occupied,...otherClaims];
+    const unavailable=[BUYBACK_DOCK,...occupied,...otherClaims];
     const route=pathToShelfAccess(from,layout,shelfId,slotIndex,room,
       point=>unavailable.every(other=>dist(point,other)>=CLEARANCE));
     if(!route)return null;

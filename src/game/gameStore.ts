@@ -3,7 +3,7 @@ import {isValidCellarRoom} from "./cellarRoom.ts";
 import {isCellarPondUncovered,pondExcavationRemaining} from "./cellarPond.ts";
 import { advanceDay, createGameState, setBossPass, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
-import {buyHeroDungeonFind,buybackAtChest} from "./dungeonBuyback.ts";
+import {buybackAtChest} from "./dungeonBuyback.ts";
 import {craftAtCellarForge,type ForgeOutput} from "./cellarForge.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
 import {resolveFurniturePlacement} from "./furniturePlacement.ts";
@@ -110,12 +110,6 @@ export class GameStore {
     this.purchases.add(requestId);
     const result = buyWholesale(this.current, itemId, quantity);
     this.replace(result.state);
-    return result.message;
-  }
-
-  buyDungeonFind(heroId:string,itemId:ItemId):string {
-    const result=buyHeroDungeonFind(this.current,heroId,itemId);
-    if(result.state!==this.current)this.replace(result.state);
     return result.message;
   }
 

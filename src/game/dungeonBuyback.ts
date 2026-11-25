@@ -1,101 +1,74 @@
 import {BUYBACK_DOCK} from "./buybackChestPlacement.ts";
 import {currentShopVisitEvents} from "./npcVisitors.ts";
 import type {GameState,WorldEvent} from "./gameState.ts";
-import {ECONOMY,ITEMS,isMaterial,type ItemId} from "./economy.ts";
+import {MATERIAL_ITEMS,type MaterialItemId} from "./economy.ts";
 
-export interface HeroDungeonOffer {
+export interface ChestMaterial {
   readonly heroId:string;
-  readonly heroName:string;
-  readonly itemId:ItemId;
+  readonly itemId:MaterialItemId;
   readonly count:number;
   readonly price:number;
 }
-export function dungeonBuybackPrice(id:ItemId):number{
-  const item=ITEMS.find(entry=>entry.id===id);
-  if(!item)throw new RangeError("Unknown dungeon find");
+export function dungeonBuybackPrice(id:MaterialItemId):number{
+  const item=MATERIAL_ITEMS.find(entry=>entry.id===id);
+  if(!item)throw new RangeError("The chest accepts workshop materials only.");
   return Math.max(1,Math.min(item.wholesaleCost,item.salePrice-1));
 }
-/** Offers are real, owned goods carried by heroes who physically returned to
- * Galvik's shop. No viewer projection, fake stock, or automatic hero sale. */
-export function availableDungeonOffers(state:GameState):readonly HeroDungeonOffer[]{
+/** Read-only real material ownership, not a separate offer inventory. */
+export function availableChestMaterials(state:GameState,heroId?:string):readonly ChestMaterial[]{
   return state.adventurers.flatMap(hero=>{
-    if(hero.status!=="at-shop"||hero.floor!=="shop"||hero.health<=0)return [];
-    return Object.entries(hero.inventory.finds??{}).flatMap(([id,count])=>{
-      const item=ITEMS.find(entry=>entry.id===id);
-      return item&&count&&count>0?[{
-        heroId:hero.id,heroName:hero.name,itemId:item.id as ItemId,
-        count,price:dungeonBuybackPrice(item.id as ItemId),
-      }]:[];
+    if((heroId!==undefined&&hero.id!==heroId)||hero.status!=="at-shop"||
+      hero.floor!=="shop"||hero.health<=0)return [];
+    return MATERIAL_ITEMS.flatMap(item=>{
+      const count=hero.inventory.finds?.[item.id]??0;
+      return count>0?[{heroId:hero.id,itemId:item.id,count,price:dungeonBuybackPrice(item.id)}]:[];
     });
   });
 }
-export function buyHeroDungeonFind(
-  state:GameState,heroId:string,itemId:ItemId,
-):{state:GameState;message:string}{
-  const offer=availableDungeonOffers(state).find(o=>
-    o.heroId===heroId&&o.itemId===itemId);
-  if(!offer)return {state,message:"That adventurer has no such goods to sell."};
-  const held=Object.values(state.shopEconomy.bag).reduce((a,b)=>a+b,0);
-  if(!isMaterial(itemId)&&held>=ECONOMY.bagCapacity)
-    return {state,message:"Galvik's bag is full."};
-  if(state.shopEconomy.balance<offer.price)
-    return {state,message:"Not enough gold for this offer."};
-  if(isMaterial(itemId)&&state.shopEconomy.materialStorage[itemId]>=Number.MAX_SAFE_INTEGER)
-    return {state,message:"The workshop reserve is at its numeric limit."};
-  const hero=state.adventurers.find(h=>h.id===heroId)!;
-  if(hero.gold+offer.price>Number.MAX_SAFE_INTEGER)
-    return {state,message:"The trade would exceed the gold ledger."};
-  const finds={...hero.inventory.finds};
-  const left=(finds[itemId]??0)-1;
-  if(left===0)delete finds[itemId];
-  else finds[itemId]=left;
-  const prefix="day-"+state.day+":"+heroId+":hero-buyback:"+itemId+":";
-  const serial=state.events.filter(e=>e.id.startsWith(prefix)).length+1;
-  const event:WorldEvent={
-    id:prefix+serial,type:"hero-buyback",day:state.day,adventurerId:heroId,
-    itemId,quantity:1,cost:offer.price,
-    message:"Galvik bought 1 "+ITEMS.find(item=>item.id===itemId)!.name+
-      " from "+hero.name+" for "+offer.price+" gold.",
-  };
-  return {state:{...state,
-    adventurers:state.adventurers.map(member=>member.id===heroId?
-      {...member,gold:member.gold+offer.price,
-        inventory:{...member.inventory,finds}}:member),
-    shopEconomy:{...state.shopEconomy,
-      balance:state.shopEconomy.balance-offer.price,
-      // Materials go straight into the saved workshop reserve and never
-      // consume Galvik's 24 carried shop-goods slots.
-      materialStorage:isMaterial(itemId)?{
-        ...state.shopEconomy.materialStorage,
-        [itemId]:state.shopEconomy.materialStorage[itemId]+1,
-      }:state.shopEconomy.materialStorage,
-      bag:isMaterial(itemId)?state.shopEconomy.bag:{
-        ...state.shopEconomy.bag,
-        [itemId]:(state.shopEconomy.bag[itemId]??0)+1}},
-    events:[...state.events,event],
-  },message:event.message};
-}
-
-/** Only workshop materials in V0.1; other recovered goods stay owned.
- * The existing one-unit paid exchange is the sole ledger authority. */
 export function wantsChestBuyback(state:GameState,heroId:string):boolean{
   if(!state.buybackChestOpen||state.shopCarts.some(c=>c.heroId===heroId)||
     state.shopRequests.some(r=>r.heroId===heroId))return false;
-  if(currentShopVisitEvents(state.events,state.day,heroId).some(e=>e.type==="hero-buyback"||e.type==="sale"))return false;
-  return availableDungeonOffers(state).some(o=>o.heroId===heroId&&isMaterial(o.itemId)&&
-    o.price<=state.shopEconomy.balance&&state.shopEconomy.materialStorage[o.itemId]<Number.MAX_SAFE_INTEGER);
+  if(currentShopVisitEvents(state.events,state.day,heroId).some(e=>
+    e.type==="hero-buyback"||e.type==="sale"||e.type==="shop-credit"||e.type==="shop-walkout"))return false;
+  const hero=state.adventurers.find(h=>h.id===heroId);
+  if(!hero)return false;
+  return availableChestMaterials(state,heroId).some(o=>
+    o.price<=state.shopEconomy.balance&&hero.gold<=Number.MAX_SAFE_INTEGER-o.price&&
+    state.shopEconomy.materialStorage[o.itemId]<Number.MAX_SAFE_INTEGER);
 }
+/** The only buyback mutation. One atomic paid drop-off; one auditable
+ * receipt per unit, using the existing expense ledger contract.
+ * The physical motor supplies its reached position; headless fixtures
+ * explicitly model an ideal service arrival at that same dock. */
 export function buybackAtChest(state:GameState,heroId:string,position:{x:number;z:number}):GameState{
   if(!Number.isFinite(position.x)||!Number.isFinite(position.z)||
     Math.hypot(position.x-BUYBACK_DOCK.x,position.z-BUYBACK_DOCK.z)>.3||
     !wantsChestBuyback(state,heroId))return state;
-  let next=state;
-  for(const offer of availableDungeonOffers(state).filter(o=>o.heroId===heroId&&isMaterial(o.itemId))){
-    for(let i=0;i<offer.count;i++){
-      const result=buyHeroDungeonFind(next,heroId,offer.itemId);
-      if(result.state===next)break;
-      next=result.state;
-    }
+  const hero=state.adventurers.find(h=>h.id===heroId)!;
+  const finds={...hero.inventory.finds};
+  const reserve={...state.shopEconomy.materialStorage};
+  let balance=state.shopEconomy.balance,gold=hero.gold;
+  const receipts:WorldEvent[]=[];
+  for(const offer of availableChestMaterials(state,heroId)){
+    const id=offer.itemId,price=offer.price;
+    const n=Math.min(offer.count,Math.floor(balance/price),
+      Math.floor((Number.MAX_SAFE_INTEGER-gold)/price),Number.MAX_SAFE_INTEGER-reserve[id]);
+    if(n<=0)continue;
+    balance-=n*price;gold+=n*price;reserve[id]+=n;
+    const remaining=(finds[id]??0)-n;
+    if(remaining===0)delete finds[id];else finds[id]=remaining;
+    const prefix="day-"+state.day+":"+heroId+":hero-buyback:"+id+":";
+    const prior=state.events.filter(e=>e.id.startsWith(prefix)).length;
+    const label=MATERIAL_ITEMS.find(m=>m.id===id)!.name;
+    for(let i=1;i<=n;i++)receipts.push({
+      id:prefix+(prior+i),type:"hero-buyback",day:state.day,adventurerId:heroId,
+      itemId:id,quantity:1,cost:price,
+      message:"Galvik bought 1 "+label+" from "+hero.name+" for "+price+" gold.",
+    });
   }
-  return next;
+  if(!receipts.length)return state;
+  return {...state,adventurers:state.adventurers.map(h=>h.id===heroId?
+    {...h,gold,inventory:{...h.inventory,finds}}:h),
+    shopEconomy:{...state.shopEconomy,balance,materialStorage:reserve},
+    events:[...state.events,...receipts]};
 }

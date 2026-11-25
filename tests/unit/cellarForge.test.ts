@@ -6,7 +6,8 @@ import type {AdventurerState} from "../../src/game/adventurers.ts";
 import {buyWholesale,ECONOMY,ITEMS}
   from "../../src/game/economy.ts";
 import {craftAtCellarForge} from "../../src/game/cellarForge.ts";
-import {buyHeroDungeonFind} from "../../src/game/dungeonBuyback.ts";
+import {buybackAtChest} from "../../src/game/dungeonBuyback.ts";
+import {BUYBACK_DOCK} from "../../src/game/buybackChestPlacement.ts";
 import {equipmentEffects,needsGearUpgrade} from "../../src/game/gearCatalog.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {rollDungeonSiteLoot,distributeDungeonFinds} from "../../src/game/dungeonLoot.ts";
@@ -19,7 +20,7 @@ import {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath,dungeonDow
 import {prepareSpatialDungeonCombat,emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
 import {activateLiveDungeon,DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS} from "../../src/game/liveDungeonRuntime.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
-import {availableDungeonOffers} from "../../src/game/dungeonBuyback.ts";
+import {availableChestMaterials} from "../../src/game/dungeonBuyback.ts";
 import {chooseLiveHeroDungeonDecision} from "../../src/game/dungeonDecisions.ts";
 
 test("T2 can never be bought wholesale; real recipes consume exactly their materials",()=>{
@@ -57,9 +58,8 @@ test("a real hero-owned ore and coal buyback pays gold before Galvik can forge",
     finds:{"iron-ore":1,coal:1}}};
   const recovered={...state,adventurers:state.adventurers.map(h=>
     h.id===hero.id?found:h)};
-  const boughtOre=buyHeroDungeonFind(recovered,hero.id,"iron-ore");
-  assert.notEqual(boughtOre.state,recovered);
-  const boughtCoal=buyHeroDungeonFind(boughtOre.state,hero.id,"coal");
+  const boughtCoal={state:buybackAtChest(recovered,hero.id,BUYBACK_DOCK)};
+  assert.notEqual(boughtCoal.state,recovered);
   assert.equal(boughtCoal.state.shopEconomy.materialStorage["iron-ore"],1);
   assert.equal(boughtCoal.state.shopEconomy.materialStorage.coal,1);
   const payments=state.shopEconomy.balance-
@@ -142,6 +142,9 @@ for(const [role,t1,t2,t2Name] of [
     }
     for(const id of Object.keys(required) as (keyof typeof required)[])
       assert((owner.inventory.finds?.[id]??0)>=required[id]);
+    // This recipe-specific fixture selects the exact required subset of
+    // genuinely generated materials. The full-haul test covers surplus.
+    owner={...owner,inventory:{...owner.inventory,finds:{...required}}};
     const initial={...original,adventurers:original.adventurers.map(h=>
       h.id===hero.id?owner:{...h,gold:0}),
       shopEconomy:{...original.shopEconomy,slots:original.shopEconomy.slots.map(slot=>
@@ -150,8 +153,7 @@ for(const [role,t1,t2,t2Name] of [
     const goldBefore=initial.shopEconomy.balance+owner.gold;
     const currentHero=()=>store.state.adventurers.find(h=>h.id===hero.id)!;
     const reload=()=>store.restore(parseSave(JSON.stringify(createSave(store.state))));
-    for(const id of Object.keys(required) as (keyof typeof required)[])
-      for(let i=0;i<required[id];i++)assert.match(store.buyDungeonFind(hero.id,id),/bought/);
+    assert.equal(store.buybackAtChest(hero.id,BUYBACK_DOCK),true);
     const costs=initial.shopEconomy.balance-store.state.shopEconomy.balance;
     assert(costs>0);
     assert.equal(currentHero().gold,owner.gold+costs);
@@ -334,7 +336,7 @@ test("LIVE chest settlement creates individually owned goods, not shop stock",()
   assert.deepEqual(after.inventory.finds,counts);
   assert(store.state.dungeonWorlds.find(w=>w.floor===1)!.world.resolvedFeatureIds.includes(site.id));
   assert.deepEqual(store.state.shopEconomy.materialStorage,{"iron-ore":0,coal:0,"ghoul-leather":0});
-  assert.equal(availableDungeonOffers(store.state).length,0);
+  assert.equal(availableChestMaterials(store.state).length,0);
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
 });
 
@@ -346,7 +348,7 @@ test("LIVE Ghoul victory initiates a physical salvage return and funds the next 
   const fight=store.state.liveDungeon.combats.find(c=>c.heroIds.includes(hero.id));
   assert(fight,"The generated site must start the actual 60Hz fight");
   assert.equal(fight.encounter.featureId,site.id);
-  assert.equal(availableDungeonOffers(store.state).length,0);
+  assert.equal(availableChestMaterials(store.state).length,0);
   assert.equal(store.state.liveDungeon.returns.length,0);
   for(let i=0;i<60&&store.state.liveDungeon.combats.some(c=>c.heroIds.includes(hero.id));i++)
     store.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
@@ -357,7 +359,7 @@ test("LIVE Ghoul victory initiates a physical salvage return and funds the next 
   assert.equal(current().inventory.finds?.["ghoul-leather"],2);
   assert(store.state.liveDungeon.returns.some(j=>j.heroId===hero.id&&j.phase==="backtrack"));
   assert.equal(current().status,"exploring");
-  assert.equal(availableDungeonOffers(store.state).length,0);
+  assert.equal(availableChestMaterials(store.state).length,0);
   const settledWorld=store.state.dungeonWorlds.find(w=>w.floor===1)!.world;
   assert(settledWorld.resolvedFeatureIds.includes(site.id));
   assert(!settledWorld.monsters?.some(monster=>monster.id===site.id),
@@ -377,7 +379,7 @@ test("LIVE Ghoul victory initiates a physical salvage return and funds the next 
       portalObserved=true;
       assert.equal(after.x,layout.entrance.x);
       assert.equal(after.z,layout.entrance.z);
-      assert.equal(availableDungeonOffers(store.state).length,0);
+      assert.equal(availableChestMaterials(store.state).length,0);
     }
   }
   assert(portalObserved);
@@ -385,9 +387,8 @@ test("LIVE Ghoul victory initiates a physical salvage return and funds the next 
   assert.deepEqual(store.state,restored.state);
   assert.equal(store.state.events.filter(e=>e.type==="shop-arrival"&&e.adventurerId===hero.id).length,1);
   const gold=store.state.shopEconomy.balance+current().gold;
-  for(const [id,n] of [["iron-ore",1],["coal",1],["ghoul-leather",2]] as const)
-    for(let i=0;i<n;i++)assert.match(store.buyDungeonFind(hero.id,id),/bought/);
-  assert.equal(availableDungeonOffers(store.state).filter(o=>o.heroId===hero.id).length,0);
+  assert.equal(store.buybackAtChest(hero.id,BUYBACK_DOCK),true);
+  assert.equal(availableChestMaterials(store.state).filter(o=>o.heroId===hero.id).length,0);
   assert.match(store.craftAtForge("forged-spear"),/Forged 1/);
   assert.match(store.craftAtForge("ghoul-leather-vest"),/Forged 1/);
   const slots=store.state.shopEconomy.slots;
@@ -524,7 +525,7 @@ test("actual LIVE chest and combat settlement retain a genuinely found needed he
     assert.equal(after.inventory.healing+(after.inventory.finds?.["healing-herb"]??0),expected);
     assert(store.state.dungeonWorlds.find(w=>w.floor===1)!.world.resolvedFeatureIds.includes(site.id));
     assert.equal(store.state.shopEconomy.bag["healing-herb"],shopHerbs);
-    assert.equal(availableDungeonOffers(store.state).length,0);
+    assert.equal(availableChestMaterials(store.state).length,0);
     assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
   }
 });

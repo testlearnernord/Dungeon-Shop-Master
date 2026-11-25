@@ -50,7 +50,7 @@ export function createBuybackChest(scene:Scene,store:GameStore){
   const tex=new DynamicTexture("buyback-sign-text",{width:1024,height:220},scene,false);
   const sm=mat("sign","#ffffff");sm.diffuseTexture=tex;sm.emissiveColor=new Color3(.55,.47,.34);sm.disableLighting=true;plate.material=sm;
   const paint=()=>{
-    const ctx=tex.getContext();ctx.fillStyle="#30231a";ctx.fillRect(0,0,1024,220);
+    const ctx=tex.getContext() as unknown as CanvasRenderingContext2D;ctx.fillStyle="#30231a";ctx.fillRect(0,0,1024,220);
     ctx.strokeStyle="#bd9458";ctx.lineWidth=8;ctx.strokeRect(8,8,1008,204);
     ctx.textAlign="center";ctx.fillStyle="#f5d7a2";ctx.font="bold 86px Georgia";ctx.fillText("SELL LOOT HERE",512,110,970);
     ctx.font="bold 38px sans-serif";ctx.fillStyle=store.state.buybackChestOpen?"#a1d3ab":"#e0a099";
@@ -77,7 +77,7 @@ export function createBuybackChest(scene:Scene,store:GameStore){
     if(!sales.length)return;
     const counts=new Map<string,number>();
     for(const e of sales)if(e.itemId)counts.set(e.itemId,(counts.get(e.itemId)??0)+(e.quantity??1));
-    const ctx=bt.getContext();ctx.clearRect(0,0,1024,288);ctx.fillStyle="#16201f";ctx.fillRect(0,0,1024,288);
+    const ctx=bt.getContext() as unknown as CanvasRenderingContext2D;ctx.clearRect(0,0,1024,288);ctx.fillStyle="#16201f";ctx.fillRect(0,0,1024,288);
     ctx.textAlign="center";ctx.font="bold 43px sans-serif";ctx.fillStyle="#e8c687";
     ctx.fillText("−"+sales.reduce((v,e)=>v+(e.cost??0),0)+"g  ·  RECOVERED GOODS",512,55);
     ctx.fillStyle="#b4e0b8";ctx.font="bold 43px sans-serif";let y=116;
