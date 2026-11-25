@@ -1,0 +1,47 @@
+name: Open Crypt arena audit
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/game/spatialDungeonExploration.ts'
+      - '.github/workflows/open-crypt-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: open-crypt-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  compare:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'experiment/open-crypt-arena'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [7351, 42, 2026, 9321]
+        revision: [baseline, open-arena]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '4410468e24655c5f4b21fdf656b8628a3c24ac58'
+          path: diagnostic
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision == 'baseline' && '329507f460c04ea10831ef560ba7a8a1610077a4' || github.event.pull_request.head.sha || github.sha }}
+          path: subject
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run identical ordinary encounter fixtures against both motors
+        run: |
+          cp diagnostic/tools/analysis/{combat-horizon-audit,ordinary-combat-matrix}.mjs subject/tools/analysis/
+          cd subject
+          npm ci --ignore-scripts
+          node --experimental-strip-types --test tests/unit/groupCombat.test.ts tests/unit/ghoulPackCombat.test.ts
+          node --experimental-strip-types tools/analysis/ordinary-combat-matrix.mjs ${{ matrix.seed }} 1,5,8 horizon > ordinary-horizon.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: open-arena-${{ matrix.revision }}-${{ matrix.seed }}
+          path: subject/ordinary-horizon.json
+          retention-days: 14

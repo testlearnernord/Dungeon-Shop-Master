@@ -13,7 +13,7 @@ import {
 } from "./combatSignatureAbilities.ts";
 import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
-  selectCombatTarget, trollDefenseReadiness,
+  selectCombatTarget, combatDefenseReadiness,
 } from "./combatTactics.ts";
 import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
 import {
@@ -265,8 +265,7 @@ export function createGroupCombat(options: GroupCombatOptions): GroupCombatState
     // strong hit can interrupt. The signature boss's own balance is unchanged.
     const gear=equipmentEffects(spec.role==="monster"?"tank":spec.role,
       spec.equipment??{weapon:null,armor:null});
-    const ordinaryEncounter=!options.actors.some(actor=>actor.specialAbility==="grapple-throw");
-    const meleePoise=ordinaryEncounter&&spec.team==="heroes"&&spec.style==="melee"&&gear.weapon
+    const meleePoise=spec.team==="heroes"&&spec.style==="melee"&&gear.weapon
       ? spec.role==="tank" ? Math.min(6,3+Math.floor(gear.armor/3))
         : spec.role==="DPS"&&gear.vest ? Math.min(4,2+Math.floor(gear.armor/4)):0
       : 0;
@@ -347,7 +346,7 @@ function circleSignatureBoss(
   const gap=Math.hypot(dx,dz);
   if(gap<.001)return;
   const towardX=dx/gap,towardZ=dz/gap;
-  const wanted=a.style==="ranged"?8:3.15;
+  const wanted=a.style==="ranged"?8:Math.max(a.radius+boss.radius+.1,a.reach+boss.radius-.4);
   const radial=gap>wanted+.4?1:gap<wanted-.35?-1:0;
   const orbit=((a.id.charCodeAt(a.id.length-1)||0)&1)?1:-1;
   const tangentX=-towardZ*orbit,tangentZ=towardX*orbit;
@@ -408,16 +407,14 @@ function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | nul
     a.hp/a.maxHp - b.hp/b.maxHp || a.id.localeCompare(b.id));
   return candidates[0] ?? null;
 }
-/** An ordinary spear fighter's thrust has a shorter preparation than a
- * generic swing. Derive eligibility from existing combatant attributes;
- * the unique boss retains its authored combat timing. */
-function ordinarySpearFighter(s:GroupCombatState,a:GroupActor):boolean{
-  return a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
-    a.reach>=2.1&&!s.actors.some(actor=>actor.specialAbility==="grapple-throw");
+/** Spear reach denotes the canonical equipped DPS profile, regardless
+ * of opposing actors. Synthetic Lab specs use the same capability. */
+function spearFighter(a:GroupActor):boolean{
+  return a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&a.reach>=2.1;
 }
-function groupMeleeTiming(s:GroupCombatState,a:GroupActor){
+function groupMeleeTiming(a:GroupActor){
   const profile=meleeAbilityProfile(a.meleeAbility,a.reach);
-  return ordinarySpearFighter(s,a)&&a.meleeAbility==="ordinary"
+  return spearFighter(a)&&a.meleeAbility==="ordinary"
     ?{...profile,windupSeconds:.46}:profile;
 }
 
@@ -438,7 +435,7 @@ function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor |
     // stamina reacting to someone else's strike or through a wall.
     if(!isSignature&&(other.targetId!==defender.id||!lineClear(s,other,defender)))
       return false;
-    const profile=groupMeleeTiming(s,other);
+    const profile=groupMeleeTiming(other);
     const lead=signature
       ?Math.max(.20,signature.windupSeconds-
         (signature.attack==="grab"?.04:.15))
@@ -605,7 +602,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   let window:CombatActionWindow={};
   if(a.phase==="windup"){
     window={completeAt:signature?.windupSeconds??
-      groupMeleeTiming(s,a).windupSeconds};
+      groupMeleeTiming(a).windupSeconds};
   }else if(a.phase==="strike"){
     const skill=meleeAbilityProfile(a.activeMeleeAbility,a.reach);
     window={contactAt:signature?.contactSeconds??skill.strikeDelaySeconds,
@@ -615,7 +612,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   }else if(a.phase==="heal"){
     window={contactAt:0.62,completeAt:0.92};
   }else if(a.phase==="recover")window={completeAt:
-    signature?.recoverySeconds??(s.actors.some(actor=>actor.specialAbility==="grapple-throw")?.38:a.team==="monsters"?.72:.38)};
+    signature?.recoverySeconds??(a.team==="monsters"?.72:.38)};
   else if(a.phase==="grab")window={
     contactAt:GRAPPLE_TIMING.grabContact,completeAt:GRAPPLE_TIMING.grab,
   };
@@ -634,26 +631,21 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   }
   const enemy = closestEnemy(s, a);
   if (!enemy) return;
-  // A highly agile hero can abandon an unfinished swing or its recovery
-  // when a real boss windup is already threatening the actor. No instant
-  // roll during an applied strike, no attack refund, no camera-side defense.
-  if(a.team==="heroes"&&a.agility>=25&&
-     enemy.specialAbility==="grapple-throw"&&
-     (a.phase==="windup"||a.phase==="recover")&&
-     a.stamina>=20&&attackerThreat(s,a)){
-    phase(a,"move");
-  }
-  // Ordinary melee fighters can give up an unlanded swing or recovery
-  // to defend against a committed threat. No contact refund, no free
-  // stamina and no cancel of an already active strike or healing action.
-  if(a.team==="heroes"&&a.style==="melee"&&
-    (a.phase==="windup"||a.phase==="recover")&&a.stamina>=28){
-    const threat=attackerThreat(s,a);
-    if(threat&&!threat.specialAbility)phase(a,"move");
-  }
+  // All melee heroes may forfeit an unlanded windup or recovery against
+  // an actual threatening action. Contact, stamina and defense windows
+  // remain authoritative; an enemy ability may still be harder to read.
+  const canCancel=a.team==="heroes"&&a.style==="melee"&&
+    (a.phase==="windup"||a.phase==="recover")&&a.stamina>=28;
+  const threat=(a.phase==="move"||canCancel)?attackerThreat(s,a):undefined;
+  // One deterministic read per opposing attack, not a fresh roll each tick.
+  // The same agility/role rule applies to every opponent. A grapple is
+  // harder to read because of its ability, not because it belongs to a boss.
+  const canReact=!!threat&&combatSample(s,threat.id,a.id,
+    Math.max(1,threat.attacksStarted))<combatDefenseReadiness(
+      a.agility,a.role,threat.activeMeleeAbility==="grapple");
+  if(canCancel&&canReact)phase(a,"move");
   if (a.phase === "move") {
     a.heading = combatHeading(a,enemy);
-    const threat = attackerThreat(s,a);
     // Tanks prefer to meet an incoming strike with steel, but do not lose
     // the ability to sidestep. One stable per-attack read, not render RNG.
     const tankParry=a.role==="tank"&&a.style==="melee";
@@ -669,16 +661,6 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       preferParry:tankParry&&parryRead<.78,
       canParry:tankParry,
     });
-    // The Level-6 duel already has a finite response chance. A group
-    // member must not become a perfect 100%-dodge machine against the
-    // same telegraph. The sample is stable across actor/replay ordering.
-    const bossWarning=threat?.specialAbility==="grapple-throw";
-    const defenseRead=bossWarning&&threat
-      ?combatSample(s,threat.id,a.id,
-          Math.max(1,threat.attacksStarted))
-      :0;
-    const canReact=!bossWarning||defenseRead<trollDefenseReadiness(
-      a.agility,a.role,threat?.activeMeleeAbility==="grapple");
     if(threat&&canReact&&reaction==="parry"){
       a.stamina-=20;
       a.heading=combatHeading(a,threat);
@@ -687,13 +669,11 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       a.stamina-=28;
       const escape=combatDirection(threat,a);
       let sign=a.id.localeCompare(threat.id)<0?1:-1;
-      // An ordinary melee DPS wants a short sidestep, not a long retreat.
-      // Prefer the open flank when the usual side is blocked. Both choices
-      // still pass through the same collision integrator on every tick.
-      if(a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
-        !s.actors.some(actor=>actor.specialAbility==="grapple-throw")){
+      // A melee DPS prefers a compact sidestep with a clear physical flank.
+      // This depends on its own fighting style, not on the opponent type.
+      if(a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"){
         const clear=(side:number)=>{
-          for(const offset of (ordinarySpearFighter(s,a)?[.5,1,1.4]:[.5,1,1.5,2])){
+          for(const offset of (spearFighter(a)?[.5,1,1.4]:[.5,1,1.5,2])){
             if(!movementAllowed(s,a,a.x-escape.z*side*offset,
               a.z+escape.x*side*offset))return false;
           }
@@ -730,13 +710,9 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
           // Troll chooses to close the physical gap before beginning a
           // signature move, so a real 5.1m grab can occur instead of
           // eternally opening at the 5.78m smash maximum.
-          !(a.specialAbility==="grapple-throw"&&gap>4.8)&&
-          !(enemy.specialAbility==="grapple-throw"&&enemy.phase==="windup"),
+          !(a.specialAbility==="grapple-throw"&&gap>4.8),
         clearShot:lineClear(s,a,enemy),
-        attackRange:ranged?11:
-          a.team==="heroes"&&enemy.specialAbility==="grapple-throw"
-            ?Math.min(5.3,a.reach+enemy.radius-.25):
-            chosen?.reach??a.reach+enemy.radius,
+        attackRange:ranged?11:chosen?.reach??a.reach+enemy.radius,
         approachBeyond:ranged?7:chosen?
           Math.max(3.15,chosen.reach-1.7):
           a.reach+enemy.radius-.20,
@@ -747,7 +723,10 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         a.attacksStarted++;
         a.activeMeleeAbility=action;
         a.lockedHeading=a.heading;
-        a.cooldown=ranged?1.3:
+        // Healing specialists retain the same cast contact and spell
+        // budget but invest more recovery time in offensive casting.
+        // This is a class rule, never an opponent-specific modifier.
+        a.cooldown=ranged?(a.role==="healer"?2.0:1.3):
           action==="grapple"?3.5:chosen?1.5:
           a.meleeAbility==="heavy"?1.62:(a.role==="DPS"?0.92:1.16);
         phase(a,ranged?"cast":"windup");
@@ -839,11 +818,10 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       phase(a,"recover");
     }
   } else if (a.phase === "roll") {
-    // Keep the actual 0.53s action, stamina cost and invulnerability
-    // window. A shorter ordinary DPS sidestep preserves attack proximity.
-    // Do not change ranged kiting or the authored boss evasions.
-    const speed=a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
-      !s.actors.some(actor=>actor.specialAbility==="grapple-throw")?(ordinarySpearFighter(s,a)?2.8:4.2):7.8;
+    // Same defense movement for a given hero regardless of opponent.
+    // Contact rules, action duration and invulnerability are unchanged.
+    const speed=a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"
+      ?(spearFighter(a)?2.8:4.2):7.8;
     move(s,a,a.rollX*speed*dt,a.rollZ*speed*dt);
     if (tick.complete) phase(a,"move");
   } else if (a.phase === "parry") {

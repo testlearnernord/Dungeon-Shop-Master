@@ -3,7 +3,7 @@ import test from "node:test";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
-import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
+import {caveTrollPartyOptions,CAVE_TROLL_LIVE_PROFILE} from "../../src/game/sharedBossCombat.ts";
 import {createGroupCombat,stepGroupCombat,captureGroupCombatFrame}
   from "../../src/game/groupCombat.ts";
 
@@ -79,7 +79,7 @@ test("physically purchased gear carries into the real Floor-10 GroupCombat hero"
   assert(geared.damage>bare.damage);
   assert(geared.armor>bare.armor);
   assert.equal(gearedOptions.actors.filter(a=>a.team==="heroes").length,3);
-  assert.equal(gearedOptions.actors.find(a=>a.id==="cave-troll")?.maxHp,700);
+  assert.equal(gearedOptions.actors.find(a=>a.id==="cave-troll")?.maxHp,CAVE_TROLL_LIVE_PROFILE.maxHp);
   const live=createGroupCombat(gearedOptions);
   const snapshot=captureGroupCombatFrame(live);
   for(let i=0;i<30;i++)stepGroupCombat(live);

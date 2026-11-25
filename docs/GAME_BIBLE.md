@@ -2,6 +2,9 @@
 
 > **Current design and lore**, reconciled 25 November 2026 after merged #363. Current implementation is verified in source; accepted intent is distinguished from implemented features below. This is **not** a PR diary. Consult [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and the detailed [Living Dungeon design](THE_LIVING_DUNGEON.md).
 
+
+**Unified live hero combat contract:** Every monster and boss uses the same `heroCombatAttributes` projection, weapon preparation, hero poise, defense eligibility, collision and roll movement. Enemy abilities, telegraphs, geometry and environment may influence tactical choices, never silently replace a hero's stats or gear. Historical solo training remains isolated from live rules. The new checkpoint contract requires a fresh Alpha v40 campaign; v39 and older are incompatible. The 35/90-second encounter limits and signature-specific tactical movement remain separate follow-up work; no claim of final balance or visual acceptance.
+
 ## 1. Identity and player experience — LOCKED
 
 **Dungeon Shop Master** is a dark-fantasy first-person shopkeeping game. The player is **Galvik**, a greedy, sharp-tongued merchant bound to his cursed shop. Galvik's dark humor belongs in character and atmosphere; the player UI must remain legible and fair.
@@ -31,7 +34,7 @@
 
 ## 3. Core gameplay rules — LOCKED
 
-Ordinary combat and autonomy: Ordinary fights use a 35-second limit, 0.72-second Ghoul recovery, collision-checked stagger recoil and equipped DPS spear timing. Visible authored pack composition, health, gear, experience and traits guide solo hunting and pursuit reactions; actual collisions still enter combat. No new save fields or alternate simulation. The shopkeeper's influence is indirect; no guaranteed survival or boss victory. [Measured balance](GAMEPLAY_VETERAN_PARTY_BALANCE.md).
+Ordinary combat and autonomy: Ordinary fights use a 35-second limit, 0.72-second Ghoul recovery, collision-checked stagger recoil and universal equipped DPS spear timing. Visible authored pack composition, health, gear, experience and traits guide solo hunting and pursuit reactions; actual collisions still enter combat. No new save fields or alternate simulation. The shopkeeper's influence is indirect; no guaranteed survival or boss victory. [Measured balance](GAMEPLAY_VETERAN_PARTY_BALANCE.md).
 
 ### Shop
 
@@ -54,7 +57,7 @@ Ordinary combat and autonomy: Ordinary fights use a 35-second limit, 0.72-second
 
 The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper contract. Decisions below are approved direction, **not** claims of full current implementation.
 
-- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v39. Historic room names are source-module labels, not extra saved doors or a numbered shop.
+- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v40. Historic room names are source-module labels, not extra saved doors or a numbered shop.
 - Heroes choose **stay / deeper / higher** based on individual medium-term goals such as farming, testing gear, survival or progress. **CURRENT:** plans and parts of same-day movement already persist; deeper/full-floor progression remains incomplete.
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers recover outside both shop and dungeon for an initial **20–240 unpaused seconds** (initial tuning), then resume at their remembered floor entrance. Checkout, credit and walkout eligibility follow the current actual shop visit.
