@@ -9,7 +9,7 @@ import { resolveGroupCombat, type CombatantSpec, type GroupCombatOptions,
   type GroupCombatState, type GroupCombatReplay } from "./groupCombat.ts";
 import { SeededRandom } from "./random.ts";
 import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
-import {heroProgression,settleHeroExperience,ordinaryHeroCombatAttributes} from "./heroProgression.ts";
+import {heroProgression,settleHeroExperience,heroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects} from "./gearCatalog.ts";
 import type {ItemId} from "./economy.ts";
 import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK,isEliteGhoulSite}
@@ -234,7 +234,7 @@ export function prepareSpatialDungeonCombat(
   }
   const specs:CombatantSpec[]=party.map((hero,index)=>{
     const spawn=formation.get(hero.id)??available[index];
-    const attributes=ordinaryHeroCombatAttributes(hero);
+    const attributes=heroCombatAttributes(hero);
     return {
       id:hero.id,team:"heroes",role:hero.role,
       style:attributes.style,
