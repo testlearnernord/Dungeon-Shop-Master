@@ -41,7 +41,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,41);
+  assert.equal(SIMULATION_VERSION,42);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -470,8 +470,8 @@ test("v21 rejects fabricated AI intentions and invalid plan-tick ownership",()=>
   assert.deepEqual(parseSave(JSON.stringify(raw)),store.state);
 });
 
-test("LIVE dungeon commits one physical tile every ten real seconds",()=>{
-  assert.equal(DUNGEON_STEP_INTERVAL_TICKS,200);
+test("LIVE dungeon commits one physical tile every 2.5 real seconds",()=>{
+  assert.equal(DUNGEON_STEP_INTERVAL_TICKS,50);
 });
 
 test("diagnostics observe actual decisions without changing the campaign or save",()=>{

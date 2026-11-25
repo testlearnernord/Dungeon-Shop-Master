@@ -44,7 +44,7 @@ function chasedStationaryHero():{
     :monster)};
   const seeded={...initial,dungeonWorlds:[{floor:1 as const,world}]};
   const enabled=activateLiveDungeon(seeded);
-  // The hero stands still while the actual monster follows its 400-tick
+  // The hero stands still while the actual monster follows its 100-tick
   // clock. This is NOT a synthetic fight or manually injected encounter.
   const paused={...enabled,liveDungeon:{...enabled.liveDungeon,
     heroes:[{heroId:hero.id,steps:1,finished:true}]}};
@@ -54,17 +54,17 @@ function chasedStationaryHero():{
 
 test("pursuing Ghoul crosses onto a stationary hero and starts exactly one true GroupCombat",()=>{
   const {store,heroId,featureId,x,z}=chasedStationaryHero();
-  store.advanceWorldTime(200);
+  store.advanceWorldTime(50);
   assert.equal(store.state.liveDungeon.combats.filter(f=>
     f.encounter.featureId===featureId).length,0);
-  store.advanceWorldTime(200);
+  store.advanceWorldTime(50);
   const fights=store.state.liveDungeon.combats.filter(f=>
     f.encounter.featureId===featureId);
   assert.equal(fights.length,1);
   const fight=fights[0];
   assert.deepEqual(fight.heroIds,[heroId]);
   assert.deepEqual([fight.encounter.x,fight.encounter.z],[x,z]);
-  assert.equal(fight.startedTick,400);
+  assert.equal(fight.startedTick,100);
   assert.equal(fight.frames.length,1);
   assert.equal(fight.state.time,0);
   assert.equal(fight.arrivals[0].steps.at(-1)?.action,"combat");
@@ -76,7 +76,7 @@ test("pursuing Ghoul crosses onto a stationary hero and starts exactly one true 
 
 test("stationary contact resumes deterministically and never creates duplicate fight/site rewards",()=>{
   const {store,featureId}=chasedStationaryHero();
-  store.advanceWorldTime(400);
+  store.advanceWorldTime(100);
   const checkpoint=parseSave(JSON.stringify(createSave(store.state)));
   const resumed=new GameStore(checkpoint);
   store.advanceWorldTime(610);
@@ -109,7 +109,7 @@ test("LIVE shop-bound hero reacts to a true visible pursuer without losing its c
   assert(expected&&expected.action==="ESCAPING");
   const old=before.heroes.find(h=>h.heroId===heroId)!;
   const store=new GameStore(ready);
-  store.advanceWorldTime(200);
+  store.advanceWorldTime(50);
   const after=store.state;
   const journey=after.liveDungeon.returns.find(r=>r.heroId===heroId);
   assert(journey,"a tactical dodge must not cancel the actual shop-bound journey");
@@ -155,11 +155,11 @@ test("co-located voluntary Temporary Party shares ONE physical Ghoul contact fig
   const paused={...seeded,liveDungeon:{...seeded.liveDungeon,
     heroes:party.map(h=>({heroId:h.id,steps:1,finished:true}))}};
   const store=new GameStore(paused);
-  store.advanceWorldTime(200);
+  store.advanceWorldTime(50);
   assert(store.state.dungeonParties.some(p=>
     p.memberIds.length===2&&party.every(h=>p.memberIds.includes(h.id))),
     "a stationary eligible Temporary Party remains saved until collision");
-  store.advanceWorldTime(200);
+  store.advanceWorldTime(50);
   const fights=store.state.liveDungeon.combats.filter(c=>
     c.encounter.featureId===pack.id);
   assert.equal(fights.length,1,

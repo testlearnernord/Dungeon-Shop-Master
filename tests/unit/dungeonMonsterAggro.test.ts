@@ -22,14 +22,14 @@ test("a Ghoul sees a real nearby hero and drops its own roaming goal",()=>{
     target:{x:selected.homeX,z:selected.homeZ}};
   const world={...initial,monsters:initial.monsters!.map(m=>
     m.id===selected.id?roaming:m)};
-  const seen=advanceDungeonMonsterWorld(world,layout,1,200,
+  const seen=advanceDungeonMonsterWorld(world,layout,1,50,
     [{...neighbor,heroId}]);
   const pack=seen.monsters!.find(m=>m.id===selected.id)!;
   assert.equal(pack.mode,"CHASING");
   assert.equal(pack.targetHeroId,heroId);
   assert.deepEqual(pack.lastKnown,neighbor);
   assert.deepEqual(pack.target,neighbor);
-  assert.equal(pack.lastSeenTick,200);
+  assert.equal(pack.lastSeenTick,50);
 });
 
 test("a wall within range prevents Ghoul detection",()=>{
@@ -48,7 +48,7 @@ test("a wall within range prevents Ghoul detection",()=>{
   }
   assert(pair,"A seeded dungeon must contain a genuine occluded nearby corridor");
   const world={...initial,monsters:[pair.monster]};
-  const tick=advanceDungeonMonsterWorld(world,layout,1,200,
+  const tick=advanceDungeonMonsterWorld(world,layout,1,50,
     [{...pair.hero,heroId}]);
   const pack=tick.monsters!.find(m=>m.id===pair.monster.id)!;
   assert.notEqual(pack.mode,"CHASING");
@@ -57,17 +57,17 @@ test("a wall within range prevents Ghoul detection",()=>{
 
 test("three consecutive blind checks stop pursuit of a hidden hero",()=>{
   const neighbor=dungeonNeighbors(layout,selected)[0];
-  let world=advanceDungeonMonsterWorld(initial,layout,1,200,
+  let world=advanceDungeonMonsterWorld(initial,layout,1,50,
     [{...neighbor,heroId}]);
   assert.equal(world.monsters!.find(m=>m.id===selected.id)!.mode,"CHASING");
-  world=advanceDungeonMonsterWorld(world,layout,1,400);
+  world=advanceDungeonMonsterWorld(world,layout,1,100);
   let pack=world.monsters!.find(m=>m.id===selected.id)!;
   assert.equal(pack.mode,"SEARCHING");
   assert.deepEqual(pack.lastKnown,neighbor);
-  world=advanceDungeonMonsterWorld(world,layout,1,600);
+  world=advanceDungeonMonsterWorld(world,layout,1,150);
   pack=world.monsters!.find(m=>m.id===selected.id)!;
   assert.equal(pack.mode,"SEARCHING");
-  world=advanceDungeonMonsterWorld(world,layout,1,800);
+  world=advanceDungeonMonsterWorld(world,layout,1,200);
   pack=world.monsters!.find(m=>m.id===selected.id)!;
   assert(["RETURNING","IDLE"].includes(pack.mode),
     "a home-positioned pack may end pursuit directly in IDLE");
@@ -79,7 +79,7 @@ test("three consecutive blind checks stop pursuit of a hidden hero",()=>{
 
 test("an observed target and last seen tile survive a strict save round-trip",()=>{
   const neighbor=dungeonNeighbors(layout,selected)[0];
-  const world=advanceDungeonMonsterWorld(initial,layout,1,200,
+  const world=advanceDungeonMonsterWorld(initial,layout,1,50,
     [{...neighbor,heroId}]);
   const state=createGameState(seed);
   const saved={...state,dungeonWorlds:[{floor:1 as const,world}]};
@@ -110,12 +110,12 @@ test("occluded pursuer never learns a hidden tile and loses pursuit deterministi
     }))[0];
   assert(candidate,"fixture needs a true nearby corner blocking a real corridor");
   const {monster,visible,hidden}=candidate;
-  const seen=advanceDungeonMonsterWorld(initial,layout,1,200,
+  const seen=advanceDungeonMonsterWorld(initial,layout,1,50,
     [{...visible,heroId}]);
   const pursuer=seen.monsters!.find(m=>m.id===monster.id)!;
   assert.equal(pursuer.mode,"CHASING");
   assert.deepEqual(pursuer.lastKnown,visible);
-  const missing=advanceDungeonMonsterWorld(seen,layout,1,400,
+  const missing=advanceDungeonMonsterWorld(seen,layout,1,100,
     [{...hidden,heroId}]);
   const search=missing.monsters!.find(m=>m.id===monster.id)!;
   assert.equal(search.mode,"SEARCHING");
@@ -129,7 +129,7 @@ test("occluded pursuer never learns a hidden tile and loses pursuit deterministi
   const restored=parseSave(JSON.stringify(createSave(checkpoint)));
   let unbroken=missing;
   let resumed=restored.dungeonWorlds[0].world;
-  for(const tick of [600,800]){
+  for(const tick of [150,200]){
     unbroken=advanceDungeonMonsterWorld(unbroken,layout,1,tick,
       [{...hidden,heroId}]);
     resumed=advanceDungeonMonsterWorld(resumed,layout,1,tick,
@@ -138,13 +138,13 @@ test("occluded pursuer never learns a hidden tile and loses pursuit deterministi
     const pack=unbroken.monsters!.find(m=>m.id===monster.id)!;
     assert.notDeepEqual(pack.target,hidden,
       "the monster cannot obtain a secret hero route behind a solid wall");
-    if(tick===600)assert.equal(pack.mode,"SEARCHING");
+    if(tick===150)assert.equal(pack.mode,"SEARCHING");
     else {
       assert(["RETURNING","IDLE"].includes(pack.mode));
       assert.equal(pack.targetHeroId,undefined);
     }
   }
-  const reacquired=advanceDungeonMonsterWorld(missing,layout,1,600,
+  const reacquired=advanceDungeonMonsterWorld(missing,layout,1,150,
     [{...visible,heroId}]);
   const again=reacquired.monsters!.find(m=>m.id===monster.id)!;
   assert.equal(again.mode,"CHASING",

@@ -33,14 +33,14 @@ test("all nine ordinary floors survive sustained offscreen roaming and strict sa
           assert(delta<=1,"offscreen monsters may move only one tile");
           if(delta){
             moved++;
-            assert(tick-old.lastMoveTick>=400);
+            assert(tick-old.lastMoveTick>=100);
             assert(dungeonNeighbors(layout,old).some(p=>
               p.x===pack.x&&p.z===pack.z));
           }
         }
       }
     };
-    for(let tick=200;tick<=4000;tick+=200){
+    for(let tick=50;tick<=4000;tick+=50){
       const next=worlds.map((world,i)=>
         advanceDungeonMonsterWorld(world,layouts[i],1,tick));
       audit(worlds,next,tick);worlds=next;
@@ -51,7 +51,7 @@ test("all nine ordinary floors survive sustained offscreen roaming and strict sa
     let reloaded=layouts.map((layout,i)=>
       restored.dungeonWorlds.find(entry=>entry.floor===layout.floor)!.world);
     assert.deepEqual(reloaded,worlds);
-    for(let tick=4200;tick<=8000;tick+=200){
+    for(let tick=4050;tick<=8000;tick+=50){
       const next=worlds.map((world,i)=>
         advanceDungeonMonsterWorld(world,layouts[i],1,tick));
       const fromSave=reloaded.map((world,i)=>

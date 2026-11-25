@@ -50,7 +50,7 @@ test("one real LIVE Ghoul pack is abstract on the floor and individually rendere
       }}],
     });
     store.enableLiveDungeon();
-    // At three 200-tick movement events the encounter may have completed.
+    // At multiple movement events the encounter may have completed.
     // Assert the actual first committed fight instead of chasing an old clock.
     store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS+10);
     const live=store.state.liveDungeon.combats.find(c=>

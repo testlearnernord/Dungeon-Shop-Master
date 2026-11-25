@@ -10,12 +10,12 @@ import {LIVE_PARTY_STEP_SECONDS}
 import {GHOUL_CLIP_INDICES,ghoulMotionForPhase,ghoulClipProgress} from "../../src/game/ghoulMotion.ts";
 
 const before={x:5,z:6,siteCycle:2,lastMoveTick:1000,
-  day:1,floor:1,worldTick:1200};
-const after={...before,x:6,lastMoveTick:1400,worldTick:1400};
+  day:1,floor:1,worldTick:1050};
+const after={...before,x:6,lastMoveTick:1100,worldTick:1100};
 
 test("both observers interpolate one actually committed tile at the lawful Ghoul speed",()=>{
   assert.equal(isObservedMonsterStep(before,after),true);
-  assert.equal(MONSTER_STEP_TICKS,400,
+  assert.equal(MONSTER_STEP_TICKS,100,
     "monster AI still advances only half as often as heroes");
   assert.equal(MONSTER_OBSERVATION_STEP_SECONDS,1.2);
   assert(MONSTER_OBSERVATION_STEP_SECONDS>LIVE_PARTY_STEP_SECONDS,
@@ -35,9 +35,9 @@ test("never draw a fake crossing from an observation gap or another floor",()=>{
     {...after,x:5,z:6},
     {...after,lastMoveTick:1000},
     {...after,lastMoveTick:1800},
-    {...after,lastMoveTick:1199},
-    {...after,worldTick:1200},
-    {...after,worldTick:1100},
+    {...after,lastMoveTick:1049},
+    {...after,worldTick:1050},
+    {...after,worldTick:1040},
   ];
   for(const current of rejected){
     assert.equal(isObservedMonsterStep(before,current),false,
@@ -62,7 +62,7 @@ test("Ghoul visual movement finishes promptly and stays idle until the next true
   assert.equal(monsterObservationStepProgress(Infinity),1);
   assert.equal(monsterObservationStepProgress(NaN),1);
   assert.equal(monsterObservationStepProgress(10),1,
-    "A stationary Ghoul must not creep for the entire 20-second AI interval");
+    "A stationary Ghoul must not creep for the entire 5-second AI interval");
 });
 
 test("the overview uses the same authored walk source index as the combat rig",()=>{
