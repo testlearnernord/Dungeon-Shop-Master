@@ -1,5 +1,7 @@
 # The Great Cleanup — Audited baseline (Phase A1)
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 > Evidence snapshot: **2026-11-21**, `main` commit [`366835babf84`](https://github.com/testlearnernord/Dungeon-Shop-Master/commit/366835babf84cab8b23a14fdaf6a5f238409feea), after **merged PR #234**. This is the immutable *historical baseline* evidence inventory and risk register, **not** a claim that cleanup or exhaustive static analysis is complete. Later measured results and open acceptance gates are in [Great Cleanup closeout](GREAT_CLEANUP_CLOSEOUT.md); do not overwrite these baseline numbers. Source code, tests, manifests and build scripts take precedence over historical PR narration.
 
 ## Safety contract

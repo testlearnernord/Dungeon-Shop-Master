@@ -1,5 +1,7 @@
 # Dungeon Shop Master | 100-day gameplay loop audit
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 > **HISTORICAL MEASUREMENT, predating Alpha v36.** Former source path `level7Exploration.ts` was renamed to `spatialDungeonExploration.ts` in #323; historical stack traces and measured outcomes below retain their original source names. The old `inventory.loot` token and its arrival-time reset were removed in the v36 cleanup; references to that field below describe earlier code, not current gameplay. Fresh long-game economy evidence is still required by #294.
 >
 > **HISTORICAL MEASUREMENT.** The tables below are exact evidence for

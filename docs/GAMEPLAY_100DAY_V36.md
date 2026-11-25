@@ -1,5 +1,7 @@
 # Alpha v36 · 100-day LIVE gameplay/economy audit
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 **Measured:** 23 November 2026. **Source commit:** `bcad65ca009b5695f928bb7d8f61ef10b5652a5f`, based on `main` after merged PR #323 (`a77d0ce`). **Reproducible [GitHub Actions run #45083388092](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/45083388092)**, four successful jobs, ten scenarios, 100 simulated days per scenario. Current save contract: Alpha v36, no old-save migration.
 
 ## What was really tested
