@@ -12,7 +12,7 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 
 - `GameStore` and the saved `worldClock` own time and mutations, never the renderer. One world tick equals 50 ms; movement advances at 200-tick checkpoints; combats settle real 60-Hz actor steps. Pausing a viewer or watching a recording is read-only.
 - Each hero may **stay, descend, ascend or return to the cursed shop** according to personal needs, discovered paths, surviving resources and any real Temporary Party. No direct player-issued party, attack or waypoint commands.
-- A shop return uses legitimate visited path/backtracking and a saved timed portal step; a hero cannot conjure a shortcut or full map knowledge. A physical shop departure begins **two full off-duty days** before reentry.
+- A shop return uses legitimate visited path/backtracking and a saved timed portal step; a hero cannot conjure a shortcut or full map knowledge. A physical shop departure begins **health-dependent world-tick recovery** before reentry on the existing dungeon movement clock.
 - Treasure, monster sites, traps, site generations, one-time boss victories, equipment and gold must remain actual saved consequences. Renewable common sites are not infinite per-person loot duplicators.
 - The compact Event Feed/Archive shows genuine outcomes. Live Board knowledge is bounded by what Galvik could know; intentionally opening the spectator may reveal committed world facts. Recordings never re-simulate, reroll, invent a win or play hit sounds again on seek.
 
@@ -58,7 +58,7 @@ Autonomous heroes and co-located Temporary Parties may flee on actual adjacent t
 - A physical picked item is an **unpaid cart** until the staffed register settles. Credit produces debt, not revenue. Buyback moves genuine found items and pays gold from Galvik's wallet. Stock never silently appears on a shelf.
 - A well-equipped healthy DPS should value a sword, a Tank protection; a badly injured customer should value survival. A penniless customer can still petition for food before expensive equipment. These are implemented *initial* preferences, **not yet proven balanced**.
 - Shop stock choices must affect the real expedition and combat chain. “You saved them” is only credible when a recording or controlled counterfactual supports the effect.
-- Two days outside shop/dungeon prevent immediate repeat shopping after departure. They are not magic full-heal days; owned supplies may be consumed for genuine recovery.
+- Recovery lasts 400/1200/2400/4800 world ticks according to health and supplies. The next existing movement tick consumes an owned dose if needed, extends treatment if another dose is needed and available, or commits reentry at the remembered entrance. Untreated heroes keep a cautious plan instead of returning for unchanged injuries. Real same-day returns permit another checkout, never another payment for the same visit.
 - Long-run games must avoid hundreds of meaningless return/walkout cycles and progression plateaus. Measure live survivors, debt, gold with dead heroes, hero stock, time away and equipment effects across multiple seeded campaigns.
 
 ## Controls, viewer and mood

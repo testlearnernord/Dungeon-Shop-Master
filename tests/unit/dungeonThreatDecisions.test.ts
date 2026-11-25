@@ -127,3 +127,14 @@ test("a healthy armed returner does not charge a pursuer instead of going home",
   assert(result&&result.action==="ESCAPING");
   assert.notDeepEqual(result.step,{x:monster.x,z:monster.z});
 });
+
+
+test("an untreated cautious explorer avoids a visible idle pack without seeing hidden monsters",()=>{
+  const wounded=hero({health:Math.floor(heroProgression(original[0]).maxHealth*.3)});
+  const idle={...monster,mode:"IDLE" as const,targetHeroId:undefined};
+  const visible={...world,monsters:[idle]};
+  assert.equal(chooseDungeonThreatReaction(layout,visible,[wounded],[wounded]),null);
+  const reaction=chooseDungeonThreatReaction(layout,visible,[wounded],[wounded],false,true);
+  assert(reaction&&reaction.action==="ESCAPING");
+  assert.notDeepEqual(reaction.step,{x:idle.x,z:idle.z});
+});

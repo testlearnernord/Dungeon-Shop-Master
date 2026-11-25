@@ -27,14 +27,16 @@ const compare=(a:DungeonPoint,b:DungeonPoint)=>a.z-b.z||a.x-b.x;
 export function chooseDungeonThreatReaction(
   layout:DungeonLayout,world:SpatialDungeonWorld,
   group:readonly AdventurerState[],roster:readonly AdventurerState[],returning=false,
+  cautious=false,
 ):DungeonThreatReaction|null{
   if(!group.length||!world.monsters?.length)return null;
   const leader=group[0];
   const at=getSpatialDungeonProgress(world,leader.id,layout);
   const partyIds=new Set(group.map(hero=>hero.id));
   const visible=world.monsters.filter(monster=>
-    (monster.mode==="CHASING"||monster.mode==="ALERT")&&
-    !!monster.targetHeroId&&partyIds.has(monster.targetHeroId)&&
+    monster.mode!=="ENGAGED"&&
+    (cautious||(monster.mode==="CHASING"||monster.mode==="ALERT")&&
+      !!monster.targetHeroId&&partyIds.has(monster.targetHeroId))&&
     hasDungeonLineOfSight(layout,at,monster,MONSTER_SIGHT_RADIUS));
   if(!visible.length)return null;
   const monster=[...visible].sort((a,b)=>
@@ -65,7 +67,7 @@ export function chooseDungeonThreatReaction(
 
   // If a grievously hurt member requests retreat, the whole Temporary
   // Party follows: no split party, teleport, or free rescue.
-  if(returning||health<.45||careful&&health<.7){
+  if(returning||cautious||health<.45||careful&&health<.7){
     const saved=getSpatialDungeonProgress(world,leader.id,layout);
     const home=chooseKnownRouteStep(layout,saved,layout.entrance);
     const choices=neighbors.filter(point=>

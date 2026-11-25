@@ -70,7 +70,7 @@ export function locationLabel(hero: AdventurerState): string {
   if (hero.status === "dead") return "Fallen";
   if (hero.status === "at-shop") return "Galvik's Cursed Shop";
   if (hero.status === "departing") return "Leaving Galvik's shop";
-  if (hero.status === "off-duty") return "Off duty · back Day "+hero.offDutyUntilDay;
+  if (hero.status === "off-duty") return "Recovering outside the shop";
   if (hero.status === "expedition") return "F" + hero.floor + " · Expedition";
   if (hero.status === "traveling") return "Crossing the Cursed Threshold";
   if (hero.status === "returning") return "Leaving Galvik's Shop";

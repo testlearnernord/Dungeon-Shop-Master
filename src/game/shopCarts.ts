@@ -1,3 +1,4 @@
+import {currentShopVisitEvents,shopVisitSuffix} from "./npcVisitors.ts";
 import { ITEMS, type ItemId } from "./economy.ts";
 import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
 import type { GameState, WorldEvent } from "./gameState.ts";
@@ -23,9 +24,8 @@ const failed = (state: GameState, message: string): CartActionResult =>
   ({state, message});
 
 function alreadyPaid(state: GameState, heroId: string): boolean {
-  return state.events.some(event => event.type === "sale" &&
-    event.saleChannel === "manual" &&
-    event.day === state.day && event.adventurerId === heroId);
+  return currentShopVisitEvents(state.events,state.day,heroId)
+    .some(event=>event.type==="sale"&&event.saleChannel==="manual");
 }
 
 /**
@@ -232,17 +232,18 @@ export function payReservedShopCart(state:GameState,heroId:string,perfectTiming=
   const settled=settleHeldShopCarts(isolated,state.day);
   // Manual receipts need their own stable identity. Legacy/End Day receipts
   // may already exist for this hero and shelf on the same day.
+  const visit=shopVisitSuffix(state.events,state.day,heroId);
   const events=settled.events.map(event=>({...event,
-    id:event.id+":manual",saleChannel:"manual" as const}));
+    id:event.id+":manual"+visit,saleChannel:"manual" as const}));
   if(events.some(event=>state.events.some(prior=>prior.id===event.id)))
-    return failed(state,"This customer already paid for this shelf today.");
+    return failed(state,"This customer already paid for this shelf during this visit.");
   const tipEvent:WorldEvent|null=tip>0?{
-    id:"day-"+state.day+":"+heroId+":tip",type:"tip",day:state.day,
+    id:"day-"+state.day+":"+heroId+":tip"+visit,type:"tip",day:state.day,
     adventurerId:heroId,revenue:tip,
     message:hero.name+" tipped "+tip+"g for excellent service.",
   }:null;
   if(tipEvent&&state.events.some(event=>event.id===tipEvent.id))
-    return failed(state,"This customer has already tipped today.");
+    return failed(state,"This customer has already tipped during this visit.");
   const paid=settled.state;
   const balance=paid.shopEconomy.balance+tip;
   const revenue=paid.shopEconomy.dailySales.revenue+tip;

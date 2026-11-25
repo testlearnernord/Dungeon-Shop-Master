@@ -1,3 +1,4 @@
+import {currentShopVisitEvents,shopVisitSuffix} from "./npcVisitors.ts";
 import type { GameState, WorldEvent } from "./gameState.ts";
 import type { ShoppingReason } from "./shopperIntents.ts";
 
@@ -13,11 +14,11 @@ export function walkOutWithoutPurchase(
   if(!hero||hero.status!=="at-shop"||hero.health<=0||
     state.shopCarts.some(cart=>cart.heroId===heroId&&cart.lines.length>0))
     return state;
-  const already=state.events.some(event=>event.day===state.day &&
-    event.type==="shop-walkout"&&event.adventurerId===heroId);
+  const already=currentShopVisitEvents(state.events,state.day,heroId)
+    .some(event=>event.type==="shop-walkout");
   if(already)return state;
   const walkout:WorldEvent={
-    id:`day-${state.day}:${heroId}:shop-walkout`,
+    id:`day-${state.day}:${heroId}:shop-walkout`+shopVisitSuffix(state.events,state.day,heroId),
     type:"shop-walkout",day:state.day,worldTick:state.worldClock.tick,
     adventurerId:heroId,shopReason:reason,
     message: reason==="unavailable"

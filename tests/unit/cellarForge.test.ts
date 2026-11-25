@@ -312,7 +312,7 @@ function supplySiteFixture(kind:"monster"|"treasure",reward?:"healing-herb"){
       tile!=="wall"&&index!==site.z*layout.width+site.x?[index]:[]);
     const store=new GameStore({...base,adventurers:base.adventurers.map(h=>
       h.id===hero.id?hero:{...h,status:"off-duty",floor:"away",
-        shopStayDays:0,offDutyUntilDay:4}),
+        shopStayDays:0,offDutyUntilTick:4800}),
       dungeonWorlds:[{floor:1,world:{...emptySpatialDungeonWorld(),
         resolvedFeatureIds:layout.features.filter(f=>f.id!==site.id).map(f=>f.id),
         heroes:[{heroId:hero.id,...approach,visited}]}}],
@@ -402,13 +402,14 @@ test("LIVE Ghoul victory initiates a physical salvage return and funds the next 
   assert.equal(store.completePhysicalShopExit(hero.id,11),false);
   assert.equal(store.completePhysicalShopExit(hero.id,13),true);
   assert.equal(current().status,"off-duty");
-  assert.equal(current().offDutyUntilDay,4);
-  for(let day=2;day<=4;day++){
-    store.endDay();
-    assert.equal(store.state.day,day);
-    assert.deepEqual(current().equipment,{weapon:"Forged Spear",armor:"Ghoul Leather Vest"});
-    assert.equal(current().status,day<4?"off-duty":"exploring");
-  }
+  const due=current().offDutyUntilTick!;
+  assert(due>store.state.worldClock.tick);
+  while(current().status==="off-duty")store.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
+  assert.equal(store.state.day,1);
+  assert.equal(current().status,"exploring");
+  assert.equal(current().offDutyUntilTick,null);
+  assert(store.state.worldClock.tick>=due);
+  assert.deepEqual(current().equipment,{weapon:"Forged Spear",armor:"Ghoul Leather Vest"});
   assert.equal(current().floor,1);
   assert.equal(position().x,layout.entrance.x);
   assert.equal(position().z,layout.entrance.z);

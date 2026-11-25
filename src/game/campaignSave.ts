@@ -1,3 +1,5 @@
+import {manuallyPaidVisitors} from "./npcVisitors.ts";
+import {MAX_POST_SHOP_RECOVERY_TICKS} from "./shopRotation.ts";
 import { BASE_ROOM_HALF_EXTENT, isValidShopRoomGeometry } from "./shopRoomGeometry.ts";
 import {heroLevel,heroProgression} from "./heroProgression.ts";
 import {livePartyBossCheckpointProblem,partyBossReplayProblem}
@@ -1080,7 +1082,7 @@ function validateState(value: unknown): asserts value is GameState {
     const path = `payload.adventurers[${index}]`;
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
-      "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilDay", "bossPass",
+      "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilTick", "bossPass",
     ],["lastDungeonFloor"]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
@@ -1143,12 +1145,12 @@ function validateState(value: unknown): asserts value is GameState {
     }
     if (typeof hero.bossPass !== "boolean") fail(`${path}.bossPass`, "must be boolean");
     if (hero.status === "expedition" && hero.bossPass !== true) fail(`${path}.bossPass`, "is required for boss expedition");
-    const until=hero.offDutyUntilDay;
+    const until=hero.offDutyUntilTick;
     if(hero.status==="off-duty"){
-      if(until===null)fail(path+".offDutyUntilDay","is required off duty");
-      integer(until,path+".offDutyUntilDay",day+1,day+3);
+      if(until===null)fail(path+".offDutyUntilTick","is required off duty");
+      integer(until,path+".offDutyUntilTick",Math.max(1,clockTick-2*DUNGEON_STEP_INTERVAL_TICKS),clockTick+MAX_POST_SHOP_RECOVERY_TICKS);
     }else if(until!==null)
-      fail(path+".offDutyUntilDay","is only valid for off-duty heroes");
+      fail(path+".offDutyUntilTick","is only valid for off-duty heroes");
     const stay = integer(hero.shopStayDays, `${path}.shopStayDays`, 0, 1);
     if (stay !== 0 && hero.status !== "at-shop" && hero.status !== "dead") {
       fail(`${path}.shopStayDays`, "requires a shop visit");
@@ -1418,6 +1420,9 @@ function validateState(value: unknown): asserts value is GameState {
   const eventIds = new Set<string | number>();
   const signaledDeaths=new Set<string | number>();
   let lastDay = 1;
+  const visitSuffixes=new Map<string,string>();
+  const visitRevenue=new Map<string,number>();
+  const visitClosed=new Set<string>();
   array(state.events, "payload.events").forEach((value, index) => {
     const path = `payload.events[${index}]`;
     const event = object(value, path, ["id", "type", "day", "message"],
@@ -1433,9 +1438,10 @@ function validateState(value: unknown): asserts value is GameState {
         event.type!=="shop-departure"&&
         event.type!=="shop-arrival"&&
         event.type!=="temporary-party-join"&&event.type!=="temporary-party-leave"&&
-        event.type!=="hero-death-signal")
+        event.type!=="hero-death-signal"&&event.type!=="healed")
         fail(path+".worldTick","is not allowed for this event type");
     }
+    if(eventDay!==lastDay){visitSuffixes.clear();visitRevenue.clear();visitClosed.clear();}
     lastDay = eventDay;
     text(event.message, `${path}.message`);
     const id = text(event.id, `${path}.id`);
@@ -1444,6 +1450,7 @@ function validateState(value: unknown): asserts value is GameState {
     if (!global && !heroIds.has(event.adventurerId as string)) fail(`${path}.adventurerId`, "must link to an existing hero");
     const allowed = ["id", "type", "day", "message",
       ...(event.type==="shop-walkout"?["worldTick","shopReason"]:[]),
+      ...(event.type==="healed"&&event.worldTick!==undefined?["worldTick"]:[]),
       ...(event.type==="shop-departure"&&event.worldTick!==undefined?["worldTick"]:[]),
       ...(event.type==="shop-arrival"&&event.worldTick!==undefined?["worldTick"]:[]),
       ...((event.type==="temporary-party-join"||
@@ -1487,7 +1494,21 @@ function validateState(value: unknown): asserts value is GameState {
       if(event.worldTick===undefined)
         fail(path+".worldTick","is mandatory for real live dungeon events");
     }
+    const visitor=String(event.adventurerId??"");
+    if(event.type==="shop-arrival"){
+      visitSuffixes.set(visitor,event.worldTick===undefined?"":":visit:"+event.worldTick);
+      visitRevenue.delete(visitor);
+      visitClosed.delete(visitor);
+    }
+    const visit=visitSuffixes.get(visitor)??"";
     let suffix = event.type === "day-started" ? "started" : event.type;
+    if(event.type==="shop-walkout"||event.type==="shop-credit"||event.type==="tip")suffix+=visit;
+    if(event.type==="healed"&&event.worldTick!==undefined)suffix+=":"+event.worldTick;
+    if(event.type==="shop-departure"){visitClosed.add(visitor);visitRevenue.delete(visitor);}
+    if(visitClosed.has(visitor)&&(event.type==="shop-walkout"||
+      event.type==="shop-credit"||event.type==="tip"||
+      (event.type==="sale"&&event.saleChannel==="manual")))
+      fail(path+".id","requires a new arrival after the prior physical departure");
     if(event.type==="hero-buyback"){
       const prefix="day-"+eventDay+":"+event.adventurerId+":";
       if(!id.startsWith(prefix))
@@ -1555,12 +1576,7 @@ function validateState(value: unknown): asserts value is GameState {
     if(event.type==="tip"){
       allowed.push("revenue");
       integer(event.revenue,`${path}.revenue`,1,1000000);
-      const manualRevenue=(state.events as unknown[]).reduce<number>((total,raw)=>{
-        const sale=raw as RecordValue;
-        return sale.type==="sale"&&sale.saleChannel==="manual"&&
-          sale.adventurerId===event.adventurerId&&sale.day===eventDay
-          ? total+(typeof sale.revenue==="number"?sale.revenue:0):total;
-      },0);
+      const manualRevenue=visitRevenue.get(visitor)??0;
       if(manualRevenue===0)fail(`${path}.type`,"tip requires a same-day manual sale");
       if((event.revenue as number)>Math.floor(manualRevenue/10))
         fail(`${path}.revenue`,"must not exceed 10% of same-day manual sales");
@@ -1586,9 +1602,12 @@ function validateState(value: unknown): asserts value is GameState {
       if (event.revenue !== item.salePrice * (event.quantity as number)) fail(`${path}.revenue`, "must match item price and quantity");
       const prefix = `day-${eventDay}:${event.adventurerId}:sale:`;
       const receiptSlot=id.startsWith(prefix) ? id.slice(prefix.length) : "";
-      const manualSuffix=receiptSlot.endsWith(":manual");
-      const slotId=manualSuffix ? receiptSlot.slice(0,-":manual".length) : receiptSlot;
-      if (!slotIds.has(slotId) || (manualSuffix && event.saleChannel!=="manual"))
+      const manualSuffix=event.saleChannel==="manual";
+      const marker=":manual"+visit;
+      const slotId=manualSuffix&&receiptSlot.endsWith(marker)?
+        receiptSlot.slice(0,-marker.length):receiptSlot;
+      if(manualSuffix)visitRevenue.set(visitor,(visitRevenue.get(visitor)??0)+(event.revenue as number));
+      if (!slotIds.has(slotId) || (manualSuffix&&!receiptSlot.endsWith(marker)))
         fail(`${path}.id`, "must link to the sale's shelf slot");
     } else {
       const expected = `day-${eventDay}:${global ? "" : `${event.adventurerId}:`}${suffix}`;
@@ -1629,14 +1648,10 @@ function validateState(value: unknown): asserts value is GameState {
       fail("payload.shopDebts","must agree with all credit events");
   }
   {
-    const manualPaid=new Set(array(state.events,"payload.events")
-      .filter(value=>(value as RecordValue).type==="sale" &&
-        (value as RecordValue).saleChannel==="manual" &&
-        (value as RecordValue).day===day)
-      .map(value=>(value as RecordValue).adventurerId));
+    const manualPaid=manuallyPaidVisitors(state.events as GameState["events"],day);
     for(const cart of array(state.shopCarts,"payload.shopCarts")){
-      if(manualPaid.has((cart as RecordValue).heroId))
-        fail("payload.shopCarts","cannot reserve goods for a customer already paid today");
+      if(manualPaid.has(String((cart as RecordValue).heroId)))
+        fail("payload.shopCarts","cannot reserve goods for a customer already paid during this visit");
     }
   }
   // Require that a saved petition is still a genuine, currently unpaid

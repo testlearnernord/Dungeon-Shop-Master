@@ -116,7 +116,7 @@ test("LIVE shop credit uses the unnumbered shop until an observed physical exit"
   const departed=exited.adventurers.find(h=>h.id===heroId)!;
   assert.equal(departed.status,"off-duty");
   assert.equal(departed.floor,"away");
-  assert.equal(departed.offDutyUntilDay,state.day+3);
+  assert(departed.offDutyUntilTick!>exited.worldClock.tick);
   assert.deepEqual(parseSave(JSON.stringify(createSave(exited))),exited);
 });
 test("crafted gear credit uses canonical equipment for all roles without phantom revenue",()=>{

@@ -123,8 +123,11 @@ test("strategic choices respond to actual HP, equipment, loot and map knowledge"
     "Floor 4 is no longer the last ordinary floor.");
   const floor9={...hero,floor:9 as const};
   assert.equal(chooseHeroDungeonDecision(floor9,progress,
-    {...replay,floor:9}).action,"shop",
-    "The authored boss-gate choice is separate from normal solo strategy.");
+    {...replay,floor:9}).action,"stay",
+    "Old gold and knowledge alone cannot cause a repeated Floor-9 portal trip.");
+  assert.equal(chooseHeroDungeonDecision(floor9,progress,
+    {...chestReplay,floor:9}).action,"shop",
+    "A genuine new reward can motivate another visit without bypassing the boss gate.");
   const fresh={...hero,gold:3};
   assert.equal(chooseHeroDungeonDecision(fresh,
     {...progress,visited:[1]},{...replay,outcome:"exploring"}).action,"stay");

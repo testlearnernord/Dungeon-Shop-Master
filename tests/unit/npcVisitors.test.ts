@@ -79,3 +79,15 @@ test("only committed manual same-day sales trigger physical departure",()=>{
   assert.deepEqual([...manuallyPaidVisitors(events,2)],["paid"]);
   assert.deepEqual([...manuallyPaidVisitors(events,1)],["old"]);
 });
+
+test("an earlier paid visit does not make a later genuine arrival depart immediately",()=>{
+  const events=[
+    {day:1,type:"shop-arrival",adventurerId:"h"},
+    {day:1,type:"sale",saleChannel:"manual",adventurerId:"h"},
+    {day:1,type:"shop-departure",adventurerId:"h",worldTick:20},
+    {day:1,type:"shop-arrival",adventurerId:"h",worldTick:900},
+  ];
+  assert.equal(manuallyPaidVisitors(events,1).has("h"),false);
+  assert.equal(manuallyPaidVisitors([...events,
+    {day:1,type:"sale",saleChannel:"manual",adventurerId:"h"}],1).has("h"),true);
+});

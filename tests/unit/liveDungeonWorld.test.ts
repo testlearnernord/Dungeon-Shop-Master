@@ -41,7 +41,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,38);
+  assert.equal(SIMULATION_VERSION,39);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -607,7 +607,7 @@ test("two real eligible Floor-9 explorers rendezvous, form a party and commit a 
   const ids=ready.map(h=>h.id);
   const active=activateLiveDungeon({...base,
     adventurers:base.adventurers.map(h=>ready.find(m=>m.id===h.id)??{
-      ...h,floor:"away" as const,status:"off-duty" as const,offDutyUntilDay:4}),
+      ...h,floor:"away" as const,status:"off-duty" as const,offDutyUntilTick:4800}),
     dungeonWorlds:[{floor:9 as const,world:{...emptySpatialDungeonWorld(),
       resolvedFeatureIds:layout.features.map(f=>f.id),
       heroes:[{heroId:ids[0],...stair,visited:known},
@@ -774,4 +774,80 @@ test("a reckless unarmed novice can risk Floor 2 without immediately rejecting t
   assert(!canRiskOrdinaryDescent(arrived),"An unarmed hero cannot deliberately risk Floor 3");
   assert.equal(chooseLiveHeroDungeonDecision({...arrived,health:Math.floor(arrived.health*.8)},
     known,replay).action,"ascend","A real change in health can justify turning back");
+});
+
+
+test("unresolved recovery does not turn an unchanged injury into another immediate shop visit",()=>{
+  const source=createGameState(7351).adventurers[0];
+  for(const floor of [1,3] as const){
+    const hero={...source,floor,status:"exploring" as const,
+      health:Math.floor(heroProgression(source).maxHealth*.2),
+      inventory:{bread:0,healing:0,finds:{}}};
+    const layout=generateExpeditionLayout(7351,floor);
+    const progress={heroId:hero.id,...layout.entrance,visited:[layout.entrance.z*layout.width+layout.entrance.x]};
+    const replay={version:1 as const,day:1,heroId:hero.id,floor,
+      appearance:{role:hero.role,equipment:hero.equipment},steps:[],encounters:[],
+      outcome:"exploring" as const};
+    const prior={goal:"caution" as const,action:floor===1?"stay" as const:"ascend" as const};
+    const decide=(previousHealth:number,plan=prior)=>chooseLiveHeroDungeonDecision(
+      hero,progress,replay,undefined,undefined,false,0,undefined,plan,true,previousHealth);
+    assert.equal(decide(hero.health).action,prior.action);
+    assert.equal(decide(hero.health+1).action,"shop","A genuinely new injury can justify treatment");
+    assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay).action,"shop",
+      "A first unserved injury still motivates a genuine shop visit");
+    const loot={...replay,steps:[{...layout.entrance,t:1,action:"treasure" as const,hp:hero.health}]};
+    assert.equal(chooseLiveHeroDungeonDecision(hero,progress,loot,undefined,undefined,
+      false,0,undefined,prior,true,hero.health).action,"shop",
+      "New resources can justify renewed shopping");
+  }
+});
+
+test("a fully explored floor and old gold cannot repeatedly trigger an unavailable gear purchase",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  const hero={...source,floor:1 as const,status:"exploring" as const,
+    gold:100,equipment:{weapon:null,armor:null}};
+  const layout=generateExpeditionLayout(7351,1);
+  const progress={heroId:hero.id,...layout.entrance,
+    visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:1 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},encounters:[],
+    outcome:"completed" as const,
+    steps:[{...layout.entrance,t:1,action:"complete" as const,hp:hero.health}]};
+  assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay).action,"stay");
+  assert.equal(chooseLiveHeroDungeonDecision(hero,progress,{...replay,
+    outcome:"exploring",steps:[{...layout.entrance,t:1,action:"treasure",hp:hero.health}]}).action,"shop");
+});
+test("real gear helps depth readiness without substituting for all deep-floor experience",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  const young={...source,level:4,xp:300,floor:7 as const,status:"exploring" as const,
+    equipment:{weapon:"Forged Spear",armor:"Ghoul Leather Vest"},
+    inventory:{bread:2,healing:2},
+    traits:{...source.traits,positive:"brave",negative:"reckless"}};
+  const ready={...young,health:heroProgression(young).maxHealth};
+  assert(!canRiskOrdinaryDescent(ready),"Equipment alone does not justify Floor 8 at level 4");
+  const veteran={...ready,level:6,xp:500,health:heroProgression({...ready,level:6}).maxHealth};
+  assert(canRiskOrdinaryDescent(veteran));
+  assert(!canRiskOrdinaryDescent({...veteran,health:1}));
+  const arrived={...ready,floor:8 as const};
+  const layout=generateExpeditionLayout(7351,8);
+  const replay={version:1 as const,day:1,heroId:ready.id,floor:8 as const,
+    appearance:{role:ready.role,equipment:ready.equipment},
+    steps:[],encounters:[],outcome:"exploring" as const};
+  assert.equal(chooseLiveHeroDungeonDecision(arrived,undefined,replay).action,"ascend",
+    "The resident uses the same deep risk threshold as the prospective descender");
+  assert.notEqual(chooseLiveHeroDungeonDecision({...veteran,floor:8},undefined,replay).action,"ascend");
+});
+test("a Floor-9 hero without a pass does not endlessly revisit for unchanged gold or knowledge",()=>{
+  const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  const hero={...source,floor:9 as const,status:"exploring" as const,bossPass:false,
+    level:7,xp:600,gold:100,equipment:{weapon:"Forged Spear",armor:"Ghoul Leather Vest"}};
+  const layout=generateExpeditionLayout(7351,9);
+  const progress={heroId:hero.id,...layout.entrance,
+    visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};
+  const replay={version:1 as const,day:1,heroId:hero.id,floor:9 as const,
+    appearance:{role:hero.role,equipment:hero.equipment},
+    steps:[],encounters:[],outcome:"completed" as const};
+  assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay).action,"stay");
+  assert.equal(chooseLiveHeroDungeonDecision(hero,progress,{...replay,
+    outcome:"exploring",steps:[{...layout.entrance,t:1,action:"treasure",hp:hero.health}]}).action,"shop");
 });

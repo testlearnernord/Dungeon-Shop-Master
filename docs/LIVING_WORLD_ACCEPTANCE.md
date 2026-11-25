@@ -11,7 +11,7 @@ and the actual UI. Old save formats remain deliberately incompatible with v24.
 
 | Source | Contract |
 | --- | --- |
-| `tests/unit/livingWorldAcceptance.test.ts` | One seeded ten-day LIVE campaign, with a legal on-credit good and real debt, a reserved shelf item paid through the staffed-cart authority, accurate treasury and hero inventory, observed outer-gate departures and two full days off duty |
+| `tests/unit/livingWorldAcceptance.test.ts` | One seeded ten-day LIVE campaign, with a legal on-credit good and real debt, a reserved shelf item paid through the staffed-cart authority, accurate treasury and hero inventory, observed outer-gate departures and bounded same-day recovery |
 | Same | A lethal seeded spatial trap generates one real magical death report without leaking its location/cause onto the passive Board; two co-located explorers form a saved Temporary Party |
 | Same | A **different** seeded monster generates a real 60Hz saved group fight; only that combat gets pinned for permanent review. No imaginary recording is attached to the trap death |
 | Same | Each day through Day 11 compares the uninterrupted and independently strict-saved/reloaded simulations: identical world tick, outcomes, parties, HP, event identities, debts, stock and money. One manually pinned tape remains byte-for-byte unchanged after normal replay expiration |

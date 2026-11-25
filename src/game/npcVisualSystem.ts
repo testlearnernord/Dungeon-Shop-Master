@@ -475,7 +475,7 @@ export class NpcVisualSystem {
   /** Shopping-state notifications may happen without a new day. A committed
    * manual payment keeps the simulated hero at-shop until closing, but the
    * visual is already leaving and must never be regenerated or reversed. */
-  private paidThisDay:ReadonlySet<string>=new Set();
+  private paidThisVisit:ReadonlySet<string>=new Set();
   private wishBubblesVisible=true;
   private engagedBeggarId:string|null=null;
   private readonly customerBubble:NpcCustomerBubble;
@@ -554,12 +554,12 @@ export class NpcVisualSystem {
         // closes, even after a manual checkout. A roster/permit update must
         // never revive that paid customer's already-running exit animation.
         if (visual.phase === "leaving" && visitor.status==="at-shop" &&
-            !this.paidThisDay.has(visitor.id))
+            !this.paidThisVisit.has(visitor.id))
           this.beginEntering(visual, visual.slot, false);
       } else {
         // This hero may have walked completely offscreen after payment.
         // A later unrelated GameStore update must not spawn them again.
-        if(this.paidThisDay.has(visitor.id)||visitor.status==="departing")continue;
+        if(this.paidThisVisit.has(visitor.id)||visitor.status==="departing")continue;
         let slot = 0;
         while (usedSlots.has(slot)) slot += 1;
         usedSlots.add(slot);
@@ -610,15 +610,15 @@ export class NpcVisualSystem {
     this.onPickUp=onPickUp;
     this.onWalkout=onWalkout??null;
     this.carts=carts;
-    const priorPaid=this.paidThisDay;
+    const priorPaid=this.paidThisVisit;
     const wasInitialized=hadProjection;
-    this.paidThisDay=paidHeroIds;
+    this.paidThisVisit=paidHeroIds;
     const roomSignature=JSON.stringify(room??null);
     const cartByHero=new Map(carts.map(cart=>[cart.heroId,cart]));
     const queueIds=carts.filter(cart=>cart.lines.length>0).map(cart=>cart.heroId);
     const queuePoints=checkoutQueuePoints(layout,{x:0,z:-1},queueIds.length,room);
     for(const npc of this.npcs.values()){
-      // Manual payment is committed before the Day Tick, so status stays
+      // Manual payment is committed during the current visit, so status stays
       // at-shop for simulation but the customer must physically exit NOW.
       const manuallyPaid=paidHeroIds.has(npc.visitor.id);
       if(wasInitialized&&manuallyPaid&&!priorPaid.has(npc.visitor.id))

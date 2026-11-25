@@ -16,7 +16,7 @@ Fixes in source:
 - `level7Exploration.ts`: a hero arriving on the lower stair may explore genuine adjacent connected tiles when the upper portal is unknown. No teleport, global hidden-map knowledge or fabricated saved path.
 - `campaignSave.ts`: strict saves accept an actual lower stair arrival on Floors 2–4 while rejecting arbitrary unanchored locations.
 - `liveDungeonRuntime.ts` / `shopArrivals.ts`: unloading the old abstract `inventory.loot` haul counter on arrival breaks the eternal loot-triggered resupply cycle, without selling or deleting any real `inventory.finds`, cash or equipment.
-- `liveDungeonRuntime.ts`: during the two protected off-duty days, heroes can spend genuinely owned bread/herbs to heal (one dose per day). There is **no free healing**, gold, item creation, dungeon movement or premature reentry.
+- `liveDungeonRuntime.ts`: in the historical baseline, heroes spent genuinely owned bread/herbs during two protected off-duty days (one dose per day). The v39 candidate supersedes that rule with a bounded world-tick deadline and a single owned dose upon reentry. There is **no free healing**, gold, item creation, dungeon movement or premature reentry.
 - Seeded regression and strict save tests were added or updated. The four-seed × 100-day diagnostic run [45011370044](https://github.com/testlearnernord/Dungeon-Shop-Master/actions/runs/45011370044) completed **successfully in all four jobs**.
 
 ### Actual post-fix 100-day outcomes

@@ -23,7 +23,7 @@ import type {ShopCart} from "./shopCarts.ts";
 import {arrivalEvent} from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 38;
+export const SIMULATION_VERSION = 39;
 
 export interface ShopEconomyState {
   readonly balance: number;
