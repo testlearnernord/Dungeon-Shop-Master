@@ -168,7 +168,7 @@ export class DungeonViewer {
     private readonly store: GameStore,
     private readonly sceneChanged: (active: boolean) => void,
     private readonly fightSoundtrackChanged:
-      (active:boolean,boss:boolean)=>void=()=>{},
+      (active:boolean,boss:boolean,live?:boolean)=>void=()=>{},
     private readonly skipCombatScoreTo:(seconds:number)=>void=()=>{},
     private readonly sfx?:GameSfx,
   ) {
@@ -1097,7 +1097,7 @@ export class DungeonViewer {
     if(!fight)return;
     this.liveFloorFightId=fight.id;
     if(!this.liveArena.watch(this.floorCombatView(fight),"live"))return;
-    this.enterFightSoundtrack(fight.actors);
+    this.enterFightSoundtrack(fight.actors,true);
     this.paintFloor(view!);
     this.paintCombatIntro();
     this.returnCombatButton.focus();
@@ -1364,7 +1364,7 @@ export class DungeonViewer {
     if(!this.liveHeroId)return;
     const view=selectLiveSpectatorFrame(this.store.state,this.liveHeroId);
     if(!view?.combat||!this.liveArena.watch(view,"live"))return;
-    this.enterFightSoundtrack(view.combat.actors);
+    this.enterFightSoundtrack(view.combat.actors,true);
     this.paintCombatIntro();
     this.watchCombatButton.hidden=true;
     this.returnCombatButton.hidden=false;
@@ -1397,12 +1397,12 @@ export class DungeonViewer {
   }
 
   private enterFightSoundtrack(
-    actors:readonly {specialAbility?:string}[],
+    actors:readonly {specialAbility?:string}[],live=false,
   ):void {
     // Only explicit opt-in premium fights switch to combat music. The
     // abstract dungeon map keeps Beneath the Surface and no 3D stage.
     this.fightSoundtrackChanged(true,actors.some(actor=>
-      actor.specialAbility==="grapple-throw"));
+      actor.specialAbility==="grapple-throw"),live);
   }
 
   private leaveLiveCombat(backToDungeon=true):void {
