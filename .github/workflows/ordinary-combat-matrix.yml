@@ -28,7 +28,7 @@ jobs:
           path: candidate
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref == 'audit/gameplay-loop-visible-pack-risk' && 'aacca14024f9d8302393eb2d4ffe59bcb9eef74b' || github.head_ref == 'experiment/ghoul-pack-attack-spacing' && 'a604077ee58b7d1084473bdd21c3d67652e6e932' || github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
           path: baseline
       - uses: actions/setup-node@v4
         with:
