@@ -76,5 +76,16 @@ if(sweep){
     add(prepared,[row.profile,row.composition,row.level].join(":"),row);
   console.error("BOSS_PROFILE_PREPARED "+JSON.stringify(prepared));
   console.error("BOSS_PROFILE_ROLES "+JSON.stringify(roleExposure));
-}else console.error("BOSS_MATRIX_SUMMARY "+JSON.stringify({seed,cases:rows.length,summary}));
+}else{
+  console.error("BOSS_MATRIX_SUMMARY "+JSON.stringify({seed,cases:rows.length,summary}));
+  const tierSummary={},prepared={};
+  for(const row of rows){
+    add(tierSummary,[row.composition,row.tier].join(":"),row);
+    if(row.hpRatio===1&&row.herbs===2)
+      add(prepared,[row.composition,row.tier,row.level].join(":"),row);
+  }
+  console.error("BOSS_MATRIX_TIERS "+JSON.stringify(tierSummary));
+  console.error("BOSS_MATRIX_PREPARED "+JSON.stringify(prepared));
+  console.error("BOSS_MATRIX_ROLES "+JSON.stringify(roleExposure));
+}
 console.log(JSON.stringify({contract:"Controlled homogeneous level/gear/HP/herb comparisons; actual production boss motor, not natural party frequencies",seed,cases:rows.length,summary,byPreparation,profiles,byProfile,byProfilePreparation,roleExposure,rows}));
