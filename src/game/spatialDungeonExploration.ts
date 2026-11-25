@@ -27,6 +27,7 @@ export const SPATIAL_DUNGEON_STEP_BUDGET = 36;
 export const SPATIAL_DUNGEON_REPLAY_KEEP = 3;
 /** Bound battle frequency within a longer day without inventing encounters. */
 export const SPATIAL_DUNGEON_MAX_ENCOUNTERS = 2;
+/** Historical audit horizon, not an encounter termination rule. */
 export const SPATIAL_DUNGEON_COMBAT_SECONDS = 35;
 
 /** A durable, global shared dungeon world plus per-hero independent exploration. */
@@ -266,7 +267,7 @@ function fightAgainst(
   outcome:"heroes"|"monsters"|"retreat"|"draw";combat:GroupCombatReplay;elite:boolean;
 } {
   const prepared=prepareSpatialDungeonCombat(party,monster,campaignSeed,layout,approach,cycle);
-  const encounter=resolveGroupCombat(prepared.options,SPATIAL_DUNGEON_COMBAT_SECONDS);
+  const encounter=resolveGroupCombat(prepared.options);
   return {
     survivors:party.map(hero=>{
       const actor=encounter.state.actors.find(a=>a.id===hero.id)!;
