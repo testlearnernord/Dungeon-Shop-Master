@@ -439,8 +439,9 @@ const cashierSfx=createCashierSfx(()=>sfx.soundEnabled,()=>sfx.soundVolume);
 const arena = new CombatLabController(engine, canvas, camera, store, (active) => {
   soundtrack.setArenaMix(active);
   sfx.setArenaMix(active);
-  soundtrack.setScene(active ? "boss" : "shop");
-},sfx);
+  if(!active)soundtrack.setScene("shop");
+},sfx,(boss,cue)=>soundtrack.setScene(boss?"boss":"combat",cue),
+  seconds=>soundtrack.skipCombatIntro(seconds));
 const dungeon = new DungeonViewer(engine, canvas, camera, store, (active) => {
   soundtrack.setScene(active ? "dungeon" : "shop");
 }, (observingFight,bossFight,live)=>{

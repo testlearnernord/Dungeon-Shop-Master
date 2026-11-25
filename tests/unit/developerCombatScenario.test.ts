@@ -7,7 +7,7 @@ import {createGameState} from "../../src/game/gameState.ts";
 import {
   buildDeveloperCombat,developerHeroFromRoster,randomDeveloperHeroes,
   DEFAULT_DEVELOPER_CONFIG,validateDeveloperCombat,
-  type DeveloperCombatConfig,
+  type DeveloperCombatConfig,labEquipment,productionLabHero,captureLabEncounters,
 } from "../../src/game/developerCombatScenario.ts";
 import {resolveGroupCombat,createGroupCombat,stepGroupCombat}
   from "../../src/game/groupCombat.ts";
@@ -78,4 +78,39 @@ test("Lab Ghoul profiles match LIVE seeded site strength on every ordinary floor
     const {id:liveId,x:liveX,z:liveZ,...liveProfile}=live.options.actors.find(a=>a.team==="monsters")!;
     assert.deepEqual(labProfile,liveProfile,"Floor "+floor);
   }
+});
+
+test("production mode uses canonical gear, current health and actual encounter geometry",()=>{
+  const base=developerHeroFromRoster({...createGameState(42).adventurers[0],health:20});
+  const hero={...base,role:"healer" as const,level:9,equipment:labEquipment("healer",2,2)};
+  const config={...DEFAULT_DEVELOPER_CONFIG,mode:"production" as const,enemy:"ghoul" as const,arena:"crypt" as const,heroes:[hero],seed:42,ghoulFloor:1};
+  const options=buildDeveloperCombat(config);
+  assert.deepEqual(options.bounds,{minX:-8.75,maxX:8.75,minZ:-8.75,maxZ:8.75});
+  assert.equal(options.actors[0].hp,20);
+  assert.equal(options.actors[0].equipment?.weapon,"Forged Staff");
+  const weaker=buildDeveloperCombat({...config,heroes:[{...hero,equipment:labEquipment("healer",1,1)}]});
+  assert(options.actors[0].damage>weaker.actors[0].damage);
+  assert(options.actors[0].armor>weaker.actors[0].armor);
+  assert((options.actors[0].magicHeals??0)>(weaker.actors[0].magicHeals??0));
+  assert.deepEqual(options,buildDeveloperCombat(config));
+  const boss=buildDeveloperCombat({...config,enemy:"cave-troll",arena:"cave-troll",heroes:[hero,hero]});
+  assert.equal(boss.environment,"cave-lava");
+  assert.equal(boss.actors[0].z,-9);
+  assert.equal(productionLabHero(hero,0).health,20);
+});
+
+test("captured LIVE options are detached and replay the exact initial motor",()=>{
+  const campaign=createGameState(42);
+  const options=buildDeveloperCombat(DEFAULT_DEVELOPER_CONFIG);
+  const initial=createGroupCombat(options);
+  const withFight={...campaign,liveDungeon:{...campaign.liveDungeon,
+    partyBossCombat:{id:"sample",startedTick:0,heroIds:["lab-hero-1"],options,state:initial,frames:[]}}};
+  const saved=structuredClone(withFight);
+  const captured=captureLabEncounters(withFight)[0];
+  assert.deepEqual(captured.options,options);
+  assert.notEqual(captured.options,options);
+  const copy=createGroupCombat(captured.options),original=createGroupCombat(options);
+  for(let i=0;i<300;i++){stepGroupCombat(copy,1/60);stepGroupCombat(original,1/60);}
+  assert.deepEqual(copy,original);
+  assert.deepEqual(withFight,saved);
 });

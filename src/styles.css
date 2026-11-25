@@ -1042,3 +1042,6 @@ body.dungeon-active #music-panel { top: 119px; }
   .arena-lab-grid{gap:6px}
   .arena-lab-panel header strong{font-size:12px}
 }
+
+#arena-hud[data-dev-lab=true] .arena-lab-panel{z-index:80;max-height:calc(100dvh - 120px)}
+#arena-hud[data-dev-lab=true] .arena-lab-grid :disabled{opacity:.55;cursor:not-allowed}

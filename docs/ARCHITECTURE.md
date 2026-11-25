@@ -145,3 +145,7 @@ inspector, roster's legacy raw stat paragraphs, and generic hero hover
 text have been replaced. Combat AI, World Clock, RNG, Replay generation,
 shop price/inventory authority and Babylon character construction are
 unaffected. Historical omissions must remain unknown.
+
+## Combat Lab configuration parity
+
+V defaults to Production rules: `productionLabHero` derives hero power from the shared `heroCombatAttributes` and canonical gear catalog. Ordinary tests use the actual generated-site composer `prepareSpatialDungeonCombat` (including layout, pack size and open arena bounds); boss tests use `caveTrollPartyOptions`. The generated fixture deliberately uses a local seed and synthetic heroes unless roster snapshots are imported. Selecting a captured running LIVE encounter instead clones its exact initial `GroupCombatOptions` and restarts locally; it does not resume the current tick or mutate the campaign. Custom experiments explicitly override final stats, pack count and arena. Both modes still use one motor. Current HP, class-compatible T1/T2 selectors, and encounter-specific music are part of this configuration. No campaign save changes.

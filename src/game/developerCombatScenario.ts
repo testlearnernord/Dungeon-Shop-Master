@@ -1,9 +1,12 @@
 import type {AdventurerState} from "./adventurers.ts";
-import {heroCombatAttributes} from "./heroProgression.ts";
+import type {GameState} from "./gameState.ts";
+import {generateExpeditionLayout,dungeonNeighbors} from "./dungeonLayout.ts";
+import {prepareSpatialDungeonCombat} from "./spatialDungeonExploration.ts";
+import {heroCombatAttributes,heroProgression} from "./heroProgression.ts";
 import {equipmentEffects,GEAR_BY_ITEM} from "./gearCatalog.ts";
 import type {GroupCombatOptions,CombatantSpec,GroupRole} from "./groupCombat.ts";
 import {ghoulCombatProfile} from "./ghoulPack.ts";
-import {caveTrollActor} from "./sharedBossCombat.ts";
+import {caveTrollActor,caveTrollPartyOptions} from "./sharedBossCombat.ts";
 import type {CombatStageTheme} from "./combatSpectatorStage.ts";
 
 /**
@@ -15,6 +18,9 @@ export type DeveloperEnemy="ghoul"|"cave-troll";
 export interface DeveloperHero {
   readonly role:Exclude<GroupRole,"monster">;
   readonly maxHp:number;
+  readonly hp?:number;
+  readonly level?:number;
+  readonly baseStats?:AdventurerState["stats"];
   readonly damage:number;
   readonly armor:number;
   readonly agility:number;
@@ -26,6 +32,7 @@ export interface DeveloperHero {
   readonly label:string;
 }
 export interface DeveloperCombatConfig {
+  readonly mode?:"production"|"custom";
   readonly arena:CombatStageTheme;
   readonly enemy:DeveloperEnemy;
   readonly enemyCount:number;
@@ -66,6 +73,8 @@ export function validateDeveloperCombat(config:DeveloperCombatConfig):void {
   for(const hero of config.heroes){
     if(!["tank","DPS","healer"].includes(hero.role)||
        !within(hero.maxHp,1,10000)||!within(hero.damage,1,1000)||
+       (hero.hp!==undefined&&!within(hero.hp,1,10000))||
+       (hero.level!==undefined&&(!Number.isSafeInteger(hero.level)||!within(hero.level,1,1000)))||
        !within(hero.armor,0,1000)||!within(hero.agility,0,1000)||
        !Number.isSafeInteger(hero.healCharges)||hero.healCharges<0||
        hero.healCharges>10||
@@ -109,7 +118,8 @@ export function randomDeveloperHeroes(seed:number,count:number):DeveloperHero[]{
 export function developerHeroFromRoster(hero:AdventurerState):DeveloperHero{
   const stats=heroCombatAttributes(hero);
   return {
-    role:hero.role,label:hero.name,maxHp:stats.maxHp,damage:stats.damage,
+    role:hero.role,label:hero.name,maxHp:stats.maxHp,hp:hero.health,
+    level:hero.level,baseStats:{...hero.stats},damage:stats.damage,
     armor:stats.armor,agility:stats.agility,healCharges:stats.healCharges,
     ...(stats.magicHeals!==undefined?{magicHeals:stats.magicHeals}:{}),
     equipment:stats.equipment,sword:stats.equipment.weapon!==null,vest:stats.equipment.armor!==null,
@@ -119,6 +129,7 @@ export function developerHeroFromRoster(hero:AdventurerState):DeveloperHero{
  * Safe spawns for 3v3 and a single arena origin; no overlapped heroes. */
 export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOptions{
   validateDeveloperCombat(config);
+  if(config.mode==="production")return buildProductionCombat(config);
   const heroPositions=[{x:-7,z:-3},{x:-7,z:1},{x:-7,z:5}];
   const enemyPositions=[{x:5,z:1},{x:6,z:-4},{x:6,z:6}];
   const actors:CombatantSpec[]=[];
@@ -134,7 +145,7 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
     actors.push({
       id:"lab-hero-"+(index+1),team:"heroes",role:hero.role,
       style:hero.role==="healer"?"ranged":"melee",
-      ...pos,hp:hero.maxHp,maxHp:hero.maxHp,damage:hero.damage,
+      ...pos,hp:Math.max(1,Math.min(hero.maxHp,hero.hp??hero.maxHp)),maxHp:hero.maxHp,damage:hero.damage,
       armor:hero.armor,agility:hero.agility,speed:hero.role==="tank"?2.5:3.1,
       ...(hero.role==="healer"?{magicHeals:hero.magicHeals??2}:{}),
       reach:gear.reach,healCharges:hero.healCharges,
@@ -154,4 +165,54 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
   return {actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},obstacles:[],
     tacticsSeed:config.seed,
     ...(config.arena==="cave-troll"?{environment:"cave-lava" as const}:{})};
+}
+
+/** Canonical tier selection, independent of any manual damage override. */
+export function labEquipment(role:DeveloperHero["role"],weaponTier:number,armorTier:number):AdventurerState["equipment"]{
+  const gear=Object.values(GEAR_BY_ITEM);
+  return {
+    weapon:gear.find(g=>g.slot==="weapon"&&g.role===role&&g.tier===weaponTier)?.name??null,
+    armor:gear.find(g=>g.slot==="armor"&&g.tier===armorTier)?.name??null,
+  };
+}
+export function productionLabHero(hero:DeveloperHero,index:number):AdventurerState{
+  const level=Math.max(1,Math.min(1000,Math.floor(hero.level??1)));
+  const base=hero.baseStats??{strength:8,agility:8,intellect:8,maxHealth:hero.role==="tank"?60:45};
+  const raw=hero.equipment??labEquipment(hero.role,hero.sword?1:0,hero.vest?1:0);
+  const valid=equipmentEffects(hero.role,raw);
+  const equipment={weapon:valid.weapon,armor:valid.vest};
+  const draft:AdventurerState={
+    id:"lab-hero-"+(index+1),name:hero.label,role:hero.role,stats:{...base},
+    traits:{positive:"brave",neutral:"quiet",negative:"stubborn"},
+    level,xp:(level-1)*100,health:1,gold:0,equipment,
+    inventory:{bread:0,healing:Math.min(2,hero.healCharges)},
+    floor:9,status:"exploring",shopStayDays:0,offDutyUntilTick:null,bossPass:true,
+  };
+  const max=heroProgression(draft).maxHealth;
+  return {...draft,health:Math.max(1,Math.min(max,hero.hp??max))};
+}
+/** Production-composed fixture. The seed identifies a real generated layout;
+ * ordinary count/elite/profile/formation come from that site, not sliders. */
+export function buildProductionCombat(config:DeveloperCombatConfig):GroupCombatOptions{
+  const party=config.heroes.map(productionLabHero);
+  if(config.enemy==="cave-troll")return caveTrollPartyOptions(party,config.seed);
+  const floor=config.ghoulFloor??5;
+  const layout=generateExpeditionLayout(config.seed,floor);
+  for(const site of layout.features.filter(f=>f.kind==="monster")){
+    const approach=dungeonNeighbors(layout,site)[0];
+    if(!approach)continue;
+    try{return prepareSpatialDungeonCombat(party,site,config.seed,layout,approach,0,true).options;}
+    catch(error){if(!(error instanceof RangeError))throw error;}
+  }
+  throw new RangeError("No usable generated encounter site; choose another seed.");
+}
+/** Exact initial options of a genuine current encounter. Copy before handing
+ * them to the disposable simulation; no campaign state or RNG is mutated. */
+export function captureLabEncounters(state:GameState):readonly {id:string;label:string;options:GroupCombatOptions;arena:CombatStageTheme}[]{
+  const ordinary=state.liveDungeon.combats.map(f=>({
+    id:f.id,label:"LIVE Ghoul · "+f.heroIds.join(", "),options:structuredClone(f.encounter.options),arena:"crypt" as const,
+  }));
+  const boss=state.liveDungeon.partyBossCombat;
+  return boss?[...ordinary,{id:boss.id,label:"LIVE Cave Troll · "+boss.heroIds.join(", "),
+    options:structuredClone(boss.options),arena:"cave-troll" as const}]:ordinary;
 }

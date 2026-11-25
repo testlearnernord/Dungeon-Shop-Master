@@ -6,7 +6,7 @@ The required PR pipeline is a **fast defect gate**, not a 100-day campaign and n
 
 **Build and unit tests** (one job, stable check name): `npm ci`, `npm run build`, `npm run verify:pages`, then `npm run test:unit:core`. The core script is an explicit file selection from `tests/unit/`: state/save/time, live dungeon and temporary parties, 60-Hz combat, checkout and shop traffic, one portal and right-wall seal, furniture and cellar traversal, LIVE projection and shared tabletop/minimap camera orientation. No automatic all-unit discovery on PRs.
 
-**Browser core smoke** (one job, stable check name): `npm run test:smoke`, with these seven Chromium test files:
+**Browser core smoke** (one job, stable check name): `npm run test:smoke`, with these eight Chromium test files:
 
 - `cashierReceipt.spec.ts`: physical cashier and real payment authority
 - `shopTrafficReload.spec.ts`: persisted NPC routes, waits and checkout claims
@@ -15,6 +15,7 @@ The required PR pipeline is a **fast defect gate**, not a 100-day campaign and n
 - `singleShopPortal.spec.ts`: only one valid physical entry/exit
 - `monsterObservation.spec.ts`: real committed monster observation
 - `cellarForge.spec.ts`: physical forge and material flow
+- `developerCombatLab.spec.ts`: production gear controls, explicit custom fixtures, local stepping, cinematic and isolation
 
 The explicit file names in `package.json` are authoritative. An `@ci-smoke` tag on another test does not enroll it in CI. The standalone Galvik table camera-handoff job was removed: its `observationTransition.spec.ts` remains available manually, while pure camera-orientation contracts run in the core unit gate. The advisory module graph audit also does not block every PR; run it when deleting source code or before releases.
 
