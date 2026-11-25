@@ -52,18 +52,12 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   });
   await page.reload();
   await expect(page.locator("#save-status")).toContainText("Continued saved Day 1");
+  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(false);});
+  await expect(page.locator("#open-hero-offers")).toHaveAttribute("data-receipts","4",{timeout:120000});
+  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(true);});
   const modal=page.locator("#hero-buyback-hud");
   await page.locator("#open-hero-offers").click();
   await expect(modal).toBeVisible();
-  for(const [item,count] of [["Iron Ore",1],["Coal",1],
-    ["Ghoul Leather",2]] as const){
-    for(let i=0;i<count;i++){
-      const offer=modal.locator(".hero-buyback-offer").filter({hasText:item});
-      await expect(offer).toBeVisible();
-      await offer.getByRole("button",{name:new RegExp("Buy one "+item)}).click();
-    }
-  }
-  await expect(modal.locator(".hero-buyback-empty")).toBeVisible();
   const afterTrade=await page.evaluate(async()=>{
     const {GameStore}=await import("/Dungeon-Shop-Master/src/game/gameStore.ts");
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");

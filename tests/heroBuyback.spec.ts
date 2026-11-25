@@ -2,7 +2,7 @@ import {expect,test} from "@playwright/test";
 
 test("returning adventurer sells one real find to Galvik, saved with a paid expense receipt @ci-smoke",
   async({page})=>{
-  test.setTimeout(70000);
+  test.setTimeout(180000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./?e2e-pause-world");
@@ -25,17 +25,14 @@ test("returning adventurer sells one real find to Galvik, saved with a paid expe
   await expect(page.locator("#inventory .inventory-row")).toHaveCount(6);
   await expect(page.locator('#inventory [data-item-id="iron-ore"]')).toHaveCount(0);
   await expect(page.locator('#inventory [data-item-id="coal"]')).toHaveCount(0);
-  const trigger=page.locator("#open-hero-offers");
-  await expect(trigger).toContainText("Hero loot");
-  await trigger.click();
+  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(false);});
+  await expect(page.locator("#open-hero-offers")).toHaveAttribute("data-receipts","2",{timeout:120000});
+  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(true);});
+  await page.locator("#open-hero-offers").click();
   const modal=page.locator("#hero-buyback-hud");
   await expect(modal).toBeVisible();
-  await expect(modal.locator(".hero-buyback-budget")).toContainText("Workshop reserve");
-  const offer=modal.locator(".hero-buyback-offer").filter({hasText:"Iron Ore"});
-  await expect(offer).toContainText("×2");
-  await offer.getByRole("button",{name:/Buy one Iron Ore/}).click();
-  await expect(offer).toContainText("×1");
-  await expect(modal.locator(".hero-buyback-feedback")).toContainText("bought 1 Iron Ore");
+  await expect(modal.locator(".hero-buyback-budget")).toContainText("Iron Ore 2");
+  await expect(modal.locator(".hero-buyback-offer")).toHaveCount(2);
   await page.evaluate(async()=>{
     const hooks=window as Window&{
       __shopTestSaveTrafficNow?:()=>Promise<unknown>
@@ -57,12 +54,12 @@ test("returning adventurer sells one real find to Galvik, saved with a paid expe
       receipts:state.events.filter(e=>e.type==="hero-buyback"),
     };
   });
-  expect(stored.merchantGold).toBe(fixture.shopGold-2);
-  expect(stored.merchantOre).toBe(fixture.reserveOre+1);
+  expect(stored.merchantGold).toBe(fixture.shopGold-4);
+  expect(stored.merchantOre).toBe(fixture.reserveOre+2);
   expect(stored.bagOre).toBe(0);
-  expect(stored.heroGold).toBe(fixture.startingGold+2);
-  expect(stored.heroOre).toBe(1);
-  expect(stored.receipts).toHaveLength(1);
+  expect(stored.heroGold).toBe(fixture.startingGold+4);
+  expect(stored.heroOre).toBeUndefined();
+  expect(stored.receipts).toHaveLength(2);
   expect(stored.receipts[0]).toMatchObject({
     adventurerId:fixture.heroId,itemId:"iron-ore",quantity:1,cost:2,
   });

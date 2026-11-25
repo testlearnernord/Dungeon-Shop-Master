@@ -126,3 +126,22 @@ test("shop bag full blocks recovered consumables but not forge materials",()=>{
     full.shopEconomy.balance-dungeonBuybackPrice("coal"));
   assert.deepEqual(parseSave(serializeSave(coal.state)),coal.state);
 });
+
+test("physical chest buys real materials once, respects closed state, distance and treasury",async()=>{
+  const {buybackAtChest}=await import("../../src/game/dungeonBuyback.ts");
+  const {BUYBACK_DOCK}=await import("../../src/game/buybackChestPlacement.ts");
+  const base=stockedHero(),id=base.adventurers[0].id;
+  assert.equal(buybackAtChest({...base,buybackChestOpen:false},id,BUYBACK_DOCK).shopEconomy.balance,base.shopEconomy.balance);
+  assert.strictEqual(buybackAtChest(base,id,{x:0,z:0}),base);
+  const after=buybackAtChest(base,id,BUYBACK_DOCK);
+  assert.equal(after.shopEconomy.materialStorage["iron-ore"],2);
+  assert.equal(after.shopEconomy.materialStorage.coal,1);
+  assert.equal(after.shopEconomy.balance,base.shopEconomy.balance-6);
+  assert.equal(after.adventurers[0].gold,base.adventurers[0].gold+6);
+  assert.strictEqual(buybackAtChest(after,id,BUYBACK_DOCK),after);
+  const poor={...base,shopEconomy:{...base.shopEconomy,balance:2}};
+  const partial=buybackAtChest(poor,id,BUYBACK_DOCK);
+  assert.equal(partial.shopEconomy.balance,0);
+  assert.equal(partial.adventurers[0].inventory.finds?.["iron-ore"],1);
+  assert.deepEqual(parseSave(serializeSave({...after,buybackChestOpen:false})),{...after,buybackChestOpen:false});
+});
