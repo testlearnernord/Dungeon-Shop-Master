@@ -298,11 +298,12 @@ export function createBossExposureTelemetry(){
       const row={day:event.day,tick:event.worldTick,...summarizeBossFight(fight)};
       const {composition,deaths}=row;
       attempts.push(row);
-      const g=byComposition[composition]??={attempts:0,wins:0,losses:0,draws:0,deaths:0};
+      const g=byComposition[composition]??={attempts:0,wins:0,losses:0,draws:0,retreats:0,deaths:0};
       g.attempts++;g.deaths+=deaths;
       if(fight.outcome==="heroes")g.wins++;
       else if(fight.outcome==="monsters")g.losses++;
       else if(fight.outcome==="draw")g.draws++;
+       else if(fight.outcome==="retreat")g.retreats++;
       else throw Error("Unsettled Floor-10 recording");
     }
   }
