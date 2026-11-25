@@ -31,5 +31,20 @@ test("no damage or movement does not invent a natural winner or settlement",()=>
   assert.equal(summary["static:240"].active,1);
   assert.equal(summary["static:240"].noDamage30,1);
   assert.equal(summary["static:240"].wins,0);
+  assert.equal(summary["static:240"].stallReasons.stationaryOutOfRange,1);
+  assert.equal(summary["static:240"].stallWithObstruction,0);
   assert.throws(()=>measureCombatHorizons(staticFight,[90,35]),/horizons/);
+});
+
+
+test("stationary obstacle stalls are distinguished from unobstructed range stalls",()=>{
+  const blocked={...options,obstacles:[{id:"wall",minX:-.5,maxX:.5,minZ:-2,maxZ:2}],
+    actors:options.actors.map(a=>({...a,speed:0,reach:1}))};
+  const rows=measureCombatHorizons(blocked,[35,60]);
+  assert.equal(rows[1].stall.kind,"stationaryObstructed");
+  assert.equal(rows[1].stall.blocked,true);
+  const summary={};
+  addHorizonSummary(summary,"wall",rows);
+  assert.equal(summary["wall:60"].stallReasons.stationaryObstructed,1);
+  assert.equal(summary["wall:60"].stallWithObstruction,1);
 });
