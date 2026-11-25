@@ -1,4 +1,4 @@
-import type { BossPhase } from "./arenaCombatMotion.ts";
+import type { BossPhase } from "./trollPresentationTypes.ts";
 
 /**
  * Pure presentation curve derived from existing authoritative combat frames.
@@ -26,7 +26,7 @@ const EMPTY: MaulerImpactFrame = Object.freeze({
 
 /**
  * Resolve one visual-only effect snapshot from a boss pose. The strike hits
- * at 0.14s in arenaCombatMotion.ts and enters recover after 0.38s. Carry the
+ * at 0.14s in the committed signature profile and enters recover after 0.38s. Carry the
  * impact seamlessly through the recovery animation, including saved replays.
  */
 export function sampleMaulerImpact(
