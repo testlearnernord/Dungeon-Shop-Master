@@ -197,6 +197,15 @@ test("remembered LOS threat blocks the return to an exposed corridor, even when 
   assert.deepEqual(chooseRememberedThreatReaction(map,elsewhere,[weak],memory,cells[4]),reaction,
     "A hidden pack's current location must not change remembered routing");
   assert.equal(recentDungeonThreat([memory],50+THREAT_MEMORY_TICKS),undefined);
+  let traveled=progress;
+  for(let i=0;i<12;i++){
+    const next=chooseRememberedThreatReaction(map,{...hidden,heroes:[traveled]},[weak],memory,cells[4])?.step;
+    if(!next)break;
+    assert.equal(next.x,1,"Every subsequent step must stay outside the threatened corridor");
+    assert(next.z>traveled.z,"Do not oscillate back into the exposed branch");
+    traveled={...traveled,...next,visited:[...new Set([...traveled.visited,next.z*width+next.x])]};
+  }
+  assert.equal(traveled.z,5,"The safe frontier is exhausted before waiting.");
   const safe={...progress,x:1,z:5,visited:cells.map(p=>p.z*width+p.x)};
   assert.equal(chooseRememberedThreatReaction(map,{...hidden,heroes:[safe]},[weak],memory,cells[4])?.action,
     "WAITING_FOR_SAFETY");

@@ -192,7 +192,12 @@ test("a real evasive movement saves its observed threat and resumes deterministi
   assert(memory,"A real evasion must record the last seen threat");
   assert.equal(memory.monsterId,featureId);
   assert.equal(memory.seenTick,50);
-  const resumed=new GameStore(parseSave(JSON.stringify(createSave(store.state))));
+  const saved=createSave(store.state);
+  const invalid=structuredClone(saved);
+  const forged=invalid.payload.liveDungeon.plans.find(p=>p.heroId===heroId)!.threatMemory!;
+  (forged as {seenTick:number}).seenTick=store.state.worldClock.tick+1;
+  assert.throws(()=>parseSave(JSON.stringify(invalid)),/threatMemory/);
+  const resumed=new GameStore(parseSave(JSON.stringify(saved)));
   store.advanceWorldTime(100);
   resumed.advanceWorldTime(100);
   assert.deepEqual(resumed.state,store.state);
