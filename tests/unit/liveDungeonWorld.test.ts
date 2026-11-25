@@ -13,7 +13,7 @@ import {WORLD_TICKS_PER_DAY,lastWorldTickOfDay}
   from "../../src/game/worldClock.ts";
 import {generateExpeditionLayout,dungeonDownStair,dungeonNeighbors,dungeonShortestPath,tileAt}
   from "../../src/game/dungeonLayout.ts";
-import {emptySpatialDungeonWorld,chooseKnownReturnStep} from "../../src/game/spatialDungeonExploration.ts";
+import {emptySpatialDungeonWorld,chooseKnownReturnStep,SPATIAL_DUNGEON_COMBAT_SECONDS} from "../../src/game/spatialDungeonExploration.ts";
 import {advanceDungeonMonsterWorld} from "../../src/game/dungeonMonsterWorld.ts";
 import {hasDungeonLineOfSight} from "../../src/game/heroPerception.ts";
 
@@ -157,8 +157,9 @@ test("mid-combat JSON save resumes identical 60Hz actors, Herb debit and single 
   const checkpoint=parseSave(JSON.stringify(createSave(a.state)));
   const b=new GameStore(checkpoint);
   assert.deepEqual(b.state,a.state);
-  a.advanceWorldTime(520);
-  b.advanceWorldTime(520);
+  const settlementBudget=SPATIAL_DUNGEON_COMBAT_SECONDS*20+LIVE_COMBAT_INTERVAL_TICKS;
+  a.advanceWorldTime(settlementBudget);
+  b.advanceWorldTime(settlementBudget);
   assert.deepEqual(b.state,a.state,"Future fighter state and settlement must be byte-identical");
   assert(!a.state.liveDungeon.combats.some(c=>c.id===fight.id),
     "The original fight must settle within its bounded combat duration, even if another fight begins.");

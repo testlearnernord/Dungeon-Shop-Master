@@ -1,0 +1,52 @@
+name: Ordinary combat controlled matrix
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/analysis/ordinary-combat-matrix.mjs'
+      - 'src/game/groupCombat.ts'
+      - 'src/game/spatialDungeonExploration.ts'
+      - '.github/workflows/ordinary-combat-matrix.yml'
+concurrency:
+  group: ordinary-combat-matrix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [7351, 42, 2026, 9321]
+        floors: ['1,2,3', '4,5,6', '7,8,9']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref == 'audit/gameplay-loop-visible-pack-risk' && 'aacca14024f9d8302393eb2d4ffe59bcb9eef74b' || github.head_ref == 'experiment/ghoul-pack-attack-spacing' && 'a604077ee58b7d1084473bdd21c3d67652e6e932' || github.event.pull_request.base.sha }}
+          path: baseline
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run identical matrix against baseline and candidate
+        shell: bash
+        env:
+          SEED: ${{ matrix.seed }}
+          FLOORS: ${{ matrix.floors }}
+        run: |
+          mkdir -p reports
+          cp candidate/tools/analysis/ordinary-combat-matrix.mjs baseline/tools/analysis/
+          for version in baseline candidate; do
+            (cd "$version" && npm ci --ignore-scripts && node --experimental-strip-types tools/analysis/ordinary-combat-matrix.mjs "$SEED" "$FLOORS") > "reports/$version.log"
+          done
+          node --input-type=module -e 'import fs from "node:fs"; const read=n=>JSON.parse(fs.readFileSync("reports/"+n+".log","utf8").trim().split("\n").at(-1)); const a=read("baseline"),b=read("candidate"); const key=r=>JSON.stringify([r.seed,r.floor,r.role,r.level,r.tier,r.hpRatio,r.supplies,r.pack,r.site]); if(a.cases!==b.cases||a.rows.some((r,i)=>key(r)!==key(b.rows[i])))throw Error("Unmatched matrix"); for(const [name,r] of [["baseline",a],["candidate",b]])fs.writeFileSync("reports/"+name+".json",JSON.stringify(r)); console.log("MATCHED_CASES "+a.cases);'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ordinary-combat-${{ matrix.seed }}-${{ strategy.job-index }}
+          path: reports/*.json
+          retention-days: 14

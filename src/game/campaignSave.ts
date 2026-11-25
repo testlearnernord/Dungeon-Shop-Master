@@ -449,13 +449,13 @@ function validateSpatialDungeonReplay(
       text(ob.id,item+".combat.obstacles["+j+"].id");
     });
     const frames=array(combat.frames,item+".combat.frames");
-    if(frames.length<1||frames.length>SPATIAL_DUNGEON_STEP_BUDGET*20)
+    if(frames.length<1||frames.length>2+SPATIAL_DUNGEON_COMBAT_SECONDS*10)
       fail(item+".combat.frames","must contain bounded frames");
     let lastFrame=-1;
     frames.forEach((f,j)=>{
       const fp=item+".combat.frames["+j+"]";
       const frame=object(f,fp,["t","actors","projectiles"]);
-      const t=validNumber(frame.t,fp+".t",0,26);
+      const t=validNumber(frame.t,fp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
       if(t<lastFrame)fail(fp+".t","must be chronological");lastFrame=t;
       const snapshots=array(frame.actors,fp+".actors");
       if(snapshots.length!==actors.length)
@@ -495,7 +495,7 @@ function validateSpatialDungeonReplay(
       choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
         "parry","heal","death","blocked",
         "grab","throw","landing","escape","lava"],cp+".kind");
-      validNumber(cue.t,cp+".t",0,26);
+      validNumber(cue.t,cp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
       if(cue.amount!==undefined)validNumber(cue.amount,cp+".amount",0,100000);
     });
   });
@@ -526,7 +526,7 @@ function validateLiveCombatCheckpoints(
     ]);
     const started=integer(battle.startedTick,cp+".startedTick",
       firstWorldTickOfDay(day),lastStepTick);
-    // A real 25-second encounter can survive more than one 10-second
+    // A bounded ordinary encounter can survive more than one 10-second
     // movement event while other heroes continue exploring. Require an
     // actual historical movement cadence, not the latest movement tick.
     // The exact combat age, identity, frames and actors are checked below.
@@ -758,17 +758,17 @@ function validateLiveCombatCheckpoints(
         fail(qp+".actorId","must reference existing fighters");
       choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
         "parry","heal","death","blocked","grab","throw","landing","escape","lava"],qp+".kind");
-      validNumber(cue.t,qp+".t",0,26);
+      validNumber(cue.t,qp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
       if(cue.amount!==undefined)validNumber(cue.amount,qp+".amount",0,100000);
     });
     const frames=array(battle.frames,cp+".frames");
-    if(frames.length!==1+completed/6||frames.length>252)
+    if(frames.length!==1+completed/6||frames.length>1+SPATIAL_DUNGEON_COMBAT_SECONDS*10)
       fail(cp+".frames","must contain precisely the captured 10Hz frames");
     let previousTime=-1;
     frames.forEach((rawFrame,i)=>{
       const fp=cp+".frames["+i+"]";
       const frame=object(rawFrame,fp,["t","actors","projectiles"]);
-      const t=validNumber(frame.t,fp+".t",0,26);
+      const t=validNumber(frame.t,fp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
       if(t<previousTime)fail(fp+".t","must be chronological");
       previousTime=t;
       const snapshots=array(frame.actors,fp+".actors");

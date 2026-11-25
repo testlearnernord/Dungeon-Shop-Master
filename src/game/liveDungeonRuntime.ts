@@ -509,7 +509,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
         continue;
       }
     }
-    // A full ordinary fight can now legitimately consume its entire 25s
+    // A full ordinary fight can now legitimately consume its entire 35s
     // budget (especially when veteran healers take part). The shopkeeper
     // must never be unable to close the day because a newly started
     // encounter still owns the 60Hz clock after midnight. Defer optional
@@ -550,7 +550,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
       priorPlan.goal==="loot-chest"?"treasure":
       priorPlan.goal==="hunt-ghouls"?"monster":null:null;
     const candidate=resourceKind&&!homeward&&!directed
-      ?selectKnownResourceSite(layout,known,world,resourceKind):null;
+      ?selectKnownResourceSite(layout,known,world,resourceKind,readyGroup):null;
     const resourceTarget=candidate&&!blocked.has(candidate.id)?candidate:null;
     // A visible real pursuer may change ONE scheduled map step. This pure
     // tactical decision uses only the group's own current LOS and known
@@ -761,7 +761,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     for(const pack of advanced.monsters??[]){
       if(reserved.has(pack.id))continue;
       // A genuine late-night collision remains physically on the map;
-      // starting a 25s fight past midnight would deadlock the day closer.
+      // starting a 35s fight past midnight would deadlock the day closer.
       // The same unchanged co-location is checked at the next world tick.
       if(tick+SPATIAL_DUNGEON_COMBAT_SECONDS*20+
          LIVE_COMBAT_INTERVAL_TICKS>lastWorldTickOfDay(day))continue;

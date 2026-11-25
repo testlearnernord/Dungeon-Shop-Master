@@ -7,7 +7,7 @@ import {MONSTER_STEP_TICKS}
   from "../../src/game/dungeonMonsterWorld.ts";
 import {LIVE_PARTY_STEP_SECONDS}
   from "../../src/game/livePartyPresentation.ts";
-import {GHOUL_CLIP_INDICES} from "../../src/game/ghoulMotion.ts";
+import {GHOUL_CLIP_INDICES,ghoulMotionForPhase,ghoulClipProgress} from "../../src/game/ghoulMotion.ts";
 
 const before={x:5,z:6,siteCycle:2,lastMoveTick:1000,
   day:1,floor:1,worldTick:1200};
@@ -69,4 +69,19 @@ test("the overview uses the same authored walk source index as the combat rig",(
   assert.equal(GHOUL_CLIP_INDICES.walk_feral,13,
     "Tripo's archived clip 13 retains a long prompt name; walk_feral is an alias");
   assert.equal(GHOUL_CLIP_INDICES.idle_combat,14);
+});
+
+test("Ghoul claw windup, strike and recovery sample one continuous authored clip",()=>{
+  for(const ordinal of [1,2]){
+    const windup=ghoulMotionForPhase("windup",ordinal);
+    const strike=ghoulMotionForPhase("strike",ordinal);
+    const recovery=ghoulMotionForPhase("recover",ordinal);
+    assert.equal(windup.clip,strike.clip);
+    assert.equal(strike.clip,recovery.clip);
+    assert.equal(ghoulClipProgress(windup.length,windup),ghoulClipProgress(0,strike));
+    assert.equal(ghoulClipProgress(strike.length,strike),ghoulClipProgress(0,recovery));
+    assert.equal(ghoulClipProgress(recovery.length,recovery),1);
+  }
+  assert.notEqual(ghoulMotionForPhase("windup",1).clip,ghoulMotionForPhase("windup",2).clip);
+  assert.equal(ghoulMotionForPhase("hurt").clip,"hit_stagger");
 });

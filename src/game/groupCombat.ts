@@ -408,6 +408,19 @@ function healingTarget(s: GroupCombatState, actor: GroupActor): GroupActor | nul
     a.hp/a.maxHp - b.hp/b.maxHp || a.id.localeCompare(b.id));
   return candidates[0] ?? null;
 }
+/** An ordinary spear fighter's thrust has a shorter preparation than a
+ * generic swing. Derive eligibility from existing combatant attributes;
+ * the unique boss retains its authored combat timing. */
+function ordinarySpearFighter(s:GroupCombatState,a:GroupActor):boolean{
+  return a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
+    a.reach>=2.1&&!s.actors.some(actor=>actor.specialAbility==="grapple-throw");
+}
+function groupMeleeTiming(s:GroupCombatState,a:GroupActor){
+  const profile=meleeAbilityProfile(a.meleeAbility,a.reach);
+  return ordinarySpearFighter(s,a)&&a.meleeAbility==="ordinary"
+    ?{...profile,windupSeconds:.46}:profile;
+}
+
 /** A shared boss telegraph threatens at the same authored lead-in as its
  * solo duel. Standard ordinary/heavy threats keep their v1 timing. */
 function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor | null {
@@ -425,7 +438,7 @@ function attackerThreat(s: GroupCombatState, defender: GroupActor): GroupActor |
     // stamina reacting to someone else's strike or through a wall.
     if(!isSignature&&(other.targetId!==defender.id||!lineClear(s,other,defender)))
       return false;
-    const profile=meleeAbilityProfile(other.meleeAbility);
+    const profile=groupMeleeTiming(s,other);
     const lead=signature
       ?Math.max(.20,signature.windupSeconds-
         (signature.attack==="grab"?.04:.15))
@@ -462,6 +475,8 @@ function tryStrike(s: GroupCombatState, attacker: GroupActor,
   if(contact==="parry"){
     cue(batch,s,target,"parry",attacker.id);
     phase(attacker,"hurt");
+    if(attacker.team==="monsters"&&!attacker.specialAbility)
+      attacker.heading=combatHeading(attacker,target);
     attacker.cooldown=Math.max(attacker.cooldown,0.45);
     return;
   }
@@ -573,6 +588,9 @@ function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupAct
     // requires sufficient impact, otherwise three cheap arrows can keep a
     // giant in "hurt" forever and no boss special ever finishes winding up.
     phase(target,"hurt");
+    if(target.team==="monsters"&&!target.specialAbility){
+      target.heading=combatHeading(target,attacker);
+    }
   }
 }
 
@@ -587,7 +605,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   let window:CombatActionWindow={};
   if(a.phase==="windup"){
     window={completeAt:signature?.windupSeconds??
-      meleeAbilityProfile(a.meleeAbility,a.reach).windupSeconds};
+      groupMeleeTiming(s,a).windupSeconds};
   }else if(a.phase==="strike"){
     const skill=meleeAbilityProfile(a.activeMeleeAbility,a.reach);
     window={contactAt:signature?.contactSeconds??skill.strikeDelaySeconds,
@@ -597,7 +615,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   }else if(a.phase==="heal"){
     window={contactAt:0.62,completeAt:0.92};
   }else if(a.phase==="recover")window={completeAt:
-    signature?.recoverySeconds??.38};
+    signature?.recoverySeconds??(s.actors.some(actor=>actor.specialAbility==="grapple-throw")?.38:a.team==="monsters"?.72:.38)};
   else if(a.phase==="grab")window={
     contactAt:GRAPPLE_TIMING.grabContact,completeAt:GRAPPLE_TIMING.grab,
   };
@@ -608,7 +626,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   else if(a.phase==="thrown")window={completeAt:GRAPPLE_FLIGHT_SECONDS};
   else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
   else if(a.phase==="hurt")window={completeAt:
-    a.specialAbility==="grapple-throw"?1.6:0.34};
+    a.specialAbility==="grapple-throw"?1.6:a.team==="monsters"?.42:0.34};
   const tick=advanceCombatActorPhase(a,dt,window);
   if(a.phase==="grabbed"||a.phase==="thrown"){
     progressGroupGrappleVictim(s,a,dt,batch,tick.complete);
@@ -675,7 +693,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       if(a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
         !s.actors.some(actor=>actor.specialAbility==="grapple-throw")){
         const clear=(side:number)=>{
-          for(const offset of [.5,1,1.5,2]){
+          for(const offset of (ordinarySpearFighter(s,a)?[.5,1,1.4]:[.5,1,1.5,2])){
             if(!movementAllowed(s,a,a.x-escape.z*side*offset,
               a.z+escape.x*side*offset))return false;
           }
@@ -683,7 +701,8 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         };
         if(!clear(sign)&&clear(-sign))sign=-sign;
       }
-      a.rollX=-escape.z*sign;a.rollZ=escape.x*sign;
+      // JSON has only one zero; canonicalize signed zero at the source.
+      a.rollX=(-escape.z*sign)||0;a.rollZ=(escape.x*sign)||0;
       phase(a,"roll");
     }
     const friend = healingTarget(s,a);
@@ -824,12 +843,16 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
     // window. A shorter ordinary DPS sidestep preserves attack proximity.
     // Do not change ranged kiting or the authored boss evasions.
     const speed=a.team==="heroes"&&a.role==="DPS"&&a.style==="melee"&&
-      !s.actors.some(actor=>actor.specialAbility==="grapple-throw")?4.2:7.8;
+      !s.actors.some(actor=>actor.specialAbility==="grapple-throw")?(ordinarySpearFighter(s,a)?2.8:4.2):7.8;
     move(s,a,a.rollX*speed*dt,a.rollZ*speed*dt);
     if (tick.complete) phase(a,"move");
   } else if (a.phase === "parry") {
     if (a.phaseAge >= 0.53) phase(a,"move");
   } else if (a.phase === "hurt") {
+    // A real interrupted Ghoul recoils along its recorded facing, through
+    // the existing collision integrator. No invulnerability or extra damage.
+    if(a.team==="monsters"&&!a.specialAbility&&a.phaseAge<=.18)
+      move(s,a,-Math.sin(a.heading)*1.0*dt,-Math.cos(a.heading)*1.0*dt);
     if(tick.complete){
       if(a.specialAbility==="grapple-throw")
         a.cooldown=Math.max(a.cooldown,1.4);

@@ -6,8 +6,10 @@ import {generateExpeditionLayout,dungeonNeighbors}
 import {emptySpatialDungeonWorld,advanceSpatialDungeonPartyStep}
   from "../../src/game/spatialDungeonExploration.ts";
 import {advanceDungeonMonsterWorld} from "../../src/game/dungeonMonsterWorld.ts";
-import {chooseDungeonThreatReaction}
+import {chooseDungeonThreatReaction,canSoloChallengeVisiblePack}
   from "../../src/game/dungeonThreatDecisions.ts";
+import {observedGhoulPackSize} from "../../src/game/ghoulPack.ts";
+import {selectKnownResourceSite} from "../../src/game/dungeonDecisions.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import type {AdventurerState} from "../../src/game/adventurers.ts";
 
@@ -137,4 +139,40 @@ test("an untreated cautious explorer avoids a visible idle pack without seeing h
   const reaction=chooseDungeonThreatReaction(layout,visible,[wounded],[wounded],false,true);
   assert(reaction&&reaction.action==="ESCAPING");
   assert.notDeepEqual(reaction.step,{x:idle.x,z:idle.z});
+});
+
+test("visible pack risk respects real gear, health, experience and reckless personality",()=>{
+  const deep=generateExpeditionLayout(seed,8);
+  const seeded=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),deep,1,0);
+  const packs=seeded.monsters!;
+  const two=packs.find(m=>observedGhoulPackSize(deep,{x:m.homeX,z:m.homeZ},m.siteCycle)===2);
+  const three=packs.find(m=>observedGhoulPackSize(deep,{x:m.homeX,z:m.homeZ},m.siteCycle)===3);
+  assert(two&&three,"Fixture must include both real authored pack sizes");
+  const veteran=hero({floor:8,role:"DPS",level:8,
+    equipment:{weapon:"Forged Spear",armor:"Ghoul Leather Vest"},
+    traits:{positive:"generous",neutral:"quiet",negative:"stubborn"}});
+  const ready={...veteran,health:heroProgression(veteran).maxHealth};
+  assert(canSoloChallengeVisiblePack(ready,deep,two));
+  assert(!canSoloChallengeVisiblePack(ready,deep,three));
+  assert(!canSoloChallengeVisiblePack({...ready,health:Math.floor(ready.health*.5)},deep,two));
+  assert(!canSoloChallengeVisiblePack({...ready,equipment:{weapon:"Spear",armor:"Leather Vest"}},deep,two));
+  assert(!canSoloChallengeVisiblePack({...ready,level:2},deep,two));
+  assert(canSoloChallengeVisiblePack({...ready,traits:{...ready.traits,negative:"reckless"}},deep,three));
+  assert(!canSoloChallengeVisiblePack({...ready,traits:{...ready.traits,positive:"careful",negative:"reckless"}},deep,three));
+});
+
+test("a visible three-Ghoul site is not an intentional solo hunting target but remains available to parties",()=>{
+  const deep=generateExpeditionLayout(seed,8);
+  const seeded=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),deep,1,0);
+  const pack=seeded.monsters!.find(m=>observedGhoulPackSize(deep,{x:m.homeX,z:m.homeZ},m.siteCycle)===3&&dungeonNeighbors(deep,m).length>0);
+  assert(pack);
+  const at=dungeonNeighbors(deep,pack)[0];
+  const veteran=hero({floor:8,role:"DPS",level:8,
+    traits:{positive:"generous",neutral:"quiet",negative:"stubborn"},
+    equipment:{weapon:"Forged Spear",armor:"Ghoul Leather Vest"}});
+  const ready={...veteran,health:heroProgression(veteran).maxHealth};
+  const progress={heroId:ready.id,...at,visited:[at.z*deep.width+at.x]};
+  const visible={...seeded,heroes:[progress],monsters:[{...pack,mode:"IDLE" as const}]};
+  assert.equal(selectKnownResourceSite(deep,progress,visible,"monster",[ready]),null);
+  assert.equal(selectKnownResourceSite(deep,progress,visible,"monster",[ready,{...ready,id:"support"}])?.id,pack.id);
 });

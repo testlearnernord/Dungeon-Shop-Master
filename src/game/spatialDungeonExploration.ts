@@ -12,7 +12,7 @@ import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
 import {heroProgression,settleHeroExperience,ordinaryHeroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects} from "./gearCatalog.ts";
 import type {ItemId} from "./economy.ts";
-import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK}
+import {ghoulPackCount,ghoulPackActorId,MAX_GHOUL_PACK,isEliteGhoulSite}
   from "./ghoulPack.ts";
 import {
   dungeonGenerationSeed, dungeonSiteGeneration, refreshDungeonSites,
@@ -27,7 +27,7 @@ export const SPATIAL_DUNGEON_STEP_BUDGET = 36;
 export const SPATIAL_DUNGEON_REPLAY_KEEP = 3;
 /** Bound battle frequency within a longer day without inventing encounters. */
 export const SPATIAL_DUNGEON_MAX_ENCOUNTERS = 2;
-export const SPATIAL_DUNGEON_COMBAT_SECONDS = 25;
+export const SPATIAL_DUNGEON_COMBAT_SECONDS = 35;
 
 /** A durable, global shared dungeon world plus per-hero independent exploration. */
 export interface SpatialDungeonHeroProgress {
@@ -174,10 +174,9 @@ export function prepareSpatialDungeonCombat(
   const monsterRand=new SeededRandom(dungeonGenerationSeed(
     (campaignSeed^Math.imul(source.x+37*source.z,2654435761))>>>0,cycle));
   // Only renewable sentries can become elites. No unique boss is regenerated.
-  const elite=layout.floor===7 && cycle>0 && cycle%4===1 &&
-    tileAt(layout,source.x,source.z)==="room";
+  const elite=isEliteGhoulSite(layout,source,cycle);
   // Prior Ghouls had ~15-30 HP and often died in two hits (~4-5s).
-  // Retain the authored individual toughness and real 25-second combat
+  // Retain the authored individual toughness and real 35-second combat
   // bound. The persistent LIVE site must not react to party composition.
   const baseGhoulHp=(layout.floor===7
     ?22+monsterRand.int(13):12+layout.floor*3+monsterRand.int(7))+

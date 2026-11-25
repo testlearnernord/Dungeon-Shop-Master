@@ -1,4 +1,5 @@
 import {dungeonGenerationSeed} from "./dungeonRegeneration.ts";
+import {tileAt,type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 
 /** A pack is one independently saved monster per physical fighter, but it
  * still occupies ONE authored renewable dungeon site. The primary actor
@@ -37,4 +38,18 @@ export function ghoulPackCount(
     floor+cycle*17);
   const authored=floor<8?1+((seed>>>8)%2):2+((seed>>>8)%2);
   return Math.min(MAX_GHOUL_PACK,authored,1+freeMonsterTiles);
+}
+
+/** The same renewable elite rule used by the encounter composer. */
+export function isEliteGhoulSite(layout:DungeonLayout,source:DungeonPoint,cycle:number):boolean{
+  return layout.floor===7&&cycle>0&&cycle%4===1&&
+    tileAt(layout,source.x,source.z)==="room";
+}
+
+/** A visible map occupant represents its authored pack, not one fighter.
+ * Its composition is fixed to the renewable source. Arena placement can
+ * reduce the final count; do not predict future free spawn tiles in AI. */
+export function observedGhoulPackSize(layout:DungeonLayout,source:DungeonPoint,cycle:number):number{
+  return isEliteGhoulSite(layout,source,cycle)?1:
+    ghoulPackCount(layout.seed,layout.floor,source.x,source.z,cycle,1,MAX_GHOUL_PACK-1);
 }

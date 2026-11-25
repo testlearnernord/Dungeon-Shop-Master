@@ -386,3 +386,48 @@ test("a compact sidestep is not free invulnerability after the existing roll win
   assert.equal(h.hp,82);
   assert.equal(s.time,0);
 });
+
+test("a parried ordinary monster recoils physically without extra damage",()=>{
+  const {s,hero,monster}=imminentMonsterStrike();
+  hero.phase="parry";hero.phaseAge=.20;hero.heading=0;
+  const initialZ=monster.z,initialHp=monster.hp;
+  stepGroupCombat(s);
+  assert.equal(monster.phase,"hurt");
+  for(let i=0;i<8;i++)stepGroupCombat(s);
+  assert(monster.z>initialZ,"Recoil must move away from the defender");
+  assert.equal(monster.hp,initialHp);
+  assert.equal(hero.hp,100);
+  assert.equal(monster.phase,"hurt");
+});
+
+test("equipped ordinary spear fighter prepares a thrust faster without changing boss or unarmed timing",()=>{
+  for(const [reach,boss,expected] of [[1.75,false,.62],[2.1,false,.46],[2.5,false,.46],[2.5,true,.62]] as const){
+    const s=createGroupCombat({bounds,actors:[
+      fighter("hero","heroes",0,0,{role:"DPS",reach,speed:0}),
+      fighter("monster","monsters",0,1.7,{speed:0,
+        ...(boss?{specialAbility:"grapple-throw" as const}:{}),
+      }),
+    ]});
+    const h=s.actors.find(a=>a.id==="hero")!,m=s.actors.find(a=>a.id==="monster")!;
+    m.cooldown=100;
+    h.phase="windup";h.phaseAge=0;h.targetId=m.id;h.lockedHeading=0;
+    let ticks=0;
+    while(h.phase==="windup"&&ticks<60){stepGroupCombat(s);ticks++;}
+    assert.equal(h.phase,"strike");
+    assert(Math.abs(ticks/60-expected)<=1/60+1e-8,"Expected preparation timing "+expected);
+  }
+});
+
+test("equipped ordinary spear sidestep retains close range without extending dodge immunity",()=>{
+  for(const reach of [1.75,2.1,2.5]){
+    const s=createGroupCombat({bounds,actors:[
+      fighter("hero","heroes",0,0,{role:"DPS",reach}),
+      fighter("monster","monsters",0,8,{speed:0}),
+    ]});
+    const h=s.actors.find(a=>a.id==="hero")!;
+    h.phase="roll";h.phaseAge=0;h.rollX=1;h.rollZ=0;
+    for(let i=0;i<24;i++)stepGroupCombat(s);
+    assert(Math.abs(h.x-(reach>=2.1?2.8:4.2)*.4)<1e-6);
+    assert.equal(h.phase,"roll");
+  }
+});
