@@ -127,18 +127,15 @@
         </div>
         <div class="crosshair" aria-hidden="true"></div>
       </section>
-      <section id="arena-hud" hidden aria-label="Cave Troll combat preview and laboratory">
+      <section id="arena-hud" hidden aria-label="Developer Combat Lab">
         <header class="arena-toolbar">
           <div>
-            <strong>FLOOR 10 · CAVE TROLL</strong>
-            <p id="arena-preview">Training preview: no saved gameplay changes.</p>
+            <strong>DEVELOPER COMBAT LAB</strong>
+            <p id="arena-preview">Disposable combat tests · no saved gameplay changes.</p>
           </div>
           <div class="arena-actions">
-            <button id="arena-source-toggle" type="button" aria-keyshortcuts="C" hidden>Watch last saved combat</button>
-            <button id="arena-lab-toggle" type="button" aria-controls="arena-lab-panel">Developer Combat Lab</button>
             <button id="restart-arena" type="button">Restart battle</button>
             <button id="arena-sfx-debug-toggle" type="button" aria-controls="arena-sfx-debug" aria-expanded="false" hidden>SFX Lab</button>
-            <button id="arena-tripo-toggle" type="button" title="Experimental visual-only troll replacement">Legacy boss · try Tripo</button>
             <button id="arena-model-toggle" type="button">Inspect Tripo GLB</button>
             <button id="close-arena" type="button">Return to shop (V / Esc)</button>
           </div>
@@ -206,41 +203,6 @@
           <small>Arena selection changes scenery only; lava hazards are specific to the implemented combat scenario.
           Test observations and randomization never affect live fights, inventories or saved campaign replays.</small>
         </aside>
-        <div id="arena-cinematic" class="arena-cinematic" hidden aria-live="off">
-          <div class="arena-cinematic-copy">
-            <small>THE SIXTH FLOOR</small>
-            <strong>THE ASHEN TUNNEL MAULER</strong>
-            <p id="arena-cinematic-line">FLOOR VI · THE ASHEN TUNNEL</p>
-            <span>SPACE / ENTER · SKIP INTRO TO MUSICAL DROP</span>
-            <div class="arena-cinematic-track" aria-hidden="true">
-              <div id="arena-cinematic-progress"></div>
-            </div>
-          </div>
-        </div>
-        <div id="arena-world-hud" class="arena-world-hud" hidden aria-hidden="true">
-          <div id="arena-hero-plate" class="arena-actor-plate" data-actor="hero" hidden>
-            <span id="arena-hero-bar-label" class="arena-actor-label">HERO</span>
-            <span class="arena-health-track"><span id="arena-hero-bar-fill" class="arena-health-fill"></span></span>
-          </div>
-          <div id="arena-boss-plate" class="arena-actor-plate" data-actor="boss" hidden>
-            <span id="arena-boss-bar-label" class="arena-actor-label">CAVE TROLL</span>
-            <span class="arena-health-track"><span id="arena-boss-bar-fill" class="arena-health-fill"></span></span>
-          </div>
-          <div id="arena-damage-numbers" class="arena-damage-numbers" aria-hidden="true"></div>
-        </div>
-        <div class="arena-bottom">
-          <p id="arena-status">The Cave Troll is waiting.</p>
-          <div class="arena-vitals">
-            <strong id="arena-hero-health">HERO HP</strong>
-            <strong id="arena-boss-health">CAVE TROLL HP</strong>
-            <strong id="arena-stamina">STAMINA</strong>
-          </div>
-          <p id="arena-focus">TAB focus: hero</p>
-          <p id="arena-combat-info">Combat phases</p>
-          <details class="spectator-help"><summary>Controls</summary>
-            <p>Intro: Space / Enter skip to music drop · During fight: WASD free fly · Shift turbo · Q / E up / down · Mouse look (click to capture) · TAB cycle hero / boss · M music controls · C switch replay source · V / Esc return</p>
-          </details>
-        </div>
         <aside id="arena-sfx-debug" hidden aria-label="Training-only sound effects debugger">
           <header class="sfx-debug-heading">
             <strong>SFX LAB · TRAINING PREVIEW</strong>
