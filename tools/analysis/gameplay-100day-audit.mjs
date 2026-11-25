@@ -5,8 +5,9 @@ import { writeFileSync } from "node:fs";
 import { GameStore } from "../../src/game/gameStore.ts";
 import { createGameState } from "../../src/game/gameState.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
-import { ITEMS,ECONOMY,isMaterial } from "../../src/game/economy.ts";
-import {availableDungeonOffers} from "../../src/game/dungeonBuyback.ts";
+import { ITEMS,ECONOMY } from "../../src/game/economy.ts";
+import {wantsChestBuyback} from "../../src/game/dungeonBuyback.ts";
+import {BUYBACK_DOCK} from "../../src/game/buybackChestPlacement.ts";
 import {FORGE_OUTPUTS,FORGE_RECIPES,isForgeOutput} from "../../src/game/cellarForge.ts";
 import {createCampaignTelemetry,createCombatExposureTelemetry,createBossExposureTelemetry} from "./campaign-progression-telemetry.mjs";
 import {equipmentEffects} from "../../src/game/gearCatalog.ts";
@@ -132,25 +133,19 @@ function restock(store,mode,metrics){
     }
   }
 }
-// Bounded, explicit shopkeeper policy rather than free materials. Both
-// treatments use identical price, purse reserve, and workshop stock caps.
-// Buyback-only retains materials; forge replenishes them as recipes consume
-// the reserve, so realized spending is reported rather than assumed equal.
+// Idealized arrival at the real chest dock, using production acceptance,
+// prices and treasury. No retired per-item purchase API or artificial caps.
+// These results do not measure browser pathfinding or human timing.
 function purchaseSalvage(store,metrics){
-  const caps={"iron-ore":8,coal:8,"ghoul-leather":16};
-  for(const offer of availableDungeonOffers(store.state)){
-    if(!isMaterial(offer.itemId))continue;
-    const id=offer.itemId;
-    const n=Math.min(offer.count,caps[id]-store.state.shopEconomy.materialStorage[id],
-      Math.floor((store.state.shopEconomy.balance-10)/offer.price));
-    for(let i=0;i<n;i++){
-      const before=store.state;
-      const msg=store.buyDungeonFind(offer.heroId,id);
-      if(store.state===before)throw Error("Real buyback rejected eligible offer: "+msg);
-      const paid=before.shopEconomy.balance-store.state.shopEconomy.balance;
-      if(paid!==offer.price)throw Error("Buyback payment mismatch");
-      metrics.buybackGold+=paid;add(metrics.materialsBought,id,1);
-    }
+  for(const hero of store.state.adventurers){
+    if(!wantsChestBuyback(store.state,hero.id))continue;
+    const before=store.state;
+    if(!store.buybackAtChest(hero.id,BUYBACK_DOCK))continue;
+    const receipts=store.state.events.slice(before.events.length);
+    const paid=before.shopEconomy.balance-store.state.shopEconomy.balance;
+    if(paid!==receipts.reduce((sum,e)=>sum+(e.cost??0),0))throw Error("Buyback payment mismatch");
+    metrics.buybackGold+=paid;
+    for(const receipt of receipts)add(metrics.materialsBought,receipt.itemId,receipt.quantity);
   }
 }
 function actShop(store,mode,metrics){

@@ -94,6 +94,9 @@ export function npcShopPose(input:NpcShopGestureInput):NpcShopPose {
       headYaw:0,headPitch:.12*lift,headRoll:0,torsoLean:.015};
   }
   if(input.moving)return neutral("walking");
+  if(input.phase==="considering"&&input.shoppingPhase==="selling-loot"){
+    return {gesture:"inspect",leftArm:.52,rightArm:.78,headYaw:0,headPitch:.24,headRoll:0,torsoLean:.12};
+  }
   if(input.phase==="considering"&&
      input.shoppingPhase==="considering-item"){
     const inspectPulse=(1+Math.sin(t*3.0+slot))*.5;

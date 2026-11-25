@@ -1,16 +1,17 @@
 # Cellar Forge V0.1 / V0.2 — material-to-gear contract
 
-> Reviewed against Alpha v40, main after #374 (25 November 2026). The functional V0.1/V0.2 forge is merged; manual acceptance is tracked in #294.
+> Current contract: Alpha v41, including physical automatic buyback. The functional V0.1/V0.2 forge is merged; manual acceptance is tracked in #294.
 
 ## One physical chain, one source of authority
 
 1. Ordinary committed dungeon **Ghoul fights** roll deterministic real loot,
    including **Ghoul Leather**. Iron Ore and Coal are existing dungeon salvage.
-2. Only living **physically returned** adventurers may offer their own saved
-   `inventory.finds`. Galvik pays the offered price from real gold.
-   `dungeonBuyback.ts` moves material immediately into
-   `shopEconomy.materialStorage`; the 24-slot shopping bag stays reserved for
-   finished merchandise.
+2. Living **physically returned** adventurers with affordable forge materials
+   walk to the open Recovered Goods Chest before shopping. Galvik automatically
+   pays the canonical price from real gold at its service dock.
+   `dungeonBuyback.ts` moves the paid material into
+   `shopEconomy.materialStorage`; the 24-slot bag remains for merchandise.
+   Other finds and unpaid materials stay with their owner.
 3. Galvik approaches the **physical anvil in the cellar**, uses E or clicks it,
    and deliberately forges one item. `cellarForge.ts` checks all inputs and
    bag capacity before one atomic transaction, consuming every input once.
@@ -47,7 +48,7 @@ Initial, deliberately small recipes:
   and carried products share these canonical models; equipped heroes
   retain their role-specific meshes with tier details. See
   [Equipment presentation V0.2](EQUIPMENT_PRESENTATION_V02.md).
-- Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+- Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 ## Verification and next step
 
@@ -57,15 +58,15 @@ Initial, deliberately small recipes:
 - Human sign-off still requires physically using the cellar anvil, stocking a
   shelf, completing a staffed sale, seeing new weapon meshes and comparing
   fights without/with T2, plus FPS/audio inspection.
-- The current campaign evidence is in [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md); no additional forge backend work is planned without a reproducible defect.
+- The current acceptance scope and historical campaign evidence are in [Alpha v41 acceptance](ALPHA_V41_ACCEPTANCE.md); no additional forge backend work is planned without a reproducible defect.
 
 ## V0.2 B — autonomous supply chain
 
-- A real chest or Ghoul victory can trigger a haul return at four carried
-  finds, only when LIVE settlement actually increases ownership. Dry fights
+- A real chest or Ghoul victory can trigger a haul return at the canonical
+  material threshold (four early-game units, higher for prepared explorers), only when LIVE settlement actually increases ownership. Dry fights
   and stale unsold stock alone do not restart a shop journey.
 - Existing backtracking, the entrance tile and portal transit own arrival.
-  Material ownership stays with the hero until Galvik explicitly pays.
+  Material ownership stays with the hero until the actual automatic paid drop-off.
 - Credit uses canonical gear names and class/tier checks, consumes real stock
   and records debt without creating merchant revenue.
 - Bounded integration fixtures use generated sites and the real 60Hz motor,
@@ -78,3 +79,7 @@ Initial, deliberately small recipes:
   valid; the strict validator is not relaxed to accept a defeated pack.
 
 - The fixed workshop and its positive-Z working approach are reserved by the shared cellar furniture placement rules. Preview, commit and strict save validation reject chest/table overlap; the renderer shares the same workshop position. Other supported cellar placements remain movable.
+
+## Automatic physical intake (Alpha v41)
+
+The open Recovered Goods Chest replaces manual offer purchase UI. The existing customer motor walks to the reserved service dock, pauses for the drop-off gesture and invokes the sole paid buyback mutation once for the affordable haul. One receipt per unit is committed atomically. Materials bypass the bag and enter the three workshop reserves. Insufficient funds leave unpaid goods with their owner; a closed chest is skipped. The player can toggle the real lid and acceptance with E or click; state is saved. The log is read-only. No new economy, automatic crafting or second pathfinding motor.

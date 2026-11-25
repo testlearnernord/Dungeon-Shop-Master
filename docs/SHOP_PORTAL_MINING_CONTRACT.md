@@ -1,6 +1,6 @@
 # One cursed shop portal and consistent mined surfaces
 
-> Reviewed against Alpha v40, main after #374 (25 November 2026).
+> Current contract: Alpha v41 (Recovered Goods Chest).
 
 ## One physical entrance/exit
 
@@ -26,7 +26,7 @@
 
 ## Alpha save policy
 
-Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The room, one portal and hero place keys are canonical; the old numerical shop/transit aliases are removed.
+Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The room, one portal and hero place keys are canonical; the old numerical shop/transit aliases are removed.
 
 ## Checks
 

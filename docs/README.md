@@ -1,6 +1,6 @@
 # Documentation index
 
-> Reviewed against Alpha v40, main after #374 (25 November 2026). Read current contracts before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
+> Current contract: Alpha v41 (Recovered Goods Chest). Read current contracts before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
 
 ## Current contracts
 
@@ -22,9 +22,11 @@
 - [SHOP PORTAL MINING CONTRACT](SHOP_PORTAL_MINING_CONTRACT.md)
 - [THE LIVING DUNGEON](THE_LIVING_DUNGEON.md)
 - [UI DESIGN SYSTEM](UI_DESIGN_SYSTEM.md)
-- [Alpha v40 evidence and remaining acceptance](ALPHA_V40_ACCEPTANCE.md)
+- [Alpha v41 evidence and remaining acceptance](ALPHA_V41_ACCEPTANCE.md)
 
 ## Historical reports and provenance
+
+- [Alpha v40 evidence (pre-chest baseline)](ALPHA_V40_ACCEPTANCE.md)
 
 - [CLEANUP AUDIT](CLEANUP_AUDIT.md)
 - [CODE CLEANUP C1](CODE_CLEANUP_C1.md)

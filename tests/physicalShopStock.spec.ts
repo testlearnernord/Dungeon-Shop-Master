@@ -25,7 +25,7 @@ test("every displayable good has its own real GLB, not pickable shelf blockers",
     expect(model.size.every(value => value > 0), model.itemId).toBe(true);
   }
   // No coal.glb is required; coal and iron ore are acquired at the
-  // staffed adventurer buyback counter, never displayed on shelves.
+  // automatic recovered-goods chest, never displayed on shelves.
   // The browser loaded each source GLB into the render templates above.
   // Independently verify binary files in the checkout, not the SPA fallback.
   for(const item of models){

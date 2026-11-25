@@ -1,6 +1,6 @@
 # Floor LIVE Spectator — current contract
 
-> Reviewed against Alpha v40, main after #374 (25 November 2026). Current read-only projection contract.
+> Current contract: Alpha v41 (Recovered Goods Chest). Current read-only projection contract.
 
 ## One source of truth
 

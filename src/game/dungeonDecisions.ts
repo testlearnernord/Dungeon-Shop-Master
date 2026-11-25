@@ -5,7 +5,7 @@ import {heroProgression} from "./heroProgression.ts";
 import {equipmentEffects,gearForItem,gearFromName} from "./gearCatalog.ts";
 import {hasDungeonLineOfSight} from "./heroPerception.ts";
 import {canSoloChallengeVisiblePack} from "./dungeonThreatDecisions.ts";
-import {WHOLESALE_GOODS} from "./economy.ts";
+import {WHOLESALE_GOODS,MATERIAL_ITEMS} from "./economy.ts";
 import {dungeonNeighbors,type DungeonLayout,type DungeonFeature} from "./dungeonLayout.ts";
 
 /**
@@ -18,9 +18,9 @@ export type HeroDungeonGoal = "farm"|"progress"|"test-gear"|
   "caution"|"resupply"|"loot-chest"|"hunt-ghouls";
 export type HeroFloorAction = "stay" | "ascend" | "descend" | "shop";
 
-/** Only spare goods actually owned by the individual count toward a haul. */
+/** Only chest-accepted materials justify a salvage-selling return. Other finds stay owned. */
 export const carriedDungeonFindCount=(hero:AdventurerState):number=>
-  Object.values(hero.inventory.finds??{}).reduce((total,count)=>total+(count??0),0);
+  MATERIAL_ITEMS.reduce((total,item)=>total+(hero.inventory.finds?.[item.id]??0),0);
 export const SALVAGE_RETURN_THRESHOLD=4;
 
 /** Keep the early-game salvage supply chain. A genuinely prepared deep

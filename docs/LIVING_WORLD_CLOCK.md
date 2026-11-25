@@ -1,6 +1,6 @@
 # One Living World Clock — current runtime contract
 
-> Reviewed against Alpha v40, main after #374 (25 November 2026). Current world clock and timing contract.
+> Current contract: Alpha v41 (Recovered Goods Chest). Current world clock and timing contract.
 
 ## Authority and unit of time
 
@@ -24,7 +24,7 @@
 - Ordinary **Floors 1–9** are genuine seeded traversable maps. Heroes have independent saved position, HP, intent and treasures; Temporary Parties form naturally from actual positions.
 - A **Floor-9** real party reaches the lower stair together and may enter the **Floor-10 Cave Troll** only when the actual 2–3 members satisfy pass/health/time conditions. A solo flag never creates a fake group.
 - `groupCombat.ts` settles the 60-Hz authoritative fight, retaining real actor poses/cues and one original outcome. Scene interpolation, cinematic intro and the local recording clock may read those frames but cannot replace, rewind or resimulate the fight.
-- Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The unique boss checkpoint is `partyBossCombat`; the old solo dispatcher and recording adapters are retired. All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events.
+- Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The unique boss checkpoint is `partyBossCombat`; the old solo dispatcher and recording adapters are retired. All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events.
 
 ## Knowledge and retention
 
@@ -36,6 +36,6 @@
 
 **Implemented and testable:** shared tick owner; 200-tick spatial pacing; 60-Hz combat; physical shop cart/checkout; portal return; health-dependent recovery; genuine group boss; bounded archive.
 
-**Still open:** physical NPC/service pathing, current-save recovery, final visual/audio and real-device FPS acceptance. [Current Alpha evidence](ALPHA_V40_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
+**Still open:** physical NPC/service pathing, current-save recovery, final visual/audio and real-device FPS acceptance. [Current Alpha evidence](ALPHA_V41_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 Never “fix” stalled XP by fast-forwarding the calendar, inventing loot, granting invisible purchases, or letting an observer HUD simulate extra battles.

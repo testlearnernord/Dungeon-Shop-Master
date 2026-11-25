@@ -85,7 +85,7 @@ test("registered solid collision is the same for nav in original and excavated f
   const fixtures=shopFloorFixtures(layout);
   assert.strictEqual(shopFloorFixtures(layout),fixtures,
     "do not rebuild furniture boxes in every BFS navigation cell");
-  assert.deepEqual(fixtures.map(x=>x.id),["shelf-1","shelf-2","counter"]);
+  assert.deepEqual(fixtures.map(x=>x.id),["shelf-1","shelf-2","counter","recovered-goods-chest"]);
   for(const fixture of fixtures){
     const center={
       x:(fixture.solid.minX+fixture.solid.maxX)/2,

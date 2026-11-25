@@ -1,3 +1,4 @@
+import {BUYBACK_DOCK} from "./buybackChestPlacement.ts";
 import type { ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import { checkoutQueuePoints } from "./checkoutQueue.ts";
 import {restockWaitingPositions} from "./restockWaitingPlaces.ts";
@@ -21,6 +22,8 @@ export function shopServiceReachabilityProblem(layout:ShopLayout,room?:ShopRoomG
   const route=createShopRoutePlanner(layout,room);
   const entrance:ShopPoint=shopPortalServicePoint("entering");
   const exit:ShopPoint=shopPortalServicePoint("leaving");
+  if(isObstructed(BUYBACK_DOCK,layout,room)||!route(entrance,BUYBACK_DOCK)||!route(BUYBACK_DOCK,exit))
+    return "Keep the recovered goods chest reachable.";
   const queue=checkoutQueuePoints(layout,{x:0,z:-1},8,room);
   if(queue.length<1)
     return "The checkout has no reachable customer standing position.";

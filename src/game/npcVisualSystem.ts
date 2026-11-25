@@ -246,6 +246,8 @@ export class NpcVisualSystem {
   private layout:ShopLayout|null=null;
   private room:ShopRoomGeometry|undefined;
   private shop:Shop|null=null;
+  private pendingBuyback:ReadonlySet<string>=new Set();
+  private onBuyback:((heroId:string,point:ShopPoint)=>boolean)|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
   private readonly completedExits:{heroId:string;outerGateZ:number}[]=[];
@@ -596,8 +598,11 @@ export class NpcVisualSystem {
     onWalkout?:((heroId:string,reason:ShoppingIntent["reason"])=>void),
     room?:ShopRoomGeometry,
     clock?:ShopRequestClockAccess,
+    buyback?:{heroes:ReadonlySet<string>;sell:(heroId:string,point:ShopPoint)=>boolean},
   ):void {
     this.shopRequestClock=clock??null;
+    this.pendingBuyback=buyback?.heroes??new Set();
+    this.onBuyback=buyback?.sell??null;
     const hadProjection=this.layout!==null;
     const furnitureMoved=this.layout!==null&&(
       JSON.stringify(this.room)!==JSON.stringify(room)||
@@ -651,7 +656,7 @@ export class NpcVisualSystem {
       }
       const plan=plans.get(npc.visitor.id)??null;
       const queueIndex=checkoutQueueIndex(carts,npc.visitor.id);
-      const key=JSON.stringify([plan?.items,plan?.reason,plan?.wantedItemId,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex],roomSignature]);
+      const key=JSON.stringify([this.canStartBuyback(npc),plan?.items,plan?.reason,plan?.wantedItemId,layout.shelves,layout.counter,held,queueIndex,queuePoints[queueIndex],roomSignature]);
       if(key===npc.intentKey)continue;
       const alreadyWaiting=checkoutWaitAlreadyAtSlot(
         npc.phase,String(npc.root.metadata.shoppingPhase??""),
@@ -1028,6 +1033,7 @@ export class NpcVisualSystem {
           npc.root.metadata.shoppingPhase==="leaving-upset");
       }
       if(npc.phase==="queueing"&&(
+        npc.root.metadata.shoppingPhase==="buyback-wait"||
         npc.root.metadata.shoppingPhase==="restock-spot-full"||
         npc.root.metadata.shoppingPhase==="credit-spot-full"||
         npc.root.metadata.shoppingPhase==="shelf-waiting-spot-full")){
@@ -1093,6 +1099,11 @@ export class NpcVisualSystem {
       if(npc.phase==="considering"){
         npc.wait-=delta;
         if(npc.wait<=0){
+          if(npc.root.metadata.shoppingPhase==="selling-loot"){
+            this.onBuyback?.(npc.visitor.id,{x:npc.root.position.x,z:npc.root.position.z});
+            if(npc.root.metadata.shoppingPhase==="selling-loot")this.beginBrowsing(npc);
+            continue;
+          }
           const item=npc.intent?.items[npc.targetIndex];
           // Commit a reservation only at the shelf, after the inspection pause.
           // Store notifications synchronously re-plan remaining shopping needs.
@@ -1311,9 +1322,27 @@ export class NpcVisualSystem {
     npc.root.metadata.phase=npc.phase;
   }
 
+  private canStartBuyback(npc:NpcVisual):boolean{
+    return this.pendingBuyback.has(npc.visitor.id)&&(npc.phase==="entering"||
+      ["walking-to-buyback","walking-to-buyback-wait","buyback-wait","selling-loot"].includes(String(npc.root.metadata.shoppingPhase??"")));
+  }
+
   private beginBrowsing(npc:NpcVisual):void {
     this.releaseShelf(npc);
     npc.routeProgress=null;
+    if(this.layout&&this.canStartBuyback(npc)){
+      this.clearWish(npc);
+      const origin={x:npc.root.position.x,z:npc.root.position.z};
+      const reserved=this.serviceSpots.reserve(npc.visitor.id,"buyback",origin,this.layout,this.room,this.otherServiceOccupancy(npc));
+      const waiting=reserved?null:this.serviceOverflowRoute(npc);
+      npc.phase=reserved||waiting?"browsing":"queueing";
+      npc.route=(reserved?.route.waypoints??waiting?.waypoints??[]).map(p=>new Vector3(p.x,0,p.z));
+      npc.waypoint=0;npc.toQueue=false;npc.wait=.8+(npc.slot%3)*.2;
+      npc.root.metadata.shoppingPhase=reserved?"walking-to-buyback":waiting?"walking-to-buyback-wait":"buyback-wait";
+      npc.root.metadata.phase=npc.phase;
+      npc.root.metadata.shoppingTargetSlot=null;npc.root.metadata.checkoutQueueIndex=-1;
+      return;
+    }
     const item=npc.intent?.items[npc.targetIndex];
     const slot=item&&this.shop?[...this.shop.slotMeshes.values()]
       .find(s=>s.id===item.slotId):undefined;
@@ -1557,6 +1586,15 @@ export class NpcVisualSystem {
       if(npc.phase==="entering"){
         this.beginBrowsing(npc);
       }else if(npc.phase==="browsing"){
+        if(npc.root.metadata.shoppingPhase==="walking-to-buyback-wait"){
+          npc.phase="queueing";npc.wait=.8+(npc.slot%3)*.2;
+          npc.root.metadata.phase=npc.phase;npc.root.metadata.shoppingPhase="buyback-wait";return;
+        }
+        if(npc.root.metadata.shoppingPhase==="walking-to-buyback"){
+          npc.phase="considering";npc.wait=.9;
+          npc.root.metadata.phase=npc.phase;npc.root.metadata.shoppingPhase="selling-loot";
+          return;
+        }
         if(npc.toQueue){
           if(npc.root.metadata.shoppingPhase==="checkout-route-blocked"||
             npc.root.metadata.shoppingPhase==="idle-route-blocked")return;

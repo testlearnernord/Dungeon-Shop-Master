@@ -23,7 +23,7 @@ import type {ShopCart} from "./shopCarts.ts";
 import {arrivalEvent} from "./shopArrivals.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 40;
+export const SIMULATION_VERSION = 41;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -107,6 +107,7 @@ export interface GameState {
   readonly cellarChest: CellarChestPlacement;
   readonly cellarTable: CellarTablePlacement;
   readonly cellarDoorOpen: boolean;
+  readonly buybackChestOpen:boolean;
   /** Fishing score only; fish goods will use the normal economy when added. */
   readonly cellarFishCaught: number;
   readonly shopCarts: readonly ShopCart[];
@@ -159,6 +160,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     cellarChest: {...DEFAULT_CELLAR_CHEST},
     cellarTable: {...DEFAULT_CELLAR_TABLE},
     cellarDoorOpen: false,
+    buybackChestOpen:true,
     cellarFishCaught: 0,
     shopCarts: [],
     shopDebts: [],

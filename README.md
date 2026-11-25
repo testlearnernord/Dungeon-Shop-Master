@@ -6,12 +6,12 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Current Alpha
 
-Reviewed against Alpha v40, main after #374 (25 November 2026). The displayed HUD label is still V.002 ALPHA; the campaign schema (v40), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented; manual acceptance is pending. Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+Current contract: Alpha v41, including physical automatic buyback. The displayed HUD label is still V.002 ALPHA; the campaign schema (v41), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented; manual acceptance is pending. Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 | Area | Implemented |
 | --- | --- |
 | Shop | First-person physical shop, mining, movable furniture, four-slot shelves, 24-unit bag, TAB inventory and six editable quickbar slots |
-| Commerce | Wholesale T1 stock, actual physical customers, unpaid carts, staffed LIVE cashier, receipts, credit/debt, restock waits and paid buyback |
+| Commerce | Wholesale T1 stock, actual physical customers, unpaid carts, staffed LIVE cashier, receipts, credit/debt, restock waits and automatic physical material buyback |
 | World | One 50-ms saved world tick; 28,800 ticks per day (24 unpaused real minutes). Galvik's movable wall clock reads it. Bed ends the day |
 | Dungeon | Ordinary Floors 1–9, connected seeded layouts, autonomous individual heroes, voluntary Temporary Parties, actual loot, traps, renewable Ghoul packs, pursuit and returns |
 | Boss | Floor-10 Cave Troll for eligible 2–3-hero parties; shared combat engine, unique grabs/throws and lava |
@@ -76,6 +76,10 @@ The asset generators run before dev/build. Preserve original source GLBs, approv
 - [Contributor contract](AGENTS.md)
 - [Documentation index](docs/README.md): current contracts and explicitly historical evidence
 - [Architecture](docs/ARCHITECTURE.md) · [Game Bible](docs/GAME_BIBLE.md) · [Roadmap](docs/ROADMAP.md)
-- [Alpha v40 acceptance and evidence](docs/ALPHA_V40_ACCEPTANCE.md)
+- [Alpha v41 acceptance and prior evidence](docs/ALPHA_V41_ACCEPTANCE.md)
 
 Current source and tests outrank old prose. Historical reports are not implementation instructions. No extra simulation, fake rewards, hunger or old-save migrations.
+
+### Recovered Goods Chest
+
+The fixed chest reads **SELL LOOT HERE**. E or left-click toggles the actual hinged lid and saved intake state. Customers with affordable Iron Ore, Coal or Ghoul Leather visit the chest before shopping. Gold transfers through the existing buyback authority, and materials go directly into the workshop reserve. Other finds remain owned in V0.1. The former offers menu is a read-only Buyback log. No overdraft or fake income. A new v41 campaign is required.
