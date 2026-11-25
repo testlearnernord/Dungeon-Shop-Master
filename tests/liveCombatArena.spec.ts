@@ -127,7 +127,23 @@ test("LIVE dungeon abstracts the ongoing fight; opt-in arena uses same immutable
   await expect(page.locator("#dungeon-hero-detail")).toBeHidden();
   expect(await record()).toEqual(before,
     "Locating a LIVE encounter must never rerun or modify the combat motor");
+  // Capture the real audio seek request without depending on headless audio
+  // decoding speed or the sound device. The native setter remains in use.
+  await page.evaluate(()=>{
+    const audio=document.querySelector<HTMLAudioElement>("#music-combat-audio")!;
+    const native=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,"currentTime")!;
+    audio.dataset.testSeek="";
+    Object.defineProperty(audio,"currentTime",{
+      configurable:true,
+      get:()=>native.get!.call(audio),
+      set:(value:number)=>{
+        audio.dataset.testSeek=String(value);
+        native.set!.call(audio,value);
+      },
+    });
+  });
   await page.locator("#dungeon-watch-live-combat").click();
+  await expect(page.locator("#music-combat-audio")).toHaveAttribute("data-test-seek","5.2");
   // Joining an already-running encounter must never start a pre-fight film.
   // The player gets the live arena and tactical HUD without a manual skip.
   await expect(page.locator("#dungeon-fight-cinematic")).toBeHidden();
