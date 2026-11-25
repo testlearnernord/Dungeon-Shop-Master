@@ -115,7 +115,7 @@ function equipment(hero:HeroCardView,compact=false):HTMLElement{
   const zone=make("section","hero-card-equipment");
   if(!compact)zone.append(label("EQUIPMENT"));
   for(const [key,icon,empty] of [
-    ["weapon","iron-sword","Unarmed"],["armor","leather-vest","No armor"],
+    ["weapon",Object.entries(GEAR_BY_ITEM).find(([,g])=>g.slot==="weapon"&&g.role===hero.role&&g.tier===1)?.[0]??"iron-sword","Unarmed"],["armor","leather-vest","No armor"],
   ] as const){
     const value=hero.equipment[key];
     const display=displayEquipment(value)??empty;
@@ -126,7 +126,7 @@ function equipment(hero:HeroCardView,compact=false):HTMLElement{
     slot.title=display;
     slot.setAttribute("aria-label",(key==="weapon"?"Weapon: ":"Armor: ")+display);
     slot.append(item(itemIcon,"",display));
-    if(!compact)slot.append(make("small","hero-card-slot-label",display));
+    slot.append(make("small","hero-card-slot-label",display));
     zone.append(slot);
   }
   return zone;

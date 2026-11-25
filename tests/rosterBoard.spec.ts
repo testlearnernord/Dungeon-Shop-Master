@@ -20,7 +20,9 @@ test("adventurer wall board opens by R and nearby E, tracks state and persists p
     .toHaveAttribute("title","Unarmed");
   await expect(first.locator(".roster-card-extended .hero-card-slot").last())
     .toHaveAttribute("title","No armor");
-  await expect(first.locator("summary .roster-portrait")).toHaveAttribute("data-portrait-id", "0");
+  await expect(first.locator(".roster-card-extended .roster-portrait")).toHaveAttribute("data-portrait-id", "0");
+  await expect(first.locator("summary .roster-collapse-label")).toBeVisible();
+  await expect(first).toHaveCSS("grid-column-end","-1");
   await first.locator(".roster-permit").click();
   await expect(first.locator(".roster-permit")).toHaveAttribute("aria-pressed", "true");
   await expect(first.locator(".roster-permit")).toBeFocused();

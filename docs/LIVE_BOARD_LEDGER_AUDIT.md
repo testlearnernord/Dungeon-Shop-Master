@@ -2,7 +2,7 @@
 
 > Reviewed against Alpha v40, main after #374 (25 November 2026). The original planning/audit is preserved in Git history.
 
-- One knowledge-limited Board (`liveBoardProjection.ts`) and one global World Echoes feed (`worldFeedProjection.ts`, `worldEventFeedHud.ts`) derive committed state/events. No secret world facts are granted to hero AI or merchant passive views.
+- One shared current hero projection (`liveRosterCards` in `heroCardView.ts`) supplies the wall Board, E/R and compact day HUD. The global World Echoes feed derives committed events. The event-only signal selector is retained for historical notification semantics, not current roster data. No hero AI knowledge or outcome is modified.
 - A single Hero Card projection/renderer supplies roster, inspector and combat party views. Unknown historical values stay unknown.
 - Actual deaths may emit a bounded magical signal. A click opens an actual active fight or original committed recording, never invents footage.
 - Bed closes the day and provides lean merchant accounts; the ledger does not simulate dungeon actions or function as a second Board. Paid sales, buyback costs and credit/debt remain distinct.

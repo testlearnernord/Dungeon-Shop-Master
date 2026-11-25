@@ -5,6 +5,7 @@ import type {ItemId} from "./economy.ts";
 import type {SpatialDungeonReplay} from "./spatialDungeonExploration.ts";
 import type {CombatantSpec,GroupReplayFrame,GroupPhase} from "./groupCombat.ts";
 import {heroDisplayNames} from "./heroIdentity.ts";
+import {rosterEntries,type RosterFilter} from "./rosterView.ts";
 
 /** ONE read-only projection for Shop, Roster, LIVE Floor, World Echoes,
  * recorded fights and the V combat laboratory. No RNG, movement or save writes.
@@ -38,22 +39,25 @@ function displayedHeroStats(hero:AdventurerState){
 export function liveHeroCard(
   state:GameState,heroId:string,
   context:{activity?:string|null;goal?:string|null;action?:string|null;
-    health?:number}={},
+    health?:number;includeRecent?:boolean;name?:string}={},
 ):HeroCardView|null {
   const hero=state.adventurers.find(h=>h.id===heroId);
   if(!hero)return null;
-  const names=heroDisplayNames(state.adventurers);
+  const name=context.name??heroDisplayNames(state.adventurers).get(hero.id)??hero.name;
+  const fight=state.liveDungeon.combats.find(c=>c.heroIds.includes(hero.id))??
+    (state.liveDungeon.partyBossCombat?.heroIds.includes(hero.id)?state.liveDungeon.partyBossCombat:null);
+  const actor=fight?.state.actors.find(a=>a.id===hero.id);
   const group=state.dungeonParties?.find(p=>p.memberIds.includes(heroId));
   const plan=state.liveDungeon.plans.find(p=>p.heroId===heroId);
-  const recent=state.events.filter(e=>e.adventurerId===heroId)
+  const recent=context.includeRecent===false?[]:state.events.filter(e=>e.adventurerId===heroId)
     .slice(-3).reverse().map(e=>e.message);
   return {
-    id:hero.id,name:names.get(hero.id)??hero.name,role:hero.role,
+    id:hero.id,name,role:hero.role,
     source:"live",level:hero.level,
-    health:context.health??hero.health,maxHealth:heroProgression(hero).maxHealth,
+    health:context.health??actor?.hp??hero.health,maxHealth:actor?.maxHp??heroProgression(hero).maxHealth,
     xp:hero.xp,gold:hero.gold,
-    floor:typeof hero.floor==="number"?hero.floor:null,status:hero.status,
-    activity:context.activity??null,goal:context.goal??plan?.goal??null,
+    floor:typeof hero.floor==="number"?hero.floor:null,status:actor?"combat":hero.status,
+    activity:context.activity??actor?.phase??null,goal:context.goal??plan?.goal??null,
     action:context.action??plan?.action??null,
     party:group?.memberIds??[],stats:displayedHeroStats(hero),traits:hero.traits,
     equipment:hero.equipment,inventory:hero.inventory,recent,observations:[],
@@ -113,4 +117,28 @@ export function recordedHeroCard(
       {icon:"info",text:"Only saved historical data shown"},
     ],
   };
+}
+
+/** The wall, E/R roster and compact day HUD now share actual committed
+ * hero status. The older event-only signal projection is not a roster.
+ * This visibility is merchant presentation only, never an AI input. */
+export function liveRosterCards(state:GameState,filter:RosterFilter,includeRecent=false):readonly HeroCardView[]{
+  const names=heroDisplayNames(state.adventurers);
+  return rosterEntries(state,filter).map(hero=>liveHeroCard(state,hero.id,
+    {includeRecent,name:names.get(hero.id)})!);
+}
+export function rosterActivityLabel(hero:HeroCardView):string{
+  if(hero.status==="dead")return "Fallen";
+  if(hero.status==="combat")return "Fighting";
+  if(hero.status==="at-shop")return "In shop";
+  if(hero.status==="departing")return "Leaving shop";
+  if(hero.status==="off-duty")return "Recovering";
+  if(hero.status==="traveling"||hero.status==="returning")return "Traveling";
+  if(hero.goal==="resupply")return "Resupply";
+  if(hero.goal==="hunt-ghouls")return "Hunting";
+  if(hero.goal==="loot-chest")return "Seeking loot";
+  if(hero.action==="descend")return "Descending";
+  if(hero.action==="ascend")return "Ascending";
+  if(hero.goal==="farm")return "Farming";
+  return "Exploring";
 }

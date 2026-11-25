@@ -6,7 +6,7 @@ import { hasObservedReplay } from "./replayDisclosure.ts";
 import {reportCategory,reportIcon,reportCounts,type ReportCategory} from "./reportPresentation.ts";
 import {uiIcon} from "./uiIcons.ts";
 import {goldIcon} from "./uiIcons.ts";
-import {selectLiveBoardHeroes} from "./game/liveBoardProjection.ts";
+import {liveRosterCards,rosterActivityLabel} from "./game/heroCardView.ts";
 
 export function setupDayHud(
   canvas: HTMLCanvasElement,
@@ -108,50 +108,39 @@ export function setupDayHud(
       empty.textContent="No "+(activeFilter==="all"?"":activeFilter+" ")+"events yet.";
       history.append(empty);
     }
-    const names=heroDisplayNames(state.adventurers);
-    const known=selectLiveBoardHeroes(state);
-    const active=known.filter(hero=>hero.status!=="lost");
-    const atShop=known.filter(hero=>hero.visible!==null);
-    const fallen=known.length-active.length;
-    population.textContent="Adventurers: "+active.length+
-      " tracked signatures · "+fallen+" confirmed extinguished";
-    population.dataset.short=active.length+" tracked";
+    const active=liveRosterCards(state,"active");
+    const atShop=active.filter(hero=>hero.status==="at-shop"||hero.status==="departing");
+    const fallen=state.adventurers.filter(h=>h.status==="dead").length;
+    population.textContent="Adventurers: "+active.length+" active · "+fallen+" fallen";
+    population.dataset.short=active.length+" active";
     population.setAttribute("aria-label",population.textContent);
     visitors.textContent="Shop visitors ("+atShop.length+"): "+
-      (atShop.map(hero=>names.get(hero.id)??hero.name).join(", ")||"none");
+      (atShop.map(hero=>hero.name).join(", ")||"none");
     visitors.dataset.short=atShop.length+" in shop";
     visitors.title=visitors.textContent;
     visitors.setAttribute("aria-label",visitors.textContent);
-    roster.replaceChildren(...known.map(hero=>{
+    roster.replaceChildren(...active.map(hero=>{
       const entry=document.createElement("li");
-      entry.dataset.adventurerId=hero.id;
-      entry.dataset.status=hero.status;
+      entry.dataset.adventurerId=hero.id;entry.dataset.status=hero.status;
       const summary=document.createElement("span");
       summary.className="hero-summary";
-      summary.textContent=(names.get(hero.id)??hero.name)+" · "+
-        hero.role+" · "+hero.location+" · "+
-        (hero.visible?"HP "+hero.visible.health+"/"+heroProgression(hero.visible).maxHealth:
-          hero.status==="lost"?"MAGIC SIGNAL LOST":"HP unreported");
+      summary.textContent=hero.name+" · "+hero.role+" · "+
+        (hero.floor===null?"":("F"+hero.floor+" · "))+rosterActivityLabel(hero)+
+        " · HP "+Math.round(hero.health??0)+"/"+hero.maxHealth;
       entry.append(summary);
-      if(hero.visible){
-        const cash=document.createElement("span");
-        cash.className="hero-gold";
-        cash.setAttribute("aria-label",hero.visible.gold+" observed gold");
-        cash.append(goldIcon(),document.createTextNode(" "+hero.visible.gold+"g"));
-        entry.append(cash);
+      const current=state.adventurers.find(h=>h.id===hero.id);
+      if(current?.status==="at-shop"){
+        const cash=document.createElement("span");cash.className="hero-gold";
+        cash.setAttribute("aria-label",current.gold+" gold");
+        cash.append(goldIcon(),document.createTextNode(" "+current.gold+"g"));entry.append(cash);
         const permit=document.createElement("button");
-        permit.type="button";
-        permit.className="boss-pass";
-        permit.dataset.adventurerId=hero.id;
-        permit.setAttribute("aria-pressed",String(hero.visible.bossPass));
-        permit.textContent=hero.visible.bossPass?"Revoke Boss Pass":"Grant Boss Pass";
-        permit.title="Allow this visitor to join an equipped Temporary Party for the Floor-10 Cave Troll.";
-        permit.addEventListener("click",()=>{
-          store.setBossPass(hero.id,!hero.visible!.bossPass);
-        });
+        permit.type="button";permit.className="boss-pass";permit.dataset.adventurerId=hero.id;
+        permit.setAttribute("aria-pressed",String(current.bossPass));
+        permit.textContent=current.bossPass?"Revoke Boss Pass":"Grant Boss Pass";
+        permit.title="Allow this visitor to join a real Floor-10 party.";
+        permit.addEventListener("click",()=>store.setBossPass(hero.id,!current.bossPass));
         entry.append(" ",permit);
       }
-      entry.title=hero.report?.text??"No confirmed observation";
       return entry;
     }));
   };

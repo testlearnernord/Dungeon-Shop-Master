@@ -77,96 +77,14 @@ This document is a maintainable implementation contract.
 | Combat Lab model inspector | In the existing spectator toolbar, `Inspect Tripo GLB` opens an explicit read-only asset inspection panel with a browser-local GLB file input, accessible animation selector, drag-orbit/zoom camera and Escape-to-return behavior. No saved fighter or combat details are written. The regular battle HUD and cinematic are hidden while inspecting. |
 | Audio / notifications / campaign | Consistent accessible controls; LIVE enters immediately, local playback can show cinematic titles. |
 
-## Adventurer Board — IMPLEMENTED CORE / PARTIAL POLISH
+## Adventurer Board and roster
 
-**LIVE status is required** once the shared world clock ships: real
-legitimate reports reach the existing physical board and expanded E/R
-view throughout an active shop day, not only when Galvik sleeps.
-Both read ONE event-based known-state selector with report time,
-source and last-confirmed/unknown status, never the hidden current
-HP/death/loot of distant heroes. The board does not need a UI timer
-or full canvas repaint at every rendered frame. Preview/replay pauses
-the world clock. A physical cursed clock may display saved world time.
+The magical wall board is an operational LIVE glance, not a second archive or an event-only list of question marks. It uses `liveRosterCards` from `heroCardView.ts`, the same current hero projection used by E/R and the compact day HUD. It shows active/shop/fighting/fallen counts, up to ten prioritized living heroes (shop, critical health, combat, then depth), role, level, floor/activity, actual weapon/armor tiers, party size and current committed HP. Overflow opens the roster. The 1536×960 texture is sampled on meaningful roster changes and world ticks, not per rendered frame. Wall dimensions and placement authority remain unchanged.
 
-**CURRENT PR #210 LIVE known-state slice:** `liveBoardProjection.ts`
-provides one information boundary for the physical wall board, expanded
-E/R roster and compact day feed. Remote HP, weapons, gold, loot, true
-floor and unreported deaths are **unknown**, not covertly read from the
-mutable hero store. Only physically present shop customers show current
-numeric HP, gear and inventory. Explicit, time-stamped coarse magic
-upper/deep signatures give an activity cue; an actually committed
-`hero-death-signal` gives a definite extinguished status, with an
-accessible, dismissible skull banner and no location/cause spoilers.
-The R panel shows source and occurred/reported time. The wall canvas
-redraws on real observation revisions, not at 60fps. The current Board, party identities, floor viewer and Expedition Archive use committed projections. Missing knowledge remains unknown.
+The E/R roster keeps the shared Hero Card renderer. Expanded entries span the full row rather than stretching the adjacent card; the summary becomes a collapse control instead of duplicating the expanded identity. Empty slots use role-appropriate muted art and explicit names. All current heroes share the same information policy. A living hero in the shop can still receive the existing Boss Pass; this gate is reviewed separately under #376. Current facts do not grant hero AI omniscience; historical footage and event signals remain authentic and separate. No campaign writes from presentation except existing explicit merchant actions.
 
-**Nightly book cutover:** keep the dark Book of Debts visual identity,
-actual closing balance, itemized receipts and credit. The duplicate night roster and mandatory sealed-expedition viewer have been retired; the LIVE Board and archive are accessible independently. The sleep ritual remains deliberate, but
-watching past footage can never change yesterday's physical outcome.
-Alpha v40 is the only supported save schema; no old-save migration.
-See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
+The nightly book contains merchant accounts, not a second hero roster. Alpha v40 only, no save migration. See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 
-The existing wall-mounted board and E/R roster are the physical entry points.
-Detailed design: [THE_LIVING_DUNGEON.md](THE_LIVING_DUNGEON.md).
-
-- **Physical glance:** portrait/name, character level, dungeon floor (or last
-  *known* floor), **numeric HP and HP bar**, intended/observed activity icon,
-  and an event-driven, last-reported status/recency cue instead of three
-  fixed time columns. Item icons come from the existing item
-  atlas. Show weapon and armor sockets even when **empty**; actual Healing
-  Herb, Waybread, Mana Potion and other carried quantities are readable.
-  On limited wall texture space, prioritize health, dangerous missing gear,
-  location and one current action; overflow detail goes to the E/R panel.
-- **Earlier actual-gear/HP physical glance (superseded for remote heroes
-by PR #210):** every row of the
-  placeable canvas board now has explicit W (weapon) and A (armor)
-  sockets, visibly muted when empty, and a numeric HP total only when directly observed in the shop.
-  Unknown remote equipment/HP now use neutral question marks rather
-  than raw unreported current stats. The legend names both sockets. The full Board 2.0 target now uses
-  chronological real reports and last-known timestamps, not three
-  mandatory phase columns.
-- **Earlier Temporary Party feedback (the raw-membership presentation is
-superseded by PR #210):** the physical Board marks every
-  member of one actually saved group with the same numbered `TP1`
-  (legend: **Temporary Party**); the E/R roster writes the full name
-  plus current companion identities, role, HP and founding day.
-  The dungeon spectator shows participants from each *historical*
-  replay's optional saved party IDs, with the followed TAB member
-  highlighted and preview/solo mode hidden. New recordings also
-  include the original roles and equipped gear for companions,
-  allowing all co-travelers to be physically visible while walking
-  on their ONE shared recorded route. Matching gold TP ground rings
-  are visible on the characters; camera TAB focus may follow any
-  recorded companion during travel. Actual combat positions
-  override purely visual within-tile formation spacing. Feed join/leave events
-  are attached to committed world transitions, never on UI refresh.
-  Older v1 tapes are valid without party metadata, and the player
-  cannot command the heroes. Full event-timeline Board 2.0 remains open.
-- **CURRENT incremental party information:** the physical Adventurer Board
-  appends a compact “Party 2/3” label only for a saved relationship.
-  In the expanded R roster, the same read-only relationship exposes
-  companion names, roles, health and the original formation day.
-  Companions are not clickable player-issued orders. Never infer a
-  party from proximity, fabricate hidden combat outcomes in a sealed
-  ledger or imply the full chronological Board 2.0 shipped.
-- **Expanded roster:** readable event/last-report timeline per hero, filter/sort,
-  compact vertical dungeon-depth/party markers, hero profile and verified
-  history of actual bought/consumed goods and recorded encounters. Use
-  stable real identity, actual quantities and recorded snapshots; no
-  second gameplay state owned by the interface.
-- **Activity vocabulary:** farming, progressing, discovering, fighting,
-  fleeing, recovering, grouping, shopping, **off duty** and unknown/last-known. A distinct
-  real state or committed intent must back each icon. Extend the existing
-  semantic sprite atlas deliberately, not with decorative emoji controls.
-  All icons retain accessible text/legend and never become the sole means
-  to interpret urgent equipment/HP information.
-- **Special-floor status:** the shop is already the cursed, unnumbered realm;
-  never display it as dungeon F5. The current save stores the unnumbered `"shop"` place rather than a numeric shop floor. Show **At Galvik's shop**, **Outside world · off duty**
-  (with actual two-day cooldown/return eligibility when known), or
-  **Dungeon Floor N** as mutually exclusive states. For dungeon-active
-  heroes, expose short move direction and medium-term goal where known;
-  label absent heroes accurately, without implying they are present
-  at shelves or currently fighting.
 - **One portal visual and service contract:** current normal customer arrivals
   and exits share one cursed doorway in the physical shop. Retained
   old `level4/level6` physical traffic keys are retired, not two visible
