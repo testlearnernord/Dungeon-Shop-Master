@@ -109,7 +109,7 @@ test("finite healer charges restore real teammate HP without reviving dead actor
 });
 
 test("walls physically prevent traversal and block fast-moving projectiles", () => {
-  const wall={id:"stone-wall",minX:-0.4,maxX:0.4,minZ:-7,maxZ:7};
+  const wall={id:"stone-wall",minX:-0.4,maxX:0.4,minZ:bounds.minZ,maxZ:bounds.maxZ};
   const s=createGroupCombat({bounds,obstacles:[wall],actors:[
     fighter("hero","heroes",-3,0,{style:"ranged",hp:90,maxHp:90,damage:16}),
     fighter("monster","monsters",3,0,{hp:90,maxHp:90,damage:16}),
@@ -446,5 +446,28 @@ test("healer offensive cadence is a class rule across all opposing abilities",()
     assert.equal(hero.phase,"cast");
     assert.equal(hero.cooldown,2);
     assert.equal(hero.magicHeals,2);
+  }
+});
+
+
+test("blocked opponents within nominal attack range seek a real route around a wall",()=>{
+  const wall={id:"corner",minX:-.4,maxX:.4,minZ:-1.5,maxZ:1.5};
+  for(const style of ["melee","ranged"] as const){
+    const actors=[fighter("hero","heroes",-1.1,0,{style,reach:2.5}),
+      fighter("monster","monsters",1.1,0,{speed:0})];
+    const options={bounds,obstacles:[wall],actors};
+    const s=createGroupCombat(options);
+    for(let tick=0;tick<60*20&&s.outcome==="fighting";tick++){
+      stepGroupCombat(s);
+      const hero=s.actors.find(a=>a.id==="hero")!;
+      assert(!(hero.x>wall.minX-hero.radius&&hero.x<wall.maxX+hero.radius&&
+        hero.z>wall.minZ-hero.radius&&hero.z<wall.maxZ+hero.radius),
+        "the detour must not penetrate collision geometry");
+    }
+    assert(s.events.some(e=>e.kind==="hit"&&e.actorId==="hero"),style+" must regain a line of attack");
+    assert(s.actors.find(a=>a.id==="hero")!.distanceTraveled>1);
+    const first=resolveGroupCombat(options,20);
+    const second=resolveGroupCombat({...options,actors:[...actors].reverse()},20);
+    assert.deepEqual(first.replay, {...second.replay,actors:first.replay.actors});
   }
 });
