@@ -28,7 +28,7 @@ jobs:
           path: candidate
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.head_ref == 'experiment/unified-healer-damage' && '329507f460c04ea10831ef560ba7a8a1610077a4' || github.event.pull_request.base.sha }}
           path: baseline
       - uses: actions/setup-node@v4
         with:

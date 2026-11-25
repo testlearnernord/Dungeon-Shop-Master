@@ -64,19 +64,19 @@ export function settleHeroExperience(
     health:health>0?Math.min(newMax,health+gained):0};
 }
 
-/** Shared ordinary-combat roster projection. The authored boss composer
- * retains its explicit boss rules; the editable Lab imports this projection. */
-export function ordinaryHeroCombatAttributes(hero:AdventurerState){
+/** Canonical live hero combat attributes. Enemy type and arena never
+ * modify the hero's own gear, class, progression or combat resources. */
+export function heroCombatAttributes(hero:AdventurerState){
   const progress=heroProgression(hero),gear=equipmentEffects(hero.role,hero.equipment);
   return {
     style:hero.role==="healer"?"ranged" as const:"melee" as const,
     maxHp:progress.maxHealth,
-    damage:6+Math.floor((hero.role==="healer"?progress.intellect:
+    damage:(hero.role==="healer"?3:6)+Math.floor((hero.role==="healer"?progress.intellect:
       hero.role==="DPS"?progress.agility:progress.strength)/2)+gear.damage+progress.damageBonus,
     armor:1+gear.armor+progress.armorBonus,
     equipment:{weapon:gear.weapon,armor:gear.vest},
     agility:progress.agility,speed:hero.role==="tank"?2.5:3.1,reach:gear.reach,
     healCharges:Math.min(2,hero.inventory.healing),
-    magicHeals:hero.role==="healer"?progress.dungeonMagicHeals+gear.magicHeals:undefined,
+    ...(hero.role==="healer"?{magicHeals:progress.dungeonMagicHeals+gear.magicHeals}:{}),
   };
 }

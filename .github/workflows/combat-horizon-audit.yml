@@ -1,0 +1,46 @@
+name: Combat horizon diagnostics
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/analysis/combat-horizon-audit.mjs'
+      - '.github/workflows/combat-horizon-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: combat-horizon-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [7351, 42, 2026, 9321]
+        revision: [cadence, damage]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: diagnostic
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.revision == 'cadence' && '329507f460c04ea10831ef560ba7a8a1610077a4' || '1a5aebb019141f1e5226a1e6c9737c438a8c742c' }}
+          path: subject
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reuse the same diagnostic fixtures on both frozen production candidates
+        run: |
+          cp diagnostic/tools/analysis/{combat-horizon-audit,combat-horizon-audit.test,boss-readiness-matrix,ordinary-combat-matrix}.mjs subject/tools/analysis/
+          cd subject
+          npm ci --ignore-scripts
+          node --experimental-strip-types --test tools/analysis/combat-horizon-audit.test.mjs
+          node --experimental-strip-types tools/analysis/boss-readiness-matrix.mjs ${{ matrix.seed }} horizon > boss-horizon.json
+          node --experimental-strip-types tools/analysis/ordinary-combat-matrix.mjs ${{ matrix.seed }} 1,5,8 horizon > ordinary-horizon.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: combat-horizon-${{ matrix.revision }}-${{ matrix.seed }}
+          path: subject/*-horizon.json
+          retention-days: 14

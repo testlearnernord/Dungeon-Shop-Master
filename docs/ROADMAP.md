@@ -1,6 +1,9 @@
 # Dungeon Shop Master — active roadmap
 
-> **Current planning baseline: 25 November 2026, after merged #363 (Alpha v39).** This is the living prioritization document, not a chronological list of PRs. Current runtime and tests win over earlier design notes. Git history preserves the old roadmap. The published HUD still says **V.002 ALPHA**; V.003 is an acceptance/release goal, not a claim that V.004 work is missing.
+> **Current planning baseline: 25 November 2026, after merged #363 (Alpha v40).** This is the living prioritization document, not a chronological list of PRs. Current runtime and tests win over earlier design notes. Git history preserves the old roadmap. The published HUD still says **V.002 ALPHA**; V.003 is an acceptance/release goal, not a claim that V.004 work is missing.
+
+
+**Unified live hero combat contract:** Every monster and boss uses the same `heroCombatAttributes` projection, weapon preparation, hero poise, defense eligibility, collision and roll movement. Enemy abilities, telegraphs, geometry and environment may influence tactical choices, never silently replace a hero's stats or gear. Historical solo training remains isolated from live rules. The new checkpoint contract requires a fresh Alpha v40 campaign; v39 and older are incompatible. The 35/90-second encounter limits and signature-specific tactical movement remain separate follow-up work; no claim of final balance or visual acceptance.
 
 ## What already works — IMPLEMENTED
 
@@ -19,7 +22,7 @@
 
 ### P0 · correctness and current-save safety
 
-1. **Current-save safety:** Alpha v39 is the only supported schema. Reject v38 and older without migrations. Preserve `shopRoom`, one `portal`, real hero locations, shared `dungeonWorlds`, the LIVE scheduler and canonical replay contracts. Regress current-format Save/Load, real transactions and encounters.
+1. **Current-save safety:** Alpha v40 is the only supported schema. Reject v39 and older without migrations. Preserve `shopRoom`, one `portal`, real hero locations, shared `dungeonWorlds`, the LIVE scheduler and canonical replay contracts. Regress current-format Save/Load, real transactions and encounters.
 2. **Long-game acceptance:** the scripted audit now reaches Floor 10 in all six Forge scenarios and records wins. Actual boss conversion, party composition and real-player commerce/pacing remain open; no artificial progression or income.
 3. **Browser route truth.** Test the one physical portal, permanently sealed old right route, paid carts, existing credit requests, arrival/departure congestion, reload and cellar ascent on representative actual scenes. Node's optimistic scripted cashier is not a Babylon NPC pathfinding test.
 

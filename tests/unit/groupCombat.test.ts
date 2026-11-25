@@ -327,9 +327,9 @@ test("ordinary tank reaction remains active at actual contact",()=>{
   assert(parries>0);
 });
 
-test("ordinary DPS uses a compact physical sidestep while boss and ranged rolls retain full travel",()=>{
+test("DPS sidestep is the same against every opponent; ranged and tank rolls retain full travel",()=>{
   for(const [role,style,boss,expected] of [
-    ["DPS","melee",false,4.2],["DPS","melee",true,7.8],
+    ["DPS","melee",false,4.2],["DPS","melee",true,4.2],
     ["healer","ranged",false,7.8],["tank","melee",false,7.8],
   ] as const){
     const s=createGroupCombat({bounds,actors:[
@@ -400,8 +400,8 @@ test("a parried ordinary monster recoils physically without extra damage",()=>{
   assert.equal(monster.phase,"hurt");
 });
 
-test("equipped ordinary spear fighter prepares a thrust faster without changing boss or unarmed timing",()=>{
-  for(const [reach,boss,expected] of [[1.75,false,.62],[2.1,false,.46],[2.5,false,.46],[2.5,true,.62]] as const){
+test("equipped spear fighter prepares the same faster thrust against ordinary and signature opponents",()=>{
+  for(const [reach,boss,expected] of [[1.75,false,.62],[2.1,false,.46],[2.5,false,.46],[2.5,true,.46]] as const){
     const s=createGroupCombat({bounds,actors:[
       fighter("hero","heroes",0,0,{role:"DPS",reach,speed:0}),
       fighter("monster","monsters",0,1.7,{speed:0,
@@ -419,15 +419,32 @@ test("equipped ordinary spear fighter prepares a thrust faster without changing 
 });
 
 test("equipped ordinary spear sidestep retains close range without extending dodge immunity",()=>{
-  for(const reach of [1.75,2.1,2.5]){
+  for(const reach of [1.75,2.1,2.5])for(const boss of [false,true]){
     const s=createGroupCombat({bounds,actors:[
       fighter("hero","heroes",0,0,{role:"DPS",reach}),
-      fighter("monster","monsters",0,8,{speed:0}),
+      fighter("monster","monsters",0,8,{speed:0,...(boss?{specialAbility:"grapple-throw" as const}:{})}),
     ]});
     const h=s.actors.find(a=>a.id==="hero")!;
     h.phase="roll";h.phaseAge=0;h.rollX=1;h.rollZ=0;
     for(let i=0;i<24;i++)stepGroupCombat(s);
     assert(Math.abs(h.x-(reach>=2.1?2.8:4.2)*.4)<1e-6);
     assert.equal(h.phase,"roll");
+  }
+});
+
+
+test("healer offensive cadence is a class rule across all opposing abilities",()=>{
+  for(const boss of [false,true]){
+    const s=createGroupCombat({bounds,actors:[
+      fighter("hero","heroes",0,0,{role:"healer",style:"ranged",hp:100,maxHp:100,magicHeals:2}),
+      fighter("monster","monsters",0,6,{speed:0,...(boss?{specialAbility:"grapple-throw" as const}:{})}),
+    ]});
+    const hero=s.actors.find(a=>a.id==="hero")!;
+    const enemy=s.actors.find(a=>a.id==="monster")!;
+    enemy.cooldown=100;
+    stepGroupCombat(s);
+    assert.equal(hero.phase,"cast");
+    assert.equal(hero.cooldown,2);
+    assert.equal(hero.magicHeals,2);
   }
 });
