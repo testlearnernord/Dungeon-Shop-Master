@@ -55,7 +55,7 @@ test("seeded sword tanks can physically parry and dodge committed Troll strikes"
     const tank=state.actors.find(actor=>actor.id==="hero")!;
     boss.phase="windup";
     boss.activeMeleeAbility="troll-smash";
-    boss.phaseAge=.70;
+    boss.phaseAge=.76;
     boss.lockedHeading=Math.PI;
     boss.heading=Math.PI;
     boss.targetId=tank.id;
