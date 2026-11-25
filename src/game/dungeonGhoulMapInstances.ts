@@ -155,7 +155,7 @@ export class GhoulMapInstances {
         mesh.parent=site.root;
         mesh.position.set(0,y,0);
         mesh.scaling.setAll(this.heightScale);
-        mesh.rotation.y=Math.PI;
+        mesh.rotation.y=0;
         mesh.isPickable=false;mesh.checkCollisions=false;
       }
       idle.metadata={worldFloorGhoul:true,modelSource:GHOUL_MODEL,
@@ -188,8 +188,8 @@ export class GhoulMapInstances {
       visual.walk.setEnabled(walking);
     }
     if(old?.heading!==yaw){
-      visual.idle.rotation.y=Math.PI+yaw;
-      visual.walk.rotation.y=Math.PI+yaw;
+      visual.idle.rotation.y=yaw;
+      visual.walk.rotation.y=yaw;
     }
     visual.site.root.metadata={...visual.site.root.metadata,
       animationClip:phase,animationPhase:walking?"walk":"idle",
