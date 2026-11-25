@@ -1,5 +1,7 @@
 # Depth and forge comparison
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 Follow-up to #294 and #352. The first fourteen 100-day scenarios reached at most Floors 4–5, even with class-complete T1 gear and peak levels 13–16. No Floor-9 bottleneck can be inferred from those runs. No production decision, movement, damage, loot, price or save rule is changed here.
 
 The existing GameStore audit now reports the actual decisions, known stair connectivity and successful physical crossings for every ordinary floor. Decision counts are repeated observations, not unique heroes; a stair which has not been visited is not necessarily unreachable. The report exposes detached examples and checks per floor without dumping the entire daily JSON into logs.

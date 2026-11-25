@@ -1,5 +1,7 @@
 # Phase C1 — obsolete night-only hero/replay projections
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 > Code-review evidence at the PR #238 branch baseline, 21 November 2026. This is a focused dead-code audit, **not** a claim that the entire TypeScript tree has been exhaustively analyzed.
 
 ## Actual owner shift

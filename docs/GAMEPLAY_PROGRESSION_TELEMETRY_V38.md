@@ -1,5 +1,7 @@
 # V38 campaign progression instrumentation
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 This is Phase A of the parked progression roadmap (#294), reactivated after the forge implementation. No thresholds, prices, loot odds, combat rules, party rules or save schema are changed.
 
 - The existing 100-day runner remains the only scripted merchant. Historical absent/consumables/equipment/full stock policies remain comparable. A new `tier1` policy includes Spear and Staff in the second existing shelf, correcting the old sword-only weapon coverage for this additional comparison. None of these policies buys salvage or crafts T2 yet; that is an explicit later controlled economy comparison.

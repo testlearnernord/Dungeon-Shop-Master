@@ -1,5 +1,7 @@
 # The Great Cleanup — verified closeout ledger
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 > **D2 review draft (#243), 21 November 2026.** This reports actual repository evidence, not a claim that visual/gameplay acceptance or V.003 Alpha is complete. The authoritative source is the current GitHub `main`; CI and deploy status must be refreshed on every PR. Base snapshot from [A1 audit](CLEANUP_AUDIT.md), end snapshot after **merged C3 #241**, with D1 #242 merged and its first guarded Pages deployment successful.
 
 ## 1. What actually changed

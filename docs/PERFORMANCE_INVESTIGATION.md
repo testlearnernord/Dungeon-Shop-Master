@@ -1,5 +1,7 @@
 # PR #215 · Diagnosing the post-#200 shop FPS regression
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 ## PR #217: Was the parallel live-world simulation overlooked?
 
 **Yes, it can cause separate CPU hitching on real hardware.** The PR #216

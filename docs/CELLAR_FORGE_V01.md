@@ -1,7 +1,6 @@
 # Cellar Forge V0.1 / V0.2 — material-to-gear contract
 
-> V0.1 shipped in PR #345; V0.2 A integration and catalog costs shipped in
-> PR #346. The class-specific equipment model requires no additional migration.
+> Reviewed against Alpha v40, main after #374 (25 November 2026). The functional V0.1/V0.2 forge is merged; manual acceptance is tracked in #294.
 
 ## One physical chain, one source of authority
 
@@ -48,8 +47,7 @@ Initial, deliberately small recipes:
   and carried products share these canonical models; equipped heroes
   retain their role-specific meshes with tier details. See
   [Equipment presentation V0.2](EQUIPMENT_PRESENTATION_V02.md).
-- A **fresh Alpha v38** is required because material reserve and bag schemas
-  changed. Unsupported old saves fail clearly without a conversion layer.
+- Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 ## Verification and next step
 
@@ -59,8 +57,7 @@ Initial, deliberately small recipes:
 - Human sign-off still requires physically using the cellar anvil, stocking a
   shelf, completing a staffed sale, seeing new weapon meshes and comparing
   fights without/with T2, plus FPS/audio inspection.
-- **Do not start the long-game economy audit #294 or conceptual PR #350+ until
-  after this first forge cycle is accepted and the owner requests it.**
+- The current campaign evidence is in [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md); no additional forge backend work is planned without a reproducible defect.
 
 ## V0.2 B — autonomous supply chain
 
@@ -74,7 +71,7 @@ Initial, deliberately small recipes:
 - Bounded integration fixtures use generated sites and the real 60Hz motor,
   with controlled prior inventory, position and budget; physical browser
   checkout also checks departure. Reentry now uses the shared health-dependent world-clock recovery.
-  No economic soak or balance adjustment is part of this acceptance step.
+  Historical integration fixtures are not a manual full-campaign sign-off.
 
 - A won Ghoul encounter atomically resolves the site and removes the live map
   occupant in the same combat tick. Saving before the next movement step is

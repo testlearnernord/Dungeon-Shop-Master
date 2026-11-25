@@ -1,12 +1,6 @@
 # Dungeon Shop Master · Monster Asset Pipeline
 
-> **Production contract, 2026-11-18.** This is a workflow and acceptance
-> checklist, not a claim that any ordinary monster asset is shipped. GitHub's
-> current world has seeded `goblin`, `skeleton`, `slime`, and `cultist`
-> encounter labels with actual simulated stats/AI, but the 3D spectator still
-> uses anonymous primitive spheres for ordinary enemies. **No original
-> animated ordinary monster model is production-ready.** The Tripo Cave Troll
-> is a separately integrated unique boss, NOT the ordinary-monster template.
+> Reviewed against Alpha v40, main after #374 (25 November 2026). Ghouls and the unique Cave Troll are integrated; visual/audio acceptance remains separate.
 
 ## Identity comes before code
 
@@ -37,7 +31,7 @@ accepts `monster`. Before any new species can be called implemented:
    ad hoc actor AI or duplicate legacy species adapter.
 6. **Acceptance and cleanup:** inspect movement, attack, death and fade
    during real dungeon replay; ensure deterministic recorded combat and
-   save backwards compatibility. Verify asset references resolve in
+   strict current-format Save/Load. Verify asset references resolve in
    production Pages. Remove obsolete placeholders for the integrated
    species. Run targeted unit plus browser smoke plus visual preview,
    then update `AGENTS.md`, `GAME_BIBLE.md`, `ARCHITECTURE.md`,
@@ -47,21 +41,17 @@ accepts `monster`. Before any new species can be called implemented:
 
 - **Cave Troll:** the cinematic grapple/lift/throw is his distinctive
   boss skill. The shared combat engine implements the physics,
-  counterplay and replay metadata so a real party encounter can reuse
-  the *technical code* when the unique boss is finally integrated.
+  counterplay and replay metadata for the actual Floor-10 party encounter.
 - **Ordinary regenerated elites:** can be tougher and use a telegraphed
   `heavy` strike, but **never gain the Troll's grab/throw automatically**.
-- **Historical v1 recordings** created before the correction may still
-  contain the previous ability on a renewable elite; parse and replay
-  them faithfully instead of silently rewriting the past. Do not grant
-  that ability to any newly generated ordinary encounter.
+- No legacy solo recording format is accepted in Alpha v40.
 - A future other boss can use a mechanically related grip only after
   a specific authored identity, distinct animation/sounds and explicit
   approved design. Capability flags are not random loot tables.
 
 ## Cave Troll visual effects in the shared 3D spectator
 
-The original Level-6 boss remains the authored quality reference. Optional
+The authored Cave Troll remains the shared presentation quality reference. Optional
 `LiveGroupCombatArena` playback now constructs one bounded
 `caveTrollImpactVisual.ts` mesh/light pool for each actual Troll identity.
 Its attack-sector telegraph, shockwave, 16 reusable rock fragments and flash
@@ -88,7 +78,7 @@ Both original source GLBs and their hashes remain archived in
 archives or throwaway generated code enter version control.
 
 **CURRENT runtime:** `dungeonLayout.ts` spawns only Ghouls in ordinary
-spatial encounter sites across Floors 1–4/7. `dungeonGhoulVisual.ts`
+spatial encounter sites across Floors 1–9. `dungeonGhoulVisual.ts`
 loads the actual 65-joint textured rig in recorded combat, chooses
 walk, windup/leap, claw, stagger, death or idle clips from the REAL
 `GroupCombatReplay` phase age, and hides the primitive loading fallback
@@ -99,24 +89,16 @@ cosmetics in `ghoulCryptArt.ts`.
 **Still required for the finished monster:** actual player screenshot
 approval of model direction, height, feet/ground contact, which side
 each claw strikes, animation transitions and visual hit timing;
-Ghoul-specific attack, movement, hurt and death SFX; texture-size
+Ghoul-specific attack, movement, hurt and death SFX are integrated (21 WAVs); verify the mix. Texture-size
 optimization and browser/performance spot-check on real hardware.
 The emitted 15-clip runtime is a playable **first integration**, not
 a declaration that every clip is polished. The Cave Troll's authored
 grapple/throw remains exclusively his; the Ghoul has no inherited throw.
 
-## Replay and daily pacing contract
+## Replay and pacing
 
-- The recorded dungeon has a bounded **36 actual tile movements** and
-  up to **two real monster contacts** per committed day. A victory may
-  lead to continued exploration unless injuries, casualties or supply
-  shortages justify retreat. This makes many days materially longer,
-  not just playback slowed down.
-- Shorter recordings are still legitimate if heroes die, retreat or
-  cannot find a path. Never pad the replay with fake fights, idle
-  activities or simulated time that did not occur.
-- Combat footage uses saved fixed-step frames. The viewer may interpolate
-  presentation positions without rerolling HP, encounters or rewards.
-- **Morning/Midday/Evening world snapshots are still future work.**
-  The board must not claim actual hours or event phases until the
-  authoritative day model records them explicitly.
+All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events.
+
+LIVE entry from World Echoes, map or hero view goes directly to the current committed fight with HUD and camera available. The world continues. Local recorded playback and Combat Lab retain optional cinematics (ordinary 5.2 s, boss 13.5 s); Dungeon Viewer LIVE music requests the corresponding cue with a 1.1 s crossfade, and its manual skip supports both scores. Acoustic and visual acceptance of the final changes remains open.
+
+The saved world clock replaces fixed morning/midday/evening stages or artificial daily contact quotas. Never pad footage or infer damage from a visual effect.

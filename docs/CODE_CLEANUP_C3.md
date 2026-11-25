@@ -1,5 +1,7 @@
 # Phase C3 — retire inactive group-boss adapter, protect the real boss
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 > **C3 merged as PR #241**, 21 November 2026, after C2 (#240). This is a historical scope/evidence contract, not a new boss design. No new player mechanic or change in combat outcomes is intended.
 
 ## Proven real ownership

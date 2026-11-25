@@ -1,9 +1,9 @@
 # Dungeon Shop Master — living Game Bible
 
-> **Current design and lore**, reconciled 25 November 2026 after merged #363. Current implementation is verified in source; accepted intent is distinguished from implemented features below. This is **not** a PR diary. Consult [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and the detailed [Living Dungeon design](THE_LIVING_DUNGEON.md).
+> Reviewed against Alpha v40, main after #374 (25 November 2026). Current design and lore; [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) distinguish implementation and acceptance.
 
 
-**Unified live hero combat contract:** Every monster and boss uses the same `heroCombatAttributes` projection, weapon preparation, hero poise, defense eligibility, collision and roll movement. Enemy abilities, telegraphs, geometry and environment may influence tactical choices, never silently replace a hero's stats or gear. Historical solo training remains isolated from live rules. The new checkpoint contract requires a fresh Alpha v40 campaign; v39 and older are incompatible. The 35/90-second encounter limits and signature-specific tactical movement remain separate follow-up work; no claim of final balance or visual acceptance.
+**Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events.
 
 ## 1. Identity and player experience — LOCKED
 
@@ -17,24 +17,25 @@
 
 ## 2. Implemented now
 
-**Release status:** the rendered shop title still reads **V.002 ALPHA**. **V.003 ALPHA — The Living Dungeon** is an *unfinished release milestone* even though significant parts of that architecture are already implemented. npm `0.1.0` is independent.
+**Release status:** Alpha v40 campaign schema; V.002 ALPHA remains the HUD label. No final release or manual acceptance claim.
 
 | System | Implementation status |
 | --- | --- |
 | Physical shop and customer economy | **IMPLEMENTED:** first-person room, mining, modular four-slot shelves, furniture/portrait placement, real inventory and wholesale, unpaid carts, staffed receipt minigame, debt, saved physical NPC traffic and service decisions |
+| Cellar and forge | **IMPLEMENTED:** portrait passage, stairs, fishing, paid material buyback, class-compatible T2 crafting and physical merchandise; Galvik's Table shares the LIVE projection and camera handoff |
 | One saved paced world | **IMPLEMENTED:** same deterministic 50-ms world clock for in-day shop, spatial expeditions and actual fight scheduling. Bed interaction closes the day |
 | Heroes and renewable dungeon | **IMPLEMENTED core, PARTIAL art/content:** saved autonomous goals, real class-dependent capped progression, seeded connected **ordinary Floors 1–9**, common-site regeneration, Temporary Parties and physically connected shop-return journeys. Unique authored deep-floor content and full-run tuning remain unfinished |
-| Boss | **IMPLEMENTED LIVE:** one Cave Troll on **Floor 10**, fought by an actual permitted **2–3-hero Temporary Party** in the shared 60-Hz motor; saved event/replay, telegraphs, dodge/parry, grabs, throws and lava. The old Floor-6 solo arena remains a training/recording quality reference |
+| Boss | **IMPLEMENTED LIVE:** one Cave Troll on **Floor 10**, fought by an actual permitted **2–3-hero Temporary Party** in the shared 60-Hz motor; saved event/replay, telegraphs, dodge/parry, grabs, throws and lava. |
 | LIVE information and observer | **IMPLEMENTED core:** global World Feed, worldwide Hero Cards, in-world Board, bounded magical death signals, history, read-only LIVE spectator for ordinary Floors **1–9**, optional 3D fights and authentic Floor-10 party recordings. Observation never controls a hero |
 | Replay and night accounts | **IMPLEMENTED core:** immutable recorded fights, three-day rolling event/footage window plus up to 12 player-pinned recordings; two-page nightly merchant accounts |
 | Quality and tooling | **IMPLEMENTED trial:** real Tripo Ghoul, crypt arena, multi-Ghoul fights, V Developer Combat Lab and interpolated presentation, 21 Ghoul WAV + 11 Troll MP3 samples, distinct battle music |
-| First V.003 chapter | **PARTIAL release acceptance:** ordinary floors and the cursed shop realm, shared physical normal threshold and Floor-10 party gate are wired. Deep authored content, boss conversion, hands-on economy/pacing and visual/audio/hardware sign-off remain OPEN; scripted 100/200-day acceptance has been measured |
+| Release acceptance | **PARTIAL:** two 200-day Forge campaigns completed with genuine boss victories; manual shop, combat, visual/audio/FPS acceptance remains open |
 
 **Implemented does not mean final polish.** The Tripo troll/ghoul rig, hit contact alignment, audio mix, multiple-enemy camera composition and hardware FPS still require actual human observation. All externally added animation sources must remain intact until explicitly reviewed.
 
 ## 3. Core gameplay rules — LOCKED
 
-Ordinary combat and autonomy: Ordinary fights use a 35-second limit, 0.72-second Ghoul recovery, collision-checked stagger recoil and universal equipped DPS spear timing. Visible authored pack composition, health, gear, experience and traits guide solo hunting and pursuit reactions; actual collisions still enter combat. No new save fields or alternate simulation. The shopkeeper's influence is indirect; no guaranteed survival or boss victory. [Measured balance](GAMEPLAY_VETERAN_PARTY_BALANCE.md).
+Ordinary combat and autonomy: All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Visible pack composition, HP, gear, experience and traits guide hunting and pursuit. Shopkeeper influence remains indirect. [Current Alpha evidence](ALPHA_V40_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 ### Shop
 
@@ -51,18 +52,18 @@ Ordinary combat and autonomy: Ordinary fights use a 35-second limit, 0.72-second
 - All combat results come from deterministic actual steps. Boss cinematics, spectator cameras, animation, music and SFX can only *present* authentic cues.
 - The LIVE merchant Board is limited to information Galvik could legitimately possess; unknown offscreen health, location, loot or cause of death is not automatically public. The explicit viewer may reveal legitimate currently observed or previously recorded detail.
 - The compact timeline covers today and the previous two completed days. At most 12 manually saved authentic recordings persist beyond the rolling retention policy. A marker without video must never become manufactured footage.
-- The **original Floor-6 Cave Troll presentation** is the authored quality reference for the current Floor-10 group boss and all dungeon combat. Ordinary enemies may have different art and behaviors but must not be downgraded to sterile combat spreadsheets.
+- The authored Cave Troll presentation is the quality reference for shared combat. LIVE entry from World Echoes, map or hero view goes directly to the current committed fight with HUD and camera available. The world continues. Local recorded playback and Combat Lab retain optional cinematics (ordinary 5.2 s, boss 13.5 s); Dungeon Viewer LIVE music requests the corresponding cue with a 1.1 s crossfade, and its manual skip supports both scores. Acoustic and visual acceptance of the final changes remains open.
 
-## 4. Approved V.003 direction: partially delivered, still unfinished
+## 4. Implemented topology and open content
 
-The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper contract. Decisions below are approved direction, **not** claims of full current implementation.
+The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper current contract.
 
 - **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v40. Historic room names are source-module labels, not extra saved doors or a numbered shop.
-- Heroes choose **stay / deeper / higher** based on individual medium-term goals such as farming, testing gear, survival or progress. **CURRENT:** plans and parts of same-day movement already persist; deeper/full-floor progression remains incomplete.
+- Heroes choose **stay / deeper / higher** based on individual medium-term goals such as farming, testing gear, survival or progress. Plans and actual inter-floor movement persist; authored deep-floor variety remains open.
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers recover outside both shop and dungeon for an initial **20–240 unpaused seconds** (initial tuning), then resume at their remembered floor entrance. Checkout, credit and walkout eligibility follow the current actual shop visit.
 - Common opponents, traps and chests refresh on saved intervals across ordinary Floors 1–9; unique boss victories and persistent discoveries do not respawn as common loot.
-- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved permitted Temporary Party of two or three heroes. Individual eligibility is the canonical `bossPass` field since Alpha v27. V34 and older Alpha saves are unsupported and rejected without migration. Substantive *authored* variety and a full playable progression audit are still open.
+- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved permitted Temporary Party of two or three heroes. Individual eligibility is the canonical `bossPass` field. Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. Authored variety and manual gameplay acceptance remain open.
 - Full 100-floor progression is a long-range fiction/ambition, **not** a claim of implemented, promised or budgeted launch content.
 
 ## 5. Galvik and the story

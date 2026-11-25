@@ -1,5 +1,7 @@
 # Ghoul (ordinary monster) · Tripo source audit
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 **Status: first playable runtime integration, final visual/audio sign-off pending.**
 The author's two unmodified Tripo source exports are both preserved.
 Predev/prebuild now losslessly grafts the standalone Idle into the

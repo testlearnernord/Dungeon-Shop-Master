@@ -1,5 +1,7 @@
 # Phase C2 — TypeScript import-graph evidence, not automatic deletion
 
+> **HISTORICAL EVIDENCE — NOT CURRENT REQUIREMENTS.** This report describes its original dated candidate, tests or provenance. Old version numbers, pending tasks and runtime claims are not present instructions. See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [Alpha v40 acceptance](ALPHA_V40_ACCEPTANCE.md) for current contracts.
+
 > **C2 merged as PR #240**, 21 November 2026, after C1 (#239). This is the preserved audit of its own source baseline.
 
 ## Motivation
