@@ -4,7 +4,6 @@ import {generateAdventurer} from "../../src/game/adventurers.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
-import {PARTY_BOSS_MAX_SECONDS} from "../../src/game/combatEncounter.ts";
 import {summarizeBossFight} from "./campaign-progression-telemetry.mjs";
 const seed=Number(process.argv[2]??7351);
 const roles=["tank","DPS","healer"];
@@ -54,7 +53,7 @@ for(const profile of profiles)for(const composition of compositions)for(const le
     const options=sweep?{...canonical,actors:canonical.actors.map(actor=>
       actor.team==="monsters"?{...actor,hp:profile.hp,maxHp:profile.hp,
         armor:profile.armor,damage:profile.damage,grappleDamage:profile.grappleDamage}:actor)}:canonical;
-    const fight=resolveGroupCombat(options,PARTY_BOSS_MAX_SECONDS);
+    const fight=resolveGroupCombat(options);
     const row={seed,profile:profile.id,level,tier,hpRatio,herbs,...summarizeBossFight(fight.replay)};
     rows.push(row);
     add(summary,row.composition,row);
