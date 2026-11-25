@@ -1,6 +1,6 @@
-# Active roadmap — Alpha v42
+# Active roadmap — Alpha v43
 
-> Current contract: Alpha v42 (Living Dungeon Pacing). This is the active backlog, not a numbered PR sequence. Completed features and old experiments are not tasks. Use [Architecture](ARCHITECTURE.md) for current runtime and [Alpha acceptance](ALPHA_V42_ACCEPTANCE.md) for evidence.
+> Current contract: Alpha v43 (Observed Threat Memory). This is the active backlog, not a numbered PR sequence. Completed features and old experiments are not tasks. Use [Architecture](ARCHITECTURE.md) for current runtime and [Alpha acceptance](ALPHA_V43_ACCEPTANCE.md) for evidence.
 
 ## P1 — current acceptance
 
@@ -8,9 +8,9 @@
 
 - Play ten actual Galvik days; verify merchant choice, meaningful sales, shortages, credit, automatic chest intake before shopping, open/closed and insufficient funds behavior, forge-to-shelf-to-paid-sale, repeat visits and real recovery/return.
 - Verify LIVE direct entry from World Echoes and map, ordinary/boss score cue, animations, camera controls, replays and real-device FPS. Inspect the final #374 presentation changes.
-- Check fresh Alpha v42 Save/Load, current visit identity, real portal/bed/cellar clearance and cross-day encounter continuity. File reproducible bugs instead of restarting general balance research.
+- Check fresh Alpha v43 Save/Load, current visit identity, real portal/bed/cellar clearance and cross-day encounter continuity. File reproducible bugs instead of restarting general balance research.
 
-The completed two pre-chest v40 200-day Forge campaigns reached and beat Floor 10; the controlled matrix confirms T2 leverage. The owner waived waiting for the four remaining 100-day jobs. Do not restart blanket long-run audits without a specific regression or owner request. No further balance adjustment is assumed. The v41 economy and v42 movement cadence have changed; historical audit figures do not validate the new pacing. Compare a targeted short campaign against the v41 baseline before further balance tuning.
+The completed two pre-chest v40 200-day Forge campaigns reached and beat Floor 10; the controlled matrix confirms T2 leverage. The owner waived waiting for the four remaining 100-day jobs. Do not restart blanket long-run audits without a specific regression or owner request. No further balance adjustment is assumed. The v41 economy and v42 movement cadence have changed; historical audit figures do not validate the new pacing. The matched v42 ten-day Forge comparison ran successfully; it is a single-seed diagnostic, not proof of final balance.
 
 ## P3 — art backlog
 
@@ -25,3 +25,8 @@ Additional authored deep-floor variation, new monsters, equipment tiers, repairs
 One saved world and combat authority, physical transactions, deterministic current-format saves, green relevant build/unit/browser checks and explicit manual acceptance. No old-save migration, fabricated loot or XP. A green scripted audit is not a physical playtest or proof of final balance.
 
 - Pacing acceptance: check faster LIVE motion, pursuit escape, real return journeys, encounter density, shop arrivals and frame pacing without changing the world day or combat speed.
+
+## Next integration priorities
+
+- Validate observed threat memory against repeated evasive routes and co-located party behavior; inspect the corrected room texture on the actual Table-to-LIVE transition.
+- Autonomous boss progression, then targeted class/tier gear demand; no new content or parallel AI. Fishing and mana potion integration remain separate design tasks.

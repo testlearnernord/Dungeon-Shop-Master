@@ -170,6 +170,11 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     {timeout:15000}).toBe("live");
   await expect.poll(async()=>(await inspect()).pins.length,
     {timeout:15000}).toBe(expected.pins.length);
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    const result=probe.dungeonRoomTextureProbe();
+    return result.shared&&result.ready&&result.visibleRooms>0;
+  }),{timeout:15000}).toBe(true);
   const live=await inspect();
   const afterFirst=expected.pins.map(pin=>
     pin.id===expected.selected?{...pin,...expected.first}:pin);

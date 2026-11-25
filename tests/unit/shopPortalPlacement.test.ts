@@ -44,7 +44,7 @@ test("the only portal lanes stay unbuildable, while a normal shop site stays val
 });
 test("v33 save rejects old two-door traffic state without importing a legacy path",()=>{
   const state=createGameState(4321);
-  assert.equal(SIMULATION_VERSION,42);
+  assert.equal(SIMULATION_VERSION,43);
   const saved=createSave(state);
   assert.deepEqual(parseSave(JSON.stringify(saved)),state);
   const old=structuredClone(saved) as any;

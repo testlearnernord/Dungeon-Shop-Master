@@ -4,7 +4,7 @@ import {manuallyPaidVisitors} from "./npcVisitors.ts";
 import type {GameState,WorldEvent} from "./gameState.ts";
 import {dungeonWorldAt,setDungeonWorld} from "./dungeonWorldState.ts";
 import {advanceDungeonMonsterWorld} from "./dungeonMonsterWorld.ts";
-import {chooseDungeonThreatReaction} from "./dungeonThreatDecisions.ts";
+import {chooseDungeonThreatReaction,chooseRememberedThreatReaction,recentDungeonThreat,type DungeonThreatMemory} from "./dungeonThreatDecisions.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
@@ -105,6 +105,7 @@ export interface LiveDungeonPlan {
   readonly goal:HeroDungeonDecision["goal"];
   readonly action:HeroDungeonDecision["action"];
   readonly updatedTick:number;
+  readonly threatMemory?:DungeonThreatMemory;
 }
 export interface LiveDungeonState {
   readonly enabled:boolean;
@@ -238,6 +239,7 @@ function recordLivePlan(
   if(changed)plans.set(hero.id,{
     heroId:hero.id,floor:hero.floor as SpatialDungeonFloor,
     goal:decision.goal,action:decision.action,updatedTick:tick,
+    ...(previous?.floor===hero.floor&&previous.threatMemory?{threatMemory:previous.threatMemory}:{}),
   });
   return changed;
 }
@@ -571,13 +573,19 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     const waiting=!!rendezvous&&!rendezvous.step||
       atRally&&!rendezvous&&tick<lastWorldTickOfDay(day)-12*DUNGEON_STEP_INTERVAL_TICKS;
     const target=directed??rally;
-    const tactical=threat?.step??rendezvous?.step;
+    const oldMemory=recentDungeonThreat(readyGroup.map(h=>plans.get(h.id)?.threatMemory),tick);
+    const seen=threat&&threat.action!=="PREPARING_TO_FIGHT"
+      ?world.monsters?.find(m=>m.id===threat.monsterId):undefined;
+    const memory=seen?{monsterId:seen.id,x:seen.x,z:seen.z,seenTick:tick}:oldMemory;
+    const remembered=!threat?chooseRememberedThreatReaction(layout,world,readyGroup,memory,
+      directed??rally??resourceTarget??undefined,!!homeward):null;
+    const tactical=threat?.step??remembered?.step??(!remembered?rendezvous?.step:undefined);
     const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
       {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
         ...(target?{routeToKnownTarget:target}:{}),
         ...(resourceTarget&&!seeking?{routeToResource:resourceTarget}:{}),
         ...(tactical?{tacticalStep:tactical}:{}),
-        ...(waiting&&!tactical?{waitForCompanion:true}:{}),
+        ...((waiting||remembered&&!remembered.step)&&!tactical?{waitForCompanion:true}:{}),
         blockedCombatSites:blocked});
     if(diagnostic&&seeking){
       const next=result.world.heroes.find(p=>p.heroId===hero.id);
@@ -665,7 +673,11 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
       const count=(stepCounts.get(id)?.steps??0)+1;
       processed.add(id);
       byId.set(id,individual.adventurer);
-      const decision=agreed.get(id);
+      const chosen=agreed.get(id);
+      const withdrawing=!!remembered&&(remembered.retreatUp||
+        priorPlan?.action==="ascend"&&priorPlan.goal==="caution");
+      const decision=chosen&&withdrawing&&!homeward&&chosen.action!=="shop"
+        ?{goal:"caution" as const,action:"ascend" as const}:chosen;
       const detail=decisionDetails?.get(id);
       if(diagnostic&&decision&&detail&&!homeward)
         diagnostic({stage:"decision",day,tick,floor,heroId:id,
@@ -674,6 +686,12 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
           action:decision.action,goal:decision.goal,reason:detail.reason});
       const planChanged=decision&&!homeward
         ?recordLivePlan(plans,individual.adventurer,decision,tick):false;
+      const savedPlan=plans.get(id);
+      if(savedPlan&&memory&&individual.adventurer.status==="exploring"&&
+        (seen||remembered))plans.set(id,{...savedPlan,threatMemory:memory});
+      else if(savedPlan?.threatMemory&&(!memory||threat?.action==="PREPARING_TO_FIGHT"||!remembered&&!seen)){
+        const {threatMemory:_expired,...rest}=savedPlan;plans.set(id,rest);
+      }
       if(individual.adventurer.status==="dead"){
         if(hero.health>0)
           activities.push(deathSignal(individual.adventurer,day,tick));

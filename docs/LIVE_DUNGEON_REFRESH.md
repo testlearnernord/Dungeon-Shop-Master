@@ -1,6 +1,6 @@
 # LIVE Dungeon — current map, exploration and observer contract
 
-> Current contract: Alpha v42 (Living Dungeon Pacing). Current LIVE map contract; see [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v43 (Observed Threat Memory). Current LIVE map contract; see [Architecture](ARCHITECTURE.md).
 
 ## Gameplay state and map
 
@@ -32,3 +32,5 @@
 - Run targeted unit + curated browser smoke; full Playwright and targeted long-run audits are separate from normal CI. A green unit run is not evidence of physical NPC clearance or economic fun.
 
 Related: [Game Bible](GAME_BIBLE.md) · [Roadmap](ROADMAP.md) · [Legacy audit](LEGACY_OBSOLESCENCE_AUDIT.md).
+
+Room tiles use a distinct tint but the original baked flagstone texture reference, not a clone of the DynamicTexture canvas. The room material and actual visible tile instances are covered by the existing observer browser smoke. `AVOIDING_THREAT` and `WAITING_FOR_SAFETY` project the saved bounded observation through the same tactical decision as the world scheduler; a safety wait shows no speculative route arrow.

@@ -2,10 +2,10 @@ import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
-import {needsHealthResupply} from "./dungeonDecisions.ts";
-import {chooseDungeonThreatReaction,type DungeonThreatAction}
+import {needsHealthResupply,isBossExpeditionCandidate,selectKnownResourceSite} from "./dungeonDecisions.ts";
+import {chooseDungeonThreatReaction,chooseRememberedThreatReaction,recentDungeonThreat,type DungeonThreatAction}
   from "./dungeonThreatDecisions.ts";
-import {generateExpeditionLayout,type DungeonPoint} from "./dungeonLayout.ts";
+import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
 import type {CombatantSpec,GroupReplayFrame,GroupCombatCue} from "./groupCombat.ts";
 
 /** The supported *physical* expedition floors, not a fictional set of 100. */
@@ -117,6 +117,19 @@ export function selectLiveFloorSpectatorFrame(
           returning?[hero]:gathered,state.adventurers,returning?.phase==="backtrack",
           gathered.some(member=>state.liveDungeon.plans.some(p=>p.heroId===member.id&&
             p.goal==="caution")&&needsHealthResupply(member))):null;
+      const group=returning?[hero]:gathered;
+      const memory=recentDungeonThreat(group.map(member=>state.liveDungeon.plans.find(p=>
+        p.heroId===member.id&&p.floor===floor)?.threatMemory),state.worldClock.tick);
+      const resource=plan?.goal==="loot-chest"?"treasure":plan?.goal==="hunt-ghouls"?"monster":null;
+      const target=tacticalLayout&&(plan?.action==="ascend"?tacticalLayout.entrance:
+        plan?.action==="descend"||floor===9&&group.length===1&&
+          isBossExpeditionCandidate(hero)&&plan?.action!=="shop"&&!state.dungeonFloors.some(f=>f.floor===10&&f.cleared)
+          ?dungeonDownStair(tacticalLayout):undefined);
+      const resourceTarget=!target&&world&&site&&tacticalLayout&&resource
+        ?selectKnownResourceSite(tacticalLayout,site,world,resource,group):null;
+      const remembered=!threat&&world&&site&&!fight&&returning?.phase!=="portal"&&tacticalLayout
+        ?chooseRememberedThreatReaction(tacticalLayout,world,group,memory,
+          target||resourceTarget||undefined,returning?.phase==="backtrack"):null;
       return [{
         id:hero.id,name:hero.name,role:hero.role,equipment:hero.equipment,
         level:hero.level,stats:hero.stats,traits:hero.traits,
@@ -131,6 +144,9 @@ export function selectLiveFloorSpectatorFrame(
         ...(threat?{
           threatAction:threat.action,threatNextStep:threat.step,
           pursuingMonsterId:threat.monsterId,
+        }:remembered?{
+          threatAction:remembered.action,
+          ...(remembered.step?{threatNextStep:remembered.step}:{}),
         }:{}),
       }];
     });

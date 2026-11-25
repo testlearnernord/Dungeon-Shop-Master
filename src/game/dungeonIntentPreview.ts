@@ -8,7 +8,7 @@ import type {LiveFloorHero,LiveFloorSpectatorFrame} from "./liveFloorSpectator.t
 
 type PreviewHero=Pick<LiveFloorHero,
   "id"|"x"|"z"|"visited"|"activity"|"inCombat"|"plannedAction"> &
-  Partial<Pick<LiveFloorHero,"goal"|"partyMemberIds"|"threatNextStep">>;
+  Partial<Pick<LiveFloorHero,"goal"|"partyMemberIds"|"threatNextStep"|"threatAction">>;
 type PreviewContext=Pick<LiveFloorSpectatorFrame,"heroes"|"monsters">;
 
 function stairTarget(layout:DungeonLayout,hero:PreviewHero):DungeonPoint|null{
@@ -26,6 +26,7 @@ export function predictDungeonHeroSteps(
   if(!isOrdinaryDungeonFloor(layout.floor)||hero.inCombat||hero.activity==="portal")return [];
   if(hero.threatNextStep)return dungeonNeighbors(layout,hero).some(p=>
     p.x===hero.threatNextStep!.x&&p.z===hero.threatNextStep!.z)?[hero.threatNextStep]:[];
+  if(hero.threatAction==="WAITING_FOR_SAFETY")return [];
   const peers=context?.heroes.filter(h=>h.id!==hero.id&&
     hero.partyMemberIds?.includes(h.id)&&h.x===hero.x&&h.z===hero.z&&
     !h.inCombat&&h.activity==="exploring")??[];
@@ -71,6 +72,7 @@ export function dungeonPreviewExplanation(
 ):string{
   if(hero.inCombat)return "In LIVE combat · route forecast paused";
   if(hero.activity==="portal")return "Crossing the portal · no floor route";
+  if(hero.threatAction==="WAITING_FOR_SAFETY")return "Waiting for a safe route · remembered threat";
   const next=predictDungeonHeroSteps(layout,hero,resolved,context);
   if(next.length===2)return next.map((p,i)=>
     (i+1)+": ("+p.x+", "+p.z+")").join(" → ")+" · PREVIEW";

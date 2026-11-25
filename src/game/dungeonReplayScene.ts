@@ -552,7 +552,7 @@ export class DungeonReplayScene {
       line.isPickable=false;line.checkCollisions=false;
       line.metadata={previewOnly:true,floorHeroId:hero.id,
         label:hero.threatAction?
-          "Visible pursuer: "+hero.threatAction+" · one-step tactical forecast":
+          hero.threatAction+" · one-step tactical forecast":
           "Two-step route forecast, not an actual saved route"};
       const pips=points.map((point,index)=>{
         const pip=MeshBuilder.CreateCylinder(

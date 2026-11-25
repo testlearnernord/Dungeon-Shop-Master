@@ -1619,3 +1619,14 @@ export function inspectMerchantHeldStock(){
     vertices:mesh.getTotalVertices(),pickable:mesh.isPickable,
     collision:mesh.checkCollisions,enabled:mesh.isEnabled()}:null;
 }
+
+/** A room must sample the actual painted flagstone canvas, not a blank
+ * cloned DynamicTexture. Inspect the actual live scene's material binding. */
+export function dungeonRoomTextureProbe(){
+  const scene=currentTestScene();
+  const corridor=scene?.getMeshByName("dungeon-floor-template")?.material as StandardMaterial|undefined;
+  const room=scene?.getMeshByName("dungeon-room-template")?.material as StandardMaterial|undefined;
+  return {shared:!!corridor?.diffuseTexture&&room?.diffuseTexture===corridor.diffuseTexture,
+    ready:!!room?.diffuseTexture?.isReady(),
+    visibleRooms:scene?.meshes.filter(m=>m.name.startsWith("dungeon-room-tile-")&&m.isVisible&&m.isEnabled()).length??0};
+}
