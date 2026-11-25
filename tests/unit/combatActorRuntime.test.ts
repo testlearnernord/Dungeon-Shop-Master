@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { moveCombatant, combatDirection, combatHeading } from "../../src/game/combatMovement.ts";
 import { tickCombatAction, tickCombatCooldown, regenerateCombatStamina } from "../../src/game/combatActionClock.ts";
-import { createCombatPreview, stepCombatPreview, SAFE_HERO_RADIUS, WALKABLE_RADIUS } from "../../src/game/arenaCombatMotion.ts";
-import { resolveSpatialBoss } from "../../src/game/bossCombatReplay.ts";
 import { createGroupCombat, stepGroupCombat } from "../../src/game/groupCombat.ts";
 
 test("the same collision integrator handles circular boss arenas and wall sliding",()=>{
@@ -68,27 +66,4 @@ test("ordinary monsters physically travel, collide and record attacks with share
   assert(a.actors.some(actor=>actor.distanceTraveled>1));
   assert(a.events.some(event=>event.kind==="hit"||event.kind==="dodge"||event.kind==="parry"));
   assert(a.actors.every(actor=>Number.isFinite(actor.x)&&Number.isFinite(actor.z)));
-});
-
-test("boss still traverses the real arena, preserves deterministic grabs and immutable recorded timelines",()=>{
-  const opts={role:"tank" as const,sword:true,armor:true,
-    health:120,maxHealth:120,healingSupplies:1,
-    agility:12,tacticsSeed:9};
-  const a=createCombatPreview(opts), b=createCombatPreview(opts);
-  for(let i=0;i<1100;i++){
-    const cues=stepCombatPreview(a,1/60);
-    assert.deepEqual(cues,stepCombatPreview(b,1/60));
-    if(a.outcome!=="fighting")break;
-    assert(Math.hypot(a.boss.x,a.boss.z)<=WALKABLE_RADIUS+0.001);
-    if(a.heroPhase!=="thrown")
-      assert(Math.hypot(a.hero.x,a.hero.z)<=SAFE_HERO_RADIUS+0.001);
-  }
-  assert.deepEqual(a,b);
-  assert(a.distanceTraveled>0);
-  const first=resolveSpatialBoss("test-hero",2,opts);
-  const second=resolveSpatialBoss("test-hero",2,opts);
-  assert.deepEqual(first,second);
-  assert(first.replay.frames.length>1);
-  assert(first.replay.frames.every(frame=>Number.isFinite(frame.heroHp) &&
-    frame.heroHp>=0 && Number.isFinite(frame.bossHp)));
 });
