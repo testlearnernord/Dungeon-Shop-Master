@@ -9,18 +9,19 @@ export const GHOUL_CLIP_INDICES={
   attack_charge:12,walk_feral:13,idle_combat:14,
 } as const;
 export type GhoulClip=keyof typeof GHOUL_CLIP_INDICES;
-export interface GhoulMotion {readonly clip:GhoulClip;readonly loop:boolean;readonly length:number}
+export interface GhoulMotion {readonly clip:GhoulClip;readonly loop:boolean;readonly length:number;readonly start?:number;readonly end?:number}
 
 /** Rendering choice only. Real hit windows/HP are recorded by groupCombat. */
 export function ghoulMotionForPhase(
   phase:GroupPhase,strikeOrdinal=1,
 ):GhoulMotion {
+  const claw=strikeOrdinal%2===0?"attack_claw_left":"attack_claw_right";
   switch(phase){
     case "move":return {clip:"walk_feral",loop:true,length:4.958};
-    case "windup":return {clip:"attack_leap",loop:false,length:.85};
-    case "strike":return {clip:strikeOrdinal%2===0
-      ?"attack_claw_left":"attack_claw_right",loop:false,length:.38};
-    case "hurt":case "thrown":return {clip:"hit_stagger",loop:false,length:.50};
+    case "windup":return {clip:claw,loop:false,length:.62,start:0,end:.38};
+    case "strike":return {clip:claw,loop:false,length:.33,start:.38,end:.76};
+    case "recover":return {clip:claw,loop:false,length:.72,start:.76,end:1};
+    case "hurt":case "thrown":return {clip:"hit_stagger",loop:false,length:.52};
     case "dead":return {clip:"death_fall",loop:false,length:3.958};
     case "roll":return {clip:"run_aggressive",loop:true,length:1.958};
     case "grab":return {clip:"attack_charge",loop:false,length:1.958};
@@ -29,8 +30,10 @@ export function ghoulMotionForPhase(
 }
 
 export function ghoulClipProgress(time:number,motion:GhoulMotion):number {
-  if(!Number.isFinite(time)||time<=0)return 0;
-  return motion.loop?(time/motion.length)%1:Math.min(1,time/motion.length);
+  const elapsed=Number.isFinite(time)?Math.max(0,time):0;
+  const progress=motion.loop?(elapsed/motion.length)%1:Math.min(1,elapsed/motion.length);
+  const start=motion.start??0,end=motion.end??1;
+  return start+(end-start)*progress;
 }
 
 /** Local phase time is derived from REAL committed transitions only,
