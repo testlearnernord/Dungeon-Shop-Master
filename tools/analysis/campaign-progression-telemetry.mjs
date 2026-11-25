@@ -241,3 +241,74 @@ export function createCombatExposureTelemetry(){
   }
   return {observe,report};
 }
+
+/** Shared offline measurement of one settled replay, actual or controlled.
+ * No simulation, mutation, inferred levels or message-based damage rules. */
+export function summarizeBossFight(fight){
+  const heroes=fight.actors.filter(a=>a.team==="heroes");
+  const boss=fight.actors.find(a=>a.specialAbility==="grapple-throw");
+  const end=fight.frames.at(-1);
+  if(!boss||!end||heroes.length<2||heroes.length>3)
+    throw Error("Incomplete Floor-10 recording");
+  const final=id=>{
+    const actor=end.actors.find(a=>a.id===id);
+    if(!actor)throw Error("Missing final boss participant "+id);
+    return actor;
+  };
+  const amount=(kind,field,id)=>fight.cues
+    .filter(c=>c.kind===kind&&c[field]===id)
+    .reduce((n,c)=>n+(c.amount??0),0);
+  const count=(kind,field,id)=>fight.cues
+    .filter(c=>c.kind===kind&&c[field]===id).length;
+  const members=heroes.map(h=>{
+    const gear=equipmentEffects(h.role,h.equipment??{weapon:null,armor:null});
+    return {
+    id:h.id,role:h.role,entryHp:h.hp,maxHp:h.maxHp,exitHp:final(h.id).hp,
+    weaponTier:gearFromName(gear.weapon)?.tier??0,
+    armorTier:gearFromName(gear.vest)?.tier??0,
+    herbs:h.healCharges??0,spells:h.magicHeals??0,
+    damage:h.damage,armor:h.armor,agility:h.agility??10,reach:h.reach,
+    damageDealt:amount("hit","actorId",h.id),
+    meleeDamageReceived:amount("hit","targetId",h.id),
+    landingDamage:amount("landing","targetId",h.id),
+    lavaDamage:amount("lava","actorId",h.id),
+    healingReceived:amount("heal","targetId",h.id),
+    grabs:count("grab","targetId",h.id),dodges:count("dodge","actorId",h.id),
+    parries:count("parry","actorId",h.id),
+    attackStarts:count("attack","actorId",h.id)+count("cast","actorId",h.id),
+    };
+  });
+  const composition=heroes.map(h=>h.role).sort().join("+");
+  const deaths=members.filter(h=>h.exitHp<=0).length;
+
+  return {tacticsSeed:fight.tacticsSeed??null,composition,outcome:fight.outcome,
+    seconds:end.t,bossEntryHp:boss.hp,bossExitHp:final(boss.id).hp,deaths,members};
+}
+
+/** Read the single committed Floor-10 party recording. */
+export function createBossExposureTelemetry(){
+  const seen=new Set(),attempts=[],byComposition={};
+  function observe(events){
+    for(const event of events){
+      const fight=event.partyBossReplay;
+      if(event.type!=="dungeon-live"||!fight)continue;
+      const key=JSON.stringify([event.day,event.worldTick]);
+      if(seen.has(key))continue;
+      seen.add(key);
+      const row={day:event.day,tick:event.worldTick,...summarizeBossFight(fight)};
+      const {composition,deaths}=row;
+      attempts.push(row);
+      const g=byComposition[composition]??={attempts:0,wins:0,losses:0,draws:0,deaths:0};
+      g.attempts++;g.deaths+=deaths;
+      if(fight.outcome==="heroes")g.wins++;
+      else if(fight.outcome==="monsters")g.losses++;
+      else if(fight.outcome==="draw")g.draws++;
+      else throw Error("Unsettled Floor-10 recording");
+    }
+  }
+  function report(){
+    return {completed:attempts.length,byComposition,attempts,
+      interpretation:"Committed Floor-10 recordings; one row per settled attempt. Entry combat attributes are recorded facts, not reconstructed levels. Damage sources use hit/landing/lava cues. Natural composition and readiness are confounded."};
+  }
+  return {observe,report};
+}

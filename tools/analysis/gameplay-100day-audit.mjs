@@ -8,7 +8,7 @@ import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
 import { ITEMS,ECONOMY,isMaterial } from "../../src/game/economy.ts";
 import {availableDungeonOffers} from "../../src/game/dungeonBuyback.ts";
 import {FORGE_OUTPUTS,FORGE_RECIPES,isForgeOutput} from "../../src/game/cellarForge.ts";
-import {createCampaignTelemetry,createCombatExposureTelemetry} from "./campaign-progression-telemetry.mjs";
+import {createCampaignTelemetry,createCombatExposureTelemetry,createBossExposureTelemetry} from "./campaign-progression-telemetry.mjs";
 import {equipmentEffects} from "../../src/game/gearCatalog.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 
@@ -263,6 +263,7 @@ function classifyDeaths(metrics,previous,state,added) {
 function run(mode){
   const telemetry=createCampaignTelemetry(SEED);
   const combatExposure=createCombatExposureTelemetry();
+  const bossExposure=createBossExposureTelemetry();
   const store=setup(mode,telemetry.observe);
   telemetry.sample(store.state);
   const initial=snap(store.state,0);
@@ -328,6 +329,7 @@ function run(mode){
       if(event.type==="hero-death-signal")renewed.delete(id);
     }
     combatExposure.observe(added);
+    bossExposure.observe(added);
     if(completed>20)for(const e of added)add(metrics.lateEventTypes,e.type,1);
     for(const e of added.filter(e=>e.type==="influx")){
       const newcomer=store.state.adventurers.find(h=>h.id===e.adventurerId);
@@ -380,6 +382,7 @@ function run(mode){
   metrics.progression=telemetry.report();
   const {byContext,bySoloRisk,...exposureSummary}=combatExposure.report();
   metrics.combatExposure={...exposureSummary,byContext,bySoloRisk};
+  metrics.bossExposure=bossExposure.report();
   metrics.newHeroes=sum(store.state.events,e=>e.type==="influx"?1:0);
   // Request expiries are committed asynchronously by the LIVE clock, not
   // necessarily by a direct shopper action in actShop().

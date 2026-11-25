@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createCombatExposureTelemetry,createCampaignTelemetry} from "./campaign-progression-telemetry.mjs";
+import {createCombatExposureTelemetry,createCampaignTelemetry,createBossExposureTelemetry} from "./campaign-progression-telemetry.mjs";
 
 test("shared party footage counts one physical encounter and one entry per actual hero",()=>{
   const actors=[
@@ -66,4 +66,35 @@ test("stair reversal telemetry counts actual participants and excludes slow or u
   const result=telemetry.report().crossingStability;
   assert.equal(result.participantCrossings,7);
   assert.deepEqual(result.rapidReversals,{"5-6":3});
+});
+
+test("settled Floor-10 exposure counts the party once and separates landing, lava and hit damage",()=>{
+  const telemetry=createBossExposureTelemetry();
+  const fight={tacticsSeed:7,outcome:"draw",actors:[
+    {id:"d",team:"heroes",role:"DPS",hp:65,maxHp:100,
+      equipment:{weapon:"Forged Spear",armor:"Ghoul Leather Vest"},healCharges:2},
+    {id:"h",team:"heroes",role:"healer",hp:90,maxHp:100,
+      equipment:{weapon:"Staff",armor:"Leather Vest"},magicHeals:3},
+    {id:"boss",team:"monsters",specialAbility:"grapple-throw",hp:700,maxHp:700}
+  ],frames:[{t:90,actors:[{id:"d",hp:0},{id:"h",hp:35},{id:"boss",hp:670}]}],cues:[
+    {kind:"hit",actorId:"boss",targetId:"d",amount:20},
+    {kind:"grab",actorId:"boss",targetId:"d"},
+    {kind:"landing",actorId:"boss",targetId:"d",amount:33},
+    {kind:"lava",actorId:"d",amount:12},
+    {kind:"heal",actorId:"h",targetId:"h",amount:10},
+    {kind:"hit",actorId:"h",targetId:"boss",amount:30},
+  ]};
+  const event={type:"dungeon-live",day:3,worldTick:600,partyBossReplay:fight};
+  telemetry.observe([event,event,{...event,partyBossReplay:undefined}]);
+  telemetry.observe([event]);
+  const result=telemetry.report();
+  assert.equal(result.completed,1);
+  assert.deepEqual(result.byComposition["DPS+healer"],{attempts:1,wins:0,losses:0,draws:1,deaths:1});
+  const row=result.attempts[0];
+  assert.equal(row.bossExitHp,670);
+  const [d,h]=row.members;
+  assert.deepEqual([d.weaponTier,d.armorTier,d.meleeDamageReceived,d.landingDamage,d.lavaDamage,d.grabs],[2,2,20,33,12,1]);
+  assert.equal(h.healingReceived,10);
+  assert.equal(h.damageDealt,30);
+  assert.equal(h.spells,3);
 });

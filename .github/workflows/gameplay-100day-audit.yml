@@ -71,3 +71,29 @@ jobs:
           path: gameplay-100day-audit.json
           if-no-files-found: ignore
           retention-days: 14
+
+  boss-readiness:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'audit/gameplay-loop-'))
+    name: Controlled Floor-10 readiness / ${{ matrix.seed }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [7351, 9321, 42, 2026]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Verify audit-only combat exposure accounting
+        run: node --experimental-strip-types --test tools/analysis/campaign-combat-exposure.test.mjs
+      - name: Measure actual boss combat across party compositions and readiness
+        run: node --experimental-strip-types tools/analysis/boss-readiness-matrix.mjs ${{ matrix.seed }} > boss-readiness.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boss-readiness-${{ matrix.seed }}
+          path: boss-readiness.json
+          retention-days: 14
