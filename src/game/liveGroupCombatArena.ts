@@ -152,9 +152,10 @@ export class LiveGroupCombatArena{
       // NOT future prediction or a second 60Hz combat engine.
       this.liveBuffered=mode==="live";
       this.presentationTime=Math.max(0,view.combat.frame.t-.5);
-      // The actual recorded cast and first available committed pose define
-      // the entire opt-in film; never predict future combat state.
-      this.intro=this.cinematicsEnabled
+      // LIVE is an ongoing encounter, not a locally pausable film. Join
+      // its committed poses immediately with HUD and camera controls active.
+      // Only local recorded playback / Combat Lab can hold for an intro.
+      this.intro=mode==="recorded"&&this.cinematicsEnabled
         ?createGroupCombatIntro(view.combat.id,view.combat.actors,
           view.combat.frame)
         :null;
@@ -431,8 +432,8 @@ export class LiveGroupCombatArena{
   updateCamera(dt:number,pressed:ReadonlySet<string>):void {
     if(!this.camera)return;
     const bounded=Math.min(.1,Math.max(0,dt));
-    // Even while the audience watches the intro, the authoritative world
-    // and the 60Hz committed-frame presentation keep moving independently.
+    // LIVE advances only through already committed frames; the optional
+    // intro is exclusive to local playback and never gates the world.
     if(this.liveBuffered&&this.lastCommittedView?.combat){
       const fight=this.lastCommittedView.combat;
       const next=Math.min(fight.frame.t,this.presentationTime+Math.max(0,dt));
