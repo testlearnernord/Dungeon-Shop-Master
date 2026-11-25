@@ -5,13 +5,14 @@ import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonL
 import {prepareSpatialDungeonCombat,SPATIAL_DUNGEON_COMBAT_SECONDS} from "../../src/game/spatialDungeonExploration.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
-const seeds=[7351,42,2026,9321];
+const seeds=process.argv[2]?[Number(process.argv[2])]:[7351,42,2026,9321];
+const floors=process.argv[3]?process.argv[3].split(',').map(Number):[1,2,3,4,5,6,7,8,9];
 const roles=["tank","DPS","healer"];
 const weapons={tank:["Iron Sword","Forged Sword & Shield"],DPS:["Spear","Forged Spear"],healer:["Staff","Forged Staff"]};
 const rows=[];
 for(const seed of seeds){
   const initial=createGameState(seed);
-  for(let floor=1;floor<=9;floor++){
+  for(const floor of floors){
     const layout=generateExpeditionLayout(seed,floor);
     // Select one genuine non-elite site per floor and seed with the largest
     // available pack. Subsets retain identical stats, geometry and IDs.
@@ -61,4 +62,7 @@ for(const row of rows){
   const g=groups.get(key)??{cases:0,deaths:0,wins:0,draws:0,seconds:0};
   g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==="heroes");g.draws+=Number(row.outcome==="draw");g.seconds+=row.seconds;groups.set(key,g);
 }
+const summary={};
+for(const row of rows){const key=[row.floor,row.role,row.pack].join(':');const g=summary[key]??={cases:0,deaths:0,wins:0,draws:0,seconds:0};g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==='heroes');g.draws+=Number(row.outcome==='draw');g.seconds+=row.seconds;}
+console.error('MATRIX_SUMMARY '+JSON.stringify({cases:rows.length,summary}));
 console.log(JSON.stringify({contract:"Production combat; controlled pack subsets, not natural encounter frequencies. Each floor/seed uses a real site; no unavailable pack sizes fabricated.",cases:rows.length,groups:Object.fromEntries(groups),rows}));
