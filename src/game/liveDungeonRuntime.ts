@@ -550,7 +550,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
       priorPlan.goal==="loot-chest"?"treasure":
       priorPlan.goal==="hunt-ghouls"?"monster":null:null;
     const candidate=resourceKind&&!homeward&&!directed
-      ?selectKnownResourceSite(layout,known,world,resourceKind):null;
+      ?selectKnownResourceSite(layout,known,world,resourceKind,readyGroup):null;
     const resourceTarget=candidate&&!blocked.has(candidate.id)?candidate:null;
     // A visible real pursuer may change ONE scheduled map step. This pure
     // tactical decision uses only the group's own current LOS and known
