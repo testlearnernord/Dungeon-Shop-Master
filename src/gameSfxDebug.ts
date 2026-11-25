@@ -6,10 +6,10 @@ import type { GameSfx, SfxDebugEvent } from "./gameSfx.ts";
 import {selectSfxSample} from "./gameSfxSamples.ts";
 
 /**
- * Read-only Level 6 training audio workbench. No game simulation references.
+ * Read-only Combat Lab audio workbench. No game simulation references.
  * Per-source and per-sound-type solos intersect; mutes are subtractive.
  */
-export class Level6SfxDebugPanel {
+export class CombatLabSfxDebugPanel {
   private readonly toggle:HTMLButtonElement;
   private readonly panel:HTMLElement;
   private readonly filters:HTMLElement;
