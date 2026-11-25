@@ -11,8 +11,8 @@ import {createGroupCombat,stepGroupCombat} from "../../src/game/groupCombat.ts";
 const seed=Number(process.argv[2]??7351);
 const roles=["tank","DPS","healer"];
 const weapons={tank:["Iron Sword","Forged Sword & Shield"],DPS:["Spear","Forged Spear"],healer:["Staff","Forged Staff"]};
-const ordinaryProfiles=["baseline","healer-offense-minus-3","ghoul-impact-plus-3","ghoul-poise-6","vest-mitigation-minus-2"];
-const bossProfiles=["baseline","healer-offense-minus-3","troll-speed-plus-0.5","troll-impact-plus-7","troll-health-plus-120"];
+const ordinaryProfiles=["baseline","ghoul-impact-plus-3","ghoul-health-plus-40pct","ghoul-health-plus-40pct|ghoul-impact-plus-3","ghoul-impact-plus-3|vest-mitigation-minus-2","ghoul-impact-plus-3|healer-offense-minus-2","ghoul-health-plus-40pct|healer-offense-minus-2","ghoul-impact-plus-3|t2-vest-mitigation-minus-2"];
+const bossProfiles=["baseline","troll-impact-plus-7","troll-health-plus-120","troll-health-plus-120|troll-impact-plus-7","troll-health-plus-120|healer-offense-minus-2","troll-health-plus-120|t2-vest-mitigation-minus-2","troll-health-plus-120|troll-impact-plus-7|healer-offense-minus-2"];
 const initial=createGameState(seed);
 const pool=Object.fromEntries(roles.map(role=>[role,[]]));
 let rng=seed;
@@ -29,26 +29,33 @@ function prepareHero(base,level,tier,floor,herbs){
   return {...h,health:heroProgression(h).maxHealth};
 }
 function experiment(options,profile){
+  const mods=new Set(profile.split("|"));
   return {...options,actors:options.actors.map(a=>{
+    const actor={...a};
     if(a.team==="heroes"){
-      if(profile==="healer-offense-minus-3"&&a.role==="healer")
-        return {...a,damage:Math.max(1,a.damage-3)};
-      if(profile==="vest-mitigation-minus-2"&&a.equipment?.armor)
-        return {...a,armor:Math.max(0,a.armor-2)};
+      if(mods.has("healer-offense-minus-2")&&a.role==="healer")actor.damage=Math.max(1,a.damage-2);
+      if((mods.has("vest-mitigation-minus-2")&&a.equipment?.armor)||
+         (mods.has("t2-vest-mitigation-minus-2")&&a.equipment?.armor==="Ghoul Leather Vest"))
+        actor.armor=Math.max(0,a.armor-2);
     }else{
-      if(profile==="ghoul-impact-plus-3")return {...a,damage:a.damage+3};
-      if(profile==="ghoul-poise-6"&&a.staggerThreshold===undefined)
-        return {...a,staggerThreshold:6};
-      if(profile==="troll-speed-plus-0.5")return {...a,speed:a.speed+.5};
-      if(profile==="troll-impact-plus-7")return {...a,damage:a.damage+7,grappleDamage:a.grappleDamage+7};
-      if(profile==="troll-health-plus-120")return {...a,hp:a.hp+120,maxHp:a.maxHp+120};
+      if(mods.has("ghoul-impact-plus-3"))actor.damage+=3;
+      if(mods.has("ghoul-health-plus-40pct")){
+        actor.hp=Math.round(a.hp*1.4);actor.maxHp=Math.round(a.maxHp*1.4);
+      }
+      if(mods.has("troll-impact-plus-7")){actor.damage+=7;actor.grappleDamage+=7;}
+      if(mods.has("troll-health-plus-120")){actor.hp+=120;actor.maxHp+=120;}
     }
-    return a;
+    return actor;
   })};
 }
 function measure(options){
   const s=createGroupCombat(options);
-  for(let i=0;i<240*60&&s.outcome==="fighting";i++)stepGroupCombat(s);
+  const cutoff=options.actors.some(a=>a.specialAbility==="grapple-throw")?90:35;
+  let cutoffActive=false;
+  for(let i=0;i<240*60&&s.outcome==="fighting";i++){
+    stepGroupCombat(s);
+    if(i+1===cutoff*60)cutoffActive=s.outcome==="fighting";
+  }
   const heroes=s.actors.filter(a=>a.team==="heroes");
   const byId=new Map(heroes.map(a=>[a.id,a]));
   const exposure={};
@@ -67,13 +74,13 @@ function measure(options){
     if(e.kind==="heal"&&target)exposure[target.role].healing+=e.amount??0;
     if((e.kind==="attack"||e.kind==="cast")&&actor)exposure[actor.role].attacks++;
   }
-  return {outcome:s.outcome,seconds:s.time,deaths:heroes.filter(a=>a.hp<=0).length,exposure};
+  return {outcome:s.outcome,seconds:s.time,deaths:heroes.filter(a=>a.hp<=0).length,cutoffActive,exposure};
 }
 function add(table,key,result){
-  const r=table[key]??={n:0,w:0,l:0,a:0,draw:0,d:0,sec:0,roles:{}};
+  const r=table[key]??={n:0,w:0,l:0,a:0,draw:0,d:0,sec:0,cutoff:0,roles:{}};
   r.n++;r.w+=Number(result.outcome==="heroes");r.l+=Number(result.outcome==="monsters");
   r.a+=Number(result.outcome==="fighting");r.draw+=Number(result.outcome==="draw");
-  r.d+=result.deaths;r.sec+=result.seconds;
+  r.d+=result.deaths;r.sec+=result.seconds;r.cutoff+=Number(result.cutoffActive);
   for(const [role,values] of Object.entries(result.exposure)){
     const dst=r.roles[role]??={};
     for(const [k,v] of Object.entries(values))dst[k]=(dst[k]??0)+v;
@@ -102,7 +109,7 @@ for(const floor of [1,3,5,7,8,9]){
         add(ordinary,[profile,role,tier,pack].join(":"),measure(experiment(options,profile)));
     }
 }
-for(const composition of [["tank","DPS","healer"],["healer","healer","healer"],["tank","tank","tank"],["DPS","DPS","DPS"],["tank","DPS"],["healer","healer"]])
+for(const composition of [["tank","DPS","healer"],["healer","healer","healer"],["tank","tank","tank"],["DPS","DPS","DPS"],["tank","DPS"],["tank","healer"],["DPS","healer"],["healer","healer"]])
   for(const tier of [1,2])for(const herbs of [0,2])for(const tacticsSeed of [0,7,16,31]){
     const count={tank:0,DPS:0,healer:0};
     const heroes=composition.map(role=>prepareHero(pool[role][count[role]++],9,tier,9,herbs));
@@ -117,4 +124,4 @@ for(const [domain,table] of [["ordinary",ordinary],["boss",boss]]){
   for(const [key,row] of Object.entries(table))
     console.error("BALANCE_ROW "+JSON.stringify({seed,domain,key,...row}));
 }
-console.log(JSON.stringify({seed,contract:"Matched-level full-health solo fixtures without herbs; real pack sizes; level-9 boss parties. Profile changes are analysis-only; no retreat yet. Vest profile changes raw mitigation only, not derived poise or item catalog.",ordinary,boss}));
+console.log(JSON.stringify({seed,contract:"Matched-level full-health solo fixtures without herbs; real pack sizes; level-9 boss parties. Profile changes are analysis-only; no retreat yet. Cutoff counts show fights still active at 35s/90s. Vest modifiers change raw mitigation only, not derived poise or item catalog.",ordinary,boss}));
