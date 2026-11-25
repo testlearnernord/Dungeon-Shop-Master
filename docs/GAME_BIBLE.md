@@ -22,6 +22,7 @@
 | System | Implementation status |
 | --- | --- |
 | Physical shop and customer economy | **IMPLEMENTED:** first-person room, mining, modular four-slot shelves, furniture/portrait placement, real inventory and wholesale, unpaid carts, staffed receipt minigame, debt, saved physical NPC traffic and service decisions |
+| Cellar and forge | **IMPLEMENTED:** portrait passage, stairs, fishing, paid material buyback, class-compatible T2 crafting and physical merchandise; Galvik's Table shares the LIVE projection and camera handoff |
 | One saved paced world | **IMPLEMENTED:** same deterministic 50-ms world clock for in-day shop, spatial expeditions and actual fight scheduling. Bed interaction closes the day |
 | Heroes and renewable dungeon | **IMPLEMENTED core, PARTIAL art/content:** saved autonomous goals, real class-dependent capped progression, seeded connected **ordinary Floors 1–9**, common-site regeneration, Temporary Parties and physically connected shop-return journeys. Unique authored deep-floor content and full-run tuning remain unfinished |
 | Boss | **IMPLEMENTED LIVE:** one Cave Troll on **Floor 10**, fought by an actual permitted **2–3-hero Temporary Party** in the shared 60-Hz motor; saved event/replay, telegraphs, dodge/parry, grabs, throws and lava. |
@@ -62,7 +63,7 @@ The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper current c
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers recover outside both shop and dungeon for an initial **20–240 unpaused seconds** (initial tuning), then resume at their remembered floor entrance. Checkout, credit and walkout eligibility follow the current actual shop visit.
 - Common opponents, traps and chests refresh on saved intervals across ordinary Floors 1–9; unique boss victories and persistent discoveries do not respawn as common loot.
-- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved permitted Temporary Party of two or three heroes. Individual eligibility is the canonical `bossPass` field since Alpha v27. Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. Authored variety and manual gameplay acceptance remain open.
+- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved permitted Temporary Party of two or three heroes. Individual eligibility is the canonical `bossPass` field. Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. Authored variety and manual gameplay acceptance remain open.
 - Full 100-floor progression is a long-range fiction/ambition, **not** a claim of implemented, promised or budgeted launch content.
 
 ## 5. Galvik and the story

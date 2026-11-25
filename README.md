@@ -10,7 +10,7 @@ Reviewed against Alpha v40, main after #374 (25 November 2026). The displayed HU
 
 | Area | Implemented |
 | --- | --- |
-| Shop | First-person physical shop, mining, movable furniture, four-slot shelves, 24-slot bag, TAB inventory and six editable quickbar slots |
+| Shop | First-person physical shop, mining, movable furniture, four-slot shelves, 24-unit bag, TAB inventory and six editable quickbar slots |
 | Commerce | Wholesale T1 stock, actual physical customers, unpaid carts, staffed LIVE cashier, receipts, credit/debt, restock waits and paid buyback |
 | World | One 50-ms saved world tick; 28,800 ticks per day (24 unpaused real minutes). Galvik's movable wall clock reads it. Bed ends the day |
 | Dungeon | Ordinary Floors 1–9, connected seeded layouts, autonomous individual heroes, voluntary Temporary Parties, actual loot, traps, renewable Ghoul packs, pursuit and returns |

@@ -26,7 +26,7 @@ Temporary Party Cave Troll, and the development Combat Lab. There is no solo leg
 
 Healer combat magic is **bounded by actual encounter charges** and uses the
 shared spell resolution. The hero does not receive free inventory Herbs.
-This first slice has **no persistent mana pool**; eventually a proper resource
+The current implementation has **no persistent mana pool**; eventually a proper resource
 economy may replace encounter-limited spells. Non-healer healing still needs
 owned consumables. Healers can also purchase and consume real supplies.
 
@@ -44,4 +44,4 @@ owned consumables. Healers can also purchase and consume real supplies.
 
 ## Limits and evidence
 
-[Current Alpha evidence](ALPHA_V40_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294) demonstrates capped class growth and equipment leverage, not final economic or class balance. No fake XP, resurrection, free healing or retroactive replay recalculation. A persistent mana economy remains an open design topic.
+[Current Alpha evidence](ALPHA_V40_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294) document capped class growth and equipment leverage, not final economic or class balance. No fake XP, resurrection, free healing or retroactive replay recalculation. A persistent mana economy remains an open design topic.
