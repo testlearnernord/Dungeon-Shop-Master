@@ -32,6 +32,7 @@ import {validateShopTraffic} from "./shopTraffic.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
   LIVE_COMBAT_EVENT_SUBJECT,LIVE_COMBAT_INTERVAL_TICKS,
   SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS} from "./liveDungeonRuntime.ts";
+import {validRetreatExit} from "./combatRetreat.ts";
 import {createGroupCombat,type GroupCombatOptions} from "./groupCombat.ts";
 import {ghoulPackActorId,MAX_GHOUL_PACK} from "./ghoulPack.ts";
 import {forecastShoppingIntents} from "./shopperIntents.ts";
@@ -376,7 +377,7 @@ function validateSpatialDungeonReplay(
       "version","actors","bounds","obstacles","frames","cues","outcome",
     ]);
     if(combat.version!==1)fail(item+".combat.version","is incompatible");
-    choice(combat.outcome,["heroes","monsters","draw"],item+".combat.outcome");
+    choice(combat.outcome,["heroes","monsters","retreat","draw"],item+".combat.outcome");
     const actors=array(combat.actors,item+".combat.actors");
     // Historical two-actor replays remain valid. One real authored site
     // may contain up to three physically independent Ghoul combatants.
@@ -494,7 +495,7 @@ function validateSpatialDungeonReplay(
         fail(cp+".targetId","is unknown");
       choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
         "parry","heal","death","blocked",
-        "grab","throw","landing","escape","lava"],cp+".kind");
+        "grab","throw","landing","escape","lava","retreat-start","retreat"],cp+".kind");
       validNumber(cue.t,cp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
       if(cue.amount!==undefined)validNumber(cue.amount,cp+".amount",0,100000);
     });
@@ -670,7 +671,9 @@ function validateLiveCombatCheckpoints(
 
     const combat=object(battle.state,cp+".state",[
       "actors","bounds","obstacles","projectiles","events","time","outcome",
-    ],["environment","tacticsSeed"]);
+    ],["environment","tacticsSeed","retreat"]);
+    if(combat.retreat!==undefined&&!validRetreatExit(combat.retreat,initial.bounds,initial.environment))
+      fail(cp+".state.retreat","must match a genuine arena exit");
     if(combat.environment!==initial.environment||
        combat.tacticsSeed!==initial.tacticsSeed)
       fail(cp+".state.environment","must match the real encounter rules");
@@ -757,7 +760,7 @@ function validateLiveCombatCheckpoints(
         cue.targetId!==undefined&&!actorIds.has(cue.targetId as string)))
         fail(qp+".actorId","must reference existing fighters");
       choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
-        "parry","heal","death","blocked","grab","throw","landing","escape","lava"],qp+".kind");
+        "parry","heal","death","blocked","grab","throw","landing","escape","lava","retreat-start","retreat"],qp+".kind");
       validNumber(cue.t,qp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
       if(cue.amount!==undefined)validNumber(cue.amount,qp+".amount",0,100000);
     });
