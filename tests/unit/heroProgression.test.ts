@@ -9,7 +9,7 @@ import {lastWorldTickOfDay} from "../../src/game/worldClock.ts";
 import {developerHeroFromRoster,buildDeveloperCombat,DEFAULT_DEVELOPER_CONFIG}
   from "../../src/game/developerCombatScenario.ts";
 import {heroCombatAttributes} from "../../src/game/heroProgression.ts";
-import {caveTrollGroupOptions,caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
+import {caveTrollGroupOptions,caveTrollPartyOptions,CAVE_TROLL_LIVE_PROFILE} from "../../src/game/sharedBossCombat.ts";
 import {useHealingSupplies} from "../../src/game/adventurers.ts";
 import {
   heroLevel,heroProgression,settleHeroExperience,HERO_POWER_CAP_LEVEL,
@@ -151,7 +151,7 @@ test("levelled v29 saves validate earned HP and feed the unique Floor-10 party m
   assert.equal(actor.maxHp,cap);
   assert.equal(actor.armor,heroCombatAttributes(hero).armor);
   assert.equal(fight.actors.filter(a=>a.team==="heroes").length,3);
-  assert.equal(fight.actors.find(a=>a.id==="cave-troll")?.maxHp,700);
+  assert.equal(fight.actors.find(a=>a.id==="cave-troll")?.maxHp,CAVE_TROLL_LIVE_PROFILE.maxHp);
 });
 
 test("levelled heroes can spend real medicine above base HP without forging items",()=>{
