@@ -21,7 +21,7 @@ export function ghoulMotionForPhase(
     case "windup":return {clip:claw,loop:false,length:.62,start:0,end:.38};
     case "strike":return {clip:claw,loop:false,length:.33,start:.38,end:.76};
     case "recover":return {clip:claw,loop:false,length:.72,start:.76,end:1};
-    case "hurt":case "thrown":return {clip:"hit_stagger",loop:false,length:.52};
+    case "hurt":case "thrown":return {clip:"hit_stagger",loop:false,length:.42};
     case "dead":return {clip:"death_fall",loop:false,length:3.958};
     case "roll":return {clip:"run_aggressive",loop:true,length:1.958};
     case "grab":return {clip:"attack_charge",loop:false,length:1.958};
