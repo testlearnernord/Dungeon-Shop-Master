@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   audit:
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (startsWith(github.head_ref, 'audit/gameplay-loop-') || github.head_ref == 'experiment/unified-boss-profile')))
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (startsWith(github.head_ref, 'audit/gameplay-loop-') || github.head_ref == 'experiment/unified-boss-profile'))
     name: Real GameStore / scripted-storefront ${{ matrix.days }}-day scenarios / ${{ matrix.seed }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
