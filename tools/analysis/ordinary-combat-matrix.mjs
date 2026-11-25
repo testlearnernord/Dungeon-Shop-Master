@@ -64,5 +64,13 @@ for(const row of rows){
 }
 const summary={};
 for(const row of rows){const key=[row.floor,row.role,row.pack].join(':');const g=summary[key]??={cases:0,deaths:0,wins:0,draws:0,seconds:0};g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==='heroes');g.draws+=Number(row.outcome==='draw');g.seconds+=row.seconds;}
+const gearSummary={};
+for(const row of rows){
+  const key=[row.role,row.tier,row.pack].join(":");
+  const g=gearSummary[key]??={cases:0,deaths:0,wins:0,draws:0,seconds:0,attacks:0,damageDealt:0,damageReceived:0,dodges:0,parries:0};
+  g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==="heroes");g.draws+=Number(row.outcome==="draw");
+  for(const field of ["seconds","attacks","damageDealt","damageReceived","dodges","parries"])g[field]+=row[field];
+}
 console.error('MATRIX_SUMMARY '+JSON.stringify({cases:rows.length,summary}));
+console.error('MATRIX_GEAR '+JSON.stringify(gearSummary));
 console.log(JSON.stringify({contract:"Production combat; controlled pack subsets, not natural encounter frequencies. Each floor/seed uses a real site; no unavailable pack sizes fabricated.",cases:rows.length,groups:Object.fromEntries(groups),rows}));
