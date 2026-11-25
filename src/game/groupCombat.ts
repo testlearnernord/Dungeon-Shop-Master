@@ -602,7 +602,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   }else if(a.phase==="heal"){
     window={contactAt:0.62,completeAt:0.92};
   }else if(a.phase==="recover")window={completeAt:
-    signature?.recoverySeconds??(a.team==="monsters"?.72:.48)};
+    signature?.recoverySeconds??(s.actors.some(actor=>actor.specialAbility==="grapple-throw")?.38:a.team==="monsters"?.72:.48)};
   else if(a.phase==="grab")window={
     contactAt:GRAPPLE_TIMING.grabContact,completeAt:GRAPPLE_TIMING.grab,
   };
