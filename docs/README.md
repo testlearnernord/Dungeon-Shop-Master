@@ -1,6 +1,6 @@
 # Documentation index
 
-> Current contract: Alpha v43 (Observed Threat Memory). Read current contracts before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
+> Current contract: Alpha v44 (Autonomous Boss Progression). Read current contracts before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
 
 ## Current contracts
 
@@ -22,9 +22,11 @@
 - [SHOP PORTAL MINING CONTRACT](SHOP_PORTAL_MINING_CONTRACT.md)
 - [THE LIVING DUNGEON](THE_LIVING_DUNGEON.md)
 - [UI DESIGN SYSTEM](UI_DESIGN_SYSTEM.md)
-- [Alpha v43 evidence and remaining acceptance](ALPHA_V43_ACCEPTANCE.md)
+- [Alpha v44 evidence and remaining acceptance](ALPHA_V44_ACCEPTANCE.md)
 
 ## Historical reports and provenance
+
+- [Alpha v43 threat memory and room surface scope](ALPHA_V43_ACCEPTANCE.md)
 
 - [Alpha v42 pacing acceptance scope](ALPHA_V42_ACCEPTANCE.md)
 

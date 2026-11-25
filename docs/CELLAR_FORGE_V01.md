@@ -1,6 +1,6 @@
 # Cellar Forge V0.1 / V0.2 — material-to-gear contract
 
-> Current contract: Alpha v43, including physical automatic buyback. The functional V0.1/V0.2 forge is merged; manual acceptance is tracked in #294.
+> Current contract: Alpha v44, including physical automatic buyback. The functional V0.1/V0.2 forge is merged; manual acceptance is tracked in #294.
 
 ## One physical chain, one source of authority
 
@@ -48,7 +48,7 @@ Initial, deliberately small recipes:
   and carried products share these canonical models; equipped heroes
   retain their role-specific meshes with tier details. See
   [Equipment presentation V0.2](EQUIPMENT_PRESENTATION_V02.md).
-- Alpha v43 is the only supported campaign schema. Reject v42 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+- Alpha v44 is the only supported campaign schema. Reject v43 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 ## Verification and next step
 
@@ -58,7 +58,7 @@ Initial, deliberately small recipes:
 - Human sign-off still requires physically using the cellar anvil, stocking a
   shelf, completing a staffed sale, seeing new weapon meshes and comparing
   fights without/with T2, plus FPS/audio inspection.
-- The current acceptance scope and historical campaign evidence are in [Alpha v43 acceptance](ALPHA_V43_ACCEPTANCE.md); no additional forge backend work is planned without a reproducible defect.
+- The current acceptance scope and historical campaign evidence are in [Alpha v44 acceptance](ALPHA_V44_ACCEPTANCE.md); no additional forge backend work is planned without a reproducible defect.
 
 ## V0.2 B — autonomous supply chain
 

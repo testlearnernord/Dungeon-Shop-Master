@@ -1,4 +1,6 @@
-# Alpha v43 — observed threat memory and LIVE room surfaces
+# Alpha v43 — previous threat memory and LIVE room surface scope
+
+> Superseded by [Alpha v44 acceptance](ALPHA_V44_ACCEPTANCE.md). This records the previous contract, not new v44 evidence.
 
 Fresh campaign required; no v42 migration. The v42 movement and combat timing contract remains unchanged.
 
@@ -15,3 +17,5 @@ Fresh campaign required; no v42 migration. The v42 movement and combat timing co
 - Keep the 24-minute day, 50/100-tick movement cadence and 60 Hz combat. No new blanket economy matrix.
 
 See [v42 pacing evidence](ALPHA_V42_ACCEPTANCE.md) and [#294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294). Current CI verdict must be checked before merge.
+
+CI passed before #381 merged. Manual visual acceptance and long-play behavior remain open.

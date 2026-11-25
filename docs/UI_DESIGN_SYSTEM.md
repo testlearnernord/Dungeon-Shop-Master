@@ -81,9 +81,9 @@ This document is a maintainable implementation contract.
 
 The magical wall board is an operational LIVE glance, not a second archive or an event-only list of question marks. It uses `liveRosterCards` from `heroCardView.ts`, the same current hero projection used by E/R and the compact day HUD. It shows active/shop/fighting/fallen counts, up to ten prioritized living heroes (shop, critical health, combat, then depth), role, level, floor/activity, actual weapon/armor tiers, party size and current committed HP. Overflow opens the roster. The 1536×960 texture is sampled on meaningful roster changes and world ticks, not per rendered frame. Wall dimensions and placement authority remain unchanged.
 
-The E/R roster keeps the shared Hero Card renderer. Expanded entries span the full row rather than stretching the adjacent card; the summary becomes a collapse control instead of duplicating the expanded identity. Empty slots use role-appropriate muted art and explicit names. All current heroes share the same information policy. A living hero in the shop can still receive the existing Boss Pass; this gate is reviewed separately under #376. Current facts do not grant hero AI omniscience; historical footage and event signals remain authentic and separate. No campaign writes from presentation except existing explicit merchant actions.
+The E/R roster keeps the shared Hero Card renderer. Expanded entries span the full row rather than stretching the adjacent card; the summary becomes a collapse control instead of duplicating the expanded identity. Empty slots use role-appropriate muted art and explicit names. All current heroes share the same information policy. The roster is read-only with respect to expedition willingness; the former merchant permission controls are removed. Current facts do not grant hero AI omniscience; historical footage and event signals remain authentic and separate. No campaign writes from presentation except existing explicit merchant actions.
 
-The nightly book contains merchant accounts, not a second hero roster. Alpha v43 only, no save migration. See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
+The nightly book contains merchant accounts, not a second hero roster. Alpha v44 only, no save migration. See [LIVE_BOARD_LEDGER_AUDIT.md](LIVE_BOARD_LEDGER_AUDIT.md).
 
 - **One portal visual and service contract:** current normal customer arrivals
   and exits share one cursed doorway in the physical shop. Retained
@@ -94,8 +94,7 @@ The nightly book contains merchant accounts, not a second hero roster. Alpha v43
   portal is the proposed visual direction, not a finished asset.
 - **Floor 10 gate:** show a truthful blocked-party attempt when fewer than
   two living, eligible, saved temporary companions reach the real Floor-9
-  lower stair. Never pretend a solo pass grants a new party; respect autonomous
-  medium-term goals. Permit remains a temporary per-hero merchant decision.
+  lower stair. Respect autonomous medium-term goals; no merchant permission grants a party.
 - **Knowledge safety:** no future-state backfill of earlier reports,
   guaranteed fatality labels for missing heroes, leaked sealed outcomes or
   extrapolated success odds. Warnings such as "unarmed" and "low HP"
@@ -156,7 +155,7 @@ Entry points:
 - **World Echoes:** level-up `hero-profile` click opens the global expanded
   card directly. The Feed does not need to open/close the whole Board.
 - **Adventurer Board:** same Mini summaries and Expanded contents, retaining
-  its permit, filters, LIVE observation and last known contact reports.
+  its filters, LIVE observation and last known contact reports.
 - **LIVE Dungeon:** hero hover uses the global Mini, selected hero uses
   Expanded, with personally visible fog information and route preview.
 - **Dungeon archive:** historical Expanded profile uses only recorded

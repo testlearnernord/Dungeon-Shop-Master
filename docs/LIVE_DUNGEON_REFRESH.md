@@ -1,6 +1,6 @@
 # LIVE Dungeon — current map, exploration and observer contract
 
-> Current contract: Alpha v43 (Observed Threat Memory). Current LIVE map contract; see [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v44 (Autonomous Boss Progression). Current LIVE map contract; see [Architecture](ARCHITECTURE.md).
 
 ## Gameplay state and map
 
