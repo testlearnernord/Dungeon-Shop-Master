@@ -1,6 +1,6 @@
 import { inAttackArc, type Point2 } from "./combatGeometry.ts";
 import {WEAPON_NAMES,ARMOR_NAMES,equipmentEffects,type GearName} from "./gearCatalog.ts";
-import { combatDirection, combatHeading, moveCombatant } from "./combatMovement.ts";
+import { combatApproachWaypoint, combatDirection, combatHeading, moveCombatant } from "./combatMovement.ts";
 import type { CombatActionWindow } from "./combatActionClock.ts";
 import {
   enterCombatActorPhase, advanceCombatActorPhase,
@@ -328,13 +328,24 @@ function movementAllowed(s: GroupCombatState, a: GroupActor, x: number, z: numbe
     !s.actors.some(other => other !== a && other.hp > 0 &&
       Math.hypot(x - other.x, z - other.z) < a.radius + other.radius - 0.02);
 }
-function move(s: GroupCombatState, a: GroupActor, dx: number, dz: number): void {
+function move(s: GroupCombatState, a: GroupActor, dx: number, dz: number): number {
   const result=moveCombatant(a,{x:dx,z:dz},{
     kind:"walkable",
     canOccupy:p=>movementAllowed(s,a,p.x,p.z),
   });
   a.x=result.x;a.z=result.z;
   a.distanceTraveled+=result.distance;
+  return result.distance;
+}
+function approachAroundWalls(s:GroupCombatState,a:GroupActor,enemy:GroupActor,
+  attackDistance:number,dt:number):void{
+  const waypoint=combatApproachWaypoint(a,enemy,s.bounds,s.obstacles,a.radius,attackDistance);
+  if(!waypoint)return;
+  const d=distance(a,waypoint);
+  if(d<1e-6)return;
+  const direction=combatDirection(a,waypoint);
+  const step=Math.min(d,a.speed*dt);
+  move(s,a,direction.x*step,direction.z*step);
 }
 /** Skillful heroes keep a real lane around a unique boss instead of
  * standing still within a 6-metre smash arc. Move through the same collision
@@ -709,17 +720,18 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         :null;
       const chosen=special?trollSignatureProfile(special):null;
       const action=chosen?.groupAbility??a.meleeAbility;
+      const clearShot=lineClear(s,a,enemy);
+      const approachDistance=ranged?7:chosen?
+        Math.max(3.15,chosen.reach-1.7):a.reach+enemy.radius-.20;
       const posture=chooseCombatPosture({
         distance:gap,ready:a.cooldown===0&&a.stamina>=13&&
           // Troll chooses to close the physical gap before beginning a
           // signature move, so a real 5.1m grab can occur instead of
           // eternally opening at the 5.78m smash maximum.
           !(a.specialAbility==="grapple-throw"&&gap>4.8),
-        clearShot:lineClear(s,a,enemy),
+        clearShot,
         attackRange:ranged?11:chosen?.reach??a.reach+enemy.radius,
-        approachBeyond:ranged?7:chosen?
-          Math.max(3.15,chosen.reach-1.7):
-          a.reach+enemy.radius-.20,
+        approachBeyond:approachDistance,
         ...(ranged?{withdrawWithin:4.5}:{}),
       });
       if(posture.attack){
@@ -736,7 +748,9 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         phase(a,ranged?"cast":"windup");
         cue(batch,s,a,ranged?"cast":"attack",enemy.id);
       }else{
-        if(a.team==="heroes"&&enemy.specialAbility==="grapple-throw"){
+        if(!clearShot){
+          approachAroundWalls(s,a,enemy,approachDistance,dt);
+        }else if(a.team==="heroes"&&enemy.specialAbility==="grapple-throw"){
           circleSignatureBoss(s,a,enemy,dt);
         }else{
           const heading=combatDirection(a,enemy);
@@ -748,7 +762,11 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
                 heading.z*3.25+tangentZ*.45);
               move(s,a,(heading.x*3.25+tangentX*.45)/length*a.speed*dt,
                 (heading.z*3.25+tangentZ*.45)/length*a.speed*dt);
-            }else move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
+            }else{
+              const traveled=move(s,a,heading.x*a.speed*dt,heading.z*a.speed*dt);
+              if(traveled<1e-6&&s.obstacles.length)
+                approachAroundWalls(s,a,enemy,approachDistance,dt);
+            }
           }else if(posture.withdraw)
             move(s,a,-heading.x*a.speed*dt,-heading.z*a.speed*dt);
         }
