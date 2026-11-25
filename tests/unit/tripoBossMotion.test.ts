@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GRAPPLE_TIMING } from "../../src/game/arenaCombatMotion.ts";
+import { GRAPPLE_TIMING } from "../../src/game/combatGrapple.ts";
 import { sampleTripoBossPose, sampleTripoFade, sampleTripoTurnStride, TRIPO_FADE_SECONDS } from "../../src/game/tripoBossMotion.ts";
 
 const sample = (phase: "chase"|"windup"|"strike"|"recover"|"stagger"|"dead",
