@@ -856,33 +856,17 @@ test("a Floor-9 hero without a pass does not endlessly revisit for unchanged gol
 
 test("an actual late-night encounter survives bedtime, dawn and JSON reload",()=>{
   const initial=activeFightFixture().state;
-  const start=WORLD_TICKS_PER_DAY-DUNGEON_STEP_INTERVAL_TICKS*2;
-  // Start from the same real seeded approach just before the last map tick.
-  const store=new GameStore({...initial,
+  const start=WORLD_TICKS_PER_DAY-DUNGEON_STEP_INTERVAL_TICKS-LIVE_COMBAT_INTERVAL_TICKS;
+  // Activate the actual scheduler just before the final movement tick,
+  // rather than synthesizing a battle state or editing its clock identity.
+  const a=new GameStore({...initial,
     worldClock:{...initial.worldClock,tick:start},
     shopTraffic:{...initial.shopTraffic,tick:start},
   });
-  store.enableLiveDungeon();
-  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
-  const battle=store.state.liveDungeon.combats[0];
+  a.enableLiveDungeon();
+  a.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const battle=a.state.liveDungeon.combats[0];
   assert(battle,"late combat may no longer be suppressed by bedtime");
-  // The active motor should still be fighting on entry to the next day.
-  // Hold the actual start checkpoint just one burst before the boundary
-  // by shifting the fixture clock, not changing any fighter stats.
-  const source=store.state;
-  const shift=DUNGEON_STEP_INTERVAL_TICKS-LIVE_COMBAT_INTERVAL_TICKS;
-  const near=structuredClone(source);
-  const shiftedTick=source.worldClock.tick+shift;
-  const shifted={...near,
-    worldClock:{...near.worldClock,tick:shiftedTick,pending:near.worldClock.pending
-      .filter(e=>e.subjectId!==DUNGEON_WORLD_EVENT_SUBJECT)
-      .map(e=>({...e,dueTick:e.dueTick+shift}))},
-    shopTraffic:{...near.shopTraffic,tick:shiftedTick},
-    liveDungeon:{...near.liveDungeon,lastStepTick:shiftedTick,combatTick:shiftedTick,
-      combats:near.liveDungeon.combats.map(c=>({...c,startedTick:shiftedTick,
-        id:"battle:1:"+shiftedTick+":"+c.encounter.floor+":"+c.encounter.featureId}))},
-  };
-  const a=new GameStore(shifted);
   const before=a.state.adventurers.find(h=>h.id===battle.heroIds[0])!;
   a.endDay();
   assert.equal(a.state.day,2);
