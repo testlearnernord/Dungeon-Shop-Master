@@ -17,7 +17,7 @@ import {SHOP_PORTAL_X,SHOP_PORTAL_DOOR_Z} from "./shopPortal.ts";
 
 export interface WorldInteractable extends Omit<Interactable, "kind"> {
   mesh: Mesh;
-  kind: "register" | "corridor" | "roster-board" | "bed" | "debt-book" | "cellar-door" | "cellar-pond" | "cellar-forge";
+  kind: "register" | "corridor" | "roster-board" | "bed" | "debt-book" | "cellar-door" | "cellar-pond" | "cellar-forge" | "buyback-chest";
 }
 
 function material(scene: Scene, name: string, color: Color3): StandardMaterial {

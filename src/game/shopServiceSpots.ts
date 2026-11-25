@@ -1,3 +1,4 @@
+import {BUYBACK_DOCK} from "./buybackChestPlacement.ts";
 import type {ShopRoomGeometry} from "./shopRoomGeometry.ts";
 import {getCounterPlacement,type ShopLayout} from "./shopLayout.ts";
 import {shelfServicePoint,SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
@@ -11,7 +12,7 @@ import {createShopRoutePlanner,isObstructed,pathToShelfAccess,type ShopPoint,typ
  * authoritative. One visitor owns one destination, regardless of whether
  * they are paying, requesting restock/credit or waiting for a busy shelf. */
 export type ShopServiceRole =
-  "checkout"|"restock"|"credit"|"shelf-browse"|"shelf-wait"|"overflow"|"idle"|"roam";
+  "buyback"|"checkout"|"restock"|"credit"|"shelf-browse"|"shelf-wait"|"overflow"|"idle"|"roam";
 export type ShopWaitingRole=Exclude<ShopServiceRole,"shelf-browse">;
 export interface ShopServiceClaim{
   readonly heroId:string;
@@ -166,13 +167,14 @@ export class ShopServiceSpots{
     const occupied=[...(request.occupied??[]),...(request.destinations??[])];
     const otherClaims=[...this.claims.values()].filter(x=>x.heroId!==heroId)
       .map(x=>x.point);
-    const forbidden=role==="checkout"?[]:
+    const forbidden=role==="checkout"||role==="buyback"?[]:
       role==="restock"||role==="credit"?this.checkout:
       [...this.checkout,...this.restock];
     if(role==="idle"||role==="overflow"||role==="roam")
       this.ensureIdle(layout,room,24);
     let candidates:readonly ShopPoint[];
     switch(role){
+      case "buyback": candidates=[BUYBACK_DOCK];break;
       case "checkout":
         candidates=request.checkoutTarget?[request.checkoutTarget]:[];
         break;

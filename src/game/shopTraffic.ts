@@ -102,7 +102,7 @@ const ACTOR_FIELDS=[
   "requestActive","roamLeg","restockSeconds","wishItem","walkSpeed",
   "animationTime","performanceTime","browseSide",
 ];
-const ROLES=["checkout","restock","credit","shelf-browse","shelf-wait",
+const ROLES=["buyback","checkout","restock","credit","shelf-browse","shelf-wait",
   "overflow","idle","roam"];
 const PHASES=["entering","browsing","considering","queueing","leaving"];
 const PERMITTED_ITEMS=ITEMS.map(item=>item.id);

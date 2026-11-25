@@ -1,3 +1,5 @@
+import {createBuybackChest} from "./game/buybackChestVisual.ts";
+import {wantsChestBuyback} from "./game/dungeonBuyback.ts";
 import { createMerchantActions } from "./game/merchantActions.ts";
 import { createShopRoomVisuals } from "./game/shopRoomVisuals.ts";
 import { createCashierSfx } from "./cashierSfx.ts";
@@ -181,6 +183,8 @@ refreshCellar();
 const pondMesh=setupCellarPondVisuals(scene,store);
 worldItems.push({id:"cellar-fishing-pond",mesh:pondMesh,kind:"cellar-pond"});
 const shop = new Shop(scene, store);
+const buybackChest=createBuybackChest(scene,store);
+worldItems.push({id:"recovered-goods-chest",mesh:buybackChest.mesh,kind:"buyback-chest"});
 const board = createRosterBoard(scene, store);
 const portraitMeshes=setupWallPortraitVisuals(scene,store);
 worldItems.push(...portraitMeshes.map(mesh=>({id:mesh.name,mesh,kind:"cellar-door" as const})));
@@ -299,6 +303,7 @@ const refreshShoppingIntents = () => {
   // buyer, money, stock, carts, events, layout or room actually changed.
   // Saved petition countdowns are read directly through their clock accessor.
   if(lastShoppingState&&lastShoppingState.adventurers===state.adventurers&&
+    lastShoppingState.buybackChestOpen===state.buybackChestOpen&&
     lastShoppingState.shopEconomy===state.shopEconomy&&
     lastShoppingState.shopCarts===state.shopCarts&&
     lastShoppingState.shopLayout===state.shopLayout&&
@@ -328,7 +333,8 @@ const refreshShoppingIntents = () => {
     expiredWithoutStock:heroId=>store.state.events.some(event=>
       event.day===store.state.day&&event.type==="shop-walkout"&&
       event.adventurerId===heroId&&event.shopReason==="unavailable"),
-  });
+  },{heroes:new Set(state.adventurers.filter(h=>wantsChestBuyback(state,h.id)).map(h=>h.id)),
+    sell:(heroId,position)=>store.buybackAtChest(heroId,position)});
 };
 store.subscribe(refreshShoppingIntents);
 refreshShoppingIntents();
@@ -659,6 +665,7 @@ engine.runRenderLoop(() => {
   } else {
     // The tabletop contains an actual 3D diorama inside THIS shop Scene.
     // It reads the selected LIVE floor, never running a second world engine.
+    buybackChest.update(engine.getDeltaTime()/1000);
     tableVisuals.updateLiveFloor(dungeon.selectedLiveFloor,camera.position);
     npcVisuals.renderInterpolated(
       paused||worldClockPacer.isPaused?1:worldClockPacer.presentationAlpha,

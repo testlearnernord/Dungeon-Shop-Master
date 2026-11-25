@@ -1,3 +1,5 @@
+import {BUYBACK_DOCK} from "./buybackChestPlacement.ts";
+import {currentShopVisitEvents} from "./npcVisitors.ts";
 import type {GameState,WorldEvent} from "./gameState.ts";
 import {ECONOMY,ITEMS,isMaterial,type ItemId} from "./economy.ts";
 
@@ -72,4 +74,28 @@ export function buyHeroDungeonFind(
         [itemId]:(state.shopEconomy.bag[itemId]??0)+1}},
     events:[...state.events,event],
   },message:event.message};
+}
+
+/** Only workshop materials in V0.1; other recovered goods stay owned.
+ * The existing one-unit paid exchange is the sole ledger authority. */
+export function wantsChestBuyback(state:GameState,heroId:string):boolean{
+  if(!state.buybackChestOpen||state.shopCarts.some(c=>c.heroId===heroId)||
+    state.shopRequests.some(r=>r.heroId===heroId))return false;
+  if(currentShopVisitEvents(state.events,state.day,heroId).some(e=>e.type==="hero-buyback"||e.type==="sale"))return false;
+  return availableDungeonOffers(state).some(o=>o.heroId===heroId&&isMaterial(o.itemId)&&
+    o.price<=state.shopEconomy.balance&&state.shopEconomy.materialStorage[o.itemId]<Number.MAX_SAFE_INTEGER);
+}
+export function buybackAtChest(state:GameState,heroId:string,position:{x:number;z:number}):GameState{
+  if(!Number.isFinite(position.x)||!Number.isFinite(position.z)||
+    Math.hypot(position.x-BUYBACK_DOCK.x,position.z-BUYBACK_DOCK.z)>.3||
+    !wantsChestBuyback(state,heroId))return state;
+  let next=state;
+  for(const offer of availableDungeonOffers(state).filter(o=>o.heroId===heroId&&isMaterial(o.itemId))){
+    for(let i=0;i<offer.count;i++){
+      const result=buyHeroDungeonFind(next,heroId,offer.itemId);
+      if(result.state===next)break;
+      next=result.state;
+    }
+  }
+  return next;
 }

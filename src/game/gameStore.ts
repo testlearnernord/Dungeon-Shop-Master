@@ -3,7 +3,7 @@ import {isValidCellarRoom} from "./cellarRoom.ts";
 import {isCellarPondUncovered,pondExcavationRemaining} from "./cellarPond.ts";
 import { advanceDay, createGameState, setBossPass, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
-import {buyHeroDungeonFind} from "./dungeonBuyback.ts";
+import {buyHeroDungeonFind,buybackAtChest} from "./dungeonBuyback.ts";
 import {craftAtCellarForge,type ForgeOutput} from "./cellarForge.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
 import {resolveFurniturePlacement} from "./furniturePlacement.ts";
@@ -117,6 +117,17 @@ export class GameStore {
     const result=buyHeroDungeonFind(this.current,heroId,itemId);
     if(result.state!==this.current)this.replace(result.state);
     return result.message;
+  }
+
+  toggleBuybackChest():string{
+    const open=!this.current.buybackChestOpen;
+    this.replace({...this.current,buybackChestOpen:open});
+    return open?"Recovered Goods: accepting materials.":"Recovered Goods: closed.";
+  }
+  buybackAtChest(heroId:string,position:{x:number;z:number}):boolean{
+    const next=buybackAtChest(this.current,heroId,position);
+    if(next===this.current)return false;
+    this.replace(next);return true;
   }
 
   /** Real cellar UI calls this once per deliberate recipe selection. */

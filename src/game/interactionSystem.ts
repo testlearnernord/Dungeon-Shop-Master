@@ -296,6 +296,8 @@ export class InteractionSystem {
           this.message = "Adventurer roster opened.";
           this.openRoster();
         }
+      } else if(target?.kind==="buyback-chest"&&button===0&&this.store){
+        this.message=hit.distance<=this.maxInteractionDistance?this.store.toggleBuybackChest():"Move closer to the chest.";
       } else if(target?.kind==="cellar-pond"&&button===0){
         this.message=hit.distance<=this.maxInteractionDistance&&this.openFishing()
           ?"Fishing at the underground pond.":"Move closer to the water.";
@@ -327,6 +329,8 @@ export class InteractionSystem {
     } else if (target?.kind === "roster-board") {
       this.message = "Adventurer roster opened.";
       this.openRoster();
+    } else if(target?.kind==="buyback-chest"&&this.store){
+      this.message=this.store.toggleBuybackChest();
     } else if(target?.kind==="cellar-pond"){
       this.message=this.openFishing()
         ?"Fishing at the underground pond.":"The water cannot be reached.";

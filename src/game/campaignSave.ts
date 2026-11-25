@@ -928,7 +928,7 @@ function validateState(value: unknown): asserts value is GameState {
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "dungeonWorlds", "shopLayout", "shopCarts", "shopDebts",
     "shopRoom","bedroomFurniture","rosterBoard","wallClock",
-    "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught",
+    "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught","buybackChestOpen",
   ], ["wallPortrait","dungeonParties"]);
   const room=state.shopRoom;
   if (!isValidShopRoomGeometry(room))
@@ -936,6 +936,7 @@ function validateState(value: unknown): asserts value is GameState {
   if(!isValidCellarRoom(state.cellarRoom))
     fail("payload.cellarRoom","has invalid cellar excavation geometry");
   integer(state.cellarFishCaught,"payload.cellarFishCaught",0,1000000);
+  if(typeof state.buybackChestOpen!=="boolean")fail("payload.buybackChestOpen","must be a boolean");
   if(typeof state.cellarDoorOpen!=="boolean")
     fail("payload.cellarDoorOpen","must be a boolean");
   {

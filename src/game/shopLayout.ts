@@ -1,3 +1,4 @@
+import {BUYBACK_SOLID,BUYBACK_CLEARANCE} from "./buybackChestPlacement.ts";
 import { isShopRoomAir, type ShopRoomGeometry } from "./shopRoomGeometry.ts";
 import {SHOP_PORTAL_BUILD_CLEARANCE,SEALED_PASSAGE_BUILD_CLEARANCE,
   overlapsShopPortalClearance} from "./shopPortal.ts";
@@ -62,7 +63,7 @@ export function isAtCounterStaffDock(
 type Bounds=ShopFloorBounds;
 export interface RegisteredShopFixture {
   readonly id:string;
-  readonly kind:ShopFloorKind;
+  readonly kind:ShopFloorKind|"buyback";
   readonly footprint:ShopFloorBounds;
   readonly solid:ShopFloorBounds;
 }
@@ -84,10 +85,12 @@ export function shopFloorFixtures(layout:ShopLayout):readonly RegisteredShopFixt
     footprint:shopFixtureBounds("counter",counter),
     solid:shopFixtureBounds("counter",counter,"solid"),
   });
+  fixtures.push({id:"recovered-goods-chest",kind:"buyback",footprint:BUYBACK_SOLID,solid:BUYBACK_SOLID});
   fixtureCache.set(layout,fixtures);
   return fixtures;
 }
 const barriers: readonly Bounds[] = [
+  BUYBACK_CLEARANCE,
   {minX:-1.35,maxX:1.35,minZ:-5.6,maxZ:-3.55}, // player spawn
   {minX:-2.5,maxX:2.5,minZ:-6.9,maxZ:-5.3}, // roster board viewing
   // No hard-coded full-length side aisles. Furniture navigation and
