@@ -1,6 +1,6 @@
 // Audit-only aggregation. Never called by the normal browser campaign.
 // The exact gate/decision records come from the production scheduler;
-// positions and floor dwell are sampled at the existing 200-tick cadence.
+// positions and floor dwell are sampled at the fixed 200-tick audit sampling cadence.
 import {generateExpeditionLayout,dungeonDownStair} from "../../src/game/dungeonLayout.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import {equipmentEffects,gearFromName} from "../../src/game/gearCatalog.ts";
