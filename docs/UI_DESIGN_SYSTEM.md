@@ -74,8 +74,8 @@ This document is a maintainable implementation contract.
 | Blueprint / placement / mining | Context prompt and real-world ghost; not a permanent sidebar |
 | World nameplates / request bubbles | Portrait, level, role, gold and HP; individual icon-based restock/credit requests with real deadlines; one optional short role/item-aware customer remark above a visible NPC at a time, without intercepting world input |
 | Normal-floor / Troll spectator | Compact panels, optional controls legend, same focus style. The historical Troll arena and current Floor-10 party stage support world-projected HP plates and cue-driven floating numbers: gold hero→boss, red boss→hero, orange lava, green healing. Numeric HP remains in the bottom HUD. |
-| Level 6 local model lab | In the existing spectator toolbar, `Inspect Tripo GLB` opens an explicit read-only asset inspection panel with a browser-local GLB file input, accessible animation selector, drag-orbit/zoom camera and Escape-to-return behavior. No saved fighter or combat details are written. The regular battle HUD and cinematic are hidden while inspecting. |
-| Audio / notifications / campaign | Minimal chrome, consistent buttons and persistent errors; Level 6 has one transient music-led cinematic overlay before the original HUD and combat data appear |
+| Combat Lab model inspector | In the existing spectator toolbar, `Inspect Tripo GLB` opens an explicit read-only asset inspection panel with a browser-local GLB file input, accessible animation selector, drag-orbit/zoom camera and Escape-to-return behavior. No saved fighter or combat details are written. The regular battle HUD and cinematic are hidden while inspecting. |
+| Audio / notifications / campaign | Consistent accessible controls; LIVE enters immediately, local playback can show cinematic titles. |
 
 ## V.003 Adventurer Board 2.0 — IMPLEMENTED CORE / PARTIAL POLISH
 
@@ -221,10 +221,10 @@ The worldwide Hero Cards, live event feed and shared 50-ms shop/dungeon world cl
   `shopHudLayout.spec.ts`, `controlsDisclosure.spec.ts` and the
   existing crowded-shop browser flow. This does not replace human
   assessment of legibility and repeated-action friction.
-- Level 6 HP plates and damage numbers must hide during the intro, be noninteractive, respect camera projection and bounded screen placement, and never invent damage in saved replays. Floating numbers are decorative for assistive technology; the original numeric bottom HP/status remains readable. The new grab has a readable windup label and distinct grab/throw status cues. On the Tripo renderer a caught hero's existing model is visibly held between the actual animated left thumb, index and middle finger from successful contact until release, following the wrist's 3D motion; the airborne model then separates continuously from that hand and lands at the real motor location. The segmented legacy renderer remains a simpler fallback; the HUD uses only real recorded HP/lava cues and must not invent a hit for a missed grip.
-- The compact persistent audio panel exposes **separate Music and Effects rows**. `#music-toggle`/`#music-volume` control the scene MP3 player; `#sfx-toggle`/`#sfx-volume` independently control synthesized effect feedback and the Level 6 ambience. Each range has a visible label and accessible name; toggles report `aria-pressed`. V arena opens with a temporary balanced mix of **Music 16% / SFX 40%**. The two sliders show these actual active levels; arena edits last for that arena visit only, while the prior persisted shop volumes are restored on exit. Mute buttons keep their usual persistent behavior. No new modal or arena toolbar is introduced.
+- Shared combat HP plates and damage numbers hide during optional local intro only, be noninteractive, respect camera projection and bounded screen placement, and never invent damage in saved replays. Floating numbers are decorative for assistive technology; the original numeric bottom HP/status remains readable. The new grab has a readable windup label and distinct grab/throw status cues. On the Tripo renderer a caught hero's existing model is visibly held between the actual animated left thumb, index and middle finger from successful contact until release, following the wrist's 3D motion; the airborne model then separates continuously from that hand and lands at the real motor location. The segmented legacy renderer remains a simpler fallback; the HUD uses only real recorded HP/lava cues and must not invent a hit for a missed grip.
+- The compact persistent audio panel exposes **separate Music and Effects rows**. `#music-toggle`/`#music-volume` control the scene MP3 player; `#sfx-toggle`/`#sfx-volume` independently control synthesized effect feedback and the Troll arena ambience. Each range has a visible label and accessible name; toggles report `aria-pressed`. V arena opens with a temporary balanced mix of **Music 16% / SFX 40%**. The two sliders show these actual active levels; arena edits last for that arena visit only, while the prior persisted shop volumes are restored on exit. Mute buttons keep their usual persistent behavior. No new modal or arena toolbar is introduced.
 - **Training SFX Lab:** The opt-in `SFX Lab` toolbar control is visible only for the unsaved V training preview. Its small, scrollable overlay exposes accessible independent Solo/Mute buttons by source and type, Reset mix, an optional collapsible 19-cue audition library and a bounded read-only activity feed. `aria-pressed` reflects active filtering. It never replaces the separate global music/SFX controls, never opens for saved footage or while inspecting models, and must not steal Space/Enter intro skips when focused.
-- The Level 6 cinematic presents one hero and the boss without inventing additional party members. Its centre-bottom title/shot captions never intercept the camera; current HP, replay outcomes and combat cues remain hidden until the 13.5s downbeat. Space/Enter skips the intro, V/Escape closes the viewer, and the existing soundtrack panel remains available. The replay stays untouched while the camera runs.
+- LIVE entry from World Echoes, map or hero view goes directly to the current committed fight with HUD and camera available. The world continues. Local recorded playback and Combat Lab retain optional cinematics (ordinary 5.2 s, boss 13.5 s); Dungeon Viewer LIVE music requests the corresponding cue with a 1.1 s crossfade, and its manual skip supports both scores. Acoustic and visual acceptance of the final changes remains open. Space/Enter skips an active local intro. V/Escape closes the Lab; Escape returns from the LIVE arena.
 - Batch shelf fill/clear is implemented through `GameStore.transfer`. Customer remarks use the same read-only world projection as request bubbles, but never replace their item icon or timer. One speaker is rendered at a time; the rate limit and short lifetime prevent dialogue walls. Additional narrative reactions and cashier polish remain subject to [ROADMAP](ROADMAP.md).
 
 ## World Wide Hero Cards · Single visual source of truth
@@ -254,7 +254,7 @@ Entry points:
   attack, defense and recorded stamina come from genuine actor specs/frames.
   The old floating **world-space** HP plates and damage numbers stay in
   place. The side roster never duplicates those HP bars.
-- **Level 6 boss:** one Compact version uses the same renderer. The
+- **Floor-10 boss:** one Compact version uses the same renderer. The
   original Cave Troll HP plates and cinematic remain.
 
 A Card is NEVER another simulation authority. In recorded contexts it
@@ -285,7 +285,7 @@ plates or hit feedback when cleaning obsolete HTML inspectors.
 - Mini Card hover remains on true physical/shop and LIVE spectator entry
   points, but the Adventurer Board's inline Mini summaries do not create a
   redundant second floating Mini within the native board dialog.
-- Group and Level 6 boss Compact combat cards use independent focus targets
+- Ordinary and Floor-10 boss Compact combat cards use independent focus targets
   and accessible inspection buttons. The HUD maps **real committed phases**
   to corresponding action glyphs (parry, dodge, casting/healing, strike,
   hurt, death) and uses genuine HP ratio for danger-state border treatment.

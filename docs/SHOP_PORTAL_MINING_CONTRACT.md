@@ -1,8 +1,6 @@
 # One cursed shop portal and consistent mined surfaces
 
-> **Current Alpha v36 / #323:** The one portal, persisted `shopRoom` and mining/blueprint clearance remain unchanged. Current TypeScript geometry modules use `shopRoomGeometry.ts`, `shopWallFaces.ts`, and `shopRoomVisuals.ts`; dated v31 notes below describe former file names, not active aliases.
-
-> Current implementation contract: Alpha v28, PR #303 (22 November 2026). This document is a *source map* for code, not evidence of manual art acceptance.
+> Reviewed against Alpha v40, main after #374 (25 November 2026).
 
 ## One physical entrance/exit
 
@@ -28,9 +26,7 @@
 
 ## Alpha save policy
 
-The single-gate traffic checkpoint changed from two `level4/level6` door values to one `portal` value, so `SIMULATION_VERSION` is now **28**. Earlier versions are rejected with an explicit New Game message. There are **no save migrations**; current-version Save/Load remains strictly validated.
-
-At the time of PR #303, the unrelated `hero.floor=5` at-shop occupancy, `level5Room` name and historical solo Level-6 engine were untouched. **Subsequently in Alpha v29, only the LIVE solo Level-6 execution/Save path was deleted; the non-LIVE day fixtures and shop-state sentinel remain.** Those remain separate parts of issue #300, not hidden compatibility promises.
+Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The room, one portal and hero place keys are canonical; the old numerical shop/transit aliases are removed.
 
 ## Checks
 
@@ -39,5 +35,3 @@ At the time of PR #303, the unrelated `hero.floor=5` at-shop occupancy, `level5R
 - Build and Pages verification, module graph and strict current-save roundtrip must remain green.
 
 **Manual sign-off still required:** mine both shop wings and the cellar on a real GPU, check texture scale and seams with torches on; try P/N repositioning over both gate footprints; cross the true portal, jam the gate with simultaneous customers, test the former right tunnel, and evaluate FPS/lighting. Automated tests cannot certify beauty.
-
-**Historical Alpha v31 update (file names at that time):** The single physical shop mined-room checkpoint is now `payload.shopRoom`, not `level5Room`. Existing `level5Room.ts` and `level5WallFaces.ts` are geometry/renderer source-module names, not live numeric dungeon floors. Strict v31 Save/Load rejects previous v30 campaigns; all genuine mining and furniture clearance use one physical shop room. This does not yet replace hero `floor=5` occupancy; see issue #300.

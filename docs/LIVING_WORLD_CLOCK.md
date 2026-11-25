@@ -1,6 +1,6 @@
 # One Living World Clock — current runtime contract
 
-> Reconciled 22 November 2026. Older PR #203–#215 planning/implementation chronology has been retired from this living document, but remains available in Git history. This document describes the world *that exists*, not a future replacement engine.
+> Reviewed against Alpha v40, main after #374 (25 November 2026). Current world clock and timing contract.
 
 ## Authority and unit of time
 
@@ -14,7 +14,7 @@
 ## Physical shop, returns and rotation
 
 1. An adventurer finishes a real exploration decision, may choose shop, and backtracks **known connected tiles** toward a seeded entrance. The LIVE clock schedules a real portal crossing, not an invented arrival from a hidden map.
-2. Galvik's shop is a separate **unnumbered cursed realm**. Normal NPC arrivals and departures share one physical shop threshold. The current Alpha v35 physical shop checkpoint contains exactly one `portal` door. Former `level4`/`level6` gates are removed and v27 saves are rejected (no migration); the separately named shop `floor=5` occupancy still needs its own cleanup.
+2. The unnumbered cursed shop has one physical portal. The current save uses `shopRoom`, `doorY.portal`, `gateSide=portal`, and distinct hero places `shop`, `away`, `transit`.
 3. A paid/credited visitor still needs a **real physical departure** before `off-duty` begins. After leaving, a saved offDutyUntilTick deadline controls recovery on the existing movement lane, even across midnight. Healthy heroes return after 400 ticks plus at most one movement interval. No second clock or daily reset.
 4. Off-duty healing consumes genuinely owned Waybread/Herbs if available. No passive full heal, debt cancellation, free item, gold grant or instant reentry.
 5. Time-bound restock waits and shopping-cart claims are durable saved events/objects. Cancelling/reloading a viewer never renews a deadline or sells a reserved cart. Day closure restores unpaid goods without phantom receipts.
@@ -24,7 +24,7 @@
 - Ordinary **Floors 1–9** are genuine seeded traversable maps. Heroes have independent saved position, HP, intent and treasures; Temporary Parties form naturally from actual positions.
 - A **Floor-9** real party reaches the lower stair together and may enter the **Floor-10 Cave Troll** only when the actual 2–3 members satisfy pass/health/time conditions. A solo flag never creates a fake group.
 - `groupCombat.ts` settles the 60-Hz authoritative fight, retaining real actor poses/cues and one original outcome. Scene interpolation, cinematic intro and the local recording clock may read those frames but cannot replace, rewind or resimulate the fight.
-- Current v30 saves do **not** admit a Solo Floor-6 `liveDungeon.bossCombat` field, and LIVE world time cannot spawn or settle one. The old `level6Combat` dispatcher was removed after the LIVE cleanup; only preview/replay readers retain solo-tape metadata. The real LIVE Troll is exclusively the Floor-10 GroupCombat party.
+- Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The unique boss checkpoint is `partyBossCombat`; the old solo dispatcher and recording adapters are retired. All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events.
 
 ## Knowledge and retention
 
@@ -36,6 +36,6 @@
 
 **Implemented and testable:** shared tick owner; 200-tick spatial pacing; 60-Hz combat; physical shop cart/checkout; portal return; health-dependent recovery; genuine group boss; bounded archive.
 
-**Still open:** full 20-/50-/100-day current-code balancing; actual physical NPC pathfinding under slow checkout/service; re-entry and shop gate migration out of legacy keys; representative device frame pacing and audio/visual acceptance. See [Roadmap](ROADMAP.md) and open issue #294.
+**Still open:** physical NPC/service pathing, current-save recovery, final visual/audio and real-device FPS acceptance. [Current Alpha evidence](ALPHA_V40_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 Never “fix” stalled XP by fast-forwarding the calendar, inventing loot, granting invisible purchases, or letting an observer HUD simulate extra battles.
