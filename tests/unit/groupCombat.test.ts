@@ -293,22 +293,31 @@ test("real melee equipment prevents light-hit interruption but never negates dam
   }
 });
 
-test("ordinary melee defense can forfeit a pending swing and costs stamina",()=>{
+test("ordinary melee defense can forfeit a pending swing only after a successful read",()=>{
   for(const role of ["tank","DPS"] as const){
-    const {s,hero,monster}=imminentMonsterStrike();
-    const state=createGroupCombat({bounds,actors:[
-      fighter("hero","heroes",hero.x,hero.z,{role,hp:100,maxHp:100}),
-      fighter("monster","monsters",monster.x,monster.z),
-    ]});
-    const h=state.actors.find(a=>a.id==="hero")!;
-    const m=state.actors.find(a=>a.id==="monster")!;
-    h.phase="windup";h.phaseAge=.1;h.stamina=50;
-    m.phase="windup";m.phaseAge=.54;m.targetId=h.id;m.lockedHeading=Math.PI;
-    stepGroupCombat(state);
-    assert(["roll","parry"].includes(h.phase));
-    assert(h.stamina<50);
-    assert(!state.events.some(e=>e.kind==="hit"&&e.actorId===h.id));
-    assert.equal(s.time,0);
+    let defended=0,missed=0;
+    for(let seed=1;seed<=32;seed++){
+      const state=createGroupCombat({bounds,tacticsSeed:seed,actors:[
+        fighter("hero","heroes",0,0,{role,hp:100,maxHp:100}),
+        fighter("monster","monsters",0,1.7),
+      ]});
+      const h=state.actors.find(a=>a.id==="hero")!;
+      const m=state.actors.find(a=>a.id==="monster")!;
+      h.phase="windup";h.phaseAge=.1;h.stamina=50;
+      m.phase="windup";m.phaseAge=.54;m.targetId=h.id;m.lockedHeading=Math.PI;
+      m.attacksStarted=1;
+      stepGroupCombat(state);
+      if(["roll","parry"].includes(h.phase)){
+        defended++;
+        assert(h.stamina<50);
+      }else{
+        missed++;
+        assert.equal(h.phase,"windup","failed read must not cancel the pending swing");
+        assert(h.stamina>=50);
+      }
+      assert(!state.events.some(e=>e.kind==="hit"&&e.actorId===h.id));
+    }
+    assert(defended>0&&missed>0,role+" must have finite, nonzero reaction chance");
   }
 });
 
@@ -348,28 +357,33 @@ test("DPS sidestep is the same against every opponent; ranged and tank rolls ret
 });
 
 test("ordinary DPS selects an open flank instead of rolling into a nearby wall",()=>{
-  const make=(blocked:boolean)=>createGroupCombat({bounds,obstacles:blocked?[
+  const make=(blocked:boolean,seed:number)=>createGroupCombat({bounds,tacticsSeed:seed,obstacles:blocked?[
     {id:"blocked-east",minX:.65,maxX:2.5,minZ:-2,maxZ:2},
   ]:[],actors:[
     fighter("hero","heroes",0,0,{role:"DPS",style:"melee",hp:100,maxHp:100}),
     fighter("monster","monsters",0,1.7,{speed:0}),
   ]});
-  for(const blocked of [false,true]){
-    const s=make(blocked);
+  let observed=0;
+  for(let seed=1;seed<=32;seed++){
+    for(const blocked of [false,true]){
+    const s=make(blocked,seed);
     const hero=s.actors.find(a=>a.id==="hero")!;
     const monster=s.actors.find(a=>a.id==="monster")!;
     hero.stamina=50;
     monster.phase="windup";monster.phaseAge=.54;
     monster.targetId=hero.id;monster.lockedHeading=Math.PI;
     stepGroupCombat(s);
-    assert.equal(hero.phase,"roll");
+    if(hero.phase!=="roll")continue;
+    observed++;
     assert(hero.stamina<50);
     assert(blocked?hero.rollX<0:hero.rollX>0,
       "Use the normal east flank unless the wall blocks it.");
     for(let i=0;i<24;i++)stepGroupCombat(s);
     assert(blocked?hero.x< -1.5:hero.x>1.5);
     assert.equal(hero.hp,100);
+    }
   }
+  assert(observed>0,"at least one successful read must exercise the flank");
 });
 
 test("a compact sidestep is not free invulnerability after the existing roll window",()=>{
