@@ -13,7 +13,7 @@ import {
 } from "./combatSignatureAbilities.ts";
 import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
-  selectCombatTarget, trollDefenseReadiness,
+  selectCombatTarget, combatDefenseReadiness,
 } from "./combatTactics.ts";
 import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
 import {
@@ -634,12 +634,18 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   // All melee heroes may forfeit an unlanded windup or recovery against
   // an actual threatening action. Contact, stamina and defense windows
   // remain authoritative; an enemy ability may still be harder to read.
-  if(a.team==="heroes"&&a.style==="melee"&&
-    (a.phase==="windup"||a.phase==="recover")&&a.stamina>=28&&attackerThreat(s,a))
-    phase(a,"move");
+  const canCancel=a.team==="heroes"&&a.style==="melee"&&
+    (a.phase==="windup"||a.phase==="recover")&&a.stamina>=28;
+  const threat=(a.phase==="move"||canCancel)?attackerThreat(s,a):undefined;
+  // One deterministic read per opposing attack, not a fresh roll each tick.
+  // The same agility/role rule applies to every opponent. A grapple is
+  // harder to read because of its ability, not because it belongs to a boss.
+  const canReact=!!threat&&combatSample(s,threat.id,a.id,
+    Math.max(1,threat.attacksStarted))<combatDefenseReadiness(
+      a.agility,a.role,threat.activeMeleeAbility==="grapple");
+  if(canCancel&&canReact)phase(a,"move");
   if (a.phase === "move") {
     a.heading = combatHeading(a,enemy);
-    const threat = attackerThreat(s,a);
     // Tanks prefer to meet an incoming strike with steel, but do not lose
     // the ability to sidestep. One stable per-attack read, not render RNG.
     const tankParry=a.role==="tank"&&a.style==="melee";
@@ -655,16 +661,6 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
       preferParry:tankParry&&parryRead<.78,
       canParry:tankParry,
     });
-    // The Level-6 duel already has a finite response chance. A group
-    // member must not become a perfect 100%-dodge machine against the
-    // same telegraph. The sample is stable across actor/replay ordering.
-    const bossWarning=threat?.specialAbility==="grapple-throw";
-    const defenseRead=bossWarning&&threat
-      ?combatSample(s,threat.id,a.id,
-          Math.max(1,threat.attacksStarted))
-      :0;
-    const canReact=!bossWarning||defenseRead<trollDefenseReadiness(
-      a.agility,a.role,threat?.activeMeleeAbility==="grapple");
     if(threat&&canReact&&reaction==="parry"){
       a.stamina-=20;
       a.heading=combatHeading(a,threat);
