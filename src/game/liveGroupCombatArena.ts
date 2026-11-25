@@ -288,9 +288,9 @@ export class LiveGroupCombatArena{
         if(ready){
           model.ghoul.root.position.set(pos.x,.08,pos.z);
           model.ghoul.root.rotation.y=actor.heading;
+          const strikes=ghoulRecordedStrikeOrdinal(fight.frames,id,frame.t);
           model.ghoul.animate(actor.phase,ghoulRecordedPhaseAge(
-            fight.frames,id,frame.t),actor.phase==="strike"
-              ?ghoulRecordedStrikeOrdinal(fight.frames,id,frame.t):1);
+            fight.frames,id,frame.t),actor.phase==="windup"?strikes+1:Math.max(1,strikes));
         }
       }
     }
