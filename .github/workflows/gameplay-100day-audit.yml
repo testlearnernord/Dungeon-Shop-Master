@@ -98,38 +98,33 @@ jobs:
           path: boss-readiness.json
           retention-days: 14
 
-  pacing-comparison:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feature/living-dungeon-pacing'
-    name: Ten-day Forge pacing comparison / ${{ matrix.variant }}
+
+  autonomous-progression:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feature/autonomous-boss-progression'
+    name: Autonomous Forge campaign / seed ${{ matrix.seed }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - variant: v41-baseline
-            ref: "364e7f75515f21494a57da429c0daaeaeabd4c10"
-          - variant: v42-candidate
-            ref: ${{ github.event.pull_request.head.sha }}
+        seed: [42, 7351]
     env:
-      AUDIT_DAYS: "10"
-      AUDIT_SEED: "7351"
+      AUDIT_DAYS: "45"
+      AUDIT_SEED: ${{ matrix.seed }}
       AUDIT_MODES: "forge"
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ matrix.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - name: Run identical scripted storefront policy
+      - name: Run campaign with ordinary commerce and autonomous boss decisions
         run: time node --max-old-space-size=6144 --experimental-strip-types tools/analysis/gameplay-100day-audit.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pacing-${{ matrix.variant }}
+          name: autonomous-forge-${{ matrix.seed }}
           path: gameplay-100day-audit.json
           if-no-files-found: ignore
           retention-days: 14
