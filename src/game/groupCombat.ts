@@ -16,6 +16,7 @@ import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
   selectCombatTarget, combatDefenseReadiness,
 } from "./combatTactics.ts";
+import {appendCombatFrame} from "./combatRecording.ts";
 import {observeCombatProgress,type CombatProgressCheckpoint} from "./combatProgress.ts";
 import {shouldRetreat,chooseRetreatExit,atRetreatExit,retreatComplete} from "./combatRetreat.ts";
 import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
@@ -978,16 +979,17 @@ export function groupCombatReplayFromFrames(
 }
 
 /**
- * A bounded, side-effect-free recording for future dungeon replay support.
- * The caller owns any day-tick integration and save validation in a later MVP.
+ * A side-effect-free recording using the same natural outcomes as LIVE.
+ * An explicitly supplied horizon is reserved for controlled diagnostic fixtures.
  */
-export function resolveGroupCombat(options: GroupCombatOptions, maxSeconds=45):
+export function resolveGroupCombat(options: GroupCombatOptions, maxSeconds?:number):
   { readonly state: GroupCombatState; readonly replay: GroupCombatReplay } {
-  if (!Number.isSafeInteger(maxSeconds) || maxSeconds < 1 || maxSeconds > 90)
+  if (maxSeconds!==undefined&&(!Number.isSafeInteger(maxSeconds) || maxSeconds < 1 || maxSeconds > 90))
     throw new RangeError("Group encounters must be bounded to 1-90 seconds");
   const state=createGroupCombat(options);
   const {frames}=recordCombatEncounter({
     state,step:stepGroupCombat,capture:captureGroupCombatFrame, captureEvery:6,maxSeconds,
+    appendFrame:appendCombatFrame,
     isFighting:world=>world.outcome==="fighting",
   });
   if(state.outcome==="fighting")state.outcome="draw";
