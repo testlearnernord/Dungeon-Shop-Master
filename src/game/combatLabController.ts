@@ -136,7 +136,7 @@ export class CombatLabController {
   }
   update(dt:number):void{
     if(!this.active)return;
-    if(this.modelLab){this.modelLab.update(dt);return;}
+    if(this.modelLab)return;
     this.lab.update(dt,this.pressed);
   }
 }
