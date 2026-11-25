@@ -22,10 +22,10 @@ concurrency:
 
 jobs:
   audit:
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (startsWith(github.head_ref, 'audit/gameplay-loop-') || github.head_ref == 'audit/ghoul-combat-diagnostics-and-motion'))
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (startsWith(github.head_ref, 'audit/gameplay-loop-') || github.head_ref == 'audit/ghoul-combat-diagnostics-and-motion' || github.head_ref == 'experiment/ghoul-pack-attack-spacing'))
     name: Real GameStore / scripted-storefront ${{ matrix.days }}-day scenarios / ${{ matrix.seed }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
