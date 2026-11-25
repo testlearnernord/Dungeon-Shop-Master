@@ -118,3 +118,28 @@ test("live night schedule does not invent a physical departure for a paid or unr
   assert.equal(old.adventurer.status,"returning",
     "isolated old bedtime fixtures retain their separate legacy flow");
 });
+
+test("severe injury spends additional owned doses on later recovery ticks, not on the same tick",()=>{
+  const {state,hero}=exitFixture();
+  const wounded={...hero,health:1,inventory:{...hero.inventory,bread:3,healing:0}};
+  const before={...state,adventurers:state.adventurers.map(h=>h.id===hero.id?
+    {...h,health:wounded.health,inventory:wounded.inventory}:h)};
+  const exiting=completeObservedShopExit(before,hero.id,13);
+  const store=new GameStore(exiting);
+  const current=()=>store.state.adventurers.find(h=>h.id===hero.id)!;
+  const first=current().offDutyUntilTick!;
+  store.advanceWorldTime(first);
+  assert.equal(current().health,9);
+  assert.equal(current().inventory.bread,2);
+  assert.equal(current().status,"off-duty");
+  assert.equal(current().offDutyUntilTick,first+1200);
+  const copy=new GameStore(parseSave(JSON.stringify(createSave(store.state))));
+  store.advanceWorldTime(1200);copy.advanceWorldTime(1200);
+  assert.deepEqual(copy.state,store.state);
+  assert.equal(current().health,17);
+  assert.equal(current().inventory.bread,1);
+  const second=store.state.events.filter(e=>e.type==="healed"&&e.adventurerId===hero.id);
+  assert.equal(second.length,2);
+  assert.equal(new Set(second.map(e=>e.id)).size,2);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+});

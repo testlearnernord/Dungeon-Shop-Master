@@ -2,6 +2,7 @@ import type {GameState} from "./gameState.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
+import {needsHealthResupply} from "./dungeonDecisions.ts";
 import {chooseDungeonThreatReaction,type DungeonThreatAction}
   from "./dungeonThreatDecisions.ts";
 import {generateExpeditionLayout,type DungeonPoint} from "./dungeonLayout.ts";
@@ -113,7 +114,9 @@ export function selectLiveFloorSpectatorFrame(
           (progress.get(member.id)?.z??NaN)===site.z):[hero];
       const threat=world&&site&&!fight&&returning?.phase!=="portal"&&tacticalLayout
         ?chooseDungeonThreatReaction(tacticalLayout,world,
-          returning?[hero]:gathered,state.adventurers,returning?.phase==="backtrack"):null;
+          returning?[hero]:gathered,state.adventurers,returning?.phase==="backtrack",
+          gathered.some(member=>state.liveDungeon.plans.some(p=>p.heroId===member.id&&
+            p.goal==="caution")&&needsHealthResupply(member))):null;
       return [{
         id:hero.id,name:hero.name,role:hero.role,equipment:hero.equipment,
         level:hero.level,stats:hero.stats,traits:hero.traits,
