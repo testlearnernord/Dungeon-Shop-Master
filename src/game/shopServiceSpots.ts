@@ -167,9 +167,9 @@ export class ShopServiceSpots{
     const occupied=[...(request.occupied??[]),...(request.destinations??[])];
     const otherClaims=[...this.claims.values()].filter(x=>x.heroId!==heroId)
       .map(x=>x.point);
-    const forbidden=role==="checkout"||role==="buyback"?[]:
-      role==="restock"||role==="credit"?this.checkout:
-      [...this.checkout,...this.restock];
+    const forbidden=role==="buyback"?[]:role==="checkout"?[BUYBACK_DOCK]:
+      role==="restock"||role==="credit"?[BUYBACK_DOCK,...this.checkout]:
+      [BUYBACK_DOCK,...this.checkout,...this.restock];
     if(role==="idle"||role==="overflow"||role==="roam")
       this.ensureIdle(layout,room,24);
     let candidates:readonly ShopPoint[];

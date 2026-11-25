@@ -1,6 +1,6 @@
 # Cellar Forge V0.1 / V0.2 — material-to-gear contract
 
-> Reviewed against Alpha v40, main after #374 (25 November 2026). The functional V0.1/V0.2 forge is merged; manual acceptance is tracked in #294.
+> Current contract: Alpha v41, including physical automatic buyback. The functional V0.1/V0.2 forge is merged; manual acceptance is tracked in #294.
 
 ## One physical chain, one source of authority
 
@@ -47,7 +47,7 @@ Initial, deliberately small recipes:
   and carried products share these canonical models; equipped heroes
   retain their role-specific meshes with tier details. See
   [Equipment presentation V0.2](EQUIPMENT_PRESENTATION_V02.md).
-- Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+- Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 ## Verification and next step
 
@@ -78,3 +78,7 @@ Initial, deliberately small recipes:
   valid; the strict validator is not relaxed to accept a defeated pack.
 
 - The fixed workshop and its positive-Z working approach are reserved by the shared cellar furniture placement rules. Preview, commit and strict save validation reject chest/table overlap; the renderer shares the same workshop position. Other supported cellar placements remain movable.
+
+## Automatic physical intake (Alpha v41)
+
+The open Recovered Goods Chest replaces manual offer purchase UI. The existing customer motor walks to the reserved service dock, pauses for the drop-off gesture and invokes the existing paid buyback once for each affordable unit. Receipts are committed together. Materials bypass the bag and enter the three workshop reserves. Insufficient funds leave unpaid goods with their owner; a closed chest is skipped. The player can toggle the real lid and acceptance with E or click; state is saved. The log is read-only. No new economy, automatic crafting or second pathfinding motor.

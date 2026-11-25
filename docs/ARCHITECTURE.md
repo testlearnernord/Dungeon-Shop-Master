@@ -1,9 +1,9 @@
 # Dungeon Shop Master — current technical architecture
 
-> Reviewed against Alpha v40, main after #374 (25 November 2026). Current runtime responsibilities, not a PR diary. See [Game Bible](GAME_BIBLE.md) and [Roadmap](ROADMAP.md).
+> Current contract: Alpha v41, including physical automatic buyback. Current runtime responsibilities, not a PR diary. See [Game Bible](GAME_BIBLE.md) and [Roadmap](ROADMAP.md).
 
 
-**Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+**Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 ## 1. Execution model and ownership
 
@@ -108,7 +108,7 @@ Committed original Tripo GLBs
 
 `npm run build` executes both asset generators, TypeScript type checking and Vite bundling. D1 #242 runs `npm run verify:pages` immediately after build in PR CI **and** the Pages deploy workflow: it checks final `dist/` JS/CSS URL base, canonical music, all 32 creature SFX and generated/curated GLB copies without changing runtime assets. See [D1 artifact contract](CODE_CLEANUP_D1.md). `npm run test:unit` runs Node tests, `npm run test:smoke` runs the curated browser-flow whitelist; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit and **one core browser-smoke job**; the full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
 
-Alpha v40 is the only supported campaign schema. Reject v39 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Current Alpha evidence](ALPHA_V40_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
+Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Current Alpha evidence](ALPHA_V40_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 **Dungeon transitions:** dungeonStairways.ts projects the actual layout entrance
 and dungeonDownStair(...) cells as view-only stair landmarks. 3D stone steps
@@ -149,3 +149,7 @@ unaffected. Historical omissions must remain unknown.
 ## Combat Lab configuration parity
 
 V defaults to Production rules: `productionLabHero` derives hero power from the shared `heroCombatAttributes` and canonical gear catalog. Ordinary tests use the actual generated-site composer `prepareSpatialDungeonCombat` (including layout, pack size and open arena bounds); boss tests use `caveTrollPartyOptions`. The generated fixture deliberately uses a local seed and synthetic heroes unless roster snapshots are imported. Selecting a captured running LIVE encounter instead clones its exact initial `GroupCombatOptions` and restarts locally; it does not resume the current tick or mutate the campaign. Custom experiments explicitly override final stats, pack count and arena. Both modes still use one motor. Current HP, class-compatible T1/T2 selectors, and encounter-specific music are part of this configuration. No campaign save changes.
+
+## Physical recovered-goods service
+
+`buybackChestPlacement.ts` defines the fixed footprint and service dock. `shopFloorFixtures`, placement and the existing service reachability checks protect it. `NpcVisualSystem` schedules buyback before normal cart/resupply behavior using the existing service claims and routes. Only `GameStore.buybackAtChest` invokes the existing paid material exchange at the dock; one unit retains one valid receipt. Visual feedback reads committed receipts. The saved `buybackChestOpen` flag requires schema v41; no v40 migration. Other goods are not automatically sold, and no negative treasury is permitted.
