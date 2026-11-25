@@ -885,7 +885,7 @@ export function settleSpatialDungeonCombat(
     });
     return {
       adventurer,
-      replay:{...arrival,steps:[...arrival.steps,...tail],
+      replay:{...arrival,day,steps:[...arrival.steps,...tail],
         encounters:[{featureId:encounter.featureId,x:encounter.x,z:encounter.z,
           siteCycle:encounter.siteCycle,combat:recording}],
         outcome:personalOutcome},
