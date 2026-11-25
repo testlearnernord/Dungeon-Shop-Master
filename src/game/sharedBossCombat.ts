@@ -1,6 +1,5 @@
 import type {AdventurerState} from "./adventurers.ts";
-import {heroProgression} from "./heroProgression.ts";
-import {equipmentEffects} from "./gearCatalog.ts";
+import {heroCombatAttributes} from "./heroProgression.ts";
 import {canAttemptCaveTroll,CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
 import {
   createCombatPreview,type ArenaCue,type CombatPreviewOptions,
@@ -92,36 +91,10 @@ export function caveTrollPartyOptions(
   if(!Number.isSafeInteger(tacticsSeed)||tacticsSeed<0||tacticsSeed>0xffffffff)
     throw new RangeError("Invalid saved boss tactics seed");
   const positions=[{x:-4,z:-9},{x:0,z:-9},{x:4,z:-9}];
-  const heroes=party.map((hero,i)=>{
-    const p=heroProgression(hero);
-    const gear=equipmentEffects(hero.role,hero.equipment);
-    const equippedWeapon=gear.weapon!==null;
-    const equippedVest=gear.vest!==null;
-    const solo=caveTrollGroupOptions({
-      role:hero.role,sword:equippedWeapon,
-      armor:equippedVest,
-      health:hero.health,maxHealth:p.maxHealth,
-      healingSupplies:Math.min(10,hero.inventory.healing),
-      strength:p.strength,agility:p.agility,intellect:p.intellect,
-      progressionDamageBonus:p.damageBonus,
-      progressionArmorBonus:p.armorBonus,
-      progressionMagicHeals:p.bonusMagicHeals,
-      tacticsSeed,
-    }).actors[0];
-    // The authored Level-6 solo options remain a historical training
-    // contract. LIVE Floor-10 heroes instead derive their real tiered gear
-    // from the same combat catalog as ordinary Ghoul fights.
-    return {...solo,id:hero.id,...positions[i],
-      style:hero.role==="healer"?"ranged":
-        (gear.weapon!==null?"melee":solo.style),
-      damage:solo.damage+gear.damage-(equippedWeapon?5:0),
-      armor:Math.max(0,solo.armor+gear.armor-(equippedVest?7:0)),
-      reach:Math.max(solo.reach,gear.reach),
-      ...(hero.role==="healer"?{
-        magicHeals:(solo.magicHeals??0)+gear.magicHeals}:{}),
-      equipment:{weapon:gear.weapon,armor:gear.vest},
-    };
-  });
+  const heroes=party.map((hero,i)=>({
+    id:hero.id,team:"heroes" as const,role:hero.role,...positions[i],
+    hp:hero.health,...heroCombatAttributes(hero),
+  }));
   const oldTroll=caveTrollGroupOptions({
     role:"tank",sword:false,armor:false,
     health:50,maxHealth:50,healingSupplies:0,tacticsSeed,
