@@ -386,3 +386,16 @@ test("a compact sidestep is not free invulnerability after the existing roll win
   assert.equal(h.hp,82);
   assert.equal(s.time,0);
 });
+
+test("a parried ordinary monster recoils physically without extra damage",()=>{
+  const {s,hero,monster}=imminentMonsterStrike();
+  hero.phase="parry";hero.phaseAge=.20;hero.heading=0;
+  const initialZ=monster.z,initialHp=monster.hp;
+  stepGroupCombat(s);
+  assert.equal(monster.phase,"hurt");
+  for(let i=0;i<8;i++)stepGroupCombat(s);
+  assert(monster.z>initialZ,"Recoil must move away from the defender");
+  assert.equal(monster.hp,initialHp);
+  assert.equal(hero.hp,100);
+  assert.equal(monster.phase,"hurt");
+});
