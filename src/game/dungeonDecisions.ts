@@ -4,6 +4,7 @@ import {chooseKnownRouteStep} from "./spatialDungeonExploration.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {equipmentEffects,gearForItem,gearFromName} from "./gearCatalog.ts";
 import {hasDungeonLineOfSight} from "./heroPerception.ts";
+import {canSoloChallengeVisiblePack} from "./dungeonThreatDecisions.ts";
 import {WHOLESALE_GOODS} from "./economy.ts";
 import {dungeonNeighbors,type DungeonLayout,type DungeonFeature} from "./dungeonLayout.ts";
 
@@ -258,6 +259,7 @@ export function chooseLiveHeroDungeonDecision(
 export function selectKnownResourceSite(
   layout:DungeonLayout,progress:SpatialDungeonHeroProgress,world:SpatialDungeonWorld,
   kind:"treasure"|"monster",
+  group?:readonly AdventurerState[],
 ):DungeonFeature|null {
   const known=new Set(progress.visited);
   const adjacent=dungeonNeighbors(layout,progress);
@@ -266,7 +268,8 @@ export function selectKnownResourceSite(
     if(kind!=="monster"||world.monsters===undefined)return [site];
     const occupant=world.monsters.find(monster=>monster.id===site.id);
     return occupant&&occupant.mode!=="ENGAGED"&&
-      hasDungeonLineOfSight(layout,progress,occupant)
+      hasDungeonLineOfSight(layout,progress,occupant)&&
+      (group?.length!==1||canSoloChallengeVisiblePack(group[0],layout,occupant))
       ?[{...site,x:occupant.x,z:occupant.z}]:[];
   }).filter(site=>
     (known.has(site.z*layout.width+site.x)||
