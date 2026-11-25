@@ -431,3 +431,20 @@ test("equipped ordinary spear sidestep retains close range without extending dod
     assert.equal(h.phase,"roll");
   }
 });
+
+
+test("healer offensive cadence is a class rule across all opposing abilities",()=>{
+  for(const boss of [false,true]){
+    const s=createGroupCombat({bounds,actors:[
+      fighter("hero","heroes",0,0,{role:"healer",style:"ranged",hp:100,maxHp:100,magicHeals:2}),
+      fighter("monster","monsters",0,6,{speed:0,...(boss?{specialAbility:"grapple-throw" as const}:{})}),
+    ]});
+    const hero=s.actors.find(a=>a.id==="hero")!;
+    const enemy=s.actors.find(a=>a.id==="monster")!;
+    enemy.cooldown=100;
+    stepGroupCombat(s);
+    assert.equal(hero.phase,"cast");
+    assert.equal(hero.cooldown,2);
+    assert.equal(hero.magicHeals,2);
+  }
+});
