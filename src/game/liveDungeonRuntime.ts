@@ -10,7 +10,7 @@ import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dun
 import {dungeonSiteGeneration} from "./dungeonRegeneration.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,carriedDungeonFindCount,
   salvageReturnThreshold,isBossExpeditionCandidate,isBossExpeditionParty,
-  needsHealthResupply,unresolvedRecoveryPlan,
+  needsHealthResupply,unresolvedRecoveryPlan,canRiskOrdinaryDescent,
   type HeroDungeonDecision,type DungeonDecisionReason} from "./dungeonDecisions.ts";
 import {choosePersistentDungeonParty,chooseBossRendezvous,negotiatePartyFloorDecisions,
   settlePersistentDungeonParties,temporaryPartyChanges,
@@ -389,6 +389,16 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
             pos.x===target.x&&pos.z===target.z&&
             !returns.some(r=>r.heroId===member.id);
         })?participants:[hero];
+        // A previously chosen descent can become stale after a real
+        // supply use or injury. Reuse the same current readiness decision
+        // before committing the ordinary physical crossing.
+        if(floor<9&&priorPlan.action==="descend"&&
+          crossing.some(member=>!canRiskOrdinaryDescent(member))){
+          for(const member of crossing)
+            if(!canRiskOrdinaryDescent(member))plans.delete(member.id);
+          processed.add(hero.id);
+          continue;
+        }
         if(floor===9&&priorPlan.action==="descend"){
           // A genuine saved temporary party physically reaches Floor 9's
           // lower stair together. No solo permit can spawn a fake team.

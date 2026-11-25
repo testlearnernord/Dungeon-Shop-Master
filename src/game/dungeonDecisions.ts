@@ -64,6 +64,14 @@ export function ordinaryExpeditionReadiness(hero:AdventurerState):number {
 function minimumOrdinaryFloorReadiness(floor:number):number {
   return Math.min(7,Math.max(1,floor-1));
 }
+/** Gear improves readiness, but cannot substitute for every level of
+ * experience against deep packs. This is an autonomous risk preference,
+ * shared by departure and residence, not a new progression reward. */
+function hasOrdinaryFloorReadiness(hero:AdventurerState,floor:number):boolean {
+  const minimumExperience=floor>=5?Math.min(6,floor-2):1;
+  return hero.level>=minimumExperience&&
+    ordinaryExpeditionReadiness(hero)>=minimumOrdinaryFloorReadiness(floor);
+}
 function recklessUnarmedSecondFloorRisk(hero:AdventurerState):boolean {
   return hero.traits.negative==="reckless"&&
     hero.health/heroProgression(hero).maxHealth>.85;
@@ -77,7 +85,7 @@ export function canRiskOrdinaryDescent(hero:AdventurerState):boolean {
   const armed=!!equipmentEffects(hero.role,hero.equipment).weapon;
   if(!armed)return floor===1&&recklessUnarmedSecondFloorRisk(hero);
   if(health<(careful?.76:reckless?.55:.65))return false;
-  return ordinaryExpeditionReadiness(hero)>=minimumOrdinaryFloorReadiness(floor+1);
+  return hasOrdinaryFloorReadiness(hero,floor+1);
 }
 
 export function needsHealthResupply(hero:AdventurerState):boolean {
@@ -142,16 +150,17 @@ export function chooseHeroDungeonDecision(
     (previousFindCount===undefined||
       Math.floor(carriedFinds/threshold)>Math.floor(previousFindCount/threshold));
   if(lowHealth || newHaul ||
-     (hero.floor===9 && hero.gold>=22 && known>=8)) {
+     (hero.floor===9 && newLootSite && hero.gold>=22 && known>=8)) {
     onReason?.(lowHealth?"low-health":newHaul?"new-salvage-haul":"floor9-gold-resupply");
     return {goal:"resupply",action:"shop"};
   }
   const starterWeapon=WHOLESALE_GOODS.find(item=>item.kind==="weapon"&&
     gearForItem(item.id)?.role===hero.role);
   const starterArmor=WHOLESALE_GOODS.find(item=>item.id==="leather-vest");
-  // A fresh reward or exhausted search is a real occasion to buy missing
-  // gear. Do not reroll a failed shop visit just because old gold persists.
-  if((newLootSite||replay.outcome==="completed")&&
+  // A fresh reward justifies reconsidering a purchase. Exhausting the
+  // same already-known floor is NOT another reward: otherwise unavailable
+  // class gear causes a shop trip every time the hero reenters that map.
+  if(newLootSite&&
     (!armed&&starterWeapon&&hero.gold>=starterWeapon.salePrice||
       armed&&!armored&&hero.floor>=2&&(!prepared||healthRatio<.90)&&
       starterArmor&&hero.gold>=starterArmor.salePrice)){
@@ -163,16 +172,16 @@ export function chooseHeroDungeonDecision(
     onReason?.("unprepared-retreat");return {goal:"caution",action:"ascend"};
   }
   if(hero.floor>=3&&hero.floor<9&&
-    ordinaryExpeditionReadiness(hero)<minimumOrdinaryFloorReadiness(hero.floor)){
+    !hasOrdinaryFloorReadiness(hero,hero.floor)){
     onReason?.("depth-risk");return {goal:"caution",action:"ascend"};
   }
   if(damaged && hero.floor>1 && !prepared){
     onReason?.("unprepared-retreat");return {goal:"caution",action:"ascend"};
   }
-  // Normal solo Floor-9 logic cannot initiate a group fight. The LIVE
-  // override below may descend only with an actual saved, permitted party;
-  // otherwise returning to Galvik is a valid recovery choice.
-  if(hero.floor===9 && enoughExperience){
+  // A solo explorer cannot start the boss. A genuinely new reward may
+  // motivate resupply/permission; old gold and unchanged map knowledge
+  // must not send an unpermitted hero round the portal indefinitely.
+  if(hero.floor===9 && enoughExperience && newLootSite){
     onReason?.("floor9-solo-resupply");return {goal:"resupply",action:"shop"};
   }
   if(hero.floor<9 && prepared && enoughExperience){
