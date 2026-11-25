@@ -206,7 +206,8 @@ test("a tank usually parries but can dodge the same telegraphed Troll attack",()
       }),
     ]});
     const troll=state.actors.find(a=>a.id==="lab-cave-troll")!;
-    troll.phase="windup";troll.phaseAge=.72;troll.lockedHeading=Math.PI;
+    troll.phase="windup";troll.phaseAge=.76;troll.lockedHeading=Math.PI;
+    troll.targetId="lab-hero-1";
     troll.activeMeleeAbility="troll-smash";
     troll.attacksStarted=attackNumber;
     const hero=state.actors.find(a=>a.id==="lab-hero-1")!;
