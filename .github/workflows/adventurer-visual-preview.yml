@@ -1,0 +1,26 @@
+name: Adventurer board visual preview
+on:
+  push:
+    branches: [preview/adventurer-board-screenshots]
+permissions:
+  contents: read
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: xvfb-run -a npx playwright test tests/adventurerVisualPreview.spec.ts
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: adventurer-board-screenshots
+          path: board-screenshots/
+          if-no-files-found: error
+          retention-days: 7
