@@ -732,7 +732,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
         phase(a,ranged?"cast":"windup");
         cue(batch,s,a,ranged?"cast":"attack",enemy.id);
       }else{
-        if(a.team==="heroes"&&enemy.specialAbility==="grapple-throw"){
+        if(a.team==="heroes"&&a.style==="melee"&&enemy.specialAbility==="grapple-throw"){
           circleSignatureBoss(s,a,enemy,dt);
         }else{
           const heading=combatDirection(a,enemy);
