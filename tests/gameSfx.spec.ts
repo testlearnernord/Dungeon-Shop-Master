@@ -21,19 +21,19 @@ test("independent SFX mute and volume survive reload and boss viewer lifecycle",
 
   const gold = await page.locator("#merchant-gold").textContent();
   await page.locator("#open-arena").click();
-  await expect(page.locator("#arena-cinematic")).toBeVisible();
+  await expect(page.locator(".group-combat-cinematic")).toBeVisible();
   await page.locator("#sfx-toggle").click();
   await expect(page.locator("#sfx-toggle")).toHaveText("SFX on");
   // Arena shortcuts intentionally ignore focused audio controls.
   await page.locator("#sfx-toggle").evaluate((button: HTMLButtonElement) => button.blur());
   await page.keyboard.press("Space");
-  await expect(page.locator("#arena-cinematic")).toBeHidden();
+  await expect(page.locator(".group-combat-cinematic")).toBeHidden();
   await page.locator("#restart-arena").click();
-  await expect(page.locator("#arena-cinematic")).toBeVisible();
+  await expect(page.locator(".group-combat-cinematic")).toBeVisible();
   await page.locator("#arena-model-toggle").click();
   await expect(page.locator("#arena-model-panel")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.locator("#arena-cinematic")).toBeVisible();
+  await expect(page.locator(".group-combat-cinematic")).toBeVisible();
   await page.locator("#close-arena").click();
   await expect(page.locator("#day")).toHaveText("Day 1");
   await expect(page.locator("#merchant-gold")).toHaveText(gold!);
@@ -49,7 +49,7 @@ test("SFX Lab is preview-only, supports independent solo/mute and cue audition",
   await expect(page.locator("#arena-sfx-debug-toggle")).toBeHidden();
   const originalGold=await page.locator("#merchant-gold").textContent();
   await page.keyboard.press("v");
-  await expect(page.locator("#arena-preview")).toContainText("TRAINING PREVIEW");
+  await expect(page.locator("#arena-preview")).toContainText("Disposable combat tests");
   await expect(page.locator("#arena-sfx-debug-toggle")).toBeVisible();
   await expect(page.locator("#arena-sfx-debug")).toBeHidden();
   await page.locator("#arena-sfx-debug-toggle").click();

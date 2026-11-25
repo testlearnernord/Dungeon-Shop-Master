@@ -41,7 +41,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,39);
+  assert.equal(SIMULATION_VERSION,40);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -851,4 +851,33 @@ test("a Floor-9 hero without a pass does not endlessly revisit for unchanged gol
   assert.equal(chooseLiveHeroDungeonDecision(hero,progress,replay).action,"stay");
   assert.equal(chooseLiveHeroDungeonDecision(hero,progress,{...replay,
     outcome:"exploring",steps:[{...layout.entrance,t:1,action:"treasure",hp:hero.health}]}).action,"shop");
+});
+
+
+test("an actual late-night encounter survives bedtime, dawn and JSON reload",()=>{
+  const initial=activeFightFixture().state;
+  const start=WORLD_TICKS_PER_DAY-DUNGEON_STEP_INTERVAL_TICKS-LIVE_COMBAT_INTERVAL_TICKS;
+  // Activate the actual scheduler just before the final movement tick,
+  // rather than synthesizing a battle state or editing its clock identity.
+  const a=new GameStore({...initial,
+    worldClock:{...initial.worldClock,tick:start},
+    shopTraffic:{...initial.shopTraffic,tick:start},
+  });
+  a.enableLiveDungeon();
+  a.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const battle=a.state.liveDungeon.combats[0];
+  assert(battle,"late combat may no longer be suppressed by bedtime");
+  const before=a.state.adventurers.find(h=>h.id===battle.heroIds[0])!;
+  a.endDay();
+  assert.equal(a.state.day,2);
+  const ongoing=a.state.liveDungeon.combats.find(c=>c.heroIds.includes(before.id));
+  assert(ongoing,"bedtime must not settle an unresolved battle");
+  assert.equal(Math.round(ongoing.state.time*60),30);
+  assert.equal(ongoing.frames.length,6);
+  assert.deepEqual(a.state.adventurers.find(h=>h.id===before.id),before,
+    "midnight cannot heal or reschedule an active fighter");
+  const b=new GameStore(parseSave(JSON.stringify(createSave(a.state))));
+  assert.deepEqual(a.state,b.state);
+  a.advanceWorldTime(100);b.advanceWorldTime(100);
+  assert.deepEqual(a.state,b.state,"same encounter must continue exactly after reload");
 });

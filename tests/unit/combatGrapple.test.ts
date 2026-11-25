@@ -9,9 +9,6 @@ import {
   createGroupCombat,resolveGroupCombat,stepGroupCombat,
   type CombatantSpec, type GroupCombatState,
 } from "../../src/game/groupCombat.ts";
-import {
-  createCombatPreview,stepCombatPreview,GRAPPLE_TIMING as BOSS_TIMING,
-} from "../../src/game/arenaCombatMotion.ts";
 
 const bounds={minX:-12,maxX:12,minZ:-12,maxZ:12};
 function specs(heroId="hero"):CombatantSpec[] {
@@ -51,7 +48,6 @@ function forcedGrab(heroId="hero",withWall=false):{
 }
 
 test("the exact original Troll grapple timing and pure physical rules are shared",()=>{
-  assert.equal(GRAPPLE_TIMING,BOSS_TIMING);
   assert.equal(GRAPPLE_TIMING.grabContact,0.30);
   assert.equal(GRAPPLE_TIMING.throwRelease,0.58);
   assert.equal(GRAPPLE_TIMING.flight,0.90);
@@ -172,16 +168,4 @@ test("real multihero boss encounters run through ordinary GroupCombat and record
     bounds,actors:specs().map(a=>a.id==="friend"
       ? {...a,grappleDamage:42}:a),
   }),/Throw damage/);
-});
-
-test("the existing single-hero Troll fight continues to produce deterministic old-style combat",()=>{
-  const options={role:"tank" as const,sword:true,armor:true,
-    health:110,maxHealth:110,healingSupplies:1,tacticsSeed:3};
-  const a=createCombatPreview(options),b=createCombatPreview(options);
-  for(let i=0;i<1500;i++){
-    assert.deepEqual(stepCombatPreview(a,1/60),stepCombatPreview(b,1/60));
-    if(a.outcome!=="fighting")break;
-  }
-  assert.deepEqual(a,b);
-  assert(a.bossAttacks>0);
 });

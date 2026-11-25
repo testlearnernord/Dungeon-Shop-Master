@@ -6,7 +6,8 @@ import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import {VertexData} from "@babylonjs/core/Meshes/mesh.vertexData";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import type {Scene} from "@babylonjs/core/scene";
-import {bossStrikeGeometry,type BossPhase} from "./arenaCombatMotion.ts";
+import {meleeAbilityProfile} from "./combatMelee.ts";
+import type {BossPhase} from "./trollPresentationTypes.ts";
 import {sampleMaulerImpact} from "./maulerImpactPresentation.ts";
 
 /** Pure opt-in art. All contact, lava damage, telegraph timing and outcome
@@ -25,7 +26,7 @@ export interface CaveTrollImpactVisual {
   dispose():void;
 }
 
-/** The original Level-6 authored telegraph and impact curves, transplanted
+/** The authored telegraph and impact curves, transplanted
  * without resimulating a single attack in the shared group spectator. Each
  * boss owns exactly one bounded mesh pool, never per-frame allocations. */
 export function createCaveTrollImpactVisual(
@@ -62,7 +63,7 @@ export function createCaveTrollImpactVisual(
   flash.range=12;flash.intensity=0;
   const warningMat=mat("warning-red","#b82513",true);
   const warning=(label:string,slam:boolean)=>{
-    const {reach,halfAngleRadians}=bossStrikeGeometry(slam);
+    const {reach,halfAngleRadians}=meleeAbilityProfile(slam?"troll-slam":"troll-smash");
     const positions=[0,.14,0],indices:number[]=[];
     const segments=32;
     for(let i=0;i<=segments;i++){

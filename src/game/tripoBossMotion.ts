@@ -1,5 +1,5 @@
 import type { CaveTrollAnimation } from "./caveTrollVisual.ts";
-import { GRAPPLE_TIMING } from "./arenaCombatMotion.ts";
+import { GRAPPLE_TIMING } from "./combatGrapple.ts";
 
 /** Animation blending is presentation only, never a combat timer. */
 export const TRIPO_FADE_SECONDS = .19;

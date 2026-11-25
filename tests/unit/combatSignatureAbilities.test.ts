@@ -5,8 +5,6 @@ import {chooseTrollSignatureAttack,trollSignatureProfile,
 import {trollDefenseReadiness} from "../../src/game/combatTactics.ts";
 import {meleeAbilityProfile} from "../../src/game/combatMelee.ts";
 import {GRAPPLE_TIMING} from "../../src/game/combatGrapple.ts";
-import {createCombatPreview,stepCombatPreview}
-  from "../../src/game/arenaCombatMotion.ts";
 import {createGroupCombat,stepGroupCombat,resolveGroupCombat,
   type CombatantSpec} from "../../src/game/groupCombat.ts";
 
@@ -19,7 +17,7 @@ const hero:CombatantSpec={id:"hero",team:"heroes",role:"DPS",
   style:"melee",x:0,z:0,hp:220,maxHp:220,damage:5,
   armor:4,speed:2.7,reach:1.6,agility:11};
 
-test("group and original Level-6 duel reference one Troll signature contract",()=>{
+test("the shared motor uses one Troll signature contract",()=>{
   const smash=trollSignatureProfile("smash");
   const slam=trollSignatureProfile("slam");
   const grab=trollSignatureProfile("grab");
@@ -100,16 +98,4 @@ test("multi-actor special boss still runs one deterministic group pipeline",()=>
   assert(first.replay.cues.some(c=>c.kind==="attack"&&c.actorId==="boss"));
   assert(first.state.actors.some(a=>a.distanceTraveled>0));
   assert(first.replay.actors.length===3);
-});
-
-test("the legacy Level-6 boss remains separately reproducible with its v1 phases",()=>{
-  const opts={role:"tank" as const,sword:true,armor:true,health:120,
-    maxHealth:120,healingSupplies:1,agility:12,tacticsSeed:17};
-  const a=createCombatPreview(opts),b=createCombatPreview(opts);
-  for(let i=0;i<2000;i++){
-    assert.deepEqual(stepCombatPreview(a,1/60),stepCombatPreview(b,1/60));
-    if(a.outcome!=="fighting")break;
-  }
-  assert.deepEqual(a,b);
-  assert(a.bossAttacks>0);
 });

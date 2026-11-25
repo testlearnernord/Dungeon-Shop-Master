@@ -7,6 +7,8 @@
  * happen in one deterministic pipeline, independent of Babylon/UI.
  */
 export const COMBAT_STEP_SECONDS = 1 / 60;
+/** Historical bounded diagnostic horizon, not a LIVE encounter limit. */
+export const PARTY_BOSS_MAX_SECONDS = 90;
 
 export interface EncounterFrame<Cue> {
   readonly cues: Cue[];
@@ -72,7 +74,9 @@ export interface EncounterRecorder<State,Frame,Cue> {
   readonly capture:(state:State,pending:readonly Cue[])=>Frame;
   readonly step:(state:State,dt:number)=>readonly Cue[];
   readonly captureEvery:number;
-  readonly maxSeconds:number;
+  /** Explicit test horizon only. Absent means run until a motor outcome. */
+  readonly maxSeconds?:number;
+  readonly appendFrame?:(frames:Frame[],frame:Frame)=>void;
   readonly isFighting:(state:State)=>boolean;
 }
 
@@ -84,17 +88,18 @@ export function recordCombatEncounter<State,Frame,Cue>(
   recorder:EncounterRecorder<State,Frame,Cue>,
 ):{readonly frames:Frame[];readonly state:State} {
   const {state,capture,step,captureEvery,maxSeconds,isFighting}=recorder;
-  if(!Number.isSafeInteger(maxSeconds)||maxSeconds<1||maxSeconds>90 ||
+  if((maxSeconds!==undefined&&(!Number.isSafeInteger(maxSeconds)||maxSeconds<1||maxSeconds>90)) ||
     !Number.isSafeInteger(captureEvery)||captureEvery<1||captureEvery>600)
     throw new RangeError("Invalid combat recording bounds");
 
   const frames:Frame[]=[capture(state,[])];
   let pending:Cue[]=[];
-  const totalTicks=maxSeconds*60;
+  const totalTicks=maxSeconds===undefined?Infinity:maxSeconds*60;
+  const append=recorder.appendFrame??((frames:Frame[],frame:Frame)=>{frames.push(frame);});
   for(let i=1;i<=totalTicks&&isFighting(state);i++){
     pending.push(...step(state,COMBAT_STEP_SECONDS));
     if(i%captureEvery===0||!isFighting(state)||i===totalTicks){
-      frames.push(capture(state,pending));
+      append(frames,capture(state,pending));
       pending=[];
     }
   }

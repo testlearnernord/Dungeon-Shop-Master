@@ -5,7 +5,6 @@ import {
   chooseCombatAbility,
 } from "../../src/game/combatTactics.ts";
 import { createGroupCombat, stepGroupCombat } from "../../src/game/groupCombat.ts";
-import { resolveSpatialBoss } from "../../src/game/bossCombatReplay.ts";
 
 test("enemy targeting is deterministic regardless of actor input order and honors tank bias",()=>{
   const monster={id:"monster",x:0,z:0,team:"monsters" as const,hp:80};
@@ -92,19 +91,4 @@ test("real group enemies target a wounded tank from the shared target-selection 
   )?.id,"tank");
   assert.deepEqual(createGroupCombat({actors,bounds:state.bounds}).actors,
     createGroupCombat({actors:[...actors].reverse(),bounds:state.bounds}).actors);
-});
-
-test("the saved Cave Troll combat remains deterministic under shared tactical decisions",()=>{
-  const options={
-    role:"tank" as const,sword:true,armor:true,
-    health:95,maxHealth:95,healingSupplies:1,
-    tacticsSeed:42,agility:12,strength:11,
-  };
-  const first=resolveSpatialBoss("hero",3,options);
-  const second=resolveSpatialBoss("hero",3,options);
-  assert.deepEqual(first,second);
-  assert(first.replay.frames.length>15);
-  assert(first.replay.frames.every(frame=>
-    frame.heroHp>=0&&frame.bossHp>=0));
-  assert(first.replay.frames.some(frame=>frame.cues.some(cue=>cue.kind==="windup")));
 });

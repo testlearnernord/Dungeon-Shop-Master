@@ -45,6 +45,7 @@ export class SceneSoundtrack {
   private started = false;
   private error: string | null = null;
   private transitionId = 0;
+  private combatEntrySeconds = 0;
   private animationFrame: number | null = null;
 
   constructor() {
@@ -154,17 +155,27 @@ export class SceneSoundtrack {
     catch { /* Keep gameplay accessible if browser blocks seeking. */ }
   }
 
-  /** Jump to the same musical point when an audience member skips the
-   * optional Ghoul fight film. It never changes the actual combat clock. */
+  /** Both combat scores use the same presentation-only entry cue.
+   * Remember it even when muted or waiting for browser audio unlock. */
   skipCombatIntro(seconds:number):void {
-    if(!this.enabled||this.scene!=="combat")return;
-    try {this.tracks.combat.currentTime=Math.max(0,seconds);}
-    catch { /* Muted/blocked audio never prevents skipping the visuals. */ }
+    if(this.scene!=="combat"&&this.scene!=="boss")return;
+    this.combatEntrySeconds=Math.max(0,seconds);
+    if(this.enabled&&this.started)
+      this.seekCombatTrack(this.scene,this.combatEntrySeconds);
   }
 
-  setScene(next: SoundtrackScene): void {
-    if (this.scene === next) return;
+  private seekCombatTrack(scene:"combat"|"boss",seconds:number):void {
+    try {this.tracks[scene].currentTime=seconds;}
+    catch { /* Audio seeking must never block gameplay. */ }
+  }
+
+  setScene(next: SoundtrackScene,combatEntrySeconds?:number): void {
+    if (this.scene === next) {
+      if(combatEntrySeconds!==undefined)this.skipCombatIntro(combatEntrySeconds);
+      return;
+    }
     this.scene = next;
+    this.combatEntrySeconds=combatEntrySeconds??0;
     if (this.enabled && this.started) this.fadeTo(next);
     this.renderUi();
   }
@@ -191,7 +202,8 @@ export class SceneSoundtrack {
     const outgoing = Object.values(this.tracks).filter(track => track !== incoming);
     const fromIncoming = incoming.paused ? 0 : incoming.volume;
     const fromOutgoing = outgoing.map(track => track.paused ? 0 : track.volume);
-    if (next === "boss" || next === "combat") incoming.currentTime = 0;
+    if (next === "boss" || next === "combat")
+      this.seekCombatTrack(next,this.combatEntrySeconds);
     if (incoming.paused) {
       incoming.volume = 0;
     }

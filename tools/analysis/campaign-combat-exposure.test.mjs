@@ -89,7 +89,7 @@ test("settled Floor-10 exposure counts the party once and separates landing, lav
   telemetry.observe([event]);
   const result=telemetry.report();
   assert.equal(result.completed,1);
-  assert.deepEqual(result.byComposition["DPS+healer"],{attempts:1,wins:0,losses:0,draws:1,deaths:1});
+  assert.deepEqual(result.byComposition["DPS+healer"],{attempts:1,wins:0,losses:0,draws:1,retreats:0,deaths:1});
   const row=result.attempts[0];
   assert.equal(row.bossExitHp,670);
   const [d,h]=row.members;

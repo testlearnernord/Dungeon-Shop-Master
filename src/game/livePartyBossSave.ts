@@ -1,11 +1,14 @@
 import type {GameState} from "./gameState.ts";
 import type {LivePartyBossCombat} from "./liveDungeonRuntime.ts";
-import {caveTrollPartyOptions} from "./sharedBossCombat.ts";
+import {caveTrollPartyOptions,CAVE_TROLL_LIVE_PROFILE} from "./sharedBossCombat.ts";
 import {gearFromName} from "./gearCatalog.ts";
 import {createGroupCombat,captureGroupCombatFrame,
   type GroupCombatOptions} from "./groupCombat.ts";
+import {WORLD_TICKS_PER_DAY} from "./worldClock.ts";
 import {CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
-import {REPLAY_MAX_SECONDS} from "./bossCombatReplay.ts";
+import {validRetreatExit} from "./combatRetreat.ts";
+import {combatFrameTimelineValid,MAX_COMBAT_FRAMES} from "./combatRecording.ts";
+import {validCombatProgress} from "./combatProgress.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
   from "./liveDungeonRuntime.ts";
 
@@ -42,11 +45,12 @@ export function livePartyBossCheckpointProblem(
   if(members.some(h=>!h||h.floor!==CAVE_TROLL_FLOOR||
     h.status!=="expedition"||h.health<=0||!h.bossPass))
     return fail("must be a real permitted co-located Level-10 party");
+  const startedDay=Math.floor(b.startedTick/WORLD_TICKS_PER_DAY)+1;
   if(!integer(b.startedTick,0,lastStepTick)||
-     (lastStepTick-b.startedTick)%DUNGEON_STEP_INTERVAL_TICKS!==0||
+     (startedDay===state.day&&(lastStepTick-b.startedTick)%DUNGEON_STEP_INTERVAL_TICKS!==0)||
      !integer(combatTick,b.startedTick,state.worldClock.tick)||
      (combatTick-b.startedTick)%LIVE_COMBAT_INTERVAL_TICKS!==0||
-     b.id!=="party-boss:"+state.day+":"+b.startedTick+":"+
+     b.id!=="party-boss:"+startedDay+":"+b.startedTick+":"+
        b.heroIds.join("+"))
     return fail("clock/identity does not match the one real boss party");
   if(!record(b.options)||!integer(b.options.tacticsSeed,0,0xffffffff))
@@ -65,8 +69,10 @@ export function livePartyBossCheckpointProblem(
     return fail("could not reconstruct the 60Hz actor motor");
   }
   if(!exactly(b.state,["actors","bounds","obstacles","projectiles",
-    "events","time","outcome"],["environment","tacticsSeed"]))
+    "events","time","outcome"],["environment","tacticsSeed","retreat","progress"]))
     return fail("has invalid current GroupCombat shape");
+  if(b.state.retreat!==undefined&&!validRetreatExit(b.state.retreat,initial.bounds,initial.environment))
+    return fail("has an invalid committed retreat exit");
   if(b.state.outcome!=="fighting"||
      b.state.environment!==initial.environment||
      b.state.tacticsSeed!==initial.tacticsSeed||
@@ -74,10 +80,11 @@ export function livePartyBossCheckpointProblem(
      JSON.stringify(b.state.obstacles)!==JSON.stringify(initial.obstacles))
     return fail("environment or motor rules have diverged");
   const completed=(combatTick-b.startedTick)*3;
-  if(!bounded(b.state.time,0,REPLAY_MAX_SECONDS)||
-     Math.abs(b.state.time*60-completed)>.001||
-     completed>=REPLAY_MAX_SECONDS*60)
+  if(!bounded(b.state.time,0,Number.MAX_SAFE_INTEGER/60)||
+     Math.abs(b.state.time*60-completed)>.001)
     return fail("must match the single world-clock 60Hz simulation time");
+  if(b.state.progress!==undefined&&!validCombatProgress(b.state.progress,b.state.time))
+    return fail("has invalid combat progress checkpoint");
   if(!Array.isArray(b.state.actors)||
      b.state.actors.length!==initial.actors.length)
     return fail("must preserve the original participant roster");
@@ -128,7 +135,7 @@ export function livePartyBossCheckpointProblem(
       return fail("has invalid throw velocity");
   }
   if(!Array.isArray(b.state.projectiles)||b.state.projectiles.length>30||
-     !Array.isArray(b.state.events)||b.state.events.length>3500)
+     !Array.isArray(b.state.events)||b.state.events.length>50000)
     return fail("has oversized combat history");
   for(const projectile of b.state.projectiles){
     if(!exactly(projectile,["ownerId","team","x","z","vx","vz","damage","ttl"])||
@@ -138,8 +145,7 @@ export function livePartyBossCheckpointProblem(
            -10000,10000)))
       return fail("has invalid physical projectile");
   }
-  if(!Array.isArray(b.frames)||b.frames.length!==1+completed/6||
-     b.frames.length>901||
+  if(!Array.isArray(b.frames)||!combatFrameTimelineValid(b.frames,completed)||
      JSON.stringify(b.frames[0])!==
        JSON.stringify(captureGroupCombatFrame(initial)))
     return fail("has missing or forged group combat snapshots");
@@ -189,7 +195,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
   const rec=raw as Record<string,unknown>;
   if(rec.version!==1||rec.environment!=="cave-lava"||
      !integer(rec.tacticsSeed,0,0xffffffff)||
-     !["heroes","monsters","draw"].includes(String(rec.outcome)))
+     !["heroes","monsters","retreat","draw"].includes(String(rec.outcome)))
     return fail("has incompatible replay identity or outcome");
   if(!Array.isArray(rec.actors)||rec.actors.length<3||
      rec.actors.length>4||!rec.actors.every(v=>record(v)))
@@ -208,11 +214,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
      monsters.length!==1||
      monsters[0].id!=="cave-troll"||
      monsters[0].specialAbility!=="grapple-throw"||
-     monsters[0].maxHp!==700||
-     monsters[0].damage!==46||
-     monsters[0].armor!==16||
-     monsters[0].grappleDamage!==55||
-     monsters[0].staggerThreshold!==92)
+     Object.entries(CAVE_TROLL_LIVE_PROFILE).some(([key,value])=>monsters[0][key]!==value))
     return fail("must match real saved Level-10 party and boss archetype");
   if(!Array.isArray(rec.obstacles)||rec.obstacles.length!==0||
      !exactly(rec.bounds,["minX","maxX","minZ","maxZ"])||
@@ -227,7 +229,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
     return fail("fighters are invalid to the single authoritative motor");
   }
   if(!Array.isArray(rec.frames)||rec.frames.length<2||
-     rec.frames.length>1000||
+     rec.frames.length>MAX_COMBAT_FRAMES||
      JSON.stringify(rec.frames[0])!==
        JSON.stringify(captureGroupCombatFrame(initial)))
     return fail("lacks the one genuine initial combat frame");
@@ -237,7 +239,7 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
     if(!exactly(rawFrame,["t","actors","projectiles"]))
       return fail("frame has unexpected fields");
     const frame=rawFrame as Record<string,unknown>;
-    if(!bounded(frame.t,0,REPLAY_MAX_SECONDS+.1)||
+    if(!bounded(frame.t,0,Number.MAX_SAFE_INTEGER/60)||
        frame.t<previous||!Array.isArray(frame.actors)||
        frame.actors.length!==initial.actors.length||
        !Array.isArray(frame.projectiles)||frame.projectiles.length>30)
@@ -269,12 +271,12 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
         return fail("frame projectile is not a real fighter's projectile");
     }
   }
-  if(!Array.isArray(rec.cues)||rec.cues.length>5000)
+  if(!Array.isArray(rec.cues)||rec.cues.length>50000)
     return fail("has oversized combat cue log");
   const ids=new Set(actorLimits.keys());
   for(const rawCue of rec.cues){
     if(!exactly(rawCue,["t","actorId","kind"],["targetId","amount"])||
-       !bounded(rawCue.t,0,REPLAY_MAX_SECONDS+.1)||
+       !bounded(rawCue.t,0,Number.MAX_SAFE_INTEGER/60)||
        !ids.has(String(rawCue.actorId))||
        (rawCue.targetId!==undefined&&!ids.has(String(rawCue.targetId)))||
        (rawCue.amount!==undefined&&!bounded(rawCue.amount,0,100000)))
@@ -285,7 +287,8 @@ export function partyBossReplayProblem(raw:unknown,leaderId:string):string|null{
   const aliveHeroes=bodies.some(a=>heroes.some(h=>h.id===a.id)&&Number(a.hp)>0);
   const trollHp=Number(bodies.find(a=>a.id==="cave-troll")?.hp??-1);
   if((rec.outcome==="heroes"&&trollHp>0)||
-     (rec.outcome==="monsters"&&aliveHeroes))
+     (rec.outcome==="monsters"&&aliveHeroes)||
+     (rec.outcome==="retreat"&&(!aliveHeroes||trollHp<=0)))
     return fail("outcome contradicts final saved fighters");
   return null;
 }

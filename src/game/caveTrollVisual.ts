@@ -8,7 +8,8 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
-import { GRAPPLE_TIMING, type BossPhase } from "./arenaCombatMotion.ts";
+import {GRAPPLE_TIMING} from "./combatGrapple.ts";
+import type {BossPhase} from "./trollPresentationTypes.ts";
 import { applyCaveTrollSculpt } from "./caveTrollSculpt.ts";
 import { sampleMaulerImpact } from "./maulerImpactPresentation.ts";
 
@@ -439,7 +440,7 @@ export function createCaveTrollVisual(scene:Scene):CaveTrollVisual {
     return {side,shoulder,upper,lower,elbow,bracer,hand,wristBand};
   });
   // Arm and leg meshes are collision-free; the actual strike arc remains
-  // in arenaCombatMotion.ts, independent of these visual proportions.
+  // in the committed combat profile, independent of these visual proportions.
   const legs=([-1,1] as const).map(side=>{
     const hip=V(side*.96,2.62,-.30);
     const thigh=sphere("thigh-"+side,pose,[0,0,0],[1,1,1],skin,20);sculpt(thigh,side+67,.04);

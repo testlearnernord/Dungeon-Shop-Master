@@ -2,7 +2,7 @@
 // No campaign mutation, alternate simulation, or artificial rewards.
 import {createGameState} from "../../src/game/gameState.ts";
 import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
-import {prepareSpatialDungeonCombat,SPATIAL_DUNGEON_COMBAT_SECONDS} from "../../src/game/spatialDungeonExploration.ts";
+import {prepareSpatialDungeonCombat} from "../../src/game/spatialDungeonExploration.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 const seeds=process.argv[2]?[Number(process.argv[2])]:[7351,42,2026,9321];
@@ -41,7 +41,7 @@ for(const seed of seeds){
         const options=prepareSpatialDungeonCombat([hero],selected.site,seed,layout,selected.approach,0,true).options;
         const monsters=options.actors.filter(a=>a.team==="monsters");
         for(let pack=1;pack<=monsters.length;pack++){
-          const fight=resolveGroupCombat({...options,actors:[options.actors.find(a=>a.team==="heroes"),...monsters.slice(0,pack)]},SPATIAL_DUNGEON_COMBAT_SECONDS);
+          const fight=resolveGroupCombat({...options,actors:[options.actors.find(a=>a.team==="heroes"),...monsters.slice(0,pack)]});
           const actor=fight.state.actors.find(a=>a.id===hero.id);
           const cues=fight.replay.cues;
           const sum=(kind,field)=>cues.filter(c=>c.kind===kind&&c[field]===hero.id).reduce((n,c)=>n+(c.amount??0),0);
@@ -59,16 +59,16 @@ for(const seed of seeds){
 const groups=new Map();
 for(const row of rows){
   const key=[row.floor,row.role,row.level,row.tier,row.hpRatio,row.supplies,row.pack].join(":");
-  const g=groups.get(key)??{cases:0,deaths:0,wins:0,draws:0,seconds:0};
-  g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==="heroes");g.draws+=Number(row.outcome==="draw");g.seconds+=row.seconds;groups.set(key,g);
+  const g=groups.get(key)??{cases:0,deaths:0,wins:0,draws:0,retreats:0,seconds:0};
+  g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==="heroes");g.draws+=Number(row.outcome==="draw");g.retreats+=Number(row.outcome==="retreat");g.seconds+=row.seconds;groups.set(key,g);
 }
 const summary={};
-for(const row of rows){const key=[row.floor,row.role,row.pack].join(':');const g=summary[key]??={cases:0,deaths:0,wins:0,draws:0,seconds:0};g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==='heroes');g.draws+=Number(row.outcome==='draw');g.seconds+=row.seconds;}
+for(const row of rows){const key=[row.floor,row.role,row.pack].join(':');const g=summary[key]??={cases:0,deaths:0,wins:0,draws:0,retreats:0,seconds:0};g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==='heroes');g.draws+=Number(row.outcome==='draw');g.retreats+=Number(row.outcome==='retreat');g.seconds+=row.seconds;}
 const gearSummary={};
 for(const row of rows){
   const key=[row.role,row.tier,row.pack].join(":");
-  const g=gearSummary[key]??={cases:0,deaths:0,wins:0,draws:0,seconds:0,attacks:0,damageDealt:0,damageReceived:0,dodges:0,parries:0};
-  g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==="heroes");g.draws+=Number(row.outcome==="draw");
+  const g=gearSummary[key]??={cases:0,deaths:0,wins:0,draws:0,retreats:0,seconds:0,attacks:0,damageDealt:0,damageReceived:0,dodges:0,parries:0};
+  g.cases++;g.deaths+=Number(row.dead);g.wins+=Number(row.outcome==="heroes");g.draws+=Number(row.outcome==="draw");g.retreats+=Number(row.outcome==="retreat");
   for(const field of ["seconds","attacks","damageDealt","damageReceived","dodges","parries"])g[field]+=row[field];
 }
 console.error('MATRIX_SUMMARY '+JSON.stringify({cases:rows.length,summary}));

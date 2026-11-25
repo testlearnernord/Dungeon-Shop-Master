@@ -1,7 +1,9 @@
 import type {AdventurerState} from "./adventurers.ts";
-import {ordinaryHeroCombatAttributes} from "./heroProgression.ts";
+import {heroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects,GEAR_BY_ITEM} from "./gearCatalog.ts";
 import type {GroupCombatOptions,CombatantSpec,GroupRole} from "./groupCombat.ts";
+import {ghoulCombatProfile} from "./ghoulPack.ts";
+import {caveTrollActor} from "./sharedBossCombat.ts";
 import type {CombatStageTheme} from "./combatSpectatorStage.ts";
 
 /**
@@ -27,6 +29,8 @@ export interface DeveloperCombatConfig {
   readonly arena:CombatStageTheme;
   readonly enemy:DeveloperEnemy;
   readonly enemyCount:number;
+  /** Floor strength, independent of the chosen stage and test pack count. */
+  readonly ghoulFloor?:number;
   readonly heroes:readonly DeveloperHero[];
   /** Replayable local test seed, independent from campaign RNG. */
   readonly seed:number;
@@ -48,6 +52,8 @@ export function validateDeveloperCombat(config:DeveloperCombatConfig):void {
     throw new RangeError("Unknown developer arena");
   if(config.enemy!=="ghoul"&&config.enemy!=="cave-troll")
     throw new RangeError("Unknown developer opponent");
+  if(config.ghoulFloor!==undefined&&(!Number.isSafeInteger(config.ghoulFloor)||config.ghoulFloor<1||config.ghoulFloor>9))
+    throw new RangeError("Select Ghoul floor 1–9");
   if(!Number.isSafeInteger(config.seed)||config.seed<0||
      config.seed>0xffffffff)
     throw new RangeError("Invalid developer seed");
@@ -101,7 +107,7 @@ export function randomDeveloperHeroes(seed:number,count:number):DeveloperHero[]{
   });
 }
 export function developerHeroFromRoster(hero:AdventurerState):DeveloperHero{
-  const stats=ordinaryHeroCombatAttributes(hero);
+  const stats=heroCombatAttributes(hero);
   return {
     role:hero.role,label:hero.name,maxHp:stats.maxHp,damage:stats.damage,
     armor:stats.armor,agility:stats.agility,healCharges:stats.healCharges,
@@ -136,17 +142,14 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
     });
   });
   for(let i=0;i<config.enemyCount;i++){
-    const troll=config.enemy==="cave-troll";
-    actors.push({
-      id:troll?"lab-cave-troll":"lab-ghoul-"+(i+1),
-      team:"monsters",role:"monster",style:"melee",
-      ...enemyPositions[i],hp:troll?280:65,maxHp:troll?280:65,
-      damage:troll?33:11,armor:troll?10:2,
-      speed:troll?2.7:3.0,reach:troll?1.8:1.6,
-      radius:troll?1.8:.5,agility:troll?7:9,
-      ...(troll?{specialAbility:"grapple-throw" as const,
-        grappleDamage:42,staggerThreshold:62}:{}),
-    });
+    if(config.enemy==="cave-troll"){
+      actors.push(caveTrollActor(enemyPositions[i],"lab-cave-troll"));
+    }else{
+      actors.push({
+        ...ghoulCombatProfile(config.ghoulFloor??5,config.seed),
+        id:"lab-ghoul-"+(i+1),...enemyPositions[i],
+      });
+    }
   }
   return {actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},obstacles:[],
     tacticsSeed:config.seed,

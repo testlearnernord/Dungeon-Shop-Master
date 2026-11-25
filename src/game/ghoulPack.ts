@@ -1,3 +1,4 @@
+import {SeededRandom} from "./random.ts";
 import {dungeonGenerationSeed} from "./dungeonRegeneration.ts";
 import {tileAt,type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 
@@ -52,4 +53,25 @@ export function isEliteGhoulSite(layout:DungeonLayout,source:DungeonPoint,cycle:
 export function observedGhoulPackSize(layout:DungeonLayout,source:DungeonPoint,cycle:number):number{
   return isEliteGhoulSite(layout,source,cycle)?1:
     ghoulPackCount(layout.seed,layout.floor,source.x,source.z,cycle,1,MAX_GHOUL_PACK-1);
+}
+
+
+/** One seeded individual strength profile for both the living dungeon and
+ * disposable Combat Lab. The optional toughness multiplier is retained
+ * only for the bounded atomic encounter fixture; LIVE/Lab use exactly 1. */
+export function ghoulCombatProfile(floor:number,seed:number,elite=false,toughness=1){
+  if(!Number.isSafeInteger(floor)||floor<1||floor>9||
+    !Number.isSafeInteger(seed)||seed<0||seed>0xffffffff||
+    !Number.isFinite(toughness)||toughness<1)
+    throw new RangeError("Invalid Ghoul combat profile");
+  const rng=new SeededRandom(seed);
+  const baseHp=(floor===7?22+rng.int(13):12+floor*3+rng.int(7))+(elite?24:0);
+  const hp=Math.round(baseHp*2.4*toughness);
+  const damage=(floor===7?8+rng.int(4):2+floor+rng.int(3))+(elite?4:0);
+  return {
+    team:"monsters" as const,role:"monster" as const,style:"melee" as const,
+    hp,maxHp:hp,damage,armor:1+(elite?4:0),
+    speed:elite?2.7:3,reach:elite?2:1.6,
+    ...(elite?{radius:1.05,agility:8,staggerThreshold:12,meleeAbility:"heavy" as const}:{}),
+  };
 }

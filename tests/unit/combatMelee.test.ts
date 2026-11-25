@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   meleeAbilityProfile, resolveMeleeContact,
 } from "../../src/game/combatMelee.ts";
-import { bossStrikeGeometry } from "../../src/game/arenaCombatMotion.ts";
 import {
   createGroupCombat, resolveGroupCombat, stepGroupCombat,
   type CombatantSpec,
@@ -40,10 +39,10 @@ test("one melee contact authority resolves boss and group miss, dodge, parry and
       defenderPhaseAge:0.2,ability,
     }),"miss","a blocked melee swing cannot trigger a dodge");
   }
-  assert.deepEqual(bossStrikeGeometry(false),{
+  assert.deepEqual((({reach,halfAngleRadians})=>({reach,halfAngleRadians}))(meleeAbilityProfile("troll-smash")),{
     reach:5.2+0.58,halfAngleRadians:0.90,
   });
-  assert.deepEqual(bossStrikeGeometry(true),{
+  assert.deepEqual((({reach,halfAngleRadians})=>({reach,halfAngleRadians}))(meleeAbilityProfile("troll-slam")),{
     reach:6.2+0.58,halfAngleRadians:1.30,
   });
 });

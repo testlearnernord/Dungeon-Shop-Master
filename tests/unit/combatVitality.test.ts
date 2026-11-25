@@ -3,10 +3,8 @@ import test from "node:test";
 import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP, WAYBREAD_HP,
 } from "../../src/game/combatVitality.ts";
+import {createGroupCombat,stepGroupCombat} from "../../src/game/groupCombat.ts";
 import { ITEMS } from "../../src/game/economy.ts";
-import {
-  createCombatPreview, stepCombatPreview,
-} from "../../src/game/arenaCombatMotion.ts";
 
 test("combat damage is authoritative, armor-mitigated and cannot overkill HP",()=>{
   assert.deepEqual(applyCombatHit(40,15,4),{hp:29,amount:11});
@@ -32,32 +30,21 @@ test("item catalog and combat engine use exactly the same finite healing values"
   assert.throws(()=>applyCombatHealing(41,40,18),RangeError);
 });
 
-const preview=(healingSupplies:number)=>createCombatPreview({
-  role:"healer",sword:false,armor:false,
-  health:15,maxHealth:60,healingSupplies,
-  agility:9,intellect:10,tacticsSeed:12,
-});
-
-test("troll combat spends real Healing Herbs for 18 HP; healer magic is separate",()=>{
-  const herb=preview(1);
-  herb.heroPhase="heal";
-  herb.heroAge=0.72;
-  herb.bossPhase="recover";
-  herb.bossCooldown=100;
-  const cues=stepCombatPreview(herb,1/60);
-  assert.equal(herb.heroHp,15+HEALING_HERB_HP);
-  assert.equal(herb.healingSupplies,0);
-  assert.equal(herb.magicHeals,2,
-    "consuming a purchased herb must not debit the healer's magic supply");
-  assert(cues.some(cue=>cue.kind==="heal"&&cue.amount===HEALING_HERB_HP));
-
-  const magic=preview(0);
-  magic.heroPhase="heal";
-  magic.heroAge=0.72;
-  magic.bossPhase="recover";
-  magic.bossCooldown=100;
-  stepCombatPreview(magic,1/60);
-  assert.equal(magic.heroHp,40,"innate healer magic retains its existing 25 HP tuning");
-  assert.equal(magic.magicHeals,1);
-  assert.equal(magic.healingSupplies,0);
+test("healing uses the same real resource budget against every opponent",()=>{
+  for(const special of [false,true])for(const herbs of [0,1]){
+    const state=createGroupCombat({bounds:{minX:-12,maxX:12,minZ:-12,maxZ:12},actors:[
+      {id:"hero",team:"heroes",role:"healer",style:"ranged",x:0,z:0,
+        hp:15,maxHp:60,damage:10,armor:0,speed:0,reach:1.6,healCharges:herbs,magicHeals:2},
+      {id:"enemy",team:"monsters",role:"monster",style:"melee",x:0,z:5,
+        hp:100,maxHp:100,damage:10,armor:0,speed:0,reach:1.6,
+        ...(special?{specialAbility:"grapple-throw" as const}:{})},
+    ]});
+    const hero=state.actors.find(a=>a.id==="hero")!,enemy=state.actors.find(a=>a.id==="enemy")!;
+    hero.phase="heal";hero.phaseAge=.62;hero.targetId=hero.id;enemy.cooldown=100;
+    const cues=stepGroupCombat(state);
+    assert.equal(hero.hp,15+(herbs?HEALING_HERB_HP:25));
+    assert.equal(hero.healCharges,0);
+    assert.equal(hero.magicHeals,herbs?2:1);
+    assert(cues.some(cue=>cue.kind==="heal"));
+  }
 });

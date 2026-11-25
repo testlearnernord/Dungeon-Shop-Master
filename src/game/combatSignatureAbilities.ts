@@ -72,3 +72,12 @@ export function fromTrollGroupAbility(
   return ability==="grapple"?"grab":
     ability==="troll-slam"?"slam":"smash";
 }
+
+
+/** Resolve an attack by its committed ability, never by its owner's identity. */
+export function signatureProfileForAbility(
+  ability:"ordinary"|"heavy"|TrollGroupMelee,
+):TrollSignatureProfile|null {
+  return ability==="ordinary"||ability==="heavy"
+    ?null:trollSignatureProfile(fromTrollGroupAbility(ability));
+}

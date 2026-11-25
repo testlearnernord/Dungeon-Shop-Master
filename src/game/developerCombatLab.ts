@@ -2,6 +2,7 @@ import type {Engine} from "@babylonjs/core/Engines/engine";
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameStore} from "./gameStore.ts";
 import type {GameSfx} from "../gameSfx.ts";
+import {appendCombatFrame} from "./combatRecording.ts";
 import {
   developerPresentationTime,LAB_CAPTURE_STRIDE,
 } from "./developerCombatPresentation.ts";
@@ -31,6 +32,7 @@ export class DeveloperCombatLab {
   private readonly renderer:LiveGroupCombatArena;
   private readonly opponent:HTMLSelectElement;
   private readonly enemyCount:HTMLSelectElement;
+  private readonly ghoulFloor:HTMLSelectElement;
   private readonly arena:HTMLSelectElement;
   private readonly heroCount:HTMLSelectElement;
   private readonly heroSlot:HTMLSelectElement;
@@ -73,6 +75,7 @@ export class DeveloperCombatLab {
     const get=<T extends Element>(selector:string)=>this.panel.querySelector<T>(selector)!;
     this.opponent=get("#lab-enemy");
     this.enemyCount=get("#lab-enemy-count");
+    this.ghoulFloor=get("#lab-ghoul-floor");
     this.arena=get("#lab-arena");
     this.heroCount=get("#lab-hero-count");
     this.heroSlot=get("#lab-hero-slot");
@@ -234,6 +237,7 @@ export class DeveloperCombatLab {
     const troll=this.opponent.value==="cave-troll";
     for(const item of this.enemyCount.options)item.disabled=troll&&item.value!=="1";
     if(troll)this.enemyCount.value="1";
+    this.ghoulFloor.disabled=troll;
   }
   private config():DeveloperCombatConfig{
     this.saveSelectedHero();
@@ -241,6 +245,7 @@ export class DeveloperCombatLab {
       arena:this.arena.value as DeveloperCombatConfig["arena"],
       enemy:this.opponent.value as DeveloperCombatConfig["enemy"],
       enemyCount:Number(this.enemyCount.value),
+      ghoulFloor:Number(this.ghoulFloor.value),
       heroes:this.heroes.map(h=>({...h})),
       seed:number(this.seed,0,0xffffffff),
     };
@@ -290,7 +295,7 @@ export class DeveloperCombatLab {
     const state=this.state;
     if(!state)return;
     if(state.time>this.frames[this.frames.length-1].t+0.0001)
-      this.frames.push(captureGroupCombatFrame(state));
+      appendCombatFrame(this.frames,captureGroupCombatFrame(state));
   }
   private simulateTicks(count:number,forceCapture=false):void{
     const s=this.state;
@@ -298,7 +303,6 @@ export class DeveloperCombatLab {
     for(let i=0;i<count&&s.outcome==="fighting";i++){
       stepGroupCombat(s,1/60);
       this.ticks++;
-      if(this.ticks>=5400&&s.outcome==="fighting")s.outcome="draw";
       if(this.ticks%LAB_CAPTURE_STRIDE===0||
          s.outcome!=="fighting"||forceCapture)
         this.capturePendingFrame();

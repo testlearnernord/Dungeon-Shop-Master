@@ -12,7 +12,7 @@ import {
   SIMULATION_VERSION, type GameState,
 } from "./gameState.ts";
 import {
-  SPATIAL_DUNGEON_STEP_BUDGET, SPATIAL_DUNGEON_MAX_ENCOUNTERS, SPATIAL_DUNGEON_COMBAT_SECONDS,
+  SPATIAL_DUNGEON_STEP_BUDGET, SPATIAL_DUNGEON_MAX_ENCOUNTERS,
   getSpatialDungeonProgress, prepareSpatialDungeonCombat, chooseKnownReturnStep,
   type SpatialDungeonWorld,
   type SpatialDungeonFloor,
@@ -24,7 +24,7 @@ import {rosterBoardProblem,type RosterBoardPlacement} from "./rosterBoardPlaceme
 import {wallPortraitProblem,type WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 import {wallClockProblem,type WallClockPlacement} from "./wallClockPlacement.ts";
 import {bedroomFurnitureProblem,type BedroomFurniturePlacement} from "./bedroomFurniture.ts";
-import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,
+import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,WORLD_TICKS_PER_DAY,
   MAX_PENDING_WORLD_EVENTS,compareScheduledWorldEvents,
   type ScheduledWorldEvent } from "./worldClock.ts";
 import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
@@ -32,6 +32,9 @@ import {validateShopTraffic} from "./shopTraffic.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
   LIVE_COMBAT_EVENT_SUBJECT,LIVE_COMBAT_INTERVAL_TICKS,
   SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS} from "./liveDungeonRuntime.ts";
+import {combatFrameTimelineValid,MAX_COMBAT_FRAMES} from "./combatRecording.ts";
+import {validCombatProgress} from "./combatProgress.ts";
+import {validRetreatExit} from "./combatRetreat.ts";
 import {createGroupCombat,type GroupCombatOptions} from "./groupCombat.ts";
 import {ghoulPackActorId,MAX_GHOUL_PACK} from "./ghoulPack.ts";
 import {forecastShoppingIntents} from "./shopperIntents.ts";
@@ -376,7 +379,7 @@ function validateSpatialDungeonReplay(
       "version","actors","bounds","obstacles","frames","cues","outcome",
     ]);
     if(combat.version!==1)fail(item+".combat.version","is incompatible");
-    choice(combat.outcome,["heroes","monsters","draw"],item+".combat.outcome");
+    choice(combat.outcome,["heroes","monsters","retreat","draw"],item+".combat.outcome");
     const actors=array(combat.actors,item+".combat.actors");
     // Historical two-actor replays remain valid. One real authored site
     // may contain up to three physically independent Ghoul combatants.
@@ -449,13 +452,13 @@ function validateSpatialDungeonReplay(
       text(ob.id,item+".combat.obstacles["+j+"].id");
     });
     const frames=array(combat.frames,item+".combat.frames");
-    if(frames.length<1||frames.length>2+SPATIAL_DUNGEON_COMBAT_SECONDS*10)
+    if(frames.length<1||frames.length>MAX_COMBAT_FRAMES)
       fail(item+".combat.frames","must contain bounded frames");
     let lastFrame=-1;
     frames.forEach((f,j)=>{
       const fp=item+".combat.frames["+j+"]";
       const frame=object(f,fp,["t","actors","projectiles"]);
-      const t=validNumber(frame.t,fp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
+      const t=validNumber(frame.t,fp+".t",0,Number.MAX_SAFE_INTEGER/60);
       if(t<lastFrame)fail(fp+".t","must be chronological");lastFrame=t;
       const snapshots=array(frame.actors,fp+".actors");
       if(snapshots.length!==actors.length)
@@ -486,7 +489,7 @@ function validateSpatialDungeonReplay(
       });
     });
     const cues=array(combat.cues,item+".combat.cues");
-    if(cues.length>2000)fail(item+".combat.cues","is oversized");
+    if(cues.length>50000)fail(item+".combat.cues","is oversized");
     cues.forEach((c,j)=>{
       const cp=item+".combat.cues["+j+"]",cue=object(c,cp,["t","actorId","kind"],["targetId","amount"]);
       if(!actorIds.has(cue.actorId as string))fail(cp+".actorId","is unknown");
@@ -494,8 +497,8 @@ function validateSpatialDungeonReplay(
         fail(cp+".targetId","is unknown");
       choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
         "parry","heal","death","blocked",
-        "grab","throw","landing","escape","lava"],cp+".kind");
-      validNumber(cue.t,cp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
+        "grab","throw","landing","escape","lava","retreat-start","retreat","stalemate"],cp+".kind");
+      validNumber(cue.t,cp+".t",0,Number.MAX_SAFE_INTEGER/60);
       if(cue.amount!==undefined)validNumber(cue.amount,cp+".amount",0,100000);
     });
   });
@@ -515,7 +518,7 @@ function validateLiveCombatCheckpoints(
       fail(path+".combatTick","must be zero without active combat");
     return;
   }
-  if(combatTick<lastStepTick||combatTick>clockTick)
+  if(combatTick<lastStepTick-LIVE_COMBAT_INTERVAL_TICKS||combatTick>clockTick)
     fail(path+".combatTick","does not follow the active expedition step");
   const known=new Set<string|number>();
   const sites=new Set<string|number>();
@@ -525,13 +528,14 @@ function validateLiveCombatCheckpoints(
       "id","startedTick","encounter","heroIds","arrivals","state","frames",
     ]);
     const started=integer(battle.startedTick,cp+".startedTick",
-      firstWorldTickOfDay(day),lastStepTick);
+      0,lastStepTick);
+    const startedDay=Math.floor(started/WORLD_TICKS_PER_DAY)+1;
     // A bounded ordinary encounter can survive more than one 10-second
     // movement event while other heroes continue exploring. Require an
     // actual historical movement cadence, not the latest movement tick.
     // The exact combat age, identity, frames and actors are checked below.
-    if(started<firstWorldTickOfDay(day)+DUNGEON_STEP_INTERVAL_TICKS||
-      (lastStepTick-started)%DUNGEON_STEP_INTERVAL_TICKS!==0||
+    if(started<firstWorldTickOfDay(startedDay)+DUNGEON_STEP_INTERVAL_TICKS||
+      (startedDay===day&&(lastStepTick-started)%DUNGEON_STEP_INTERVAL_TICKS!==0)||
       (combatTick-started)%LIVE_COMBAT_INTERVAL_TICKS!==0)
       fail(cp+".startedTick","must identify a committed movement tick on the active combat clock");
     const encounter=object(battle.encounter,cp+".encounter",[
@@ -549,7 +553,7 @@ function validateLiveCombatCheckpoints(
     if(typeof encounter.elite!=="boolean")
       fail(cp+".encounter.elite","must be boolean");
     unique(floor+":"+featureId,sites,cp+".encounter.featureId");
-    if(battle.id!=="battle:"+day+":"+started+":"+floor+":"+featureId)
+    if(battle.id!=="battle:"+startedDay+":"+started+":"+floor+":"+featureId)
       fail(cp+".id","must be the canonical live battle identity");
 
     const roster=array(state.adventurers,cp+".adventurers") as RecordValue[];
@@ -588,7 +592,7 @@ function validateLiveCombatCheckpoints(
       fail(cp+".arrivals","must retain each real party member's approach");
     arrivals.forEach((rawArrival,i)=>{
       const ap=cp+".arrivals["+i+"]";
-      validateSpatialDungeonReplay(rawArrival,ap,members[i].id,day,
+      validateSpatialDungeonReplay(rawArrival,ap,members[i].id,startedDay,
         state.seed as number,floor,new Set(roster.map(x=>x.id as string)));
       const r=rawArrival as RecordValue;
       const steps=r.steps as {x:number;z:number;action:string;featureId?:string}[];
@@ -670,7 +674,9 @@ function validateLiveCombatCheckpoints(
 
     const combat=object(battle.state,cp+".state",[
       "actors","bounds","obstacles","projectiles","events","time","outcome",
-    ],["environment","tacticsSeed"]);
+    ],["environment","tacticsSeed","retreat","progress"]);
+    if(combat.retreat!==undefined&&!validRetreatExit(combat.retreat,initial.bounds,initial.environment))
+      fail(cp+".state.retreat","must match a genuine arena exit");
     if(combat.environment!==initial.environment||
        combat.tacticsSeed!==initial.tacticsSeed)
       fail(cp+".state.environment","must match the real encounter rules");
@@ -678,9 +684,10 @@ function validateLiveCombatCheckpoints(
       integer(combat.tacticsSeed,cp+".state.tacticsSeed",0,0xffffffff);
     if(combat.outcome!=="fighting")fail(cp+".state.outcome","must still be active");
     const completed=(combatTick-started)*3;
-    const time=validNumber(combat.time,cp+".state.time",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
-    if(Math.abs(time*60-completed)>0.001||
-      completed>=SPATIAL_DUNGEON_COMBAT_SECONDS*60)
+    const time=validNumber(combat.time,cp+".state.time",0,Number.MAX_SAFE_INTEGER/60);
+    if(combat.progress!==undefined&&!validCombatProgress(combat.progress,time))
+      fail(cp+".state.progress","must match the committed encounter time");
+    if(Math.abs(time*60-completed)>0.001)
       fail(cp+".state.time","must match committed 60Hz world-clock steps");
     if(JSON.stringify(combat.bounds)!==JSON.stringify(initial.bounds)||
       JSON.stringify(combat.obstacles)!==JSON.stringify(initial.obstacles))
@@ -749,7 +756,7 @@ function validateLiveCombatCheckpoints(
         validNumber(p[key],pp+"."+key,-10000,100000);
     });
     const cues=array(combat.events,cp+".state.events");
-    if(cues.length>2000)fail(cp+".state.events","is oversized");
+    if(cues.length>50000)fail(cp+".state.events","is oversized");
     cues.forEach((rawCue,i)=>{
       const qp=cp+".state.events["+i+"]";
       const cue=object(rawCue,qp,["t","actorId","kind"],["targetId","amount"]);
@@ -757,18 +764,18 @@ function validateLiveCombatCheckpoints(
         cue.targetId!==undefined&&!actorIds.has(cue.targetId as string)))
         fail(qp+".actorId","must reference existing fighters");
       choice(cue.kind,["attack","cast","projectile","hit","miss","dodge",
-        "parry","heal","death","blocked","grab","throw","landing","escape","lava"],qp+".kind");
-      validNumber(cue.t,qp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
+        "parry","heal","death","blocked","grab","throw","landing","escape","lava","retreat-start","retreat","stalemate"],qp+".kind");
+      validNumber(cue.t,qp+".t",0,Number.MAX_SAFE_INTEGER/60);
       if(cue.amount!==undefined)validNumber(cue.amount,qp+".amount",0,100000);
     });
     const frames=array(battle.frames,cp+".frames");
-    if(frames.length!==1+completed/6||frames.length>1+SPATIAL_DUNGEON_COMBAT_SECONDS*10)
-      fail(cp+".frames","must contain precisely the captured 10Hz frames");
+    if(!combatFrameTimelineValid(frames,completed))
+      fail(cp+".frames","must retain the valid committed frame timeline");
     let previousTime=-1;
     frames.forEach((rawFrame,i)=>{
       const fp=cp+".frames["+i+"]";
       const frame=object(rawFrame,fp,["t","actors","projectiles"]);
-      const t=validNumber(frame.t,fp+".t",0,SPATIAL_DUNGEON_COMBAT_SECONDS);
+      const t=validNumber(frame.t,fp+".t",0,Number.MAX_SAFE_INTEGER/60);
       if(t<previousTime)fail(fp+".t","must be chronological");
       previousTime=t;
       const snapshots=array(frame.actors,fp+".actors");

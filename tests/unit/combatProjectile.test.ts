@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   combatSegmentBox, combatSegmentCircle, traceCombatProjectile,
 } from "../../src/game/combatProjectile.ts";
-import { createCombatPreview, stepCombatPreview } from "../../src/game/arenaCombatMotion.ts";
 import { createGroupCombat, stepGroupCombat } from "../../src/game/groupCombat.ts";
 
 test("swept projectiles hit enemies across long steps rather than tunneling",()=>{
@@ -60,25 +59,22 @@ test("ordinary combat projectiles still respect physical walls and do not damage
   assert.equal(world.actors.find(a=>a.id==="friend")?.hp,80);
 });
 
-test("Troll projectile impact uses the same swept collision authority and remains deterministic",()=>{
+test("a projectile hits the actual Troll through the shared swept collision motor",()=>{
   const make=()=>{
-    const s=createCombatPreview({
-      role:"healer",sword:false,armor:false,health:60,maxHealth:60,
-      healingSupplies:0,tacticsSeed:3,
-    });
-    s.hero={x:0,z:-3};
-    s.boss={x:0,z:0};
-    s.bossPhase="recover";s.bossCooldown=8;
-    s.projectiles.push({x:0,z:-3,dx:0,dz:1,damage:12,ttl:3});
+    const s=createGroupCombat({bounds:{minX:-10,maxX:10,minZ:-10,maxZ:10},actors:[
+      {id:"hero",team:"heroes",role:"healer",style:"ranged",x:0,z:-3,
+        hp:60,maxHp:60,damage:12,armor:0,speed:0,reach:1.6},
+      {id:"boss",team:"monsters",role:"monster",style:"melee",x:0,z:0,
+        hp:280,maxHp:280,damage:33,armor:10,speed:0,reach:1.8,
+        radius:1.8,specialAbility:"grapple-throw"},
+    ]});
+    for(const a of s.actors)a.cooldown=100;
+    s.projectiles.push({ownerId:"hero",team:"heroes",x:0,z:-3,vx:0,vz:120,damage:12,ttl:1});
     return s;
   };
   const a=make(),b=make();
-  for(let i=0;i<15;i++){
-    assert.deepEqual(stepCombatPreview(a,1/60),
-      stepCombatPreview(b,1/60));
-  }
+  for(let i=0;i<15;i++)assert.deepEqual(stepGroupCombat(a),stepGroupCombat(b));
   assert.deepEqual(a,b);
-  assert(a.bossHp<280,"a projectile must actually damage the boss");
-  assert(a.cues.every(cue=>cue.kind!=="hit"),
-    "the projectile cannot be misreported as a boss melee hit");
+  assert(a.actors.find(a=>a.id==="boss")!.hp<280);
+  assert(a.events.some(e=>e.kind==="hit"&&e.actorId==="hero"&&e.targetId==="boss"));
 });

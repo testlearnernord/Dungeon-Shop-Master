@@ -1,4 +1,3 @@
-import type { ArenaCue } from "./game/arenaCombatMotion.ts";
 import {
   blankSfxDebugFilters,passesSfxDebugFilter,sfxDetails,
   SFX_OWNERS,SFX_FAMILIES,
@@ -36,29 +35,6 @@ const SPACING: Partial<Record<GameSfxCue, number>> = {
   "fishing-miss": .20,"fishing-catch": .4,
   "forge-hammer": .16,"forge-leather": .16,
 };
-
-/** The same live or saved motor cue means the same sound; no guessed damage. */
-export function arenaCueSfx(
-  kind: ArenaCue["kind"], bossStriking = true, missedGrab = false,
-): readonly GameSfxCue[] {
-  switch (kind) {
-    case "windup": return ["troll-grunt"];
-    case "dodge": return ["dodge", "troll-impact"];
-    case "parry": return ["shield-parry"];
-    case "miss": return missedGrab ? ["troll-swing"] :
-      bossStriking ? ["troll-impact", "rock-crumble"] : ["hero-attack"];
-    case "hit": return ["troll-impact", "hero-hurt"];
-    case "hero-hit": return ["boss-hurt"];
-    case "grab": return ["troll-grunt", "hero-hurt"];
-    case "throw": return ["troll-swing"];
-    case "projectile": return ["projectile"];
-    case "heal": return ["heal"];
-    case "stagger": return ["stagger"];
-    case "lava": return ["lava-burn"];
-    case "victory": return ["troll-death"];
-    case "defeat": return ["hero-death"];
-  }
-}
 
 function loadSfxPreferences(): { enabled: boolean; volume: number } {
   const defaults = { enabled: true, volume: DEFAULT_VOLUME };
@@ -527,19 +503,6 @@ export class GameSfx {
         this.tone(output,now+.17,.38,630*pitch,970*pitch,.16,"triangle");
         this.noise(output,now+.03,.40,1800,.14,"bandpass");
         break;
-    }
-  }
-
-  playCombatCue(cue: ArenaCue, hero: SoundPosition, boss: SoundPosition,
-    listener?: SoundListener, bossStriking = true, slam = false,
-    missedGrab = false): void {
-    const nearBoss = cue.kind === "windup" || cue.kind === "grab" ||
-      cue.kind === "throw" || cue.kind === "hero-hit" ||
-      cue.kind === "stagger" || cue.kind === "victory";
-    for (const id of arenaCueSfx(cue.kind, bossStriking, missedGrab)) {
-      const anchor = id === "troll-impact" || id === "troll-grunt" ? boss :
-        nearBoss ? boss : hero;
-      this.play(id, anchor, listener, false, slam && id==="troll-impact");
     }
   }
 
