@@ -2,6 +2,7 @@ import type {AdventurerState} from "./adventurers.ts";
 import {heroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects,GEAR_BY_ITEM} from "./gearCatalog.ts";
 import type {GroupCombatOptions,CombatantSpec,GroupRole} from "./groupCombat.ts";
+import {caveTrollActor} from "./sharedBossCombat.ts";
 import type {CombatStageTheme} from "./combatSpectatorStage.ts";
 
 /**
@@ -136,17 +137,15 @@ export function buildDeveloperCombat(config:DeveloperCombatConfig):GroupCombatOp
     });
   });
   for(let i=0;i<config.enemyCount;i++){
-    const troll=config.enemy==="cave-troll";
-    actors.push({
-      id:troll?"lab-cave-troll":"lab-ghoul-"+(i+1),
-      team:"monsters",role:"monster",style:"melee",
-      ...enemyPositions[i],hp:troll?280:65,maxHp:troll?280:65,
-      damage:troll?33:11,armor:troll?10:2,
-      speed:troll?2.7:3.0,reach:troll?1.8:1.6,
-      radius:troll?1.8:.5,agility:troll?7:9,
-      ...(troll?{specialAbility:"grapple-throw" as const,
-        grappleDamage:42,staggerThreshold:62}:{}),
-    });
+    if(config.enemy==="cave-troll"){
+      actors.push(caveTrollActor(enemyPositions[i],"lab-cave-troll"));
+    }else{
+      actors.push({
+        id:"lab-ghoul-"+(i+1),team:"monsters",role:"monster",style:"melee",
+        ...enemyPositions[i],hp:65,maxHp:65,damage:11,armor:2,
+        speed:3,reach:1.6,radius:.5,agility:9,
+      });
+    }
   }
   return {actors,bounds:{minX:-15,maxX:15,minZ:-15,maxZ:15},obstacles:[],
     tacticsSeed:config.seed,
