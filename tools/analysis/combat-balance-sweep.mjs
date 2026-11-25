@@ -77,9 +77,9 @@ function measure(options){
   return {outcome:s.outcome,seconds:s.time,deaths:heroes.filter(a=>a.hp<=0).length,cutoffActive,exposure};
 }
 function add(table,key,result){
-  const r=table[key]??={n:0,w:0,l:0,a:0,draw:0,d:0,sec:0,cutoff:0,roles:{}};
+  const r=table[key]??={n:0,w:0,l:0,a:0,draw:0,retreat:0,d:0,sec:0,cutoff:0,roles:{}};
   r.n++;r.w+=Number(result.outcome==="heroes");r.l+=Number(result.outcome==="monsters");
-  r.a+=Number(result.outcome==="fighting");r.draw+=Number(result.outcome==="draw");
+  r.a+=Number(result.outcome==="fighting");r.draw+=Number(result.outcome==="draw");r.retreat+=Number(result.outcome==="retreat");
   r.d+=result.deaths;r.sec+=result.seconds;r.cutoff+=Number(result.cutoffActive);
   for(const [role,values] of Object.entries(result.exposure)){
     const dst=r.roles[role]??={};
