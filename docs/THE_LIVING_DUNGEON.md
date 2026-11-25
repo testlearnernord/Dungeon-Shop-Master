@@ -1,6 +1,6 @@
 # The Living Dungeon — design contract
 
-> Current contract: Alpha v41 (Recovered Goods Chest). Current design contract. See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v42 (Living Dungeon Pacing). Current design contract. See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
 
 ## The experience
 
@@ -10,7 +10,7 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 
 ## The one world contract
 
-- `GameStore` and the saved `worldClock` own time and mutations, never the renderer. One world tick equals 50 ms; movement advances at 200-tick checkpoints; combats settle real 60-Hz actor steps. Pausing a viewer or watching a recording is read-only.
+- `GameStore` and the saved `worldClock` own time and mutations, never the renderer. One world tick equals 50 ms; movement advances at 50-tick checkpoints; combats settle real 60-Hz actor steps. Pausing a viewer or watching a recording is read-only.
 - Each hero may **stay, descend, ascend or return to the cursed shop** according to personal needs, discovered paths, surviving resources and any real Temporary Party. No direct player-issued party, attack or waypoint commands.
 - A shop return uses legitimate visited path/backtracking and a saved timed portal step; a hero cannot conjure a shortcut or full map knowledge. A physical shop departure begins **health-dependent world-tick recovery** before reentry on the existing dungeon movement clock.
 - Treasure, monster sites, traps, site generations, one-time boss victories, equipment and gold must remain actual saved consequences. Renewable common sites are not infinite per-person loot duplicators.
@@ -24,11 +24,11 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 | **Floor 10** | One Cave Troll encounter entered only by an actual saved, authorized 2–3-hero Temporary Party at the lower stair of Floor 9. Shared group combat at 60 Hz, bounded recordings, boss event and actual outcome |
 | **Galvik's cursed shop** | A separate *unnumbered* realm accessible by the return option. One normal physical portal/threshold for shop traffic; do not label it Dungeon Floor 5 |
 
-Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. `bossPass` is the Floor-10 credential. The solo boss, old day motor and abstract loot counter are retired.
+Alpha v42 is the only supported campaign schema. Reject v41 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. `bossPass` is the Floor-10 credential. The solo boss, old day motor and abstract loot counter are retired.
 
 ## V0.004 A–D monster-world (merged in #336–339)
 
-One persistent Ghoul-Pack world actor exists per active ordinary dungeon monster site generation on Floors 1–9. Each actor saves its true tile, origin, decision timer, mode and site cycle. Rare deterministic roaming uses real connected dungeon paths and **400 world ticks per monster tile** compared with 200 per hero tile. All movement runs in the existing LIVE world event, never the spectator or a second AI scheduler.
+One persistent Ghoul-Pack world actor exists per active ordinary dungeon monster site generation on Floors 1–9. Each actor saves its true tile, origin, decision timer, mode and site cycle. Rare deterministic roaming uses real connected dungeon paths and **100 world ticks per monster tile** compared with 50 per hero tile. All movement runs in the existing LIVE world event, never the spectator or a second AI scheduler.
 
 Ghoul sight uses the canonical geometric line-of-sight test (five-tile range). A visible hero or Temporary Party interrupts roaming and starts CHASING. When the target disappears behind walls or leaves vision, only the last truly observed location remains available; SEARCHING ends after three blind checks and a pack returns to its original home. Real collisions reserve one site and enter the existing 60-Hz GroupCombat. Site death, renewal, loot and replay are settled through the same authoritative dungeon world.
 
@@ -36,9 +36,9 @@ Autonomous heroes and co-located Temporary Parties may flee on actual adjacent t
 
 **V0.004 E observation hardening (#340):** Galvik's Table rebuilds Ghoul mesh identities when pack generations spawn or disappear, even without a resolved-site change. Regular movement only interpolates existing instances. A missed interval or day skip does not fabricate a travel animation. The full LIVE Viewer and Table continue reading the same saved world facts.
 
-**V0.004 F step presentation (#341):** A monster's **400-world-tick movement interval** is a gameplay rule, **not** a mesh interpolation duration. The Ghoul visually traverses its one committed tile in a short **1.2-second walk burst** (heroes: **0.85 seconds**) and then idles until its next actually committed move. Both Galvik's Table and full LIVE Viewer use the same clamped visual phase. No continuous 20-second crawl, additional AI clock, or cosmetic prediction of future movement.
+**V0.004 F step presentation (#341):** A monster's **100-world-tick movement interval** is a gameplay rule, **not** a mesh interpolation duration. The Ghoul visually traverses its one committed tile in a short **1.2-second walk burst** (heroes: **0.85 seconds**) and then idles until its next actually committed move. Both Galvik's Table and full LIVE Viewer use the same clamped visual phase. No continuous 5-second crawl, additional AI clock, or cosmetic prediction of future movement.
 
-**V0.004 G authored observation animation (#342):** Ordinary LIVE Ghoul markers reuse a per-scene two-pose skinned GLB representation: actual `idle_combat` when standing and `walk_feral` only during the same saved 1.2-second single-cell movement. The shared skeletal rigs serve the full LIVE Viewer and Galvik's Table; each pack keeps only two lightweight mesh instances, and no additional movement authority, spawn or combat simulation is permitted. Rig animation is deliberately distinct from the dedicated full combat actor. Galvik's Table and LIVE Viewer both advance cosmetic one-tile walks via bounded render-frame deltas, not elapsed wall time, so a slow frame cannot swallow an entire 1.2-second walk before it is rendered. Browser smoke checks an actual 400-tick move in each observer and a rendered walk-to-idle transition.
+**V0.004 G authored observation animation (#342):** Ordinary LIVE Ghoul markers reuse a per-scene two-pose skinned GLB representation: actual `idle_combat` when standing and `walk_feral` only during the same saved 1.2-second single-cell movement. The shared skeletal rigs serve the full LIVE Viewer and Galvik's Table; each pack keeps only two lightweight mesh instances, and no additional movement authority, spawn or combat simulation is permitted. Rig animation is deliberately distinct from the dedicated full combat actor. Galvik's Table and LIVE Viewer both advance cosmetic one-tile walks via bounded render-frame deltas, not elapsed wall time, so a slow frame cannot swallow an entire 1.2-second walk before it is rendered. Browser smoke checks an actual 100-tick move in each observer and a rendered walk-to-idle transition.
 
 **V0.004 H threat/contact acceptance (#343):** A hero's real saved return-to-shop backtrack is no longer immune to visible pursuit. A valid one-tile tactical escape temporarily takes priority over the already committed homeward route; the persistent return journey remains intact and the next normal step resumes real connected backtracking. Focused regression coverage exercises LOS blocked by genuine wall corners, three blind checks and reacquisition without hidden-location leakage, strict Save/Load during pursuit, co-located 2-hero Temporary Party monster contact reserving **one** GroupCombat, and exact resume without duplicate fights. The existing nine-floor offscreen roaming/identity tests remain intact.
 
@@ -77,7 +77,7 @@ Autonomous heroes and co-located Temporary Parties may flee on actual adjacent t
 ## Remaining Alpha acceptance
 
 1. 10-day hands-on campaign: shops, customers, hero identities, combat and return cycles remain intelligible and fun.
-2. Review the completed campaign and controlled matrix evidence in [Alpha acceptance](ALPHA_V41_ACCEPTANCE.md). No new general audit unless justified.
+2. Review the completed campaign and controlled matrix evidence in [Alpha acceptance](ALPHA_V42_ACCEPTANCE.md). No new general audit unless justified.
 3. Legitimate *in-world* Floor-9-to-10 party attempt, recovered/replayed after strict Save/Load, with no second combat simulation.
 4. Actual browser NPC walking, one-portal access, cashier traffic, credit/request deadlines and cellar traversal through real obstacles.
 5. Real-device combat animation, sounds, camera/focus, HUD and frame pacing evaluated independently from green CI.

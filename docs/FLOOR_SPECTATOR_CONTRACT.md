@@ -1,6 +1,6 @@
 # Floor LIVE Spectator — current contract
 
-> Current contract: Alpha v41 (Recovered Goods Chest). Current read-only projection contract.
+> Current contract: Alpha v42 (Living Dungeon Pacing). Current read-only projection contract.
 
 ## One source of truth
 

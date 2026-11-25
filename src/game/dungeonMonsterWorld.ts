@@ -1,3 +1,5 @@
+import {MONSTER_STEP_TICKS} from "./dungeonPacing.ts";
+export {MONSTER_STEP_TICKS} from "./dungeonPacing.ts";
 import {dungeonNeighbors,dungeonShortestPath,tileAt,
   type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonSiteGeneration,refreshDungeonSites} from "./dungeonRegeneration.ts";
@@ -25,12 +27,11 @@ export interface DungeonMonsterState extends DungeonPoint {
   readonly lostSightChecks?:number;
 }
 
-/** Game rules, not renderer delays. A hero moves every 200 world ticks. */
-export const MONSTER_STEP_TICKS=400;
 export const MONSTER_ROAM_CHANCE=0.12;
 export const MONSTER_ROAM_MIN_DISTANCE=3;
 export const MONSTER_ROAM_MAX_DISTANCE=6;
 export const MONSTER_SIGHT_RADIUS=5;
+/** Three hero movement opportunities out of sight (7.5s), not a wall timer. */
 export const MONSTER_LOST_SIGHT_CHECKS=3;
 
 export interface MonsterObservedHero extends DungeonPoint{

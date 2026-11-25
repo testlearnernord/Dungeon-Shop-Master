@@ -21,7 +21,7 @@ test("world-clock packs roam rarely, only over real edges and at half hero speed
   assert(start.length>0);
   assert.equal(start.length,layout.features.filter(f=>f.kind==="monster").length);
   let moves=0,stationary=0;
-  for(let tick=200;tick<=24000;tick+=200){
+  for(let tick=MONSTER_STEP_TICKS/2;tick<=24000;tick+=MONSTER_STEP_TICKS/2){
     const next=advanceDungeonMonsterWorld(world,layout,1,tick);
     for(const previous of world.monsters??[]){
       const current=next.monsters?.find(m=>m.id===previous.id);
@@ -30,7 +30,7 @@ test("world-clock packs roam rarely, only over real edges and at half hero speed
       assert(distance<=1,"no monster may teleport across two cells");
       if(distance){
         moves++;
-        assert.equal(tick%MONSTER_STEP_TICKS,0);
+        assert(tick-previous.lastMoveTick>=MONSTER_STEP_TICKS);
         assert.equal(current.lastMoveTick,tick);
         assert(dungeonNeighbors(layout,previous).some(p=>
           p.x===current.x&&p.z===current.z));
@@ -43,7 +43,7 @@ test("world-clock packs roam rarely, only over real edges and at half hero speed
   assert(stationary>moves*2,"Ghoul packs remain idle most of the time");
 });
 
-test("one saved pack cannot move before 400 ticks or through an occupied next tile",()=>{
+test("one saved pack cannot move before its movement interval or through an occupied next tile",()=>{
   const initial=advanceDungeonMonsterWorld(emptySpatialDungeonWorld(),layout,1,0);
   const monster=initial.monsters![0];
   const target=dungeonNeighbors(layout,monster)[0];
@@ -51,14 +51,14 @@ test("one saved pack cannot move before 400 ticks or through an occupied next ti
   const manual:DungeonMonsterState={...monster,mode:"ROAMING",target,
     nextDecisionTick:0,lastMoveTick:0};
   const world={...initial,monsters:[manual,...initial.monsters!.slice(1)]};
-  const tooSoon=advanceDungeonMonsterWorld(world,layout,1,200);
+  const tooSoon=advanceDungeonMonsterWorld(world,layout,1,MONSTER_STEP_TICKS/2);
   assert.deepEqual(tooSoon.monsters![0],manual);
-  const blocked=advanceDungeonMonsterWorld(world,layout,1,400,[target]);
+  const blocked=advanceDungeonMonsterWorld(world,layout,1,MONSTER_STEP_TICKS,[target]);
   assert.deepEqual(blocked.monsters![0],manual);
-  const walking=advanceDungeonMonsterWorld(world,layout,1,400);
+  const walking=advanceDungeonMonsterWorld(world,layout,1,MONSTER_STEP_TICKS);
   assert.deepEqual([walking.monsters![0].x,walking.monsters![0].z],
     [target.x,target.z]);
-  assert.equal(walking.monsters![0].lastMoveTick,400);
+  assert.equal(walking.monsters![0].lastMoveTick,MONSTER_STEP_TICKS);
 });
 
 test("monster identity follows site generation; death removes the pack and regeneration resets it",()=>{

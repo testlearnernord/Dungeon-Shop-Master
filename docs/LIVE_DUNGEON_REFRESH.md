@@ -1,6 +1,6 @@
 # LIVE Dungeon — current map, exploration and observer contract
 
-> Current contract: Alpha v41 (Recovered Goods Chest). Current LIVE map contract; see [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v42 (Living Dungeon Pacing). Current LIVE map contract; see [Architecture](ARCHITECTURE.md).
 
 ## Gameplay state and map
 
@@ -13,7 +13,7 @@
 
 - `liveFloorSpectator.ts` and `liveSpectator.ts` derive committed actor/site views. `dungeonViewer.ts` manages focus, floor selector, WASD/pan/orbit/tilt, north restoration, minimap, enemy/chest/trap props, and short personal movement previews.
 - A committed combat appears as an inexpensive beacon; opening Watch constructs the premium shared 3D combat arena. The scene consumes saved frames only. Map camera/mini icons do not award XP or reveal every hero's hidden knowledge to the passive shop Board.
-- `liveFloorSceneDiff.ts` limits geometry/DOM redraws when only combat pose/HP changes. Visual interpolation may smooth checkpoints while authoritative movement stays at the same 200-tick cadence.
+- `liveFloorSceneDiff.ts` limits geometry/DOM redraws when only combat pose/HP changes. Visual interpolation may smooth checkpoints while authoritative movement stays at the shared 50-tick hero / 100-tick monster cadence.
 - One World Feed announces genuine loot, traps, return trips, real victories, level-ups, death signals and party challenges. Clicking a victory/death links to real original footage, or a truthful report if no recording was retained.
 - The Event Feed and Expedition Archive route ordinary `dungeonReplay` and genuine Floor-10 `partyBossReplay`; no solo replay adapter. LIVE entry from World Echoes, map or hero view goes directly to the current committed fight with HUD and camera available. The world continues. Local recorded playback and Combat Lab retain optional cinematics (ordinary 5.2 s, boss 13.5 s); Dungeon Viewer LIVE music requests the corresponding cue with a 1.1 s crossfade, and its manual skip supports both scores. Acoustic and visual acceptance of the final changes remains open.
 

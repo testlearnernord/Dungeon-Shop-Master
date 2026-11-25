@@ -41,7 +41,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,41);
+  assert.equal(SIMULATION_VERSION,42);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{
@@ -470,8 +470,8 @@ test("v21 rejects fabricated AI intentions and invalid plan-tick ownership",()=>
   assert.deepEqual(parseSave(JSON.stringify(raw)),store.state);
 });
 
-test("LIVE dungeon commits one physical tile every ten real seconds",()=>{
-  assert.equal(DUNGEON_STEP_INTERVAL_TICKS,200);
+test("LIVE dungeon commits one physical tile every 2.5 real seconds",()=>{
+  assert.equal(DUNGEON_STEP_INTERVAL_TICKS,50);
 });
 
 test("diagnostics observe actual decisions without changing the campaign or save",()=>{
@@ -880,4 +880,51 @@ test("an actual late-night encounter survives bedtime, dawn and JSON reload",()=
   assert.deepEqual(a.state,b.state);
   a.advanceWorldTime(100);b.advanceWorldTime(100);
   assert.deepEqual(a.state,b.state,"same encounter must continue exactly after reload");
+});
+
+
+test("map pacing preserves world day and combat clock while allowing four times as many movement opportunities",async()=>{
+  const {DUNGEON_STEP_SECONDS,MONSTER_STEP_SECONDS,MONSTER_STEP_TICKS}=await import("../../src/game/dungeonPacing.ts");
+  const {WORLD_TICKS_PER_DAY,WORLD_TICK_SECONDS}=await import("../../src/game/worldClock.ts");
+  assert.equal(DUNGEON_STEP_SECONDS,2.5);
+  assert.equal(MONSTER_STEP_SECONDS,5);
+  assert.equal(MONSTER_STEP_TICKS,2*DUNGEON_STEP_INTERVAL_TICKS);
+  assert.equal(WORLD_TICKS_PER_DAY*WORLD_TICK_SECONDS,24*60);
+  assert.equal(LIVE_COMBAT_INTERVAL_TICKS*WORLD_TICK_SECONDS,.5);
+  const store=new GameStore(createGameState(7351));
+  store.enableLiveDungeon();
+  store.advanceWorldTime(49);
+  assert.equal(store.state.liveDungeon.lastStepTick,0);
+  store.advanceWorldTime(1);
+  assert.equal(store.state.liveDungeon.lastStepTick,50);
+  store.advanceWorldTime(150);
+  assert.equal(store.state.liveDungeon.lastStepTick,200);
+  const saved=parseSave(JSON.stringify(createSave(store.state)));
+  const resumed=new GameStore(saved);
+  store.advanceWorldTime(50);
+  resumed.advanceWorldTime(50);
+  assert.deepEqual(resumed.state,store.state);
+});
+
+test("a new encounter sharing an existing combat burst begins at age zero",()=>{
+  const store=activeFightFixture();
+  store.enableLiveDungeon();
+  let overlappingArrival=false;
+  for(let i=0;i<200;i++){
+    const prior=new Set(store.state.liveDungeon.combats.map(f=>f.id));
+    store.advanceWorldTime(LIVE_COMBAT_INTERVAL_TICKS);
+    const live=store.state.liveDungeon;
+    for(const fight of live.combats){
+      const elapsed=(live.combatTick-fight.startedTick)*3;
+      assert.equal(Math.round(fight.state.time*60),elapsed,
+        "No encounter may consume combat time before its physical arrival.");
+      if(fight.startedTick===live.combatTick){
+        assert.equal(fight.state.time,0);
+        assert.equal(fight.frames.length,1);
+        if(prior.size>0&&!prior.has(fight.id))overlappingArrival=true;
+      }
+    }
+  }
+  assert(overlappingArrival,"The fixture exercises a new encounter arriving while another was active.");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
 });

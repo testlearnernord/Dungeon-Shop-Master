@@ -114,7 +114,7 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     expect(pin.sourceId).not.toBe(pin.walkSourceId);
   }
 
-  // Two authentic 400-tick LIVE events move the Ghoul on its pre-saved
+  // Two authentic 100-tick monster movement intervals move the Ghoul on its pre-saved
   // connected route. The table gets the FIRST step, then the full LIVE
   // map observes the SECOND. Never mutate Babylon markers directly.
   const nextMonsterStep=()=>page.evaluate(()=>{
@@ -123,7 +123,7 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     };
     if(!hooks.__shopTestAdvanceWorldTicks)
       throw Error("Missing real authoritative E2E clock hook");
-    hooks.__shopTestAdvanceWorldTicks(400);
+    hooks.__shopTestAdvanceWorldTicks(100);
   });
   const selected=async()=>(
     await inspect()).pins.find(pin=>pin.id===expected.selected);

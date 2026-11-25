@@ -28,8 +28,8 @@ export function isObservedMonsterStep(
 }
 
 /** Visual traversal takes only a brief, weighty burst: monsters WAIT
- * between real 400-tick decisions, just like heroes wait between steps.
- * This is NOT the gameplay move interval (400 ticks / 20 seconds). */
+ * between real 100-tick movement opportunities, just like heroes wait.
+ * This is NOT the gameplay move interval (100 ticks / 5 seconds). */
 export const MONSTER_OBSERVATION_STEP_SECONDS=1.2;
 
 /** Clamped cosmetic traversal, shared by Galvik's Table and the LIVE map.

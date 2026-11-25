@@ -36,7 +36,7 @@ owned consumables. Healers can also purchase and consume real supplies.
   attributes and bonuses. It doesn't roll RNG or write a save.
 - `settleHeroExperience(hero,xp,hp)` is the XP/level/health settlement
   routine shared by real ordinary and Troll encounters.
-- Saved base stats remain immutable. Alpha v41 is the only supported campaign schema. Reject v40 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+- Saved base stats remain immutable. Alpha v42 is the only supported campaign schema. Reject v41 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 - `heroCombatAttributes` supplies the same attributes, gear, healing charges and reach for every enemy. Recorded combat snapshots are never recalculated after a later level-up.
 - The hero UI and party injury decisions use effective max HP, not seeded base
   HP. Developer `From Roster` fighters use the same ordinary fight attributes
@@ -44,4 +44,4 @@ owned consumables. Healers can also purchase and consume real supplies.
 
 ## Limits and evidence
 
-[Current Alpha evidence](ALPHA_V41_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294) document capped class growth and equipment leverage, not final economic or class balance. No fake XP, resurrection, free healing or retroactive replay recalculation. A persistent mana economy remains an open design topic.
+[Current Alpha evidence](ALPHA_V42_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294) document capped class growth and equipment leverage, not final economic or class balance. No fake XP, resurrection, free healing or retroactive replay recalculation. A persistent mana economy remains an open design topic.

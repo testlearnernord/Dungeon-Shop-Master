@@ -1,3 +1,5 @@
+import {DUNGEON_STEP_INTERVAL_TICKS} from "./dungeonPacing.ts";
+export {DUNGEON_STEP_INTERVAL_TICKS} from "./dungeonPacing.ts";
 import {manuallyPaidVisitors} from "./npcVisitors.ts";
 import type {GameState,WorldEvent} from "./gameState.ts";
 import {dungeonWorldAt,setDungeonWorld} from "./dungeonWorldState.ts";
@@ -35,10 +37,9 @@ import {advanceWorldUntil,beginNextWorldDay,firstWorldTickOfDay,lastWorldTickOfD
 
 /** Gameplay tuning; this is not the legacy 36-steps-per-day solver.
  * One event = at most ONE spatial tile for each live party. At the current
- * pacing the cadence is now 10 unpaused real seconds; bed fast-forwards
+ * pacing the cadence is now 2.5 unpaused real seconds; bed fast-forwards
  * remaining actual event ticks exactly once.
  */
-export const DUNGEON_STEP_INTERVAL_TICKS=200;
 export const DUNGEON_WORLD_EVENT_SUBJECT="dungeon-world";
 export const LIVE_COMBAT_EVENT_SUBJECT="dungeon-combat";
 /** Each clock event executes thirty genuine 60Hz fighter ticks in 0.5s. */
@@ -898,7 +899,12 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
     .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   let partyBossContinuing:LivePartyBossCombat|null=null;
   const partyBoss=state.liveDungeon.partyBossCombat;
-  if(partyBoss){
+  // A map event and an already scheduled combat burst can share a tick.
+  // The burst closes the PRECEDING half-second, so a newly arrived party
+  // must retain its initial frame and begin advancing at the next burst.
+  if(partyBoss?.startedTick===state.worldClock.tick){
+    partyBossContinuing=partyBoss;
+  }else if(partyBoss){
     const {combat,frames,newDeaths}=advanceLiveEncounter(partyBoss);
     for(const id of newDeaths){
       const hero=byId.get(id);
@@ -957,6 +963,10 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
     }
   }
   for(const fight of state.liveDungeon.combats){
+    if(fight.startedTick===state.worldClock.tick){
+      continuing.push(fight);
+      continue;
+    }
     const {combat,frames,newDeaths}=advanceLiveEncounter(fight);
     for(const id of newDeaths){
       const hero=byId.get(id);
