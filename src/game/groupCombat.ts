@@ -462,6 +462,8 @@ function tryStrike(s: GroupCombatState, attacker: GroupActor,
   if(contact==="parry"){
     cue(batch,s,target,"parry",attacker.id);
     phase(attacker,"hurt");
+    if(attacker.team==="monsters"&&!attacker.specialAbility)
+      attacker.heading=combatHeading(attacker,target);
     attacker.cooldown=Math.max(attacker.cooldown,0.45);
     return;
   }
@@ -573,6 +575,9 @@ function applyDamage(s: GroupCombatState, attacker: GroupActor, target: GroupAct
     // requires sufficient impact, otherwise three cheap arrows can keep a
     // giant in "hurt" forever and no boss special ever finishes winding up.
     phase(target,"hurt");
+    if(target.team==="monsters"&&!target.specialAbility){
+      target.heading=combatHeading(target,attacker);
+    }
   }
 }
 
@@ -597,7 +602,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   }else if(a.phase==="heal"){
     window={contactAt:0.62,completeAt:0.92};
   }else if(a.phase==="recover")window={completeAt:
-    signature?.recoverySeconds??.38};
+    signature?.recoverySeconds??(a.team==="monsters"?.72:.48)};
   else if(a.phase==="grab")window={
     contactAt:GRAPPLE_TIMING.grabContact,completeAt:GRAPPLE_TIMING.grab,
   };
@@ -608,7 +613,7 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   else if(a.phase==="thrown")window={completeAt:GRAPPLE_FLIGHT_SECONDS};
   else if(a.phase==="roll"||a.phase==="parry")window={completeAt:0.53};
   else if(a.phase==="hurt")window={completeAt:
-    a.specialAbility==="grapple-throw"?1.6:0.34};
+    a.specialAbility==="grapple-throw"?1.6:a.team==="monsters"?.52:0.34};
   const tick=advanceCombatActorPhase(a,dt,window);
   if(a.phase==="grabbed"||a.phase==="thrown"){
     progressGroupGrappleVictim(s,a,dt,batch,tick.complete);
@@ -830,6 +835,10 @@ function updateActor(s: GroupCombatState, a: GroupActor, dt: number, batch: Grou
   } else if (a.phase === "parry") {
     if (a.phaseAge >= 0.53) phase(a,"move");
   } else if (a.phase === "hurt") {
+    // A real interrupted Ghoul recoils along its recorded facing, through
+    // the existing collision integrator. No invulnerability or extra damage.
+    if(a.team==="monsters"&&!a.specialAbility&&a.phaseAge<=.22)
+      move(s,a,-Math.sin(a.heading)*1.8*dt,-Math.cos(a.heading)*1.8*dt);
     if(tick.complete){
       if(a.specialAbility==="grapple-throw")
         a.cooldown=Math.max(a.cooldown,1.4);
