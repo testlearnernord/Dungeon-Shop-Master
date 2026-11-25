@@ -15,7 +15,7 @@ import {createTripoCaveTrollVisual} from "./tripoCaveTrollVisual.ts";
 import {createCaveTrollImpactVisual,type CaveTrollImpactVisual}
   from "./caveTrollImpactVisual.ts";
 import type {CaveTrollVisual} from "./caveTrollVisual.ts";
-import type {BossPhase} from "./arenaCombatMotion.ts";
+import type {BossPhase} from "./trollPresentationTypes.ts";
 import {GRAPPLE_TIMING} from "./combatGrapple.ts";
 import {airborneRootFromGrip} from "./tripoGripPresentation.ts";
 import {CombatGroupWorldHud} from "./combatGroupWorldHud.ts";
