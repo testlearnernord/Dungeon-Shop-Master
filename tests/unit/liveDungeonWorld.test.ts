@@ -841,7 +841,7 @@ test("real gear helps depth readiness without substituting for all deep-floor ex
 test("an unprepared Floor-9 hero does not endlessly revisit for unchanged gold or knowledge",()=>{
   const source=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
   const hero={...source,floor:9 as const,status:"exploring" as const,
-    level:7,xp:600,gold:100,traits:{...source.traits,positive:"careful"},equipment:{weapon:"Forged Spear",armor:null}};
+    level:7,xp:600,gold:100,health:heroProgression({...source,level:7}).maxHealth,traits:{...source.traits,positive:"careful"},equipment:{weapon:"Forged Spear",armor:null}};
   const layout=generateExpeditionLayout(7351,9);
   const progress={heroId:hero.id,...layout.entrance,
     visited:layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i])};
@@ -927,4 +927,48 @@ test("a new encounter sharing an existing combat burst begins at age zero",()=>{
   }
   assert(overlappingArrival,"The fixture exercises a new encounter arriving while another was active.");
   assert.deepEqual(parseSave(JSON.stringify(createSave(store.state))),store.state);
+});
+
+test("boss willingness responds to actual class gear, supplies, experience, injuries and personality",()=>{
+  const original=createGameState(7351).adventurers.find(h=>h.role==="DPS")!;
+  const veteran={...original,floor:9 as const,status:"exploring" as const,
+    level:6,xp:500,traits:{...original.traits,positive:"generous" as const,negative:"stubborn" as const},
+    equipment:{weapon:"Spear",armor:"Leather Vest"},
+    inventory:{...original.inventory,bread:0,healing:0}};
+  const ready={...veteran,health:heroProgression(veteran).maxHealth};
+  assert(!isBossExpeditionCandidate(ready),"T1 veteran without supplies still seeks preparation");
+  assert(isBossExpeditionCandidate({...ready,inventory:{...ready.inventory,healing:1}}));
+  const forged={...ready,equipment:{...ready.equipment,weapon:"Forged Spear"}};
+  assert(isBossExpeditionCandidate(forged),"A genuine forged purchase improves willingness");
+  assert(!isBossExpeditionCandidate({...forged,health:Math.floor(forged.health*.60)}));
+  assert(!isBossExpeditionCandidate({...forged,level:2,xp:100,health:heroProgression({...forged,level:2}).maxHealth}));
+  assert(!isBossExpeditionCandidate({...forged,equipment:{...forged.equipment,weapon:"Staff"}}));
+  assert(!isBossExpeditionCandidate({...forged,traits:{...forged.traits,positive:"careful"}}));
+  const bold={...ready,traits:{...ready.traits,negative:"reckless" as const}};
+  assert(isBossExpeditionCandidate(bold),"Risk tolerance changes willingness, not motor stats");
+});
+test("physical boss staircase rejects a stale descent after a member loses readiness",()=>{
+  const seed=7351,base=createGameState(seed),layout=generateExpeditionLayout(seed,9);
+  const down=dungeonDownStair(layout),visited=dungeonShortestPath(layout,layout.entrance,down)
+    .map(p=>p.z*layout.width+p.x);
+  const prepared=base.adventurers.slice(0,2).map((h,i)=>{
+    const veteran={...h,level:8,xp:700,floor:9 as const,status:"exploring" as const,
+      equipment:{weapon:h.role==="tank"?"Iron Sword":h.role==="DPS"?"Spear":"Staff",armor:"Leather Vest"},
+      inventory:{...h.inventory,bread:1}};
+    return {...veteran,health:Math.floor(heroProgression(veteran).maxHealth*(i===0?1:.3))};
+  });
+  const ids=prepared.map(h=>h.id);
+  const active=activateLiveDungeon({...base,
+    adventurers:base.adventurers.map(h=>prepared.find(p=>p.id===h.id)??{...h,floor:"shop" as const,status:"at-shop" as const}),
+    dungeonWorlds:[{floor:9 as const,world:{...emptySpatialDungeonWorld(),
+      heroes:ids.map(heroId=>({heroId,...down,visited}))}}],
+    dungeonParties:[{floor:9 as const,memberIds:ids,formedDay:1}]});
+  const store=new GameStore({...active,liveDungeon:{...active.liveDungeon,
+    plans:ids.map(heroId=>({heroId,floor:9 as const,goal:"progress" as const,action:"descend" as const,updatedTick:0}))}});
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.equal(store.state.liveDungeon.partyBossCombat,null);
+  assert(prepared.every(h=>store.state.adventurers.find(p=>p.id===h.id)?.floor===9));
+  const forged=structuredClone(createSave(store.state)) as any;
+  forged.payload.adventurers[0].bossPass=true;
+  assert.throws(()=>parseSave(JSON.stringify(forged)),/bossPass|unknown|unexpected/i);
 });

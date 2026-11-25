@@ -76,7 +76,7 @@ test("Floor 7 uses persistent saved generations and rejects forged save cycles",
   const hero = {...original,role:"tank" as const,
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"},
     health:original.stats.maxHealth, status:"exploring" as const,
-    floor:7 as const, bossPass:true};
+    floor:7 as const};
   const result = simulateSpatialDungeonDay(hero,emptySpatialDungeonWorld(),7351,3);
   const again = simulateSpatialDungeonDay(hero,emptySpatialDungeonWorld(),7351,3);
   assert.deepEqual(result,again);
@@ -113,7 +113,7 @@ test("renewed monster and chest really re-enter the existing recorded Floor 7 ex
   const initial = createGameState(7351);
   const base=initial.adventurers[0];
   const hero={...base,role:"tank" as const,
-    status:"exploring" as const,floor:7 as const,bossPass:true,
+    status:"exploring" as const,floor:7 as const,
     health:base.stats.maxHealth,
     equipment:{weapon:"Iron Sword",armor:"Leather Vest"}};
   for(const kind of ["monster","treasure"] as const) {

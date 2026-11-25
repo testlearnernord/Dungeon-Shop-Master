@@ -13,9 +13,9 @@ test("read-only roster and textual visitors track the persistent simulation on c
   await expect(page.locator("#population-summary")).toHaveText("Adventurers: 10 active · 0 lost");
   await expect(page.locator('#adventurer-roster li[data-status="at-shop"]')).toHaveCount(3);
   await expect(visitors).toContainText("Shop visitors (3):");
-  // Roster stats remain read-only; only visiting heroes may receive Level 6 permissions.
-  await expect(page.locator("#adventurer-roster .boss-pass")).toHaveCount(3);
-  await expect(page.locator("#adventurer-roster button:not(.boss-pass), #adventurer-roster input")).toHaveCount(0);
+  // Roster stats are read-only; no player-issued expedition permission.
+  await expect(page.locator("#adventurer-roster button")).toHaveCount(0);
+  await expect(page.locator("#adventurer-roster button, #adventurer-roster input")).toHaveCount(0);
   const initialRows = await roster.allTextContents();
   const inventory = await page.locator("#inventory").innerText();
 
@@ -39,7 +39,7 @@ test("read-only roster and textual visitors track the persistent simulation on c
       );
     }
     const atShop = active.filter((hero) => hero.status === "at-shop");
-    await expect(page.locator("#adventurer-roster .boss-pass")).toHaveCount(atShop.length);
+    await expect(page.locator("#adventurer-roster button")).toHaveCount(0);
     await expect(visitors).toHaveText(
       `Shop visitors (${atShop.length}): ${atShop.map((hero) => names.get(hero.id) ?? hero.name).join(", ") || "none"}`,
     );

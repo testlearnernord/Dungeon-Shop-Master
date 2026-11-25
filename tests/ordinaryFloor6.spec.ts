@@ -14,7 +14,7 @@ test("Floor 6 runs ordinary LIVE GroupCombat and no solo Troll checkpoints exist
     const hero=state.adventurers[0];
     const prepared={...state,adventurers:state.adventurers.map(h=>
       h.id===hero.id?{...h,status:"exploring" as const,
-        floor:6 as const,bossPass:true}:h)};
+        floor:6 as const}:h)};
     const store=new GameStore(prepared);
     store.enableLiveDungeon();
     store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);

@@ -278,7 +278,7 @@ test("a paid visitor never respawns on roster changes or extends their visit ove
     const prepared={...initial,
       adventurers:initial.adventurers.map((hero,index)=>index<2
         ?{...hero,status:"at-shop" as const,floor:"shop" as const,
-          shopStayDays:0,bossPass:false,gold:100,
+          shopStayDays:0,gold:100,
           inventory:{...hero.inventory,bread:0,healing:0}}
         :{...hero,status:"exploring" as const,floor:4 as const,shopStayDays:0}),
       events:[...initial.events,{
@@ -305,18 +305,8 @@ test("a paid visitor never respawns on roster changes or extends their visit ove
   // not loop through the entrance again because their simulation status
   // remains at-shop until Galvik sleeps.
   await expect.poll(async()=>await paidVisual(),{timeout:12000}).toBeNull();
-  // The compact roster is intentionally collapsed in the real HUD.
-  // Invoke its actual button click handler rather than waiting for a
-  // hidden row to become visible; this still uses GameStore.setBossPass.
-  await page.evaluate(otherId=>{
-    const button=document.querySelector<HTMLButtonElement>(
-      `#adventurer-roster .boss-pass[data-adventurer-id="${otherId}"]`);
-    if(!button)throw Error("Missing other visitor's Level 6 permit");
-    button.click();
-  },ids.other);
-  await expect(page.locator(
-    `#adventurer-roster .boss-pass[data-adventurer-id="${ids.other}"]`))
-    .toHaveAttribute("aria-pressed","true");
+  // A normal world update must not respawn a paid visitor.
+  await page.evaluate(()=>{(window as Window&{__shopTestAdvanceDungeonTick?:()=>void}).__shopTestAdvanceDungeonTick?.();});
   await page.waitForTimeout(800);
   expect(await paidVisual()).toBeNull();
   await page.evaluate(()=>{

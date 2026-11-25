@@ -105,8 +105,8 @@ test("one authoritative spatial GroupCombat and Combat Lab use the exact same sc
 
 test("live boss uses the same progression projection as ordinary combat",()=>{
   for(const role of ["tank","DPS","healer"] as const){
-    const hero={...atLevel(role,12),bossPass:true};
-    const companion={...initial.adventurers[1],bossPass:true};
+    const hero={...atLevel(role,12)};
+    const companion={...initial.adventurers[1]};
     const spec=caveTrollPartyOptions([hero,companion],42).actors.find(a=>a.id===hero.id)!;
     const expected=heroCombatAttributes(hero);
     for(const key of ["maxHp","damage","armor","agility","healCharges","magicHeals","reach","speed","style"] as const)
@@ -119,7 +119,7 @@ test("levelled v29 saves validate earned HP and feed the unique Floor-10 party m
   const original=base.adventurers.find(h=>h.status==="at-shop")!;
   const leveled={...original,level:10,xp:900};
   const cap=heroProgression(leveled).maxHealth;
-  const hero={...leveled,health:cap,bossPass:true};
+  const hero={...leveled,health:cap};
   const state={...base,adventurers:base.adventurers.map(h=>h.id===original.id?hero:h)};
   assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
   const tampered=structuredClone(createSave(state));
@@ -131,7 +131,7 @@ test("levelled v29 saves validate earned HP and feed the unique Floor-10 party m
   // tested in caveTrollPartyLive.test.ts. Fighter stats are composed ONLY
   // from real roster heroes; no surviving solo Floor-6 boss option exists.
   const fighters=state.adventurers.slice(0,3).map(h=>({
-    ...h,bossPass:true,status:"expedition" as const,floor:10 as const,
+    ...h,status:"expedition" as const,floor:10 as const,
   }));
   const fight=caveTrollPartyOptions(fighters,42);
   const actor=fight.actors.find(a=>a.id===hero.id)!;

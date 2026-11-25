@@ -226,6 +226,7 @@ test("boss rendezvous uses visible eligible peers only and never recruits an unp
   const neighbor=dungeonNeighbors(layout,at)[0];
   const ready=base.slice(0,2).map(h=>({...h,floor:9 as const,status:"exploring" as const,
     level:7,xp:600,health:heroProgression({...h,level:7}).maxHealth,
+    inventory:{...h.inventory,bread:1},
     equipment:{weapon:h.role==="tank"?"Iron Sword":h.role==="DPS"?"Spear":"Staff",armor:"Leather Vest"}}))
     .sort((a,b)=>a.id.localeCompare(b.id));
   const index=(p:{x:number;z:number})=>p.z*layout.width+p.x;

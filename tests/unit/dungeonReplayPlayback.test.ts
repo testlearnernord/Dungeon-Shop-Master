@@ -11,8 +11,7 @@ import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 
 function heroForReplay() {
   const original=createGameState(7351).adventurers[0];
-  return {...original, status:"exploring" as const, floor:7 as const,
-    bossPass:true, health:original.stats.maxHealth};
+  return {...original, status:"exploring" as const, floor:7 as const, health:original.stats.maxHealth};
 }
 
 test("fog starts from historical knowledge and never leaks future walked tiles",()=>{

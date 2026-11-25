@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("adventurer wall board opens by R and nearby E, tracks state and persists permits", async ({ page }) => {
+test("adventurer wall board opens by R and nearby E, tracks state and restores read-only hero cards", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("./");
@@ -23,9 +23,7 @@ test("adventurer wall board opens by R and nearby E, tracks state and persists p
   await expect(first.locator(".roster-card-extended .roster-portrait")).toHaveAttribute("data-portrait-id", "0");
   await expect(first.locator("summary .roster-collapse-label")).toBeVisible();
   await expect(first).toHaveCSS("grid-column-end","-1");
-  await first.locator(".roster-permit").click();
-  await expect(first.locator(".roster-permit")).toHaveAttribute("aria-pressed", "true");
-  await expect(first.locator(".roster-permit")).toBeFocused();
+  await expect(first.locator("button")).toHaveCount(0);
   await page.keyboard.press("b");
   await expect(page.locator("#wholesale")).toBeHidden();
   await expect(dialog).toBeVisible();
@@ -38,7 +36,8 @@ test("adventurer wall board opens by R and nearby E, tracks state and persists p
   await expect(page.locator("#roster-dialog")).toBeVisible();
   const restored = page.locator('#roster-detail-list .roster-card[data-hero-id="adventurer-1"]');
   await restored.locator("summary").click();
-  await expect(restored.locator(".roster-permit")).toHaveAttribute("aria-pressed", "true");
+  await expect(restored.locator(".roster-card-extended")).toBeVisible();
+  await expect(restored.locator("button")).toHaveCount(0);
   await page.locator("#roster-filter").selectOption("fallen");
   await expect(page.locator("#roster-detail-list")).toContainText("No confirmed extinguished life-signatures.");
   await page.locator("#close-roster").click();

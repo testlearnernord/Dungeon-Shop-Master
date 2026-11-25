@@ -66,7 +66,7 @@ test("physically purchased gear carries into the real Floor-10 GroupCombat hero"
   // caveTrollPartyLive.test.ts, while this verifies the paid gear boundary.
   const prepare=(state:typeof paid)=>state.adventurers.slice(0,3).map(h=>({
     ...h,status:"expedition" as const,floor:10 as const,
-    health:h.stats.maxHealth,bossPass:true,
+    health:h.stats.maxHealth,
   }));
   const gearedOptions=caveTrollPartyOptions(prepare(paid),42);
   const bareOptions=caveTrollPartyOptions(prepare(stocked),42);
