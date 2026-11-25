@@ -31,9 +31,9 @@ const profiles=sweep?[
 ]:[{id:"production"}];
 const rows=[],summary={},byPreparation={},byProfile={},byProfilePreparation={},roleExposure={};
 const add=(table,key,row)=>{
-  const g=table[key]??={cases:0,wins:0,losses:0,draws:0,deaths:0,bossHpRemaining:0,seconds:0};
+  const g=table[key]??={cases:0,wins:0,losses:0,draws:0,retreats:0,deaths:0,bossHpRemaining:0,seconds:0};
   g.cases++;g.wins+=Number(row.outcome==="heroes");
-  g.losses+=Number(row.outcome==="monsters");g.draws+=Number(row.outcome==="draw");
+  g.losses+=Number(row.outcome==="monsters");g.draws+=Number(row.outcome==="draw");g.retreats+=Number(row.outcome==="retreat");
   g.deaths+=row.deaths;g.bossHpRemaining+=row.bossExitHp;g.seconds+=row.seconds;
 };
 for(const profile of profiles)for(const composition of compositions)for(const level of [6,9,12])
