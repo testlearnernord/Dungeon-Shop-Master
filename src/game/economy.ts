@@ -2,7 +2,7 @@ import type { AdventurerState } from "./adventurers.ts";
 import { HEALING_HERB_HP, WAYBREAD_HP } from "./combatVitality.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
-import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
+import {gearForItem,needsGearUpgrade,gearFromName} from "./gearCatalog.ts";
 import type { GameState, ShopEconomyState, WorldEvent } from "./gameState.ts";
 
 export const ITEMS = [
@@ -75,6 +75,29 @@ export function preferredShopItemOrder(
     (healthRatio<0.80&&hero.inventory.healing===0&&hero.inventory.bread===0);
   return urgent?[...supply,...equipment]:
     [...equipment,"bread","healing-herb"];
+}
+
+/** A veteran can deliberately plan a return for a real upgrade without
+ * knowing Galvik's current stock. Use the exact shop order and catalog prices.
+ * Starter gear and urgent medical purchases retain their existing policy.
+ * A spare dose is budgeted when the hero owns no recovery supplies. */
+export function affordableForgedUpgrade(hero:AdventurerState):ItemId|null{
+  if(hero.level<4||hero.health/heroProgression(hero).maxHealth<.65)return null;
+  const reserve=hero.inventory.bread+hero.inventory.healing===0
+    ?ITEMS.find(item=>item.id==="bread")!.salePrice:0;
+  const budget=hero.gold-reserve;
+  for(const id of preferredShopItemOrder(hero)){
+    const gear=gearForItem(id);
+    if(!gear||gear.tier!==2||
+      !needsGearUpgrade(hero.role,hero.equipment,id))continue;
+    const equipped=gearFromName(hero.equipment[gear.slot]);
+    // This is deliberate T1 -> T2 demand, not the starter-gear policy.
+    if(!equipped||equipped.slot!==gear.slot||equipped.tier!==1||
+      (equipped.role!=="all"&&equipped.role!==hero.role))continue;
+    const price=ITEMS.find(item=>item.id===id)!.salePrice;
+    if(budget>=price)return id;
+  }
+  return null;
 }
 
 /** Instance-owned slots: stable identities, real goods and cart references.
