@@ -852,3 +852,48 @@ test("a Floor-9 hero without a pass does not endlessly revisit for unchanged gol
   assert.equal(chooseLiveHeroDungeonDecision(hero,progress,{...replay,
     outcome:"exploring",steps:[{...layout.entrance,t:1,action:"treasure",hp:hero.health}]}).action,"shop");
 });
+
+
+test("an actual late-night encounter survives bedtime, dawn and JSON reload",()=>{
+  const initial=activeFightFixture().state;
+  const start=WORLD_TICKS_PER_DAY-DUNGEON_STEP_INTERVAL_TICKS*2;
+  // Start from the same real seeded approach just before the last map tick.
+  const store=new GameStore({...initial,
+    worldClock:{...initial.worldClock,tick:start},
+    shopTraffic:{...initial.shopTraffic,tick:start},
+  });
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  const battle=store.state.liveDungeon.combats[0];
+  assert(battle,"late combat may no longer be suppressed by bedtime");
+  // The active motor should still be fighting on entry to the next day.
+  // Hold the actual start checkpoint just one burst before the boundary
+  // by shifting the fixture clock, not changing any fighter stats.
+  const source=store.state;
+  const shift=DUNGEON_STEP_INTERVAL_TICKS-LIVE_COMBAT_INTERVAL_TICKS;
+  const near=structuredClone(source);
+  const shiftedTick=source.worldClock.tick+shift;
+  const shifted={...near,
+    worldClock:{...near.worldClock,tick:shiftedTick,pending:near.worldClock.pending
+      .filter(e=>e.subjectId!==DUNGEON_WORLD_EVENT_SUBJECT)
+      .map(e=>({...e,dueTick:e.dueTick+shift}))},
+    shopTraffic:{...near.shopTraffic,tick:shiftedTick},
+    liveDungeon:{...near.liveDungeon,lastStepTick:shiftedTick,combatTick:shiftedTick,
+      combats:near.liveDungeon.combats.map(c=>({...c,startedTick:shiftedTick,
+        id:"battle:1:"+shiftedTick+":"+c.encounter.floor+":"+c.encounter.featureId}))},
+  };
+  const a=new GameStore(shifted);
+  const before=a.state.adventurers.find(h=>h.id===battle.heroIds[0])!;
+  a.endDay();
+  assert.equal(a.state.day,2);
+  const ongoing=a.state.liveDungeon.combats.find(c=>c.heroIds.includes(before.id));
+  assert(ongoing,"bedtime must not settle an unresolved battle");
+  assert.equal(Math.round(ongoing.state.time*60),30);
+  assert.equal(ongoing.frames.length,6);
+  assert.deepEqual(a.state.adventurers.find(h=>h.id===before.id),before,
+    "midnight cannot heal or reschedule an active fighter");
+  const b=new GameStore(parseSave(JSON.stringify(createSave(a.state))));
+  assert.deepEqual(a.state,b.state);
+  a.advanceWorldTime(100);b.advanceWorldTime(100);
+  assert.deepEqual(a.state,b.state,"same encounter must continue exactly after reload");
+});
