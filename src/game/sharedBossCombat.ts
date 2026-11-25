@@ -81,6 +81,9 @@ export function caveTrollGroupOptions(
  * saved world scheduler must authenticate the actual co-located party and
  * commit the encounter. Old solo Floor-6 preview fixtures are untouched.
  */
+export const CAVE_TROLL_LIVE_PROFILE=Object.freeze({
+  hp:480,maxHp:480,damage:27,armor:8,grappleDamage:34,staggerThreshold:92,
+});
 export function caveTrollPartyOptions(
   party:readonly AdventurerState[],tacticsSeed:number,
 ):GroupCombatOptions{
@@ -106,8 +109,7 @@ export function caveTrollPartyOptions(
       ...oldTroll,
       // The unique Floor-10 Cave Troll is a party-grade boss, not the
       // previous single-hero Floor-6 training encounter.
-      hp:700,maxHp:700,damage:46,armor:16,grappleDamage:55,
-      staggerThreshold:92,
+      ...CAVE_TROLL_LIVE_PROFILE,
     }],
   };
 }
