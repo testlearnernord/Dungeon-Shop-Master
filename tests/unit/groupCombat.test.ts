@@ -399,3 +399,49 @@ test("a parried ordinary monster recoils physically without extra damage",()=>{
   assert.equal(hero.hp,100);
   assert.equal(monster.phase,"hurt");
 });
+
+test("ordinary pack spaces pending impacts against one defender without reserving new state",()=>{
+  const s=createGroupCombat({bounds,actors:[
+    fighter("hero","heroes",0,0,{hp:500,maxHp:500,speed:0}),
+    fighter("ghoul-a","monsters",-1.5,0,{speed:0}),
+    fighter("ghoul-b","monsters",1.5,0,{speed:0}),
+  ]});
+  const hero=s.actors.find(a=>a.id==="hero")!;
+  hero.cooldown=100;
+  stepGroupCombat(s);
+  const first=s.events.filter(e=>e.kind==="attack"&&e.targetId==="hero");
+  assert.equal(first.length,1,"A simultaneous windup is deferred");
+  for(let i=0;i<70;i++)stepGroupCombat(s);
+  const attacks=s.events.filter(e=>e.kind==="attack"&&e.targetId==="hero");
+  assert(attacks.some(e=>e.actorId!==first[0].actorId),"The other Ghoul gets a turn");
+  assert(attacks[1].t-attacks[0].t>=.68,"Ordinary identical attacks keep the impact gap");
+});
+
+test("interrupted pack attack releases the pending impact slot immediately",()=>{
+  const s=createGroupCombat({bounds,actors:[
+    fighter("hero","heroes",0,0,{speed:0}),
+    fighter("ghoul-a","monsters",-1.5,0,{speed:0}),
+    fighter("ghoul-b","monsters",1.5,0,{speed:0}),
+  ]});
+  s.actors.find(a=>a.id==="hero")!.cooldown=100;
+  stepGroupCombat(s);
+  const pending=s.actors.find(a=>a.team==="monsters"&&a.phase==="windup")!;
+  assert(pending);
+  pending.phase="hurt";pending.phaseAge=0;
+  stepGroupCombat(s);
+  assert(s.actors.some(a=>a.team==="monsters"&&a!==pending&&a.phase==="windup"));
+});
+
+test("ordinary monsters may attack different party members simultaneously",()=>{
+  const s=createGroupCombat({bounds,actors:[
+    fighter("hero-a","heroes",-4,0,{speed:0}),
+    fighter("hero-b","heroes",4,0,{speed:0}),
+    fighter("ghoul-a","monsters",-2.5,0,{speed:0}),
+    fighter("ghoul-b","monsters",2.5,0,{speed:0}),
+  ]});
+  for(const a of s.actors)if(a.team==="heroes")a.cooldown=100;
+  stepGroupCombat(s);
+  const attacks=s.events.filter(e=>e.kind==="attack");
+  assert.equal(attacks.length,2);
+  assert.equal(new Set(attacks.map(e=>e.targetId)).size,2);
+});
