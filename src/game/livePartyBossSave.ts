@@ -4,6 +4,7 @@ import {caveTrollPartyOptions,CAVE_TROLL_LIVE_PROFILE} from "./sharedBossCombat.
 import {gearFromName} from "./gearCatalog.ts";
 import {createGroupCombat,captureGroupCombatFrame,
   type GroupCombatOptions} from "./groupCombat.ts";
+import {WORLD_TICKS_PER_DAY} from "./worldClock.ts";
 import {CAVE_TROLL_FLOOR} from "./dungeonTopology.ts";
 import {validRetreatExit} from "./combatRetreat.ts";
 import {PARTY_BOSS_MAX_SECONDS} from "./combatEncounter.ts";
@@ -43,11 +44,12 @@ export function livePartyBossCheckpointProblem(
   if(members.some(h=>!h||h.floor!==CAVE_TROLL_FLOOR||
     h.status!=="expedition"||h.health<=0||!h.bossPass))
     return fail("must be a real permitted co-located Level-10 party");
+  const startedDay=Math.floor(b.startedTick/WORLD_TICKS_PER_DAY)+1;
   if(!integer(b.startedTick,0,lastStepTick)||
-     (lastStepTick-b.startedTick)%DUNGEON_STEP_INTERVAL_TICKS!==0||
+     (startedDay===state.day&&(lastStepTick-b.startedTick)%DUNGEON_STEP_INTERVAL_TICKS!==0)||
      !integer(combatTick,b.startedTick,state.worldClock.tick)||
      (combatTick-b.startedTick)%LIVE_COMBAT_INTERVAL_TICKS!==0||
-     b.id!=="party-boss:"+state.day+":"+b.startedTick+":"+
+     b.id!=="party-boss:"+startedDay+":"+b.startedTick+":"+
        b.heroIds.join("+"))
     return fail("clock/identity does not match the one real boss party");
   if(!record(b.options)||!integer(b.options.tacticsSeed,0,0xffffffff))
