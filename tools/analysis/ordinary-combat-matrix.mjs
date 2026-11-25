@@ -2,7 +2,7 @@
 // No campaign mutation, alternate simulation, or artificial rewards.
 import {createGameState} from "../../src/game/gameState.ts";
 import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
-import {prepareSpatialDungeonCombat,SPATIAL_DUNGEON_COMBAT_SECONDS} from "../../src/game/spatialDungeonExploration.ts";
+import {prepareSpatialDungeonCombat} from "../../src/game/spatialDungeonExploration.ts";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
 const seeds=process.argv[2]?[Number(process.argv[2])]:[7351,42,2026,9321];
@@ -41,7 +41,7 @@ for(const seed of seeds){
         const options=prepareSpatialDungeonCombat([hero],selected.site,seed,layout,selected.approach,0,true).options;
         const monsters=options.actors.filter(a=>a.team==="monsters");
         for(let pack=1;pack<=monsters.length;pack++){
-          const fight=resolveGroupCombat({...options,actors:[options.actors.find(a=>a.team==="heroes"),...monsters.slice(0,pack)]},SPATIAL_DUNGEON_COMBAT_SECONDS);
+          const fight=resolveGroupCombat({...options,actors:[options.actors.find(a=>a.team==="heroes"),...monsters.slice(0,pack)]});
           const actor=fight.state.actors.find(a=>a.id===hero.id);
           const cues=fight.replay.cues;
           const sum=(kind,field)=>cues.filter(c=>c.kind===kind&&c[field]===hero.id).reduce((n,c)=>n+(c.amount??0),0);
