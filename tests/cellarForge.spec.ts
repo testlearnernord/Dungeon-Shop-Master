@@ -3,7 +3,7 @@ import {expect,test} from "@playwright/test";
 /** Physical anvil E hit + existing real customer buyback + atomic forge +
  * strict campaign Save/Load. Genuine deterministic monster drops and actual
  * 60Hz gear effects have separate pure-runtime regressions. */
-test("player buys real adventurer salvage then forges and persists T2 at physical cellar anvil @ci-smoke",
+test("adventurer sells salvage at the chest before the player forges and persists T2 at physical cellar anvil @ci-smoke",
   async({page})=>{
   test.setTimeout(300000);
   const errors:string[]=[];
@@ -53,10 +53,10 @@ test("player buys real adventurer salvage then forges and persists T2 at physica
   await page.reload();
   await expect(page.locator("#save-status")).toContainText("Continued saved Day 1");
   await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(false);});
-  await expect(page.locator("#open-hero-offers")).toHaveAttribute("data-receipts","4",{timeout:120000});
+  await expect(page.locator("#open-buyback-log")).toHaveAttribute("data-receipts","4",{timeout:120000});
   await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(true);});
   const modal=page.locator("#hero-buyback-hud");
-  await page.locator("#open-hero-offers").click();
+  await page.locator("#open-buyback-log").click();
   await expect(modal).toBeVisible();
   const afterTrade=await page.evaluate(async()=>{
     const {GameStore}=await import("/Dungeon-Shop-Master/src/game/gameStore.ts");

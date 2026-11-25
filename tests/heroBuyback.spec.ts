@@ -1,6 +1,6 @@
 import {expect,test} from "@playwright/test";
 
-test("returning adventurer sells one real find to Galvik, saved with a paid expense receipt @ci-smoke",
+test("returning adventurer sells real materials at the physical chest, saved with paid expense receipts @ci-smoke",
   async({page})=>{
   test.setTimeout(180000);
   const errors:string[]=[];
@@ -26,13 +26,13 @@ test("returning adventurer sells one real find to Galvik, saved with a paid expe
   await expect(page.locator('#inventory [data-item-id="iron-ore"]')).toHaveCount(0);
   await expect(page.locator('#inventory [data-item-id="coal"]')).toHaveCount(0);
   await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(false);});
-  await expect(page.locator("#open-hero-offers")).toHaveAttribute("data-receipts","2",{timeout:120000});
+  await expect(page.locator("#open-buyback-log")).toHaveAttribute("data-receipts","2",{timeout:120000});
   await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(true);});
-  await page.locator("#open-hero-offers").click();
+  await page.locator("#open-buyback-log").click();
   const modal=page.locator("#hero-buyback-hud");
   await expect(modal).toBeVisible();
   await expect(modal.locator(".hero-buyback-budget")).toContainText("Iron Ore 2");
-  await expect(modal.locator(".hero-buyback-offer")).toHaveCount(2);
+  await expect(modal.locator(".buyback-receipt")).toHaveCount(2);
   await page.evaluate(async()=>{
     const hooks=window as Window&{
       __shopTestSaveTrafficNow?:()=>Promise<unknown>
