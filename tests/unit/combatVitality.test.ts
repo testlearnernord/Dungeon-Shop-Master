@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   applyCombatHit, applyCombatHealing, HEALING_HERB_HP, WAYBREAD_HP,
 } from "../../src/game/combatVitality.ts";
+import {createGroupCombat,stepGroupCombat} from "../../src/game/groupCombat.ts";
 import { ITEMS } from "../../src/game/economy.ts";
 
 test("combat damage is authoritative, armor-mitigated and cannot overkill HP",()=>{
