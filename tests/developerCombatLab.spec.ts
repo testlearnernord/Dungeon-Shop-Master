@@ -14,6 +14,9 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   await page.locator("#open-arena").click();
   await expect(page.locator("#arena-hud")).toHaveAttribute("data-dev-lab","true");
   await expect(page.locator("#arena-lab-panel")).toBeVisible();
+  await expect(page.locator("#lab-mode")).toHaveValue("production");
+  await expect(page.locator("#lab-hero-damage")).toBeDisabled();
+  await page.locator("#lab-mode").selectOption("custom");
   await page.locator("#lab-enemy").selectOption("ghoul");
   await page.locator("#lab-enemy-count").selectOption("3");
   await page.locator("#lab-arena").selectOption("crypt");

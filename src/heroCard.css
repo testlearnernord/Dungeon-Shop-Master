@@ -247,3 +247,6 @@
   #hero-inspect-hint{top:calc(50% + 29px);padding:4px 9px}
   #world-hero-card>.hero-card .hero-card-identity{padding-right:34px}
 }
+
+/* The lab configuration owns pointer input and must not be obscured by actor overlays. */
+body.arena-active #world-hero-card-mini{display:none!important}

@@ -143,6 +143,12 @@
         <aside id="arena-lab-panel" class="arena-lab-panel" hidden aria-label="Developer combat test configuration">
           <header><strong>COMBAT LAB · V</strong><small>Disposable tests · GameStore and world time never changed</small></header>
           <div class="arena-lab-grid">
+            <label>Mode
+              <select id="lab-mode"><option value="production">Production rules</option><option value="custom">Custom experiment</option></select>
+            </label>
+            <label>Copy a running LIVE fight
+              <select id="lab-capture"><option value="">No captured fight</option></select>
+            </label>
             <label>Monster
               <select id="lab-enemy"><option value="cave-troll">Cave Troll · Tripo</option><option value="ghoul">Ghoul · Tripo</option></select>
             </label>
@@ -167,23 +173,33 @@
             <label>Role
               <select id="lab-hero-role"><option value="tank">Tank</option><option value="DPS">DPS</option><option value="healer">Healer</option></select>
             </label>
-            <label>Max HP
+            <label>Level (production)
+              <input id="lab-hero-level" type="number" min="1" max="1000" value="1"/>
+            </label>
+            <label>Starting HP (blank = full)
+              <input id="lab-hero-current-hp" type="number" min="1" max="10000" placeholder="Full"/>
+            </label>
+            <label>Max HP (custom)
               <input id="lab-hero-hp" type="number" min="1" max="10000" value="120"/>
             </label>
-            <label>Attack damage
+            <label>Final attack damage (custom)
               <input id="lab-hero-damage" type="number" min="1" max="1000" value="16"/>
             </label>
-            <label>Armor
+            <label>Final armor (custom)
               <input id="lab-hero-armor" type="number" min="0" max="1000" value="5"/>
             </label>
-            <label>Agility
+            <label>Agility (custom)
               <input id="lab-hero-agility" type="number" min="0" max="1000" value="10"/>
             </label>
             <label>Healing herbs
               <input id="lab-hero-heals" type="number" min="0" max="10" value="2"/>
             </label>
-            <label class="arena-lab-check"><input id="lab-hero-sword" type="checkbox" checked/> Iron Sword</label>
-            <label class="arena-lab-check"><input id="lab-hero-vest" type="checkbox" checked/> Leather Vest</label>
+            <label>Weapon tier
+              <select id="lab-hero-weapon"><option value="0">Unarmed</option><option value="1">T1</option><option value="2">T2</option></select>
+            </label>
+            <label>Armor tier
+              <select id="lab-hero-armor-tier"><option value="0">No armor</option><option value="1">T1 Leather Vest</option><option value="2">T2 Ghoul Leather Vest</option></select>
+            </label>
             <label>Test seed
               <input id="lab-seed" type="number" min="0" max="4294967295" value="17"/>
             </label>
@@ -203,7 +219,7 @@
             <button id="lab-model" type="button">Inspect model animations</button>
           </div>
           <p id="lab-status" role="status">Configure your test battle.</p>
-          <small>Arena selection changes scenery only; lava hazards are specific to the implemented combat scenario.
+          <small>Production mode uses the real generated site or boss composer. Copying a LIVE encounter restarts its exact initial options locally. Custom mode permits deliberately overridden final attributes and arena rules.
           Test observations and randomization never affect live fights, inventories or saved campaign replays.</small>
         </aside>
         <aside id="arena-sfx-debug" hidden aria-label="Training-only sound effects debugger">

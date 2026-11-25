@@ -13,9 +13,12 @@ import {
 } from "./groupCombat.ts";
 import {
   buildDeveloperCombat,developerHeroFromRoster,randomDeveloperHeroes,
-  DEFAULT_DEVELOPER_HERO,DEFAULT_DEVELOPER_CONFIG,
+  DEFAULT_DEVELOPER_HERO,DEFAULT_DEVELOPER_CONFIG,labEquipment,productionLabHero,captureLabEncounters,
   type DeveloperCombatConfig,type DeveloperHero,
 } from "./developerCombatScenario.ts";
+
+import {gearFromName,GEAR_BY_ITEM} from "./gearCatalog.ts";
+import {heroCombatAttributes} from "./heroProgression.ts";
 
 const number=(input:HTMLInputElement,min:number,max:number)=>
   Math.max(min,Math.min(max,Number(input.value)||min));
@@ -43,8 +46,13 @@ export class DeveloperCombatLab {
   private readonly heroArmor:HTMLInputElement;
   private readonly heroAgility:HTMLInputElement;
   private readonly heroHeals:HTMLInputElement;
-  private readonly heroSword:HTMLInputElement;
-  private readonly heroVest:HTMLInputElement;
+  private readonly heroWeapon:HTMLSelectElement;
+  private readonly heroArmorTier:HTMLSelectElement;
+  private readonly heroLevel:HTMLInputElement;
+  private readonly heroCurrentHp:HTMLInputElement;
+  private readonly mode:HTMLSelectElement;
+  private readonly capture:HTMLSelectElement;
+  private captured:ReturnType<typeof captureLabEncounters>=[];
   private readonly seed:HTMLInputElement;
   private readonly status:HTMLElement;
   private readonly pauseButton:HTMLButtonElement;
@@ -69,6 +77,7 @@ export class DeveloperCombatLab {
     engine:Engine,canvas:HTMLCanvasElement,
     host:HTMLElement,private readonly store:GameStore,
     private readonly sfx?:GameSfx,
+    private readonly onFightChanged?:(boss:boolean)=>void,
   ){
     this.panel=host.querySelector<HTMLElement>("#arena-lab-panel")!;
     this.renderer=new LiveGroupCombatArena(engine,canvas,host,this.sfx);
@@ -86,8 +95,12 @@ export class DeveloperCombatLab {
     this.heroArmor=get("#lab-hero-armor");
     this.heroAgility=get("#lab-hero-agility");
     this.heroHeals=get("#lab-hero-heals");
-    this.heroSword=get("#lab-hero-sword");
-    this.heroVest=get("#lab-hero-vest");
+    this.heroWeapon=get("#lab-hero-weapon");
+    this.heroArmorTier=get("#lab-hero-armor-tier");
+    this.heroLevel=get("#lab-hero-level");
+    this.heroCurrentHp=get("#lab-hero-current-hp");
+    this.mode=get("#lab-mode");
+    this.capture=get("#lab-capture");
     this.seed=get("#lab-seed");
     this.status=get("#lab-status");
     this.pauseButton=get("#lab-pause");
@@ -96,6 +109,8 @@ export class DeveloperCombatLab {
     this.panel.hidden=true;
     this.seed.value=String(DEFAULT_DEVELOPER_CONFIG.seed);
     this.opponent.addEventListener("change",()=>this.limitEnemyCount());
+    this.mode.addEventListener("change",()=>{this.limitEnemyCount();this.loadSelectedHero();});
+    this.capture.addEventListener("change",()=>{if(this.capture.value)this.start();});
     this.heroCount.addEventListener("change",()=>{
       this.saveSelectedHero();
       const count=Number(this.heroCount.value);
@@ -106,13 +121,14 @@ export class DeveloperCombatLab {
     });
     this.heroSlot.addEventListener("change",()=>this.loadSelectedHero());
     for(const element of [this.heroRole,this.heroHp,this.heroDamage,
-      this.heroArmor,this.heroAgility,this.heroHeals,this.heroSword,this.heroVest]){
-      element.addEventListener("change",()=>this.saveSelectedHero());
+      this.heroArmor,this.heroAgility,this.heroHeals,this.heroWeapon,this.heroArmorTier,this.heroLevel,this.heroCurrentHp]){
+      element.addEventListener("change",()=>{this.saveSelectedHero();this.loadSelectedHero();});
     }
     this.roster.addEventListener("change",()=>this.importRosterHero());
     get<HTMLButtonElement>("#lab-random").addEventListener("click",()=>{
       const seed=Math.floor(Math.random()*0xffffffff)>>>0;
       this.seed.value=String(seed);
+      this.capture.value="";
       this.heroes=randomDeveloperHeroes(seed,Number(this.heroCount.value));
       this.selectHero(0);
       this.start();
@@ -158,6 +174,8 @@ export class DeveloperCombatLab {
     this.active=true;
     this.panel.hidden=false;
     this.refreshRoster();
+    this.captured=captureLabEncounters(this.store.state);
+    this.capture.replaceChildren(option("No captured fight",""),...this.captured.map(f=>option(f.label,f.id)));
     this.limitEnemyCount();
     this.selectHero(0);
     this.start();
@@ -185,7 +203,7 @@ export class DeveloperCombatLab {
 
   private refreshRoster():void{
     this.roster.replaceChildren(option("Custom hero / enter values",""));
-    for(const hero of this.store.state.adventurers)
+    for(const hero of this.store.state.adventurers.filter(h=>h.health>0))
       this.roster.add(option(hero.name+" · "+hero.role,hero.id));
     this.roster.value="";
   }
@@ -206,42 +224,66 @@ export class DeveloperCombatLab {
     const hero=this.heroes[Number(this.heroSlot.value)]??this.heroes[0];
     if(!hero)return;
     this.heroRole.value=hero.role;
-    this.heroHp.value=String(hero.maxHp);
-    this.heroDamage.value=String(hero.damage);
-    this.heroArmor.value=String(hero.armor);
-    this.heroAgility.value=String(hero.agility);
+    const production=this.mode.value==="production";
+    const derived=production?heroCombatAttributes(productionLabHero(hero,0)):hero;
+    this.heroHp.value=String(derived.maxHp);
+    this.heroDamage.value=String(derived.damage);
+    this.heroArmor.value=String(derived.armor);
+    this.heroAgility.value=String(derived.agility);
     this.heroHeals.value=String(hero.healCharges);
-    this.heroSword.checked=hero.sword;
-    this.heroVest.checked=hero.vest;
+    this.heroLevel.value=String(hero.level??1);
+    this.heroCurrentHp.value=hero.hp===undefined?"":String(hero.hp);
+    const gear=hero.equipment??labEquipment(hero.role,hero.sword?1:0,hero.vest?1:0);
+    this.heroWeapon.replaceChildren(option("Unarmed","0"),...Object.values(GEAR_BY_ITEM)
+      .filter(g=>g.slot==="weapon"&&g.role===hero.role).map(g=>option(g.label,String(g.tier))));
+    this.heroWeapon.value=String(gearFromName(gear.weapon)?.tier??0);
+    this.heroArmorTier.value=String(gearFromName(gear.armor)?.tier??0);
   }
   private saveSelectedHero():void{
     const index=Number(this.heroSlot.value);
     const previous=this.heroes[index];
     if(!previous)return;
     const role=this.heroRole.value as DeveloperHero["role"];
-    const {magicHeals,equipment,...editable}=previous;
+    const {magicHeals,equipment,baseStats,...editable}=previous;
+    const gear=labEquipment(role,Number(this.heroWeapon.value),Number(this.heroArmorTier.value));
     this.heroes[index]={
       ...editable,
       role,
       ...(role===previous.role&&magicHeals!==undefined?{magicHeals}:{}),
-      ...(role===previous.role&&equipment?{equipment}:{}),
+      ...(role===previous.role&&baseStats?{baseStats}:{}),
+      equipment:gear,
+      level:Math.floor(number(this.heroLevel,1,1000)),
+      hp:this.heroCurrentHp.value===""?undefined:number(this.heroCurrentHp,1,10000),
       maxHp:number(this.heroHp,1,10000),
       damage:number(this.heroDamage,1,1000),
       armor:number(this.heroArmor,0,1000),
       agility:number(this.heroAgility,0,1000),
       healCharges:number(this.heroHeals,0,10),
-      sword:this.heroSword.checked,vest:this.heroVest.checked,
+      sword:gear.weapon!==null,vest:gear.armor!==null,
     };
   }
   private limitEnemyCount():void{
     const troll=this.opponent.value==="cave-troll";
     for(const item of this.enemyCount.options)item.disabled=troll&&item.value!=="1";
     if(troll)this.enemyCount.value="1";
+    const production=this.mode.value==="production";
     this.ghoulFloor.disabled=troll;
+    this.enemyCount.disabled=production||troll;
+    this.arena.disabled=production;
+    if(production)this.arena.value=troll?"cave-troll":"crypt";
+    for(const input of [this.heroHp,this.heroDamage,this.heroArmor,this.heroAgility])input.disabled=production;
+    this.heroLevel.disabled=!production;
+    const needsParty=production&&troll;
+    this.heroCount.options[0].disabled=needsParty;
+    if(needsParty&&this.heroes.length<2){
+      this.heroes.push({...DEFAULT_DEVELOPER_HERO,role:"DPS",label:"Training hero 2"});
+      this.heroCount.value="2";this.selectHero(0);
+    }
   }
   private config():DeveloperCombatConfig{
     this.saveSelectedHero();
     return {
+      mode:this.mode.value as "production"|"custom",
       arena:this.arena.value as DeveloperCombatConfig["arena"],
       enemy:this.opponent.value as DeveloperCombatConfig["enemy"],
       enemyCount:Number(this.enemyCount.value),
@@ -271,10 +313,13 @@ export class DeveloperCombatLab {
     if(!this.active)return;
     try{
       const config=this.config();
-      const options=buildDeveloperCombat(config);
+      const captured=this.captured.find(f=>f.id===this.capture.value);
+      const options=captured?structuredClone(captured.options):buildDeveloperCombat(config);
       const state=createGroupCombat(options);
+      const boss=options.actors.some(a=>a.specialAbility==="grapple-throw");
+      this.onFightChanged?.(boss);
       this.renderer.dispose();
-      this.renderer.setDeveloperTheme(config.arena);
+      this.renderer.setDeveloperTheme(captured?.arena??config.arena);
       this.renderer.setCinematicsEnabled(this.cinematicsEnabled);
       this.options=options;this.state=state;
       this.frames=[captureGroupCombatFrame(state)];
@@ -355,7 +400,7 @@ export class DeveloperCombatLab {
     const living=(arr:typeof heroes)=>arr.filter(a=>a.hp>0).length;
     this.pauseButton.textContent=this.paused?"Resume":"Pause";
     this.status.textContent=
-      "Test #"+this.session+" · "+state.time.toFixed(2)+"s · "+
+      (this.capture.value?"CAPTURED LIVE · ":this.mode.value.toUpperCase()+" · ")+"Test #"+this.session+" · "+state.time.toFixed(2)+"s · "+
       "Heroes "+living(heroes)+"/"+heroes.length+" · Monsters "+
       living(foes)+"/"+foes.length+" · "+
       (state.outcome==="fighting"?(this.paused?"PAUSED":"RUNNING"):
