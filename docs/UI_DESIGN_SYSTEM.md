@@ -293,3 +293,7 @@ plates or hit feedback when cleaning obsolete HTML inspectors.
 - Automated layout tests are necessary but NOT an artistic manual sign-off:
   review portrait cropping, target spacing, mobile device feel and audio
   against the deployed Pages build separately.
+
+## Combat Lab configuration
+
+Production rules expose role, level, starting HP and role-specific T1/T2 weapon/armor, with derived damage/armor/max HP read-only. Custom experiments expose manual final values. A captured LIVE encounter locks configuration while its exact initial options are replayed locally. Keep the configuration panel above actor plates; party cards belong on the opposite side on desktop. No hover overlay may block settings. Compact party cards are hidden in the narrow Lab layout rather than covering its controls. Both modes share the combat motor and renderer.

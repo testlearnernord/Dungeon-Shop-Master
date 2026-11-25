@@ -23,9 +23,10 @@ export class CombatLabController {
     private readonly shopCamera:UniversalCamera,store:GameStore,
     private readonly onActiveChange:(active:boolean)=>void,
     private readonly sfx?:GameSfx,
-    onFightChanged?:(boss:boolean)=>void,
+    onFightChanged?:(boss:boolean,cue:number)=>void,
+    onSkipIntro?:(seconds:number)=>void,
   ){
-    this.lab=new DeveloperCombatLab(engine,canvas,this.panel,store,sfx,onFightChanged);
+    this.lab=new DeveloperCombatLab(engine,canvas,this.panel,store,sfx,onFightChanged,onSkipIntro);
     this.sfxLab=new CombatLabSfxDebugPanel(sfx);
     document.querySelector("#open-arena")!.addEventListener("click",()=>this.open());
     document.querySelector("#close-arena")!.addEventListener("click",()=>this.close());

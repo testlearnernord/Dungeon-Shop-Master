@@ -16,6 +16,12 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   await expect(page.locator("#arena-lab-panel")).toBeVisible();
   await expect(page.locator("#lab-mode")).toHaveValue("production");
   await expect(page.locator("#lab-hero-damage")).toBeDisabled();
+  await page.locator("#lab-hero-role").selectOption("healer");
+  await page.locator("#lab-hero-weapon").selectOption("1");
+  const t1=Number(await page.locator("#lab-hero-damage").inputValue());
+  await page.locator("#lab-hero-weapon").selectOption("2");
+  await expect(page.locator("#lab-hero-weapon option:checked")).toHaveText("T2 Staff");
+  expect(Number(await page.locator("#lab-hero-damage").inputValue())).toBeGreaterThan(t1);
   await page.locator("#lab-mode").selectOption("custom");
   await page.locator("#lab-enemy").selectOption("ghoul");
   await page.locator("#lab-enemy-count").selectOption("3");
@@ -27,6 +33,7 @@ test("V developer lab swaps real 3-Ghoul fights, stage, hero stats and frame ste
   await page.locator("#lab-hero-damage").fill("17");
   await expect(page.locator("#lab-cinematics-toggle"))
     .toHaveAttribute("aria-pressed","true");
+  await expect(page.locator("#lab-start")).toBeEnabled();
   await page.locator("#lab-start").click();
   const summary=()=>page.evaluate(async()=>(
     await import("/Dungeon-Shop-Master/tests/scene.ts"))

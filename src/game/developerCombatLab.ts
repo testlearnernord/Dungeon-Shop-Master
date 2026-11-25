@@ -19,6 +19,7 @@ import {
 
 import {gearFromName,GEAR_BY_ITEM} from "./gearCatalog.ts";
 import {heroCombatAttributes} from "./heroProgression.ts";
+import {BOSS_INTRO_SECONDS,GROUP_COMBAT_INTRO_SECONDS} from "./groupCombatIntro.ts";
 
 const number=(input:HTMLInputElement,min:number,max:number)=>
   Math.max(min,Math.min(max,Number(input.value)||min));
@@ -77,7 +78,8 @@ export class DeveloperCombatLab {
     engine:Engine,canvas:HTMLCanvasElement,
     host:HTMLElement,private readonly store:GameStore,
     private readonly sfx?:GameSfx,
-    private readonly onFightChanged?:(boss:boolean)=>void,
+    private readonly onFightChanged?:(boss:boolean,cue:number)=>void,
+    private readonly onSkipIntro?:(seconds:number)=>void,
   ){
     this.panel=host.querySelector<HTMLElement>("#arena-lab-panel")!;
     this.renderer=new LiveGroupCombatArena(engine,canvas,host,this.sfx);
@@ -110,7 +112,7 @@ export class DeveloperCombatLab {
     this.seed.value=String(DEFAULT_DEVELOPER_CONFIG.seed);
     this.opponent.addEventListener("change",()=>this.limitEnemyCount());
     this.mode.addEventListener("change",()=>{this.limitEnemyCount();this.loadSelectedHero();});
-    this.capture.addEventListener("change",()=>{if(this.capture.value)this.start();});
+    this.capture.addEventListener("change",()=>{this.limitEnemyCount();if(this.capture.value)this.start();});
     this.heroCount.addEventListener("change",()=>{
       this.saveSelectedHero();
       const count=Number(this.heroCount.value);
@@ -129,6 +131,7 @@ export class DeveloperCombatLab {
       const seed=Math.floor(Math.random()*0xffffffff)>>>0;
       this.seed.value=String(seed);
       this.capture.value="";
+      this.limitEnemyCount();
       this.heroes=randomDeveloperHeroes(seed,Number(this.heroCount.value));
       this.selectHero(0);
       this.start();
@@ -136,6 +139,7 @@ export class DeveloperCombatLab {
     get<HTMLButtonElement>("#lab-start").addEventListener("click",()=>this.start());
     this.cinematicsButton.addEventListener("click",()=>{
       this.cinematicsEnabled=!this.cinematicsEnabled;
+      if(!this.cinematicsEnabled)this.skipIntro();
       this.renderer.setCinematicsEnabled(this.cinematicsEnabled);
       this.paintCinematicsButton();
     });
@@ -166,7 +170,11 @@ export class DeveloperCombatLab {
   get isActive():boolean{return this.active;}
   get currentScene():Scene|null{return this.active?this.renderer.currentScene:null;}
   get isIntroActive():boolean{return this.renderer.isIntroActive;}
-  skipIntro():void{this.renderer.skipIntro();}
+  skipIntro():void{
+    const seconds=this.renderer.introDurationSeconds;
+    this.renderer.skipIntro();
+    if(seconds>0)this.onSkipIntro?.(seconds);
+  }
   nextFocus():void{this.renderer.nextFocus();}
   turnCamera(dx:number,dy:number):void{this.renderer.turnCamera(dx,dy);}
 
@@ -253,7 +261,7 @@ export class DeveloperCombatLab {
       ...(role===previous.role&&baseStats?{baseStats}:{}),
       equipment:gear,
       level:Math.floor(number(this.heroLevel,1,1000)),
-      hp:this.heroCurrentHp.value===""?undefined:number(this.heroCurrentHp,1,10000),
+      ...(this.heroCurrentHp.value===""?{hp:undefined}:{hp:number(this.heroCurrentHp,1,10000)}),
       maxHp:number(this.heroHp,1,10000),
       damage:number(this.heroDamage,1,1000),
       armor:number(this.heroArmor,0,1000),
@@ -279,6 +287,11 @@ export class DeveloperCombatLab {
       this.heroes.push({...DEFAULT_DEVELOPER_HERO,role:"DPS",label:"Training hero 2"});
       this.heroCount.value="2";this.selectHero(0);
     }
+    const locked=!!this.capture.value;
+    for(const control of [this.mode,this.opponent,this.heroCount,this.heroSlot,this.roster,
+      this.heroRole,this.heroWeapon,this.heroArmorTier,this.heroCurrentHp,this.heroHeals,this.seed])control.disabled=locked;
+    if(locked){for(const control of [this.ghoulFloor,this.arena,this.enemyCount,this.heroHp,this.heroDamage,
+      this.heroArmor,this.heroAgility,this.heroLevel])control.disabled=true;}
   }
   private config():DeveloperCombatConfig{
     this.saveSelectedHero();
@@ -317,7 +330,7 @@ export class DeveloperCombatLab {
       const options=captured?structuredClone(captured.options):buildDeveloperCombat(config);
       const state=createGroupCombat(options);
       const boss=options.actors.some(a=>a.specialAbility==="grapple-throw");
-      this.onFightChanged?.(boss);
+      this.onFightChanged?.(boss,this.cinematicsEnabled?0:boss?BOSS_INTRO_SECONDS:GROUP_COMBAT_INTRO_SECONDS);
       this.renderer.dispose();
       this.renderer.setDeveloperTheme(captured?.arena??config.arena);
       this.renderer.setCinematicsEnabled(this.cinematicsEnabled);

@@ -250,3 +250,7 @@
 
 /* The lab configuration owns pointer input and must not be obscured by actor overlays. */
 body.arena-active #world-hero-card-mini{display:none!important}
+
+/* The left-side compact party strip has a dedicated right-side position in V. */
+#arena-hud[data-dev-lab=true] .hero-combat-roster{left:auto;right:16px;top:154px}
+@media(max-width:740px){#arena-hud[data-dev-lab=true] .hero-combat-roster{display:none!important}}

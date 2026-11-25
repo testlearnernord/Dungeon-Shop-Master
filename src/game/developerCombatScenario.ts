@@ -73,6 +73,8 @@ export function validateDeveloperCombat(config:DeveloperCombatConfig):void {
   for(const hero of config.heroes){
     if(!["tank","DPS","healer"].includes(hero.role)||
        !within(hero.maxHp,1,10000)||!within(hero.damage,1,1000)||
+       (hero.hp!==undefined&&!within(hero.hp,1,10000))||
+       (hero.level!==undefined&&(!Number.isSafeInteger(hero.level)||!within(hero.level,1,1000)))||
        !within(hero.armor,0,1000)||!within(hero.agility,0,1000)||
        !Number.isSafeInteger(hero.healCharges)||hero.healCharges<0||
        hero.healCharges>10||
@@ -176,7 +178,9 @@ export function labEquipment(role:DeveloperHero["role"],weaponTier:number,armorT
 export function productionLabHero(hero:DeveloperHero,index:number):AdventurerState{
   const level=Math.max(1,Math.min(1000,Math.floor(hero.level??1)));
   const base=hero.baseStats??{strength:8,agility:8,intellect:8,maxHealth:hero.role==="tank"?60:45};
-  const equipment=hero.equipment??labEquipment(hero.role,hero.sword?1:0,hero.vest?1:0);
+  const raw=hero.equipment??labEquipment(hero.role,hero.sword?1:0,hero.vest?1:0);
+  const valid=equipmentEffects(hero.role,raw);
+  const equipment={weapon:valid.weapon,armor:valid.vest};
   const draft:AdventurerState={
     id:"lab-hero-"+(index+1),name:hero.label,role:hero.role,stats:{...base},
     traits:{positive:"brave",neutral:"quiet",negative:"stubborn"},
