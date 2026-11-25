@@ -11,8 +11,9 @@ test("Capture actual adventurer board and roster on the PR candidate",async({pag
   });
   await page.waitForTimeout(1800);
   await page.screenshot({path:"board-screenshots/01-wall-board.png"});
-  await page.keyboard.press("e");
-  await expect(page.locator("#roster-dialog")).toBeVisible();
+  // Use the explicit roster button: the screenshot camera pose is not an interaction fixture.
+  await page.locator("#open-roster").click();
+  await expect(page.locator("#roster-dialog")).toBeVisible({timeout:15000});
   await expect(page.locator("#roster-detail-list .roster-card")).toHaveCount(10);
   await page.screenshot({path:"board-screenshots/02-roster.png"});
   await page.locator("#roster-detail-list .roster-card").first().locator("summary").click();
