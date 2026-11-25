@@ -30,7 +30,7 @@ import {scheduleShopVisit} from "./shopArrivals.ts";
 import {commitShopRequestEvent} from "./shopRuntime.ts";
 import {SeededRandom} from "./random.ts";
 import {compactReplayFootage} from "./replayRetention.ts";
-import {beginNextWorldDay,firstWorldTickOfDay,lastWorldTickOfDay,
+import {advanceWorldUntil,beginNextWorldDay,firstWorldTickOfDay,lastWorldTickOfDay,
   scheduleWorldEvent,type ScheduledWorldEvent} from "./worldClock.ts";
 
 /** Gameplay tuning; this is not the legacy 36-steps-per-day solver.
@@ -409,8 +409,8 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
           const living=crossing.every(member=>member.health>0);
           const partyValid=hasSavedParty&&fullCrossing&&allowedParty&&living&&
             !partyBossCombat&&!clearedLevel10;
-          const hasTime=tick+PARTY_BOSS_MAX_SECONDS*20+
-            SHOP_PORTAL_TRANSIT_TICKS<=lastWorldTickOfDay(day);
+          // A real encounter may continue across the shop day boundary.
+          const hasTime=true;
           diagnostic?.({stage:"boss-crossing",day,tick,floor,heroId:hero.id,
             memberIds:participants.map(member=>member.id),checks:{
               savedParty:hasSavedParty,fullCrossing,
@@ -508,18 +508,6 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
           steps:(stepCounts.get(hero.id)?.steps??0)+1,finished:true});
         continue;
       }
-    }
-    // A full ordinary fight can now legitimately consume its entire 35s
-    // budget (especially when veteran healers take part). The shopkeeper
-    // must never be unable to close the day because a newly started
-    // encounter still owns the 60Hz clock after midnight. Defer optional
-    // map steps until next morning; portal/stair crossings above still work.
-    if(tick+SPATIAL_DUNGEON_COMBAT_SECONDS*20+LIVE_COMBAT_INTERVAL_TICKS>
-       lastWorldTickOfDay(day)){
-      processed.add(hero.id);
-      stepCounts.set(hero.id,{heroId:hero.id,
-        steps:(stepCounts.get(hero.id)?.steps??0)+1,finished:true});
-      continue;
     }
     const returningIds=new Set(returns.map(j=>j.heroId));
     // Returners never get recruited and then silently removed from a party.
@@ -760,11 +748,6 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     const fighting=new Set(combats.flatMap(combat=>combat.heroIds));
     for(const pack of advanced.monsters??[]){
       if(reserved.has(pack.id))continue;
-      // A genuine late-night collision remains physically on the map;
-      // starting a 35s fight past midnight would deadlock the day closer.
-      // The same unchanged co-location is checked at the next world tick.
-      if(tick+SPATIAL_DUNGEON_COMBAT_SECONDS*20+
-         LIVE_COMBAT_INTERVAL_TICKS>lastWorldTickOfDay(day))continue;
       const at=finalRoster.filter(hero=>eligible(hero)&&hero.floor===ordinary&&
         !fighting.has(hero.id)&&
         activeHeroes.some(progress=>progress.heroId===hero.id&&
@@ -1118,8 +1101,8 @@ export function finishLiveDungeonDay(
 ):{state:GameState;events:readonly WorldEvent[]}{
   if(!state.liveDungeon.enabled)
     throw new RangeError("Cannot close an inactive live dungeon.");
-  if(state.liveDungeon.combats.length||state.liveDungeon.partyBossCombat)
-    throw new RangeError("Cannot close a day while a real fight is unresolved.");
+  const fighting=new Set(state.liveDungeon.combats.flatMap(c=>c.heroIds));
+  for(const id of state.liveDungeon.partyBossCombat?.heroIds??[])fighting.add(id);
   const day=state.day+1;
   const clock=beginNextWorldDay(state.worldClock,state.day);
   const closed=returnUnpaidCartsAtClose(state);
@@ -1132,7 +1115,7 @@ export function finishLiveDungeonDay(
   const adventurers=closed.adventurers.map(hero=>{
     // Resting heroes consume medicine at their scheduled return, not
     // again at midnight. Other heroes retain the existing daily first aid.
-    if(hero.status==="off-duty")return hero;
+    if(fighting.has(hero.id)||hero.status==="off-duty")return hero;
     const healed=useHealingSupplies(hero,day);
     events.push(...healed.events);
     const ready=healed.adventurer;
@@ -1173,7 +1156,8 @@ export function finishLiveDungeonDay(
     adventurers,rngState,
     nextAdventurerId:state.nextAdventurerId+influx,
     liveDungeon:{enabled:true,lastStepTick:clock.tick,heroes:[],
-      combatTick:0,combats:[],partyBossCombat:null,
+      combatTick:state.liveDungeon.combatTick,combats:state.liveDungeon.combats,
+      partyBossCombat:state.liveDungeon.partyBossCombat??null,
       returns:state.liveDungeon.returns,
       plans:state.liveDungeon.plans.filter(plan=>
         adventurers.some(h=>h.id===plan.heroId&&h.floor===plan.floor&&
@@ -1182,10 +1166,16 @@ export function finishLiveDungeonDay(
   };
   const finalPlans=new Map(next.liveDungeon.plans.map(p=>[p.heroId,p] as const));
   const party=settleLivePartyRelationships(state.dungeonParties??[],
-    [],adventurers,floor=>dungeonWorldAt(next.dungeonWorlds,floor),finalPlans,state.seed,day,clock.tick);
+    state.liveDungeon.combats.filter(c=>c.heroIds.length>=2).map(c=>c.heroIds),
+    adventurers,floor=>dungeonWorldAt(next.dungeonWorlds,floor),finalPlans,state.seed,day,clock.tick);
   const committed={...next,dungeonParties:party.parties,
     events:compactReplayFootage([...next.events,...party.events],
       day,state.savedReplayIds)};
-  return {state:queueNextDungeonWorldTick(committed),
-    events:[...events,...party.events]};
+  // A pending combat burst can be due exactly at dawn. Commit it on the
+  // new day through the existing queue, never drop it or duplicate a step.
+  // All surviving combatants retain their pre-fight roster HP and resources
+  // until the normal settlement; midnight is not a free heal.
+  const dawn=advanceWorldUntil(queueNextDungeonWorldTick(committed),clock.tick,
+    commitLiveWorldEvent);
+  return {state:dawn,events:dawn.events.filter(e=>e.day===day)};
 }
