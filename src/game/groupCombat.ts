@@ -16,6 +16,7 @@ import {
   chooseCombatAbility, chooseCombatDefense, chooseCombatPosture,
   selectCombatTarget, combatDefenseReadiness,
 } from "./combatTactics.ts";
+import {observeCombatProgress,type CombatProgressCheckpoint} from "./combatProgress.ts";
 import {shouldRetreat,chooseRetreatExit,atRetreatExit,retreatComplete} from "./combatRetreat.ts";
 import { combatSegmentBox, traceCombatProjectile } from "./combatProjectile.ts";
 import {
@@ -124,7 +125,7 @@ export interface GroupActor extends CombatActorRuntime<GroupPhase> {
 
 export type GroupCueKind = "attack" | "cast" | "projectile" | "hit" |
   "miss" | "dodge" | "parry" | "heal" | "death" | "blocked" |
-  "grab" | "throw" | "landing" | "escape" | "lava" | "retreat-start" | "retreat";
+  "grab" | "throw" | "landing" | "escape" | "lava" | "retreat-start" | "retreat" | "stalemate";
 export interface GroupCombatCue {
   readonly t: number;
   readonly actorId: string;
@@ -151,6 +152,7 @@ export interface GroupCombatState {
   readonly events: GroupCombatCue[];
   /** Committed team exit; a checkpoint retains the same intent on reload. */
   retreat?:Point2;
+  progress?:CombatProgressCheckpoint;
   time: number;
   outcome: GroupOutcome;
 }
@@ -917,6 +919,22 @@ const GROUP_PIPELINE: EncounterPipeline<GroupCombatState,GroupActor,GroupCombatC
       for(const hero of state.actors.filter(a=>a.team==="heroes"&&a.hp>0))
         cue(frame.cues,state,hero,"retreat");
       state.outcome="retreat";
+    }
+    if(state.outcome==="fighting"&&observeCombatProgress(state,frame.cues)){
+      const leader=state.actors.find(a=>a.team==="heroes"&&a.hp>0);
+      if(!state.retreat&&leader){
+        const exit=chooseRetreatExit(state);
+        if(exit){
+          state.retreat=exit;
+          state.progress={lastAt:state.time};
+          cue(frame.cues,state,leader,"retreat-start");
+          return;
+        }
+      }
+      // A true impasse after a physical escape attempt is not a victory.
+      // Preserve every wound and supply debit; settlement awards no loot.
+      if(leader)cue(frame.cues,state,leader,"stalemate");
+      state.outcome="draw";
     }
   },
   commit:(state,frame)=>{
