@@ -871,6 +871,32 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     scheduleLiveCombat(scheduled);
 }
 
+/** Shared immutable checkpoint advance and replay capture for every LIVE
+ * encounter. The temporary archival limit remains a caller-supplied policy
+ * until retreat and unbounded live recording are implemented together. */
+function advanceLiveEncounter(
+  encounter:Pick<LiveDungeonCombat,"state"|"frames"|"heroIds">,
+  maxSeconds:number,
+):{combat:GroupCombatState;frames:GroupReplayFrame[];newDeaths:string[]}{
+  const combat:GroupCombatState=structuredClone(encounter.state);
+  const frames=[...encounter.frames];
+  for(let i=0;i<LIVE_COMBAT_INTERVAL_TICKS*3&&combat.outcome==="fighting";i++){
+    const step=Math.round(combat.time*60)+1;
+    if(step>maxSeconds*60){combat.outcome="draw";break;}
+    stepGroupCombat(combat);
+    if(combat.outcome==="fighting"&&step===maxSeconds*60)
+      combat.outcome="draw";
+    if(step%6===0||combat.outcome!=="fighting")
+      frames.push(captureGroupCombatFrame(combat));
+  }
+  const newDeaths=encounter.heroIds.filter(id=>{
+    const before=encounter.state.actors.find(a=>a.id===id);
+    const after=combat.actors.find(a=>a.id===id);
+    return before&&after&&before.hp>0&&after.hp<=0;
+  });
+  return {combat,frames,newDeaths};
+}
+
 /** Run the existing 60Hz group engine on the saved world timeline.
  * Every scheduled 0.5s event advances exactly 30 ticks, or fewer if
  * the fight ends. Read-only replays NEVER call this function.
@@ -895,25 +921,11 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
   let partyBossContinuing:LivePartyBossCombat|null=null;
   const partyBoss=state.liveDungeon.partyBossCombat;
   if(partyBoss){
-    const combat:GroupCombatState=structuredClone(partyBoss.state);
-    const frames=[...partyBoss.frames];
-    for(let i=0;i<LIVE_COMBAT_INTERVAL_TICKS*3&&combat.outcome==="fighting";i++){
-      const step=Math.round(combat.time*60)+1;
-      if(step>REPLAY_MAX_SECONDS*60){combat.outcome="draw";break;}
-      stepGroupCombat(combat);
-      if(combat.outcome==="fighting"&&step===REPLAY_MAX_SECONDS*60)
-        combat.outcome="draw";
-      if(step%6===0||combat.outcome!=="fighting")
-        frames.push(captureGroupCombatFrame(combat));
-    }
-    for(const id of partyBoss.heroIds){
-      const before=partyBoss.state.actors.find(a=>a.id===id);
-      const after=combat.actors.find(a=>a.id===id);
-      if(before&&after&&before.hp>0&&after.hp<=0){
-        const hero=byId.get(id);
-        if(!hero)throw new RangeError("Boss fighter has no original hero.");
-        activities.push(deathSignal(hero,state.day,state.worldClock.tick));
-      }
+    const {combat,frames,newDeaths}=advanceLiveEncounter(partyBoss,REPLAY_MAX_SECONDS);
+    for(const id of newDeaths){
+      const hero=byId.get(id);
+      if(!hero)throw new RangeError("Boss fighter has no original hero.");
+      activities.push(deathSignal(hero,state.day,state.worldClock.tick));
     }
     if(combat.outcome==="fighting"){
       partyBossContinuing={...partyBoss,state:combat,frames};
@@ -967,29 +979,11 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
     }
   }
   for(const fight of state.liveDungeon.combats){
-    // Copy the authoritative mutable actors before stepping, preserving the
-    // previous immutable checkpoint for deterministic save comparisons.
-    const combat:GroupCombatState=structuredClone(fight.state);
-    const frames=[...fight.frames];
-    for(let i=0;i<LIVE_COMBAT_INTERVAL_TICKS*3&&combat.outcome==="fighting";i++){
-      const step=Math.round(combat.time*60)+1;
-      if(step>SPATIAL_DUNGEON_COMBAT_SECONDS*60){combat.outcome="draw";break;}
-      stepGroupCombat(combat);
-      if(combat.outcome==="fighting"&&step===SPATIAL_DUNGEON_COMBAT_SECONDS*60)
-        combat.outcome="draw";
-      if(step%6===0||combat.outcome!=="fighting")
-        frames.push(captureGroupCombatFrame(combat));
-    }
-    // Actors can die BEFORE their surviving companions finish the battle.
-    // Emit their signal at that precise authoritative 60Hz batch, once.
-    for(const id of fight.heroIds){
-      const oldActor=fight.state.actors.find(a=>a.id===id);
-      const updated=combat.actors.find(a=>a.id===id);
-      if(oldActor&&updated&&oldActor.hp>0&&updated.hp<=0){
-        const hero=byId.get(id);
-        if(!hero)throw new RangeError("Dead combat actor has no adventurer.");
-        activities.push(deathSignal(hero,state.day,state.worldClock.tick));
-      }
+    const {combat,frames,newDeaths}=advanceLiveEncounter(fight,SPATIAL_DUNGEON_COMBAT_SECONDS);
+    for(const id of newDeaths){
+      const hero=byId.get(id);
+      if(!hero)throw new RangeError("Dead combat actor has no adventurer.");
+      activities.push(deathSignal(hero,state.day,state.worldClock.tick));
     }
     if(combat.outcome==="fighting"){
       continuing.push({...fight,state:combat,frames});
