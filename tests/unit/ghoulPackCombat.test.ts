@@ -10,7 +10,8 @@ import {ghoulPackActorId,ghoulPackCount,MAX_GHOUL_PACK}
   from "../../src/game/ghoulPack.ts";
 import {prepareSpatialDungeonCombat,emptySpatialDungeonWorld}
   from "../../src/game/spatialDungeonExploration.ts";
-import {resolveGroupCombat} from "../../src/game/groupCombat.ts";
+import {resolveGroupCombat,createGroupCombat} from "../../src/game/groupCombat.ts";
+import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,LIVE_COMBAT_INTERVAL_TICKS}
   from "../../src/game/liveDungeonRuntime.ts";
 
@@ -152,5 +153,33 @@ test("Combat Lab imports the same ordinary fighter, including legal T2 identity 
     for(const key of ["maxHp","damage","armor","agility","speed","reach","style","healCharges","magicHeals"] as const)
       assert.equal(lab[key],actual[key],role+" "+key);
     assert.deepEqual(lab.equipment,actual.equipment);
+  }
+});
+
+test("every live hero has identical fighter attributes in Ghoul and Troll encounters",()=>{
+  const seed=7351,initial=createGameState(seed);
+  const layout=generateExpeditionLayout(seed,1);
+  const monster=layout.features.find(f=>f.kind==="monster"&&dungeonNeighbors(layout,f).length>0)!;
+  const approach=dungeonNeighbors(layout,monster)[0];
+  for(const [role,weapons] of [
+    ["tank",[null,"Iron Sword","Forged Sword & Shield"]],
+    ["DPS",[null,"Spear","Forged Spear"]],
+    ["healer",[null,"Staff","Forged Staff"]],
+  ] as const)for(const level of [1,9,20])for(let tier=0;tier<3;tier++){
+    const hero={...initial.adventurers[0],role,level,xp:(level-1)*100,
+      floor:1 as const,status:"exploring" as const,bossPass:true,
+      equipment:{weapon:weapons[tier],armor:tier===2?"Ghoul Leather Vest":tier===1?"Leather Vest":null},
+      inventory:{...initial.adventurers[0].inventory,healing:5}};
+    const ordinary=prepareSpatialDungeonCombat([hero],monster,seed,layout,approach,0,true).options;
+    const boss=caveTrollPartyOptions([hero,{...hero,id:"ally"}],42);
+    const a=ordinary.actors.find(a=>a.id===hero.id)!;
+    const b=boss.actors.find(a=>a.id===hero.id)!;
+    const {x:ax,z:az,...aProfile}=a;
+    const {x:bx,z:bz,...bProfile}=b;
+    assert.deepEqual(bProfile,aProfile,role+" "+level+" "+tier);
+    const ra=createGroupCombat(ordinary).actors.find(a=>a.id===hero.id)!;
+    const rb=createGroupCombat(boss).actors.find(a=>a.id===hero.id)!;
+    assert.equal(ra.staggerThreshold,rb.staggerThreshold);
+    assert.equal(ra.radius,rb.radius);
   }
 });
