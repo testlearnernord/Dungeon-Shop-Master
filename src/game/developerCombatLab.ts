@@ -31,6 +31,7 @@ export class DeveloperCombatLab {
   private readonly renderer:LiveGroupCombatArena;
   private readonly opponent:HTMLSelectElement;
   private readonly enemyCount:HTMLSelectElement;
+  private readonly ghoulFloor:HTMLSelectElement;
   private readonly arena:HTMLSelectElement;
   private readonly heroCount:HTMLSelectElement;
   private readonly heroSlot:HTMLSelectElement;
@@ -73,6 +74,7 @@ export class DeveloperCombatLab {
     const get=<T extends Element>(selector:string)=>this.panel.querySelector<T>(selector)!;
     this.opponent=get("#lab-enemy");
     this.enemyCount=get("#lab-enemy-count");
+    this.ghoulFloor=get("#lab-ghoul-floor");
     this.arena=get("#lab-arena");
     this.heroCount=get("#lab-hero-count");
     this.heroSlot=get("#lab-hero-slot");
@@ -234,6 +236,7 @@ export class DeveloperCombatLab {
     const troll=this.opponent.value==="cave-troll";
     for(const item of this.enemyCount.options)item.disabled=troll&&item.value!=="1";
     if(troll)this.enemyCount.value="1";
+    this.ghoulFloor.disabled=troll;
   }
   private config():DeveloperCombatConfig{
     this.saveSelectedHero();
@@ -241,6 +244,7 @@ export class DeveloperCombatLab {
       arena:this.arena.value as DeveloperCombatConfig["arena"],
       enemy:this.opponent.value as DeveloperCombatConfig["enemy"],
       enemyCount:Number(this.enemyCount.value),
+      ghoulFloor:Number(this.ghoulFloor.value),
       heroes:this.heroes.map(h=>({...h})),
       seed:number(this.seed,0,0xffffffff),
     };
