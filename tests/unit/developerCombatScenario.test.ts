@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
+import {dungeonGenerationSeed} from "../../src/game/dungeonRegeneration.ts";
+import {prepareSpatialDungeonCombat} from "../../src/game/spatialDungeonExploration.ts";
 import {createGameState} from "../../src/game/gameState.ts";
 import {
   buildDeveloperCombat,developerHeroFromRoster,randomDeveloperHeroes,
