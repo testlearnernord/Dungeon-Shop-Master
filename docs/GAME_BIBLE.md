@@ -1,6 +1,6 @@
 # Dungeon Shop Master — living Game Bible
 
-> **Current design and lore**, reconciled 22 November 2026 after merged #295–#298. Current implementation is verified in source; accepted intent is distinguished from implemented features below. This is **not** a PR diary. Consult [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and the detailed [Living Dungeon design](THE_LIVING_DUNGEON.md).
+> **Current design and lore**, reconciled 25 November 2026 after merged #363. Current implementation is verified in source; accepted intent is distinguished from implemented features below. This is **not** a PR diary. Consult [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and the detailed [Living Dungeon design](THE_LIVING_DUNGEON.md).
 
 ## 1. Identity and player experience — LOCKED
 
@@ -25,11 +25,13 @@
 | LIVE information and observer | **IMPLEMENTED core:** global World Feed, worldwide Hero Cards, in-world Board, bounded magical death signals, history, read-only LIVE spectator for ordinary Floors **1–9**, optional 3D fights and authentic Floor-10 party recordings. Observation never controls a hero |
 | Replay and night accounts | **IMPLEMENTED core:** immutable recorded fights, three-day rolling event/footage window plus up to 12 player-pinned recordings; two-page nightly merchant accounts |
 | Quality and tooling | **IMPLEMENTED trial:** real Tripo Ghoul, crypt arena, multi-Ghoul fights, V Developer Combat Lab and interpolated presentation, 21 Ghoul WAV + 11 Troll MP3 samples, distinct battle music |
-| First V.003 chapter | **PARTIAL release acceptance:** ordinary floors and the cursed shop realm, shared physical normal threshold and Floor-10 party gate are wired. Deep authored content, retiring old non-LIVE and Floor-7 event/status contracts, 20/50/100-day economy, real gameplay/pacing and visual/audio/hardware sign-off remain OPEN |
+| First V.003 chapter | **PARTIAL release acceptance:** ordinary floors and the cursed shop realm, shared physical normal threshold and Floor-10 party gate are wired. Deep authored content, boss conversion, hands-on economy/pacing and visual/audio/hardware sign-off remain OPEN; scripted 100/200-day acceptance has been measured |
 
 **Implemented does not mean final polish.** The Tripo troll/ghoul rig, hit contact alignment, audio mix, multiple-enemy camera composition and hardware FPS still require actual human observation. All externally added animation sources must remain intact until explicitly reviewed.
 
 ## 3. Core gameplay rules — LOCKED
+
+Ordinary combat and autonomy: Ordinary fights use a 35-second limit, 0.72-second Ghoul recovery, collision-checked stagger recoil and equipped DPS spear timing. Visible authored pack composition, health, gear, experience and traits guide solo hunting and pursuit reactions; actual collisions still enter combat. No new save fields or alternate simulation. The shopkeeper's influence is indirect; no guaranteed survival or boss victory. [Measured balance](GAMEPLAY_VETERAN_PARTY_BALANCE.md).
 
 ### Shop
 
@@ -52,7 +54,7 @@
 
 The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper contract. Decisions below are approved direction, **not** claims of full current implementation.
 
-- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v36. Historic room names are source-module labels, not extra saved doors or a numbered shop.
+- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v39. Historic room names are source-module labels, not extra saved doors or a numbered shop.
 - Heroes choose **stay / deeper / higher** based on individual medium-term goals such as farming, testing gear, survival or progress. **CURRENT:** plans and parts of same-day movement already persist; deeper/full-floor progression remains incomplete.
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers recover outside both shop and dungeon for an initial **20–240 unpaused seconds** (initial tuning), then resume at their remembered floor entrance. Checkout, credit and walkout eligibility follow the current actual shop visit.
@@ -66,7 +68,7 @@ The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper contract.
 
 **OPEN / NON-CANON:** precise origin and enforcement of Galvik's curse, whether dead adventurers become Ghouls, a singular extremely greedy adventurer becoming a bound shopkeeper, potential transfer of the curse to another character, 400-year service, a new protagonist/NG+, the ending choice, specific alliances and a broader 100-floor mythology. These are promising *story concepts*, not locked implemented triggers. A previously discarded amulet should not be smuggled back as a mandatory explanation.
 
-**Implemented:** the physical cellar, fiancée portrait passage and pond/fishing exist. **Deferred:** forge, enhanced material economy, permanent social leadership and individual hero wearable rigs remain separate design work, not automatic commitments. Any new monster or hero must respect actual rig/equipment requirements and the existing [asset pipeline](MONSTER_ASSET_PIPELINE.md).
+**Implemented:** the physical cellar, fiancée portrait passage, pond/fishing and functional forge exist. T1 gear is wholesale; T2 class-specific weapons and armor are crafted using owned materials. **Deferred:** expanded material economy, permanent social leadership and individual hero wearable rigs remain separate design work, not automatic commitments. Any new monster or hero must respect actual rig/equipment requirements and the existing [asset pipeline](MONSTER_ASSET_PIPELINE.md).
 
 ## 6. Rejected or superseded
 
