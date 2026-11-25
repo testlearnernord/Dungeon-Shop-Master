@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'tools/analysis/combat-balance-sweep.mjs'
+      - 'src/game/groupCombat.ts'
+      - 'tests/unit/rangedCombatSpacing.test.ts'
       - '.github/workflows/combat-balance-sweep.yml'
   workflow_dispatch:
 permissions:
@@ -13,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   profiles:
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'experiment/combat-balance-sweep'
+    if: github.event_name == 'workflow_dispatch' || (github.head_ref == 'experiment/combat-balance-sweep' || github.head_ref == 'experiment/shared-ranged-spacing')
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
