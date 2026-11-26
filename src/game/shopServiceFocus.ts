@@ -50,8 +50,9 @@ export function describeShelfFocus(
   if(heldByCustomer)
     return {title,instruction:"Reserved stock · wait for checkout before changing this slot",
       tone:"blocked"};
+  const assignmentHint=slot.quantity===0?(selected===slot.itemId&&item||!selected&&item?" · Middle-click: clear assignment":selectedItem?" · Middle-click: assign "+selectedItem.name:""):"";
   if(slot.quantity===0&&item&&item.id!==selected){
-    return {title,instruction:"Assigned · E: change or clear assignment · Select matching stock to refill",tone:"warning"};
+    return {title,instruction:"Assigned · Select matching stock to refill"+assignmentHint,tone:"warning"};
   }
   if(item&&item.id!==selected){
     const index=bindings.indexOf(item.id);
@@ -60,12 +61,11 @@ export function describeShelfFocus(
     return {title,instruction:select+
       " · Right-click: remove one · Shift+right-click: empty stock",tone:"warning"};
   }
-  if(!selectedItem||!selected)return {title,instruction:"E: assign shelf product · TAB: assign a quickbar item",tone:"warning"};
+  if(!selectedItem||!selected)return {title,instruction:"TAB: assign a quickbar item",tone:"warning"};
   if(slot.quantity>=slot.capacity)
     return {title,instruction:"Shelf full · Right-click: remove one · Shift+right-click: empty stock",
       tone:"blocked"};
   const inBag=bag[selected]??0;
-  const assignmentHint=slot.quantity===0?" · E: "+(item?"change assignment":"assign product"):"";
   if(inBag<=0)
     return {title,instruction:"No "+selectedItem.name+" in bag · "+(isWholesaleGood(selected)?"B: Wholesale":"Forge in cellar")+
       (item&&slot.quantity>0?" · Right-click: remove one · Shift+right-click: empty stock":"")+assignmentHint,tone:"warning"};
