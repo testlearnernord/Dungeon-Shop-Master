@@ -14,6 +14,7 @@ import { createFirstPersonCamera } from "./game/firstPersonController";
 import {type ItemId} from "./game/economy.ts";
 import {Quickbar} from "./game/quickbar.ts";
 import {loadQuickbar,setupInventoryHud} from "./inventoryHud.ts";
+import {setupShelfAssignmentHud} from "./shelfAssignmentHud.ts";
 
 import { GameStore } from "./game/gameStore";
 import { WorldClockPacer } from "./game/worldClockPacer.ts";
@@ -425,6 +426,7 @@ let cashier:ReturnType<typeof setupCashierHud>|null=null;
 beggarHud=setupBeggarHud(canvas,camera,store,npcVisuals,
   ()=>isShopActive(),message=>{statusHud.textContent=message;});
 const merchantActions=createMerchantActions(scene,camera,()=>sfx.soundEnabled,()=>sfx.soundVolume,()=>isShopActive());
+const openShelfAssignment=setupShelfAssignmentHud(canvas,camera,store,()=>isShopActive());
 const interactions = new InteractionSystem(scene, canvas, camera, shop, worldItems, (message) => {
   statusHud.textContent = message;
   inventoryView?.refreshSelection();
@@ -432,7 +434,7 @@ const interactions = new InteractionSystem(scene, canvas, camera, shop, worldIte
   () => isShopActive(), () => bedtime?.isNearBed()??false,
   () => beggarHud?.openNearest()??false,
   debtBook.open,store,(action,itemId)=>merchantActions.play(action,itemId),
-  ()=>fishing?.open()??false,()=>observeTable(),()=>forgeHud.open(),quickbar);
+  ()=>fishing?.open()??false,()=>observeTable(),()=>forgeHud.open(),quickbar,openShelfAssignment);
 inventoryView=setupInventoryHud(inventoryElement,canvas,store,quickbar,{
   isShopActive:()=>isShopActive(),
   onMenuChanged:open=>{
