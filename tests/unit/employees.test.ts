@@ -5,11 +5,16 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {advanceEmployees,chooseEmployeeJob,employeeOpportunities,EMPLOYEE_DEFINITIONS,
-  EMPLOYEE_WORK_SPEED,type EmployeeJob} from "../../src/game/employees.ts";
+  EMPLOYEE_WORK_SPEED,EMPLOYEE_CHECKOUT_TICKS,employeeCashierOpportunity,type EmployeeJob} from "../../src/game/employees.ts";
 import {employeeFloorY,employeeRoute,employeeSegmentClear,employeeStoragePoint,EMPLOYEE_HOME} from "../../src/game/employeeNavigation.ts";
 import {counterDockPoint} from "../../src/game/shopLayout.ts";
 import {CELLAR_FLOOR_Y} from "../../src/game/cellarRoom.ts";
 import {availableBagUnits,discardBag,transferShelf} from "../../src/game/economy.ts";
+import {pickUpShopItem,payReservedShopCart,cartTotal} from "../../src/game/shopCarts.ts";
+import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
+import {manuallyPaidVisitors} from "../../src/game/npcVisitors.ts";
+import type {ShopTrafficActor} from "../../src/game/shopTraffic.ts";
+import {frontCheckoutPoint} from "../../src/game/checkoutQueue.ts";
 
 test("Tettel begins peacefully in the cellar, with no autonomous transactions enabled",()=>{
   const state=createGameState(7351);
@@ -59,10 +64,10 @@ test("the existing connected route crosses the physical ramp only when the portr
   assert(employeeFloorY(-16.1)<0&&employeeFloorY(-16.1)>CELLAR_FLOOR_Y);
   assert.equal(employeeFloorY(-6.5),0);
 });
-const step=(s:GameState):GameState=>{
+const step=(s:GameState,manualCashierActive=false):GameState=>{
   const tick=s.worldClock.tick+1;
   return advanceEmployees({...s,worldClock:{...s.worldClock,tick},
-    shopTraffic:{...s.shopTraffic,tick}});
+    shopTraffic:{...s.shopTraffic,tick}},manualCashierActive);
 };
 test("Tettel reserves real stock, physically collects at the chest and delivers through the canonical shelf transfer",()=>{
   const initial=createStockedShopState(7351);
@@ -152,4 +157,97 @@ test("assigned empty shelves offer real restocking work only when matching stock
   assert(employeeOpportunities(store.state).some(j=>j.task==="restocking"&&j.targetId===slot.id));
   store.assignShelfItem(slot.id,null);
   assert(!employeeOpportunities(store.state).some(j=>j.targetId===slot.id));
+});
+
+function cashierFixture():GameState{
+  const original=createStockedShopState(7351);
+  const hero=original.adventurers[0];
+  const initial={...original,cellarDoorOpen:true,adventurers:original.adventurers.map(h=>
+    h.id===hero.id?{...h,status:"at-shop" as const,floor:"shop" as const,
+      gold:100,health:Math.max(1,h.health-20),
+      inventory:{...h.inventory,bread:0,healing:0},equipment:{weapon:null,armor:null}}:h)};
+  const line=forecastShoppingIntents(initial).get(hero.id)!.items[0];
+  assert(line);
+  const picked=pickUpShopItem(initial,hero.id,line.slotId).state;
+  assert.notStrictEqual(picked,initial);
+  const point=frontCheckoutPoint(initial.shopLayout,initial.shopRoom);
+  assert(point);
+  const actor:ShopTrafficActor={
+    heroId:hero.id,...point,yaw:0,slot:0,gateSide:"portal",phase:"queueing",
+    shoppingPhase:"awaiting-checkout",shoppingReason:"interested",
+    shoppingTargetSlot:null,checkoutQueueIndex:0,route:[],waypoint:0,
+    toQueue:false,intentKey:"cashier-fixture",targetIndex:0,wait:0,elapsed:0,
+    blockedSeconds:0,routeProgress:null,trafficReroutes:0,idleYieldCooldown:0,
+    requestActive:false,roamLeg:0,restockSeconds:null,wishItem:null,
+    walkSpeed:1.15,animationTime:0,performanceTime:0,browseSide:-1,
+  };
+  const store=new GameStore({...picked,shopTraffic:{...picked.shopTraffic,
+    initialized:true,actors:[actor],claims:[{heroId:hero.id,role:"checkout",point}]}});
+  store.setEmployeePriority("tettel","cashier",1);
+  return store.state;
+}
+test("employee cashier reaches the actual staff dock, settles one front cart and never earns a tip",()=>{
+  const initial=cashierFixture();
+  const cart=initial.shopCarts[0];
+  const heroId=cart.heroId,total=cartTotal(cart);
+  const dock=counterDockPoint(initial.shopLayout,"staff");
+  assert(employeeCashierOpportunity(initial));
+  assert.equal(employeeCashierOpportunity({...initial,shopTraffic:{...initial.shopTraffic,claims:[]}}),null);
+  const remote={...initial,shopTraffic:{...initial.shopTraffic,
+    actors:initial.shopTraffic.actors.map(a=>({...a,x:a.x+1}))}};
+  assert.equal(employeeCashierOpportunity(remote),null);
+  let state=initial,sawRamp=false,arrivalTick:number|null=null;
+  for(let i=0;i<1800&&state.shopCarts.length;i++){
+    const prior=state.employees[0];
+    state=step(state);
+    const worker=state.employees[0];
+    assert(Math.hypot(worker.x-prior.x,worker.z-prior.z)<=EMPLOYEE_WORK_SPEED*.05+1e-8);
+    assert(employeeSegmentClear(state,prior,worker));
+    sawRamp||=worker.z>-20.1&&worker.z<-12.1;
+    if(worker.cashierReadySince!==null&&arrivalTick===null){
+      arrivalTick=worker.cashierReadySince;
+      assert(Math.hypot(worker.x-dock.x,worker.z-dock.z)<.08);
+      assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
+      assert.deepEqual(step(parseSave(JSON.stringify(createSave(state)))),step(state));
+    }
+    if(state.shopCarts.length)assert.equal(state.shopEconomy.balance,initial.shopEconomy.balance);
+  }
+  assert(sawRamp);assert(arrivalTick!==null);
+  assert(state.worldClock.tick-arrivalTick>=EMPLOYEE_CHECKOUT_TICKS);
+  assert.equal(state.shopCarts.length,0);
+  assert.equal(state.shopEconomy.balance,initial.shopEconomy.balance+total);
+  assert.equal(state.adventurers.find(h=>h.id===heroId)!.gold,
+    initial.adventurers.find(h=>h.id===heroId)!.gold-total);
+  assert.deepEqual(state.shopEconomy.slots,initial.shopEconomy.slots);
+  assert.deepEqual(state.shopEconomy.bag,initial.shopEconomy.bag);
+  const receipts=state.events.filter(e=>e.type==="sale");
+  assert.equal(receipts.length,cart.lines.length);
+  assert(receipts.every(e=>e.saleChannel==="manual"&&e.message.includes("Served by Tettel.")));
+  assert(manuallyPaidVisitors(state.events,state.day).has(heroId));
+  assert(!state.events.some(e=>e.type==="tip"));
+  assert.strictEqual(payReservedShopCart(state,heroId,true).state,state);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
+});
+test("manual takeover and a customer leaving reset employee checkout; no remote or duplicate payment",()=>{
+  const initial=cashierFixture();
+  const dock=counterDockPoint(initial.shopLayout,"staff");
+  let state={...initial,employees:initial.employees.map(e=>({...e,...dock}))};
+  for(let i=0;i<EMPLOYEE_CHECKOUT_TICKS-1;i++)state=step(state);
+  assert(state.employees[0].cashierReadySince!==null);
+  assert.equal(state.shopCarts.length,1);
+  const paused=step(state,true);
+  assert.equal(paused.employees[0].cashierReadySince,null);
+  assert.equal(paused.shopEconomy.balance,initial.shopEconomy.balance);
+  let manual=paused;
+  for(let i=0;i<EMPLOYEE_CHECKOUT_TICKS+2;i++)manual=step(manual,true);
+  assert.equal(manual.shopCarts.length,1);
+  const paid=payReservedShopCart(manual,manual.shopCarts[0].heroId,true).state;
+  assert.equal(paid.shopCarts.length,0);
+  let after=paid;
+  for(let i=0;i<EMPLOYEE_CHECKOUT_TICKS+5;i++)after=step(after);
+  assert.equal(after.shopEconomy.balance,paid.shopEconomy.balance);
+  assert.deepEqual(after.events,paid.events);
+  const left=step({...state,shopTraffic:{...state.shopTraffic,claims:[]}});
+  assert.equal(left.employees[0].cashierReadySince,null);
+  assert.equal(left.shopEconomy.balance,initial.shopEconomy.balance);
 });

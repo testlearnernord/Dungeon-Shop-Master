@@ -212,7 +212,7 @@ export function returnUnpaidCartsAtClose(state:GameState):GameState {
  * stock twice (the stock was removed when the hero picked it up).
  * No forecast-only checkout can write a sale or modify inventory.
  */
-export function payReservedShopCart(state:GameState,heroId:string,perfectTiming=false):CartActionResult {
+export function payReservedShopCart(state:GameState,heroId:string,perfectTiming=false,employeeName?:string):CartActionResult {
   const cart=state.shopCarts.find(entry=>entry.heroId===heroId);
   const hero=state.adventurers.find(entry=>entry.id===heroId);
   if(!cart||!hero||hero.status!=="at-shop"||cart.day!==state.day||
@@ -225,7 +225,7 @@ export function payReservedShopCart(state:GameState,heroId:string,perfectTiming=
   // and transfers the gold. Preserve all other outstanding carts.
   // The bonus is a real customer-funded tip, not minted shop gold.
   // For tiny carts, round down to whole gold. Never overdraw the hero.
-  const tip=perfectTiming&&hero.gold>=total+Math.floor(total/10)
+  const tip=!employeeName&&perfectTiming&&hero.gold>=total+Math.floor(total/10)
     ? Math.floor(total/10):0;
   const isolated={...state,shopCarts:[cart]};
   const settled=settleHeldShopCarts(isolated,state.day);
@@ -233,7 +233,8 @@ export function payReservedShopCart(state:GameState,heroId:string,perfectTiming=
   // may already exist for this hero and shelf on the same day.
   const visit=shopVisitSuffix(state.events,state.day,heroId);
   const events=settled.events.map(event=>({...event,
-    id:event.id+":manual"+visit,saleChannel:"manual" as const}));
+    id:event.id+":manual"+visit,saleChannel:"manual" as const,
+    message:employeeName?event.message+" Served by "+employeeName+".":event.message}));
   if(events.some(event=>state.events.some(prior=>prior.id===event.id)))
     return failed(state,"This customer already paid for this shelf during this visit.");
   const tipEvent:WorldEvent|null=tip>0?{

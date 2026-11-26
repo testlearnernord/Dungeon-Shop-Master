@@ -59,8 +59,8 @@ export class GameStore {
   }
 
   /** Same committed physical-shop callback as the customer motor. */
-  advancePhysicalEmployees():void{
-    this.replace(advanceEmployees(this.current));
+  advancePhysicalEmployees(manualCashierActive=false):void{
+    this.replace(advanceEmployees(this.current,manualCashierActive));
   }
 
   subscribe(listener: () => void): () => void {

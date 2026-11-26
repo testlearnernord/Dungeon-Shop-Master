@@ -29,7 +29,7 @@ import type {LiveServiceRequest} from "./shopServiceFocus.ts";
 import { ITEMS } from "./economy.ts";
 import {getShopStockTemplates,cloneShopStockModel} from "./shopStockAssets.ts";
 import type { ShopCart } from "./shopCarts.ts";
-import {checkoutQueueIndex,checkoutQueuePoints,checkoutWaitAlreadyAtSlot} from "./checkoutQueue.ts";
+import {checkoutQueueIndex,checkoutQueuePoints,frontCheckoutPoint,checkoutWaitAlreadyAtSlot} from "./checkoutQueue.ts";
 import { NPC_CENTER_CLEARANCE, NPC_FINAL_WAYPOINT_RADIUS, NPC_SOFT_PASS_AFTER_SECONDS, NPC_GATE_SOFT_PASS_AFTER_SECONDS, inGateTrafficThroat, canFinishShopWaypoint, shopCrowdStep, entranceApproachRoute, gateFlowDirection, mustYieldAtGate, canShareGateLanes, gateTravelLane, isInExitCorridor, idleShopperBlocksRoute, nextEntranceSpawnZ, crowdStallSeconds, trackWaypointProgress, canYieldShopperSpot, type WaypointProgress, type GateTrafficActor } from "./npcTraffic.ts";
 import { isObstructed, pathToShopGoal, shopSegmentClear, type ShopperRoute, type ShopPoint } from "./shopperNavigation.ts";
 import { ShopServiceSpots } from "./shopServiceSpots.ts";
@@ -857,7 +857,7 @@ export class NpcVisualSystem {
     const npc=this.npcs.get(head.heroId);
     if(!npc||npc.visitor.status!=="at-shop"||npc.phase!=="queueing"||
        npc.root.metadata.shoppingPhase!=="awaiting-checkout")return null;
-    const point=checkoutQueuePoints(this.layout,{x:0,z:-1},1,this.room)[0];
+    const point=frontCheckoutPoint(this.layout,this.room);
     if(!point||Math.hypot(npc.root.position.x-point.x,
        npc.root.position.z-point.z)>0.3)return null;
     return head.heroId;

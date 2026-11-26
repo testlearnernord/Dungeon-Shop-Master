@@ -21,7 +21,7 @@ function slotQuantity(state:GameState,slotId:string) {
 }
 test("pickup is durable, removes only physical shelf stock and never charges before checkout",()=>{
   const state=customers();
-  assert.equal(SIMULATION_VERSION,47);
+  assert.equal(SIMULATION_VERSION,48);
   const hero=state.adventurers[0];
   const plan=forecastShoppingIntents(state).get(hero.id)!;
   const needed=plan.items[0];
@@ -349,4 +349,16 @@ test("persistent shelf assignment does not create inventory or permit conflictin
   assert.strictEqual(assignShelfItem(picked,line.slotId,null).state,picked);
   assert.equal(picked.shopEconomy.slots.find(s=>s.id===line.slotId)?.itemId,line.itemId);
   assert.deepEqual(returnShopCart(picked,hero.id).state.shopEconomy.slots,state.shopEconomy.slots);
+});
+
+test("employee uses the staffed receipt identity but never receives a tip even if perfect timing is passed",()=>{
+  const state=customers();
+  const hero=state.adventurers[0];
+  const item=forecastShoppingIntents(state).get(hero.id)!.items[0];
+  const reserved=pickUpShopItem(state,hero.id,item.slotId).state;
+  const paid=payReservedShopCart(reserved,hero.id,true,"Tettel").state;
+  assert.equal(paid.shopEconomy.balance,reserved.shopEconomy.balance+cartTotal(reserved.shopCarts[0]));
+  assert(paid.events.some(e=>e.type==="sale"&&e.message.includes("Served by Tettel.")));
+  assert(!paid.events.some(e=>e.type==="tip"));
+  assert.strictEqual(payReservedShopCart(paid,hero.id,true).state,paid);
 });
