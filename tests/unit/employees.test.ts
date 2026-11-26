@@ -382,3 +382,75 @@ test("higher priority charity interrupts uncollected restocking but never drops 
   assert.deepEqual(stillCarrying.shopEconomy,carried.shopEconomy);
   assert.equal(stillCarrying.shopDebts.length,0);
 });
+
+
+test("combined cashier/restocking: higher priority takes over an uncollected claim, then real stock work resumes",()=>{
+  const base=cashierFixture();
+  const configured=new GameStore(base);
+  configured.setEmployeePriority("tettel","cashier",0);
+  configured.setEmployeePriority("tettel","restocking",5);
+  const collecting=step(configured.state);
+  assert.equal(collecting.employees[0].restock?.stage,"collect");
+  const change=new GameStore(collecting);
+  change.setEmployeePriority("tettel","cashier",1);
+  let state=step(change.state);
+  assert.equal(state.employees[0].restock,null);
+  assert.equal(state.employees[0].job?.task,"cashier");
+  assert.deepEqual(state.shopEconomy,collecting.shopEconomy);
+  const cart=state.shopCarts[0],total=cartTotal(cart);
+  for(let i=0;i<1800&&state.shopCarts.length;i++)state=step(state);
+  assert.equal(state.shopCarts.length,0);
+  assert.equal(state.shopEconomy.balance,base.shopEconomy.balance+total);
+  assert(!state.events.some(e=>e.type==="tip"));
+  // Unit fixture hands off the paid actor to the real browser departure
+  // coverage below; no synthetic customer locomotion is implemented here.
+  state={...state,shopTraffic:{...state.shopTraffic,actors:[],claims:[]}};
+  const paid=state;
+  let collected=false;
+  for(let i=0;i<2400;i++){
+    state=step(state);
+    collected||=state.employees[0].restock?.stage==="deliver";
+    if(state.shopEconomy.bag.bread<paid.shopEconomy.bag.bread||
+      state.shopEconomy.bag["healing-herb"]<paid.shopEconomy.bag["healing-herb"])break;
+  }
+  assert(collected,"Restocking must resume after the cashier job");
+  assert(state.shopEconomy.bag.bread<paid.shopEconomy.bag.bread||
+    state.shopEconomy.bag["healing-herb"]<paid.shopEconomy.bag["healing-herb"]);
+  assert.equal(state.shopEconomy.balance,paid.shopEconomy.balance);
+  assert.deepEqual(state.events,paid.events);
+  for(const item of ["bread","healing-herb"] as const){
+    const owned=(s:GameState)=>s.shopEconomy.bag[item]+s.shopEconomy.slots.reduce(
+      (n,slot)=>n+(slot.itemId===item?slot.quantity:0),0);
+    assert.equal(owned(state),owned(paid));
+  }
+  assert.deepEqual(parseSave(JSON.stringify(createSave(state))),state);
+});
+
+test("combined cashier/restocking: collected merchandise survives higher cashier priority and completes before payment",()=>{
+  const base=cashierFixture();
+  const configured=new GameStore(base);
+  configured.setEmployeePriority("tettel","cashier",0);
+  configured.setEmployeePriority("tettel","restocking",5);
+  let state=configured.state;
+  for(let i=0;i<500&&state.employees[0].restock?.stage!=="deliver";i++)state=step(state);
+  const cargo=state.employees[0].restock;
+  assert(cargo&&cargo.stage==="deliver");
+  const change=new GameStore(state);
+  change.setEmployeePriority("tettel","cashier",1);
+  state=step(change.state);
+  assert.deepEqual(state.employees[0].restock,cargo);
+  const before=state.shopEconomy.bag[cargo.itemId];
+  const beforeSlot=state.shopEconomy.slots.find(s=>s.id===cargo.slotId)!.quantity;
+  for(let i=0;i<1800&&state.employees[0].restock;i++){
+    state=step(state);
+    assert.equal(state.shopCarts.length,1,"Do not settle while carrying stock");
+    assert.equal(state.shopEconomy.balance,base.shopEconomy.balance);
+  }
+  assert.equal(state.employees[0].restock,null);
+  assert.equal(state.shopEconomy.bag[cargo.itemId],before-cargo.units);
+  assert.equal(state.shopEconomy.slots.find(s=>s.id===cargo.slotId)?.quantity,beforeSlot+cargo.units);
+  for(let i=0;i<1000&&state.shopCarts.length;i++)state=step(state);
+  assert.equal(state.shopCarts.length,0);
+  assert.equal(state.shopEconomy.balance,base.shopEconomy.balance+cartTotal(base.shopCarts[0]));
+  assert(!state.events.some(e=>e.type==="tip"));
+});

@@ -219,3 +219,85 @@ test("Tettel grants one physical credit petition and the visitor leaves without 
   expect((await read()).credits).toHaveLength(1);
   expect(errors).toEqual([]);
 });
+
+
+test("Tettel restocks real assigned goods and serves two physical customers on the shared clock @ci-smoke",async({page})=>{
+  test.setTimeout(240000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  await page.goto("./?e2e-pause-world");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    return probe.shopSceneReady();
+  }),{timeout:45000}).toBe(true);
+  const fixture=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const {ECONOMY}=await import("/Dungeon-Shop-Master/src/game/economy.ts");
+    const base=withStockedSmallShelf(createGameState(7351));
+    const buyers=base.adventurers.filter(h=>h.status==="at-shop").slice(0,2).map(h=>h.id);
+    if(buyers.length!==2)throw Error("Combined fixture requires two real buyers");
+    const state={...base,cellarDoorOpen:true,adventurers:base.adventurers.map(h=>
+      buyers.includes(h.id)?{...h,gold:100,health:h.stats.maxHealth,
+        inventory:{...h.inventory,bread:0,healing:ECONOMY.healingTarget}}:
+        {...h,status:"off-duty" as const,floor:"away" as const,offDutyUntilTick:4800,shopStayDays:0}),
+      shopEconomy:{...base.shopEconomy,bag:{...base.shopEconomy.bag,bread:0,"healing-herb":2},
+        slots:base.shopEconomy.slots.map(s=>s.itemId==="bread"?{...s,quantity:4}:
+          s.itemId==="healing-herb"?{...s,quantity:0}:s)},
+      employees:base.employees.map(e=>({...e,priorities:{cashier:1 as const,restocking:5 as const,charity:0 as const}}))};
+    await new CampaignStorage().saveGame(state);
+    return {buyers,gold:state.shopEconomy.balance};
+  });
+  await page.reload();
+  await expect(page.locator("#save-status")).toContainText("Continued saved Day 1");
+  await expect.poll(()=>page.evaluate(()=>typeof (window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld)).toBe("function");
+  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld:(p:boolean)=>void}).__shopTestPauseWorld(false);});
+  const read=()=>page.evaluate(async ids=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const s=await new CampaignStorage().loadGame();
+    if(!s)throw Error("Missing combined campaign");
+    const sales=s.events.filter(e=>e.type==="sale");
+    const buyerSales=sales.filter(e=>e.adventurerId&&ids.includes(e.adventurerId));
+    const quantities=(id:string)=>s.shopEconomy.slots.filter(slot=>slot.itemId===id)
+      .reduce((n,slot)=>n+slot.quantity,0);
+    return {sales,buyerSales,balance:s.shopEconomy.balance,
+      departed:ids.filter(id=>s.events.some(e=>e.type==="shop-departure"&&e.adventurerId===id)),
+      bread:quantities("bread"),herbs:quantities("healing-herb"),
+      herbBag:s.shopEconomy.bag["healing-herb"],
+      breadHeld:s.shopCarts.flatMap(c=>c.lines).filter(l=>l.itemId==="bread").reduce((n,l)=>n+l.quantity,0),
+      breadSold:sales.filter(e=>e.itemId==="bread").reduce((n,e)=>n+(e.quantity??0),0),
+      tips:s.events.filter(e=>e.type==="tip"),credits:s.events.filter(e=>e.type==="shop-credit"),
+      assignments:s.shopEconomy.slots.map(slot=>({id:slot.id,item:slot.itemId})),
+      diagnostic:{tick:s.worldClock.tick,worker:s.employees[0],actors:s.shopTraffic.actors,
+        claims:s.shopTraffic.claims,carts:s.shopCarts,requests:s.shopRequests}};
+  },fixture.buyers);
+  const initialAssignments=[{id:"shelf-1-slot-1",item:null},{id:"shelf-1-slot-2",item:"bread"},
+    {id:"shelf-1-slot-3",item:"healing-herb"},{id:"shelf-1-slot-4",item:null}];
+  let sawCargo=false,sawCashier=false;
+  try{
+    await expect.poll(async()=>{
+      const s=await read();
+      sawCargo||=s.diagnostic.worker.restock?.stage==="deliver";
+      sawCashier||=s.diagnostic.worker.job?.task==="cashier";
+      expect(s.bread+s.breadHeld+s.breadSold).toBe(4);
+      expect(s.herbs+s.herbBag).toBe(2);
+      expect(s.assignments).toEqual(initialAssignments);
+      expect(s.tips).toEqual([]);expect(s.credits).toEqual([]);
+      return {paid:new Set(s.buyerSales.map(e=>e.adventurerId)).size,herbs:s.herbs,departed:s.departed.length};
+    },{timeout:150000,intervals:[500,1000,2000]}).toEqual({paid:2,herbs:2,departed:2});
+  }catch(error){
+    console.log("COMBINED EMPLOYEE FAILURE "+JSON.stringify(await read()));
+    throw error;
+  }
+  const done=await read();
+  expect(sawCargo).toBe(true);expect(sawCashier).toBe(true);
+  expect(done.buyerSales).toHaveLength(2);
+  expect(done.buyerSales.every(e=>e.itemId==="bread"&&e.quantity===2&&
+    e.message.includes("Served by Tettel."))).toBe(true);
+  expect(done.balance).toBe(fixture.gold+16);
+  expect(done.herbBag).toBe(0);
+  expect(done.diagnostic.carts).toEqual([]);
+  expect(errors).toEqual([]);
+});

@@ -40,4 +40,4 @@ One saved world and combat authority, physical transactions, deterministic curre
 - C2: implemented physical pickup/delivery/return and shared bag reservations (#386); first CI passed, synchronized-base CI and visual acceptance pending.
 - D: implemented on the D branch; physical staff dock and shared front cart, three-second service timer, canonical payment without tips, manual takeover; unit and browser acceptance pending.
 - E: matched credit-demand audit passed (see Alpha v48 acceptance); owner approved opt-in physical credit work. Employee credit service is implemented in the candidate; validate CI and actual pedestrian behavior before acceptance.
-- F: real browser playtest, combined commerce and balance; no extra employee types until foundation works.
+- F: combined two-buyer physical restock/checkout scenario and priority/cargo regressions in the F candidate; CI, visual acceptance and sustained throughput tuning pending. No extra employee types until foundation works.
