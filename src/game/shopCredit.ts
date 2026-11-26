@@ -46,10 +46,10 @@ export interface CreditResult {
   readonly message:string;
 }
 
-/** One unpaid need per actual shop visit. The player must approve the request.
+/** One unpaid need per actual shop visit. Galvik or an enabled physical employee must approve the request.
  * Stock and item ownership change immediately; merchant revenue stays at zero.
  */
-export function issueShopCredit(state:GameState,heroId:string):CreditResult {
+export function issueShopCredit(state:GameState,heroId:string,servedBy?:string):CreditResult {
   const quote=quoteBeggingRequest(state,heroId);
   if(!quote)return {state,message:"This adventurer has no eligible credit request."};
   if(!quote.available)return {state,message:"No "+quote.itemName+" in shelves or bag."};
@@ -89,7 +89,7 @@ export function issueShopCredit(state:GameState,heroId:string):CreditResult {
     id:`day-${state.day}:${heroId}:shop-credit`+shopVisitSuffix(state.events,state.day,heroId),
     type:"shop-credit" as const,day:state.day,
     adventurerId:heroId,itemId:item.id,quantity:1,debtGold:quote.price,
-    message:`${hero.name} received 1 ${item.name} on credit and now owes ${quote.previousDebt+quote.price} gold.`,
+    message:`${hero.name} received 1 ${item.name} on credit and now owes ${quote.previousDebt+quote.price} gold.`+(servedBy?` Served by ${servedBy}.`:""),
   };
   return {
     state:{
