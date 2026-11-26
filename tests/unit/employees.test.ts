@@ -5,7 +5,7 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {advanceEmployees,chooseEmployeeJob,employeeOpportunities,EMPLOYEE_DEFINITIONS,
-  EMPLOYEE_WORK_SPEED,EMPLOYEE_CHECKOUT_TICKS,employeeCashierOpportunity,type EmployeeJob} from "../../src/game/employees.ts";
+  EMPLOYEE_WORK_SPEED,EMPLOYEE_CHECKOUT_TICKS,employeeCashierOpportunity,employeeCharityOpportunity,type EmployeeJob} from "../../src/game/employees.ts";
 import {employeeFloorY,employeeRoute,employeeSegmentClear,employeeStoragePoint,EMPLOYEE_HOME} from "../../src/game/employeeNavigation.ts";
 import {counterDockPoint} from "../../src/game/shopLayout.ts";
 import {CELLAR_FLOOR_Y} from "../../src/game/cellarRoom.ts";
@@ -15,6 +15,8 @@ import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {manuallyPaidVisitors} from "../../src/game/npcVisitors.ts";
 import type {ShopTrafficActor} from "../../src/game/shopTraffic.ts";
 import {frontCheckoutPoint} from "../../src/game/checkoutQueue.ts";
+import {restockWaitingPositions} from "../../src/game/restockWaitingPlaces.ts";
+import {issueShopCredit} from "../../src/game/shopCredit.ts";
 
 test("Tettel begins peacefully in the cellar, with no autonomous transactions enabled",()=>{
   const state=createGameState(7351);
@@ -250,4 +252,80 @@ test("manual takeover and a customer leaving reset employee checkout; no remote 
   const left=step({...state,shopTraffic:{...state.shopTraffic,claims:[]}});
   assert.equal(left.employees[0].cashierReadySince,null);
   assert.equal(left.shopEconomy.balance,initial.shopEconomy.balance);
+});
+
+function charityFixture(){
+  const initial=createStockedShopState(7351);
+  const hero=initial.adventurers.find(h=>h.status==="at-shop")!;
+  const store=new GameStore({...initial,cellarDoorOpen:true,adventurers:initial.adventurers.map(h=>
+    h.id===hero.id?{...h,gold:0,inventory:{...h.inventory,bread:0,healing:0}}:h)});
+  assert(store.startShopRequest(hero.id,"bread","cannot-afford")!==null);
+  const base=store.state;
+  const actorTemplate=cashierFixture().shopTraffic.actors[0];
+  const options=restockWaitingPositions(base.shopLayout,base.shopRoom);
+  for(const point of options){
+    const actor:ShopTrafficActor={...actorTemplate,...point,heroId:hero.id,phase:"queueing",
+      shoppingPhase:"waiting-for-credit",shoppingReason:"cannot-afford",checkoutQueueIndex:-1,
+      requestActive:true,wishItem:"bread",restockSeconds:60};
+    const state:GameState={...base,shopTraffic:{...base.shopTraffic,initialized:true,
+      actors:[actor],claims:[{heroId:hero.id,role:"credit",point}]}};
+    const job=employeeCharityOpportunity(state,hero.id);
+    if(job&&employeeRoute(state,EMPLOYEE_HOME,job.point))return {state,heroId:hero.id,job,point};
+  }
+  throw Error("No reachable physical credit fixture");
+}
+test("charity is opt-in and uses a reachable adjacent dock, one actual item and the existing debt ledger",()=>{
+  const {state:initial,heroId,job,point}=charityFixture();
+  assert(Math.hypot(job.point.x-point.x,job.point.z-point.z)>=.65);
+  assert.equal(employeeCharityOpportunity(initial,heroId,heroId),null);
+  assert.equal(employeeCharityOpportunity({...initial,shopRequests:[]},heroId),null);
+  assert.equal(employeeCharityOpportunity({...initial,shopTraffic:{...initial.shopTraffic,claims:[]}},heroId),null);
+  const moving={...initial,shopTraffic:{...initial.shopTraffic,actors:initial.shopTraffic.actors.map(a=>
+    ({...a,phase:"browsing" as const,shoppingPhase:"walking-to-request-roam"}))}};
+  assert.equal(employeeCharityOpportunity(moving,heroId),null);
+  const empty={...initial,shopEconomy:{...initial.shopEconomy,bag:{...initial.shopEconomy.bag,bread:0},
+    slots:initial.shopEconomy.slots.map(s=>s.itemId==="bread"?{...s,quantity:0}:s)}};
+  assert.equal(employeeCharityOpportunity(empty,heroId),null);
+  const disabled=step(initial);
+  assert.equal(disabled.shopDebts.length,0);
+  const store=new GameStore(initial);
+  store.setEmployeePriority("tettel","charity",1);
+  let state=store.state,prior=state.employees[0],sawRamp=false;
+  for(let i=0;i<1100&&!state.shopDebts.length;i++){
+    state=step(state);
+    const worker=state.employees[0];
+    assert(Math.hypot(worker.x-prior.x,worker.z-prior.z)<=EMPLOYEE_WORK_SPEED*.05+1e-8);
+    assert(employeeSegmentClear(state,prior,worker));
+    sawRamp||=worker.z>-20.1&&worker.z<-12.1;
+    prior=worker;
+  }
+  assert(sawRamp);
+  assert(Math.hypot(prior.x-job.point.x,prior.z-job.point.z)<.08);
+  assert.equal(state.shopDebts.find(d=>d.heroId===heroId)?.outstandingGold,4);
+  assert.equal(state.shopRequests.length,0);
+  assert.equal(state.shopEconomy.balance,initial.shopEconomy.balance);
+  assert.equal(state.shopEconomy.slots.find(s=>s.itemId==="bread")?.quantity,2);
+  assert.equal(state.adventurers.find(h=>h.id===heroId)?.inventory.bread,1);
+  const credits=state.events.filter(e=>e.type==="shop-credit");
+  assert.equal(credits.length,1);assert(credits[0].message.includes("Served by Tettel."));
+  assert(!state.events.some(e=>e.type==="sale"||e.type==="tip"));
+  assert.strictEqual(issueShopCredit(state,heroId).state,state);
+  assert.equal(step(state).shopDebts[0].outstandingGold,4);
+});
+test("manual conversation, expiry and changed petitioner position prevent an employee grant",()=>{
+  const {state:initial,heroId,job}=charityFixture();
+  const configured=new GameStore(initial);
+  configured.setEmployeePriority("tettel","charity",1);
+  const ready={...configured.state,employees:configured.state.employees.map(e=>({...e,...job.point}))};
+  const tick=ready.worldClock.tick+1;
+  const manual=advanceEmployees({...ready,worldClock:{...ready.worldClock,tick},
+    shopTraffic:{...ready.shopTraffic,tick}},false,heroId);
+  assert.equal(manual.shopDebts.length,0);
+  assert.equal(manual.employees[0].job,null);
+  const expired={...ready,worldClock:{...ready.worldClock,tick:ready.shopRequests[0].dueTick}};
+  assert.equal(advanceEmployees(expired).shopDebts.length,0);
+  const moved={...ready,shopTraffic:{...ready.shopTraffic,actors:ready.shopTraffic.actors.map(a=>({...a,x:a.x+2}))}};
+  assert.equal(step(moved).shopDebts.length,0);
+  const credited=step(ready);
+  assert.equal(credited.shopDebts.length,1);
 });
