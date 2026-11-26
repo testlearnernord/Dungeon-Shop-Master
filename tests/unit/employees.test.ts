@@ -16,6 +16,7 @@ import {manuallyPaidVisitors} from "../../src/game/npcVisitors.ts";
 import type {ShopTrafficActor} from "../../src/game/shopTraffic.ts";
 import {frontCheckoutPoint} from "../../src/game/checkoutQueue.ts";
 import {restockWaitingPositions} from "../../src/game/restockWaitingPlaces.ts";
+import {shopPointSegmentDistance} from "../../src/game/shopperNavigation.ts";
 import {issueShopCredit} from "../../src/game/shopCredit.ts";
 
 test("Tettel begins peacefully in the cellar, with no autonomous transactions enabled",()=>{
@@ -277,6 +278,13 @@ function charityFixture(){
 test("charity is opt-in and uses a reachable adjacent dock, one actual item and the existing debt ledger",()=>{
   const {state:initial,heroId,job,point}=charityFixture();
   assert(Math.hypot(job.point.x-point.x,job.point.z-point.z)>=.65);
+  const route=employeeRoute(initial,EMPLOYEE_HOME,job.point,true);
+  assert(route,"The worker must be able to approach beside a real customer, not through them");
+  let from=EMPLOYEE_HOME;
+  for(const waypoint of route.waypoints){
+    assert(shopPointSegmentDistance(point,from,waypoint)>=.68-1e-8);
+    from=waypoint;
+  }
   assert.equal(employeeCharityOpportunity(initial,heroId,heroId),null);
   assert.equal(employeeCharityOpportunity({...initial,shopRequests:[]},heroId),null);
   assert.equal(employeeCharityOpportunity({...initial,shopTraffic:{...initial.shopTraffic,claims:[]}},heroId),null);
@@ -300,7 +308,7 @@ test("charity is opt-in and uses a reachable adjacent dock, one actual item and 
     prior=worker;
   }
   assert(sawRamp);
-  assert(Math.hypot(prior.x-job.point.x,prior.z-job.point.z)<.08);
+  assert(Math.hypot(prior.x-job.point.x,prior.z-job.point.z)<.08,JSON.stringify({worker:prior,job,tick:state.worldClock.tick,debt:state.shopDebts}));
   assert.equal(state.shopDebts.find(d=>d.heroId===heroId)?.outstandingGold,4);
   assert.equal(state.shopRequests.length,0);
   assert.equal(state.shopEconomy.balance,initial.shopEconomy.balance);
@@ -328,4 +336,24 @@ test("manual conversation, expiry and changed petitioner position prevent an emp
   assert.equal(step(moved).shopDebts.length,0);
   const credited=step(ready);
   assert.equal(credited.shopDebts.length,1);
+});
+
+test("a roaming petitioner retains a valid work destination, but no credit is granted until physical arrival",()=>{
+  const {state:initial,heroId,job,point}=charityFixture();
+  const configured=new GameStore(initial);
+  configured.setEmployeePriority("tettel","charity",1);
+  const state={...configured.state,employees:configured.state.employees.map(e=>({...e,...job.point}))};
+  const moving:GameState={...state,shopTraffic:{...state.shopTraffic,
+    actors:state.shopTraffic.actors.map(a=>({...a,phase:"browsing" as const,
+      shoppingPhase:"walking-to-request-roam",x:point.x-1,route:[point],waypoint:0})),
+    claims:state.shopTraffic.claims.map(c=>({...c,role:"roam" as const}))}};
+  assert.equal(employeeCharityOpportunity(moving,heroId),null);
+  assert(employeeCharityOpportunity(moving,heroId,null,true,false));
+  const waited=step(moving);
+  assert.equal(waited.employees[0].job?.task,"charity");
+  assert.equal(waited.shopDebts.length,0);
+  const arrived={...waited,shopTraffic:{...waited.shopTraffic,
+    actors:initial.shopTraffic.actors,claims:initial.shopTraffic.claims}};
+  const served=step(arrived);
+  assert.equal(served.shopDebts.length,1);
 });
