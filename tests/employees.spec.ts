@@ -95,3 +95,52 @@ test("Galvik assigns an unowned product to a real empty shelf and explicitly cle
   await expect.poll(read,{timeout:20000}).toEqual({itemId:null,quantity:0,bag:0});
   expect(errors).toEqual([]);
 });
+
+test("Tettel physically serves a real shopper at the register without player payment or tips @ci-smoke",async({page})=>{
+  test.setTimeout(300000);
+  const errors:string[]=[];
+  page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("./?e2e-pause-world");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    return probe.shopSceneReady();
+  }),{timeout:45000}).toBe(true);
+  const fixture=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const base=withStockedSmallShelf(createGameState(7351));
+    const buyer=base.adventurers.find(h=>h.status==="at-shop")!;
+    if(!buyer)throw Error("Fixture requires a real shop visitor");
+    const state={...base,cellarDoorOpen:true,adventurers:base.adventurers.map(h=>
+      h.id===buyer.id?{...h,status:"at-shop" as const,floor:"shop" as const,
+        gold:100,health:Math.max(1,h.health-20),inventory:{...h.inventory,bread:0,healing:0},
+        equipment:{weapon:null,armor:null}}:
+        {...h,status:"off-duty" as const,floor:"away" as const,offDutyUntilTick:4800,shopStayDays:0}),
+      employees:base.employees.map(e=>({...e,priorities:{...e.priorities,cashier:1 as const}}))};
+    await new CampaignStorage().saveGame(state);
+    return {buyer:buyer.id,gold:state.shopEconomy.balance,buyerGold:100};
+  });
+  await page.reload();
+  await expect(page.locator("#save-status")).toContainText("Continued saved Day 1");
+  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(false);});
+  const read=()=>page.evaluate(async id=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const s=await new CampaignStorage().loadGame();
+    const receipts=s?.events.filter(e=>e.type==="sale"&&e.adventurerId===id)??[];
+    return {receipts,tips:s?.events.filter(e=>e.type==="tip")??[],
+      balance:s?.shopEconomy.balance,buyerGold:s?.adventurers.find(h=>h.id===id)?.gold,
+      unpaid:s?.shopCarts.some(c=>c.heroId===id),
+      departed:s?.events.some(e=>e.type==="shop-departure"&&e.adventurerId===id)};
+  },fixture.buyer);
+  await expect.poll(async()=> (await read()).receipts.length,{timeout:150000,intervals:[500,1000,2000]}).toBeGreaterThan(0);
+  const settled=await read();
+  const total=settled.receipts.reduce((sum,e)=>sum+(e.revenue??0),0);
+  expect(settled.receipts.every(e=>e.message.includes("Served by Tettel."))).toBe(true);
+  expect(settled.balance).toBe(fixture.gold+total);
+  expect(settled.buyerGold).toBe(fixture.buyerGold-total);
+  expect(settled.unpaid).toBe(false);expect(settled.tips).toEqual([]);
+  await expect.poll(async()=> (await read()).departed,{timeout:90000,intervals:[1000,2000]}).toBe(true);
+  expect(errors).toEqual([]);
+});

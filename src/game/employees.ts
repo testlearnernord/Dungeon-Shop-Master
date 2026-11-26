@@ -7,6 +7,7 @@ import {turnNpcToward} from "./npcLocomotion.ts";
 import type {ShopPoint} from "./shopperNavigation.ts";
 import {ECONOMY,availableBagUnits,isShelfGood,transferShelf,type ItemId} from "./economy.ts";
 import {payReservedShopCart} from "./shopCarts.ts";
+import {frontCheckoutPoint} from "./checkoutQueue.ts";
 
 export const EMPLOYEE_TASKS=["cashier","restocking","charity"] as const;
 export type EmployeeTask=typeof EMPLOYEE_TASKS[number];
@@ -74,9 +75,9 @@ export function employeeCashierOpportunity(state:GameState):EmployeeJob|null{
   const actor=state.shopTraffic.actors.find(a=>a.heroId===head.heroId&&
     a.phase==="queueing"&&a.shoppingPhase==="awaiting-checkout"&&a.checkoutQueueIndex===0);
   const claim=state.shopTraffic.claims.find(c=>c.heroId===head.heroId&&c.role==="checkout");
-  const customerDock=counterDockPoint(state.shopLayout,"customer");
-  if(!actor||!claim||Math.hypot(claim.point.x-customerDock.x,claim.point.z-customerDock.z)>.17||
-    Math.hypot(actor.x-claim.point.x,actor.z-claim.point.z)>.3)return null;
+  const point=frontCheckoutPoint(state.shopLayout,state.shopRoom);
+  if(!actor||!claim||!point||Math.hypot(claim.point.x-point.x,claim.point.z-point.z)>.17||
+    Math.hypot(actor.x-point.x,actor.z-point.z)>.3)return null;
   return {task:"cashier",targetId:hero.id,point:counterDockPoint(state.shopLayout,"staff")};
 }
 /** Real currently observed opportunities, never simulated customer demand. */
@@ -231,7 +232,11 @@ export function advanceEmployees(state:GameState,manualCashierActive=false):Game
         continue;
       }
     }
-    const moved=advanceEmployee(next,e,jobs,forced);
+    let moved=advanceEmployee(next,e,jobs,forced);
+    if(moved.job?.task==="cashier"&&moved.status==="ready"){
+      const customer=counterDockPoint(next.shopLayout,"customer");
+      moved={...moved,yaw:turnNpcToward(moved.yaw,Math.atan2(customer.x-moved.x,customer.z-moved.z),WORLD_TICK_SECONDS,3.2)};
+    }
     next=setEmployee(next,moved);
     const r=moved.restock;
     if(!r){

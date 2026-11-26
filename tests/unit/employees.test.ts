@@ -14,6 +14,7 @@ import {pickUpShopItem,payReservedShopCart,cartTotal} from "../../src/game/shopC
 import {forecastShoppingIntents} from "../../src/game/shopperIntents.ts";
 import {manuallyPaidVisitors} from "../../src/game/npcVisitors.ts";
 import type {ShopTrafficActor} from "../../src/game/shopTraffic.ts";
+import {frontCheckoutPoint} from "../../src/game/checkoutQueue.ts";
 
 test("Tettel begins peacefully in the cellar, with no autonomous transactions enabled",()=>{
   const state=createGameState(7351);
@@ -169,7 +170,8 @@ function cashierFixture():GameState{
   assert(line);
   const picked=pickUpShopItem(initial,hero.id,line.slotId).state;
   assert.notStrictEqual(picked,initial);
-  const point=counterDockPoint(initial.shopLayout,"customer");
+  const point=frontCheckoutPoint(initial.shopLayout,initial.shopRoom);
+  assert(point);
   const actor:ShopTrafficActor={
     heroId:hero.id,...point,yaw:0,slot:0,gateSide:"portal",phase:"queueing",
     shoppingPhase:"awaiting-checkout",shoppingReason:"interested",

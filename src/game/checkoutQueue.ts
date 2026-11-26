@@ -81,3 +81,14 @@ export function checkoutWaitAlreadyAtSlot(
      shoppingPhase==="walking-to-checkout")&&!!target&&
     Math.hypot(origin.x-target.x,origin.z-target.z)<.15;
 }
+
+/** Both the player-facing till and saved physical employees use the same
+ * first queue point. Cache by immutable geometry, not by hero/cart state. */
+const frontPointCache=new WeakMap<ShopLayout,{room:ShopRoomGeometry|undefined;point:ShopPoint|null}>();
+export function frontCheckoutPoint(layout:ShopLayout,room?:ShopRoomGeometry):ShopPoint|null{
+  const cached=frontPointCache.get(layout);
+  if(cached&&cached.room===room)return cached.point;
+  const point=checkoutQueuePoints(layout,{x:0,z:-1},1,room)[0]??null;
+  frontPointCache.set(layout,{room,point});
+  return point;
+}
