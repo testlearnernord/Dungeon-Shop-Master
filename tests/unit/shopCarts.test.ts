@@ -350,3 +350,15 @@ test("persistent shelf assignment does not create inventory or permit conflictin
   assert.equal(picked.shopEconomy.slots.find(s=>s.id===line.slotId)?.itemId,line.itemId);
   assert.deepEqual(returnShopCart(picked,hero.id).state.shopEconomy.slots,state.shopEconomy.slots);
 });
+
+test("employee uses the staffed receipt identity but never receives a tip even if perfect timing is passed",()=>{
+  const state=customers();
+  const hero=state.adventurers[0];
+  const item=forecastShoppingIntents(state).get(hero.id)!.items[0];
+  const reserved=pickUpShopItem(state,hero.id,item.slotId).state;
+  const paid=payReservedShopCart(reserved,hero.id,true,"Tettel").state;
+  assert.equal(paid.shopEconomy.balance,reserved.shopEconomy.balance+cartTotal(reserved.shopCarts[0]));
+  assert(paid.events.some(e=>e.type==="sale"&&e.message.includes("Served by Tettel.")));
+  assert(!paid.events.some(e=>e.type==="tip"));
+  assert.strictEqual(payReservedShopCart(paid,hero.id,true).state,paid);
+});
