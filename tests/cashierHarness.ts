@@ -35,7 +35,7 @@ export function openCashierHarness(side:"staff"|"customer"="staff",
   const built=replaceShelfPlacement(state.shopLayout,{id:"shelf-1",x:-7,z:0,rotation:0});
   if(built.message!=="Shelf placement saved.")throw Error(built.message);
   const store=new GameStore({...state,shopLayout:built.layout,
-    shopEconomy:{...state.shopEconomy,slots:createEmptyShelfSlots("shelf-1")},
+    shopEconomy:{...state.shopEconomy,slots:createEmptyShelfSlots("shelf-1").map(slot=>slot.index>=1&&slot.index<=heroIds.length?{...slot,itemId:"bread" as const}:slot)},
     shopCarts:heroIds.map((id,index)=>({
       heroId:id,day:state.day,
       lines:[{itemId:"bread" as const,
