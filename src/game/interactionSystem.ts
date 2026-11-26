@@ -44,6 +44,7 @@ export class InteractionSystem {
     private readonly observeTable:()=>boolean=()=>false,
     private readonly openForge:()=>boolean=()=>false,
     private readonly quickbar:Quickbar=new Quickbar(),
+    private readonly openShelfAssignment:(slotId:string)=>boolean=()=>false,
   ) {
     this.shop.select(this.quickbar.selected);
     this.registerEvents();
@@ -323,6 +324,12 @@ export class InteractionSystem {
       return;
     }
     const pick = this.scene.pickWithRay(this.camera.getForwardRay(this.maxInteractionDistance));
+    const slot=pick?.pickedMesh&&this.shop.slotMeshes.get(pick.pickedMesh as Mesh);
+    if(slot&&pick?.hit&&pick.distance<=this.maxInteractionDistance&&!this.miningMode&&
+      this.openShelfAssignment(slot.id)){
+      this.heldButton=null;this.heldSlotId=null;
+      this.message="Shelf assignment opened.";this.publish();return;
+    }
     const target = this.worldItems.find(({ mesh }) => mesh === pick?.pickedMesh);
     if (target?.kind === "register") {
       this.message = this.checkoutRegister();
