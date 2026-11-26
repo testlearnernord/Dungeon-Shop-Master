@@ -132,9 +132,19 @@ test("Tettel physically serves a real shopper at the register without player pay
     return {receipts,tips:s?.events.filter(e=>e.type==="tip")??[],
       balance:s?.shopEconomy.balance,buyerGold:s?.adventurers.find(h=>h.id===id)?.gold,
       unpaid:s?.shopCarts.some(c=>c.heroId===id),
-      departed:s?.events.some(e=>e.type==="shop-departure"&&e.adventurerId===id)};
+      departed:s?.events.some(e=>e.type==="shop-departure"&&e.adventurerId===id),
+      diagnostic:{tick:s?.worldClock.tick,day:s?.day,cellarDoorOpen:s?.cellarDoorOpen,
+        worker:s?.employees[0],buyer:s?.adventurers.find(h=>h.id===id),
+        actor:s?.shopTraffic.actors.find(a=>a.heroId===id),
+        claim:s?.shopTraffic.claims.find(c=>c.heroId===id),carts:s?.shopCarts}};
   },fixture.buyer);
-  await expect.poll(async()=> (await read()).receipts.length,{timeout:150000,intervals:[500,1000,2000]}).toBeGreaterThan(0);
+  try{
+    await expect.poll(async()=> (await read()).receipts.length,{timeout:150000,intervals:[500,1000,2000]}).toBeGreaterThan(0);
+  }catch(error){
+    const failure=await read();
+    console.log("EMPLOYEE CHECKOUT FAILURE "+JSON.stringify(failure.diagnostic));
+    throw error;
+  }
   const settled=await read();
   const total=settled.receipts.reduce((sum,e)=>sum+(e.revenue??0),0);
   expect(settled.receipts.every(e=>e.message.includes("Served by Tettel."))).toBe(true);
