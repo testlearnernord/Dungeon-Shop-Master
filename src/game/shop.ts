@@ -6,7 +6,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
-import { isShelfGood, type ItemId, type Slot } from "./economy.ts";
+import { ITEMS, isShelfGood, type ItemId, type Slot } from "./economy.ts";
 import { cloneShopStockModel, getShopStockTemplates } from "./shopStockAssets.ts";
 import { GameStore } from "./gameStore";
 import { getDungeonSurfaces } from "./dungeonSurfaces";
@@ -26,6 +26,7 @@ export class Shop {
   private readonly slotById = new Map<string, Mesh>();
   private readonly slotBaseMaterial: StandardMaterial;
   private readonly itemVisuals = new Map<string, Mesh[]>();
+  private readonly assignmentNotes = new Map<string,{mesh:Mesh;itemId:ItemId}>();
   private stockTemplates: ReadonlyMap<ItemId, Mesh> | null = null;
   private readonly shelves = new Map<ShelfId, ShelfGroup>();
   private selectedItemId: ItemId|null = null;
@@ -132,6 +133,7 @@ export class Shop {
         this.slotMeshes.delete(mesh);
         this.slotById.delete(slot.id);
         this.itemVisuals.delete(slot.id);
+        this.removeAssignmentNote(slot.id);
       }
       group.root.dispose();
       this.shelves.delete(id);
@@ -198,9 +200,60 @@ export class Shop {
     label.isPickable=false;
   }
 
+  private removeAssignmentNote(id:string):void{
+    const note=this.assignmentNotes.get(id);
+    if(!note)return;
+    note.mesh.dispose(false,true);
+    this.assignmentNotes.delete(id);
+  }
+
+  /** A little paper slip on the front lip, not a stock mesh or pick target. */
+  private syncAssignmentNote(slot:Slot):void{
+    if(this.assignmentNotes.get(slot.id)?.itemId===slot.itemId)return;
+    this.removeAssignmentNote(slot.id);
+    if(!slot.itemId)return;
+    const item=ITEMS.find(i=>i.id===slot.itemId)!;
+    const root=this.shelves.get(slot.shelfId as ShelfId)!.root;
+    const note=MeshBuilder.CreatePlane(slot.id+"-assignment-note",{width:.54,height:.20},this.scene);
+    note.parent=root;
+    note.position.set(.936,.51,shelfSlotLocalZ(slot.index));
+    note.rotation.y=Math.PI/2;
+    note.isPickable=false;note.checkCollisions=false;
+    note.metadata={kind:"shelf-assignment-note",slotId:slot.id,itemId:slot.itemId};
+    const texture=new DynamicTexture(slot.id+"-assignment-paper",{width:512,height:192},this.scene,false);
+    const ctx=texture.getContext();
+    ctx.fillStyle="#d9c38b";ctx.fillRect(0,0,512,192);
+    ctx.strokeStyle="#9f8355";ctx.lineWidth=7;ctx.strokeRect(4,4,504,184);
+    ctx.fillStyle="#4a3220";ctx.font="bold 38px Georgia";ctx.textAlign="center";
+    ctx.fillText("•  "+(slot.index+1)+"  •",256,48);
+    const words=item.name.split(" ");
+    let font=56;ctx.font="bold "+font+"px Georgia";
+    let lines=[item.name];
+    if(ctx.measureText(item.name).width>470&&words.length>1){
+      let split=1,best=Infinity;
+      for(let i=1;i<words.length;i++){
+        const a=words.slice(0,i).join(" "),b=words.slice(i).join(" ");
+        const width=Math.max(ctx.measureText(a).width,ctx.measureText(b).width);
+        if(width<best){best=width;split=i;}
+      }
+      lines=[words.slice(0,split).join(" "),words.slice(split).join(" ")];
+    }
+    while(lines.some(line=>ctx.measureText(line).width>470)&&font>24){
+      font-=2;ctx.font="bold "+font+"px Georgia";
+    }
+    for(let i=0;i<lines.length;i++)ctx.fillText(lines[i],256,lines.length===1?127:108+i*57);
+    texture.update();
+    const material=new StandardMaterial(slot.id+"-assignment-material",this.scene);
+    material.diffuseTexture=texture;material.emissiveColor=new Color3(.36,.30,.18);
+    material.specularColor=Color3.Black();material.backFaceCulling=false;
+    note.material=material;
+    this.assignmentNotes.set(slot.id,{mesh:note,itemId:slot.itemId});
+  }
+
   private updateSlot(slot:Slot):void {
     const mesh=this.slotById.get(slot.id);
     if(!mesh)return;
+    this.syncAssignmentNote(slot);
     // The slot's pickable wooden pad stays the exact same collision/interaction
     // target. Items are purely visual meshes, never obstacles for customers.
     mesh.material=this.slotBaseMaterial;
