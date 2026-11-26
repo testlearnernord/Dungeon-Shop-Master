@@ -1266,12 +1266,22 @@ export function inspectGhoulObservationMeshes(){
       mesh.name.startsWith("dungeon-monster-"));
   const prefix=shop?"cellar-table-monster-next-":"dungeon-monster-next-";
   const hints=scene.meshes.filter(mesh=>mesh.name.startsWith(prefix));
+  // The physical shop also contains a peaceful employee using the same rig.
+  // Exclude only employee-owned assets, not unrelated duplicate dungeon rigs.
+  const employeeRoots=scene.transformNodes.filter(node=>node.metadata?.employeeId);
+  const employeeMeshes=employeeRoots.flatMap(root=>root.getChildMeshes());
+  const employeeRigs=new Set(employeeMeshes.flatMap(mesh=>mesh.skeleton?[mesh.skeleton]:[]));
+  const employeeTargets=new Set<unknown>([
+    ...employeeRoots.flatMap(root=>[root,...root.getDescendants()]),
+    ...Array.from(employeeRigs).flatMap(rig=>rig.bones),
+  ]);
   return {
     observer:shop?"table":"live",
-    authoredRigCount:scene.skeletons.filter(rig=>rig.bones.length===65).length,
+    authoredRigCount:scene.skeletons.filter(rig=>rig.bones.length===65&&!employeeRigs.has(rig)).length,
     authoredClips:scene.animationGroups.filter(group=>
-      group.name==="idle_combat"||
-      group.name.includes("A feral ghoul walks with a hunched back"))
+      !group.targetedAnimations.some(animation=>employeeTargets.has(animation.target))&&
+      (group.name==="idle_combat"||
+      group.name.includes("A feral ghoul walks with a hunched back")))
       .map(group=>group.name),
     pins:pins.map(pin=>{
       const id=pin.name.slice(shop?
