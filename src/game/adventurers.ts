@@ -42,6 +42,8 @@ export interface AdventurerState {
   readonly shopStayDays: number;
   /** Earliest world tick for reentry after an observed shop exit. */
   readonly offDutyUntilTick: number | null;
+  /** Last actual exit from Galvik, not an assumed successful purchase. */
+  readonly lastShopExitTick?:number;
 }
 
 const names = ["Ada", "Bram", "Cora", "Dain", "Eira", "Finn", "Gwen", "Hale", "Iris", "Joss"];

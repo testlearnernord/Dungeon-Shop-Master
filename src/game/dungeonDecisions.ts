@@ -5,7 +5,7 @@ import {heroProgression} from "./heroProgression.ts";
 import {equipmentEffects,gearForItem,gearFromName} from "./gearCatalog.ts";
 import {hasDungeonLineOfSight} from "./heroPerception.ts";
 import {canSoloChallengeVisiblePack} from "./dungeonThreatDecisions.ts";
-import {WHOLESALE_GOODS,MATERIAL_ITEMS} from "./economy.ts";
+import {WHOLESALE_GOODS,MATERIAL_ITEMS,affordableForgedUpgrade} from "./economy.ts";
 import {dungeonNeighbors,type DungeonLayout,type DungeonFeature} from "./dungeonLayout.ts";
 
 /**
@@ -22,6 +22,9 @@ export type HeroFloorAction = "stay" | "ascend" | "descend" | "shop";
 export const carriedDungeonFindCount=(hero:AdventurerState):number=>
   MATERIAL_ITEMS.reduce((total,item)=>total+(hero.inventory.finds?.[item.id]??0),0);
 export const SALVAGE_RETURN_THRESHOLD=4;
+/** Six minutes of real unpaused time after an observed exit before elective
+ * shopping can be reconsidered. Urgent health and fresh haul rules are separate. */
+export const ELECTIVE_SHOP_REVISIT_TICKS=7200;
 
 /** Keep the early-game salvage supply chain. A genuinely prepared deep
  * explorer can carry a larger haul instead of resetting a long expedition
@@ -114,7 +117,7 @@ export function unresolvedRecoveryPlan(hero:AdventurerState):HeroDungeonDecision
 
 export type DungeonDecisionReason="unserved-recovery"|"low-health"|"new-salvage-haul"|"floor9-gold-resupply"|
   "unprepared-retreat"|"floor9-solo-resupply"|"depth-progress"|"damaged-stay"|
-  "test-gear"|"explore"|"combat-retreat"|"boss-ready"|"committed-descent"|"seek-boss-party"|"gear-purchase-resupply"|"depth-risk";
+  "test-gear"|"explore"|"combat-retreat"|"boss-ready"|"committed-descent"|"seek-boss-party"|"gear-purchase-resupply"|"depth-risk"|"forged-upgrade-resupply"|"expedition-haul-resupply";
 export interface HeroDungeonDecision {
   readonly goal: HeroDungeonGoal;
   readonly action: HeroFloorAction;
@@ -213,6 +216,7 @@ export function chooseLiveHeroDungeonDecision(
   replay:SpatialDungeonReplay,layout?:DungeonLayout,world?:SpatialDungeonWorld,
   bossPartyReady=false,previousFindCount?:number,onReason?:(reason:DungeonDecisionReason)=>void,
   priorDecision?:HeroDungeonDecision,bossAvailable=true,previousHealth?:number,
+  worldTick?:number,
 ):HeroDungeonDecision {
   if(typeof hero.floor!=="number"||hero.floor<1||hero.floor>9||hero.health<=0||
     hero.status!=="exploring")
@@ -237,6 +241,24 @@ export function chooseLiveHeroDungeonDecision(
     if(cautious){
       onReason?.("unserved-recovery");
       return cautious;
+    }
+  }
+  // A real new reward or exhaustion of the known floor is a deliberate
+  // planning boundary. Only the hero's own wallet, gear and last observed
+  // shop exit matter; no secret knowledge of current shelf inventory.
+  const electiveReady=worldTick!==undefined&&
+    (hero.lastShopExitTick===undefined||worldTick-hero.lastShopExitTick>=ELECTIVE_SHOP_REVISIT_TICKS);
+  const freshReward=replay.steps.some(s=>s.action==="treasure"||s.action==="defeat-monster");
+  if(electiveReady&&(freshReward||replay.outcome==="completed")&&base.action!=="shop"){
+    if(affordableForgedUpgrade(hero)){
+      onReason?.("forged-upgrade-resupply");return {goal:"resupply",action:"shop"};
+    }
+    // After the unique boss is cleared, an exhausted route with a real
+    // carried haul is a reason to leave rather than camp forever. No
+    // automatic payout; the existing physical buyback remains mandatory.
+    if(!bossAvailable&&hero.floor===9&&replay.outcome==="completed"&&
+      carriedDungeonFindCount(hero)>=salvageReturnThreshold(hero)){
+      onReason?.("expedition-haul-resupply");return {goal:"resupply",action:"shop"};
     }
   }
   // Do not send a healthy prepared solo explorer home solely because it

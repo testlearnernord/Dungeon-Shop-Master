@@ -6,7 +6,7 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Current Alpha
 
-Current contract: Alpha v44, including physical automatic buyback. The displayed HUD label is still V.002 ALPHA; the campaign schema (v44), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented; manual acceptance is pending. Alpha v44 is the only supported campaign schema. Reject v43 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+Current contract: Alpha v45, including physical automatic buyback. The displayed HUD label is still V.002 ALPHA; the campaign schema (v45), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented; manual acceptance is pending. Alpha v45 is the only supported campaign schema. Reject v44 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 | Area | Implemented |
 | --- | --- |
@@ -76,22 +76,26 @@ The asset generators run before dev/build. Preserve original source GLBs, approv
 - [Contributor contract](AGENTS.md)
 - [Documentation index](docs/README.md): current contracts and explicitly historical evidence
 - [Architecture](docs/ARCHITECTURE.md) · [Game Bible](docs/GAME_BIBLE.md) · [Roadmap](docs/ROADMAP.md)
-- [Alpha v44 acceptance and prior evidence](docs/ALPHA_V44_ACCEPTANCE.md)
+- [Alpha v45 acceptance and prior evidence](docs/ALPHA_V45_ACCEPTANCE.md)
 
 Current source and tests outrank old prose. Historical reports are not implementation instructions. No extra simulation, fake rewards, hunger or old-save migrations.
 
 ### Recovered Goods Chest
 
-The fixed chest reads **SELL LOOT HERE**. E or left-click toggles the actual hinged lid and saved intake state. Customers with affordable Iron Ore, Coal or Ghoul Leather visit the chest before shopping. Gold transfers through the existing buyback authority, and materials go directly into the workshop reserve. Other finds remain owned in V0.1. The former offers menu is a read-only Buyback log. No overdraft or fake income. A new v44 campaign is required.
+The fixed chest reads **SELL LOOT HERE**. E or left-click toggles the actual hinged lid and saved intake state. Customers with affordable Iron Ore, Coal or Ghoul Leather visit the chest before shopping. Gold transfers through the existing buyback authority, and materials go directly into the workshop reserve. Other finds remain owned in V0.1. The former offers menu is a read-only Buyback log. No overdraft or fake income. A new v45 campaign is required.
 
 ### Living Dungeon V0.005 — pacing
 
-Hero and party tiles commit every 2.5 unpaused seconds, monster tiles no faster than every 5 seconds. The world day remains 24 minutes and combat still runs at 60 Hz. This changes real offscreen simulation, not just spectator playback. Fresh v44 campaign required; balance and device acceptance remain open.
+Hero and party tiles commit every 2.5 unpaused seconds, monster tiles no faster than every 5 seconds. The world day remains 24 minutes and combat still runs at 60 Hz. This changes real offscreen simulation, not just spectator playback. Fresh v45 campaign required; balance and device acceptance remain open.
 
 ### Observed threats and room surfaces
 
-Solo heroes and voluntary parties remember the last genuinely observed dangerous pack for up to 50 seconds. They use the existing known-route and frontier searches to avoid the remembered exposure zone, retreat upstairs if safe, or wait when no safe route exists. A capable newly formed party may reconsider. The full LIVE viewer uses the actual baked flagstone texture for room and corridor materials, matching the Table's shared texture source. new v44 campaign required.
+Solo heroes and voluntary parties remember the last genuinely observed dangerous pack for up to 50 seconds. They use the existing known-route and frontier searches to avoid the remembered exposure zone, retreat upstairs if safe, or wait when no safe route exists. A capable newly formed party may reconsider. The full LIVE viewer uses the actual baked flagstone texture for room and corridor materials, matching the Table's shared texture source. new v45 campaign required.
 
 ### Autonomous Floor-10 progression
 
-Heroes choose to challenge the Cave Troll through experience, real equipment, supplies, health, personality and a willing co-located party. The shop no longer issues boss permissions. Actual Floor-9 stair travel and the shared combat motor remain mandatory; weak builds remain testable in Combat Lab. Fresh v44 campaign required.
+Heroes choose to challenge the Cave Troll through experience, real equipment, supplies, health, personality and a willing co-located party. The shop no longer issues boss permissions. Actual Floor-9 stair travel and the shared combat motor remain mandatory; weak builds remain testable in Combat Lab. Fresh v45 campaign required.
+
+### Elective resupply
+
+Prepared veterans deliberately consider an affordable forged upgrade when they earn a real reward or exhaust a route. A saved actual shop exit prevents immediate elective repeat trips. Fully equipped heroes with a real haul may return from exhausted Floor 9 after the boss is cleared. Shelf stock remains unknown remotely; ordinary physical service, prices and recovery are unchanged. Fresh v45 campaign required.

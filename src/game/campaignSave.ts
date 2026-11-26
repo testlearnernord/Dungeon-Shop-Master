@@ -1101,7 +1101,7 @@ function validateState(value: unknown): asserts value is GameState {
     const hero = object(value, path, [
       "id", "name", "role", "stats", "traits", "level", "xp", "health", "gold",
       "equipment", "inventory", "floor", "status", "shopStayDays", "offDutyUntilTick",
-    ],["lastDungeonFloor"]);
+    ],["lastDungeonFloor","lastShopExitTick"]);
     const id = text(hero.id, `${path}.id`);
     const match = /^adventurer-([1-9]\d*)$/.exec(id);
     if (!match || !Number.isSafeInteger(Number(match[1])) || Number(match[1]) >= nextId) {
@@ -1146,6 +1146,8 @@ function validateState(value: unknown): asserts value is GameState {
       fail(`${path}.status`,"Only Floor 10 supports boss expeditions");
     if(hero.lastDungeonFloor!==undefined)
       integer(hero.lastDungeonFloor,path+".lastDungeonFloor",1,9);
+    if(hero.lastShopExitTick!==undefined)
+      integer(hero.lastShopExitTick,path+".lastShopExitTick",0,clockTick);
     choice(hero.status, ["exploring", "traveling", "at-shop",
       "returning", "expedition", "departing", "off-duty", "dead"], `${path}.status`);
     if ((hero.status === "dead") !== (health === 0)) fail(`${path}.status`, "must agree with health");

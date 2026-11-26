@@ -660,7 +660,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
           carriedDungeonFindCount(byId.get(individual.adventurer.id)!),
           detail?(reason)=>{detail.reason=reason;}:undefined,
           plans.get(individual.adventurer.id),!clearedLevel10,
-          byId.get(individual.adventurer.id)!.health));
+          byId.get(individual.adventurer.id)!.health,tick));
       if(detail)decisionDetails!.set(individual.adventurer.id,detail);
     }
     const agreed=readyGroup.length>1
@@ -1027,7 +1027,7 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
         chooseLiveHeroDungeonDecision(h,progress,t.replay,
           undefined,undefined,bossReady,carriedDungeonFindCount(party.find(m=>m.id===h.id)!),
           diagnostic?reason=>{reasons.set(h.id,reason);}:undefined,plans.get(h.id),bossAvailable,
-          party.find(m=>m.id===h.id)!.health);
+          party.find(m=>m.id===h.id)!.health,state.worldClock.tick);
       return [h.id,decision] as const;
     }));
     const agreed=negotiatePartyFloorDecisions(survivors,independent);

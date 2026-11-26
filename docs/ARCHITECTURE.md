@@ -1,9 +1,9 @@
 # Dungeon Shop Master — current technical architecture
 
-> Current contract: Alpha v44, including physical automatic buyback. Current runtime responsibilities, not a PR diary. See [Game Bible](GAME_BIBLE.md) and [Roadmap](ROADMAP.md).
+> Current contract: Alpha v45, including physical automatic buyback. Current runtime responsibilities, not a PR diary. See [Game Bible](GAME_BIBLE.md) and [Roadmap](ROADMAP.md).
 
 
-**Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Alpha v44 is the only supported campaign schema. Reject v43 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+**Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Alpha v45 is the only supported campaign schema. Reject v44 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 ## 1. Execution model and ownership
 
@@ -26,7 +26,7 @@ Browser input / shop interactions
               (read-only presentation)
 ```
 
-- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 44`.
+- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 45`.
 - `worldClock.ts` persists a monotonic tick and ordered future events, with 50-ms ticks, 20 ticks per game minute and 28,800 ticks per game day. Stable lane/sequence ordering is part of determinism. Gameplay events, not Babylon frames, advance customers, timed dungeon steps and combat.
 - `liveDungeonRuntime.ts` schedules one connected spatial movement every **50 world ticks** and commits groups of **30 actual 60-Hz combat steps** every **10 world ticks**. The **Floor-10 2–3-member Temporary Party Cave Troll** uses the same `groupCombat.ts` authority as ordinary fights, with saved 10-Hz pose checkpoints, combat cues and replay validation through `livePartyBossSave.ts`.
 - `gameStore.ts` records actual player and shop actions, physical shop-exit events, accepted credit, paid cart settlement, save operations and bed closure. Day closure does not reroll live expeditions.
@@ -108,7 +108,7 @@ Committed original Tripo GLBs
 
 `npm run build` executes both asset generators, TypeScript type checking and Vite bundling. D1 #242 runs `npm run verify:pages` immediately after build in PR CI **and** the Pages deploy workflow: it checks final `dist/` JS/CSS URL base, canonical music, all 32 creature SFX and generated/curated GLB copies without changing runtime assets. See [D1 artifact contract](CODE_CLEANUP_D1.md). `npm run test:unit` runs Node tests, `npm run test:smoke` runs the curated browser-flow whitelist; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit and **one core browser-smoke job**; the full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
 
-Alpha v44 is the only supported campaign schema. Reject v43 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Current Alpha evidence](ALPHA_V44_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
+Alpha v45 is the only supported campaign schema. Reject v44 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Current Alpha evidence](ALPHA_V45_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 **Dungeon transitions:** dungeonStairways.ts projects the actual layout entrance
 and dungeonDownStair(...) cells as view-only stair landmarks. 3D stone steps
@@ -159,3 +159,5 @@ V defaults to Production rules: `productionLabHero` derives hero power from the 
 `LiveDungeonPlan.threatMemory` is an individual, bounded observation `{monsterId,x,z,seenTick}`, not a hidden monster locator. The existing tactical decision module excludes the remembered exposure zone from the existing known-path and frontier searches, shares observations within co-located parties, and permits a known upper-floor retreat or bounded wait if blocked. It does not advance movement itself. The observer uses the same pure response and does not predict steps while waiting. Room and corridor materials in `dungeonViewer.ts` share the original painted flagstone DynamicTexture; never clone the texture canvas for room tint.
 
 `dungeonDecisions.ts` owns autonomous boss willingness (`isBossExpeditionCandidate`/`isBossExpeditionParty`). `dungeonTopology.ts` only checks legal group size, while `sharedBossCombat.ts` constructs real actors independently of campaign willingness for both production and Lab. `liveDungeonRuntime.ts` owns physical entry and revalidates readiness. No merchant permission mutation or save flag survives. Audit scripts use normal shop commerce only.
+
+`economy.ts` exposes `affordableForgedUpgrade` from the canonical catalog, class/tier upgrade predicate and shop order. `dungeonDecisions.ts` considers elective resupply only on actual rewards or completed routes and after the saved physical exit interval; `shopRotation.ts` owns the sole write of `lastShopExitTick`. The v45 strict validator rejects future exit ticks. The existing physical cart, cashier, buyback, portal and recovery remain authoritative.
