@@ -1,0 +1,11 @@
+#employee-dialog{width:min(560px,92vw);max-height:85vh;padding:22px;color:#ead7b3;background:#151c1d;border:1px solid #78684a;border-radius:10px;box-shadow:0 18px 55px #0008}
+#employee-dialog::backdrop{background:#070a0bc2}
+.employee-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #5d5140;padding-bottom:12px}
+.employee-heading h2,.employee-card h3{margin:3px 0;color:#f2d294}
+.employee-heading small,.employee-intro,.employee-note,.employee-card p{font-size:13px;color:#bcb5a6;line-height:1.5}
+.employee-card{padding:16px;border:1px solid #4f4635;border-radius:8px;background:#1d2424}
+.employee-card .employee-status{color:#d9c08b}
+.employee-priorities{display:grid;gap:8px;margin-top:14px}
+.employee-priorities label{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #494638;padding:9px 0}
+.employee-priorities select,#employee-dialog button{background:#252c2b;color:#ead7b3;border:1px solid #78684a;border-radius:5px;padding:7px 11px}
+.employee-priorities select{min-width:86px}
