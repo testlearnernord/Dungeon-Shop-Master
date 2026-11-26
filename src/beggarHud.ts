@@ -9,7 +9,7 @@ export function setupBeggarHud(
   canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,
   visitors:NpcVisualSystem,isShopActive:()=>boolean,
   onMessage:(message:string)=>void,
-):{openNearest:()=>boolean;close:()=>void} {
+):{openNearest:()=>boolean;close:()=>void;readonly activeHeroId:string|null} {
   const dialog=document.createElement("dialog");
   dialog.id="beggar-dialog";
   dialog.setAttribute("aria-labelledby","beggar-heading");
@@ -110,5 +110,5 @@ export function setupBeggarHud(
     canvas.focus();
   });
   store.subscribe(render);
-  return {openNearest,close};
+  return {openNearest,close,get activeHeroId(){return dialog.open?selectedHeroId:null;}};
 }
