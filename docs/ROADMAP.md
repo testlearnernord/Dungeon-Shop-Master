@@ -39,5 +39,5 @@ One saved world and combat authority, physical transactions, deterministic curre
 - C1: merged (#385); persistent shelf assignments via quickbar and middle-click, physical paper slips, reload coverage passed. Manual visual acceptance open.
 - C2: implemented physical pickup/delivery/return and shared bag reservations (#386); first CI passed, synchronized-base CI and visual acceptance pending.
 - D: implemented on the D branch; physical staff dock and shared front cart, three-second service timer, canonical payment without tips, manual takeover; unit and browser acceptance pending.
-- E: compare the bounded matched Forge credit-demand audit (30 days, seeds 42/7351, decline versus approve eligible stocked quotes), then decide supported action. Never create money or grant credit without the existing authority.
+- E: matched credit-demand audit passed (see Alpha v48 acceptance); owner approved opt-in physical credit work. Employee credit service is implemented in the candidate; validate CI and actual pedestrian behavior before acceptance.
 - F: real browser playtest, combined commerce and balance; no extra employee types until foundation works.
