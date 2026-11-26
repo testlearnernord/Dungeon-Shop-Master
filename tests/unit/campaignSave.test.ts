@@ -123,7 +123,7 @@ const badPayloads: [string, (state: any) => void, RegExp][] = [
   ["slot overflow", (s) => { s.shopEconomy.slots[1].quantity = 6; }, /quantity/],
   ["unknown shelf item", (s) => { s.shopEconomy.slots[1].itemId = "sword"; }, /itemId/],
   ["empty item with stock", (s) => { s.shopEconomy.slots[1].itemId = null; }, /stocked/],
-  ["item without stock", (s) => { s.shopEconomy.slots[1].quantity = 0; }, /stocked/],
+  ["raw material assignment", (s) => { s.shopEconomy.slots[1].quantity = 0;s.shopEconomy.slots[1].itemId = "coal"; }, /itemId/],
   ["stale daily sales", (s) => { s.shopEconomy.dailySales.day = 2; }, /dailySales.day/],
   ["negative sales", (s) => { s.shopEconomy.dailySales.revenue = -1; }, /revenue/],
   ["duplicate floors", (s) => { s.dungeonFloors = [{ floor: 1, cleared: false }, { floor: 1, cleared: true }]; }, /unique/],
