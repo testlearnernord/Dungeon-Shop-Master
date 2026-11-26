@@ -161,7 +161,7 @@ export function discardBag(state: GameState, itemId: ItemId): { state: GameState
   if (!item) return { state, message: "Choose a valid item." };
   if(isMaterial(itemId))return {state,message:"Raw materials are held in the workshop reserve, not the shop bag."};
   const economy = state.shopEconomy;
-  if (availableBagUnits(state,itemId)<1) return {state,message:"No unreserved units of that item are available."};
+  if (availableBagUnits(state,itemId)<1) return {state,message:economy.bag[itemId]===0?"You're out of the selected item.":"That stock is reserved by an employee."};
   return {
     state: {
       ...state,
@@ -208,7 +208,7 @@ export function transferShelf(
     return { state, message: "Choose a valid item, slot and transfer direction." };
   }
   if (direction === "stock") {
-    if (availableBagUnits(state,itemId)<1) return {state,message:"No unreserved units of that item are available."};
+    if (availableBagUnits(state,itemId)<1) return {state,message:economy.bag[itemId]===0?"You're out of the selected item.":"That stock is reserved by an employee."};
     if ((slot.itemId !== null && slot.itemId !== itemId) || slot.quantity >= slot.capacity) {
       return { state, message: "That slot is full or holds a different item." };
     }

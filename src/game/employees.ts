@@ -168,6 +168,10 @@ export function advanceEmployees(state:GameState):GameState{
   for(const id of state.employees.map(e=>e.id)){
     let e=next.employees.find(worker=>worker.id===id)!;
     if(e.lastStepTick>=tick)continue;
+    // Bedtime or a suspended physical scene cannot finish a work timer remotely.
+    if(e.restock&&e.restock.readySince!==null&&e.lastStepTick+1!==tick){
+      e={...e,restock:{...e.restock,readySince:null}};next=setEmployee(next,e);
+    }
     if(e.restock&&(e.priorities.restocking===0||!shelfTarget(next,e.restock))){
       if(e.restock.stage==="collect")e=clearWork(e,tick);
       else if(e.restock.stage==="deliver")e=nextStage(e,"return",tick);

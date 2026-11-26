@@ -1,21 +1,22 @@
 import type {UniversalCamera} from "@babylonjs/core/Cameras/universalCamera";
 import type {GameStore} from "./game/gameStore.ts";
-import {EMPLOYEE_DEFINITIONS,EMPLOYEE_TASKS,type EmployeeTask} from "./game/employees.ts";
+import {EMPLOYEE_DEFINITIONS,EMPLOYEE_TASKS,type EmployeeTask,type EmployeeState} from "./game/employees.ts";
 const names:Record<EmployeeTask,string>={cashier:"Cashier",restocking:"Restocking",charity:"Charity"};
 export function setupEmployeeHud(canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,shopActive:()=>boolean){
   const dialog=document.querySelector<HTMLDialogElement>("#employee-dialog")!;
   const list=document.querySelector<HTMLElement>("#employee-list")!;
+  const describe=(e:EmployeeState)=>e.restock?
+    (e.restock.stage==="collect"?"Collecting stock":e.restock.stage==="return"?"Returning unused stock":"Delivering "+e.restock.units+" units")+
+      (e.status==="blocked"?" · route blocked":""):
+    e.status==="blocked"?"Waiting for a clear route":e.status==="walking"?"Walking to cellar":"Idle";
   const render=()=>{
     list.replaceChildren(...store.state.employees.map(e=>{
       const def=EMPLOYEE_DEFINITIONS.find(d=>d.id===e.id)!;
       const card=document.createElement("section");card.className="employee-card";
       const title=document.createElement("h3");title.textContent=def.name;
       const traits=document.createElement("p");traits.textContent="Undead shop assistant · Reliable · No tips";
-      const status=document.createElement("p");status.className="employee-status";
-      status.textContent=e.restock?(e.restock.stage==="collect"?"Collecting stock":e.restock.stage==="return"?"Returning unused stock":"Delivering "+e.restock.units+" units")+(e.status==="blocked"?" · route blocked":""):
-        e.status==="ready"?"At work point":
-        e.status==="blocked"?"Waiting for a clear route":
-        e.status==="walking"?"Walking to "+(e.job?names[e.job.task]:"cellar"):"Idle in cellar";
+      const status=document.createElement("p");status.className="employee-status";status.dataset.employeeId=e.id;
+      status.textContent=describe(e);
       const tasks=document.createElement("div");tasks.className="employee-priorities";
       for(const task of EMPLOYEE_TASKS.filter(t=>def.skills.includes(t))){
         const label=document.createElement("label");label.textContent=names[task]+(task==="restocking"?"":" (planned)");
@@ -29,6 +30,14 @@ export function setupEmployeeHud(canvas:HTMLCanvasElement,camera:UniversalCamera
       card.append(title,traits,status,tasks);return card;
     }));
   };
+  store.subscribe(()=>{
+    if(!dialog.open)return;
+    for(const e of store.state.employees){
+      const status=list.querySelector<HTMLElement>('[data-employee-id="'+e.id+'"]');
+      const value=describe(e);
+      if(status&&status.textContent!==value)status.textContent=value;
+    }
+  });
   const close=()=>{if(dialog.open)dialog.close();};
   const open=()=>{
     if(!shopActive()||dialog.open||document.querySelector("dialog[open]")||

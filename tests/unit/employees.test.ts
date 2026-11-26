@@ -6,9 +6,10 @@ import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {advanceEmployees,chooseEmployeeJob,employeeOpportunities,EMPLOYEE_DEFINITIONS,
   EMPLOYEE_WORK_SPEED,type EmployeeJob} from "../../src/game/employees.ts";
-import {employeeFloorY,employeeRoute,employeeSegmentClear,EMPLOYEE_HOME} from "../../src/game/employeeNavigation.ts";
+import {employeeFloorY,employeeRoute,employeeSegmentClear,employeeStoragePoint,EMPLOYEE_HOME} from "../../src/game/employeeNavigation.ts";
 import {counterDockPoint} from "../../src/game/shopLayout.ts";
 import {CELLAR_FLOOR_Y} from "../../src/game/cellarRoom.ts";
+import {availableBagUnits,discardBag,transferShelf} from "../../src/game/economy.ts";
 
 test("Tettel begins peacefully in the cellar, with no autonomous transactions enabled",()=>{
   const state=createGameState(7351);
@@ -58,44 +59,87 @@ test("the existing connected route crosses the physical ramp only when the portr
   assert(employeeFloorY(-16.1)<0&&employeeFloorY(-16.1)>CELLAR_FLOOR_Y);
   assert.equal(employeeFloorY(-6.5),0);
 });
-test("physical employee ticks move to a genuine shelf opportunity and return without changing any goods or gold",()=>{
+const step=(s:GameState):GameState=>{
+  const tick=s.worldClock.tick+1;
+  return advanceEmployees({...s,worldClock:{...s.worldClock,tick},
+    shopTraffic:{...s.shopTraffic,tick}});
+};
+test("Tettel reserves real stock, physically collects at the chest and delivers through the canonical shelf transfer",()=>{
   const initial=createStockedShopState(7351);
   const store=new GameStore({...initial,cellarDoorOpen:true});
   store.setEmployeePriority("tettel","restocking",1);
   let state=store.state;
   const opportunity=employeeOpportunities(state).find(j=>j.task==="restocking");
   assert(opportunity);
-  const tick=(s:GameState):GameState=>{
-    const next=s.worldClock.tick+1;
-    return advanceEmployees({...s,worldClock:{...s.worldClock,tick:next},
-      shopTraffic:{...s.shopTraffic,tick:next}});
-  };
-  let prior=state.employees[0],sawRamp=false;
-  for(let i=0;i<900&&state.employees[0].status!=="ready";i++){
-    state=tick(state);
+  const slot=state.shopEconomy.slots.find(s=>s.id===opportunity.targetId)!;
+  assert(slot.itemId);
+  const itemId=slot.itemId;
+  const expected=Math.min(slot.capacity-slot.quantity,initial.shopEconomy.bag[itemId]);
+  let prior=state.employees[0],sawRamp=false,sawPickup=false;
+  for(let i=0;i<1800&&state.shopEconomy.bag[itemId]===initial.shopEconomy.bag[itemId];i++){
+    state=step(state);
     const next=state.employees[0];
     assert(Math.hypot(next.x-prior.x,next.z-prior.z)<=EMPLOYEE_WORK_SPEED*.05+1e-8);
     assert(employeeSegmentClear(state,prior,next));
     sawRamp||=next.z>-20.1&&next.z<-12.1;
-    prior=next;
-    if(i===100){
+    if(!sawPickup&&next.restock?.stage==="deliver"){
+      const dock=employeeStoragePoint(state)!;
+      assert(Math.hypot(next.x-dock.x,next.z-dock.z)<.08);
+      sawPickup=true;
+      assert.equal(state.shopEconomy.bag[itemId],initial.shopEconomy.bag[itemId]);
+      assert.equal(availableBagUnits(state,itemId),initial.shopEconomy.bag[itemId]-expected);
       const saved=parseSave(JSON.stringify(createSave(state)));
-      assert.deepEqual(tick(saved),tick(state),"reload must preserve the committed route");
+      assert.deepEqual(step(saved),step(state),"reload preserves cargo and route");
     }
+    prior=next;
   }
-  assert(sawRamp);
-  assert.equal(state.employees[0].status,"ready");
-  assert.equal(state.employees[0].job?.task,"restocking");
-  assert.deepEqual(state.shopEconomy,initial.shopEconomy);
+  assert(sawPickup);assert(sawRamp);
+  assert.equal(state.shopEconomy.bag[itemId],initial.shopEconomy.bag[itemId]-expected);
+  assert.equal(state.shopEconomy.slots.find(s=>s.id===slot.id)?.quantity,slot.quantity+expected);
+  assert.equal(state.employees[0].restock,null);
+  assert.equal(state.shopEconomy.balance,initial.shopEconomy.balance);
   assert.deepEqual(state.adventurers,initial.adventurers);
   assert.deepEqual(state.events,initial.events);
   const configured=new GameStore(state);
   configured.setEmployeePriority("tettel","restocking",0);
   state=configured.state;
-  for(let i=0;i<900&&state.employees[0].status!=="idle";i++)state=tick(state);
-  assert.equal(state.employees[0].status,"idle");
+  for(let i=0;i<1500&&Math.hypot(state.employees[0].x-EMPLOYEE_HOME.x,state.employees[0].z-EMPLOYEE_HOME.z)>=.08;i++)
+    state=step(state);
   assert.equal(state.employees[0].job,null);
   assert(Math.hypot(state.employees[0].x-EMPLOYEE_HOME.x,state.employees[0].z-EMPLOYEE_HOME.z)<.08);
+});
+test("manual takeover releases an uncollected claim; carried goods cannot be consumed twice",()=>{
+  const initial=createStockedShopState(7351);
+  const store=new GameStore({...initial,cellarDoorOpen:true});
+  const slot=store.state.shopEconomy.slots.find(s=>s.itemId===null)!;
+  store.assignShelfItem(slot.id,"bread");
+  store.setEmployeePriority("tettel","restocking",1);
+  const claimed=step(store.state);
+  const claim=claimed.employees[0].restock!;
+  assert.equal(claim.slotId,slot.id);assert.equal(claim.stage,"collect");
+  assert.equal(availableBagUnits(claimed,"bread"),0);
+  assert.strictEqual(discardBag(claimed,"bread").state,claimed);
+  assert.strictEqual(transferShelf(claimed,slot.id,"bread","stock").state,claimed);
+  const bad=structuredClone(createSave(claimed)) as any;
+  bad.payload.employees[0].restock.units=5;
+  assert.throws(()=>parseSave(JSON.stringify(bad)),/reserved cargo/);
+  const manual=new GameStore(claimed);
+  assert.match(manual.transfer(slot.id,"bread","stock",2),/^Placed/);
+  assert.equal(manual.state.employees[0].restock,null);
+  assert.equal(manual.state.shopEconomy.bag.bread,0);
+  let carried=claimed;
+  for(let i=0;i<500&&carried.employees[0].restock?.stage!=="deliver";i++)carried=step(carried);
+  assert.equal(carried.employees[0].restock?.stage,"deliver");
+  assert.strictEqual(discardBag(carried,"bread").state,carried);
+  const cancelled=new GameStore(carried);
+  cancelled.assignShelfItem(slot.id,null);
+  cancelled.setEmployeePriority("tettel","restocking",0);
+  let returned=cancelled.state;
+  for(let i=0;i<1500&&returned.employees[0].restock;i++)returned=step(returned);
+  assert.equal(returned.employees[0].restock,null);
+  assert.equal(availableBagUnits(returned,"bread"),initial.shopEconomy.bag.bread);
+  assert.equal(returned.shopEconomy.slots.find(s=>s.id===slot.id)?.itemId,null);
+  assert.equal(returned.shopEconomy.slots.find(s=>s.id===slot.id)?.quantity,0);
 });
 
 test("assigned empty shelves offer real restocking work only when matching stock exists",()=>{
