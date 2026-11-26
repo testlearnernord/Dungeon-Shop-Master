@@ -16,11 +16,11 @@ Tettel is a prototype name. He is nearly identical to the current dungeon Ghoul,
 
 C: persistent owner-controlled shelf assignments, physical storage pickup and shared stock reservation; D: real cashier authority without tips and manual takeover; E: evaluate real charity demand and policy; F: combined physical workflow and performance. Exact work speeds, hiring, running costs and charity policy are tuning/design choices, not established lore.
 
-### Owner-approved shelf assignment contract (planned for C)
+### Owner-approved shelf assignment contract (C1 implementation)
 
 Galvik can assign a specific sellable item to each individual shelf slot independently of its current quantity. This is a general shop-management feature, usable without an employee. The assignment persists until Galvik explicitly clears or changes it, including when the last unit is sold or removed, when stock is unavailable, across save/reload and when the same shelf is moved. Employees may restock assigned slots but must never choose, clear or change their assignments.
 
-Proposed implementation safeguards: retain the canonical stock and cart authority; an assignment is not stock and cannot itself satisfy shopping demand. Reject incompatible assignments or clearing while physical or cart-reserved goods remain, rather than deleting or converting goods. An empty assigned slot is a valid restocking target only when the matching stock is available and the physical task can proceed. Preserve existing cart-return capacity checks. Exact UI gestures and reservation implementation remain open until C.
+Proposed implementation safeguards: retain the canonical stock and cart authority; an assignment is not stock and cannot itself satisfy shopping demand. Reject incompatible assignments or clearing while physical or cart-reserved goods remain, rather than deleting or converting goods. An empty assigned slot is a valid restocking target only when the matching stock is available and the physical task can proceed. Preserve existing cart-return capacity checks. C1 uses the existing slot `itemId` as the persistent assignment and `quantity` as physical stock. E on a reachable slot opens a catalog assignment editor, including products not owned; initial manual stocking of an unassigned slot also assigns it. Left/right-click retain stock/remove semantics. Assignment and manual transfer are available without employee work. C2 shared worker reservations and actual stock transfer remain planned. CI and browser acceptance for C1 are pending.
 
 ## Verification
 
