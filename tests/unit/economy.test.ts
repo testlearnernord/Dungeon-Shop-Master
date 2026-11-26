@@ -2,7 +2,7 @@ import {createStockedShopState as createGameState} from "./shopFixtures.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { useHealingSupplies, generateAdventurer, type AdventurerState } from "../../src/game/adventurers.ts";
-import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, SHELF_GOODS, transferShelf, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
+import { buyWholesale, createEconomy, discardBag, ECONOMY, ITEMS, SHELF_GOODS, transferShelf, assignShelfItem, tradeAtStartOfDay, type ItemId } from "../../src/game/economy.ts";
 import { advanceDay, type GameState } from "../../src/game/gameState.ts";
 import {payWantedItems} from "./physicalCheckoutFixture.ts";
 
@@ -91,7 +91,7 @@ test("wholesale rejects invalid quantities, item IDs, insufficient funds and ove
   assert.equal(buyWholesale(almostFull, "bread", 1).state.shopEconomy.bag.bread, 16);
 });
 
-test("shelf stock/remove conserves each item and gold, and clears the last unit", () => {
+test("shelf stock/remove conserves each item and gold, and retains assignment after the last unit", () => {
   const state = freeze(createGameState());
   const slotId = state.shopEconomy.slots[0].id;
   const placed = transferShelf(state, slotId, "healing-herb", "stock").state;
@@ -100,7 +100,8 @@ test("shelf stock/remove conserves each item and gold, and clears the last unit"
   assert.equal(placed.shopEconomy.slots[0].itemId, "healing-herb");
   assert.equal(placed.shopEconomy.balance, state.shopEconomy.balance);
   const removed = transferShelf(freeze(placed), slotId, "healing-herb", "remove").state;
-  assert.deepEqual(removed, state);
+  assert.equal(removed.shopEconomy.slots[0].itemId,"healing-herb");
+  assert.deepEqual(assignShelfItem(removed,slotId,null).state,state);
   assert.deepEqual(transferShelf(state, slotId, "healing-herb", "stock").state, placed);
 });
 
@@ -158,7 +159,7 @@ test("stable competing buyers exchange shelf units and gold exactly once, never 
   assert.equal(trade.economy.balance - state.shopEconomy.balance, 12);
   assert.deepEqual(trade.economy.dailySales, { day: 2, units: 3, revenue: 12 });
   assert.equal(trade.economy.slots[0].quantity, 0);
-  assert.equal(trade.economy.slots[0].itemId, null);
+  assert.equal(trade.economy.slots[0].itemId, "bread");
   assert.deepEqual(trade.economy.bag, state.shopEconomy.bag);
   assert.equal(trade.events.filter((event) => event.type === "sale").length, 2);
   assert.deepEqual(tradeAtStartOfDay(state, 2), trade);
@@ -337,8 +338,8 @@ test("Shift-clear preserves reserved carts, bag limit and last-slot identity",()
   const stocked=transferShelf(state,slotId,"healing-herb","stock",5).state;
   const removed=transferShelf(stocked,slotId,"healing-herb","remove",5);
   assert.equal(removed.state.shopEconomy.slots[0].quantity,0);
-  assert.equal(removed.state.shopEconomy.slots[0].itemId,null);
-  assert.deepEqual(removed.state,state);
+  assert.equal(removed.state.shopEconomy.slots[0].itemId,"healing-herb");
+  assert.deepEqual(assignShelfItem(removed.state,slotId,null).state,state);
   const fullBag={...stocked,shopEconomy:{...stocked.shopEconomy,
     bag:{...stocked.shopEconomy.bag,"iron-sword":19}}};
   assert.equal(transferShelf(fullBag,slotId,"healing-herb","remove",5).state,fullBag);
