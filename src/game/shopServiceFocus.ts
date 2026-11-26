@@ -50,7 +50,8 @@ export function describeShelfFocus(
   if(heldByCustomer)
     return {title,instruction:"Reserved stock · wait for checkout before changing this slot",
       tone:"blocked"};
-  const assignmentHint=slot.quantity===0?(selected===slot.itemId&&item||!selected&&item?" · Middle-click: clear assignment":selectedItem?" · Middle-click: assign "+selectedItem.name:""):"";
+  const assignmentHint=slot.quantity!==0?"":item&&(!selected||selected===item.id)
+    ?" · Middle-click: clear assignment":selectedItem?" · Middle-click: assign "+selectedItem.name:"";
   if(slot.quantity===0&&item&&item.id!==selected){
     return {title,instruction:"Assigned · Select matching stock to refill"+assignmentHint,tone:"warning"};
   }
