@@ -1,4 +1,4 @@
-# Employee Management V0.001 A–D — Tettel
+# Employee Management V0.001 A–E — Tettel
 
 ## Owner vision
 
@@ -10,7 +10,7 @@ Tettel is a prototype name. He is nearly identical to the current dungeon Ghoul,
 - Saved modular definitions, supported tasks, priorities Off/1–9. A/B defaults all Off to avoid unrequested interference. Lower number wins; equal priority favors the older continuously available task type, then stable task/target ordering. Keep equivalent current target when valid.
 - Real work opportunities: physically waiting head of checkout queue, configured shelf (including empty assigned slots) with spare capacity and owned stock, actual active credit request with service claim. No phantom tasks for unavailable stock.
 - Physical fixed-step movement at 1.47 m/s (70% of nominal customer walking speed), same world clock and existing connected route search, private-room geometry and real ramp height. Open portrait to permit travel; blocked routes wait and retry. Idle returns to available cellar home. No teleport through closed doors.
-- Employee UI J or Employees button, persisted priorities and checkpoint. A/B alone had no work effects. C2 and D now implement stock reservations, physical service and manual takeover as described below.
+- Employee UI J or Employees button, persisted priorities and checkpoint. A/B alone had no work effects. C2, D and E now implement stock reservations, physical service and manual takeover as described below.
 
 ## Next phases
 
@@ -27,7 +27,7 @@ Proposed implementation safeguards: retain the canonical stock and cart authorit
 - The existing bag remains the single owned merchandise pool; the cellar chest is a physical employee collection/return dock, not a second inventory.
 - Claim only real matching available units up to one shelf's remaining capacity. The saved reservation is a subset of bag stock. Manual transfer, discard and bag-funded credit cannot consume reserved units. Manual stocking of the target may cancel an uncollected claim.
 - Physical collection, delivery and return use the existing employee route and clock. Collection/return take 20 ticks; placement takes 20 ticks per reserved unit. Cargo is visible only after collection. A stale assignment, full shelf, new unpaid customer cart or disabled priority cancels uncollected work or triggers a physical return. No remote work on missed ticks.
-- All transfers use the canonical shelf mutation; no gold or customer equipment changes. Cashier may preempt uncollected restocking if it has strictly higher priority. Carried goods finish delivery or return before changing tasks. Charity remains planned.
+- All transfers use the canonical shelf mutation; no gold or customer equipment changes. Cashier or charity may preempt uncollected restocking if it has strictly higher priority. Carried goods finish delivery or return before changing tasks. Charity uses the existing credit authority.
 
 ## D physical cashier
 
@@ -42,4 +42,10 @@ New strict v48 campaign, no migration from v47. Unit regressions cover reservati
 
 ## E credit demand investigation
 
-The existing begging mechanic is a full-price debt, not a gift. Earlier scripted campaigns declined unaffordable needs immediately, so zero granted credits cannot establish zero demand. The bounded audit compares the same 30-day Forge setup at seeds 42 and 7351 with `forge` (decline) and `forge-credit` (approve eligible stocked requests via `issueShopCredit`). Record natural quotes, availability and requested SKU, granted units and sticker debt, resolved visits, gold, survival and progression. Forged merchandise conservation includes credited units. These idealized immediate decisions measure possible demand and economic exposure, not pedestrian waiting, Tettel's throughput or actual human choices. Keep charity execution disabled until evidence and policy are assessed; no new runtime economy or save format.
+The existing begging mechanic is a full-price debt, not a gift. Earlier scripted campaigns declined unaffordable needs immediately, so zero granted credits cannot establish zero demand. The bounded audit compares the same 30-day Forge setup at seeds 42 and 7351 with `forge` (decline) and `forge-credit` (approve eligible stocked requests via `issueShopCredit`). Record natural quotes, availability and requested SKU, granted units and sticker debt, resolved visits, gold, survival and progression. Forged merchandise conservation includes credited units. These idealized immediate decisions measure possible demand and economic exposure, not pedestrian waiting, Tettel's throughput or actual human choices. All four diagnostic runs passed: 23 requests (22 bread, one healing herb), all stocked, nine approved in the credit treatments. Owner approved keeping the system and enabling opt-in employee credit. Defaults remain Off. No new runtime economy or save format.
+
+## E physical credit service
+
+- A saved, unexpired `cannot-afford` petition must have a living at-shop hero, stationary physical actor, matching requested item and matching credit/overflow/roam claim. Tettel targets an unoccupied reachable point adjacent to that claim, not the hero's own position.
+- Revalidate the actual quote, inventory and physical position at arrival. Commit one item via `issueShopCredit`, attribute the receipt to Tettel and remove the resolved request through the existing scheduler. No new revenue, gift policy or inventory. Manual conversation excludes that hero; expiration, departure, changed claim and disabled priority cancel service.
+- Strictly higher charity priority may interrupt uncollected restocking, but carried stock must finish or return. Existing saved route is sufficient; the initial handover is instantaneous at the adjacent dock, like manual credit. No separate cargo pickup animation or timer for credit; physical appearance and throughput remain F acceptance.
