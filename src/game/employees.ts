@@ -61,7 +61,8 @@ export function employeeOpportunities(state:GameState):EmployeeJob[]{
     a.phase==="queueing"&&a.shoppingPhase==="awaiting-checkout"&&a.checkoutQueueIndex===0);
   if(waiting)jobs.push({task:"cashier",targetId:waiting.heroId,point:counterDockPoint(state.shopLayout,"staff")});
   for(const slot of state.shopEconomy.slots){
-    if(!slot.itemId||slot.quantity>=slot.capacity||state.shopEconomy.bag[slot.itemId]<=0)continue;
+    if(!slot.itemId||slot.quantity>=slot.capacity||state.shopEconomy.bag[slot.itemId]<=0||
+      state.shopCarts.some(cart=>cart.lines.some(line=>line.slotId===slot.id)))continue;
     const shelf=state.shopLayout.shelves.find(s=>s.id===slot.shelfId);
     if(shelf)jobs.push({task:"restocking",targetId:slot.id,point:shelfServicePoint(shelf,slot.index)});
   }
