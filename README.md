@@ -37,7 +37,7 @@ Build shelves with N, buy wholesale stock with B, organize your bag/quickbar wit
 | 1–6 / mouse wheel | Select a custom quickbar slot |
 | Tab | Open inventory; drag owned stock onto the six quickbar slots |
 | Left / right click on shelf | Add / remove one item; the product assignment persists at zero stock |
-| E on a shelf slot | Assign or clear a product without moving goods |
+| Middle-click on shelf | Assign selected quickbar product; click again with the same product (or an empty selection) to clear an empty, unreserved slot |
 | Shift + left / right click | Fill / empty reachable slot, respecting stock rules |
 | B / F | Open wholesale / select urgent restock item |
 | E / hold E at bed | Interact / end the day |
