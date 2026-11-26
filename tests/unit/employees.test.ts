@@ -97,3 +97,15 @@ test("physical employee ticks move to a genuine shelf opportunity and return wit
   assert.equal(state.employees[0].job,null);
   assert(Math.hypot(state.employees[0].x-EMPLOYEE_HOME.x,state.employees[0].z-EMPLOYEE_HOME.z)<.08);
 });
+
+test("assigned empty shelves offer real restocking work only when matching stock exists",()=>{
+  const store=new GameStore(createStockedShopState(7351));
+  const slot=store.state.shopEconomy.slots.find(s=>s.itemId===null)!;
+  assert(!employeeOpportunities(store.state).some(j=>j.targetId===slot.id));
+  store.assignShelfItem(slot.id,"forged-spear");
+  assert(!employeeOpportunities(store.state).some(j=>j.targetId===slot.id));
+  store.assignShelfItem(slot.id,"bread");
+  assert(employeeOpportunities(store.state).some(j=>j.task==="restocking"&&j.targetId===slot.id));
+  store.assignShelfItem(slot.id,null);
+  assert(!employeeOpportunities(store.state).some(j=>j.targetId===slot.id));
+});
