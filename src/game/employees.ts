@@ -1,13 +1,15 @@
 import type {GameState} from "./gameState.ts";
 import {counterDockPoint} from "./shopLayout.ts";
 import {shelfServicePoint} from "./furnitureRegistry.ts";
-import {employeeHome,employeeRoute,employeeSegmentClear,employeeStoragePoint,EMPLOYEE_HOME} from "./employeeNavigation.ts";
+import {employeeHome,employeeRoute,employeeSegmentClear,employeeStoragePoint,employeeWalkable,EMPLOYEE_HOME} from "./employeeNavigation.ts";
 import {WORLD_TICK_SECONDS} from "./worldClock.ts";
 import {turnNpcToward} from "./npcLocomotion.ts";
 import type {ShopPoint} from "./shopperNavigation.ts";
 import {ECONOMY,availableBagUnits,isShelfGood,transferShelf,type ItemId} from "./economy.ts";
 import {payReservedShopCart} from "./shopCarts.ts";
 import {frontCheckoutPoint} from "./checkoutQueue.ts";
+import {issueShopCredit,quoteBeggingRequest} from "./shopCredit.ts";
+import {clearResolvedShopRequests} from "./shopRuntime.ts";
 
 export const EMPLOYEE_TASKS=["cashier","restocking","charity"] as const;
 export type EmployeeTask=typeof EMPLOYEE_TASKS[number];
@@ -80,8 +82,33 @@ export function employeeCashierOpportunity(state:GameState):EmployeeJob|null{
     Math.hypot(actor.x-point.x,actor.z-point.z)>.3)return null;
   return {task:"cashier",targetId:hero.id,point:counterDockPoint(state.shopLayout,"staff")};
 }
+/** Meet a real stationary petitioner at an adjacent, unoccupied point.
+ * A credit claim is the customer's destination, never the worker's dock.
+ * Roaming/overflow petitioners can be served only after reaching their claim. */
+export function employeeCharityOpportunity(state:GameState,heroId:string,manualCreditHeroId:string|null=null,checkStock=true):EmployeeJob|null{
+  if(heroId===manualCreditHeroId)return null;
+  const request=state.shopRequests.find(r=>r.heroId===heroId&&r.reason==="cannot-afford"&&r.dueTick>state.worldClock.tick);
+  if(!request)return null;
+  const hero=state.adventurers.find(h=>h.id===heroId&&h.status==="at-shop"&&h.health>0);
+  const actor=state.shopTraffic.actors.find(a=>a.heroId===heroId&&a.phase==="queueing"&&
+    ["waiting-for-credit","waiting-for-credit-overflow","roaming-request"].includes(a.shoppingPhase)&&
+    a.requestActive&&a.wishItem===request.itemId);
+  const claim=state.shopTraffic.claims.find(c=>c.heroId===heroId&&["credit","overflow","roam"].includes(c.role));
+  if(!hero||!actor||!claim||distance(actor,claim.point)>.3)return null;
+  if(checkStock){
+    const quote=quoteBeggingRequest(state,heroId);
+    if(!quote?.available||quote.itemId!==request.itemId)return null;
+  }
+  const offsets=[[.95,0],[-.95,0],[0,.95],[0,-.95],[.7,.7],[-.7,.7],[.7,-.7],[-.7,-.7]];
+  const points=offsets.map(([x,z])=>({x:claim.point.x+x,z:claim.point.z+z}));
+  const point=points.find(p=>employeeWalkable(state,p)&&employeeSegmentClear(state,p,claim.point)&&
+    distance(p,actor)>=.65&&distance(p,actor)<=1.3&&
+    state.shopTraffic.actors.every(a=>a.heroId===heroId||distance(p,a)>=.75)&&
+    state.shopTraffic.claims.every(c=>c.heroId===heroId||distance(p,c.point)>=.75));
+  return point?{task:"charity",targetId:heroId,point}:null;
+}
 /** Real currently observed opportunities, never simulated customer demand. */
-export function employeeOpportunities(state:GameState):EmployeeJob[]{
+export function employeeOpportunities(state:GameState,manualCreditHeroId:string|null=null):EmployeeJob[]{
   const jobs:EmployeeJob[]=[];
   const waiting=employeeCashierOpportunity(state);
   if(waiting)jobs.push(waiting);
@@ -93,9 +120,8 @@ export function employeeOpportunities(state:GameState):EmployeeJob[]{
     if(shelf)jobs.push({task:"restocking",targetId:slot.id,point:shelfServicePoint(shelf,slot.index)});
   }
   for(const request of state.shopRequests){
-    if(request.reason!=="cannot-afford")continue;
-    const claim=state.shopTraffic.claims.find(c=>c.heroId===request.heroId&&c.role==="credit");
-    if(claim)jobs.push({task:"charity",targetId:request.heroId,point:claim.point});
+    const job=employeeCharityOpportunity(state,request.heroId,manualCreditHeroId);
+    if(job)jobs.push(job);
   }
   return jobs;
 }
@@ -176,7 +202,7 @@ const nextStage=(e:EmployeeState,stage:EmployeeRestock["stage"],tick:number):Emp
  * Galvik may refill/reassign a shelf while Tettel is walking. Work is
  * revalidated before collection and delivery; undelivered cargo is returned
  * to the physical chest without minting or destroying a single unit. */
-export function advanceEmployees(state:GameState,manualCashierActive=false):GameState{
+export function advanceEmployees(state:GameState,manualCashierActive=false,manualCreditHeroId:string|null=null):GameState{
   if(state.employees.every(e=>!e.restock&&!e.job&&!e.route.length&&e.status==="idle"&&
     EMPLOYEE_TASKS.every(t=>e.priorities[t]===0)&&distance(e,employeeHome(state)??e)<.08))
     return state;
@@ -191,7 +217,15 @@ export function advanceEmployees(state:GameState,manualCashierActive=false):Game
     if(e.job?.task==="cashier"&&(!e.priorities.cashier||!sameJob(e.job,cashier)||e.lastStepTick+1!==tick)){
       e=clearWork(e,tick);next=setEmployee(next,e);
     }
-    if(e.restock?.stage==="collect"&&cashier&&e.priorities.cashier>0&&e.priorities.cashier<e.priorities.restocking){
+    if(e.job?.task==="charity"&&(!e.priorities.charity||
+       !sameJob(e.job,employeeCharityOpportunity(next,e.job.targetId,manualCreditHeroId,false)))){
+      e=clearWork(e,tick);next=setEmployee(next,e);
+    }
+    const higherCredit=e.restock?.stage==="collect"&&tick>=e.nextPlanTick&&
+      e.priorities.charity>0&&e.priorities.charity<e.priorities.restocking&&
+      next.shopRequests.some(r=>employeeCharityOpportunity(next,r.heroId,manualCreditHeroId)!==null);
+    if(e.restock?.stage==="collect"&&(
+      (cashier&&e.priorities.cashier>0&&e.priorities.cashier<e.priorities.restocking)||higherCredit)){
       e=clearWork(e,tick);next=setEmployee(next,e);
     }
     // Bedtime or a suspended physical scene cannot finish a work timer remotely.
@@ -203,10 +237,8 @@ export function advanceEmployees(state:GameState,manualCashierActive=false):Game
       else if(e.restock.stage==="deliver")e=nextStage(e,"return",tick);
       next=setEmployee(next,e);
     }
-    // Unimplemented charity is configurable but cannot starve real work.
     const jobs=tick>=e.nextPlanTick&&!e.restock
-      ?employeeOpportunities(next).filter(j=>j.task==="restocking"||
-        j.task==="cashier"&&!manualCashierActive):[];
+      ?employeeOpportunities(next,manualCreditHeroId).filter(j=>j.task!=="cashier"||!manualCashierActive):[];
     if(!e.restock&&tick>=e.nextPlanTick){
       const chosen=chooseEmployeeJob(e,jobs,tick);
       const slot=next.shopEconomy.slots.find(s=>s.id===chosen.job?.targetId);
@@ -240,6 +272,14 @@ export function advanceEmployees(state:GameState,manualCashierActive=false):Game
     next=setEmployee(next,moved);
     const r=moved.restock;
     if(!r){
+      if(moved.job?.task==="charity"&&moved.priorities.charity>0&&moved.status==="ready"){
+        const job=employeeCharityOpportunity(next,moved.job.targetId,manualCreditHeroId);
+        if(job&&sameJob(job,moved.job)&&distance(moved,job.point)<.08){
+          const released=setEmployee(next,clearWork(moved,tick));
+          const def=EMPLOYEE_DEFINITIONS.find(d=>d.id===moved.id)!;
+          next=clearResolvedShopRequests(issueShopCredit(released,job.targetId,def.name).state);
+        }
+      }
       // A cashier job owns a saved, uninterrupted timer at the actual staff
       // dock. Galvik's open register session always takes precedence.
       if(moved.job?.task==="cashier"&&cashier&&sameJob(moved.job,cashier)&&
