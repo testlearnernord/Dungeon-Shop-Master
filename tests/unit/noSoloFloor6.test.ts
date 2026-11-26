@@ -13,7 +13,7 @@ test("Floor 6 remains an ordinary seeded LIVE dungeon, never a solo Cave Troll",
     hero.id===id?{...hero,status:"exploring" as const,
       floor:6 as const}:hero)});
   store.enableLiveDungeon();
-  assert.equal(SIMULATION_VERSION,45);
+  assert.equal(SIMULATION_VERSION,46);
   assert.equal("bossCombat" in store.state.liveDungeon,false);
   store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   assert.equal("bossCombat" in store.state.liveDungeon,false,

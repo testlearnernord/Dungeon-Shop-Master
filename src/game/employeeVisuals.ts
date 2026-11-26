@@ -30,7 +30,8 @@ export function setupEmployeeVisuals(scene:Scene,store:GameStore){
   const unsubscribe=store.subscribe(()=>{
     const next=store.state.employees;
     if(next===current)return;
-    prior=current;current=next;
+    prior=next.some(e=>e.lastStepTick<(current.find(p=>p.id===e.id)?.lastStepTick??0))?next:current;
+    current=next;
   });
   const reset=()=>{prior=store.state.employees;current=prior;};
   const render=(alpha:number)=>{

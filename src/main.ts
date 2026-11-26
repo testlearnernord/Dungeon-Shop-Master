@@ -380,6 +380,7 @@ const restoreTrafficCheckpoint=()=>{
       .__shopTestHydratedTraffic=structuredClone(npcVisuals.snapshotTraffic(
         state.day,state.worldClock.tick));
   replacingCampaign=false;
+  employeeVisuals.reset();
   if(!state.shopTraffic.initialized)syncTrafficCheckpoint();
 };
 // On first load, actual visitors and read-only shopping plans already exist.
@@ -402,7 +403,7 @@ setupCampaignHud(store, campaign, () => {
   resetReplayDisclosure();
   cashier?.close();
   forgeHud.close();
-  employeeHud.close();employeeVisuals.reset();
+  employeeHud.close();
   inventoryView?.close();
   beggarHud?.close();
   blueprint.close();

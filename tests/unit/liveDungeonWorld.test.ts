@@ -42,7 +42,7 @@ test("real world-clock event advances one dungeon step during shop play, not at 
     hero!==initial[i]&&hero.status==="exploring")||
     store.state.dungeonWorlds!.length>0);
   assert.equal(store.state.worldClock.pending.filter(e=>e.lane==="expedition").length,1);
-  assert.equal(SIMULATION_VERSION,45);
+  assert.equal(SIMULATION_VERSION,46);
 });
 
 test("pending expedition event, true positions, HP and rewards resume deterministically from JSON",()=>{

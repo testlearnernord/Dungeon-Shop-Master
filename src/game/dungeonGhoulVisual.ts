@@ -14,7 +14,7 @@ import {
 export interface GhoulVisual {
   readonly root:TransformNode;
   readonly ready:Promise<boolean>;
-  animate(phase:GroupPhase,time:number,strikeOrdinal?:number):void;
+  animate(phase:GroupPhase|"idle",time:number,strikeOrdinal?:number):void;
   dispose():void;
 }
 
@@ -33,7 +33,7 @@ export function createDungeonGhoulVisual(scene:Scene,id:string,usage:"combat"|"e
   let disposed=false;
   scene.onDisposeObservable.addOnce(()=>{disposed=true;});
 
-  const animate=(phase:GroupPhase,time:number,strikeOrdinal=1)=>{
+  const animate=(phase:GroupPhase|"idle",time:number,strikeOrdinal=1)=>{
     if(disposed||!clips.length)return;
     const motion=ghoulMotionForPhase(phase,strikeOrdinal);
     const next=clips[GHOUL_CLIP_INDICES[motion.clip]];

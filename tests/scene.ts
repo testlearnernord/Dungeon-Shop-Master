@@ -1630,3 +1630,10 @@ export function dungeonRoomTextureProbe(){
     ready:!!room?.diffuseTexture?.isReady(),
     visibleRooms:scene?.meshes.filter(m=>m.name.startsWith("dungeon-room-tile-")&&m.isVisible&&m.isEnabled()).length??0};
 }
+
+export function inspectEmployee(){
+  const root=currentTestScene()?.getTransformNodeByName("employee-tettel");
+  return root?{ready:root.metadata?.tripoStatus==="ready",enabled:root.isEnabled(),
+    x:root.position.x,y:root.position.y,z:root.position.z,peaceful:root.metadata?.peaceful===true,
+    clip:root.metadata?.animationClip??null,task:root.metadata?.employeeTask??null}:null;
+}

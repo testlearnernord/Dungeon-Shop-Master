@@ -106,7 +106,7 @@ function advanceEmployee(state:GameState,e:EmployeeState,jobs:readonly EmployeeJ
     const changed=!sameJob(e.job,job);
     let route=e.route;
     if(!goal)route=[];
-    else if(changed||!route.length||!employeeSegmentClear(state,e,route[0])){
+    else if(changed||!route.length||distance(route.at(-1)!,goal)>.08||!employeeSegmentClear(state,e,route[0])){
       route=distance(e,goal)<.08?[]:employeeRoute(state,e,goal)?.waypoints??[];
     }
     const arrived=!!goal&&distance(e,goal)<.08;
@@ -127,6 +127,11 @@ function advanceEmployee(state:GameState,e:EmployeeState,jobs:readonly EmployeeJ
     yaw:turnNpcToward(next.yaw,Math.atan2(target.x-next.x,target.z-next.z),WORLD_TICK_SECONDS,3.2)};
 }
 export function advanceEmployees(state:GameState):GameState{
+  // An unassigned employee already safely at home costs no per-tick store
+  // notification. Resume normally when a priority or the layout changes.
+  if(state.employees.every(e=>!e.job&&!e.route.length&&e.status==="idle"&&
+    EMPLOYEE_TASKS.every(t=>e.priorities[t]===0)&&distance(e,employeeHome(state)??e)<.08))
+    return state;
   const jobs=state.employees.some(e=>state.worldClock.tick>=e.nextPlanTick)?employeeOpportunities(state):[];
   const employees=state.employees.map(e=>advanceEmployee(state,e,jobs));
   return employees.every((e,i)=>e===state.employees[i])?state:{...state,employees};
