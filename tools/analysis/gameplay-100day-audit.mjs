@@ -5,6 +5,7 @@ import { writeFileSync } from "node:fs";
 import { GameStore } from "../../src/game/gameStore.ts";
 import { createGameState } from "../../src/game/gameState.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
+import { quoteBeggingRequest } from "../../src/game/shopCredit.ts";
 import { ITEMS,ECONOMY } from "../../src/game/economy.ts";
 import {wantsChestBuyback} from "../../src/game/dungeonBuyback.ts";
 import {BUYBACK_DOCK} from "../../src/game/buybackChestPlacement.ts";
@@ -29,7 +30,8 @@ const slotIds = {bread:"shelf-1-slot-1","healing-herb":"shelf-1-slot-2",
   "iron-sword":"shelf-1-slot-3","leather-vest":"shelf-1-slot-4",
   spear:"shelf-2-slot-1",staff:"shelf-2-slot-2",
   ...Object.fromEntries(FORGE_OUTPUTS.map((id,i)=>[id,"shelf-3-slot-"+(i+1)]))};
-const forges=mode=>mode==="forge";
+const forges=mode=>mode==="forge"||mode==="forge-credit";
+const grantsCredit=mode=>mode==="forge-credit";
 const buysSalvage=mode=>mode==="buyback"||forges(mode);
 const eligibleSkus = mode => forges(mode) ? [...catalog,"spear","staff",...FORGE_OUTPUTS] :
   mode==="tier1"||mode==="buyback" ? [...catalog,"spear","staff"] :
@@ -178,6 +180,27 @@ function actShop(store,mode,metrics){
         store.returnShopCart(hero.id);
       }
     }
+    if(forecast.reason==="cannot-afford"&&forecast.wantedItemId){
+      // Resolve each petition once, immediately, in both scripted treatments.
+      // This measures potential demand, NOT physical waiting or employee speed.
+      const quote=quoteBeggingRequest(store.state,hero.id);
+      if(quote){
+        metrics.begging.requests++;
+        add(metrics.begging.byItem,quote.itemId,1);
+        if(quote.available){
+          metrics.begging.available++;
+          add(metrics.begging.availableByItem,quote.itemId,1);
+          metrics.begging.availableStickerGold+=quote.price;
+          if(grantsCredit(mode)){
+            const before=store.state;
+            const message=store.issueShopCredit(hero.id);
+            if(store.state===before)throw Error("Eligible audit credit rejected: "+message);
+            metrics.begging.granted++;
+            continue;
+          }
+        }else metrics.begging.outOfStock++;
+      }else metrics.begging.rejectedQuote++;
+    }
     if(forecast.reason==="unavailable"&&forecast.wantedItemId){
       // Real authoritative 60-second request expiry, not a fake free sale.
       store.startShopRequest(hero.id,forecast.wantedItemId,"unavailable");
@@ -204,7 +227,10 @@ function summarizeEvents(metrics,added,knownDead){
       add(metrics.salesRevenue,e.itemId??"unknown",e.revenue??0);
     }
     if(e.type==="healed")add(metrics.healingUsed,e.itemId??"unknown",e.quantity??0);
-    if(e.type==="shop-credit")add(metrics.credits,e.itemId??"unknown",e.debtGold??0);
+    if(e.type==="shop-credit"){
+      add(metrics.credits,e.itemId??"unknown",e.debtGold??0);
+      add(metrics.creditUnits,e.itemId??"unknown",e.quantity??0);
+    }
     if(e.type==="dungeon-live"&&e.dungeonReplay){
       const replay=e.dungeonReplay;
       for(const step of replay.steps??[])add(metrics.replayStepActions,step.action,1);
@@ -252,7 +278,9 @@ function run(mode){
     stockPolicy:eligibleSkus(mode),
     starting:initial, startingIds:new Set(store.state.adventurers.map(h=>h.id)),
     milestones:[initial], eventTypes:{}, salesUnits:{},
-    salesRevenue:{},healingUsed:{},credits:{},replayStepActions:{},
+    salesRevenue:{},healingUsed:{},credits:{},creditUnits:{},replayStepActions:{},
+    begging:{policy:grantsCredit(mode)?"approve-available":"decline-all",requests:0,
+      available:0,outOfStock:0,rejectedQuote:0,granted:0,byItem:{},availableByItem:{},availableStickerGold:0},
     encounterOutcomes:{}, deathCauses:{},deathFloors:{},deathRecords:[],
     wholesaleUnits:{},wholesaleSpent:0,influxGold:0,
     buybackGold:0,materialsBought:{},materialsConsumed:{},craftedUnits:{},
@@ -367,6 +395,11 @@ function run(mode){
   metrics.paidUnits=sum(Object.values(metrics.salesUnits),x=>x);
   metrics.paidGold=sum(Object.values(metrics.salesRevenue),x=>x);
   metrics.debtOutstanding=sum(store.state.shopDebts,d=>d.outstandingGold);
+  metrics.begging.resolvedVisits=metrics.servedCustomers+metrics.unservedCustomers+metrics.begging.granted;
+  metrics.begging.shareOfResolvedVisits=metrics.begging.requests/Math.max(1,metrics.begging.resolvedVisits);
+  if(metrics.begging.available+metrics.begging.outOfStock!==metrics.begging.requests||
+     sum(Object.values(metrics.creditUnits),n=>n)!==metrics.begging.granted)
+    throw Error("Credit demand ledger imbalance");
   metrics.estimatedDungeonGoldCreated=final.totalRecordedGold-
     initial.totalRecordedGold+metrics.wholesaleSpent-metrics.influxGold;
   metrics.lastXpGrowthDay=metrics.xpGrowthDays.at(-1)??null;
@@ -390,7 +423,7 @@ function run(mode){
   for(const id of FORGE_OUTPUTS){
     const onShelves=store.state.shopEconomy.slots.filter(s=>s.itemId===id)
       .reduce((sum,s)=>sum+s.quantity,0);
-    if((metrics.craftedUnits[id]??0)!==(metrics.salesUnits[id]??0)+
+    if((metrics.craftedUnits[id]??0)!==(metrics.salesUnits[id]??0)+(metrics.creditUnits[id]??0)+
        store.state.shopEconomy.bag[id]+onShelves)
       throw Error("Forged merchandise ledger imbalance: "+id);
   }
