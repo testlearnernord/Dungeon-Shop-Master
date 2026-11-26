@@ -1,5 +1,5 @@
 import {currentShopVisitEvents,shopVisitSuffix} from "./npcVisitors.ts";
-import { ITEMS, type ItemId } from "./economy.ts";
+import { ITEMS, availableBagUnits, type ItemId } from "./economy.ts";
 import type { GameState } from "./gameState.ts";
 import { forecastShoppingIntents } from "./shopperIntents.ts";
 import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
@@ -33,7 +33,7 @@ export function quoteBeggingRequest(state:GameState,heroId:string):BeggingQuote|
   if(!item||hero.gold>=item.salePrice)return null;
   const available=state.shopEconomy.slots.some(slot=>
     slot.itemId===item.id&&slot.quantity>0)||
-    state.shopEconomy.bag[item.id]>0;
+    availableBagUnits(state,item.id)>0;
   return {
     heroId,heroName:hero.name,itemId:item.id,itemName:item.name,
     price:item.salePrice,gold:hero.gold,available,

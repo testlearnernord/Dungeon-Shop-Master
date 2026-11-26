@@ -7,7 +7,7 @@ import {livePartyBossCheckpointProblem,partyBossReplayProblem}
 import {isValidCellarRoom,cellarChestProblem,cellarTableProblem,
   type CellarChestPlacement,type CellarTablePlacement} from "./cellarRoom.ts";
 import {dungeonBuybackPrice} from "./dungeonBuyback.ts";
-import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,MATERIAL_ITEMS } from "./economy.ts";
+import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,MATERIAL_ITEMS,reservedBagUnits } from "./economy.ts";
 import {WEAPON_NAMES,ARMOR_NAMES} from "./gearCatalog.ts";
 import {
   SIMULATION_VERSION, type GameState,
@@ -1326,6 +1326,10 @@ function validateState(value: unknown): asserts value is GameState {
   const bag = object(economy.bag, "payload.shopEconomy.bag", permittedItems);
   let bagTotal = 0;
   for (const id of permittedItems) bagTotal += integer(bag[id], `payload.shopEconomy.bag.${id}`, 0, ECONOMY.bagCapacity);
+  for(const item of SHELF_GOODS){
+    if(reservedBagUnits(state as unknown as GameState,item.id)>(bag[item.id] as number))
+      fail("payload.employees","reserved cargo exceeds the canonical bag stock");
+  }
   if (bagTotal > ECONOMY.bagCapacity) fail("payload.shopEconomy.bag", "exceeds bag capacity");
   if(bag["iron-ore"]!==0||bag.coal!==0||bag["ghoul-leather"]!==0)
     fail("payload.shopEconomy.bag","raw materials belong in materialStorage");

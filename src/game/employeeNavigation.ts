@@ -1,7 +1,7 @@
 import type {GameState} from "./gameState.ts";
 import {CELLAR_ENTRY_X,CELLAR_FLOOR_Y,CELLAR_FORGE_CLEARANCE,isCellarFloor} from "./cellarRoom.ts";
 import {POND_CENTER,POND_WIDTH,POND_LENGTH,isCellarPondUncovered} from "./cellarPond.ts";
-import {furnitureTouchesActor,pointTouchesShopBounds} from "./furnitureRegistry.ts";
+import {furnitureTouchesActor,pointTouchesShopBounds,turnShopOffset} from "./furnitureRegistry.ts";
 import {shopFloorWalkable} from "./shopWalkability.ts";
 import {createConnectedRoutePlanner,type ShopPoint} from "./shopperNavigation.ts";
 
@@ -48,6 +48,15 @@ export function employeeHome(state:GameState):ShopPoint|null{
   const candidates=[EMPLOYEE_HOME,{x:-1,z:-24},{x:1,z:-24},
     {x:-2,z:-23},{x:2,z:-23},{x:-1,z:-22},{x:1,z:-22}];
   return candidates.find(p=>employeeWalkable(state,p))??null;
+}
+/** The existing movable cellar chest is the employee pickup/return dock. */
+export function employeeStoragePoint(state:GameState):ShopPoint|null{
+  const chest=state.cellarChest;
+  const offsets=[{x:0,z:.95},{x:.95,z:0},{x:-.95,z:0},{x:0,z:-.95}];
+  return offsets.map(p=>{
+    const d=turnShopOffset(p.x,p.z,chest.rotation);
+    return {x:chest.x+d.x,z:chest.z+d.z};
+  }).find(p=>employeeWalkable(state,p))??null;
 }
 export function employeeRoute(state:GameState,from:ShopPoint,to:ShopPoint){
   if(!employeeWalkable(state,from)||!employeeWalkable(state,to))return null;

@@ -12,12 +12,13 @@ export function setupEmployeeHud(canvas:HTMLCanvasElement,camera:UniversalCamera
       const title=document.createElement("h3");title.textContent=def.name;
       const traits=document.createElement("p");traits.textContent="Undead shop assistant · Reliable · No tips";
       const status=document.createElement("p");status.className="employee-status";
-      status.textContent=e.status==="ready"?"At work point · training only":
+      status.textContent=e.restock?(e.restock.stage==="collect"?"Collecting stock":e.restock.stage==="return"?"Returning unused stock":"Delivering "+e.restock.units+" units")+(e.status==="blocked"?" · route blocked":""):
+        e.status==="ready"?"At work point":
         e.status==="blocked"?"Waiting for a clear route":
         e.status==="walking"?"Walking to "+(e.job?names[e.job.task]:"cellar"):"Idle in cellar";
       const tasks=document.createElement("div");tasks.className="employee-priorities";
       for(const task of EMPLOYEE_TASKS.filter(t=>def.skills.includes(t))){
-        const label=document.createElement("label");label.textContent=names[task];
+        const label=document.createElement("label");label.textContent=names[task]+(task==="restocking"?"":" (planned)");
         const input=document.createElement("select");input.dataset.task=task;
         input.setAttribute("aria-label",def.name+" "+names[task]+" priority");
         for(let i=0;i<=9;i++)input.add(new Option(i===0?"Off":String(i),String(i)));

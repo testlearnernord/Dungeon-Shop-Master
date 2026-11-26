@@ -148,12 +148,20 @@ export function buyWholesale(state: GameState, itemId: ItemId, quantity: number)
   };
 }
 
+/** Employee cargo is a reservation of the existing bag, not a second stock count. */
+export function reservedBagUnits(state:GameState,itemId:ItemId):number{
+  return state.employees.reduce((sum,e)=>sum+(e.restock?.itemId===itemId?e.restock.units:0),0);
+}
+export function availableBagUnits(state:GameState,itemId:ItemId):number{
+  return Math.max(0,state.shopEconomy.bag[itemId]-reservedBagUnits(state,itemId));
+}
+
 export function discardBag(state: GameState, itemId: ItemId): { state: GameState; message: string } {
   const item = ITEMS.find((entry) => entry.id === itemId);
   if (!item) return { state, message: "Choose a valid item." };
   if(isMaterial(itemId))return {state,message:"Raw materials are held in the workshop reserve, not the shop bag."};
   const economy = state.shopEconomy;
-  if (economy.bag[itemId] < 1) return { state, message: "You're out of the selected item." };
+  if (availableBagUnits(state,itemId)<1) return {state,message:"No unreserved units of that item are available."};
   return {
     state: {
       ...state,
@@ -200,7 +208,7 @@ export function transferShelf(
     return { state, message: "Choose a valid item, slot and transfer direction." };
   }
   if (direction === "stock") {
-    if (economy.bag[itemId] < 1) return { state, message: "You're out of the selected item." };
+    if (availableBagUnits(state,itemId)<1) return {state,message:"No unreserved units of that item are available."};
     if ((slot.itemId !== null && slot.itemId !== itemId) || slot.quantity >= slot.capacity) {
       return { state, message: "That slot is full or holds a different item." };
     }
@@ -211,7 +219,7 @@ export function transferShelf(
   // One validated transaction for both single clicks and Shift+click;
   // never make per-frame stock changes or a separate bulk inventory.
   const units = direction === "stock"
-    ? Math.min(requestedUnits, economy.bag[itemId], slot.capacity - slot.quantity)
+    ? Math.min(requestedUnits, availableBagUnits(state,itemId), slot.capacity - slot.quantity)
     : Math.min(requestedUnits, slot.quantity, ECONOMY.bagCapacity - bagTotal(economy));
   const delta = direction === "stock" ? units : -units;
   const quantity = slot.quantity + delta;

@@ -10,8 +10,12 @@ import {DynamicTexture} from "@babylonjs/core/Materials/Textures/dynamicTexture"
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {Color3} from "@babylonjs/core/Maths/math.color";
 import {Mesh} from "@babylonjs/core/Meshes/mesh";
+import {getShopStockTemplates,cloneShopStockModel} from "./shopStockAssets.ts";
+import type {ItemId} from "./economy.ts";
 
 export function setupEmployeeVisuals(scene:Scene,store:GameStore){
+  let templates:ReadonlyMap<ItemId,Mesh>|null=null;
+  void getShopStockTemplates(scene).then(value=>{templates=value;}).catch(error=>console.error("Employee stock visuals",error));
   const models=EMPLOYEE_DEFINITIONS.map(def=>{
     const visual=createDungeonGhoulVisual(scene,def.id,"employee");
     const label=MeshBuilder.CreatePlane("employee-label-"+def.id,{width:1.4,height:.3},scene);
@@ -24,7 +28,7 @@ export function setupEmployeeVisuals(scene:Scene,store:GameStore){
     mat.diffuseTexture=texture;mat.opacityTexture=texture;mat.emissiveColor=Color3.White();
     mat.disableLighting=true;mat.backFaceCulling=false;label.material=mat;
     void visual.ready.then(ready=>{if(ready&&!visual.root.isDisposed())visual.root.setEnabled(true);});
-    return {def,visual};
+    return {def,visual,cargo:null as Mesh|null,cargoId:null as ItemId|null};
   });
   let prior=store.state.employees,current=prior;
   const unsubscribe=store.subscribe(()=>{
@@ -35,7 +39,8 @@ export function setupEmployeeVisuals(scene:Scene,store:GameStore){
   });
   const reset=()=>{prior=store.state.employees;current=prior;};
   const render=(alpha:number)=>{
-    for(const {def,visual} of models){
+    for(const model of models){
+      const {def,visual}=model;
       const e=current.find(v=>v.id===def.id);
       if(!e)continue;
       const old=prior.find(v=>v.id===def.id)??e;
@@ -44,7 +49,20 @@ export function setupEmployeeVisuals(scene:Scene,store:GameStore){
       visual.root.rotation.y=pose.yaw;
       const walking=e.status==="walking"&&Math.hypot(e.x-old.x,e.z-old.z)>.001;
       visual.animate(walking?"move":"idle",e.lastStepTick*WORLD_TICK_SECONDS);
-      Object.assign(visual.root.metadata,{employeeStatus:e.status,employeeTask:e.job?.task??null});
+      const cargo=e.restock&&e.restock.stage!=="collect"?e.restock:null;
+      const cargoId=cargo?.itemId??null;
+      if(cargoId!==model.cargoId||cargoId&&templates&&!model.cargo){
+        model.cargo?.dispose();model.cargo=null;model.cargoId=cargoId;
+        const template=cargoId?templates?.get(cargoId):null;
+        if(template){
+          const mesh=cloneShopStockModel(template,"employee-cargo-"+e.id);
+          mesh.parent=visual.root;mesh.position.set(0,1.10,.47);
+          mesh.scaling.setAll(.85);mesh.isPickable=false;mesh.checkCollisions=false;
+          model.cargo=mesh;
+        }
+      }
+      Object.assign(visual.root.metadata,{employeeStatus:e.status,employeeTask:e.job?.task??null,
+        cargoItem:cargoId,cargoUnits:cargo?.units??0});
     }
   };
   render(1);
