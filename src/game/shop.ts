@@ -224,11 +224,12 @@ export class Shop {
     const ctx=texture.getContext();
     ctx.fillStyle="#d9c38b";ctx.fillRect(0,0,512,192);
     ctx.strokeStyle="#9f8355";ctx.lineWidth=7;ctx.strokeRect(4,4,504,184);
-    ctx.fillStyle="#4a3220";ctx.font="bold 38px Georgia";ctx.textAlign="center";
-    ctx.fillText("•  "+(slot.index+1)+"  •",256,48);
+    ctx.fillStyle="#4a3220";ctx.font="bold 38px Georgia";
+    const centerText=(text:string,y:number)=>ctx.fillText(text,(512-ctx.measureText(text).width)/2,y);
+    centerText("•  "+(slot.index+1)+"  •",48);
     const words=item.name.split(" ");
     let font=56;ctx.font="bold "+font+"px Georgia";
-    let lines=[item.name];
+    let lines:string[]=[item.name];
     if(ctx.measureText(item.name).width>470&&words.length>1){
       let split=1,best=Infinity;
       for(let i=1;i<words.length;i++){
@@ -241,7 +242,7 @@ export class Shop {
     while(lines.some(line=>ctx.measureText(line).width>470)&&font>24){
       font-=2;ctx.font="bold "+font+"px Georgia";
     }
-    for(let i=0;i<lines.length;i++)ctx.fillText(lines[i],256,lines.length===1?127:108+i*57);
+    for(let i=0;i<lines.length;i++)centerText(lines[i],lines.length===1?127:108+i*57);
     texture.update();
     const material=new StandardMaterial(slot.id+"-assignment-material",this.scene);
     material.diffuseTexture=texture;material.emissiveColor=new Color3(.36,.30,.18);
