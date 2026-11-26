@@ -1,6 +1,6 @@
 # Documentation index
 
-> Current contract: Alpha v46 (Employee Foundation). Read current contracts before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
+> Current contract: Alpha v47 (Employee Restocking). Read current contracts before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
 
 ## Current contracts
 
@@ -22,13 +22,15 @@
 - [SHOP PORTAL MINING CONTRACT](SHOP_PORTAL_MINING_CONTRACT.md)
 - [THE LIVING DUNGEON](THE_LIVING_DUNGEON.md)
 - [UI DESIGN SYSTEM](UI_DESIGN_SYSTEM.md)
-- [Alpha v46 evidence and remaining acceptance](ALPHA_V46_ACCEPTANCE.md)
+- [Alpha v47 evidence and remaining acceptance](ALPHA_V47_ACCEPTANCE.md)
 
 ## Employee management
 
 - [Employee Management V0.001](EMPLOYEE_FOUNDATION.md)
 
 ## Historical reports and provenance
+
+- [Alpha v46 employee foundation evidence](ALPHA_V46_ACCEPTANCE.md)
 
 - [Alpha v45 elective resupply evidence](ALPHA_V45_ACCEPTANCE.md)
 
