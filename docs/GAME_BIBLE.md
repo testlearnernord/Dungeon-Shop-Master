@@ -1,6 +1,6 @@
 # Dungeon Shop Master — living Game Bible
 
-> Current contract: Alpha v47 (Employee Restocking). Current design and lore; [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) distinguish implementation and acceptance.
+> Current contract: Alpha v48 (Employee Cashier). Current design and lore; [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) distinguish implementation and acceptance.
 
 
 **Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events.
@@ -17,7 +17,7 @@
 
 ## 2. Implemented now
 
-**Release status:** Alpha v47 campaign schema; V.002 ALPHA remains the HUD label. No final release or manual acceptance claim.
+**Release status:** Alpha v48 campaign schema; V.002 ALPHA remains the HUD label. No final release or manual acceptance claim.
 
 | System | Implementation status |
 | --- | --- |
@@ -35,7 +35,7 @@
 
 ## 3. Core gameplay rules — LOCKED
 
-Ordinary combat and autonomy: All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Visible pack composition, HP, gear, experience and traits guide hunting and pursuit. Shopkeeper influence remains indirect. [Current Alpha evidence](ALPHA_V47_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
+Ordinary combat and autonomy: All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Visible pack composition, HP, gear, experience and traits guide hunting and pursuit. Shopkeeper influence remains indirect. [Current Alpha evidence](ALPHA_V48_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 ### Shop
 
@@ -58,12 +58,12 @@ Ordinary combat and autonomy: All live encounters and the isolated Combat Lab us
 
 The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper current contract.
 
-- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v47. Historic room names are source-module labels, not extra saved doors or a numbered shop.
+- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v48. Historic room names are source-module labels, not extra saved doors or a numbered shop.
 - Heroes choose **stay / deeper / higher** based on individual medium-term goals such as farming, testing gear, survival or progress. Plans and actual inter-floor movement persist; authored deep-floor variety remains open.
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers recover outside both shop and dungeon for an initial **20–240 unpaused seconds** (initial tuning), then resume at their remembered floor entrance. Checkout, credit and walkout eligibility follow the current actual shop visit.
 - Common opponents, traps and chests refresh on saved intervals across ordinary Floors 1–9; unique boss victories and persistent discoveries do not respawn as common loot.
-- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved Temporary Party of two or three independently ready heroes. They evaluate actual preparation and reach the lower stair together; the merchant has no permission action. Alpha v47 is the only supported campaign schema. Reject v46 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. Authored variety and manual gameplay acceptance remain open.
+- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved Temporary Party of two or three independently ready heroes. They evaluate actual preparation and reach the lower stair together; the merchant has no permission action. Alpha v48 is the only supported campaign schema. Reject v47 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. Authored variety and manual gameplay acceptance remain open.
 - Full 100-floor progression is a long-range fiction/ambition, **not** a claim of implemented, promised or budgeted launch content.
 
 ## 5. Galvik and the story
@@ -91,4 +91,4 @@ Gameplay changes must update the **existing** status lines rather than prepend a
 
 ### Tettel and employees
 
-Tettel (prototype name) is Galvik's first employee, outwardly almost identical to the dungeon Ghoul. Non-aggressive and persistent, he returned despite Galvik's initial hostility. Galvik hid him in the cellar when he frightened customers. Over decades of watching Galvik he learned basic shelf and register work. He is reliable but slower than the player, and frightened customers never tip him. His eventual tasks are restocking, cashier service and optional charity. C2 adds actual physical restocking from the shared bag through the cellar chest. Tettel never sets shelf assignments; he reserves matching units, carries them to a reachable assigned slot, and returns unused stock if Galvik takes over. Cashier and charity remain planned. See [Employee Foundation](EMPLOYEE_FOUNDATION.md).
+Tettel (prototype name) is Galvik's first employee, outwardly almost identical to the dungeon Ghoul. Non-aggressive and persistent, he returned despite Galvik's initial hostility. Galvik hid him in the cellar when he frightened customers. Over decades of watching Galvik he learned basic shelf and register work. He is reliable but slower than the player, and frightened customers never tip him. His eventual tasks are restocking, cashier service and optional charity. C2 adds actual physical restocking from the shared bag through the cellar chest. Tettel never sets shelf assignments; he reserves matching units, carries them to a reachable assigned slot, and returns unused stock if Galvik takes over. D adds autonomous cashier service at the real register. Tettel earns no customer tip; Galvik's manual checkout takes precedence. Charity remains planned. See [Employee Foundation](EMPLOYEE_FOUNDATION.md).
