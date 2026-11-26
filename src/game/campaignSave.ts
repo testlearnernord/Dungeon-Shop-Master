@@ -30,6 +30,7 @@ import { firstWorldTickOfDay,lastWorldTickOfDay,MAX_WORLD_DAY,WORLD_TICKS_PER_DA
   type ScheduledWorldEvent } from "./worldClock.ts";
 import {SHOP_REQUEST_TICKS} from "./shopRuntime.ts";
 import {validateShopTraffic} from "./shopTraffic.ts";
+import {validateEmployees} from "./employees.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS,DUNGEON_WORLD_EVENT_SUBJECT,
   LIVE_COMBAT_EVENT_SUBJECT,LIVE_COMBAT_INTERVAL_TICKS,
   SHOP_PORTAL_RETURN_PREFIX,SHOP_PORTAL_TRANSIT_TICKS} from "./liveDungeonRuntime.ts";
@@ -934,7 +935,7 @@ function validateLivePortalReturns(
 
 function validateState(value: unknown): asserts value is GameState {
   const state = object(value, "payload", [
-    "day", "worldClock", "shopRequests", "shopTraffic", "liveDungeon", "simulationVersion", "events", "savedReplayIds", "adventurers", "shopEconomy", "dungeonFloors",
+    "day", "worldClock", "shopRequests", "shopTraffic", "employees", "liveDungeon", "simulationVersion", "events", "savedReplayIds", "adventurers", "shopEconomy", "dungeonFloors",
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "dungeonWorlds", "shopLayout", "shopCarts", "shopDebts",
     "shopRoom","bedroomFurniture","rosterBoard","wallClock",
@@ -980,6 +981,7 @@ function validateState(value: unknown): asserts value is GameState {
   const clock=object(state.worldClock,"payload.worldClock",["tick","nextSequence","pending"]);
   const clockTick=integer(clock.tick,"payload.worldClock.tick",
     firstWorldTickOfDay(day),lastWorldTickOfDay(day));
+  validateEmployees(state.employees,clockTick);
   const nextSequence=integer(clock.nextSequence,"payload.worldClock.nextSequence",1);
   const pending=array(clock.pending,"payload.worldClock.pending");
   if(pending.length>MAX_PENDING_WORLD_EVENTS)
