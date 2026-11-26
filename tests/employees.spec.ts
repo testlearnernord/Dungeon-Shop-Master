@@ -124,7 +124,8 @@ test("Tettel physically serves a real shopper at the register without player pay
   });
   await page.reload();
   await expect(page.locator("#save-status")).toContainText("Continued saved Day 1");
-  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(false);});
+  await expect.poll(()=>page.evaluate(()=>typeof (window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld)).toBe("function");
+  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld:(p:boolean)=>void}).__shopTestPauseWorld(false);});
   const read=()=>page.evaluate(async id=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const s=await new CampaignStorage().loadGame();
@@ -139,6 +140,7 @@ test("Tettel physically serves a real shopper at the register without player pay
         claim:s?.shopTraffic.claims.find(c=>c.heroId===id),carts:s?.shopCarts}};
   },fixture.buyer);
   try{
+    await expect.poll(async()=> (await read()).diagnostic.tick??0,{timeout:30000}).toBeGreaterThan(0);
     await expect.poll(async()=> (await read()).receipts.length,{timeout:150000,intervals:[500,1000,2000]}).toBeGreaterThan(0);
   }catch(error){
     const failure=await read();
