@@ -357,3 +357,28 @@ test("a roaming petitioner retains a valid work destination, but no credit is gr
   const served=step(arrived);
   assert.equal(served.shopDebts.length,1);
 });
+
+test("higher priority charity interrupts uncollected restocking but never drops collected cargo",()=>{
+  const {state:initial}=charityFixture();
+  const configured=new GameStore(initial);
+  configured.setEmployeePriority("tettel","restocking",5);
+  const collecting=step(configured.state);
+  assert.equal(collecting.employees[0].restock?.stage,"collect");
+  const takeover=new GameStore(collecting);
+  takeover.setEmployeePriority("tettel","charity",1);
+  const reprioritized=step(takeover.state);
+  assert.equal(reprioritized.employees[0].restock,null);
+  assert.equal(reprioritized.employees[0].job?.task,"charity");
+  assert.deepEqual(reprioritized.shopEconomy,collecting.shopEconomy);
+
+  let carried=collecting;
+  for(let i=0;i<500&&carried.employees[0].restock?.stage==="collect";i++)carried=step(carried);
+  assert.equal(carried.employees[0].restock?.stage,"deliver");
+  const prior=carried.employees[0].restock!;
+  const urgent=new GameStore(carried);
+  urgent.setEmployeePriority("tettel","charity",1);
+  const stillCarrying=step(urgent.state);
+  assert.deepEqual(stillCarrying.employees[0].restock,prior);
+  assert.deepEqual(stillCarrying.shopEconomy,carried.shopEconomy);
+  assert.equal(stillCarrying.shopDebts.length,0);
+});
