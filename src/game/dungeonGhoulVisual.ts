@@ -14,16 +14,17 @@ import {
 export interface GhoulVisual {
   readonly root:TransformNode;
   readonly ready:Promise<boolean>;
-  animate(phase:GroupPhase,time:number,strikeOrdinal?:number):void;
+  animate(phase:GroupPhase|"idle",time:number,strikeOrdinal?:number):void;
   dispose():void;
 }
 
 /** One skinned, textured model per actual recorded enemy, not a second
  * monster or combat simulator. Failures are visible in metadata and log.
  * The standalone spawn markers are labels in development preview only. */
-export function createDungeonGhoulVisual(scene:Scene,id:string):GhoulVisual{
-  const root=new TransformNode("dungeon-ghoul-"+id,scene);
-  root.metadata={replayOnly:true,recordedActorId:id,
+export function createDungeonGhoulVisual(scene:Scene,id:string,usage:"combat"|"employee"="combat"):GhoulVisual{
+  const root=new TransformNode((usage==="employee"?"employee-":"dungeon-ghoul-")+id,scene);
+  root.metadata={replayOnly:usage==="combat",recordedActorId:usage==="combat"?id:null,
+    ...(usage==="employee"?{employeeId:id,peaceful:true}:{}),
     visualId:"tripo-ghoul",tripoStatus:"loading",animationClip:null};
   root.setEnabled(false);
   let container:AssetContainer|null=null;
@@ -32,7 +33,7 @@ export function createDungeonGhoulVisual(scene:Scene,id:string):GhoulVisual{
   let disposed=false;
   scene.onDisposeObservable.addOnce(()=>{disposed=true;});
 
-  const animate=(phase:GroupPhase,time:number,strikeOrdinal=1)=>{
+  const animate=(phase:GroupPhase|"idle",time:number,strikeOrdinal=1)=>{
     if(disposed||!clips.length)return;
     const motion=ghoulMotionForPhase(phase,strikeOrdinal);
     const next=clips[GHOUL_CLIP_INDICES[motion.clip]];

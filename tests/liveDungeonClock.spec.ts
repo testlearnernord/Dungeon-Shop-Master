@@ -5,14 +5,24 @@ test("live dungeon advances shared floor positions before bed and resumes after 
   test.setTimeout(90000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
-  await page.goto("./");
+  await page.goto("./?e2e-pause-world");
   await expect(page.locator("#day")).toHaveText("Day 1");
-  await page.evaluate(()=>{
-    const hooks=window as Window&{__shopTestAdvanceDungeonTick?:()=>void};
-    if(!hooks.__shopTestAdvanceDungeonTick)
-      throw new Error("Missing authentic in-day expedition event hook");
-    hooks.__shopTestAdvanceDungeonTick();
-  });
+  const advanceAndSave=async()=>{
+    await expect.poll(()=>page.evaluate(()=>typeof (window as Window&{
+      __shopTestAdvanceDungeonTick?:()=>void;
+    }).__shopTestAdvanceDungeonTick),{timeout:30000}).toBe("function");
+    await page.evaluate(async()=>{
+      const hooks=window as Window&{
+        __shopTestAdvanceDungeonTick?:()=>void;
+        __shopTestSaveTrafficNow?:()=>Promise<unknown>;
+      };
+      if(!hooks.__shopTestAdvanceDungeonTick||!hooks.__shopTestSaveTrafficNow)
+        throw new Error("Missing authoritative clock and persistence hooks");
+      hooks.__shopTestAdvanceDungeonTick();
+      await hooks.__shopTestSaveTrafficNow();
+    });
+  };
+  await advanceAndSave();
   const stepTicks=await page.evaluate(async()=>(await import(
     "/Dungeon-Shop-Master/src/game/liveDungeonRuntime.ts")).DUNGEON_STEP_INTERVAL_TICKS);
   const current=await page.evaluate(async(stepTicks)=>{
@@ -40,10 +50,7 @@ test("live dungeon advances shared floor positions before bed and resumes after 
   });
   expect(resumed?.liveDungeon).toEqual(current.liveDungeon);
   expect(resumed?.dungeonWorlds).toEqual(current.dungeonWorlds);
-  await page.evaluate(()=>{
-    const hooks=window as Window&{__shopTestAdvanceDungeonTick?:()=>void};
-    hooks.__shopTestAdvanceDungeonTick?.();
-  });
+  await advanceAndSave();
   await expect.poll(async()=>page.evaluate(async()=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     return (await new CampaignStorage().loadGame())?.liveDungeon.lastStepTick??-1;

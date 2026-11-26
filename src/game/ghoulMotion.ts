@@ -13,7 +13,7 @@ export interface GhoulMotion {readonly clip:GhoulClip;readonly loop:boolean;read
 
 /** Rendering choice only. Real hit windows/HP are recorded by groupCombat. */
 export function ghoulMotionForPhase(
-  phase:GroupPhase,strikeOrdinal=1,
+  phase:GroupPhase|"idle",strikeOrdinal=1,
 ):GhoulMotion {
   const claw=strikeOrdinal%2===0?"attack_claw_left":"attack_claw_right";
   switch(phase){

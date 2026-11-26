@@ -80,7 +80,22 @@ export function createShopRoutePlanner(
   // with every expansion tier when all those extra rows are solid rock.
   const minX=room?-6.5-2*room.expansionTier:MIN;
   const maxX=room?6.5+2*room.expansionTier:MAX;
-  const minZ=MIN,maxZ=MAX;
+  return createConnectedRoutePlanner({minX,maxX,minZ:MIN,maxZ:MAX},
+    p=>isObstructed(p,layout,room)||
+      avoidStations.some(other=>Math.hypot(other.x-p.x,other.z-p.z)<.68),
+    (a,b)=>shopSegmentClear(a,b,layout,room)&&
+      avoidStations.every(other=>shopPointSegmentDistance(other,a,b)>=.68));
+}
+
+/** Shared connected grid search. Private-room workers supply their own real
+ * room geometry and edge predicate; ordinary customer routes are unchanged. */
+export function createConnectedRoutePlanner(
+  bounds:{minX:number;maxX:number;minZ:number;maxZ:number},
+  blocked:(p:ShopPoint)=>boolean,
+  clear:(a:ShopPoint,b:ShopPoint)=>boolean,
+  checkGridEdges=false,
+):(from:ShopPoint,to:ShopPoint)=>ShopperRoute|null {
+  const {minX,maxX,minZ,maxZ}=bounds;
   const width=Math.round((maxX-minX)/STEP)+1;
   const height=Math.round((maxZ-minZ)/STEP)+1;
   const point=(id:number):ShopPoint=>({
@@ -88,8 +103,6 @@ export function createShopRoutePlanner(
   });
   const idx=(x:number,z:number)=>z*width+x;
   const inside=(x:number,z:number)=>x>=0&&z>=0&&x<width&&z<height;
-  const blocked=(p:ShopPoint)=>isObstructed(p,layout,room)||
-    avoidStations.some(other=>Math.hypot(other.x-p.x,other.z-p.z)<.68);
   // Static cells are safe to share while this planner's topology is unchanged.
   const cellState=new Uint8Array(width*height); // 0 unknown, 1 clear, 2 blocked
   const blockedCell=(id:number):boolean=>{
@@ -99,9 +112,6 @@ export function createShopRoutePlanner(
     cellState[id]=result?2:1;
     return result;
   };
-  const clear=(a:ShopPoint,b:ShopPoint)=>
-    shopSegmentClear(a,b,layout,room)&&
-    avoidStations.every(other=>shopPointSegmentDistance(other,a,b)>=.68);
   return (from:ShopPoint,to:ShopPoint):ShopperRoute|null => {
     if(!Number.isFinite(from.x)||!Number.isFinite(from.z)||
       !Number.isFinite(to.x)||!Number.isFinite(to.z))return null;
@@ -139,7 +149,8 @@ export function createShopRoutePlanner(
         const nx=x+dx,nz=z+dz;
         if(!inside(nx,nz))continue;
         const key=idx(nx,nz);
-        if(prev[key]!==-1||blockedCell(key))continue;
+        if(prev[key]!==-1||blockedCell(key)||
+          checkGridEdges&&!clear(point(cell),point(key)))continue;
         prev[key]=cell;queue.push(key);
       }
     }

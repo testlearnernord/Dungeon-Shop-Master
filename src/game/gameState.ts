@@ -21,9 +21,10 @@ import type {WallPortraitPlacement} from "./wallPortraitPlacement.ts";
 import {DEFAULT_WALL_CLOCK,type WallClockPlacement} from "./wallClockPlacement.ts";
 import type {ShopCart} from "./shopCarts.ts";
 import {arrivalEvent} from "./shopArrivals.ts";
+import {createEmployees,type EmployeeState} from "./employees.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 45;
+export const SIMULATION_VERSION = 46;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -88,6 +89,7 @@ export interface GameState {
   readonly worldClock: WorldClockState;
   readonly shopRequests: readonly ShopRequest[];
   readonly shopTraffic: ShopTrafficCheckpoint;
+  readonly employees:readonly EmployeeState[];
   readonly liveDungeon: LiveDungeonState;
   readonly simulationVersion: number;
   readonly events: readonly WorldEvent[];
@@ -142,6 +144,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     worldClock: createWorldClock(),
     shopRequests: [],
     shopTraffic:emptyShopTraffic(1,0),
+    employees:createEmployees(),
     liveDungeon:createLiveDungeonState(),
     simulationVersion: SIMULATION_VERSION,
     savedReplayIds:[],

@@ -20,6 +20,7 @@ import { advanceWorldUntil, lastWorldTickOfDay,
 import {activateLiveDungeon,commitLiveWorldEvent,type DungeonDiagnosticSink} from "./liveDungeonRuntime.ts";
 import {containsReplay,MAX_SAVED_REPLAYS} from "./replayRetention.ts";
 import {completeObservedShopExit} from "./shopRotation.ts";
+import {advanceEmployees,setEmployeePriority,type EmployeeTask} from "./employees.ts";
 import {clearResolvedShopRequests,commitShopRequestEvent,closeShopRequests,
   requestRemainingTicks,shortenShopRequestForTest,startShopRequest} from "./shopRuntime.ts";
 
@@ -49,6 +50,17 @@ export class GameStore {
          hero.status==="returning")).map(hero=>hero.id)),
       new Set(this.current.shopLayout.shelves.map(shelf=>shelf.id)));
     this.replace({...this.current,shopTraffic:checkpoint});
+  }
+
+  setEmployeePriority(id:string,task:EmployeeTask,priority:number):boolean{
+    const next=setEmployeePriority(this.current,id,task,priority);
+    if(next===this.current)return false;
+    this.replace(next);return true;
+  }
+
+  /** Same committed physical-shop callback as the customer motor. */
+  advancePhysicalEmployees():void{
+    this.replace(advanceEmployees(this.current));
   }
 
   subscribe(listener: () => void): () => void {

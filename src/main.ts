@@ -41,6 +41,9 @@ import {setupWorldClockVisuals} from "./game/worldClockVisuals.ts";
 import {setupCellarPondVisuals} from "./game/cellarPondVisuals.ts";
 import {setupFishingHud} from "./fishingHud.ts";
 import {setupHeroBuybackHud} from "./heroBuybackHud.ts";
+import {setupEmployeeHud} from "./employeeHud.ts";
+import {setupEmployeeVisuals} from "./game/employeeVisuals.ts";
+import "./employeeHud.css";
 import { buildWorld } from "./game/world";
 import { setupDayHud } from "./dayHud";
 import {setupWorldEventFeed} from "./worldEventFeedHud.ts";
@@ -199,6 +202,8 @@ let ledger:MerchantLedger|null=null;
 let beggarHud:ReturnType<typeof setupBeggarHud>|null=null;
 const blueprint=setupBlueprintHud(canvas,camera,store,()=>isShopActive());
 const npcVisuals = new NpcVisualSystem(scene);
+const employeeVisuals=setupEmployeeVisuals(scene,store);
+const employeeHud=setupEmployeeHud(canvas,camera,store,()=>isShopActive());
 // The physical customer motor reports exits after removing its outgoing mesh.
 // The store commits the event only after saving that motor's new checkpoint.
 setupNpcTrafficDebug(npcVisuals);
@@ -375,6 +380,7 @@ const restoreTrafficCheckpoint=()=>{
       .__shopTestHydratedTraffic=structuredClone(npcVisuals.snapshotTraffic(
         state.day,state.worldClock.tick));
   replacingCampaign=false;
+  employeeVisuals.reset();
   if(!state.shopTraffic.initialized)syncTrafficCheckpoint();
 };
 // On first load, actual visitors and read-only shopping plans already exist.
@@ -397,6 +403,7 @@ setupCampaignHud(store, campaign, () => {
   resetReplayDisclosure();
   cashier?.close();
   forgeHud.close();
+  employeeHud.close();
   inventoryView?.close();
   beggarHud?.close();
   blueprint.close();
@@ -645,6 +652,7 @@ engine.runRenderLoop(() => {
           syncTrafficCheckpointAfterStep();
           for(const exit of npcVisuals.drainCompletedExits())
             store.completePhysicalShopExit(exit.heroId,exit.outerGateZ);
+          profile("employee-step",()=>store.advancePhysicalEmployees());
         });
     }finally{
       shopTickInProgress=false;
@@ -668,6 +676,7 @@ engine.runRenderLoop(() => {
     // It reads the selected LIVE floor, never running a second world engine.
     buybackChest.update(engine.getDeltaTime()/1000);
     tableVisuals.updateLiveFloor(dungeon.selectedLiveFloor,camera.position);
+    employeeVisuals.render(paused||worldClockPacer.isPaused?1:worldClockPacer.presentationAlpha);
     npcVisuals.renderInterpolated(
       paused||worldClockPacer.isPaused?1:worldClockPacer.presentationAlpha,
       ()=>profile("scene-render",()=>scene.render()));
