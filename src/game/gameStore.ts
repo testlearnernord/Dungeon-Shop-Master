@@ -2,7 +2,7 @@ import { excavateShopRoomCell, isValidShopRoomGeometry, type RoomCell } from "./
 import {isValidCellarRoom} from "./cellarRoom.ts";
 import {isCellarPondUncovered,pondExcavationRemaining} from "./cellarPond.ts";
 import { advanceDay, createGameState, type GameState } from "./gameState.ts";
-import { buyWholesale, discardBag, transferShelf, type ItemId } from "./economy.ts";
+import { buyWholesale, discardBag, transferShelf, assignShelfItem, type ItemId } from "./economy.ts";
 import {buybackAtChest} from "./dungeonBuyback.ts";
 import {craftAtCellarForge,type ForgeOutput} from "./cellarForge.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
@@ -140,6 +140,12 @@ export class GameStore {
   craftAtForge(output:ForgeOutput):string {
     const result=craftAtCellarForge(this.current,output);
     if(result.state!==this.current)this.replace(result.state);
+    return result.message;
+  }
+
+  assignShelfItem(slotId:string,itemId:ItemId|null):string{
+    const result=assignShelfItem(this.current,slotId,itemId);
+    this.replace(result.state);
     return result.message;
   }
 
