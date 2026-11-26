@@ -9,7 +9,7 @@ Tettel is a prototype name. He is nearly identical to the current dungeon Ghoul,
 - One known employee by default, no hire price or wages in this stage; no combat membership. Reuse existing Ghoul model and idle/walk clips, no new rig.
 - Saved modular definitions, supported tasks, priorities Off/1–9. A/B defaults all Off to avoid unrequested interference. Lower number wins; equal priority favors the older continuously available task type, then stable task/target ordering. Keep equivalent current target when valid.
 - Real work opportunities: physically waiting head of checkout queue, configured shelf (including empty assigned slots) with spare capacity and owned stock, actual active credit request with service claim. No phantom tasks for unavailable stock.
-- Physical fixed-step movement at 1.47 m/s (70% of nominal customer walking speed), same world clock and existing connected route search, private-room geometry and real ramp height. Open portrait to permit travel; blocked routes wait and retry. Idle returns to available cellar home. No teleport through closed doors.
+- Physical fixed-step movement at 1.47 m/s (70% of nominal customer walking speed), same world clock and existing connected route search, private-room geometry and real ramp height. Open portrait to permit travel; blocked routes wait and retry. Idle returns to available cellar home. No teleport through closed doors. Employee routes use the shared grid search with current customer positions as temporary obstacles; blocked movement triggers bounded replanning at the existing one-second cadence.
 - Employee UI J or Employees button, persisted priorities and checkpoint. A/B alone had no work effects. C2, D and E now implement stock reservations, physical service and manual takeover as described below.
 
 ## Next phases
@@ -46,6 +46,6 @@ The existing begging mechanic is a full-price debt, not a gift. Earlier scripted
 
 ## E physical credit service
 
-- A saved, unexpired `cannot-afford` petition must have a living at-shop hero, stationary physical actor, matching requested item and matching credit/overflow/roam claim. Tettel targets an unoccupied reachable point adjacent to that claim, not the hero's own position.
+- A saved, unexpired `cannot-afford` petition must have a living at-shop hero, matching requested item and matching credit/overflow/roam claim. Work can target the reserved destination of a walking petitioner, but service requires the actual actor to be stationary there. Tettel targets an unoccupied reachable point adjacent to that claim, not the hero's own position.
 - Revalidate the actual quote, inventory and physical position at arrival. Commit one item via `issueShopCredit`, attribute the receipt to Tettel and remove the resolved request through the existing scheduler. No new revenue, gift policy or inventory. Manual conversation excludes that hero; expiration, departure, changed claim and disabled priority cancel service.
 - Strictly higher charity priority may interrupt uncollected restocking, but carried stock must finish or return. Existing saved route is sufficient; the initial handover is instantaneous at the adjacent dock, like manual credit. No separate cargo pickup animation or timer for credit; physical appearance and throughput remain F acceptance.
