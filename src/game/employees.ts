@@ -161,8 +161,8 @@ function advanceEmployee(state:GameState,e:EmployeeState,jobs:readonly EmployeeJ
     const changed=!sameJob(e.job,job);
     let route=e.route;
     if(!goal)route=[];
-    else if(changed||!route.length||distance(route.at(-1)!,goal)>.08||!employeeSegmentClear(state,e,route[0])){
-      route=distance(e,goal)<.08?[]:employeeRoute(state,e,goal)?.waypoints??[];
+    else if(changed||e.status==="blocked"||!route.length||distance(route.at(-1)!,goal)>.08||!employeeSegmentClear(state,e,route[0])){
+      route=distance(e,goal)<.08?[]:employeeRoute(state,e,goal,true)?.waypoints??[];
     }
     const arrived=!!goal&&distance(e,goal)<.08;
     next={...next,job,pendingSince,route,cashierReadySince:changed?null:e.cashierReadySince,nextPlanTick:tick+EMPLOYEE_REPLAN_TICKS,
