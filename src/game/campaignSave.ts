@@ -1393,7 +1393,7 @@ function validateState(value: unknown): asserts value is GameState {
       const source=slots.find(value=>(value as RecordValue).id===slotId) as RecordValue;
       if((source.quantity as number) + reserved.quantity > (source.capacity as number))
         fail("payload.shopCarts","held quantity exceeds shelf capacity");
-      if(source.itemId!==reserved.itemId)
+      if(source.itemId!==null&&source.itemId!==reserved.itemId)
         fail("payload.shopCarts","held stock conflicts with the shelf product");
     }
   }
