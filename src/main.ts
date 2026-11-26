@@ -652,7 +652,7 @@ engine.runRenderLoop(() => {
           syncTrafficCheckpointAfterStep();
           for(const exit of npcVisuals.drainCompletedExits())
             store.completePhysicalShopExit(exit.heroId,exit.outerGateZ);
-          profile("employee-step",()=>store.advancePhysicalEmployees());
+          profile("employee-step",()=>store.advancePhysicalEmployees(cashier?.isOpen??false));
         });
     }finally{
       shopTickInProgress=false;

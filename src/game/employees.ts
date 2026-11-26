@@ -6,11 +6,13 @@ import {WORLD_TICK_SECONDS} from "./worldClock.ts";
 import {turnNpcToward} from "./npcLocomotion.ts";
 import type {ShopPoint} from "./shopperNavigation.ts";
 import {ECONOMY,availableBagUnits,isShelfGood,transferShelf,type ItemId} from "./economy.ts";
+import {payReservedShopCart} from "./shopCarts.ts";
 
 export const EMPLOYEE_TASKS=["cashier","restocking","charity"] as const;
 export type EmployeeTask=typeof EMPLOYEE_TASKS[number];
 export const EMPLOYEE_WORK_SPEED=1.47;
 export const EMPLOYEE_REPLAN_TICKS=20;
+export const EMPLOYEE_CHECKOUT_TICKS=60;
 export type EmployeePriority=0|1|2|3|4|5|6|7|8|9;
 export interface EmployeeDefinition{
   readonly id:string;readonly name:string;readonly visual:"ghoul";
@@ -39,6 +41,7 @@ export interface EmployeeState extends ShopPoint{
   readonly pendingSince:Readonly<Record<EmployeeTask,number|null>>;
   readonly job:EmployeeJob|null;
   readonly restock:EmployeeRestock|null;
+  readonly cashierReadySince:number|null;
   readonly route:readonly ShopPoint[];
   readonly yaw:number;
   readonly lastStepTick:number;
@@ -49,7 +52,7 @@ const defaultPriorities=():Record<EmployeeTask,EmployeePriority>=>({cashier:0,re
 const emptySince=():Record<EmployeeTask,number|null>=>({cashier:null,restocking:null,charity:null});
 export const createEmployees=():EmployeeState[]=>EMPLOYEE_DEFINITIONS.map(def=>({
   id:def.id,...EMPLOYEE_HOME,yaw:0,priorities:defaultPriorities(),pendingSince:emptySince(),
-  job:null,restock:null,route:[],lastStepTick:0,nextPlanTick:0,status:"idle",
+  job:null,restock:null,cashierReadySince:null,route:[],lastStepTick:0,nextPlanTick:0,status:"idle",
 }));
 export function setEmployeePriority(state:GameState,id:string,task:EmployeeTask,priority:number):GameState{
   const def=EMPLOYEE_DEFINITIONS.find(d=>d.id===id);
@@ -61,13 +64,26 @@ export function setEmployeePriority(state:GameState,id:string,task:EmployeeTask,
     nextPlanTick:state.worldClock.tick,
   }:e)};
 }
-/** Real currently observed opportunities. C2 transacts restocking only. */
+/** The same actual front cart and customer dock as the player-facing till.
+ * The saved checkout service claim must match the current physical counter. */
+export function employeeCashierOpportunity(state:GameState):EmployeeJob|null{
+  const head=state.shopCarts.find(c=>c.lines.length>0);
+  if(!head||head.day!==state.day)return null;
+  const hero=state.adventurers.find(h=>h.id===head.heroId);
+  if(!hero||hero.status!=="at-shop"||hero.health<=0)return null;
+  const actor=state.shopTraffic.actors.find(a=>a.heroId===head.heroId&&
+    a.phase==="queueing"&&a.shoppingPhase==="awaiting-checkout"&&a.checkoutQueueIndex===0);
+  const claim=state.shopTraffic.claims.find(c=>c.heroId===head.heroId&&c.role==="checkout");
+  const customerDock=counterDockPoint(state.shopLayout,"customer");
+  if(!actor||!claim||Math.hypot(claim.point.x-customerDock.x,claim.point.z-customerDock.z)>.17||
+    Math.hypot(actor.x-claim.point.x,actor.z-claim.point.z)>.3)return null;
+  return {task:"cashier",targetId:hero.id,point:counterDockPoint(state.shopLayout,"staff")};
+}
+/** Real currently observed opportunities, never simulated customer demand. */
 export function employeeOpportunities(state:GameState):EmployeeJob[]{
   const jobs:EmployeeJob[]=[];
-  const head=state.shopCarts.find(c=>c.lines.length>0);
-  const waiting=head&&state.shopTraffic.actors.find(a=>a.heroId===head.heroId&&
-    a.phase==="queueing"&&a.shoppingPhase==="awaiting-checkout"&&a.checkoutQueueIndex===0);
-  if(waiting)jobs.push({task:"cashier",targetId:waiting.heroId,point:counterDockPoint(state.shopLayout,"staff")});
+  const waiting=employeeCashierOpportunity(state);
+  if(waiting)jobs.push(waiting);
   for(const slot of state.shopEconomy.slots){
     if(!slot.itemId||slot.quantity>=slot.capacity||availableBagUnits(state,slot.itemId)<=0||
       state.employees.some(e=>e.restock?.slotId===slot.id)||
@@ -122,7 +138,7 @@ function advanceEmployee(state:GameState,e:EmployeeState,jobs:readonly EmployeeJ
       route=distance(e,goal)<.08?[]:employeeRoute(state,e,goal)?.waypoints??[];
     }
     const arrived=!!goal&&distance(e,goal)<.08;
-    next={...next,job,pendingSince,route,nextPlanTick:tick+EMPLOYEE_REPLAN_TICKS,
+    next={...next,job,pendingSince,route,cashierReadySince:changed?null:e.cashierReadySince,nextPlanTick:tick+EMPLOYEE_REPLAN_TICKS,
       status:arrived?(job?"ready":"idle"):route.length?"walking":"blocked"};
   }
   const target=next.route[0];
@@ -149,17 +165,17 @@ const shelfTarget=(state:GameState,r:EmployeeRestock):EmployeeJob|null=>{
   return shelf?{task:"restocking",targetId:r.slotId,point:shelfServicePoint(shelf,slot.index)}:null;
 };
 const clearWork=(e:EmployeeState,tick:number):EmployeeState=>({
-  ...e,restock:null,job:null,route:[],status:"idle",nextPlanTick:tick,
+  ...e,restock:null,job:null,cashierReadySince:null,route:[],status:"idle",nextPlanTick:tick,
 });
 const nextStage=(e:EmployeeState,stage:EmployeeRestock["stage"],tick:number):EmployeeState=>({
-  ...e,restock:{...e.restock!,stage,readySince:null},job:null,route:[],status:"idle",nextPlanTick:tick,
+  ...e,restock:{...e.restock!,stage,readySince:null},job:null,cashierReadySince:null,route:[],status:"idle",nextPlanTick:tick,
 });
 
 /** One physical worker checkpoint and a reservation of canonical bag stock.
  * Galvik may refill/reassign a shelf while Tettel is walking. Work is
  * revalidated before collection and delivery; undelivered cargo is returned
  * to the physical chest without minting or destroying a single unit. */
-export function advanceEmployees(state:GameState):GameState{
+export function advanceEmployees(state:GameState,manualCashierActive=false):GameState{
   if(state.employees.every(e=>!e.restock&&!e.job&&!e.route.length&&e.status==="idle"&&
     EMPLOYEE_TASKS.every(t=>e.priorities[t]===0)&&distance(e,employeeHome(state)??e)<.08))
     return state;
@@ -168,6 +184,15 @@ export function advanceEmployees(state:GameState):GameState{
   for(const id of state.employees.map(e=>e.id)){
     let e=next.employees.find(worker=>worker.id===id)!;
     if(e.lastStepTick>=tick)continue;
+    const cashier=manualCashierActive?null:employeeCashierOpportunity(next);
+    // Reset service instantly when Galvik takes over, the customer leaves,
+    // the counter moves or the physical work clock has a gap.
+    if(e.job?.task==="cashier"&&(!e.priorities.cashier||!sameJob(e.job,cashier)||e.lastStepTick+1!==tick)){
+      e=clearWork(e,tick);next=setEmployee(next,e);
+    }
+    if(e.restock?.stage==="collect"&&cashier&&e.priorities.cashier>0&&e.priorities.cashier<e.priorities.restocking){
+      e=clearWork(e,tick);next=setEmployee(next,e);
+    }
     // Bedtime or a suspended physical scene cannot finish a work timer remotely.
     if(e.restock&&e.restock.readySince!==null&&e.lastStepTick+1!==tick){
       e={...e,restock:{...e.restock,readySince:null}};next=setEmployee(next,e);
@@ -177,10 +202,10 @@ export function advanceEmployees(state:GameState):GameState{
       else if(e.restock.stage==="deliver")e=nextStage(e,"return",tick);
       next=setEmployee(next,e);
     }
-    // Unimplemented cashier and charity priorities may be configured but
-    // must not starve the first genuine work type.
+    // Unimplemented charity is configurable but cannot starve real work.
     const jobs=tick>=e.nextPlanTick&&!e.restock
-      ?employeeOpportunities(next).filter(j=>j.task==="restocking"):[];
+      ?employeeOpportunities(next).filter(j=>j.task==="restocking"||
+        j.task==="cashier"&&!manualCashierActive):[];
     if(!e.restock&&tick>=e.nextPlanTick){
       const chosen=chooseEmployeeJob(e,jobs,tick);
       const slot=next.shopEconomy.slots.find(s=>s.id===chosen.job?.targetId);
@@ -189,7 +214,7 @@ export function advanceEmployees(state:GameState):GameState{
         if(units>0){
           e={...e,pendingSince:chosen.pendingSince,restock:{
             slotId:slot.id,itemId:slot.itemId,units,stage:"collect",readySince:null,
-          },job:null,route:[],nextPlanTick:tick,status:"idle"};
+          },job:null,cashierReadySince:null,route:[],nextPlanTick:tick,status:"idle"};
           next=setEmployee(next,e);
         }
       }
@@ -209,7 +234,23 @@ export function advanceEmployees(state:GameState):GameState{
     const moved=advanceEmployee(next,e,jobs,forced);
     next=setEmployee(next,moved);
     const r=moved.restock;
-    if(!r||!forced)continue;
+    if(!r){
+      // A cashier job owns a saved, uninterrupted timer at the actual staff
+      // dock. Galvik's open register session always takes precedence.
+      if(moved.job?.task==="cashier"&&cashier&&sameJob(moved.job,cashier)&&
+         moved.status==="ready"&&distance(moved,cashier.point)<.08){
+        const since=moved.cashierReadySince;
+        if(since===null)next=setEmployee(next,{...moved,cashierReadySince:tick});
+        else if(tick-since>=EMPLOYEE_CHECKOUT_TICKS){
+          const released=setEmployee(next,clearWork(moved,tick));
+          const def=EMPLOYEE_DEFINITIONS.find(d=>d.id===moved.id)!;
+          next=payReservedShopCart(released,cashier.targetId,false,def.name).state;
+        }
+      }else if(moved.cashierReadySince!==null)
+        next=setEmployee(next,{...moved,cashierReadySince:null});
+      continue;
+    }
+    if(!forced)continue;
     if(moved.status!=="ready"||distance(moved,forced.point)>=.08){
       if(r.readySince!==null)next=setEmployee(next,{...moved,restock:{...r,readySince:null}});
       continue;
@@ -253,7 +294,7 @@ export function validateEmployees(raw:unknown,tick:number):asserts raw is readon
   if(!Array.isArray(raw)||raw.length!==EMPLOYEE_DEFINITIONS.length)fail("wrong employee count");
   const seen=new Set<string>();
   for(const e of raw as unknown[]){
-    if(!exact(e,["id","x","z","yaw","priorities","pendingSince","job","restock","route","lastStepTick","nextPlanTick","status"]))fail("unexpected fields");
+    if(!exact(e,["id","x","z","yaw","priorities","pendingSince","job","restock","cashierReadySince","route","lastStepTick","nextPlanTick","status"]))fail("unexpected fields");
     const v=e as Record<string,unknown>;
     if(typeof v.id!=="string"||!EMPLOYEE_DEFINITIONS.some(d=>d.id===v.id)||seen.has(v.id as string))fail("unknown or duplicate ID");
     seen.add(v.id as string);
@@ -266,6 +307,8 @@ export function validateEmployees(raw:unknown,tick:number):asserts raw is readon
     if(v.job!==null&&(!exact(v.job,["task","targetId","point"])||
       !EMPLOYEE_TASKS.includes(v.job.task as EmployeeTask)||typeof v.job.targetId!=="string"||
       !v.job.targetId.length||v.job.targetId.length>100||!point(v.job.point)))fail("invalid job");
+    if(v.cashierReadySince!==null&&(!integer(v.cashierReadySince,0,tick)||
+      v.restock!==null||!v.job||(v.job as Record<string,unknown>).task!=="cashier"||v.status!=="ready"))fail("invalid cashier timer");
     if(v.restock!==null){
       if(!exact(v.restock,["slotId","itemId","units","stage","readySince"]))fail("invalid restock checkpoint");
       const r=v.restock as Record<string,unknown>;

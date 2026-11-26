@@ -8,7 +8,7 @@ export function setupEmployeeHud(canvas:HTMLCanvasElement,camera:UniversalCamera
   const describe=(e:EmployeeState)=>e.restock?
     (e.restock.stage==="collect"?"Collecting stock":e.restock.stage==="return"?"Returning unused stock":"Delivering "+e.restock.units+" units")+
       (e.status==="blocked"?" · route blocked":""):
-    e.status==="blocked"?"Waiting for a clear route":e.status==="walking"?"Walking to cellar":"Idle";
+    e.status==="blocked"?"Waiting for a clear route":e.job?.task==="cashier"?(e.status==="ready"?"Serving customer":"Walking to register"):e.status==="walking"?"Walking to cellar":"Idle";
   const render=()=>{
     list.replaceChildren(...store.state.employees.map(e=>{
       const def=EMPLOYEE_DEFINITIONS.find(d=>d.id===e.id)!;
@@ -19,7 +19,7 @@ export function setupEmployeeHud(canvas:HTMLCanvasElement,camera:UniversalCamera
       status.textContent=describe(e);
       const tasks=document.createElement("div");tasks.className="employee-priorities";
       for(const task of EMPLOYEE_TASKS.filter(t=>def.skills.includes(t))){
-        const label=document.createElement("label");label.textContent=names[task]+(task==="restocking"?"":" (planned)");
+        const label=document.createElement("label");label.textContent=names[task]+(task==="charity"?" (planned)":"");
         const input=document.createElement("select");input.dataset.task=task;
         input.setAttribute("aria-label",def.name+" "+names[task]+" priority");
         for(let i=0;i<=9;i++)input.add(new Option(i===0?"Off":String(i),String(i)));

@@ -24,7 +24,7 @@ import {arrivalEvent} from "./shopArrivals.ts";
 import {createEmployees,type EmployeeState} from "./employees.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 47;
+export const SIMULATION_VERSION = 48;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -72,7 +72,7 @@ export interface WorldEvent {
   readonly revenue?: number;
   /** Gold paid to an adventurer for a recovered dungeon item; not sales revenue. */
   readonly cost?: number;
-  /** Manual cash register vs. automated settlement; absent means legacy auto sale. */
+  /** Physically staffed register (Galvik or employee) vs. internal settlement; absent means legacy auto sale. */
   readonly saleChannel?: "manual" | "reserved";
   /** Face value written to the merchant debt ledger; no cash was earned. */
   readonly debtGold?: number;
