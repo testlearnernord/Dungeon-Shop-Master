@@ -84,17 +84,25 @@ export function employeeCashierOpportunity(state:GameState):EmployeeJob|null{
 }
 /** Meet a real stationary petitioner at an adjacent, unoccupied point.
  * A credit claim is the customer's destination, never the worker's dock.
- * Roaming/overflow petitioners can be served only after reaching their claim. */
-export function employeeCharityOpportunity(state:GameState,heroId:string,manualCreditHeroId:string|null=null,checkStock=true):EmployeeJob|null{
+ * Plan toward an active petitioner's reserved destination while they walk,
+ * but only commit service when the actual customer is stationary there. */
+export function employeeCharityOpportunity(state:GameState,heroId:string,manualCreditHeroId:string|null=null,
+  checkStock=true,requireWaiting=true):EmployeeJob|null{
   if(heroId===manualCreditHeroId)return null;
   const request=state.shopRequests.find(r=>r.heroId===heroId&&r.reason==="cannot-afford"&&r.dueTick>state.worldClock.tick);
   if(!request)return null;
   const hero=state.adventurers.find(h=>h.id===heroId&&h.status==="at-shop"&&h.health>0);
-  const actor=state.shopTraffic.actors.find(a=>a.heroId===heroId&&a.phase==="queueing"&&
-    ["waiting-for-credit","waiting-for-credit-overflow","roaming-request"].includes(a.shoppingPhase)&&
-    a.requestActive&&a.wishItem===request.itemId);
+  const actor=state.shopTraffic.actors.find(a=>a.heroId===heroId&&a.requestActive&&a.wishItem===request.itemId);
   const claim=state.shopTraffic.claims.find(c=>c.heroId===heroId&&["credit","overflow","roam"].includes(c.role));
-  if(!hero||!actor||!claim||distance(actor,claim.point)>.3)return null;
+  if(!hero||!actor||!claim)return null;
+  const waiting=actor.phase==="queueing"&&
+    ["waiting-for-credit","waiting-for-credit-overflow","roaming-request"].includes(actor.shoppingPhase)&&
+    distance(actor,claim.point)<=.3;
+  const destination=actor.route.at(-1);
+  const approaching=actor.phase==="browsing"&&
+    ["walking-to-credit-wait","walking-to-credit-overflow","walking-to-request-roam"].includes(actor.shoppingPhase)&&
+    !!destination&&distance(destination,claim.point)<=.3;
+  if(!waiting&&(requireWaiting||!approaching))return null;
   if(checkStock){
     const quote=quoteBeggingRequest(state,heroId);
     if(!quote?.available||quote.itemId!==request.itemId)return null;
@@ -102,7 +110,7 @@ export function employeeCharityOpportunity(state:GameState,heroId:string,manualC
   const offsets=[[.95,0],[-.95,0],[0,.95],[0,-.95],[.7,.7],[-.7,.7],[.7,-.7],[-.7,-.7]];
   const points=offsets.map(([x,z])=>({x:claim.point.x+x,z:claim.point.z+z}));
   const point=points.find(p=>employeeWalkable(state,p)&&employeeSegmentClear(state,p,claim.point)&&
-    distance(p,actor)>=.65&&distance(p,actor)<=1.3&&
+    (!waiting||distance(p,actor)>=.65&&distance(p,actor)<=1.3)&&
     state.shopTraffic.actors.every(a=>a.heroId===heroId||distance(p,a)>=.75)&&
     state.shopTraffic.claims.every(c=>c.heroId===heroId||distance(p,c.point)>=.75));
   return point?{task:"charity",targetId:heroId,point}:null;
@@ -120,7 +128,7 @@ export function employeeOpportunities(state:GameState,manualCreditHeroId:string|
     if(shelf)jobs.push({task:"restocking",targetId:slot.id,point:shelfServicePoint(shelf,slot.index)});
   }
   for(const request of state.shopRequests){
-    const job=employeeCharityOpportunity(state,request.heroId,manualCreditHeroId);
+    const job=employeeCharityOpportunity(state,request.heroId,manualCreditHeroId,true,false);
     if(job)jobs.push(job);
   }
   return jobs;
@@ -218,12 +226,12 @@ export function advanceEmployees(state:GameState,manualCashierActive=false,manua
       e=clearWork(e,tick);next=setEmployee(next,e);
     }
     if(e.job?.task==="charity"&&(!e.priorities.charity||
-       !sameJob(e.job,employeeCharityOpportunity(next,e.job.targetId,manualCreditHeroId,false)))){
+       !sameJob(e.job,employeeCharityOpportunity(next,e.job.targetId,manualCreditHeroId,false,false)))){
       e=clearWork(e,tick);next=setEmployee(next,e);
     }
     const higherCredit=e.restock?.stage==="collect"&&tick>=e.nextPlanTick&&
       e.priorities.charity>0&&e.priorities.charity<e.priorities.restocking&&
-      next.shopRequests.some(r=>employeeCharityOpportunity(next,r.heroId,manualCreditHeroId)!==null);
+      next.shopRequests.some(r=>employeeCharityOpportunity(next,r.heroId,manualCreditHeroId,true,false)!==null);
     if(e.restock?.stage==="collect"&&(
       (cashier&&e.priorities.cashier>0&&e.priorities.cashier<e.priorities.restocking)||higherCredit)){
       e=clearWork(e,tick);next=setEmployee(next,e);
