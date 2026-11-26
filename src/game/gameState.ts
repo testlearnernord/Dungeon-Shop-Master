@@ -24,7 +24,7 @@ import {arrivalEvent} from "./shopArrivals.ts";
 import {createEmployees,type EmployeeState} from "./employees.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 46;
+export const SIMULATION_VERSION = 47;
 
 export interface ShopEconomyState {
   readonly balance: number;

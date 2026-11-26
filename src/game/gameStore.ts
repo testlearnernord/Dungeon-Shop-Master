@@ -150,7 +150,18 @@ export class GameStore {
   }
 
   transfer(slotId: string, itemId: ItemId, direction: "stock" | "remove", units = 1): string {
-    const result = transferShelf(this.current, slotId, itemId, direction, units);
+    // Galvik can take over a shelf before Tettel physically collects its stock.
+    // Once collected, in-transit cargo remains reserved until delivery/return.
+    let input=this.current;
+    if(direction==="stock"&&input.employees.some(e=>
+      e.restock?.slotId===slotId&&e.restock.stage==="collect")){
+      input={...input,employees:input.employees.map(e=>
+        e.restock?.slotId===slotId&&e.restock.stage==="collect"
+          ?{...e,restock:null,job:null,route:[],status:"idle" as const,
+            nextPlanTick:input.worldClock.tick}:e)};
+    }
+    const result = transferShelf(input, slotId, itemId, direction, units);
+    if(result.state===input)return result.message;
     this.replace(result.state);
     return result.message;
   }

@@ -1,4 +1,4 @@
-import {ECONOMY,SHELF_GOODS,MATERIAL_ITEMS,isShelfGood,type ItemId} from "./game/economy.ts";
+import {ECONOMY,SHELF_GOODS,MATERIAL_ITEMS,isShelfGood,availableBagUnits,reservedBagUnits,type ItemId} from "./game/economy.ts";
 import {Quickbar,QUICKBAR_SIZE,QUICKBAR_STORAGE_KEY} from "./game/quickbar.ts";
 import type {GameStore} from "./game/gameStore.ts";
 import {uiIcon} from "./uiIcons.ts";
@@ -53,6 +53,7 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
   document.body.append(dialog);
   let picked:ItemId|null=null,drag:Drag|null=null,discardSequence=0;
   let previousEconomy=store.state.shopEconomy;
+  let previousReservations=store.state.employees.map(e=>e.restock);
   const changed=()=>{
     persist(bar);picked=null;options.onBindingsChanged();
   };
@@ -73,7 +74,7 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
   };
   function slot(index:number,edit:boolean){
     const id=bar.slots[index];
-    const count=id?store.state.shopEconomy.bag[id]:0;
+    const count=id?availableBagUnits(store.state,id):0;
     const node=button(edit?"bag-bind-slot":"inventory-row","");
     node.dataset[edit?"bindSlot":"quickbarSlot"]=String(index+1);
     if(id)node.dataset.itemId=id;
@@ -113,7 +114,7 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
     capacity.append(uiIcon("bag"),element("span","",used+"/"+ECONOMY.bagCapacity),element("kbd","","TAB"));
     capacity.addEventListener("click",()=>open());dock.append(capacity);
     const selected=bar.selected;
-    const selectedStatus=element("div","hotbar-selected",selected?itemName(selected)+" · "+economy.bag[selected]+" in bag":"Empty slot · TAB inventory");
+    const selectedStatus=element("div","hotbar-selected",selected?itemName(selected)+" · "+availableBagUnits(store.state,selected)+" available"+(reservedBagUnits(store.state,selected)?" · "+reservedBagUnits(store.state,selected)+" reserved":""):"Empty slot · TAB inventory");
     selectedStatus.dataset.empty=String(!selected||economy.bag[selected]===0);dock.append(selectedStatus);
     if(focus&&!dialog.open)dock.querySelector<HTMLElement>('[data-quickbar-slot="'+focus+'"]')?.focus({preventScroll:true});
     if(!dialog.open)return;
@@ -134,7 +135,7 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
       const discard=button("bag-discard","Discard 1");
       discard.setAttribute("aria-label","Discard 1 "+item.name);
       discard.title="Permanently discard one item, no refund";
-      discard.disabled=economy.bag[item.id]===0;
+      discard.disabled=availableBagUnits(store.state,item.id)===0;
       discard.addEventListener("click",event=>{
         if(event.detail>1)return;
         // Negative request IDs are disjoint from supplier order IDs.
@@ -172,9 +173,11 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
     else if(open())event.preventDefault();
   });
   store.subscribe(()=>{
-    if(store.state.shopEconomy===previousEconomy)return;
-    const old=previousEconomy;previousEconomy=store.state.shopEconomy;
-    if(old.bag!==previousEconomy.bag||dialog.open&&old.materialStorage!==previousEconomy.materialStorage)render();
+    const reservations=store.state.employees.map(e=>e.restock);
+    const changedReservations=reservations.some((r,i)=>r?.itemId!==previousReservations[i]?.itemId||r?.units!==previousReservations[i]?.units);
+    if(store.state.shopEconomy===previousEconomy&&!changedReservations)return;
+    const old=previousEconomy;previousEconomy=store.state.shopEconomy;previousReservations=reservations;
+    if(changedReservations||old.bag!==previousEconomy.bag||dialog.open&&old.materialStorage!==previousEconomy.materialStorage)render();
   });
   render();
   return {open,close:()=>{if(dialog.open)dialog.close();},refreshSelection:render};

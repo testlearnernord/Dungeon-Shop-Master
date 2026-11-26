@@ -5,7 +5,7 @@ import "@babylonjs/core/Culling/ray";
 import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Scene } from "@babylonjs/core/scene";
-import {SHELF_GOODS,type ItemId} from "./economy.ts";
+import {SHELF_GOODS,availableBagUnits,type ItemId} from "./economy.ts";
 import {Quickbar,quickbarIndexForKey} from "./quickbar.ts";
 import { Shop } from "./shop";
 import {describeShelfFocus} from "./shopServiceFocus.ts";
@@ -237,8 +237,10 @@ export class InteractionSystem {
     }
     const locked=this.store.state.shopCarts.some(cart=>
       cart.lines.some(line=>line.slotId===current.id));
-    const hint=describeShelfFocus(current,this.quickbar.selected,
-      this.store.state.shopEconomy.bag,locked,this.quickbar.slots);
+    const selected=this.quickbar.selected;
+    const bag=selected?{...this.store.state.shopEconomy.bag,
+      [selected]:availableBagUnits(this.store.state,selected)}:this.store.state.shopEconomy.bag;
+    const hint=describeShelfFocus(current,selected,bag,locked,this.quickbar.slots);
     if(heading.textContent!==hint.title)heading.textContent=hint.title;
     if(action.textContent!==hint.instruction)
       action.textContent=hint.instruction;

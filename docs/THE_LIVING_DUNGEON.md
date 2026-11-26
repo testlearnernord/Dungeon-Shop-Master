@@ -1,6 +1,6 @@
 # The Living Dungeon — design contract
 
-> Current contract: Alpha v46 (Employee Foundation). Current design contract. See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v47 (Employee Restocking). Current design contract. See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
 
 ## The experience
 
@@ -24,7 +24,7 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 | **Floor 10** | One Cave Troll encounter entered only by an actual saved, authorized 2–3-hero Temporary Party at the lower stair of Floor 9. Shared group combat at 60 Hz, bounded recordings, boss event and actual outcome |
 | **Galvik's cursed shop** | A separate *unnumbered* realm accessible by the return option. One normal physical portal/threshold for shop traffic; do not label it Dungeon Floor 5 |
 
-Alpha v46 is the only supported campaign schema. Reject v45 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. Floor-10 willingness is evaluated from current preparation, not a saved permission field. The solo boss, old day motor and abstract loot counter are retired.
+Alpha v47 is the only supported campaign schema. Reject v46 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. Floor-10 willingness is evaluated from current preparation, not a saved permission field. The solo boss, old day motor and abstract loot counter are retired.
 
 ## V0.004 A–D monster-world (merged in #336–339)
 
@@ -77,7 +77,7 @@ Autonomous heroes and co-located Temporary Parties may flee on actual adjacent t
 ## Remaining Alpha acceptance
 
 1. 10-day hands-on campaign: shops, customers, hero identities, combat and return cycles remain intelligible and fun.
-2. Review the completed campaign and controlled matrix evidence in [Alpha acceptance](ALPHA_V46_ACCEPTANCE.md). No new general audit unless justified.
+2. Review the completed campaign and controlled matrix evidence in [Alpha acceptance](ALPHA_V47_ACCEPTANCE.md). No new general audit unless justified.
 3. Legitimate *in-world* Floor-9-to-10 party attempt, recovered/replayed after strict Save/Load, with no second combat simulation.
 4. Actual browser NPC walking, one-portal access, cashier traffic, credit/request deadlines and cellar traversal through real obstacles.
 5. Real-device combat animation, sounds, camera/focus, HUD and frame pacing evaluated independently from green CI.
