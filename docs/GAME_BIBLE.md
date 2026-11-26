@@ -39,7 +39,7 @@ Ordinary combat and autonomy: All live encounters and the isolated Combat Lab us
 
 ### Shop
 
-- Fresh campaigns have **no shelves** and no magically stocked display. Build independent four-slot shelves and fill them from Galvik's real bag. Purchasing wholesale costs actual gold.
+- Fresh campaigns have **no shelves** and no magically stocked display. Build independent four-slot shelves and fill them from Galvik's real bag. Galvik assigns sellable products to individual slots (even without inventory); assignments survive stock depletion and shelf relocation until explicitly changed or cleared. Purchasing wholesale costs actual gold.
 - Furniture and excavation follow a **single** physical placement and reachability contract. Moving fixtures cannot trap customers, bypass queue access or destroy required bed/staff-side access.
 - Customers reserve merchandise in **unpaid carts**. Only completed staffed checkout creates sales income; approved credit is a debt, not a cash sale. Unserved goods return, not vanish or become fabricated purchases.
 - Restock requests and queue traffic follow genuine simulation and saved world time. The player must physically deliver service; **F** is only a hotbar shortcut.
