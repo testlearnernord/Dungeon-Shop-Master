@@ -10,7 +10,7 @@ import {createConnectedRoutePlanner,type ShopPoint} from "./shopperNavigation.ts
 export const EMPLOYEE_RADIUS=.30;
 export const EMPLOYEE_HOME:ShopPoint={x:0,z:-24};
 export const employeeFloorY=(z:number):number=>
-  CELLAR_FLOOR_Y*Math.max(0,Math.min(1,(-12.1-z)/8));
+  z>=-12.1?0:CELLAR_FLOOR_Y*Math.min(1,(-12.1-z)/8);
 export function employeeWalkable(state:GameState,p:ShopPoint):boolean{
   const {x,z}=p,r=EMPLOYEE_RADIUS;
   if(!Number.isFinite(x)||!Number.isFinite(z))return false;
