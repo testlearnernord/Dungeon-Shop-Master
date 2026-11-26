@@ -5,7 +5,7 @@ import { advanceDay, SIMULATION_VERSION, type GameState } from "../../src/game/g
 import { pickUpShopItem, returnShopCart, cartTotal, settleHeldShopCarts, payReservedShopCart } from "../../src/game/shopCarts.ts";
 import { forecastShoppingIntents } from "../../src/game/shopperIntents.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
-import { transferShelf } from "../../src/game/economy.ts";
+import { transferShelf, assignShelfItem } from "../../src/game/economy.ts";
 import { GameStore } from "../../src/game/gameStore.ts";
 
 function customers():GameState {
@@ -320,4 +320,33 @@ test("the same shelf can be paid on a second same-day visit but never twice per 
   assert.strictEqual(payReservedShopCart(result,hero.id).state,result);
   assert.strictEqual(pickUpShopItem(result,hero.id,line.slotId).state,result);
   assert.deepEqual(parseSave(JSON.stringify(createSave(result))),result);
+});
+
+test("persistent shelf assignment does not create inventory or permit conflicting cart changes",()=>{
+  const state=customers();
+  const empty=state.shopEconomy.slots.find(slot=>slot.itemId===null)!;
+  const assigned=assignShelfItem(state,empty.id,"forged-spear").state;
+  assert.notStrictEqual(assigned,state);
+  assert.equal(assigned.shopEconomy.bag["forged-spear"],0);
+  assert.deepEqual(assigned.shopEconomy.bag,state.shopEconomy.bag);
+  assert.equal(assigned.shopEconomy.balance,state.shopEconomy.balance);
+  assert.equal(slotQuantity(assigned,empty.id),0);
+  assert.equal(assigned.shopEconomy.slots.find(s=>s.id===empty.id)?.itemId,"forged-spear");
+  assert.deepEqual(parseSave(JSON.stringify(createSave(assigned))),assigned);
+  assert.strictEqual(transferShelf(assigned,empty.id,"bread","stock").state,assigned);
+  assert.strictEqual(assignShelfItem(assigned,empty.id,"coal").state,assigned);
+  assert.deepEqual(assignShelfItem(assigned,empty.id,null).state,state);
+  const placed=transferShelf(state,empty.id,"bread","stock").state;
+  assert.strictEqual(assignShelfItem(placed,empty.id,null).state,placed);
+  const removed=transferShelf(placed,empty.id,"bread","remove").state;
+  assert.equal(slotQuantity(removed,empty.id),0);
+  assert.equal(removed.shopEconomy.slots.find(s=>s.id===empty.id)?.itemId,"bread");
+  assert.deepEqual(assignShelfItem(removed,empty.id,null).state,state);
+  const hero=state.adventurers[0];
+  const line=forecastShoppingIntents(state).get(hero.id)!.items[0];
+  const picked=pickUpShopItem(state,hero.id,line.slotId).state;
+  assert.notStrictEqual(picked,state);
+  assert.strictEqual(assignShelfItem(picked,line.slotId,null).state,picked);
+  assert.equal(picked.shopEconomy.slots.find(s=>s.id===line.slotId)?.itemId,line.itemId);
+  assert.deepEqual(returnShopCart(picked,hero.id).state.shopEconomy.slots,state.shopEconomy.slots);
 });

@@ -90,6 +90,7 @@ export class InteractionSystem {
 
   private registerEvents(): void {
     this.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+    this.canvas.addEventListener("auxclick",event=>{if(event.button===1)event.preventDefault();});
     this.canvas.addEventListener("wheel", (event) => {
       if (!this.isShopActive()||document.querySelector("dialog[open]")||
           document.body.classList.contains("blueprint-active")) return;
@@ -99,6 +100,13 @@ export class InteractionSystem {
     }, { passive: false });
     this.canvas.addEventListener("pointerdown", (event) => {
       if (document.querySelector("dialog[open]")||!this.isShopActive()) return;
+      if(event.button===1){
+        event.preventDefault();
+        if(this.miningMode||document.body.classList.contains("blueprint-active"))return;
+        this.heldButton=null;this.heldSlotId=null;
+        this.performPointerAction(1,event.offsetX,event.offsetY);
+        return;
+      }
       if (event.button !== 0 && event.button !== 2) return;
       if(this.miningMode&&event.button===2){
         this.setMiningMode(false);
@@ -277,6 +285,14 @@ export class InteractionSystem {
         this.publish();
         return;
       }
+      if(button===1){
+        if(!this.store)return;
+        const selected=this.quickbar.selected;
+        this.message=!selected&&slot.itemId===null
+          ?"Select a product in your quickbar."
+          :this.store.assignShelfItem(slot.id,selected===slot.itemId?null:selected);
+        this.publish();return;
+      }
       const before=this.store?.state;
       // Destocking transfers the actual slot product, regardless of which
       // bag item happens to be selected. Capture it before the store refresh.
@@ -287,6 +303,7 @@ export class InteractionSystem {
       if(this.store&&this.store.state!==before&&transferredItem)
         this.onMerchantAction(button===0?"stock":"destock",transferredItem);
     } else {
+      if(button===1)return;
       const target = this.worldItems.find(({ mesh }) => mesh === hit.pickedMesh);
       if (target?.kind === "register" && button === 0) {
         this.message = this.checkoutRegister();

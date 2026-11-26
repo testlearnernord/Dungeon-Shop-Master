@@ -47,7 +47,7 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
   const grid=element("div","bag-grid");
   const reserve=element("section","bag-reserve");
   const editor=element("div","bag-quickbar");
-  const help=element("p","bag-help","Drag an owned item onto a slot. Drag slots to swap; right-click a slot or drag it back to the bag to unbind. You can also select an item and click a slot.");
+  const help=element("p","bag-help","Drag a product onto a slot, even at zero stock. Drag slots to swap; right-click a slot or drag it back to the bag to unbind. You can also select an item and click a slot.");
   const message=element("p","bag-message");message.setAttribute("role","status");
   dialog.append(header,summary,grid,reserve,element("h3","","Quickbar"),editor,help,message);
   document.body.append(dialog);
@@ -57,9 +57,6 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
     persist(bar);picked=null;options.onBindingsChanged();
   };
   const bind=(index:number,id:ItemId)=>{
-    if(store.state.shopEconomy.bag[id]<=0&&bar.indexOf(id)<0){
-      message.textContent="That item is not in your bag.";return;
-    }
     if(bar.bind(index,id)){message.textContent=itemName(id)+" assigned to slot "+(index+1)+".";changed();}
   };
   const drop=(index:number)=>{
@@ -122,8 +119,8 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
     if(!dialog.open)return;
     summary.textContent=used+" / "+ECONOMY.bagCapacity+" bag spaces used";
     grid.replaceChildren();
-    for(const item of SHELF_GOODS.filter(item=>economy.bag[item.id]>0)){
-      const card=element("article","bag-item");card.dataset.bagItem=item.id;
+    for(const item of SHELF_GOODS){
+      const card=element("article","bag-item");card.dataset.bagItem=item.id;card.dataset.empty=String(economy.bag[item.id]===0);
       const choose=button("bag-item-pick","");choose.draggable=true;
       choose.setAttribute("aria-pressed",String(picked===item.id));
       choose.append(art(item.id),element("span","",item.name),element("strong","",String(economy.bag[item.id])));
@@ -137,6 +134,7 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
       const discard=button("bag-discard","Discard 1");
       discard.setAttribute("aria-label","Discard 1 "+item.name);
       discard.title="Permanently discard one item, no refund";
+      discard.disabled=economy.bag[item.id]===0;
       discard.addEventListener("click",event=>{
         if(event.detail>1)return;
         // Negative request IDs are disjoint from supplier order IDs.
@@ -162,9 +160,7 @@ export function setupInventoryHud(dock:HTMLElement,canvas:HTMLCanvasElement,
     options.onMenuChanged(true);picked=null;drag=null;
     message.textContent="";
     if(requested&&isShelfGood(requested)){
-      if(store.state.shopEconomy.bag[requested]>0){
-        picked=requested;message.textContent="Choose a quickbar slot for "+itemName(requested)+".";
-      }else message.textContent=itemName(requested)+" is not in your bag.";
+      picked=requested;message.textContent="Choose a quickbar slot for "+itemName(requested)+".";
     }
     dialog.showModal();render();close.focus();return true;
   }

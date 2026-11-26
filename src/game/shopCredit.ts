@@ -68,7 +68,6 @@ export function issueShopCredit(state:GameState,heroId:string):CreditResult {
     ? {...state.shopEconomy,slots:state.shopEconomy.slots.map(slot=>
         slot.id!==stockSlot.id?slot:{
           ...slot,quantity:slot.quantity-1,
-          itemId:slot.quantity===1?null:slot.itemId,
         })}
     : {...state.shopEconomy,bag:{
         ...state.shopEconomy.bag,

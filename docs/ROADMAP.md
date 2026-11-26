@@ -36,7 +36,8 @@ One saved world and combat authority, physical transactions, deterministic curre
 ## Employee Management V0.001
 
 - A/B: saved employee identity, peaceful Ghoul presentation, shared physical route, task priority UI and assignment. Validate before enabling work.
-- C: explicit restock slot product configuration and physical storage retrieval with stock reservation; use canonical shelf transfers.
+- C1: persistent owner-controlled shelf product assignment, including empty slots and save/reload; code implemented on the C1 branch, CI and visual acceptance pending; middle-click uses the existing quickbar, and shelf paper slips show assignments.
+- C2: physical storage retrieval with shared stock reservation; use canonical shelf transfers.
 - D: actual cashier service at the staff dock, slower than Galvik, no tips, atomic shared register/customer claim and manual takeover safety.
 - E: evaluate charity/credit evidence and decide supported action. Never create money or grant credit without the existing authority.
 - F: real browser playtest, combined commerce and balance; no extra employee types until foundation works.

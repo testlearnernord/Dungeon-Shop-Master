@@ -90,8 +90,12 @@ test("store shelf transfers notify only on success and share the authoritative e
   assert.equal(store.state, stocked);
   assert.equal(notifications, 1);
   assert.match(store.transfer("shelf-1-slot-1", "healing-herb", "remove"), /^Returned/);
-  assert.deepEqual(store.state, initial);
+  assert.equal(store.state.shopEconomy.slots[0].itemId,"healing-herb");
+  assert.deepEqual(store.state.shopEconomy.bag,initial.shopEconomy.bag);
   assert.equal(notifications, 2);
+  assert.match(store.assignShelfItem("shelf-1-slot-1",null),/cleared/);
+  assert.deepEqual(store.state,initial);
+  assert.equal(notifications,3);
 });
 
 test("restoring a campaign publishes once and resets transaction deduplication", () => {

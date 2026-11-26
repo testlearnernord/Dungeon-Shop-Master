@@ -40,6 +40,7 @@ export interface Slot {
   id: string;
   shelfId: string;
   index: number;
+  /** Owner assignment; persists at zero stock until explicitly cleared. */
   itemId: ItemId | null;
   quantity: number;
   capacity: number;
@@ -162,6 +163,24 @@ export function discardBag(state: GameState, itemId: ItemId): { state: GameState
   };
 }
 
+/** Assign a sellable product without transferring any merchandise or gold. */
+export function assignShelfItem(
+  state:GameState,slotId:string,itemId:ItemId|null,
+):{state:GameState;message:string}{
+  const economy=state.shopEconomy;
+  const slot=economy.slots.find(entry=>entry.id===slotId);
+  if(!slot||(itemId!==null&&!isShelfGood(itemId)))
+    return {state,message:"Choose a valid shelf slot and sellable item."};
+  if(slot.itemId===itemId)return {state,message:"Assignment unchanged."};
+  if(slot.quantity>0||state.shopCarts.some(cart=>cart.lines.some(line=>line.slotId===slotId)))
+    return {state,message:"Remove all stock and wait for customer reservations before changing the assignment."};
+  return {
+    state:{...state,shopEconomy:{...economy,
+      slots:economy.slots.map(entry=>entry===slot?{...entry,itemId}:entry)}},
+    message:itemId===null?"Shelf assignment cleared.":"Assigned "+ITEMS.find(item=>item.id===itemId)!.name+".",
+  };
+}
+
 export function transferShelf(
   state: GameState, slotId: string, itemId: ItemId, direction: "stock" | "remove",
   requestedUnits = 1,
@@ -200,7 +219,7 @@ export function transferShelf(
     state: { ...state, shopEconomy: {
       ...economy,
       bag: { ...economy.bag, [itemId]: economy.bag[itemId] - delta },
-      slots: economy.slots.map((entry) => entry === slot ? { ...entry, quantity, itemId: quantity ? itemId : null } : entry),
+      slots: economy.slots.map((entry) => entry === slot ? { ...entry, quantity, itemId } : entry),
     } },
     message: direction === "stock"
       ? units === 1 ? `Placed ${item.name}.` : `Placed ${units} ${item.name}.`
@@ -256,7 +275,6 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
       if (item.kind === "weapon") weapon = gearForItem(item.id)?.name??weapon;
       if (item.kind === "armor") armor = gearForItem(item.id)?.name??armor;
       slot.quantity -= quantity;
-      if (slot.quantity === 0) slot.itemId = null;
       economy = {
         ...economy, balance: economy.balance + revenue,
         dailySales: { day, units: economy.dailySales.units + quantity, revenue: economy.dailySales.revenue + revenue },

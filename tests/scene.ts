@@ -1647,3 +1647,10 @@ export function inspectEmployee(){
     x:root.position.x,y:root.position.y,z:root.position.z,peaceful:root.metadata?.peaceful===true,
     clip:root.metadata?.animationClip??null,task:root.metadata?.employeeTask??null}:null;
 }
+
+export function inspectShelfAssignmentNote(slotId:string){
+  const note=currentTestScene()?.getMeshByName(slotId+"-assignment-note");
+  return note?{itemId:note.metadata?.itemId,parent:note.parent?.name,
+    pickable:note.isPickable,collisions:note.checkCollisions,
+    enabled:note.isEnabled(),textureReady:note.material?.getActiveTextures().some(t=>t.isReady())??false}:null;
+}

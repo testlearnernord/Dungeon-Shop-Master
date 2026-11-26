@@ -64,7 +64,7 @@ This document is a maintainable implementation contract.
 | Shop header / day / gold | Tiny top-left glance; extra details behind disclosure |
 | Hotbar | Five ~54px translucent saleable slots, no whole-bar background; quantities visible, item label on focus |
 | Live service strip | Conditional small top-center chips for ready-to-pay customers, live expiring restock and credit requests; **F/click selects stock**, no automatic merchant action |
-| Physical shelf focus | The wooden slot remains the only pick/collision target; each stocked unit is a real GLB-derived 3D mesh sharing its loaded geometry, not a billboard or UI sprite. Aimed slot shows item/count/capacity, left/right one-unit clicks, Shift+click fill/clear and held-cart/bag warnings; no extra modal or pointer interception |
+| Physical shelf focus | The wooden slot remains the only pick/collision target; each stocked unit is a real GLB-derived 3D mesh sharing its loaded geometry, not a billboard or UI sprite. Aimed slot shows item/count/capacity, left/right one-unit clicks, Shift+click fills/empties physical stock, not the assignment; held-cart/bag warnings. Middle-click assigns/toggles the selected quickbar product; a small physical paper label on the shelf lip persists at zero stock. No assignment dialog |
 | Controls | Collapsed by default, expandable above the measured dock |
 | Visitors / roster | Small glance cluster, full cards and tactical details on demand |
 | Wholesale | Item symbols, search, gold, stock, actionable costs and limits |

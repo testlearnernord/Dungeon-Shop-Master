@@ -1345,7 +1345,7 @@ function validateState(value: unknown): asserts value is GameState {
     if (slot.capacity !== ECONOMY.slotCapacity) fail(`${path}.capacity`, "is incompatible");
     const quantity = integer(slot.quantity, `${path}.quantity`, 0, ECONOMY.slotCapacity);
     choice(slot.itemId, [null, ...SHELF_GOODS.map(item=>item.id)], `${path}.itemId`);
-    if ((quantity === 0) !== (slot.itemId === null)) fail(path, "must have an item exactly when stocked");
+    if (quantity > 0 && slot.itemId === null) fail(path, "must have an assigned item when stocked");
   });
   {
     const reservedBySlot = new Map<string,{itemId:string;quantity:number}>();
@@ -1393,7 +1393,7 @@ function validateState(value: unknown): asserts value is GameState {
       const source=slots.find(value=>(value as RecordValue).id===slotId) as RecordValue;
       if((source.quantity as number) + reserved.quantity > (source.capacity as number))
         fail("payload.shopCarts","held quantity exceeds shelf capacity");
-      if(source.itemId!==null && source.itemId!==reserved.itemId)
+      if(source.itemId!==null&&source.itemId!==reserved.itemId)
         fail("payload.shopCarts","held stock conflicts with the shelf product");
     }
   }

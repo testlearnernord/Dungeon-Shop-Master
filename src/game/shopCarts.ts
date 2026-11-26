@@ -72,8 +72,7 @@ export function pickUpShopItem(
       shopEconomy: {
         ...state.shopEconomy,
         slots: state.shopEconomy.slots.map(entry => entry.id === slotId
-          ? { ...entry, quantity: remaining,
-            itemId: remaining === 0 ? null : entry.itemId }
+          ? { ...entry, quantity: remaining }
           : entry),
       },
     },
