@@ -6,7 +6,7 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Current Alpha
 
-Current contract: Alpha v49, including physical automatic buyback. The displayed HUD label is still V.002 ALPHA; the campaign schema (v49), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented. The room-first generator replaces the DFS maze with connected chambers and alternate routes; see [Dungeon Reforged](docs/DUNGEON_REFORGED.md). Manual acceptance is pending. Alpha v49 is the only supported campaign schema. Reject v48 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+Current contract: Alpha v49, including physical automatic buyback. The displayed HUD label is still V.002 ALPHA; the campaign schema (v49), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented. The room-first generator replaces the DFS maze with connected chambers and alternate routes. The Table, LIVE viewer and replay share hall, crypt, vault and guardroom art; see [Dungeon Reforged](docs/DUNGEON_REFORGED.md). Manual acceptance is pending. Alpha v49 is the only supported campaign schema. Reject v48 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 | Area | Implemented |
 | --- | --- |

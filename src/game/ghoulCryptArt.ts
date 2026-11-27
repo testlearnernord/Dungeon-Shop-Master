@@ -78,7 +78,8 @@ export function createDungeonRoomArt(scene:Scene,plan:DungeonRoomArtPlan,world:V
   }
   const lamp=anchors[0];
   if(lamp){
-    box("lantern-"+lamp.corner,lamp.x,1.44,lamp.z,.23,.30,.23,glow);
+    const height=theme==="hall"?2.96:theme==="crypt"?.86:theme==="vault"?.98:1.26;
+    box("lantern-"+lamp.corner,lamp.x,height,lamp.z,.23,.30,.23,glow);
   }
   const light=new PointLight("dungeon-torchlight-"+room.id,
     new Vector3(world.x+(lamp?.x??0),2.6,world.z+(lamp?.z??0)),scene);

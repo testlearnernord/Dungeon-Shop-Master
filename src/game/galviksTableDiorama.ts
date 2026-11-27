@@ -462,6 +462,7 @@ void main(void){
       art.light.dispose();
       art.mesh.parent=this.miniatureWorldRoot;
       art.mesh.name="cellar-table-diorama-room-art-"+plan.room.id;
+      this.tabletopLight.includedOnlyMeshes.push(...art.mesh.getChildMeshes());
       this.floorArtMaterials.push(...this.scene.materials.slice(materialStart)
         .filter((mat):mat is StandardMaterial=>mat instanceof StandardMaterial));
       // Small ambient support for the same materials in the dark cellar.
