@@ -8,6 +8,7 @@ import type {Scene} from "@babylonjs/core/scene";
 import type {GameStore} from "./gameStore.ts";
 import {BUYBACK_CHEST as C} from "./buybackChestPlacement.ts";
 import {ITEMS} from "./economy.ts";
+import {SURVEYOR_PLAN_NAME} from "./dungeonDiscovery.ts";
 
 export function createBuybackChest(scene:Scene,store:GameStore){
   const root=new TransformNode("recovered-goods-root",scene);
@@ -54,7 +55,7 @@ export function createBuybackChest(scene:Scene,store:GameStore){
     ctx.strokeStyle="#bd9458";ctx.lineWidth=8;ctx.strokeRect(8,8,1008,204);
     ctx.textAlign="center";ctx.fillStyle="#f5d7a2";ctx.font="bold 86px Georgia";ctx.fillText("SELL LOOT HERE",512,110,970);
     ctx.font="bold 38px sans-serif";ctx.fillStyle=store.state.buybackChestOpen?"#a1d3ab":"#e0a099";
-    ctx.fillText(store.state.buybackChestOpen?"OPEN · MATERIALS":"CLOSED",512,174);tex.update();
+    ctx.fillText(store.state.buybackChestOpen?"OPEN · RECOVERED GOODS":"CLOSED",512,174);tex.update();
   };
   // One picking/collision hull; decorative mesh parts are not service targets.
   const mesh=MeshBuilder.CreateBox("recovered-goods-chest",{width:W,height:H,depth:D},scene);
@@ -73,7 +74,7 @@ export function createBuybackChest(scene:Scene,store:GameStore){
     if(state.events===seen)return;
     const old=seen;seen=state.events;
     if(state.events.length<=old.length||state.events[old.length-1]?.id!==old.at(-1)?.id)return;
-    const sales=state.events.slice(old.length).filter(e=>e.type==="hero-buyback");
+    const sales=state.events.slice(old.length).filter(e=>e.type==="hero-buyback"||e.type==="discovery-buyback");
     if(!sales.length)return;
     const counts=new Map<string,number>();
     for(const e of sales)if(e.itemId)counts.set(e.itemId,(counts.get(e.itemId)??0)+(e.quantity??1));
@@ -81,6 +82,7 @@ export function createBuybackChest(scene:Scene,store:GameStore){
     ctx.textAlign="center";ctx.font="bold 43px sans-serif";ctx.fillStyle="#e8c687";
     ctx.fillText("−"+sales.reduce((v,e)=>v+(e.cost??0),0)+"g  ·  RECOVERED GOODS",512,55);
     ctx.fillStyle="#b4e0b8";ctx.font="bold 43px sans-serif";let y=116;
+    if(sales.some(e=>e.type==="discovery-buyback")){ctx.fillText("+"+SURVEYOR_PLAN_NAME,512,y);y+=57;}
     for(const [id,count] of counts){ctx.fillText("+"+count+" "+ITEMS.find(i=>i.id===id)?.name,512,y);y+=57;}
     bt.update();remaining=4;bubble.setEnabled(true);
   });
