@@ -18,7 +18,7 @@ import {generateExpeditionLayout,dungeonShortestPath,
   type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
 import {createDungeonFeaturePalette,createReadableDungeonChest,
-  createReadableDungeonTrap,setDungeonSiteSpent} from "./dungeonFeatureProps.ts";
+  createReadableDungeonTrap,setDungeonSiteSpent,createDungeonRemains} from "./dungeonFeatureProps.ts";
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
 import {createDungeonRoomArt,createDungeonPassageArt} from "./ghoulCryptArt.ts";
@@ -574,6 +574,11 @@ void main(void){
         ghoulSites.push({id:feature.id,root:anchor,fallback});
       }
     }
+    for(const body of frame.fallen??[]){
+      const mesh=createDungeonRemains(this.scene,body.heroId,this.worldPoint(body));
+      mesh.parent=this.featureRoot;
+    }
+    this.root.metadata.fallenCount=frame.fallen?.length??0;
     this.ghoulMap?.setSites(ghoulSites);
     this.root.metadata.featureCount=visible;
     this.root.metadata.authoredProps=authoredProps;
