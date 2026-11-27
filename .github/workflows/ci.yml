@@ -27,6 +27,10 @@ jobs:
       - run: npm run verify:pages
       # Stable gameplay contracts only; the complete suite is manual.
       - run: npm run test:unit:core
+        if: github.head_ref != 'audit/gameplay-loop-room-first-dungeon'
+      - name: Full unit regression for the geometry replacement
+        if: github.head_ref == 'audit/gameplay-loop-room-first-dungeon'
+        run: npm run test:unit
 
   smoke:
     name: Browser core smoke
