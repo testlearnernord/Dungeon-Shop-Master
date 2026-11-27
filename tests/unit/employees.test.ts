@@ -493,3 +493,45 @@ test("worker escapes the recorded two-customer checkout overlap without dropping
   assert.equal(working.shopEconomy.slots.find(s=>s.id===slot.id)?.quantity,slot.quantity+2);
   assert.equal(working.shopEconomy.balance,base.shopEconomy.balance);
 });
+
+
+test("closed portrait cannot reserve uncollected shelf stock; reopening resumes real collection",()=>{
+  const base=createStockedShopState(7351);
+  const store=new GameStore({...base,cellarDoorOpen:false});
+  store.setEmployeePriority("tettel","restocking",1);
+  let state=store.state;
+  for(let i=0;i<80;i++)state=step(state);
+  assert.equal(state.employees[0].restock,null);
+  assert.equal(state.employees[0].job,null);
+  assert.deepEqual(state.shopEconomy,base.shopEconomy);
+  assert.equal(availableBagUnits(state,"bread"),base.shopEconomy.bag.bread);
+  state={...state,cellarDoorOpen:true};
+  for(let i=0;i<40&&!state.employees[0].restock;i++)state=step(state);
+  assert.equal(state.employees[0].restock?.stage,"collect");
+  const claimed=state.employees[0].restock!;
+  state={...state,cellarDoorOpen:false};
+  for(let i=0;i<40&&state.employees[0].restock;i++)state=step(state);
+  assert.equal(state.employees[0].restock,null);
+  assert.equal(availableBagUnits(state,claimed.itemId),base.shopEconomy.bag[claimed.itemId]);
+  assert.deepEqual(state.shopEconomy,base.shopEconomy);
+});
+
+test("portrait closed after pickup returns real cargo at the chest without remote shelf delivery",()=>{
+  const base=createStockedShopState(7351);
+  const store=new GameStore({...base,cellarDoorOpen:true});
+  store.setEmployeePriority("tettel","restocking",1);
+  let state=store.state;
+  for(let i=0;i<500&&state.employees[0].restock?.stage!=="deliver";i++)state=step(state);
+  const cargo=state.employees[0].restock;
+  assert(cargo&&cargo.stage==="deliver");
+  assert.equal(availableBagUnits(state,cargo.itemId),base.shopEconomy.bag[cargo.itemId]-cargo.units);
+  state={...state,cellarDoorOpen:false};
+  state=step(state);
+  assert.equal(state.employees[0].restock?.stage,"return");
+  assert.equal(availableBagUnits(state,cargo.itemId),base.shopEconomy.bag[cargo.itemId]-cargo.units);
+  for(let i=0;i<200&&state.employees[0].restock;i++)state=step(state);
+  assert.equal(state.employees[0].restock,null);
+  assert.equal(availableBagUnits(state,cargo.itemId),base.shopEconomy.bag[cargo.itemId]);
+  assert.deepEqual(state.shopEconomy,base.shopEconomy);
+  assert.deepEqual(state.events,base.events);
+});

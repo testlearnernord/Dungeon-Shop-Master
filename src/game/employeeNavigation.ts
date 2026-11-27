@@ -103,3 +103,34 @@ export function employeeRoute(state:GameState,from:ShopPoint,to:ShopPoint,avoidC
   }
   return null;
 }
+
+
+/** Static access is independent of temporary customer occupancy. Cache only
+ * immutable furniture/room topology and the real cellar door; never cache
+ * worker positions, cargo, or a customer-blocked route as unreachable. */
+type RestockAccessCache={
+  room:GameState["shopRoom"];cellar:GameState["cellarRoom"];
+  bedroom:GameState["bedroomFurniture"];chest:GameState["cellarChest"];
+  table:GameState["cellarTable"];door:boolean;targets:Map<string,boolean>;
+};
+const restockAccessCache=new WeakMap<GameState["shopLayout"],RestockAccessCache>();
+export function employeeRestockAccessible(state:GameState,target:ShopPoint):boolean{
+  // Every shelf belongs to the public shop, every collection dock to the
+  // cellar. A shut portrait disconnects the two even if the worker is upstairs.
+  if(!state.cellarDoorOpen)return false;
+  let cache=restockAccessCache.get(state.shopLayout);
+  if(!cache||cache.room!==state.shopRoom||cache.cellar!==state.cellarRoom||
+    cache.bedroom!==state.bedroomFurniture||cache.chest!==state.cellarChest||
+    cache.table!==state.cellarTable||cache.door!==state.cellarDoorOpen){
+    cache={room:state.shopRoom,cellar:state.cellarRoom,bedroom:state.bedroomFurniture,
+      chest:state.cellarChest,table:state.cellarTable,door:state.cellarDoorOpen,targets:new Map()};
+    restockAccessCache.set(state.shopLayout,cache);
+  }
+  const key=target.x+":"+target.z;
+  const previous=cache.targets.get(key);
+  if(previous!==undefined)return previous;
+  const dock=employeeStoragePoint(state);
+  const reachable=!!dock&&!!employeeRoute(state,dock,target);
+  cache.targets.set(key,reachable);
+  return reachable;
+}
