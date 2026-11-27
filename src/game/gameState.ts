@@ -24,7 +24,8 @@ import {arrivalEvent} from "./shopArrivals.ts";
 import {createEmployees,type EmployeeState} from "./employees.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
-export const SIMULATION_VERSION = 50;
+import type {SurveyorPlan} from "./dungeonDiscovery.ts";
+export const SIMULATION_VERSION = 51;
 
 export interface ShopEconomyState {
   readonly balance: number;
@@ -50,7 +51,7 @@ export interface WorldEvent {
   readonly type: "welcome" | "day-started" | "shop-arrival" | "shop-stay" |
     "shop-departure" | "shop-walkout" | "influx" | "sale" | "tip" | "healed" |
     "shop-credit" | "dungeon-live" | "hero-death-signal" |
-    "temporary-party-join" | "temporary-party-leave" | "hero-buyback";
+    "temporary-party-join" | "temporary-party-leave" | "hero-buyback" | "discovery-buyback";
   readonly day: number;
   readonly message: string;
   readonly worldTick?: number;
@@ -110,6 +111,8 @@ export interface GameState {
   readonly cellarTable: CellarTablePlacement;
   readonly cellarDoorOpen: boolean;
   readonly buybackChestOpen:boolean;
+  /** One campaign-unique recovered discovery, not bulk material stock. */
+  readonly surveyorPlan:SurveyorPlan|null;
   /** Fishing score only; fish goods will use the normal economy when added. */
   readonly cellarFishCaught: number;
   readonly shopCarts: readonly ShopCart[];
@@ -164,6 +167,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     cellarTable: {...DEFAULT_CELLAR_TABLE},
     cellarDoorOpen: false,
     buybackChestOpen:true,
+    surveyorPlan:null,
     cellarFishCaught: 0,
     shopCarts: [],
     shopDebts: [],
