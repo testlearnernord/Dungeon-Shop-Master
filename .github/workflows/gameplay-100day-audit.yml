@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   audit:
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (startsWith(github.head_ref, 'audit/gameplay-loop-') || (github.head_ref == 'experiment/unified-boss-profile' || github.head_ref == 'experiment/combat-balance-sweep' || github.head_ref == 'experiment/shared-ranged-spacing')))
+    if: github.event_name == 'workflow_dispatch'
     name: Real GameStore / scripted-storefront ${{ matrix.days }}-day scenarios / ${{ matrix.seed }} / ${{ matrix.modes }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -91,7 +91,7 @@ jobs:
           retention-days: 14
 
   boss-readiness:
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (startsWith(github.head_ref, 'audit/gameplay-loop-') || (github.head_ref == 'experiment/unified-boss-profile' || github.head_ref == 'experiment/combat-balance-sweep' || github.head_ref == 'experiment/shared-ranged-spacing')))
+    if: github.event_name == 'workflow_dispatch'
     name: Controlled Floor-10 readiness / ${{ matrix.seed }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
