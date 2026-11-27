@@ -32,3 +32,5 @@ The repo intentionally deletes obsolete positive Floor-6 solo-boss/per-hero-perm
 3. Keep the new-playthrough save contract strict. No old-save migrations.
 4. Keep the deployment workflow untouched. It builds and verifies the actual Pages output on `main`.
 5. Report actual CI results and measured runtime, not estimated speedups. Passing a subset is not passing the full regression.
+
+The targeted **Employee physical throughput audit** runs only when its explicit spec/workflow changes or via manual dispatch. Two matched policies use real browser callbacks; the spec skips unless `EMPLOYEE_AUDIT_POLICY` is set. This is diagnostic, not part of the ordinary required smoke gate.
