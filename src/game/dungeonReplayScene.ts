@@ -1,3 +1,4 @@
+import {dungeonOverviewTileColor,type DungeonRoomTheme} from "./dungeonRoomArtPlan.ts";
 import {orientNorthUpMinimap} from "./dungeonObservationOrientation.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
@@ -103,6 +104,7 @@ export class DungeonReplayScene {
     heroPreview:HeroVisual|null,
     minimap:HTMLCanvasElement,
     private readonly ghoulMap?:GhoulMapInstances,
+    private readonly roomThemes:ReadonlyMap<number,DungeonRoomTheme>=new Map(),
   ){
     this.heroPreview=heroPreview;
     this.indicator=minimap;
@@ -344,7 +346,7 @@ export class DungeonReplayScene {
     orientNorthUpMinimap(ctx,this.indicator.height);
     for(let z=0;z<this.layout.height;z++)for(let x=0;x<this.layout.width;x++){
       const kind=tileAt(this.layout,x,z);
-      ctx.fillStyle=kind==="wall"?"#171b20":kind==="room"?"#81786d":"#565960";
+      ctx.fillStyle=dungeonOverviewTileColor(kind,this.roomThemes.get(z*this.layout.width+x));
       ctx.fillRect(x*cell,z*cell,cell,cell);
     }
     for(const marker of this.markers){
