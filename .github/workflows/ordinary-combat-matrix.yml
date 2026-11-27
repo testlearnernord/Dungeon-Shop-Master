@@ -2,18 +2,26 @@ name: Ordinary combat controlled matrix
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'tools/analysis/ordinary-combat-matrix.mjs'
       - 'src/game/groupCombat.ts'
       - 'src/game/spatialDungeonExploration.ts'
       - '.github/workflows/ordinary-combat-matrix.yml'
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: 'Baseline with identical dungeon geometry'
+        required: true
+        default: main
 concurrency:
-  group: ordinary-combat-matrix-${{ github.event.pull_request.number }}
+  group: ordinary-combat-matrix-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   compare:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'combat-audit')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -24,11 +32,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: candidate
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.base.sha || inputs.baseline_ref }}
           path: baseline
       - uses: actions/setup-node@v4
         with:

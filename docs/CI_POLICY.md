@@ -38,3 +38,5 @@ The repo intentionally deletes obsolete positive Floor-6 solo-boss/per-hero-perm
 5. Report actual CI results and measured runtime, not estimated speedups. Passing a subset is not passing the full regression.
 
 The targeted **Employee physical throughput audit** runs only when its explicit spec/workflow changes or via manual dispatch. Two matched policies use real browser callbacks; the spec skips unless `EMPLOYEE_AUDIT_POLICY` is set. This is diagnostic, not part of the ordinary required smoke gate.
+
+The exact ordinary-combat matrix is opt-in via manual dispatch or the `combat-audit` PR label. It requires identical case identities, including generated pack size and site. A geometry replacement can change those identities without changing combat rules; unmatched matrices are not a valid A/B comparison. Use the core combat regressions and targeted diagnostics for such changes. The exact-match check itself remains strict.

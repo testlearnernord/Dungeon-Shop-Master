@@ -1658,7 +1658,7 @@ export function inspectShelfAssignmentNote(slotId:string){
 /** Compare actual room meshes in both observation scenes, not just plans. */
 export function inspectDungeonRoomArt(){
   const scene=currentTestScene();
-  return (scene?.meshes??[]).filter(m=>m.metadata?.dungeonRoomArt===true).map(m=>({
+  return (scene?.meshes??[]).filter(m=>m.metadata?.dungeonRoomArt===true||m.metadata?.dungeonPassageArt===true).map(m=>({
     id:String(m.metadata.roomId),theme:String(m.metadata.roomTheme),
     x:m.position.x,z:m.position.z,
     props:m.getChildMeshes().map(p=>({name:p.name,x:p.position.x,y:p.position.y,z:p.position.z,

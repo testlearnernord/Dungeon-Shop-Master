@@ -25,8 +25,8 @@ import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
-import {createDungeonRoomArt} from "./ghoulCryptArt.ts";
-import {dungeonRoomArtPlan,ROOM_THEME_NAMES} from "./dungeonRoomArtPlan.ts";
+import {createDungeonRoomArt,createDungeonPassageArt} from "./ghoulCryptArt.ts";
+import {dungeonRoomArtPlan,dungeonPassageArtPlan,ROOM_THEME_NAMES} from "./dungeonRoomArtPlan.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
@@ -803,7 +803,8 @@ export class DungeonViewer {
     this.updateCompass();
 
     const ambient = new HemisphericLight("dungeon-ambient",new Vector3(0,1,0),scene);
-    ambient.intensity = 0.85;
+    ambient.intensity = 0.72;
+    ambient.groundColor=new Color3(.17,.21,.23);
     const makeMat=(id:string,hex:string,emissive=false) => {
       const mat=new StandardMaterial(id,scene);
       mat.diffuseColor=Color3.FromHexString(hex);
@@ -882,6 +883,9 @@ export class DungeonViewer {
     const roomArt=dungeonRoomArtPlan(layout);
     for(const plan of roomArt)
       replayDecorations.push(createDungeonRoomArt(scene,plan,getWorld(layout,plan.room)));
+
+    for(const plan of dungeonPassageArtPlan(layout))
+      replayDecorations.push(createDungeonPassageArt(scene,plan,getWorld(layout,plan.cell)));
 
     const ghoulSites:GhoulMapSite[]=[];
     for(const feature of layout.features){

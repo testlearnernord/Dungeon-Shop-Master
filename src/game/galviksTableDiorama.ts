@@ -21,8 +21,8 @@ import {createDungeonFeaturePalette,createReadableDungeonChest,
   createReadableDungeonTrap} from "./dungeonFeatureProps.ts";
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
-import {createDungeonRoomArt} from "./ghoulCryptArt.ts";
-import {dungeonRoomArtPlan} from "./dungeonRoomArtPlan.ts";
+import {createDungeonRoomArt,createDungeonPassageArt} from "./ghoulCryptArt.ts";
+import {dungeonRoomArtPlan,dungeonPassageArtPlan} from "./dungeonRoomArtPlan.ts";
 import {createHeroVisual,setHeroVisualEquipment,
   type HeroVisual} from "./heroVisual.ts";
 import {GhoulMapInstances,type GhoulMapSite}
@@ -459,7 +459,7 @@ void main(void){
     for(const plan of dungeonRoomArtPlan(layout)){
       const materialStart=this.scene.materials.length;
       const art=createDungeonRoomArt(this.scene,plan,this.worldPoint(plan.room));
-      art.light.dispose();
+      art.light?.dispose();
       art.mesh.parent=this.miniatureWorldRoot;
       art.mesh.name="cellar-table-diorama-room-art-"+plan.room.id;
       this.tabletopLight.includedOnlyMeshes.push(...art.mesh.getChildMeshes());
@@ -469,6 +469,18 @@ void main(void){
       for(const mat of this.scene.materials.slice(materialStart))
         if(mat instanceof StandardMaterial)
           mat.emissiveColor=mat.emissiveColor.add(mat.diffuseColor.scale(.19));
+    }
+
+    for(const plan of dungeonPassageArtPlan(layout)){
+      const materialStart=this.scene.materials.length;
+      const art=createDungeonPassageArt(this.scene,plan,this.worldPoint(plan.cell));
+      art.mesh.parent=this.miniatureWorldRoot;
+      this.tabletopLight.includedOnlyMeshes.push(...art.mesh.getChildMeshes());
+      for(const mat of this.scene.materials.slice(materialStart))
+        if(mat instanceof StandardMaterial){
+          this.floorArtMaterials.push(mat);
+          mat.emissiveColor=mat.emissiveColor.add(mat.diffuseColor.scale(.19));
+        }
     }
 
     // Reuse the FULL viewer's authored staircase props and route semantics.

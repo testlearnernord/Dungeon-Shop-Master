@@ -92,7 +92,9 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   const roomArt=()=>page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonRoomArt());
   const tableArt=await roomArt();
-  expect(new Set(tableArt.map(p=>p.theme)).size).toBe(4);
+  expect(new Set(tableArt.filter(p=>p.id.startsWith("room-")).map(p=>p.theme)).size).toBe(4);
+  expect(tableArt.filter(p=>p.id.startsWith("dungeon-passage-art-")).length).toBeGreaterThan(0);
+  expect(tableArt.flatMap(p=>p.props).some(p=>p.name.includes("wall-frame"))).toBe(true);
   expect(tableArt.flatMap(p=>p.props).length).toBeGreaterThan(12);
   expect(tableArt.flatMap(p=>p.props).every(p=>!p.pickable&&!p.collides)).toBe(true);
   const table=await inspect();

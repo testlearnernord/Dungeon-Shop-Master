@@ -55,7 +55,7 @@ export interface DungeonMarkerMesh {
 }
 export interface DungeonRoomDecoration {
   readonly x:number;readonly z:number;
-  readonly mesh:AbstractMesh;readonly light:Light;
+  readonly mesh:AbstractMesh;readonly light?:Light;
 }
 
 /**
@@ -219,7 +219,7 @@ export class DungeonReplayScene {
       for(const tile of this.tiles)tile.mesh.isVisible=true;
       for(const marker of this.markers)marker.mesh.setEnabled(true);
       for(const decoration of this.decorations){
-        decoration.light.setEnabled(true);
+        decoration.light?.setEnabled(true);
         decoration.mesh.setEnabled(true);
       }
       this.drawDevelopmentMap();
@@ -329,7 +329,7 @@ export class DungeonReplayScene {
     }
     for(const decoration of this.decorations){
       const lit=visible.has(decoration.z*this.layout.width+decoration.x);
-      decoration.light.setEnabled(lit);
+      decoration.light?.setEnabled(lit);
       decoration.mesh.setEnabled(lit);
     }
     this.drawFogMap(snapshot,visible);
@@ -648,7 +648,7 @@ export class DungeonReplayScene {
           !!monster&&monster.mode!=="ENGAGED"));
     }
     for(const deco of this.decorations){
-      deco.light.setEnabled(true);deco.mesh.setEnabled(true);
+      deco.light?.setEnabled(true);deco.mesh.setEnabled(true);
     }
     this.poseLiveFloor(0);
     this.poseLiveMonsters(0);
@@ -687,7 +687,7 @@ export class DungeonReplayScene {
     for(const decoration of this.decorations){
       const cell=decoration.z*this.layout.width+decoration.x;
       decoration.mesh.setEnabled(!explored||explored.has(cell));
-      decoration.light.setEnabled(!visible||visible.has(cell));
+      decoration.light?.setEnabled(!visible||visible.has(cell));
     }
     const seenHeroes=new Set(perspective?.visibleHeroIds??[]);
     for(const [id,model] of this.floorModels){
