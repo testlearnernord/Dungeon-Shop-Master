@@ -27,10 +27,41 @@ test("matched real-browser employee throughput, three early-closed business wind
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto("./?e2e-pause-world");
   await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
-  await expect.poll(async()=>page.evaluate(async()=>{
-    const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
-    return probe.shopSceneReady();
-  }),{timeout:45000}).toBe(true);
+  // Warm the fixture's dev-only dependency graph BEFORE writing the seed.
+  // This audit needs no Babylon scene-probe imports. Vite may invalidate the
+  // page on the first dynamic import; retry only this read-only warmup.
+  const ready=async()=>{
+    await expect.poll(()=>page.evaluate(()=>typeof (window as Hooks).__shopTestEmployeeAuditSnapshot),
+      {timeout:45000}).toBe("function");
+    await expect.poll(()=>page.evaluate(()=>typeof (window as Hooks).__shopTestSaveTrafficNow),
+      {timeout:45000}).toBe("function");
+  };
+  await ready();
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      await page.evaluate(async()=>{
+        await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+        await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+        await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+      });
+      break;
+    }catch(error){
+      if(attempt===2||!/context was destroyed|navigation|ERR_ABORTED|frame was detached/i.test(String(error)))throw error;
+      await page.waitForLoadState("domcontentloaded");
+      await ready();
+    }
+  }
+  await ready();
+  const reloadSaved=async()=>{
+    for(let attempt=0;attempt<3;attempt++){
+      try{await page.reload({waitUntil:"domcontentloaded"});break;}
+      catch(error){
+        if(attempt===2||!/ERR_ABORTED|frame was detached|navigation/i.test(String(error)))throw error;
+        await page.waitForLoadState("domcontentloaded");
+      }
+    }
+    await ready();
+  };
   await page.evaluate(async policy=>{
     const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
     const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
@@ -48,15 +79,8 @@ test("matched real-browser employee throughput, three early-closed business wind
         :{cashier:5 as const,restocking:1 as const,charity:3 as const}}))};
     await new CampaignStorage().saveGame(state);
   },policy);
-  await page.reload();
+  await reloadSaved();
   await expect(page.locator("#save-status")).toContainText("Continued saved Day 1");
-  const ready=async()=>{
-    await expect.poll(()=>page.evaluate(()=>typeof (window as Hooks).__shopTestEmployeeAuditSnapshot),
-      {timeout:45000}).toBe("function");
-    await expect.poll(()=>page.evaluate(()=>typeof (window as Hooks).__shopTestSaveTrafficNow),
-      {timeout:45000}).toBe("function");
-  };
-  await ready();
   const read=()=>page.evaluate(()=>(window as Hooks).__shopTestEmployeeAuditSnapshot());
   const report:unknown[]=[];
   for(let day=1;day<=windows;day++){
@@ -138,8 +162,7 @@ test("matched real-browser employee throughput, three early-closed business wind
       // without pedestrian service. EXCLUDE that interval from all samples.
       await page.evaluate(async()=>{const h=window as Hooks;h.__shopTestAdvanceDay();await h.__shopTestSaveTrafficNow();});
       await expect(page.locator("#day")).toHaveText("Day "+(day+1),{timeout:60000});
-      await page.reload();
-      await ready();
+      await reloadSaved();
       expect((await read()).day).toBe(day+1);
     }
   }
