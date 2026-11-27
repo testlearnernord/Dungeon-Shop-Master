@@ -22,15 +22,17 @@ export interface SurveyorPlan extends SurveyorPlanSource {
  * A vault fallback prevents an unusual layout from locking progression. */
 export function surveyorPlanSource(seed:number):SurveyorPlanSource{
   let fallback:SurveyorPlanSource|undefined;
+  let anyChest:SurveyorPlanSource|undefined;
   for(let floor=5;floor<=9;floor++){
     const map=generateExpeditionLayout(seed,floor);
     for(const f of map.features.filter(f=>f.kind==="treasure").sort((a,b)=>a.id.localeCompare(b.id))){
+      anyChest??={floor,siteId:f.id};
       const theme=dungeonRoomPurposeAt(map,f);
       if(theme==="workshop")return {floor,siteId:f.id};
       if(theme==="vault"&&!fallback)fallback={floor,siteId:f.id};
     }
   }
-  if(fallback)return fallback;
+  if(fallback||anyChest)return (fallback??anyChest)!;
   throw new RangeError("No eligible discovery chest");
 }
 
@@ -50,6 +52,8 @@ export function claimSurveyorPlan(
   if(!eligible.length)return previous;
   const source=surveyorPlanSource(seed);
   if(!party.world.resolvedFeatureIds.includes(source.siteId))return previous;
+  const record=party.world.siteCycles?.find(s=>s.id===source.siteId);
+  if(record?.resolvedDay!==day)return previous;
   const cycle=dungeonSiteGeneration(party.world.siteCycles,source.siteId);
   if(previous&&cycle<=previous.cycle)return previous;
   const owner=eligible.filter(t=>t.replay.floor===source.floor&&
