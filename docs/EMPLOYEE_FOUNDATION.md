@@ -38,7 +38,7 @@ Proposed implementation safeguards: retain the canonical stock and cart authorit
 
 ## Verification
 
-New strict v50 campaign, no migration from v49 or earlier. Unit regressions cover reservation conservation, actual chest arrival, physical ramp travel, cancellation, manual takeover and save/reload in transit. C1 browser coverage uses actual quickbar and physical middle-click note. C2 browser performance, animation, route and economy acceptance remain open; headless economic campaigns do not emulate worker movement. D adds regression coverage for staff arrival, no-tip receipt, manual takeover, duplicate payment rejection and browser checkout/departure. PR #387 passed the build, core unit and browser smoke gate and was merged. Manual visual and combined balance acceptance remain open. See [Prior v48 evidence](ALPHA_V48_ACCEPTANCE.md).
+New strict v51 campaign, no migration from v50 or earlier. Unit regressions cover reservation conservation, actual chest arrival, physical ramp travel, cancellation, manual takeover and save/reload in transit. C1 browser coverage uses actual quickbar and physical middle-click note. C2 browser performance, animation, route and economy acceptance remain open; headless economic campaigns do not emulate worker movement. D adds regression coverage for staff arrival, no-tip receipt, manual takeover, duplicate payment rejection and browser checkout/departure. PR #387 passed the build, core unit and browser smoke gate and was merged. Manual visual and combined balance acceptance remain open. See [Prior v48 evidence](ALPHA_V48_ACCEPTANCE.md).
 
 ## E credit demand investigation
 
