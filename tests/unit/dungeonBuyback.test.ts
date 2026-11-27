@@ -185,3 +185,43 @@ test("starter weapon finds include all roles without more ordinary item slots",(
   for(const id of ["iron-sword","spear","staff"] as const)assert((counts.get(id)??0)>0);
   assert(!counts.has("forged-spear")&&!counts.has("ghoul-leather"));
 });
+
+test("real guardroom and crypt treasure uses the same once-only physical settlement",()=>{
+  for(const theme of ["guardroom","crypt"] as const){
+    let sample:{seed:number;feature:ReturnType<typeof generateExpeditionLayout>["features"][number];at:{x:number;z:number}}|undefined;
+    for(let seed=7351;seed<7451&&!sample;seed++){
+      const map=generateExpeditionLayout(seed,1);
+      for(const feature of map.features){
+        if(feature.kind!=="treasure"||dungeonRoomPurposeAt(map,feature)!==theme)continue;
+        if(!rollDungeonSiteLoot(seed,1,feature.id,0,"treasure").itemIds.includes("mana-potion"))continue;
+        const at=dungeonNeighbors(map,feature).find(p=>
+          !map.features.some(f=>f.x===p.x&&f.z===p.z));
+        if(at){sample={seed,feature,at};break;}
+      }
+    }
+    assert(sample,"Find a seeded real room chest with a replaced mana slot");
+    const {seed,feature,at}=sample,map=generateExpeditionLayout(seed,1);
+    const base=createGameState(seed).adventurers[0];
+    const hero={...base,floor:1 as const,status:"exploring" as const,
+      inventory:{...base.inventory,bread:ECONOMY.breadTarget,healing:ECONOMY.healingTarget}};
+    const world={...emptySpatialDungeonWorld(),heroes:[{
+      heroId:hero.id,...at,visited:[at.z*map.width+at.x],
+    }]};
+    const items=rollDungeonTreasureLoot(seed,map,feature,0).itemIds;
+    assert(!items.includes("mana-potion"));
+    const expected=distributeDungeonFinds([hero],items,feature.id,0)[0];
+    const once=advanceSpatialDungeonPartyStep([hero],world,seed,2,
+      new Set([hero.id]),{tacticalStep:feature});
+    const after=once.ticks[0].adventurer;
+    assert.equal(once.ticks[0].gainedLoot,1);
+    assert.deepEqual(after.equipment,expected.equipment);
+    assert.deepEqual(after.inventory.finds,expected.inventory.finds);
+    assert(once.world.resolvedFeatureIds.includes(feature.id));
+    const back=advanceSpatialDungeonPartyStep([after],once.world,seed,2,
+      new Set([hero.id]),{tacticalStep:at});
+    const again=advanceSpatialDungeonPartyStep([back.ticks[0].adventurer],back.world,seed,2,
+      new Set([hero.id]),{tacticalStep:feature});
+    assert.equal(again.ticks[0].gainedLoot,0);
+    assert.deepEqual(again.ticks[0].adventurer.inventory.finds,after.inventory.finds);
+  }
+});
