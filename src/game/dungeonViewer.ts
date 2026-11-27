@@ -769,10 +769,11 @@ export class DungeonViewer {
     }
     const rect=this.canvas.getBoundingClientRect();
     const hit=this.scene.pick(clientX-rect.left,clientY-rect.top,mesh=>
-      typeof mesh.metadata?.floorHeroId==="string"||
-      typeof mesh.metadata?.spectatorFeatureId==="string"||
-      typeof mesh.metadata?.dungeonStairwayId==="string"||
-      mesh.metadata?.abstractBattle===true);
+      mesh.isEnabled()&&mesh.isVisible&&mesh.isPickable&&(
+        typeof mesh.metadata?.floorHeroId==="string"||
+        typeof mesh.metadata?.spectatorFeatureId==="string"||
+        typeof mesh.metadata?.dungeonStairwayId==="string"||
+        mesh.metadata?.abstractBattle===true));
     const meta=hit?.pickedMesh?.metadata;
     const view=this.liveFloorProjectionCache?.view;
     let label="";
@@ -785,10 +786,12 @@ export class DungeonViewer {
       label=String(meta.label)+" · Tile "+meta.gridX+", "+meta.gridZ;
     }else if(typeof meta?.spectatorFeatureId==="string"&&this.layout){
       const feature=this.layout.features.find(f=>f.id===meta.spectatorFeatureId);
-      if(feature&&!view?.resolved.includes(feature.id)){
-        const context=feature.kind==="treasure"?roomLabel(feature):"";
-        label=(feature.kind==="treasure"?"CHEST · Unlooted":feature.kind==="trap"?
-          "TRAP · Armed":"GHOUL · Spawn Site")+" · Tile "+feature.x+", "+feature.z+
+      const spent=view?.resolved.includes(feature?.id??"")??false;
+      if(feature&&(!spent||feature.kind!=="monster")){
+        const context=feature.kind==="treasure"&&!spent?roomLabel(feature):"";
+        label=(feature.kind==="treasure"?(spent?"CHEST · Empty":"CHEST · Unlooted"):
+          feature.kind==="trap"?(spent?"TRAP · Triggered":"TRAP · Armed"):
+          "GHOUL · Spawn Site")+" · Tile "+feature.x+", "+feature.z+
           (context?" · "+context:"");
       }
     }else if(meta?.abstractBattle===true){
