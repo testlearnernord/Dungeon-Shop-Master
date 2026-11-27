@@ -89,6 +89,12 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   })),{timeout:35000,intervals:[300,500,800]}).toContain('"ready":true');
   await expect.poll(async()=>(await inspect()).pins.length,
     {timeout:15000}).toBe(expected.pins.length);
+  const roomArt=()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonRoomArt());
+  const tableArt=await roomArt();
+  expect(new Set(tableArt.map(p=>p.theme)).size).toBe(4);
+  expect(tableArt.flatMap(p=>p.props).length).toBeGreaterThan(12);
+  expect(tableArt.flatMap(p=>p.props).every(p=>!p.pickable&&!p.collides)).toBe(true);
   const table=await inspect();
   expect(table.observer).toBe("table");
   for(let index=0;index<expected.pins.length;index++){
@@ -175,6 +181,7 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     const result=probe.dungeonRoomTextureProbe();
     return result.shared&&result.ready&&result.visibleRooms>0;
   }),{timeout:15000}).toBe(true);
+  expect(await roomArt()).toEqual(tableArt);
   const live=await inspect();
   const afterFirst=expected.pins.map(pin=>
     pin.id===expected.selected?{...pin,...expected.first}:pin);

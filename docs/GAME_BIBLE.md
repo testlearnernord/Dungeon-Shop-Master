@@ -2,6 +2,8 @@
 
 > Current contract: Alpha v49 (Room-first Dungeon). Current design and lore; [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) distinguish implementation and acceptance.
 
+Ordinary chambers have deterministic presentation themes: pillared hall, burial crypt, treasure vault and guardroom. These labels describe art, not guaranteed rewards or special room mechanics. The existing physical loot sites and hero decisions remain authoritative.
+
 
 **Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events.
 

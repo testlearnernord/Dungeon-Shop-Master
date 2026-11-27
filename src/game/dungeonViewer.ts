@@ -25,7 +25,8 @@ import {LiveGroupCombatArena,type CombatArenaView} from "./liveGroupCombatArena.
 import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
-import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
+import {createDungeonRoomArt} from "./ghoulCryptArt.ts";
+import {dungeonRoomArtPlan,ROOM_THEME_NAMES} from "./dungeonRoomArtPlan.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
@@ -877,12 +878,10 @@ export class DungeonViewer {
         replayTiles.push({x,z,mesh});
       }
     }
-    // Burial crypt props are pure spectacle on the SAME saved dungeon
-    // tiles. No new arena teleport, obstacles, loot or simulation RNG.
-    layout.rooms.forEach((room,i)=>{
-      replayDecorations.push(createGhoulCryptRoom(
-        scene,room,getWorld(layout,room),i));
-    });
+    // Shared presentation plan; feature markers and geometry remain canonical.
+    const roomArt=dungeonRoomArtPlan(layout);
+    for(const plan of roomArt)
+      replayDecorations.push(createDungeonRoomArt(scene,plan,getWorld(layout,plan.room)));
 
     const ghoulSites:GhoulMapSite[]=[];
     for(const feature of layout.features){
@@ -951,7 +950,7 @@ export class DungeonViewer {
     }
     this.landmarks=[
       ...stairs.map(stair=>({name:stair.label,point:stair})),
-      ...layout.rooms.map(room=>({name:"Room "+(Number(room.id.slice(5))+1),point:room})),
+      ...roomArt.map(plan=>({name:ROOM_THEME_NAMES[plan.theme],point:plan.room})),
       ...layout.features.map(f=>({name:f.kind+" ("+f.subtype+")",point:f})),
     ];
     this.focus=0;

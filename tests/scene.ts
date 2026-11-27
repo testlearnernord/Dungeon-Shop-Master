@@ -76,7 +76,7 @@ export function inspectGalviksLiveTable(){
     floorMaterial:scene?.getMeshByName("cellar-table-diorama-corridors")?.material?.name??null,
     authoredProps:diorama?.metadata?.authoredProps??null,
     authoredGhouls:diorama?.metadata?.authoredGhouls??null,
-    cryptCount:scene?.meshes.filter(m=>m.name.startsWith("cellar-table-diorama-crypt-")).length??0,
+    cryptCount:scene?.meshes.filter(m=>m.metadata?.dungeonRoomArt===true).length??0,
     stairCount:scene?.meshes.filter(m=>m.name.startsWith("cellar-table-diorama-stair-")).length??0,
     heroModelCount:scene?.transformNodes.filter(n=>n.name.startsWith("cellar-table-diorama-hero-")).length??0,
     wallHeight:wallA?.getBoundingInfo().boundingBox.extendSize.y
@@ -713,7 +713,7 @@ export function inspectDungeonPlayback() {
        mesh.name.startsWith("dungeon-room-tile-"))&&mesh.isVisible).length,
     hiddenTorches:scene.meshes.filter(mesh=>
       (mesh.name.startsWith("dungeon-torch-")||
-       mesh.name.startsWith("dungeon-crypt-room-"))&&!mesh.isEnabled()).length,
+       mesh.metadata?.dungeonRoomArt===true)&&!mesh.isEnabled()).length,
     disabledTorchLights:scene.lights.filter(light=>
       light.name.startsWith("dungeon-torchlight-")&&!light.isEnabled()).length,
     combatEnemyVisible:scene.getMeshByName("dungeon-combat-creature")?.isEnabled()??false,
@@ -746,7 +746,7 @@ export function inspectDungeonPlayback() {
         error:node.metadata?.tripoError as string|undefined,
       })),
     cryptRelics:scene.meshes.filter(mesh=>
-      mesh.name.startsWith("dungeon-crypt-room-")).length,
+      mesh.metadata?.dungeonRoomArt===true).length,
     ghoulFallbacks:scene.meshes.filter(mesh=>
       mesh.name.startsWith("dungeon-enemy-")&&mesh.isEnabled()).length,
   };
@@ -1653,4 +1653,15 @@ export function inspectShelfAssignmentNote(slotId:string){
   return note?{itemId:note.metadata?.itemId,parent:note.parent?.name,
     pickable:note.isPickable,collisions:note.checkCollisions,
     enabled:note.isEnabled(),textureReady:note.material?.getActiveTextures().some(t=>t.isReady())??false}:null;
+}
+
+/** Compare actual room meshes in both observation scenes, not just plans. */
+export function inspectDungeonRoomArt(){
+  const scene=currentTestScene();
+  return (scene?.meshes??[]).filter(m=>m.metadata?.dungeonRoomArt===true).map(m=>({
+    id:String(m.metadata.roomId),theme:String(m.metadata.roomTheme),
+    x:m.position.x,z:m.position.z,
+    props:m.getChildMeshes().map(p=>({name:p.name,x:p.position.x,y:p.position.y,z:p.position.z,
+      pickable:p.isPickable,collides:p.checkCollisions})).sort((a,b)=>a.name.localeCompare(b.name)),
+  })).sort((a,b)=>a.id.localeCompare(b.id));
 }

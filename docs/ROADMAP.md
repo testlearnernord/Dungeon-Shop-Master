@@ -14,7 +14,7 @@ The completed two pre-chest v40 200-day Forge campaigns reached and beat Floor 1
 
 ## P3 — art backlog
 
-[Issue #334](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/334): polish shared crypt relic and green ghost flame. Cosmetic only, deliberately deferred.
+Shared deterministic hall, vault, crypt and guardroom art: verify visual clarity, room landmarks, lighting and prop placement in the actual table, LIVE and replay views. Functional room rules, corridor variation and permanent modifications are separate future work. [Issue #334](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/334) is historical crypt-polish context.
 
 ## Future design — not committed implementation
 

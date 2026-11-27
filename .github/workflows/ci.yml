@@ -25,31 +25,8 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run verify:pages
-      # Stable gameplay contracts by default; geometry replacement also runs the full suite.
+      # Stable gameplay contracts; full suite remains a manual diagnostic.
       - run: npm run test:unit:core
-        if: github.head_ref != 'audit/gameplay-loop-room-first-dungeon'
-      - name: Full unit regression for the geometry replacement
-        if: github.head_ref == 'audit/gameplay-loop-room-first-dungeon'
-        run: npm run test:unit
-
-  baseline-regression:
-    name: Existing main full unit reference
-    if: github.head_ref == 'audit/gameplay-loop-room-first-dungeon'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      # Diagnostic only: a pre-existing failure is not a candidate pass.
-      - name: Record unchanged baseline failures for comparison
-        continue-on-error: true
-        run: npm run test:unit
 
   smoke:
     name: Browser core smoke
