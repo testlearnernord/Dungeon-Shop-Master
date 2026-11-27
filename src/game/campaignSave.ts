@@ -7,6 +7,7 @@ import {livePartyBossCheckpointProblem,partyBossReplayProblem}
 import {isValidCellarRoom,cellarChestProblem,cellarTableProblem,
   type CellarChestPlacement,type CellarTablePlacement} from "./cellarRoom.ts";
 import {dungeonBuybackPrice} from "./dungeonBuyback.ts";
+import {surveyorPlanSource,SURVEYOR_PLAN_PRICE} from "./dungeonDiscovery.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,MATERIAL_ITEMS,reservedBagUnits } from "./economy.ts";
 import {WEAPON_NAMES,ARMOR_NAMES} from "./gearCatalog.ts";
 import {
@@ -100,7 +101,7 @@ const eventTypes = [
   "welcome", "day-started", "shop-arrival", "shop-stay", "shop-departure", "shop-walkout",
   "influx", "sale", "tip", "healed", "shop-credit",
   "dungeon-live","hero-death-signal",
-  "temporary-party-join","temporary-party-leave","hero-buyback",
+  "temporary-party-join","temporary-party-leave","hero-buyback","discovery-buyback",
 ] as const;
 
 
@@ -939,7 +940,7 @@ function validateState(value: unknown): asserts value is GameState {
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "dungeonWorlds", "shopLayout", "shopCarts", "shopDebts",
     "shopRoom","bedroomFurniture","rosterBoard","wallClock",
-    "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught","buybackChestOpen",
+    "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught","buybackChestOpen","surveyorPlan",
   ], ["wallPortrait","dungeonParties"]);
   const room=state.shopRoom;
   if (!isValidShopRoomGeometry(room))
@@ -1588,6 +1589,11 @@ function validateState(value: unknown): asserts value is GameState {
       if(!Number.isSafeInteger(serial)||serial<1)
         fail(path+".id","must reference a real buyback receipt");
     }
+    if(event.type==="discovery-buyback"){
+      allowed.push("cost");
+      if(event.cost!==SURVEYOR_PLAN_PRICE)fail(path+".cost","must match the discovery price");
+      if(visitClosed.has(visitor))fail(path+".id","requires a physical shop visit");
+    }
     if (event.type === "sale" || event.type === "healed") {
       allowed.push("itemId", "quantity");
       choice(event.itemId, permittedItems, `${path}.itemId`);
@@ -1641,6 +1647,31 @@ function validateState(value: unknown): asserts value is GameState {
       if (!allowed.includes(key)) fail(`${path}.${key}`, "is not valid for this event type");
     }
   });
+  {
+    const path="payload.surveyorPlan";
+    const receipts=(state.events as GameState["events"]).filter(e=>e.type==="discovery-buyback");
+    if(state.surveyorPlan===null){
+      if(receipts.length||room.expansionTier>=2)fail(path,"requires a purchased discovery");
+    }else{
+      const plan=object(state.surveyorPlan,path,["status","heroId","floor","siteId","cycle","foundDay"]);
+      choice(plan.status,["carried","purchased"],path+".status");
+      const source=surveyorPlanSource(campaignSeed);
+      if(plan.floor!==source.floor||plan.siteId!==source.siteId)fail(path,"must match the canonical discovery source");
+      const heroId=text(plan.heroId,path+".heroId");
+      if(!heroIds.has(heroId))fail(path+".heroId","must link to a real hero");
+      const cycle=integer(plan.cycle,path+".cycle",0,MAX_WORLD_DAY);
+      const foundDay=integer(plan.foundDay,path+".foundDay",1,day);
+      const world=(state.dungeonWorlds as GameState["dungeonWorlds"]).find(w=>w.floor===source.floor)?.world;
+      const site=world?.siteCycles?.find(s=>s.id===source.siteId);
+      if(!site||site.cycle<cycle||site.cycle===cycle&&
+        (site.resolvedDay===null||site.resolvedDay!==foundDay||!world?.resolvedFeatureIds.includes(source.siteId)))
+        fail(path,"requires a genuinely resolved source generation");
+      if(plan.status==="purchased"){
+        if(receipts.length!==1||receipts[0].adventurerId!==heroId||receipts[0].day<foundDay)
+          fail(path,"must match exactly one paid discovery receipt");
+      }else if(receipts.length||room.expansionTier>=2)fail(path,"unpaid discovery cannot unlock expansion");
+    }
+  }
   // Only complete, real recordings may be protected beyond the lookback.
   const pins=array(state.savedReplayIds,"payload.savedReplayIds");
   if(pins.length>MAX_SAVED_REPLAYS)
