@@ -8,7 +8,7 @@ import type {SpatialDungeonPartyTick} from "./spatialDungeonExploration.ts";
 export const SURVEYOR_PLAN_PRICE=12;
 export const SURVEYOR_PLAN_NAME="Surveyor's Plan";
 export interface SurveyorPlanSource {
-  readonly floor:number;
+  readonly floor:5|6|7|8|9;
   readonly siteId:string;
 }
 export interface SurveyorPlan extends SurveyorPlanSource {
@@ -19,11 +19,11 @@ export interface SurveyorPlan extends SurveyorPlanSource {
 }
 
 /** One source per campaign. Prefer the earliest actual workshop chest.
- * A vault fallback prevents an unusual layout from locking progression. */
+ * A vault (then any real chest) fallback avoids a progression lock. */
 export function surveyorPlanSource(seed:number):SurveyorPlanSource{
   let fallback:SurveyorPlanSource|undefined;
   let anyChest:SurveyorPlanSource|undefined;
-  for(let floor=5;floor<=9;floor++){
+  for(const floor of [5,6,7,8,9] as const){
     const map=generateExpeditionLayout(seed,floor);
     for(const f of map.features.filter(f=>f.kind==="treasure").sort((a,b)=>a.id.localeCompare(b.id))){
       anyChest??={floor,siteId:f.id};
