@@ -26,7 +26,7 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
 import {createDungeonRoomArt,createDungeonPassageArt} from "./ghoulCryptArt.ts";
-import {dungeonRoomArtPlan,dungeonPassageArtPlan,ROOM_THEME_NAMES} from "./dungeonRoomArtPlan.ts";
+import {dungeonRoomArtPlan,dungeonPassageArtPlan,dungeonRoomTileThemes,ROOM_SURFACE_TINTS,ROOM_THEMES,ROOM_THEME_NAMES} from "./dungeonRoomArtPlan.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
@@ -820,12 +820,17 @@ export class DungeonViewer {
     const floor=cave.floor;
     // DynamicTexture.clone does not guarantee copying its painted canvas.
     // Use the same baked texture as corridors and Galvik's Table.
-    const roomStone=new StandardMaterial("dungeon-room-flagstone",scene);
-    roomStone.diffuseTexture=floor.diffuseTexture;
-    roomStone.diffuseColor=new Color3(1.12,1.04,0.91);
-    roomStone.specularColor=floor.specularColor.clone();
-    roomStone.specularPower=floor.specularPower;
-    roomStone.ambientColor=floor.ambientColor.clone();
+    const roomArt=dungeonRoomArtPlan(layout);
+    const roomThemes=dungeonRoomTileThemes(layout,roomArt);
+    const roomStone=new Map(ROOM_THEMES.map(theme=>{
+      const mat=new StandardMaterial("dungeon-room-flagstone-"+theme,scene);
+      mat.diffuseTexture=floor.diffuseTexture;
+      mat.diffuseColor=new Color3(...ROOM_SURFACE_TINTS[theme]);
+      mat.specularColor=floor.specularColor.clone();
+      mat.specularPower=floor.specularPower;
+      mat.ambientColor=floor.ambientColor.clone();
+      return [theme,mat] as const;
+    }));
     const featurePaint=createDungeonFeaturePalette(scene);
     const ghoulIcon=createGhoulMapIconMaterial(scene);
     const ghoulMarkerMat=makeMat("dungeon-3d-ghoul-site-hitbox","#442d26");
@@ -847,10 +852,14 @@ export class DungeonViewer {
       width:TILE_SIZE,height:0.09,depth:TILE_SIZE,
     },scene);
     floorPrefab.material=floor;
-    const roomPrefab=MeshBuilder.CreateBox("dungeon-room-template",{
-      width:TILE_SIZE,height:0.10,depth:TILE_SIZE,
-    },scene);
-    roomPrefab.material=roomStone;
+    const roomPrefabs=new Map(ROOM_THEMES.map(theme=>{
+      const mesh=MeshBuilder.CreateBox(theme==="hall"?"dungeon-room-template":"dungeon-room-template-"+theme,{
+        width:TILE_SIZE,height:0.10,depth:TILE_SIZE,
+      },scene);
+      mesh.material=roomStone.get(theme)!;
+      mesh.position.y=-900;
+      return [theme,mesh] as const;
+    }));
     const replayTiles:DungeonTileMesh[]=[];
     const replayMarkers:DungeonMarkerMesh[]=[];
     const replayDecorations:DungeonRoomDecoration[]=[];
@@ -858,7 +867,6 @@ export class DungeonViewer {
     // their source mesh remaining visible even when individual tiles are fogged.
     wallPrefab.position.y=-900;
     floorPrefab.position.y=-900;
-    roomPrefab.position.y=-900;
     let walls=0,corridors=0,roomTiles=0;
     for(let z=0;z<layout.height;z++)for(let x=0;x<layout.width;x++) {
       const kind=tileAt(layout,x,z);
@@ -870,7 +878,7 @@ export class DungeonViewer {
         walls++;
       } else {
         const useRoom=kind==="room";
-        const prefab=useRoom?roomPrefab:floorPrefab;
+        const prefab=useRoom?roomPrefabs.get(roomThemes.get(z*layout.width+x)??"hall")!:floorPrefab;
         const mesh=prefab.createInstance(
           "dungeon-"+(useRoom?"room":"corridor")+"-tile-"+x+"-"+z);
         if(useRoom)roomTiles++;
@@ -880,7 +888,6 @@ export class DungeonViewer {
       }
     }
     // Shared presentation plan; feature markers and geometry remain canonical.
-    const roomArt=dungeonRoomArtPlan(layout);
     for(const plan of roomArt)
       replayDecorations.push(createDungeonRoomArt(scene,plan,getWorld(layout,plan.room)));
 

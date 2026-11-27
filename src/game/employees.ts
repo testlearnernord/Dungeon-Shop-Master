@@ -165,8 +165,7 @@ function advanceEmployee(state:GameState,e:EmployeeState,jobs:readonly EmployeeJ
     const {pendingSince}=chosen;
     const job=forced??chosen.job;
     const enabled=EMPLOYEE_TASKS.some(task=>e.priorities[task]>0);
-    const home=enabled?employeeStandby(state,e):employeeHome(state);
-    const goal=job?.point??home;
+    const goal=job?.point??(enabled?employeeStandby(state,e):employeeHome(state));
     const changed=!sameJob(e.job,job);
     let route=e.route;
     if(!goal)route=[];

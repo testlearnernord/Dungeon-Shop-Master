@@ -55,7 +55,7 @@ export function setupEmployeeVisuals(scene:Scene,store:GameStore){
       const moving=model.lastX!==null&&model.lastZ!==null&&
         Math.hypot(pose.x-model.lastX,pose.z-model.lastZ)>.0001;
       model.lastX=pose.x;model.lastZ=pose.z;
-      model.walkGrace=moving?.12:Math.max(0,model.walkGrace-dt);
+      model.walkGrace=moving ? .12 : Math.max(0,model.walkGrace-dt);
       const phase=e.status==="walking"&&model.walkGrace>0?"move":"idle";
       if(model.phase!==phase){model.phase=phase;model.phaseTime=0;}
       else model.phaseTime+=dt;

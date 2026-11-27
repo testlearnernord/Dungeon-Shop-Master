@@ -22,7 +22,7 @@ import {createDungeonFeaturePalette,createReadableDungeonChest,
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
 import {createDungeonRoomArt,createDungeonPassageArt} from "./ghoulCryptArt.ts";
-import {dungeonRoomArtPlan,dungeonPassageArtPlan} from "./dungeonRoomArtPlan.ts";
+import {dungeonRoomArtPlan,dungeonPassageArtPlan,dungeonRoomTileThemes,ROOM_SURFACE_TINTS,ROOM_THEMES,type DungeonRoomTheme} from "./dungeonRoomArtPlan.ts";
 import {createHeroVisual,setHeroVisualEquipment,
   type HeroVisual} from "./heroVisual.ts";
 import {GhoulMapInstances,type GhoulMapSite}
@@ -68,9 +68,10 @@ export class GalviksTableDiorama{
   private readonly floorMat:ShaderMaterial;
   private readonly palette:{
     stoneA:PBRMaterial;stoneB:PBRMaterial;
-    corridor:PBRMaterial;room:PBRMaterial;
+    corridor:PBRMaterial;
     platform:StandardMaterial;entrance:StandardMaterial;
   };
+  private readonly roomPalette:ReadonlyMap<DungeonRoomTheme,PBRMaterial>;
   private floorRoot:TransformNode|null=null;
   private miniatureWorldRoot:TransformNode|null=null;
   private readonly featurePaint:ReturnType<typeof createDungeonFeaturePalette>;
@@ -137,10 +138,14 @@ export class GalviksTableDiorama{
       stoneA:scaledSurface("stone",live.stone,1.22),
       stoneB:scaledSurface("stone-accent",live.stoneAccent,1.15),
       corridor:scaledSurface("flagstones",live.floor,.49),
-      room:scaledSurface("room-flagstones",live.floor,.63),
       platform:material(scene,"platform",new Color3(.11,.14,.15)),
       entrance:material(scene,"entrance",new Color3(.24,.96,.74)),
     };
+    this.roomPalette=new Map(ROOM_THEMES.map(theme=>{
+      const mat=scaledSurface("room-flagstones-"+theme,live.floor,.63);
+      mat.albedoColor=new Color3(...ROOM_SURFACE_TINTS[theme]).scale(.63);
+      return [theme,mat] as const;
+    }));
     this.featurePaint=createDungeonFeaturePalette(scene);
     for(const mat of Object.values(this.featurePaint))
       mat.emissiveColor=mat.diffuseColor.scale(.26);
@@ -436,8 +441,12 @@ void main(void){
     // fullscreen LIVE viewer; only the geometry transform is miniature.
     thin("cellar-table-diorama-corridors",(_,__,tile)=>tile==="corridor",
       TABLE_DIORAMA_WELL.floorY,.008,this.palette.corridor);
-    thin("cellar-table-diorama-rooms",(_,__,tile)=>tile==="room",
-      TABLE_DIORAMA_WELL.floorY,.009,this.palette.room);
+    const roomArt=dungeonRoomArtPlan(layout);
+    const roomThemes=dungeonRoomTileThemes(layout,roomArt);
+    for(const theme of ROOM_THEMES)
+      thin(theme==="hall"?"cellar-table-diorama-rooms":"cellar-table-diorama-rooms-"+theme,
+        (x,z,tile)=>tile==="room"&&(roomThemes.get(z*layout.width+x)??"hall")===theme,
+        TABLE_DIORAMA_WELL.floorY,.009,this.roomPalette.get(theme)!);
     // After the documented 180° table observation alignment, the LOCAL
     // front (+Z) sees the original grid -Z edge, not its +Z edge.
     thin("cellar-table-diorama-front-cutaway",(_,z,tile)=>
@@ -456,7 +465,7 @@ void main(void){
 
     // Same room-art plan and meshes as the full viewer. Dispose the full
     // scale lights, which must not spill out into the physical shop.
-    for(const plan of dungeonRoomArtPlan(layout)){
+    for(const plan of roomArt){
       const materialStart=this.scene.materials.length;
       const art=createDungeonRoomArt(this.scene,plan,this.worldPoint(plan.room));
       art.light?.dispose();
@@ -726,6 +735,7 @@ void main(void){
     this.floorMat.dispose();
     this.ghoulFallback.dispose();
     for(const mat of Object.values(this.featurePaint))mat.dispose();
+    for(const mat of this.roomPalette.values())mat.dispose();
     for(const mat of Object.values(this.palette))mat.dispose();
   }
 }

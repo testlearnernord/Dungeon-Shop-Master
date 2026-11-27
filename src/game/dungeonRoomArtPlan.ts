@@ -97,3 +97,17 @@ export function dungeonPassageArtPlan(layout:DungeonLayout):readonly DungeonPass
   }
   return result;
 }
+
+/** Multipliers over the same baked flagstone texture, not alternate floors.
+ * The two presentation adapters use the same relative color identity. */
+export const ROOM_SURFACE_TINTS={
+  hall:[1.18,1.09,.93],crypt:[.82,1.04,.91],vault:[1.28,1.08,.72],
+  guardroom:[1.10,.86,.72],workshop:[.91,.96,1.13],
+} as const satisfies Record<DungeonRoomTheme,readonly [number,number,number]>;
+export const ROOM_THEMES=Object.keys(ROOM_SURFACE_TINTS) as DungeonRoomTheme[];
+export function dungeonRoomTileThemes(layout:DungeonLayout,plans:readonly DungeonRoomArtPlan[]){
+  const themes=new Map<number,DungeonRoomTheme>();
+  for(const plan of plans)for(const p of dungeonRoomCells(layout,plan.room))
+    themes.set(p.z*layout.width+p.x,plan.theme);
+  return themes;
+}
