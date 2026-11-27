@@ -6,7 +6,7 @@ import {liveHeroCard} from "../../src/game/heroCardView.ts";
 
 test("Current Alpha v33 has an unnumbered shop, while real numbered Dungeon Floor 5 remains valid",()=>{
   const state=createGameState(7351);
-  assert.equal(SIMULATION_VERSION,39);
+  assert.equal(state.simulationVersion,SIMULATION_VERSION);
   const visitors=state.adventurers.filter(h=>h.status==="at-shop");
   assert(visitors.length>0);
   assert(visitors.every(h=>h.floor==="shop"));

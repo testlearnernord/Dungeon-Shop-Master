@@ -23,7 +23,7 @@ concurrency:
 jobs:
   audit:
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && (startsWith(github.head_ref, 'audit/gameplay-loop-') || (github.head_ref == 'experiment/unified-boss-profile' || github.head_ref == 'experiment/combat-balance-sweep' || github.head_ref == 'experiment/shared-ranged-spacing')))
-    name: Real GameStore / scripted-storefront ${{ matrix.days }}-day scenarios / ${{ matrix.seed }}
+    name: Real GameStore / scripted-storefront ${{ matrix.days }}-day scenarios / ${{ matrix.seed }} / ${{ matrix.modes }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -32,7 +32,25 @@ jobs:
         include:
           - seed: "7351"
             days: "100"
-            modes: "absent,consumables,equipment,full,tier1,buyback,forge"
+            modes: "absent"
+          - seed: "7351"
+            days: "100"
+            modes: "consumables"
+          - seed: "7351"
+            days: "100"
+            modes: "equipment"
+          - seed: "7351"
+            days: "100"
+            modes: "full"
+          - seed: "7351"
+            days: "100"
+            modes: "tier1"
+          - seed: "7351"
+            days: "100"
+            modes: "buyback"
+          - seed: "7351"
+            days: "100"
+            modes: "forge"
           - seed: "9321"
             days: "100"
             modes: "absent,full,tier1,buyback,forge"
@@ -67,7 +85,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gameplay-report-${{ matrix.days }}day-${{ matrix.seed }}
+          name: gameplay-report-${{ matrix.days }}day-${{ matrix.seed }}-${{ strategy.job-index }}
           path: gameplay-100day-audit.json
           if-no-files-found: ignore
           retention-days: 14

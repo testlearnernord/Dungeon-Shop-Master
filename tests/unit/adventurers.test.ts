@@ -11,9 +11,10 @@ import {
   emptySpatialDungeonWorld, simulateSpatialDungeonDay,
   type SpatialDungeonHeroProgress, type SpatialDungeonReplay,
 } from "../../src/game/spatialDungeonExploration.ts";
-import { advanceDay, createGameState } from "../../src/game/gameState.ts";
+import { advanceDay, createGameState, SIMULATION_VERSION } from "../../src/game/gameState.ts";
 import { createSave, parseSave } from "../../src/game/campaignSave.ts";
 import { SeededRandom } from "../../src/game/random.ts";
+import {heroProgression} from "../../src/game/heroProgression.ts";
 import { scheduleShopVisit } from "../../src/game/shopArrivals.ts";
 
 function explorer(seed=7351, floor:1|2|3|4=1):AdventurerState {
@@ -142,7 +143,7 @@ test("a LIVE day resolves one persistent spatial world and records actual moveme
   assert(!events.some(e=>e.type==="dungeon-outcome"),
     "retired Floor 1–4 dice path must never run in new campaigns");
   const worlds=state.dungeonWorlds??[];
-  assert(worlds.length>0&&worlds.length<=4);
+  assert(worlds.length>0&&worlds.length<=9);
   assert.deepEqual([...worlds.map(w=>w.floor)].sort((a,b)=>a-b),
     worlds.map(w=>w.floor));
   for(const e of events.filter(e=>e.dungeonReplay)){
@@ -182,7 +183,7 @@ test("multi-day play and save/reload are deterministic with real shared encounte
     b=advanceDay(parseSave(JSON.stringify(createSave(b)))).state;
     assert.deepEqual(a,b);
     assert.equal(new Set(a.events.map(e=>e.id)).size,a.events.length);
-    assert.equal(a.simulationVersion,37);
+    assert.equal(a.simulationVersion,SIMULATION_VERSION);
     assert(a.adventurers.filter(hero=>hero.status!=="dead").length<=20);
   }
   assert(a.events.some(e=>e.type==="dungeon-live"));
@@ -201,7 +202,7 @@ test("multi-day populations remain bounded with persistent identities", () => {
     assert(state.adventurers.filter(h=>h.status!=="dead").length<=20);
     assert.equal(new Set(state.adventurers.map(h=>h.id)).size,state.adventurers.length);
     for(const hero of state.adventurers){
-      assert(hero.health>=0&&hero.health<=hero.stats.maxHealth);
+      assert(hero.health>=0&&hero.health<=heroProgression(hero).maxHealth);
       const origin=original.get(hero.id);
       if(origin){
         assert.equal(hero.name,origin.name);

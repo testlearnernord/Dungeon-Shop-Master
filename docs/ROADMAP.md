@@ -1,6 +1,6 @@
-# Active roadmap — Alpha v48
+# Active roadmap — Alpha v49
 
-> Current contract: Alpha v48 (Employee Cashier). This is the active backlog, not a numbered PR sequence. Completed features and old experiments are not tasks. Use [Architecture](ARCHITECTURE.md) for current runtime and [Alpha acceptance](ALPHA_V48_ACCEPTANCE.md) for evidence.
+> Current contract: Alpha v49 (Room-first Dungeon). See [Dungeon Reforged](DUNGEON_REFORGED.md) for the matched geometry and campaign comparison, followed by visual acceptance. This is the active backlog, not a numbered PR sequence. Completed features and old experiments are not tasks. Use [Architecture](ARCHITECTURE.md) for current runtime and [Prior v48 evidence](ALPHA_V48_ACCEPTANCE.md) for evidence.
 
 ## P1 — current acceptance
 
@@ -8,7 +8,7 @@
 
 - Play ten actual Galvik days; verify merchant choice, meaningful sales, shortages, credit, automatic chest intake before shopping, open/closed and insufficient funds behavior, forge-to-shelf-to-paid-sale, repeat visits and real recovery/return.
 - Verify LIVE direct entry from World Echoes and map, ordinary/boss score cue, animations, camera controls, replays and real-device FPS. Inspect the final #374 presentation changes.
-- Check fresh Alpha v48 Save/Load, current visit identity, real portal/bed/cellar clearance and cross-day encounter continuity. File reproducible bugs instead of restarting general balance research.
+- Check fresh Alpha v49 Save/Load, current visit identity, real portal/bed/cellar clearance and cross-day encounter continuity. File reproducible bugs instead of restarting general balance research.
 
 The completed two pre-chest v40 200-day Forge campaigns reached and beat Floor 10; the controlled matrix confirms T2 leverage. The owner waived waiting for the four remaining 100-day jobs. Do not restart blanket long-run audits without a specific regression or owner request. No further balance adjustment is assumed. The v41 economy and v42 movement cadence have changed; historical audit figures do not validate the new pacing. The matched v42 ten-day Forge comparison ran successfully; it is a single-seed diagnostic, not proof of final balance.
 
@@ -39,5 +39,5 @@ One saved world and combat authority, physical transactions, deterministic curre
 - C1: merged (#385); persistent shelf assignments via quickbar and middle-click, physical paper slips, reload coverage passed. Manual visual acceptance open.
 - C2: implemented physical pickup/delivery/return and shared bag reservations (#386); first CI passed, synchronized-base CI and visual acceptance pending.
 - D: merged after green unit and browser CI; physical staff dock and shared front cart, three-second service timer, canonical payment without tips, manual takeover; manual visual acceptance pending.
-- E: matched credit-demand audit passed (see Alpha v48 acceptance); owner approved opt-in physical credit work. Employee credit service merged after 373 core unit and 14 browser tests passed; visual acceptance pending.
+- E: matched credit-demand audit passed (see Alpha v49 acceptance); owner approved opt-in physical credit work. Employee credit service merged after 373 core unit and 14 browser tests passed; visual acceptance pending.
 - F: combined physical commerce, collision recovery and reachable stock claims passed the initial F3 gate (382 core / 15 browser); matched two-profile physical audit passed. Final consolidated candidate awaits required CI. Manual visual acceptance and longer multi-seed balance remain open. No extra employee types planned before the core merchant progression loop is evaluated.

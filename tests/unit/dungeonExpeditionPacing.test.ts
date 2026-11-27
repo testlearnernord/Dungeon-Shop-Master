@@ -54,8 +54,9 @@ test("one real committed day can contain two DISTINCT fights without repeated re
     .sort((x,y)=>x.path.length-y.path.length);
   assert(pairs.length>0);
   const {a,b}=pairs[0];
-  const starting=dungeonNeighbors(map,a)[0];
   const hidden=new Set([a.z*map.width+a.x,b.z*map.width+b.x]);
+  const starting=dungeonNeighbors(map,a).find(p=>!hidden.has(p.z*map.width+p.x));
+  assert(starting,"The approach must be outside both unresolved monster sites");
   const initialVisited=map.tiles.map((tile,index)=>
     tile!=="wall"&&!hidden.has(index)?index:-1).filter(index=>index>=0);
   assert(initialVisited.includes(starting.z*map.width+starting.x));

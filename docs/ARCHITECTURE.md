@@ -1,9 +1,9 @@
 # Dungeon Shop Master — current technical architecture
 
-> Current contract: Alpha v48, including physical automatic buyback. Current runtime responsibilities, not a PR diary. See [Game Bible](GAME_BIBLE.md) and [Roadmap](ROADMAP.md).
+> Current contract: Alpha v49, including physical automatic buyback. Current runtime responsibilities, not a PR diary. See [Game Bible](GAME_BIBLE.md) and [Roadmap](ROADMAP.md).
 
 
-**Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Alpha v48 is the only supported campaign schema. Reject v47 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+**Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events. Alpha v49 is the only supported campaign schema. Reject v48 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 ## 1. Execution model and ownership
 
@@ -26,7 +26,7 @@ Browser input / shop interactions
               (read-only presentation)
 ```
 
-- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 48`.
+- `src/main.ts` wires rendering, player input, UI and the world. `src/game/gameStore.ts` is the outer mutation boundary; `gameState.ts` defines the current state and `SIMULATION_VERSION = 49`.
 - `worldClock.ts` persists a monotonic tick and ordered future events, with 50-ms ticks, 20 ticks per game minute and 28,800 ticks per game day. Stable lane/sequence ordering is part of determinism. Gameplay events, not Babylon frames, advance customers, timed dungeon steps and combat.
 - `liveDungeonRuntime.ts` schedules one connected spatial movement every **50 world ticks** and commits groups of **30 actual 60-Hz combat steps** every **10 world ticks**. The **Floor-10 2–3-member Temporary Party Cave Troll** uses the same `groupCombat.ts` authority as ordinary fights, with saved 10-Hz pose checkpoints, combat cues and replay validation through `livePartyBossSave.ts`.
 - `gameStore.ts` records actual player and shop actions, physical shop-exit events, accepted credit, paid cart settlement, save operations and bed closure. Day closure does not reroll live expeditions.
@@ -62,6 +62,8 @@ Browser input / shop interactions
 - The old quote-based direct checkout has been removed. The staffed register settles ONLY physically reserved `shopCarts` through `payReservedShopCart` (GameStore `payReservedCart`); customer preference forecasts remain read-only.
 
 ## 4. Dungeon, combat, LIVE and replay
+
+**Room-first geometry:** The seed defines four or six variable chambers connected by a perimeter cycle and optional cross-link; no maze overlay. Both stairs are reserved before site placement. The existing tile grid remains the single source for LOS, pathfinding, encounters and all projections. See [Dungeon Reforged](DUNGEON_REFORGED.md).
 
 **Current topology:** `dungeonTopology.ts` defines ordinary **Floors 1–9** and the single **Floor-10** Cave Troll party gate. `CURSED_SHOP_REALM` is an unnumbered realm; normal NPC access uses one physical threshold. The real Floor-9-to-10 gate checks an actual saved Temporary Party, unanimous current readiness, health, unique uncleared encounter and the real stair position. Authored deep-floor diversity and manual physical acceptance remain open.
 
@@ -109,7 +111,7 @@ Committed original Tripo GLBs
 
 `npm run build` executes both asset generators, TypeScript type checking and Vite bundling. D1 #242 runs `npm run verify:pages` immediately after build in PR CI **and** the Pages deploy workflow: it checks final `dist/` JS/CSS URL base, canonical music, all 32 creature SFX and generated/curated GLB copies without changing runtime assets. See [D1 artifact contract](CODE_CLEANUP_D1.md). `npm run test:unit` runs Node tests, `npm run test:smoke` runs the curated browser-flow whitelist; `npm test` runs full browser regression. GitHub Actions PR CI runs build/unit and **one core browser-smoke job**; the full browser regression is **manual**. Successful CI is not a substitute for real-device visual, audio or FPS acceptance.
 
-Alpha v48 is the only supported campaign schema. Reject v47 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Current Alpha evidence](ALPHA_V48_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
+Alpha v49 is the only supported campaign schema. Reject v48 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The HUD label is still V.002 ALPHA; it is independent of save schema and implementation. Remaining work: [Prior v48 evidence](ALPHA_V48_ACCEPTANCE.md) and [issue #294](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/294).
 
 **Dungeon transitions:** dungeonStairways.ts projects the actual layout entrance
 and dungeonDownStair(...) cells as view-only stair landmarks. 3D stone steps
