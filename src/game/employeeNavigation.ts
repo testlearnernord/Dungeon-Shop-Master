@@ -3,7 +3,7 @@ import {CELLAR_ENTRY_X,CELLAR_FLOOR_Y,CELLAR_FORGE_CLEARANCE,isCellarFloor} from
 import {POND_CENTER,POND_WIDTH,POND_LENGTH,isCellarPondUncovered} from "./cellarPond.ts";
 import {furnitureTouchesActor,pointTouchesShopBounds,turnShopOffset} from "./furnitureRegistry.ts";
 import {shopFloorWalkable} from "./shopWalkability.ts";
-import {createConnectedRoutePlanner,type ShopPoint} from "./shopperNavigation.ts";
+import {createConnectedRoutePlanner,shopPointSegmentDistance,type ShopPoint} from "./shopperNavigation.ts";
 
 /** Private rooms use the same grid search as customers, with their real
  * geometry. The stair surface is the same eight-metre ramp as the FPS. */
@@ -58,10 +58,21 @@ export function employeeStoragePoint(state:GameState):ShopPoint|null{
     return {x:chest.x+d.x,z:chest.z+d.z};
   }).find(p=>employeeWalkable(state,p))??null;
 }
-export function employeeRoute(state:GameState,from:ShopPoint,to:ShopPoint){
+export const EMPLOYEE_CUSTOMER_CLEARANCE=.68;
+/** Customer positions are temporary obstacles, not permanent geometry.
+ * An actor already within clearance must not trap a worker in an overlap:
+ * the movement guard still prevents walking farther into that actor. */
+export function employeeRoute(state:GameState,from:ShopPoint,to:ShopPoint,avoidCustomers=false){
   if(!employeeWalkable(state,from)||!employeeWalkable(state,to))return null;
-  if(employeeSegmentClear(state,from,to))return {waypoints:[to],length:Math.hypot(to.x-from.x,to.z-from.z)};
+  const obstacles=avoidCustomers?state.shopTraffic.actors.filter(a=>
+    Math.hypot(a.x-from.x,a.z-from.z)>=EMPLOYEE_CUSTOMER_CLEARANCE):[];
+  const blocked=(p:ShopPoint)=>!employeeWalkable(state,p)||
+    obstacles.some(a=>Math.hypot(a.x-p.x,a.z-p.z)<EMPLOYEE_CUSTOMER_CLEARANCE);
+  const clear=(a:ShopPoint,b:ShopPoint)=>employeeSegmentClear(state,a,b)&&
+    obstacles.every(other=>shopPointSegmentDistance(other,a,b)>=EMPLOYEE_CUSTOMER_CLEARANCE);
+  if(blocked(to))return null;
+  if(clear(from,to))return {waypoints:[to],length:Math.hypot(to.x-from.x,to.z-from.z)};
   const extent=6.5+2*Math.max(state.shopRoom.expansionTier,state.cellarRoom.expansionTier);
   return createConnectedRoutePlanner({minX:-extent,maxX:extent,minZ:-33.5,maxZ:6.5},
-    p=>!employeeWalkable(state,p),(a,b)=>employeeSegmentClear(state,a,b),true)(from,to);
+    blocked,clear,true)(from,to);
 }

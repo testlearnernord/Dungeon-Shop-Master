@@ -156,3 +156,66 @@ test("Tettel physically serves a real shopper at the register without player pay
   await expect.poll(async()=> (await read()).departed,{timeout:90000,intervals:[1000,2000]}).toBe(true);
   expect(errors).toEqual([]);
 });
+
+
+test("Tettel grants one physical credit petition and the visitor leaves without a cash sale @ci-smoke",async({page})=>{
+  test.setTimeout(240000);
+  const errors:string[]=[];
+  page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("./?e2e-pause-world");
+  await expect(page.locator("#save-status")).toHaveText("Saved Day 1.");
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const probe=await import("/Dungeon-Shop-Master/tests/scene.ts");
+    return probe.shopSceneReady();
+  }),{timeout:45000}).toBe(true);
+  const fixture=await page.evaluate(async()=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const {createGameState}=await import("/Dungeon-Shop-Master/src/game/gameState.ts");
+    const {counterDockPoint}=await import("/Dungeon-Shop-Master/src/game/shopLayout.ts");
+    const {withStockedSmallShelf}=await import("/Dungeon-Shop-Master/tests/browserShelfFixture.ts");
+    const base=withStockedSmallShelf(createGameState(7351));
+    const buyer=base.adventurers.find(h=>h.status==="at-shop")!;
+    // Start the worker in the shop to isolate real petitioner traffic and
+    // service from the separately tested cellar route.
+    const dock=counterDockPoint(base.shopLayout,"staff");
+    const state={...base,cellarDoorOpen:true,adventurers:base.adventurers.map(h=>
+      h.id===buyer.id?{...h,status:"at-shop" as const,floor:"shop" as const,gold:0,
+        inventory:{...h.inventory,bread:0,healing:0}}:
+        {...h,status:"off-duty" as const,floor:"away" as const,offDutyUntilTick:4800,shopStayDays:0}),
+      employees:base.employees.map(e=>({...e,...dock,priorities:{...e.priorities,charity:1 as const}}))};
+    await new CampaignStorage().saveGame(state);
+    return {buyer:buyer.id,gold:state.shopEconomy.balance,bread:3};
+  });
+  await page.reload();
+  await expect(page.locator("#save-status")).toContainText("Continued saved Day 1");
+  await expect.poll(()=>page.evaluate(()=>typeof (window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld)).toBe("function");
+  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld:(p:boolean)=>void}).__shopTestPauseWorld(false);});
+  const read=()=>page.evaluate(async id=>{
+    const {CampaignStorage}=await import("/Dungeon-Shop-Master/src/game/campaignSave.ts");
+    const s=await new CampaignStorage().loadGame();
+    return {credits:s?.events.filter(e=>e.type==="shop-credit"&&e.adventurerId===id)??[],
+      sales:s?.events.filter(e=>e.type==="sale"||e.type==="tip")??[],
+      debt:s?.shopDebts.find(d=>d.heroId===id)?.outstandingGold,
+      balance:s?.shopEconomy.balance,
+      bread:s?.shopEconomy.slots.find(slot=>slot.itemId==="bread")?.quantity,
+      departed:s?.events.some(e=>e.type==="shop-departure"&&e.adventurerId===id),
+      diagnostic:{tick:s?.worldClock.tick,worker:s?.employees[0],requests:s?.shopRequests,
+        actor:s?.shopTraffic.actors.find(a=>a.heroId===id),
+        claim:s?.shopTraffic.claims.find(c=>c.heroId===id),buyer:s?.adventurers.find(h=>h.id===id)}};
+  },fixture.buyer);
+  try{
+    await expect.poll(async()=> (await read()).credits.length,{timeout:100000,intervals:[500,1000,2000]}).toBe(1);
+  }catch(error){
+    console.log("EMPLOYEE CREDIT FAILURE "+JSON.stringify((await read()).diagnostic));
+    throw error;
+  }
+  const settled=await read();
+  expect(settled.credits[0].message).toContain("Served by Tettel.");
+  expect(settled.debt).toBe(4);
+  expect(settled.bread).toBe(fixture.bread-1);
+  expect(settled.balance).toBe(fixture.gold);
+  expect(settled.sales).toEqual([]);
+  await expect.poll(async()=> (await read()).departed,{timeout:90000,intervals:[1000,2000]}).toBe(true);
+  expect((await read()).credits).toHaveLength(1);
+  expect(errors).toEqual([]);
+});
