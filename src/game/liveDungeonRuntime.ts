@@ -10,6 +10,7 @@ import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonSiteGeneration} from "./dungeonRegeneration.ts";
+import {claimSurveyorPlan} from "./dungeonDiscovery.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,carriedDungeonFindCount,
   salvageReturnThreshold,isBossExpeditionCandidate,isBossExpeditionParty,
   needsHealthResupply,unresolvedRecoveryPlan,canRiskOrdinaryDescent,
@@ -311,6 +312,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   const stepCounts=new Map(state.liveDungeon.heroes.map(v=>[v.heroId,v]));
   let dungeonWorlds=[...state.dungeonWorlds];
+  let surveyorPlan=state.surveyorPlan;
   const clearedLevel10=state.dungeonFloors.some(f=>
     f.floor===CAVE_TROLL_FLOOR&&f.cleared);
   let rngState=state.rngState;
@@ -631,6 +633,9 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
         frames:[captureGroupCombatFrame(fight)]});
     }
     dungeonWorlds=setDungeonWorld(dungeonWorlds,floor,result.world);
+    const previousDiscovery=surveyorPlan;
+    surveyorPlan=claimSurveyorPlan(surveyorPlan,state.seed,day,result,[...byId.values()]);
+    const newFinder=surveyorPlan!==previousDiscovery?surveyorPlan?.heroId:undefined;
     const independent=new Map<string,HeroDungeonDecision>();
     const decisionDetails=diagnostic?new Map<string,{
       checks:Record<string,boolean>;reason?:DungeonDecisionReason}>():undefined;
@@ -655,6 +660,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
         bossReady,
       }} as {checks:Record<string,boolean>;reason?:DungeonDecisionReason}:undefined;
       independent.set(individual.adventurer.id,
+        individual.adventurer.id===newFinder?{goal:"resupply",action:"shop"}:
         chooseLiveHeroDungeonDecision(individual.adventurer,
           progress,individual.replay,layout,result.world,bossReady,
           carriedDungeonFindCount(byId.get(individual.adventurer.id)!),
@@ -856,6 +862,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     ...state,worldClock:clock,
     dungeonParties:party.parties,
     adventurers:finalRoster,
+    surveyorPlan,
     dungeonWorlds,
     rngState,
     liveDungeon:{enabled:true,lastStepTick:tick,
