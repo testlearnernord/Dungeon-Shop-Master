@@ -21,6 +21,7 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
       =await import("/Dungeon-Shop-Master/src/game/spatialDungeonExploration.ts");
     const {advanceDungeonMonsterWorld}
       =await import("/Dungeon-Shop-Master/src/game/dungeonMonsterWorld.ts");
+    const {resolveDungeonSite}=await import("/Dungeon-Shop-Master/src/game/dungeonRegeneration.ts");
     const start=createGameState(7351);
     // No roaming party changes the deterministic two-step demonstration.
     // The monster still moves through the real LIVE world event scheduler.
@@ -46,7 +47,12 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
       })));
     const chosen=routes[0];
     if(!chosen)throw new Error("Seeded map has no clear two-tile Ghoul route");
-    const world={...floorWorld,monsters:packs.map(pack=>
+    // A valid persisted completed generation, using the existing resolution
+    // record; this fixture tests projection, not a new source of loot.
+    const cleared=[layout.features.find(f=>f.kind==="treasure")!.id,
+      layout.features.find(f=>f.kind==="trap")!.id];
+    const siteCycles=cleared.reduce((sites,id)=>resolveDungeonSite(sites,id,1),floorWorld.siteCycles??[]);
+    const world={...floorWorld,resolvedFeatureIds:cleared,siteCycles,monsters:packs.map(pack=>
       pack.id===chosen.pack.id?{
         ...pack,mode:"ROAMING" as const,target:chosen.target,
       }:pack)};
@@ -56,7 +62,7 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     ]};
     await new CampaignStorage().saveGame(seeded);
     return {
-      selected:chosen.pack.id,
+      selected:chosen.pack.id,cleared,
       first:{x:(chosen.first.x-(layout.width-1)/2)*2.5,
         z:(chosen.first.z-(layout.height-1)/2)*2.5},
       second:{x:(chosen.target.x-(layout.width-1)/2)*2.5,
@@ -91,6 +97,16 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     {timeout:15000}).toBe(expected.pins.length);
   const roomArt=()=>page.evaluate(async()=>
     (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonRoomArt());
+  const siteArt=()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectDungeonSiteStates());
+  const tableSites=await siteArt();
+  expect(tableSites).toHaveLength(8);
+  expect(tableSites.filter(s=>s.spent).map(s=>s.id).sort()).toEqual([...expected.cleared].sort());
+  for(const site of tableSites){
+    expect(site.enabled).toBe(true);
+    if(site.kind==="treasure")expect(site.hinge).toBeCloseTo(site.spent?1.95:0);
+    else expect(site.raisedSpikes).toBe(site.spent?0:5);
+  }
   const tableArt=await roomArt();
   expect(new Set(tableArt.filter(p=>p.id.startsWith("room-")).map(p=>p.theme)).size).toBe(4);
   expect(tableArt.filter(p=>p.id.startsWith("dungeon-passage-art-")).length).toBeGreaterThan(0);
@@ -184,6 +200,7 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     return result.shared&&result.ready&&result.visibleRooms>0;
   }),{timeout:15000}).toBe(true);
   expect(await roomArt()).toEqual(tableArt);
+  expect(await siteArt()).toEqual(tableSites);
   // Sample an actual vault tile in the north-up canvas and
   // hover that same CSS cell, not a mock projection or a synthetic label.
   const roomSample=await page.evaluate(async()=>{

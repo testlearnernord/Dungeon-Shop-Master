@@ -13,3 +13,21 @@ export function liveFloorFeatureIdentity(
     .sort(([a],[b])=>a.localeCompare(b));
   return JSON.stringify([resolved,generations]);
 }
+
+/** Resolved renewable containers and pressure plates remain physical
+ * landmarks. A defeated monster, unlike its site, has no visible actor. */
+export function dungeonSiteDisplay(kind:string,resolved:boolean):
+  "active"|"spent"|"hidden" {
+  if(!resolved)return "active";
+  return kind==="treasure"||kind==="trap"?"spent":"hidden";
+}
+
+/** Shared map symbols; dim spent sites must not look like live rewards. */
+export function dungeonSiteMapColor(kind:string,resolved:boolean):string|null{
+  const display=dungeonSiteDisplay(kind,resolved);
+  if(display==="hidden")return null;
+  if(display==="spent")return kind==="treasure"?"#665a40":"#68504d";
+  return kind==="treasure"?"#e6b845":kind==="trap"?"#c94c42":
+    kind==="stair-descend"?"#e7bf75":kind==="stair-sealed"?"#a35e5e":
+    kind.startsWith("stair-")?"#70d2b4":"#e27c62";
+}

@@ -18,7 +18,7 @@ import {generateExpeditionLayout,dungeonShortestPath,
   type DungeonLayout,type DungeonPoint} from "./dungeonLayout.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
 import {createDungeonFeaturePalette,createReadableDungeonChest,
-  createReadableDungeonTrap} from "./dungeonFeatureProps.ts";
+  createReadableDungeonTrap,setDungeonSiteSpent} from "./dungeonFeatureProps.ts";
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
 import {createDungeonRoomArt,createDungeonPassageArt} from "./ghoulCryptArt.ts";
@@ -30,7 +30,7 @@ import {GhoulMapInstances,type GhoulMapSite}
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {selectLiveFloorSpectatorFrame,LIVE_SPECTATOR_FLOORS,
   type LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
-import {liveFloorFeatureIdentity} from "./liveFloorFeatureIdentity.ts";
+import {liveFloorFeatureIdentity,dungeonSiteDisplay} from "./liveFloorFeatureIdentity.ts";
 import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
 import {isObservedMonsterStep,monsterObservationStepProgress}
   from "./monsterObservationMotion.ts";
@@ -535,7 +535,8 @@ void main(void){
     let visible=0,authoredProps=0;
     const ghoulSites:GhoulMapSite[]=[];
     for(const feature of this.layout!.features){
-      if(resolved.has(feature.id))continue;
+      const display=dungeonSiteDisplay(feature.kind,resolved.has(feature.id));
+      if(display==="hidden")continue;
       const pack=feature.kind==="monster"
         ?frame.monsters?.find(m=>m.id===feature.id):null;
       if(feature.kind==="monster"&&frame.monsters&&!pack)continue;
@@ -546,6 +547,7 @@ void main(void){
           createReadableDungeonChest(this.scene,feature,p,this.featurePaint):
           createReadableDungeonTrap(this.scene,feature,p,this.featurePaint);
         mesh.parent=this.featureRoot;
+        setDungeonSiteSpent(mesh,display==="spent");
         mesh.name="cellar-table-diorama-"+feature.kind+"-"+feature.id;
         mesh.isPickable=false;mesh.checkCollisions=false;
         authoredProps++;

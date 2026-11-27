@@ -8,7 +8,8 @@ import type {DungeonFeature} from "./dungeonLayout.ts";
 
 /** Readable real Babylon geometry; only visual meshes, never collision,
  * inventory or trap damage. Every feature root owns all of its child art so
- * the existing saved fog/feature resolution automatically hides everything. */
+ * the existing saved fog controls visibility. Site resolution changes pose,
+ * never geometry authority or resource settlement. */
 function matte(scene:Scene,name:string,color:string,glow=0):StandardMaterial{
   const m=new StandardMaterial(name,scene);
   m.diffuseColor=Color3.FromHexString(color);
@@ -51,27 +52,54 @@ export function createReadableDungeonChest(
   paint:DungeonFeaturePalette,
 ):Mesh{
   const root=MeshBuilder.CreateBox("dungeon-treasure-"+feature.id,
-    {width:1.28,height:.74,depth:.98},scene);
-  root.position.set(world.x,.48,world.z);
+    {width:1.28,height:.16,depth:.98},scene);
+  root.position.set(world.x,.19,world.z);
   root.material=paint.chestWood;
   root.metadata={spectatorFeatureId:feature.id,
-    spectatorFeatureKind:"treasure",visualKind:"3d-wooden-chest"};
+    spectatorFeatureKind:"treasure",visualKind:"3d-wooden-chest",siteSpent:false};
   root.checkCollisions=false;
-  // Strong raised lid, two golden bands and a central lock plate read as
-  // a treasure chest even at the default high camera angle.
-  piece(scene,root,"chest-lid-"+feature.id,
-    {width:1.36,height:.22,depth:1.06},[0,.47,0],paint.chestLid);
+  // Actual hollow chest: opening the lid exposes the empty interior.
+  for(const z of [-.435,.435])
+    piece(scene,root,"chest-long-wall-"+feature.id+"-"+z,
+      {width:1.28,height:.58,depth:.11},[0,.34,z],paint.chestWood);
+  for(const x of [-.585,.585])
+    piece(scene,root,"chest-end-wall-"+feature.id+"-"+x,
+      {width:.11,height:.58,depth:.76},[x,.34,0],paint.chestWood);
+  // One hinge at the rear edge; band meshes rotate with the actual lid.
+  const hinge=new Mesh("chest-hinge-"+feature.id,scene);
+  hinge.parent=root;hinge.position.set(0,.66,.49);
+  hinge.isPickable=false;hinge.checkCollisions=false;
+  piece(scene,hinge,"chest-lid-"+feature.id,
+    {width:1.36,height:.22,depth:1.06},[0,.11,-.49],paint.chestLid);
   for(const x of [-.39,.39]){
-    piece(scene,root,"chest-lid-band-"+feature.id+"-"+x,
-      {width:.12,height:.245,depth:1.075},[x,.48,0],paint.brass);
+    piece(scene,hinge,"chest-lid-band-"+feature.id+"-"+x,
+      {width:.12,height:.245,depth:1.075},[x,.12,-.49],paint.brass);
     piece(scene,root,"chest-front-band-"+feature.id+"-"+x,
-      {width:.12,height:.71,depth:.075},[x,.02,-.52],paint.brass);
+      {width:.12,height:.59,depth:.075},[x,.34,-.52],paint.brass);
   }
   piece(scene,root,"chest-lock-"+feature.id,
-    {width:.25,height:.28,depth:.09},[0,.07,-.54],paint.brass);
+    {width:.25,height:.28,depth:.09},[0,.49,-.54],paint.brass);
   piece(scene,root,"chest-lock-core-"+feature.id,
-    {width:.075,height:.12,depth:.095},[0,.04,-.60],paint.trapIron);
+    {width:.075,height:.12,depth:.095},[0,.46,-.60],paint.trapIron);
   return root;
+}
+
+/** Idempotent presentation of an actual site generation. No animation
+ * timer, loot roll or reset here: rewinds and renewals use their own state. */
+export function setDungeonSiteSpent(root:import("@babylonjs/core/Meshes/abstractMesh").AbstractMesh,spent:boolean):void{
+  const kind=root.metadata?.spectatorFeatureKind;
+  if(kind!=="treasure"&&kind!=="trap")return;
+  if(root.metadata.siteSpent===spent)return;
+  root.metadata.siteSpent=spent;
+  const id=root.metadata.spectatorFeatureId;
+  if(kind==="treasure"){
+    const hinge=root.getChildMeshes().find(m=>m.name==="chest-hinge-"+id);
+    if(hinge)hinge.rotation.x=spent?1.95:0;
+  }else{
+    for(const child of root.getChildMeshes())
+      if(child.name.startsWith("trap-spike-"+id+"-"))
+        child.setEnabled(!spent);
+  }
 }
 
 export function createReadableDungeonTrap(
@@ -83,7 +111,7 @@ export function createReadableDungeonTrap(
   root.position.set(world.x,.13,world.z);
   root.material=paint.trapIron;
   root.metadata={spectatorFeatureId:feature.id,
-    spectatorFeatureKind:"trap",visualKind:"3d-spike-pressure-plate"};
+    spectatorFeatureKind:"trap",visualKind:"3d-spike-pressure-plate",siteSpent:false};
   root.checkCollisions=false;
   // A recognisable pressure-plate rim and five actual vertical spikes.
   for(const x of [-.71,.71]){
