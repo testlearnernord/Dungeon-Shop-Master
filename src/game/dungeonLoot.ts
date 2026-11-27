@@ -3,7 +3,7 @@ import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {SeededRandom} from "./random.ts";
 import type {DungeonLayout,DungeonFeature} from "./dungeonLayout.ts";
-import {dungeonRoomPurposeAt} from "./dungeonRoomPurpose.ts";
+import {dungeonRoomPurposeAt,type DungeonRoomTheme} from "./dungeonRoomPurpose.ts";
 import type {AdventurerState} from "./adventurers.ts";
 
 /** Deterministic item ownership from an actual resolved site generation.
@@ -18,6 +18,8 @@ const hash=(text:string)=>{
   for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619);
   return h>>>0;
 };
+const starterWeapons=["iron-sword","spear","staff"] as const;
+const guardEquipment=[...starterWeapons,"leather-vest"] as const;
 const table:readonly ItemId[]=[
   "iron-ore","iron-ore","iron-ore","coal","coal","healing-herb",
   "healing-herb","iron-sword","leather-vest","mana-potion",
@@ -27,7 +29,7 @@ const table:readonly ItemId[]=[
  * specific goods: raw materials, supplies and occasional wearable gear. */
 export function rollDungeonSiteLoot(
   campaignSeed:number,floor:number,siteId:string,cycle:number,
-  kind:DungeonDropKind,monsterCount=1,treasureProfile:"ordinary"|"vault"|"workshop"="ordinary",
+  kind:DungeonDropKind,monsterCount=1,treasureProfile:DungeonRoomTheme|"ordinary"="ordinary",
 ):DungeonLootRoll {
   const seed=(campaignSeed^Math.imul(floor+13,0x9e3779b1)^
     hash(siteId)^Math.imul(cycle+1,0x85ebca6b))>>>0;
@@ -49,7 +51,18 @@ export function rollDungeonSiteLoot(
       itemIds.push(salvage[rng.int(salvage.length)]);
     }else if(treasureProfile==="workshop"&&i===0){
       itemIds.push(rng.int(2)===0?"iron-ore":"coal");
-    }else itemIds.push(table[rng.int(table.length)]);
+    }else{
+      const item=table[rng.int(table.length)];
+      // Keep every original slot and draw count. A secondary deterministic
+      // choice spreads the old sword slot across all three starter classes.
+      // Only the otherwise unusable mana slot gains local room meaning.
+      const choice=new SeededRandom((seed^Math.imul(i+1,0x27d4eb2d)^0xa511e9b3)>>>0);
+      if(item==="iron-sword")itemIds.push(starterWeapons[choice.int(starterWeapons.length)]);
+      else if(item==="mana-potion"&&treasureProfile==="guardroom")
+        itemIds.push(guardEquipment[choice.int(guardEquipment.length)]);
+      else if(item==="mana-potion"&&treasureProfile==="crypt")itemIds.push("healing-herb");
+      else itemIds.push(item);
+    }
   }
   return {itemIds};
 }
@@ -62,7 +75,7 @@ export function rollDungeonTreasureLoot(campaignSeed:number,layout:DungeonLayout
   if(feature.kind!=="treasure")throw new RangeError("Expected a treasure site");
   const theme=dungeonRoomPurposeAt(layout,feature);
   return rollDungeonSiteLoot(campaignSeed,layout.floor,feature.id,cycle,"treasure",1,
-    theme==="vault"||theme==="workshop"?theme:"ordinary");
+    theme??"ordinary");
 }
 
 /** A unique item is assigned to ONE living member, not duplicated.
