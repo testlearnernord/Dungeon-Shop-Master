@@ -237,6 +237,8 @@ export class GameStore {
     const room=this.current.shopRoom;
     if(!Number.isSafeInteger(tier)||tier!==room.expansionTier+1||tier>3)
       return "Invalid expansion tier.";
+    if(tier>=2&&this.current.surveyorPlan?.status!=="purchased")
+      return "Recover and purchase the Surveyor's Plan before expanding further.";
     const next={...room,expansionTier:tier};
     if(!isValidShopRoomGeometry(next))return "Invalid room geometry.";
     this.replace({...this.current,shopRoom:next});
