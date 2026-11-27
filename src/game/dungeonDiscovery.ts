@@ -53,6 +53,7 @@ export function claimSurveyorPlan(
   const cycle=dungeonSiteGeneration(party.world.siteCycles,source.siteId);
   if(previous&&cycle<=previous.cycle)return previous;
   const owner=eligible.filter(t=>t.replay.floor===source.floor&&
+    !t.replay.resolvedAtStart?.includes(source.siteId)&&
     t.replay.steps.some(s=>s.action==="treasure"&&s.featureId===source.siteId))
     .sort((a,b)=>a.adventurer.id.localeCompare(b.adventurer.id))[0];
   return owner?{...source,status:"carried",heroId:owner.adventurer.id,cycle,foundDay:day}:previous;
@@ -69,7 +70,7 @@ export function canBuySurveyorPlan(state:GameState,heroId:string):boolean{
     hero.gold<=Number.MAX_SAFE_INTEGER-SURVEYOR_PLAN_PRICE;
 }
 
-export function surveyorPlanReceipt(plan:SurveyorPlan,hero:AdventurerState,day:number):WorldEvent{
+export function surveyorPlanReceipt(hero:AdventurerState,day:number):WorldEvent{
   return {id:"day-"+day+":"+hero.id+":discovery-buyback",type:"discovery-buyback",
     day,adventurerId:hero.id,cost:SURVEYOR_PLAN_PRICE,
     message:"Galvik bought the "+SURVEYOR_PLAN_NAME+" from "+hero.name+
