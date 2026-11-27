@@ -5,13 +5,14 @@ import type {LiveFloorSpectatorFrame} from "./liveFloorSpectator.ts";
  * An active pack can first appear on a floor without any resolved-site
  * change, so looking only at resolvedFeatureIds loses the Ghoul forever. */
 export function liveFloorFeatureIdentity(
-  view:Pick<LiveFloorSpectatorFrame,"resolved"|"monsters">,
+  view:Pick<LiveFloorSpectatorFrame,"resolved"|"monsters"|"fallen">,
 ):string {
   const resolved=[...view.resolved].sort();
   const generations=[...(view.monsters??[])].map(monster=>
     [monster.id,monster.siteCycle] as const)
     .sort(([a],[b])=>a.localeCompare(b));
-  return JSON.stringify([resolved,generations]);
+  const fallen=(view.fallen??[]).map(body=>[body.heroId,body.x,body.z]);
+  return JSON.stringify([resolved,generations,fallen]);
 }
 
 /** Resolved renewable containers and pressure plates remain physical
