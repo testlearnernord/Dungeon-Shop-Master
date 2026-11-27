@@ -1,6 +1,6 @@
 # The Living Dungeon — design contract
 
-> Current contract: Alpha v49 (Room-first Dungeon). Current design contract. Room-first geometry is described in [Dungeon Reforged](DUNGEON_REFORGED.md). See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v50 (Room-first Dungeon). Current design contract. Room-first geometry is described in [Dungeon Reforged](DUNGEON_REFORGED.md). See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
 
 ## The experience
 
@@ -24,7 +24,7 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 | **Floor 10** | One Cave Troll encounter entered only by an actual saved, authorized 2–3-hero Temporary Party at the lower stair of Floor 9. Shared group combat at 60 Hz, bounded recordings, boss event and actual outcome |
 | **Galvik's cursed shop** | A separate *unnumbered* realm accessible by the return option. One normal physical portal/threshold for shop traffic; do not label it Dungeon Floor 5 |
 
-Alpha v49 is the only supported campaign schema. Reject v48 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. Floor-10 willingness is evaluated from current preparation, not a saved permission field. The solo boss, old day motor and abstract loot counter are retired.
+Alpha v50 is the only supported campaign schema. Reject v49 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. Floor-10 willingness is evaluated from current preparation, not a saved permission field. The solo boss, old day motor and abstract loot counter are retired.
 
 ## V0.004 A–D monster-world (merged in #336–339)
 

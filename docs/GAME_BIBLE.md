@@ -1,6 +1,6 @@
 # Dungeon Shop Master — living Game Bible
 
-> Current contract: Alpha v49 (Room-first Dungeon). Current design and lore; [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) distinguish implementation and acceptance.
+> Current contract: Alpha v50 (Room-first Dungeon). Current design and lore; [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) distinguish implementation and acceptance.
 
 Ordinary chambers have deterministic presentation themes: pillared hall, burial crypt, treasure vault and guardroom. These labels describe art, not guaranteed rewards or special room mechanics. The existing physical loot sites and hero decisions remain authoritative.
 
@@ -19,7 +19,7 @@ Ordinary chambers have deterministic presentation themes: pillared hall, burial 
 
 ## 2. Implemented now
 
-**Release status:** Alpha v49 campaign schema; V.002 ALPHA remains the HUD label. No final release or manual acceptance claim.
+**Release status:** Alpha v50 campaign schema; V.002 ALPHA remains the HUD label. No final release or manual acceptance claim.
 
 | System | Implementation status |
 | --- | --- |
@@ -60,12 +60,12 @@ Ordinary combat and autonomy: All live encounters and the isolated Combat Lab us
 
 The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper current contract.
 
-- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v49. Historic room names are source-module labels, not extra saved doors or a numbered shop.
+- **IMPLEMENTED design topology:** the shop is Galvik's single cursed, **unnumbered realm**, not ordinary Dungeon Floor 5. Normal arrivals and exits use one physical threshold, and the saved `shopRoom` and hero `"shop"` location are already canonical in Alpha v50. Historic room names are source-module labels, not extra saved doors or a numbered shop.
 - Heroes choose **stay / deeper / higher** based on individual medium-term goals such as farming, testing gear, survival or progress. Plans and actual inter-floor movement persist; authored deep-floor variety remains open.
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers recover outside both shop and dungeon for an initial **20–240 unpaused seconds** (initial tuning), then resume at their remembered floor entrance. Checkout, credit and walkout eligibility follow the current actual shop visit.
 - Common opponents, traps and chests refresh on saved intervals across ordinary Floors 1–9; unique boss victories and persistent discoveries do not respawn as common loot.
-- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved Temporary Party of two or three independently ready heroes. They evaluate actual preparation and reach the lower stair together; the merchant has no permission action. Alpha v49 is the only supported campaign schema. Reject v48 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. Authored variety and manual gameplay acceptance remain open.
+- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved Temporary Party of two or three independently ready heroes. They evaluate actual preparation and reach the lower stair together; the merchant has no permission action. Alpha v50 is the only supported campaign schema. Reject v49 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. Authored variety and manual gameplay acceptance remain open.
 - Full 100-floor progression is a long-range fiction/ambition, **not** a claim of implemented, promised or budgeted launch content.
 
 ## 5. Galvik and the story
