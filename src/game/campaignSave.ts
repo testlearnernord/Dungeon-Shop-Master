@@ -940,7 +940,7 @@ function validateState(value: unknown): asserts value is GameState {
     "seed", "rngState", "populationConfig", "nextAdventurerId",
     "dungeonWorlds", "shopLayout", "shopCarts", "shopDebts",
     "shopRoom","bedroomFurniture","rosterBoard","wallClock",
-    "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught","buybackChestOpen","surveyorPlan",
+    "cellarRoom","cellarChest","cellarTable","cellarDoorOpen","cellarFishCaught","buybackChestOpen","surveyorPlan","fallenHeroes",
   ], ["wallPortrait","dungeonParties"]);
   const room=state.shopRoom;
   if (!isValidShopRoomGeometry(room))
@@ -1178,6 +1178,27 @@ function validateState(value: unknown): asserts value is GameState {
     }
   });
   if (active > maxActive) fail("payload.adventurers", "exceeds the active population capacity");
+  {
+    const seen=new Set<string|number>();
+    const roster=state.adventurers as GameState["adventurers"];
+    const fallen=array(state.fallenHeroes,"payload.fallenHeroes");
+    if(fallen.length>roster.length)fail("payload.fallenHeroes","exceeds roster size");
+    fallen.forEach((value,i)=>{
+      const p="payload.fallenHeroes["+i+"]";
+      const body=object(value,p,["heroId","floor","x","z","day"]);
+      const id=text(body.heroId,p+".heroId");
+      unique(id,seen,p+".heroId");
+      const hero=roster.find(h=>h.id===id);
+      const floor=integer(body.floor,p+".floor",1,9);
+      if(!hero||hero.status!=="dead"||hero.health!==0||hero.floor!==floor)
+        fail(p,"must belong to a real fallen hero on this floor");
+      const map=generateExpeditionLayout(campaignSeed,floor);
+      const x=integer(body.x,p+".x",0,map.width-1);
+      const z=integer(body.z,p+".z",0,map.height-1);
+      if(tileAt(map,x,z)==="wall")fail(p,"must occupy a walkable death tile");
+      integer(body.day,p+".day",1,day);
+    });
+  }
   const worlds=array(state.dungeonWorlds,"payload.dungeonWorlds");
   if(worlds.length>9)fail("payload.dungeonWorlds","must cover at most nine ordinary floors");
   const seenFloors=new Set<string|number>();
