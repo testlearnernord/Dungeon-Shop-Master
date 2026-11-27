@@ -44,8 +44,8 @@ export function summarizeLedger(before: GameState, after: GameState): LedgerSumm
     ...newlyBooked.filter(e=>e.type==="shop-credit"),
   ];
   const buybacks = [
-    ...before.events.filter(e=>e.day===before.day&&e.type==="hero-buyback"),
-    ...newlyBooked.filter(e=>e.type==="hero-buyback"),
+    ...before.events.filter(e=>e.day===before.day&&(e.type==="hero-buyback"||e.type==="discovery-buyback")),
+    ...newlyBooked.filter(e=>(e.type==="hero-buyback"||e.type==="discovery-buyback")),
   ];
   const outstandingCreditGold=after.shopDebts.reduce(
     (sum,debt)=>sum+debt.outstandingGold,0);
@@ -314,7 +314,7 @@ export function setupMerchantLedger(
           purchaseRows.append(item&&event.itemId?itemLedgerLine(
             event.itemId,description+" · "+item.name,
             "-"+gold(event.cost??0),"PURCHASED"):line(
-            description,"-"+gold(event.cost??0),"PURCHASED"));
+            event.type==="discovery-buyback"?description+" · Surveyor\u0027s Plan":description,"-"+gold(event.cost??0),"PURCHASED"));
         }
         content.append(purchaseRows);
       }
