@@ -2,7 +2,7 @@
 
 > Current contract: Alpha v50 (Room-first Dungeon). Current design and lore; [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) distinguish implementation and acceptance.
 
-Ordinary chambers have deterministic presentation themes: pillared hall, burial crypt, treasure vault and guardroom. Vault chests contain two or three ordinary goods, and eligible deep Forgotten Workshops contain existing forge salvage. All rewards come from genuine physical site contact and existing party ownership. Other room styles remain cosmetic. New blueprints and unlocks are not yet implemented.
+Ordinary chambers have deterministic presentation themes: pillared hall, burial crypt, treasure vault, guardroom and eligible deep forgotten workshop. Vault chests contain two or three ordinary goods, and eligible deep Forgotten Workshops contain existing forge salvage. All rewards come from genuine physical site contact and existing party ownership. Other room styles remain cosmetic. New blueprints and unlocks are not yet implemented.
 
 
 **Combat contract:** All live encounters and the isolated Combat Lab use the same 60-Hz group motor, hero attributes, gear, tactics, defense and physical retreat policy. Enemy abilities and terrain may differ; hero rules do not. There is no elapsed-time fight cap. After 30 seconds without an effective HP cue or measurable retreat advance, the shared progress policy requests retreat; persistent blockage can resolve as a recorded stalemate. Combat can cross day boundaries. Stored positions are capped at 2,401 frames, preserving the initial frame and latest minute at 10 Hz; older positions are thinned, not the combat events.

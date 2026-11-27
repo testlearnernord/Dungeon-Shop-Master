@@ -123,7 +123,8 @@ test("workshop treasure settlement awards real owned salvage exactly once per si
   const map=generateExpeditionLayout(seed,floor);
   const feature=map.features.find(f=>f.kind==="treasure"&&dungeonRoomPurposeAt(map,f)==="workshop");
   assert(feature,"Seeded deep workshop must have a real treasure site");
-  const at=dungeonNeighbors(map,feature)[0];
+  const at=dungeonNeighbors(map,feature).find(p=>!map.features.some(f=>f.x===p.x&&f.z===p.z));
+  assert(at,"Choose an actual free adjacent approach so the return step cannot trigger another site");
   const base=createGameState(seed).adventurers[0];
   const hero={...base,floor:7 as const,status:"exploring" as const};
   const initial={...emptySpatialDungeonWorld(),heroes:[{
@@ -143,4 +144,16 @@ test("workshop treasure settlement awards real owned salvage exactly once per si
     new Set([hero.id]),{tacticalStep:feature});
   assert.equal(again.ticks[0].gainedLoot,0);
   assert(!again.ticks[0].replay.steps.some(s=>s.action==="treasure"&&s.featureId===feature.id));
+  // Isolate the existing physical chest settlement using the actual awarded
+  // inventory; no fixture-created materials. Travel itself is covered by
+  // the existing LIVE and browser tests.
+  const start=createGameState(seed);
+  const returned={...again.ticks[0].adventurer,floor:"shop" as const,status:"at-shop" as const};
+  const stocked={...start,adventurers:start.adventurers.map(h=>h.id===returned.id?returned:h),
+    shopEconomy:{...start.shopEconomy,balance:100}};
+  const sold=buybackAtChest(stocked,returned.id,BUYBACK_DOCK);
+  assert(sold.shopEconomy.materialStorage[awarded as "coal"|"iron-ore"]>0);
+  assert(sold.shopEconomy.balance<stocked.shopEconomy.balance);
+  assert.equal(sold.adventurers.find(h=>h.id===returned.id)!.inventory.finds?.[awarded]??0,0);
+  assert.strictEqual(buybackAtChest(sold,returned.id,BUYBACK_DOCK),sold);
 });
