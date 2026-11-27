@@ -20,7 +20,7 @@ function fixture(){
   const party=state.adventurers.slice(0,2).map(h=>({...h,status:"exploring" as const,
     floor:source.floor,shopStayDays:0}));
   const world={...emptySpatialDungeonWorld(),heroes:party.map(h=>({
-    heroId:h.id,x:at.x,z:at.z,visited:[at.z*layout.width+at.x],
+    heroId:h.id,x:at.x,z:at.z,visited:[...new Set(dungeonShortestPath(layout,layout.entrance,at).map(p=>p.z*layout.width+p.x).concat(layout.entrance.z*layout.width+layout.entrance.x,at.z*layout.width+at.x))],
   }))};
   const result=advanceSpatialDungeonPartyStep(party,world,state.seed,1,
     new Set(party.map(h=>h.id)),{tacticalStep:feature});
@@ -54,7 +54,7 @@ test("one actual treasure contact claims one owner; dead owner requires later ge
   const survivor=dead.find(h=>h.health>0)!;
   const day=1+dungeonSiteCooldown(layout,feature);
   const renewed=advanceSpatialDungeonPartyStep([survivor],{...result.world,
-    heroes:[{heroId:survivor.id,x:at.x,z:at.z,visited:[at.z*layout.width+at.x]}]},
+    heroes:[{heroId:survivor.id,x:at.x,z:at.z,visited:[...new Set(dungeonShortestPath(layout,layout.entrance,at).map(p=>p.z*layout.width+p.x).concat(layout.entrance.z*layout.width+layout.entrance.x,at.z*layout.width+at.x))]}]},
     state.seed,day,new Set([survivor.id]),{tacticalStep:feature});
   const recovered=claimSurveyorPlan(plan,state.seed,day,renewed,dead);
   assert(recovered);
