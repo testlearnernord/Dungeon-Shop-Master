@@ -95,7 +95,7 @@ test("site loot and multi-hero ownership are deterministic and never duplicate i
 
 
 test("real vault and workshop contents share one room classification and bounded loot rolls",()=>{
-  let workshops=0,vaults=0;
+  let workshops=0,vaults=0,crypts=0,guardrooms=0,cryptReplacements=0,guardReplacements=0;
   for(const seed of [42,7351,9321,2026])for(const floor of [1,5,9]){
     const map=generateExpeditionLayout(seed,floor);
     assert.deepEqual(dungeonRoomPurposes(map),dungeonRoomPurposes(generateExpeditionLayout(seed,floor)));
@@ -103,7 +103,9 @@ test("real vault and workshop contents share one room classification and bounded
       const theme=dungeonRoomPurposeAt(map,f);
       if(theme==="vault")vaults++;
       if(theme==="workshop")workshops++;
-      for(let cycle=0;cycle<6;cycle++){
+      if(theme==="crypt")crypts++;
+      if(theme==="guardroom")guardrooms++;
+      for(let cycle=0;cycle<24;cycle++){
         const roll=rollDungeonTreasureLoot(seed,map,f,cycle);
         const ordinary=rollDungeonSiteLoot(seed,floor,f.id,cycle,"treasure");
         assert.deepEqual(roll,rollDungeonTreasureLoot(seed,map,f,cycle));
@@ -112,11 +114,26 @@ test("real vault and workshop contents share one room classification and bounded
         else if(theme==="workshop"){
           assert(["iron-ore","coal"].includes(roll.itemIds[0]));
           assert.equal(roll.itemIds.length,ordinary.itemIds.length);
+        }else if(theme==="crypt"||theme==="guardroom"){
+          assert.equal(roll.itemIds.length,ordinary.itemIds.length);
+          for(let index=0;index<ordinary.itemIds.length;index++){
+            if(ordinary.itemIds[index]!=="mana-potion")
+              assert.equal(roll.itemIds[index],ordinary.itemIds[index]);
+            else if(theme==="crypt"){
+              cryptReplacements++;
+              assert.equal(roll.itemIds[index],"healing-herb");
+            }else{
+              guardReplacements++;
+              assert(["iron-sword","spear","staff","leather-vest"].includes(roll.itemIds[index]));
+            }
+          }
         }else assert.deepEqual(roll,ordinary);
+        assert(!roll.itemIds.some(id=>id.startsWith("forged-")||id==="ghoul-leather-vest"||id==="ghoul-leather"));
       }
     }
   }
-  assert(vaults>0&&workshops>0);
+  assert(vaults>0&&workshops>0&&crypts>0&&guardrooms>0);
+  assert(cryptReplacements>0&&guardReplacements>0);
 });
 test("workshop treasure settlement awards real owned salvage exactly once per site cycle",()=>{
   const seed=7351,floor=7;
@@ -156,4 +173,15 @@ test("workshop treasure settlement awards real owned salvage exactly once per si
   assert(sold.shopEconomy.balance<stocked.shopEconomy.balance);
   assert.equal(sold.adventurers.find(h=>h.id===returned.id)!.inventory.finds?.[awarded]??0,0);
   assert.strictEqual(buybackAtChest(sold,returned.id,BUYBACK_DOCK),sold);
+});
+
+test("starter weapon finds include all roles without more ordinary item slots",()=>{
+  const counts=new Map<ItemId,number>();
+  for(let cycle=0;cycle<512;cycle++){
+    const items=rollDungeonSiteLoot(7351,1,"treasure-0",cycle,"treasure").itemIds;
+    assert(items.length>=1&&items.length<=3);
+    for(const id of items)counts.set(id,(counts.get(id)??0)+1);
+  }
+  for(const id of ["iron-sword","spear","staff"] as const)assert((counts.get(id)??0)>0);
+  assert(!counts.has("forged-spear")&&!counts.has("ghoul-leather"));
 });
