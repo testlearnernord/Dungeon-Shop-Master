@@ -10,7 +10,7 @@ import {buybackAtChest} from "../../src/game/dungeonBuyback.ts";
 import {BUYBACK_DOCK} from "../../src/game/buybackChestPlacement.ts";
 import {equipmentEffects,needsGearUpgrade} from "../../src/game/gearCatalog.ts";
 import {createSave,parseSave} from "../../src/game/campaignSave.ts";
-import {rollDungeonSiteLoot,distributeDungeonFinds} from "../../src/game/dungeonLoot.ts";
+import {rollDungeonSiteLoot,rollDungeonTreasureLoot,distributeDungeonFinds} from "../../src/game/dungeonLoot.ts";
 import {caveTrollPartyOptions} from "../../src/game/sharedBossCombat.ts";
 import {GameStore} from "../../src/game/gameStore.ts";
 import {createStockedShopState} from "./shopFixtures.ts";
@@ -298,7 +298,8 @@ function supplySiteFixture(kind:"monster"|"treasure",reward?:"healing-herb"){
     const site=layout.features.find(f=>f.kind===kind&&
       dungeonNeighbors(layout,f).length>0&&
       dungeonShortestPath(layout,layout.entrance,f).length<24&&
-      rollDungeonSiteLoot(seed,1,f.id,0,kind).itemIds.some(id=>
+      (kind==="treasure"?rollDungeonTreasureLoot(seed,layout,f,0):
+        rollDungeonSiteLoot(seed,1,f.id,0,kind)).itemIds.some(id=>
         reward?id===reward:kind==="monster"?id==="ghoul-leather":id==="iron-ore"||id==="coal"));
     if(!site)continue;
     const base=createStockedShopState(seed,{dailyInflux:0,maxActive:10});
@@ -326,8 +327,8 @@ function supplySiteFixture(kind:"monster"|"treasure",reward?:"healing-herb"){
 }
 
 test("LIVE chest settlement creates individually owned goods, not shop stock",()=>{
-  const {store,hero,site,seed}=supplySiteFixture("treasure");
-  const expected=rollDungeonSiteLoot(seed,1,site.id,0,"treasure").itemIds;
+  const {store,hero,site,seed,layout}=supplySiteFixture("treasure");
+  const expected=rollDungeonTreasureLoot(seed,layout,site,0).itemIds;
   store.enableLiveDungeon();
   store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   const after=store.state.adventurers.find(h=>h.id===hero.id)!;
@@ -506,9 +507,10 @@ test("needed loot is used by a compatible living hero before spare goods are off
 
 test("actual LIVE chest and combat settlement retain a genuinely found needed herb",()=>{
   for(const kind of ["treasure","monster"] as const){
-    const {store,hero,site,seed}=supplySiteFixture(kind,"healing-herb");
+    const {store,hero,site,seed,layout}=supplySiteFixture(kind,"healing-herb");
     const shopHerbs=store.state.shopEconomy.bag["healing-herb"];
-    const expected=rollDungeonSiteLoot(seed,1,site.id,0,kind).itemIds.filter(id=>id==="healing-herb").length;
+    const expected=(kind==="treasure"?rollDungeonTreasureLoot(seed,layout,site,0):
+      rollDungeonSiteLoot(seed,1,site.id,0,kind)).itemIds.filter(id=>id==="healing-herb").length;
     assert(expected>0);
     store.enableLiveDungeon();
     store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);

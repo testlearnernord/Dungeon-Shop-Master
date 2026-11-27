@@ -95,7 +95,7 @@ test("site loot and multi-hero ownership are deterministic and never duplicate i
 
 
 test("real vault and workshop contents share one room classification and bounded loot rolls",()=>{
-  let workshops=0,vaults=0;
+  let workshops=0,vaults=0,crypts=0,guardrooms=0,cryptReplacements=0,guardReplacements=0;
   for(const seed of [42,7351,9321,2026])for(const floor of [1,5,9]){
     const map=generateExpeditionLayout(seed,floor);
     assert.deepEqual(dungeonRoomPurposes(map),dungeonRoomPurposes(generateExpeditionLayout(seed,floor)));
@@ -103,7 +103,9 @@ test("real vault and workshop contents share one room classification and bounded
       const theme=dungeonRoomPurposeAt(map,f);
       if(theme==="vault")vaults++;
       if(theme==="workshop")workshops++;
-      for(let cycle=0;cycle<6;cycle++){
+      if(theme==="crypt")crypts++;
+      if(theme==="guardroom")guardrooms++;
+      for(let cycle=0;cycle<24;cycle++){
         const roll=rollDungeonTreasureLoot(seed,map,f,cycle);
         const ordinary=rollDungeonSiteLoot(seed,floor,f.id,cycle,"treasure");
         assert.deepEqual(roll,rollDungeonTreasureLoot(seed,map,f,cycle));
@@ -112,11 +114,26 @@ test("real vault and workshop contents share one room classification and bounded
         else if(theme==="workshop"){
           assert(["iron-ore","coal"].includes(roll.itemIds[0]));
           assert.equal(roll.itemIds.length,ordinary.itemIds.length);
+        }else if(theme==="crypt"||theme==="guardroom"){
+          assert.equal(roll.itemIds.length,ordinary.itemIds.length);
+          for(let index=0;index<ordinary.itemIds.length;index++){
+            if(ordinary.itemIds[index]!=="mana-potion")
+              assert.equal(roll.itemIds[index],ordinary.itemIds[index]);
+            else if(theme==="crypt"){
+              cryptReplacements++;
+              assert.equal(roll.itemIds[index],"healing-herb");
+            }else{
+              guardReplacements++;
+              assert(["iron-sword","spear","staff","leather-vest"].includes(roll.itemIds[index]));
+            }
+          }
         }else assert.deepEqual(roll,ordinary);
+        assert(!roll.itemIds.some(id=>id.startsWith("forged-")||id==="ghoul-leather-vest"||id==="ghoul-leather"));
       }
     }
   }
-  assert(vaults>0&&workshops>0);
+  assert(vaults>0&&workshops>0&&crypts>0&&guardrooms>0);
+  assert(cryptReplacements>0&&guardReplacements>0);
 });
 test("workshop treasure settlement awards real owned salvage exactly once per site cycle",()=>{
   const seed=7351,floor=7;
@@ -156,4 +173,55 @@ test("workshop treasure settlement awards real owned salvage exactly once per si
   assert(sold.shopEconomy.balance<stocked.shopEconomy.balance);
   assert.equal(sold.adventurers.find(h=>h.id===returned.id)!.inventory.finds?.[awarded]??0,0);
   assert.strictEqual(buybackAtChest(sold,returned.id,BUYBACK_DOCK),sold);
+});
+
+test("starter weapon finds include all roles without more ordinary item slots",()=>{
+  const counts=new Map<ItemId,number>();
+  for(let cycle=0;cycle<512;cycle++){
+    const items=rollDungeonSiteLoot(7351,1,"treasure-0",cycle,"treasure").itemIds;
+    assert(items.length>=1&&items.length<=3);
+    for(const id of items)counts.set(id,(counts.get(id)??0)+1);
+  }
+  for(const id of ["iron-sword","spear","staff"] as const)assert((counts.get(id)??0)>0);
+  assert(!counts.has("forged-spear")&&!counts.has("ghoul-leather"));
+});
+
+test("real guardroom and crypt treasure uses the same once-only physical settlement",()=>{
+  for(const theme of ["guardroom","crypt"] as const){
+    let sample:{seed:number;feature:ReturnType<typeof generateExpeditionLayout>["features"][number];at:{x:number;z:number}}|undefined;
+    for(let seed=7351;seed<7451&&!sample;seed++){
+      const map=generateExpeditionLayout(seed,1);
+      for(const feature of map.features){
+        if(feature.kind!=="treasure"||dungeonRoomPurposeAt(map,feature)!==theme)continue;
+        if(!rollDungeonSiteLoot(seed,1,feature.id,0,"treasure").itemIds.includes("mana-potion"))continue;
+        const at=dungeonNeighbors(map,feature).find(p=>
+          !map.features.some(f=>f.x===p.x&&f.z===p.z));
+        if(at){sample={seed,feature,at};break;}
+      }
+    }
+    assert(sample,"Find a seeded real room chest with a replaced mana slot");
+    const {seed,feature,at}=sample,map=generateExpeditionLayout(seed,1);
+    const base=createGameState(seed).adventurers[0];
+    const hero={...base,floor:1 as const,status:"exploring" as const,
+      inventory:{...base.inventory,bread:ECONOMY.breadTarget,healing:ECONOMY.healingTarget}};
+    const world={...emptySpatialDungeonWorld(),heroes:[{
+      heroId:hero.id,...at,visited:[at.z*map.width+at.x],
+    }]};
+    const items=rollDungeonTreasureLoot(seed,map,feature,0).itemIds;
+    assert(!items.includes("mana-potion"));
+    const expected=distributeDungeonFinds([hero],items,feature.id,0)[0];
+    const once=advanceSpatialDungeonPartyStep([hero],world,seed,2,
+      new Set([hero.id]),{tacticalStep:feature});
+    const after=once.ticks[0].adventurer;
+    assert.equal(once.ticks[0].gainedLoot,1);
+    assert.deepEqual(after.equipment,expected.equipment);
+    assert.deepEqual(after.inventory.finds,expected.inventory.finds);
+    assert(once.world.resolvedFeatureIds.includes(feature.id));
+    const back=advanceSpatialDungeonPartyStep([after],once.world,seed,2,
+      new Set([hero.id]),{tacticalStep:at});
+    const again=advanceSpatialDungeonPartyStep([back.ticks[0].adventurer],back.world,seed,2,
+      new Set([hero.id]),{tacticalStep:feature});
+    assert.equal(again.ticks[0].gainedLoot,0);
+    assert.deepEqual(again.ticks[0].adventurer.inventory.finds,after.inventory.finds);
+  }
 });
