@@ -26,7 +26,7 @@ import { heroDisplayNames } from "./heroIdentity.ts";
 import {selectHeroFloorPerception} from "./heroPerception.ts";
 import {getDungeonSurfaces} from "./dungeonSurfaces.ts";
 import {createDungeonRoomArt,createDungeonPassageArt} from "./ghoulCryptArt.ts";
-import {dungeonRoomArtPlan,dungeonPassageArtPlan,dungeonRoomTileThemes,ROOM_SURFACE_TINTS,ROOM_THEMES,ROOM_THEME_NAMES} from "./dungeonRoomArtPlan.ts";
+import {dungeonRoomArtPlan,dungeonPassageArtPlan,dungeonRoomTileThemes,ROOM_SURFACE_TINTS,ROOM_THEMES,ROOM_THEME_NAMES,dungeonOverviewTileColor,dungeonOverviewRoomLabel,type DungeonRoomTheme} from "./dungeonRoomArtPlan.ts";
 import {createGhoulMapIconMaterial} from "./dungeonGhoulMapIcon.ts";
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
@@ -73,6 +73,7 @@ export class DungeonViewer {
   private scene: Scene | null = null;
   private camera: UniversalCamera | null = null;
   private layout: DungeonLayout | null = null;
+  private roomThemes:ReadonlyMap<number,DungeonRoomTheme>=new Map();
   private active = false;
   private readonly keys = new Set<string>();
   private orbitPointer:null|{
@@ -414,7 +415,7 @@ export class DungeonViewer {
         }
         return;
       }
-      this.showMapHover(event.clientX,event.clientY);
+      this.showMapHover(event.clientX,event.clientY,event.target);
     },true);
     window.addEventListener("pointerup",event=>{
       const drag=this.orbitPointer;
@@ -747,9 +748,24 @@ export class DungeonViewer {
       " · tile ("+cell.x+", "+cell.z+")";
   }
 
-  private showMapHover(clientX:number,clientY:number):void{
-    if(!this.scene||this.liveFloor===null){
-      this.hoverTooltip.hidden=true;return;
+  private showMapHover(clientX:number,clientY:number,target:EventTarget|null):void{
+    if(!this.scene||this.liveFloor===null||
+       (target!==this.canvas&&target!==this.minimap)){
+      this.hoverTooltip.hidden=true;hideHeroHover();return;
+    }
+    const layout=this.layout;
+    // Room purposes are merchant overview information, never additional
+    // knowledge for a selected hero or a historical tape.
+    const roomLabel=(p:DungeonPoint)=>{
+      if(!layout||this.selectedFloorHeroId)return "";
+      const theme=this.roomThemes.get(p.z*layout.width+p.x);
+      return theme?dungeonOverviewRoomLabel(theme):"";
+    };
+    if(target===this.minimap){
+      const cell=layout&&!this.selectedFloorHeroId?minimapPointFromClient(
+        clientX,clientY,this.minimap.getBoundingClientRect(),layout.width,layout.height):null;
+      this.showMapTooltip(cell?roomLabel(cell):"",clientX,clientY);
+      return;
     }
     const rect=this.canvas.getBoundingClientRect();
     const hit=this.scene.pick(clientX-rect.left,clientY-rect.top,mesh=>
@@ -769,12 +785,25 @@ export class DungeonViewer {
       label=String(meta.label)+" · Tile "+meta.gridX+", "+meta.gridZ;
     }else if(typeof meta?.spectatorFeatureId==="string"&&this.layout){
       const feature=this.layout.features.find(f=>f.id===meta.spectatorFeatureId);
-      if(feature&&!view?.resolved.includes(feature.id))
+      if(feature&&!view?.resolved.includes(feature.id)){
+        const context=feature.kind==="treasure"?roomLabel(feature):"";
         label=(feature.kind==="treasure"?"CHEST · Unlooted":feature.kind==="trap"?
-          "TRAP · Armed":"GHOUL · Spawn Site")+" · Tile "+feature.x+", "+feature.z;
+          "TRAP · Armed":"GHOUL · Spawn Site")+" · Tile "+feature.x+", "+feature.z+
+          (context?" · "+context:"");
+      }
     }else if(meta?.abstractBattle===true){
       label="LIVE FIGHT · Click to watch the actual arena";
+    }else if(!this.selectedFloorHeroId){
+      // Feature/hero picks retain precedence; terrain is a fallback only.
+      const terrain=this.scene.pick(clientX-rect.left,clientY-rect.top,mesh=>
+        mesh.isVisible&&mesh.isEnabled()&&mesh.metadata?.overviewRoomTile===true);
+      const cell=terrain?.pickedMesh?.metadata?.roomCell as DungeonPoint|undefined;
+      if(cell)label=roomLabel(cell);
     }
+    this.showMapTooltip(label,clientX,clientY);
+  }
+
+  private showMapTooltip(label:string,clientX:number,clientY:number):void{
     hideHeroHover();
     this.hoverTooltip.hidden=!label;
     if(!label)return;
@@ -822,6 +851,7 @@ export class DungeonViewer {
     // Use the same baked texture as corridors and Galvik's Table.
     const roomArt=dungeonRoomArtPlan(layout);
     const roomThemes=dungeonRoomTileThemes(layout,roomArt);
+    this.roomThemes=roomThemes;
     const roomStone=new Map(ROOM_THEMES.map(theme=>{
       const mat=new StandardMaterial("dungeon-room-flagstone-"+theme,scene);
       mat.diffuseTexture=floor.diffuseTexture;
@@ -881,8 +911,10 @@ export class DungeonViewer {
         const prefab=useRoom?roomPrefabs.get(roomThemes.get(z*layout.width+x)??"hall")!:floorPrefab;
         const mesh=prefab.createInstance(
           "dungeon-"+(useRoom?"room":"corridor")+"-tile-"+x+"-"+z);
-        if(useRoom)roomTiles++;
-        else corridors++;
+        if(useRoom){
+          roomTiles++;
+          mesh.metadata={overviewRoomTile:true,roomCell:{x,z}};
+        }else corridors++;
         mesh.position.set(pos.x,0,pos.z);
         replayTiles.push({x,z,mesh});
       }
@@ -973,7 +1005,7 @@ export class DungeonViewer {
       layout.features.filter(f=>f.kind==="trap").length+" traps";
     this.replayScene=new DungeonReplayScene(scene,camera,layout,
       replayTiles,replayMarkers,replayDecorations,reference,this.minimap,
-      ghoulMap);
+      ghoulMap,roomThemes);
     this.drawMinimap(layout);
     this.centerOn(0);
   }
@@ -1146,7 +1178,7 @@ export class DungeonViewer {
       :"LIVE · Full Floor "+view.floor+" Overview";
     this.minimapNote.textContent=(hero
       ?"Bright: visible · Dim: explored · Black: unknown. Unexplored tiles cannot be focused."
-      :"All confirmed adventurers visible. Select a hero for personal fog.")
+      :"Room colors identify chambers; hover for their names and rules. Select a hero for personal fog.")
       +" Click a tile or use arrow keys to focus the camera.";
   }
 
@@ -1643,7 +1675,7 @@ export class DungeonViewer {
     orientNorthUpMinimap(ctx,this.minimap.height);
     for(let z=0;z<layout.height;z++)for(let x=0;x<layout.width;x++) {
       const kind=tileAt(layout,x,z);
-      ctx.fillStyle=kind==="wall"?"#171b20":kind==="room"?"#81786d":"#565960";
+      ctx.fillStyle=dungeonOverviewTileColor(kind,this.roomThemes.get(z*layout.width+x));
       ctx.fillRect(x*cell,z*cell,cell,cell);
     }
     for(const f of layout.features){
