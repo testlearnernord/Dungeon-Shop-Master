@@ -10,7 +10,10 @@ test("the shared room art is deterministic, varied and never alters the canonica
     assert.deepEqual(plan,dungeonRoomArtPlan(generateExpeditionLayout(seed,floor)));
     assert.deepEqual(map,before);
     assert.equal(plan.length,map.rooms.length);
-    assert.equal(new Set(plan.map(p=>p.theme)).size,4);
+    const workshop=plan.filter(p=>p.theme==="workshop");
+    assert(workshop.length<=1);
+    assert.equal(new Set(plan.map(p=>p.theme)).size,4+workshop.length);
+    if(floor<5)assert.equal(workshop.length,0);
     assert.equal(plan.filter(p=>p.theme==="hall").length,1);
     assert.equal(plan.filter(p=>p.theme==="vault").length,1);
     assert.equal(dungeonRoomCells(map,plan.find(p=>p.theme==="hall")!.room).length,

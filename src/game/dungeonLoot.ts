@@ -2,6 +2,8 @@ import {ECONOMY,type ItemId} from "./economy.ts";
 import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {SeededRandom} from "./random.ts";
+import type {DungeonLayout,DungeonFeature} from "./dungeonLayout.ts";
+import {dungeonRoomPurposeAt} from "./dungeonRoomPurpose.ts";
 import type {AdventurerState} from "./adventurers.ts";
 
 /** Deterministic item ownership from an actual resolved site generation.
@@ -25,13 +27,16 @@ const table:readonly ItemId[]=[
  * specific goods: raw materials, supplies and occasional wearable gear. */
 export function rollDungeonSiteLoot(
   campaignSeed:number,floor:number,siteId:string,cycle:number,
-  kind:DungeonDropKind,monsterCount=1,
+  kind:DungeonDropKind,monsterCount=1,treasureProfile:"ordinary"|"vault"|"workshop"="ordinary",
 ):DungeonLootRoll {
   const seed=(campaignSeed^Math.imul(floor+13,0x9e3779b1)^
     hash(siteId)^Math.imul(cycle+1,0x85ebca6b))>>>0;
   const rng=new SeededRandom(seed);
   let n=0;
-  if(kind==="treasure")n=1+rng.int(3);
+  if(kind==="treasure"){
+    n=1+rng.int(3);
+    if(treasureProfile==="vault")n=Math.max(2,n);
+  }
   else for(let enemy=0;enemy<Math.min(4,Math.max(1,monsterCount));enemy++)
     if(rng.int(100)<48)n++;
   const itemIds:ItemId[]=[];
@@ -42,9 +47,22 @@ export function rollDungeonSiteLoot(
       const salvage:readonly ItemId[]=[
         "iron-ore","iron-ore","coal","ghoul-leather","ghoul-leather","healing-herb"];
       itemIds.push(salvage[rng.int(salvage.length)]);
+    }else if(treasureProfile==="workshop"&&i===0){
+      itemIds.push(rng.int(2)===0?"iron-ore":"coal");
     }else itemIds.push(table[rng.int(table.length)]);
   }
   return {itemIds};
+}
+
+/** Only actual treasure contact calls this; physical site cycles still
+ * own exactly-once settlement. Workshop contents feed the existing
+ * material buyback/forge chain, not a second inventory or currency. */
+export function rollDungeonTreasureLoot(campaignSeed:number,layout:DungeonLayout,
+  feature:DungeonFeature,cycle:number):DungeonLootRoll{
+  if(feature.kind!=="treasure")throw new RangeError("Expected a treasure site");
+  const theme=dungeonRoomPurposeAt(layout,feature);
+  return rollDungeonSiteLoot(campaignSeed,layout.floor,feature.id,cycle,"treasure",1,
+    theme==="vault"||theme==="workshop"?theme:"ordinary");
 }
 
 /** A unique item is assigned to ONE living member, not duplicated.

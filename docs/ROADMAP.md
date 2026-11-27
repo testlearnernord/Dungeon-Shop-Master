@@ -14,7 +14,7 @@ The completed two pre-chest v40 200-day Forge campaigns reached and beat Floor 1
 
 ## P3 — art backlog
 
-Shared deterministic hall, vault, crypt and guardroom art: verify visual clarity, room landmarks, lighting and prop placement in the actual table, LIVE and replay views. Shaped chambers and corridor passing bays need matched audit and visual acceptance. Functional room rules and permanent modifications are separate future work. [Issue #334](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/334) is historical crypt-polish context.
+Shared deterministic hall, vault, crypt and guardroom art: verify visual clarity, room landmarks, lighting and prop placement in the actual table, LIVE and replay views. Shaped chambers and corridor passing bays need matched audit and visual acceptance. Functional room slice A connects existing vault/workshop treasure with the physical material buyback and forge. Unique discoveries, hall/crypt/guardroom behavior and permanent modifications remain future work. [Issue #334](https://github.com/testlearnernord/Dungeon-Shop-Master/issues/334) is historical crypt-polish context.
 
 ## Future design — not committed implementation
 

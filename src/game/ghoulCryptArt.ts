@@ -13,6 +13,7 @@ const palette:Readonly<Record<DungeonRoomTheme,{stone:string;trim:string;glow:st
   crypt:{stone:"#454f46",trim:"#697467",glow:"#a6cc91"},
   vault:{stone:"#686359",trim:"#b69b54",glow:"#ffd78b"},
   guardroom:{stone:"#675349",trim:"#947052",glow:"#ff9d59"},
+  workshop:{stone:"#514f50",trim:"#9b6849",glow:"#efaa73"},
 };
 
 /** Shared lightweight art for table, LIVE and historical map. Empty parent
@@ -69,6 +70,11 @@ export function createDungeonRoomArt(scene:Scene,plan:DungeonRoomArtPlan,world:V
       box("sealed-coffer-"+n,x,.52,z,.9,.44,.84);
       box("coffer-band-"+n,x,.77,z,.96,.08,.28,trim);
       box("coffer-seal-"+n,x,.55,z-.43,.22,.21,.08,glow);
+    }else if(theme==="workshop"){
+      box("workbench-base-"+n,x,.36,z,.75,.60,.78);
+      box("workbench-top-"+n,x,.71,z,1.05,.14,1.02,trim);
+      box("anvil-foot-"+n,x,.91,z,.42,.28,.40);
+      box("anvil-head-"+n,x,1.10,z,.88,.14,.42,stone);
     }else{
       column("barrel-"+n,x,z,.92,.79,stone);
       column("barrel-band-"+n,x,z,.10,.85,trim,.31);
@@ -78,7 +84,7 @@ export function createDungeonRoomArt(scene:Scene,plan:DungeonRoomArtPlan,world:V
   }
   const lamp=anchors[0];
   if(lamp){
-    const height=theme==="hall"?2.96:theme==="crypt"?.86:theme==="vault"?.98:1.26;
+    const height=theme==="hall"?2.96:theme==="crypt"?.86:theme==="vault"?.98:theme==="workshop"?1.43:1.26;
     box("lantern-"+lamp.corner,lamp.x,height,lamp.z,.23,.30,.23,glow);
   }
   const light=new PointLight("dungeon-torchlight-"+room.id,

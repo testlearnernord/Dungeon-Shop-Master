@@ -1,10 +1,8 @@
-import {dungeonDownStair,dungeonRoomContains,dungeonRoomCells,tileAt,type DungeonLayout,type DungeonRoom,type DungeonPoint} from "./dungeonLayout.ts";
+import {dungeonDownStair,dungeonRoomCells,tileAt,type DungeonLayout,type DungeonRoom,type DungeonPoint} from "./dungeonLayout.ts";
 import {DUNGEON_WORLD_TILE_SIZE as TILE} from "./dungeonObservationOrientation.ts";
 
-export type DungeonRoomTheme="hall"|"crypt"|"vault"|"guardroom";
-export const ROOM_THEME_NAMES:Readonly<Record<DungeonRoomTheme,string>>={
-  hall:"Pillared Hall",crypt:"Burial Crypt",vault:"Treasure Vault",guardroom:"Guardroom",
-};
+import {dungeonRoomPurposes,type DungeonRoomTheme} from "./dungeonRoomPurpose.ts";
+export {ROOM_THEME_NAMES,type DungeonRoomTheme} from "./dungeonRoomPurpose.ts";
 export interface DungeonRoomArtAnchor extends DungeonPoint {
   readonly cell:DungeonPoint;
   readonly corner:number;
@@ -16,22 +14,12 @@ export interface DungeonRoomArtPlan {
 }
 
 /** Presentation only: use actual chambers and reserved sites, not another
- * map or RNG stream. Never change tile occupancy or hero knowledge. */
+ * map or RNG stream. Never change tile occupancy or hero knowledge. Room purposes are shared with real loot settlement. */
 export function dungeonRoomArtPlan(layout:DungeonLayout):readonly DungeonRoomArtPlan[]{
   const footprints=new Map(layout.rooms.map(r=>[r.id,dungeonRoomCells(layout,r)]));
-  const ranked=[...layout.rooms].sort((a,b)=>footprints.get(b.id)!.length-footprints.get(a.id)!.length||
-    a.id.localeCompare(b.id));
-  const hall=ranked.shift();
-  const treasureCount=(room:DungeonRoom)=>layout.features.filter(f=>
-    f.kind==="treasure"&&dungeonRoomContains(layout,room,f)).length;
-  ranked.sort((a,b)=>treasureCount(b)-treasureCount(a)||a.id.localeCompare(b.id));
-  const vault=ranked.shift();
   const reserved=[layout.entrance,dungeonDownStair(layout),...layout.features];
   const directions=[[-1,-1],[1,-1],[1,1],[-1,1]] as const;
-  const offset=layout.seed%2;
-  return layout.rooms.map(room=>{
-    const theme:DungeonRoomTheme=room===hall?"hall":room===vault?"vault":
-      (ranked.indexOf(room)+offset)%2===0?"crypt":"guardroom";
+  return dungeonRoomPurposes(layout).map(({room,theme})=>{
     const occupied=new Set<string>();
     const anchors:DungeonRoomArtAnchor[]=directions.flatMap(([dx,dz],corner)=>{
       // Choose an actual convex corner of the footprint, not its bounding
