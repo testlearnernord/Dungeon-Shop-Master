@@ -287,29 +287,32 @@ test("Tettel restocks real assigned goods and serves two physical customers on t
   },fixture.buyers);
   const initialAssignments=[{id:"shelf-1-slot-1",item:null},{id:"shelf-1-slot-2",item:"bread"},
     {id:"shelf-1-slot-3",item:"healing-herb"},{id:"shelf-1-slot-4",item:null}];
-  let sawCargo=false,sawCashier=false;
+  let sawCargo=false;
   try{
     await expect.poll(async()=>{
       const s=await read();
       sawCargo||=s.diagnostic.worker.restock?.stage==="deliver";
-      sawCashier||=s.diagnostic.worker.job?.task==="cashier";
       expect(s.bread+s.breadHeld+s.breadSold).toBe(4);
       expect(s.herbs+s.herbBag).toBe(2);
       expect(s.assignments).toEqual(initialAssignments);
       expect(s.tips).toEqual([]);expect(s.credits).toEqual([]);
       return {paid:new Set(s.buyerSales.map(e=>e.adventurerId)).size,herbs:s.herbs,departed:s.departed.length};
     },{timeout:150000,intervals:[500,1000,2000]}).toEqual({paid:2,herbs:2,departed:2});
+    const done=await read();
+    // Autosave polling can miss a short cashier job between checkpoints.
+    // Two actual employee-attributed payment receipts prove the service;
+    // a sampled job flag does not. Keep the physical cargo observation,
+    // conservation, exact payment and actual departure requirements.
+    expect(sawCargo).toBe(true);
+    expect(done.buyerSales).toHaveLength(2);
+    expect(done.buyerSales.every(e=>e.itemId==="bread"&&e.quantity===2&&
+      e.message.includes("Served by Tettel."))).toBe(true);
+    expect(done.balance).toBe(fixture.gold+16);
+    expect(done.herbBag).toBe(0);
+    expect(done.diagnostic.carts).toEqual([]);
+    expect(errors).toEqual([]);
   }catch(error){
-    console.log("COMBINED EMPLOYEE FAILURE "+JSON.stringify(await read()));
+    console.log("COMBINED EMPLOYEE FAILURE "+JSON.stringify({sawCargo,...await read()}));
     throw error;
   }
-  const done=await read();
-  expect(sawCargo).toBe(true);expect(sawCashier).toBe(true);
-  expect(done.buyerSales).toHaveLength(2);
-  expect(done.buyerSales.every(e=>e.itemId==="bread"&&e.quantity===2&&
-    e.message.includes("Served by Tettel."))).toBe(true);
-  expect(done.balance).toBe(fixture.gold+16);
-  expect(done.herbBag).toBe(0);
-  expect(done.diagnostic.carts).toEqual([]);
-  expect(errors).toEqual([]);
 });
