@@ -1,3 +1,5 @@
+import {setDungeonSiteSpent} from "./dungeonFeatureProps.ts";
+import {dungeonSiteDisplay,dungeonSiteMapColor} from "./liveFloorFeatureIdentity.ts";
 import {dungeonOverviewTileColor,type DungeonRoomTheme} from "./dungeonRoomArtPlan.ts";
 import {orientNorthUpMinimap} from "./dungeonObservationOrientation.ts";
 import type { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
@@ -219,7 +221,10 @@ export class DungeonReplayScene {
       this.show(0);
     }else{
       for(const tile of this.tiles)tile.mesh.isVisible=true;
-      for(const marker of this.markers)marker.mesh.setEnabled(true);
+      for(const marker of this.markers){
+        setDungeonSiteSpent(marker.mesh,false);
+        marker.mesh.setEnabled(true);
+      }
       for(const decoration of this.decorations){
         decoration.light?.setEnabled(true);
         decoration.mesh.setEnabled(true);
@@ -326,7 +331,9 @@ export class DungeonReplayScene {
     }
     for(const marker of this.markers){
       const id=marker.z*this.layout.width+marker.x;
-      marker.mesh.setEnabled(visible.has(id)&&!snapshot.resolved.has(marker.id)&&
+      const display=dungeonSiteDisplay(marker.kind,snapshot.resolved.has(marker.id));
+      setDungeonSiteSpent(marker.mesh,display==="spent");
+      marker.mesh.setEnabled(visible.has(id)&&display!=="hidden"&&
         snapshot.encounter?.featureId!==marker.id);
     }
     for(const decoration of this.decorations){
@@ -352,11 +359,9 @@ export class DungeonReplayScene {
     for(const marker of this.markers){
       const point=this.liveMarkerPoint(marker);
       if(!point)continue;
-      ctx.fillStyle=marker.kind==="treasure"?"#e6b845":
-        marker.kind==="trap"?"#c94c42":
-        marker.kind==="stair-descend"?"#e7bf75":
-        marker.kind==="stair-sealed"?"#a35e5e":
-        marker.kind.startsWith("stair-")?"#70d2b4":"#e27c62";
+      const color=dungeonSiteMapColor(marker.kind,this.floorFrame?.resolved.includes(marker.id)??false);
+      if(!color)continue;
+      ctx.fillStyle=color;
       ctx.fillRect(point.x*cell+1,point.z*cell+1,cell-2,cell-2);
     }
     ctx.fillStyle="#83d4ad";
@@ -381,12 +386,10 @@ export class DungeonReplayScene {
     }
     for(const marker of this.markers){
       const idx=marker.z*this.layout.width+marker.x;
-      if(!visible.has(idx)||snapshot.resolved.has(marker.id))continue;
-      ctx.fillStyle=marker.kind==="treasure"?"#e6b845":
-        marker.kind==="trap"?"#c94c42":
-        marker.kind==="stair-descend"?"#e7bf75":
-        marker.kind==="stair-sealed"?"#a35e5e":
-        marker.kind.startsWith("stair-")?"#70d2b4":"#e27c62";
+      if(!visible.has(idx))continue;
+      const color=dungeonSiteMapColor(marker.kind,snapshot.resolved.has(marker.id));
+      if(!color)continue;
+      ctx.fillStyle=color;
       ctx.fillRect(marker.x*cell+1,marker.z*cell+1,cell-2,cell-2);
     }
     ctx.fillStyle="#a5ebc7";
@@ -645,7 +648,9 @@ export class DungeonReplayScene {
         marker.mesh.position.x=position.x;
         marker.mesh.position.z=position.z;
       }
-      marker.mesh.setEnabled(!resolved.has(marker.id)&&
+      const display=dungeonSiteDisplay(marker.kind,resolved.has(marker.id));
+      setDungeonSiteSpent(marker.mesh,display==="spent");
+      marker.mesh.setEnabled(display!=="hidden"&&
         (marker.kind!=="monster"||view.monsters===undefined||
           !!monster&&monster.mode!=="ENGAGED"));
     }
@@ -683,8 +688,10 @@ export class DungeonReplayScene {
       const point=this.liveMarkerPoint(marker);
       const cell=point?point.z*this.layout.width+point.x:-1;
       const monster=this.floorFrame?.monsters?.find(m=>m.id===marker.id);
+      const display=dungeonSiteDisplay(marker.kind,resolved.has(marker.id));
+      setDungeonSiteSpent(marker.mesh,display==="spent");
       marker.mesh.setEnabled(!!point&&(!visible||visible.has(cell))&&
-        !resolved.has(marker.id)&&monster?.mode!=="ENGAGED");
+        display!=="hidden"&&monster?.mode!=="ENGAGED");
     }
     for(const decoration of this.decorations){
       const cell=decoration.z*this.layout.width+decoration.x;
@@ -752,13 +759,10 @@ export class DungeonReplayScene {
     const resolved=new Set(frame.resolved);
     for(const marker of this.markers){
       const point=this.liveMarkerPoint(marker);
-      if(!point||!perception.visible.has(point.z*this.layout.width+point.x)||
-         resolved.has(marker.id))continue;
-      ctx.fillStyle=marker.kind==="treasure"?"#e6b845":
-        marker.kind==="trap"?"#c94c42":
-        marker.kind==="stair-descend"?"#e7bf75":
-        marker.kind==="stair-sealed"?"#a35e5e":
-        marker.kind.startsWith("stair-")?"#70d2b4":"#e27c62";
+      if(!point||!perception.visible.has(point.z*this.layout.width+point.x))continue;
+      const color=dungeonSiteMapColor(marker.kind,resolved.has(marker.id));
+      if(!color)continue;
+      ctx.fillStyle=color;
       ctx.fillRect(point.x*cell+1,point.z*cell+1,cell-2,cell-2);
     }
     for(const hero of frame.heroes){
