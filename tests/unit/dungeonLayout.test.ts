@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   generateDungeonLayout, generateExpeditionLayout, dungeonDownStair, dungeonNeighbors, dungeonSeed,
-  dungeonShortestPath, tileAt,
+  dungeonShortestPath, dungeonRoomCells, dungeonRoomContains, tileAt,
 } from "../../src/game/dungeonLayout.ts";
 
 test("identical campaign seed/floor creates byte-identical room-first layout without changing RNG state", () => {
@@ -94,10 +94,18 @@ test("rectangular maps stay bounded, reserve both stairs and connect every room"
       }
       for(const room of map.rooms){
         assert(dungeonShortestPath(map,map.entrance,room).length>1);
-        for(let z=room.z-(room.height-1)/2;z<=room.z+(room.height-1)/2;z++)
-          for(let x=room.x-(room.width-1)/2;x<=room.x+(room.width-1)/2;x++)
-            assert.equal(tileAt(map,x,z),"room");
+        const cells=dungeonRoomCells(map,room);
+        assert(cells.length>=9&&cells.length<=room.width*room.height);
+        assert(dungeonRoomContains(map,room,room));
+        const keys=new Set(cells.map(p=>p.x+":"+p.z));
+        const queue=[room],seen=new Set([room.x+":"+room.z]);
+        for(let i=0;i<queue.length;i++)for(const p of dungeonNeighbors(map,queue[i])){
+          const key=p.x+":"+p.z;
+          if(keys.has(key)&&!seen.has(key)){seen.add(key);queue.push(p);}
+        }
+        assert.equal(seen.size,cells.length,"Every room footprint must be internally connected");
       }
+      assert.equal(map.rooms.reduce((n,r)=>n+dungeonRoomCells(map,r).length,0),map.tiles.filter(t=>t==="room").length);
       assert.equal(map.tiles.length,width*height);
       assert.equal(map.features.length,16);
     }
@@ -117,4 +125,26 @@ test("rooms remain connected when any one corridor tile is blocked",()=>{
       }
     }
   }
+});
+
+test("production floors contain shaped chambers and real wider corridor runs without new dead ends",()=>{
+  let shaped=0,wide=0;
+  for(const seed of [0,1,42,7351,9321,2026,0xffffffff])for(let floor=1;floor<=9;floor++){
+    const map=generateExpeditionLayout(seed,floor);
+    shaped+=map.rooms.filter(r=>dungeonRoomCells(map,r).length<r.width*r.height).length;
+    let hasBay=false;
+    for(let z=1;z<map.height-2;z++)for(let x=1;x<map.width-2;x++){
+      const horizontal=[0,1,2].every(i=>tileAt(map,x+i,z)==="corridor"&&tileAt(map,x+i,z+1)==="corridor");
+      const vertical=[0,1,2].every(i=>tileAt(map,x,z+i)==="corridor"&&tileAt(map,x+1,z+i)==="corridor");
+      if(horizontal||vertical)hasBay=true;
+    }
+    wide+=Number(hasBay);
+    for(let i=0;i<map.tiles.length;i++)if(map.tiles[i]!=="wall"){
+      const p={x:i%map.width,z:Math.floor(i/map.width)};
+      if(p.x!==map.entrance.x||p.z!==map.entrance.z)
+        assert(dungeonNeighbors(map,p).length>=2,"Unrewarded spur");
+    }
+  }
+  assert(shaped>=63,"Shape variation must be common, not an exceptional seed");
+  assert(wide>=32,"Wider corridors must be common across production layouts");
 });

@@ -52,6 +52,20 @@ export function dungeonNeighbors(layout: DungeonLayout, p: DungeonPoint): Dungeo
     .filter(({x,z}) => tileAt(layout, x, z) !== "wall");
 }
 
+/** A room's dimensions are its bounding box, not a promise that every
+ * enclosed cell is open. The canonical tile grid owns the actual footprint. */
+export function dungeonRoomContains(layout:DungeonLayout,room:DungeonRoom,p:DungeonPoint):boolean {
+  return Math.abs(p.x-room.x)<room.width/2&&Math.abs(p.z-room.z)<room.height/2&&
+    tileAt(layout,p.x,p.z)==="room";
+}
+export function dungeonRoomCells(layout:DungeonLayout,room:DungeonRoom):DungeonPoint[]{
+  const cells:DungeonPoint[]=[];
+  for(let z=room.z-(room.height-1)/2;z<=room.z+(room.height-1)/2;z++)
+    for(let x=room.x-(room.width-1)/2;x<=room.x+(room.width-1)/2;x++)
+      if(dungeonRoomContains(layout,room,{x,z}))cells.push({x,z});
+  return cells;
+}
+
 /** Bounded grid BFS: a future AI can use this identical navigable geometry. */
 export function dungeonShortestPath(
   layout: DungeonLayout, from: DungeonPoint, to: DungeonPoint,
@@ -138,8 +152,17 @@ export function generateDungeonLayout(
     const x=minX+random.int(maxX-minX+1),z=minZ+random.int(maxZ-minZ+1);
     const room={id:"room-"+id,x,z,width:roomWidth,height:roomHeight};
     rooms.push(room);
-    for(let dz=-rz;dz<=rz;dz++)for(let dx=-rx;dx<=rx;dx++)
+    // Large landmark halls gain a cruciform silhouette; selected smaller
+    // chambers have clipped corners. The central axes remain open for
+    // every existing doorway and the connected room graph.
+    const shaped=rx>=2&&rz>=2&&(id===landmark||(id+seed)%3!==0);
+    const cross=shaped&&rx>=3&&rz>=3&&(id===landmark||(id+seed)%2===0);
+    for(let dz=-rz;dz<=rz;dz++)for(let dx=-rx;dx<=rx;dx++){
+      const ax=Math.abs(dx),az=Math.abs(dz);
+      if(cross&&ax>=rx-1&&az>=rz-1)continue;
+      if(shaped&&!cross&&ax===rx&&az===rz)continue;
       open(x+dx,z+dz,"room");
+    }
   }
 
   function line(a:DungeonPoint,b:DungeonPoint){
@@ -185,6 +208,34 @@ export function generateDungeonLayout(
     line({x:entrance.x,z:first.z},first);
   }
 
+  // Widen selected straight corridor runs into genuine 2x3 passing bays.
+  // Never carve into room bounding boxes, the border, or the portal approach.
+  // Each added cell connects to a pre-existing corridor and an adjacent bay
+  // cell, so this cannot introduce an unrewarded degree-one spur.
+  const insideRoomBounds=(p:DungeonPoint)=>rooms.some(r=>
+    Math.abs(p.x-r.x)<r.width/2&&Math.abs(p.z-r.z)<r.height/2);
+  const bays:DungeonPoint[][]=[];
+  const rawTile=(p:DungeonPoint)=>tiles[indexOf(width,p.x,p.z)];
+  for(let z=2;z<height-2;z++)for(let x=2;x<width-2;x++){
+    for(const [dx,dz] of [[1,0],[0,1]]){
+      const run=[0,1,2].map(i=>({x:x+i*dx,z:z+i*dz}));
+      if(run.some(p=>p.x>=width-1||p.z>=height-1||rawTile(p)!=="corridor"||
+        Math.abs(p.x-entrance.x)+Math.abs(p.z-entrance.z)<5))continue;
+      for(const side of [-1,1]){
+        const cells=run.map(p=>({x:p.x-side*dz,z:p.z+side*dx}));
+        if(cells.every(p=>p.x>0&&p.z>0&&p.x<width-1&&p.z<height-1&&
+          rawTile(p)==="wall"&&!insideRoomBounds(p)))bays.push(cells);
+      }
+    }
+  }
+  let openedBays=0;
+  for(const cells of shuffle(bays,random)){
+    if(openedBays>=(rooms.length===4?1:2))break;
+    if(!cells.every(p=>rawTile(p)==="wall"))continue;
+    for(const p of cells)open(p.x,p.z,"corridor");
+    openedBays++;
+  }
+
   const draft:DungeonLayout={version:1,floor,seed,width,height,tiles,entrance,rooms,features:[]};
   const down=dungeonDownStair(draft);
   const used=new Set([indexOf(width,entrance.x,entrance.z),indexOf(width,down.x,down.z)]);
@@ -220,8 +271,7 @@ export function generateDungeonLayout(
   // One real reward per chamber where possible before using spare cells.
   // Traps favor transit corridors, but never occupy either staircase.
   const treasureCandidates=shuffle([...rooms],random).flatMap(room=>
-    roomCells.filter(p=>Math.abs(p.x-room.x)<room.width/2&&
-      Math.abs(p.z-room.z)<room.height/2).slice(0,1));
+    roomCells.filter(p=>dungeonRoomContains(draft,room,p)&&!used.has(indexOf(width,p.x,p.z))).slice(0,1));
   fill("treasure","sealed-chest",4,[...treasureCandidates,...roomCells,...walkable]);
   fill("trap","floor-spikes",4,[...corridors,...walkable]);
   return {...draft,features};

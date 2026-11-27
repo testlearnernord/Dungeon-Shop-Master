@@ -1,4 +1,4 @@
-import {dungeonDownStair,tileAt,type DungeonLayout,type DungeonRoom,type DungeonPoint} from "./dungeonLayout.ts";
+import {dungeonDownStair,dungeonRoomContains,dungeonRoomCells,tileAt,type DungeonLayout,type DungeonRoom,type DungeonPoint} from "./dungeonLayout.ts";
 import {DUNGEON_WORLD_TILE_SIZE as TILE} from "./dungeonObservationOrientation.ts";
 
 export type DungeonRoomTheme="hall"|"crypt"|"vault"|"guardroom";
@@ -18,13 +18,12 @@ export interface DungeonRoomArtPlan {
 /** Presentation only: use actual chambers and reserved sites, not another
  * map or RNG stream. Never change tile occupancy or hero knowledge. */
 export function dungeonRoomArtPlan(layout:DungeonLayout):readonly DungeonRoomArtPlan[]{
-  const contains=(room:DungeonRoom,p:DungeonPoint)=>
-    Math.abs(p.x-room.x)<room.width/2&&Math.abs(p.z-room.z)<room.height/2;
-  const ranked=[...layout.rooms].sort((a,b)=>b.width*b.height-a.width*a.height||
+  const footprints=new Map(layout.rooms.map(r=>[r.id,dungeonRoomCells(layout,r)]));
+  const ranked=[...layout.rooms].sort((a,b)=>footprints.get(b.id)!.length-footprints.get(a.id)!.length||
     a.id.localeCompare(b.id));
   const hall=ranked.shift();
   const treasureCount=(room:DungeonRoom)=>layout.features.filter(f=>
-    f.kind==="treasure"&&contains(room,f)).length;
+    f.kind==="treasure"&&dungeonRoomContains(layout,room,f)).length;
   ranked.sort((a,b)=>treasureCount(b)-treasureCount(a)||a.id.localeCompare(b.id));
   const vault=ranked.shift();
   const reserved=[layout.entrance,dungeonDownStair(layout),...layout.features];
@@ -33,12 +32,18 @@ export function dungeonRoomArtPlan(layout:DungeonLayout):readonly DungeonRoomArt
   return layout.rooms.map(room=>{
     const theme:DungeonRoomTheme=room===hall?"hall":room===vault?"vault":
       (ranked.indexOf(room)+offset)%2===0?"crypt":"guardroom";
+    const occupied=new Set<string>();
     const anchors:DungeonRoomArtAnchor[]=directions.flatMap(([dx,dz],corner)=>{
-      const x=room.x+dx*Math.floor(room.width/2),z=room.z+dz*Math.floor(room.height/2);
-      // A prop may sit only in a wall-backed free corner, never a site or
-      // entrance. Shift toward the wall; the walking cell centre stays clear.
-      if(tileAt(layout,x,z)!=="room"||tileAt(layout,x+dx,z)!=="wall"||
-        tileAt(layout,x,z+dz)!=="wall"||reserved.some(p=>p.x===x&&p.z===z))return [];
+      // Choose an actual convex corner of the footprint, not its bounding
+      // rectangle. Clipped and cruciform chambers have several candidates.
+      const candidate=footprints.get(room.id)!.filter(p=>
+        dx*(p.x-room.x)>=0&&dz*(p.z-room.z)>=0&&
+        tileAt(layout,p.x+dx,p.z)==="wall"&&tileAt(layout,p.x,p.z+dz)==="wall"&&
+        !occupied.has(p.x+":"+p.z)&&!reserved.some(f=>f.x===p.x&&f.z===p.z))
+        .sort((a,b)=>dx*(b.x-a.x)+dz*(b.z-a.z)||a.z-b.z||a.x-b.x)[0];
+      if(!candidate)return [];
+      const {x,z}=candidate;
+      occupied.add(x+":"+z);
       return [{cell:{x,z},corner,x:(x-room.x)*TILE+dx*.63,z:(z-room.z)*TILE+dz*.63}];
     });
     return {room,theme,anchors};

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {generateExpeditionLayout,generateDungeonLayout,dungeonDownStair,tileAt} from "../../src/game/dungeonLayout.ts";
+import {generateExpeditionLayout,generateDungeonLayout,dungeonDownStair,dungeonRoomCells,tileAt} from "../../src/game/dungeonLayout.ts";
 import {dungeonRoomArtPlan,ROOM_THEME_NAMES} from "../../src/game/dungeonRoomArtPlan.ts";
 
 test("the shared room art is deterministic, varied and never alters the canonical layout",()=>{
@@ -13,8 +13,8 @@ test("the shared room art is deterministic, varied and never alters the canonica
     assert.equal(new Set(plan.map(p=>p.theme)).size,4);
     assert.equal(plan.filter(p=>p.theme==="hall").length,1);
     assert.equal(plan.filter(p=>p.theme==="vault").length,1);
-    assert.equal(plan.find(p=>p.theme==="hall")!.room.width*
-      plan.find(p=>p.theme==="hall")!.room.height,Math.max(...map.rooms.map(r=>r.width*r.height)));
+    assert.equal(dungeonRoomCells(map,plan.find(p=>p.theme==="hall")!.room).length,
+      Math.max(...map.rooms.map(r=>dungeonRoomCells(map,r).length)));
     for(const p of plan)assert(ROOM_THEME_NAMES[p.theme]);
   }
 });
