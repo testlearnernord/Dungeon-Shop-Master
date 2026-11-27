@@ -1645,7 +1645,7 @@ export function inspectEmployee(){
   const root=currentTestScene()?.getTransformNodeByName("employee-tettel");
   return root?{ready:root.metadata?.tripoStatus==="ready",enabled:root.isEnabled(),
     x:root.position.x,y:root.position.y,z:root.position.z,peaceful:root.metadata?.peaceful===true,
-    clip:root.metadata?.animationClip??null,task:root.metadata?.employeeTask??null}:null;
+    clip:root.metadata?.animationClip??null,progress:root.metadata?.animationProgress??null,task:root.metadata?.employeeTask??null}:null;
 }
 
 export function inspectShelfAssignmentNote(slotId:string){

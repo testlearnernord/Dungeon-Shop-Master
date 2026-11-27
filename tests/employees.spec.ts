@@ -9,13 +9,25 @@ test("Tettel is a real peaceful cellar Ghoul and work priorities survive reload 
     const e=probe.inspectEmployee();
     return !!e?.ready&&e.enabled&&e.peaceful&&e.y< -4&&e.z< -20&&e.clip==="idle_combat";
   }),{timeout:90000}).toBe(true);
+  // No world tick advances in this fixture. A real idle clip must still
+  // advance between rendered frames rather than freeze on lastStepTick.
+  const idleProgress=()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectEmployee()?.progress);
+  const firstProgress=await idleProgress();
+  expect(typeof firstProgress).toBe("number");
+  await expect.poll(idleProgress,{timeout:10000}).not.toBe(firstProgress);
   await page.locator("#open-employees").click();
   const dialog=page.locator("#employee-dialog");
   await expect(dialog).toBeVisible();
   const cashier=dialog.getByLabel("Tettel Cashier priority");
   const restocking=dialog.getByLabel("Tettel Restocking priority");
   await expect(cashier).toHaveValue("0");
-  await cashier.selectOption("1");await restocking.selectOption("4");
+  await expect(dialog.locator(".employee-status")).toContainText("Off duty");
+  await dialog.getByRole("button",{name:"Enable work"}).click();
+  await expect(cashier).toHaveValue("1");
+  await expect(restocking).toHaveValue("5");
+  await expect(dialog.locator(".employee-status")).toContainText("Cellar passage closed");
+  await restocking.selectOption("4");
   await dialog.locator("#close-employees").click();
   await expect(dialog).toBeHidden();
   // Save cadence may defer a non-clock write; actual storage must observe it.

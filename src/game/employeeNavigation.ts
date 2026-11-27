@@ -2,6 +2,7 @@ import type {GameState} from "./gameState.ts";
 import {CELLAR_ENTRY_X,CELLAR_FLOOR_Y,CELLAR_FORGE_CLEARANCE,isCellarFloor} from "./cellarRoom.ts";
 import {POND_CENTER,POND_WIDTH,POND_LENGTH,isCellarPondUncovered} from "./cellarPond.ts";
 import {furnitureTouchesActor,pointTouchesShopBounds,turnShopOffset} from "./furnitureRegistry.ts";
+import {counterDockPoint} from "./shopLayout.ts";
 import {shopFloorWalkable} from "./shopWalkability.ts";
 import {createConnectedRoutePlanner,shopPointSegmentDistance,type ShopPoint} from "./shopperNavigation.ts";
 
@@ -48,6 +49,23 @@ export function employeeHome(state:GameState):ShopPoint|null{
   const candidates=[EMPLOYEE_HOME,{x:-1,z:-24},{x:1,z:-24},
     {x:-2,z:-23},{x:2,z:-23},{x:-1,z:-22},{x:1,z:-22}];
   return candidates.find(p=>employeeWalkable(state,p))??null;
+}
+/** A worker with enabled tasks waits near the actual counter instead of
+ * making a cellar round trip between customers. The closed portrait remains
+ * a real physical barrier; no remote work or teleport is introduced. */
+export function employeeStandby(state:GameState,from:ShopPoint):ShopPoint|null{
+  if(!state.cellarDoorOpen&&from.z<-12.1)return employeeHome(state);
+  const dock=counterDockPoint(state.shopLayout,"staff");
+  const customer=counterDockPoint(state.shopLayout,"customer");
+  const dx=dock.x-customer.x,dz=dock.z-customer.z;
+  const length=Math.hypot(dx,dz)||1;
+  const points=[-1,1].map(side=>({
+    x:dock.x-side*dz/length*.9,z:dock.z+side*dx/length*.9,
+  }));
+  points.push(dock);
+  return points.find(p=>employeeWalkable(state,p)&&
+    state.shopTraffic.actors.every(a=>Math.hypot(a.x-p.x,a.z-p.z)>=EMPLOYEE_CUSTOMER_CLEARANCE))
+    ??(from.z>=-6.5&&employeeWalkable(state,from)?{x:from.x,z:from.z}:employeeHome(state));
 }
 /** The existing movable cellar chest is the employee pickup/return dock. */
 export function employeeStoragePoint(state:GameState):ShopPoint|null{
