@@ -127,7 +127,7 @@ test("ordinary Floor 6 never creates a direct Floor-7 shop departure",()=>{
   assert.deepEqual(advanceDay(state),first);
 });
 
-test("dungeon healer pays a real supply for each actual fixed-step healing action", () => {
+test("dungeon healer spends owned Herbs before using separate innate healing charges", () => {
   const map=generateDungeonLayout(7351,7);
   const monster=map.features.find(f=>f.kind==="monster")!;
   const approach=dungeonNeighbors(map,monster)[0];
@@ -148,8 +148,15 @@ test("dungeon healer pays a real supply for each actual fixed-step healing actio
   const healingCues=result.replay.encounters[0].combat.cues.filter(
     cue=>cue.actorId===hero.id&&cue.kind==="heal");
   assert(healingCues.length>0,"The injured healer should treat themselves");
-  assert.equal(result.adventurer.inventory.healing,3-healingCues.length);
-  assert(healingCues.length<=2,"No more than two charges per encounter");
+  const actor=result.replay.encounters[0].combat.actors.find(a=>a.id===hero.id)!;
+  assert.equal(actor.healCharges,2,"Only two owned Herbs can enter an encounter");
+  assert((actor.magicHeals??0)>0,"Innate spell charges are separate");
+  const herbsSpent=Math.min(actor.healCharges!,healingCues.length);
+  const spellsSpent=healingCues.length-herbsSpent;
+  assert(spellsSpent<=(actor.magicHeals??0),"Healing cannot exceed the two real budgets");
+  // Three starting Herbs leave at least one after the encounter; the
+  // current automatic supply target is one, so loot cannot refill this slot.
+  assert.equal(result.adventurer.inventory.healing,3-herbsSpent);
 });
 
 test("a tank really spends purchased Herbs in a committed ordinary encounter",()=>{

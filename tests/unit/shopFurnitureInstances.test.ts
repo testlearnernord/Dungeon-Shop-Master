@@ -26,7 +26,7 @@ const first={id:"shelf-1" as const,x:11,z:0,rotation:2 as const};
 
 test("new-game shop starts with NO fixed shelves, no display stock and a usable four-slot N blueprint",()=>{
   const state=createGameState(7351),store=new GameStore(state);
-  assert.equal(SIMULATION_VERSION,37);
+  assert.equal(state.simulationVersion,SIMULATION_VERSION);
   assert.deepEqual(state.shopLayout.shelves,[]);
   assert.deepEqual(state.shopEconomy.slots,[]);
   assert.equal(nextShelfId(state.shopLayout),"shelf-1");
