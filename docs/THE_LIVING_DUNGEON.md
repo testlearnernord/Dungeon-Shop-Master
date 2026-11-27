@@ -1,6 +1,6 @@
 # The Living Dungeon — design contract
 
-> Current contract: Alpha v50 (Room-first Dungeon). Current design contract. Room-first geometry is described in [Dungeon Reforged](DUNGEON_REFORGED.md). See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v51 (Room-first Dungeon). Current design contract. Room-first geometry is described in [Dungeon Reforged](DUNGEON_REFORGED.md). See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
 
 ## The experience
 
