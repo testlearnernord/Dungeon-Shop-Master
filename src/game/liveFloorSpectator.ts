@@ -1,4 +1,5 @@
 import type {GameState} from "./gameState.ts";
+import type {FallenHero} from "./fallenHeroes.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
@@ -56,6 +57,7 @@ export interface LiveFloorSpectatorFrame {
   /** Exact saved world packs; never recomputed from the static layout. */
   readonly monsters?:readonly DungeonMonsterState[];
   readonly resolved:readonly string[];
+  readonly fallen?:readonly FallenHero[];
 }
 
 /** Opt-in, all-floor projection. This is intentionally NOT the merchant Board:
@@ -152,5 +154,6 @@ export function selectLiveFloorSpectatorFrame(
     });
   return {day:state.day,worldTick:state.worldClock.tick,floor,
     heroes,fights,monsters:world?.monsters??[],
-    resolved:world?.resolvedFeatureIds??[]};
+    resolved:world?.resolvedFeatureIds??[],
+    fallen:state.fallenHeroes.filter(body=>body.floor===floor)};
 }
