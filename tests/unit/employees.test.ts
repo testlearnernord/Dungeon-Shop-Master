@@ -162,14 +162,15 @@ test("assigned empty shelves offer real restocking work only when matching stock
   assert(!employeeOpportunities(store.state).some(j=>j.targetId===slot.id));
 });
 
-function cashierFixture():GameState{
+function cashierFixture(itemId?:"bread"|"healing-herb"):GameState{
   const original=createStockedShopState(7351);
   const hero=original.adventurers[0];
   const initial={...original,cellarDoorOpen:true,adventurers:original.adventurers.map(h=>
     h.id===hero.id?{...h,status:"at-shop" as const,floor:"shop" as const,
       gold:100,health:Math.max(1,h.health-20),
       inventory:{...h.inventory,bread:0,healing:0},equipment:{weapon:null,armor:null}}:h)};
-  const line=forecastShoppingIntents(initial).get(hero.id)!.items[0];
+  const items=forecastShoppingIntents(initial).get(hero.id)!.items;
+  const line=itemId?items.find(item=>item.itemId===itemId):items[0];
   assert(line);
   const picked=pickUpShopItem(initial,hero.id,line.slotId).state;
   assert.notStrictEqual(picked,initial);
@@ -456,15 +457,19 @@ test("combined cashier/restocking: collected merchandise survives higher cashier
 });
 
 
-test("worker escapes the recorded two-customer checkout overlap without dropping cargo or passing through either customer",()=>{
-  const base=cashierFixture();
+for(const [index,from] of [
+  {x:-2.0625883367286066,z:-4.364670121522252},
+  {x:-2.019183105152812,z:-4.423984840368856},
+].entries())test("worker escapes recorded checkout overlap "+(index+1)+" without dropping cargo or passing through either customer",()=>{
+  // Match the browser: the customer holds bread, not the herb shelf Tettel
+  // is delivering to. An unpaid herb cart would correctly cancel delivery.
+  const base=cashierFixture("bread");
   const actor=base.shopTraffic.actors[0];
-  const from={x:-2.0625883367286066,z:-4.364670121522252};
   const goal={x:-5.52,z:.36};
   const second=base.adventurers.find(h=>h.id!==actor.heroId)!;
   const actors=[{...actor,x:-2.7,z:-4.5},{...actor,heroId:second.id,slot:1,x:-1.4,z:-4.5,checkoutQueueIndex:1}];
   const state={...base,shopTraffic:{...base.shopTraffic,actors}};
-  assert(actors.every(a=>Math.hypot(a.x-from.x,a.z-from.z)<EMPLOYEE_CUSTOMER_CLEARANCE));
+  assert(actors.some(a=>Math.hypot(a.x-from.x,a.z-from.z)<EMPLOYEE_CUSTOMER_CLEARANCE));
   assert(!employeeCustomerSegmentClear(state,from,goal));
   const route=employeeRoute(state,from,goal,true);
   assert(route,"Recorded deadlock must have a physical escape");
@@ -477,6 +482,7 @@ test("worker escapes the recorded two-customer checkout overlap without dropping
   assert(Math.hypot(cursor.x-goal.x,cursor.z-goal.z)<.08);
   assert(actors.every(a=>Math.hypot(a.x-route.waypoints[0].x,a.z-route.waypoints[0].z)>=EMPLOYEE_CUSTOMER_CLEARANCE));
   const slot=base.shopEconomy.slots.find(s=>s.id==="shelf-1-slot-3")!;
+  assert(!base.shopCarts.some(c=>c.lines.some(l=>l.slotId===slot.id)));
   let working:GameState={...state,employees:state.employees.map(e=>({...e,...from,
     priorities:{cashier:1,restocking:5,charity:0},job:{task:"restocking",targetId:slot.id,point:goal},
     restock:{slotId:slot.id,itemId:"healing-herb",units:2,stage:"deliver",readySince:null},

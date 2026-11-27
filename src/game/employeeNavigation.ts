@@ -90,9 +90,29 @@ export function employeeRoute(state:GameState,from:ShopPoint,to:ShopPoint,avoidC
   // then resume the usual connected planner with ALL customers as obstacles.
   // This is a physical waypoint, not a teleport or a collision exemption.
   const heading=Math.atan2(to.z-from.z,to.x-from.x);
+  // Target-relative 22.5-degree spokes alone miss narrow escape cones
+  // between two queued customers (including the recorded second smoke).
+  // Include world axes and the exact tangents of nearby clearance circles,
+  // then bisect the resulting angular intervals. The same segment guard
+  // still decides whether each candidate is physically legal.
+  const normalize=(angle:number)=>(angle%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+  const angles=[heading,0,Math.PI/2,Math.PI,3*Math.PI/2];
+  for(let i=0;i<16;i++)angles.push(heading+i*Math.PI/8);
+  for(const other of obstacles){
+    const dx=from.x-other.x,dz=from.z-other.z,d=Math.hypot(dx,dz);
+    if(d>EMPLOYEE_CUSTOMER_CLEARANCE+1.5||d<1e-10)continue;
+    const outward=Math.atan2(dz,dx);
+    angles.push(outward,outward+Math.PI/2,outward-Math.PI/2);
+    if(d>=EMPLOYEE_CUSTOMER_CLEARANCE){
+      const offset=Math.asin(EMPLOYEE_CUSTOMER_CLEARANCE/d);
+      angles.push(outward+Math.PI+offset,outward+Math.PI-offset);
+    }
+  }
+  const boundaries=[...new Set(angles.map(normalize))].sort((a,b)=>a-b);
+  const directions=[...boundaries,...boundaries.map((a,i)=>
+    normalize((a+(boundaries[i+1]??boundaries[0]+2*Math.PI))/2))];
   const candidates:ShopPoint[]=[];
-  for(const length of [.25,.5,.8,1.15])for(let i=0;i<16;i++){
-    const angle=heading+i*Math.PI/8;
+  for(const length of [.15,.25,.5,.8,1.15,1.5])for(const angle of directions){
     const p={x:from.x+Math.cos(angle)*length,z:from.z+Math.sin(angle)*length};
     if(!blocked(p)&&employeeSegmentClear(state,from,p)&&employeeCustomerSegmentClear(state,from,p))
       candidates.push(p);
