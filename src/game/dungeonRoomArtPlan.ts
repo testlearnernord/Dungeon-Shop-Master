@@ -1,7 +1,7 @@
-import {dungeonDownStair,dungeonRoomCells,tileAt,type DungeonLayout,type DungeonRoom,type DungeonPoint} from "./dungeonLayout.ts";
+import {dungeonDownStair,dungeonRoomCells,tileAt,type DungeonLayout,type DungeonRoom,type DungeonPoint,type DungeonTile} from "./dungeonLayout.ts";
 import {DUNGEON_WORLD_TILE_SIZE as TILE} from "./dungeonObservationOrientation.ts";
 
-import {dungeonRoomPurposes,type DungeonRoomTheme} from "./dungeonRoomPurpose.ts";
+import {dungeonRoomPurposes,ROOM_THEME_NAMES,type DungeonRoomTheme} from "./dungeonRoomPurpose.ts";
 export {ROOM_THEME_NAMES,type DungeonRoomTheme} from "./dungeonRoomPurpose.ts";
 export interface DungeonRoomArtAnchor extends DungeonPoint {
   readonly cell:DungeonPoint;
@@ -110,4 +110,23 @@ export function dungeonRoomTileThemes(layout:DungeonLayout,plans:readonly Dungeo
   for(const plan of plans)for(const p of dungeonRoomCells(layout,plan.room))
     themes.set(p.z*layout.width+p.x,plan.theme);
   return themes;
+}
+
+/** Muted terrain colors leave bright feature/actor markers legible. These
+ * colors and descriptions belong only to the explicit full-floor overview. */
+export const ROOM_OVERVIEW_COLORS={
+  hall:"#827c6b",crypt:"#637c73",vault:"#957b4c",
+  guardroom:"#8c6658",workshop:"#64758c",
+} as const satisfies Record<DungeonRoomTheme,string>;
+
+export function dungeonOverviewTileColor(kind:DungeonTile,theme?:DungeonRoomTheme):string{
+  return kind==="wall"?"#171b20":kind==="corridor"?"#565960":
+    theme?ROOM_OVERVIEW_COLORS[theme]:"#81786d";
+}
+
+export function dungeonOverviewRoomLabel(theme:DungeonRoomTheme):string{
+  const note=theme==="vault"?"Chests: 2–3 ordinary goods":
+    theme==="workshop"?"Chests: one forge material guaranteed":
+    "Ordinary site rules";
+  return ROOM_THEME_NAMES[theme]+" · "+note;
 }

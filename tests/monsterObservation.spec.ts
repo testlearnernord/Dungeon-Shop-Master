@@ -184,6 +184,30 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     return result.shared&&result.ready&&result.visibleRooms>0;
   }),{timeout:15000}).toBe(true);
   expect(await roomArt()).toEqual(tableArt);
+  // Sample an actual vault tile in the north-up canvas and
+  // hover that same CSS cell, not a mock projection or a synthetic label.
+  const roomSample=await page.evaluate(async()=>{
+    const {generateExpeditionLayout,dungeonRoomCells}=await import("/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
+    const {dungeonRoomArtPlan,ROOM_OVERVIEW_COLORS}=await import("/Dungeon-Shop-Master/src/game/dungeonRoomArtPlan.ts");
+    const {dungeonTileMinimapPixel}=await import("/Dungeon-Shop-Master/src/game/dungeonObservationOrientation.ts");
+    const layout=generateExpeditionLayout(7351,1);
+    const vault=dungeonRoomArtPlan(layout).find(p=>p.theme==="vault")!;
+    const cell=dungeonRoomCells(layout,vault.room)[0];
+    const canvas=document.querySelector<HTMLCanvasElement>("#dungeon-minimap")!;
+    const pixel=dungeonTileMinimapPixel(cell,layout.height,6);
+    // Outer cell corner is terrain, even when a feature occupies its center.
+    const rgb=Array.from(canvas.getContext("2d")!.getImageData(pixel.x,pixel.y,1,1).data).slice(0,3);
+    const hex="#"+rgb.map(v=>v.toString(16).padStart(2,"0")).join("");
+    const rect=canvas.getBoundingClientRect();
+    return {hex,expected:ROOM_OVERVIEW_COLORS.vault,
+      x:rect.left+(pixel.x+3)/canvas.width*rect.width,
+      y:rect.top+(pixel.y+3)/canvas.height*rect.height};
+  });
+  expect(roomSample.hex).toBe(roomSample.expected);
+  await page.mouse.move(roomSample.x,roomSample.y);
+  await expect(page.locator("#dungeon-hover-tooltip")).toBeVisible();
+  await expect(page.locator("#dungeon-hover-tooltip")).toContainText("Treasure Vault");
+  await expect(page.locator("#dungeon-hover-tooltip")).toContainText("2–3 ordinary goods");
   const live=await inspect();
   const afterFirst=expected.pins.map(pin=>
     pin.id===expected.selected?{...pin,...expected.first}:pin);

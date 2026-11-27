@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {generateExpeditionLayout,generateDungeonLayout,dungeonDownStair,dungeonRoomCells,tileAt} from "../../src/game/dungeonLayout.ts";
-import {dungeonRoomArtPlan,dungeonPassageArtPlan,dungeonRoomTileThemes,ROOM_SURFACE_TINTS,ROOM_THEME_NAMES} from "../../src/game/dungeonRoomArtPlan.ts";
+import {dungeonRoomArtPlan,dungeonPassageArtPlan,dungeonRoomTileThemes,ROOM_SURFACE_TINTS,ROOM_THEME_NAMES,ROOM_OVERVIEW_COLORS,dungeonOverviewTileColor,dungeonOverviewRoomLabel} from "../../src/game/dungeonRoomArtPlan.ts";
 
 test("the shared room art is deterministic, varied and never alters the canonical layout",()=>{
   for(const seed of [0,42,7351,9321,2026])for(const floor of [1,4,5,9] as const){
@@ -70,4 +70,26 @@ test("wall details and passage landmarks are bounded, deterministic and exclude 
       }
     }
   }
+});
+
+test("full-floor room colors and descriptions identify actual room purposes without changing sites",()=>{
+  assert.equal(new Set(Object.values(ROOM_OVERVIEW_COLORS)).size,5);
+  for(const seed of [42,7351,9321,2026])for(const floor of [1,5,9]){
+    const map=generateExpeditionLayout(seed,floor),before=structuredClone(map);
+    const themes=dungeonRoomTileThemes(map,dungeonRoomArtPlan(map));
+    for(let i=0;i<map.tiles.length;i++){
+      const kind=map.tiles[i],theme=themes.get(i);
+      if(kind==="room"){
+        assert(theme);
+        assert.equal(dungeonOverviewTileColor(kind,theme),ROOM_OVERVIEW_COLORS[theme]);
+        assert(dungeonOverviewRoomLabel(theme).startsWith(ROOM_THEME_NAMES[theme]));
+      }else{
+        assert.equal(theme,undefined);
+        assert.equal(dungeonOverviewTileColor(kind),kind==="wall"?"#171b20":"#565960");
+      }
+    }
+    assert.deepEqual(map,before);
+  }
+  assert.match(dungeonOverviewRoomLabel("vault"),/2–3/);
+  assert.match(dungeonOverviewRoomLabel("workshop"),/forge material/);
 });
