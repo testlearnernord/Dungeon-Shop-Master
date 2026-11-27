@@ -1665,3 +1665,17 @@ export function inspectDungeonRoomArt(){
       pickable:p.isPickable,collides:p.checkCollisions})).sort((a,b)=>a.name.localeCompare(b.name)),
   })).sort((a,b)=>a.id.localeCompare(b.id));
 }
+
+/** Inspect the shared physical props, not a second representation. */
+export function inspectDungeonSiteStates(){
+  return (currentTestScene()?.meshes??[]).filter(m=>
+    m.metadata?.spectatorFeatureKind==="treasure"||m.metadata?.spectatorFeatureKind==="trap")
+    .map(root=>{
+      const children=root.getChildMeshes();
+      const id=String(root.metadata.spectatorFeatureId);
+      return {id,kind:String(root.metadata.spectatorFeatureKind),
+        enabled:root.isEnabled(),spent:root.metadata.siteSpent===true,
+        hinge:children.find(m=>m.name==="chest-hinge-"+id)?.rotation.x??null,
+        raisedSpikes:children.filter(m=>m.name.startsWith("trap-spike-"+id+"-")&&m.isEnabled()).length};
+    }).sort((a,b)=>a.id.localeCompare(b.id));
+}
