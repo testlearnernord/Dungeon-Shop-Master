@@ -52,7 +52,10 @@ test("adventurer sells salvage at the chest before the player forges and persist
   });
   await page.reload();
   await expect(page.locator("#save-status")).toContainText("Continued saved Day 1");
-  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(false);});
+  await expect.poll(()=>page.evaluate(()=>typeof (window as Window&{
+    __shopTestPauseWorld?:(p:boolean)=>void;
+  }).__shopTestPauseWorld),{timeout:30000}).toBe("function");
+  await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld:(p:boolean)=>void}).__shopTestPauseWorld(false);});
   await expect(page.locator("#open-buyback-log")).toHaveAttribute("data-receipts","4",{timeout:120000});
   await page.evaluate(()=>{(window as Window&{__shopTestPauseWorld?:(p:boolean)=>void}).__shopTestPauseWorld?.(true);});
   const modal=page.locator("#hero-buyback-hud");

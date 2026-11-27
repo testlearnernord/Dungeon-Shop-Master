@@ -31,7 +31,9 @@ jobs:
   smoke:
     name: Browser core smoke
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    # Fifteen serial browser smokes plus install can exceed 12 minutes on slow runners.
+    # Individual Playwright deadlines remain unchanged.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,7 +42,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install chromium
-      # Explicit five-flow whitelist; no blanket @ci-smoke discovery.
+      # Explicit package.json whitelist; no blanket @ci-smoke discovery.
       - run: xvfb-run -a npm run test:smoke
       - name: Upload browser failure diagnostics
         if: failure()
