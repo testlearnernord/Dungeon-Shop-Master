@@ -6,7 +6,7 @@ import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {advanceEmployees,chooseEmployeeJob,employeeOpportunities,EMPLOYEE_DEFINITIONS,
   EMPLOYEE_WORK_SPEED,EMPLOYEE_CHECKOUT_TICKS,employeeCashierOpportunity,employeeCharityOpportunity,type EmployeeJob} from "../../src/game/employees.ts";
-import {employeeFloorY,employeeRoute,employeeSegmentClear,employeeCustomerSegmentClear,EMPLOYEE_CUSTOMER_CLEARANCE,employeeStoragePoint,EMPLOYEE_HOME} from "../../src/game/employeeNavigation.ts";
+import {employeeFloorY,employeeRoute,employeeSegmentClear,employeeCustomerSegmentClear,EMPLOYEE_CUSTOMER_CLEARANCE,employeeStoragePoint,employeeStandby,EMPLOYEE_HOME} from "../../src/game/employeeNavigation.ts";
 import {counterDockPoint} from "../../src/game/shopLayout.ts";
 import {CELLAR_FLOOR_Y} from "../../src/game/cellarRoom.ts";
 import {availableBagUnits,discardBag,transferShelf} from "../../src/game/economy.ts";
@@ -72,6 +72,20 @@ const step=(s:GameState,manualCashierActive=false):GameState=>{
   return advanceEmployees({...s,worldClock:{...s.worldClock,tick},
     shopTraffic:{...s.shopTraffic,tick}},manualCashierActive);
 };
+test("an enabled employee uses a reachable shop standby instead of idling in the cellar",()=>{
+  const base=createGameState(7351);
+  assert.deepEqual(employeeStandby(base,EMPLOYEE_HOME),EMPLOYEE_HOME);
+  const store=new GameStore({...base,cellarDoorOpen:true});
+  store.setEmployeePriority("tettel","cashier",1);
+  let state=store.state;
+  const target=employeeStandby(state,state.employees[0]);
+  assert(target&&target.z>=-6.5);
+  assert(employeeRoute(state,EMPLOYEE_HOME,target));
+  for(let i=0;i<1000&&state.employees[0].z<-6.5;i++)state=step(state);
+  assert(state.employees[0].z>=-6.5);
+  assert.equal(state.employees[0].job,null);
+  assert.equal(state.shopEconomy.balance,base.shopEconomy.balance);
+});
 test("Tettel reserves real stock, physically collects at the chest and delivers through the canonical shelf transfer",()=>{
   const initial=createStockedShopState(7351);
   const store=new GameStore({...initial,cellarDoorOpen:true});

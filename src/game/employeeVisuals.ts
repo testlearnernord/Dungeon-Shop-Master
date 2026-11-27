@@ -1,10 +1,9 @@
 import type {Scene} from "@babylonjs/core/scene";
 import type {GameStore} from "./gameStore.ts";
-import {EMPLOYEE_DEFINITIONS,type EmployeeState} from "./employees.ts";
+import {EMPLOYEE_DEFINITIONS} from "./employees.ts";
 import {createDungeonGhoulVisual} from "./dungeonGhoulVisual.ts";
 import {employeeFloorY} from "./employeeNavigation.ts";
 import {interpolateSavedShopPose} from "./shopVisualInterpolation.ts";
-import {WORLD_TICK_SECONDS} from "./worldClock.ts";
 import {MeshBuilder} from "@babylonjs/core/Meshes/meshBuilder";
 import {DynamicTexture} from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
@@ -28,7 +27,8 @@ export function setupEmployeeVisuals(scene:Scene,store:GameStore){
     mat.diffuseTexture=texture;mat.opacityTexture=texture;mat.emissiveColor=Color3.White();
     mat.disableLighting=true;mat.backFaceCulling=false;label.material=mat;
     void visual.ready.then(ready=>{if(ready&&!visual.root.isDisposed())visual.root.setEnabled(true);});
-    return {def,visual,cargo:null as Mesh|null,cargoId:null as ItemId|null};
+    return {def,visual,cargo:null as Mesh|null,cargoId:null as ItemId|null,
+      phase:"idle" as "idle"|"move",phaseTime:0,lastX:null as number|null,lastZ:null as number|null,walkGrace:0};
   });
   let prior=store.state.employees,current=prior;
   const unsubscribe=store.subscribe(()=>{
@@ -37,8 +37,11 @@ export function setupEmployeeVisuals(scene:Scene,store:GameStore){
     prior=next.some(e=>e.lastStepTick<(current.find(p=>p.id===e.id)?.lastStepTick??0))?next:current;
     current=next;
   });
-  const reset=()=>{prior=store.state.employees;current=prior;};
+  const reset=()=>{prior=store.state.employees;current=prior;
+    for(const model of models){model.phase="idle";model.phaseTime=0;model.lastX=null;model.lastZ=null;model.walkGrace=0;}
+  };
   const render=(alpha:number)=>{
+    const dt=Math.min(.1,Math.max(0,scene.getEngine().getDeltaTime()/1000));
     for(const model of models){
       const {def,visual}=model;
       const e=current.find(v=>v.id===def.id);
@@ -47,8 +50,16 @@ export function setupEmployeeVisuals(scene:Scene,store:GameStore){
       const pose=interpolateSavedShopPose(old,e,alpha);
       visual.root.position.set(pose.x,employeeFloorY(pose.z),pose.z);
       visual.root.rotation.y=pose.yaw;
-      const walking=e.status==="walking"&&Math.hypot(e.x-old.x,e.z-old.z)>.001;
-      visual.animate(walking?"move":"idle",e.lastStepTick*WORLD_TICK_SECONDS);
+      // The committed employee clock freezes when all jobs are disabled.
+      // Animation is a read-only presentation clock, never a work timer.
+      const moving=model.lastX!==null&&model.lastZ!==null&&
+        Math.hypot(pose.x-model.lastX,pose.z-model.lastZ)>.0001;
+      model.lastX=pose.x;model.lastZ=pose.z;
+      model.walkGrace=moving ? .12 : Math.max(0,model.walkGrace-dt);
+      const phase=e.status==="walking"&&model.walkGrace>0?"move":"idle";
+      if(model.phase!==phase){model.phase=phase;model.phaseTime=0;}
+      else model.phaseTime+=dt;
+      visual.animate(phase,model.phaseTime);
       const cargo=e.restock&&e.restock.stage!=="collect"?e.restock:null;
       const cargoId=cargo?.itemId??null;
       if(cargoId!==model.cargoId||cargoId&&templates&&!model.cargo){

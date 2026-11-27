@@ -8,7 +8,7 @@ import {
 import { resolveGroupCombat, type CombatantSpec, type GroupCombatOptions,
   type GroupCombatState, type GroupCombatReplay } from "./groupCombat.ts";
 import { SeededRandom } from "./random.ts";
-import {rollDungeonSiteLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
+import {rollDungeonSiteLoot,rollDungeonTreasureLoot,distributeDungeonFinds} from "./dungeonLoot.ts";
 import {heroProgression,settleHeroExperience,heroCombatAttributes} from "./heroProgression.ts";
 import {equipmentEffects} from "./gearCatalog.ts";
 import type {ItemId} from "./economy.ts";
@@ -625,8 +625,7 @@ export function simulateSpatialDungeonPartyDay(
       if(living.length)living[(idx+dungeonSiteGeneration(siteCycles,feature.id))%
         living.length].loot+=1;
       const cycle=dungeonSiteGeneration(siteCycles,feature.id);
-      distributeFound(rollDungeonSiteLoot(campaignSeed,floor,
-        feature.id,cycle,"treasure").itemIds,feature.id,cycle);
+      distributeFound(rollDungeonTreasureLoot(campaignSeed,layout,feature,cycle).itemIds,feature.id,cycle);
       for(const m of members)if(m.hp>0)m.xp+=8;
       resolved.add(feature.id);
       siteCycles=resolveDungeonSite(siteCycles,feature.id,day);

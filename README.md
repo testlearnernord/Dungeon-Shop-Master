@@ -6,7 +6,7 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Current Alpha
 
-Current contract: Alpha v49, including physical automatic buyback. The displayed HUD label is still V.002 ALPHA; the campaign schema (v49), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented. The room-first generator replaces the DFS maze with connected chambers and alternate routes. The Table, LIVE viewer and replay share hall, crypt, vault and guardroom art; see [Dungeon Reforged](docs/DUNGEON_REFORGED.md). Manual acceptance is pending. Alpha v49 is the only supported campaign schema. Reject v48 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+Current contract: Alpha v50, including physical automatic buyback. The displayed HUD label is still V.002 ALPHA; the campaign schema (v50), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented. The room-first generator replaces the DFS maze with connected chambers and alternate routes. Selected chambers have clipped or cruciform footprints and straight corridors can open into passing bays. The Table, LIVE viewer and replay share hall, crypt, vault and guardroom art; see [Dungeon Reforged](docs/DUNGEON_REFORGED.md). Manual acceptance is pending. Alpha v50 is the only supported campaign schema. Reject v49 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 | Area | Implemented |
 | --- | --- |
@@ -83,24 +83,24 @@ Current source and tests outrank old prose. Historical reports are not implement
 
 ### Recovered Goods Chest
 
-The fixed chest reads **SELL LOOT HERE**. E or left-click toggles the actual hinged lid and saved intake state. Customers with affordable Iron Ore, Coal or Ghoul Leather visit the chest before shopping. Gold transfers through the existing buyback authority, and materials go directly into the workshop reserve. Other finds remain owned in V0.1. The former offers menu is a read-only Buyback log. No overdraft or fake income. A new v49 campaign is required.
+The fixed chest reads **SELL LOOT HERE**. E or left-click toggles the actual hinged lid and saved intake state. Customers with affordable Iron Ore, Coal or Ghoul Leather visit the chest before shopping. Gold transfers through the existing buyback authority, and materials go directly into the workshop reserve. Other finds remain owned in V0.1. The former offers menu is a read-only Buyback log. No overdraft or fake income. A new v50 campaign is required.
 
 ### Living Dungeon V0.005 — pacing
 
-Hero and party tiles commit every 2.5 unpaused seconds, monster tiles no faster than every 5 seconds. The world day remains 24 minutes and combat still runs at 60 Hz. This changes real offscreen simulation, not just spectator playback. fresh v49 campaign required; balance and device acceptance remain open.
+Hero and party tiles commit every 2.5 unpaused seconds, monster tiles no faster than every 5 seconds. The world day remains 24 minutes and combat still runs at 60 Hz. This changes real offscreen simulation, not just spectator playback. fresh v50 campaign required; balance and device acceptance remain open.
 
 ### Observed threats and room surfaces
 
-Solo heroes and voluntary parties remember the last genuinely observed dangerous pack for up to 50 seconds. They use the existing known-route and frontier searches to avoid the remembered exposure zone, retreat upstairs if safe, or wait when no safe route exists. A capable newly formed party may reconsider. The full LIVE viewer uses the actual baked flagstone texture for room and corridor materials, matching the Table's shared texture source. new v49 campaign required.
+Solo heroes and voluntary parties remember the last genuinely observed dangerous pack for up to 50 seconds. They use the existing known-route and frontier searches to avoid the remembered exposure zone, retreat upstairs if safe, or wait when no safe route exists. A capable newly formed party may reconsider. The full LIVE viewer uses the actual baked flagstone texture for room and corridor materials, matching the Table's shared texture source. new v50 campaign required.
 
 ### Autonomous Floor-10 progression
 
-Heroes choose to challenge the Cave Troll through experience, real equipment, supplies, health, personality and a willing co-located party. The shop no longer issues boss permissions. Actual Floor-9 stair travel and the shared combat motor remain mandatory; weak builds remain testable in Combat Lab. fresh v49 campaign required.
+Heroes choose to challenge the Cave Troll through experience, real equipment, supplies, health, personality and a willing co-located party. The shop no longer issues boss permissions. Actual Floor-9 stair travel and the shared combat motor remain mandatory; weak builds remain testable in Combat Lab. fresh v50 campaign required.
 
 ### Elective resupply
 
-Prepared veterans deliberately consider an affordable forged upgrade when they earn a real reward or exhaust a route. A saved actual shop exit prevents immediate elective repeat trips. Fully equipped heroes with a real haul may return from exhausted Floor 9 after the boss is cleared. Shelf stock remains unknown remotely; ordinary physical service, prices and recovery are unchanged. fresh v49 campaign required.
+Prepared veterans deliberately consider an affordable forged upgrade when they earn a real reward or exhaust a route. A saved actual shop exit prevents immediate elective repeat trips. Fully equipped heroes with a real haul may return from exhausted Floor 9 after the boss is cleared. Shelf stock remains unknown remotely; ordinary physical service, prices and recovery are unchanged. fresh v50 campaign required.
 
 ### Employee Management V0.001 A–E
 
-Tettel, Galvik's peaceful Ghoul assistant, starts in the cellar. Open Employees (J) to assign priorities 1–9 or Off. He uses physical routes and existing world ticks to reach real work opportunities. All priorities begin disabled. Open the portrait passage to permit travel between cellar and shop. With Restocking enabled he reserves shared bag stock, collects it at the cellar chest, physically walks to assigned shelves and uses the existing shelf transfer. With Cashier enabled he serves the real front customer at the staff dock through the same register as Galvik, never earning tips. Galvik's open register session has priority. With Charity enabled he walks to a real waiting petitioner and grants an eligible in-stock item as existing full-price credit; Galvik's open conversation takes precedence. Fresh v49 campaign required. See [Employee Foundation](docs/EMPLOYEE_FOUNDATION.md).
+Tettel, Galvik's peaceful Ghoul assistant, starts in the cellar. Open Employees (J) to assign priorities 1–9 or Off. He uses physical routes and existing world ticks to reach real work opportunities. All priorities begin disabled. Open the portrait passage to permit travel between cellar and shop. With Restocking enabled he reserves shared bag stock, collects it at the cellar chest, physically walks to assigned shelves and uses the existing shelf transfer. With Cashier enabled he serves the real front customer at the staff dock through the same register as Galvik, never earning tips. Galvik's open register session has priority. With Charity enabled he walks to a real waiting petitioner and grants an eligible in-stock item as existing full-price credit; Galvik's open conversation takes precedence. Fresh v50 campaign required. See [Employee Foundation](docs/EMPLOYEE_FOUNDATION.md).

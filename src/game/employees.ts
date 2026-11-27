@@ -1,7 +1,7 @@
 import type {GameState} from "./gameState.ts";
 import {counterDockPoint} from "./shopLayout.ts";
 import {shelfServicePoint} from "./furnitureRegistry.ts";
-import {employeeHome,employeeRoute,employeeSegmentClear,employeeCustomerSegmentClear,employeeRestockAccessible,employeeStoragePoint,employeeWalkable,EMPLOYEE_HOME} from "./employeeNavigation.ts";
+import {employeeHome,employeeRoute,employeeSegmentClear,employeeCustomerSegmentClear,employeeRestockAccessible,employeeStoragePoint,employeeWalkable,employeeStandby,EMPLOYEE_HOME} from "./employeeNavigation.ts";
 import {WORLD_TICK_SECONDS} from "./worldClock.ts";
 import {turnNpcToward} from "./npcLocomotion.ts";
 import type {ShopPoint} from "./shopperNavigation.ts";
@@ -164,8 +164,8 @@ function advanceEmployee(state:GameState,e:EmployeeState,jobs:readonly EmployeeJ
     const chosen=chooseEmployeeJob(e,jobs,tick);
     const {pendingSince}=chosen;
     const job=forced??chosen.job;
-    const home=employeeHome(state);
-    const goal=job?.point??home;
+    const enabled=EMPLOYEE_TASKS.some(task=>e.priorities[task]>0);
+    const goal=job?.point??(enabled?employeeStandby(state,e):employeeHome(state));
     const changed=!sameJob(e.job,job);
     let route=e.route;
     if(!goal)route=[];

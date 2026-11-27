@@ -9,3 +9,5 @@
 .employee-priorities label{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #494638;padding:9px 0}
 .employee-priorities select,#employee-dialog button{background:#252c2b;color:#ead7b3;border:1px solid #78684a;border-radius:5px;padding:7px 11px}
 .employee-priorities select{min-width:86px}
+
+.employee-presets{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.employee-presets button:first-child{border-color:#a28b55;color:#f2d294}

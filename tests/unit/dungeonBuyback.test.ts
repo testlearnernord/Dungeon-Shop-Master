@@ -7,7 +7,10 @@ import {buybackAtChest,availableChestMaterials,dungeonBuybackPrice,wantsChestBuy
   from "../../src/game/dungeonBuyback.ts";
 import {BUYBACK_DOCK} from "../../src/game/buybackChestPlacement.ts";
 import {serializeSave,parseSave} from "../../src/game/campaignSave.ts";
-import {distributeDungeonFinds,rollDungeonSiteLoot}
+import {generateExpeditionLayout,dungeonNeighbors} from "../../src/game/dungeonLayout.ts";
+import {dungeonRoomPurposeAt,dungeonRoomPurposes} from "../../src/game/dungeonRoomPurpose.ts";
+import {advanceSpatialDungeonPartyStep,emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
+import {distributeDungeonFinds,rollDungeonSiteLoot,rollDungeonTreasureLoot}
   from "../../src/game/dungeonLoot.ts";
 
 function stockedHero():GameState {
@@ -90,3 +93,67 @@ test("site loot and multi-hero ownership are deterministic and never duplicate i
     "The supplied adventurer snapshot must remain untouched");
 });
 
+
+test("real vault and workshop contents share one room classification and bounded loot rolls",()=>{
+  let workshops=0,vaults=0;
+  for(const seed of [42,7351,9321,2026])for(const floor of [1,5,9]){
+    const map=generateExpeditionLayout(seed,floor);
+    assert.deepEqual(dungeonRoomPurposes(map),dungeonRoomPurposes(generateExpeditionLayout(seed,floor)));
+    for(const f of map.features.filter(f=>f.kind==="treasure")){
+      const theme=dungeonRoomPurposeAt(map,f);
+      if(theme==="vault")vaults++;
+      if(theme==="workshop")workshops++;
+      for(let cycle=0;cycle<6;cycle++){
+        const roll=rollDungeonTreasureLoot(seed,map,f,cycle);
+        const ordinary=rollDungeonSiteLoot(seed,floor,f.id,cycle,"treasure");
+        assert.deepEqual(roll,rollDungeonTreasureLoot(seed,map,f,cycle));
+        assert(roll.itemIds.length>=1&&roll.itemIds.length<=3);
+        if(theme==="vault")assert(roll.itemIds.length>=2);
+        else if(theme==="workshop"){
+          assert(["iron-ore","coal"].includes(roll.itemIds[0]));
+          assert.equal(roll.itemIds.length,ordinary.itemIds.length);
+        }else assert.deepEqual(roll,ordinary);
+      }
+    }
+  }
+  assert(vaults>0&&workshops>0);
+});
+test("workshop treasure settlement awards real owned salvage exactly once per site cycle",()=>{
+  const seed=7351,floor=7;
+  const map=generateExpeditionLayout(seed,floor);
+  const feature=map.features.find(f=>f.kind==="treasure"&&dungeonRoomPurposeAt(map,f)==="workshop");
+  assert(feature,"Seeded deep workshop must have a real treasure site");
+  const at=dungeonNeighbors(map,feature).find(p=>!map.features.some(f=>f.x===p.x&&f.z===p.z));
+  assert(at,"Choose an actual free adjacent approach so the return step cannot trigger another site");
+  const base=createGameState(seed).adventurers[0];
+  const hero={...base,floor:7 as const,status:"exploring" as const};
+  const initial={...emptySpatialDungeonWorld(),heroes:[{
+    heroId:hero.id,...at,visited:[at.z*map.width+at.x],
+  }]};
+  const expected=rollDungeonTreasureLoot(seed,map,feature,0);
+  const once=advanceSpatialDungeonPartyStep([hero],initial,seed,2,
+    new Set([hero.id]),{tacticalStep:feature});
+  assert(once.world.resolvedFeatureIds.includes(feature.id));
+  assert.equal(once.ticks[0].gainedLoot,1);
+  const awarded=expected.itemIds[0];
+  assert(["coal","iron-ore"].includes(awarded));
+  assert((once.ticks[0].adventurer.inventory.finds?.[awarded]??0)>=1);
+  const back=advanceSpatialDungeonPartyStep([once.ticks[0].adventurer],once.world,seed,2,
+    new Set([hero.id]),{tacticalStep:at});
+  const again=advanceSpatialDungeonPartyStep([back.ticks[0].adventurer],back.world,seed,2,
+    new Set([hero.id]),{tacticalStep:feature});
+  assert.equal(again.ticks[0].gainedLoot,0);
+  assert(!again.ticks[0].replay.steps.some(s=>s.action==="treasure"&&s.featureId===feature.id));
+  // Isolate the existing physical chest settlement using the actual awarded
+  // inventory; no fixture-created materials. Travel itself is covered by
+  // the existing LIVE and browser tests.
+  const start=createGameState(seed);
+  const returned={...again.ticks[0].adventurer,floor:"shop" as const,status:"at-shop" as const};
+  const stocked={...start,adventurers:start.adventurers.map(h=>h.id===returned.id?returned:h),
+    shopEconomy:{...start.shopEconomy,balance:100}};
+  const sold=buybackAtChest(stocked,returned.id,BUYBACK_DOCK);
+  assert(sold.shopEconomy.materialStorage[awarded as "coal"|"iron-ore"]>0);
+  assert(sold.shopEconomy.balance<stocked.shopEconomy.balance);
+  assert.equal(sold.adventurers.find(h=>h.id===returned.id)!.inventory.finds?.[awarded]??0,0);
+  assert.strictEqual(buybackAtChest(sold,returned.id,BUYBACK_DOCK),sold);
+});

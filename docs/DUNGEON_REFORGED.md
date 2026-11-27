@@ -1,6 +1,6 @@
 # The Dungeon Reforged — implementation contract
 
-Baseline production revision: `fe3477576f92fb924bcdde7b3fb8da86baa1b88c` (Alpha v48). Baseline audit #393 passed all ten relevant jobs. The merged Phase 2 room-first generator requires a fresh Alpha v49 campaign. The release name is a working title.
+Baseline production revision: `fe3477576f92fb924bcdde7b3fb8da86baa1b88c` (Alpha v48). Baseline audit #393 passed all ten relevant jobs. The merged Phase 2 rectangular room-first generator is the Alpha v49 comparison reference. The shaped-chamber candidate requires a fresh Alpha v50 campaign. The release name is a working title.
 
 ## Observed architecture and risks
 
@@ -18,7 +18,7 @@ Use the existing production GameStore audit, seeds 42, 7351, 9321, 2026, 100 com
 
 ## Room-first candidate and acceptance gate
 
-The candidate carves four or six variable rectangular chambers in a seeded orientation, then a cyclic perimeter of actual corridors with optional cross-link on six-room maps. Both stairs are excluded from the unchanged 8/4/4 site budget. No empty blind corridor branches are authored. Room and corridor tiles, spatial actors, movement, stairs, combat and renderer contracts stay shared. Geometry changes invalidate old saved indices; v48 is explicitly incompatible. Static visual themes are now a separate presentation slice; permanent modification remains out of scope. The room graph is not a second runtime navigation model.
+The v49 reference carves four or six variable rectangular chambers in a seeded orientation, then a cyclic perimeter of actual corridors with optional cross-link on six-room maps. Both stairs are excluded from the unchanged 8/4/4 site budget. No empty blind corridor branches are authored. Room and corridor tiles, spatial actors, movement, stairs, combat and renderer contracts stay shared. Geometry changes invalidate old saved indices; v48 is explicitly incompatible. Static visual themes are now a separate presentation slice; permanent modification remains out of scope. The room graph is not a second runtime navigation model.
 
 1. Replace maze-first generation with seeded room-first geometry: landmark rooms, meaningful optional branches and multiple inter-room connections. Preserve the canonical tile contract and initial feature budgets where possible; distinguish meaningful inter-room loops from grid cycles inside rooms.
 2. Validate deterministic connectivity, boundary walls, rectangular dimensions, unique reachable features, both stairs and bounded distances across seeds and ordinary floors. Revisit tests whose old maze/dead-end assumptions encode retired design.
@@ -32,4 +32,18 @@ Run [46005785013](https://github.com/testlearnernord/Dungeon-Shop-Master/actions
 
 ## Room art slice
 
-Four cosmetic styles share one deterministic room plan and mesh factory: the largest chamber is the hall, a remaining chamber with the most existing treasure sites is the vault, and remaining rooms alternate crypt and guardroom. This does not create treasure or alter existing sites. Props use free wall-backed corners; both observers use identical local art transforms, while the table disposes full-scale lights. Replay and subjective observation preserve their existing room-centre fog gate. No schema bump, gameplay changes, new assets or additional campaign RNG. Core tests cover deterministic placement; the existing browser observer test compares rendered room IDs, themes and child geometry. Manual art quality and future functional rooms remain open.
+Four cosmetic styles share one deterministic room plan and mesh factory: the largest chamber by actual open footprint is the hall, a remaining chamber with the most existing treasure sites is the vault, and remaining rooms alternate crypt and guardroom. This does not create treasure or alter existing sites. Props use free wall-backed convex corners of the actual footprint; both observers use identical local art transforms, while the table disposes full-scale lights. Replay and subjective observation preserve their existing room-centre fog gate. The art-only slice did not bump the schema, change gameplay, add assets or consume campaign RNG. Core tests cover deterministic placement; the existing browser observer test compares rendered room IDs, themes and child geometry. Manual art quality and future functional rooms remain open.
+
+## Shaped geometry candidate (Alpha v50)
+
+The existing seeded sector and perimeter graph remains the topology authority. Selected rooms have clipped corners; larger landmark rooms can have cruciform footprints. Straight runs gain up to one (small floors) or two (large floors) genuine 2x3 passing bays where the grid permits. No isolated alcoves, blocked centre axes, new obstacles, extra monsters, additional treasure or parallel navigation system. The 8/4/4 site budget remains unchanged; reserve unused treasure candidates per actual chamber before fallback. Room dimensions now describe bounding boxes; shared dungeonRoomContains and dungeonRoomCells read the actual canonical room tiles for art placement and occupancy telemetry. All renderers, minimaps, stairs, LOS, combat and paths still use the same grid. Version 49 is rejected, no migration.
+
+Acceptance: core checks and real browser observation; short focused simulation if a concrete gameplay concern warrants it. The owner explicitly rejected routine 100/200-day runs for incremental changes. Existing v49 evidence is a reference, not a mandatory new audit for every geometry iteration. Reserve manual long-run comparisons for major balance milestones. No final balance claim from core CI alone. Manual visual quality and functional room mechanics remain open.
+
+## Functional room slice A (prepared after the shaped geometry candidate)
+
+`dungeonRoomPurpose.ts` owns the shared deterministic chamber classification. Vaults prefer existing treasure sites and their chests yield at least two of the ordinary items (maximum three). A sufficiently large floor from Floor 5 may have a Forgotten Workshop where a real chest already exists; the first of its normal one-to-three items is iron ore or coal. Other rewards, gold, XP, monster loot and site regeneration are unchanged. Existing party ownership, physical chest contact, buyback and forge settlement remain authoritative. Room art uses the same purpose and supplies cosmetic workbenches/anvils. No new persisted fields, items or unlock flags. Functional guardrooms, crypts, halls and unique discoveries/blueprints remain future work. No long-run campaign gate for this incremental slice.
+
+## Visual polish
+
+Room footprints now provide wall-backed relief panels, worn banners or plaques, thematic trim, floor inlays, themed flagstone tints and shared textured stone/wood materials. Corridors get a bounded seeded set of wall-mounted jambs and lanterns. Both observation scales use the same local geometry, while replay enables passage art only at its existing fog tile. Passage props have no extra point lights, colliders, interactions or gameplay effect. The shared map viewer uses a darker ambient baseline and stronger local room lighting. Functional discoveries and new hero behavior are deferred until visual acceptance. Manual screenshots and GPU performance still need review.

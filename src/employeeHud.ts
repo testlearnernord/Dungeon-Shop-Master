@@ -5,10 +5,16 @@ const names:Record<EmployeeTask,string>={cashier:"Cashier",restocking:"Restockin
 export function setupEmployeeHud(canvas:HTMLCanvasElement,camera:UniversalCamera,store:GameStore,shopActive:()=>boolean){
   const dialog=document.querySelector<HTMLDialogElement>("#employee-dialog")!;
   const list=document.querySelector<HTMLElement>("#employee-list")!;
-  const describe=(e:EmployeeState)=>e.restock?
+  const describe=(e:EmployeeState)=>{
+    if(!e.restock&&!e.job&&EMPLOYEE_TASKS.every(t=>e.priorities[t]===0))
+      return e.status==="walking"?"Returning to cellar · work disabled":"Off duty · enable work or set priorities";
+    if(!store.state.cellarDoorOpen&&e.z<-12.1&&EMPLOYEE_TASKS.some(t=>e.priorities[t]>0))
+      return "Cellar passage closed · open the portrait to let Tettel work";
+    return e.restock?
     (e.restock.stage==="collect"?"Collecting stock":e.restock.stage==="return"?"Returning unused stock":"Delivering "+e.restock.units+" units")+
       (e.status==="blocked"?" · route blocked":""):
-    e.status==="blocked"?"Waiting for a clear route":e.job?.task==="cashier"?(e.status==="ready"?"Serving customer":"Walking to register"):e.job?.task==="charity"?(e.status==="ready"?"Serving credit request":"Walking to petitioner"):e.status==="walking"?"Walking to cellar":"Idle";
+    e.status==="blocked"?"Waiting for a clear route":e.job?.task==="cashier"?(e.status==="ready"?"Serving customer":"Walking to register"):e.job?.task==="charity"?(e.status==="ready"?"Serving credit request":"Walking to petitioner"):e.status==="walking"?"Walking to standby":e.z>=-6.5?"On standby in shop":"Idle · no available work";
+  };
   const render=()=>{
     list.replaceChildren(...store.state.employees.map(e=>{
       const def=EMPLOYEE_DEFINITIONS.find(d=>d.id===e.id)!;
@@ -27,7 +33,20 @@ export function setupEmployeeHud(canvas:HTMLCanvasElement,camera:UniversalCamera
         input.addEventListener("change",()=>store.setEmployeePriority(e.id,task,Number(input.value)));
         label.append(input);tasks.append(label);
       }
-      card.append(title,traits,status,tasks);return card;
+      const presets=document.createElement("div");presets.className="employee-presets";
+      const enable=document.createElement("button");enable.type="button";enable.textContent="Enable work";
+      enable.addEventListener("click",()=>{
+        store.setEmployeePriority(e.id,"cashier",1);
+        store.setEmployeePriority(e.id,"restocking",5);
+        // Credit is deliberately opt-in.
+        render();
+      });
+      const stop=document.createElement("button");stop.type="button";stop.textContent="Off duty";
+      stop.addEventListener("click",()=>{for(const task of EMPLOYEE_TASKS)store.setEmployeePriority(e.id,task,0);render();});
+      const hint=document.createElement("p");hint.className="employee-note";
+      hint.textContent="Open the portrait passage. Restocking requires an assigned shelf and owned bag stock.";
+      presets.append(enable,stop);
+      card.append(title,traits,status,presets,tasks,hint);return card;
     }));
   };
   store.subscribe(()=>{

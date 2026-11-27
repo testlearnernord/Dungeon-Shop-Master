@@ -113,7 +113,12 @@ test("full LIVE world saves every offscreen floor and resumes monster clocks det
   second.advanceWorldTime(800);
   assert.deepEqual(second.state,first.state);
   const tampered=structuredClone(createSave(first.state)) as any;
-  const pack=tampered.payload.dungeonWorlds[0].world.monsters[0];
+  // An engaged pack is checked against its reserved combat before the
+  // generic monster-coordinate validator. Pick a non-engaged pack so this
+  // corruption exercises the intended validator independently of geometry.
+  const pack=tampered.payload.dungeonWorlds[0].world.monsters.find(
+    (m:DungeonMonsterState)=>m.mode!=="ENGAGED");
+  assert(pack,"Expected at least one unengaged pack on Floor 1");
   pack.x=-1;
   assert.throws(()=>parseSave(JSON.stringify(tampered)),/monsters/);
 });

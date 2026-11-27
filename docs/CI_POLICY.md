@@ -25,7 +25,7 @@ The explicit file names in `package.json` are authoritative. An `@ci-smoke` tag 
 
 ## Manual regression
 
-`npm run test:unit` runs **all** remaining deterministic unit tests. `npm test` runs **all** remaining Playwright tests (after installing Chromium). Actions > **Full browser regression** runs both complete suites, the module graph audit and collects failure artifacts. Use targeted tests on changes to fishing, battle visuals, Galvik's Table handoff, HUD interactions, performance, or multi-day campaign progression. The long-run audit has branch/path triggers and manual dispatch; it is not the ordinary CI gate. Use it for specific balance investigations, not every presentation change.
+`npm run test:unit` runs **all** remaining deterministic unit tests. `npm test` runs **all** remaining Playwright tests (after installing Chromium). Actions > **Full browser regression** runs both complete suites, the module graph audit and collects failure artifacts. Use targeted tests on changes to fishing, battle visuals, Galvik's Table handoff, HUD interactions, performance, or multi-day campaign progression. The 100/200-day campaign and boss-readiness matrices are manual-dispatch only; branch names no longer launch them automatically. Existing narrow credit and upgrade experiments retain their explicit triggers. Use targeted build/unit/browser checks for presentation changes, core checks for geometry, and short focused simulations (normally 10–20 days) only where gameplay consequences warrant them. Reserve 100/200-day campaigns for significant balance milestones or a concrete long-horizon question. They are not a routine merge gate.
 
 The repo intentionally deletes obsolete positive Floor-6 solo-boss/per-hero-permit Playwright checks, rather than preserving assertions that contradict the current single-portal/Floor-10-party design. Former-floor regression *guards* that reject obsolete save shapes remain valid and must not be dropped just because their names mention Floor 6.
 
@@ -38,3 +38,5 @@ The repo intentionally deletes obsolete positive Floor-6 solo-boss/per-hero-perm
 5. Report actual CI results and measured runtime, not estimated speedups. Passing a subset is not passing the full regression.
 
 The targeted **Employee physical throughput audit** runs only when its explicit spec/workflow changes or via manual dispatch. Two matched policies use real browser callbacks; the spec skips unless `EMPLOYEE_AUDIT_POLICY` is set. This is diagnostic, not part of the ordinary required smoke gate.
+
+The exact ordinary-combat matrix is opt-in via manual dispatch or the `combat-audit` PR label. It requires identical case identities, including generated pack size and site. A geometry replacement can change those identities without changing combat rules; unmatched matrices are not a valid A/B comparison. Use the core combat regressions and targeted diagnostics for such changes. The exact-match check itself remains strict.

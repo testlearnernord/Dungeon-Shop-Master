@@ -9,13 +9,25 @@ test("Tettel is a real peaceful cellar Ghoul and work priorities survive reload 
     const e=probe.inspectEmployee();
     return !!e?.ready&&e.enabled&&e.peaceful&&e.y< -4&&e.z< -20&&e.clip==="idle_combat";
   }),{timeout:90000}).toBe(true);
+  // No world tick advances in this fixture. A real idle clip must still
+  // advance between rendered frames rather than freeze on lastStepTick.
+  const idleProgress=()=>page.evaluate(async()=>
+    (await import("/Dungeon-Shop-Master/tests/scene.ts")).inspectEmployee()?.progress);
+  const firstProgress=await idleProgress();
+  expect(typeof firstProgress).toBe("number");
+  await expect.poll(idleProgress,{timeout:10000}).not.toBe(firstProgress);
   await page.locator("#open-employees").click();
   const dialog=page.locator("#employee-dialog");
   await expect(dialog).toBeVisible();
   const cashier=dialog.getByLabel("Tettel Cashier priority");
   const restocking=dialog.getByLabel("Tettel Restocking priority");
   await expect(cashier).toHaveValue("0");
-  await cashier.selectOption("1");await restocking.selectOption("4");
+  await expect(dialog.locator(".employee-status")).toContainText("Off duty");
+  await dialog.getByRole("button",{name:"Enable work"}).click();
+  await expect(cashier).toHaveValue("1");
+  await expect(restocking).toHaveValue("5");
+  await expect(dialog.locator(".employee-status")).toContainText("Cellar passage closed");
+  await restocking.selectOption("4");
   await dialog.locator("#close-employees").click();
   await expect(dialog).toBeHidden();
   // Save cadence may defer a non-clock write; actual storage must observe it.
@@ -275,29 +287,32 @@ test("Tettel restocks real assigned goods and serves two physical customers on t
   },fixture.buyers);
   const initialAssignments=[{id:"shelf-1-slot-1",item:null},{id:"shelf-1-slot-2",item:"bread"},
     {id:"shelf-1-slot-3",item:"healing-herb"},{id:"shelf-1-slot-4",item:null}];
-  let sawCargo=false,sawCashier=false;
+  let sawCargo=false;
   try{
     await expect.poll(async()=>{
       const s=await read();
       sawCargo||=s.diagnostic.worker.restock?.stage==="deliver";
-      sawCashier||=s.diagnostic.worker.job?.task==="cashier";
       expect(s.bread+s.breadHeld+s.breadSold).toBe(4);
       expect(s.herbs+s.herbBag).toBe(2);
       expect(s.assignments).toEqual(initialAssignments);
       expect(s.tips).toEqual([]);expect(s.credits).toEqual([]);
       return {paid:new Set(s.buyerSales.map(e=>e.adventurerId)).size,herbs:s.herbs,departed:s.departed.length};
     },{timeout:150000,intervals:[500,1000,2000]}).toEqual({paid:2,herbs:2,departed:2});
+    const done=await read();
+    // Autosave polling can miss a short cashier job between checkpoints.
+    // Two actual employee-attributed payment receipts prove the service;
+    // a sampled job flag does not. Keep the physical cargo observation,
+    // conservation, exact payment and actual departure requirements.
+    expect(sawCargo).toBe(true);
+    expect(done.buyerSales).toHaveLength(2);
+    expect(done.buyerSales.every(e=>e.itemId==="bread"&&e.quantity===2&&
+      e.message.includes("Served by Tettel."))).toBe(true);
+    expect(done.balance).toBe(fixture.gold+16);
+    expect(done.herbBag).toBe(0);
+    expect(done.diagnostic.carts).toEqual([]);
+    expect(errors).toEqual([]);
   }catch(error){
-    console.log("COMBINED EMPLOYEE FAILURE "+JSON.stringify(await read()));
+    console.log("COMBINED EMPLOYEE FAILURE "+JSON.stringify({sawCargo,...await read()}));
     throw error;
   }
-  const done=await read();
-  expect(sawCargo).toBe(true);expect(sawCashier).toBe(true);
-  expect(done.buyerSales).toHaveLength(2);
-  expect(done.buyerSales.every(e=>e.itemId==="bread"&&e.quantity===2&&
-    e.message.includes("Served by Tettel."))).toBe(true);
-  expect(done.balance).toBe(fixture.gold+16);
-  expect(done.herbBag).toBe(0);
-  expect(done.diagnostic.carts).toEqual([]);
-  expect(errors).toEqual([]);
 });

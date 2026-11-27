@@ -1,10 +1,9 @@
 // Offline measurements only. The canonical layout and committed positions
 // remain the sole authorities. No new pathfinding or game mutations.
-import {dungeonNeighbors,dungeonDownStair,dungeonShortestPath,tileAt} from "../../src/game/dungeonLayout.ts";
+import {dungeonNeighbors,dungeonDownStair,dungeonShortestPath,dungeonRoomContains,dungeonRoomCells,tileAt} from "../../src/game/dungeonLayout.ts";
 
 const index=(layout,p)=>p.z*layout.width+p.x;
 const point=(layout,i)=>({x:i%layout.width,z:Math.floor(i/layout.width)});
-const inRoom=(room,p)=>Math.abs(p.x-room.x)<room.width/2&&Math.abs(p.z-room.z)<room.height/2;
 
 export function describeDungeonGeometry(layout){
   const walkable=layout.tiles.flatMap((tile,i)=>tile==="wall"?[]:[i]);
@@ -34,7 +33,7 @@ export function describeDungeonGeometry(layout){
     entrance:layout.entrance,downStair:stair,walkableTiles:walkable.length,
     corridorTiles:layout.tiles.filter(t=>t==="corridor").length,
     roomTiles:layout.tiles.filter(t=>t==="room").length,
-    roomCount:layout.rooms.length,roomSizes:layout.rooms.map(r=>({id:r.id,width:r.width,height:r.height})),
+    roomCount:layout.rooms.length,roomSizes:layout.rooms.map(r=>({id:r.id,width:r.width,height:r.height,walkableCells:dungeonRoomCells(layout,r).length})),
     gridCycleRank:degreeSum/2-walkable.length+1,
     deadEndTiles:deadEnds.length,emptyDeadEndTiles:emptyDeadEnds.length,
     emptyDeadEndIndices:emptyDeadEnds,
@@ -69,7 +68,7 @@ export function createDungeonGeometryTelemetry(layouts){
         f.heat[i]++;f.heroSamples++;
         if(previous.get(p.heroId)===key)f.stationarySamples++;
         current.set(p.heroId,key);
-        for(const row of f.rooms)if(inRoom(row.room,p))row.samples++;
+        for(const row of f.rooms)if(dungeonRoomContains(f.layout,row.room,p))row.samples++;
       }
     }
     previous=current;
