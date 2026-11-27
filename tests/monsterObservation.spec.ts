@@ -184,7 +184,7 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
     return result.shared&&result.ready&&result.visibleRooms>0;
   }),{timeout:15000}).toBe(true);
   expect(await roomArt()).toEqual(tableArt);
-  // Sample an actual unoccupied vault tile in the north-up canvas and
+  // Sample an actual vault tile in the north-up canvas and
   // hover that same CSS cell, not a mock projection or a synthetic label.
   const roomSample=await page.evaluate(async()=>{
     const {generateExpeditionLayout,dungeonRoomCells}=await import("/Dungeon-Shop-Master/src/game/dungeonLayout.ts");
@@ -205,6 +205,7 @@ test("Galvik's Table and LIVE dungeon show the same saved Ghouls and one red til
   });
   expect(roomSample.hex).toBe(roomSample.expected);
   await page.mouse.move(roomSample.x,roomSample.y);
+  await expect(page.locator("#dungeon-hover-tooltip")).toBeVisible();
   await expect(page.locator("#dungeon-hover-tooltip")).toContainText("Treasure Vault");
   await expect(page.locator("#dungeon-hover-tooltip")).toContainText("2–3 ordinary goods");
   const live=await inspect();
