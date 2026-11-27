@@ -430,7 +430,7 @@ function run(mode){
   delete metrics.nextRequestId;
   // Daily per-hero telemetry is intentionally retained in the JSON artifact,
   // not dumped as a huge single line into GitHub's job log.
-  const {daily,lifetimeHeroes,...progressionSummary}=metrics.progression;
+  const {daily,lifetimeHeroes,dungeonGeometry,...progressionSummary}=metrics.progression;
   // Detailed context strata stay in the artifact to bound the job-log line.
   console.log("AUDIT_REPORT "+JSON.stringify({...metrics,progression:progressionSummary,combatExposure:exposureSummary}));
   return metrics;

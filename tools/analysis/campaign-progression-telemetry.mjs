@@ -2,12 +2,14 @@
 // The exact gate/decision records come from the production scheduler;
 // positions and floor dwell are sampled at the fixed 200-tick audit sampling cadence.
 import {generateExpeditionLayout,dungeonDownStair} from "../../src/game/dungeonLayout.ts";
+import {createDungeonGeometryTelemetry} from "./dungeon-geometry-telemetry.mjs";
 import {heroProgression} from "../../src/game/heroProgression.ts";
 import {equipmentEffects,gearFromName} from "../../src/game/gearCatalog.ts";
 const add=(record,key,n=1)=>record[key]=(record[key]??0)+n;
 export function createCampaignTelemetry(seed){
   const allHeroes=new Map(),daily=[],milestones=[],gateCounts={},floor9Examples={},depthDecisions={},depthChecks={},depthExamples={};
   const layouts=new Map(Array.from({length:9},(_,i)=>[i+1,generateExpeditionLayout(seed,i+1)]));
+  const geometry=createDungeonGeometryTelemetry(layouts);
   const partyCompositionSamples={};
   const lastCrossing=new Map(),rapidReversals={};
   let participantCrossings=0;
@@ -64,6 +66,7 @@ export function createCampaignTelemetry(seed){
     if(stage==="boss-crossing"&&checks.accepted)deepest=Math.max(deepest,10);
   }
   function sample(state){
+    geometry.sample(state);
     const tick=state.worldClock.tick;
     const elapsed=lastTick===null?0:Math.max(0,tick-lastTick);
     for(const [id,floor] of previousFloors){
@@ -139,7 +142,7 @@ export function createCampaignTelemetry(seed){
     return result;
   }
   function report(){
-    return {sampleIntervalTicks:200,partyCountsAreSampled:true,partyCompositionSamples,deepestFloor:deepest,heroesByDeepest:histogram(),
+    return {dungeonGeometry:geometry.report(),sampleIntervalTicks:200,partyCountsAreSampled:true,partyCompositionSamples,deepestFloor:deepest,heroesByDeepest:histogram(),
       floor9Checks:gateCounts,firstFailedCheckExamples:floor9Examples,
       depthDecisions,depthChecks,depthExamples,milestones,daily,
       crossingStability:{participantCrossings,rapidReversals,windowTicks:600,
