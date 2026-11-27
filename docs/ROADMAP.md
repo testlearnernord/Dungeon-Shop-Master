@@ -38,6 +38,6 @@ One saved world and combat authority, physical transactions, deterministic curre
 - A/B: merged, saved employee identity, peaceful Ghoul presentation, shared physical route, task priorities.
 - C1: merged (#385); persistent shelf assignments via quickbar and middle-click, physical paper slips, reload coverage passed. Manual visual acceptance open.
 - C2: implemented physical pickup/delivery/return and shared bag reservations (#386); first CI passed, synchronized-base CI and visual acceptance pending.
-- D: implemented on the D branch; physical staff dock and shared front cart, three-second service timer, canonical payment without tips, manual takeover; unit and browser acceptance pending.
-- E: matched credit-demand audit passed (see Alpha v48 acceptance); owner approved opt-in physical credit work. Employee credit service is implemented in the candidate; validate CI and actual pedestrian behavior before acceptance.
+- D: merged after green unit and browser CI; physical staff dock and shared front cart, three-second service timer, canonical payment without tips, manual takeover; manual visual acceptance pending.
+- E: matched credit-demand audit passed (see Alpha v48 acceptance); owner approved opt-in physical credit work. Employee credit service merged after 373 core unit and 14 browser tests passed; visual acceptance pending.
 - F: combined two-buyer physical restock/checkout scenario and priority/cargo regressions in the F candidate; CI, visual acceptance and sustained throughput tuning pending. No extra employee types until foundation works.

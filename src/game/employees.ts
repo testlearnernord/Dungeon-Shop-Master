@@ -1,7 +1,7 @@
 import type {GameState} from "./gameState.ts";
 import {counterDockPoint} from "./shopLayout.ts";
 import {shelfServicePoint} from "./furnitureRegistry.ts";
-import {employeeHome,employeeRoute,employeeSegmentClear,employeeStoragePoint,employeeWalkable,EMPLOYEE_HOME} from "./employeeNavigation.ts";
+import {employeeHome,employeeRoute,employeeSegmentClear,employeeCustomerSegmentClear,employeeStoragePoint,employeeWalkable,EMPLOYEE_HOME} from "./employeeNavigation.ts";
 import {WORLD_TICK_SECONDS} from "./worldClock.ts";
 import {turnNpcToward} from "./npcLocomotion.ts";
 import type {ShopPoint} from "./shopperNavigation.ts";
@@ -182,9 +182,7 @@ function advanceEmployee(state:GameState,e:EmployeeState,jobs:readonly EmployeeJ
   const point=d<=step?target:{x:next.x+(target.x-next.x)*step/d,z:next.z+(target.z-next.z)*step/d};
   if(!employeeSegmentClear(state,next,point))return {...next,route:[],status:"blocked"};
   // Yield to an actual customer in the aisle, never push them through a wall.
-  const blocked=state.shopTraffic.actors.some(a=>
-    distance(a,point)<.65&&distance(a,point)<distance(a,next));
-  if(blocked)return {...next,status:"blocked"};
+  if(!employeeCustomerSegmentClear(state,next,point))return {...next,status:"blocked"};
   const route=d<=step?next.route.slice(1):next.route;
   return {...next,...point,route,status:route.length?"walking":next.job?"ready":"idle",
     yaw:turnNpcToward(next.yaw,Math.atan2(target.x-next.x,target.z-next.z),WORLD_TICK_SECONDS,3.2)};

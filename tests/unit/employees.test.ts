@@ -6,7 +6,7 @@ import {createSave,parseSave} from "../../src/game/campaignSave.ts";
 import {createStockedShopState} from "./shopFixtures.ts";
 import {advanceEmployees,chooseEmployeeJob,employeeOpportunities,EMPLOYEE_DEFINITIONS,
   EMPLOYEE_WORK_SPEED,EMPLOYEE_CHECKOUT_TICKS,employeeCashierOpportunity,employeeCharityOpportunity,type EmployeeJob} from "../../src/game/employees.ts";
-import {employeeFloorY,employeeRoute,employeeSegmentClear,employeeStoragePoint,EMPLOYEE_HOME} from "../../src/game/employeeNavigation.ts";
+import {employeeFloorY,employeeRoute,employeeSegmentClear,employeeCustomerSegmentClear,EMPLOYEE_CUSTOMER_CLEARANCE,employeeStoragePoint,EMPLOYEE_HOME} from "../../src/game/employeeNavigation.ts";
 import {counterDockPoint} from "../../src/game/shopLayout.ts";
 import {CELLAR_FLOOR_Y} from "../../src/game/cellarRoom.ts";
 import {availableBagUnits,discardBag,transferShelf} from "../../src/game/economy.ts";
@@ -453,4 +453,43 @@ test("combined cashier/restocking: collected merchandise survives higher cashier
   assert.equal(state.shopCarts.length,0);
   assert.equal(state.shopEconomy.balance,base.shopEconomy.balance+cartTotal(base.shopCarts[0]));
   assert(!state.events.some(e=>e.type==="tip"));
+});
+
+
+test("worker escapes the recorded two-customer checkout overlap without dropping cargo or passing through either customer",()=>{
+  const base=cashierFixture();
+  const actor=base.shopTraffic.actors[0];
+  const from={x:-2.0625883367286066,z:-4.364670121522252};
+  const goal={x:-5.52,z:.36};
+  const second=base.adventurers.find(h=>h.id!==actor.heroId)!;
+  const actors=[{...actor,x:-2.7,z:-4.5},{...actor,heroId:second.id,slot:1,x:-1.4,z:-4.5,checkoutQueueIndex:1}];
+  const state={...base,shopTraffic:{...base.shopTraffic,actors}};
+  assert(actors.every(a=>Math.hypot(a.x-from.x,a.z-from.z)<EMPLOYEE_CUSTOMER_CLEARANCE));
+  assert(!employeeCustomerSegmentClear(state,from,goal));
+  const route=employeeRoute(state,from,goal,true);
+  assert(route,"Recorded deadlock must have a physical escape");
+  let cursor=from;
+  for(const point of route.waypoints){
+    assert(employeeSegmentClear(state,cursor,point));
+    assert(employeeCustomerSegmentClear(state,cursor,point));
+    cursor=point;
+  }
+  assert(Math.hypot(cursor.x-goal.x,cursor.z-goal.z)<.08);
+  assert(actors.every(a=>Math.hypot(a.x-route.waypoints[0].x,a.z-route.waypoints[0].z)>=EMPLOYEE_CUSTOMER_CLEARANCE));
+  const slot=base.shopEconomy.slots.find(s=>s.id==="shelf-1-slot-3")!;
+  let working:GameState={...state,employees:state.employees.map(e=>({...e,...from,
+    priorities:{cashier:1,restocking:5,charity:0},job:{task:"restocking",targetId:slot.id,point:goal},
+    restock:{slotId:slot.id,itemId:"healing-herb",units:2,stage:"deliver",readySince:null},
+    status:"blocked",route:[goal],nextPlanTick:0}))};
+  const stock=working.shopEconomy.bag["healing-herb"];
+  for(let i=0;i<800&&working.employees[0].restock;i++){
+    const prior=working.employees[0];
+    working=step(working);
+    assert(employeeCustomerSegmentClear(working,prior,working.employees[0]));
+    assert(Math.hypot(prior.x-working.employees[0].x,prior.z-working.employees[0].z)<=EMPLOYEE_WORK_SPEED*.05+1e-8);
+  }
+  assert.equal(working.employees[0].restock,null);
+  assert.equal(working.shopEconomy.bag["healing-herb"],stock-2);
+  assert.equal(working.shopEconomy.slots.find(s=>s.id===slot.id)?.quantity,slot.quantity+2);
+  assert.equal(working.shopEconomy.balance,base.shopEconomy.balance);
 });
