@@ -127,6 +127,8 @@ export function dungeonOverviewTileColor(kind:DungeonTile,theme?:DungeonRoomThem
 export function dungeonOverviewRoomLabel(theme:DungeonRoomTheme):string{
   const note=theme==="vault"?"Chests: 2–3 ordinary goods":
     theme==="workshop"?"Chests: one forge material guaranteed":
+    theme==="guardroom"?"Chests: chance of extra T1 gear instead of mana":
+    theme==="crypt"?"Chests: healing herbs instead of mana":
     "Ordinary site rules";
   return ROOM_THEME_NAMES[theme]+" · "+note;
 }
