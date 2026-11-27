@@ -6,7 +6,7 @@ The required PR pipeline is a **fast defect gate**, not a 100-day campaign and n
 
 **Build and unit tests** (one job, stable check name): `npm ci`, `npm run build`, `npm run verify:pages`, then `npm run test:unit:core`. The core script is an explicit file selection from `tests/unit/`: state/save/time, live dungeon and temporary parties, 60-Hz combat, checkout and shop traffic, one portal and right-wall seal, furniture and cellar traversal, LIVE projection and shared tabletop/minimap camera orientation. No automatic all-unit discovery on PRs.
 
-**Browser core smoke** (one job, stable check name): `npm run test:smoke`, with these eight Chromium test files:
+**Browser core smoke** (one job, stable check name): `npm run test:smoke`, with these ten Chromium test files (15 current smoke cases):
 
 - `cashierReceipt.spec.ts`: physical cashier and real payment authority
 - `shopTrafficReload.spec.ts`: persisted NPC routes, waits and checkout claims
@@ -16,6 +16,10 @@ The required PR pipeline is a **fast defect gate**, not a 100-day campaign and n
 - `monsterObservation.spec.ts`: real committed monster observation
 - `cellarForge.spec.ts`: physical forge and material flow
 - `developerCombatLab.spec.ts`: production gear controls, explicit custom fixtures, local stepping, cinematic and isolation
+- `heroBuyback.spec.ts`: physical recovered-goods chest and ownership
+- `employees.spec.ts`: persisted priorities, shelf assignment, physical checkout/credit and combined commerce
+
+The serial smoke job has a 20-minute overall ceiling instead of 12 minutes after repeated cancellation on slow runners. No individual Playwright timeout or acceptance assertion was relaxed. Build/unit job retains its 12-minute ceiling.
 
 The explicit file names in `package.json` are authoritative. An `@ci-smoke` tag on another test does not enroll it in CI. The standalone Galvik table camera-handoff job was removed: its `observationTransition.spec.ts` remains available manually, while pure camera-orientation contracts run in the core unit gate. The advisory module graph audit also does not block every PR; run it when deleting source code or before releases.
 
@@ -32,3 +36,5 @@ The repo intentionally deletes obsolete positive Floor-6 solo-boss/per-hero-perm
 3. Keep the new-playthrough save contract strict. No old-save migrations.
 4. Keep the deployment workflow untouched. It builds and verifies the actual Pages output on `main`.
 5. Report actual CI results and measured runtime, not estimated speedups. Passing a subset is not passing the full regression.
+
+The targeted **Employee physical throughput audit** runs only when its explicit spec/workflow changes or via manual dispatch. Two matched policies use real browser callbacks; the spec skips unless `EMPLOYEE_AUDIT_POLICY` is set. This is diagnostic, not part of the ordinary required smoke gate.

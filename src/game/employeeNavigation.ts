@@ -59,20 +59,98 @@ export function employeeStoragePoint(state:GameState):ShopPoint|null{
   }).find(p=>employeeWalkable(state,p))??null;
 }
 export const EMPLOYEE_CUSTOMER_CLEARANCE=.68;
-/** Customer positions are temporary obstacles, not permanent geometry.
- * An actor already within clearance must not trap a worker in an overlap:
- * the movement guard still prevents walking farther into that actor. */
+/** An overlap may be escaped, never deepened. Keep the same clearance for
+ * planning and committed movement; an overlapped customer remains an obstacle
+ * after the first escape segment. */
+export function employeeCustomerSegmentClear(state:GameState,a:ShopPoint,b:ShopPoint):boolean{
+  return state.shopTraffic.actors.every(other=>{
+    const distance=Math.hypot(a.x-other.x,a.z-other.z);
+    if(distance<EMPLOYEE_CUSTOMER_CLEARANCE){
+      const dot=(a.x-other.x)*(b.x-a.x)+(a.z-other.z)*(b.z-a.z);
+      return dot>=-1e-10;
+    }
+    return shopPointSegmentDistance(other,a,b)>=EMPLOYEE_CUSTOMER_CLEARANCE-1e-10;
+  });
+}
 export function employeeRoute(state:GameState,from:ShopPoint,to:ShopPoint,avoidCustomers=false){
   if(!employeeWalkable(state,from)||!employeeWalkable(state,to))return null;
-  const obstacles=avoidCustomers?state.shopTraffic.actors.filter(a=>
-    Math.hypot(a.x-from.x,a.z-from.z)>=EMPLOYEE_CUSTOMER_CLEARANCE):[];
-  const blocked=(p:ShopPoint)=>!employeeWalkable(state,p)||
-    obstacles.some(a=>Math.hypot(a.x-p.x,a.z-p.z)<EMPLOYEE_CUSTOMER_CLEARANCE);
+  const obstacles=avoidCustomers?state.shopTraffic.actors:[];
+  const occupied=(p:ShopPoint)=>obstacles.some(a=>Math.hypot(a.x-p.x,a.z-p.z)<EMPLOYEE_CUSTOMER_CLEARANCE);
+  const blocked=(p:ShopPoint)=>!employeeWalkable(state,p)||occupied(p);
   const clear=(a:ShopPoint,b:ShopPoint)=>employeeSegmentClear(state,a,b)&&
-    obstacles.every(other=>shopPointSegmentDistance(other,a,b)>=EMPLOYEE_CUSTOMER_CLEARANCE);
+    obstacles.every(other=>shopPointSegmentDistance(other,a,b)>=EMPLOYEE_CUSTOMER_CLEARANCE-1e-10);
   if(blocked(to))return null;
   if(clear(from,to))return {waypoints:[to],length:Math.hypot(to.x-from.x,to.z-from.z)};
   const extent=6.5+2*Math.max(state.shopRoom.expansionTier,state.cellarRoom.expansionTier);
-  return createConnectedRoutePlanner({minX:-extent,maxX:extent,minZ:-33.5,maxZ:6.5},
-    blocked,clear,true)(from,to);
+  const plan=createConnectedRoutePlanner({minX:-extent,maxX:extent,minZ:-33.5,maxZ:6.5},
+    blocked,clear,true);
+  if(!occupied(from))return plan(from,to);
+  // A shopper can walk close while the worker is moving. Find a genuine
+  // sidestep that increases separation from every overlapping customer,
+  // then resume the usual connected planner with ALL customers as obstacles.
+  // This is a physical waypoint, not a teleport or a collision exemption.
+  const heading=Math.atan2(to.z-from.z,to.x-from.x);
+  // Target-relative 22.5-degree spokes alone miss narrow escape cones
+  // between two queued customers (including the recorded second smoke).
+  // Include world axes and the exact tangents of nearby clearance circles,
+  // then bisect the resulting angular intervals. The same segment guard
+  // still decides whether each candidate is physically legal.
+  const normalize=(angle:number)=>(angle%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+  const angles=[heading,0,Math.PI/2,Math.PI,3*Math.PI/2];
+  for(let i=0;i<16;i++)angles.push(heading+i*Math.PI/8);
+  for(const other of obstacles){
+    const dx=from.x-other.x,dz=from.z-other.z,d=Math.hypot(dx,dz);
+    if(d>EMPLOYEE_CUSTOMER_CLEARANCE+1.5||d<1e-10)continue;
+    const outward=Math.atan2(dz,dx);
+    angles.push(outward,outward+Math.PI/2,outward-Math.PI/2);
+    if(d>=EMPLOYEE_CUSTOMER_CLEARANCE){
+      const offset=Math.asin(EMPLOYEE_CUSTOMER_CLEARANCE/d);
+      angles.push(outward+Math.PI+offset,outward+Math.PI-offset);
+    }
+  }
+  const boundaries=[...new Set(angles.map(normalize))].sort((a,b)=>a-b);
+  const directions=[...boundaries,...boundaries.map((a,i)=>
+    normalize((a+(boundaries[i+1]??boundaries[0]+2*Math.PI))/2))];
+  const candidates:ShopPoint[]=[];
+  for(const length of [.15,.25,.5,.8,1.15,1.5])for(const angle of directions){
+    const p={x:from.x+Math.cos(angle)*length,z:from.z+Math.sin(angle)*length};
+    if(!blocked(p)&&employeeSegmentClear(state,from,p)&&employeeCustomerSegmentClear(state,from,p))
+      candidates.push(p);
+  }
+  for(const p of candidates){
+    const route=clear(p,to)?{waypoints:[to],length:Math.hypot(to.x-p.x,to.z-p.z)}:plan(p,to);
+    if(route)return {waypoints:[p,...route.waypoints],length:Math.hypot(p.x-from.x,p.z-from.z)+route.length};
+  }
+  return null;
+}
+
+
+/** Static access is independent of temporary customer occupancy. Cache only
+ * immutable furniture/room topology and the real cellar door; never cache
+ * worker positions, cargo, or a customer-blocked route as unreachable. */
+type RestockAccessCache={
+  room:GameState["shopRoom"];cellar:GameState["cellarRoom"];
+  bedroom:GameState["bedroomFurniture"];chest:GameState["cellarChest"];
+  table:GameState["cellarTable"];door:boolean;targets:Map<string,boolean>;
+};
+const restockAccessCache=new WeakMap<GameState["shopLayout"],RestockAccessCache>();
+export function employeeRestockAccessible(state:GameState,target:ShopPoint):boolean{
+  // Every shelf belongs to the public shop, every collection dock to the
+  // cellar. A shut portrait disconnects the two even if the worker is upstairs.
+  if(!state.cellarDoorOpen)return false;
+  let cache=restockAccessCache.get(state.shopLayout);
+  if(!cache||cache.room!==state.shopRoom||cache.cellar!==state.cellarRoom||
+    cache.bedroom!==state.bedroomFurniture||cache.chest!==state.cellarChest||
+    cache.table!==state.cellarTable||cache.door!==state.cellarDoorOpen){
+    cache={room:state.shopRoom,cellar:state.cellarRoom,bedroom:state.bedroomFurniture,
+      chest:state.cellarChest,table:state.cellarTable,door:state.cellarDoorOpen,targets:new Map()};
+    restockAccessCache.set(state.shopLayout,cache);
+  }
+  const key=target.x+":"+target.z;
+  const previous=cache.targets.get(key);
+  if(previous!==undefined)return previous;
+  const dock=employeeStoragePoint(state);
+  const reachable=!!dock&&!!employeeRoute(state,dock,target);
+  cache.targets.set(key,reachable);
+  return reachable;
 }

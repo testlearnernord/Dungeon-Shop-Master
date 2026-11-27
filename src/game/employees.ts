@@ -1,7 +1,7 @@
 import type {GameState} from "./gameState.ts";
 import {counterDockPoint} from "./shopLayout.ts";
 import {shelfServicePoint} from "./furnitureRegistry.ts";
-import {employeeHome,employeeRoute,employeeSegmentClear,employeeStoragePoint,employeeWalkable,EMPLOYEE_HOME} from "./employeeNavigation.ts";
+import {employeeHome,employeeRoute,employeeSegmentClear,employeeCustomerSegmentClear,employeeRestockAccessible,employeeStoragePoint,employeeWalkable,EMPLOYEE_HOME} from "./employeeNavigation.ts";
 import {WORLD_TICK_SECONDS} from "./worldClock.ts";
 import {turnNpcToward} from "./npcLocomotion.ts";
 import type {ShopPoint} from "./shopperNavigation.ts";
@@ -182,9 +182,7 @@ function advanceEmployee(state:GameState,e:EmployeeState,jobs:readonly EmployeeJ
   const point=d<=step?target:{x:next.x+(target.x-next.x)*step/d,z:next.z+(target.z-next.z)*step/d};
   if(!employeeSegmentClear(state,next,point))return {...next,route:[],status:"blocked"};
   // Yield to an actual customer in the aisle, never push them through a wall.
-  const blocked=state.shopTraffic.actors.some(a=>
-    distance(a,point)<.65&&distance(a,point)<distance(a,next));
-  if(blocked)return {...next,status:"blocked"};
+  if(!employeeCustomerSegmentClear(state,next,point))return {...next,status:"blocked"};
   const route=d<=step?next.route.slice(1):next.route;
   return {...next,...point,route,status:route.length?"walking":next.job?"ready":"idle",
     yaw:turnNpcToward(next.yaw,Math.atan2(target.x-next.x,target.z-next.z),WORLD_TICK_SECONDS,3.2)};
@@ -245,8 +243,35 @@ export function advanceEmployees(state:GameState,manualCashierActive=false,manua
       else if(e.restock.stage==="deliver")e=nextStage(e,"return",tick);
       next=setEmployee(next,e);
     }
+    // Do not tie up the player's inventory for permanently disconnected
+    // shelves. An uncollected claim may be released without a physical return.
+    // Once collected, never release cargo remotely: deliver if possible or
+    // return to the real chest; if both paths are cut, retain the cargo.
+    if(e.restock&&tick>=e.nextPlanTick){
+      const target=shelfTarget(next,e.restock);
+      const dock=employeeStoragePoint(next);
+      if(e.restock.stage==="collect"&&(!target||!dock||
+        !employeeRestockAccessible(next,target.point)||
+        (e.status==="blocked"&&!employeeRoute(next,e,dock)))){
+        e=clearWork(e,tick);next=setEmployee(next,e);
+      }else if(e.restock.stage==="deliver"&&target&&dock&&
+        (!employeeRestockAccessible(next,target.point)||e.status==="blocked")&&
+        !employeeRoute(next,e,target.point)&&employeeRoute(next,e,dock)){
+        e=nextStage(e,"return",tick);next=setEmployee(next,e);
+      }
+    }
     const jobs=tick>=e.nextPlanTick&&!e.restock
-      ?employeeOpportunities(next,manualCreditHeroId).filter(j=>j.task!=="cashier"||!manualCashierActive):[];
+      ?employeeOpportunities(next,manualCreditHeroId).filter(j=>
+        (j.task!=="cashier"||!manualCashierActive)&&
+        (j.task!=="restocking"||e.priorities.restocking>0&&employeeRestockAccessible(next,j.point))):[];
+    // Check access to the actual storage dock once per planning pass,
+    // not once per shelf or every physical tick.
+    if(jobs.some(j=>j.task==="restocking")){
+      const dock=employeeStoragePoint(next);
+      if(!dock||!employeeRoute(next,e,dock)){
+        for(let i=jobs.length-1;i>=0;i--)if(jobs[i].task==="restocking")jobs.splice(i,1);
+      }
+    }
     if(!e.restock&&tick>=e.nextPlanTick){
       const chosen=chooseEmployeeJob(e,jobs,tick);
       const slot=next.shopEconomy.slots.find(s=>s.id===chosen.job?.targetId);

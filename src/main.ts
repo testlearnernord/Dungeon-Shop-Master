@@ -229,6 +229,7 @@ if(import.meta.env.VITE_E2E==="1"){
     __shopTestRestockWait?:(heroId:string,seconds:number)=>void;
     __shopTestReadyCheckout?:()=>string|null;
     __shopTestTraffic?:()=>unknown;
+    __shopTestEmployeeAuditSnapshot?:()=>unknown;
     __shopTestPauseWorld?:(paused:boolean)=>void;
     __shopTestSaveTrafficNow?:()=>Promise<unknown>;
     __shopTestHydratedTraffic?:unknown;
@@ -293,6 +294,21 @@ if(import.meta.env.VITE_E2E==="1"){
     return {before,during,after};
   };
   hooks.__shopTestTraffic=()=>structuredClone(store.state.shopTraffic);
+  // Read-only, compact live measurement. Do not copy replay tapes or sample
+  // IndexedDB latency as worker idle time. Available only in E2E builds.
+  hooks.__shopTestEmployeeAuditSnapshot=()=>{
+    const s=store.state;
+    return structuredClone({day:s.day,tick:s.worldClock.tick,
+      worker:s.employees[0],actors:s.shopTraffic.actors.map(a=>({
+        heroId:a.heroId,phase:a.phase,shoppingPhase:a.shoppingPhase,
+        checkoutQueueIndex:a.checkoutQueueIndex})),
+      carts:s.shopCarts,requests:s.shopRequests,
+      balance:s.shopEconomy.balance,bag:s.shopEconomy.bag,slots:s.shopEconomy.slots,
+      debts:s.shopDebts,events:s.events.filter(e=>e.day===s.day&&
+        ["sale","tip","shop-credit","shop-departure","shop-walkout","hero-buyback"].includes(e.type))
+        .map(({id,type,adventurerId,itemId,quantity,revenue,debtGold,cost,message,shopReason})=>
+          ({id,type,adventurerId,itemId,quantity,revenue,debtGold,cost,message,shopReason}))});
+  };
   hooks.__shopTestPauseWorld=paused=>worldClockPacer.setPaused("e2e",paused);
   hooks.__shopTestSaveTrafficNow=async()=>{
     const {CampaignStorage}=await import("./game/campaignSave.ts");
