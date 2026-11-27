@@ -1,6 +1,6 @@
 # Documentation index
 
-> Current contract: Alpha v48 (Employee Cashier). Read current contracts before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
+> Current contract: Alpha v49 (Room-first Dungeon). Read [Dungeon Reforged](DUNGEON_REFORGED.md) for the current generator and acceptance gate before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
 
 ## Current contracts
 
@@ -22,7 +22,7 @@
 - [SHOP PORTAL MINING CONTRACT](SHOP_PORTAL_MINING_CONTRACT.md)
 - [THE LIVING DUNGEON](THE_LIVING_DUNGEON.md)
 - [UI DESIGN SYSTEM](UI_DESIGN_SYSTEM.md)
-- [Alpha v48 evidence and remaining acceptance](ALPHA_V48_ACCEPTANCE.md)
+- [Prior v48 evidence](ALPHA_V48_ACCEPTANCE.md)
 
 ## Employee management
 

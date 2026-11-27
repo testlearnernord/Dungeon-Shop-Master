@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  generateDungeonLayout, dungeonNeighbors, dungeonSeed,
+  generateDungeonLayout, generateExpeditionLayout, dungeonDownStair, dungeonNeighbors, dungeonSeed,
   dungeonShortestPath, tileAt,
 } from "../../src/game/dungeonLayout.ts";
 
-test("identical campaign seed/floor creates byte-identical labyrinth without changing RNG state", () => {
+test("identical campaign seed/floor creates byte-identical room-first layout without changing RNG state", () => {
   const first=generateDungeonLayout(7351,7);
   const second=generateDungeonLayout(7351,7);
   assert.deepEqual(first,second);
@@ -19,7 +19,7 @@ test("identical campaign seed/floor creates byte-identical labyrinth without cha
   assert.equal(first.seed,dungeonSeed(7351,7));
 });
 
-test("many map seeds have a fully connected labyrinth with rooms, corridors and dead ends", () => {
+test("many map seeds have a fully connected room-first layout with meaningful routes", () => {
   for(const seed of [0,1,7,7351,0xffffffff,123456789,987654321,4501,1911,88,99,111]){
     const map=generateDungeonLayout(seed);
     const visited=new Set<string>();
@@ -42,11 +42,11 @@ test("many map seeds have a fully connected labyrinth with rooms, corridors and 
       const [x,z]=key.split(":").map(Number);
       return dungeonNeighbors(map,{x,z}).length===1;
     });
-    assert(deadEnds.length>=3,"Expect some genuine dead ends: "+seed);
-    assert(map.features.length>=12,"Expected traps, loot and monsters");
-    assert(map.features.filter(f=>f.kind==="monster").length>=4);
-    assert(map.features.filter(f=>f.kind==="treasure").length>=4);
-    assert(map.features.filter(f=>f.kind==="trap").length>=4);
+    assert(deadEnds.length<=1,"Only the portal approach may be a dead end: "+seed);
+    assert(map.features.length===16,"Expected traps, loot and monsters");
+    assert(map.features.filter(f=>f.kind==="monster").length===8);
+    assert(map.features.filter(f=>f.kind==="treasure").length===4);
+    assert(map.features.filter(f=>f.kind==="trap").length===4);
     const features=new Set<string>();
     for(const feature of map.features){
       assert.equal(visited.has(feature.x+":"+feature.z),true);
@@ -76,4 +76,45 @@ test("generated dimensions, seeds and floor identifiers have strict bounds", () 
   const tiny=generateDungeonLayout(1,7,15,15);
   assert.equal(tiny.width,15);
   assert(tiny.rooms.length>=1);
+});
+
+test("rectangular maps stay bounded, reserve both stairs and connect every room",()=>{
+  for(const [width,height] of [[15,15],[15,61],[61,15],[19,31],[31,19],[31,31],[61,61]]){
+    for(const seed of [0,42,7351,9321,0xffffffff]){
+      const map=generateDungeonLayout(seed,3,width,height);
+      const down=dungeonDownStair(map);
+      assert.notDeepEqual(down,map.entrance);
+      for(const f of map.features){
+        assert.notDeepEqual({x:f.x,z:f.z},down);
+        assert.notDeepEqual({x:f.x,z:f.z},map.entrance);
+      }
+      for(let z=0;z<height;z++)for(let x=0;x<width;x++){
+        if(x===0||z===0||x===width-1||z===height-1)
+          assert.equal(tileAt(map,x,z),"wall");
+      }
+      for(const room of map.rooms){
+        assert(dungeonShortestPath(map,map.entrance,room).length>1);
+        for(let z=room.z-(room.height-1)/2;z<=room.z+(room.height-1)/2;z++)
+          for(let x=room.x-(room.width-1)/2;x<=room.x+(room.width-1)/2;x++)
+            assert.equal(tileAt(map,x,z),"room");
+      }
+      assert.equal(map.tiles.length,width*height);
+      assert.equal(map.features.length,16);
+    }
+  }
+});
+
+test("rooms remain connected when any one corridor tile is blocked",()=>{
+  for(const seed of [42,7351,9321,2026])for(const floor of [1,5,9]){
+    const map=generateExpeditionLayout(seed,floor);
+    for(let i=0;i<map.tiles.length;i++){
+      if(map.tiles[i]!=="corridor")continue;
+      const tiles=[...map.tiles];tiles[i]="wall";
+      const changed={...map,tiles};
+      for(const room of map.rooms.slice(1)){
+        assert(dungeonShortestPath(changed,map.rooms[0],room).length>0,
+          "Single blocked corridor must not isolate a chamber: "+seed+"/"+floor+"/"+i);
+      }
+    }
+  }
 });
