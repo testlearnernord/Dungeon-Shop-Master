@@ -21,7 +21,8 @@ import {createDungeonFeaturePalette,createReadableDungeonChest,
   createReadableDungeonTrap} from "./dungeonFeatureProps.ts";
 import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
-import {createGhoulCryptRoom} from "./ghoulCryptArt.ts";
+import {createDungeonRoomArt} from "./ghoulCryptArt.ts";
+import {dungeonRoomArtPlan} from "./dungeonRoomArtPlan.ts";
 import {createHeroVisual,setHeroVisualEquipment,
   type HeroVisual} from "./heroVisual.ts";
 import {GhoulMapInstances,type GhoulMapSite}
@@ -453,15 +454,14 @@ void main(void){
     // Only now is the include-list populated: enable the scoped light.
     this.tabletopLight.setEnabled(true);
 
-    // Actual LIVE Dungeon burial crypt props. Each room gets the same
-    // relics and tomb geometry, not the former flat marker. Their full
-    // floor-scale lights would illuminate the entire shop: dispose those.
-    for(const [index,room] of layout.rooms.entries()){
+    // Same room-art plan and meshes as the full viewer. Dispose the full
+    // scale lights, which must not spill out into the physical shop.
+    for(const plan of dungeonRoomArtPlan(layout)){
       const materialStart=this.scene.materials.length;
-      const crypt=createGhoulCryptRoom(this.scene,room,this.worldPoint(room),index);
-      crypt.light.dispose();
-      crypt.mesh.parent=this.miniatureWorldRoot;
-      crypt.mesh.name="cellar-table-diorama-crypt-"+index;
+      const art=createDungeonRoomArt(this.scene,plan,this.worldPoint(plan.room));
+      art.light.dispose();
+      art.mesh.parent=this.miniatureWorldRoot;
+      art.mesh.name="cellar-table-diorama-room-art-"+plan.room.id;
       this.floorArtMaterials.push(...this.scene.materials.slice(materialStart)
         .filter((mat):mat is StandardMaterial=>mat instanceof StandardMaterial));
       // Small ambient support for the same materials in the dark cellar.
