@@ -354,6 +354,8 @@ function run(mode){
         deepestFloor:telemetry.deepestFloor()
       }));
   }
+  const reportPhase=phase=>console.log("AUDIT_REPORT_PHASE "+JSON.stringify({mode,phase}));
+  reportPhase("final-snapshot");
   const final=snap(store.state,DAYS);
   metrics.final=final;
   metrics.activitySamples.offDutyShare=metrics.activitySamples.offDuty/Math.max(1,metrics.activitySamples.living);
@@ -383,9 +385,12 @@ function run(mode){
       deepestLiving:Math.max(0,...living.map(h=>typeof h.floor==="number"?h.floor:h.lastDungeonFloor??0))}];
   }));
   delete metrics.startingIds;
+  reportPhase("progression");
   metrics.progression=telemetry.report();
+  reportPhase("combat-exposure");
   const {byContext,bySoloRisk,...exposureSummary}=combatExposure.report();
   metrics.combatExposure={...exposureSummary,byContext,bySoloRisk};
+  reportPhase("boss-exposure");
   metrics.bossExposure=bossExposure.report();
   metrics.newHeroes=sum(store.state.events,e=>e.type==="influx"?1:0);
   // Request expiries are committed asynchronously by the LIVE clock, not
@@ -414,6 +419,7 @@ function run(mode){
       weapon:h.equipment.weapon,armor:h.equipment.armor,status:h.status,
       floor:h.floor
     }));
+  reportPhase("conservation");
   // Conservation checks are independent of the report and use genuine
   // final store state. Starting reserve is zero. No external material source.
   for(const id of ["iron-ore","coal","ghoul-leather"]){
@@ -430,19 +436,34 @@ function run(mode){
   delete metrics.nextRequestId;
   // Daily per-hero telemetry is intentionally retained in the JSON artifact,
   // not dumped as a huge single line into GitHub's job log.
-  const {daily,lifetimeHeroes,dungeonGeometry,...progressionSummary}=metrics.progression;
-  // Detailed context strata stay in the artifact to bound the job-log line.
-  console.log("AUDIT_REPORT "+JSON.stringify({...metrics,progression:progressionSummary,combatExposure:exposureSummary}));
+  reportPhase("ready");
   return metrics;
+}
+function logReport(metrics){
+  const {daily,lifetimeHeroes,dungeonGeometry,...progressionSummary}=metrics.progression;
+  const {byContext,bySoloRisk,...exposureSummary}=metrics.combatExposure;
+  // Keep the full diagnostics in the saved artifact; bound the log even
+  // when a long-lived campaign generates many death and boss records.
+  const {deathRecords,topSurvivors,milestones,...summary}=metrics;
+  const {attempts,...bossSummary}=metrics.bossExposure;
+  console.log("AUDIT_REPORT "+JSON.stringify({...summary,progression:progressionSummary,
+    combatExposure:exposureSummary,bossExposure:bossSummary}));
 }
 const reports=[],failures=[];
 console.log("AUDIT_START "+JSON.stringify({DAYS,SEED,MODES,commit:process.env.GITHUB_SHA??"local"}));
 for(const mode of MODES){
-  try{reports.push(run(mode));}
+  try{
+    const report=run(mode);
+    reports.push(report);
+    console.log("AUDIT_REPORT_PHASE "+JSON.stringify({mode,phase:"persist"}));
+    writeFileSync("gameplay-100day-audit.json",JSON.stringify({reports,failures},null,2));
+    logReport(report);
+  }
   catch(error){
     const failure={mode,message:String(error),stack:error?.stack??""};
     failures.push(failure);
     console.error("AUDIT_FAILURE "+JSON.stringify(failure));
+    writeFileSync("gameplay-100day-audit.json",JSON.stringify({reports,failures},null,2));
   }
 }
 writeFileSync("gameplay-100day-audit.json",JSON.stringify({reports,failures},null,2));
