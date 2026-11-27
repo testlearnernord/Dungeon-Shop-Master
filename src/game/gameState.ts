@@ -25,6 +25,7 @@ import {createEmployees,type EmployeeState} from "./employees.ts";
 
 export type { AdventurerState } from "./adventurers.ts";
 import type {SurveyorPlan} from "./dungeonDiscovery.ts";
+import type {FallenHero} from "./fallenHeroes.ts";
 export const SIMULATION_VERSION = 51;
 
 export interface ShopEconomyState {
@@ -113,6 +114,7 @@ export interface GameState {
   readonly buybackChestOpen:boolean;
   /** One campaign-unique recovered discovery, not bulk material stock. */
   readonly surveyorPlan:SurveyorPlan|null;
+  readonly fallenHeroes:readonly FallenHero[];
   /** Fishing score only; fish goods will use the normal economy when added. */
   readonly cellarFishCaught: number;
   readonly shopCarts: readonly ShopCart[];
@@ -168,6 +170,7 @@ export function createGameState(seed = DEFAULT_SEED, config: Partial<PopulationC
     cellarDoorOpen: false,
     buybackChestOpen:true,
     surveyorPlan:null,
+    fallenHeroes:[],
     cellarFishCaught: 0,
     shopCarts: [],
     shopDebts: [],
