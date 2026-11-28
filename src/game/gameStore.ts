@@ -3,7 +3,7 @@ import {isValidCellarRoom} from "./cellarRoom.ts";
 import {isCellarPondUncovered,pondExcavationRemaining} from "./cellarPond.ts";
 import { advanceDay, createGameState, type GameState } from "./gameState.ts";
 import { buyWholesale, discardBag, transferShelf, assignShelfItem, type ItemId } from "./economy.ts";
-import {buybackAtChest} from "./dungeonBuyback.ts";
+import {buybackAtChest,acceptUsedGearAtChest} from "./dungeonBuyback.ts";
 import {craftAtCellarForge,type ForgeOutput} from "./cellarForge.ts";
 import type {FurnitureDraft} from "./furnitureBlueprint.ts";
 import {resolveFurniturePlacement} from "./furniturePlacement.ts";
@@ -129,6 +129,11 @@ export class GameStore {
     const open=!this.current.buybackChestOpen;
     this.replace({...this.current,buybackChestOpen:open});
     return open?"Recovered Goods: accepting materials.":"Recovered Goods: closed.";
+  }
+  acceptUsedGearAtChest(heroId:string,itemId:ItemId,position:{x:number;z:number}):boolean{
+    const next=acceptUsedGearAtChest(this.current,heroId,itemId,position);
+    if(next===this.current)return false;
+    this.replace(next);return true;
   }
   buybackAtChest(heroId:string,position:{x:number;z:number}):boolean{
     const next=buybackAtChest(this.current,heroId,position);
