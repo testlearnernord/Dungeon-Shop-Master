@@ -1,7 +1,8 @@
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonPartyTick,SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import type {SurveyorPlan} from "./dungeonDiscovery.ts";
-import {MATERIAL_ITEMS} from "./economy.ts";
+import {MATERIAL_ITEMS,ECONOMY} from "./economy.ts";
+import {GEAR_BY_ITEM,needsGearUpgrade} from "./gearCatalog.ts";
 
 export interface FallenHero {
   readonly heroId:string;
@@ -30,8 +31,8 @@ export function recordFallenHeroes(
 
 /** The dead roster remains the sole owner of unclaimed possessions.
  * Recover only from the actual occupied tile, never copy or roll new loot.
- * First slice transfers gold, forge materials and the unique discovery.
- * Equipment and supplies remain with the body for future recovery rules. */
+ * Supplies refill existing targets; compatible upgrades exchange equipment.
+ * Replaced gear stays on the remains for another adventurer. */
 export function recoverFallenAt(
   fallen:readonly FallenHero[],roster:ReadonlyMap<string,AdventurerState>,
   hero:AdventurerState,point:{x:number;z:number},plan:SurveyorPlan|null,
@@ -58,9 +59,21 @@ export function recoverFallenAt(
     }
     if(plan?.status==="carried"&&plan.heroId===dead.id)
       plan={...plan,heroId:hero.id};
-    if(!changed)continue;
-    hero={...hero,gold:hero.gold+gold,inventory:{...hero.inventory,finds}};
-    deceased.push({...dead,gold:dead.gold-gold,inventory:{...dead.inventory,finds:remaining}});
+    const bread=Math.min(dead.inventory.bread,Math.max(0,ECONOMY.breadTarget-hero.inventory.bread));
+    const healing=Math.min(dead.inventory.healing,Math.max(0,ECONOMY.healingTarget-hero.inventory.healing));
+    const equipment={...hero.equipment},leftEquipment={...dead.equipment};
+    for(const slot of ["weapon","armor"] as const){
+      const entry=Object.entries(GEAR_BY_ITEM).find(([,gear])=>gear.name===dead.equipment[slot]&&gear.slot===slot);
+      if(!entry||!needsGearUpgrade(hero.role,equipment,entry[0]))continue;
+      leftEquipment[slot]=equipment[slot];
+      equipment[slot]=entry[1].name;
+      changed=true;
+    }
+    if(!changed&&!bread&&!healing)continue;
+    hero={...hero,gold:hero.gold+gold,equipment,inventory:{...hero.inventory,finds,
+      bread:hero.inventory.bread+bread,healing:hero.inventory.healing+healing}};
+    deceased.push({...dead,gold:dead.gold-gold,equipment:leftEquipment,inventory:{...dead.inventory,finds:remaining,
+      bread:dead.inventory.bread-bread,healing:dead.inventory.healing-healing}});
   }
   return {hero,plan,deceased};
 }
