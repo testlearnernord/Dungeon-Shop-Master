@@ -88,7 +88,8 @@ export function usedGearPrice(id:ItemId):number{
   if(!item||(item.kind!=="weapon"&&item.kind!=="armor"))throw new RangeError("Not equipment.");
   return Math.max(1,Math.floor(item.salePrice/2));
 }
-export function availableUsedGear(state:GameState,heroId:string){
+export interface UsedGearOffer {readonly heroId:string;readonly itemId:ItemId;readonly count:number;readonly price:number}
+export function availableUsedGear(state:GameState,heroId:string):readonly UsedGearOffer[]{
   const hero=state.adventurers.find(h=>h.id===heroId);
   if(!hero||hero.status!=="at-shop"||hero.floor!=="shop"||hero.health<=0)return [];
   return ITEMS.filter(i=>i.kind==="weapon"||i.kind==="armor").flatMap(item=>{
@@ -96,9 +97,17 @@ export function availableUsedGear(state:GameState,heroId:string){
     return count>0?[{heroId,itemId:item.id,count,price:usedGearPrice(item.id)}]:[];
   });
 }
+/** A separate intent: material receipts must not prevent a manual gear offer. */
+export function wantsUsedGearVisit(state:GameState,heroId:string):boolean{
+  return state.buybackChestOpen&&!state.shopCarts.some(c=>c.heroId===heroId)&&
+    !state.shopRequests.some(r=>r.heroId===heroId)&&
+    !currentShopVisitEvents(state.events,state.day,heroId).some(e=>
+      e.type==="sale"||e.type==="shop-credit"||e.type==="shop-walkout")&&
+    availableUsedGear(state,heroId).length>0;
+}
 /** Explicit acceptance at the physical dock, one item per transaction. */
 export function acceptUsedGearAtChest(state:GameState,heroId:string,itemId:ItemId,position:{x:number;z:number}):GameState{
-  if(!state.buybackChestOpen||!Number.isFinite(position.x)||!Number.isFinite(position.z)||
+  if(!wantsUsedGearVisit(state,heroId)||!Number.isFinite(position.x)||!Number.isFinite(position.z)||
     Math.hypot(position.x-BUYBACK_DOCK.x,position.z-BUYBACK_DOCK.z)>.3)return state;
   const offer=availableUsedGear(state,heroId).find(o=>o.itemId===itemId);
   const hero=state.adventurers.find(h=>h.id===heroId);

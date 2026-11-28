@@ -3,7 +3,7 @@ import test from "node:test";
 import {createGameState,advanceDay,type GameState} from "../../src/game/gameState.ts";
 import {summarizeLedger} from "../../src/merchantLedger.ts";
 import {ITEMS,ECONOMY,type ItemId} from "../../src/game/economy.ts";
-import {buybackAtChest,availableChestMaterials,dungeonBuybackPrice,wantsChestBuyback,availableUsedGear,acceptUsedGearAtChest}
+import {buybackAtChest,availableChestMaterials,dungeonBuybackPrice,wantsChestBuyback,availableUsedGear,acceptUsedGearAtChest,wantsUsedGearVisit}
   from "../../src/game/dungeonBuyback.ts";
 import {BUYBACK_DOCK} from "../../src/game/buybackChestPlacement.ts";
 import {serializeSave,parseSave} from "../../src/game/campaignSave.ts";
@@ -231,14 +231,18 @@ test("used equipment requires explicit dock acceptance and transfers actual stoc
   const state:GameState={...base,adventurers:base.adventurers.map(h=>h.id===id?
     {...h,inventory:{...h.inventory,finds:{"iron-sword":1}}}:h)};
   assert.equal(availableUsedGear(state,id)[0].price,4);
+  assert.equal(wantsUsedGearVisit(state,id),true);
+  assert.equal(wantsChestBuyback(state,id),false);
   assert.strictEqual(buybackAtChest(state,id,BUYBACK_DOCK),state);
   assert.strictEqual(acceptUsedGearAtChest(state,id,"iron-sword",{x:999,z:999}),state);
-  assert.strictEqual(acceptUsedGearAtChest({...state,buybackChestOpen:false},id,"iron-sword",BUYBACK_DOCK).buybackChestOpen,false);
+  const closed={...state,buybackChestOpen:false};
+  assert.strictEqual(acceptUsedGearAtChest(closed,id,"iron-sword",BUYBACK_DOCK),closed);
   const after=acceptUsedGearAtChest(state,id,"iron-sword",BUYBACK_DOCK);
   assert.equal(after.shopEconomy.balance,state.shopEconomy.balance-4);
   assert.equal(after.shopEconomy.bag["iron-sword"],state.shopEconomy.bag["iron-sword"]+1);
   assert.equal(after.adventurers[0].gold,state.adventurers[0].gold+4);
   assert.equal(after.adventurers[0].inventory.finds?.["iron-sword"],undefined);
   assert.strictEqual(acceptUsedGearAtChest(after,id,"iron-sword",BUYBACK_DOCK),after);
+  assert.equal(wantsUsedGearVisit(after,id),false);
   assert.deepEqual(parseSave(serializeSave(after)),after);
 });

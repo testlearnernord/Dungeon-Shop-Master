@@ -1,6 +1,6 @@
 import {DUNGEON_STEP_INTERVAL_TICKS} from "./game/dungeonPacing.ts";
 import {createBuybackChest} from "./game/buybackChestVisual.ts";
-import {wantsChestBuyback} from "./game/dungeonBuyback.ts";
+import {wantsChestBuyback,wantsUsedGearVisit,availableUsedGear} from "./game/dungeonBuyback.ts";
 import { createMerchantActions } from "./game/merchantActions.ts";
 import { createShopRoomVisuals } from "./game/shopRoomVisuals.ts";
 import { createCashierSfx } from "./cashierSfx.ts";
@@ -355,8 +355,10 @@ const refreshShoppingIntents = () => {
     expiredWithoutStock:heroId=>store.state.events.some(event=>
       event.day===store.state.day&&event.type==="shop-walkout"&&
       event.adventurerId===heroId&&event.shopReason==="unavailable"),
-  },{heroes:new Set(state.adventurers.filter(h=>wantsChestBuyback(state,h.id)).map(h=>h.id)),
-    sell:(heroId,position)=>store.buybackAtChest(heroId,position)});
+  },{heroes:new Set(state.adventurers.filter(h=>wantsChestBuyback(state,h.id)||wantsUsedGearVisit(state,h.id)).map(h=>h.id)),
+    sell:(heroId,position)=>store.buybackAtChest(heroId,position),
+    offer:heroId=>wantsUsedGearVisit(store.state,heroId)?availableUsedGear(store.state,heroId)[0]:undefined,
+    accept:(heroId,itemId,position)=>store.acceptUsedGearAtChest(heroId,itemId,position)});
 };
 store.subscribe(refreshShoppingIntents);
 refreshShoppingIntents();
@@ -584,6 +586,17 @@ canvas.addEventListener("pointerdown",event=>{
 // In pointer-locked FPS, F inspects an actual hero at the reticle.
 // Otherwise the existing F urgent-restock shortcut still runs unmodified.
 window.addEventListener("keydown",event=>{
+  const key=event.key.toLowerCase();
+  if((key==="y"||key==="n")&&!event.repeat&&!event.defaultPrevented&&
+    !event.ctrlKey&&!event.altKey&&!event.metaKey&&canInspectShopHero()&&
+    !(event.target instanceof HTMLElement&&event.target.closest("input,textarea,select,button,[contenteditable]"))){
+    const id=centeredShopHeroId();
+    if(id&&npcVisuals.resolveUsedGearOffer(id,key==="y")){
+      event.preventDefault();event.stopImmediatePropagation();
+      syncTrafficCheckpoint();
+      return;
+    }
+  }
   if(event.code!=="KeyF"||event.repeat||event.defaultPrevented||
      event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||
      !canInspectShopHero()||
