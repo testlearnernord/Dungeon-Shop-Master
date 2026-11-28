@@ -98,3 +98,29 @@ test("scheduled LIVE movement recovers a genuine fallen hero and leaves the body
   assert.deepEqual(selectLiveFloorSpectatorFrame(store.state,1)?.fallen,fallen);
   assert.deepEqual(parseSave(serializeSave(store.state)),store.state);
 });
+
+test("fallen equipment and supplies conserve ownership across repeat visits and class restrictions",()=>{
+  const {state,trap,dead,fallen}=fixture();
+  const donor={...dead,role:"tank" as const,equipment:{weapon:"Forged Sword & Shield",armor:"Ghoul Leather Vest"},
+    inventory:{...dead.inventory,bread:4,healing:2}};
+  const tank={...state.adventurers[1],role:"tank" as const,status:"exploring" as const,floor:1 as const,
+    equipment:{weapon:"Iron Sword",armor:"Leather Vest"},inventory:{bread:1,healing:0}};
+  const roster=new Map([[donor.id,donor]]);
+  const first=recoverFallenAt(fallen,roster,tank,trap,null);
+  assert.deepEqual(first.hero.equipment,donor.equipment);
+  assert.deepEqual(first.deceased[0].equipment,tank.equipment);
+  assert.equal(first.hero.inventory.bread,2);
+  assert.equal(first.hero.inventory.healing,1);
+  assert.equal(first.deceased[0].inventory.bread,3);
+  assert.equal(first.deceased[0].inventory.healing,1);
+  roster.set(donor.id,first.deceased[0]);
+  const again=recoverFallenAt(fallen,roster,first.hero,trap,null);
+  assert.strictEqual(again.hero,first.hero);
+  assert.equal(again.deceased.length,0);
+  const healer={...tank,role:"healer" as const,equipment:{weapon:"Staff",armor:null}};
+  const next=recoverFallenAt(fallen,roster,healer,trap,null);
+  assert.equal(next.hero.equipment.weapon,"Staff");
+  assert.equal(next.hero.equipment.armor,"Leather Vest");
+  assert.equal(next.deceased[0].equipment.weapon,"Iron Sword");
+  assert.equal(next.deceased[0].equipment.armor,null);
+});
