@@ -834,6 +834,14 @@ export class DungeonReplayScene {
       model.root.rotation.y=heading;
       this.animateHero(model,position.walking?"move":"recover",
         transit?.gait??0);
+      if(hero.activity==="looting"&&!position.walking){
+        const phase=(hero.lootProgress??0)*Math.PI*8;
+        model.root.position.y=.1-.17;
+        model.legs[0].rotation.x=-.8;model.legs[1].rotation.x=.6;
+        model.arms[0].rotation.x=-.7+Math.sin(phase)*.22;
+        model.arms[1].rotation.x=-.7-Math.sin(phase)*.22;
+        model.root.metadata.combatPhase="looting";
+      }
       if(transit&&transit.seconds>=LIVE_PARTY_STEP_SECONDS)
         this.floorTravel.delete(hero.id);
     }
@@ -863,7 +871,7 @@ export class DungeonReplayScene {
   }
 
   advanceLiveFloorPresentation(dt:number):void {
-    if(this.floorTravel.size)this.poseLiveFloor(dt);
+    if(this.floorTravel.size||this.floorFrame?.heroes.some(h=>h.activity==="looting"))this.poseLiveFloor(dt);
     if(this.floorMonsterTravel.size)this.poseLiveMonsters(dt);
     this.ghoulMap?.tick(performance.now()/1000);
   }

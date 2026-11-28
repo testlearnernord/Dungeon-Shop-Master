@@ -3,7 +3,7 @@ import test from "node:test";
 import {createGameState,advanceDay,type GameState} from "../../src/game/gameState.ts";
 import {summarizeLedger} from "../../src/merchantLedger.ts";
 import {ITEMS,ECONOMY,type ItemId} from "../../src/game/economy.ts";
-import {buybackAtChest,availableChestMaterials,dungeonBuybackPrice,wantsChestBuyback}
+import {buybackAtChest,availableChestMaterials,dungeonBuybackPrice,wantsChestBuyback,availableUsedGear,acceptUsedGearAtChest}
   from "../../src/game/dungeonBuyback.ts";
 import {BUYBACK_DOCK} from "../../src/game/buybackChestPlacement.ts";
 import {serializeSave,parseSave} from "../../src/game/campaignSave.ts";
@@ -224,4 +224,21 @@ test("real guardroom and crypt treasure uses the same once-only physical settlem
     assert.equal(again.ticks[0].gainedLoot,0);
     assert.deepEqual(again.ticks[0].adventurer.inventory.finds,after.inventory.finds);
   }
+});
+
+test("used equipment requires explicit dock acceptance and transfers actual stock and gold",()=>{
+  const base=stockedHero(),id=base.adventurers[0].id;
+  const state:GameState={...base,adventurers:base.adventurers.map(h=>h.id===id?
+    {...h,inventory:{...h.inventory,finds:{"iron-sword":1}}}:h)};
+  assert.equal(availableUsedGear(state,id)[0].price,4);
+  assert.strictEqual(buybackAtChest(state,id,BUYBACK_DOCK),state);
+  assert.strictEqual(acceptUsedGearAtChest(state,id,"iron-sword",{x:999,z:999}),state);
+  assert.strictEqual(acceptUsedGearAtChest({...state,buybackChestOpen:false},id,"iron-sword",BUYBACK_DOCK).buybackChestOpen,false);
+  const after=acceptUsedGearAtChest(state,id,"iron-sword",BUYBACK_DOCK);
+  assert.equal(after.shopEconomy.balance,state.shopEconomy.balance-4);
+  assert.equal(after.shopEconomy.bag["iron-sword"],state.shopEconomy.bag["iron-sword"]+1);
+  assert.equal(after.adventurers[0].gold,state.adventurers[0].gold+4);
+  assert.equal(after.adventurers[0].inventory.finds?.["iron-sword"],undefined);
+  assert.strictEqual(acceptUsedGearAtChest(after,id,"iron-sword",BUYBACK_DOCK),after);
+  assert.deepEqual(parseSave(serializeSave(after)),after);
 });

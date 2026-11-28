@@ -1,3 +1,4 @@
+import {gearForItem} from "./gearCatalog.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS} from "./dungeonPacing.ts";
 export {DUNGEON_STEP_INTERVAL_TICKS} from "./dungeonPacing.ts";
 import {manuallyPaidVisitors} from "./npcVisitors.ts";
@@ -11,7 +12,7 @@ import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonSiteGeneration} from "./dungeonRegeneration.ts";
 import {claimSurveyorPlan} from "./dungeonDiscovery.ts";
-import {recordFallenHeroes,recoverFallenAt} from "./fallenHeroes.ts";
+import {recordFallenHeroes,recoverFallenAt,REMAINS_LOOT_TICKS} from "./fallenHeroes.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,carriedDungeonFindCount,
   salvageReturnThreshold,isBossExpeditionCandidate,isBossExpeditionParty,
   needsHealthResupply,unresolvedRecoveryPlan,canRiskOrdinaryDescent,
@@ -320,6 +321,20 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
   let rngState=state.rngState;
   const activities:WorldEvent[]=[];
   const arrivalsByHero=new Map<string,SpatialDungeonReplay>();
+  // Existing searches own this movement tick, including the completion tick.
+  // Reserve before grouping so neither stairs nor a companion can drag them away.
+  fallenHeroes=fallenHeroes.map(body=>{
+    if(!body.search)return body;
+    const searcher=byId.get(body.search.heroId);
+    const at=dungeonWorldAt(dungeonWorlds,body.floor).heroes.find(h=>h.heroId===body.search!.heroId);
+    if(searcher&&eligible(searcher)&&searcher.floor===body.floor&&
+      at?.x===body.x&&at.z===body.z&&!processed.has(searcher.id)){
+      processed.add(searcher.id);
+      return body;
+    }
+    const {search:_cancelled,...rest}=body;
+    return rest;
+  });
   // Recover on the existing movement clock, never on a render timer or
   // a second daily simulation. A hero arrives at the real remembered
   // entrance and may first walk on the following ordinary movement tick.
@@ -641,19 +656,23 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     // must not regenerate another copy while those remains are reachable.
     if(!surveyorPlan||!fallenHeroes.some(f=>f.heroId===surveyorPlan?.heroId))
       surveyorPlan=claimSurveyorPlan(surveyorPlan,state.seed,day,result,[...byId.values()]);
-    // Opportunistic recovery on actual movement only, never during a
-    // reserved encounter, a fatal trap or a tactical threat response.
-    if(!result.pendingCombat&&!threat&&!remembered&&
+    // Begin one exclusive search only at a real occupied death tile.
+    // Preview the pure transfer to avoid searching empty/unusable remains.
+    if(!result.pendingCombat&&!threat&&!remembered&&!homeward&&
        result.ticks.every(t=>t.adventurer.health>0)){
-      result={...result,ticks:result.ticks.map(t=>{
+      for(const t of result.ticks){
         const position=result.world.heroes.find(p=>p.heroId===t.adventurer.id);
-        if(!position||!t.replay.steps.some(s=>s.action==="walk"))return t;
-        if(result.world.monsters?.some(m=>Math.abs(m.x-position.x)+Math.abs(m.z-position.z)<=1))return t;
-        const recovered=recoverFallenAt(fallenHeroes,byId,t.adventurer,position,surveyorPlan);
-        surveyorPlan=recovered.plan;
-        recovered.deceased.forEach(h=>byId.set(h.id,h));
-        return recovered.hero===t.adventurer?t:{...t,adventurer:recovered.hero};
-      })};
+        if(!position||!t.replay.steps.some(s=>s.action==="walk")||
+          position.x===layout.entrance.x&&position.z===layout.entrance.z)continue;
+        if(result.world.monsters?.some(m=>Math.abs(m.x-position.x)+Math.abs(m.z-position.z)<=1))continue;
+        const body=fallenHeroes.find(b=>{
+          if(b.search||b.floor!==floor||b.x!==position.x||b.z!==position.z)return false;
+          const preview=recoverFallenAt([b],byId,t.adventurer,position,surveyorPlan);
+          return preview.hero!==t.adventurer||preview.plan!==surveyorPlan;
+        });
+        if(body)fallenHeroes=fallenHeroes.map(b=>b===body?
+          {...b,search:{heroId:t.adventurer.id,startedTick:tick}}:b);
+      }
     }
     const newFinder=surveyorPlan!==previousDiscovery?surveyorPlan?.heroId:undefined;
     const independent=new Map<string,HeroDungeonDecision>();
@@ -772,7 +791,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
       }
     }
   }
-  const finalRoster=state.adventurers.map(hero=>byId.get(hero.id)!);
+  let finalRoster=state.adventurers.map(hero=>byId.get(hero.id)!);
   // Advance every ordinary floor from the SAME scheduled world event.
   // Offscreen packs never wait for the spectator or Galvik's Table.
   for(let floor=1;floor<=9;floor++){
@@ -876,6 +895,38 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     }
     dungeonWorlds=setDungeonWorld(dungeonWorlds,ordinary,committed);
   }
+  // Resolve only after monster contact arbitration: an attack interrupts
+  // the search before a single item or coin can change owner.
+  const fightingNow=new Set(combats.flatMap(c=>c.heroIds));
+  fallenHeroes=fallenHeroes.map(body=>{
+    const search=body.search;
+    if(!search)return body;
+    const hero=byId.get(search.heroId);
+    const world=dungeonWorldAt(dungeonWorlds,body.floor);
+    const at=world.heroes.find(h=>h.heroId===search.heroId);
+    const {search:_finished,...rest}=body;
+    if(!hero||!eligible(hero)||hero.floor!==body.floor||!at||
+      at.x!==body.x||at.z!==body.z||fightingNow.has(hero.id))return rest;
+    if(tick-search.startedTick<REMAINS_LOOT_TICKS)return body;
+    const previousPlan=surveyorPlan;
+    const recovered=recoverFallenAt([body],byId,hero,at,surveyorPlan);
+    surveyorPlan=recovered.plan;
+    recovered.deceased.forEach(h=>byId.set(h.id,h));
+    byId.set(hero.id,recovered.hero);
+    // A genuinely recovered discovery or newly acquired resale gear can
+    // justify a physical return, never an instant shop transaction.
+    const gearFinds=(h:AdventurerState)=>Object.entries(h.inventory.finds??{})
+      .filter(([id])=>gearForItem(id)!==null).reduce((sum,[,n])=>sum+(n??0),0);
+    if((previousPlan!==surveyorPlan||gearFinds(recovered.hero)>gearFinds(hero))&&
+      !returns.some(j=>j.heroId===hero.id)){
+      recordLivePlan(plans,recovered.hero,{goal:"resupply",action:"shop"},tick);
+      returns.push({heroId:hero.id,fromFloor:body.floor,startedTick:tick,phase:"backtrack"});
+      const count=stepCounts.get(hero.id);
+      if(count)stepCounts.set(hero.id,{...count,finished:false});
+    }
+    return rest;
+  });
+  finalRoster=state.adventurers.map(hero=>byId.get(hero.id)!);
   const party=settleLivePartyRelationships(state.dungeonParties??[],
     sharedGroups,finalRoster,floor=>dungeonWorldAt(dungeonWorlds,floor),plans,state.seed,day,tick);
   const next:GameState={

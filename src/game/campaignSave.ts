@@ -8,7 +8,7 @@ import {isValidCellarRoom,cellarChestProblem,cellarTableProblem,
   type CellarChestPlacement,type CellarTablePlacement} from "./cellarRoom.ts";
 import {dungeonBuybackPrice,usedGearPrice} from "./dungeonBuyback.ts";
 import {surveyorPlanSource,SURVEYOR_PLAN_PRICE} from "./dungeonDiscovery.ts";
-import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,MATERIAL_ITEMS,reservedBagUnits } from "./economy.ts";
+import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,reservedBagUnits } from "./economy.ts";
 import {WEAPON_NAMES,ARMOR_NAMES} from "./gearCatalog.ts";
 import {
   SIMULATION_VERSION, type GameState,
@@ -1182,10 +1182,11 @@ function validateState(value: unknown): asserts value is GameState {
     const seen=new Set<string|number>();
     const roster=state.adventurers as GameState["adventurers"];
     const fallen=array(state.fallenHeroes,"payload.fallenHeroes");
+    const searchers=new Set<string|number>();
     if(fallen.length>roster.length)fail("payload.fallenHeroes","exceeds roster size");
     fallen.forEach((value,i)=>{
       const p="payload.fallenHeroes["+i+"]";
-      const body=object(value,p,["heroId","floor","x","z","day"]);
+      const body=object(value,p,["heroId","floor","x","z","day"],["search"]);
       const id=text(body.heroId,p+".heroId");
       unique(id,seen,p+".heroId");
       const hero=roster.find(h=>h.id===id);
@@ -1197,6 +1198,20 @@ function validateState(value: unknown): asserts value is GameState {
       const z=integer(body.z,p+".z",0,map.height-1);
       if(tileAt(map,x,z)==="wall")fail(p,"must occupy a walkable death tile");
       integer(body.day,p+".day",1,day);
+      if(body.search!==undefined){
+        const search=object(body.search,p+".search",["heroId","startedTick"]);
+        const searcherId=text(search.heroId,p+".search.heroId");
+        unique(searcherId,searchers,p+".search.heroId");
+        const searcher=roster.find(h=>h.id===searcherId);
+        if(!searcher||searcher.status!=="exploring"||searcher.health<=0||searcher.floor!==floor)
+          fail(p+".search","requires a living explorer on the same floor");
+        integer(search.startedTick,p+".search.startedTick",0,clockTick);
+        // Day closing can move the clock beyond completion; only the next
+        // actual dungeon step settles the saved action.
+        const world=(state.dungeonWorlds as GameState["dungeonWorlds"]).find(w=>w.floor===floor);
+        const at=world?.world.heroes.find(h=>h.heroId===searcherId);
+        if(!at||at.x!==x||at.z!==z)fail(p+".search","requires the actual death tile");
+      }
     });
   }
   const worlds=array(state.dungeonWorlds,"payload.dungeonWorlds");

@@ -3,6 +3,9 @@ import type {SpatialDungeonPartyTick,SpatialDungeonFloor} from "./spatialDungeon
 import type {SurveyorPlan} from "./dungeonDiscovery.ts";
 import {MATERIAL_ITEMS,ECONOMY} from "./economy.ts";
 import {GEAR_BY_ITEM,needsGearUpgrade} from "./gearCatalog.ts";
+import {DUNGEON_STEP_INTERVAL_TICKS} from "./dungeonPacing.ts";
+
+export const REMAINS_LOOT_TICKS=2*DUNGEON_STEP_INTERVAL_TICKS;
 
 export interface FallenHero {
   readonly heroId:string;
@@ -10,6 +13,8 @@ export interface FallenHero {
   readonly x:number;
   readonly z:number;
   readonly day:number;
+  /** One exclusive physical search, saved across viewing and reloads. */
+  readonly search?:{readonly heroId:string;readonly startedTick:number};
 }
 
 /** Death settlement, not a render event or a retained replay lookup.
@@ -20,7 +25,7 @@ export function recordFallenHeroes(
   let next=existing;
   for(const entry of result.ticks){
     if(entry.adventurer.status!=="dead"||entry.adventurer.health!==0||
-      existing.some(f=>f.heroId===entry.adventurer.id))continue;
+      next.some(f=>f.heroId===entry.adventurer.id))continue;
     const death=[...entry.replay.steps].reverse().find(s=>s.action==="death"&&s.hp===0);
     if(!death||entry.replay.floor>9)continue;
     next=[...next,{heroId:entry.adventurer.id,floor:entry.replay.floor,

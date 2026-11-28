@@ -1,5 +1,5 @@
 import type {GameState} from "./gameState.ts";
-import type {FallenHero} from "./fallenHeroes.ts";
+import {REMAINS_LOOT_TICKS,type FallenHero} from "./fallenHeroes.ts";
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import type {DungeonMonsterState} from "./dungeonMonsterWorld.ts";
@@ -22,7 +22,8 @@ export interface LiveFloorHero {
   readonly inventory:AdventurerState["inventory"];
   readonly goal:GameState["liveDungeon"]["plans"][number]["goal"]|null;
   readonly plannedAction:GameState["liveDungeon"]["plans"][number]["action"]|null;
-  readonly activity:"combat"|"exploring"|"backtracking"|"portal";
+  readonly activity:"combat"|"exploring"|"backtracking"|"portal"|"looting";
+  readonly lootProgress?:number;
   readonly equipment:AdventurerState["equipment"];
   readonly x:number;
   readonly z:number;
@@ -106,7 +107,8 @@ export function selectLiveFloorSpectatorFrame(
       const plan=state.liveDungeon.plans.find(p=>
         p.heroId===hero.id&&p.floor===floor);
       const returning=state.liveDungeon.returns.find(r=>r.heroId===hero.id);
-      const activity=fight?"combat":returning?.phase==="portal"?"portal":
+      const search=state.fallenHeroes.find(b=>b.search?.heroId===hero.id)?.search;
+      const activity=fight?"combat":search?"looting":returning?.phase==="portal"?"portal":
         returning?.phase==="backtrack"?"backtracking":"exploring";
       const gathered=party&&site?party.memberIds.map(id=>
         state.adventurers.find(member=>member.id===id)).filter(
@@ -137,6 +139,7 @@ export function selectLiveFloorSpectatorFrame(
         level:hero.level,stats:hero.stats,traits:hero.traits,
         inventory:hero.inventory,goal:plan?.goal??null,
         plannedAction:plan?.action??null,activity,
+        ...(search?{lootProgress:Math.min(1,Math.max(0,(state.worldClock.tick-search.startedTick)/REMAINS_LOOT_TICKS))}:{}),
         x:site?.x??fight!.x,z:site?.z??fight!.z,
         health:combatActor?.hp??hero.health,gold:hero.gold,
         visited:site?.visited??[],

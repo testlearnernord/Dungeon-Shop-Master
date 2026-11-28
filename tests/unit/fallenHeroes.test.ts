@@ -90,6 +90,15 @@ test("scheduled LIVE movement recovers a genuine fallen hero and leaves the body
   const position=store.state.dungeonWorlds.find(w=>w.floor===1)?.world.heroes.find(h=>h.heroId===survivor.id);
   assert.equal(position?.x,trap.x);
   assert.equal(position?.z,trap.z);
+  assert.equal(store.state.adventurers.find(h=>h.id===survivor.id)?.gold,survivor.gold);
+  assert.equal(selectLiveFloorSpectatorFrame(store.state,1)?.heroes.find(h=>h.id===survivor.id)?.activity,"looting");
+  const checkpoint=parseSave(serializeSave(store.state));
+  assert.deepEqual(checkpoint,store.state);
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.equal(store.state.adventurers.find(h=>h.id===survivor.id)?.gold,survivor.gold);
+  const held=store.state.dungeonWorlds.find(w=>w.floor===1)?.world.heroes.find(h=>h.heroId===survivor.id);
+  assert.equal(held?.x,trap.x);assert.equal(held?.z,trap.z);
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
   const recovered=store.state.adventurers.find(h=>h.id===survivor.id)!;
   assert.equal(recovered.gold,survivor.gold+dead.gold);
   assert.equal(recovered.inventory.finds?.["iron-ore"],3);
