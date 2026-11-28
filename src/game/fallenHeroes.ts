@@ -20,7 +20,7 @@ export function recordFallenHeroes(
   for(const entry of result.ticks){
     if(entry.adventurer.status!=="dead"||entry.adventurer.health!==0||
       existing.some(f=>f.heroId===entry.adventurer.id))continue;
-    const death=entry.replay.steps.findLast(s=>s.action==="death"&&s.hp===0);
+    const death=[...entry.replay.steps].reverse().find(s=>s.action==="death"&&s.hp===0);
     if(!death||entry.replay.floor>9)continue;
     next=[...next,{heroId:entry.adventurer.id,floor:entry.replay.floor,
       x:death.x,z:death.z,day}];
