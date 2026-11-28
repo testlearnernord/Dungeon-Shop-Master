@@ -99,7 +99,7 @@ test("scheduled LIVE movement recovers a genuine fallen hero and leaves the body
   assert.deepEqual(parseSave(serializeSave(store.state)),store.state);
 });
 
-test("fallen equipment and supplies conserve ownership across repeat visits and class restrictions",()=>{
+test("fallen equipment and supplies conserve ownership in carried finds",()=>{
   const {state,trap,dead,fallen}=fixture();
   const donor={...dead,role:"tank" as const,equipment:{weapon:"Forged Sword & Shield",armor:"Ghoul Leather Vest"},
     inventory:{...dead.inventory,bread:4,healing:2}};
@@ -108,7 +108,9 @@ test("fallen equipment and supplies conserve ownership across repeat visits and 
   const roster=new Map([[donor.id,donor]]);
   const first=recoverFallenAt(fallen,roster,tank,trap,null);
   assert.deepEqual(first.hero.equipment,donor.equipment);
-  assert.deepEqual(first.deceased[0].equipment,tank.equipment);
+  assert.deepEqual(first.deceased[0].equipment,{weapon:null,armor:null});
+  assert.equal(first.hero.inventory.finds?.["iron-sword"],1);
+  assert.equal(first.hero.inventory.finds?.["leather-vest"],1);
   assert.equal(first.hero.inventory.bread,2);
   assert.equal(first.hero.inventory.healing,1);
   assert.equal(first.deceased[0].inventory.bread,3);
@@ -118,9 +120,10 @@ test("fallen equipment and supplies conserve ownership across repeat visits and 
   assert.strictEqual(again.hero,first.hero);
   assert.equal(again.deceased.length,0);
   const healer={...tank,role:"healer" as const,equipment:{weapon:"Staff",armor:null}};
-  const next=recoverFallenAt(fallen,roster,healer,trap,null);
+  const next=recoverFallenAt(fallen,new Map([[donor.id,donor]]),healer,trap,null);
   assert.equal(next.hero.equipment.weapon,"Staff");
-  assert.equal(next.hero.equipment.armor,"Leather Vest");
-  assert.equal(next.deceased[0].equipment.weapon,"Iron Sword");
+  assert.equal(next.hero.equipment.armor,"Ghoul Leather Vest");
+  assert.equal(next.hero.inventory.finds?.["forged-sword-shield"],1);
+  assert.equal(next.deceased[0].equipment.weapon,null);
   assert.equal(next.deceased[0].equipment.armor,null);
 });
