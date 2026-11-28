@@ -251,6 +251,7 @@ export class NpcVisualSystem {
   private onBuyback:((heroId:string,point:ShopPoint)=>boolean)|null=null;
   private usedOffer:((heroId:string)=>UsedGearOffer|undefined)|null=null;
   private onUsedAccept:((heroId:string,itemId:ItemId,point:ShopPoint)=>boolean)|null=null;
+  private onUsedResolved:(()=>void)|null=null;
   private readonly usedOfferBubble=createNpcCustomerBubble();
   private usedOfferTarget:string|null=null;
   private usedOfferItem:ItemId|null=null;
@@ -623,13 +624,15 @@ export class NpcVisualSystem {
     clock?:ShopRequestClockAccess,
     buyback?:{heroes:ReadonlySet<string>;sell:(heroId:string,point:ShopPoint)=>boolean;
       offer?:(heroId:string)=>UsedGearOffer|undefined;
-      accept?:(heroId:string,itemId:ItemId,point:ShopPoint)=>boolean},
+      accept?:(heroId:string,itemId:ItemId,point:ShopPoint)=>boolean;
+      resolved?:()=>void},
   ):void {
     this.shopRequestClock=clock??null;
     this.pendingBuyback=buyback?.heroes??new Set();
     this.onBuyback=buyback?.sell??null;
     this.usedOffer=buyback?.offer??null;
     this.onUsedAccept=buyback?.accept??null;
+    this.onUsedResolved=buyback?.resolved??null;
     const hadProjection=this.layout!==null;
     const furnitureMoved=this.layout!==null&&(
       JSON.stringify(this.room)!==JSON.stringify(room)||
@@ -783,7 +786,10 @@ export class NpcVisualSystem {
       this.usedOfferTarget=null;this.usedOfferItem=null;
       // Do not immediately request the same declined item again this visit.
       this.beginBrowsing(npc,true);
+    }else{
+      this.showUsedGearOffer();
     }
+    this.onUsedResolved?.();
     return true;
   }
 

@@ -358,7 +358,8 @@ const refreshShoppingIntents = () => {
   },{heroes:new Set(state.adventurers.filter(h=>wantsChestBuyback(state,h.id)||wantsUsedGearVisit(state,h.id)).map(h=>h.id)),
     sell:(heroId,position)=>store.buybackAtChest(heroId,position),
     offer:heroId=>wantsUsedGearVisit(store.state,heroId)?availableUsedGear(store.state,heroId)[0]:undefined,
-    accept:(heroId,itemId,position)=>store.acceptUsedGearAtChest(heroId,itemId,position)});
+    accept:(heroId,itemId,position)=>store.acceptUsedGearAtChest(heroId,itemId,position),
+    resolved:()=>syncTrafficCheckpoint()});
 };
 store.subscribe(refreshShoppingIntents);
 refreshShoppingIntents();
@@ -593,7 +594,6 @@ window.addEventListener("keydown",event=>{
     const id=centeredShopHeroId();
     if(id&&npcVisuals.resolveUsedGearOffer(id,key==="y")){
       event.preventDefault();event.stopImmediatePropagation();
-      syncTrafficCheckpoint();
       return;
     }
   }
