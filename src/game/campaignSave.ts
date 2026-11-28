@@ -6,7 +6,7 @@ import {livePartyBossCheckpointProblem,partyBossReplayProblem}
   from "./livePartyBossSave.ts";
 import {isValidCellarRoom,cellarChestProblem,cellarTableProblem,
   type CellarChestPlacement,type CellarTablePlacement} from "./cellarRoom.ts";
-import {dungeonBuybackPrice} from "./dungeonBuyback.ts";
+import {dungeonBuybackPrice,usedGearPrice} from "./dungeonBuyback.ts";
 import {surveyorPlanSource,SURVEYOR_PLAN_PRICE} from "./dungeonDiscovery.ts";
 import { ECONOMY, ITEMS,createEmptyShelfSlots,SHELF_GOODS,MATERIAL_ITEMS,reservedBagUnits } from "./economy.ts";
 import {WEAPON_NAMES,ARMOR_NAMES} from "./gearCatalog.ts";
@@ -1597,11 +1597,11 @@ function validateState(value: unknown): asserts value is GameState {
     }
     if(event.type==="hero-buyback"){
       allowed.push("itemId","quantity","cost");
-      choice(event.itemId,MATERIAL_ITEMS.map(item=>item.id),path+".itemId");
+      choice(event.itemId,ITEMS.filter(item=>item.kind==="material"||item.kind==="weapon"||item.kind==="armor").map(item=>item.id),path+".itemId");
       if(integer(event.quantity,path+".quantity",1,1)!==1)
-        fail(path+".quantity","must represent one actual purchased material");
-      const item=MATERIAL_ITEMS.find(entry=>entry.id===event.itemId)!;
-      const price=dungeonBuybackPrice(item.id);
+        fail(path+".quantity","must represent one actual purchased item");
+      const item=ITEMS.find(entry=>entry.id===event.itemId)!;
+      const price=item.kind==="material"?dungeonBuybackPrice(item.id):usedGearPrice(item.id);
       if(event.cost!==price)
         fail(path+".cost","must match the real merchant buyback price");
       const prefix="day-"+eventDay+":"+event.adventurerId+
