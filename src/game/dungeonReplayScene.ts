@@ -12,7 +12,8 @@ import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { LinesMesh } from "@babylonjs/core/Meshes/linesMesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Scene } from "@babylonjs/core/scene";
-import { createHeroVisual, type HeroVisual } from "./heroVisual.ts";
+import { createHeroVisual,setHeroVisualEquipment,type HeroVisual } from "./heroVisual.ts";
+import {presentRemainsSearch} from "./heroRemainsPresentation.ts";
 import type { DungeonLayout, DungeonPoint } from "./dungeonLayout.ts";
 import { dungeonShortestPath,tileAt } from "./dungeonLayout.ts";
 import type { SpatialDungeonReplay } from "./spatialDungeonExploration.ts";
@@ -520,6 +521,7 @@ export class DungeonReplayScene {
         }
         this.floorModels.set(hero.id,model);
       }
+      setHeroVisualEquipment(model,hero.equipment);
       model.root.metadata.hp=hero.health;
       model.root.metadata.floorPartyId=hero.partyId;
       model.root.setEnabled(!hero.inCombat);
@@ -834,14 +836,8 @@ export class DungeonReplayScene {
       model.root.rotation.y=heading;
       this.animateHero(model,position.walking?"move":"recover",
         transit?.gait??0);
-      if(hero.activity==="looting"&&!position.walking){
-        const phase=(hero.lootProgress??0)*Math.PI*8;
-        model.root.position.y=.1-.17;
-        model.legs[0].rotation.x=-.8;model.legs[1].rotation.x=.6;
-        model.arms[0].rotation.x=-.7+Math.sin(phase)*.22;
-        model.arms[1].rotation.x=-.7-Math.sin(phase)*.22;
-        model.root.metadata.combatPhase="looting";
-      }
+      presentRemainsSearch(model,hero.activity==="looting"&&!position.walking?
+        hero.lootProgress??0:null);
       if(transit&&transit.seconds>=LIVE_PARTY_STEP_SECONDS)
         this.floorTravel.delete(hero.id);
     }

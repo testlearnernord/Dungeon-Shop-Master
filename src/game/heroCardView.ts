@@ -57,7 +57,7 @@ export function liveHeroCard(
     health:context.health??actor?.hp??hero.health,maxHealth:actor?.maxHp??heroProgression(hero).maxHealth,
     xp:hero.xp,gold:hero.gold,
     floor:typeof hero.floor==="number"?hero.floor:null,status:actor?"combat":hero.status,
-    activity:context.activity??actor?.phase??null,goal:context.goal??plan?.goal??null,
+    activity:context.activity??actor?.phase??(state.fallenHeroes.some(b=>b.search?.heroId===hero.id)?"Looting remains":null),goal:context.goal??plan?.goal??null,
     action:context.action??plan?.action??null,
     party:group?.memberIds??[],stats:displayedHeroStats(hero),traits:hero.traits,
     equipment:hero.equipment,inventory:hero.inventory,recent,observations:[],

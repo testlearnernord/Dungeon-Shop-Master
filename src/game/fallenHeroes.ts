@@ -47,6 +47,7 @@ export function recoverFallenAt(
     return {hero,plan,deceased};
   for(const body of fallen.filter(f=>f.floor===hero.floor&&f.x===point.x&&f.z===point.z)
     .sort((a,b)=>a.heroId.localeCompare(b.heroId))){
+    if(body.search&&body.search.heroId!==hero.id)continue;
     const dead=roster.get(body.heroId);
     if(!dead||dead.status!=="dead"||dead.health!==0)continue;
     const gold=Math.min(dead.gold,Number.MAX_SAFE_INTEGER-hero.gold);
@@ -66,6 +67,14 @@ export function recoverFallenAt(
       plan={...plan,heroId:hero.id};
     const bread=Math.min(dead.inventory.bread,Math.max(0,ECONOMY.breadTarget-hero.inventory.bread));
     const healing=Math.min(dead.inventory.healing,Math.max(0,ECONOMY.healingTarget-hero.inventory.healing));
+    const overflowBread=Math.max(0,Math.min(remaining.bread??0,ECONOMY.breadTarget-hero.inventory.bread-bread));
+    const overflowHerbs=Math.max(0,Math.min(remaining["healing-herb"]??0,ECONOMY.healingTarget-hero.inventory.healing-healing));
+    for(const [id,count] of [["bread",overflowBread],["healing-herb",overflowHerbs]] as const){
+      if(!count)continue;
+      const left=(remaining[id]??0)-count;
+      if(left)remaining[id]=left;else delete remaining[id];
+      changed=true;
+    }
     const equipment={...hero.equipment},leftEquipment={...dead.equipment};
     for(const [id] of Object.entries(GEAR_BY_ITEM)){
       const itemId=id as keyof typeof GEAR_BY_ITEM;
@@ -93,7 +102,7 @@ export function recoverFallenAt(
     }
     if(!changed&&!bread&&!healing)continue;
     hero={...hero,gold:hero.gold+gold,equipment,inventory:{...hero.inventory,finds,
-      bread:hero.inventory.bread+bread,healing:hero.inventory.healing+healing}};
+      bread:hero.inventory.bread+bread+overflowBread,healing:hero.inventory.healing+healing+overflowHerbs}};
     deceased.push({...dead,gold:dead.gold-gold,equipment:leftEquipment,inventory:{...dead.inventory,finds:remaining,
       bread:dead.inventory.bread-bread,healing:dead.inventory.healing-healing}});
   }

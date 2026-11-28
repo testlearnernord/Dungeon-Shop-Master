@@ -1,6 +1,6 @@
 # The Living Dungeon — design contract
 
-> Current contract: Alpha v51 (Room-first Dungeon). Current design contract. Room-first geometry is described in [Dungeon Reforged](DUNGEON_REFORGED.md). See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
+> Current contract: Alpha v52 (Room-first Dungeon). Current design contract. Room-first geometry is described in [Dungeon Reforged](DUNGEON_REFORGED.md). See [Game Bible](GAME_BIBLE.md) and [Architecture](ARCHITECTURE.md).
 
 ## The experience
 
@@ -24,7 +24,7 @@ A strong playable day offers competing stock/service decisions and a few *recogn
 | **Floor 10** | One Cave Troll encounter entered only by an actual saved, authorized 2–3-hero Temporary Party at the lower stair of Floor 9. Shared group combat at 60 Hz, bounded recordings, boss event and actual outcome |
 | **Galvik's cursed shop** | A separate *unnumbered* realm accessible by the return option. One normal physical portal/threshold for shop traffic; do not label it Dungeon Floor 5 |
 
-Alpha v50 is the only supported campaign schema. Reject v49 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. Floor-10 willingness is evaluated from current preparation, not a saved permission field. The solo boss, old day motor and abstract loot counter are retired.
+Alpha v52 is the only supported campaign schema. Reject v51 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. The canonical shop uses `shopRoom`, `portal`, and hero places `shop`, `away`, `transit`; ordinary maps use `dungeonWorlds`. Floor-10 willingness is evaluated from current preparation, not a saved permission field. The solo boss, old day motor and abstract loot counter are retired.
 
 ## V0.004 A–D monster-world (merged in #336–339)
 
@@ -95,3 +95,5 @@ The existing Floor-9 rendezvous, physical staircase, saved party and shared 60 H
 ### Elective resupply (v45)
 
 A level-4+ hero with at least 65% HP can consider replacing owned, compatible T1 equipment with T2 using the canonical purchasing order and catalog price. Reserve the price of a loaf when no healing supplies are owned. Only a real loot reward or a completed route can trigger this deliberate trip. The saved `lastShopExitTick` is written exclusively at an observed outer-gate crossing; the minimum elective revisit interval is 7200 world ticks (six unpaused minutes). Genuine emergency resupply and new-haul decisions are independent. Existing ready boss parties retain priority. After the boss is cleared, an exhausted Floor-9 route plus the existing material-haul threshold also motivates a return. Actual travel, buyback and purchases use existing systems; no hidden stock knowledge or guaranteed availability.
+
+**The Fallen II:** Remains searches are exclusive, five-second physical actions on the shared world clock. The hero remains on the actual death tile; the monster world continues and contact combat cancels the search. Real ownership transfers only at completion. LIVE and Table project the saved progress and suppress movement hints; neither owns the timer.

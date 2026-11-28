@@ -1,6 +1,6 @@
 # Documentation index
 
-> Current contract: Alpha v51 (Room-first Dungeon). Read [Dungeon Reforged](DUNGEON_REFORGED.md) for the current generator and acceptance gate before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
+> Current contract: Alpha v52 (Room-first Dungeon). Read [Dungeon Reforged](DUNGEON_REFORGED.md) for the current generator and acceptance gate before editing. Historical reports are evidence, not implementation instructions. Source/tests and explicit owner decisions outrank prose.
 
 ## Current contracts
 

@@ -94,11 +94,16 @@ test("scheduled LIVE movement recovers a genuine fallen hero and leaves the body
   assert.equal(selectLiveFloorSpectatorFrame(store.state,1)?.heroes.find(h=>h.id===survivor.id)?.activity,"looting");
   const checkpoint=parseSave(serializeSave(store.state));
   assert.deepEqual(checkpoint,store.state);
+  const resumed=new GameStore(checkpoint);
   store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  resumed.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.deepEqual(resumed.state,store.state);
   assert.equal(store.state.adventurers.find(h=>h.id===survivor.id)?.gold,survivor.gold);
   const held=store.state.dungeonWorlds.find(w=>w.floor===1)?.world.heroes.find(h=>h.heroId===survivor.id);
   assert.equal(held?.x,trap.x);assert.equal(held?.z,trap.z);
   store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  resumed.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.deepEqual(resumed.state,store.state);
   const recovered=store.state.adventurers.find(h=>h.id===survivor.id)!;
   assert.equal(recovered.gold,survivor.gold+dead.gold);
   assert.equal(recovered.inventory.finds?.["iron-ore"],3);
@@ -135,4 +140,20 @@ test("fallen equipment and supplies conserve ownership in carried finds",()=>{
   assert.equal(next.hero.inventory.finds?.["forged-sword-shield"],1);
   assert.equal(next.deceased[0].equipment.weapon,null);
   assert.equal(next.deceased[0].equipment.armor,null);
+});
+
+test("exclusive search rejects a second hero and recovers excess owned healing from finds",()=>{
+  const {state,trap,dead,fallen}=fixture();
+  const hero={...state.adventurers[1],status:"exploring" as const,floor:1 as const,
+    inventory:{bread:0,healing:0}};
+  const other={...hero,id:state.adventurers[2].id};
+  const donor={...dead,inventory:{bread:0,healing:0,finds:{bread:3,"healing-herb":2}}};
+  const locked=fallen.map(b=>({...b,search:{heroId:hero.id,startedTick:50}}));
+  const roster=new Map([[donor.id,donor]]);
+  assert.strictEqual(recoverFallenAt(locked,roster,other,trap,null).hero,other);
+  const recovered=recoverFallenAt(locked,roster,hero,trap,null);
+  assert.equal(recovered.hero.inventory.bread,2);
+  assert.equal(recovered.hero.inventory.healing,1);
+  assert.equal(recovered.deceased[0].inventory.finds?.bread,1);
+  assert.equal(recovered.deceased[0].inventory.finds?.["healing-herb"],1);
 });
