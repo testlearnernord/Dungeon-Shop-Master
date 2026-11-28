@@ -490,7 +490,8 @@ export function chooseDungeonTravelStep(
   if(options.tacticalStep){
     if(!dungeonNeighbors(layout,current).some(p=>p.x===options.tacticalStep!.x&&p.z===options.tacticalStep!.z))
       throw new RangeError("Hero tactical AI tried to cross a nonadjacent dungeon tile");
-    return options.tacticalStep;
+    // Structural callers may pass a feature; only coordinates belong in the saved position.
+    return {x:options.tacticalStep.x,z:options.tacticalStep.z};
   }
   if(options.waitForCompanion)return null;
   if(options.returnToEntrance)return chooseKnownReturnStep(layout,current);

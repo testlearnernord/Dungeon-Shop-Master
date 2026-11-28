@@ -134,3 +134,25 @@ export function createReadableDungeonTrap(
   }
   return root;
 }
+
+/** Shared low-poly remains. No death logic, collisions or loot authority. */
+export function createDungeonRemains(scene:Scene,id:string,world:Vector3):Mesh{
+  const root=new Mesh("fallen-remains-"+id,scene);
+  root.position.set(world.x,.18,world.z);
+  root.isPickable=false;
+  root.checkCollisions=false;
+  root.metadata={fallenHeroId:id,visualKind:"fallen-remains"};
+  const paint=(scene.getMaterialByName("fallen-bone") as StandardMaterial|null)??
+    matte(scene,"fallen-bone","#c9bd9e",.22);
+  const skull=MeshBuilder.CreateSphere("fallen-skull-"+id,{diameter:.36,segments:6},scene);
+  skull.parent=root;skull.position.set(0,.14,-.67);skull.material=paint;
+  skull.isPickable=false;skull.checkCollisions=false;
+  piece(scene,root,"fallen-spine-"+id,{width:.13,height:.13,depth:.65},[0,.05,-.16],paint);
+  for(const z of [-.36,-.18,0])
+    piece(scene,root,"fallen-rib-"+id+"-"+z,{width:.52,height:.1,depth:.08},[0,.1,z],paint);
+  for(const x of [-.34,.34]){
+    piece(scene,root,"fallen-arm-"+id+"-"+x,{width:.09,height:.09,depth:.56},[x,.03,-.12],paint);
+    piece(scene,root,"fallen-leg-"+id+"-"+x,{width:.13,height:.1,depth:.64},[x*.55,.03,.58],paint);
+  }
+  return root;
+}

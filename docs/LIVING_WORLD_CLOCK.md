@@ -1,6 +1,6 @@
 # One Living World Clock — current runtime contract
 
-> Current contract: Alpha v50 (Room-first Dungeon). Current world clock and timing contract.
+> Current contract: Alpha v51 (Room-first Dungeon). Current world clock and timing contract.
 
 ## Authority and unit of time
 

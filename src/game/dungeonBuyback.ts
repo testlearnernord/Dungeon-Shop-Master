@@ -2,6 +2,7 @@ import {BUYBACK_DOCK} from "./buybackChestPlacement.ts";
 import {currentShopVisitEvents} from "./npcVisitors.ts";
 import type {GameState,WorldEvent} from "./gameState.ts";
 import {MATERIAL_ITEMS,type MaterialItemId} from "./economy.ts";
+import {canBuySurveyorPlan,surveyorPlanReceipt,SURVEYOR_PLAN_PRICE} from "./dungeonDiscovery.ts";
 
 export interface ChestMaterial {
   readonly heroId:string;
@@ -29,10 +30,10 @@ export function wantsChestBuyback(state:GameState,heroId:string):boolean{
   if(!state.buybackChestOpen||state.shopCarts.some(c=>c.heroId===heroId)||
     state.shopRequests.some(r=>r.heroId===heroId))return false;
   if(currentShopVisitEvents(state.events,state.day,heroId).some(e=>
-    e.type==="hero-buyback"||e.type==="sale"||e.type==="shop-credit"||e.type==="shop-walkout"))return false;
+    e.type==="hero-buyback"||e.type==="discovery-buyback"||e.type==="sale"||e.type==="shop-credit"||e.type==="shop-walkout"))return false;
   const hero=state.adventurers.find(h=>h.id===heroId);
   if(!hero)return false;
-  return availableChestMaterials(state,heroId).some(o=>
+  return canBuySurveyorPlan(state,heroId)||availableChestMaterials(state,heroId).some(o=>
     o.price<=state.shopEconomy.balance&&hero.gold<=Number.MAX_SAFE_INTEGER-o.price&&
     state.shopEconomy.materialStorage[o.itemId]<Number.MAX_SAFE_INTEGER);
 }
@@ -49,6 +50,13 @@ export function buybackAtChest(state:GameState,heroId:string,position:{x:number;
   const reserve={...state.shopEconomy.materialStorage};
   let balance=state.shopEconomy.balance,gold=hero.gold;
   const receipts:WorldEvent[]=[];
+  let surveyorPlan=state.surveyorPlan;
+  // Buy the unique discovery first; the remaining balance funds ordinary materials.
+  if(surveyorPlan&&canBuySurveyorPlan(state,heroId)){
+    balance-=SURVEYOR_PLAN_PRICE;gold+=SURVEYOR_PLAN_PRICE;
+    surveyorPlan={...surveyorPlan,status:"purchased"};
+    receipts.push(surveyorPlanReceipt(hero,state.day));
+  }
   for(const offer of availableChestMaterials(state,heroId)){
     const id=offer.itemId,price=offer.price;
     const n=Math.min(offer.count,Math.floor(balance/price),
@@ -69,6 +77,7 @@ export function buybackAtChest(state:GameState,heroId:string,position:{x:number;
   if(!receipts.length)return state;
   return {...state,adventurers:state.adventurers.map(h=>h.id===heroId?
     {...h,gold,inventory:{...h.inventory,finds}}:h),
+    surveyorPlan,
     shopEconomy:{...state.shopEconomy,balance,materialStorage:reserve},
     events:[...state.events,...receipts]};
 }

@@ -6,7 +6,7 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Current Alpha
 
-Current contract: Alpha v50, including physical automatic buyback. The displayed HUD label is still V.002 ALPHA; the campaign schema (v50), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented. The room-first generator replaces the DFS maze with connected chambers and alternate routes. Selected chambers have clipped or cruciform footprints and straight corridors can open into passing bays. The Table, LIVE viewer and replay share hall, crypt, vault and guardroom art; see [Dungeon Reforged](docs/DUNGEON_REFORGED.md). Manual acceptance is pending. Alpha v50 is the only supported campaign schema. Reject v49 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+Current contract: Alpha v51, including the first unique recovered discovery. The displayed HUD label is still V.002 ALPHA; the campaign schema (v51), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented. The room-first generator replaces the DFS maze with connected chambers and alternate routes. Selected chambers have clipped or cruciform footprints and straight corridors can open into passing bays. The Table, LIVE viewer and replay share hall, crypt, vault and guardroom art; see [Dungeon Reforged](docs/DUNGEON_REFORGED.md). Manual acceptance is pending. Alpha v50 is the only supported campaign schema. Reject v49 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 | Area | Implemented |
 | --- | --- |
@@ -43,7 +43,7 @@ Build shelves with N, buy wholesale stock with B, organize your bag/quickbar wit
 | E / hold E at bed | Interact / end the day |
 | N | Build a shelf; interact with the fixed portrait to access the cellar |
 | P / R / Q while placing | Move furniture / rotate |
-| U / Shift+U | Mine exposed rock / unlock another expansion tier, including in the cellar. Exposed stone and flagstone now share world-aligned UVs with the original shop and dungeon viewer |
+| U / Shift+U | Mine exposed rock / unlock another expansion tier (shop tiers 2–3 require the purchased Surveyor's Plan), including in the cellar. Exposed stone and flagstone now share world-aligned UVs with the original shop and dungeon viewer |
 | E at revealed cellar pond | Cast a line; perform three quick accurate mouse flicks to catch a fish |
 | R outside placement | Adventurer roster |
 | G | Dungeon spectator, LIVE or historical |

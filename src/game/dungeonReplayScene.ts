@@ -1,4 +1,4 @@
-import {setDungeonSiteSpent} from "./dungeonFeatureProps.ts";
+import {setDungeonSiteSpent,createDungeonRemains} from "./dungeonFeatureProps.ts";
 import {dungeonSiteDisplay,dungeonSiteMapColor} from "./liveFloorFeatureIdentity.ts";
 import {dungeonOverviewTileColor,type DungeonRoomTheme} from "./dungeonRoomArtPlan.ts";
 import {orientNorthUpMinimap} from "./dungeonObservationOrientation.ts";
@@ -70,6 +70,7 @@ export class DungeonReplayScene {
   private liveFrame:LiveSpectatorFrame|null=null;
   private floorFrame:LiveFloorSpectatorFrame|null=null;
   private readonly floorModels=new Map<string,HeroVisual>();
+  private readonly fallenModels=new Map<string,Mesh>();
   private readonly floorMarkers=new Map<string,Mesh>();
   private readonly floorRouteHints=new Map<string,{mesh:LinesMesh;pips:Mesh[];signature:string}>();
   private readonly floorMonsterHints=new Map<string,{mesh:LinesMesh;signature:string}>();
@@ -128,6 +129,8 @@ export class DungeonReplayScene {
     this.battleMarker=null;
     for(const model of this.floorModels.values())model.root.dispose(false,true);
     this.floorModels.clear();
+    for(const model of this.fallenModels.values())model.dispose(false,false);
+    this.fallenModels.clear();
     for(const marker of this.floorMarkers.values())marker.dispose(false,true);
     this.floorMarkers.clear();
     for(const hint of this.floorRouteHints.values()){
@@ -463,6 +466,11 @@ export class DungeonReplayScene {
     for(const id of this.floorMonsterTravel.keys())
       if(!view.monsters?.some(m=>m.id===id))this.floorMonsterTravel.delete(id);
     this.floorFrame=view;
+    for(const [id,mesh] of this.fallenModels)if(!view.fallen?.some(b=>b.heroId===id)){
+      mesh.dispose(false,false);this.fallenModels.delete(id);
+    }
+    for(const body of view.fallen??[])if(!this.fallenModels.has(body.heroId))
+      this.fallenModels.set(body.heroId,createDungeonRemains(this.scene,body.heroId,toWorld(this.layout,body)));
     const present=new Set(view.heroes.map(hero=>hero.id));
     for(const [id,model] of this.floorModels){
       if(!present.has(id)||model.root.metadata.floorPartyId!==
@@ -698,6 +706,8 @@ export class DungeonReplayScene {
       decoration.mesh.setEnabled(!explored||explored.has(cell));
       decoration.light?.setEnabled(!visible||visible.has(cell));
     }
+    for(const body of frame.fallen??[])
+      this.fallenModels.get(body.heroId)?.setEnabled(!visible||visible.has(body.z*this.layout.width+body.x));
     const seenHeroes=new Set(perspective?.visibleHeroIds??[]);
     for(const [id,model] of this.floorModels){
       const member=frame.heroes.find(hero=>hero.id===id);
@@ -727,6 +737,10 @@ export class DungeonReplayScene {
     if(!perspective){
       this.drawDevelopmentMap();
       const ctx=this.indicator.getContext("2d");
+      if(ctx)for(const body of frame.fallen??[]){
+        ctx.fillStyle="#d8cbb1";ctx.fillRect(body.x*6+2,body.z*6+1,2,4);
+        ctx.fillRect(body.x*6+1,body.z*6+2,4,2);
+      }
       if(ctx)for(const hero of frame.heroes){
         if(hero.inCombat)continue;
         ctx.fillStyle=hero.partyId?"#e5ca82":"#85d9b2";
@@ -764,6 +778,10 @@ export class DungeonReplayScene {
       if(!color)continue;
       ctx.fillStyle=color;
       ctx.fillRect(point.x*cell+1,point.z*cell+1,cell-2,cell-2);
+    }
+    for(const body of frame.fallen??[])if(perception.visible.has(body.z*this.layout.width+body.x)){
+      ctx.fillStyle="#d8cbb1";ctx.fillRect(body.x*cell+2,body.z*cell+1,2,4);
+      ctx.fillRect(body.x*cell+1,body.z*cell+2,4,2);
     }
     for(const hero of frame.heroes){
       if(hero.inCombat||hero.id!==perception.heroId&&

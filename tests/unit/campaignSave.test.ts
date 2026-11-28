@@ -473,7 +473,7 @@ test("explicit saves and deletion recover structurally corrupt IndexedDB records
 test("old Alpha versions are rejected before any material conversion",()=>{
   const state=createGameState(7351);
   const raw=serializeSave(state);
-  for(const oldVersion of [25,26,30,48,49]){
+  for(const oldVersion of [25,26,30,48,49,50]){
     const old=JSON.parse(raw);
     old.simulationVersion=oldVersion;
     old.payload.simulationVersion=oldVersion;

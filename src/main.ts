@@ -305,7 +305,7 @@ if(import.meta.env.VITE_E2E==="1"){
       carts:s.shopCarts,requests:s.shopRequests,
       balance:s.shopEconomy.balance,bag:s.shopEconomy.bag,slots:s.shopEconomy.slots,
       debts:s.shopDebts,events:s.events.filter(e=>e.day===s.day&&
-        ["sale","tip","shop-credit","shop-departure","shop-walkout","hero-buyback"].includes(e.type))
+        ["sale","tip","shop-credit","shop-departure","shop-walkout","hero-buyback","discovery-buyback"].includes(e.type))
         .map(({id,type,adventurerId,itemId,quantity,revenue,debtGold,cost,message,shopReason})=>
           ({id,type,adventurerId,itemId,quantity,revenue,debtGold,cost,message,shopReason}))});
   };

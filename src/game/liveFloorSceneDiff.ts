@@ -16,6 +16,7 @@ export type FloorMapSnapshot={
   readonly fights:readonly FloorMapFight[];
   readonly monsters?:LiveFloorSpectatorFrame["monsters"];
   readonly resolved:readonly string[];
+  readonly fallen?:LiveFloorSpectatorFrame["fallen"];
 };
 
 function sameList<T>(a:readonly T[],b:readonly T[]):boolean{
@@ -31,6 +32,9 @@ export function sameLiveFloorMap(a:FloorMapSnapshot,b:FloorMapSnapshot):boolean{
   if(a.floor!==b.floor||!sameList(a.resolved,b.resolved)||
      a.heroes.length!==b.heroes.length||a.fights.length!==b.fights.length)
     return false;
+  const before=a.fallen??[],after=b.fallen??[];
+  if(before.length!==after.length||before.some((body,i)=>
+    body.heroId!==after[i].heroId||body.x!==after[i].x||body.z!==after[i].z))return false;
   for(let i=0;i<a.heroes.length;i++){
     const x=a.heroes[i],y=b.heroes[i];
     if(x.id!==y.id||x.x!==y.x||x.z!==y.z||

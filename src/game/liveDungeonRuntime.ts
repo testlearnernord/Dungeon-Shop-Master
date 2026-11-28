@@ -10,6 +10,8 @@ import {generateAdventurer,useHealingSupplies} from "./adventurers.ts";
 import {heroProgression,settleHeroExperience} from "./heroProgression.ts";
 import {generateExpeditionLayout,dungeonDownStair,type DungeonPoint} from "./dungeonLayout.ts";
 import {dungeonSiteGeneration} from "./dungeonRegeneration.ts";
+import {claimSurveyorPlan} from "./dungeonDiscovery.ts";
+import {recordFallenHeroes,recoverFallenAt} from "./fallenHeroes.ts";
 import {chooseLiveHeroDungeonDecision,selectKnownResourceSite,carriedDungeonFindCount,
   salvageReturnThreshold,isBossExpeditionCandidate,isBossExpeditionParty,
   needsHealthResupply,unresolvedRecoveryPlan,canRiskOrdinaryDescent,
@@ -311,6 +313,8 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     .filter(c=>c.heroIds.length>=2).map(c=>[...c.heroIds]);
   const stepCounts=new Map(state.liveDungeon.heroes.map(v=>[v.heroId,v]));
   let dungeonWorlds=[...state.dungeonWorlds];
+  let surveyorPlan=state.surveyorPlan;
+  let fallenHeroes=state.fallenHeroes;
   const clearedLevel10=state.dungeonFloors.some(f=>
     f.floor===CAVE_TROLL_FLOOR&&f.cleared);
   let rngState=state.rngState;
@@ -579,7 +583,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     const remembered=!threat?chooseRememberedThreatReaction(layout,world,readyGroup,memory,
       directed??rally??resourceTarget??undefined,!!homeward):null;
     const tactical=threat?.step??remembered?.step??(!remembered?rendezvous?.step:undefined);
-    const result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
+    let result=advanceSpatialDungeonPartyStep(readyGroup,world,state.seed,day,occupied,
       {deferCombat:true,deferReturn:true,returnToEntrance:!!homeward,
         ...(target?{routeToKnownTarget:target}:{}),
         ...(resourceTarget&&!seeking?{routeToResource:resourceTarget}:{}),
@@ -631,6 +635,27 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
         frames:[captureGroupCombatFrame(fight)]});
     }
     dungeonWorlds=setDungeonWorld(dungeonWorlds,floor,result.world);
+    const previousDiscovery=surveyorPlan;
+    fallenHeroes=recordFallenHeroes(fallenHeroes,result,day);
+    // A fallen carrier leaves the unique plan at the body. The old chest
+    // must not regenerate another copy while those remains are reachable.
+    if(!surveyorPlan||!fallenHeroes.some(f=>f.heroId===surveyorPlan?.heroId))
+      surveyorPlan=claimSurveyorPlan(surveyorPlan,state.seed,day,result,[...byId.values()]);
+    // Opportunistic recovery on actual movement only, never during a
+    // reserved encounter, a fatal trap or a tactical threat response.
+    if(!result.pendingCombat&&!threat&&!remembered&&
+       result.ticks.every(t=>t.adventurer.health>0)){
+      result={...result,ticks:result.ticks.map(t=>{
+        const position=result.world.heroes.find(p=>p.heroId===t.adventurer.id);
+        if(!position||!t.replay.steps.some(s=>s.action==="walk"))return t;
+        if(result.world.monsters?.some(m=>Math.abs(m.x-position.x)+Math.abs(m.z-position.z)<=1))return t;
+        const recovered=recoverFallenAt(fallenHeroes,byId,t.adventurer,position,surveyorPlan);
+        surveyorPlan=recovered.plan;
+        recovered.deceased.forEach(h=>byId.set(h.id,h));
+        return recovered.hero===t.adventurer?t:{...t,adventurer:recovered.hero};
+      })};
+    }
+    const newFinder=surveyorPlan!==previousDiscovery?surveyorPlan?.heroId:undefined;
     const independent=new Map<string,HeroDungeonDecision>();
     const decisionDetails=diagnostic?new Map<string,{
       checks:Record<string,boolean>;reason?:DungeonDecisionReason}>():undefined;
@@ -655,6 +680,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
         bossReady,
       }} as {checks:Record<string,boolean>;reason?:DungeonDecisionReason}:undefined;
       independent.set(individual.adventurer.id,
+        individual.adventurer.id===newFinder?{goal:"resupply",action:"shop"}:
         chooseLiveHeroDungeonDecision(individual.adventurer,
           progress,individual.replay,layout,result.world,bossReady,
           carriedDungeonFindCount(byId.get(individual.adventurer.id)!),
@@ -856,6 +882,7 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     ...state,worldClock:clock,
     dungeonParties:party.parties,
     adventurers:finalRoster,
+    surveyorPlan,fallenHeroes,
     dungeonWorlds,
     rngState,
     liveDungeon:{enabled:true,lastStepTick:tick,
@@ -905,6 +932,7 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
   const byId=new Map(state.adventurers.map(hero=>[hero.id,hero]));
   const counts=new Map(state.liveDungeon.heroes.map(h=>[h.heroId,h]));
   let dungeonWorlds=[...state.dungeonWorlds];
+  let fallenHeroes=state.fallenHeroes;
   const activities:WorldEvent[]=[];
   const continuing:LiveDungeonCombat[]=[];
   let returns=[...state.liveDungeon.returns];
@@ -1005,6 +1033,7 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
     const settled=settleSpatialDungeonCombat(party,world,state.day,
       fight.encounter,combat,replay,fight.arrivals,state.seed);
     dungeonWorlds=setDungeonWorld(dungeonWorlds,floor,settled.world);
+    fallenHeroes=recordFallenHeroes(fallenHeroes,settled,state.day);
     if(fight.heroIds.length>=2) {
       const survivors=settled.ticks.filter(t=>t.adventurer.health>0)
         .map(t=>t.adventurer.id);
@@ -1083,7 +1112,7 @@ function commitLiveCombatTick(state:GameState,diagnostic?:DungeonDiagnosticSink)
   const next:GameState={...state,
     worldClock:clock,rngState,
     adventurers:roster,dungeonParties:parties.parties,
-    dungeonWorlds,
+    fallenHeroes,dungeonWorlds,
     dungeonFloors:[
       ...state.dungeonFloors,
       ...(partyBossCleared&&!state.dungeonFloors.some(f=>f.floor===10&&f.cleared)
