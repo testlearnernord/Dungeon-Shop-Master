@@ -89,8 +89,12 @@ test("paid physical discovery unlocks expansion, conserves gold and validates sa
   assert.deepEqual(purchased.shopEconomy.materialStorage,atShop.shopEconomy.materialStorage);
   assert.equal(purchased.events.filter(e=>e.type==="discovery-buyback").length,1);
   assert.strictEqual(buybackAtChest(purchased,plan.heroId,BUYBACK_DOCK),purchased);
-  const ledger=summarizeLedger(atShop,purchased);
+  // The purchase is already booked at closing; the ledger requires the next-day boundary.
+  const morning={...purchased,day:purchased.day+1};
+  const ledger=summarizeLedger(purchased,morning);
   assert.equal(ledger.buybackCost,SURVEYOR_PLAN_PRICE);
+  assert.equal(ledger.buybacks.filter(e=>e.type==="discovery-buyback").length,1);
+  assert.equal(ledger.overnightChange,0);
   const expanded=new GameStore(purchased);
   assert.equal(expanded.unlockShopExpansion(2),"Shop expansion unlocked.");
   const saved=serializeSave(expanded.state);
