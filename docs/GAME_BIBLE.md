@@ -1,6 +1,6 @@
 # Dungeon Shop Master — living Game Bible
 
-> Current contract: Alpha v51 (Room-first Dungeon and first discovery). Current design and lore; [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) distinguish implementation and acceptance.
+> Current contract: Alpha v52 (Room-first Dungeon and first discovery). Current design and lore; [Architecture](ARCHITECTURE.md) and [Roadmap](ROADMAP.md) distinguish implementation and acceptance.
 
 Ordinary chambers have deterministic presentation themes: pillared hall, burial crypt, treasure vault, guardroom and eligible deep forgotten workshop. Vault chests contain two or three ordinary goods, and eligible deep Forgotten Workshops contain existing forge salvage. All rewards come from genuine physical site contact and existing party ownership. Crypt chests replace mana slots with herbs and guardrooms replace those slots with T1 gear; all chest weapon slots can yield any existing starter class weapon. The campaign-unique Surveyor's Plan is a deep treasure discovery, carried and sold to Galvik for 12 gold, enabling shop expansion tiers 2 and 3. Other future discoveries remain open.
 
@@ -19,7 +19,7 @@ Ordinary chambers have deterministic presentation themes: pillared hall, burial 
 
 ## 2. Implemented now
 
-**Release status:** Alpha v50 campaign schema; V.002 ALPHA remains the HUD label. No final release or manual acceptance claim.
+**Release status:** Alpha v52 candidate campaign schema; V.002 ALPHA remains the HUD label. No final release or manual acceptance claim.
 
 | System | Implementation status |
 | --- | --- |
@@ -65,7 +65,7 @@ The [Living Dungeon design](THE_LIVING_DUNGEON.md) supplies the deeper current c
 - **IMPLEMENTED core:** from any ordinary floor an upward/return choice may lead by physically connected, saved backtracking and timed portal transit to Galvik's shop. This is an expedition abort, not a free teleport; actual 3D crossing/reentry still requires playtesting.
 - Returning customers recover outside both shop and dungeon for an initial **20–240 unpaused seconds** (initial tuning), then resume at their remembered floor entrance. Checkout, credit and walkout eligibility follow the current actual shop visit.
 - Common opponents, traps and chests refresh on saved intervals across ordinary Floors 1–9; unique boss victories and persistent discoveries do not respawn as common loot.
-- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved Temporary Party of two or three independently ready heroes. They evaluate actual preparation and reach the lower stair together; the merchant has no permission action. Alpha v50 is the only supported campaign schema. Reject v49 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. Authored variety and manual gameplay acceptance remain open.
+- **IMPLEMENTED gate:** ordinary Floors 1–9 lead to the **Floor-10 Cave Troll**, which requires a real saved Temporary Party of two or three independently ready heroes. They evaluate actual preparation and reach the lower stair together; the merchant has no permission action. Alpha v52 is the only supported campaign schema. Reject v51 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic. Authored variety and manual gameplay acceptance remain open.
 - Full 100-floor progression is a long-range fiction/ambition, **not** a claim of implemented, promised or budgeted launch content.
 
 ## 5. Galvik and the story
@@ -94,3 +94,5 @@ Gameplay changes must update the **existing** status lines rather than prepend a
 ### Tettel and employees
 
 Tettel (prototype name) is Galvik's first employee, outwardly almost identical to the dungeon Ghoul. Non-aggressive and persistent, he returned despite Galvik's initial hostility. Galvik hid him in the cellar when he frightened customers. Over decades of watching Galvik he learned basic shelf and register work. He is reliable but slower than the player, and frightened customers never tip him. His tasks are restocking, cashier service and optional charity. C2 adds actual physical restocking from the shared bag through the cellar chest. Tettel never sets shelf assignments; he reserves matching units, carries them to a reachable assigned slot, and returns unused stock if Galvik takes over. D adds autonomous cashier service at the real register. Tettel earns no customer tip; Galvik's manual checkout takes precedence. E adds opt-in charity as existing full-price credit, not a gift: Tettel approaches a waiting petitioner, rechecks need and available stock, and grants one item through the same debt ledger as Galvik. Manual conversation takes precedence. See [Employee Foundation](EMPLOYEE_FOUNDATION.md).
+
+**The Fallen:** Ordinary-floor dead heroes leave persistent physical remains. Living adventurers may search for five seconds on safe contact; a fight interrupts the search. Actual recovered equipment can improve the hero, while replaced or unusable gear travels to Galvik as merchandise. Used gear is a manual purchase at the Recovered Goods chest, unlike automatic materials. Price, demand and presentation remain subject to playtesting.

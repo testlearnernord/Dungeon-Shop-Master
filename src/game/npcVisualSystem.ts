@@ -25,6 +25,7 @@ import { createNpcWishBubble, setNpcWishItem, updateNpcWishBubble,
 import {customerBark, customerBarkPriority,
   type CustomerBarkKind} from "./npcCustomerBarks.ts";
 import type { ItemId } from "./economy.ts";
+import type {UsedGearOffer} from "./dungeonBuyback.ts";
 import type {LiveServiceRequest} from "./shopServiceFocus.ts";
 import { ITEMS } from "./economy.ts";
 import {getShopStockTemplates,cloneShopStockModel} from "./shopStockAssets.ts";
@@ -248,6 +249,12 @@ export class NpcVisualSystem {
   private shop:Shop|null=null;
   private pendingBuyback:ReadonlySet<string>=new Set();
   private onBuyback:((heroId:string,point:ShopPoint)=>boolean)|null=null;
+  private usedOffer:((heroId:string)=>UsedGearOffer|undefined)|null=null;
+  private onUsedAccept:((heroId:string,itemId:ItemId,point:ShopPoint)=>boolean)|null=null;
+  private onUsedResolved:(()=>void)|null=null;
+  private readonly usedOfferBubble=createNpcCustomerBubble();
+  private usedOfferTarget:string|null=null;
+  private usedOfferItem:ItemId|null=null;
   private onPickUp:((heroId:string,slotId:string)=>boolean)|null=null;
   private onWalkout:((heroId:string,reason:ShoppingIntent["reason"])=>void)|null=null;
   private readonly completedExits:{heroId:string;outerGateZ:number}[]=[];
@@ -493,6 +500,23 @@ export class NpcVisualSystem {
 
   constructor(private readonly scene: Scene) {
     this.customerBubble=createNpcCustomerBubble();
+    // A single, world-anchored offer for the actual occupied buyback dock.
+    this.usedOfferBubble.root.id="npc-used-gear-offer";
+    this.usedOfferBubble.root.style.pointerEvents="auto";
+    const actions=document.createElement("div");
+    actions.style.display="flex";actions.style.gap="8px";
+    for(const [label,accept] of [["Accept (Y)",true],["Decline (N)",false]] as const){
+      const button=document.createElement("button");
+      button.type="button";button.textContent=label;
+      button.style.pointerEvents="auto";
+      button.onclick=event=>{
+        event.stopPropagation();
+        const id=this.usedOfferTarget;
+        if(id)this.resolveUsedGearOffer(id,accept);
+      };
+      actions.append(button);
+    }
+    this.usedOfferBubble.root.append(actions);
     // Same single GLB source / scene cache as the physical shop shelves.
     // No primitive "customer edition" of an item is ever generated.
     void getShopStockTemplates(scene).then(templates=>{
@@ -598,11 +622,17 @@ export class NpcVisualSystem {
     onWalkout?:((heroId:string,reason:ShoppingIntent["reason"])=>void),
     room?:ShopRoomGeometry,
     clock?:ShopRequestClockAccess,
-    buyback?:{heroes:ReadonlySet<string>;sell:(heroId:string,point:ShopPoint)=>boolean},
+    buyback?:{heroes:ReadonlySet<string>;sell:(heroId:string,point:ShopPoint)=>boolean;
+      offer?:(heroId:string)=>UsedGearOffer|undefined;
+      accept?:(heroId:string,itemId:ItemId,point:ShopPoint)=>boolean;
+      resolved?:()=>void},
   ):void {
     this.shopRequestClock=clock??null;
     this.pendingBuyback=buyback?.heroes??new Set();
     this.onBuyback=buyback?.sell??null;
+    this.usedOffer=buyback?.offer??null;
+    this.onUsedAccept=buyback?.accept??null;
+    this.onUsedResolved=buyback?.resolved??null;
     const hadProjection=this.layout!==null;
     const furnitureMoved=this.layout!==null&&(
       JSON.stringify(this.room)!==JSON.stringify(room)||
@@ -673,6 +703,9 @@ export class NpcVisualSystem {
       npc.routeProgress=null;
       npc.root.metadata.shoppingReason=plan?.reason??"no-need";
       npc.root.metadata.shoppingTargets=plan?.items.map(x=>x.slotId)??[];
+      // Economy changes while at the dock update the subsequent shopping
+      // intent, not the persisted offer timer or the service reservation.
+      if(npc.phase==="considering"&&["selling-loot","used-gear-offer"].includes(String(npc.root.metadata.shoppingPhase)))continue;
       if(["browsing","queueing","considering"].includes(npc.phase))
         this.beginBrowsing(npc);
       paintIdentity(npc,this.portraits);
@@ -688,6 +721,7 @@ export class NpcVisualSystem {
       for(const npc of this.npcs.values())
         if(npc.wishBubble)npc.wishBubble.root.hidden=true;
       this.customerBubble.root.hidden=true;
+      this.usedOfferBubble.root.hidden=true;
       this.customerBarkQueue.length=0;
       this.activeCustomerBark=null;
     }
@@ -712,6 +746,51 @@ export class NpcVisualSystem {
     this.customerBarkQueue.sort((a,b)=>b.priority-a.priority);
     // A crowded shop must not queue a wall of stale dialogue.
     if(this.customerBarkQueue.length>12)this.customerBarkQueue.length=12;
+  }
+
+  private showUsedGearOffer():void{
+    const bubble=this.usedOfferBubble;
+    this.usedOfferTarget=null;this.usedOfferItem=null;
+    bubble.root.hidden=true;
+    if(!this.wishBubblesVisible||document.querySelector("dialog[open]"))return;
+    const npc=[...this.npcs.values()].find(n=>n.phase==="considering"&&
+      n.root.metadata.shoppingPhase==="used-gear-offer"&&n.wait>0);
+    if(!npc)return;
+    const offer=this.usedOffer?.(npc.visitor.id);
+    const camera=this.scene.activeCamera?.globalPosition;
+    if(!offer||!camera||Vector3.Distance(camera,npc.root.getAbsolutePosition())>5)return;
+    bubble.speaker.textContent=npc.visitor.displayName??npc.visitor.name;
+    bubble.line.textContent="Selling "+ITEMS.find(i=>i.id===offer.itemId)!.name+
+      " · "+offer.price+"g each · "+offer.count+" available · "+Math.ceil(npc.wait)+"s";
+    if(!positionNpcBubble(bubble.root,this.scene,npc.root.position,3.65))return;
+    this.usedOfferTarget=npc.visitor.id;this.usedOfferItem=offer.itemId;
+  }
+
+  /** Only the actual visible waiting actor can settle an offer; the store
+   * revalidates the current owner, price, funds, capacity and dock position. */
+  resolveUsedGearOffer(heroId:string,accept:boolean):boolean{
+    if(!this.wishBubblesVisible||document.querySelector("dialog[open]")||
+      this.usedOfferTarget!==heroId||!this.usedOfferItem)return false;
+    const npc=this.npcs.get(heroId);
+    if(!npc||npc.phase!=="considering"||npc.root.metadata.shoppingPhase!=="used-gear-offer"||npc.wait<=0)return false;
+    const offer=this.usedOffer?.(heroId);
+    if(!offer||offer.itemId!==this.usedOfferItem)return false;
+    const camera=this.scene.activeCamera?.globalPosition;
+    if(!camera||Vector3.Distance(camera,npc.root.getAbsolutePosition())>5)return false;
+    if(accept&&!this.onUsedAccept?.(heroId,offer.itemId,{x:npc.root.position.x,z:npc.root.position.z})){
+      this.usedOfferBubble.line.textContent="Not enough gold or inventory space.";
+      return true;
+    }
+    if(!accept||!this.usedOffer?.(heroId)){
+      this.usedOfferBubble.root.hidden=true;
+      this.usedOfferTarget=null;this.usedOfferItem=null;
+      // Do not immediately request the same declined item again this visit.
+      this.beginBrowsing(npc,true);
+    }else{
+      this.showUsedGearOffer();
+    }
+    this.onUsedResolved?.();
+    return true;
   }
 
   private showNextCustomerBark():void {
@@ -1097,12 +1176,23 @@ export class NpcVisualSystem {
           this.beginBrowsing(npc);
       }
       if(npc.phase==="considering"){
+        if(npc.root.metadata.shoppingPhase==="used-gear-offer"&&!this.usedOffer?.(npc.visitor.id)){
+          this.beginBrowsing(npc,true);continue;
+        }
         npc.wait-=delta;
         if(npc.wait<=0){
           if(npc.root.metadata.shoppingPhase==="selling-loot"){
             this.onBuyback?.(npc.visitor.id,{x:npc.root.position.x,z:npc.root.position.z});
-            if(npc.root.metadata.shoppingPhase==="selling-loot")this.beginBrowsing(npc);
+            if(npc.root.metadata.shoppingPhase==="selling-loot"){
+              if(this.usedOffer?.(npc.visitor.id)){
+                npc.root.metadata.shoppingPhase="used-gear-offer";
+                npc.wait=12;
+              }else this.beginBrowsing(npc,true);
+            }
             continue;
+          }
+          if(npc.root.metadata.shoppingPhase==="used-gear-offer"){
+            this.beginBrowsing(npc,true);continue;
           }
           const item=npc.intent?.items[npc.targetIndex];
           // Commit a reservation only at the shelf, after the inspection pause.
@@ -1155,6 +1245,7 @@ export class NpcVisualSystem {
       this.doorY[gate] += Math.sign(target - y) * Math.min(Math.abs(target - y), delta * 4);
       if (this.doors[gate]) this.doors[gate]!.position.y = this.doorY[gate];
     }
+    this.showUsedGearOffer();
     this.showNextCustomerBark();
   }
 
@@ -1327,10 +1418,10 @@ export class NpcVisualSystem {
       ["walking-to-buyback","walking-to-buyback-wait","buyback-wait","selling-loot"].includes(String(npc.root.metadata.shoppingPhase??"")));
   }
 
-  private beginBrowsing(npc:NpcVisual):void {
+  private beginBrowsing(npc:NpcVisual,skipBuyback=false):void {
     this.releaseShelf(npc);
     npc.routeProgress=null;
-    if(this.layout&&this.canStartBuyback(npc)){
+    if(!skipBuyback&&this.layout&&this.canStartBuyback(npc)){
       this.clearWish(npc);
       const origin={x:npc.root.position.x,z:npc.root.position.z};
       const reserved=this.serviceSpots.reserve(npc.visitor.id,"buyback",origin,this.layout,this.room,this.otherServiceOccupancy(npc));

@@ -23,6 +23,7 @@ import {dungeonFloorStairways} from "./dungeonStairways.ts";
 import {createDungeonStairwayProp} from "./dungeonStairProps.ts";
 import {createDungeonRoomArt,createDungeonPassageArt} from "./ghoulCryptArt.ts";
 import {dungeonRoomArtPlan,dungeonPassageArtPlan,dungeonRoomTileThemes,ROOM_SURFACE_TINTS,ROOM_THEMES,type DungeonRoomTheme} from "./dungeonRoomArtPlan.ts";
+import {presentRemainsSearch} from "./heroRemainsPresentation.ts";
 import {createHeroVisual,setHeroVisualEquipment,
   type HeroVisual} from "./heroVisual.ts";
 import {GhoulMapInstances,type GhoulMapSite}
@@ -722,6 +723,8 @@ void main(void){
       const at=this.worldPoint(hero);
       figure.visual.root.position.copyFrom(at);
       setHeroVisualEquipment(figure.visual,hero.equipment);
+      for(const limb of [...figure.visual.legs,...figure.visual.arms])limb.rotation.x=0;
+      presentRemainsSearch(figure.visual,hero.activity==="looting"?hero.lootProgress??0:null);
       figure.ring.position.set(at.x,.10,at.z);
       figure.ring.isVisible=!!hero.partyId;
     }

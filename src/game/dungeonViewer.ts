@@ -1196,6 +1196,7 @@ export class DungeonViewer {
     const perception=this.layout?
       selectHeroFloorPerception(this.layout,view,hero.id):null;
     const ongoing=hero.inCombat?"LIVE combat":
+      hero.activity==="looting"?"Looting remains · "+Math.round((hero.lootProgress??0)*100)+"%":
       hero.activity==="backtracking"?"Walking to portal":
       hero.activity==="portal"?"Portal transit":
       hero.threatAction?hero.threatAction.replaceAll("_"," "):"Exploring";

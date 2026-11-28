@@ -6,12 +6,12 @@ A first-person dark-fantasy shopkeeping game about **Galvik**, a cursed merchant
 
 ## Current Alpha
 
-Current contract: Alpha v51, including the first unique recovered discovery. The displayed HUD label is still V.002 ALPHA; the campaign schema (v51), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented. The room-first generator replaces the DFS maze with connected chambers and alternate routes. Selected chambers have clipped or cruciform footprints and straight corridors can open into passing bays. The Table, LIVE viewer and replay share hall, crypt, vault and guardroom art; see [Dungeon Reforged](docs/DUNGEON_REFORGED.md). Manual acceptance is pending. Alpha v50 is the only supported campaign schema. Reject v49 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
+Current contract: Alpha v52, including the first unique recovered discovery, persistent fallen heroes, timed remains recovery and manual used-equipment trade. The displayed HUD label is still V.002 ALPHA; the campaign schema (v52), in-game label and npm version (0.1.0) are independent. The Living Dungeon, cellar and forge are implemented. The room-first generator replaces the DFS maze with connected chambers and alternate routes. Selected chambers have clipped or cruciform footprints and straight corridors can open into passing bays. The Table, LIVE viewer and replay share hall, crypt, vault and guardroom art; see [Dungeon Reforged](docs/DUNGEON_REFORGED.md). Manual acceptance is pending. Alpha v52 is the only supported campaign schema. Reject v51 and earlier explicitly; no migration or legacy adapter. Current-format Save/Load must be deterministic.
 
 | Area | Implemented |
 | --- | --- |
 | Shop | First-person physical shop, mining, movable furniture, four-slot shelves, 24-unit bag, TAB inventory and six editable quickbar slots |
-| Commerce | Wholesale T1 stock, actual physical customers, unpaid carts, staffed LIVE cashier, receipts, credit/debt, restock waits and automatic physical material buyback |
+| Commerce | Wholesale T1 stock, actual physical customers, unpaid carts, staffed LIVE cashier, receipts, credit/debt, restock waits and automatic physical material buyback and explicit used-equipment purchase |
 | World | One 50-ms saved world tick; 28,800 ticks per day (24 unpaused real minutes). Galvik's movable wall clock reads it. Bed ends the day |
 | Dungeon | Ordinary Floors 1–9, connected seeded layouts, autonomous individual heroes, voluntary Temporary Parties, actual loot, traps, renewable Ghoul packs, pursuit and returns |
 | Boss | Floor-10 Cave Troll for eligible 2–3-hero parties; shared combat engine, unique grabs/throws and lava |
@@ -41,6 +41,7 @@ Build shelves with N, buy wholesale stock with B, organize your bag/quickbar wit
 | Shift + left / right click | Fill / empty reachable slot, respecting stock rules |
 | B / F | Open wholesale / select urgent restock item |
 | E / hold E at bed | Interact / end the day |
+| Y / N at a waiting gear seller | Accept one offered item / decline the offer |
 | N | Build a shelf; interact with the fixed portrait to access the cellar |
 | P / R / Q while placing | Move furniture / rotate |
 | U / Shift+U | Mine exposed rock / unlock another expansion tier (shop tiers 2–3 require the purchased Surveyor's Plan), including in the cellar. Exposed stone and flagstone now share world-aligned UVs with the original shop and dungeon viewer |

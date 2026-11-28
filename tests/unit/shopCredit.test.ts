@@ -137,6 +137,9 @@ test("crafted gear credit uses canonical equipment for all roles without phantom
     const credited=issueShopCredit(crafted,hero.id).state;
     const upgraded=credited.adventurers.find(h=>h.id===hero.id)!;
     assert.equal(upgraded.equipment.weapon,gearForItem(output)!.name);
+    const previous=role==="tank"?"iron-sword":role==="DPS"?"spear":"staff";
+    assert.equal(upgraded.inventory.finds?.[previous],1);
+    assert.equal(credited.shopEconomy.bag[previous],crafted.shopEconomy.bag[previous]);
     assert(equipmentEffects(role,upgraded.equipment).damage>
       equipmentEffects(role,hero.equipment).damage);
     assert.equal(credited.shopEconomy.bag[output],0);

@@ -26,7 +26,7 @@ import {createEmployees,type EmployeeState} from "./employees.ts";
 export type { AdventurerState } from "./adventurers.ts";
 import type {SurveyorPlan} from "./dungeonDiscovery.ts";
 import type {FallenHero} from "./fallenHeroes.ts";
-export const SIMULATION_VERSION = 51;
+export const SIMULATION_VERSION = 52;
 
 export interface ShopEconomyState {
   readonly balance: number;

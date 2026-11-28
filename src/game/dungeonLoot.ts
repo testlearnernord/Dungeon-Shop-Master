@@ -1,5 +1,5 @@
 import {ECONOMY,type ItemId} from "./economy.ts";
-import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
+import {equipOwnedGear} from "./gearCatalog.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {SeededRandom} from "./random.ts";
 import type {DungeonLayout,DungeonFeature} from "./dungeonLayout.ts";
@@ -96,11 +96,9 @@ export function distributeDungeonFinds(
     const offset=(start+index)%alive.length;
     const rotation=Array.from({length:alive.length},(_,i)=>
       assigned.get(alive[(offset+i)%alive.length].id)!);
-    const gear=gearForItem(item);
-    const upgrade=gear?rotation.find(h=>needsGearUpgrade(h.role,h.equipment,item)):undefined;
-    if(upgrade&&gear){
-      assigned.set(upgrade.id,{...upgrade,equipment:{
-        ...upgrade.equipment,[gear.slot]:gear.name}});
+    const upgrade=rotation.map(h=>equipOwnedGear(h,item)).find(h=>h!==null);
+    if(upgrade){
+      assigned.set(upgrade.id,upgrade);
       return;
     }
     if(item==="healing-herb"||item==="bread"){
@@ -115,7 +113,11 @@ export function distributeDungeonFinds(
         return;
       }
     }
-    const current=rotation[0],finds=current.inventory.finds??{};
+    const current=rotation.find(h=>Object.values(h.inventory.finds??{})
+      .reduce((sum,n)=>sum+(n??0),0)<1000);
+    // A site may resolve without taking an item when every survivor is full.
+    if(!current)return;
+    const finds=current.inventory.finds??{};
     assigned.set(current.id,{...current,inventory:{...current.inventory,
       finds:{...finds,[item]:(finds[item]??0)+1}}});
   });

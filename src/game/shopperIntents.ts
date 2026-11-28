@@ -1,6 +1,6 @@
 import {manuallyPaidVisitors} from "./npcVisitors.ts";
 import { ECONOMY, ITEMS, preferredShopItemOrder, tradeAtStartOfDay, type ItemId } from "./economy.ts";
-import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
+import {equipOwnedGear} from "./gearCatalog.ts";
 import type { GameState } from "./gameState.ts";
 
 /** Read-only shopping intent planning based on the deterministic inventory
@@ -36,8 +36,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
     if (!cart) return hero;
     let bread = hero.inventory.bread;
     let healing = hero.inventory.healing;
-    let weapon = hero.equipment.weapon;
-    let armor = hero.equipment.armor;
+    let gearOwner=hero;
     let reservedGold = 0;
     for (const line of cart.lines) {
       const item = ITEMS.find(entry => entry.id === line.itemId);
@@ -45,12 +44,10 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
       reservedGold += line.subtotal;
       if (item.id === "bread") bread += line.quantity;
       if (item.id === "healing-herb") healing += line.quantity;
-      if (item.kind === "weapon") weapon = gearForItem(item.id)?.name??weapon;
-      if (item.kind === "armor") armor = gearForItem(item.id)?.name??armor;
+      gearOwner=equipOwnedGear(gearOwner,item.id)??gearOwner;
     }
-    return { ...hero, gold: hero.gold - reservedGold,
-      inventory: {...hero.inventory, bread, healing},
-      equipment: {...hero.equipment, weapon, armor} };
+    return { ...gearOwner, gold: hero.gold - reservedGold,
+      inventory: {...gearOwner.inventory, bread, healing} };
   });
   const planningState = { ...state, adventurers: virtualHeroes };
   const projected = tradeAtStartOfDay(planningState, state.day+1);
@@ -82,7 +79,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
         if(item.id==="bread")return projectedHero.inventory.bread<ECONOMY.breadTarget;
         if(item.id==="healing-herb")return projectedHero.inventory.healing<ECONOMY.healingTarget;
         if(item.kind==="weapon"||item.kind==="armor")
-          return needsGearUpgrade(projectedHero.role,projectedHero.equipment,item.id);
+          return equipOwnedGear(projectedHero,item.id)!==null;
         return false;
         return false;
       });
@@ -109,8 +106,7 @@ export function forecastShoppingIntents(state: GameState): ReadonlyMap<string, S
         if(reason==="unavailable"&&projectedHero.gold<item.salePrice)return false;
         if(id==="bread")return projectedHero.inventory.bread<ECONOMY.breadTarget;
         if(id==="healing-herb")return projectedHero.inventory.healing<ECONOMY.healingTarget;
-        return needsGearUpgrade(projectedHero.role,
-          projectedHero.equipment,id);
+        return equipOwnedGear(projectedHero,id)!==null;
       }):undefined;
     results.set(hero.id,{heroId:hero.id,items,total:items.reduce(
       (sum,item)=>sum+item.subtotal,0),reason,wantedItemId});

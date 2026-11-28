@@ -12,7 +12,8 @@ import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { LinesMesh } from "@babylonjs/core/Meshes/linesMesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Scene } from "@babylonjs/core/scene";
-import { createHeroVisual, type HeroVisual } from "./heroVisual.ts";
+import { createHeroVisual,setHeroVisualEquipment,type HeroVisual } from "./heroVisual.ts";
+import {presentRemainsSearch} from "./heroRemainsPresentation.ts";
 import type { DungeonLayout, DungeonPoint } from "./dungeonLayout.ts";
 import { dungeonShortestPath,tileAt } from "./dungeonLayout.ts";
 import type { SpatialDungeonReplay } from "./spatialDungeonExploration.ts";
@@ -520,6 +521,7 @@ export class DungeonReplayScene {
         }
         this.floorModels.set(hero.id,model);
       }
+      setHeroVisualEquipment(model,hero.equipment);
       model.root.metadata.hp=hero.health;
       model.root.metadata.floorPartyId=hero.partyId;
       model.root.setEnabled(!hero.inCombat);
@@ -834,6 +836,8 @@ export class DungeonReplayScene {
       model.root.rotation.y=heading;
       this.animateHero(model,position.walking?"move":"recover",
         transit?.gait??0);
+      presentRemainsSearch(model,hero.activity==="looting"&&!position.walking?
+        hero.lootProgress??0:null);
       if(transit&&transit.seconds>=LIVE_PARTY_STEP_SECONDS)
         this.floorTravel.delete(hero.id);
     }
@@ -863,7 +867,7 @@ export class DungeonReplayScene {
   }
 
   advanceLiveFloorPresentation(dt:number):void {
-    if(this.floorTravel.size)this.poseLiveFloor(dt);
+    if(this.floorTravel.size||this.floorFrame?.heroes.some(h=>h.activity==="looting"))this.poseLiveFloor(dt);
     if(this.floorMonsterTravel.size)this.poseLiveMonsters(dt);
     this.ghoulMap?.tick(performance.now()/1000);
   }

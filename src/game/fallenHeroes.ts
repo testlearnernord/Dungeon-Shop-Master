@@ -1,7 +1,11 @@
 import type {AdventurerState} from "./adventurers.ts";
 import type {SpatialDungeonPartyTick,SpatialDungeonFloor} from "./spatialDungeonExploration.ts";
 import type {SurveyorPlan} from "./dungeonDiscovery.ts";
-import {MATERIAL_ITEMS} from "./economy.ts";
+import {MATERIAL_ITEMS,ECONOMY} from "./economy.ts";
+import {GEAR_BY_ITEM,needsGearUpgrade} from "./gearCatalog.ts";
+import {DUNGEON_STEP_INTERVAL_TICKS} from "./dungeonPacing.ts";
+
+export const REMAINS_LOOT_TICKS=2*DUNGEON_STEP_INTERVAL_TICKS;
 
 export interface FallenHero {
   readonly heroId:string;
@@ -9,6 +13,8 @@ export interface FallenHero {
   readonly x:number;
   readonly z:number;
   readonly day:number;
+  /** One exclusive physical search, saved across viewing and reloads. */
+  readonly search?:{readonly heroId:string;readonly startedTick:number};
 }
 
 /** Death settlement, not a render event or a retained replay lookup.
@@ -19,7 +25,7 @@ export function recordFallenHeroes(
   let next=existing;
   for(const entry of result.ticks){
     if(entry.adventurer.status!=="dead"||entry.adventurer.health!==0||
-      existing.some(f=>f.heroId===entry.adventurer.id))continue;
+      next.some(f=>f.heroId===entry.adventurer.id))continue;
     const death=[...entry.replay.steps].reverse().find(s=>s.action==="death"&&s.hp===0);
     if(!death||entry.replay.floor>9)continue;
     next=[...next,{heroId:entry.adventurer.id,floor:entry.replay.floor,
@@ -30,8 +36,8 @@ export function recordFallenHeroes(
 
 /** The dead roster remains the sole owner of unclaimed possessions.
  * Recover only from the actual occupied tile, never copy or roll new loot.
- * First slice transfers gold, forge materials and the unique discovery.
- * Equipment and supplies remain with the body for future recovery rules. */
+ * Supplies refill existing targets; recovered and replaced gear is carried
+ * in the existing finds inventory until a real merchant transaction. */
 export function recoverFallenAt(
   fallen:readonly FallenHero[],roster:ReadonlyMap<string,AdventurerState>,
   hero:AdventurerState,point:{x:number;z:number},plan:SurveyorPlan|null,
@@ -41,6 +47,7 @@ export function recoverFallenAt(
     return {hero,plan,deceased};
   for(const body of fallen.filter(f=>f.floor===hero.floor&&f.x===point.x&&f.z===point.z)
     .sort((a,b)=>a.heroId.localeCompare(b.heroId))){
+    if(body.search&&body.search.heroId!==hero.id)continue;
     const dead=roster.get(body.heroId);
     if(!dead||dead.status!=="dead"||dead.health!==0)continue;
     const gold=Math.min(dead.gold,Number.MAX_SAFE_INTEGER-hero.gold);
@@ -58,9 +65,46 @@ export function recoverFallenAt(
     }
     if(plan?.status==="carried"&&plan.heroId===dead.id)
       plan={...plan,heroId:hero.id};
-    if(!changed)continue;
-    hero={...hero,gold:hero.gold+gold,inventory:{...hero.inventory,finds}};
-    deceased.push({...dead,gold:dead.gold-gold,inventory:{...dead.inventory,finds:remaining}});
+    const bread=Math.min(dead.inventory.bread,Math.max(0,ECONOMY.breadTarget-hero.inventory.bread));
+    const healing=Math.min(dead.inventory.healing,Math.max(0,ECONOMY.healingTarget-hero.inventory.healing));
+    const overflowBread=Math.max(0,Math.min(remaining.bread??0,ECONOMY.breadTarget-hero.inventory.bread-bread));
+    const overflowHerbs=Math.max(0,Math.min(remaining["healing-herb"]??0,ECONOMY.healingTarget-hero.inventory.healing-healing));
+    for(const [id,count] of [["bread",overflowBread],["healing-herb",overflowHerbs]] as const){
+      if(!count)continue;
+      const left=(remaining[id]??0)-count;
+      if(left)remaining[id]=left;else delete remaining[id];
+      changed=true;
+    }
+    const equipment={...hero.equipment},leftEquipment={...dead.equipment};
+    for(const [id] of Object.entries(GEAR_BY_ITEM)){
+      const itemId=id as keyof typeof GEAR_BY_ITEM;
+      const count=Math.max(0,Math.min(capacity,remaining[itemId]??0));
+      if(!count)continue;
+      finds[itemId]=(finds[itemId]??0)+count;
+      capacity-=count;
+      const left=(remaining[itemId]??0)-count;
+      if(left)remaining[itemId]=left;else delete remaining[itemId];
+      changed=true;
+    }
+    for(const slot of ["weapon","armor"] as const){
+      const entry=Object.entries(GEAR_BY_ITEM).find(([,gear])=>gear.name===dead.equipment[slot]&&gear.slot===slot);
+      if(!entry)continue;
+      const id=entry[0] as keyof typeof GEAR_BY_ITEM;
+      const upgrade=needsGearUpgrade(hero.role,equipment,id);
+      const old=Object.entries(GEAR_BY_ITEM).find(([,gear])=>gear.name===equipment[slot]);
+      const carried=upgrade?old?.[0] as keyof typeof GEAR_BY_ITEM|undefined:id;
+      if(upgrade&&equipment[slot]&&!old)continue;
+      if(carried&&capacity<1)continue;
+      if(carried){finds[carried]=(finds[carried]??0)+1;capacity--;}
+      if(upgrade)equipment[slot]=entry[1].name;
+      leftEquipment[slot]=null;
+      changed=true;
+    }
+    if(!changed&&!bread&&!healing)continue;
+    hero={...hero,gold:hero.gold+gold,equipment,inventory:{...hero.inventory,finds,
+      bread:hero.inventory.bread+bread+overflowBread,healing:hero.inventory.healing+healing+overflowHerbs}};
+    deceased.push({...dead,gold:dead.gold-gold,equipment:leftEquipment,inventory:{...dead.inventory,finds:remaining,
+      bread:dead.inventory.bread-bread,healing:dead.inventory.healing-healing}});
   }
   return {hero,plan,deceased};
 }

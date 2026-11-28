@@ -6,7 +6,7 @@ export function setupHeroBuybackHud(store:GameStore):void{
   const modal=document.createElement("dialog");modal.id="hero-buyback-hud";
   modal.setAttribute("aria-label","Recovered goods receipts");
   const header=document.createElement("header"),title=document.createElement("div"),h=document.createElement("h2"),note=document.createElement("p"),close=document.createElement("button");
-  h.textContent="Recovered Goods";note.textContent="Adventurers sell workshop materials and unique recovered discoveries at the physical chest before shopping.";
+  h.textContent="Recovered Goods";note.textContent="Adventurers sell workshop materials and unique recovered discoveries at the physical chest before shopping. Used equipment requires your explicit acceptance.";
   title.append(h,note);close.textContent="Close";close.onclick=()=>modal.close();header.append(title,close);
   const budget=document.createElement("div");budget.className="hero-buyback-budget";
   const receipts=document.createElement("div");receipts.className="buyback-receipts";

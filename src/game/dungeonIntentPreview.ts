@@ -23,7 +23,7 @@ export function predictDungeonHeroSteps(
   layout:DungeonLayout,hero:PreviewHero,resolved:readonly string[]=[],
   context?:PreviewContext,
 ):readonly DungeonPoint[]{
-  if(!isOrdinaryDungeonFloor(layout.floor)||hero.inCombat||hero.activity==="portal")return [];
+  if(!isOrdinaryDungeonFloor(layout.floor)||hero.inCombat||hero.activity==="portal"||hero.activity==="looting")return [];
   if(hero.threatNextStep)return dungeonNeighbors(layout,hero).some(p=>
     p.x===hero.threatNextStep!.x&&p.z===hero.threatNextStep!.z)?[hero.threatNextStep]:[];
   if(hero.threatAction==="WAITING_FOR_SAFETY")return [];
@@ -71,6 +71,7 @@ export function dungeonPreviewExplanation(
   context?:PreviewContext,
 ):string{
   if(hero.inCombat)return "In LIVE combat · route forecast paused";
+  if(hero.activity==="looting")return "Looting remains · movement paused";
   if(hero.activity==="portal")return "Crossing the portal · no floor route";
   if(hero.threatAction==="WAITING_FOR_SAFETY")return "Waiting for a safe route · remembered threat";
   const next=predictDungeonHeroSteps(layout,hero,resolved,context);

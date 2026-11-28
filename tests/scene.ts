@@ -7,6 +7,7 @@ import {Ray} from "@babylonjs/core/Culling/ray";
 import {StandardMaterial} from "@babylonjs/core/Materials/standardMaterial";
 import {surfaceFromMesh} from "../src/game/furnitureBlueprint.ts";
 import {counterDockPoint,type ShopLayout} from "../src/game/shopLayout.ts";
+import {BUYBACK_DOCK} from "../src/game/buybackChestPlacement.ts";
 
 /** Once the table creates a passive offscreen spectator scene, Babylon's
  * LastCreatedScene is no longer necessarily the visible shop. A test probe
@@ -202,6 +203,15 @@ export function aimAtCustomerBark(heroId:string):void {
   const camera=scene.activeCamera as UniversalCamera;
   camera.position.set(node.position.x+2.6,1.7,node.position.z+2.8);
   camera.setTarget(new Vector3(node.position.x,node.position.y+3.25,node.position.z));
+  camera.cameraDirection.setAll(0);
+  camera.cameraRotation.setAll(0);
+}
+
+/** Look at the actual buyback service dock without moving or spawning its customer. */
+export function aimAtBuybackDock():void {
+  const camera=currentTestScene()!.activeCamera as UniversalCamera;
+  camera.position.set(BUYBACK_DOCK.x-3,1.7,BUYBACK_DOCK.z);
+  camera.setTarget(new Vector3(BUYBACK_DOCK.x,2.7,BUYBACK_DOCK.z));
   camera.cameraDirection.setAll(0);
   camera.cameraRotation.setAll(0);
 }
