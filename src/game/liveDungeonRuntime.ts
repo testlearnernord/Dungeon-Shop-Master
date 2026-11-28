@@ -917,7 +917,10 @@ function commitDungeonTick(state:GameState,diagnostic?:DungeonDiagnosticSink):Ga
     // justify a physical return, never an instant shop transaction.
     const gearFinds=(h:AdventurerState)=>Object.entries(h.inventory.finds??{})
       .filter(([id])=>gearForItem(id)!==null).reduce((sum,[,n])=>sum+(n??0),0);
-    if((previousPlan!==surveyorPlan||gearFinds(recovered.hero)>gearFinds(hero))&&
+    const threshold=salvageReturnThreshold(recovered.hero);
+    const newHaul=Math.floor(carriedDungeonFindCount(recovered.hero)/threshold)>
+      Math.floor(carriedDungeonFindCount(hero)/threshold);
+    if((previousPlan!==surveyorPlan||gearFinds(recovered.hero)>gearFinds(hero)||newHaul)&&
       !returns.some(j=>j.heroId===hero.id)){
       recordLivePlan(plans,recovered.hero,{goal:"resupply",action:"shop"},tick);
       returns.push({heroId:hero.id,fromFloor:body.floor,startedTick:tick,phase:"backtrack"});

@@ -1,6 +1,6 @@
 import {currentShopVisitEvents,shopVisitSuffix} from "./npcVisitors.ts";
 import { ITEMS, type ItemId } from "./economy.ts";
-import {gearForItem,needsGearUpgrade} from "./gearCatalog.ts";
+import {equipOwnedGear} from "./gearCatalog.ts";
 import type { GameState, WorldEvent } from "./gameState.ts";
 import { forecastShoppingIntents, type ShoppingInterest } from "./shopperIntents.ts";
 
@@ -135,8 +135,7 @@ export function settleHeldShopCarts(
 
     let bread = hero.inventory.bread;
     let healing = hero.inventory.healing;
-    let weapon = hero.equipment.weapon;
-    let armor = hero.equipment.armor;
+    let gearOwner=hero;
     let units = 0;
     for (const line of cart.lines) {
       const item = ITEMS.find(candidate => candidate.id === line.itemId);
@@ -147,13 +146,10 @@ export function settleHeldShopCarts(
       if (item.id === "bread") bread += line.quantity;
       else if (item.id === "healing-herb") healing += line.quantity;
       else if (item.kind === "weapon" || item.kind === "armor") {
-        if(line.quantity!==1 ||
-           !needsGearUpgrade(hero.role,{weapon,armor},item.id))
-          throw new Error("Reserved equipment does not suit the hero's class or tier.");
-        const gear=gearForItem(item.id);
-        if(!gear)throw new Error("Unknown reserved equipment.");
-        if(item.kind==="weapon")weapon=gear.name;
-        else armor=gear.name;
+        const upgraded=equipOwnedGear(gearOwner,item.id);
+        if(line.quantity!==1||!upgraded)
+          throw new Error("Reserved equipment cannot be equipped while retaining actual ownership.");
+        gearOwner=upgraded;
       }
       else throw new Error("Unsupported reserved item type.");
       events.push({
@@ -169,8 +165,8 @@ export function settleHeldShopCarts(
       ...result,
       adventurers: result.adventurers.map(person => person.id === hero.id
         ? {...person, gold: person.gold-total,
-          inventory: {...person.inventory,bread,healing},
-          equipment: {...person.equipment,weapon,armor}}
+          inventory: {...gearOwner.inventory,bread,healing},
+          equipment: gearOwner.equipment}
         : person),
       shopEconomy: {
         ...result.shopEconomy,

@@ -4,6 +4,7 @@ import {GameStore} from "../../src/game/gameStore.ts";
 import {DUNGEON_STEP_INTERVAL_TICKS} from "../../src/game/liveDungeonRuntime.ts";
 import {selectLiveFloorSpectatorFrame} from "../../src/game/liveFloorSpectator.ts";
 import {resolveDungeonSite} from "../../src/game/dungeonRegeneration.ts";
+import {advanceDungeonMonsterWorld} from "../../src/game/dungeonMonsterWorld.ts";
 import {createGameState,type GameState} from "../../src/game/gameState.ts";
 import {generateExpeditionLayout,dungeonNeighbors,dungeonShortestPath} from "../../src/game/dungeonLayout.ts";
 import {advanceSpatialDungeonPartyStep,emptySpatialDungeonWorld} from "../../src/game/spatialDungeonExploration.ts";
@@ -156,4 +157,41 @@ test("exclusive search rejects a second hero and recovers excess owned healing f
   assert.equal(recovered.hero.inventory.healing,1);
   assert.equal(recovered.deceased[0].inventory.finds?.bread,1);
   assert.equal(recovered.deceased[0].inventory.finds?.["healing-herb"],1);
+});
+
+test("monster contact at the exact completion tick interrupts recovery before any transfer",()=>{
+  const {state,trap,at,layout,result,dead,fallen}=fixture();
+  const survivor={...state.adventurers.find(h=>h.id!==dead.id)!,
+    floor:1 as const,status:"exploring" as const,shopStayDays:0};
+  const generated=advanceDungeonMonsterWorld(result.world,layout,1,0);
+  const pack=generated.monsters?.[0];
+  assert(pack);
+  const others=layout.features.filter(f=>f.kind==="monster"&&f.id!==pack.id);
+  const siteCycles=others.reduce((sites,feature)=>resolveDungeonSite(sites,feature.id,1),
+    [...(result.world.siteCycles??[])]);
+  const world={...generated,siteCycles,
+    resolvedFeatureIds:[...result.world.resolvedFeatureIds,...others.map(f=>f.id)],
+    heroes:[{heroId:survivor.id,x:trap.x,z:trap.z,
+      visited:[...new Set(dungeonShortestPath(layout,layout.entrance,trap)
+        .map(p=>p.z*layout.width+p.x).concat(trap.z*layout.width+trap.x))]}],
+    monsters:[{...pack,x:at.x,z:at.z,lastMoveTick:0,mode:"CHASING" as const,
+      target:{x:trap.x,z:trap.z},targetHeroId:survivor.id,
+      lastKnown:{x:trap.x,z:trap.z},lastSeenTick:0,lostSightChecks:0}]};
+  const initial:GameState={...state,
+    fallenHeroes:fallen.map(b=>({...b,search:{heroId:survivor.id,startedTick:0}})),
+    adventurers:state.adventurers.map(h=>h.id===dead.id?dead:h.id===survivor.id?survivor:
+      {...h,floor:"shop",status:"at-shop",shopStayDays:0}),
+    dungeonWorlds:[{floor:1,world}]};
+  const store=new GameStore(initial);
+  store.enableLiveDungeon();
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert.equal(store.state.fallenHeroes[0].search?.heroId,survivor.id);
+  assert.equal(store.state.adventurers.find(h=>h.id===dead.id)?.gold,dead.gold);
+  store.advanceWorldTime(DUNGEON_STEP_INTERVAL_TICKS);
+  assert(store.state.liveDungeon.combats.some(c=>c.heroIds.includes(survivor.id)&&
+    c.encounter.featureId===pack.id&&c.startedTick===100));
+  assert.equal(store.state.fallenHeroes[0].search,undefined);
+  assert.equal(store.state.adventurers.find(h=>h.id===dead.id)?.gold,dead.gold);
+  assert.equal(store.state.adventurers.find(h=>h.id===survivor.id)?.gold,survivor.gold);
+  assert.deepEqual(parseSave(serializeSave(store.state)),store.state);
 });

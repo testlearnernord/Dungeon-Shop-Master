@@ -362,3 +362,26 @@ test("employee uses the staffed receipt identity but never receives a tip even i
   assert(!paid.events.some(e=>e.type==="tip"));
   assert.strictEqual(payReservedShopCart(paid,hero.id,true).state,paid);
 });
+
+test("a paid gear upgrade retains the displaced item without giving it to Galvik",()=>{
+  const base=customers();
+  const hero={...base.adventurers[0],role:"tank" as const,gold:100,
+    equipment:{weapon:"Iron Sword",armor:"Ghoul Leather Vest"},
+    inventory:{bread:2,healing:1}};
+  const state:GameState={...base,adventurers:base.adventurers.map(h=>h.id===hero.id?hero:h),
+    shopEconomy:{...base.shopEconomy,slots:base.shopEconomy.slots.map((slot,i)=>i===0?
+      {...slot,itemId:"forged-sword-shield",quantity:1}:{...slot,itemId:null,quantity:0})}};
+  const offer=forecastShoppingIntents(state).get(hero.id)?.items.find(i=>i.itemId==="forged-sword-shield");
+  assert(offer);
+  const picked=pickUpShopItem(state,hero.id,offer.slotId).state;
+  assert.equal(picked.adventurers[0].equipment.weapon,"Iron Sword");
+  assert.equal(picked.adventurers[0].inventory.finds,undefined);
+  const paid=payReservedShopCart(picked,hero.id).state;
+  assert.equal(paid.adventurers[0].equipment.weapon,"Forged Sword & Shield");
+  assert.equal(paid.adventurers[0].inventory.finds?.["iron-sword"],1);
+  assert.equal(paid.shopEconomy.bag["iron-sword"],state.shopEconomy.bag["iron-sword"]);
+  assert.deepEqual(parseSave(JSON.stringify(createSave(paid))),paid);
+  const full:GameState={...state,adventurers:state.adventurers.map(h=>h.id===hero.id?
+    {...h,inventory:{...h.inventory,finds:{"iron-ore":1000}}}:h)};
+  assert.strictEqual(pickUpShopItem(full,hero.id,offer.slotId).state,full);
+});

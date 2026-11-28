@@ -1,4 +1,4 @@
-import type {AdventurerRole} from "./adventurers.ts";
+import type {AdventurerRole,AdventurerState} from "./adventurers.ts";
 
 /** A single source for true class restrictions, upgrade tiers and 60-Hz combat
  * benefits. Item IDs are stable economic keys; internal equipment names retain
@@ -64,4 +64,25 @@ export function equipmentEffects(
     weapon:validWeapon?.name??null,
     vest:validArmor?.name??null,
   };
+}
+
+/** Move a newly acquired, class-compatible item into its equipment slot.
+ * The caller still owns the acquisition (chest, paid cart or credit).
+ * A replaced item is retained in the same hero's carried finds, not
+ * destroyed or silently transferred to Galvik. A full bag or unknown old
+ * equipment makes replacement ineligible rather than losing ownership. */
+export function equipOwnedGear(hero:AdventurerState,itemId:string):AdventurerState|null{
+  const gear=gearForItem(itemId);
+  if(!gear||!needsGearUpgrade(hero.role,hero.equipment,itemId))return null;
+  const previous=hero.equipment[gear.slot];
+  let inventory=hero.inventory;
+  if(previous!==null){
+    const displaced=(Object.keys(GEAR_BY_ITEM) as GearItemId[])
+      .find(id=>GEAR_BY_ITEM[id].name===previous);
+    if(!displaced)return null;
+    const finds=inventory.finds??{};
+    if(Object.values(finds).reduce((sum,n)=>sum+(n??0),0)>=1000)return null;
+    inventory={...inventory,finds:{...finds,[displaced]:(finds[displaced]??0)+1}};
+  }
+  return {...hero,inventory,equipment:{...hero.equipment,[gear.slot]:gear.name}};
 }

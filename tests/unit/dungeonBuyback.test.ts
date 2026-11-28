@@ -246,3 +246,14 @@ test("used equipment requires explicit dock acceptance and transfers actual stoc
   assert.equal(wantsUsedGearVisit(after,id),false);
   assert.deepEqual(parseSave(serializeSave(after)),after);
 });
+
+test("a real dungeon upgrade keeps the old owned weapon and respects bounded carried finds",()=>{
+  const base=createGameState(7351).adventurers[0];
+  const hero={...base,role:"tank" as const,equipment:{weapon:"Iron Sword",armor:null}};
+  const upgraded=distributeDungeonFinds([hero],["forged-sword-shield"],"upgrade",0)[0];
+  assert.equal(upgraded.equipment.weapon,"Forged Sword & Shield");
+  assert.equal(upgraded.inventory.finds?.["iron-sword"],1);
+  assert.equal(hero.inventory.finds,undefined);
+  const full={...hero,inventory:{...hero.inventory,finds:{"iron-ore":1000}}};
+  assert.deepEqual(distributeDungeonFinds([full],["forged-sword-shield"],"upgrade",0),[full]);
+});

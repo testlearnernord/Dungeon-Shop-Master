@@ -2,7 +2,7 @@ import type { AdventurerState } from "./adventurers.ts";
 import { HEALING_HERB_HP, WAYBREAD_HP } from "./combatVitality.ts";
 import {heroProgression} from "./heroProgression.ts";
 import {SHELF_SLOT_COUNT} from "./furnitureRegistry.ts";
-import {gearForItem,needsGearUpgrade,gearFromName} from "./gearCatalog.ts";
+import {gearForItem,needsGearUpgrade,gearFromName,equipOwnedGear} from "./gearCatalog.ts";
 import type { GameState, ShopEconomyState, WorldEvent } from "./gameState.ts";
 
 export const ITEMS = [
@@ -253,8 +253,7 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
     let gold = hero.gold;
     let bread = hero.inventory.bread;
     let healing = hero.inventory.healing;
-    let weapon = hero.equipment.weapon;
-    let armor = hero.equipment.armor;
+    let gearOwner=hero;
     // Sort the physical slots by THIS hero's condition and class.
     // The original slot order remains the stable tie-breaker. Forecasts
     // and the real cashier both read these exact same priorities.
@@ -269,19 +268,18 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
     for (const slot of prioritized) {
       const item = ITEMS.find((entry) => entry.id === slot.itemId);
       if (!item || slot.quantity < 1) continue;
+      const upgrade=equipOwnedGear(gearOwner,item.id);
       const need = item.id === "bread" ? Math.max(0, ECONOMY.breadTarget - bread)
         : item.id === "healing-herb"
           ? Math.max(0, ECONOMY.healingTarget - healing)
-          : (item.kind==="weapon"||item.kind==="armor")&&
-            needsGearUpgrade(hero.role,{weapon,armor},item.id)?1:0;
+          : upgrade?1:0;
       const quantity = Math.min(need, slot.quantity, Math.floor(gold / item.salePrice));
       if (quantity <= 0) continue;
       const revenue = quantity * item.salePrice;
       gold -= revenue;
       if (item.id === "bread") bread += quantity;
       if (item.id === "healing-herb") healing += quantity;
-      if (item.kind === "weapon") weapon = gearForItem(item.id)?.name??weapon;
-      if (item.kind === "armor") armor = gearForItem(item.id)?.name??armor;
+      if(upgrade)gearOwner=upgrade;
       slot.quantity -= quantity;
       economy = {
         ...economy, balance: economy.balance + revenue,
@@ -294,8 +292,7 @@ export function tradeAtStartOfDay(state: GameState, day: number): {
       });
     }
     return gold === hero.gold ? hero : {
-      ...hero, gold, inventory: { ...hero.inventory, bread, healing },
-      equipment: { ...hero.equipment, weapon, armor },
+      ...gearOwner, gold, inventory: { ...gearOwner.inventory, bread, healing },
     };
   });
   return { economy, adventurers, events };
