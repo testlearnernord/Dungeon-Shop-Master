@@ -31,8 +31,8 @@ export function recordFallenHeroes(
 
 /** The dead roster remains the sole owner of unclaimed possessions.
  * Recover only from the actual occupied tile, never copy or roll new loot.
- * Supplies refill existing targets; compatible upgrades exchange equipment.
- * Replaced gear stays on the remains for another adventurer. */
+ * Supplies refill existing targets; recovered and replaced gear is carried
+ * in the existing finds inventory until a real merchant transaction. */
 export function recoverFallenAt(
   fallen:readonly FallenHero[],roster:ReadonlyMap<string,AdventurerState>,
   hero:AdventurerState,point:{x:number;z:number},plan:SurveyorPlan|null,
@@ -62,11 +62,28 @@ export function recoverFallenAt(
     const bread=Math.min(dead.inventory.bread,Math.max(0,ECONOMY.breadTarget-hero.inventory.bread));
     const healing=Math.min(dead.inventory.healing,Math.max(0,ECONOMY.healingTarget-hero.inventory.healing));
     const equipment={...hero.equipment},leftEquipment={...dead.equipment};
+    for(const [id] of Object.entries(GEAR_BY_ITEM)){
+      const itemId=id as keyof typeof GEAR_BY_ITEM;
+      const count=Math.max(0,Math.min(capacity,remaining[itemId]??0));
+      if(!count)continue;
+      finds[itemId]=(finds[itemId]??0)+count;
+      capacity-=count;
+      const left=(remaining[itemId]??0)-count;
+      if(left)remaining[itemId]=left;else delete remaining[itemId];
+      changed=true;
+    }
     for(const slot of ["weapon","armor"] as const){
       const entry=Object.entries(GEAR_BY_ITEM).find(([,gear])=>gear.name===dead.equipment[slot]&&gear.slot===slot);
-      if(!entry||!needsGearUpgrade(hero.role,equipment,entry[0]))continue;
-      leftEquipment[slot]=equipment[slot];
-      equipment[slot]=entry[1].name;
+      if(!entry)continue;
+      const id=entry[0] as keyof typeof GEAR_BY_ITEM;
+      const upgrade=needsGearUpgrade(hero.role,equipment,id);
+      const old=Object.entries(GEAR_BY_ITEM).find(([,gear])=>gear.name===equipment[slot]);
+      const carried=upgrade?old?.[0] as keyof typeof GEAR_BY_ITEM|undefined:id;
+      if(upgrade&&equipment[slot]&&!old)continue;
+      if(carried&&capacity<1)continue;
+      if(carried){finds[carried]=(finds[carried]??0)+1;capacity--;}
+      if(upgrade)equipment[slot]=entry[1].name;
+      leftEquipment[slot]=null;
       changed=true;
     }
     if(!changed&&!bread&&!healing)continue;
